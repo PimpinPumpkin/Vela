@@ -1260,9 +1260,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Nav declutter: no bus stops (2026-07-14).** The canonical transit-stop icons and their name
   labels hide during turn-by-turn (browse furniture, not a driving aid) and the per-viewport stop
   fetch skips while navigating.
-- ✅ **Closer nav zoom (2026-07-14).** The speed-adaptive follow zoom now runs 18.0 (stopped) down
-  to 15.5 (highway), up from 17.3-15.0 - with the puck riding low, the extra zoom is all road
-  ahead. Pinch still overrides.
+- ✅ **Closer nav zoom (2026-07-14, closer again + 30% bigger puck 2026-07-15).** The
+  speed-adaptive follow zoom now runs 18.5 (stopped) down to 15.8 (highway) - originally
+  17.3-15.0, then 18.0-15.5 - with the puck riding low, the extra zoom is all road ahead.
+  Pinch still overrides. The nav puck grew ~30% alongside it (176 px disc, redrawn at native
+  size, not raster-scaled).
 - ✅ **The road ahead owns the nav view (2026-07-14).** The follow camera renders the puck low on
   the screen (~72% down, via a sticky top camera padding reset when nav ends) instead of dead
   centre, so the view shows what's coming instead of splitting evenly with what's behind -

@@ -971,7 +971,7 @@ fun VelaMapView(
                     val sp = navPuck.speed.toFloat().coerceIn(0f, 30f)
                     navZoomSpeed[0] += (sp - navZoomSpeed[0]) * (1f - kotlin.math.exp(-dtE / 0.6f))
                     val tgtZoom = if (!navUserZoom[0].isNaN()) navUserZoom[0]
-                        else 18.0 - (navZoomSpeed[0] / 30f) * (18.0 - 15.5) // closer default (user drive 2026-07-14); speed still zooms out
+                        else 18.5 - (navZoomSpeed[0] / 30f) * (18.5 - 15.8) // even closer default (user 2026-07-15, was 18.0-15.5); speed still zooms out
                     if (camState[0].isNaN()) { // (re)seed from the live camera for a smooth hand-off
                         val cp = cam.cameraPosition
                         camState[0] = cp.target?.latitude ?: pt.lat
@@ -1668,7 +1668,7 @@ fun VelaMapView(
                         val rawSp = (mySpeed ?: 0f).coerceIn(0f, 30f)
                         navZoomSpeed[0] += (rawSp - navZoomSpeed[0]) * 0.3f
                         val zoom = if (!navUserZoom[0].isNaN()) navUserZoom[0]
-                            else 18.0 - (navZoomSpeed[0] / 30f) * (18.0 - 15.5) // closer default (user drive 2026-07-14); speed still zooms out
+                            else 18.5 - (navZoomSpeed[0] / 30f) * (18.5 - 15.8) // even closer default (user 2026-07-15, was 18.0-15.5); speed still zooms out
                         map.animateCamera(
                             CameraUpdateFactory.newCameraPosition(
                                 CameraPosition.Builder()
@@ -3703,18 +3703,18 @@ private fun arrowBitmap(): Bitmap {
  *  and NO white ring (user 2026-07-11: bigger, drop the ring, brighter navy blue). Points up
  *  (north) so `iconRotate(bearing)` aims it down the heading. */
 private fun navPuckBitmap(): Bitmap {
-    val size = 136 // bumped again per user (was 112, was 96)
+    val size = 176 // +30% per user 2026-07-15 (was 136, 112, 96)
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bmp)
     val cx = size / 2f
     val cy = size / 2f
-    val r = 50f
+    val r = 65f
     // Soft drop shadow, offset slightly down (blur needs a software canvas - this is one).
     canvas.drawCircle(
-        cx, cy + 4f, r,
+        cx, cy + 5f, r,
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.argb(70, 0, 0, 0)
-            maskFilter = android.graphics.BlurMaskFilter(8f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+            maskFilter = android.graphics.BlurMaskFilter(10f, android.graphics.BlurMaskFilter.Blur.NORMAL)
         },
     )
     // The bright-navy disc - no white ring this time (user call). #1a46e5 = a vivid, deep blue.
@@ -3724,10 +3724,10 @@ private fun navPuckBitmap(): Bitmap {
     )
     // White chevron/arrow, centred, pointing up - scaled up with the bigger disc.
     val arrow = Path().apply {
-        moveTo(cx, cy - 25f)          // tip
-        lineTo(cx + 21f, cy + 20f)    // bottom-right
-        lineTo(cx, cy + 9f)           // notch
-        lineTo(cx - 21f, cy + 20f)    // bottom-left
+        moveTo(cx, cy - 32f)          // tip
+        lineTo(cx + 27f, cy + 26f)    // bottom-right
+        lineTo(cx, cy + 12f)          // notch
+        lineTo(cx - 27f, cy + 26f)    // bottom-left
         close()
     }
     canvas.drawPath(
