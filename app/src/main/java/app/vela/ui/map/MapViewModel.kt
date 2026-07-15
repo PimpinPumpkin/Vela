@@ -2092,6 +2092,23 @@ class MapViewModel @Inject constructor(
      *  the bare map without a camera move (e.g. closing a place). No-op if there's no viewport yet, and
      *  [maybeLoadAmbientPois] keeps its own gates (skips while results/nav/a place are up, only refetches
      *  on a real pan/zoom). */
+    /** Ambient pool minus parks/schools/civic when that toggle is off (user 2026-07-15) -
+     *  filtered IN STATE (not display-side) so the map layer's tap indices stay aligned with
+     *  state.ambientPois. */
+    private fun civicFiltered(list: List<app.vela.core.model.Place>): List<app.vela.core.model.Place> =
+        if (app.vela.ui.MapPoiPrefs.showCivic.value) list
+        else list.filter { PoiIcons.groupFor(it.name, it.category) !in CIVIC_GROUPS }
+
+    /** POI prefs changed in Settings: drop the current pool/stops and re-resolve for the view,
+     *  so toggles act immediately instead of on the next pan. */
+    fun onPoiPrefsChanged() {
+        lastAmbientCenter = null
+        if (!app.vela.ui.MapPoiPrefs.showTransit.value && _state.value.transitStops.isNotEmpty()) {
+            _state.update { it.copy(transitStops = emptyList()) }
+        }
+        refreshAmbientForCurrentView()
+    }
+
     private fun refreshAmbientForCurrentView() {
         val vp = viewport ?: return
         val c = mapCenter ?: LatLng((vp[0] + vp[2]) / 2, (vp[1] + vp[3]) / 2)
@@ -4069,6 +4086,16 @@ class MapViewModel @Inject constructor(
      */
     private fun maybeLoadAmbientPois(center: LatLng, zoom: Double, viewRadiusMeters: Double = 0.0) {
         val s = _state.value
+        // "Show places on the map" master switch (user 2026-07-15): off = clean basemap, only
+        // searched results draw. Clear whatever is up so flipping the toggle acts immediately.
+        if (!app.vela.ui.MapPoiPrefs.showPois.value) {
+            ambientJob?.cancel()
+            lastAmbientCenter = null
+            if (s.ambientPois.isNotEmpty() || s.ambientCoversView) {
+                _state.update { it.copy(ambientPois = emptyList(), ambientCoversView = false) }
+            }
+            return
+        }
         if (s.navigating || s.replaying || s.results.isNotEmpty() || s.selected != null) return
         // Zoomed out past neighbourhood level → drop the dots (and let the OSM POIs come back).
         if (zoom < 14.0) {
@@ -4105,7 +4132,7 @@ class MapViewModel @Inject constructor(
         // refetch, the P9 "tap a POI / pan back and everything is gone" report. The hit is by definition
         // the best-known data for THIS centre; the fetch below still refines it.
         cachedAmbientNear(center)?.let { cached ->
-            _state.update { it.copy(ambientPois = keepAmbientForView(cached, viewRadiusMeters)) }
+            _state.update { it.copy(ambientPois = civicFiltered(keepAmbientForView(cached, viewRadiusMeters))) }
         }
         ambientJob = viewModelScope.launch {
             delay(300) // brief settle so a flick doesn't scrape — but snappy
@@ -4133,7 +4160,7 @@ class MapViewModel @Inject constructor(
                             // replace blinked most dots off then back (2026-07-11). The final
                             // ranked pool below always replaces outright.
                             val kept = keepAmbientForView(partial, viewRadiusMeters)
-                            if (kept.size >= cur.ambientPois.size) cur.copy(ambientPois = kept) else cur
+                            if (kept.size >= cur.ambientPois.size) cur.copy(ambientPois = civicFiltered(kept)) else cur
                         }
                     }
                 }
@@ -4145,7 +4172,7 @@ class MapViewModel @Inject constructor(
             cacheAmbient(center, span, res)
             // Re-check we're still on the bare map — the user may have searched/opened a place while we fetched.
             if (!bareMap()) return@launch
-            _state.update { it.copy(ambientPois = keepAmbientForView(res, viewRadiusMeters), ambientCoversView = true) }
+            _state.update { it.copy(ambientPois = civicFiltered(keepAmbientForView(res, viewRadiusMeters)), ambientCoversView = true) }
             // Idle now: quietly warm the four NEIGHBOUR areas into the LRU so panning one screen
             // over paints instantly (unmetered connections only - it's ~4 extra fan-outs).
             prefetchAmbientNeighbours(center, span, zoom)
@@ -4422,7 +4449,8 @@ class MapViewModel @Inject constructor(
         // declutter effect, and skipping the fetch here saves the per-viewport Transitous calls a
         // whole drive would otherwise fire at nav zoom.
         if (_state.value.navigating) return
-        if (zoom < TRANSIT_STOPS_MIN_ZOOM) {
+        // Transit-stop toggle (user 2026-07-15): treat "off" like zoomed-out - clear + skip.
+        if (!app.vela.ui.MapPoiPrefs.showTransit.value || zoom < TRANSIT_STOPS_MIN_ZOOM) {
             transitStopsBox = null
             transitStopsJob?.cancel()
             if (_state.value.transitStops.isNotEmpty()) _state.update { it.copy(transitStops = emptyList()) }
@@ -4745,6 +4773,7 @@ class MapViewModel @Inject constructor(
         // exists now: the BUNDLED on-device dataset answers fetchInBox with no network and the Overpass
         // fallback stream-parses, so z11 is back (alltechdev re-proved it in the vela-dpad fork, #131).
         const val FLOCK_MIN_ZOOM = 11.0
+        val CIVIC_GROUPS = setOf("park", "edu", "civic") // the "not really a business" ambient tier
         const val SUGGEST_NEAR_M = 80_000.0 // ~a metro radius: suggestions inside it rank first
         const val TRANSIT_STOPS_MIN_ZOOM = 15.0 // GTFS stop icons from street-ish zoom (denser than cameras)
         const val CONTROLS_ONSCREEN_CAP = 400 // max controls handed to the map (nearest-to-center wins) — a
