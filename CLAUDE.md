@@ -1518,10 +1518,16 @@ architecture note.
   past FAR_OFF_M also counts DOUBLE, and `OFF_ROUTE_M` is 40 m / `OFF_ROUTE_HITS` 3 (were 45/4) -
   the user's wrong turns rerouted too slowly, and the corridor width plus the debounce were the
   lag; don't loosen these back without a false-reroute report. The off-route corridor + far distance
-  are MODE-AWARE since 2026-07-15: `NavEngine.update` takes `offRouteM`/`farOffM` params (defaulting
-  to the 40/90 driving values so tests + `NavReplay` are unchanged) and `NavSession` passes a tighter
-  pair for foot/bike - WALK 22/45, BICYCLE 28/55 - because a pedestrian is on a known path a few
-  metres wide and the wide car corridor let a wrong footpath drift ~40 m before rerouting), off-route measured on the
+  are ACCURACY-SCALED and mode-relative since 2026-07-15: `NavEngine.update` takes `offRouteM`/`farOffM`
+  params (defaulting to the flat 40/90 so tests + `NavReplay` are unchanged), and `NavSession` computes
+  them per fix via the pure `NavEngine.offRouteCorridor(mode, accuracyM)` / `farOffDistance(mode, off)`.
+  The corridor = `base + K*accuracy` clamped per mode (OsmAnd-style: tight on a clean fix, wide on a
+  noisy one so urban-canyon multipath can't false-reroute), foot < bike < drive because the PATH is
+  narrow. Driving self-tightens below the old flat 40 m when GPS is clean - which is the "40 is too
+  high" the user hit - without inviting false reroutes when GPS degrades. `MapViewModel` feeds
+  `loc.accuracy` (null → a typical-GPS default; the dead-reckoning path passes null). Don't reintroduce
+  a fixed sub-30 m distance - it was rejected as extreme (2026-07-15), the whole point is it scales),
+  off-route measured on the
   windowed/anchored projection (never whole-polyline min), reroutes are single-flight + cooldown +
   latch-clear-on-failure (a failed fetch must NOT kill rerouting - the event is edge-triggered), and
   ETA sums the remaining STEP durations × traffic ratio (never remaining/avg-speed), and since
