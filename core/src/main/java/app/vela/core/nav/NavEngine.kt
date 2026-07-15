@@ -16,10 +16,15 @@ import kotlin.math.roundToInt
  * — the ViewModel feeds it the location stream and performs the events.
  */
 object NavEngine {
-    private const val OFF_ROUTE_M = 45.0
-    private const val OFF_ROUTE_HITS = 4      // debounce GPS jitter before rerouting
+    private const val OFF_ROUTE_M = 40.0      // was 45; moving GPS error is <20 m + a lane offset,
+                                              // and the corridor width is most of the wrong-turn lag
+                                              // on shallow-angle divergences (user 2026-07-15)
+    private const val OFF_ROUTE_HITS = 3      // debounce GPS jitter before rerouting (was 4 - a
+                                              // moving fix >40 m off three times running is real)
     private const val FAR_OFF_M = 90.0        // this far off counts toward a reroute at ANY speed
-                                              // (parking-lot creep sits under the moving floor)
+                                              // (parking-lot creep sits under the moving floor);
+                                              // while MOVING it also counts DOUBLE - >90 m is never
+                                              // jitter, so a clear wrong road reroutes in ~2 fixes
     private const val ARRIVE_RADIUS_M = 25.0
     private const val ARRIVE_PROX_M = 40.0    // crow-flies arrival fallback (dest snapped to the road; lots/driveways)
     private const val DEST_ZONE_M = 150.0     // no rerouting this close to the destination (arrival territory)
@@ -146,6 +151,10 @@ object NavEngine {
         val offHits = when {
             offDist <= OFF_ROUTE_M -> 0
             !moving && offDist <= FAR_OFF_M -> state.offRouteHits
+            // Moving AND unambiguously far: no jitter reaches 90 m at speed, so escalate -
+            // the reroute fires after ~2 fixes instead of a full debounce (user 2026-07-15,
+            // "waits far too long after a wrong turn").
+            moving && offDist > FAR_OFF_M -> state.offRouteHits + 2
             else -> state.offRouteHits + 1
         }
         val offRoute = offHits >= OFF_ROUTE_HITS

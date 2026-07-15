@@ -1205,6 +1205,19 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   parking lot sits under that 2 m/s floor the whole way - the deviation never accumulated hits,
   the reroute never fired, and the blue line stayed stale. A FAR deviation (90 m+, comfortably
   beyond anything stationary jitter invents) now counts at any speed.
+- ✅ **Faster wrong-turn rerouting (2026-07-15, reported: "waits far too long").** Three
+  coordinated cuts to the off-route detection lag in `NavEngine`: the on-route corridor
+  tightened 45 → 40 m (moving GPS error is well under 20 m plus a lane offset, and on a
+  shallow-angle wrong road the corridor width is most of the wait), the jitter debounce
+  dropped 4 → 3 consecutive off fixes, and a fix that is BOTH moving and unambiguously far
+  off (90 m+, beyond anything jitter invents at speed) now counts double - so a clearly
+  wrong road triggers the reroute after ~2 fixes instead of a full debounce. Stationary
+  protection is untouched: a parked car at a red light still never reroutes.
+- ✅ **Swipe down to dismiss the steps overview (2026-07-15).** The turn-by-turn step list
+  (route preview and in-nav) now rides the finger down and dismisses on a flick or past a
+  third of its height, springing back otherwise - the same drag grammar as every other
+  sheet, with a grab handle to signal it. The X button and back gesture still work; drags
+  over the list itself keep scrolling the list.
 - ✅ **Google's label density at browse zooms (2026-07-14).** The ambient POI layer used to name
   every dot its collision pass could fit; Google names only a handful of anchors at browse zoom
   and lets the rest sit as bare icons/dots, with more names joining as you close in (A/B'd
