@@ -47,6 +47,23 @@ object Onboarding {
     // Forks: point this at your own funding page.
     const val DONATE_URL = "https://buymeacoffee.com/PimpinPumpkin"
 
+    /**
+     * Open the funding page in a browser. Shows a toast ONLY when nothing can handle the link (no
+     * browser installed) instead of failing silently - a stripped/degoogled ROM often ships without
+     * one, and a dead-tap with no feedback reads as a broken button.
+     */
+    fun openDonate(context: Context) {
+        try {
+            context.startActivity(
+                android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(DONATE_URL)),
+            )
+        } catch (e: android.content.ActivityNotFoundException) {
+            android.widget.Toast.makeText(
+                context, context.getString(app.vela.R.string.donate_no_browser), android.widget.Toast.LENGTH_LONG,
+            ).show()
+        }
+    }
+
     private const val PREFS = "vela_onboarding"
     private const val WEEK_MS = 7L * 24 * 60 * 60 * 1000
 
