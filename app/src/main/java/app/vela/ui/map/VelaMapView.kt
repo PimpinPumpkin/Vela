@@ -1505,8 +1505,12 @@ fun VelaMapView(
                 // toggles heading-up/north-up with it, user 2026-07-15); unconsumed taps get the
                 // stock reorient animation.
                 runCatching {
+                    // An `is` TYPE check, never a class-NAME match: R8 renames MapLibre's
+                    // CompassView in release builds, so simpleName == "CompassView" silently
+                    // found nothing and the toggle was dead in every release APK (caught by
+                    // the 2026-07-15 simulated-drive smoke test).
                     fun findCompass(v: android.view.View): android.view.View? {
-                        if (v.javaClass.simpleName == "CompassView") return v
+                        if (v is org.maplibre.android.maps.widgets.CompassView) return v
                         if (v is android.view.ViewGroup) {
                             for (i in 0 until v.childCount) findCompass(v.getChildAt(i))?.let { return it }
                         }
