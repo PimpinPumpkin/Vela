@@ -1,8 +1,6 @@
 package app.vela.ui
 
 import android.Manifest
-import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -175,9 +173,7 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
             } else if (Onboarding.showDonatePrompt.value) {
                 DonatePrompt(
                     onDonate = {
-                        runCatching {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Onboarding.DONATE_URL)))
-                        }
+                        Onboarding.openDonate(context)
                         Onboarding.dismissDonatePrompt(context)
                     },
                     onDismiss = { Onboarding.dismissDonatePrompt(context) },

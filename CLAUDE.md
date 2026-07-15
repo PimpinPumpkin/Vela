@@ -1715,6 +1715,87 @@ architecture note.
   for richer photos (lazy, best-effort, OkHttp fallback). Gotchas: **desktop UA**
   (mobile UA → Google deep-links to `intent://`), block non-http(s) redirects, and
   use a `Handler` not `View.postDelayed` (a headless WebView never attaches).
+- **Street View is IN-APP + keyless (2026-07-15, `streetview-inapp`).** We render the panorama
+  OURSELVES rather than embed Google's WebGL page (which serves a stripped shell → black on ANGLE,
+  the reason the old attempt was reverted - do NOT retry the WebView-embed path). Pipeline: (1)
+  metadata via `MapDataSource.streetView` → `GoogleMapsDataSource` hits the keyless JS-API
+  `GeoPhotoService.SingleImageSearch` (pb in `calibration.streetViewMetaUrl`, `{LAT}`/`{LNG}`;
+  the `get()` helper's `Referer: https://www.google.com/maps/` is what authorises it), parsed by
+  `:core` `StreetViewParser` (address/copyright/position live INSIDE the pano node `root[1]`, not
+  root - the off-by-one trap the unit test locks; copyright is `[1][4][0][0][0]`, one deeper than
+  it looks). Returns null = no coverage. (2) tiles via `MapDataSource.streetViewTile` (fixed
+  template `streetviewpixels-pa.googleapis.com/v1/tile`, keyless, JPEG bytes, same Google referer;
+  NB `/v1/thumbnail` 403s but `/v1/tile` works - the old note tested the wrong endpoint). (3) `:app`
+  `StreetViewTiles.load` stitches a zoom level's grid (v1 = zoom 2 = 2048×1024, 8 tiles, ~8 MB POT
+  texture; NEVER the full 16384×8192 ≈ 400 MB), and `PanoramaView` (GLES2, `app/streetview`) textures
+  it onto a sphere - drag = yaw/pitch, pinch = FOV. GL gotchas, device-proven: view from INSIDE (cull
+  off), and use NATURAL U (`uv = u`, NO flip). Looking down -Z, screen-right is world +X = theta
+  increasing = u increasing, so texU must increase left-to-right or the whole pano mirrors (backwards
+  signage + reversed © Google watermark). An earlier `1 - u` was itself the mirror and mis-verified;
+  plain `u` reads correct AND keeps drag grab-pull + the walk-arrow bearings consistent (user 2026-07-15,
+  caught the mirror off the watermarks; don't reintroduce a U flip). The VM owns the bitmap lifecycle (the
+  renderer does NOT recycle after `texImage2D` - texImage2D copies, so recycling there would double-free
+  the state's reference); the screen feeds it once via LaunchedEffect, not the AndroidView update lambda.
+  Pill is in `PlaceSheet` (no longer gated by HideExternalLinks - it's a first-class in-app surface now),
+  overlay in MapScreen keyed on `state.streetView != null || streetViewLoading`. **v2 (2026-07-15):**
+  zoom 3 tiles (4096×2048, sharper), 1.7x drag sensitivity, capture date (`panoNode[6][7]` = [year,month],
+  shown in the attribution), **walk arrows** (`StreetViewPano.neighbors` = the local pano graph
+  `[5][0][3][0]` de-cluttered to nearest-per-direction, excluding same-spot <4 m; the overlay projects
+  each onto screen by `bearing - cameraYaw` within the FOV, polled each frame), and **time travel**
+  (`StreetViewPano.history` = `[5][0][8]` `[neighbourIndex,[yr,mo]]` resolved through the graph + this
+  pano, newest-first; a clock chip switches captures via `timeTravelStreetView`, which loads tiles by
+  pano id and keeps the base metadata so the arrows/dates return). **Two gotchas, both device-caught:**
+  (1) walking fetches the neighbour BY PANO ID (`streetViewByPano` -> `photometa/v1`, keyless, node
+  nested one deeper at `root[1][0]` with a `)]}'` guard - the parser handles both), NOT by nearest-
+  location: a location lookup snapped to a different-year same-spot capture (green May imagery under a
+  "December 2022" label). (2) the `PanoramaView` must NOT be `remember`ed keyed on panoId - `AndroidView`
+  runs its factory once, so a new per-pano view instance leaves the OLD view (old texture) on screen
+  after a walk while the date updates (new date, stale imagery); use ONE view for the viewer's life and
+  feed it new bitmaps. **Opening pano = COPY GOOGLE (2026-07-16):** the search response's SV thumbnail URL
+  (`streetviewpixels-pa…/thumbnail?panoid=…&yaw=…`) carries the exact pano id + camera yaw the Google app
+  opens; `SearchParser.svThumb` regexes it out of the serialized entry (a distinctive constant, drift-proof
+  vs a pb path) into `Place.svPanoId`/`svYawDeg`, and `openStreetView` uses them verbatim via
+  `streetViewByPano`. The heuristics (nearest pano; street-of-address match; perpendicular probes for
+  set-back geocodes whose alley cluster isn't graph-connected to the frontage; perpendicular-facing with a
+  ±40° nudge) are the FALLBACK for entries with no thumbnail - don't re-order that ladder: geometry alone
+  provably mis-picks (the 2005-address alley saga, 3 attempts before copying Google won). **COMPASS FRAME
+  (2026-07-16, the root of every "faces the wrong way"):** Google's equirect puts the CAPTURE heading at
+  the texture CENTRE (u=0.5, verified by stitching a pano), while PanoramaView's yaw=0 looks at u=0.75 -
+  so compass B = renderer yaw `B - captureHeading - 90`. Use `setCompass(panoHeading, faceCompass)` /
+  compass-space `currentYawDeg()`; NEVER feed a compass bearing in as raw yaw, and never overwrite
+  `StreetViewPano.headingDeg` (the texture reference) with a desired facing - that's `initialFacingDeg`.
+  **OLD-PYRAMID GOTCHA (2026-07-16, device report "black panel on time travel"):** the tile pyramid
+  is NOT one fixed shape - modern panos are 512·2^z wide but pre-2016 captures are 416·2^z (13312
+  max, the 2007 gen sometimes only 4 levels), so the loader MUST size its grid from the pano's own
+  `levelDims` (parsed per level from `[2][3][0]`); assuming 512·2^z requested tiles past the old
+  grid's edge → black bands. `StreetViewTiles` picks the highest level ≤4096 wide, crops padded edge
+  tiles, and scales a non-4096×2048 stitch up to it (GL needs POT for the 360° wrap; an old equirect
+  still covers 360°×180° so scaling is exact). Time travel fetches the historical pano's OWN metadata
+  by id (pyramid + heading - epochs differ by up to 180°!) and adopts its headingDeg into the shown
+  pano; the screen's re-aim effect keys on headingDeg too, keeping the user's compass yaw across the
+  swap. Verified live: a 2012 capture (416-pyramid) renders the full sphere.
+  **Half-screen (2026-07-16):** StreetViewScreen is a top-aligned PANE (55% height, fullscreen toggle,
+  Back exits fullscreen first), not a Dialog - the map stays live underneath. The viewer reports
+  `onPose(lat,lng,compassYaw)` (throttled to ~per-degree) → MapScreen's `svPose: DoubleArray?` →
+  VelaMapView draws the NAV PUCK + view cone (SV_SRC/SV_LAYER, data-driven `iconRotate` off the
+  feature's "yaw" so a drag is one setGeoJson, identity-gated like the parking pin) and eases the
+  camera to the pano on each HOP only (never per yaw frame), with `svTopInsetPx` (pane height) as
+  camera TOP padding so the puck centres in the VISIBLE strip - the sheet-inset block must not
+  clobber that padding while SV is open (it's gated on svPose==null; the SV close path restores it).
+  PlaceSheet yields while SV is up (the bottom half must stay pure map). Mini-map TAP = pegman-drop:
+  handleTap in VelaMapView pre-empts ALL other tap resolution while `svActive` and hands the LatLng to
+  `onSvMapTap` → `moveStreetViewTo` (nearest pano, faceToward the tap; <8 m from the pano → down-street).
+  FULLSCREEN GOTCHA (device-caught 2026-07-16): a SurfaceView's window hole does NOT follow a
+  pure-Compose resize - the GL render grew but stayed cropped in the old half-screen hole. The
+  PanoramaView is `remember(full)` (recreated on toggle) wrapped in `key(view) { AndroidView(...) }`
+  (key() forces AndroidView to actually swap instances), with view-keyed effects re-feeding the texture
+  and the CURRENT yaw (seenPano tracks pano-change vs view-change so a toggle keeps your look direction
+  and a walk faces the new pano's initialFacing). The renderer's zoom is
+  canonically the HORIZONTAL fov (fovX) - a fixed vertical fov made fullscreen NARROW the view
+  ("it just zoomed"); holding fovX keeps framing and reveals more sky/ground, and fovX is also what
+  the arrow overlay projects across the screen width. Remaining:
+  walking can cross capture epochs (Google stays in-epoch; the neighbour entries carry no date to filter
+  on), higher-zoom on pinch.
 - **Routing is OPEN, not Google (2026-06-28).** Turn-by-turn comes from **FOSSGIS OSRM**
   (`RouteGeometry.route`, `steps=true`, per-mode `routed-car`/`-bike`/`-foot`) - complete,
   street-named maneuvers + real geometry. **Highways identify by `ref` not `name`** - `parseOsrmRoute`
