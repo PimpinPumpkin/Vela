@@ -1006,7 +1006,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   terminus), the way Google presents an intersection stop. Transit directions are unaffected: they
   already walk you to the exact boarding coordinate of the specific curb. Stops whose names carry
   the direction (NB/SB station styles) never merge.
-- ✅ **Live stop departure board (2026-07-12, keyless + device-verified).** Tapping a transit
+- ✅ **Live stop departure board (2026-07-12, keyless + device-verified).** The board is
+  **ownership-gated (2026-07-16)**: it renders only on the place it was fetched for, so a
+  previously viewed stop's departures can never linger onto an unrelated place (a saved/recent
+  place opened right after a stop used to show the stop's board). Tapping a transit
   station (subway / rail / BART / bus stop) shows Google's **"See departure board"** right in the
   place sheet: each line and direction with its **route number in its real line colour** (the "14"/
   "38AX" pill), its **destination/headsign**, the **next few departure times** (soonest bold, the rest

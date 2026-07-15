@@ -1540,8 +1540,13 @@ fun MapScreen(
                 photosLoading = state.photosLoading,
                 detailsLoading = state.loadingDetails,
                 placesHere = state.placesHere,
-                stopDepartures = state.stopDepartures,
-                stopDeparturesLoading = state.stopDeparturesLoading,
+                // Ownership-gated: a board renders ONLY on the place it was fetched for. Writers
+                // are guarded, but selection paths that skip the clear (saved/recent opens) let a
+                // previous stop's departures land on an unrelated place otherwise.
+                stopDepartures = state.stopDepartures
+                    ?.takeIf { state.stopDeparturesFor != null && state.stopDeparturesFor == state.selected?.id },
+                stopDeparturesLoading = state.stopDeparturesLoading &&
+                    state.stopDeparturesFor != null && state.stopDeparturesFor == state.selected?.id,
                 onTapRoute = vm::openRouteDetail,
                 onClose = vm::clearSelection,
                 onToggleSave = vm::toggleSave,
