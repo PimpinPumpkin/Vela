@@ -1831,9 +1831,13 @@ class MapViewModel @Inject constructor(
      *  viewer. Two-stage state so the viewer can show a spinner while tiles load. */
     fun openStreetView(place: Place) =
         loadStreetView(faceToward = place.location) {
-            // Pass the address so the lookup can prefer a pano on the place's OWN street (a mid-block
-            // geocode can otherwise snap to the alley pano behind the building).
-            dataSource.streetView(place.location, preferStreet = place.address)
+            // Prefer a pano on the place's OWN street (a mid-block geocode can otherwise snap to the
+            // alley pano behind the building). For a business the street is in `address`; for a plain
+            // address result it's the `name` ("2005 5th Ave") and `address` is just the locality - so
+            // take whichever actually parses to a street.
+            val street = listOfNotNull(place.address, place.name)
+                .firstOrNull { app.vela.core.data.google.StreetViewParser.streetOf(it) != null }
+            dataSource.streetView(place.location, preferStreet = street)
         }
 
     /** Walk to a neighbouring pano (arrow tap): fetch it BY ID so it's epoch-exact - a
@@ -1869,17 +1873,16 @@ class MapViewModel @Inject constructor(
                 return@launch
             }
             // Aim the opening view like Google: look ACROSS the street at the building, not down the
-            // road. A plain bearing pano->target points down the street whenever Google's geocode sits
-            // on the road centreline (right next to the pano). So we snap to the road-PERPENDICULAR on
-            // the target's side (the metadata heading is the street's direction) and let the real
-            // bearing nudge it up to +-60 deg toward the facade - clamped so it can never swing down
-            // the road. On a move we just face the way we walked (faceHeading).
+            // road. The metadata heading is the street's direction, so snap to the road-PERPENDICULAR
+            // on the target's side, then let the real bearing nudge it toward the facade - clamped to
+            // +-40 deg so a road-snapped geocode (bearing points down the street) can't swing the view
+            // down the road. On a move we just face the way we walked (faceHeading).
             val facing = faceToward?.let { target ->
                 val toTarget = LatLng(raw.lat, raw.lng).bearingTo(target)
                 val perpA = (raw.headingDeg + 90.0).mod(360.0)
                 val perpB = (raw.headingDeg + 270.0).mod(360.0)
                 val perp = if (angleDiff(perpA, toTarget) <= angleDiff(perpB, toTarget)) perpA else perpB
-                val nudge = (((toTarget - perp + 540.0) % 360.0) - 180.0).coerceIn(-60.0, 60.0)
+                val nudge = (((toTarget - perp + 540.0) % 360.0) - 180.0).coerceIn(-40.0, 40.0)
                 (perp + nudge).mod(360.0)
             } ?: faceHeading
             val pano = if (facing != null) raw.copy(headingDeg = facing) else raw

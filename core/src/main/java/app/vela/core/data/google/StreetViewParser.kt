@@ -153,14 +153,19 @@ object StreetViewParser {
         "cir" to "cir", "circle" to "cir",
     )
 
-    private val HOUSE_NUMBER = Regex("^\\d+[a-z]?$") // "2005", "2005b" - but NOT ordinals like "5th"
+    private val HOUSE_NUMBER = Regex("^\\d+[a-z]?$")   // "2005", "2005b" - but NOT ordinals like "5th"
+    private val ORDINAL = Regex("^\\d+(st|nd|rd|th)$")  // "1st", "5th", "12th"
 
     /**
-     * The street of an address line, normalised for comparison: drops a leading house NUMBER (only a
-     * pure number, so ordinal names like "5th" survive), a trailing unit ("Ste 200"), collapses the
-     * suffix words, lowercased. "2005 5th St, Sacramento, CA" → "5th st"; a bare "5th St" → "5th st"
-     * too; "2001 4th St" → "4th st"; a label with no street ("Sacramento, California") → its city
-     * token, which simply won't equal a real street so it can never produce a false match.
+     * The street of an address line, normalised for comparison, or null when the text carries no
+     * confident street. Drops a leading house NUMBER (only a pure number, so ordinal names like "5th"
+     * survive), a trailing unit ("Ste 200"), collapses the suffix words, lowercased. It requires a
+     * real street signal - a known suffix (Ave/St/Blvd/…) or an ordinal (5th/12th) - so a bare city,
+     * neighbourhood, or business name ("Sacramento", "Midtown", "Joe's Cafe") returns null instead
+     * of being mistaken for a street. "2005 5th St, Sacramento, CA" → "5th st"; a bare "5th St" →
+     * "5th st"; "2001 4th St" → "4th st"; "120 Main Street" → "main st"; "Sacramento, CA" → null.
+     * (Trade-off: a suffix-less street like "Broadway" also returns null - conservative on purpose,
+     * so we never probe toward a mis-identified "street".)
      */
     fun streetOf(address: String?): String? {
         val first = address?.substringBefore(',')?.trim()?.lowercase() ?: return null
@@ -170,6 +175,8 @@ object StreetViewParser {
         val unitAt = toks.indexOfFirst { it in setOf("ste", "suite", "unit", "apt", "#", "fl", "floor") }
         if (unitAt >= 0) toks = toks.take(unitAt)
         toks = toks.map { STREET_SUFFIX[it] ?: it }
+        val hasStreetSignal = toks.any { it in STREET_SUFFIX.values } || toks.any { ORDINAL.matches(it) }
+        if (!hasStreetSignal) return null
         val s = toks.joinToString(" ").trim()
         return s.takeIf { it.isNotBlank() && it.any { c -> c.isLetter() } }
     }
