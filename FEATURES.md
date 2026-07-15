@@ -261,8 +261,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   API key, no login; the pano `pb`s ride the signed calibration channel so a drift is a config fix,
   not an app release. The capture date shows in the attribution ("Davis, California · May 2024 ·
   © 2024 Google") - the copyright year tracks the shown capture, not the current year, and updates
-  when you go back in time; when a spot has more than one capture, a clock chip lists them and switches the imagery.
-  Walk arrows fetch the neighbour BY ID so the year and the picture always match. A place with no
+  when you go back in time; when a spot has more than one capture, a clock chip (raised clear of the
+  attribution so they don't overlap) lists them and switches the imagery. **Walking or jumping to another
+  date morphs** - the outgoing pano is held and the new one crossfades in over ~300 ms with a subtle
+  forward dolly, so it reads as stepping into the next spot rather than a hard snap. Walk arrows show in
+  historical views too (the neighbour graph is the base pano's), and they fetch the neighbour BY ID so the
+  year and the picture always match. A place with no
   imagery gives a brief "no Street View here" toast. (The old approach - embedding Google's own WebGL
   page in a WebView - rendered black on many devices and was reverted; rendering the tiles ourselves
   is what makes it work.)

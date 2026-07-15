@@ -103,9 +103,10 @@ fun StreetViewScreen(
                 AndroidView(factory = { view }, modifier = Modifier.fillMaxSize())
             }
 
-            // Walk arrows: hidden while loading or in a historical view (you look around the past,
-            // you don't walk it). One tappable chevron per neighbour that's within the visible arc.
-            if (pano != null && bitmap != null && !loading && !historical) {
+            // Walk arrows: one tappable chevron per neighbour that's within the visible arc. Shown in
+            // historical views too (the neighbour graph is the base pano's, so you can still walk from
+            // an older capture - it lands on that neighbour's imagery). Hidden only while loading.
+            if (pano != null && bitmap != null && !loading) {
                 val halfFov = fov * 0.5f
                 for (link in pano.neighbors) {
                     val delta = normDeg(link.bearingDeg.toFloat() - yaw) // -180..180
@@ -154,7 +155,9 @@ fun StreetViewScreen(
             Text(
                 text = listOfNotNull(label?.takeIf { it.isNotBlank() }, date, copy).joinToString("  ·  "),
                 color = Color.White.copy(alpha = 0.85f),
-                modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 20.dp),
+                // End-cap so a long attribution wraps on the left rather than running under the
+                // bottom-right time-machine chip (user 2026-07-15: they collided).
+                modifier = Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 20.dp, end = 84.dp),
             )
 
             // Time machine: a chip bottom-right when the spot has more than one capture. Tapping it
@@ -164,7 +167,9 @@ fun StreetViewScreen(
                 Column(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 18.dp),
+                    // Raised clear of the attribution row so the chip and its expanded date list
+                    // never sit on top of the copyright text (user 2026-07-15).
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 56.dp),
                 ) {
                     if (open) {
                         for (t in pano.history) {
