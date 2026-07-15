@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -336,8 +337,19 @@ fun VelaMapView(
         // statusBar+128dp slot in the same corner (42dp circle + its 48dp IconButton touch
         // overflow reaches ~190dp), which sat exactly on the compass (user 2026-07-15) - with
         // the button enabled the compass drops below its touch target, not just the circle.
+        // LANDSCAPE: the bare-map chrome is ONE line (chips beside the bar, MapScreen's
+        // landscapeChrome) and the layers button rises to statusBar+74dp, so both compass
+        // slots rise a row too - the stacked offsets pushed the compass down into the
+        // parking/locate FABs on a ~390dp-tall landscape phone (user 2026-07-15).
         else -> statusBarTopPx + with(density) {
-            (if (app.vela.ui.LayersButton.on.value) 200.dp else 122.dp).roundToPx()
+            val landscape = LocalConfiguration.current.screenWidthDp > LocalConfiguration.current.screenHeightDp
+            val layersOn = app.vela.ui.LayersButton.on.value
+            when {
+                layersOn && landscape -> 140.dp
+                layersOn -> 200.dp
+                landscape -> 95.dp
+                else -> 122.dp
+            }.roundToPx()
         }
     }
     val compassRightPx = with(density) { 8.dp.roundToPx() }
