@@ -1211,6 +1211,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   parking lot sits under that 2 m/s floor the whole way - the deviation never accumulated hits,
   the reroute never fired, and the blue line stayed stale. A FAR deviation (90 m+, comfortably
   beyond anything stationary jitter invents) now counts at any speed.
+- ✅ **Traffic lights + stop signs draw over the route line (2026-07-15).** The visible
+  signal/stop icons sat at the very bottom of the symbol stack - under the bridges and both
+  blue route lines - so the (now wider) route stripe painted straight over exactly the icons
+  that matter most during a drive. They now draw above the route lines and bridge geometry
+  but below the basemap text and every POI layer, the way Google paints its signals on the
+  route. Street names still can't collide with them: the invisible claim twin keeps placing
+  an always-on collision box at every sign, so labels dodge sign positions regardless of
+  where the visible icons paint.
 - ✅ **In-nav compass toggle: heading-up or north-up (2026-07-15).** Tapping the compass that
   already sits below the maneuver card flips the follow camera between the default heading-up
   view and a north-up flat view that still follows the puck (position, speed zoom, puck-low
