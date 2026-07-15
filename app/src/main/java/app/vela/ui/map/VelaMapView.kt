@@ -118,6 +118,11 @@ private const val PIN_IMG = "vela-pin"
 private const val PARKING_SRC = "vela-parking-src"
 private const val PARKING_LAYER = "vela-parking"
 private const val PARKING_IMG = "vela-parking-img"
+// Street View pose: the open pano's position + live view direction (a rotating cone, pegman-style),
+// shown while the half-screen pano viewer is up so the map underneath says where you're looking.
+private const val SV_SRC = "vela-sv-src"
+private const val SV_LAYER = "vela-sv"
+private const val SV_IMG = "vela-sv-img"
 private const val MARKER_INDEX_PROP = "vela-marker-index"
 // Ambient Google POIs — small category dots (reusing PoiIcons' `vela-poi-<group>` images), the
 // "Google for the businesses" layer that replaces the OSM business POIs on the bare browse map.
@@ -185,6 +190,7 @@ private var lastAppliedParking: LatLng? = null
 private var lastAccuracyLoc: LatLng? = null
 private var lastAccuracyM: Float? = null
 private var parkingApplied = false // distinguishes "never applied" from "applied null"
+private var lastAppliedSvPose: DoubleArray? = null // Street View pose identity-gate (same pattern)
 private var lastAppliedControls: List<app.vela.core.data.TrafficControl>? = null
 private var lastAppliedFlock: List<app.vela.core.data.AlprCamera>? = null
 private var lastAppliedTransitStops: List<app.vela.core.data.transit.Transitous.MapStop>? = null
@@ -294,6 +300,9 @@ fun VelaMapView(
     onMarkerTap: (index: Int) -> Unit,
     parkingSpot: LatLng? = null, // saved "parked here" pin; tap → onParkingTap
     onParkingTap: () -> Unit = {},
+    // Street View pose while the half-screen pano viewer is open: [lat, lng, compassYawDeg].
+    // Draws the rotating view cone at the pano and eases the camera there on each pano hop.
+    svPose: DoubleArray? = null,
     ambientPois: List<MapMarker> = emptyList(),
     onAmbientTap: (index: Int) -> Unit = {},
     onTransitStopTap: (app.vela.core.data.transit.Transitous.MapStop) -> Unit = {},
@@ -460,6 +469,8 @@ fun VelaMapView(
     var lastRecenterTick by remember { mutableStateOf(-1) }
     var lastFittedMarkersKey by remember { mutableStateOf<Int?>(null) }
     var lastPreviewTarget by remember { mutableStateOf<LatLng?>(null) }
+    // The last Street View pano POSITION the camera eased to - re-ease on a walk, not per yaw frame.
+    var lastSvPos by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     // The last fix we actually re-pointed the nav camera at, so we can skip the
     // redundant re-animations that make the follow shimmer/lag (see the nav branch).
     var lastNavTarget by remember { mutableStateOf<LatLng?>(null) }
@@ -1906,7 +1917,7 @@ fun VelaMapView(
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
                 if (satelliteOn) applySatelliteLabels(style)
                 emphasizeShields(style)
-                applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot, poisEnabled)
+                applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot, poisEnabled, svPose)
                 ensureSatellite(style, satelliteOn)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
@@ -1914,7 +1925,7 @@ fun VelaMapView(
             }
         } else {
             styleRef?.let {
-                applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot, poisEnabled)
+                applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot, poisEnabled, svPose)
                 // AUDIT FIX 3e (2026-07-15): the ensure* helpers are idempotent but each call
                 // probes the style over JNI (getLayer/getSource) - per recomposition, that's
                 // four probe sets during every camera flight for nothing. They only need to run
@@ -1933,6 +1944,22 @@ fun VelaMapView(
         }
 
         if (previewTarget == null) lastPreviewTarget = null
+        // Street View open: ease the map under the half-screen viewer to the pano, and again on
+        // each walk (position change) - NOT per yaw frame; the cone rotation is data-driven.
+        if (svPose != null) {
+            val pos = svPose[0] to svPose[1]
+            if (pos != lastSvPos) {
+                lastSvPos = pos
+                flightDepth[0]++
+                map.animateCamera(
+                    CameraUpdateFactory.newLatLngZoom(MLLatLng(svPose[0], svPose[1]), 17.5),
+                    600,
+                    flightCb(),
+                )
+            }
+        } else {
+            lastSvPos = null
+        }
         // Shift the map's optical centre up by the bottom-sheet height so the
         // focused pin sits in the *visible* strip above the place sheet instead of
         // being hidden behind it. Padding is the map's single source of truth, so
@@ -2458,6 +2485,22 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
                 PropertyFactory.iconAllowOverlap(true),
                 PropertyFactory.iconIgnorePlacement(true),
+            ),
+        )
+    }
+    // Street View pose: a view-direction cone at the open pano, rotating with the viewer's compass
+    // (pegman-style). Rotation is data-driven off the feature's "yaw", so each drag frame is one
+    // cheap setGeoJson - no layer property churn.
+    if (style.getImage(SV_IMG) == null) style.addImage(SV_IMG, svConeBitmap())
+    if (style.getSource(SV_SRC) == null) {
+        style.addSource(GeoJsonSource(SV_SRC, GeoJsonOptions().withMaxZoom(12)))
+        style.addLayer(
+            SymbolLayer(SV_LAYER, SV_SRC).withProperties(
+                PropertyFactory.iconImage(SV_IMG),
+                PropertyFactory.iconAllowOverlap(true),
+                PropertyFactory.iconIgnorePlacement(true),
+                PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
+                PropertyFactory.iconRotate(Expression.get("yaw")),
             ),
         )
     }
@@ -3802,6 +3845,7 @@ private fun applyData(
     navMode: Boolean,
     parkingSpot: LatLng? = null,
     poisEnabled: Boolean = true,
+    svPose: DoubleArray? = null, // Street View pose [lat, lng, compassYawDeg]; null = viewer closed
 ) {
     // Accuracy halo: shown only for a vague fix (see ACCURACY_HALO_MIN_M) and never during nav,
     // where the puck snaps to the road anyway. Identity-gated like everything else here.
@@ -3820,6 +3864,21 @@ private fun applyData(
         style.getSourceAs<GeoJsonSource>(PARKING_SRC)?.setGeoJson(fc)
         lastAppliedParking = parkingSpot
         parkingApplied = true
+    }
+    // The Street View pose cone (identity-gated; a fresh pose array only arrives on a pano hop or
+    // roughly per-degree of yaw, so this is a trickle, not per-frame work).
+    if (!(svPose contentEquals lastAppliedSvPose)) {
+        val fc = if (svPose == null) {
+            FeatureCollection.fromFeatures(emptyList<Feature>())
+        } else {
+            FeatureCollection.fromFeature(
+                Feature.fromGeometry(Point.fromLngLat(svPose[1], svPose[0])).apply {
+                    addNumberProperty("yaw", svPose[2])
+                },
+            )
+        }
+        style.getSourceAs<GeoJsonSource>(SV_SRC)?.setGeoJson(fc)
+        lastAppliedSvPose = svPose
     }
     // Identity-gate the route geometry upload (same pattern as markers/ambient below): applyData
     // runs on EVERY recomposition — during nav that's each fix/speedo tick — and re-tessellating
@@ -4261,6 +4320,34 @@ private fun pinBitmap(): Bitmap {
 }
 
 /** The parking pin: same silhouette as the search pin, teal head with a bold white "P". */
+/** Street View pose marker: a blue dot with a translucent view cone, drawn pointing NORTH (up);
+ *  the symbol layer rotates it by the viewer's live compass yaw (map-aligned). */
+private fun svConeBitmap(): Bitmap {
+    val s = 96
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val cx = s / 2f
+    val cy = s / 2f
+    val cone = Path().apply {
+        moveTo(cx, cy)
+        lineTo(cx - s * 0.30f, cy - s * 0.46f)
+        lineTo(cx + s * 0.30f, cy - s * 0.46f)
+        close()
+    }
+    c.drawPath(
+        cone,
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = android.graphics.LinearGradient(
+                cx, cy, cx, cy - s * 0.46f,
+                0xCC1A73E8.toInt(), 0x001A73E8, android.graphics.Shader.TileMode.CLAMP,
+            )
+        },
+    )
+    c.drawCircle(cx, cy, s * 0.14f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() })
+    c.drawCircle(cx, cy, s * 0.10f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF1A73E8.toInt() })
+    return bmp
+}
+
 private fun parkingBitmap(): Bitmap {
     val w = 60
     val h = 80

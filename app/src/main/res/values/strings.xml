@@ -297,6 +297,7 @@
     <string name="street_view_none">No Street View imagery here</string>
     <string name="street_view_move">Move here</string>
     <string name="street_view_dates">See other dates</string>
+    <string name="street_view_fullscreen">Toggle full screen</string>
     <string name="place_reviews_title">Reviews</string>
     <string name="place_from_the_owner">From the owner</string>
     <string name="place_share_place">Share place</string>
