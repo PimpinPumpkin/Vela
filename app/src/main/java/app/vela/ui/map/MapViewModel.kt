@@ -559,11 +559,19 @@ class MapViewModel @Inject constructor(
             // can't spam recomposition during nav — there the heading comes from the matched road.
             launch {
                 var last = Float.NaN
+                var lastPushMs = 0L
                 headingProvider.headings().collect { az ->
                     if (_state.value.navigating) return@collect
+                    // AUDIT FIX 5 (2026-07-15): a wall-clock floor beside the 2-degree gate. A
+                    // hand-held phone crosses 2 degrees many times a second, and each push
+                    // recomposes the WHOLE MapScreen off this one field - 5-16 recompositions/s
+                    // during exactly the pan gestures that stutter. ~5/s is invisible on the
+                    // heading cone (the map ticker eases it anyway) and caps the churn.
+                    val now = android.os.SystemClock.elapsedRealtime()
                     val moved = if (last.isNaN()) 999f else kotlin.math.abs(((az - last + 540f) % 360f) - 180f)
-                    if (moved >= 2f) {
+                    if (moved >= 2f && now - lastPushMs >= 200) {
                         last = az
+                        lastPushMs = now
                         _state.update { it.copy(compassHeading = az) }
                     }
                 }
