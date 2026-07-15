@@ -230,6 +230,11 @@ fun MapScreen(
     // screen the route fit gets nearly the whole map back, so it re-frames closer instead
     // of staying at the zoomed-out framing the full-height panel needed (user 2026-07-14).
     var dirMinimized by remember { mutableStateOf(false) }
+    // Landscape (width > height): the browse top chrome collapses to ONE line (half-width search
+    // bar + the chips beside it, Google's landscape layout) and the top-right corner stack
+    // (layers button, compass) rises a row - on a phone's ~390dp landscape height the stacked
+    // layout pushed the compass down into the parking/locate FABs (user 2026-07-15).
+    val landscapeChrome = LocalConfiguration.current.screenWidthDp > LocalConfiguration.current.screenHeightDp
     // Mirrored into the VM too: the route-through-here press is gated on the chooser being
     // minimized (stray building taps while the full picker covered the map added stops).
     LaunchedEffect(dirMinimized) { vm.onDirectionsCollapsed(dirMinimized) }
@@ -1060,6 +1065,14 @@ fun MapScreen(
                     ),
             ) {
                 Column(Modifier.statusBarsPadding().padding(12.dp)) {
+                    // Landscape bare-map chrome collapses to one line (bar | chips) below. NB the
+                    // condition must NOT include !searchOpen: focusing the bar flips searchOpen,
+                    // and if that moved the SearchBar to a different subtree the remount blurred
+                    // the field, which flipped searchOpen right back - the search page could
+                    // never open. Instead the Row stays and only the MODIFIERS change (bar grows
+                    // full width, chips drop out after it), so the field node never moves.
+                    val landscapeOneLine = landscapeChrome && state.selected == null &&
+                        state.results.isEmpty() && !state.directionsOpen
                     // Directions mode: the search bar swaps for the Google-style endpoints card
                     // (origin / stops / destination, swap, back) — the rows that used to sit in
                     // the bottom chooser. Hidden while the search overlay is up (picking an
@@ -1088,9 +1101,7 @@ fun MapScreen(
                     // The bar hides while an expanded place sheet covers it: the visible sliver
                     // still took taps and opened search OVER the card (user 2026-07-11) — and
                     // while the endpoints card above replaces it in directions mode.
-                    if (!(state.selected != null && placeSheetExpanded && !searchOpen) &&
-                        !(state.directionsOpen && !searchOpen)
-                    ) {
+                    val searchBar: @Composable () -> Unit = {
                     SearchBar(
                         query = state.query,
                         searching = state.searching,
@@ -1113,6 +1124,30 @@ fun MapScreen(
                         dpadMode = dpadMode,
                         onMic = onMic,
                     )
+                    }
+                    if (landscapeOneLine) {
+                        // Landscape browse chrome is ONE line, Google-style (user 2026-07-15):
+                        // the search bar takes half the width and the category chips scroll
+                        // beside it, so the top-right corner stack (layers button, compass)
+                        // starts a whole row higher on screens that are already short. With the
+                        // search page open the bar grows to full width IN PLACE (see the
+                        // landscapeOneLine note above - the field must not remount) and the
+                        // chips step aside; the entry page renders full-width below as usual.
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(if (searchOpen) Modifier.fillMaxWidth() else Modifier.weight(1f)) { searchBar() }
+                            if (!searchOpen) {
+                                Spacer(Modifier.width(10.dp))
+                                CategoryChips(
+                                    onPick = vm::quickSearch,
+                                    onOpenLists = { listsSheetOpen = true },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                    } else if (!(state.selected != null && placeSheetExpanded && !searchOpen) &&
+                        !(state.directionsOpen && !searchOpen)
+                    ) {
+                        searchBar()
                     }
                     when {
                         // Show the entry page (Your location, Choose on map, Home/Work, saved, recents)
@@ -1172,10 +1207,12 @@ fun MapScreen(
 
                         // Results now live in a BOTTOM sheet (rendered with the other bottom
                         // surfaces below, Google-style); the top bar keeps only the category
-                        // chips, and only on the bare map.
-                        state.selected == null && state.results.isEmpty() -> CategoryChips(
+                        // chips, and only on the bare map (in landscape they already rendered
+                        // beside the bar above).
+                        !landscapeOneLine && state.selected == null && state.results.isEmpty() -> CategoryChips(
                             onPick = vm::quickSearch,
                             onOpenLists = { listsSheetOpen = true },
+                            modifier = Modifier.padding(top = 8.dp),
                         )
                     }
 
@@ -1813,7 +1850,9 @@ fun MapScreen(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .statusBarsPadding()
-                        .padding(top = 128.dp, end = 14.dp),
+                        // One-line landscape chrome: the chips sit beside the bar, so the
+                        // button rises a whole row (matches the compass margin in VelaMapView).
+                        .padding(top = if (landscapeChrome) 74.dp else 128.dp, end = 14.dp),
                 ) {
                     Surface(
                         color = SheetPalette.bg(darkTheme).copy(alpha = 0.9f),
@@ -2630,7 +2669,7 @@ private fun SearchResults(
 }
 
 @Composable
-private fun CategoryChips(onPick: (String) -> Unit, onOpenLists: () -> Unit = {}) {
+private fun CategoryChips(onPick: (String) -> Unit, onOpenLists: () -> Unit = {}, modifier: Modifier = Modifier) {
     // (localized label, STABLE English search query, icon) — the query is the logic key sent to Google
     // search (works in any locale), the label is what the user sees, so the chips localize without
     // changing what's searched.
@@ -2645,7 +2684,7 @@ private fun CategoryChips(onPick: (String) -> Unit, onOpenLists: () -> Unit = {}
         Triple(R.string.cat_parks, "Parks", Icons.Default.Park),
     )
     Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
+        modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

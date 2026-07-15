@@ -536,6 +536,18 @@ Defaults that make the safe path the easy one:
   ~190dp, which sat exactly on the compass (user report); 200dp clears the touch target, not just
   the visible circle. Keyed on `LayersButton.on` (the pref), not the button's transient visibility,
   so the compass doesn't jump around as sheets open.
+  **LANDSCAPE (width > height) collapses the browse chrome to ONE line (2026-07-15, Google's
+  landscape layout, device-verified on the 4a):** `landscapeChrome` in MapScreen puts the search
+  bar at half width with the category chips scrolling beside it (`landscapeOneLine` Row), the
+  layers button rises to statusBar+74dp and the compass margins drop to 140dp (layers on) / 95dp -
+  on a phone's ~390dp landscape height the stacked offsets pushed the compass down into the
+  parking/locate FABs. TRAP: the one-line condition must NOT include `!searchOpen` - focusing the
+  bar flips searchOpen, and moving the SearchBar to a different subtree REMOUNTS it, which blurs
+  the field, which flips searchOpen back: the search page could never open (first build had it;
+  caught on-device). Instead the Row always renders in the landscape bare-map state and only
+  MODIFIERS change with searchOpen (bar Box weight(1f) -> fillMaxWidth, chips drop out after it),
+  so the field node never moves. The keypad-phone D-pad devices are portrait, so AdaptiveDensity
+  targets never see this layout.
 - **Search-result markers are Google's result treatment (2026-07-10, `PoiIcons` result section +
   the `vela-markers`/`vela-markers-dots` layers in `VelaMapView`).** Every result keeps the app's own
   marker language - grey teardrop, circle, white glyph - with the circle RED (`resultPin`,

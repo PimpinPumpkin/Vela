@@ -27,6 +27,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Compass moved clear of the layers button (2026-07-15).** The layers circle sat exactly on
   the compass slot in the top-right corner; with the layers button enabled the compass now sits
   below its touch target.
+- ✅ **One-line landscape chrome, Google-style (2026-07-15, user).** In landscape the browse map's
+  search bar takes half the width and the category chips scroll beside it on the same line, so
+  the top-right stack (layers button, compass) rises a whole row; the stacked portrait layout
+  pushed the compass down into the parking and locate buttons on a phone's ~390dp landscape
+  height. Focusing the bar grows it to full width in place (the field must not remount or focus
+  bounces) and the search page renders full-width below as usual. Portrait is unchanged, and the
+  tiny keypad phones the D-pad work targets are portrait devices, so they never see this layout.
 - ✅ **Chinese, Chinese (Taiwan) and Japanese (2026-07-11, issue #55).** Vela speaks 14
   languages now. All three layers: UI chrome (values-zh Simplified, values-zh-rTW Traditional
   with Taiwan wording, values-ja), generated turn-by-turn text (three new NavStrings tables;
