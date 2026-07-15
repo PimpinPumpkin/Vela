@@ -123,6 +123,43 @@ class NavEngineTest {
         assertEquals(1, reroutes)
     }
 
+    /** Walking/biking get a tighter off-route corridor than driving (NavSession passes it): a
+     *  pedestrian is on a known path a few metres wide, so a wrong turn should be caught long before
+     *  the 40 m a car needs for lane offset + shallow-angle lag. Same ~30 m deviation: inside the
+     *  driving corridor (no reroute), outside the walking one (reroutes). */
+    @Test
+    fun tighterCorridorReroutesWhereWideDoesNot() {
+        val route = straightRoute()
+        // ~30 m east of the north-south line: within driving's 40 m, beyond walking's 22 m.
+        val offPoint = LatLng(37.0050, -121.99966)
+        val speed = 1.4 // walking pace; floor pinned to 0.6 so this counts as moving in both runs
+
+        var driveReroutes = 0
+        run {
+            var state = NavState()
+            repeat(6) {
+                val (n, ev) = NavEngine.update(route, state, offPoint, speedMps = speed, movingFloorMps = 0.6)
+                state = n
+                driveReroutes += ev.count { it is NavEvent.RerouteNeeded }
+            }
+        }
+        assertEquals("30 m is inside the 40 m driving corridor - no reroute", 0, driveReroutes)
+
+        var sawWalkReroute = false
+        run {
+            var state = NavState()
+            repeat(6) {
+                val (n, ev) = NavEngine.update(
+                    route, state, offPoint,
+                    speedMps = speed, movingFloorMps = 0.6, offRouteM = 22.0, farOffM = 45.0,
+                )
+                state = n
+                if (ev.any { it is NavEvent.RerouteNeeded }) sawWalkReroute = true
+            }
+        }
+        assertTrue("30 m exceeds the 22 m walking corridor - should reroute", sawWalkReroute)
+    }
+
     /** Off-route mutes turn guidance: while a reroute is pending the progress snap still maps the
      *  driver onto the OLD route, and the engine used to announce that route's maneuvers as the
      *  phantom snap drifted past them ("turn right onto X" spoken on a street it doesn't exist
