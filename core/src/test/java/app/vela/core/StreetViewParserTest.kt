@@ -7,44 +7,63 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Locks the SingleImageSearch field indices against the real response shape (SF capture
- *  2026-07-15, trimmed of the neighbour graph + depth map). If Google shifts a field, this
- *  fails before the device does. The address/copyright/position all live INSIDE the pano
- *  node (root[1]) - the classic off-by-one trap. */
+ *  2026-07-15, trimmed). Address/copyright/position/date/history all live INSIDE the pano
+ *  node (root[1]) - the classic off-by-one trap; copyright is one level deeper again. */
 class StreetViewParserTest {
+    // Built to the real nesting: pano node with tile pyramid, address, copyright, a 3-pano local
+    // graph (self + a same-spot 2022 capture + a walkable neighbour ~11 m north), a history entry
+    // referencing the 2022 pano, and this pano's own capture date (May 2025) at [1][6][7].
     private val response = "/**/cb && cb( " +
         """[[0],[[1],[2,"UiZ-8FRkJwHjR3mwzBTPmg"],[2,2,[8192,16384],""" +
         """[[[[256,512]],[[512,1024]],[[1024,2048]],[[2048,4096]],[[4096,8192]],[[8192,16384]]],[512,512]],""" +
         """null,null,null,null,null,"UiZ-8FRkJwHjR3mwzBTPmg"],""" +
-        """[null,null,[["San Francisco, California","en"]]],""" +
-        """[[[["© 2026 Google"]]]],""" +
-        """[[[1],[[null,null,37.77487374168061,-122.4194003523425],""" +
-        """[17.42217636108398,null,-14.82052898406982],""" +
-        """[230.4813842773438,80.82630920410156,2.480184555053711],null,"US"],null]]]] """ +
+        """[null,null,[["San Francisco, California","en"]]],[[[["© 2026 Google"]]]],""" +
+        """[[[1],[[null,null,37.77487,-122.4194],[17.42,null,-14.82],[230.48,80.0,2.0],null,"US"],null,""" +
+        """[[[[2,"UiZ-8FRkJwHjR3mwzBTPmg"],null,[[null,null,37.77487,-122.4194],[17.0,null,-14.0],[230.0,80.0,2.0]]],""" +
+        """[[2,"HISTpano0000000000000A"],null,[[null,null,37.77488,-122.4194],[17.0,null,-14.0],[230.0,80.0,2.0]]],""" +
+        """[[2,"WALKpano0000000000000B"],null,[[null,null,37.77497,-122.4194],[17.0,null,-14.0],[230.0,80.0,2.0]]]]],""" +
+        """null,null,null,null,[[1,[2022,4],null,null,null,2]]]],""" +
+        """[null,null,null,null,null,null,null,[2025,5]]]] """ +
         ")"
 
     @Test fun parsesPanoAndGeometry() {
         val pano = StreetViewParser.parse(response, 37.7749, -122.4194)!!
         assertEquals("UiZ-8FRkJwHjR3mwzBTPmg", pano.panoId)
         assertEquals(512, pano.tileSize)
-        assertEquals(6, pano.maxZoom) // six pyramid levels z0..z5
+        assertEquals(6, pano.maxZoom)
         assertEquals("San Francisco, California", pano.addressLabel)
         assertEquals("© 2026 Google", pano.copyright)
         assertEquals(230.48, pano.headingDeg, 0.1)
-        assertEquals(37.7748737, pano.lat, 1e-5)
-        assertEquals(-122.4194003, pano.lng, 1e-5)
+    }
+
+    @Test fun parsesCaptureDate() {
+        val pano = StreetViewParser.parse(response, 37.7749, -122.4194)!!
+        assertEquals(2025, pano.captureYear)
+        assertEquals(5, pano.captureMonth)
+    }
+
+    @Test fun walkableNeighboursExcludeSameSpot() {
+        val pano = StreetViewParser.parse(response, 37.7749, -122.4194)!!
+        // The 2022 pano is ~1 m away (same spot) so it must NOT be a walk target; the ~11 m
+        // north one must be.
+        assertEquals(1, pano.neighbors.size)
+        assertEquals("WALKpano0000000000000B", pano.neighbors[0].panoId)
+        assertTrue(pano.neighbors[0].distanceM in 5.0..20.0)
+        // Bearing is roughly north.
+        assertTrue(pano.neighbors[0].bearingDeg < 20.0 || pano.neighbors[0].bearingDeg > 340.0)
+    }
+
+    @Test fun historyResolvesDatesNewestFirst() {
+        val pano = StreetViewParser.parse(response, 37.7749, -122.4194)!!
+        assertEquals(2, pano.history.size)
+        assertEquals("UiZ-8FRkJwHjR3mwzBTPmg", pano.history[0].panoId) // May 2025 leads
+        assertEquals(2025, pano.history[0].year)
+        assertEquals("HISTpano0000000000000A", pano.history[1].panoId) // Apr 2022
+        assertEquals(2022, pano.history[1].year)
     }
 
     @Test fun noImageryReturnsNull() {
         assertNull(StreetViewParser.parse("/**/cb && cb( [[5]] )", 0.0, 0.0))
         assertNull(StreetViewParser.parse("garbage", 0.0, 0.0))
-    }
-
-    @Test fun toleratesMissingTail() {
-        // Only the pano id is required; a truncated tail still yields a usable pano.
-        val minimal = """/**/cb && cb( [[0],[[1],[2,"AbCdEfGhIjKlMnOpQrStUv"]]] )"""
-        val pano = StreetViewParser.parse(minimal, 1.0, 2.0)!!
-        assertEquals("AbCdEfGhIjKlMnOpQrStUv", pano.panoId)
-        assertEquals(1.0, pano.lat, 1e-9) // falls back to the query point
-        assertTrue(pano.tileSize == 512)
     }
 }

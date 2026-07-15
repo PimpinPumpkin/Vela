@@ -1734,9 +1734,22 @@ architecture note.
   renderer does NOT recycle after `texImage2D` - texImage2D copies, so recycling there would double-free
   the state's reference); the screen feeds it once via LaunchedEffect, not the AndroidView update lambda.
   Pill is in `PlaceSheet` (no longer gated by HideExternalLinks - it's a first-class in-app surface now),
-  overlay in MapScreen keyed on `state.streetView != null || streetViewLoading`. v2: neighbour-link
-  pano nav (metadata already carries links), exact heading alignment, higher-zoom on pinch, coverage-gate
-  the pill.
+  overlay in MapScreen keyed on `state.streetView != null || streetViewLoading`. **v2 (2026-07-15):**
+  zoom 3 tiles (4096×2048, sharper), 1.7x drag sensitivity, capture date (`panoNode[6][7]` = [year,month],
+  shown in the attribution), **walk arrows** (`StreetViewPano.neighbors` = the local pano graph
+  `[5][0][3][0]` de-cluttered to nearest-per-direction, excluding same-spot <4 m; the overlay projects
+  each onto screen by `bearing - cameraYaw` within the FOV, polled each frame), and **time travel**
+  (`StreetViewPano.history` = `[5][0][8]` `[neighbourIndex,[yr,mo]]` resolved through the graph + this
+  pano, newest-first; a clock chip switches captures via `timeTravelStreetView`, which loads tiles by
+  pano id and keeps the base metadata so the arrows/dates return). **Two gotchas, both device-caught:**
+  (1) walking fetches the neighbour BY PANO ID (`streetViewByPano` -> `photometa/v1`, keyless, node
+  nested one deeper at `root[1][0]` with a `)]}'` guard - the parser handles both), NOT by nearest-
+  location: a location lookup snapped to a different-year same-spot capture (green May imagery under a
+  "December 2022" label). (2) the `PanoramaView` must NOT be `remember`ed keyed on panoId - `AndroidView`
+  runs its factory once, so a new per-pano view instance leaves the OLD view (old texture) on screen
+  after a walk while the date updates (new date, stale imagery); use ONE view for the viewer's life and
+  feed it new bitmaps. Remaining: walking can cross capture epochs (Google stays in-epoch; the neighbour
+  entries carry no date to filter on), exact initial-heading alignment, higher-zoom on pinch.
 - **Routing is OPEN, not Google (2026-06-28).** Turn-by-turn comes from **FOSSGIS OSRM**
   (`RouteGeometry.route`, `steps=true`, per-mode `routed-car`/`-bike`/`-foot`) - complete,
   street-named maneuvers + real geometry. **Highways identify by `ref` not `name`** - `parseOsrmRoute`
