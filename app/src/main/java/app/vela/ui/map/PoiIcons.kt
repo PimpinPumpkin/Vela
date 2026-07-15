@@ -113,9 +113,18 @@ object PoiIcons {
 
     /** Generate + register the bitmap behind [key] (from [resultIconKey]) if this style doesn't
      *  have it yet. Rating bubbles are theme-dependent, so a theme flip (= a style reload) simply
-     *  regenerates them for the new [dark]. */
+     *  re-registers them for the new [dark].
+     *  AUDIT FIX 12 (2026-07-15): rasterized bitmaps survive style reloads in a small process
+     *  LRU keyed (key, dark, satellite) - a theme flip or a re-search used to re-rasterize every
+     *  visible bubble on the main thread. Rasterization stays synchronous on this thread
+     *  (off-thread pre-generation was audited and rejected: the readiness race renders pins
+     *  invisible); the cache only skips repeat work. Small bitmaps, 64 entries ≈ well under 2 MB. */
+    private val resultIconCache = android.util.LruCache<String, Bitmap>(64)
+
     fun ensureResultIcon(context: Context, style: Style, key: String, dark: Boolean, bubbleLabel: String? = null) {
         if (style.getImage(key) != null) return
+        val cacheKey = "$key|$dark|$satellite"
+        resultIconCache.get(cacheKey)?.let { style.addImage(key, it); return }
         val tf = typeface(context) ?: return
         val bubble = key.startsWith("vela-resb-")
         val rest = key.removePrefix(if (bubble) "vela-resb-" else "vela-res-")
@@ -127,6 +136,7 @@ object PoiIcons {
             }
             ratingBubble(tf, codepoint, label, dark)
         } else resultPin(tf, codepoint)
+        resultIconCache.put(cacheKey, bmp)
         style.addImage(key, bmp)
     }
 
