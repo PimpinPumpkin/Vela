@@ -8,6 +8,7 @@ Deeper detail is in [`SPEC.md`](../SPEC.md); this is the index into it.
 | **Basemap** | Open vector tiles (OpenFreeMap / Protomaps) via MapLibre - keyless, no Google | `core/data/tiles/`, `app/ui/map/VelaMapView.kt` |
 | **Search, places, reviews, hours** | Per-user keyless scrape of `google.com` `pb` endpoints (browser-like session token); responses are positional arrays walked by calibrated index paths | `core/data/google/`, SPEC §3 |
 | **Photo gallery** | Hidden **anonymous WebView** same-origin-fetches the gallery RPC (OkHttp gets a bot-degraded reply) | `app/web/WebPhotoFetcher.kt` |
+| **Street View** | Keyless: pano metadata from the JS-API `GeoPhotoService`/`photometa` endpoints, equirect tiles from `streetviewpixels`, rendered on our own GL sphere (half-screen over the live map) | `core/data/google/StreetViewParser.kt`, `app/streetview/`, `app/ui/place/StreetViewScreen.kt` |
 | **Transit directions** | Hidden WebView reads Google's directions SPA (traffic-aware itineraries) | `app/web/WebDirectionsFetcher.kt`, `core/…/TransitParser` |
 | **Departure boards** | **Transitous** (open GTFS + GTFS-Realtime, keyless) primary; Google place-page blob as fallback | `core/data/transit/Transitous.kt` |
 | **Turn-by-turn routing** | **FOSSGIS OSRM** (open) - complete street-named steps incl. highway `ref`/exit/lanes; retried on blips | `core/data/RouteGeometry.kt` |
