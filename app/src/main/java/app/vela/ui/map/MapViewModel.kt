@@ -1934,8 +1934,16 @@ class MapViewModel @Inject constructor(
                 streetViewHistorical = historical)
         }
         streetViewJob = viewModelScope.launch {
+            // The old capture has its OWN pyramid shape (pre-2016 = 416·2^z, not 512·2^z, and
+            // sometimes fewer levels) and its OWN heading (epochs differ by up to 180 deg) -
+            // loading its tiles on the base pano's grid left BLACK BANDS over part of the sphere,
+            // and keeping the base heading rotated the historical view. Fetch its metadata by id;
+            // if that fails, the base pyramid is the best remaining guess.
+            val hist = if (time.panoId == base.panoId) base
+            else runCatching { dataSource.streetViewByPano(time.panoId) }.getOrNull()
             val bmp = runCatching {
-                app.vela.streetview.StreetViewTiles.load(dataSource, time.panoId, base.tileSize, base.maxZoom)
+                if (hist != null) app.vela.streetview.StreetViewTiles.load(dataSource, hist)
+                else app.vela.streetview.StreetViewTiles.load(dataSource, time.panoId, base.tileSize, base.levelDims)
             }.getOrNull()
             if (bmp == null) {
                 // Fall back to the present rather than a black screen.
@@ -1946,7 +1954,14 @@ class MapViewModel @Inject constructor(
                 flashStatus(appContext.getString(R.string.street_view_none))
                 return@launch
             }
-            _state.update { it.copy(streetViewBitmap = bmp, streetViewLoading = false) }
+            _state.update {
+                // Keep the BASE metadata (arrows/dates come back with the present) but adopt the
+                // DISPLAYED capture's heading - it's the texture's compass reference. Guard on
+                // identity: a close/reopen mid-fetch must not get the old heading stamped on it.
+                val sv = it.streetView?.takeIf { cur -> cur.panoId == base.panoId }
+                    ?.copy(headingDeg = (hist ?: base).headingDeg) ?: it.streetView
+                it.copy(streetView = sv, streetViewBitmap = bmp, streetViewLoading = false)
+            }
         }
     }
 
