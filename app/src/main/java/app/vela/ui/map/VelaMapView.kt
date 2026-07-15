@@ -306,6 +306,9 @@ fun VelaMapView(
     // Height (px) of the Street View pane covering the top of the screen: applied as camera TOP
     // padding while the viewer is open so the pose puck centres in the VISIBLE strip below it.
     svTopInsetPx: Int = 0,
+    // Tap on the mini-map while Street View is open = "take me there": the viewer jumps to the
+    // nearest pano at the tapped point. Pre-empts all POI/pin tap resolution while the pane is up.
+    onSvMapTap: (LatLng) -> Unit = {},
     ambientPois: List<MapMarker> = emptyList(),
     onAmbientTap: (index: Int) -> Unit = {},
     onTransitStopTap: (app.vela.core.data.transit.Transitous.MapStop) -> Unit = {},
@@ -367,6 +370,8 @@ fun VelaMapView(
     val compassRightPx = with(density) { 8.dp.roundToPx() }
     val poiTap = rememberUpdatedState(onPoiTap)
     val mapTap = rememberUpdatedState(onMapTap)
+    val svMapTap = rememberUpdatedState(onSvMapTap)
+    val svActive = rememberUpdatedState(svPose != null)
     val markerTap = rememberUpdatedState(onMarkerTap)
     val ambientTap = rememberUpdatedState(onAmbientTap)
     val transitStopTap = rememberUpdatedState(onTransitStopTap)
@@ -1412,6 +1417,12 @@ fun VelaMapView(
                 // docs/dpad.md.)
                 val handleTap = handleTap@{ tapped: MLLatLng ->
                     mapTap.value()
+                    // Street View open: a mini-map tap means "take me there" - hand the location
+                    // to the viewer and skip every other tap resolution (POIs, pins, labels).
+                    if (svActive.value) {
+                        svMapTap.value(LatLng(tapped.latitude, tapped.longitude))
+                        return@handleTap true
+                    }
                     val p = map.projection.toScreenLocation(tapped)
                     // Generous hit radius (~16dp) so taps near a POI icon register —
                     // a tight box made the bigger markers feel un-tappable.
