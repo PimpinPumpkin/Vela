@@ -1118,11 +1118,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             Hint(stringResource(R.string.settings_support_hint))
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
-                onClick = {
-                    runCatching {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Onboarding.DONATE_URL)))
-                    }
-                },
+                onClick = { Onboarding.openDonate(context) },
             ) {
                 Icon(Icons.Default.Favorite, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                 Text(stringResource(R.string.settings_support_button))

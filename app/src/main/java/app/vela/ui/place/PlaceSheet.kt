@@ -253,6 +253,7 @@ fun PlaceSheet(
     onClose: () -> Unit,
     onToggleSave: () -> Unit,
     onDirections: () -> Unit,
+    onStreetView: () -> Unit = {},
     onOpenPlace: (Place) -> Unit = {},
     onOpenSimilar: (app.vela.core.model.SimilarPlace) -> Unit = {},
     onSetShortcut: (ShortcutKind) -> Unit = {},
@@ -888,17 +889,12 @@ fun PlaceSheet(
                             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
                         }
                     }
-                    // Street View — opens Google's KEYLESS consumer pano (documented map_action=pano deep
-                    // link) EXTERNALLY (Google Maps app or the browser). The interactive pano is keyless but
-                    // renders black in an in-app WebView on some devices (ANGLE GL driver + the SV SPA served
-                    // a degraded page), so we hand it off rather than embed a maybe-black panel (see ROADMAP).
-                    ActionPill(Icons.Filled.Streetview, stringResource(R.string.place_street_view)) {
-                        val loc = place.location
-                        val pano = "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=" +
-                            "%.6f,%.6f".format(java.util.Locale.US, loc.lat, loc.lng)
-                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(pano))) }
-                    }
                 }
+                // Street View - opens the IN-APP panorama viewer (keyless tile-stitch + GL sphere,
+                // 2026-07-15). Not gated by HideExternalLinks anymore: it's a first-class in-app
+                // surface now, not a hand-off to Google's app. A tap loads the nearest pano; no
+                // coverage shows a brief "no Street View here" toast.
+                ActionPill(Icons.Filled.Streetview, stringResource(R.string.place_street_view), onClick = onStreetView)
             }
 
             app.vela.ui.SheetFold(extrasComposed, extrasFraction) {
