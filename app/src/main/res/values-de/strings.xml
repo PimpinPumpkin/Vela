@@ -430,7 +430,6 @@
     <string name="settings_update_auto_hint">Prüft etwa einmal täglich das neueste GitHub-Release und bietet es an, wenn es neuer als dieser Build ist. Die Installation läuft über den normalen Android-Installer. Wer über Obtainium aktualisiert, kann das ausschalten.</string>
     <string name="settings_update_check_now">Nach Updates suchen</string>
     <string name="settings_update_checking">Wird geprüft…</string>
-    <string name="settings_update_found">Update verfügbar! Geh zurück zur Karte, um es zu installieren.</string>
     <string name="settings_update_none">Du bist auf der neuesten Version.</string>
     <string name="settings_place_pages">Ortsseiten</string>
     <plurals name="place_transit_stops"> <!-- format -->

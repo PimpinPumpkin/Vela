@@ -512,7 +512,6 @@
     <string name="root_offline_title">离线地图</string>
     <string name="root_offline_body">Vela 从 Google 获取地点、搜索和路线，因此在无信号时只有您已下载的区域可用。立即设置一个区域，以便在失去信号时仍有保障。</string>
     <string name="root_offline_setup">设置离线</string>
-    <string name="settings_update_found">有可用更新！返回地图进行安装。</string>
     <string name="map_satellite_toggle">卫星视图</string>
     <string name="map_layers">图层</string>
     <string name="settings_layers_button">显示图层按钮</string>

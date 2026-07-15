@@ -430,7 +430,6 @@
     <string name="settings_update_auto_hint">Tittar på den senaste GitHub-releasen ungefär en gång om dagen och erbjuder den när den är nyare än den här versionen. Installationen sker via Androids vanliga installerare. Uppdaterar du redan via Obtainium kan du stänga av detta.</string>
     <string name="settings_update_check_now">Sök efter uppdateringar</string>
     <string name="settings_update_checking">Kontrollerar…</string>
-    <string name="settings_update_found">Uppdatering tillgänglig! Gå tillbaka till kartan för att installera.</string>
     <string name="settings_update_none">Du har den senaste versionen.</string>
     <string name="settings_place_pages">Platssidor</string>
     <plurals name="place_transit_stops"> <!-- format -->

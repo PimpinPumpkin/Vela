@@ -430,7 +430,6 @@
     <string name="settings_update_auto_hint">Controlla l\'ultima release su GitHub circa una volta al giorno e la propone quando è più recente di questa build. L\'installazione passa dal normale installer di Android. Se aggiorni già con Obtainium puoi disattivarlo.</string>
     <string name="settings_update_check_now">Cerca aggiornamenti</string>
     <string name="settings_update_checking">Controllo…</string>
-    <string name="settings_update_found">Aggiornamento disponibile! Torna alla mappa per installarlo.</string>
     <string name="settings_update_none">Hai già l\'ultima versione.</string>
     <string name="settings_place_pages">Pagine dei luoghi</string>
     <plurals name="place_transit_stops"> <!-- format -->
