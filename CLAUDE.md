@@ -1729,8 +1729,11 @@ architecture note.
   `StreetViewTiles.load` stitches a zoom level's grid (v1 = zoom 2 = 2048×1024, 8 tiles, ~8 MB POT
   texture; NEVER the full 16384×8192 ≈ 400 MB), and `PanoramaView` (GLES2, `app/streetview`) textures
   it onto a sphere - drag = yaw/pitch, pinch = FOV. GL gotchas, device-proven: view from INSIDE (cull
-  off), and flip the U coord (`1 - u`) to un-mirror - negating the sphere's X instead left the imagery
-  mirrored (store signs + the © Google watermark backwards). The VM owns the bitmap lifecycle (the
+  off), and use NATURAL U (`uv = u`, NO flip). Looking down -Z, screen-right is world +X = theta
+  increasing = u increasing, so texU must increase left-to-right or the whole pano mirrors (backwards
+  signage + reversed © Google watermark). An earlier `1 - u` was itself the mirror and mis-verified;
+  plain `u` reads correct AND keeps drag grab-pull + the walk-arrow bearings consistent (user 2026-07-15,
+  caught the mirror off the watermarks; don't reintroduce a U flip). The VM owns the bitmap lifecycle (the
   renderer does NOT recycle after `texImage2D` - texImage2D copies, so recycling there would double-free
   the state's reference); the screen feeds it once via LaunchedEffect, not the AndroidView update lambda.
   Pill is in `PlaceSheet` (no longer gated by HideExternalLinks - it's a first-class in-app surface now),
