@@ -36,6 +36,7 @@ import kotlin.math.log2
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -142,19 +143,35 @@ class GoogleMapsDataSource @Inject constructor(
             // their prominence low, so they surface in quiet/residential views without crowding businesses.
             "school", "park",
         )
-        val all = coroutineScope {
-            terms.map { term ->
-                async {
-                    runCatching {
-                        val pb = SearchPb.build(term, center, cal.searchPb)
-                            .replaceFirst(Regex("!1d[0-9.]+"), "!1d${spanMeters.toInt()}")
-                            .replaceFirst(Regex("!4f[0-9.]+"), "!4f${String.format(java.util.Locale.US, "%.1f", zoom)}")
-                            .replaceFirst(Regex("!7i\\d+"), "!7i60") // deep pool per term, so zooming in can go down the rank
-                        val url = "${cal.searchEndpoint}&q=${term.enc()}&pb=${pb.enc()}".localized()
-                        SearchParser.parse(term, GoogleResponse.parse(get(url)), center, cal.paths).places
-                    }.getOrDefault(emptyList())
-                }
-            }.awaitAll().flatten()
+        suspend fun fetchTerm(term: String): List<Place> = runCatching {
+            val pb = SearchPb.build(term, center, cal.searchPb)
+                .replaceFirst(Regex("!1d[0-9.]+"), "!1d${spanMeters.toInt()}")
+                .replaceFirst(Regex("!4f[0-9.]+"), "!4f${String.format(java.util.Locale.US, "%.1f", zoom)}")
+                .replaceFirst(Regex("!7i\\d+"), "!7i60") // deep pool per term, so zooming in can go down the rank
+            val url = "${cal.searchEndpoint}&q=${term.enc()}&pb=${pb.enc()}".localized()
+            SearchParser.parse(term, GoogleResponse.parse(get(url)), center, cal.paths).places
+        }.getOrDefault(emptyList())
+        var all = coroutineScope {
+            terms.map { term -> async { fetchTerm(term) } }.awaitAll().flatten()
+        }
+        // SLIM-FLAVOR HEAL (upstream live-bisect, bd165ba0): for the first ~3 s of a fresh session
+        // Google serves a stripped per-place block - rating present, review count ABSENT (the same
+        // query + pb returns the full block seconds later). A cold-start fan-out lands entirely
+        // inside that window, so the whole ambient pool parsed with reviewCount=null, which zeroed
+        // ambientProminence and silently broke everything keyed on it: prominence ranking, dot
+        // sizing, label tiers - all flat. Detect the flavor (rated places but not one count) and
+        // refetch ONCE; by then the session is warm and the rich pool overwrites the slim one.
+        // Doubles the request burst only on a cold start. Majority (not all-slim): the session can
+        // warm MID-burst, leaving a mixed pool.
+        val rated = all.count { it.rating != null }
+        if (rated >= 3 && all.count { it.rating != null && it.reviewCount == null } > rated / 2) {
+            delay(1200)
+            val healed = coroutineScope { terms.map { term -> async { fetchTerm(term) } }.awaitAll().flatten() }
+            if (healed.any { it.reviewCount != null }) {
+                diag.record("ambient", "slim cold-start pool healed: ${all.size} -> ${healed.size} places with counts")
+                // Healed first so distinctBy keeps the rich copy when a term partially failed.
+                all = healed + all
+            }
         }
         // Dedup by feature id (same place returned under several terms); fall back to name+coords,
         // then rank for the map (locality + prominence - see rankAmbientPlaces).

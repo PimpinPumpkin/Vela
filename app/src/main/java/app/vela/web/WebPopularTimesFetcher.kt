@@ -52,6 +52,26 @@ class WebPopularTimesFetcher @Inject constructor(
 
     @Volatile private var webView: WebView? = null
     @Volatile private var warm: CompletableDeferred<Unit>? = null
+    private var reap: Runnable? = null
+
+    /** Free the WebView after a quiet period (issue #182): the warm session pins a full
+     *  maps.google.com page for the rest of the session otherwise. The next fetch after a
+     *  reap re-warms (google.com -> maps), a one-off few-second cost after minutes idle. */
+    private fun scheduleReap() {
+        reap?.let(main::removeCallbacks)
+        val r = Runnable {
+            webView?.let { runCatching { it.loadUrl("about:blank"); it.destroy() } }
+            webView = null
+            warm = null // ensureWarm re-runs the warm sequence on the next fetch
+        }
+        reap = r
+        main.postDelayed(r, REAP_IDLE_MS)
+    }
+
+    private fun cancelReap() {
+        reap?.let(main::removeCallbacks)
+        reap = null
+    }
 
     private inner class Bridge {
         @JavascriptInterface fun onResult(id: String, payload: String) { pending.remove(id)?.complete(payload) }
@@ -72,13 +92,17 @@ class WebPopularTimesFetcher @Inject constructor(
         val id = "pt" + seq.incrementAndGet()
         val deferred = CompletableDeferred<String>()
         pending[id] = deferred
+        cancelReap()
         val raw = try {
             withTimeoutOrNull(TOTAL_TIMEOUT_MS) {
                 ensureWarm()
                 withContext(Dispatchers.Main) { webView?.evaluateJavascript(script(id, url), null) }
                 deferred.await()
             }
-        } finally { pending.remove(id) }
+        } finally {
+            pending.remove(id)
+            scheduleReap()
+        }
         return if (raw.isNullOrEmpty()) null
         else runCatching { PopularTimesParser.parse(raw, place.featureId, cal.paths) }.getOrNull()
     }
@@ -182,6 +206,7 @@ class WebPopularTimesFetcher @Inject constructor(
 
     private companion object {
         const val TOTAL_TIMEOUT_MS = 22_000L
+        const val REAP_IDLE_MS = 120_000L // destroy the idle WebView after this quiet period (issue #182)
         const val SETTLE_MS = 1_200L
         const val MAX_WARM_MS = 9_000L
     }

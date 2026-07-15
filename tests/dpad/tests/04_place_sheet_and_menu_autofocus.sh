@@ -17,7 +17,7 @@ assert_focus_ytop_between 270 360 "place sheet drag handle"
 keys "$K_DOWN" "$K_DOWN"
 keys "$K_RIGHT" "$K_RIGHT"
 key "$K_OK" 1.5
-assert_focus_text "Set as Home"                    # VelaMenu chooser auto-focused item 0
-key "$K_DOWN"; assert_focus_text "Set as Work"     # DOWN walks the chooser
+assert_focus_covers "Set as Home" "VelaMenu chooser auto-focused item 0"
+key "$K_DOWN"; assert_focus_covers "Set as Work" "DOWN walks the chooser"
 key "$K_BACK" 1; assert_not_on_screen "Set as Work" # BACK closes the menu (not the sheet)
 report
