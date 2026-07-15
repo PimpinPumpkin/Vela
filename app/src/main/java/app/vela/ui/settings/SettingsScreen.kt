@@ -1,6 +1,5 @@
 package app.vela.ui.settings
 import android.content.Intent
-import android.net.Uri
 
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -961,14 +960,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             Hint(stringResource(R.string.settings_data_privacy_hint))
             Spacer(Modifier.height(4.dp))
             OutlinedButton(onClick = {
-                runCatching {
-                    context.startActivity(
-                        android.content.Intent(
-                            android.content.Intent.ACTION_VIEW,
-                            android.net.Uri.parse("https://github.com/alltechdev/vela-dpad/blob/main/docs/PRIVACY.md"),
-                        ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
-                    )
-                }
+                app.vela.ui.ExternalLinks.open(context, "https://github.com/alltechdev/vela-dpad/blob/main/docs/PRIVACY.md")
             }) { Text(stringResource(R.string.settings_privacy_button)) }
 
             Spacer(Modifier.height(20.dp))
@@ -1098,7 +1090,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             OutlinedButton(
                 onClick = {
                     runCatching {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Onboarding.DONATE_URL)))
+                        app.vela.ui.ExternalLinks.open(context, Onboarding.DONATE_URL)
                     }
                 },
             ) {

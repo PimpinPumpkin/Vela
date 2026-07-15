@@ -518,4 +518,5 @@
     <plurals name="topcard_more_stops">
         <item quantity="other">+%d件の経由地</item>
     </plurals>
+    <string name="no_browser_installed">お使いの端末にはブラウザがありません</string>
 </resources>

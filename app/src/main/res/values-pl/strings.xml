@@ -506,4 +506,5 @@
         <item quantity="many">+%d kolejnych przystanków</item>
         <item quantity="other">+%d kolejnego przystanku</item>
     </plurals>
+    <string name="no_browser_installed">Twoje urządzenie nie ma przeglądarki</string>
 </resources>

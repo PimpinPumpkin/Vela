@@ -498,4 +498,5 @@
         <item quantity="one">+%d parada más</item>
         <item quantity="other">+%d paradas más</item>
     </plurals>
+    <string name="no_browser_installed">Tu dispositivo no tiene navegador</string>
 </resources>

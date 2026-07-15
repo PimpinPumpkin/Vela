@@ -498,4 +498,5 @@
         <item quantity="one">+%d arrêt de plus</item>
         <item quantity="other">+%d arrêts de plus</item>
     </plurals>
+    <string name="no_browser_installed">Votre appareil ne dispose pas de navigateur</string>
 </resources>

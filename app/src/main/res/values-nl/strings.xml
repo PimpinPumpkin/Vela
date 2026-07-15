@@ -498,4 +498,5 @@
         <item quantity="one">+%d extra stop</item>
         <item quantity="other">+%d extra stops</item>
     </plurals>
+    <string name="no_browser_installed">Je toestel heeft geen browser</string>
 </resources>

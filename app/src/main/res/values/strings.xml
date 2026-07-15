@@ -530,4 +530,5 @@
         <item quantity="one">+%d more stop</item>
         <item quantity="other">+%d more stops</item>
     </plurals>
+    <string name="no_browser_installed">Your device does not have a browser</string>
 </resources>

@@ -498,4 +498,5 @@
         <item quantity="one">+%d stopp till</item>
         <item quantity="other">+%d stopp till</item>
     </plurals>
+    <string name="no_browser_installed">Din enhet har ingen webbläsare</string>
 </resources>
