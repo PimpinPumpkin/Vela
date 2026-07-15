@@ -122,6 +122,7 @@ object SearchParser {
         val rich = field("statusRich").str()
         val s118 = field("status118").str()
         val statusStr = rich ?: s118 ?: field("openStatus").str()
+        val sv = svThumb(entry)
         return Place(
             id = "g:" + name.hashCode() + ":" + (lat * 1e4).toInt(),
             name = name,
@@ -182,6 +183,8 @@ object SearchParser {
             photoUrls = parsePhotos(entry, paths),
             featuredReview = field("featuredReview").str()
                 ?.trim()?.trim('"', '“', '”')?.ifBlank { null },
+            svPanoId = sv?.first,
+            svYawDeg = sv?.second,
             featureId = field("featureId").str(),  // "0x..:0x.." → reviews RPC
             placeId = field("placeId").str(),      // "ChIJ.." → deep links
             about = parseAbout(entry, paths),
@@ -199,6 +202,19 @@ object SearchParser {
             popularTimes = parsePopularTimes(entry, paths),
             distanceMeters = near?.distanceTo(loc),
         )
+    }
+
+    private val SV_THUMB = Regex(
+        "streetviewpixels-pa\\.googleapis\\.com/v1/thumbnail\\?panoid=([A-Za-z0-9_-]{20,25})[^\"\\\\]*?yaw=([0-9.]+)",
+    )
+
+    /** Google's OWN Street View pick for a result: the thumbnail URL in the entry carries the exact
+     *  `panoid` and camera `yaw` the Google app opens ("copy Google" - the nearest-pano heuristics
+     *  mis-pick on set-back geocodes). Matched by REGEX over the serialized entry, not a pb index:
+     *  the URL is a distinctive constant, so this survives shape drift that would break a path. */
+    internal fun svThumb(entry: JsonElement): Pair<String, Double?>? {
+        val m = SV_THUMB.find(entry.toString()) ?: return null
+        return m.groupValues[1] to m.groupValues[2].toDoubleOrNull()
     }
 
     /** A 1–4 price level from Google's price label: its lower dollar bound, bucketed
