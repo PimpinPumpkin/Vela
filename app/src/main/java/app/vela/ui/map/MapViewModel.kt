@@ -29,6 +29,7 @@ import app.vela.core.model.Route
 import app.vela.core.model.SavedPlace
 import app.vela.core.model.ShortcutKind
 import app.vela.core.model.TravelMode
+import app.vela.core.model.bearingTo
 import app.vela.core.model.distanceTo
 import app.vela.core.nav.NavSession
 import app.vela.core.nav.NavState
@@ -1828,16 +1829,26 @@ class MapViewModel @Inject constructor(
     /** Open the in-app Street View for a place: resolve the nearest pano (keyless metadata), then
      *  stitch its tiles into the equirect the GL viewer textures. No coverage → a brief toast, no
      *  viewer. Two-stage state so the viewer can show a spinner while tiles load. */
-    fun openStreetView(place: Place) = loadStreetView { dataSource.streetView(place.location) }
+    fun openStreetView(place: Place) =
+        loadStreetView(faceToward = place.location) { dataSource.streetView(place.location) }
 
     /** Walk to a neighbouring pano (arrow tap): fetch it BY ID so it's epoch-exact - a
      *  nearest-location lookup snapped to a different-year capture (green May imagery under a
      *  "December 2022" label). The new pano carries its own neighbours + history, so you keep
-     *  walking. */
+     *  walking. Face the way you walked (the link's bearing) so it reads as moving forward. */
     fun moveStreetView(link: app.vela.core.model.StreetViewLink) =
-        loadStreetView { dataSource.streetViewByPano(link.panoId) }
+        loadStreetView(faceHeading = link.bearingDeg) { dataSource.streetViewByPano(link.panoId) }
 
-    private fun loadStreetView(fetch: suspend () -> app.vela.core.model.StreetViewPano?) {
+    /**
+     * @param faceToward when set, the initial camera faces from the resolved pano TOWARD this point
+     *   (the place we opened Street View on), so you look at the address, not the pano's capture
+     *   heading. @param faceHeading an explicit initial heading (used when walking).
+     */
+    private fun loadStreetView(
+        faceToward: app.vela.core.model.LatLng? = null,
+        faceHeading: Double? = null,
+        fetch: suspend () -> app.vela.core.model.StreetViewPano?,
+    ) {
         streetViewJob?.cancel()
         _state.value.streetViewBitmap?.recycle()
         _state.update {
@@ -1847,12 +1858,17 @@ class MapViewModel @Inject constructor(
                 )
         }
         streetViewJob = viewModelScope.launch {
-            val pano = runCatching { fetch() }.getOrNull()
-            if (pano == null) {
+            val raw = runCatching { fetch() }.getOrNull()
+            if (raw == null) {
                 _state.update { it.copy(streetViewLoading = false, streetView = null, streetViewBitmap = null) }
                 flashStatus(appContext.getString(R.string.street_view_none))
                 return@launch
             }
+            // Aim the opening view: toward the chosen address (bearing pano→target) on open, or along
+            // the walked direction on a move. Overriding headingDeg is enough - it's only read to set
+            // the initial yaw. Falls back to the pano's own capture heading when neither is given.
+            val facing = faceToward?.let { LatLng(raw.lat, raw.lng).bearingTo(it) } ?: faceHeading
+            val pano = if (facing != null) raw.copy(headingDeg = facing) else raw
             _state.update {
                 it.copy(streetView = pano, streetViewBitmap = null,
                     streetViewShownYear = pano.captureYear, streetViewShownMonth = pano.captureMonth,

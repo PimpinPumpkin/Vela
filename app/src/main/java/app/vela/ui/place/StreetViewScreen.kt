@@ -145,12 +145,16 @@ fun StreetViewScreen(
             // so it matches the imagery and updates when you go back in time - "© 2026 Google" over
             // a May 2024 pano read wrong (user 2026-07-15).
             val label = pano?.addressLabel
-            val date = monthYear(shownYear, shownMonth)
+            // Non-breaking spaces INSIDE the date and copyright tokens so they never split across a
+            // wrap - the end-cap was breaking "© 2024 Google" onto two lines, leaving the "©" stranded
+            // above "Google" (user 2026-07-15). Wraps now only happen at the " · " separators.
+            val date = monthYear(shownYear, shownMonth)?.replace(' ', '\u00A0')
             val copy = run {
                 val base = pano?.copyright ?: "© Google"
-                if (shownYear != null && Regex("\\d{4}").containsMatchIn(base))
+                val withYear = if (shownYear != null && Regex("\\d{4}").containsMatchIn(base))
                     base.replaceFirst(Regex("\\d{4}"), shownYear.toString())
                 else base
+                withYear.replace(' ', '\u00A0')
             }
             Text(
                 text = listOfNotNull(label?.takeIf { it.isNotBlank() }, date, copy).joinToString("  ·  "),
