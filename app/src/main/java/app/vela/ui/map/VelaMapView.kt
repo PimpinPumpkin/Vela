@@ -332,8 +332,13 @@ fun VelaMapView(
         navMode -> statusBarTopPx + with(density) { 176.dp.roundToPx() }
         // Browse: below the floating search bar AND the category-chip row - 8dp under the
         // status bar put the compass exactly behind the bar (a half-hidden circle peeking
-        // out its right end, clearly visible in light mode).
-        else -> statusBarTopPx + with(density) { 122.dp.roundToPx() }
+        // out its right end, clearly visible in light mode). The LAYERS button owns the
+        // statusBar+128dp slot in the same corner (42dp circle + its 48dp IconButton touch
+        // overflow reaches ~190dp), which sat exactly on the compass (user 2026-07-15) - with
+        // the button enabled the compass drops below its touch target, not just the circle.
+        else -> statusBarTopPx + with(density) {
+            (if (app.vela.ui.LayersButton.on.value) 200.dp else 122.dp).roundToPx()
+        }
     }
     val compassRightPx = with(density) { 8.dp.roundToPx() }
     val poiTap = rememberUpdatedState(onPoiTap)

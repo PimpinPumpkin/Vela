@@ -3997,6 +3997,11 @@ class MapViewModel @Inject constructor(
     )
     private val ambientCache = ArrayDeque<AmbientEntry>()
 
+    // How long a completed fetch is served AS-IS for views it covers (no refetch). Short on
+    // purpose: it only needs to absorb the tap-a-POI-and-close camera shift, not stand in for
+    // the moved-gate's refresh loop.
+    private val AMBIENT_FRESH_MS = 3 * 60_000L
+
     private fun cacheAmbient(center: LatLng, spanM: Double, places: List<app.vela.core.model.Place>) {
         ambientCache.removeAll { it.center.distanceTo(center) < 400.0 } // replace a near-duplicate area
         ambientCache.addLast(AmbientEntry(center, spanM, places, android.os.SystemClock.elapsedRealtime()))
@@ -4044,9 +4049,11 @@ class MapViewModel @Inject constructor(
             val fresh = entries.filter { nowWall - it.atWallMs < 24 * 3600_000L }
             if (fresh.isEmpty()) return@launch
             val loaded = fresh.map { e ->
-                // Timestamps read as fresh: the moved-gate refetches the first real view anyway,
-                // so disk entries are paint-then-refine, never paint-and-trust.
-                AmbientEntry(LatLng(e.lat, e.lng), e.spanM, e.places.map { it.toPlace() }, nowElapsed)
+                // Backdated past the fresh-skip window: disk entries repaint instantly but MUST
+                // NOT satisfy the fresh-and-covering no-refetch path - they are paint-then-refine
+                // (a day-old pool trusted for even 3 minutes would hide the slim-flavor heal and
+                // any overnight closures on the first view).
+                AmbientEntry(LatLng(e.lat, e.lng), e.spanM, e.places.map { it.toPlace() }, nowElapsed - AMBIENT_FRESH_MS)
             }
             // Main-thread hop: the cache deque is only ever touched from the main dispatcher.
             withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -4056,7 +4063,7 @@ class MapViewModel @Inject constructor(
     }
     /** Freshest non-stale cached fetch whose centre is within ~900 m of [center], re-centred so its
      *  distances are correct for the new view. Null if nothing recent+near is cached. */
-    private fun cachedAmbientNear(center: LatLng): List<app.vela.core.model.Place>? {
+    private fun cachedAmbientNear(center: LatLng): AmbientEntry? {
         val now = android.os.SystemClock.elapsedRealtime()
         // SPAN-AWARE hit: a fetch covers spanM around its centre (3.5-9 km), so any view whose
         // centre sits well inside that area can repaint from it. The old fixed 900 m radius
@@ -4065,8 +4072,6 @@ class MapViewModel @Inject constructor(
         return ambientCache
             .filter { now - it.atMs < 30 * 60_000L && it.center.distanceTo(center) < it.spanM * 0.45 }
             .minByOrNull { it.center.distanceTo(center) }
-            ?.places
-            ?.map { it.copy(distanceMeters = center.distanceTo(it.location)) }
     }
 
     /** Warm the ambient LRU for the four neighbouring view-sized areas (N/S/E/W at ~0.9 of the
@@ -4154,8 +4159,26 @@ class MapViewModel @Inject constructor(
         // but filtered to nothing in this view) and never consulted the cache - a bare map for the whole
         // refetch, the P9 "tap a POI / pan back and everything is gone" report. The hit is by definition
         // the best-known data for THIS centre; the fetch below still refines it.
-        cachedAmbientNear(center)?.let { cached ->
+        cachedAmbientNear(center)?.let { entry ->
+            val cached = entry.places.map { it.copy(distanceMeters = center.distanceTo(it.location)) }
             _state.update { it.copy(ambientPois = civicFiltered(keepAmbientForView(cached, viewRadiusMeters))) }
+            // A FRESH fetch that still COVERS this view is served as-is, no network refetch
+            // (user 2026-07-15): tapping a POI shifts the camera enough to trip the moved-gate,
+            // so closing the sheet re-fetched the SAME area seconds later - and Google's ranking
+            // jitters between identical requests, so the replace randomly swapped/dropped a few
+            // icons ("the ones around it disappear then reload"). Same-area data seconds apart
+            // is not fresher, just different. Coverage = the ambientCoversView predicate; the
+            // window is short so lingering somewhere still refreshes on the next real pan.
+            val fresh = android.os.SystemClock.elapsedRealtime() - entry.atMs < AMBIENT_FRESH_MS
+            val covers = entry.center.distanceTo(center) < entry.spanM * 0.35 &&
+                viewRadiusMeters <= entry.spanM * 0.55
+            if (fresh && covers) {
+                lastAmbientCenter = entry.center
+                lastAmbientZoom = zoom
+                lastAmbientSpan = entry.spanM
+                if (!_state.value.ambientCoversView) _state.update { it.copy(ambientCoversView = true) }
+                return
+            }
         }
         ambientJob = viewModelScope.launch {
             delay(300) // brief settle so a flick doesn't scrape — but snappy

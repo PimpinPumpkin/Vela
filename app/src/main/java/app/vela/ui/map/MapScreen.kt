@@ -857,7 +857,10 @@ fun MapScreen(
             transitStops = state.transitStops.filterNot { st -> state.selected?.id == "gtfs:${st.stopId}" },
             onTransitStopTap = vm::onTransitStopTap,
             navBannerBottomPx = if (state.navigating) navBannerBottomPx else 0,
-            onAmbientTap = { i -> state.ambientPois.getOrNull(i)?.let(vm::selectPlace) },
+            // Index into the SHOWN list (the same one ambientMarkersOf uploads), not the raw
+            // pool - while a place is open the shown list drops the selected place's copy, so
+            // raw-pool indices would be off by one past it.
+            onAmbientTap = { i -> ambientShownOf(state).getOrNull(i)?.let(vm::selectPlace) },
             onCameraIdle = vm::onCameraIdle,
             onMapLongPress = vm::onMapLongPress,
             onAddressLabelTap = vm::onAddressLabelTap,
@@ -2059,16 +2062,26 @@ private fun displayedPlaces(state: MapUiState): List<Place> = when {
     else -> emptyList() // ambient Google POIs render as category dots (their own layer), not pins
 }
 
-/** Ambient Google POIs to draw as category dots — only on the bare browse map (off during search,
- *  an open place, a route preview, nav, or replay). */
-private fun ambientMarkersOf(state: MapUiState): List<MapMarker> =
-    if (state.results.isEmpty() && state.selected == null && !state.navigating &&
-        !state.replaying && state.activeRoute == null
-    ) {
-        state.ambientPois.map { MapMarker(it.name, it.location, it.category, app.vela.core.data.google.ambientProminence(it)) }
+/** The ambient Google POIs actually shown: the bare browse map AND while a single place sheet
+ *  is open. Wiping them on select emptied the whole ambient source, so tapping a POI made every
+ *  icon around it vanish and closing the sheet re-placed the entire layer (the "POIs reload when
+ *  I tap one then exit", user 2026-07-15) - Google keeps the area's icons up around an opened
+ *  place. Only the opened place's own ambient copy is dropped, so its icon and label don't
+ *  double-draw under the red selection pin. Still hidden while results / a route preview / nav /
+ *  replay own the map. Used by BOTH the marker upload and the tap handler, so the
+ *  AMBIENT_INDEX_PROP a tap reports always indexes THIS list. */
+private fun ambientShownOf(state: MapUiState): List<Place> =
+    if (state.results.isEmpty() && !state.navigating && !state.replaying && state.activeRoute == null) {
+        val sel = state.selected ?: return state.ambientPois
+        state.ambientPois.filterNot {
+            it.name.equals(sel.name, ignoreCase = true) && it.location.distanceTo(sel.location) < 150.0
+        }
     } else {
         emptyList()
     }
+
+private fun ambientMarkersOf(state: MapUiState): List<MapMarker> =
+    ambientShownOf(state).map { MapMarker(it.name, it.location, it.category, app.vela.core.data.google.ambientProminence(it)) }
 
 private fun markersOf(state: MapUiState, filteredIds: Set<String>?): List<MapMarker> =
     displayedPlaces(state)

@@ -17,6 +17,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **POI icons hold still when you open and close a place (2026-07-15, user).** Tapping a POI
+  used to blank every ambient icon around it (the layer was gated to the bare map) and closing
+  the sheet re-placed the whole layer, then a refetch a beat later reshuffled it again. Now the
+  area's icons stay up around the opened place, Google-style (only the opened place's own copy
+  hides under the red pin), and a fetch newer than 3 minutes that still covers the view is
+  served as-is instead of re-asking Google for the same area (its ranking jitters between
+  identical requests, which is what randomly swapped or dropped icons after closing a sheet).
+- ✅ **Compass moved clear of the layers button (2026-07-15).** The layers circle sat exactly on
+  the compass slot in the top-right corner; with the layers button enabled the compass now sits
+  below its touch target.
 - ✅ **Chinese, Chinese (Taiwan) and Japanese (2026-07-11, issue #55).** Vela speaks 14
   languages now. All three layers: UI chrome (values-zh Simplified, values-zh-rTW Traditional
   with Taiwan wording, values-ja), generated turn-by-turn text (three new NavStrings tables;
