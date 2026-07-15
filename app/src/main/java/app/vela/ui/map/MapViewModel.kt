@@ -176,6 +176,12 @@ data class MapUiState(
     val streetView: app.vela.core.model.StreetViewPano? = null,
     val streetViewBitmap: android.graphics.Bitmap? = null,
     val streetViewLoading: Boolean = false,
+    // The date currently DISPLAYED (may differ from the base pano's when time-travelling), and
+    // whether that's a historical capture (hides the walk arrows - you look around history, you
+    // don't walk it).
+    val streetViewShownYear: Int? = null,
+    val streetViewShownMonth: Int? = null,
+    val streetViewHistorical: Boolean = false,
     val navigating: Boolean = false,
     val resumeNavLabel: String? = null, // a nav session was interrupted (process killed mid-drive) and can
                                         // be resumed — drives the "Resume navigation to <label>?" prompt
@@ -1822,23 +1828,68 @@ class MapViewModel @Inject constructor(
     /** Open the in-app Street View for a place: resolve the nearest pano (keyless metadata), then
      *  stitch its tiles into the equirect the GL viewer textures. No coverage → a brief toast, no
      *  viewer. Two-stage state so the viewer can show a spinner while tiles load. */
-    fun openStreetView(place: Place) {
+    fun openStreetView(place: Place) = loadStreetView { dataSource.streetView(place.location) }
+
+    /** Walk to a neighbouring pano (arrow tap): fetch it BY ID so it's epoch-exact - a
+     *  nearest-location lookup snapped to a different-year capture (green May imagery under a
+     *  "December 2022" label). The new pano carries its own neighbours + history, so you keep
+     *  walking. */
+    fun moveStreetView(link: app.vela.core.model.StreetViewLink) =
+        loadStreetView { dataSource.streetViewByPano(link.panoId) }
+
+    private fun loadStreetView(fetch: suspend () -> app.vela.core.model.StreetViewPano?) {
         streetViewJob?.cancel()
         _state.value.streetViewBitmap?.recycle()
-        _state.update { it.copy(streetViewLoading = true, streetView = null, streetViewBitmap = null) }
+        _state.update {
+            it.copy(streetViewLoading = true, streetViewHistorical = false,
+                // keep the old pano/bitmap on screen under the spinner while moving; a fresh open
+                // has none anyway.
+                )
+        }
         streetViewJob = viewModelScope.launch {
-            val pano = runCatching { dataSource.streetView(place.location) }.getOrNull()
+            val pano = runCatching { fetch() }.getOrNull()
             if (pano == null) {
-                _state.update { it.copy(streetViewLoading = false) }
+                _state.update { it.copy(streetViewLoading = false, streetView = null, streetViewBitmap = null) }
                 flashStatus(appContext.getString(R.string.street_view_none))
                 return@launch
             }
-            _state.update { it.copy(streetView = pano) } // viewer shows, spinner until the bitmap lands
-            val bmp = runCatching {
-                app.vela.streetview.StreetViewTiles.load(dataSource, pano)
-            }.getOrNull()
+            _state.update {
+                it.copy(streetView = pano, streetViewBitmap = null,
+                    streetViewShownYear = pano.captureYear, streetViewShownMonth = pano.captureMonth,
+                    streetViewHistorical = false)
+            }
+            val bmp = runCatching { app.vela.streetview.StreetViewTiles.load(dataSource, pano) }.getOrNull()
             if (bmp == null) {
                 _state.update { it.copy(streetViewLoading = false, streetView = null) }
+                flashStatus(appContext.getString(R.string.street_view_none))
+                return@launch
+            }
+            _state.update { it.copy(streetViewBitmap = bmp, streetViewLoading = false) }
+        }
+    }
+
+    /** Go back (or forward) in time: load a historical capture's tiles by pano id, keeping the base
+     *  pano's metadata (so the date picker + walk arrows return when you come back to the present). */
+    fun timeTravelStreetView(time: app.vela.core.model.StreetViewTime) {
+        val base = _state.value.streetView ?: return
+        streetViewJob?.cancel()
+        _state.value.streetViewBitmap?.recycle()
+        val historical = time.panoId != base.panoId
+        _state.update {
+            it.copy(streetViewLoading = true, streetViewBitmap = null,
+                streetViewShownYear = time.year, streetViewShownMonth = time.month,
+                streetViewHistorical = historical)
+        }
+        streetViewJob = viewModelScope.launch {
+            val bmp = runCatching {
+                app.vela.streetview.StreetViewTiles.load(dataSource, time.panoId, base.tileSize, base.maxZoom)
+            }.getOrNull()
+            if (bmp == null) {
+                // Fall back to the present rather than a black screen.
+                _state.update {
+                    it.copy(streetViewLoading = false, streetViewHistorical = false,
+                        streetViewShownYear = base.captureYear, streetViewShownMonth = base.captureMonth)
+                }
                 flashStatus(appContext.getString(R.string.street_view_none))
                 return@launch
             }
@@ -1849,7 +1900,10 @@ class MapViewModel @Inject constructor(
     fun closeStreetView() {
         streetViewJob?.cancel()
         _state.value.streetViewBitmap?.recycle()
-        _state.update { it.copy(streetView = null, streetViewBitmap = null, streetViewLoading = false) }
+        _state.update {
+            it.copy(streetView = null, streetViewBitmap = null, streetViewLoading = false,
+                streetViewShownYear = null, streetViewShownMonth = null, streetViewHistorical = false)
+        }
     }
 
     /** Offline, a POI that OSM never tagged with an address (most US chains) shows a bare place sheet —
