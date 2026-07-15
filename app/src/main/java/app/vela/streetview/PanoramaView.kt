@@ -267,10 +267,12 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
                     val y = cos(phi).toFloat()
                     val z = (sin(phi) * sin(theta)).toFloat()
                     pos.add(x); pos.add(y); pos.add(z)
-                    // Flip U so the equirect reads correctly (not mirrored) when the sphere is
-                    // viewed from the inside - the standard inside-panorama fix. (device-verified
-                    // 2026-07-15: negating X instead left the signage + Google watermark mirrored.)
-                    uv.add(1f - u); uv.add(v)
+                    // Natural U (NO flip). Looking down -Z, screen-right is world +X = theta
+                    // increasing = u increasing, so texU must increase left-to-right or the whole
+                    // pano mirrors (backwards signage + reversed "© Google" watermark). An earlier
+                    // `1f - u` "fix" was itself the mirror; plain u keeps text readable AND leaves
+                    // drag grab-pull + the arrow bearings geometrically consistent (user 2026-07-15).
+                    uv.add(u); uv.add(v)
                 }
             }
             val idx = ArrayList<Short>()
