@@ -202,6 +202,15 @@ Defaults that make the safe path the easy one:
   `FDROID_KEYSTORE_PASS`; password + fingerprint in `~/.vela-signing/fdroid.env` - back both up).
   This is NOT the official f-droid.org catalog (their from-source build can't take the bundled
   sherpa-onnx runtime); it's our own repo any F-Droid client can add.
+  **The project WEBSITE rides the same Pages artifact (2026-07-15).** `site/` (a self-contained
+  single-page showcase, no external requests; screenshots = the public Davis set as webp in
+  `site/assets/`) is copied to the artifact root by `fdroid-repo.yml`, so it serves at
+  `https://pimpinpumpkin.github.io/Vela/` beside `/repo` and `/fonts`. ⚠️ NEVER add a separate
+  Pages-deploy workflow for the site - actions/deploy-pages replaces the WHOLE site, so a
+  site-only artifact would take down the F-Droid repo channel and the map fonts (MapFonts'
+  probe would evict its cache and every install falls back to Noto). Site edits: `site/**` is
+  in CI's paths-ignore (no nightly for copy tweaks) and is a push trigger on `fdroid-repo.yml`
+  (the deploy still needs release APKs to exist, which they always do).
   Release signing uses repo secrets `VELA_KEYSTORE_BASE64`,
   `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS` (set; keystore at `~/.vela-signing/`,
   outside the repo - back it up). Without them the APK is debug-signed. Version

@@ -21,6 +21,7 @@ on:
       - '.gitignore'
       - 'fdroid/metadata/**'
       - '.github/ISSUE_TEMPLATE/**'
+      - 'site/**'
   pull_request:
     branches: [ main ]
     paths-ignore:
@@ -30,6 +31,7 @@ on:
       - '.gitignore'
       - 'fdroid/metadata/**'
       - '.github/ISSUE_TEMPLATE/**'
+      - 'site/**'
 
 # `contents: write` is needed to publish releases. The publish step is gated to
 # push-to-main, so PRs (and fork PRs, whose token is read-only) never touch them.

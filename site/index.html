@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vela Maps &middot; Google Maps, degoogled</title>
+<meta name="description" content="Vela is a free, open-source maps and navigation app for Android. Live place data, traffic-aware turn-by-turn, transit boards and full offline support. No account, no API key, no Play Services.">
+<meta property="og:title" content="Vela Maps">
+<meta property="og:description" content="Google Maps, degoogled. Free and open source, no account, no tracking.">
+<meta property="og:image" content="assets/05-navigation.webp">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>">
+<style>
+  :root {
+    --bg: #0a1220;
+    --bg2: #0e1a30;
+    --card: #12213c;
+    --ink: #e8edf5;
+    --dim: #93a1b8;
+    --teal: #2dd4bf;
+    --blue: #3b82f6;
+    --route: #1f6feb;
+    --radius: 20px;
+    --max: 1120px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  a { color: var(--teal); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+
+  /* ambient background glow */
+  .glow {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(600px 400px at 80% -10%, rgba(31,111,235,.18), transparent 70%),
+      radial-gradient(700px 500px at -10% 40%, rgba(45,212,191,.10), transparent 70%),
+      radial-gradient(800px 600px at 60% 110%, rgba(31,111,235,.12), transparent 70%);
+  }
+
+  nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 0;
+  }
+  .brand { font-weight: 800; font-size: 1.35rem; letter-spacing: -.02em; color: var(--ink); }
+  .brand span { color: var(--teal); }
+  nav .links a { color: var(--dim); margin-left: 22px; font-size: .95rem; }
+  nav .links a:hover { color: var(--ink); text-decoration: none; }
+
+  /* hero */
+  .hero {
+    display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px;
+    align-items: center; padding: 56px 0 96px;
+  }
+  .hero h1 {
+    font-size: clamp(2.6rem, 6vw, 4.2rem);
+    line-height: 1.05; letter-spacing: -.03em; font-weight: 800;
+  }
+  .hero h1 em {
+    font-style: normal;
+    background: linear-gradient(90deg, var(--teal), var(--blue));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p.lead { color: var(--dim); font-size: 1.18rem; margin: 22px 0 34px; max-width: 34rem; }
+  .cta { display: flex; gap: 14px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 13px 22px; border-radius: 14px; font-weight: 600; font-size: 1rem;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .btn:hover { transform: translateY(-2px); text-decoration: none; }
+  .btn.primary { background: linear-gradient(135deg, var(--teal), #14b8a6); color: #04211c; box-shadow: 0 8px 30px rgba(45,212,191,.25); }
+  .btn.ghost { border: 1px solid #2a3c5e; color: var(--ink); background: rgba(255,255,255,.03); }
+  .sub { color: var(--dim); font-size: .85rem; margin-top: 14px; }
+
+  /* phone mockup */
+  .phone-stage { perspective: 1200px; display: flex; justify-content: center; }
+  .phone {
+    width: min(300px, 70vw); border-radius: 36px; padding: 10px;
+    background: #1b2b4a;
+    box-shadow: 0 40px 90px rgba(0,0,0,.55), 0 0 0 1px #27395c inset;
+    transform: rotateY(-10deg) rotateX(4deg);
+    transition: transform .4s ease;
+    will-change: transform;
+  }
+  .phone img { width: 100%; border-radius: 27px; display: block; }
+
+  /* sections */
+  section { padding: 72px 0; }
+  h2 { font-size: clamp(1.7rem, 3.4vw, 2.4rem); letter-spacing: -.02em; margin-bottom: 10px; }
+  .kicker { color: var(--teal); font-weight: 700; text-transform: uppercase; font-size: .8rem; letter-spacing: .12em; }
+  .sect-lead { color: var(--dim); max-width: 44rem; margin-bottom: 40px; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .card {
+    background: linear-gradient(180deg, var(--card), var(--bg2));
+    border: 1px solid #21334f; border-radius: var(--radius);
+    padding: 26px 24px;
+    transition: transform .2s ease, border-color .2s ease;
+  }
+  .card:hover { transform: translateY(-4px); border-color: #2f4a75; }
+  .card .ico { font-size: 1.6rem; margin-bottom: 12px; display: block; }
+  .card h3 { font-size: 1.08rem; margin-bottom: 7px; }
+  .card p { color: var(--dim); font-size: .95rem; }
+
+  /* privacy band */
+  .band {
+    border: 1px solid #1f3a35; border-radius: var(--radius);
+    background: linear-gradient(135deg, rgba(45,212,191,.07), rgba(31,111,235,.06));
+    padding: 44px 40px;
+    display: grid; grid-template-columns: 1.2fr .8fr; gap: 36px; align-items: center;
+  }
+  .band ul { list-style: none; margin-top: 18px; }
+  .band li { padding: 7px 0 7px 30px; position: relative; color: var(--dim); }
+  .band li::before { content: "✓"; position: absolute; left: 0; color: var(--teal); font-weight: 700; }
+  .band .big {
+    font-size: clamp(1.6rem, 3vw, 2.1rem); font-weight: 800; letter-spacing: -.02em; line-height: 1.25;
+  }
+
+  /* screenshots strip */
+  .strip {
+    display: flex; gap: 18px; overflow-x: auto; padding: 8px 4px 24px;
+    scroll-snap-type: x mandatory;
+  }
+  .strip::-webkit-scrollbar { height: 8px; }
+  .strip::-webkit-scrollbar-thumb { background: #24385c; border-radius: 8px; }
+  .strip img {
+    height: 460px; border-radius: 22px; scroll-snap-align: start;
+    border: 1px solid #22355a; flex: 0 0 auto;
+  }
+
+  /* download */
+  .dl-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .dl-cards .card h3 { display: flex; align-items: center; gap: 9px; }
+
+  footer {
+    border-top: 1px solid #1b2c49; padding: 34px 0 46px; margin-top: 40px;
+    color: var(--dim); font-size: .9rem;
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+
+  /* reveal on scroll */
+  .reveal { opacity: 0; transform: translateY(22px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+
+  @media (max-width: 880px) {
+    .hero { grid-template-columns: 1fr; padding: 30px 0 64px; text-align: center; }
+    .hero p.lead { margin-left: auto; margin-right: auto; }
+    .cta { justify-content: center; }
+    .phone { transform: none; }
+    .grid, .dl-cards { grid-template-columns: 1fr; }
+    .band { grid-template-columns: 1fr; padding: 32px 26px; }
+    .strip img { height: 380px; }
+    nav .links a:not(:last-child) { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { transition: none; opacity: 1; transform: none; }
+    .phone { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="glow"></div>
+<div class="wrap">
+
+<nav>
+  <div class="brand">Vela<span>.</span></div>
+  <div class="links">
+    <a href="#features">Features</a>
+    <a href="#privacy">Privacy</a>
+    <a href="#download">Download</a>
+    <a href="https://github.com/PimpinPumpkin/Vela">GitHub</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div>
+    <h1>Google Maps,<br><em>degoogled.</em></h1>
+    <p class="lead">
+      Vela is a free, open-source maps and navigation app for Android.
+      Live place data, traffic-aware turn-by-turn, transit boards and real offline support.
+      No account. No API key. No Play Services.
+    </p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/PimpinPumpkin/Vela/releases/latest">Download APK</a>
+      <a class="btn ghost" href="https://github.com/PimpinPumpkin/Vela">View source</a>
+    </div>
+    <div class="sub">GPLv3 &middot; Android 10+ &middot; works on GrapheneOS and every de-googled ROM</div>
+  </div>
+  <div class="phone-stage">
+    <div class="phone" id="phone">
+      <img src="assets/05-navigation.webp" alt="Vela turn-by-turn navigation" width="540" height="1170" fetchpriority="high">
+    </div>
+  </div>
+</header>
+
+<section id="features">
+  <div class="kicker">What you get</div>
+  <h2>Everything the big app does. None of the strings.</h2>
+  <p class="sect-lead">The map data people actually rely on, pulled live and anonymously, drawn on open vector tiles.</p>
+  <div class="grid">
+    <div class="card reveal"><span class="ico">📍</span><h3>Live place data</h3><p>Ratings, reviews, hours, photos, busy times and phone numbers for real businesses, fetched fresh when you look.</p></div>
+    <div class="card reveal"><span class="ico">🧭</span><h3>Turn-by-turn with traffic</h3><p>Spoken guidance with lane diagrams, highway shields, live traffic ETAs, faster-route offers and smart rerouting.</p></div>
+    <div class="card reveal"><span class="ico">🚌</span><h3>Transit that works</h3><p>Live departure boards, stop timelines and transit directions from open GTFS feeds plus traffic-aware estimates.</p></div>
+    <div class="card reveal"><span class="ico">📶</span><h3>Properly offline</h3><p>Download whole states: map tiles, routing graphs, place search and a typed-address geocoder that all work with zero signal.</p></div>
+    <div class="card reveal"><span class="ico">🗣️</span><h3>Neural voices, on device</h3><p>Natural-sounding guidance in 14 languages through downloadable voices that never touch a server.</p></div>
+    <div class="card reveal"><span class="ico">📷</span><h3>Knows about the cameras</h3><p>Community-mapped ALPR cameras drawn on the map and counted per route, so you can pick the quiet way. Opt-in.</p></div>
+  </div>
+</section>
+
+<section id="privacy">
+  <div class="band reveal">
+    <div>
+      <div class="kicker">Privacy</div>
+      <div class="big">Your map should not have a memory.</div>
+      <ul>
+        <li>No account, no sign-in, no API key</li>
+        <li>No Play Services, no Firebase, no analytics</li>
+        <li>Your GPS trace never leaves the phone</li>
+        <li>Place lookups go out anonymously, from your device</li>
+        <li>Every network call is documented, and the optional ones have switches</li>
+      </ul>
+      <p style="margin-top:18px"><a href="https://github.com/PimpinPumpkin/Vela/blob/main/PRIVACY.md">Read the full privacy doc</a></p>
+    </div>
+    <div class="phone-stage">
+      <div class="phone" style="transform:none; width:min(240px,60vw)">
+        <img src="assets/01-map.webp" alt="Vela map view" loading="lazy" width="540" height="1170">
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">Screenshots</div>
+  <h2>Looks like the app you already know.</h2>
+  <p class="sect-lead">That is the point. Familiar where it helps, honest everywhere else.</p>
+  <div class="strip reveal">
+    <img src="assets/05-navigation.webp" alt="Navigation" loading="lazy">
+    <img src="assets/01-map.webp" alt="Map with places" loading="lazy">
+    <img src="assets/03-place.webp" alt="Place details" loading="lazy">
+    <img src="assets/04-directions.webp" alt="Route options" loading="lazy">
+    <img src="assets/02-search.webp" alt="Search results" loading="lazy">
+    <img src="assets/06-transit.webp" alt="Transit directions" loading="lazy">
+    <img src="assets/08-map-light.webp" alt="Light theme" loading="lazy">
+  </div>
+</section>
+
+<section id="download">
+  <div class="kicker">Get it</div>
+  <h2>Free forever. Pick your flavor.</h2>
+  <p class="sect-lead">Weekly stable releases, nightly builds if you like it fresh, and an in-app updater either way.</p>
+  <div class="dl-cards">
+    <div class="card reveal"><h3>⬇️ Direct APK</h3><p>Grab the latest release from GitHub and sideload it. The app updates itself from then on.</p><p style="margin-top:12px"><a href="https://github.com/PimpinPumpkin/Vela/releases/latest">Latest release</a></p></div>
+    <div class="card reveal"><h3>🔄 Obtainium</h3><p>Point Obtainium at the repo and choose the stable or nightly track. Clean, automatic updates.</p><p style="margin-top:12px"><a href="https://github.com/PimpinPumpkin/Vela#install">Setup guide</a></p></div>
+    <div class="card reveal"><h3>🛠️ Build it yourself</h3><p>Standard Gradle project, no secrets required. Clone, build, install. That is the whole ceremony.</p><p style="margin-top:12px"><a href="https://github.com/PimpinPumpkin/Vela#building">Build docs</a></p></div>
+  </div>
+</section>
+
+<footer>
+  <div>Vela Maps &middot; GPLv3 &middot; built in the open</div>
+  <div><a href="https://github.com/PimpinPumpkin/Vela">GitHub</a> &nbsp;&middot;&nbsp; <a href="https://github.com/PimpinPumpkin/Vela/issues">Issues</a> &nbsp;&middot;&nbsp; <a href="https://buymeacoffee.com/PimpinPumpkin">Support</a></div>
+</footer>
+
+</div>
+<script>
+  // scroll reveal
+  const io = new IntersectionObserver((es) => {
+    es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+  // gentle hero phone tilt (mouse only, and never for reduced motion)
+  const phone = document.getElementById('phone');
+  const fine = matchMedia('(pointer:fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (phone && fine) {
+    const stage = phone.parentElement;
+    stage.addEventListener('mousemove', (ev) => {
+      const r = stage.getBoundingClientRect();
+      const x = (ev.clientX - r.left) / r.width - 0.5;
+      const y = (ev.clientY - r.top) / r.height - 0.5;
+      phone.style.transform = `rotateY(${-10 + x * 10}deg) rotateX(${4 - y * 8}deg)`;
+    });
+    stage.addEventListener('mouseleave', () => {
+      phone.style.transform = 'rotateY(-10deg) rotateX(4deg)';
+    });
+  }
+</script>
+</body>
+</html>

@@ -1620,6 +1620,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Region downloads as portable PMTiles + historical traffic
 
 ## Platform & distribution
+- ✅ **Project website (2026-07-15).** A single-page showcase at
+  https://pimpinpumpkin.github.io/Vela/ - hero with a live nav mockup, feature grid, the
+  privacy pitch, a screenshot strip and download paths (direct APK / Obtainium / build it).
+  Lives in `site/` (self-contained HTML/CSS/JS, no external requests, screenshots are the
+  public Davis set as optimized webp). It deploys through the SAME Pages artifact as the
+  F-Droid repo and the map fonts (`fdroid-repo.yml` copies `site/` to the artifact root) - a
+  separate Pages workflow would wipe `/repo` and `/fonts`, so don't add one. Site-only pushes
+  skip CI (paths-ignore) and trigger the F-Droid workflow directly instead.
 - ✅ **In-app updater (2026-07-08, user request).** The PipePipe pattern: Vela checks the newest GitHub
   release (about once a day on launch, or on demand from Settings → Version → Check for updates), and when
   the release is newer than the running build a card on the map offers it. Update downloads the APK with a
