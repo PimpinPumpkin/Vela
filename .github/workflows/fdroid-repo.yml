@@ -21,6 +21,14 @@ on:
   workflow_run:
     workflows: ["CI", "Promote weekly stable"]
     types: [completed]
+  # The project website (site/) ships in the SAME Pages artifact as the F-Droid
+  # repo and the map fonts - Pages replaces the whole site on every deploy, so a
+  # separate website workflow would wipe /repo and /fonts. A site-only push (CI
+  # skips those via paths-ignore) therefore redeploys from here.
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
   workflow_dispatch:
 
 permissions:
@@ -126,6 +134,14 @@ jobs:
           else
             echo "map-fonts release not found; site builds without fonts"
           fi
+
+      - name: Add the website to the site root
+        # The landing page (site/index.html + site/assets) serves at
+        # https://pimpinpumpkin.github.io/Vela/ alongside /repo and /fonts.
+        run: |
+          cp site/index.html fdroid/index.html
+          cp -r site/assets fdroid/assets
+          ls fdroid
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
