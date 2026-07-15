@@ -166,6 +166,11 @@ data class MapUiState(
     // A transit stop's live departure board (keyless, from the station's own place page).
     val stopDepartures: app.vela.core.model.StopDepartures? = null,
     val stopDeparturesLoading: Boolean = false,
+    // The id of the place the board belongs to. The sheet renders the board ONLY when this matches
+    // the selected place: writers are guarded, but selection paths that don't clear the board (a
+    // saved/recent place open) let the previous stop's departures render on an unrelated place
+    // (device report 2026-07-16: a house showing another region's intercity rail board).
+    val stopDeparturesFor: String? = null,
     // Route detail (tap a route on the board -> its stop timeline with times, tap-through to stops).
     // Reuses a ride leg from a transit itinerary (its board/intermediate/alight stops carry the times).
     val routeDetail: TransitStep? = null,
@@ -1174,6 +1179,7 @@ class MapViewModel @Inject constructor(
             it.copy(
                 selected = base, center = base.location, placesHere = emptyList(), reviews = emptyList(),
                 reviewsLoading = false, reviewsFound = 0, photosLoading = false, loadingDetails = false,
+                stopDepartures = null, stopDeparturesLoading = false, stopDeparturesFor = null,
                 // Same cohesion rule as selectPlace: a new destination closes the old chooser.
                 directionsOpen = false, routes = emptyList(), activeRoute = null,
                 transit = emptyList(), transitLoading = false, showSteps = false,
@@ -1544,7 +1550,7 @@ class MapViewModel @Inject constructor(
                 // (the along-route / pick-origin / pick-stop flows early-return above).
                 directionsOpen = false, routes = emptyList(), activeRoute = null,
                 transit = emptyList(), transitLoading = false, showSteps = false,
-                stopDepartures = null, stopDeparturesLoading = false,
+                stopDepartures = null, stopDeparturesLoading = false, stopDeparturesFor = null,
             )
         }
         fetchReviews(p)
@@ -1640,7 +1646,7 @@ class MapViewModel @Inject constructor(
                 }
                 if (fresh != null && fresh.lines.isNotEmpty()) {
                     _state.update { st ->
-                        if (st.selected?.id == selId) st.copy(stopDepartures = fresh) else st
+                        if (st.selected?.id == selId) st.copy(stopDepartures = fresh, stopDeparturesFor = selId) else st
                     }
                 }
             }
@@ -1658,7 +1664,7 @@ class MapViewModel @Inject constructor(
         // coordinate - no name correlation against Google/OSM at all - and unlike Google's anonymous
         // page it returns EVERY route at the stop (a hub's parent station merges all its bays). The
         // Google blob paths below stay as the fallback where Transitous has no coverage.
-        _state.update { if (it.selected?.featureId == fid) it.copy(stopDeparturesLoading = true) else it }
+        _state.update { if (it.selected?.featureId == fid) it.copy(stopDeparturesLoading = true, stopDeparturesFor = p.id) else it }
         viewModelScope.launch {
             val board = withContext(Dispatchers.IO) {
                 runCatching { app.vela.core.data.transit.Transitous.board(http, p.location.lat, p.location.lng) }.getOrNull()
@@ -1667,7 +1673,7 @@ class MapViewModel @Inject constructor(
             if (board != null && board.lines.isNotEmpty()) {
                 _state.update { st ->
                     if (st.selected?.featureId != fid) st
-                    else st.copy(stopDepartures = board, stopDeparturesLoading = false)
+                    else st.copy(stopDepartures = board, stopDeparturesLoading = false, stopDeparturesFor = p.id)
                 }
                 startBoardRefresh(p.id, p.location.lat, p.location.lng)
                 return@launch
@@ -1675,7 +1681,7 @@ class MapViewModel @Inject constructor(
             // FALLBACK: the Google place-page blob (agency-dependent, one route at hubs - but better
             // than nothing where the open feeds lack the agency).
             when {
-                isTransit -> fetchBoardFrom(fid, selectedFid = fid)
+                isTransit -> fetchBoardFrom(fid, selectedFid = fid, ownerId = p.id)
                 // A stop named by its corner resolves to Google's "Intersection" entity, whose own page
                 // has no board - re-resolve to the co-located stop listing (device 2026-07-13).
                 else -> resolveIntersectionStopBoard(p)
@@ -1685,14 +1691,14 @@ class MapViewModel @Inject constructor(
 
     /** Fetch a transit stop's board from its own [boardFid] and attach it to the still-selected place
      *  ([selectedFid]). Feature-id-gated so a slow fetch can't land on a place the user has moved off. */
-    private fun fetchBoardFrom(boardFid: String, selectedFid: String?) {
-        _state.update { if (it.selected?.featureId == selectedFid) it.copy(stopDeparturesLoading = true) else it }
+    private fun fetchBoardFrom(boardFid: String, selectedFid: String?, ownerId: String) {
+        _state.update { if (it.selected?.featureId == selectedFid) it.copy(stopDeparturesLoading = true, stopDeparturesFor = ownerId) else it }
         viewModelScope.launch {
             val board = runCatching { webStopDepartures.fetch(boardFid) }.getOrNull()
             android.util.Log.i("VelaDepartures", "board lines=${board?.lines?.size ?: -1}")
             _state.update { st ->
                 if (st.selected?.featureId != selectedFid) st
-                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false)
+                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false, stopDeparturesFor = ownerId)
             }
         }
     }
@@ -1703,7 +1709,7 @@ class MapViewModel @Inject constructor(
      *  board (a plain intersection just shows nothing, as before). */
     private fun resolveIntersectionStopBoard(p: Place) {
         val selectedFid = p.featureId
-        _state.update { if (it.selected?.featureId == selectedFid) it.copy(stopDeparturesLoading = true) else it }
+        _state.update { if (it.selected?.featureId == selectedFid) it.copy(stopDeparturesLoading = true, stopDeparturesFor = p.id) else it }
         viewModelScope.launch {
             val stopFid = runCatching {
                 // A junction's own point sits back from the stops on each approach, so use a generous radius
@@ -1725,7 +1731,7 @@ class MapViewModel @Inject constructor(
             android.util.Log.i("VelaDepartures", "intersection stop board lines=${board?.lines?.size ?: -1}")
             _state.update { st ->
                 if (st.selected?.featureId != selectedFid) st
-                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false)
+                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false, stopDeparturesFor = p.id)
             }
         }
     }
@@ -2438,7 +2444,7 @@ class MapViewModel @Inject constructor(
                 // Transitous needs only the coordinate - so fetch the board by proximity regardless
                 // of what Google resolution did. The Google-page fallback is impossible here anyway
                 // (no feature id), so this is Transitous-or-nothing, which is correct.
-                _state.update { if (it.selected == placeholder) it.copy(stopDeparturesLoading = true) else it }
+                _state.update { if (it.selected == placeholder) it.copy(stopDeparturesLoading = true, stopDeparturesFor = placeholder.id) else it }
                 val board = withContext(Dispatchers.IO) {
                     runCatching {
                         app.vela.core.data.transit.Transitous.board(http, location.lat, location.lng)
@@ -2450,6 +2456,7 @@ class MapViewModel @Inject constructor(
                         it.copy(
                             stopDepartures = board?.takeIf { b -> b.lines.isNotEmpty() },
                             stopDeparturesLoading = false,
+                            stopDeparturesFor = placeholder.id,
                         )
                     } else it
                 }
@@ -2820,6 +2827,7 @@ class MapViewModel @Inject constructor(
                 selected = p, results = emptyList(), query = "", directionsOpen = false,
                 placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false,
                 reviewsFound = 0, photosLoading = false, loadingDetails = false,
+                stopDepartures = null, stopDeparturesLoading = false, stopDeparturesFor = null,
                 routes = emptyList(), activeRoute = null, showSteps = false, previewStepIndex = null,
                 transit = emptyList(), transitLoading = false,
                 center = spot, recenterTick = it.recenterTick + 1,
@@ -4717,6 +4725,7 @@ class MapViewModel @Inject constructor(
                 reviews = emptyList(),
                 stopDepartures = null,
                 stopDeparturesLoading = true,
+                stopDeparturesFor = placeholder.id,
                 reviewsLoading = false,
                 reviewsFound = 0,
                 loadingDetails = false,
@@ -4732,7 +4741,7 @@ class MapViewModel @Inject constructor(
             }
             _state.update { st ->
                 if (st.selected?.id != placeholder.id) st
-                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false)
+                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false, stopDeparturesFor = placeholder.id)
             }
             if (board != null && board.lines.isNotEmpty()) startBoardRefresh(placeholder.id, stop.lat, stop.lon)
         }
