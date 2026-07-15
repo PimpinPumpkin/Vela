@@ -1,0 +1,44 @@
+# Quarterly rebake of the hosted open-data assets: routing graphs, building footprints,
+# and address overlays. Roads and addresses drift; a scheduled refresh keeps the downloads
+# current without anyone remembering to dispatch eight groups by hand.
+#
+# Each downstream workflow is race-safe on its own (per-region assets + a serialized manifest
+# merge), so this job just fires the dispatches and exits; the builds run on their own clock.
+# Rebakes OVERWRITE the current assets in place (same names, same manifest), so nothing new
+# accumulates - a graph FORMAT change is a manual cutover, never this cron.
+#
+# poi-packs has its own monthly cron and the flock-camera bake its own weekly one; both are
+# deliberately not here.
+name: Quarterly data refresh
+
+on:
+  schedule:
+    - cron: "0 4 2 1,4,7,10 *" # 04:00 UTC on Jan/Apr/Jul/Oct 2nd
+  workflow_dispatch: {} # manual full refresh whenever needed
+
+permissions:
+  actions: write # gh workflow run
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Routing graphs (all groups)
+        run: |
+          for g in us canada europe oceania asia south-america central-america africa; do
+            gh workflow run routing-graphs.yml --repo "$REPO" -f group="$g"
+            sleep 5 # dispatch-api niceness; the workflow's own concurrency group serializes the runs
+          done
+
+      - name: Building overlays (all catalog groups)
+        run: |
+          for g in us world chunk; do
+            gh workflow run building-overlays.yml --repo "$REPO" -f group="$g"
+            sleep 5
+          done
+
+      - name: Address overlays (whole catalog)
+        run: gh workflow run address-overlays.yml --repo "$REPO" -f all=true

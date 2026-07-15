@@ -1,0 +1,224 @@
+name: CI
+
+# Builds + tests both the debug and release APKs on every push to main and on PRs. Each push to
+# main is published as a normal, versioned GitHub release (v0.0.<run>) so update trackers like
+# Obtainium "just work" - no pre-releases, no "include prereleases" toggle, plain-semver
+# versionName. Both APKs are uploaded as workflow artifacts.
+#
+# paths-ignore: a push/PR that touches ONLY documentation or repo metadata (never the built app)
+# skips the whole workflow, so a README/docs edit does not build APKs or cut a release. A commit
+# that touches ANY other path (app/core code, gradle, calibration, tests, scripts, workflows)
+# still runs it. run_number is not consumed by a skipped run, so release versionCodes stay tidy.
+on:
+  push:
+    branches: [ main ]
+    paths-ignore: &docs-only
+      - '**/*.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.gitattributes'
+  pull_request:
+    branches: [ main ]
+    paths-ignore: *docs-only
+
+# Coalesce back-to-back pushes: when several merges land in a row (a PR batch), each push
+# used to run a full build and cut its own release. The concurrency group cancels the
+# in-flight build for an OLDER commit the moment a newer push arrives on the same ref, so
+# only the newest commit finishes and publishes - one release for the batch, not four.
+# Keyed per ref: main coalesces to its latest push; each PR coalesces to its latest commit.
+# (Note: only overlapping builds coalesce. Merges spaced further apart than a build still
+# release individually - that is the per-push release scheme working as designed.)
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# `contents: write` is needed to publish releases. The publish step is gated to
+# push-to-main, so PRs (and fork PRs, whose token is read-only) never touch them.
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history + tags so the release step can build a changelog from the
+          # commits since the previous release.
+          fetch-depth: 0
+
+      - name: D-pad static audit
+        # Host-side source scan (no device): every clickable has a focus ring, no bare
+        # DropdownMenu/AlertDialog, every gesture has a key path, no isSystemInDarkTheme. Fails the
+        # build on any structural D-pad regression. The on-device suites need a real device and run
+        # locally (adding an emulator here is the flaky download dropped below).
+        run: bash tests/dpad/audit_static.sh
+
+      - name: Dead-code audit (structural)
+        # Host-side, no JDK/device: fails the build on any public/internal top-level declaration
+        # the whole tree never references (entry points excluded). The per-module parser-level half
+        # (unused imports / private members / unreachable code) runs as the detekt step below.
+        run: bash tests/dead_code/audit_deadcode.sh
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          # Default installs the legacy `tools` package, which drags in the
+          # Android Emulator - a large, flaky download that failed CI at the setup
+          # step ("ZipFile unknown archive"). We only build + unit-test, so
+          # platform-tools is enough; the Android Gradle Plugin fetches the
+          # platform + build-tools it needs on its own.
+          packages: platform-tools
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode release keystore (optional)
+        # If the secret isn't set the release APK is debug-signed - still
+        # installable for testing. app/build.gradle.kts handles the fallback.
+        env:
+          KEYSTORE_B64: ${{ secrets.VELA_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/vela-release.jks"
+            echo "Decoded release keystore."
+          else
+            echo "No keystore secret - release APK will be debug-signed."
+          fi
+
+      - name: Unit tests
+        run: ./gradlew :core:test --no-daemon
+
+      - name: Check translations
+        # Android lint's MissingTranslation doesn't run on assemble/test, so a missed locale
+        # backfill ships silently (English shown for that key). Fail fast if any translatable
+        # string is absent from a locale or its placeholders drifted. Intentionally-English-only
+        # strings are marked translatable="false" in res/values/strings.xml and skipped.
+        run: python3 tools/check-translations.py
+
+      - name: Derive build version
+        id: ver
+        # Fresh fork version line, started over at 0.0.x (this repo is independent of upstream's
+        # 0.3.x). versionName is plain semver (0.0.<run>) so Obtainium can compare it; versionCode is
+        # the GitHub run number - monotonic per repo. NOTE: run_number does not reset, so the first
+        # build here is 0.0.<current run>, not literally 0.0.1; and any earlier 0.3.x releases on this
+        # repo must be deleted or their higher versionCode blocks these as a "downgrade".
+        run: |
+          echo "name=0.0.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch TTS runtime AAR
+        # sherpa-onnx neural-TTS runtime (Kokoro voice). It's a 57 MB prebuilt AAR (no Maven
+        # artifact) hosted on the fixed-tag `tts-runtime` release, gitignored out of the repo -
+        # fetch it into app/libs/ so :app can package the arm64 .so. Verify the size so a truncated
+        # download fails loud instead of producing a runtime-crashing APK.
+        run: |
+          mkdir -p app/libs
+          # Hosted on this repo's fixed-tag `tts-runtime` release (a one-time manual upload).
+          curl -fSL -o app/libs/sherpa-onnx-1.13.3.aar \
+            "https://github.com/${{ github.repository }}/releases/download/tts-runtime/sherpa-onnx-1.13.3.aar"
+          test "$(stat -c%s app/libs/sherpa-onnx-1.13.3.aar)" -gt 50000000
+
+      - name: Dead-code analysis (detekt)
+        # Parser-level dead code detekt finds and grep cannot: unused imports (delegate-aware, so
+        # Compose `by remember` getValue/setValue imports are NOT false-flagged), unused private
+        # members, unreachable code. Scoped to dead-code rules only (config/detekt/detekt.yml) on
+        # the two shipped modules. Runs after the AAR fetch so :app configures cleanly.
+        run: ./gradlew :core:detekt :app:detekt --no-daemon
+
+      - name: Dead-resource audit (lint)
+        # The resource half of the dead-code gate: Android Lint UnusedResources (scoped via the
+        # lint{} block in app/build.gradle.kts to run ONLY that detector, promoted to fatal). Fails
+        # the build on a dead drawable/string/layout. Accurate: the app does no getIdentifier lookup.
+        run: ./gradlew :app:lintStandardDebug --no-daemon -PmaptilerKey=${{ secrets.MAPTILER_KEY }}
+
+      - name: Build debug APK (standard flavor only)
+        # The debug variant is R8-minified + debuggable (smooth on-device dev build with Timber
+        # /StrictMode/ANR-watchdog), so it exercises its own proguard rules - build it in CI too so a
+        # debug-only R8/keep regression can't slip through. Only the STANDARD flavor gets a debug
+        # build; the restricted flavor ships as a release APK alongside it (policy flavors, see
+        # app/build.gradle.kts productFlavors). No signing/version props needed.
+        run: >
+          ./gradlew :app:assembleStandardDebug --no-daemon
+          -PmaptilerKey=${{ secrets.MAPTILER_KEY }}
+
+      - name: Build release APKs (standard + restricted)
+        # BOTH policy flavors release: the normal APK and a "restricted" one whose six
+        # self-restriction toggles are hard-locked on (no reviews/photos/external links/adult
+        # categories/mic) and removed from Settings. One gradle invocation builds both.
+        env:
+          VELA_KEYSTORE_PATH: ${{ runner.temp }}/vela-release.jks
+          VELA_KEYSTORE_PASSWORD: ${{ secrets.VELA_KEYSTORE_PASSWORD }}
+          VELA_KEY_ALIAS: ${{ secrets.VELA_KEY_ALIAS }}
+        run: >
+          ./gradlew :app:assembleStandardRelease :app:assembleRestrictedRelease --no-daemon
+          -PappVersionName=${{ steps.ver.outputs.name }}
+          -PappVersionCode=${{ steps.ver.outputs.code }}
+          -PmaptilerKey=${{ secrets.MAPTILER_KEY }}
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vela-maps-apk
+          path: app/build/outputs/apk/standard/release/app-standard-release.apk
+          if-no-files-found: error
+
+      - name: Upload restricted APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vela-maps-restricted-apk
+          path: app/build/outputs/apk/restricted/release/app-restricted-release.apk
+          if-no-files-found: error
+
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vela-maps-debug-apk
+          path: app/build/outputs/apk/standard/debug/app-standard-debug.apk
+          if-no-files-found: error
+
+      - name: Publish release
+        # Every push to main publishes a normal (non-prerelease) v0.0.<run> release. Obtainium and
+        # the in-app updater read releases/latest (= latest non-prerelease), so they just work with
+        # no "include prereleases" toggle and no separate promote-to-stable step.
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VER="${{ steps.ver.outputs.name }}"
+          cp app/build/outputs/apk/standard/release/app-standard-release.apk "vela-maps-v${VER}.apk"
+          # The restricted-flavor APK (own applicationId app.vela.restricted; the in-app updater in
+          # each flavor picks its matching asset by the "restricted" name marker - keep it in the name).
+          cp app/build/outputs/apk/restricted/release/app-restricted-release.apk "vela-maps-v${VER}-restricted.apk"
+          # Also attach the R8-minified DEBUG APK (debuggable + Timber/StrictMode/ANR-watchdog) so
+          # on-device diagnosis doesn't require digging a login-gated workflow artifact out of the run.
+          cp app/build/outputs/apk/standard/debug/app-standard-debug.apk "vela-maps-v${VER}-debug.apk"
+          # Build the changelog from the commit subjects since the previous release. Our commit
+          # subjects are written as plain-language changelog lines, so this reads as real release
+          # notes (what Obtainium shows people), not a raw hash dump.
+          PREV="$(git tag -l 'v0.[0-9]*' --sort=-v:refname | head -n1)"
+          if [ -n "$PREV" ]; then
+            LOG="$(git log --no-merges --pretty=format:'- %s' "${PREV}..HEAD")"
+            COMPARE="**Full changelog:** https://github.com/${{ github.repository }}/compare/${PREV}...v${VER}"
+          else
+            LOG="$(git log --no-merges --pretty=format:'- %s' -n 20 HEAD)"
+            COMPARE=""
+          fi
+          [ -z "$LOG" ] && LOG="- Maintenance and internal changes"
+          NOTES="$(printf 'What'\''s changed in %s\n\n%s\n\n%s\n' "$VER" "$LOG" "$COMPARE")"
+          gh release create "v${VER}" \
+            --title "Vela $VER" \
+            --target "$GITHUB_SHA" \
+            --latest \
+            --notes "$NOTES" \
+            "vela-maps-v${VER}.apk" \
+            "vela-maps-v${VER}-restricted.apk" \
+            "vela-maps-v${VER}-debug.apk"

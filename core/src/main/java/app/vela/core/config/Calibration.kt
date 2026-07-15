@@ -1,0 +1,174 @@
+package app.vela.core.config
+
+import app.vela.core.data.google.DirectionsPb
+import app.vela.core.data.google.SearchPb
+
+/**
+ * Remotely-updatable scraper calibration - the brittle bits that drift when
+ * Google reshapes things: the `pb` templates and the endpoint URLs. Ships as
+ * [DEFAULT]; [CalibrationStore] fetches a newer version from the public repo at
+ * runtime so a fix lands without an app update ("push out the scraping").
+ *
+ * Phase 1 covers pb templates + endpoints; Phase 2 externalised the positional field-index paths
+ * the parsers read (the `paths` object - `[1][39]`, `[1][10]`, …), so a moved field is also just an
+ * edit + version bump. Genuinely new parsing *logic* still needs an app release (or a signed
+ * transforms.js, phase 3); this fixes path/pb/endpoint drift.
+ */
+data class Calibration(
+    val version: Int,
+    val searchEndpoint: String,
+    val searchPb: String,
+    val directionsEndpoint: String,
+    val directionsPb: String,
+    val reviewsEndpoint: String,
+    val reviewsPb: String,
+    val sessionWarmUrl: String,
+    // Full place gallery: the batchexecute `hspqX` (/MapsPhotoService.ListEntityPhotos)
+    // POST - keyless (no `at` token, just the warmed session cookies). `{FID}` is the
+    // place feature id, `{COUNT}` the page size. Returns ~40+ photos vs the search
+    // preview's ~10. (Calibrated live 2026-06-17.)
+    val photosEndpoint: String = DEFAULT_PHOTOS_ENDPOINT,
+    val photosProto: String = DEFAULT_PHOTOS_PROTO,
+    // Phase 2: the positional field-index paths the search parser reads. A missing
+    // key falls back to [DEFAULT_PATHS], so a remote file can override just the one
+    // that drifted. Paths are relative to a result entry (whose place node is [1]),
+    // except `results`/`single` which are relative to the response root.
+    val paths: Map<String, List<Int>> = DEFAULT_PATHS,
+    // Phase 3: user-facing notices pushed through the same signed channel (alerts
+    // like "search is down, fix coming"), and an optional JavaScript bundle of
+    // parse-transform overrides ([transformsJs]) run in a sandbox when a response
+    // reshape needs new *logic*, not just a moved field - compiled Kotlin is the
+    // fallback. Both arrive only on a signature-verified bundle.
+    val notices: List<Notice> = emptyList(),
+    val transformsJs: String? = null,
+    // Default speaker number for the multi-speaker neural voice (libritts_r has 904 voices), used
+    // until the user picks one in Settings → Voice. Remotely pushable via the signed bundle, so a
+    // good-sounding speaker can be set as the default without an app release. A user's explicit pick
+    // (the `voice_speaker` pref) always wins over this.
+    val defaultVoiceSpeaker: Int = DEFAULT_VOICE_SPEAKER,
+    // Default spoken-directions speed multiplier (1.0 = normal, <1 = slower/clearer, >1 = faster),
+    // used until the user adjusts it in Settings → Voice. Also remote-pushable; a user's explicit
+    // `voice_speed` pref wins. 0.8 is the user's preferred nav cadence. Settings slider goes to 0.5.
+    val defaultVoiceSpeed: Float = DEFAULT_VOICE_SPEED,
+    // The fleet default neural voice id (a Piper voice from PiperCatalog) - what onboarding downloads
+    // and a fresh install activates. Remote-pushable via the signed bundle so a favourite voice can be
+    // made everyone's default without an app release; a user's own pick (voice_model) always wins.
+    val defaultVoiceId: String = DEFAULT_VOICE_ID,
+    // Remote overrides for the LANGUAGE-KEYWORD tables - the one part of the localized scrape that
+    // reads localized TEXT to make a decision, so a bad or missing word in some language is exactly
+    // the kind of thing that should be a config edit, not an app release (the transit gate had no
+    // Hebrew at all until issue #71). Null = the compiled tables; a present map/list REPLACES the
+    // compiled one wholesale (per language for the status maps).
+    val statusClosedWords: Map<String, List<String>>? = null,
+    val statusOpenWords: Map<String, List<String>>? = null,
+    // Alternation terms for the transit-category gate (each becomes part of one case-insensitive
+    // regex; plain words or small regex fragments both work).
+    val transitCategoryWords: List<String>? = null,
+    // Positional anchors of the Google-page departure-board parse (the transit fallback where
+    // Transitous has no coverage) - the ONE scrape that had no remote-repair handle. Keys the
+    // parser reads: "node" (the transit node's index in the place array, compiled 62), "groups",
+    // "entries", "name". Null/missing keys = compiled defaults; the parser's shape search still
+    // runs after the anchor, so this only needs pushing when BOTH drift.
+    val stopBoardIndices: Map<String, Int>? = null,
+    // Categories the transit gate must REJECT even when a word above matches - "Gas station"
+    // contains "station", and boards now fetch by proximity, so a fuel stop next to a bus stop
+    // showed that stop's departures (device report 2026-07-13). Multilingual like the gate itself.
+    val transitExcludeWords: List<String>? = null,
+) {
+    companion object {
+        // libritts_r speaker 14 - picked by ear as the clearest default (2026-07-02).
+        const val DEFAULT_VOICE_SPEAKER = 14
+        // 0.8× - the user's preferred nav cadence. (Briefly 0.72 on 2026-07-06 for consonant clarity,
+        // reverted 2026-07-07 - the fragment-punctuation + 5th fixes handle articulation directly.)
+        const val DEFAULT_VOICE_SPEED = 0.8f
+        // HFC Female - the user's pick for the fleet default voice (2026-07-03). Kept in sync with
+        // VelaPiper.DEFAULT_VOICE_ID (the compiled fallback used where calibration isn't handy).
+        const val DEFAULT_VOICE_ID = app.vela.core.voice.VelaPiper.DEFAULT_VOICE_ID
+        const val DEFAULT_PHOTOS_ENDPOINT =
+            "https://www.google.com/maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX&source-path=/maps&hl=en&_reqid=1&rt=c"
+
+        // hspqX request proto: feature id at [2][0], page size at [4][2][1].
+        const val DEFAULT_PHOTOS_PROTO =
+            "[2,null,[\"{FID}\",null,null,null,null,null,null,null,0],null," +
+                "[null,[1200,1000],[null,{COUNT},null,null,1],null,null,null," +
+                "[[[1,0,3],[2,1,2],[2,0,3],[8,0,3],[10,0,3],[10,1,2],[10,0,4],[9,1,2]],1],null,0]," +
+                "null,null,null,null,null,null,null,null,null,null,[null,1,null,1]]"
+
+        val DEFAULT_PATHS: Map<String, List<Int>> = mapOf(
+            "results" to listOf(64),
+            "single" to listOf(0, 1, 0, 14),
+            // "At this place": the business(es) Google lists at a searched ADDRESS
+            // (a sub-field of the single geocoded node). Lets an address snap to the
+            // business there. Each entry's place node is at [i][0].
+            "atThisPlace" to listOf(0, 1, 0, 14, 68),
+            // "People also search for": a root-level list of similar places shown when a
+            // search focuses on one result. Each entry is [featureId, name, [[_,_,lat,lng],
+            // …, rating@6]] - see SearchParser.parseSimilarPlaces.
+            "similar" to listOf(2, 11, 0),
+            "name" to listOf(1, 11),
+            "lat" to listOf(1, 9, 2),
+            "lng" to listOf(1, 9, 3),
+            "address" to listOf(1, 39),
+            "addressComponents" to listOf(1, 2),
+            "category" to listOf(1, 13, 0),
+            "rating" to listOf(1, 4, 7),
+            "reviewCount" to listOf(1, 4, 8),
+            "priceText" to listOf(1, 4, 2),
+            "website" to listOf(1, 7, 0),
+            // Action link (Google's "Book online" / "Reserve a table" / "Order online"
+            // button): the primary action node at [1][75][0][0][5] - label [0], URL [1][2][0].
+            // The label adapts per business type (booking salon, reservations restaurant, …).
+            "actionLabel" to listOf(1, 75, 0, 0, 5, 0),
+            "actionUrl" to listOf(1, 75, 0, 0, 5, 1, 2, 0),
+            "phone" to listOf(1, 178, 0, 0),
+            "featureId" to listOf(1, 10),
+            "placeId" to listOf(1, 78),
+            // Preview photos. Google MOVED this block [105]→[72] (drift caught 2026-06-27:
+            // every place lost its hero strip); the photo array is now [1][72][0], each
+            // photo's FIFE URL still at [6][0]. Verified live (Taco Bell / Starbucks / Bellagio).
+            "photos" to listOf(1, 72, 0),
+            "featuredReview" to listOf(1, 142, 1, 0, 1, 0, 0),
+            "about" to listOf(1, 100, 1),
+            // Editorial one-liner ([32][1][1] = the fuller "Classic burger chain
+            // serving…"; [32][0][1] is the shorter category subtitle) and the
+            // owner-written "From the owner" blurb ([154][0][0]).
+            "editorialSummary" to listOf(1, 32, 1, 1),
+            "ownerDescription" to listOf(1, 154, 0, 0),
+            "openStatus" to listOf(1, 203, 1, 8, 0),
+            "statusRich" to listOf(1, 203, 1, 4, 0),
+            // RETIRED (2026-07-04) - kept only so an older installed app reading a NEWER remote
+            // bundle still finds the keys it expects. These ints were pinned from an hl=fr capture
+            // as an open/closed code (6=open/5=closed/13=soon), but a live EN capture DISPROVED
+            // that: closed pharmacies carried 6 and an Open-24-hours business carried 13/4 -
+            // they're span/style markers, and the fr agreement was a coincidence. The parser no
+            // longer reads them; open/closed is parsed from the localized status TEXT
+            // (SearchParser.parseOpenNow's per-language keyword table). Do not resurrect.
+            "statusCodeRich" to listOf(1, 203, 1, 4, 1, 0, 1),
+            "statusCodeSimple" to listOf(1, 203, 1, 8, 1, 0, 1),
+            "status118" to listOf(1, 118, 0, 3, 1, 4, 0),
+            "hours203" to listOf(1, 203, 0),
+            "hours118" to listOf(1, 118, 0, 3, 0),
+            // Permanently-closed flag: place node `[23]` == 1 (null on an open place).
+            // It's how Google marks dead POIs that carry no open/closed status text,
+            // and - unlike popular times - it survives the keyless degraded response.
+            "closedFlag" to listOf(1, 23),
+            // Popular-times histogram: [84][0] = 7 days, each [d][0]=day-of-week,
+            // [d][1]=hourly [hour, occupancy%, …]. Relative to the place node [1].
+            "popularTimes" to listOf(1, 84),
+        )
+
+        val DEFAULT = Calibration(
+            version = 1,
+            searchEndpoint = "https://www.google.com/search?tbm=map&authuser=0&hl=en&gl=us",
+            searchPb = SearchPb.DEFAULT_TEMPLATE,
+            directionsEndpoint = "https://www.google.com/maps/preview/directions?authuser=0&hl=en&gl=us",
+            directionsPb = DirectionsPb.DEFAULT_TEMPLATE,
+            reviewsEndpoint = "https://www.google.com/maps/preview/review/listentitiesreviews?authuser=0&hl=en&gl=us",
+            reviewsPb = "!1m2!1y{HIGH}!2y{LOW}!2m2!2i0!3i20!3e1!5m2!1svela!7e81",
+            sessionWarmUrl = "https://www.google.com/maps?hl=en&gl=us",
+            photosEndpoint = DEFAULT_PHOTOS_ENDPOINT,
+            photosProto = DEFAULT_PHOTOS_PROTO,
+            paths = DEFAULT_PATHS,
+        )
+    }
+}

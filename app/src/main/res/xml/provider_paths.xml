@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- The downloaded voice-engine APK lives in filesDir/engines/. -->
+    <files-path name="engines" path="engines/" />
+    <!-- The self-updater's downloaded Vela APK lives in filesDir/updates/. -->
+    <files-path name="updates" path="updates/" />
+    <!-- Exported diagnostics bundle (cacheDir/diag/) shared via the system sheet. -->
+    <cache-path name="diag" path="diag/" />
+    <!-- Exported saved-places JSON (cacheDir/export/) shared via the system sheet. -->
+    <cache-path name="export" path="export/" />
+    <!-- Persisted crash reports (filesDir/diag/crash/) shared via the system sheet. -->
+    <files-path name="crash" path="diag/crash/" />
+</paths>
