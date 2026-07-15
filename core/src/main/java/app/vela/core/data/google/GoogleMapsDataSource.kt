@@ -294,7 +294,7 @@ class GoogleMapsDataSource @Inject constructor(
         runCatching { PhotosParser.parse(post(cal.photosEndpoint, "f.req=${freq.enc()}")) }.getOrDefault(emptyList())
     }
 
-    override suspend fun streetView(location: LatLng): app.vela.core.model.StreetViewPano? = io {
+    override suspend fun streetView(location: LatLng, preferStreet: String?): app.vela.core.model.StreetViewPano? = io {
         // Keyless nearest-pano lookup - the JS Maps API's own GeoPhotoService.SingleImageSearch,
         // authorised by referer (the get() helper already sends it). `{LAT}`/`{LNG}` in the pb are
         // the query point; the parser returns null when there's no imagery near the point.
@@ -302,7 +302,24 @@ class GoogleMapsDataSource @Inject constructor(
         val url = cal.streetViewMetaUrl
             .replace("{LAT}", "%.7f".format(java.util.Locale.US, location.lat))
             .replace("{LNG}", "%.7f".format(java.util.Locale.US, location.lng))
-        runCatching { StreetViewParser.parse(get(url), location.lat, location.lng) }.getOrNull()
+        val nearest = runCatching { StreetViewParser.parse(get(url), location.lat, location.lng) }.getOrNull()
+            ?: return@io null
+
+        // Address-street preference (Google-like): the geocode for a mid-block address can sit between
+        // the avenue and a parallel alley, so the geometrically nearest pano snaps to the alley. When
+        // the nearest pano is NOT on the address's own street, hop to the nearest neighbour that IS.
+        // No-regression: any miss (no street given, already matches, no labelled match found) keeps
+        // the nearest pano, and the extra by-id lookups only run in the mismatch case.
+        if (preferStreet.isNullOrBlank() || StreetViewParser.streetMatches(nearest.addressLabel, preferStreet)) {
+            return@io nearest
+        }
+        for (link in nearest.neighbors.sortedBy { it.distanceM }.take(MAX_STREET_HOPS)) {
+            val candUrl = cal.streetViewPanoUrl.replace("{PANOID}", link.panoId)
+            val cand = runCatching { StreetViewParser.parse(get(candUrl), 0.0, 0.0) }
+                .getOrNull()?.takeIf { it.lat != 0.0 || it.lng != 0.0 } ?: continue
+            if (StreetViewParser.streetMatches(cand.addressLabel, preferStreet)) return@io cand
+        }
+        nearest
     }
 
     override suspend fun streetViewByPano(panoId: String): app.vela.core.model.StreetViewPano? = io {
@@ -734,5 +751,6 @@ class GoogleMapsDataSource @Inject constructor(
         const val SNAP_ETA_MARGIN = 1.2
         const val SNAP_REACH_M = 500.0 // the snapped route's last point must be within this of the destination
         const val MAX_ROUTES = 4       // primary + up to 3 alternates in the picker
+        const val MAX_STREET_HOPS = 5  // by-id lookups tried to land Street View on the address's own street
     }
 }
