@@ -1015,6 +1015,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Self-hosted routing backend (replace the FOSSGIS community server)
 
 ## Navigation
+- ✅ **Compact turn banner on short screens (2026-07-15, ported from the vela-dpad fork, credit
+  ars18).** Below 500dp of screen height (landscape phones, car head units in landscape) the
+  maneuver banner shrinks its paddings, glyph and distance type so it stops eating the map;
+  ordinary portrait phones are byte-identical.
 - ✅ **"Take the ramp" pronounced right (2026-07-11, ear-verified).** espeak's phonemizer
   mis-voweled "take" ("tyke") when the whole ramp sentence was phonemized in one breath; the
   spoken text now inserts a comma before "toward", so the maneuver clause and the sign
