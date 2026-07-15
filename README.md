@@ -86,6 +86,7 @@ There's also a one-page tour at
   for traffic-aware transit directions. Tap a stop for live times, tap a route
   for every stop it makes.
 - **Satellite imagery map**: See the world from a birds-eye view, powered by Esri.
+- **Street view**: Scraped from Google, available in Vela.
 - **Lists**: the bookmark button next to the category chips opens **Your lists**.
   Create one there, or add any place from its page (⋮ → Save to list), with a note
   per place. Lists back up to a file from Settings.
@@ -181,7 +182,6 @@ Deeper still is [`SPEC.md`](SPEC.md).
 Everything shipped so far is in [FEATURES.md](FEATURES.md) (the complete list) and the
 release notes of each build. Still open (details in [ROADMAP.md](ROADMAP.md)):
 
-- [ ] Embedded Mapillary/KartaView street imagery (needs a token; Street View currently opens Google's keyless pano in the browser)
 - [ ] Move to Weblate translations (project needs to exist for at least three months)
 - [ ] F-Droid submission + reproducible build
 
