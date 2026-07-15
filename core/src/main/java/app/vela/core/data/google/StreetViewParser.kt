@@ -50,6 +50,13 @@ object StreetViewParser {
 
         val tileSize = panoNode.at(2, 3, 1, 0).int() ?: panoNode.at(2, 3, 1, 1).int() ?: 512
         val levels = (panoNode.at(2, 3, 0) as? JsonArray)?.size ?: 6
+        // Per-level [h, w] (nested one deeper: [[h,w]]) → (w, h) per zoom. Old captures' pyramids
+        // are 416·2^z, not the modern 512·2^z - the tile loader must size its grid from THESE.
+        val levelDims = (panoNode.at(2, 3, 0) as? JsonArray)?.mapNotNull { lvl ->
+            val h = lvl.at(0, 0).int()
+            val w = lvl.at(0, 1).int()
+            if (w != null && h != null && w > 0 && h > 0) w to h else null
+        }.orEmpty()
 
         val posNode = panoNode.at(5, 0, 1)
         val pLat = posNode.at(0, 2).dbl() ?: lat
@@ -104,7 +111,8 @@ object StreetViewParser {
 
         return StreetViewPano(
             panoId = panoId, lat = pLat, lng = pLng, headingDeg = heading,
-            tileSize = tileSize, maxZoom = levels, addressLabel = address, copyright = copyright,
+            tileSize = tileSize, maxZoom = levels, levelDims = levelDims,
+            addressLabel = address, copyright = copyright,
             captureYear = year, captureMonth = month, neighbors = walk, history = history,
         )
     }

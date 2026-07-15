@@ -27,6 +27,12 @@ data class StreetViewPano(
     // Number of pyramid levels; the max usable zoom is [maxZoom] - 1. The viewer picks a level
     // well below this (a full-res 16384×8192 equirect is ~400 MB decoded).
     val maxZoom: Int = 5,
+    // Per-level equirect dimensions (width, height), zoom 0 upward, straight from the metadata.
+    // The pyramid is NOT one fixed shape: modern car panos are 512·2^z wide, but pre-2016
+    // captures are 416·2^z (13312×6656 max, sometimes only 4 levels) - assuming the modern shape
+    // requested tiles past the old grid's edge, which failed and stitched as BLACK BANDS over
+    // part of the sphere in time travel (live-verified 2026-07-16: a 2012 capture's level list).
+    val levelDims: List<Pair<Int, Int>> = emptyList(),
     // Attribution: the place name Google labels the pano with, and the copyright line.
     val addressLabel: String? = null,
     val copyright: String? = null,
