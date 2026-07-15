@@ -1829,7 +1829,16 @@ class MapViewModel @Inject constructor(
     /** Open the in-app Street View for a place: resolve the nearest pano (keyless metadata), then
      *  stitch its tiles into the equirect the GL viewer textures. No coverage → a brief toast, no
      *  viewer. Two-stage state so the viewer can show a spinner while tiles load. */
-    fun openStreetView(place: Place) =
+    fun openStreetView(place: Place) {
+        // COPY GOOGLE when we can: the search response's own SV thumbnail carries the exact pano id
+        // + camera yaw the Google app opens (svPanoId/svYawDeg). Using them verbatim lands on the
+        // same imagery, facing the same way - no picking, no aiming. The heuristics below are only
+        // the fallback for places whose response ships no thumbnail.
+        val pid = place.svPanoId
+        if (pid != null) {
+            loadStreetView(faceHeading = place.svYawDeg) { dataSource.streetViewByPano(pid) }
+            return
+        }
         loadStreetView(faceToward = place.location) {
             // Prefer a pano on the place's OWN street (a mid-block geocode can otherwise snap to the
             // alley pano behind the building). For a business the street is in `address`; for a plain
@@ -1839,6 +1848,7 @@ class MapViewModel @Inject constructor(
                 .firstOrNull { app.vela.core.data.google.StreetViewParser.streetOf(it) != null }
             dataSource.streetView(place.location, preferStreet = street)
         }
+    }
 
     /** Walk to a neighbouring pano (arrow tap): fetch it BY ID so it's epoch-exact - a
      *  nearest-location lookup snapped to a different-year capture (green May imagery under a
