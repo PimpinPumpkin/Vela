@@ -269,7 +269,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   (which points down the road whenever Google's geocode sits on the road centreline), the camera snaps to
   the road-perpendicular on the building's side - the metadata heading gives the street's direction - and
   the real bearing nudges it up to 60 deg toward the facade, clamped so it can never swing down the road.
-  Walking aims along the direction you moved. Best of all, it usually **opens on Google's own pick**: the
+  Walking aims along the direction you moved. It's **half-screen over the live map** like Google: the pano
+  takes the top of the screen and the map below shows a **rotating view cone** at the pano's position -
+  turn in the pano and the cone turns with you, walk and it hops (the map eases along) - with a corner
+  button to go full screen and back (Back backs out of full screen first). Best of all, it usually
+  **opens on Google's own pick**: the
   search response's Street View thumbnail URL carries the exact pano id and camera yaw the Google app
   itself opens, so Vela uses them verbatim - same imagery, facing the same way, zero extra requests. Only
   when a response ships no thumbnail does it fall back to heuristics: nearest pano, then (if that pano
