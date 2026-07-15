@@ -252,6 +252,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Map rotation/tilt + heading-up mode during nav (tilted follow-camera, speed-adaptive zoom)
 
 ## Search & POIs (live Google data)
+- ✅ **In-app Street View (2026-07-15, keyless, device-verified).** The Street View pill on a place
+  now opens a real panorama INSIDE Vela - drag to look around, pinch to zoom - instead of handing off
+  to Google's app. It works keyless the way open Street View viewers do: resolve the nearest pano's
+  metadata (the JS Maps API's `GeoPhotoService.SingleImageSearch`), fetch the equirectangular tiles
+  (`streetviewpixels-pa.googleapis.com`), and texture them onto a GL sphere we render ourselves. No
+  API key, no login; the pano `pb` rides the signed calibration channel so a drift is a config fix,
+  not an app release. Attribution (place name + © Google) shows as Google requires. A place with no
+  imagery gives a brief "no Street View here" toast. (The old approach - embedding Google's own WebGL
+  page in a WebView - rendered black on many devices and was reverted; rendering the tiles ourselves
+  is what makes it work.) Follow-ups: walking between panos, higher-res on zoom-in.
 - ✅ **Toggles to hide reviews and skip photo loading (2026-07-08, user request).** Settings → Map gains two
   switches, both on by default. **Show reviews** off = the place sheet renders no review section at all (no
   tab, no featured quote, no "Read all reviews") and Vela never runs the review scrape for a selected place.

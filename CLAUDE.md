@@ -1715,6 +1715,28 @@ architecture note.
   for richer photos (lazy, best-effort, OkHttp fallback). Gotchas: **desktop UA**
   (mobile UA → Google deep-links to `intent://`), block non-http(s) redirects, and
   use a `Handler` not `View.postDelayed` (a headless WebView never attaches).
+- **Street View is IN-APP + keyless (2026-07-15, `streetview-inapp`).** We render the panorama
+  OURSELVES rather than embed Google's WebGL page (which serves a stripped shell → black on ANGLE,
+  the reason the old attempt was reverted - do NOT retry the WebView-embed path). Pipeline: (1)
+  metadata via `MapDataSource.streetView` → `GoogleMapsDataSource` hits the keyless JS-API
+  `GeoPhotoService.SingleImageSearch` (pb in `calibration.streetViewMetaUrl`, `{LAT}`/`{LNG}`;
+  the `get()` helper's `Referer: https://www.google.com/maps/` is what authorises it), parsed by
+  `:core` `StreetViewParser` (address/copyright/position live INSIDE the pano node `root[1]`, not
+  root - the off-by-one trap the unit test locks; copyright is `[1][4][0][0][0]`, one deeper than
+  it looks). Returns null = no coverage. (2) tiles via `MapDataSource.streetViewTile` (fixed
+  template `streetviewpixels-pa.googleapis.com/v1/tile`, keyless, JPEG bytes, same Google referer;
+  NB `/v1/thumbnail` 403s but `/v1/tile` works - the old note tested the wrong endpoint). (3) `:app`
+  `StreetViewTiles.load` stitches a zoom level's grid (v1 = zoom 2 = 2048×1024, 8 tiles, ~8 MB POT
+  texture; NEVER the full 16384×8192 ≈ 400 MB), and `PanoramaView` (GLES2, `app/streetview`) textures
+  it onto a sphere - drag = yaw/pitch, pinch = FOV. GL gotchas, device-proven: view from INSIDE (cull
+  off), and flip the U coord (`1 - u`) to un-mirror - negating the sphere's X instead left the imagery
+  mirrored (store signs + the © Google watermark backwards). The VM owns the bitmap lifecycle (the
+  renderer does NOT recycle after `texImage2D` - texImage2D copies, so recycling there would double-free
+  the state's reference); the screen feeds it once via LaunchedEffect, not the AndroidView update lambda.
+  Pill is in `PlaceSheet` (no longer gated by HideExternalLinks - it's a first-class in-app surface now),
+  overlay in MapScreen keyed on `state.streetView != null || streetViewLoading`. v2: neighbour-link
+  pano nav (metadata already carries links), exact heading alignment, higher-zoom on pinch, coverage-gate
+  the pill.
 - **Routing is OPEN, not Google (2026-06-28).** Turn-by-turn comes from **FOSSGIS OSRM**
   (`RouteGeometry.route`, `steps=true`, per-mode `routed-car`/`-bike`/`-foot`) - complete,
   street-named maneuvers + real geometry. **Highways identify by `ref` not `name`** - `parseOsrmRoute`

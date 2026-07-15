@@ -170,6 +170,12 @@ data class MapUiState(
     val routeDetail: TransitStep? = null,
     val routeDetailTitle: String? = null,
     val routeDetailLoading: Boolean = false,
+    // In-app Street View: the resolved pano (null until metadata lands), the stitched equirect
+    // bitmap (null while tiles load), and a loading flag covering both fetches. The full-screen
+    // sphere viewer shows while streetView != null || streetViewLoading.
+    val streetView: app.vela.core.model.StreetViewPano? = null,
+    val streetViewBitmap: android.graphics.Bitmap? = null,
+    val streetViewLoading: Boolean = false,
     val navigating: Boolean = false,
     val resumeNavLabel: String? = null, // a nav session was interrupted (process killed mid-drive) and can
                                         // be resumed — drives the "Resume navigation to <label>?" prompt
@@ -1810,6 +1816,41 @@ class MapViewModel @Inject constructor(
     }
 
     private var routeDetailJob: kotlinx.coroutines.Job? = null
+
+    private var streetViewJob: kotlinx.coroutines.Job? = null
+
+    /** Open the in-app Street View for a place: resolve the nearest pano (keyless metadata), then
+     *  stitch its tiles into the equirect the GL viewer textures. No coverage → a brief toast, no
+     *  viewer. Two-stage state so the viewer can show a spinner while tiles load. */
+    fun openStreetView(place: Place) {
+        streetViewJob?.cancel()
+        _state.value.streetViewBitmap?.recycle()
+        _state.update { it.copy(streetViewLoading = true, streetView = null, streetViewBitmap = null) }
+        streetViewJob = viewModelScope.launch {
+            val pano = runCatching { dataSource.streetView(place.location) }.getOrNull()
+            if (pano == null) {
+                _state.update { it.copy(streetViewLoading = false) }
+                flashStatus(appContext.getString(R.string.street_view_none))
+                return@launch
+            }
+            _state.update { it.copy(streetView = pano) } // viewer shows, spinner until the bitmap lands
+            val bmp = runCatching {
+                app.vela.streetview.StreetViewTiles.load(dataSource, pano)
+            }.getOrNull()
+            if (bmp == null) {
+                _state.update { it.copy(streetViewLoading = false, streetView = null) }
+                flashStatus(appContext.getString(R.string.street_view_none))
+                return@launch
+            }
+            _state.update { it.copy(streetViewBitmap = bmp, streetViewLoading = false) }
+        }
+    }
+
+    fun closeStreetView() {
+        streetViewJob?.cancel()
+        _state.value.streetViewBitmap?.recycle()
+        _state.update { it.copy(streetView = null, streetViewBitmap = null, streetViewLoading = false) }
+    }
 
     /** Offline, a POI that OSM never tagged with an address (most US chains) shows a bare place sheet —
      *  no online detail fetch can fill it. Reverse-geocode its location against the on-device address
