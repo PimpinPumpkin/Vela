@@ -1768,10 +1768,15 @@ architecture note.
   **Half-screen (2026-07-16):** StreetViewScreen is a top-aligned PANE (55% height, fullscreen toggle,
   Back exits fullscreen first), not a Dialog - the map stays live underneath. The viewer reports
   `onPose(lat,lng,compassYaw)` (throttled to ~per-degree) → MapScreen's `svPose: DoubleArray?` →
-  VelaMapView draws a rotating view cone (SV_SRC/SV_LAYER, data-driven `iconRotate` off the feature's
-  "yaw" so a drag is one setGeoJson, identity-gated like the parking pin) and eases the camera to the
-  pano on each HOP only (never per yaw frame). PlaceSheet yields while SV is up (the bottom half must
-  stay pure map). Remaining:
+  VelaMapView draws the NAV PUCK + view cone (SV_SRC/SV_LAYER, data-driven `iconRotate` off the
+  feature's "yaw" so a drag is one setGeoJson, identity-gated like the parking pin) and eases the
+  camera to the pano on each HOP only (never per yaw frame), with `svTopInsetPx` (pane height) as
+  camera TOP padding so the puck centres in the VISIBLE strip - the sheet-inset block must not
+  clobber that padding while SV is open (it's gated on svPose==null; the SV close path restores it).
+  PlaceSheet yields while SV is up (the bottom half must stay pure map). The renderer's zoom is
+  canonically the HORIZONTAL fov (fovX) - a fixed vertical fov made fullscreen NARROW the view
+  ("it just zoomed"); holding fovX keeps framing and reveals more sky/ground, and fovX is also what
+  the arrow overlay projects across the screen width. Remaining:
   walking can cross capture epochs (Google stays in-epoch; the neighbour entries carry no date to filter
   on), higher-zoom on pinch.
 - **Routing is OPEN, not Google (2026-06-28).** Turn-by-turn comes from **FOSSGIS OSRM**

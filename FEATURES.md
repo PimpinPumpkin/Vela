@@ -270,9 +270,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   the road-perpendicular on the building's side - the metadata heading gives the street's direction - and
   the real bearing nudges it up to 60 deg toward the facade, clamped so it can never swing down the road.
   Walking aims along the direction you moved. It's **half-screen over the live map** like Google: the pano
-  takes the top of the screen and the map below shows a **rotating view cone** at the pano's position -
-  turn in the pano and the cone turns with you, walk and it hops (the map eases along) - with a corner
-  button to go full screen and back (Back backs out of full screen first). Best of all, it usually
+  takes the top of the screen and the map below shows the **nav puck with a view cone** at the pano's
+  position, centred in the visible strip (the camera pads for the pane) - turn in the pano and the
+  puck+cone turn with you, walk and it hops (the map eases along) - with a corner button to go full screen
+  and back (Back backs out of full screen first; full screen keeps the same horizontal framing and reveals
+  more sky/ground rather than zooming). Best of all, it usually
   **opens on Google's own pick**: the
   search response's Street View thumbnail URL carries the exact pano id and camera yaw the Google app
   itself opens, so Vela uses them verbatim - same imagery, facing the same way, zero extra requests. Only
