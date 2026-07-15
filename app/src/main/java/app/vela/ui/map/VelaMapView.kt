@@ -2350,10 +2350,15 @@ private fun ensureLayers(style: Style) {
             Expression.stop(17f, 1.05f),
             Expression.stop(19f, 1.5f),
         )
-        // The VISIBLE controls draw at the very BOTTOM of the symbol stack — beneath every
-        // basemap label (street names, cities) and all Vela layers — so a stop sign can never
-        // cover text or a POI icon (user 2026-07-09: signs were stomping street names). They
-        // still always draw (allowOverlap + ignorePlacement): sparse, one per junction.
+        // The VISIBLE controls draw ABOVE the route lines and the bridge geometry but BELOW the
+        // basemap text and every Vela POI layer. They used to sit at the very BOTTOM of the
+        // symbol stack (under the bridges and both blue lines), so the route stripe painted
+        // straight over the lights and stop signs along the drive - the icons that matter most
+        // in nav were the most covered (user 2026-07-15; Google draws its signals ON the route
+        // line). Street names can't be stomped by the move: the CLAIM twin below already places
+        // an always-on collision box at every sign, so labels dodge sign positions no matter
+        // where the visible icons paint. They still always draw (allowOverlap + ignorePlacement):
+        // sparse, one per junction.
         val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
         val visible = SymbolLayer(CONTROLS_LAYER, CONTROLS_SRC).apply {
             setMinZoom(16f)
@@ -2367,7 +2372,11 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.iconPadding(2f),
             )
         }
-        if (firstSymbol != null) style.addLayerBelow(visible, firstSymbol) else style.addLayerBelow(visible, AMBIENT_LAYER)
+        when {
+            style.getLayer(ROUTE_AHEAD_LAYER) != null -> style.addLayerAbove(visible, ROUTE_AHEAD_LAYER)
+            firstSymbol != null -> style.addLayerBelow(visible, firstSymbol)
+            else -> style.addLayerBelow(visible, AMBIENT_LAYER)
+        }
         // An INVISIBLE claim twin sits where the visible layer used to (above the basemap
         // labels, below Vela's own pins/POIs): it places first with a real collision box, so
         // street names shift away from sign positions instead of printing right next to or on
