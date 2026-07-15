@@ -267,7 +267,21 @@ class NavSession @Inject constructor(
             TravelMode.BICYCLE -> 1.0
             else -> 2.0
         }
-        val (next, events) = NavEngine.update(route, nav, loc, imperial, speedMps, movingFloor)
+        // Off-route corridor is mode-relative too: driving keeps the wide 40 m (lane offset + shallow
+        // divergence lag), but a walker/cyclist is on a known path a few metres wide and sits within
+        // ~5-15 m of it, so a much tighter corridor catches a wrong turn quickly without false-firing.
+        // Far distance (the "no jitter reaches this at speed" escalation) scales down to match.
+        val offRoute = when (mode) {
+            TravelMode.WALK -> 22.0
+            TravelMode.BICYCLE -> 28.0
+            else -> 40.0
+        }
+        val farOff = when (mode) {
+            TravelMode.WALK -> 45.0
+            TravelMode.BICYCLE -> 55.0
+            else -> 90.0
+        }
+        val (next, events) = NavEngine.update(route, nav, loc, imperial, speedMps, movingFloor, offRoute, farOff)
         val maneuver = route.maneuvers.getOrNull(next.stepIndex)
         // Guard the write on route IDENTITY: a reroute/faster-route can swap route+NavState while
         // this update was computing on the OLD route — writing `next` (old-route traveledM /
