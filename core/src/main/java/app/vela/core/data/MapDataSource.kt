@@ -40,6 +40,10 @@ interface MapDataSource {
      *  imagery there. Keyless via the JS-API `GeoPhotoService.SingleImageSearch`. Best-effort. */
     suspend fun streetView(location: LatLng): app.vela.core.model.StreetViewPano? = null
 
+    /** A specific panorama BY ID (walking to a neighbour, so it's epoch-exact - a nearest-location
+     *  lookup can snap to a different-year capture). Keyless via photometa/v1. Best-effort. */
+    suspend fun streetViewByPano(panoId: String): app.vela.core.model.StreetViewPano? = null
+
     /** One equirectangular tile of a panorama, as raw JPEG bytes, or null on failure. The
      *  in-app sphere viewer stitches a zoom level's grid of these. Keyless
      *  (`streetviewpixels-pa.googleapis.com/v1/tile`, referer-gated). */

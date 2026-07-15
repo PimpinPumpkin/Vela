@@ -1661,7 +1661,12 @@ fun MapScreen(
                 pano = state.streetView,
                 bitmap = state.streetViewBitmap,
                 loading = state.streetViewLoading,
+                shownYear = state.streetViewShownYear,
+                shownMonth = state.streetViewShownMonth,
+                historical = state.streetViewHistorical,
                 onClose = vm::closeStreetView,
+                onMove = vm::moveStreetView,
+                onTimeTravel = vm::timeTravelStreetView,
             )
         }
 

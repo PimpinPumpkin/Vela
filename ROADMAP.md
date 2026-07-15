@@ -576,10 +576,13 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   which 403s; `/v1/tile` is what the consumer viewer uses and it works), stitch a zoom level, and
   texture it onto a GL sphere (`PanoramaView`, GLES2, drag-to-look + pinch-zoom). The place sheet's
   Street View pill now opens this in-app viewer (no more external hand-off). Device-verified on the
-  4a: real imagery, correct orientation, drag + close all work. **Follow-ups (v2):** neighbour-arrow
-  pano-to-pano navigation (the metadata already carries the links, just not wired), align the
-  initial camera to the pano heading exactly, higher-zoom tiles on pinch-in, coverage-gate the pill
-  (probe on place open) so there's no dead tap where there's no imagery.
+  4a: real imagery, correct orientation, drag + close all work. **v2 SHIPPED 2026-07-15:** sharper
+  tiles (zoom 3), faster panning, the capture date in the attribution, on-screen **walk arrows**
+  (fetch the neighbour by pano id via `photometa/v1` so the year matches the picture), and **time
+  travel** through a spot's older captures (a clock chip lists the dates, all keyless from the same
+  response). **Remaining polish:** walking can step to a different-year neighbour (Google keeps you
+  in-epoch - the neighbour graph carries no per-pano date to filter on, so it's a known quirk),
+  exact initial-heading alignment, higher-zoom tiles on pinch-in, coverage-gate the pill.
 - **Gallery videos** - parked, low value (re-checked 2026-06-19). The full `hspqX`
   gallery for a busy place (In-N-Out, 50 photos) carried **zero video entries** (no
   `googlevideo.com`/`.mp4`/`m3u8`), so videos are rare in the first place; supporting

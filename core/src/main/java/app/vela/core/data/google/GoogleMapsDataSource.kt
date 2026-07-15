@@ -305,6 +305,14 @@ class GoogleMapsDataSource @Inject constructor(
         runCatching { StreetViewParser.parse(get(url), location.lat, location.lng) }.getOrNull()
     }
 
+    override suspend fun streetViewByPano(panoId: String): app.vela.core.model.StreetViewPano? = io {
+        // Epoch-exact pano fetch (walking): photometa/v1 by id, keyless. Same parser - it handles
+        // the )]}' guard and the extra nesting. Lat/lng fall back to the response's own position.
+        val cal = calibration.current()
+        val url = cal.streetViewPanoUrl.replace("{PANOID}", panoId)
+        runCatching { StreetViewParser.parse(get(url), 0.0, 0.0) }.getOrNull()?.takeIf { it.lat != 0.0 || it.lng != 0.0 }
+    }
+
     override suspend fun streetViewTile(panoId: String, x: Int, y: Int, zoom: Int): ByteArray? = io {
         // The consumer equirect tile endpoint (what maps.google.com renders) - keyless, JPEG,
         // needs only the Google referer. Fixed template, no calibration: the panoid + x/y/zoom

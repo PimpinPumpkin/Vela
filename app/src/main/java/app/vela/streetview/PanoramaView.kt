@@ -53,6 +53,11 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
     /** Initial camera yaw in degrees (the pano's own heading), so it faces down the street. */
     fun setInitialYaw(deg: Float) { renderer.setYaw(Math.toRadians(deg.toDouble()).toFloat()) }
 
+    /** Live camera yaw / vertical field-of-view in DEGREES - the arrow overlay reads these each
+     *  frame to place the "walk this way" chevrons relative to where you're looking. */
+    fun currentYawDeg(): Float = Math.toDegrees(renderer.yawRad().toDouble()).toFloat()
+    fun currentFovDeg(): Float = renderer.fovDeg()
+
     @Suppress("ClickableViewAccessibility")
     override fun onTouchEvent(e: MotionEvent): Boolean {
         scaleDetector.onTouchEvent(e)
@@ -113,9 +118,13 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
         private var aspect = 1f
 
         fun setYaw(r: Float) { yaw = r }
+        fun yawRad(): Float = yaw
+        fun fovDeg(): Float = fovY
 
         fun dragBy(dx: Float, dy: Float, w: Int, h: Int) {
-            val perPx = Math.toRadians(fovY.toDouble()).toFloat() / max(1, h)
+            // 1.7x so a swipe covers more than one field of view - the 1:1 mapping felt sluggish
+            // (user 2026-07-15). Still scales with FOV so zoomed-in panning stays proportional.
+            val perPx = Math.toRadians(fovY.toDouble()).toFloat() / max(1, h) * DRAG_SENSITIVITY
             yaw -= dx * perPx      // drag right -> world rotates left (grab-and-pull)
             pitch += dy * perPx    // drag down -> look down
             val lim = Math.toRadians(85.0).toFloat()
@@ -243,6 +252,7 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
         }
 
         companion object {
+            private const val DRAG_SENSITIVITY = 1.7f
             private const val VERT =
                 "uniform mat4 uMvp; attribute vec4 aPos; attribute vec2 aUv; varying vec2 vUv;" +
                     "void main(){ vUv = aUv; gl_Position = uMvp * aPos; }"
