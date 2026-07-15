@@ -321,9 +321,11 @@
     <string name="root_diag_save">Guardar elecciones</string>
     <string name="root_not_now">Ahora no</string>
     <string name="root_voice_title">Voz de navegación hablada</string>
-    <string name="root_voice_body_intro">Vela tiene su propia voz de alta calidad que se ejecuta por completo en tu teléfono: las indicaciones habladas más naturales, sin cuenta ni apps adicionales. Recomendada. Es una descarga única de ~%1$d MB (se recomienda wifi).</string>
-    <string name="root_voice_body_outro">Puedes cambiar esto cuando quieras en Ajustes → Voz.</string>
+    <string name="root_voice_body_intro">La voz propia de Vela funciona por completo en tu teléfono: indicaciones naturales, sin cuenta, sin otra app. Recomendada, una descarga única de %1$d MB.</string>
+    <string name="root_voice_body_outro">Cámbiala cuando quieras en Ajustes → Voz.</string>
     <string name="root_voice_download">Descargar voz de Vela</string>
+    <string name="root_voice_body_system">¿Prefieres que no? Usa una voz que ya tengas en el teléfono.</string>
+    <string name="root_voice_use_system">Usar voz del sistema</string>
     <string name="root_offline_title">Mapas sin conexión</string>
     <string name="root_offline_body">Vela obtiene lugares, búsqueda e indicaciones de Google, así que sin señal solo funcionarán las zonas que hayas descargado. Configura una zona ahora para estar cubierto cuando pierdas la conexión.</string>
     <string name="root_offline_setup">Configurar sin conexión</string>

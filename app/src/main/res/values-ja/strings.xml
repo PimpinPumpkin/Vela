@@ -338,6 +338,8 @@
     <string name="root_voice_body_intro">Vela の音声は完全に端末上で動作します。自然な音声案内で、アカウントも追加アプリも不要。おすすめです（初回のみ %1$d MB のダウンロード）。</string>
     <string name="root_voice_body_outro">設定 → 音声 でいつでも変更できます。</string>
     <string name="root_voice_download">Vela 音声をダウンロード</string>
+    <string name="root_voice_body_system">ダウンロードしない場合は、端末にすでにある音声も使えます。</string>
+    <string name="root_voice_use_system">システムの音声を使用</string>
 
     <!-- nav: NavOverlays.kt -->
     <string name="nav_maneuver_continue">直進</string>

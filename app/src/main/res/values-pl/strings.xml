@@ -323,9 +323,11 @@
     <string name="root_diag_save">Zapisz wybory</string>
     <string name="root_not_now">Nie teraz</string>
     <string name="root_voice_title">Głos nawigacji mówionej</string>
-    <string name="root_voice_body_intro">Vela ma własny głos wysokiej jakości, który działa w całości na Twoim telefonie - najbardziej naturalne wskazówki głosowe, bez konta i dodatkowej aplikacji. Zalecany. To jednorazowe pobranie ~%1$d MB (zalecane wifi).</string>
-    <string name="root_voice_body_outro">Możesz to zmienić w dowolnej chwili w Ustawienia → Głos.</string>
+    <string name="root_voice_body_intro">Własny głos Veli działa w całości na telefonie: naturalne wskazówki, bez konta i dodatkowej aplikacji. Polecany, jednorazowe pobranie %1$d MB.</string>
+    <string name="root_voice_body_outro">Zmienisz to kiedykolwiek w Ustawieniach → Głos.</string>
     <string name="root_voice_download">Pobierz głos Vela</string>
+    <string name="root_voice_body_system">Wolisz nie? Użyj głosu, który już masz w telefonie.</string>
+    <string name="root_voice_use_system">Użyj głosu systemowego</string>
     <string name="root_offline_title">Mapy offline</string>
     <string name="root_offline_body">Vela pobiera miejsca, wyszukiwanie i trasy z Google, więc bez sygnału zadziałają tylko obszary, które pobrałeś. Skonfiguruj obszar teraz, aby mieć pokrycie, gdy stracisz zasięg.</string>
     <string name="root_offline_setup">Skonfiguruj offline</string>

@@ -323,9 +323,11 @@
     <string name="root_diag_save">Зберегти вибір</string>
     <string name="root_not_now">Не зараз</string>
     <string name="root_voice_title">Голос навігації</string>
-    <string name="root_voice_body_intro">Vela має власний високоякісний голос, який працює цілком на вашому телефоні - найприродніші голосові вказівки, без облікового запису чи додаткового застосунку. Рекомендовано. Це одноразове завантаження ~%1$d МБ (рекомендовано Wi-Fi).</string>
-    <string name="root_voice_body_outro">Змінити це можна будь-коли в Налаштування → Голос.</string>
+    <string name="root_voice_body_intro">Власний голос Vela працює цілком на телефоні: природні підказки, без акаунта та зайвих застосунків. Рекомендовано, одноразове завантаження %1$d МБ.</string>
+    <string name="root_voice_body_outro">Змініть будь-коли в Налаштуваннях → Голос.</string>
     <string name="root_voice_download">Завантажити голос Vela</string>
+    <string name="root_voice_body_system">Не хочете? Скористайтеся голосом, який уже є на телефоні.</string>
+    <string name="root_voice_use_system">Використати системний голос</string>
     <string name="root_offline_title">Офлайн-карти</string>
     <string name="root_offline_body">Vela отримує місця, пошук і маршрути з Google, тому без сигналу працюватимуть лише завантажені вами області. Налаштуйте область зараз, щоб залишатися на зв\'язку, коли зникне мережа.</string>
     <string name="root_offline_setup">Налаштувати офлайн</string>

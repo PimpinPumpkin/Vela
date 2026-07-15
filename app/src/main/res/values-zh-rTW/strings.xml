@@ -338,6 +338,8 @@
     <string name="root_voice_body_intro">Vela 專屬語音完全在你的手機上執行：自然的語音指引，不需帳戶，也不需額外的應用程式。建議使用，只需一次性下載 %1$d MB。</string>
     <string name="root_voice_body_outro">之後隨時可以在「設定 → 語音」中變更。</string>
     <string name="root_voice_download">下載 Vela 語音</string>
+    <string name="root_voice_body_system">不想下載？也可以使用手機上現有的語音。</string>
+    <string name="root_voice_use_system">使用系統語音</string>
 
     <!-- nav: NavOverlays.kt -->
     <string name="nav_maneuver_continue">繼續直行</string>

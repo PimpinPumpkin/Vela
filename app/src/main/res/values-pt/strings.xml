@@ -321,9 +321,11 @@
     <string name="root_diag_save">Guardar escolhas</string>
     <string name="root_not_now">Agora não</string>
     <string name="root_voice_title">Voz de navegação falada</string>
-    <string name="root_voice_body_intro">O Vela tem a sua própria voz de alta qualidade que corre inteiramente no seu telemóvel - as indicações faladas mais naturais, sem conta nem aplicação extra. Recomendada. É uma transferência única de ~%1$d MB (recomenda-se Wi-Fi).</string>
-    <string name="root_voice_body_outro">Pode alterar isto a qualquer momento em Definições → Voz.</string>
+    <string name="root_voice_body_intro">A voz própria da Vela corre inteiramente no telemóvel: indicações naturais, sem conta, sem outra app. Recomendada, uma transferência única de %1$d MB.</string>
+    <string name="root_voice_body_outro">Mude quando quiser em Definições → Voz.</string>
     <string name="root_voice_download">Transferir voz Vela</string>
+    <string name="root_voice_body_system">Prefere que não? Use uma voz que já tem no telemóvel.</string>
+    <string name="root_voice_use_system">Usar voz do sistema</string>
     <string name="root_offline_title">Mapas offline</string>
     <string name="root_offline_body">O Vela obtém locais, pesquisa e direções do Google, por isso sem sinal só funcionam as áreas que transferiu. Configure uma área agora para ficar coberto quando perder a rede.</string>
     <string name="root_offline_setup">Configurar offline</string>

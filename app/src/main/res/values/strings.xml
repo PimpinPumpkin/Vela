@@ -350,9 +350,11 @@
     <string name="root_diag_save">Save choices</string>
     <string name="root_not_now">Not now</string>
     <string name="root_voice_title">Spoken navigation voice</string>
-    <string name="root_voice_body_intro">Vela has its own high-quality voice that runs entirely on your phone, the most natural spoken directions, with no account or extra app. Recommended. It\'s a one-time ~%1$d MB download (wifi recommended).</string>
-    <string name="root_voice_body_outro">You can change this any time in Settings → Voice.</string>
-    <string name="root_voice_download">Download Vela voice</string>
+    <string name="root_voice_body_intro">Vela\'s own voice runs entirely on your phone: natural spoken directions, no account, no extra app. Recommended, a one-time %1$d MB download.</string>
+    <string name="root_voice_body_outro">Change it any time in Settings → Voice.</string>
+    <string name="root_voice_download">Download Vela Voice</string>
+    <string name="root_voice_body_system">Prefer not to? Use a voice already on your phone.</string>
+    <string name="root_voice_use_system">Use system voice</string>
     <string name="root_offline_title">Offline maps</string>
     <string name="root_offline_body">Vela gets places, search and directions from Google, so with no signal only areas you have downloaded will work. Set up an area now so you are covered when you lose service.</string>
     <string name="root_offline_setup">Set up offline</string>

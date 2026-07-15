@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # First-run flow, D-pad-first:
 #   (a) the Welcome screen opens focused on Get-started, and OK advances;
-#   (b) each onboarding dialog (VelaDialog) opens focused on its safe "Not now" button.
+#   (b) each onboarding dialog (VelaDialog) opens focused on its safe "Use system voice" button.
 # Clears app data to force the first run, then re-grants location so no system permission dialog
 # interrupts (that dialog is AOSP, out of scope). docs/dpad.md.
 set -uo pipefail
@@ -19,7 +19,7 @@ assert_focus_ytop_between 400 660 "Welcome Get-started button (bottom)"
 key "$K_OK" 2                                    # advance past Welcome
 
 # (b) first onboarding dialog - its dismiss button is focused.
-assert_on_screen "Not now"
-assert_focus_text "Not now"                       # dialog auto-focused the safe side
+assert_on_screen "Use system voice"
+assert_focus_text "Use system voice"                       # dialog auto-focused the safe side
 key "$K_OK" 1.2                                   # dismiss -> next dialog (if any)
 report
