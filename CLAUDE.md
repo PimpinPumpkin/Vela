@@ -1671,7 +1671,12 @@ architecture note.
   + the nameRoute failure path) and SELF-HEAL:** `maybeRecheck` silently adopts a full-stepped
   same-course candidate over an adopted abbreviated route (same 250 m divergence test the ETA
   calibration uses), so a mid-drive OSRM blip no longer leaves the banner disagreeing with the
-  blue line for the rest of the drive. Google's keyless
+  blue line for the rest of the drive. **Since 2026-07-15 the same heal restores LIVE TRAFFIC
+  (trafficUpgrade beside stepsUpgrade, no-downgrade guard on both), and a degraded candidate is
+  FENCED OUT of everything ETA-comparative in maybeRecheck: trafficless never calibrates etaScale
+  and trafficless-or-abbreviated is never OFFERED as a faster route - free-flow vs traffic-aware
+  always "wins", which was the real-drive white-ETA/no-lanes/"suspiciously fast" incident (lanes
+  come from OSRM steps, so an accepted abbreviated route also silently loses lane guidance).** Google's keyless
   `/maps/preview/directions` returns
   **abbreviated** steps for longer routes (a 6-mi route came back with 2 of ~10 turns), so it's
   demoted to (a) the **live-traffic source** - `GoogleMapsDataSource.applyTraffic` scales OSRM's
