@@ -188,7 +188,15 @@ class GoogleMapsDataSource @Inject constructor(
                             pool += places
                             landed++
                             val now = System.nanoTime()
-                            val grown = pool.size - paintedCount >= 10
+                            // Escalating batch size: the FIRST dots should land fast (10 places is
+                            // enough to make the map feel alive), but each partial re-runs symbol
+                            // placement for the WHOLE layer, and in a dense downtown 6-8 repaints in
+                            // the first seconds were most of the cold-load frame drops (user
+                            // 2026-07-14). Once the map is already populated, wait for bigger
+                            // batches - the user can't tell 60 dots from 85 mid-stream, but they can
+                            // feel the placement passes.
+                            val minGrowth = if (paintedCount >= 60) 25 else 10
+                            val grown = pool.size - paintedCount >= minGrowth
                             val due = now - lastPaintNs > 500_000_000L
                             if (landed < terms.size && pool.isNotEmpty() && grown && (paintedCount == 0 || due)) {
                                 paintedCount = pool.size
