@@ -34,6 +34,10 @@ data class Calibration(
     // query point; the response carries the nearest pano's id, tile pyramid, and true heading.
     // The equirect TILES come from a fixed template (streetviewpixels-pa) that needs no calibration.
     val streetViewMetaUrl: String = DEFAULT_STREETVIEW_META,
+    // Street View metadata BY PANO ID (walking to a neighbour / a historical capture): the
+    // consumer photometa/v1 RPC, keyless. `{PANOID}` is the target pano; returns the SAME node
+    // shape as the lat/lng search (nested one level deeper, )]}' guarded - the parser handles both).
+    val streetViewPanoUrl: String = DEFAULT_STREETVIEW_PANO,
     // Phase 2: the positional field-index paths the search parser reads. A missing
     // key falls back to [DEFAULT_PATHS], so a remote file can override just the one
     // that drifted. Paths are relative to a result entry (whose place node is [1]),
@@ -102,6 +106,14 @@ data class Calibration(
             "https://maps.googleapis.com/maps/api/js/GeoPhotoService.SingleImageSearch?pb=" +
                 "!1m5!1sapiv3!5sUS!11m2!1m1!1b0!2m4!1m2!3d{LAT}!4d{LNG}!2d50!3m10!2m2!1sen!2sUS" +
                 "!9m1!1e2!11m4!1m3!1e2!2b1!3e2!4m10!1e1!1e2!1e3!1e4!1e8!1e6!5m1!1e2!6m1!1e2&callback=cb"
+
+        // By-panoid metadata (photometa/v1). `!3m3!1m2!1e2!2s{PANOID}` selects the pano.
+        const val DEFAULT_STREETVIEW_PANO =
+            "https://www.google.com/maps/photometa/v1?authuser=0&hl=en&gl=us&pb=" +
+                "!1m4!1smaps_sv.tactile!11m2!2m1!1b1!2m2!1sen!2sus!3m3!1m2!1e2!2s{PANOID}" +
+                "!4m57!1e1!1e2!1e3!1e4!1e5!1e6!1e8!1e12!2m1!1e1!4m1!1i48!5m1!1e1!5m1!1e2!6m1!1e1!6m1!1e2" +
+                "!9m36!1m3!1e2!2b1!3e2!1m3!1e2!2b0!3e3!1m3!1e3!2b1!3e2!1m3!1e3!2b0!3e3!1m3!1e8!2b0!3e3" +
+                "!1m3!1e1!2b0!3e3!1m3!1e4!2b0!3e3!1m3!1e10!2b1!3e2!1m3!1e10!2b0!3e3"
 
         // hspqX request proto: feature id at [2][0], page size at [4][2][1].
         const val DEFAULT_PHOTOS_PROTO =
@@ -193,6 +205,7 @@ data class Calibration(
             photosEndpoint = DEFAULT_PHOTOS_ENDPOINT,
             photosProto = DEFAULT_PHOTOS_PROTO,
             streetViewMetaUrl = DEFAULT_STREETVIEW_META,
+            streetViewPanoUrl = DEFAULT_STREETVIEW_PANO,
             paths = DEFAULT_PATHS,
         )
     }
