@@ -372,7 +372,7 @@ object RouteGeometry {
      * says it when it helps: ONLY plain surface-street turns (not ramps/merges/roundabouts/continues), ONLY
      * when 1–2 signals fall within ~[LIGHT_APPROACH_M] before the turn AND within ~[LIGHT_SNAP_M] of the driven
      * line (a light on a parallel street doesn't count), and NEVER for 0 or 3+ (nobody narrates "pass 4
-     * lights"). Called from the app ONLY when the toggle is on and only for the route being driven. [signals]
+     * lights"). Standard behaviour (no toggle since 2026-07-17), called only for the route being driven. [signals]
      * = OverpassTrafficSignals.fetchAlong. Best-effort: empty signals or no match → route returned unchanged.
      */
     fun enrichWithLights(route: Route, signals: List<LatLng>): Route {

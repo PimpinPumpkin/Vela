@@ -166,8 +166,6 @@
     <string name="place_close">Zamknij</string>
     <string name="place_permanently_closed">Zamknięte na stałe</string>
     <string name="place_temporarily_closed">Tymczasowo zamknięte</string>
-    <string name="settings_traffic_lights">Wskazówki przy sygnalizacji</string>
-    <string name="settings_traffic_lights_hint">Dodaje wskazówki typu “minąć światła, potem w lewo”. Na razie tylko po angielsku.</string>
     <string name="map_voice_downloading">Pobieranie głosu Vela · %1$d %%</string>
     <string name="map_voice_installing">Instalowanie głosu Vela…</string>
     <string name="map_region_downloading">Pobieranie tras: %1$s · %2$d%%</string> <!-- format -->

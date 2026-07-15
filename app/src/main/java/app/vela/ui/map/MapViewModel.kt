@@ -3265,9 +3265,9 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             // If they hit Start before a picked alternate finished naming, name it first.
             val named = if (route.provisional) nameIfNeeded(route).also { _state.update { s -> s.copy(activeRoute = it) } } else route
-            // Optional Google-style "pass the light, then turn" landmark clauses (off by default) — fetch the
-            // route's traffic signals once + fold the clauses into its turns before the session starts.
-            val enriched = enrichLightsIfEnabled(named)
+            // Google-style "pass the light, then turn" landmark clauses — fetch the route's
+            // traffic signals once + fold the clauses into its turns before the session starts.
+            val enriched = enrichLights(named)
             if (enriched !== named) _state.update { it.copy(activeRoute = enriched) }
             // Google-style courtesy: warn once, card + voice, when this drive lands within an hour
             // of the destination's closing time (or after it).
@@ -3381,10 +3381,13 @@ class MapViewModel @Inject constructor(
         replayJob = job
     }
 
-    /** Fold traffic-light landmark clauses into [route]'s turns if Settings → Navigation has it on (else no-op,
-     *  no network). Best-effort + IO; a fetch miss just leaves the route unchanged. */
-    private suspend fun enrichLightsIfEnabled(route: app.vela.core.model.Route): app.vela.core.model.Route {
-        if (!settingsPrefs.getBoolean("nav_traffic_lights", false)) return route
+    /** Fold traffic-light landmark clauses into [route]'s turns. Standard behaviour since 2026-07-17
+     *  (the Advanced toggle it hid behind was cut - "pass the light, then turn right" when a turn is
+     *  ambiguous is just better guidance, exactly when Google says it); the enrichment itself stays
+     *  conservative (1-2 lights, plain surface-street turns only) and is a NO-OP in languages whose
+     *  NavStrings table doesn't implement passLights (currently all but English). Best-effort + IO;
+     *  a fetch miss just leaves the route unchanged. */
+    private suspend fun enrichLights(route: app.vela.core.model.Route): app.vela.core.model.Route {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             val signals = app.vela.core.data.OverpassTrafficSignals.fetchAlong(http, route.polyline)
             app.vela.core.data.RouteGeometry.enrichWithLights(route, signals)
