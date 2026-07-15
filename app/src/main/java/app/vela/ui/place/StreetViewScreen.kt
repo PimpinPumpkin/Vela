@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -18,6 +20,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -42,8 +46,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import app.vela.R
 import app.vela.core.model.StreetViewLink
 import app.vela.core.model.StreetViewPano
@@ -53,9 +55,11 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * Full-screen in-app Street View. The panorama renders on a GL sphere ([PanoramaView]); on top we
- * overlay Google-style **walk arrows** (one per neighbouring pano, placed where it sits relative to
- * where you're looking) and a **date chip** that goes back in time when the spot has older captures.
+ * In-app Street View, Google-style HALF-SCREEN by default: the pano pane takes the top of the
+ * screen and the live map stays visible underneath, showing a view-direction cone at the pano's
+ * position (fed via [onPose]) that rotates as you look around and hops as you walk. A corner
+ * button toggles full screen. The panorama renders on a GL sphere ([PanoramaView]); on top we
+ * overlay **walk arrows** and a **date chip** that goes back in time when there are older captures.
  */
 @Composable
 fun StreetViewScreen(
@@ -68,13 +72,14 @@ fun StreetViewScreen(
     onClose: () -> Unit,
     onMove: (StreetViewLink) -> Unit,
     onTimeTravel: (StreetViewTime) -> Unit,
+    onPose: (lat: Double, lng: Double, yawDeg: Float) -> Unit = { _, _, _ -> },
 ) {
-    Dialog(
-        onDismissRequest = onClose,
-        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false),
+    var full by remember { mutableStateOf(false) }
+    // Back backs out of full screen first, then closes the viewer.
+    BackHandler(onBack = { if (full) full = false else onClose() })
+    BoxWithConstraints(
+        Modifier.fillMaxWidth().fillMaxHeight(if (full) 1f else 0.55f).background(Color.Black),
     ) {
-        BackHandler(onBack = onClose)
-        BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
             val density = LocalDensity.current
             val wPx = with(density) { maxWidth.toPx() }
             val hPx = with(density) { maxHeight.toPx() }
@@ -96,11 +101,23 @@ fun StreetViewScreen(
                     view.setCompass(pano.headingDeg.toFloat(), (pano.initialFacingDeg ?: pano.headingDeg).toFloat())
                 }
                 LaunchedEffect(bitmap) { bitmap?.let { view.setPanorama(it) } }
+                // Report the pose to the map underneath: immediately on each pano (position hop),
+                // then whenever the compass yaw moves ~a degree - not every frame, so the map's
+                // cone update stays a trickle instead of a 60 Hz recomposition storm.
+                var sentYaw by remember { mutableFloatStateOf(Float.NaN) }
+                LaunchedEffect(pano.panoId) {
+                    sentYaw = view.currentYawDeg()
+                    onPose(pano.lat, pano.lng, sentYaw)
+                }
                 LaunchedEffect(view) {
                     while (true) {
                         androidx.compose.runtime.withFrameNanos { }
                         yaw = view.currentYawDeg()
                         fov = view.currentFovDeg()
+                        if (sentYaw.isNaN() || abs(normDeg(yaw - sentYaw)) > 1f) {
+                            sentYaw = yaw
+                            onPose(pano.lat, pano.lng, yaw)
+                        }
                     }
                 }
                 AndroidView(factory = { view }, modifier = Modifier.fillMaxSize())
@@ -223,7 +240,22 @@ fun StreetViewScreen(
                     Icon(Icons.Default.Close, contentDescription = stringResource(R.string.steps_close_cd), tint = Color.White)
                 }
             }
-        }
+
+            // Fullscreen toggle (Google-style: half-screen over the map by default).
+            Surface(
+                onClick = { full = !full },
+                shape = CircleShape,
+                color = Color.Black.copy(alpha = 0.45f),
+                modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(12.dp).size(44.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        if (full) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                        contentDescription = stringResource(R.string.street_view_fullscreen),
+                        tint = Color.White,
+                    )
+                }
+            }
     }
 }
 

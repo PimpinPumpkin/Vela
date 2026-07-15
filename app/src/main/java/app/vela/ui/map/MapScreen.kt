@@ -222,6 +222,12 @@ fun MapScreen(
     // pin visible above it.
     val screenHeightPx = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
     val placeSheetUp = state.selected != null && !state.directionsOpen && !state.navigating
+    // Street View pose [lat, lng, compassYaw] while the half-screen pano viewer is up - drives the
+    // rotating view cone + camera hold on the map underneath. Cleared when the viewer closes.
+    var svPose by remember { mutableStateOf<DoubleArray?>(null) }
+    LaunchedEffect(state.streetView == null && !state.streetViewLoading) {
+        if (state.streetView == null && !state.streetViewLoading) svPose = null
+    }
     // Push the optical centre up so the place sheet / directions panel doesn't sit on
     // top of the pin or the route (the directions panel is tall — fit the route above it).
     // Bumped by the in-nav Overview button; VelaMapView fits the whole route on each bump.
@@ -847,6 +853,7 @@ fun MapScreen(
             onMarkerTap = { i -> displayedPlaces(state).getOrNull(i)?.let(vm::selectPlace) },
             parkingSpot = state.parkingSpot,
             onParkingTap = { vm.showParkedCar(context.getString(R.string.map_parked_car)) },
+            svPose = svPose,
             ambientPois = ambientMarkersOf(state),
             buildingOverlays = state.buildingOverlays,
             addressOverlays = state.addressOverlays,
@@ -1516,7 +1523,10 @@ fun MapScreen(
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
 
-            state.selected != null && !searchOpen && state.pickOnMap == null -> PlaceSheet(
+            // The place sheet yields while Street View is up - the pano takes the top half and the
+            // bottom half must stay pure map (the pose cone), not a sheet.
+            state.selected != null && !searchOpen && state.pickOnMap == null &&
+                state.streetView == null && !state.streetViewLoading -> PlaceSheet(
                 place = state.selected!!,
                 onExpandedChange = { placeSheetExpanded = it },
                 isSaved = state.saved.any { it.id == state.selected!!.id },
@@ -1654,8 +1664,9 @@ fun MapScreen(
             )
         }
 
-        // In-app Street View (keyless pano tiles on a GL sphere). Full-screen over everything
-        // while a pano is resolving or shown.
+        // In-app Street View (keyless pano tiles on a GL sphere). HALF-SCREEN over the map by
+        // default (Google-style: the map underneath shows a rotating view cone at the pano and
+        // eases along as you walk), with a corner button to go full screen.
         if (state.streetView != null || state.streetViewLoading) {
             app.vela.ui.place.StreetViewScreen(
                 pano = state.streetView,
@@ -1667,6 +1678,7 @@ fun MapScreen(
                 onClose = vm::closeStreetView,
                 onMove = vm::moveStreetView,
                 onTimeTravel = vm::timeTravelStreetView,
+                onPose = { la, ln, yaw -> svPose = doubleArrayOf(la, ln, yaw.toDouble()) },
             )
         }
 
