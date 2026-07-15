@@ -13,6 +13,7 @@ import app.vela.core.model.Maneuver
 import app.vela.core.model.ManeuverType
 import app.vela.core.model.Route
 import app.vela.core.model.RouteLeg
+import app.vela.core.model.TravelMode
 import app.vela.core.nav.NavEngine
 import app.vela.core.nav.NavEvent
 import app.vela.core.nav.NavReplay
@@ -121,6 +122,72 @@ class NavEngineTest {
         }
         // Edge-triggered: one request on the off-route transition, not one per fix.
         assertEquals(1, reroutes)
+    }
+
+    /** Walking/biking get a tighter off-route corridor than driving (NavSession passes it): a
+     *  pedestrian is on a known path a few metres wide, so a wrong turn should be caught long before
+     *  the 40 m a car needs for lane offset + shallow-angle lag. Same ~30 m deviation: inside the
+     *  driving corridor (no reroute), outside the walking one (reroutes). */
+    @Test
+    fun tighterCorridorReroutesWhereWideDoesNot() {
+        val route = straightRoute()
+        // ~30 m east of the north-south line: within driving's 40 m, beyond walking's 22 m.
+        val offPoint = LatLng(37.0050, -121.99966)
+        val speed = 1.4 // walking pace; floor pinned to 0.6 so this counts as moving in both runs
+
+        var driveReroutes = 0
+        run {
+            var state = NavState()
+            repeat(6) {
+                val (n, ev) = NavEngine.update(route, state, offPoint, speedMps = speed, movingFloorMps = 0.6)
+                state = n
+                driveReroutes += ev.count { it is NavEvent.RerouteNeeded }
+            }
+        }
+        assertEquals("30 m is inside the 40 m driving corridor - no reroute", 0, driveReroutes)
+
+        var sawWalkReroute = false
+        run {
+            var state = NavState()
+            repeat(6) {
+                val (n, ev) = NavEngine.update(
+                    route, state, offPoint,
+                    speedMps = speed, movingFloorMps = 0.6, offRouteM = 22.0, farOffM = 45.0,
+                )
+                state = n
+                if (ev.any { it is NavEvent.RerouteNeeded }) sawWalkReroute = true
+            }
+        }
+        assertTrue("30 m exceeds the 22 m walking corridor - should reroute", sawWalkReroute)
+    }
+
+    /** The off-route corridor scales with GPS accuracy (OsmAnd-style) and stays mode-relative:
+     *  tighter on a clean fix, wider on a noisy one, foot < bike < drive, clamped both ends. */
+    @Test
+    fun offRouteCorridorScalesWithAccuracyAndMode() {
+        // Widens as the fix degrades.
+        assertTrue(
+            "a noisy fix must widen the corridor",
+            NavEngine.offRouteCorridor(TravelMode.DRIVE, 5.0) < NavEngine.offRouteCorridor(TravelMode.DRIVE, 30.0),
+        )
+        // Foot tighter than bike tighter than drive at the same accuracy.
+        val acc = 12.0
+        assertTrue(
+            "foot < bike < drive at equal accuracy",
+            NavEngine.offRouteCorridor(TravelMode.WALK, acc) < NavEngine.offRouteCorridor(TravelMode.BICYCLE, acc) &&
+                NavEngine.offRouteCorridor(TravelMode.BICYCLE, acc) < NavEngine.offRouteCorridor(TravelMode.DRIVE, acc),
+        )
+        // Driving self-tightens below the old flat 40 m when GPS is clean ("40 is too high").
+        assertTrue(
+            "a clean fix drives tighter than the old 40 m",
+            NavEngine.offRouteCorridor(TravelMode.DRIVE, 5.0) < 40.0,
+        )
+        // Clamps: a wildly coarse fix caps out; a null fix uses the typical-GPS default (not the floor).
+        assertEquals(70.0, NavEngine.offRouteCorridor(TravelMode.DRIVE, 500.0), 1e-9)
+        assertEquals(42.0, NavEngine.offRouteCorridor(TravelMode.DRIVE, null), 1e-9)
+        // Far distance is always beyond the corridor and capped per mode.
+        assertTrue(NavEngine.farOffDistance(TravelMode.DRIVE, 40.0) > 40.0)
+        assertEquals(60.0, NavEngine.farOffDistance(TravelMode.WALK, 40.0), 1e-9) // 2×40 capped to 60
     }
 
     /** Off-route mutes turn guidance: while a reroute is pending the progress snap still maps the
