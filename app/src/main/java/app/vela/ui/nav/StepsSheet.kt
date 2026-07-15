@@ -1,7 +1,10 @@
 package app.vela.ui.nav
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -45,7 +48,20 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntOffset
+import app.vela.ui.place.FLING_COMMIT_DPS
+import app.vela.ui.place.sheetDragGestures
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 import app.vela.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -89,13 +105,44 @@ fun StepsSheet(
     val dark = isAppInDarkTheme()
     val ink = SheetPalette.ink(dark)
     val dim = SheetPalette.dim(dark)
+    // Swipe-down to dismiss (user 2026-07-15): the card rides the finger (down only) and a
+    // release commits close on a flick or past a third of the sheet, else springs back - the
+    // shared sheetDragGestures grammar, so it feels like every other sheet. The step LIST
+    // claims its own vertical drags (scroll), so the drag surface is the header/edges,
+    // same as the place sheet.
+    val scope = rememberCoroutineScope()
+    val drag = remember { Animatable(0f) }
+    var sheetHeightPx by remember { mutableIntStateOf(0) }
+    val density = LocalDensity.current
     Card(
-        modifier.fillMaxWidth(),
+        modifier
+            .fillMaxWidth()
+            .onSizeChanged { sheetHeightPx = it.height }
+            .offset { IntOffset(0, drag.value.roundToInt().coerceAtLeast(0)) }
+            .pointerInput(Unit) {
+                sheetDragGestures(
+                    dragBy = { dy -> scope.launch { drag.snapTo((drag.value + dy).coerceAtLeast(0f)) } },
+                    settle = { velocityPxS ->
+                        val flick = with(density) { FLING_COMMIT_DPS.dp.toPx() }
+                        val committed = velocityPxS > flick ||
+                            (drag.value > sheetHeightPx / 3f && velocityPxS > -flick)
+                        if (committed) onClose() else scope.launch { drag.animateTo(0f) }
+                    },
+                )
+            },
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark), contentColor = ink),
     ) {
         // Fill the card to the screen bottom; pad content off the nav bar.
         Column(Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 8.dp)) {
+            // Grab handle - signals the sheet drags like the others.
+            Box(Modifier.fillMaxWidth().padding(bottom = 6.dp), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier
+                        .size(width = 36.dp, height = 4.dp)
+                        .background(dim.copy(alpha = 0.4f), RoundedCornerShape(2.dp)),
+                )
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.steps_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ink)
