@@ -315,10 +315,13 @@ fun VelaMapView(
     val navFollowingHolder = rememberUpdatedState(navFollowing)
     val navNorthUpHolder = rememberUpdatedState(navNorthUp)
     val navTiltEase = remember { doubleArrayOf(55.0) } // eased so the compass toggle glides, not snaps
+    val navPadEase = remember { doubleArrayOf(0.0) } // puck-low top padding as a height fraction, eased on (re)attach
+    val wasNavRef = remember { booleanArrayOf(false) } // a drive actually ran - gates the one-shot camera teardown
     val onCompassTapHolder = rememberUpdatedState(onCompassTap)
     val shoving = remember { booleanArrayOf(false) } // two-finger tilt gesture in flight - ticker steps aside
     val navUserTilt = remember { doubleArrayOf(Double.NaN) } // shove-set tilt override (like navUserZoom)
     val browseZoomGoal = remember { doubleArrayOf(Double.NaN) } // locate-tap standard zoom, eased by the browse ticker
+    val browseFlying = remember { booleanArrayOf(false) } // cold-engage flight in progress - ticker parks until it lands
     val myBearingHolder = rememberUpdatedState(myBearing) // vehicle course for the accel projection
     val myLocationHolder = rememberUpdatedState(myLocation)     // live fix, for the free-drive follow ticker
     val mySpeedHolder = rememberUpdatedState(mySpeed)           // live speed, for the free-drive dead reckon
@@ -724,6 +727,7 @@ fun VelaMapView(
             lastBrowse[0] = Double.NaN
             browseDrive[1] = 0.0; browseDrive[2] = Double.NaN; browseDrive[3] = 0.0
             browseZoomGoal[0] = Double.NaN
+            browseFlying[0] = false // whatever cancelled the follow also cancelled the flight (onCancel), but never leak
             return@LaunchedEffect
         }
         var lastNanos = 0L
@@ -776,17 +780,30 @@ fun VelaMapView(
             var camLat = tgtLat; var camLng = tgtLng
             var lookLat = tgtLat; var lookLng = tgtLng // camera aim point (ahead of the puck while driving)
             var attSettling = false // true while bearing/tilt are still easing (to course-up or north-up)
-            if (cam != null && !scaling[0]) {
+            if (cam != null && !scaling[0] && !browseFlying[0]) {
                 if (browseCam[0].isNaN()) {
                     val cp = cam.cameraPosition
                     // First follow-engagement. If the camera is zoomed OUT past street level - a cold
-                    // launch, or a crash relaunch where MapLibre restored the whole-region view - snap
-                    // onto the fix at street zoom. Otherwise the follow only eases the TARGET (moveCamera
-                    // below preserves zoom), so it would centre on you but leave you zoomed out (the
-                    // "came back zoomed to the whole US" report). A normal street camera is preserved.
+                    // launch, a crash relaunch, or a locate tap from a far view - FLY to the fix at
+                    // street zoom (AUDIT FIX 4, 2026-07-15: this used to be an instant moveCamera
+                    // teleport that also cancelled the launch flight). One owned animateCamera; the
+                    // ticker parks (browseFlying) until it lands. The flag clears in BOTH onFinish
+                    // and onCancel - a leaked flag would kill follow for the session, and a missing
+                    // cancel path would resurrect the "came back zoomed to the whole US" bug this
+                    // snap was added for. browseCam stays NaN through the flight, so the next frame
+                    // reseeds from the LANDED camera - if the fix moved mid-flight, the ease just
+                    // glides the difference. A normal street camera is still preserved (else branch).
                     if (cp.zoom < 14.0) {
-                        cam.moveCamera(CameraUpdateFactory.newLatLngZoom(MLLatLng(loc.lat, loc.lng), 15.5))
-                        browseCam[0] = loc.lat; browseCam[1] = loc.lng
+                        browseFlying[0] = true
+                        cam.animateCamera(
+                            CameraUpdateFactory.newLatLngZoom(MLLatLng(loc.lat, loc.lng), 15.5),
+                            650,
+                            object : MapLibreMap.CancelableCallback {
+                                override fun onFinish() { browseFlying[0] = false }
+                                override fun onCancel() { browseFlying[0] = false }
+                            },
+                        )
+                        continue
                     } else {
                         browseCam[0] = cp.target?.latitude ?: loc.lat
                         browseCam[1] = cp.target?.longitude ?: loc.lng
@@ -854,7 +871,7 @@ fun VelaMapView(
             // The locate tap's standard zoom rides the ticker (an animateCamera would be cancelled
             // by the ticker's own writes a frame later): ease toward the goal, retire it on arrival.
             var zoomEase = Double.NaN
-            if (cam != null && !scaling[0] && !browseZoomGoal[0].isNaN()) {
+            if (cam != null && !scaling[0] && !browseFlying[0] && !browseZoomGoal[0].isNaN()) {
                 val z = cam.cameraPosition.zoom
                 if (kotlin.math.abs(browseZoomGoal[0] - z) < 0.02) browseZoomGoal[0] = Double.NaN
                 else zoomEase = z + (browseZoomGoal[0] - z) * (1f - kotlin.math.exp(-dt / 0.22f)).toDouble()
@@ -865,9 +882,9 @@ fun VelaMapView(
                 // catch up (the visible hop). At the eased position the dot stays centred and glides with
                 // the map - the same locked puck+camera the nav follow shows. (Falls back to the raw fix
                 // while pinching, when the camera isn't easing.)
-                val puckAt = if (cam != null && !scaling[0]) LatLng(camLat, camLng) else loc
+                val puckAt = if (cam != null && !scaling[0] && !browseFlying[0]) LatLng(camLat, camLng) else loc
                 setMeSource(style, puckAt, beam)
-                if (cam != null && !scaling[0]) {
+                if (cam != null && !scaling[0] && !browseFlying[0]) {
                     if (attSettling || !zoomEase.isNaN()) {
                         // Easing attitude (course-up while driving, back to north-up flat
                         // otherwise): drive it alongside the aim point (zoom left unset =
@@ -955,6 +972,14 @@ fun VelaMapView(
     // next fix (engaged=false) instead of gliding along stale geometry.
     LaunchedEffect(navMode, routePolyline) {
         if (!navMode) {
+            // AUDIT FIX 7 (2026-07-15): only tear the camera down on an ACTUAL nav exit. This
+            // effect is keyed on routePolyline too (so reroutes relaunch the puck ticker), which
+            // meant every route swap in the CHOOSER (picking an alternate, editing stops) re-ran
+            // this branch and its moveCamera killed the route-fit flight at frame ~0 - the
+            // "picking an alternate kills the fly-over" hitch. wasNavRef makes the teardown
+            // one-shot per real drive.
+            if (!wasNavRef[0]) return@LaunchedEffect
+            wasNavRef[0] = false
             navPuck.kalman.reset() // nav ended — don't carry a stale speed into the next trip
             navUserTilt[0] = Double.NaN // shove-set tilt is a per-drive override
             navTiltEase[0] = 55.0 // next drive starts at the default pitch, not wherever this one ended
@@ -977,6 +1002,7 @@ fun VelaMapView(
             )
             return@LaunchedEffect
         }
+        wasNavRef[0] = true
         navPuck.engaged = false
         var lastNanos = 0L
         while (true) {
@@ -1057,6 +1083,14 @@ fun VelaMapView(
                         camState[1] = cp.target?.longitude ?: pt.lng
                         camState[2] = cp.bearing
                         camState[3] = if (cp.zoom > 1.0) cp.zoom else tgtZoom
+                        // AUDIT FIX 1 (2026-07-15): seed tilt AND the puck-low padding from the
+                        // live camera too. Position/zoom/bearing were seeded but tilt snapped to
+                        // its eased remainder and the 0.45x top padding landed whole on frame ONE -
+                        // re-attaching from the flat, unpadded overview slammed 55 degrees of tilt
+                        // plus a 22%-of-screen centre jump in a single frame (the overview->follow
+                        // jolt). Both now ease in with the same k as everything else.
+                        navTiltEase[0] = cp.tilt
+                        navPadEase[0] = (cp.padding?.getOrNull(1) ?: 0.0) / cam.height.toDouble().coerceAtLeast(1.0)
                     }
                     val k = (1f - kotlin.math.exp(-dtE / 0.12f)).toDouble()
                     camState[0] += (pt.lat - camState[0]) * k
@@ -1075,6 +1109,8 @@ fun VelaMapView(
                         else -> 55.0
                     }
                     navTiltEase[0] += (tiltTgt - navTiltEase[0]) * k
+                    navPadEase[0] += (0.45 - navPadEase[0]) * k
+                    if (kotlin.math.abs(0.45 - navPadEase[0]) < 0.002) navPadEase[0] = 0.45 // terminate exactly
                     cam.moveCamera(
                         CameraUpdateFactory.newCameraPosition(
                             CameraPosition.Builder()
@@ -1085,9 +1121,10 @@ fun VelaMapView(
                                 // Puck LOW on the screen, Google-style: a top padding of ~0.45x
                                 // the view height renders the target at ~72% down, so the road
                                 // AHEAD owns the view instead of splitting it with what's behind
-                                // (user 2026-07-14). Padding is sticky camera state - the nav
-                                // teardown below resets it for the browse map.
-                                .padding(0.0, cam.height * 0.45, 0.0, 0.0)
+                                // (user 2026-07-14). Eased in on (re)attach - see the seed above.
+                                // Padding is sticky camera state - the nav teardown below resets
+                                // it for the browse map.
+                                .padding(0.0, cam.height * navPadEase[0], 0.0, 0.0)
                                 .build(),
                         ),
                     )
@@ -1827,33 +1864,45 @@ fun VelaMapView(
             // bottom inset, and re-running the fit then re-frames the route CLOSER over the freed
             // map (user 2026-07-14); the top-card measurement landing a frame late corrects the
             // same way instead of leaving a fit that ignored it.
+            // AUDIT FIX 2 (2026-07-15): this branch stays MATCHED during nav but its body is a
+            // no-op swallow - once the nav camera detached (Overview tap, a mid-drive pan), the
+            // nav follow branch above stopped matching and evaluation fell through HERE, whose
+            // key always mismatches in nav (the chooser insets are gone), so the next ~1 Hz
+            // recomposition fired an uninvited 800 ms whole-route flight: mid-drive pans got
+            // yanked to a route overview, reroutes-while-detached teleported the view, and the
+            // Overview tap raced its own dedicated fit (two flights, loser cancelled mid-air) -
+            // the "intermittent" transition hitch. Matched-but-swallowed (not !navMode on the
+            // condition) so the branches BELOW stay unreachable during nav, same pattern as the
+            // nav follow branch's own pre-engage swallow.
             routePolyline.size >= 2 &&
-                (routePolyline.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx) != lastFittedRouteKey -> {
-                lastFittedRouteKey = routePolyline.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx
-                val builder = MLLatLngBounds.Builder()
-                routePolyline.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
-                // Reserve room at the bottom for the directions panel AND at the top for the
-                // endpoints card, so the route's start/end frame in the VISIBLE strip between
-                // them instead of hiding behind either (user 2026-07-14).
-                val pad = 140
-                val bottom = if (cameraBottomInsetPx > 0) cameraBottomInsetPx + pad else pad
-                val top = if (cameraTopInsetPx > 0) cameraTopInsetPx + pad else pad
-                val bounds = builder.build()
-                // A continental trip fit zooms out until nothing has context; past ~12 degrees
-                // of span, frame the DESTINATION area instead - the end point is the part worth
-                // seeing (user 2026-07-14), and the route line still leads off-screen toward it.
-                val huge = bounds.latitudeSpan > 12.0 || bounds.longitudeSpan > 14.0
-                runCatching {
-                    if (huge) {
-                        val end = routePolyline.last()
+                (navMode || (routePolyline.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx) != lastFittedRouteKey) -> {
+                if (!navMode) { // in-nav framing is owned by the follow ticker + navOverviewTick
+                    lastFittedRouteKey = routePolyline.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx
+                    val builder = MLLatLngBounds.Builder()
+                    routePolyline.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
+                    // Reserve room at the bottom for the directions panel AND at the top for the
+                    // endpoints card, so the route's start/end frame in the VISIBLE strip between
+                    // them instead of hiding behind either (user 2026-07-14).
+                    val pad = 140
+                    val bottom = if (cameraBottomInsetPx > 0) cameraBottomInsetPx + pad else pad
+                    val top = if (cameraTopInsetPx > 0) cameraTopInsetPx + pad else pad
+                    val bounds = builder.build()
+                    // A continental trip fit zooms out until nothing has context; past ~12 degrees
+                    // of span, frame the DESTINATION area instead - the end point is the part worth
+                    // seeing (user 2026-07-14), and the route line still leads off-screen toward it.
+                    val huge = bounds.latitudeSpan > 12.0 || bounds.longitudeSpan > 14.0
+                    runCatching {
+                        if (huge) {
+                            val end = routePolyline.last()
+                            map.animateCamera(
+                                CameraUpdateFactory.newLatLngZoom(MLLatLng(end.lat, end.lng), 9.0), 800,
+                            )
+                            return@runCatching
+                        }
                         map.animateCamera(
-                            CameraUpdateFactory.newLatLngZoom(MLLatLng(end.lat, end.lng), 9.0), 800,
+                            CameraUpdateFactory.newLatLngBounds(bounds, pad, top, pad, bottom), 800,
                         )
-                        return@runCatching
                     }
-                    map.animateCamera(
-                        CameraUpdateFactory.newLatLngBounds(bounds, pad, top, pad, bottom), 800,
-                    )
                 }
             }
 
@@ -2155,7 +2204,7 @@ private fun ensureLayers(style: Style) {
     }
     if (style.getImage(PIN_IMG) == null) style.addImage(PIN_IMG, pinBitmap())
     if (style.getSource(MARKERS_SRC) == null) {
-        style.addSource(GeoJsonSource(MARKERS_SRC))
+        style.addSource(GeoJsonSource(MARKERS_SRC, GeoJsonOptions().withMaxZoom(12)))
         // Search results, Google's treatment: every result is a RED marker that keeps its
         // category glyph (rated food places get the wide rating bubble instead - see PoiIcons),
         // and the pins COLLIDE by rank instead of stacking - in a dense downtown the best
@@ -2202,7 +2251,7 @@ private fun ensureLayers(style: Style) {
     // The saved parking spot: one teal "P" pin above the search pins, tappable.
     if (style.getImage(PARKING_IMG) == null) style.addImage(PARKING_IMG, parkingBitmap())
     if (style.getSource(PARKING_SRC) == null) {
-        style.addSource(GeoJsonSource(PARKING_SRC))
+        style.addSource(GeoJsonSource(PARKING_SRC, GeoJsonOptions().withMaxZoom(12)))
         style.addLayer(
             SymbolLayer(PARKING_LAYER, PARKING_SRC).withProperties(
                 PropertyFactory.iconImage(PARKING_IMG),
@@ -2216,7 +2265,12 @@ private fun ensureLayers(style: Style) {
     // so they read as native map POIs) + a decluttered label. Sits just under the search pins +
     // location dot. Labels themed per-mode in applyLight/applyDark.
     if (style.getSource(AMBIENT_SRC) == null) {
-        style.addSource(GeoJsonSource(AMBIENT_SRC))
+        // AUDIT FIX 8 (2026-07-15): point sources cap their internal tile pyramid at z12
+        // (the accuracy circle at 14) - geojson-vt re-cuts the source into tiles at every
+        // integer zoom crossed during a flight, and points gain nothing past z12. Strictly
+        // less re-cut + placement invalidation per zoom change; line sources keep full
+        // depth for vertex precision.
+        style.addSource(GeoJsonSource(AMBIENT_SRC, GeoJsonOptions().withMaxZoom(12)))
         style.addLayerBelow(
             SymbolLayer(AMBIENT_LAYER, AMBIENT_SRC).withProperties(
                 PropertyFactory.iconImage(Expression.get("icon")),
@@ -2343,7 +2397,7 @@ private fun ensureLayers(style: Style) {
     if (style.getImage(SIGNAL_IMG) == null) style.addImage(SIGNAL_IMG, trafficLightBitmap())
     if (style.getImage(STOP_IMG) == null) style.addImage(STOP_IMG, stopSignBitmap())
     if (style.getSource(CONTROLS_SRC) == null) {
-        style.addSource(GeoJsonSource(CONTROLS_SRC))
+        style.addSource(GeoJsonSource(CONTROLS_SRC, GeoJsonOptions().withMaxZoom(12)))
         val controlsSize = Expression.interpolate(
             Expression.linear(), Expression.zoom(),
             Expression.stop(15.5f, 0.75f),
@@ -2406,7 +2460,7 @@ private fun ensureLayers(style: Style) {
     // stack places before this layer, so it is unaffected by the claim and still wins on top.
     if (style.getImage(FLOCK_IMG) == null) style.addImage(FLOCK_IMG, alprCameraBitmap())
     if (style.getSource(FLOCK_SRC) == null) {
-        style.addSource(GeoJsonSource(FLOCK_SRC))
+        style.addSource(GeoJsonSource(FLOCK_SRC, GeoJsonOptions().withMaxZoom(12)))
         val flockSize = Expression.interpolate(
             Expression.linear(), Expression.zoom(),
             Expression.stop(11f, 0.55f),
@@ -2439,7 +2493,7 @@ private fun ensureLayers(style: Style) {
     // in applyData). Drawn above the ambient POIs (and above the flock layer, which yields to both).
     if (style.getImage(TRANSIT_STOP_IMG) == null) style.addImage(TRANSIT_STOP_IMG, transitStopBitmap())
     if (style.getSource(TRANSIT_STOPS_SRC) == null) {
-        style.addSource(GeoJsonSource(TRANSIT_STOPS_SRC))
+        style.addSource(GeoJsonSource(TRANSIT_STOPS_SRC, GeoJsonOptions().withMaxZoom(12)))
         // Deliberately a touch smaller than the POI markers (stops are dense), but not tiny -
         // the first cut (0.62-1.2) read too small on device (user 2026-07-13).
         val stopSize = Expression.interpolate(
@@ -2478,7 +2532,7 @@ private fun ensureLayers(style: Style) {
         )
     }
     if (style.getSource(ACCURACY_SRC) == null) {
-        style.addSource(GeoJsonSource(ACCURACY_SRC))
+        style.addSource(GeoJsonSource(ACCURACY_SRC, GeoJsonOptions().withMaxZoom(14)))
         // The accuracy halo: a translucent disc drawn at the fix's REAL uncertainty radius, so an
         // approximate-only permission (or a weak network fix) reads as "somewhere in this
         // blob" instead of a falsely-precise dot. A polygon in meters, so it scales with zoom.
@@ -2498,7 +2552,7 @@ private fun ensureLayers(style: Style) {
         )
     }
     if (style.getSource(ME_SRC) == null) {
-        style.addSource(GeoJsonSource(ME_SRC))
+        style.addSource(GeoJsonSource(ME_SRC, GeoJsonOptions().withMaxZoom(12)))
         // Heading beam first so it sits BENEATH the dot (Google order): the
         // translucent cone fans out from under the dot in the facing direction.
         style.addLayer(
