@@ -1221,7 +1221,22 @@ architecture note.
   other"). `(10 - prominence) * 1000 + i` holds priorities still across uploads; the streamed
   partial paints also ESCALATE their batch (10 places first, 25 once >=60 painted,
   GoogleMapsDataSource) - each partial re-runs whole-layer placement, and halving the passes
-  is most of the dense-area cold-load frame recovery. 3D extrusions = the flat colour at
+  is most of the dense-area cold-load frame recovery. **Ambient LABELS are tiered by
+  zoom x prominence (2026-07-14, copies Google):** textField is a step expression - <z15.5
+  only prominence>=6.0 named, z15.5+ >=5.0, z16.5+ >=3.0, z17.5+ all (thresholds map through
+  ambientProminence: 6.0 ~ 400+ reviews, 3.0 ~ 20+). An EMPTY textField skips that symbol's
+  label placement entirely (textOpacity 0 would still place + collide invisibly), so this is
+  also a placement-cost win. NOTE our MapLibre zoom reads ~1 lower than Google's for the same
+  view extent (512px tiles) - A/B against gmaps by matching the VISIBLE AREA, not the z number.
+  **SLIM-FLAVOR HEAL (2026-07-14, GoogleMapsDataSource.nearbyPlaces):** Google's first ~3 s of
+  a fresh session serve a stripped per-place block (rating yes, reviewCount NO; same query+pb
+  is rich seconds later - live-bisected on device). The cold-start fan-out lands entirely in
+  that window, so the pool parsed with reviewCount=null and prominence ranking / dot sizing /
+  label tiers all silently ran on zeros (and AmbientDiskCache persisted the zeroed pool).
+  nearbyPlaces detects the flavor (>=3 rated, majority of rated missing counts) and refetches
+  the fan-out once ~1.2 s later; healed places are prepended so distinctBy keeps the rich
+  copy. Don't "fix" a flat-looking ambient layer by touching the expressions before checking
+  whether the pool's counts are null. 3D extrusions = the flat colour at
   opacity 1f (the 0.9f translucency was the "3d buildings render slightly different" wonk)
   AND the style light at intensity 0 + fillExtrusionVerticalGradient(false) - MapLibre's
   default light (0.5) brightens extrusion tops ~40% at z16+ (#1c3b69 rendered #2e5590; the
