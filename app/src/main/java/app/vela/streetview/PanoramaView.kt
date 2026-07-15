@@ -22,7 +22,7 @@ import kotlin.math.sin
  * how open Street View viewers render - we draw the imagery ourselves rather than embed Google's
  * WebGL SPA (which serves a stripped shell to an Android WebView and composites to black).
  *
- * Set the stitched equirect via [setPanorama]; call [setInitialYaw] first to face a direction.
+ * Set the stitched equirect via [setPanorama]; call [setCompass] first to face a direction.
  */
 class PanoramaView(context: Context) : GLSurfaceView(context) {
     private val renderer = PanoRenderer()
@@ -62,13 +62,25 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
 
     private val stopFade = Runnable { renderMode = RENDERMODE_WHEN_DIRTY }
 
-    /** Initial camera yaw in degrees (the pano's own heading), so it faces down the street. */
-    fun setInitialYaw(deg: Float) { renderer.setYaw(Math.toRadians(deg.toDouble()).toFloat()) }
+    /**
+     * Orient the camera by COMPASS. Google's equirect puts the CAPTURE heading at the texture
+     * centre (u=0.5, verified against a stitched pano 2026-07-16), while this renderer's yaw=0
+     * looks at texture u=0.75 - so a compass bearing B maps to renderer yaw B - panoHeading - 90.
+     * Feeding compass values straight in (the old setInitialYaw) skewed every view by a per-pano
+     * heading+90 offset, which is why the opening faced "randomly" wrong even with Google's own yaw.
+     */
+    fun setCompass(panoHeadingDeg: Float, faceCompassDeg: Float) {
+        panoHeading = panoHeadingDeg
+        renderer.setYaw(Math.toRadians((faceCompassDeg - panoHeadingDeg - 90.0 + 720.0) % 360.0).toFloat())
+    }
 
-    /** Live camera yaw / vertical field-of-view in DEGREES - the arrow overlay reads these each
-     *  frame to place the "walk this way" chevrons relative to where you're looking. */
-    fun currentYawDeg(): Float = Math.toDegrees(renderer.yawRad().toDouble()).toFloat()
+    /** Live camera COMPASS bearing / vertical field-of-view in DEGREES - the arrow overlay reads
+     *  these each frame to place the "walk this way" chevrons relative to where you're looking. */
+    fun currentYawDeg(): Float =
+        ((Math.toDegrees(renderer.yawRad().toDouble()) + panoHeading + 90.0) % 360.0 + 360.0).toFloat() % 360f
     fun currentFovDeg(): Float = renderer.fovDeg()
+
+    private var panoHeading = 0f
 
     @Suppress("ClickableViewAccessibility")
     override fun onTouchEvent(e: MotionEvent): Boolean {
