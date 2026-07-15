@@ -139,10 +139,18 @@ fun StreetViewScreen(
                 CircularProgressIndicator(color = Color.White, modifier = Modifier.align(Alignment.Center))
             }
 
-            // Attribution: place label, the shown capture date, and the Google copyright.
+            // Attribution: place label, the shown capture date, and the Google copyright. The
+            // copyright's year is set to the SHOWN capture year (not Google's current-year field),
+            // so it matches the imagery and updates when you go back in time - "© 2026 Google" over
+            // a May 2024 pano read wrong (user 2026-07-15).
             val label = pano?.addressLabel
             val date = monthYear(shownYear, shownMonth)
-            val copy = pano?.copyright ?: "© Google"
+            val copy = run {
+                val base = pano?.copyright ?: "© Google"
+                if (shownYear != null && Regex("\\d{4}").containsMatchIn(base))
+                    base.replaceFirst(Regex("\\d{4}"), shownYear.toString())
+                else base
+            }
             Text(
                 text = listOfNotNull(label?.takeIf { it.isNotBlank() }, date, copy).joinToString("  ·  "),
                 color = Color.White.copy(alpha = 0.85f),
