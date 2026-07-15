@@ -134,6 +134,10 @@ fun ManeuverBanner(
     // rememberUpdatedState keeps the captured refs pointing at the latest lambdas.
     val latestNext by rememberUpdatedState(onPreviewNext)
     val latestPrev by rememberUpdatedState(onPreviewPrev)
+    // COMPACT mode on very short screens (ported from alltechdev/vela-dpad, credit ars18):
+    // the 54dp glyph + full paddings buried the map on sub-500dp-tall displays, so the banner
+    // shrinks its chrome there. Ordinary phones and tall head units never trip the gate.
+    val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 500
     Card(
         modifier
             .fillMaxWidth()
@@ -184,14 +188,14 @@ fun ManeuverBanner(
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
     ) {
-        Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
+        Column(Modifier.padding(horizontal = if (compact) 12.dp else 18.dp, vertical = if (compact) 8.dp else 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(maneuverIcon(type), contentDescription = null, modifier = Modifier.size(54.dp))
-                Spacer(Modifier.width(18.dp))
+                Icon(maneuverIcon(type), contentDescription = null, modifier = Modifier.size(if (compact) 36.dp else 54.dp))
+                Spacer(Modifier.width(if (compact) 10.dp else 18.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
                         formatDistance(distanceMeters),
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                     )
                     val signs = roadSigns(text, ref)
