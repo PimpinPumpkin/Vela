@@ -430,7 +430,6 @@
     <string name="settings_update_auto_hint">Consulta la última versión de GitHub más o menos una vez al día y la ofrece cuando es más nueva que esta. Se instala con el instalador normal de Android. Si ya actualizas con Obtainium, puedes desactivarlo.</string>
     <string name="settings_update_check_now">Buscar actualizaciones</string>
     <string name="settings_update_checking">Comprobando…</string>
-    <string name="settings_update_found">¡Actualización disponible! Vuelve al mapa para instalarla.</string>
     <string name="settings_update_none">Tienes la versión más reciente.</string>
     <string name="settings_place_pages">Páginas de sitios</string>
     <plurals name="place_transit_stops"> <!-- format -->

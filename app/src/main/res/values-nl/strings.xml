@@ -430,7 +430,6 @@
     <string name="settings_update_auto_hint">Kijkt ongeveer één keer per dag naar de nieuwste GitHub-release en biedt die aan als die nieuwer is dan deze build. Installeren gaat via de normale Android-installer. Werk je al bij via Obtainium, dan kun je dit uitzetten.</string>
     <string name="settings_update_check_now">Op updates controleren</string>
     <string name="settings_update_checking">Controleren…</string>
-    <string name="settings_update_found">Update beschikbaar! Ga terug naar de kaart om te installeren.</string>
     <string name="settings_update_none">Je hebt de nieuwste versie.</string>
     <string name="settings_place_pages">Plaatspagina\'s</string>
     <plurals name="place_transit_stops"> <!-- format -->

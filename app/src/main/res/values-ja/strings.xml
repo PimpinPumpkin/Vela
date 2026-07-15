@@ -512,7 +512,6 @@
     <string name="root_offline_title">オフラインマップ</string>
     <string name="root_offline_body">VelaはGoogleから場所・検索・経路を取得するため、圏外ではダウンロード済みのエリアのみ利用できます。今のうちにエリアを設定して、圏外でも使えるようにしましょう。</string>
     <string name="root_offline_setup">オフラインを設定</string>
-    <string name="settings_update_found">アップデートがあります！地図に戻ってインストールしてください。</string>
     <string name="map_satellite_toggle">航空写真</string>
     <string name="map_layers">レイヤ</string>
     <string name="settings_layers_button">レイヤボタンを表示</string>

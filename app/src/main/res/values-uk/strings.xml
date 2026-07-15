@@ -432,7 +432,6 @@
     <string name="settings_update_auto_hint">Приблизно раз на день перевіряє найновіший реліз на GitHub і пропонує його, якщо він новіший за цю збірку. Встановлення відбувається через звичайний інсталятор Android. Якщо ви оновлюєтеся через Obtainium, це можна вимкнути.</string>
     <string name="settings_update_check_now">Перевірити оновлення</string>
     <string name="settings_update_checking">Перевірка…</string>
-    <string name="settings_update_found">Доступне оновлення! Поверніться на карту, щоб встановити.</string>
     <string name="settings_update_none">У вас найновіша версія.</string>
     <string name="settings_place_pages">Сторінки місць</string>
     <plurals name="place_transit_stops"> <!-- format -->

@@ -492,7 +492,6 @@
     <string name="root_offline_title">מפות לא מקוונות</string>
     <string name="root_offline_body">Vela מקבל מקומות, חיפוש והוראות הגעה מ-Google, כך שללא קליטה יפעלו רק אזורים שהורדת. הגדר אזור עכשיו כדי להיות מכוסה כשאין קליטה.</string>
     <string name="root_offline_setup">הגדרת מצב לא מקוון</string>
-    <string name="settings_update_found">יש עדכון זמין! חזור למפה כדי להתקין אותו.</string>
     <string name="map_satellite_toggle">תצוגת לוויין</string>
     <string name="map_layers">שכבות</string>
     <string name="settings_layers_button">הצגת כפתור השכבות</string>
