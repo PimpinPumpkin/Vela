@@ -1830,7 +1830,11 @@ class MapViewModel @Inject constructor(
      *  stitch its tiles into the equirect the GL viewer textures. No coverage → a brief toast, no
      *  viewer. Two-stage state so the viewer can show a spinner while tiles load. */
     fun openStreetView(place: Place) =
-        loadStreetView(faceToward = place.location) { dataSource.streetView(place.location) }
+        loadStreetView(faceToward = place.location) {
+            // Pass the address so the lookup can prefer a pano on the place's OWN street (a mid-block
+            // geocode can otherwise snap to the alley pano behind the building).
+            dataSource.streetView(place.location, preferStreet = place.address)
+        }
 
     /** Walk to a neighbouring pano (arrow tap): fetch it BY ID so it's epoch-exact - a
      *  nearest-location lookup snapped to a different-year capture (green May imagery under a
