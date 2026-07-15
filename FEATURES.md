@@ -260,7 +260,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   (`streetviewpixels-pa.googleapis.com`), and texture them onto a GL sphere we render ourselves. No
   API key, no login; the pano `pb`s ride the signed calibration channel so a drift is a config fix,
   not an app release. The capture date shows in the attribution ("Davis, California · May 2024 ·
-  © Google"); when a spot has more than one capture, a clock chip lists them and switches the imagery.
+  © 2024 Google") - the copyright year tracks the shown capture, not the current year, and updates
+  when you go back in time; when a spot has more than one capture, a clock chip lists them and switches the imagery.
   Walk arrows fetch the neighbour BY ID so the year and the picture always match. A place with no
   imagery gives a brief "no Street View here" toast. (The old approach - embedding Google's own WebGL
   page in a WebView - rendered black on many devices and was reverted; rendering the tiles ourselves
