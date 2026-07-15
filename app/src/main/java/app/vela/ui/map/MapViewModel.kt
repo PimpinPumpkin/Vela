@@ -1895,7 +1895,9 @@ class MapViewModel @Inject constructor(
                 val nudge = (((toTarget - perp + 540.0) % 360.0) - 180.0).coerceIn(-40.0, 40.0)
                 (perp + nudge).mod(360.0)
             } ?: faceHeading
-            val pano = if (facing != null) raw.copy(headingDeg = facing) else raw
+            // initialFacingDeg carries the desired view; headingDeg must STAY the capture heading -
+            // it's the texture's compass reference (overwriting it skewed the whole compass frame).
+            val pano = if (facing != null) raw.copy(initialFacingDeg = facing) else raw
             _state.update {
                 it.copy(streetView = pano, streetViewBitmap = null,
                     streetViewShownYear = pano.captureYear, streetViewShownMonth = pano.captureMonth,

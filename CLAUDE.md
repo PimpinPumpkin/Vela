@@ -1758,7 +1758,13 @@ architecture note.
   `streetViewByPano`. The heuristics (nearest pano; street-of-address match; perpendicular probes for
   set-back geocodes whose alley cluster isn't graph-connected to the frontage; perpendicular-facing with a
   ±40° nudge) are the FALLBACK for entries with no thumbnail - don't re-order that ladder: geometry alone
-  provably mis-picks (the 2005-address alley saga, 3 attempts before copying Google won). Remaining:
+  provably mis-picks (the 2005-address alley saga, 3 attempts before copying Google won). **COMPASS FRAME
+  (2026-07-16, the root of every "faces the wrong way"):** Google's equirect puts the CAPTURE heading at
+  the texture CENTRE (u=0.5, verified by stitching a pano), while PanoramaView's yaw=0 looks at u=0.75 -
+  so compass B = renderer yaw `B - captureHeading - 90`. Use `setCompass(panoHeading, faceCompass)` /
+  compass-space `currentYawDeg()`; NEVER feed a compass bearing in as raw yaw, and never overwrite
+  `StreetViewPano.headingDeg` (the texture reference) with a desired facing - that's `initialFacingDeg`.
+  Historical (time-travel) textures reuse the base pano's heading, so their yaw is approximate. Remaining:
   walking can cross capture epochs (Google stays in-epoch; the neighbour entries carry no date to filter
   on), higher-zoom on pinch.
 - **Routing is OPEN, not Google (2026-06-28).** Turn-by-turn comes from **FOSSGIS OSRM**

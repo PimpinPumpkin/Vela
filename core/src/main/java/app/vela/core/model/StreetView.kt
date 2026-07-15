@@ -15,9 +15,14 @@ data class StreetViewPano(
     val panoId: String,
     val lat: Double,
     val lng: Double,
-    // The pano's own yaw (degrees, true-north referenced). The sphere's texture seam (u=0) is
-    // this direction, so the viewer offsets the initial camera by it to face down the street.
+    // The pano's CAPTURE heading (degrees, true north). This is the texture's compass reference:
+    // Google's equirect is stitched with the capture direction at the IMAGE CENTRE (u=0.5), so the
+    // viewer needs it to map compass bearings onto the sphere. Never overwrite it with a desired
+    // facing - that's [initialFacingDeg].
     val headingDeg: Double = 0.0,
+    // The compass direction the viewer should FACE when this pano opens (Google's own yaw for the
+    // place, or a computed look-at). Null = face down the street ([headingDeg]).
+    val initialFacingDeg: Double? = null,
     val tileSize: Int = 512,
     // Number of pyramid levels; the max usable zoom is [maxZoom] - 1. The viewer picks a level
     // well below this (a full-res 16384×8192 equirect is ~400 MB decoded).
