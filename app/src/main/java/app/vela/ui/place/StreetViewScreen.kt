@@ -100,11 +100,12 @@ fun StreetViewScreen(
                 // fresh view gets the texture and the CURRENT look direction re-fed.
                 val view = remember(full) { PanoramaView(ctx) }
                 DisposableEffect(view) { onDispose { view.onPause() } }
-                // Re-aim on each new pano OR new view. A pano we were already showing (fullscreen
-                // toggle) keeps the user's current yaw; a genuinely new pano faces its requested
-                // direction (Google's yaw / look-at target / down the street).
+                // Re-aim on each new pano OR new view OR heading change. A pano we were already
+                // showing (fullscreen toggle, or time travel swapping in the historical capture's
+                // heading) keeps the user's current compass yaw; a genuinely new pano faces its
+                // requested direction (Google's yaw / look-at target / down the street).
                 var seenPano by remember { mutableStateOf<String?>(null) }
-                LaunchedEffect(view, pano.panoId) {
+                LaunchedEffect(view, pano.panoId, pano.headingDeg) {
                     val face = if (pano.panoId == seenPano) yaw
                     else (pano.initialFacingDeg ?: pano.headingDeg).toFloat()
                     seenPano = pano.panoId

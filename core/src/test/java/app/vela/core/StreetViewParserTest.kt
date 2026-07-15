@@ -32,6 +32,11 @@ class StreetViewParserTest {
         assertEquals("UiZ-8FRkJwHjR3mwzBTPmg", pano.panoId)
         assertEquals(512, pano.tileSize)
         assertEquals(6, pano.maxZoom)
+        // Per-level (width, height) - the tile loader sizes its grid from these; old captures'
+        // pyramids are 416-based, so assuming 512·2^z black-banded historical panos.
+        assertEquals(6, pano.levelDims.size)
+        assertEquals(512 to 256, pano.levelDims.first())
+        assertEquals(16384 to 8192, pano.levelDims.last())
         assertEquals("San Francisco, California", pano.addressLabel)
         assertEquals("© 2026 Google", pano.copyright)
         assertEquals(230.48, pano.headingDeg, 0.1)

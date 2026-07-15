@@ -1764,7 +1764,16 @@ architecture note.
   so compass B = renderer yaw `B - captureHeading - 90`. Use `setCompass(panoHeading, faceCompass)` /
   compass-space `currentYawDeg()`; NEVER feed a compass bearing in as raw yaw, and never overwrite
   `StreetViewPano.headingDeg` (the texture reference) with a desired facing - that's `initialFacingDeg`.
-  Historical (time-travel) textures reuse the base pano's heading, so their yaw is approximate.
+  **OLD-PYRAMID GOTCHA (2026-07-16, device report "black panel on time travel"):** the tile pyramid
+  is NOT one fixed shape - modern panos are 512·2^z wide but pre-2016 captures are 416·2^z (13312
+  max, the 2007 gen sometimes only 4 levels), so the loader MUST size its grid from the pano's own
+  `levelDims` (parsed per level from `[2][3][0]`); assuming 512·2^z requested tiles past the old
+  grid's edge → black bands. `StreetViewTiles` picks the highest level ≤4096 wide, crops padded edge
+  tiles, and scales a non-4096×2048 stitch up to it (GL needs POT for the 360° wrap; an old equirect
+  still covers 360°×180° so scaling is exact). Time travel fetches the historical pano's OWN metadata
+  by id (pyramid + heading - epochs differ by up to 180°!) and adopts its headingDeg into the shown
+  pano; the screen's re-aim effect keys on headingDeg too, keeping the user's compass yaw across the
+  swap. Verified live: a 2012 capture (416-pyramid) renders the full sphere.
   **Half-screen (2026-07-16):** StreetViewScreen is a top-aligned PANE (55% height, fullscreen toggle,
   Back exits fullscreen first), not a Dialog - the map stays live underneath. The viewer reports
   `onPose(lat,lng,compassYaw)` (throttled to ~per-degree) → MapScreen's `svPose: DoubleArray?` →
