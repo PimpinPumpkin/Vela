@@ -1211,6 +1211,27 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   parking lot sits under that 2 m/s floor the whole way - the deviation never accumulated hits,
   the reroute never fired, and the blue line stayed stale. A FAR deviation (90 m+, comfortably
   beyond anything stationary jitter invents) now counts at any speed.
+- ✅ **In-nav compass toggle: heading-up or north-up (2026-07-15).** A compass button in the
+  nav button stack flips the follow camera between the default heading-up view and a north-up
+  flat view that still follows the puck (position, speed zoom, puck-low framing all kept; the
+  arrow rotates on the map instead of the map rotating under it). The icon leans while
+  heading-up and sits straight, tinted, while north-up; the switch eases over a beat rather
+  than snapping.
+- ✅ **House-number searches resolve locally, like Google (2026-07-15, reported with two
+  local test addresses).** Two holes closed. The on-device address geocoder (exact and
+  interpolated house numbers from the downloaded pack) now joins ONLINE searches and
+  suggestions for address-looking queries - it was gated to the offline/Google-failed path,
+  so a wrong-but-nonempty Google result set blocked it completely, which is exactly what
+  numbered streets with directional suffixes produced. And the suggest dedupe that dropped a
+  Photon/local address hit whenever ANY Google suggestion sat within a block of it (on a
+  commercial road, something always does) now only drops it when the Google entry carries
+  the same house number. Address hits lead the list: local pack, then Photon, then Google.
+- ✅ **Arrival speaks ONE line (2026-07-15).** "Your destination is on the right" when the
+  route knows the side; "You have arrived" only as the fallback when it doesn't - they no
+  longer stack.
+- ✅ **Google-width route stripe (2026-07-15).** The blue route line (and the grey alternates
+  a step thinner) scales with zoom instead of a constant 6 px: browse zooms look the same,
+  street/nav zooms draw the fat stripe Google does.
 - ✅ **A degraded route can no longer masquerade as a "faster route" (2026-07-15, real-drive
   report).** When the ~2-min recheck's Google fetch fails, the candidate comes back
   trafficless with abbreviated steps - and its free-flow ETA, compared against the live
