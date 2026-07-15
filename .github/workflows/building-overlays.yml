@@ -1,0 +1,132 @@
+# Build open building-footprint OVERLAYS (Microsoft, ODbL) as PMTiles for many regions in parallel and
+# publish them to the `building-overlays` release - the app renders them BENEATH the OSM building layer to
+# fill gaps where OSM lacks footprints. Sibling of routing-graphs.yml. Two data sources, per catalog row's
+# `source`: us-legacy (a US state's .geojson.zip) or ms-global (a world country's quadkey GeoJSONL).
+#
+# Run from Actions → "Build building overlays" → pass `ids` (e.g. "washington andorra") or tick `all`.
+# Regions come from tools/overlay-regions.json - add a line there to build something not listed.
+#
+# Race-safety: each region builds in its own matrix job and uploads ONLY its own <id>.pmtiles + a manifest
+# *entry* artifact. One final `merge` job folds every entry into building-overlay-manifest.json in a single
+# upload, so parallel jobs can't clobber it. The concurrency group also serializes whole runs.
+name: Build building overlays
+
+on:
+  workflow_dispatch:
+    inputs:
+      group:
+        description: "Build a whole catalog group: us | world | chunk. Blank → use ids/all. (The catalog has >256 regions, over GitHub's per-matrix cap, so dispatch one group at a time.)"
+        type: string
+        default: ""
+      ids:
+        description: "Space/comma-separated region ids (e.g. 'washington andorra'). Blank + all=true builds the whole catalog."
+        type: string
+        default: "washington"
+      all:
+        description: "Build every region in tools/overlay-regions.json (ignores 'ids'). NB fails if the catalog exceeds 256 regions - prefer `group`."
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # create/upload assets on the building-overlays release
+# NB: run-level concurrency is intentionally NOT set - the `us`/`world`/`chunk` group dispatches must be able
+# to build concurrently. Only the MERGE job serialises (its own concurrency group below), so parallel runs
+# accumulate into the one manifest instead of clobbering it.
+
+jobs:
+  prep:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.sel.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: sel
+        env:
+          GRP: ${{ inputs.group }}
+          IDS: ${{ inputs.ids }}
+          ALL: ${{ inputs.all }}
+        run: |
+          ids_json=$(jq -cn --arg s "$IDS" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
+          # each matrix row carries id/name/source/url/location/qkprefix + bbox as a "S,W,N,E" string. source
+          # picks the build path (us-legacy .geojson.zip / ms-global country by `location`, with qkprefix
+          # selecting a sub-national chunk). `group` (if set) selects a whole group; else ids/all.
+          sel=$(jq -c --argjson ids "$ids_json" --argjson all "${ALL:-false}" --arg grp "$GRP" '
+            [ .regions[]
+              | select( if $grp != "" then (.group // "") == $grp
+                        else ($all or (($ids|length) > 0 and ((.id as $rid | $ids | index($rid)) != null))) end )
+              | {id, name, source: (.source // "us-legacy"), url: (.url // "-"), location: (.location // ""), qkprefix: (.qkprefix // ""), bbox: (.bbox | map(tostring) | join(","))} ]
+          ' tools/overlay-regions.json)
+          n=$(printf '%s' "$sel" | jq 'length')
+          echo "selected $n region(s):"; printf '%s' "$sel" | jq -r '.[].id' | paste -sd' ' -
+          if [ "$n" -eq 0 ]; then echo "::error::no regions matched group='$GRP' ids='$IDS' all='$ALL'"; exit 1; fi
+          if [ "$n" -gt 256 ]; then echo "::error::$n regions exceeds GitHub's 256-job matrix cap - dispatch by group (us/world/chunk)"; exit 1; fi
+          echo "matrix={\"include\":$sel}" >> "$GITHUB_OUTPUT"
+      - name: Ensure the catalog release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view building-overlays --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create building-overlays --repo "$GITHUB_REPOSITORY" --prerelease \
+              --title "Open building overlays" \
+              --notes "Microsoft Building Footprints (US + Global ML, ODbL) as PMTiles for Vela's gap-fill building overlay. Data assets, not a code release. Buildings © Microsoft, licensed ODbL."
+
+  build:
+    needs: prep
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 8 # tippecanoe on a state is memory+disk heavy; don't over-subscribe the runners
+      matrix: ${{ fromJSON(needs.prep.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tippecanoe + tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libsqlite3-dev zlib1g-dev jq unzip
+          git clone --depth 1 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
+          make -C /tmp/tippecanoe -j"$(nproc)"
+          sudo make -C /tmp/tippecanoe install
+      - name: Build ${{ matrix.id }} PMTiles + upload + emit entry
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VELA_REPO: ${{ github.repository }}
+          MANIFEST_MODE: emit
+          ENTRY_OUT: ${{ matrix.id }}.json
+          SOURCE: ${{ matrix.source }}
+          LOCATION: ${{ matrix.location }}
+          QKPREFIX: ${{ matrix.qkprefix }}
+        run: bash scripts/build-overlay-region.sh "${{ matrix.id }}" "${{ matrix.name }}" "${{ matrix.url }}" "${{ matrix.bbox }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: entry-${{ matrix.id }}
+          path: ${{ matrix.id }}.json
+          retention-days: 1
+
+  merge:
+    needs: build
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    # Serialise ONLY the manifest merge across concurrent group runs (us/world/chunk) - each folds its own
+    # entries into the shared manifest by replace-by-id, so they accumulate instead of clobbering.
+    concurrency:
+      group: building-overlays-manifest-merge
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - uses: actions/download-artifact@v4
+        with:
+          path: entries
+          pattern: entry-*
+          merge-multiple: true
+      - name: Merge entries into building-overlay-manifest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VELA_REPO: ${{ github.repository }}
+        run: |
+          shopt -s nullglob
+          files=(entries/*.json)
+          if [ ${#files[@]} -eq 0 ]; then echo "no region entries were built - nothing to merge"; exit 0; fi
+          echo "merging ${#files[@]} entr(y/ies)"
+          bash scripts/merge-overlay-manifest.sh entries

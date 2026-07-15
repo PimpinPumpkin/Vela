@@ -1,0 +1,46 @@
+# Gradle
+.gradle/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# IntelliJ / Android Studio
+*.iml
+.idea/
+*.ipr
+*.iws
+out/
+gen/
+.cxx/
+.externalNativeBuild/
+captures/
+.kotlin/
+
+# Local config - machine-specific, must NOT be committed
+local.properties
+
+# Generated APKs and signing
+*.apk
+*.aab
+*.dex
+*.keystore
+*.jks
+release/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs / temp
+*.log
+*.bak
+*.tmp
+
+
+# Vendored native AAR (sherpa-onnx neural TTS runtime) - large binary, fetched out-of-band
+app/libs/*.aar
+
+# Local Claude Code entrypoint - symlink to AGENTS.md (the committed guide)
+/CLAUDE.md
+*/screenshots/selftour*/run-recording.mkv
+tests/devices/*/screenshots/*/run-recording.mkv
