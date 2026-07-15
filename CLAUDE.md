@@ -1466,7 +1466,10 @@ architecture note.
   the TRUE distance, silent catch-up past maneuvers >75 m behind, proximity arrival (crow ≤40 m) +
   no rerouting within 150 m of the destination or while stationary (EXCEPT a FAR deviation:
   `FAR_OFF_M` 90 m counts at ANY speed since 2026-07-14 - parking-lot creep sits under the 2 m/s
-  moving floor forever and the reroute/redrawn line never came), off-route measured on the
+  moving floor forever and the reroute/redrawn line never came; since 2026-07-15 a moving fix
+  past FAR_OFF_M also counts DOUBLE, and `OFF_ROUTE_M` is 40 m / `OFF_ROUTE_HITS` 3 (were 45/4) -
+  the user's wrong turns rerouted too slowly, and the corridor width plus the debounce were the
+  lag; don't loosen these back without a false-reroute report), off-route measured on the
   windowed/anchored projection (never whole-polyline min), reroutes are single-flight + cooldown +
   latch-clear-on-failure (a failed fetch must NOT kill rerouting - the event is edge-triggered), and
   ETA sums the remaining STEP durations × traffic ratio (never remaining/avg-speed), and since
