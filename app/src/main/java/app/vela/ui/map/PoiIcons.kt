@@ -156,10 +156,18 @@ object PoiIcons {
             any("museum", "theater", "theatre", "gallery", "cinema", "movie", "art ", "cultural", "historical", "aquarium", "zoo") -> "culture"
             any("gym", "fitness", "stadium", "sport", "golf", "bowling", "yoga", "arena", "athletic",
                 "climbing", "recreation cent", "rec cent", "ice rink", "skating") -> "sport"
-            any("station", "transit", "airport", "bus ", "train", "subway", "metro", "light rail", "ferry") -> "transit"
+            // CIVIC before TRANSIT (upstream 7a1b30c9): a fire station's category IS "Fire station",
+            // and the transit branch's bare "station" caught it first - fire houses drew as bus
+            // stops. Anything here that contains "station" is deliberately non-transit.
             any("bank", "atm", "credit union", "post office", "police", "fire station", "city hall",
                 "courthouse", "church", "mosque", "temple", "synagogue", "place of worship", "cemetery",
                 "government", "community cent") -> "civic"
+            // ...and the bare "station" keyword excludes the non-transit station flavors that
+            // aren't already claimed above (gas/charging went to "fuel" at the top).
+            any("station", "transit", "airport", "bus ", "train", "subway", "metro", "light rail", "ferry") &&
+                !any("power station", "pumping station", "radio station", "television station", "tv station",
+                    "weigh station", "polling station", "ranger station", "lifeguard station", "comfort station",
+                    "research station", "weather station") -> "transit"
             any("store", "shop", "grocery", "supermarket", "market", "mall", "retail", "boutique", "outlet",
                 "dealer", "salon", "barber", "hardware", "florist", "laundr", "jewelr", "furniture", "pharmacy",
                 "auto parts", "tire", "nail", "spa") -> "shop"

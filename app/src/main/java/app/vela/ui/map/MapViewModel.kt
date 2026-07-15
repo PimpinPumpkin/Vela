@@ -2138,6 +2138,15 @@ class MapViewModel @Inject constructor(
         }.take(6)
     }
 
+    // Whether the directions chooser is collapsed to its Start bar. UI-owned (the panel's drag
+    // physics live in MapScreen), mirrored here so the route-through-here press can gate on it -
+    // only read while directionsOpen, so a stale value between sessions is harmless (the panel
+    // re-reports on composition).
+    private var directionsMinimized = false
+
+    /** MapScreen mirrors the chooser's collapsed state (upstream b8beca25). */
+    fun onDirectionsCollapsed(minimized: Boolean) { directionsMinimized = minimized }
+
     /** Long-press the map (or a building) → drop a pin and reverse-geocode it
      * to an address, like Google's press-and-hold. */
     fun onMapLongPress(location: LatLng) {
@@ -2164,6 +2173,14 @@ class MapViewModel @Inject constructor(
         // region", but a hand-placed waypoint forces the detour. The point itself is what matters, so
         // the stop sits at the exact spot pressed; the reverse-geocode only names it.
         if (_state.value.directionsOpen && !_state.value.pickingOrigin && !_state.value.pickingStop) {
+            // Only when the chooser is MINIMIZED to its Start bar and the steps viewer is closed
+            // (upstream b8beca25). Plain building/unnamed-POI taps funnel into this handler too,
+            // so with the full picker (or the step list) covering the map, a stray tap on the
+            // visible strip silently added a stop and rerouted the trip. Minimized, the map is
+            // the primary surface and routing through a pressed point is plausibly deliberate.
+            // A suppressed press does nothing at all: dropping a pin instead would load a place
+            // sheet invisibly under the chooser (the ghost-selection class of bug).
+            if (_state.value.showSteps || !directionsMinimized) return
             viewModelScope.launch {
                 val geo = runCatching { dataSource.reverseGeocode(location) }.getOrNull()
                 val stop = (geo ?: Place(id = "pin:${location.lat},${location.lng}", name = appContext.getString(R.string.mapvm_dropped_pin), location = location))
@@ -2215,6 +2232,13 @@ class MapViewModel @Inject constructor(
     fun onAddressLabelTap(number: String, location: LatLng) {
         if (_state.value.navigating) return // dead during a live drive, like onPoiTap
         if (_state.value.pickOnMap != null) { onMapLongPress(location); return } // pick-mode reuses the endpoint flow
+        // While planning a trip, a tapped house number behaves like any other pressed point:
+        // route-through-here when the chooser is minimized, suppressed otherwise (the gate lives
+        // in onMapLongPress). Selecting the address here instead set `selected` under the open
+        // chooser - an invisible sheet that popped up when the chooser closed (upstream b8beca25).
+        if (_state.value.directionsOpen && !_state.value.pickingOrigin && !_state.value.pickingStop) {
+            onMapLongPress(location); return
+        }
         reviewsJob?.cancel()
         val id = "addr:$number@${location.lat},${location.lng}"
         val immediate = Place(id = id, name = number, location = location)
@@ -3311,15 +3335,18 @@ class MapViewModel @Inject constructor(
         while (ambientCache.size > 16) ambientCache.removeFirst()
     }
 
-    /** Freshest non-stale cached fetch whose centre is within ~900 m of [center], re-centred so its
-     * distances are correct for the new view. Null if nothing recent+near is cached. */
-    private fun cachedAmbientNear(center: LatLng): List<app.vela.core.model.Place>? {
+    // How long a completed fetch is served AS-IS for views it covers (no refetch). Short on
+    // purpose: it only needs to absorb the tap-a-POI-and-close camera shift, not stand in for
+    // the moved-gate's refresh loop (upstream e3992d88).
+    private val AMBIENT_FRESH_MS = 3 * 60_000L
+
+    /** Freshest non-stale cached fetch whose centre is within ~900 m of [center]. Null if nothing
+     * recent+near is cached. */
+    private fun cachedAmbientNear(center: LatLng): Triple<LatLng, List<app.vela.core.model.Place>, Long>? {
         val now = android.os.SystemClock.elapsedRealtime()
         return ambientCache
             .filter { now - it.third < 30 * 60_000L && it.first.distanceTo(center) < 900.0 }
             .minByOrNull { it.first.distanceTo(center) }
-            ?.second
-            ?.map { it.copy(distanceMeters = center.distanceTo(it.location)) }
     }
 
     /**
@@ -3352,9 +3379,27 @@ class MapViewModel @Inject constructor(
         // Any recent nearby fetch cached (e.g. an area you already visited this session)? Repaint it
         // INSTANTLY so there's no empty→OSM-POI flash→ambient "small then pop bigger" while the network
         // fetch below runs; the fetch then refines it.
-        if (s.ambientPois.isEmpty()) {
-            cachedAmbientNear(center)?.let { cached ->
+        val entry = cachedAmbientNear(center)
+        if (entry != null) {
+            val cached = entry.second.map { it.copy(distanceMeters = center.distanceTo(it.location)) }
+            if (s.ambientPois.isEmpty()) {
                 _state.update { it.copy(ambientPois = keepAmbientForView(cached, viewRadiusMeters)) }
+            }
+            // A FRESH fetch that still covers this view is served as-is, no network refetch
+            // (upstream e3992d88): tapping a POI shifts the camera enough to trip the moved-gate,
+            // so closing the sheet re-fetched the SAME area seconds later - and Google's ranking
+            // jitters between identical requests, so the replace randomly swapped or dropped a
+            // few icons a beat after closing. Same-area data seconds apart is not fresher, just
+            // different. The window is short so lingering somewhere still refreshes on the next
+            // real pan.
+            val fresh = android.os.SystemClock.elapsedRealtime() - entry.third < AMBIENT_FRESH_MS
+            if (fresh && entry.first.distanceTo(center) < 700.0) {
+                if (s.ambientPois.isEmpty() || moved || zoomed) {
+                    _state.update { it.copy(ambientPois = keepAmbientForView(cached, viewRadiusMeters)) }
+                }
+                lastAmbientCenter = entry.first
+                lastAmbientZoom = zoom
+                return
             }
         }
         ambientJob = viewModelScope.launch {
