@@ -1857,6 +1857,11 @@ class MapViewModel @Inject constructor(
     fun moveStreetView(link: app.vela.core.model.StreetViewLink) =
         loadStreetView(faceHeading = link.bearingDeg) { dataSource.streetViewByPano(link.panoId) }
 
+    /** Tap on the mini-map while Street View is open: jump the viewer to the nearest pano at the
+     *  tapped point (pegman-drop), looking toward what was tapped. */
+    fun moveStreetViewTo(location: LatLng) =
+        loadStreetView(faceToward = location) { dataSource.streetView(location) }
+
     /**
      * @param faceToward when set, the initial camera faces from the resolved pano TOWARD this point
      *   (the place we opened Street View on), so you look at the address, not the pano's capture
@@ -1888,6 +1893,9 @@ class MapViewModel @Inject constructor(
             // +-40 deg so a road-snapped geocode (bearing points down the street) can't swing the view
             // down the road. On a move we just face the way we walked (faceHeading).
             val facing = faceToward?.let { target ->
+                // Tapped (nearly) the pano's own spot - a bearing to a coincident point is noise;
+                // fall through to the capture heading (down the street), the pegman-drop default.
+                if (LatLng(raw.lat, raw.lng).distanceTo(target) < 8.0) return@let null
                 val toTarget = LatLng(raw.lat, raw.lng).bearingTo(target)
                 val perpA = (raw.headingDeg + 90.0).mod(360.0)
                 val perpB = (raw.headingDeg + 270.0).mod(360.0)

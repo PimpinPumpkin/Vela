@@ -1773,7 +1773,15 @@ architecture note.
   camera to the pano on each HOP only (never per yaw frame), with `svTopInsetPx` (pane height) as
   camera TOP padding so the puck centres in the VISIBLE strip - the sheet-inset block must not
   clobber that padding while SV is open (it's gated on svPose==null; the SV close path restores it).
-  PlaceSheet yields while SV is up (the bottom half must stay pure map). The renderer's zoom is
+  PlaceSheet yields while SV is up (the bottom half must stay pure map). Mini-map TAP = pegman-drop:
+  handleTap in VelaMapView pre-empts ALL other tap resolution while `svActive` and hands the LatLng to
+  `onSvMapTap` → `moveStreetViewTo` (nearest pano, faceToward the tap; <8 m from the pano → down-street).
+  FULLSCREEN GOTCHA (device-caught 2026-07-16): a SurfaceView's window hole does NOT follow a
+  pure-Compose resize - the GL render grew but stayed cropped in the old half-screen hole. The
+  PanoramaView is `remember(full)` (recreated on toggle) wrapped in `key(view) { AndroidView(...) }`
+  (key() forces AndroidView to actually swap instances), with view-keyed effects re-feeding the texture
+  and the CURRENT yaw (seenPano tracks pano-change vs view-change so a toggle keeps your look direction
+  and a walk faces the new pano's initialFacing). The renderer's zoom is
   canonically the HORIZONTAL fov (fovX) - a fixed vertical fov made fullscreen NARROW the view
   ("it just zoomed"); holding fovX keeps framing and reveals more sky/ground, and fovX is also what
   the arrow overlay projects across the screen width. Remaining:
