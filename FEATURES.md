@@ -210,7 +210,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Drive-feedback batch (2026-07-16).** Every drive starts **heading-up** (the compass toggle is
   per-drive now - a north-up pick used to stick for the whole app session). **Floating road labels**
   during nav: horizontal, viewport-aligned street names hover over the roads you cross - legible even
-  with the camera tilted, like Google's callouts (device-verified on a simulated drive). **Basemap POIs
+  with the camera tilted, like Google's callouts (device-verified on a simulated drive). **Reworked
+  2026-07-17 after the first real drive:** each name now sits in a real Google-style BUBBLE (rounded
+  chip with a pointer tail touching its road, theme-matched, drawn via a stretchable style image +
+  icon-text-fit so any name length fits), residential cross streets are back (the first cut dropped
+  the "minor" road class for sparseness, which muted the layer on neighbourhood drives - minors now
+  show from z16, i.e. at surface-street speeds, and stay out of the highway view), and the basemap's
+  own line-following road names hide during nav so nothing draws twice (placement work saved every
+  frame). Device-verified on a simulated drive: bubbles with tails on the cross streets, no doubles. **Basemap POIs
   stay visible while navigating** (gas stations on the way; the master Show-places switch still wins;
   narrowed to gas stations ONLY on 2026-07-17 - the rest read as clutter over the route).
   **Returning to the app mid-drive re-centres automatically** - a stray pan while backgrounding used to
