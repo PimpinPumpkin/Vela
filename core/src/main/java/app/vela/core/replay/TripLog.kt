@@ -27,7 +27,10 @@ import app.vela.core.nav.NavReplay
 object TripLog {
 
     /** One recorded GPS fix (the `:core`-side twin of `:app`'s `TripFix`). */
-    data class Point(val lat: Double, val lng: Double, val t: Long, val bearing: Float, val speed: Float) {
+    data class Point(
+        val lat: Double, val lng: Double, val t: Long, val bearing: Float, val speed: Float,
+        val offRoute: Boolean = false, // the engine's live off-route flag at this fix (2026-07-16+ recordings)
+    ) {
         val latLng: LatLng get() = LatLng(lat, lng)
     }
 
@@ -71,7 +74,10 @@ object TripLog {
         if (p.size < 5) return null
         val lat = p[0].toDoubleOrNull() ?: return null
         val lng = p[1].toDoubleOrNull() ?: return null
-        return Point(lat, lng, p[2].toLongOrNull() ?: 0L, p[3].toFloatOrNull() ?: 0f, p[4].toFloatOrNull() ?: 0f)
+        return Point(
+            lat, lng, p[2].toLongOrNull() ?: 0L, p[3].toFloatOrNull() ?: 0f, p[4].toFloatOrNull() ?: 0f,
+            offRoute = p.getOrNull(5) == "1",
+        )
     }
 
     private fun parseManeuver(line: String): Maneuver? {
