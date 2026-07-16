@@ -11,8 +11,13 @@ name: F-Droid repo
 # keep the normal Vela app signature.
 
 on:
+  # NOT `edited`: marking a release Latest or tweaking its notes is a metadata change that
+  # doesn't alter the APK, and it fired a SECOND run alongside `released` on a manual promote -
+  # two runs then raced the github-pages environment and invalidated each other's artifact
+  # (BlobNotFound, 2026-07-16). `published` (new release) and `released` (prerelease -> full,
+  # i.e. the promote itself) cover every case that needs a rebuild.
   release:
-    types: [published, edited, released]
+    types: [published, released]
   # Releases created by CI's own GITHUB_TOKEN don't fire release events for other
   # workflows (GitHub's anti-recursion rule), so nightly publishes never triggered
   # this on their own - the index went stale until someone dispatched it by hand.
@@ -38,7 +43,10 @@ permissions:
 
 concurrency:
   group: fdroid-repo
-  cancel-in-progress: false
+  # true (was false): each run rebuilds the entire index + site from scratch, so only the
+  # NEWEST run's output matters. Superseding an overlapping run is lossless and stops two
+  # deploys from racing the single github-pages environment (the BlobNotFound failure mode).
+  cancel-in-progress: true
 
 jobs:
   build:
