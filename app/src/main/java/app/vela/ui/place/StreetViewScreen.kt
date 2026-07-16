@@ -3,7 +3,6 @@ package app.vela.ui.place
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -52,6 +51,19 @@ import app.vela.core.model.StreetViewLink
 import app.vela.core.model.StreetViewPano
 import app.vela.core.model.StreetViewTime
 import app.vela.streetview.PanoramaView
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import app.vela.ui.dpadHighlight
+import app.vela.ui.dpadAutoFocus
+import androidx.compose.ui.focus.focusRequester
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -76,6 +88,26 @@ fun StreetViewScreen(
     onPose: (lat: Double, lng: Double, yawDeg: Float) -> Unit = { _, _, _ -> },
 ) {
     var full by remember { mutableStateOf(false) }
+    // D-pad focus ring (fork-only): pano look-around <-> the overlay controls. Predictable
+    // ORDER, not spatial - the controls overlap the fullscreen pano box, so directional focus
+    // movement can't separate them (docs/dpad.md).
+    val rPano = remember { androidx.compose.ui.focus.FocusRequester() }
+    val rClose = remember { androidx.compose.ui.focus.FocusRequester() }
+    val rFull = remember { androidx.compose.ui.focus.FocusRequester() }
+    val rTime = remember { androidx.compose.ui.focus.FocusRequester() }
+    val hasTime = (pano?.history?.size ?: 0) > 1
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    // Arrow cycling for a control in the ring: forward -> next, back -> prev. OK falls
+    // through (the Surface's own onClick activates it); BACK closes the whole viewer.
+    fun ringKey(ev: androidx.compose.ui.input.key.KeyEvent, prev: androidx.compose.ui.focus.FocusRequester, next: androidx.compose.ui.focus.FocusRequester): Boolean {
+        if (ev.type != KeyEventType.KeyDown) return false
+        return when (ev.key) {
+            Key.DirectionDown, Key.DirectionRight -> { runCatching { next.requestFocus() }; true }
+            Key.DirectionUp, Key.DirectionLeft -> { runCatching { prev.requestFocus() }; true }
+            Key.Back -> { onClose(); true }
+            else -> false
+        }
+    }
     // Back backs out of full screen first, then closes the viewer.
     BackHandler(onBack = { if (full) full = false else onClose() })
     BoxWithConstraints(
@@ -134,6 +166,62 @@ fun StreetViewScreen(
                 key(view) {
                     AndroidView(factory = { view }, modifier = Modifier.fillMaxSize())
                 }
+                // D-pad look-around (docs/dpad.md rule 3: the drag gesture needs a key path). The
+                // engage model mirrors MapDpadController: focused-but-not-engaged, OK engages and
+                // arrows fall through to reach the controls; engaged, arrows pan the sphere and
+                // +/- zoom. BACK disengages first (the screen's BackHandler then closes). Opens
+                // focused here so the first key looks around, not into the void.
+                var engaged by remember(pano.panoId) { mutableStateOf(false) }
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .dpadAutoFocus(rPano)
+                        .onKeyEvent { ev ->
+                            val isOk = ev.key == Key.DirectionCenter || ev.key == Key.Enter || ev.key == Key.NumPadEnter
+                            if (!engaged) {
+                                if (ev.type != KeyEventType.KeyDown) return@onKeyEvent isOk
+                                return@onKeyEvent when (ev.key) {
+                                    Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> { engaged = true; true }
+                                    // Enter the control ring: forward lands on Close, back on the
+                                    // last control (Time if present, else Fullscreen).
+                                    Key.DirectionDown, Key.DirectionRight -> {
+                                        runCatching { rClose.requestFocus() }; true
+                                    }
+                                    Key.DirectionUp, Key.DirectionLeft -> {
+                                        runCatching { (if (hasTime) rTime else rFull).requestFocus() }; true
+                                    }
+                                    else -> false
+                                }
+                            }
+                            val step = 0.28f
+                            when (ev.type) {
+                                KeyEventType.KeyDown -> when (ev.key) {
+                                    // Signs mirror the drag-the-world touch convention so a key
+                                    // press turns the VIEW in the arrow's direction (RIGHT looks
+                                    // right), which is the natural key mapping - the inverse of dx/dy.
+                                    Key.DirectionLeft -> { view.panByFraction(step, 0f); true }
+                                    Key.DirectionRight -> { view.panByFraction(-step, 0f); true }
+                                    Key.DirectionUp -> { view.panByFraction(0f, step); true }
+                                    Key.DirectionDown -> { view.panByFraction(0f, -step); true }
+                                    Key.ZoomIn, Key.Plus, Key.Equals -> { view.zoomStep(1.25f); true }
+                                    Key.ZoomOut, Key.Minus -> { view.zoomStep(0.8f); true }
+                                    Key.Back -> { engaged = false; true }
+                                    Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                                        val fwd = pano.neighbors.minByOrNull { abs(normDeg(it.bearingDeg.toFloat() - yaw)) }
+                                        if (fwd != null && abs(normDeg(fwd.bearingDeg.toFloat() - yaw)) < 60f) onMove(fwd)
+                                        true
+                                    }
+                                    else -> false
+                                }
+                                KeyEventType.KeyUp -> ev.key in setOf(
+                                    Key.DirectionLeft, Key.DirectionRight, Key.DirectionUp, Key.DirectionDown,
+                                    Key.ZoomIn, Key.Plus, Key.Equals, Key.ZoomOut, Key.Minus,
+                                )
+                                else -> false
+                            }
+                        }
+                        .focusable(),
+                )
             }
 
             // Walk arrows: one tappable chevron per neighbour that's within the visible arc. Shown in
@@ -155,6 +243,7 @@ fun StreetViewScreen(
                         color = Color.White.copy(alpha = 0.82f),
                         modifier = Modifier
                             .offset { IntOffset((xPx - halfArrow).roundToInt(), (yPx - halfArrow).roundToInt()) }
+                            .dpadHighlight(CircleShape)
                             .size(arrowSize),
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -215,6 +304,13 @@ fun StreetViewScreen(
                                 onClick = { open = false; onTimeTravel(t) },
                                 shape = RoundedCornerShape(20.dp),
                                 color = if (isShown) Color.White else Color.Black.copy(alpha = 0.6f),
+                                modifier = Modifier
+                                    .onKeyEvent { ev ->
+                                        if (ev.type == KeyEventType.KeyDown && ev.key == Key.Back) {
+                                            open = false; runCatching { rTime.requestFocus() }; true
+                                        } else false
+                                    }
+                                    .dpadHighlight(RoundedCornerShape(20.dp)),
                             ) {
                                 Text(
                                     monthYear(t.year, t.month) ?: "",
@@ -229,6 +325,14 @@ fun StreetViewScreen(
                         onClick = { open = !open },
                         shape = RoundedCornerShape(20.dp),
                         color = Color.Black.copy(alpha = 0.6f),
+                        modifier = Modifier
+                            .focusRequester(rTime)
+                            .onKeyEvent { ev ->
+                                if (open && ev.type == KeyEventType.KeyDown && ev.key == Key.DirectionUp) {
+                                    focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Up); true
+                                } else ringKey(ev, rFull, rPano)
+                            }
+                            .dpadHighlight(RoundedCornerShape(20.dp)),
                     ) {
                         Box(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
                             Icon(
@@ -247,7 +351,10 @@ fun StreetViewScreen(
                 onClick = onClose,
                 shape = CircleShape,
                 color = Color.Black.copy(alpha = 0.45f),
-                modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(12.dp).size(44.dp),
+                modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(12.dp)
+                    .focusRequester(rClose)
+                    .onKeyEvent { ringKey(it, if (hasTime) rTime else rFull, rFull) }
+                    .dpadHighlight(CircleShape).size(44.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(Icons.Default.Close, contentDescription = stringResource(R.string.steps_close_cd), tint = Color.White)
@@ -259,7 +366,10 @@ fun StreetViewScreen(
                 onClick = { full = !full },
                 shape = CircleShape,
                 color = Color.Black.copy(alpha = 0.45f),
-                modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(12.dp).size(44.dp),
+                modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(12.dp)
+                    .focusRequester(rFull)
+                    .onKeyEvent { ringKey(it, rClose, if (hasTime) rTime else rPano) }
+                    .dpadHighlight(CircleShape).size(44.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
