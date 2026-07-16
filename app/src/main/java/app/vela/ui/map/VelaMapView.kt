@@ -659,6 +659,12 @@ fun VelaMapView(
                 listOf(
                     "highway-shield-non-us", "highway-shield-us-interstate", "road_shield_us",
                     "vela-bikeroutes", "vela-trails", HILLSHADE_LAYER, TRANSIT_LAYER,
+                    // Water/park/neighbourhood titles (2026-07-16): every basemap symbol
+                    // re-places on camera rotation, and nav rotates every frame - river names
+                    // and hamlet labels are per-frame collision work nobody reads mid-drive.
+                    // Town/city/state names STAY (orientation; Google keeps them too).
+                    "waterway_line_label", "water_name_point_label", "water_name_line_label",
+                    "label_other", "label_village",
                 ).mapNotNull { style.getLayer(it) } +
                     style.layers.filter { it.id.startsWith("vela-addr-") }
                 ).forEach { it.setProperties(PropertyFactory.visibility(dvis)) }
