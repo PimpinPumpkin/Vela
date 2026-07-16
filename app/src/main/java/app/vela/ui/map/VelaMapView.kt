@@ -255,6 +255,7 @@ fun VelaMapView(
     // 1/speedup of the ground covered per fix and surges to catch up — the "stuttery arrow +
     // pulsing mph" replay artifact. At speedup=1 every formula is byte-identical to before.
     replaySpeedup: Float = 1f,
+    replaying: Boolean = false, // trip replay: synthetic fixes, so LIVE sensors must stay out of the puck
     compassHeading: Float? = null, // device facing (sensor); points the browse cone when stopped
     locationStale: Boolean = false,
     cameraTarget: LatLng?,
@@ -495,15 +496,82 @@ fun VelaMapView(
     }
     val navPuck = remember { NavPuck() }
     val routeCum = remember(routePolyline) { cumLengths(routePolyline) }
+
+    // CROSS-STREET-ONLY nav labels (user 2026-07-16: "only show roads we are on or that we
+    // directly cross"). Every ~4 s during nav, take the loaded transportation_name features and
+    // keep only the names whose geometry geometrically CROSSES the route within a window around
+    // the puck (300 m behind to 4 km ahead), then tighten the label layers' filter to that
+    // include-list. This is what kills both the parallel-street callouts AND the "ghosts": the
+    // include set only changes as the drive progresses, so symbols stop churning through
+    // MapLibre's placement fade. The query runs at most once per tick on the main thread (cheap,
+    // loaded tiles only); the geometry math runs off it. An empty QUERY (tiles not loaded yet)
+    // leaves the previous filter alone; an empty CROSSER set legitimately hides the tier.
+    LaunchedEffect(navMode, routePolyline, styleRef) {
+        val style = styleRef ?: return@LaunchedEffect
+        if (!navMode || routePolyline.size < 2) return@LaunchedEffect
+        var lastApplied: List<String>? = null
+        while (true) {
+            val src = style.getSource("openmaptiles") as? VectorSource
+            if (src != null) {
+                val feats = runCatching {
+                    src.querySourceFeatures(arrayOf("transportation_name"), null)
+                }.getOrNull().orEmpty()
+                if (feats.isNotEmpty()) {
+                    // Window of route geometry around the current progress.
+                    val fromM = navPuck.progressM - 300.0
+                    val toM = navPuck.progressM + 4000.0
+                    val window = ArrayList<LatLng>()
+                    for (k in routePolyline.indices) {
+                        if (routeCum[k] in fromM..toM) window.add(routePolyline[k])
+                    }
+                    if (window.size >= 2) {
+                        val exclude = navLabelExclude
+                        val names = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                            val out = LinkedHashSet<String>()
+                            for (f in feats) {
+                                val name = runCatching { f.getStringProperty("name") }.getOrNull() ?: continue
+                                if (name.isBlank() || name in out || name in exclude) continue
+                                val geom = f.geometry() ?: continue
+                                val lines: List<List<org.maplibre.geojson.Point>> = when (geom) {
+                                    is org.maplibre.geojson.LineString -> listOf(geom.coordinates())
+                                    is org.maplibre.geojson.MultiLineString -> geom.coordinates()
+                                    else -> emptyList()
+                                }
+                                val hit = lines.any { pts ->
+                                    crossesWindow(pts.map { it.longitude() to it.latitude() }, window)
+                                }
+                                if (hit) { out.add(name); if (out.size >= 60) break }
+                            }
+                            out.toList()
+                        }
+                        if (names != lastApplied) {
+                            lastApplied = names
+                            runCatching {
+                                (style.getLayer(NAV_ROADLABEL_LAYER) as? SymbolLayer)
+                                    ?.setFilter(navLabelFilter(NAV_LABEL_MAJOR_CLASSES, exclude, names))
+                                (style.getLayer(NAV_ROADLABEL_MINOR_LAYER) as? SymbolLayer)
+                                    ?.setFilter(navLabelFilter(NAV_LABEL_SLOW_CLASSES, exclude, names))
+                            }
+                        }
+                    }
+                }
+            }
+            kotlinx.coroutines.delay(4_000)
+        }
+    }
     // Accelerometer feed for the puck's speed Kalman — collected only during nav, written into a
     // PLAIN array (not compose state: sensor-rate updates through MutableState would recompose
     // the world 60×/s; the frame ticker below reads it directly instead).
     val motionProvider = remember { app.vela.core.location.MotionProvider(context) }
     val worldAccel = remember { floatArrayOf(0f, 0f) }
-    LaunchedEffect(navMode) {
+    // NOT during a replay (2026-07-16): the trace's fixes are synthetic, but this feed is the
+    // phone's REAL accelerometer - a handset sitting on a desk fed live sensor noise into the
+    // Kalman while the trace played, and the puck jittered "very slightly all over" (and the
+    // camera, which follows it). Replays dead-reckon on the recorded speeds alone.
+    LaunchedEffect(navMode, replaying) {
         worldAccel[0] = 0f
         worldAccel[1] = 0f
-        if (!navMode) return@LaunchedEffect
+        if (!navMode || replaying) return@LaunchedEffect
         motionProvider.worldAccel().collect { a ->
             worldAccel[0] = a[0]
             worldAccel[1] = a[1]
@@ -3000,6 +3068,58 @@ private const val NAV_BUBBLE_IMG = "vela-nav-bubble"
 
 private var lastNavLabelKey: Any? = null // self-gate: (on, dark, exclude) - nulled on style reload
 
+private val NAV_LABEL_MAJOR_CLASSES = arrayOf("motorway", "trunk", "primary", "secondary")
+private val NAV_LABEL_SLOW_CLASSES = arrayOf("tertiary", "minor")
+
+/** The nav label layers' filter: named + class-matched, minus the route's own roads ([exclude],
+ *  name AND ref props - the basemap names bridge segments independently of the ref), and - when
+ *  the cross-street loop has computed one - restricted to [include], the names whose geometry
+ *  actually CROSSES the route ahead (Google's rule: only streets you meet get callouts). */
+private fun navLabelFilter(classes: Array<String>, exclude: List<String>, include: List<String>?): Expression {
+    val parts = mutableListOf(
+        Expression.has("name"),
+        Expression.match(
+            Expression.get("class"), Expression.literal(false),
+            *classes.map { Expression.stop(it, true) }.toTypedArray(),
+        ),
+    )
+    if (exclude.isNotEmpty()) {
+        val stops = exclude.map { Expression.stop(it, true) }.toTypedArray()
+        parts += Expression.not(Expression.match(Expression.get("name"), Expression.literal(false), *stops))
+        parts += Expression.not(Expression.match(Expression.get("ref"), Expression.literal(false), *stops))
+    }
+    if (include != null) {
+        parts += if (include.isEmpty()) Expression.literal(false)
+        else Expression.match(
+            Expression.get("name"), Expression.literal(false),
+            *include.map { Expression.stop(it, true) }.toTypedArray(),
+        )
+    }
+    return Expression.all(*parts.toTypedArray())
+}
+
+/** True when any segment of [line] properly crosses any segment of [window] (plain orientation
+ *  tests; the sign of a cross product survives the lat/lng axis scaling, so no projection needed
+ *  for a boolean answer). */
+private fun crossesWindow(line: List<Pair<Double, Double>>, window: List<LatLng>): Boolean {
+    fun orient(ax: Double, ay: Double, bx: Double, by: Double, cx: Double, cy: Double) =
+        (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+    for (i in 1 until line.size) {
+        val (x1, y1) = line[i - 1]
+        val (x2, y2) = line[i]
+        for (j in 1 until window.size) {
+            val x3 = window[j - 1].lng; val y3 = window[j - 1].lat
+            val x4 = window[j].lng; val y4 = window[j].lat
+            val d1 = orient(x3, y3, x4, y4, x1, y1)
+            val d2 = orient(x3, y3, x4, y4, x2, y2)
+            val d3 = orient(x1, y1, x2, y2, x3, y3)
+            val d4 = orient(x1, y1, x2, y2, x4, y4)
+            if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true
+        }
+    }
+    return false
+}
+
 private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, density: Float, exclude: List<String>) {
     // Cheap self-gate so callers can invoke per recomposition (audit-3e rule: no per-frame JNI
     // probes) - a change in theme, nav state or the route's own road list re-runs it.
@@ -3034,23 +3154,10 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
         org.maplibre.android.maps.ImageContent(6 * d, 3 * d, w - 6 * d, body - 3 * d),
     )
     fun layer(id: String, classes: Array<String>, minZ: Float, fade: Pair<Float, Float>? = null) {
-        // Google only calls out OTHER streets - never the road you're driving. The exclusion list
-        // is the route's own road names + ref variants (user 2026-07-16: the highway labelled
-        // itself repeatedly along the drive); it applies to BOTH the name and the ref property
-        // because the basemap names bridge/segment features independently of the ref.
-        val parts = mutableListOf(
-            Expression.has("name"),
-            Expression.match(
-                Expression.get("class"), Expression.literal(false),
-                *classes.map { Expression.stop(it, true) }.toTypedArray(),
-            ),
-        )
-        if (exclude.isNotEmpty()) {
-            val stops = exclude.map { Expression.stop(it, true) }.toTypedArray()
-            parts += Expression.not(Expression.match(Expression.get("name"), Expression.literal(false), *stops))
-            parts += Expression.not(Expression.match(Expression.get("ref"), Expression.literal(false), *stops))
-        }
-        val filter = Expression.all(*parts.toTypedArray())
+        // Google only calls out OTHER streets - never the road you're driving. The base filter
+        // excludes the route's own names/refs; the cross-street loop below TIGHTENS it further
+        // to streets whose geometry actually crosses the route ahead.
+        val filter = navLabelFilter(classes, exclude, include = null)
         (style.getLayer(id) as? SymbolLayer)?.let { it.setFilter(filter); return }
         run {
             style.addLayer(
@@ -3104,8 +3211,8 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
     // TERTIARY rides the slow tier with the minors (2026-07-16): at highway zoom collector roads
     // are noise, and every placed symbol is per-frame collision work - highway speed shows only
     // motorway..secondary crossings, town speed fades the rest in.
-    layer(NAV_ROADLABEL_LAYER, arrayOf("motorway", "trunk", "primary", "secondary"), 14f)
-    layer(NAV_ROADLABEL_MINOR_LAYER, arrayOf("tertiary", "minor"), 16f, fade = 16.2f to 16.8f)
+    layer(NAV_ROADLABEL_LAYER, NAV_LABEL_MAJOR_CLASSES, 14f)
+    layer(NAV_ROADLABEL_MINOR_LAYER, NAV_LABEL_SLOW_CLASSES, 16f, fade = 16.2f to 16.8f)
     ids.forEach {
         (style.getLayer(it) as? SymbolLayer)?.setProperties(
             PropertyFactory.visibility(Property.VISIBLE),
