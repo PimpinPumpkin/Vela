@@ -30,9 +30,14 @@ object TripLog {
     data class Point(
         val lat: Double, val lng: Double, val t: Long, val bearing: Float, val speed: Float,
         val offRoute: Boolean = false, // the engine's live off-route flag at this fix (2026-07-16+ recordings)
+        val accuracyM: Float? = null,  // the fix's reported accuracy (drives the corridor scaling)
     ) {
         val latLng: LatLng get() = LatLng(lat, lng)
     }
+
+    /** A flight-recorder event line: [tag] "S" (text = the spoken line), "J" (text =
+     *  "frames,janky,worstMs"), "B" (text = battery percent). */
+    data class Event(val tag: String, val t: Long, val text: String)
 
     /** A route block and the fix index it became ACTIVE at. A mid-trip block records the drive
      *  SWITCHING routes there (a reroute, an accepted faster route, or a restarted navigation) —
@@ -44,6 +49,7 @@ object TripLog {
         val startedAt: Long,
         val dest: LatLng?,
         val versionCode: Int? = null, // build that recorded the trip (null on pre-2026-07-16 files)
+        val events: List<Event> = emptyList(), // flight-recorder lines (spoken/jank/battery)
         val route: Route?, // the FIRST segment's route (compat convenience)
         val points: List<Point>,
         val segments: List<RouteSegment> = emptyList(),
@@ -77,6 +83,7 @@ object TripLog {
         return Point(
             lat, lng, p[2].toLongOrNull() ?: 0L, p[3].toFloatOrNull() ?: 0f, p[4].toFloatOrNull() ?: 0f,
             offRoute = p.getOrNull(5) == "1",
+            accuracyM = p.getOrNull(6)?.toFloatOrNull(),
         )
     }
 
@@ -103,6 +110,7 @@ object TripLog {
         val versionCode = meta.getOrNull(4)?.toIntOrNull() // absent on trips recorded before 2026-07-16
         val points = ArrayList<Point>()
         val segments = ArrayList<RouteSegment>()
+        val events = ArrayList<Event>()
         var rp: String? = null
         var rd: List<String> = emptyList()
         var ms = ArrayList<Maneuver>()
@@ -131,11 +139,16 @@ object TripLog {
                 }
                 line.startsWith("RD,") -> rd = line.substring(3).split(',')
                 line.startsWith("M,") -> parseManeuver(line)?.let { ms.add(it) }
+                line.startsWith("S,") || line.startsWith("J,") || line.startsWith("B,") -> {
+                    val e = line.split(',', limit = 3)
+                    val t = e.getOrNull(1)?.toLongOrNull()
+                    if (t != null) events.add(Event(e[0], t, e.getOrNull(2).orEmpty()))
+                }
                 else -> parseFix(line)?.let { points.add(it) }
             }
         }
         closeBlock()
-        return Parsed(label, startedAt, dest, versionCode, segments.firstOrNull()?.route, points, segments)
+        return Parsed(label, startedAt, dest, versionCode, events, segments.firstOrNull()?.route, points, segments)
     }
 
     /**
