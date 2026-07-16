@@ -231,7 +231,7 @@ class NavSession @Inject constructor(
         }
     }
 
-    fun onLocation(loc: LatLng, imperial: Boolean = false, speedMps: Double? = null) {
+    fun onLocation(loc: LatLng, imperial: Boolean = false, speedMps: Double? = null, accuracyM: Double? = null) {
         val s = _state.value
         val route = s.route ?: return
         if (!s.navigating || s.arrived) return
@@ -250,7 +250,12 @@ class NavSession @Inject constructor(
             TravelMode.BICYCLE -> 1.0
             else -> 2.0
         }
-        val (next, events) = NavEngine.update(route, nav, loc, imperial, speedMps, movingFloor)
+        // Off-route corridor is accuracy-scaled AND mode-relative: it widens with the GPS fix's own
+        // reported accuracy (tight when clean, wide when noisy - like OsmAnd), and foot/bike ride
+        // tighter than driving because the path is narrow. See NavEngine.offRouteCorridor.
+        val offRoute = NavEngine.offRouteCorridor(mode, accuracyM)
+        val farOff = NavEngine.farOffDistance(mode, offRoute)
+        val (next, events) = NavEngine.update(route, nav, loc, imperial, speedMps, movingFloor, offRoute, farOff)
         val maneuver = route.maneuvers.getOrNull(next.stepIndex)
         // Guard the write on route IDENTITY: a reroute/faster-route can swap route+NavState while
         // this update was computing on the OLD route - writing `next` (old-route traveledM /

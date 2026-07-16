@@ -4,6 +4,7 @@ import app.vela.core.model.LatLng
 import app.vela.core.model.Maneuver
 import app.vela.core.model.ManeuverType
 import app.vela.core.model.Route
+import app.vela.core.model.TravelMode
 import app.vela.core.model.distanceTo
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -31,6 +32,40 @@ object NavEngine {
     private const val STOP_ON_ROUTE_M = 150.0 // a waypoint farther than this from the line isn't on this route
     private const val PASSED_SLACK_M = 75.0   // this far PAST a maneuver = it happened during a gap → advance silently
     private const val REACQUIRE_JUMP_M = 1_500.0 // a global re-acquire jumping farther than this needs persistence
+    private const val DEFAULT_ACC_M = 12.0    // assumed GPS accuracy when a fix carries none (dead-reckoning)
+
+    /**
+     * Accuracy-scaled off-route corridor, in metres, for a travel mode. Real navigators (OsmAnd,
+     * Organic Maps) don't threshold on a fixed distance - they widen the tolerance with the GPS
+     * fix's own reported accuracy: TIGHT when the fix is clean (a wrong turn is caught fast), WIDE
+     * when it's noisy (urban-canyon multipath can't false-reroute). `base + K*accuracy`, clamped per
+     * mode. Foot/bike ride tighter than driving because the PATH is narrow (a metre or two), but they
+     * still widen under bad GPS - which is why fixed 22/28 m felt extreme (user 2026-07-15): those
+     * only make sense when the fix is good. `accuracyM` null (dead-reckoning) → a typical-GPS default.
+     *
+     * Sanity points (accuracy → driving corridor): 5 m → ~28, 12 m → ~42, 30 m → 70 (cap). Driving
+     * self-tightens well below the old flat 40 m when GPS is clean, which is the "40 is too high"
+     * the user hit, without inviting false reroutes when GPS degrades.
+     */
+    fun offRouteCorridor(mode: TravelMode, accuracyM: Double?): Double {
+        val acc = (accuracyM ?: DEFAULT_ACC_M).coerceIn(3.0, 40.0)
+        return when (mode) {
+            TravelMode.WALK -> (8.0 + 1.8 * acc).coerceIn(15.0, 50.0)
+            TravelMode.BICYCLE -> (12.0 + 1.9 * acc).coerceIn(18.0, 55.0)
+            else -> (18.0 + 2.0 * acc).coerceIn(24.0, 70.0)
+        }
+    }
+
+    /** The "unambiguously far, counts at any speed / counts double while moving" distance: twice the
+     *  off-route corridor, capped per mode so it can't run away when GPS is very coarse. */
+    fun farOffDistance(mode: TravelMode, offRouteM: Double): Double {
+        val cap = when (mode) {
+            TravelMode.WALK -> 60.0
+            TravelMode.BICYCLE -> 75.0
+            else -> 110.0
+        }
+        return (offRouteM * 2.0).coerceAtMost(cap)
+    }
 
     private fun round50(m: Double) = kotlin.math.round(m / 50.0) * 50.0
     private fun round10(m: Double) = kotlin.math.round(m / 10.0) * 10.0
@@ -78,6 +113,13 @@ object NavEngine {
         // passes it): 2 m/s for driving, ~0.6 for walking - a walker's 1.4 m/s must count as
         // moving or pedestrian rerouting never fires and walkers "arrive" 50 m early.
         movingFloorMps: Double = 2.0,
+        // Off-route corridor + "unambiguously far" distance, MODE-AWARE (NavSession passes them).
+        // Driving keeps the wide 40 m corridor: a car has lane offset + shallow-angle divergence lag,
+        // so a narrower corridor false-reroutes. Walking/biking is far more precise (a walker is on a
+        // known sidewalk/path a few metres wide), so NavSession hands down a much tighter pair -
+        // otherwise a pedestrian who takes the wrong footpath drifts 40 m before Vela notices.
+        offRouteM: Double = OFF_ROUTE_M,
+        farOffM: Double = FAR_OFF_M,
     ): Pair<NavState, List<NavEvent>> {
         val events = mutableListOf<NavEvent>()
         val maneuvers = route.maneuvers
@@ -148,12 +190,12 @@ object NavEngine {
         // anything a parked car's GPS invents, so counting it can't bring back red-light reroutes.
         val moving = (speedMps ?: 99.0) >= movingFloorMps
         val offHits = when {
-            offDist <= OFF_ROUTE_M -> 0
-            !moving && offDist <= FAR_OFF_M -> state.offRouteHits
-            // Moving AND unambiguously far: no jitter reaches 90 m at speed, so escalate -
-            // the reroute fires after ~2 fixes instead of a full debounce (upstream 69aa580f,
+            offDist <= offRouteM -> 0
+            !moving && offDist <= farOffM -> state.offRouteHits
+            // Moving AND unambiguously far: no jitter reaches the far distance at speed, so escalate -
+            // the reroute fires after ~2 fixes instead of a full debounce (upstream 69aa580f + faadbed6,
             // "waits far too long after a wrong turn").
-            moving && offDist > FAR_OFF_M -> state.offRouteHits + 2
+            moving && offDist > farOffM -> state.offRouteHits + 2
             else -> state.offRouteHits + 1
         }
         val offRoute = offHits >= OFF_ROUTE_HITS
@@ -163,7 +205,7 @@ object NavEngine {
         // UP only while genuinely on-corridor and moving, and resets the instant we're off - so NavSession's
         // back-on-course discard can require a real, multi-fix rejoin, not a one-frame coincidence.
         val onRouteStreak = when {
-            offDist > OFF_ROUTE_M -> 0
+            offDist > offRouteM -> 0
             !moving -> state.onRouteStreak
             else -> state.onRouteStreak + 1
         }

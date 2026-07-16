@@ -1058,7 +1058,12 @@ state - upstream's own 13ac02e8 already made the layers panel a VelaMenu):
   - proximity arrival (crow ≤40 m) + no rerouting within 150 m of the destination or while stationary
     (EXCEPT a FAR deviation: `FAR_OFF_M` 90 m counts at ANY speed, upstream a8f46047 - parking-lot
     creep sits under the 2 m/s moving floor forever, so the reroute/redrawn line never came);
-  - off-route measured on the windowed/anchored projection (never whole-polyline min);
+  - off-route measured on the windowed/anchored projection (never whole-polyline min); the corridor
+    itself is ACCURACY-SCALED per mode (`NavEngine.offRouteCorridor(mode, accuracyM)` = base + K*acc,
+    clamped foot<bike<drive; `farOffDistance` = 2x, capped) not a flat 40 m - clean GPS tightens it,
+    noisy GPS widens it so multipath can't false-reroute (upstream faadbed6; NavSession feeds each
+    fix's `loc.accuracy`, dead-reckoning passes null -> a typical default). The old `OFF_ROUTE_M`/
+    `FAR_OFF_M` stay as `NavEngine.update` DEFAULTS so replays/other callers are unchanged;
   - TUNNEL DEAD RECKONING (`MapViewModel.tunnelDeadReckonLoop`, upstream a8f46047): the engine only
     advances on fixes, so a GPS outage froze the whole stack; when the guidance feed goes quiet
     >3.5 s while navigating, on-route, not replaying and not from a standstill, the VM synthesizes

@@ -128,6 +128,10 @@ data class MapUiState(
     val transitStops: List<app.vela.core.data.transit.Transitous.MapStop> = emptyList(), // canonical GTFS stops (Transitous), street zoom
     val stopDepartures: app.vela.core.model.StopDepartures? = null, // a tapped transit stop's live board
     val stopDeparturesLoading: Boolean = false,
+    // Ownership: the place id the board was fetched FOR. A board renders only when this == the
+    // selected place (upstream d4f68a03: a saved/recent open skips the clear, so a prior stop's
+    // board could land on an unrelated address).
+    val stopDeparturesFor: String? = null,
     val routeDetail: TransitStep? = null,         // the tapped board line's stop timeline (a ride leg)
     val routeDetailTitle: String? = null,
     val routeDetailLoading: Boolean = false,
@@ -650,7 +654,8 @@ class MapViewModel @Inject constructor(
                 // accuracy for minutes), SAY so - the frozen banner used to be indistinguishable
                 // from working nav (the stale timer never fires while coarse fixes keep coming).
                 if (isGps && (!loc.hasAccuracy() || loc.accuracy <= 50f)) {
-                    navSession.onLocation(here, app.vela.ui.Units.imperial.value, speed?.toDouble())
+                    navSession.onLocation(here, app.vela.ui.Units.imperial.value, speed?.toDouble(),
+                        accuracyM = if (loc.hasAccuracy()) loc.accuracy.toDouble() else null)
                     lastNavFedMs = nowMs
                     updateSpeedLimit(here) // posted-limit badge for the road under the puck (off-thread)
                     if (_state.value.navStarved) _state.update { it.copy(navStarved = false) }
@@ -1878,7 +1883,7 @@ class MapViewModel @Inject constructor(
         val isTransit = isTransitCategory(cat)
         val isIntersection = cat.contains("intersection", ignoreCase = true)
         if (!isTransit && !isIntersection) return
-        _state.update { if (it.selected?.featureId == fid) it.copy(stopDeparturesLoading = true) else it }
+        _state.update { if (it.selected?.featureId == fid) it.copy(stopDeparturesLoading = true, stopDeparturesFor = it.selected?.id) else it }
         viewModelScope.launch {
             val board = withContext(Dispatchers.IO) {
                 runCatching { app.vela.core.data.transit.Transitous.board(http, p.location.lat, p.location.lng) }.getOrNull()
@@ -1887,7 +1892,7 @@ class MapViewModel @Inject constructor(
             if (board != null && board.lines.isNotEmpty()) {
                 _state.update { st ->
                     if (st.selected?.featureId != fid) st
-                    else st.copy(stopDepartures = board, stopDeparturesLoading = false)
+                    else st.copy(stopDepartures = board, stopDeparturesLoading = false, stopDeparturesFor = st.selected?.id)
                 }
                 startTransitousBoardRefresh(p.id, p.location.lat, p.location.lng)
                 return@launch
@@ -1927,7 +1932,7 @@ class MapViewModel @Inject constructor(
                 depDbg("transitous refresh lines=${fresh?.lines?.size ?: -1}")
                 if (fresh != null && fresh.lines.isNotEmpty()) {
                     _state.update { st ->
-                        if (st.selected?.id == selId) st.copy(stopDepartures = fresh) else st
+                        if (st.selected?.id == selId) st.copy(stopDepartures = fresh, stopDeparturesFor = st.selected?.id) else st
                     }
                 }
             }
@@ -1953,7 +1958,7 @@ class MapViewModel @Inject constructor(
                 depDbg("board refresh lines=${fresh?.lines?.size ?: -1}")
                 if (fresh != null && fresh.lines.isNotEmpty()) {
                     _state.update { st ->
-                        if (st.selected?.featureId == selectedFid) st.copy(stopDepartures = fresh) else st
+                        if (st.selected?.featureId == selectedFid) st.copy(stopDepartures = fresh, stopDeparturesFor = st.selected?.id) else st
                     }
                 }
             }
@@ -1963,13 +1968,13 @@ class MapViewModel @Inject constructor(
     /** Fetch a transit stop's board from its own [boardFid] and attach it to the still-selected place
      *  ([selectedFid]). Feature-id-gated so a slow fetch can't land on a place the user has moved off. */
     private fun fetchBoardFrom(boardFid: String, selectedFid: String?) {
-        _state.update { if (it.selected?.featureId == selectedFid) it.copy(stopDeparturesLoading = true) else it }
+        _state.update { if (it.selected?.featureId == selectedFid) it.copy(stopDeparturesLoading = true, stopDeparturesFor = it.selected?.id) else it }
         viewModelScope.launch {
             val board = runCatching { webStopDepartures.fetch(boardFid) }.getOrNull()
             depDbg("board lines=${board?.lines?.size ?: -1}")
             _state.update { st ->
                 if (st.selected?.featureId != selectedFid) st
-                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false)
+                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false, stopDeparturesFor = st.selected?.id)
             }
             if (board != null && board.lines.isNotEmpty()) startBoardRefresh(boardFid, selectedFid)
         }
@@ -1980,7 +1985,7 @@ class MapViewModel @Inject constructor(
      *  nearest LIVE transit-category listing, and pull its board onto [p]'s sheet. No stop -> no board. */
     private fun resolveIntersectionStopBoard(p: Place) {
         val selectedFid = p.featureId
-        _state.update { if (it.selected?.featureId == selectedFid) it.copy(stopDeparturesLoading = true) else it }
+        _state.update { if (it.selected?.featureId == selectedFid) it.copy(stopDeparturesLoading = true, stopDeparturesFor = it.selected?.id) else it }
         viewModelScope.launch {
             val stopFid = runCatching {
                 // A junction's own point sits back from the stops on each approach, so use a generous
@@ -2000,7 +2005,7 @@ class MapViewModel @Inject constructor(
             depDbg("intersection stop board lines=${board?.lines?.size ?: -1}")
             _state.update { st ->
                 if (st.selected?.featureId != selectedFid) st
-                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false)
+                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false, stopDeparturesFor = st.selected?.id)
             }
             if (board != null && board.lines.isNotEmpty()) startBoardRefresh(stopFid, selectedFid)
         }
@@ -2181,7 +2186,7 @@ class MapViewModel @Inject constructor(
                 reviewsFound = 0,
                 loadingDetails = false,
                 photosLoading = false,
-                stopDepartures = null, stopDeparturesLoading = false,
+                stopDepartures = null, stopDeparturesLoading = false, stopDeparturesFor = null,
                 pickingOrigin = false,
                 pickingStop = false,
                 directionsOpen = false,
@@ -2244,7 +2249,7 @@ class MapViewModel @Inject constructor(
                 // Transitous needs only the coordinate - so fetch the board by proximity regardless
                 // of what Google resolution did. The Google-page fallback is impossible here anyway
                 // (no feature id), so this is Transitous-or-nothing, which is correct.
-                _state.update { if (it.selected == placeholder) it.copy(stopDeparturesLoading = true) else it }
+                _state.update { if (it.selected == placeholder) it.copy(stopDeparturesLoading = true, stopDeparturesFor = it.selected?.id) else it }
                 val board = withContext(Dispatchers.IO) {
                     runCatching {
                         app.vela.core.data.transit.Transitous.board(http, location.lat, location.lng)
@@ -2256,6 +2261,7 @@ class MapViewModel @Inject constructor(
                         it.copy(
                             stopDepartures = board?.takeIf { b -> b.lines.isNotEmpty() },
                             stopDeparturesLoading = false,
+                            stopDeparturesFor = it.selected?.id,
                         )
                     } else it
                 }
@@ -2795,7 +2801,8 @@ class MapViewModel @Inject constructor(
                             mySpeedRaw = loc.speed, center = here, myLocationStale = false,
                         )
                     }
-                    navSession.onLocation(here, app.vela.ui.Units.imperial.value, loc.speed.toDouble())
+                    navSession.onLocation(here, app.vela.ui.Units.imperial.value, loc.speed.toDouble(),
+                        accuracyM = if (loc.hasAccuracy()) loc.accuracy.toDouble() else null)
                     updateSpeedLimit(here)
                 }
             } finally {
@@ -3022,7 +3029,8 @@ class MapViewModel @Inject constructor(
                             center = here, myLocationStale = false,
                         )
                     }
-                    navSession.onLocation(here, app.vela.ui.Units.imperial.value, speed?.toDouble())
+                    navSession.onLocation(here, app.vela.ui.Units.imperial.value, speed?.toDouble(),
+                        accuracyM = if (loc.hasAccuracy()) loc.accuracy.toDouble() else null)
                     updateSpeedLimit(here) // posted-limit badge during replay too (local graph read)
                 }
             } finally {
@@ -3866,7 +3874,7 @@ class MapViewModel @Inject constructor(
             depDbg("stop-icon board lines=${board?.lines?.size ?: -1}")
             _state.update { st ->
                 if (st.selected?.id != placeholder.id) st
-                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false)
+                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false, stopDeparturesFor = st.selected?.id)
             }
             if (board != null && board.lines.isNotEmpty()) startTransitousBoardRefresh(placeholder.id, stop.lat, stop.lon)
         }
