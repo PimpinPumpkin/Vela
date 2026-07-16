@@ -1333,8 +1333,10 @@ fun VelaMapView(
                 val (ptA, _) = pointAtMeters(routePolyline, routeCum, navPuck.progressM - PUCK_SMOOTH_WIN_M)
                 val (ptB, _) = pointAtMeters(routePolyline, routeCum, navPuck.progressM + PUCK_SMOOTH_WIN_M)
                 val pt = LatLng((ptA.lat + ptC.lat + ptB.lat) / 3.0, (ptA.lng + ptC.lng + ptB.lng) / 3.0)
+                // 0.3 (was 0.2): with the camera's own bearing damping this is two-stage
+                // filtering - the polyline's vertex-level bearing steps stop reaching the glass.
                 navPuck.displayBearing = if (navPuck.displayBearing.isNaN()) segBrg
-                    else smoothBearing(navPuck.displayBearing, segBrg, dtE, 0.2f)
+                    else smoothBearing(navPuck.displayBearing, segBrg, dtE, 0.3f)
                 navPuck.drawn = pt // the camera follows this smoothed point, not the raw fix
                 setMeSource(style, pt, navPuck.displayBearing)
                 // Drive the follow-camera HERE, per frame (60 fps) with a continuous ease, instead
@@ -1364,24 +1366,33 @@ fun VelaMapView(
                         navTiltEase[0] = cp.tilt
                         navPadEase[0] = (cp.padding?.getOrNull(1) ?: 0.0) / cam.height.toDouble().coerceAtLeast(1.0)
                     }
-                    val k = (1f - kotlin.math.exp(-dtE / 0.12f)).toDouble()
-                    camState[0] += (pt.lat - camState[0]) * k
-                    camState[1] += (pt.lng - camState[1]) * k
+                    // SPLIT time constants (user 2026-07-16, "moving through a thick liquid"):
+                    // one fast 0.12 s k drove everything, so every road kink became camera
+                    // rotation within a third of a second - the "squirrely" feel. Google's
+                    // grammar is a crisp puck under a HEAVY camera: position stays fairly tight
+                    // (the puck is drawn at its own point, so camera lag reads as glide, not
+                    // error), while bearing and zoom get much heavier damping - turns sweep
+                    // around over ~a second and the zoom breathes instead of twitching.
+                    val kPos = (1f - kotlin.math.exp(-dtE / 0.25f)).toDouble()
+                    val kBrg = (1f - kotlin.math.exp(-dtE / 0.55f)).toDouble()
+                    val kZoom = (1f - kotlin.math.exp(-dtE / 0.5f)).toDouble()
+                    camState[0] += (pt.lat - camState[0]) * kPos
+                    camState[1] += (pt.lng - camState[1]) * kPos
                     // Compass toggle (user 2026-07-15): north-up keeps the follow (position, zoom,
                     // puck-low framing) but eases bearing to 0 and the tilt flat; the puck arrow
                     // then rotates on the north-up map instead of the map rotating under it.
                     val brgTgt = if (navNorthUpHolder.value) 0.0 else navPuck.displayBearing.toDouble()
                     val db = ((brgTgt - camState[2] + 540.0) % 360.0) - 180.0 // shortest arc
-                    camState[2] = (camState[2] + db * k + 360.0) % 360.0
-                    camState[3] += (tgtZoom - camState[3]) * k
+                    camState[2] = (camState[2] + db * kBrg + 360.0) % 360.0
+                    camState[3] += (tgtZoom - camState[3]) * kZoom
                     // Tilt: north-up = flat; else a shove-set override wins over the 55 default.
                     val tiltTgt = when {
                         navNorthUpHolder.value -> 0.0
                         !navUserTilt[0].isNaN() -> navUserTilt[0]
                         else -> 55.0
                     }
-                    navTiltEase[0] += (tiltTgt - navTiltEase[0]) * k
-                    navPadEase[0] += (0.45 - navPadEase[0]) * k
+                    navTiltEase[0] += (tiltTgt - navTiltEase[0]) * kBrg
+                    navPadEase[0] += (0.45 - navPadEase[0]) * kPos
                     if (kotlin.math.abs(0.45 - navPadEase[0]) < 0.002) navPadEase[0] = 0.45 // terminate exactly
                     cam.moveCamera(
                         CameraUpdateFactory.newCameraPosition(
