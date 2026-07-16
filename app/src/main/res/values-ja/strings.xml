@@ -64,8 +64,6 @@
     <string name="settings_vibrate_hint">曲がり角ごとに、左折と右折で異なるパターンの振動でお知らせします。感覚だけでルートをたどれます。移動手段ごとに設定できます（例：自転車と徒歩はオン、車はオフ）。</string>
     <string name="settings_keep_screen_on">ナビ中は画面をオンのままにする</string>
     <string name="settings_keep_screen_on_hint">ターンバイターン案内中、画面が消灯しないようにします。</string>
-    <string name="settings_traffic_lights">信号を使った案内</string>
-    <string name="settings_traffic_lights_hint">音声案内に「信号を通過して左折」のような目印を追加します。今のところ英語のみです。</string>
     <string name="map_voice_downloading">Vela 音声をダウンロード中 · %1$d%%</string>
     <string name="map_voice_installing">Vela 音声をインストール中…</string>
     <string name="map_region_downloading">%1$s の経路データをダウンロード中 · %2$d%%</string> <!-- format -->

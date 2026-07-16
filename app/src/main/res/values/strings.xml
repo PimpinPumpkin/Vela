@@ -64,8 +64,6 @@
     <string name="settings_vibrate_hint">Direction-coded buzzes at each turn, distinct for left vs right, so you can follow a route by feel. Set it per travel mode (e.g. on for cycling and walking, off while driving).</string>
     <string name="settings_keep_screen_on">Keep screen on while navigating</string>
     <string name="settings_keep_screen_on_hint">Keeps the screen awake during turn-by-turn.</string>
-    <string name="settings_traffic_lights">Traffic-light guidance</string>
-    <string name="settings_traffic_lights_hint">Adds cues like “pass the traffic light, then turn left” to spoken directions. English only for now.</string>
     <string name="map_voice_downloading">Downloading Vela Voice · %1$d%%</string>
     <string name="map_voice_installing">Installing Vela Voice…</string>
     <string name="map_region_downloading">Downloading %1$s routing · %2$d%%</string> <!-- format -->
