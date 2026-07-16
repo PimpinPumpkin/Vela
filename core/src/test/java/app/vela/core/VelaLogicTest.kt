@@ -770,6 +770,13 @@ class NavReplayTest {
         }
         val ver = TripLog.parse(csv).versionCode
         println("[NavReplay] auditing $path (recorded by build ${ver ?: "pre-2026-07-16, unknown"})\n${report.summary()}")
+        val pts = TripLog.parse(csv).points
+        val offFixes = pts.count { it.offRoute }
+        if (offFixes > 0) {
+            var spans = 0; var prev = false
+            pts.forEach { if (it.offRoute && !prev) spans++; prev = it.offRoute }
+            println("[NavReplay] recorded off-route flag: $offFixes fixes in $spans span(s)")
+        }
         println("[NavReplay] spoken-line timeline (fix @ metres-along-route):")
         report.cards.filter { it.spoke.isNotEmpty() }.forEach { c ->
             println("  @${c.fixIndex} (${c.alongM.toInt()} m): ${c.spoke.joinToString(" | ")}")
