@@ -75,6 +75,10 @@ class NavSession @Inject constructor(
     // @Volatile: written on the Default dispatcher (reroute coroutine) / caller thread and read
     // on the location thread — a stale read would defeat the cooldown or the generation guard.
     @Volatile private var lastRerouteAdoptMs = 0L
+    /** WHY the current route was adopted - stamped at every swap site, read by the trip recorder
+     *  so the file distinguishes a wrong-turn reroute from a chosen faster route or a silent
+     *  heal: "start", "reroute", "faster", "heal", "stop-added". */
+    @Volatile var lastSwapReason: String = "start"
     @Volatile private var lastRerouteSpokeMs = 0L
     @Volatile private var sessionGen = 0
     // A FAILED reroute must clear the engine's offRoute latch so it retries — but writing nav
@@ -228,6 +232,7 @@ class NavSession @Inject constructor(
                 passedStops = 0
                 planRoute = r
             }
+            lastSwapReason = "stop-added"
             lastRecheckMs = SystemClock.elapsedRealtime()
             lastRerouteAdoptMs = SystemClock.elapsedRealtime()
             etaScale = 1.0 // the fresh route carries fresh traffic
@@ -345,6 +350,7 @@ class NavSession @Inject constructor(
 
     fun acceptFasterRoute() {
         val faster = _state.value.fasterRoute ?: return
+        lastSwapReason = "faster"
         val first = faster.maneuvers.firstOrNull()?.instruction.orEmpty()
         // The faster candidate was routed through the remaining stops (maybeRecheck rejects candidates
         // that don't cover them) → adopt them + recompute marks, atomically with the plan-route swap.
@@ -453,6 +459,7 @@ class NavSession @Inject constructor(
             val noDowngrade = (current.abbreviatedSteps || !candidate.abbreviatedSteps) &&
                 (!current.hasLiveTraffic || candidate.hasLiveTraffic)
             if (sameCourse && !candidate.provisional && (stepsUpgrade || trafficUpgrade) && noDowngrade) {
+                lastSwapReason = "heal"
                 val marks = NavEngine.stopMarks(candidate, remainingStops.map { it.location })
                 synchronized(stopLock) {
                     stops = remainingStops
@@ -518,16 +525,16 @@ class NavSession @Inject constructor(
 
     /** Adopt a route swap RECORDED in a trip being replayed (silent, no fetch) — the replay
      *  equivalent of the reroute/faster-route adoption that happened during the real drive. */
-    fun replaySetRoute(r: Route) {
+    fun replaySetRoute(r: Route, chime: Boolean = true) {
         if (r.polyline.size < 2) return
         synchronized(stopLock) { stops = emptyList(); stopMarks = emptyList(); passedStops = 0; planRoute = r }
         etaScale = 1.0
         // The reroute earcon plays at recorded swap points too (user 2026-07-16: "didn't hear
         // the rerouting sound in the replay") - replay is the nav test bench, and the chime is
-        // the audible marker that the route changed here. Honest caveat: the trip format doesn't
-        // distinguish a wrong-turn reroute from a silent faster-route adoption, so a swap that
-        // was quiet live still chimes in replay - a marker, not a re-enactment.
-        voice.reroutingChime()
+        // the audible marker the route changed here. Trips record WHY each swap happened now
+        // (the RD line's reason field), so the caller passes chime=false for swaps that were
+        // quiet live (faster/heal/stop-added); reason-less old recordings chime for every swap.
+        if (chime) voice.reroutingChime()
         diag.record("nav", "replay: route swap (${r.maneuvers.size} steps)")
         _state.update {
             it.copy(
@@ -624,6 +631,7 @@ class NavSession @Inject constructor(
                 voice.speak(app.vela.core.i18n.NavStringsRegistry.current().stopsNotIncluded())
                 diag.record("nav", "reroute missing ${marks.count { it == null }}/${remainingStops.size} stops")
             }
+            lastSwapReason = "reroute"
             lastRecheckMs = SystemClock.elapsedRealtime()
             lastRerouteAdoptMs = SystemClock.elapsedRealtime()
             etaScale = 1.0 // the fresh route carries fresh traffic

@@ -42,7 +42,7 @@ object TripLog {
     /** A route block and the fix index it became ACTIVE at. A mid-trip block records the drive
      *  SWITCHING routes there (a reroute, an accepted faster route, or a restarted navigation) —
      *  replay/audit must swap to it at that fix, never mash all blocks into one route. */
-    data class RouteSegment(val route: Route, val fromPoint: Int)
+    data class RouteSegment(val route: Route, val fromPoint: Int, val reason: String? = null)
 
     data class Parsed(
         val label: String,
@@ -56,9 +56,12 @@ object TripLog {
     )
 
     /** The route block (`RP`/`RD`/`M` lines) appended to a trip after its `META` line. */
-    fun encodeRoute(route: Route): String = buildString {
+    fun encodeRoute(route: Route, reason: String = ""): String = buildString {
         append("RP,").append(PolylineCodec.encode(route.polyline)).append('\n')
-        append("RD,${route.distanceMeters},${route.durationSeconds},${route.durationInTrafficSeconds ?: ""}\n")
+        // reason LAST on RD (appended field, 2026-07-16): "start"/"reroute"/"faster"/"heal"/
+        // "stop-added" - the file distinguishes a wrong turn from a chosen faster route. Old
+        // parsers read RD by index and ignore extras.
+        append("RD,${route.distanceMeters},${route.durationSeconds},${route.durationInTrafficSeconds ?: ""},$reason\n")
         for (m in route.maneuvers) {
             val instr = m.instruction.replace('\n', ' ').replace("\r", "")
             append("M,${m.type.name},${m.location.lat},${m.location.lng},${m.distanceMeters},$instr\n")
@@ -122,9 +125,11 @@ object TripLog {
             val distM = rd.getOrNull(0)?.toDoubleOrNull() ?: 0.0
             val durS = rd.getOrNull(1)?.toDoubleOrNull() ?: 0.0
             val trafficS = rd.getOrNull(2)?.toDoubleOrNull()
+            val reason = rd.getOrNull(3)?.takeIf { it.isNotBlank() }
             segments += RouteSegment(
                 Route(poly, listOf(RouteLeg(distM, durS, trafficS, ms.toList())), distM, durS, trafficS),
                 from,
+                reason,
             )
         }
         for (line in lines) {
