@@ -375,7 +375,11 @@ object NavEngine {
                     // Arrival gets ONE approach cue at the near band ("your destination will be
                     // ahead") — it used to be excluded entirely: silence from the last turn until
                     // "You have arrived". Skip it when we're already at the arrival line.
-                    (!isArrive || (slot == 1 && dtn > ARRIVE_RADIUS_M * 2))
+                    (!isArrive || (slot == 1 && dtn > ARRIVE_RADIUS_M * 2)) &&
+                    // A MERGE gets ONE approach prompt (near band only): the ramp step just said
+                    // where you're going, and a long on-ramp otherwise narrated the same road
+                    // three more times in declining counts (real-drive report, 2026-07-17).
+                    (target.type != ManeuverType.MERGE || slot == 1)
             }
             if (due.isNotEmpty()) {
                 val firstForStep = spoken.isEmpty()
@@ -388,7 +392,12 @@ object NavEngine {
                 val instruction = when {
                     isArrive -> nav().destinationAhead()
                     firstForStep && lane != null -> nav().useLanesToDo(lane.side, lane.count, target.instruction)
-                    else -> target.instruction
+                    firstForStep -> target.instruction
+                    // The step's SECOND prompt drops the sign-destination tail ("toward X"):
+                    // the far band already named it, and repeating the whole thing at every
+                    // band read as "the same shit in declining feet counts" off an exit
+                    // (real-drive report, 2026-07-17; Google shortens repeats the same way).
+                    else -> nav().repeatShort(target.instruction)
                 }
                 events += NavEvent.Speak(nav().inThen(spokenDistance(sayM, imperial), instruction))
                 // A light "get ready" tick once the NEAR band is reached, so bikers/walkers feel
@@ -405,7 +414,10 @@ object NavEngine {
         if (idxCur < maneuvers.lastIndex) {
             if (dtn <= turnNowM) {
                 if (!voiceSilent) {
-                    events += NavEvent.Speak(target.instruction, interrupt = true)
+                    // Turn-now repeats short once any approach band already spoke the full
+                    // instruction — "Take the ramp", not the whole sign again (see repeatShort).
+                    val turnText = if (spoken.isEmpty()) target.instruction else nav().repeatShort(target.instruction)
+                    events += NavEvent.Speak(turnText, interrupt = true)
                     events += NavEvent.Haptic(target.type) // firm, direction-coded buzz at the turn
                 }
                 stepIndex = idxCur + 1

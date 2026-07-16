@@ -4557,6 +4557,9 @@ class MapViewModel @Inject constructor(
      */
     private fun refreshAddressOverlays(center: LatLng? = mapCenter ?: _state.value.myLocation) {
         val c = center ?: return
+        // House-number labels are browse furniture: during nav the layers are hidden anyway (the
+        // declutter effect), so skip the per-viewport manifest/source churn too (battery, 2026-07-17).
+        if (_state.value.navigating) return
         viewModelScope.launch {
             runCatching {
                 val man = addressManifestCache

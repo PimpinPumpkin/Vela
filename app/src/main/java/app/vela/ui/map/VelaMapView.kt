@@ -540,6 +540,24 @@ fun VelaMapView(
             style.getLayer(TRANSIT_STOPS_LAYER)
                 ?.setProperties(PropertyFactory.visibility(if (navMode) Property.NONE else Property.VISIBLE))
         }
+        // Nav strips the browse-map dressing Google also drops mid-drive (user battery report
+        // 2026-07-17: "we need to further optimize" nav, not panning): basemap highway shields
+        // (a wall of badges including the other carriageway's; the banner chips + the bottom
+        // bar's current-road chip carry the route refs), the bike/trail accent lines, hillshade,
+        // the transit-lines accent, and the address-overlay number layers (their minZoom arms at
+        // 17 during slow nav, fetching tiles for labels nobody reads while driving - the VM also
+        // skips their per-viewport refresh while navigating). Every one is a plain-visibility
+        // layer with no competing owner, so a blanket restore on nav end is safe (ensureTransit
+        // adds/removes its layer by the toggle - a missing layer just no-ops here).
+        runCatching {
+            (
+                listOf(
+                    "highway-shield-non-us", "highway-shield-us-interstate", "road_shield_us",
+                    "vela-bikeroutes", "vela-trails", HILLSHADE_LAYER, TRANSIT_LAYER,
+                ).mapNotNull { style.getLayer(it) } +
+                    style.layers.filter { it.id.startsWith("vela-addr-") }
+                ).forEach { it.setProperties(PropertyFactory.visibility(vis)) }
+        }
     }
 
     // Open building-footprint overlays (Microsoft, ODbL — PMTiles): render each region's footprints in a fill
@@ -788,7 +806,9 @@ fun VelaMapView(
     // Extrusions also hide while SATELLITE imagery is on: the grey 3D boxes drew on top of the
     // photo roofs (they sit above the raster in the layer stack) - wrong-looking AND the most
     // fragment-expensive thing on screen (user 2026-07-13).
-    val buildings3d = app.vela.ui.Buildings3d.on.value && !satelliteOn
+    // Also forced off DURING NAV (2026-07-17): the tilted nav camera at z16+ is exactly where
+    // extrusion's per-pixel cost peaks, for scenery nobody studies mid-drive - the battery lever.
+    val buildings3d = app.vela.ui.Buildings3d.on.value && !satelliteOn && !navMode
     LaunchedEffect(buildings3d, styleRef) {
         runCatching {
             styleRef?.getLayer("building-3d")?.setProperties(
@@ -2959,12 +2979,12 @@ private fun navBubbleBitmap(dark: Boolean, d: Float): android.graphics.Bitmap {
     p.op(tail, android.graphics.Path.Op.UNION)
     val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = if (dark) 0xFF2B3648.toInt() else 0xFFFFFFFF.toInt()
+        color = if (dark) 0xFF3D4B63.toInt() else 0xFFFFFFFF.toInt()
     }
     val edge = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 1.1f * d
-        color = if (dark) 0xFF43536B.toInt() else 0xFFC9CFD8.toInt()
+        color = if (dark) 0xFF6B7C96.toInt() else 0xFFAEB7C2.toInt()
     }
     c.drawPath(p, fill)
     c.drawPath(p, edge)
