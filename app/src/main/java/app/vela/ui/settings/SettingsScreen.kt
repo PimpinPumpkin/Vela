@@ -1030,12 +1030,6 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 Hint(stringResource(R.string.settings_advanced_hint))
                 ToggleRow(stringResource(R.string.settings_buildings_3d), app.vela.ui.Buildings3d.on.value) { app.vela.ui.Buildings3d.set(context, it) }
                 Hint(stringResource(R.string.settings_buildings_3d_hint))
-                var trafficLights by remember { mutableStateOf(prefs.getBoolean("nav_traffic_lights", false)) }
-                ToggleRow(stringResource(R.string.settings_traffic_lights), trafficLights) {
-                    trafficLights = it
-                    prefs.edit().putBoolean("nav_traffic_lights", it).apply()
-                }
-                Hint(stringResource(R.string.settings_traffic_lights_hint))
             }
 
             // ---- Developer: screenshot/testing tools, collapsed (each says "turn off for real use") ----

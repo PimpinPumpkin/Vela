@@ -166,8 +166,6 @@
     <string name="place_close">Закрыть</string>
     <string name="place_permanently_closed">Закрыто навсегда</string>
     <string name="place_temporarily_closed">Временно закрыто</string>
-    <string name="settings_traffic_lights">Подсказки по светофорам</string>
-    <string name="settings_traffic_lights_hint">Добавляет подсказки вида “проедьте светофор, затем налево”. Пока только на английском.</string>
     <string name="map_voice_downloading">Загрузка голоса Vela · %1$d %%</string>
     <string name="map_voice_installing">Установка голоса Vela…</string>
     <string name="map_region_downloading">Загрузка маршрутов: %1$s · %2$d%%</string> <!-- format -->

@@ -197,6 +197,7 @@ private var lastAppliedTransitStops: List<app.vela.core.data.transit.Transitous.
 private var lastTransitBusHidden: Boolean? = null // gate the poi_transit filter flip
 private var origPoiTransitFilter: Expression? = null // basemap filter to restore when coverage goes
 private var lastOsmPoiVis: String? = null // identity-gate the basemap-POI visibility flips
+private var lastPoiFuelOnly: Boolean? = null // identity-gate the nav gas-stations-only filter flips
 private var lastControlsVis: String? = null // identity-gate the traffic-control visibility flips
 private var lastAppliedRouteLine: List<LatLng>? = null // identity-gate the route upload — applyData runs
                                                        // every recomposition and re-tessellating a
@@ -524,6 +525,7 @@ fun VelaMapView(
         // VISIBLE on nav end while its gate still says NONE left doubled icons until the next
         // state flip. Nulling the gate makes the next applyData frame re-assert the right value.
         lastOsmPoiVis = null
+        lastPoiFuelOnly = null
         // Stop signs + lights stay a NAV aid at z16; on the browse map they hold back until true
         // street zoom (user 2026-07-10: too busy mid-zoom without a route on screen).
         runCatching {
@@ -1566,7 +1568,13 @@ fun VelaMapView(
                         MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE
                     // The user grabbing the map is a signal in its own right — MapScreen uses it
                     // to drop the results sheet down out of the way (Google's behaviour).
-                    if (gestureMove[0]) userPan.value()
+                    // A PINCH (or two-finger tilt) is NOT that signal: zooming while the free-drive
+                    // follow is tracking you must keep tracking, just at the new zoom (user
+                    // 2026-07-17 — same pan-vs-pinch split nav's onMove listener makes). By the
+                    // time the camera first moves, onScaleBegin/onShoveBegin has set the flag —
+                    // the ordering the nav listener already relies on. gestureMove stays set
+                    // either way so "Search this area" still keys off a zoom change.
+                    if (gestureMove[0] && !scaling[0] && !shoving[0]) userPan.value()
                 }
                 // Tell a PAN from a PINCH during nav (the move-started reason can't): a pan
                 // detaches the follow-camera so you can look around (the Re-center button
@@ -1913,6 +1921,7 @@ fun VelaMapView(
                 ensureLayers(style)
                 lastAppliedMarkers = null // fresh style = empty sources; force applyData to repopulate
                 lastOsmPoiVis = null
+                lastPoiFuelOnly = null
                 lastControlsVis = null
                 parkingApplied = false
                 lastAppliedAmbient = null
@@ -1940,6 +1949,7 @@ fun VelaMapView(
                 emphasizeShields(style)
                 applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot, poisEnabled, svPose)
                 ensureSatellite(style, satelliteOn)
+                ensureNavRoadLabels(style, navMode, darkTheme)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
                 ensureTopography(style, topographyOn)
@@ -1953,9 +1963,11 @@ fun VelaMapView(
                 // when their toggle actually flips; the style-reload branch above still calls
                 // them unconditionally on a fresh style.
                 val ensureKey = (if (satelliteOn) 1 else 0) or (if (trafficOn) 2 else 0) or
-                    (if (transitOn) 4 else 0) or (if (topographyOn) 8 else 0)
+                    (if (transitOn) 4 else 0) or (if (topographyOn) 8 else 0) or
+                    (if (navMode) 16 else 0) or (if (darkTheme) 32 else 0)
                 if (ensureKey != lastEnsureKey[0]) {
                     lastEnsureKey[0] = ensureKey
+                    ensureNavRoadLabels(it, navMode, darkTheme)
                     ensureSatellite(it, satelliteOn)
                     ensureTraffic(it, trafficOn)
                     ensureTransit(it, transitOn)
@@ -2319,27 +2331,7 @@ private fun ensureLayers(style: Style) {
     }
     // (2) The OSM poi tiers scatter park/garden/tree icons across every wood - Google keeps
     // forests flat colour. Rebuild each tier's rank-band filter with vegetation excluded.
-    run {
-        val isPoint = Expression.match(
-            Expression.geometryType(), Expression.literal(false),
-            Expression.stop("Point", true), Expression.stop("MultiPoint", true),
-        )
-        val veg = Expression.match(
-            Expression.get("class"), Expression.literal(false),
-            Expression.stop("park", true), Expression.stop("garden", true),
-            Expression.stop("picnic_site", true), Expression.stop("wood", true),
-            Expression.stop("forest", true), Expression.stop("tree", true),
-            Expression.stop("grass", true), Expression.stop("wetland", true),
-        )
-        fun tier(id: String, lo: Int, hi: Int?) {
-            val parts = mutableListOf(isPoint, Expression.gte(Expression.get("rank"), Expression.literal(lo)), Expression.not(veg))
-            if (hi != null) parts += Expression.lt(Expression.get("rank"), Expression.literal(hi))
-            (style.getLayer(id) as? SymbolLayer)?.setFilter(Expression.all(*parts.toTypedArray()))
-        }
-        tier("poi_r1", 1, 7)
-        tier("poi_r7", 7, 20)
-        tier("poi_r20", 20, null)
-    }
+    applyPoiTierFilters(style, fuelOnly = false)
 
     if (style.getImage(ME_ARROW_IMG) == null) style.addImage(ME_ARROW_IMG, arrowBitmap())
     if (style.getImage(NAV_PUCK_IMG) == null) style.addImage(NAV_PUCK_IMG, navPuckBitmap())
@@ -2903,6 +2895,90 @@ private fun ensureTopography(style: Style, on: Boolean) {
 
 /** Toggle Google's live-traffic raster overlay. Inserted below the route line +
  *  labels so they stay on top; keyless public tiles, removed cleanly when off. */
+private const val NAV_ROADLABEL_LAYER = "vela-nav-roadlabels"
+
+/** Google-style floating road labels during NAV: horizontal, viewport-aligned name chips over the
+ *  roads you're crossing or driving beside - far more legible than the line-following basemap
+ *  labels, especially with the camera tilted (user 2026-07-16). A heavy rounded halo gives the
+ *  chip look; LINE_CENTER placement puts one per road with the collision engine decluttering. */
+/** The basemap business-POI tiers' filters. Browse mode = the rank bands with vegetation excluded
+ *  (Google keeps forests flat colour). During NAV [fuelOnly] narrows all three tiers to gas
+ *  stations - the one POI class worth glancing at mid-drive (user 2026-07-17); everything else
+ *  is clutter over the route. applyData flips the filter with navMode (identity-gated by
+ *  lastPoiFuelOnly); ensureLayers seeds the browse form on every style load. */
+private fun applyPoiTierFilters(style: Style, fuelOnly: Boolean) {
+    val isPoint = Expression.match(
+        Expression.geometryType(), Expression.literal(false),
+        Expression.stop("Point", true), Expression.stop("MultiPoint", true),
+    )
+    if (fuelOnly) {
+        val fuel = Expression.eq(Expression.get("class"), Expression.literal("fuel"))
+        listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
+            (style.getLayer(id) as? SymbolLayer)?.setFilter(Expression.all(isPoint, fuel))
+        }
+        return
+    }
+    val veg = Expression.match(
+        Expression.get("class"), Expression.literal(false),
+        Expression.stop("park", true), Expression.stop("garden", true),
+        Expression.stop("picnic_site", true), Expression.stop("wood", true),
+        Expression.stop("forest", true), Expression.stop("tree", true),
+        Expression.stop("grass", true), Expression.stop("wetland", true),
+    )
+    fun tier(id: String, lo: Int, hi: Int?) {
+        val parts = mutableListOf(isPoint, Expression.gte(Expression.get("rank"), Expression.literal(lo)), Expression.not(veg))
+        if (hi != null) parts += Expression.lt(Expression.get("rank"), Expression.literal(hi))
+        (style.getLayer(id) as? SymbolLayer)?.setFilter(Expression.all(*parts.toTypedArray()))
+    }
+    tier("poi_r1", 1, 7)
+    tier("poi_r7", 7, 20)
+    tier("poi_r20", 20, null)
+}
+
+private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean) {
+    val layer = style.getLayer(NAV_ROADLABEL_LAYER) as? SymbolLayer
+    if (!on) {
+        layer?.setProperties(PropertyFactory.visibility(Property.NONE))
+        return
+    }
+    if (layer == null) {
+        if (style.getSource("openmaptiles") == null) return
+        style.addLayer(
+            SymbolLayer(NAV_ROADLABEL_LAYER, "openmaptiles").withSourceLayer("transportation_name")
+                .withFilter(
+                    Expression.all(
+                        Expression.has("name"),
+                        Expression.match(
+                            Expression.get("class"),
+                            Expression.literal(false),
+                            Expression.stop("motorway", true), Expression.stop("trunk", true),
+                            Expression.stop("primary", true), Expression.stop("secondary", true),
+                            Expression.stop("tertiary", true),
+                        ),
+                    ),
+                )
+                .withProperties(
+                    PropertyFactory.textField(Expression.get("name")),
+                    PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                    PropertyFactory.textSize(13f),
+                    PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_LINE_CENTER),
+                    // Horizontal + upright regardless of the road's angle or the camera tilt -
+                    // the whole point vs the line-following basemap labels.
+                    PropertyFactory.textRotationAlignment(Property.TEXT_ROTATION_ALIGNMENT_VIEWPORT),
+                    PropertyFactory.textPitchAlignment(Property.TEXT_PITCH_ALIGNMENT_VIEWPORT),
+                    PropertyFactory.textPadding(8f),
+                    PropertyFactory.textHaloBlur(0.4f),
+                ).apply { minZoom = 14f }, // sparser, Google-like: cross-street tier only, not every lane
+        )
+    }
+    (style.getLayer(NAV_ROADLABEL_LAYER) as? SymbolLayer)?.setProperties(
+        PropertyFactory.visibility(Property.VISIBLE),
+        PropertyFactory.textColor(if (dark) "#e8eaed" else "#202124"),
+        PropertyFactory.textHaloColor(if (dark) "#2b3648" else "#ffffff"),
+        PropertyFactory.textHaloWidth(2.4f),
+    )
+}
+
 private fun ensureTraffic(style: Style, on: Boolean) {
     val present = style.getLayer(TRAFFIC_LAYER) != null
     if (on && !present) {
@@ -4100,12 +4176,20 @@ private fun applyData(
     // core keeps Google's data and the outskirts keep OSM's, merging as fresh fetches land).
     // Master POI switch (user 2026-07-15): off hides the OSM fallback business POIs too, so the
     // basemap is genuinely clean; searched results/pins are unaffected.
-    val osmPoiVis = if (!poisEnabled || ambientCoversView || markers.size > 1) Property.NONE else Property.VISIBLE
+    // During NAV the basemap POIs stay up but narrow to GAS STATIONS ONLY (user 2026-07-17,
+    // refining 2026-07-16's "keep gas stations in nav": everything else is clutter over the
+    // route); only the master switch hides them outright. The ambient-dots and many-results
+    // suppressors apply to the browse map alone.
+    val osmPoiVis = if (!poisEnabled || (!navMode && (ambientCoversView || markers.size > 1))) Property.NONE else Property.VISIBLE
     if (osmPoiVis != lastOsmPoiVis) {
         listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
             style.getLayer(id)?.setProperties(PropertyFactory.visibility(osmPoiVis))
         }
         lastOsmPoiVis = osmPoiVis
+    }
+    if (navMode != lastPoiFuelOnly) {
+        applyPoiTierFilters(style, fuelOnly = navMode)
+        lastPoiFuelOnly = navMode
     }
     // Stop signs + traffic lights step aside during a search too (results are the subject; the
     // junction furniture reads as clutter behind them) — but UNLIKE the basemap POIs they stay

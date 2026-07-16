@@ -165,8 +165,6 @@
     <string name="place_close">סגור</string>
     <string name="place_permanently_closed">סגור לצמיתות</string>
     <string name="place_temporarily_closed">סגור זמנית</string>
-    <string name="settings_traffic_lights">הנחיה לפי רמזורים</string>
-    <string name="settings_traffic_lights_hint">מוסיף רמזים כמו \"עבור את הרמזור, ואז פנה שמאלה\" להוראות המדוברות. כרגע באנגלית בלבד.</string>
     <string name="map_voice_downloading">מוריד את Vela Voice · %1$d%%</string>
     <string name="map_voice_installing">מתקין את Vela Voice…</string>
     <string name="map_region_downloading">מוריד ניתוב עבור %1$s · %2$d%%</string>

@@ -110,7 +110,11 @@ object EnNavStrings : NavStrings {
             "turn", "end of road" -> ("Turn $m").trim() + onto
             "continue", "new name" -> if (m.isNotBlank() && m != "straight") ("Bear $m").trim() + onto else "Continue$onto"
             "merge" -> "Merge$toward"
-            "on ramp", "ramp" -> "Take the ramp$toward"
+            "on ramp", "ramp" -> when {
+                mod?.contains("right") == true -> "Take the ramp on the right$toward"
+                mod?.contains("left") == true -> "Take the ramp on the left$toward"
+                else -> "Take the ramp$toward"
+            }
             "off ramp" -> if (exitNo != null) "Take exit$exitTab$toward" else "Take the exit$toward"
             "fork" -> ("Keep $m").trim() + toward
             "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "At the roundabout, take exit $rbExit$onto" else "Enter the roundabout$onto"
@@ -257,7 +261,11 @@ object FrNavStrings : NavStrings {
             "turn", "end of road" -> ("Tournez $m").trim() + sur
             "continue", "new name" -> if (m.isNotBlank() && m != "tout droit") ("Serrez $m").trim() + sur else "Continuez$sur"
             "merge" -> "Insérez-vous$vers"
-            "on ramp", "ramp" -> "Prenez la bretelle$vers"
+            "on ramp", "ramp" -> when {
+                mod?.contains("right") == true -> "Prenez la bretelle à droite$vers"
+                mod?.contains("left") == true -> "Prenez la bretelle à gauche$vers"
+                else -> "Prenez la bretelle$vers"
+            }
             "off ramp" -> if (exitNo != null) "Prenez la sortie $exitNo$vers" else "Prenez la sortie$vers"
             "fork" -> ("Restez $m").trim() + vers
             "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "Au rond-point, prenez la ${rbExit}e sortie$sur" else "Engagez-vous sur le rond-point$sur"
@@ -341,7 +349,11 @@ object DeNavStrings : NavStrings {
             "turn", "end of road" -> if (m.isNotBlank()) "Biegen Sie $m ab$auf" else "Biegen Sie ab$auf"
             "continue", "new name" -> if (m.isNotBlank() && m != "geradeaus") "Halten Sie sich $m$auf" else "Fahren Sie geradeaus weiter$auf"
             "merge" -> "Fädeln Sie sich ein$richtung"
-            "on ramp", "ramp" -> "Nehmen Sie die Auffahrt$richtung"
+            "on ramp", "ramp" -> when {
+                mod?.contains("right") == true -> "Nehmen Sie die Auffahrt rechts$richtung"
+                mod?.contains("left") == true -> "Nehmen Sie die Auffahrt links$richtung"
+                else -> "Nehmen Sie die Auffahrt$richtung"
+            }
             "off ramp" -> if (exitNo != null) "Nehmen Sie die Ausfahrt $exitNo$richtung" else "Nehmen Sie die Ausfahrt$richtung"
             "fork" -> ("Halten Sie sich $m").trim() + richtung
             "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "Nehmen Sie im Kreisverkehr die ${deOrd(rbExit)} Ausfahrt$auf" else "Fahren Sie in den Kreisverkehr ein$auf"
@@ -452,7 +464,11 @@ object EsNavStrings : NavStrings {
             "turn", "end of road" -> ("Gire $m").trim() + por
             "continue", "new name" -> if (m.isNotBlank() && m != "recto") ("Manténgase $m").trim() + por else "Continúe$por"
             "merge" -> "Incorpórese$incorp"
-            "on ramp", "ramp" -> "Tome el acceso$hacia"
+            "on ramp", "ramp" -> when {
+                mod?.contains("right") == true -> "Tome el acceso a la derecha$hacia"
+                mod?.contains("left") == true -> "Tome el acceso a la izquierda$hacia"
+                else -> "Tome el acceso$hacia"
+            }
             "off ramp" -> if (exitNo != null) "Tome la salida $exitNo$hacia" else "Tome la salida$hacia"
             "fork" -> ("Manténgase $m").trim() + hacia
             "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "En la rotonda, tome la $rbExit.ª salida$por" else "Incorpórese a la rotonda$por"
@@ -545,7 +561,11 @@ object ItNavStrings : NavStrings {
             "turn", "end of road" -> ("Svolta $m").trim() + su
             "continue", "new name" -> if (side.isNotBlank()) "Tieni la $side$su" else "Prosegui$su"
             "merge" -> "Immettiti$verso"
-            "on ramp", "ramp" -> "Prendi la rampa$verso"
+            "on ramp", "ramp" -> when {
+                mod?.contains("right") == true -> "Prendi la rampa a destra$verso"
+                mod?.contains("left") == true -> "Prendi la rampa a sinistra$verso"
+                else -> "Prendi la rampa$verso"
+            }
             "off ramp" -> if (exitNo != null) "Prendi l'uscita $exitNo$verso" else "Prendi l'uscita$verso"
             "fork" -> if (side.isNotBlank()) "Tieni la $side$verso" else "Prosegui$verso"
             "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "Alla rotatoria, prendi la ${rbExit}ª uscita$su" else "Immettiti nella rotatoria$su"
@@ -634,7 +654,11 @@ object PtNavStrings : NavStrings {
             "turn", "end of road" -> ("Vire $m").trim() + na
             "continue", "new name" -> if (m.isNotBlank() && m != "em frente") ("Mantenha-se $m").trim() + na else "Continue$na"
             "merge" -> "Entre$sentido"
-            "on ramp", "ramp" -> "Pegue o acesso$sentido"
+            "on ramp", "ramp" -> when {
+                mod?.contains("right") == true -> "Pegue o acesso à direita$sentido"
+                mod?.contains("left") == true -> "Pegue o acesso à esquerda$sentido"
+                else -> "Pegue o acesso$sentido"
+            }
             "off ramp" -> if (exitNo != null) "Pegue a saída $exitNo$sentido" else "Pegue a saída$sentido"
             "fork" -> ("Mantenha-se $m").trim() + sentido
             "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "Na rotatória, pegue a ${rbExit}ª saída$na" else "Entre na rotatória$na"
@@ -732,7 +756,11 @@ object NlNavStrings : NavStrings {
                 else -> "Ga rechtdoor$op"
             }
             "merge" -> "Voeg in$richting"
-            "on ramp", "ramp" -> "Neem de oprit$richting"
+            "on ramp", "ramp" -> when {
+                mod?.contains("right") == true -> "Neem de oprit rechts$richting"
+                mod?.contains("left") == true -> "Neem de oprit links$richting"
+                else -> "Neem de oprit$richting"
+            }
             "off ramp" -> if (exitNo != null) "Neem afrit $exitNo$richting" else "Neem de afrit$richting"
             // Derive the SIDE from the full modWord — OSRM forks are almost always "slight left"/
             // "slight right" (→ "schuin naar links/rechts"), which the old exact match on
@@ -835,7 +863,11 @@ object RuNavStrings : NavStrings {
             "turn", "end of road" -> ("Поверните $m").trim() + na
             "continue", "new name" -> if (m.isNotBlank() && m != "прямо") ("Держитесь $m").trim() + na else "Продолжайте движение$na"
             "merge" -> "Перестройтесь$vStoronu"
-            "on ramp", "ramp" -> "Выезжайте на автомагистраль$vStoronu"
+            "on ramp", "ramp" -> when {
+                mod?.contains("right") == true -> "Выезжайте на автомагистраль справа$vStoronu"
+                mod?.contains("left") == true -> "Выезжайте на автомагистраль слева$vStoronu"
+                else -> "Выезжайте на автомагистраль$vStoronu"
+            }
             "off ramp" -> if (exitNo != null) "Съезжайте на съезде $exitNo$vStoronu" else "Уходите на съезд$vStoronu"
             "fork" -> ("Держитесь $m").trim() + vStoronu
             "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "На кольце — ${rbOrdinal(rbExit)} съезд$na" else "Выезжайте на круговое движение$na"
@@ -999,7 +1031,11 @@ object PlNavStrings : NavStrings {
             "turn", "end of road" -> ("Skręć $m").trim() + w
             "continue", "new name" -> if (m.isNotBlank() && m != "prosto") ("Trzymaj się $m").trim() + w else "Jedź dalej$w"
             "merge" -> "Włącz się do ruchu$ku"
-            "on ramp", "ramp" -> "Wjedź na łącznicę$ku"
+            "on ramp", "ramp" -> when {
+                mod?.contains("right") == true -> "Wjedź na łącznicę po prawej$ku"
+                mod?.contains("left") == true -> "Wjedź na łącznicę po lewej$ku"
+                else -> "Wjedź na łącznicę$ku"
+            }
             "off ramp" -> if (exitNo != null) "Zjedź zjazdem $exitNo$ku" else "Zjedź zjazdem$ku"
             "fork" -> ("Trzymaj się $m").trim() + ku
             "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "Na rondzie zjedź ${rbExit}. zjazdem$w" else "Wjedź na rondo$w"
@@ -1124,7 +1160,11 @@ object SvNavStrings : NavStrings {
             "turn", "end of road" -> ("Sväng $m").trim() + pa
             "continue", "new name" -> if (m.isNotBlank() && m != "rakt fram") ("Håll $m").trim() + pa else "Fortsätt$pa"
             "merge" -> "Anslut$till"
-            "on ramp", "ramp" -> "Ta påfarten$till"
+            "on ramp", "ramp" -> when {
+                mod?.contains("right") == true -> "Ta påfarten till höger$till"
+                mod?.contains("left") == true -> "Ta påfarten till vänster$till"
+                else -> "Ta påfarten$till"
+            }
             "off ramp" -> if (exitNo != null) "Ta avfart $exitNo$mot" else "Ta avfarten$mot"
             "fork" -> ("Håll $m").trim() + mot
             "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "Ta ${svOrd(rbExit)} avfarten i rondellen$pa" else "Kör in i rondellen$pa"
@@ -1218,7 +1258,11 @@ object UkNavStrings : NavStrings {
             "turn", "end of road" -> ("Поверніть $m").trim() + na
             "continue", "new name" -> if (keep.isNotBlank()) "Тримайтеся $keep$na" else "Продовжуйте рух$na"
             "merge" -> "Приєднайтеся до потоку$vers"
-            "on ramp", "ramp" -> "Виїжджайте на з'їзд$vers"
+            "on ramp", "ramp" -> when {
+                mod?.contains("right") == true -> "Виїжджайте на з'їзд праворуч$vers"
+                mod?.contains("left") == true -> "Виїжджайте на з'їзд ліворуч$vers"
+                else -> "Виїжджайте на з'їзд$vers"
+            }
             "off ramp" -> if (exitNo != null) "З'їжджайте на з'їзд $exitNo$vers" else "З'їжджайте зі з'їзду$vers"
             "fork" -> if (keep.isNotBlank()) "Тримайтеся $keep$vers" else "Продовжуйте рух$vers"
             "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "На кільцевій розв'язці зверніть на ${rbExit}-й з'їзд$na" else "В'їжджайте на кільцеву розв'язку$na"
@@ -1336,7 +1380,11 @@ object ZhNavStrings : NavStrings {
             "turn", "end of road" -> (m.ifBlank { "转弯" }) + onto
             "continue", "new name" -> if (side.isNotBlank() && m != "直行") "${side}行驶$onto" else "继续直行$onto"
             "merge" -> "并入道路$toward"
-            "on ramp", "ramp" -> "走匝道$toward"
+            "on ramp", "ramp" -> when {
+                mod?.contains("right") == true -> "靠右走匝道$toward"
+                mod?.contains("left") == true -> "靠左走匝道$toward"
+                else -> "走匝道$toward"
+            }
             "off ramp" -> if (exitNo != null) "从 $exitNo 号出口驶出$toward" else "从出口驶出$toward"
             "fork" -> "在岔路口${side.ifBlank { "直行" }}$toward"
             "roundabout", "rotary", "exit roundabout", "exit rotary" ->
@@ -1433,7 +1481,11 @@ object ZhTwNavStrings : NavStrings {
             "turn", "end of road" -> (m.ifBlank { "轉彎" }) + onto
             "continue", "new name" -> if (side.isNotBlank() && m != "直行") "${side}行駛$onto" else "繼續直行$onto"
             "merge" -> "匯入道路$toward"
-            "on ramp", "ramp" -> "走匝道$toward"
+            "on ramp", "ramp" -> when {
+                mod?.contains("right") == true -> "靠右走匝道$toward"
+                mod?.contains("left") == true -> "靠左走匝道$toward"
+                else -> "走匝道$toward"
+            }
             "off ramp" -> if (exitNo != null) "從 $exitNo 號出口駛出$toward" else "從出口駛出$toward"
             "fork" -> "在岔路口${side.ifBlank { "直行" }}$toward"
             "roundabout", "rotary", "exit roundabout", "exit rotary" ->
@@ -1524,7 +1576,11 @@ object JaNavStrings : NavStrings {
             "turn", "end of road" -> if (m.isNotBlank() && m != "直進") "${m}に曲がります$onto" else "直進します$onto"
             "continue", "new name" -> if (m.isNotBlank() && m != "直進") "${m}方向に進みます$onto" else if (road != null) "$road を直進します" else "直進します"
             "merge" -> "合流します$toward"
-            "on ramp", "ramp" -> "ランプに入ります$toward"
+            "on ramp", "ramp" -> when {
+                mod?.contains("right") == true -> "右側のランプに入ります$toward"
+                mod?.contains("left") == true -> "左側のランプに入ります$toward"
+                else -> "ランプに入ります$toward"
+            }
             "off ramp" -> if (exitNo != null) "出口 $exitNo を出ます$toward" else "出口を出ます$toward"
             "fork" -> if (m.isNotBlank()) "分岐を${m}方向へ進みます$toward" else "分岐を直進します$toward"
             "roundabout", "rotary", "exit roundabout", "exit rotary" ->
@@ -1622,7 +1678,11 @@ object HeNavStrings : NavStrings {
             "turn", "end of road" -> ("פנה $m").trim() + onto
             "continue", "new name" -> if (m.isNotBlank() && m != "ישר") ("סטה $m").trim() + onto else "המשך$onto"
             "merge" -> "השתלב$toward"
-            "on ramp", "ramp" -> "עלה ברמפה$toward"
+            "on ramp", "ramp" -> when {
+                mod?.contains("right") == true -> "עלה ברמפה מימין$toward"
+                mod?.contains("left") == true -> "עלה ברמפה משמאל$toward"
+                else -> "עלה ברמפה$toward"
+            }
             "off ramp" -> if (exitNo != null) "צא ביציאה $exitNo$toward" else "צא ביציאה$toward"
             "fork" -> ("היצמד $m").trim() + toward
             "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "בכיכר, צא ביציאה ${exitOrdinal(rbExit)}$onto" else "היכנס לכיכר$onto"

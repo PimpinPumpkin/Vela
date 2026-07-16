@@ -166,8 +166,6 @@
     <string name="place_close">Cerrar</string>
     <string name="place_permanently_closed">Cerrado permanentemente</string>
     <string name="place_temporarily_closed">Cerrado temporalmente</string>
-    <string name="settings_traffic_lights">Indicaciones con semáforos</string>
-    <string name="settings_traffic_lights_hint">Añade avisos como “pasa el semáforo y gira a la izquierda”. De momento solo en inglés.</string>
     <string name="map_voice_downloading">Descargando la voz Vela · %1$d %%</string>
     <string name="map_voice_installing">Instalando la voz Vela…</string>
     <string name="map_region_downloading">Descargando rutas de %1$s · %2$d %%</string> <!-- format -->

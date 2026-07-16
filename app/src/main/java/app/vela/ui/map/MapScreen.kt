@@ -858,7 +858,9 @@ fun MapScreen(
             svPose = svPose,
             svTopInsetPx = (screenHeightPx * 0.55f).toInt(),
             onSvMapTap = vm::moveStreetViewTo,
-            ambientPois = ambientMarkersOf(state),
+            // No stale ambient dots mid-drive: the fetch pauses during nav, and the basemap POIs
+            // (kept visible in nav now) cover the gas-station-on-the-way case without duplicates.
+            ambientPois = if (state.navigating) emptyList() else ambientMarkersOf(state),
             buildingOverlays = state.buildingOverlays,
             addressOverlays = state.addressOverlays,
             maxspeedOverlays = state.maxspeedOverlays,

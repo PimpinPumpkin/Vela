@@ -80,7 +80,9 @@ private fun ShieldBadge(
     stroke: Color?,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(width = 36.dp, height = 30.dp)) {
+        // Roomier than the first cut (user 2026-07-16, "text is cramped"): +4dp each way and the
+        // number sized off its length so 3-digit interstates breathe.
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(width = 40.dp, height = 34.dp)) {
             Canvas(Modifier.fillMaxSize()) {
                 val p = shieldPath(size.width, size.height)
                 drawPath(p, fill)
@@ -93,8 +95,8 @@ private fun ShieldBadge(
                 number,
                 color = numberColor,
                 fontWeight = FontWeight.Bold,
-                fontSize = if (number.length >= 3) 12.sp else 14.sp,
-                modifier = Modifier.padding(top = if (redTop) 4.dp else 0.dp),
+                fontSize = if (number.length >= 3) 13.sp else 15.sp,
+                modifier = Modifier.padding(top = if (redTop) 5.dp else 0.dp),
             )
         }
         direction?.let {
@@ -112,15 +114,15 @@ private fun StateMarker(number: String, direction: String?, dim: Color) {
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(width = 32.dp, height = 30.dp)
-                .background(Color.White, RoundedCornerShape(6.dp))
-                .border(1.5.dp, ShieldInk, RoundedCornerShape(6.dp)),
+                .size(width = 36.dp, height = 32.dp)
+                .background(Color.White, RoundedCornerShape(7.dp))
+                .border(1.5.dp, ShieldInk, RoundedCornerShape(7.dp)),
         ) {
             Text(
                 number,
                 color = ShieldInk,
                 fontWeight = FontWeight.Bold,
-                fontSize = if (number.length >= 3) 12.sp else 14.sp,
+                fontSize = if (number.length >= 3) 13.sp else 15.sp,
             )
         }
         direction?.let {
@@ -133,12 +135,12 @@ private fun StateMarker(number: String, direction: String?, dim: Color) {
 /** The original plain bordered chip — kept as the fallback for refs we don't have a shape for. */
 @Composable
 private fun GenericChip(label: String, ink: Color) {
-    Surface(color = Color.Transparent, shape = RoundedCornerShape(4.dp), border = BorderStroke(1.5.dp, ink)) {
+    Surface(color = Color.Transparent, shape = RoundedCornerShape(5.dp), border = BorderStroke(1.5.dp, ink)) {
         Text(
             label,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
         )
     }
 }

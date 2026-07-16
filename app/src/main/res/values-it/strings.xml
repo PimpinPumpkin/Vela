@@ -166,8 +166,6 @@
     <string name="place_close">Chiudi</string>
     <string name="place_permanently_closed">Chiuso definitivamente</string>
     <string name="place_temporarily_closed">Chiuso temporaneamente</string>
-    <string name="settings_traffic_lights">Indicazioni con semafori</string>
-    <string name="settings_traffic_lights_hint">Aggiunge indicazioni come “supera il semaforo, poi gira a sinistra”. Per ora solo in inglese.</string>
     <string name="map_voice_downloading">Download della voce Vela · %1$d %%</string>
     <string name="map_voice_installing">Installazione della voce Vela…</string>
     <string name="map_region_downloading">Download instradamento %1$s · %2$d%%</string> <!-- format -->

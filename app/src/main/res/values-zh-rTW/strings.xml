@@ -64,8 +64,6 @@
     <string name="settings_vibrate_hint">每個轉彎以不同方向的震動提示，左轉右轉震法不同，憑感覺就能跟著路線走。可依交通方式分別設定（例如騎自行車和步行時開啟，開車時關閉）。</string>
     <string name="settings_keep_screen_on">導航時保持螢幕開啟</string>
     <string name="settings_keep_screen_on_hint">導航期間讓螢幕保持喚醒。</string>
-    <string name="settings_traffic_lights">紅綠燈導引</string>
-    <string name="settings_traffic_lights_hint">在語音指引中加入「經過紅綠燈後左轉」這類提示。目前僅支援英文。</string>
     <string name="map_voice_downloading">正在下載 Vela 語音 · %1$d%%</string>
     <string name="map_voice_installing">正在安裝 Vela 語音…</string>
     <string name="map_region_downloading">正在下載 %1$s 的路線規劃資料 · %2$d%%</string> <!-- format -->

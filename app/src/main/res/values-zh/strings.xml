@@ -64,8 +64,6 @@
     <string name="settings_vibrate_hint">每次转弯时按方向振动，左转和右转的振动不同，凭触感即可跟随路线。可按出行方式分别设置（例如骑行和步行时开启，驾车时关闭）。</string>
     <string name="settings_keep_screen_on">导航时保持屏幕常亮</string>
     <string name="settings_keep_screen_on_hint">逐向导航期间保持屏幕唤醒。</string>
-    <string name="settings_traffic_lights">红绿灯提示</string>
-    <string name="settings_traffic_lights_hint">在语音播报中加入类似“经过红绿灯后左转”的提示。目前仅支持英语。</string>
     <string name="map_voice_downloading">正在下载 Vela 语音 · %1$d%%</string>
     <string name="map_voice_installing">正在安装 Vela 语音…</string>
     <string name="map_region_downloading">正在下载 %1$s 路线数据 · %2$d%%</string> <!-- format -->
