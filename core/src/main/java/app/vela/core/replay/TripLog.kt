@@ -40,6 +40,7 @@ object TripLog {
         val label: String,
         val startedAt: Long,
         val dest: LatLng?,
+        val versionCode: Int? = null, // build that recorded the trip (null on pre-2026-07-16 files)
         val route: Route?, // the FIRST segment's route (compat convenience)
         val points: List<Point>,
         val segments: List<RouteSegment> = emptyList(),
@@ -93,6 +94,7 @@ object TripLog {
         val dest = meta.getOrNull(2)?.toDoubleOrNull()?.let { la ->
             meta.getOrNull(3)?.toDoubleOrNull()?.let { lo -> LatLng(la, lo) }
         }
+        val versionCode = meta.getOrNull(4)?.toIntOrNull() // absent on trips recorded before 2026-07-16
         val points = ArrayList<Point>()
         val segments = ArrayList<RouteSegment>()
         var rp: String? = null
@@ -127,7 +129,7 @@ object TripLog {
             }
         }
         closeBlock()
-        return Parsed(label, startedAt, dest, segments.firstOrNull()?.route, points, segments)
+        return Parsed(label, startedAt, dest, versionCode, segments.firstOrNull()?.route, points, segments)
     }
 
     /**
