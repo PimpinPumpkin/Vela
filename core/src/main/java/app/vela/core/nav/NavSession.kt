@@ -128,6 +128,26 @@ class NavSession @Inject constructor(
     /** An intermediate stop on a multi-stop trip. */
     data class NavStop(val location: LatLng, val label: String)
 
+    /** Fold a light-ENRICHED copy of the current route in after nav has already started, so
+     *  START never waits on the Overpass traffic-signal fetch (that blocked nav start for up to
+     *  ~25 s, the server timeout, once light guidance became standard - user 2026-07-16). The
+     *  enriched route's polyline and maneuver POSITIONS are identical; only turn instruction TEXT
+     *  gains "Pass the light, then ...". So swapping planRoute (what the engine reads each fix) and
+     *  re-emitting the current step's text is safe and needs no re-anchor. No-op if we've stopped
+     *  or rerouted since (a different polyline = the clauses are for a route we're no longer on).
+     *  Deliberately does NOT touch _state.route, so the trip recorder doesn't log a phantom swap. */
+    fun applyEnrichedRoute(r: Route) {
+        synchronized(stopLock) {
+            val cur = planRoute ?: return
+            if (!_state.value.navigating || cur.polyline.size != r.polyline.size) return
+            planRoute = r
+        }
+        val idx = _state.value.nav.stepIndex
+        r.maneuvers.getOrNull(idx)?.instruction?.let { txt ->
+            _state.update { it.copy(maneuverText = txt) }
+        }
+    }
+
     fun start(
         route: Route,
         destination: LatLng,
