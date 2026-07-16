@@ -94,6 +94,18 @@ class NavEngineTest {
         assertTrue("should emit an Arrived event", events.any { it is NavEvent.Arrived })
     }
 
+    /** Sub-mile spoken distances phrase as quarter-mile fractions, never "zero point five miles". */
+    @Test
+    fun spokenMilesUseFractionsBelowAMile() {
+        val en = app.vela.core.i18n.EnNavStrings
+        assertEquals("a quarter mile", en.spokenDistance(400.0, imperial = true))
+        assertEquals("half a mile", en.spokenDistance(805.0, imperial = true))
+        assertEquals("three quarters of a mile", en.spokenDistance(1207.0, imperial = true))
+        assertEquals("1 mile", en.spokenDistance(1609.0, imperial = true))
+        assertEquals("1.2 miles", en.spokenDistance(1931.0, imperial = true))
+        assertEquals("500 meters", en.spokenDistance(500.0, imperial = false)) // metric untouched
+    }
+
     /** The SPOKEN sign drops secondary destinations after the colon; plain instructions and
      *  colons outside a sign ("Opens at 9:00") are untouched. */
     @Test
