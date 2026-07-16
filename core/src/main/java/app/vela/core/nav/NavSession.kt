@@ -522,6 +522,12 @@ class NavSession @Inject constructor(
         if (r.polyline.size < 2) return
         synchronized(stopLock) { stops = emptyList(); stopMarks = emptyList(); passedStops = 0; planRoute = r }
         etaScale = 1.0
+        // The reroute earcon plays at recorded swap points too (user 2026-07-16: "didn't hear
+        // the rerouting sound in the replay") - replay is the nav test bench, and the chime is
+        // the audible marker that the route changed here. Honest caveat: the trip format doesn't
+        // distinguish a wrong-turn reroute from a silent faster-route adoption, so a swap that
+        // was quiet live still chimes in replay - a marker, not a re-enactment.
+        voice.reroutingChime()
         diag.record("nav", "replay: route swap (${r.maneuvers.size} steps)")
         _state.update {
             it.copy(

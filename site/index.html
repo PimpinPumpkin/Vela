@@ -3,294 +3,660 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vela Maps &middot; Google Maps, degoogled</title>
-<meta name="description" content="Vela is a free, open-source maps and navigation app for Android. Live place data, traffic-aware turn-by-turn, transit boards and full offline support. No account, no API key, no Play Services.">
+<title>Vela Maps · Google Maps, degoogled</title>
+<meta name="description" content="Vela is a free, open-source maps and navigation app for Android. Live place data, traffic-aware turn-by-turn, real transit boards and whole states offline. No account, no API key, no Play Services.">
 <meta property="og:title" content="Vela Maps">
 <meta property="og:description" content="Google Maps, degoogled. Free and open source, no account, no tracking.">
 <meta property="og:image" content="assets/05-navigation.webp">
 <meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230b1220'/%3E%3Cpath d='M32 12 L40 40 L32 34 L24 40 Z' fill='%232dd4bf'/%3E%3C/svg%3E">
 <style>
   :root {
-    --bg: #0a1220;
-    --bg2: #0e1a30;
-    --card: #12213c;
-    --ink: #e8edf5;
-    --dim: #93a1b8;
-    --teal: #2dd4bf;
-    --blue: #3b82f6;
-    --route: #1f6feb;
-    --radius: 20px;
-    --max: 1120px;
+    --bg: #06080d;
+    --bg-soft: #0a0e16;
+    --ink: #f2f5f9;
+    --ink-2: #b6c0cf;
+    --ink-3: #7c8798;
+    --line: rgba(255,255,255,.08);
+    --line-2: rgba(255,255,255,.14);
+    --teal: #2fd8c1;
+    --teal-deep: #14b8a6;
+    --blue: #4c8dff;
+    --glass: rgba(16,21,32,.72);
+    --r-lg: 28px;
+    --r-md: 18px;
+    --max: 1160px;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { scroll-behavior: smooth; }
+  ::selection { background: rgba(47,216,193,.28); }
   body {
     background: var(--bg);
     color: var(--ink);
-    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    font-family: var(--sans);
     line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
-  a { color: var(--teal); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+  a { color: inherit; text-decoration: none; }
+  img { max-width: 100%; display: block; }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 28px; }
 
-  /* ambient background glow */
-  .glow {
-    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  /* ---------- backdrop ---------- */
+  .backdrop {
+    position: fixed; inset: 0; z-index: -2; pointer-events: none;
     background:
-      radial-gradient(600px 400px at 80% -10%, rgba(31,111,235,.18), transparent 70%),
-      radial-gradient(700px 500px at -10% 40%, rgba(45,212,191,.10), transparent 70%),
-      radial-gradient(800px 600px at 60% 110%, rgba(31,111,235,.12), transparent 70%);
+      radial-gradient(1100px 520px at 75% -8%, rgba(76,141,255,.14), transparent 65%),
+      radial-gradient(900px 620px at -12% 34%, rgba(47,216,193,.09), transparent 65%),
+      var(--bg);
+  }
+  .backdrop::after {
+    content: ""; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: radial-gradient(900px 640px at 60% 0%, #000 0%, transparent 75%);
+    -webkit-mask-image: radial-gradient(900px 640px at 60% 0%, #000 0%, transparent 75%);
   }
 
-  nav {
+  /* ---------- nav ---------- */
+  .navbar {
+    position: sticky; top: 14px; z-index: 50;
+  }
+  .navbar .bar {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 22px 0;
+    padding: 10px 12px 10px 20px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--glass);
+    backdrop-filter: blur(18px) saturate(1.4);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
   }
-  .brand { font-weight: 800; font-size: 1.35rem; letter-spacing: -.02em; color: var(--ink); }
-  .brand span { color: var(--teal); }
-  nav .links a { color: var(--dim); margin-left: 22px; font-size: .95rem; }
-  nav .links a:hover { color: var(--ink); text-decoration: none; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.06rem; letter-spacing: -.01em; }
+  .brand svg { width: 24px; height: 24px; }
+  .nav-links { display: flex; align-items: center; gap: 4px; }
+  .nav-links a {
+    color: var(--ink-2); font-size: .92rem; padding: 8px 14px; border-radius: 999px;
+    transition: color .18s ease, background .18s ease;
+  }
+  .nav-links a:hover { color: var(--ink); background: rgba(255,255,255,.06); }
+  .nav-links a.pill {
+    color: #052620; background: var(--teal); font-weight: 600; margin-left: 6px;
+  }
+  .nav-links a.pill:hover { background: #46e2cd; }
 
-  /* hero */
-  .hero {
-    display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px;
-    align-items: center; padding: 56px 0 96px;
+  /* ---------- hero ---------- */
+  .hero { position: relative; padding: 92px 0 40px; }
+  .hero-grid {
+    display: grid; grid-template-columns: 1.05fr .95fr; gap: 56px; align-items: center;
   }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: .82rem; font-weight: 600; letter-spacing: .02em; color: var(--ink-2);
+    border: 1px solid var(--line-2); border-radius: 999px; padding: 6px 14px;
+    background: rgba(255,255,255,.03);
+  }
+  .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 12px var(--teal); }
   .hero h1 {
-    font-size: clamp(2.6rem, 6vw, 4.2rem);
-    line-height: 1.05; letter-spacing: -.03em; font-weight: 800;
+    margin: 26px 0 0;
+    font-size: clamp(3rem, 7.2vw, 5.4rem);
+    line-height: .98; letter-spacing: -.045em; font-weight: 700;
   }
-  .hero h1 em {
-    font-style: normal;
-    background: linear-gradient(90deg, var(--teal), var(--blue));
+  .hero h1 .fade {
+    background: linear-gradient(120deg, var(--teal) 10%, var(--blue) 90%);
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
-  .hero p.lead { color: var(--dim); font-size: 1.18rem; margin: 22px 0 34px; max-width: 34rem; }
-  .cta { display: flex; gap: 14px; flex-wrap: wrap; }
+  .hero .lead {
+    color: var(--ink-2); font-size: 1.16rem; line-height: 1.65;
+    margin: 26px 0 36px; max-width: 33rem;
+  }
+  .cta-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .btn {
-    display: inline-flex; align-items: center; gap: 9px;
-    padding: 13px 22px; border-radius: 14px; font-weight: 600; font-size: 1rem;
-    transition: transform .15s ease, box-shadow .15s ease;
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 15px 26px; border-radius: 999px; font-weight: 600; font-size: 1rem;
+    transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
   }
-  .btn:hover { transform: translateY(-2px); text-decoration: none; }
-  .btn.primary { background: linear-gradient(135deg, var(--teal), #14b8a6); color: #04211c; box-shadow: 0 8px 30px rgba(45,212,191,.25); }
-  .btn.ghost { border: 1px solid #2a3c5e; color: var(--ink); background: rgba(255,255,255,.03); }
-  .sub { color: var(--dim); font-size: .85rem; margin-top: 14px; }
+  .btn svg { width: 18px; height: 18px; }
+  .btn.primary {
+    color: #052620; background: linear-gradient(135deg, #49e6d0, var(--teal-deep));
+    box-shadow: 0 10px 40px rgba(47,216,193,.28), inset 0 1px 0 rgba(255,255,255,.35);
+  }
+  .btn.primary:hover { transform: translateY(-2px); box-shadow: 0 16px 50px rgba(47,216,193,.36), inset 0 1px 0 rgba(255,255,255,.35); }
+  .btn.quiet { color: var(--ink); border: 1px solid var(--line-2); background: rgba(255,255,255,.04); }
+  .btn.quiet:hover { transform: translateY(-2px); background: rgba(255,255,255,.08); }
+  .hero .fineprint { margin-top: 20px; color: var(--ink-3); font-size: .88rem; }
+  .hero .fineprint b { color: var(--ink-2); font-weight: 600; }
 
-  /* phone mockup */
-  .phone-stage { perspective: 1200px; display: flex; justify-content: center; }
-  .phone {
-    width: min(300px, 70vw); border-radius: 36px; padding: 10px;
-    background: #1b2b4a;
-    box-shadow: 0 40px 90px rgba(0,0,0,.55), 0 0 0 1px #27395c inset;
-    transform: rotateY(-10deg) rotateX(4deg);
-    transition: transform .4s ease;
-    will-change: transform;
+  /* route line under hero text */
+  .route-svg { position: absolute; left: -40px; bottom: -30px; width: 560px; opacity: .5; z-index: -1; }
+  .route-svg .path {
+    fill: none; stroke: var(--blue); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: 1400; stroke-dashoffset: 1400;
+    animation: draw 2.4s .3s cubic-bezier(.4,0,.2,1) forwards;
   }
-  .phone img { width: 100%; border-radius: 27px; display: block; }
+  .route-svg .casing { fill: none; stroke: rgba(76,141,255,.18); stroke-width: 11; stroke-linecap: round; stroke-linejoin: round; }
+  .route-svg .pin { opacity: 0; animation: pop .4s 2.5s ease forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
-  /* sections */
-  section { padding: 72px 0; }
-  h2 { font-size: clamp(1.7rem, 3.4vw, 2.4rem); letter-spacing: -.02em; margin-bottom: 10px; }
-  .kicker { color: var(--teal); font-weight: 700; text-transform: uppercase; font-size: .8rem; letter-spacing: .12em; }
-  .sect-lead { color: var(--dim); max-width: 44rem; margin-bottom: 40px; }
-
-  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-  .card {
-    background: linear-gradient(180deg, var(--card), var(--bg2));
-    border: 1px solid #21334f; border-radius: var(--radius);
-    padding: 26px 24px;
-    transition: transform .2s ease, border-color .2s ease;
+  /* ---------- phone ---------- */
+  .device {
+    position: relative;
+    width: min(320px, 76vw);
+    border-radius: 44px;
+    padding: 12px;
+    background: linear-gradient(160deg, #2a3547, #10151f 60%);
+    box-shadow:
+      0 60px 120px rgba(0,0,0,.6),
+      0 0 0 1px rgba(255,255,255,.09) inset,
+      0 2px 0 rgba(255,255,255,.14) inset;
   }
-  .card:hover { transform: translateY(-4px); border-color: #2f4a75; }
-  .card .ico { font-size: 1.6rem; margin-bottom: 12px; display: block; }
-  .card h3 { font-size: 1.08rem; margin-bottom: 7px; }
-  .card p { color: var(--dim); font-size: .95rem; }
-
-  /* privacy band */
-  .band {
-    border: 1px solid #1f3a35; border-radius: var(--radius);
-    background: linear-gradient(135deg, rgba(45,212,191,.07), rgba(31,111,235,.06));
-    padding: 44px 40px;
-    display: grid; grid-template-columns: 1.2fr .8fr; gap: 36px; align-items: center;
+  .device::before {
+    content: ""; position: absolute; top: 24px; left: 50%; transform: translateX(-50%);
+    width: 11px; height: 11px; border-radius: 50%;
+    background: #000; box-shadow: 0 0 0 3px rgba(255,255,255,.06);
+    z-index: 3;
   }
-  .band ul { list-style: none; margin-top: 18px; }
-  .band li { padding: 7px 0 7px 30px; position: relative; color: var(--dim); }
-  .band li::before { content: "✓"; position: absolute; left: 0; color: var(--teal); font-weight: 700; }
-  .band .big {
-    font-size: clamp(1.6rem, 3vw, 2.1rem); font-weight: 800; letter-spacing: -.02em; line-height: 1.25;
+  .device .screen {
+    position: relative; border-radius: 33px; overflow: hidden;
+    aspect-ratio: 1080 / 2340; background: #0a1220;
   }
-
-  /* screenshots strip */
-  .strip {
-    display: flex; gap: 18px; overflow-x: auto; padding: 8px 4px 24px;
-    scroll-snap-type: x mandatory;
-  }
-  .strip::-webkit-scrollbar { height: 8px; }
-  .strip::-webkit-scrollbar-thumb { background: #24385c; border-radius: 8px; }
-  .strip img {
-    height: 460px; border-radius: 22px; scroll-snap-align: start;
-    border: 1px solid #22355a; flex: 0 0 auto;
+  .device .screen img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .hero-device-stage { display: flex; justify-content: center; perspective: 1400px; }
+  .hero-device { transform: rotateY(-12deg) rotateX(3deg); transition: transform .5s cubic-bezier(.2,.8,.2,1); will-change: transform; }
+  .device .glare {
+    position: absolute; inset: 0; border-radius: 33px; pointer-events: none; z-index: 2;
+    background: linear-gradient(115deg, rgba(255,255,255,.10) 0%, transparent 30%);
   }
 
-  /* download */
-  .dl-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-  .dl-cards .card h3 { display: flex; align-items: center; gap: 9px; }
+  /* ---------- ticker ---------- */
+  .ticker { margin: 64px 0 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); overflow: hidden; }
+  .ticker .track {
+    display: flex; gap: 56px; width: max-content; padding: 15px 0;
+    animation: slide 36s linear infinite;
+  }
+  .ticker span { display: inline-flex; align-items: center; gap: 10px; color: var(--ink-3); font-size: .93rem; font-weight: 500; white-space: nowrap; }
+  .ticker svg { width: 15px; height: 15px; color: var(--teal); flex: 0 0 auto; }
+  @keyframes slide { to { transform: translateX(-50%); } }
 
-  footer {
-    border-top: 1px solid #1b2c49; padding: 34px 0 46px; margin-top: 40px;
-    color: var(--dim); font-size: .9rem;
-    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  /* ---------- section scaffolding ---------- */
+  section { padding: 110px 0 0; }
+  .kicker { color: var(--teal); font-weight: 700; text-transform: uppercase; font-size: .78rem; letter-spacing: .16em; }
+  h2 { font-size: clamp(2rem, 4.4vw, 3.1rem); letter-spacing: -.035em; font-weight: 700; line-height: 1.06; margin: 14px 0 16px; }
+  .sect-lead { color: var(--ink-2); font-size: 1.08rem; max-width: 40rem; }
+
+  /* ---------- scrolly story ---------- */
+  .story { display: grid; grid-template-columns: 1fr 1fr; gap: 72px; margin-top: 8px; }
+  .story-steps { display: flex; flex-direction: column; }
+  .step { min-height: 72vh; display: flex; align-items: center; }
+  .step-inner {
+    padding: 34px 36px; border-radius: var(--r-lg);
+    border: 1px solid transparent; transition: border-color .3s ease, background .3s ease;
+  }
+  .step.active .step-inner { border-color: var(--line); background: rgba(255,255,255,.025); }
+  .step .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 12px; margin-bottom: 18px;
+    background: rgba(47,216,193,.12); color: var(--teal); font-weight: 700; font-size: .9rem;
+  }
+  .step h3 { font-size: 1.65rem; letter-spacing: -.025em; line-height: 1.15; margin-bottom: 12px; }
+  .step p { color: var(--ink-2); font-size: 1.02rem; }
+  .step p b { color: var(--ink); font-weight: 600; }
+  .story-device-col { position: relative; }
+  .story-sticky {
+    position: sticky; top: 0; height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .story-device .screen img { opacity: 0; transition: opacity .45s ease; }
+  .story-device .screen img.show { opacity: 1; }
+
+  /* ---------- feature grid ---------- */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 52px; }
+  .cell {
+    border: 1px solid var(--line); border-radius: var(--r-lg);
+    background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.012));
+    padding: 30px 28px;
+    transition: transform .22s ease, border-color .22s ease, background .22s ease;
+  }
+  .cell:hover { transform: translateY(-4px); border-color: var(--line-2); background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); }
+  .cell .glyph {
+    width: 44px; height: 44px; border-radius: 14px; margin-bottom: 18px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(47,216,193,.10); border: 1px solid rgba(47,216,193,.22);
+  }
+  .cell .glyph svg { width: 22px; height: 22px; color: var(--teal); }
+  .cell h3 { font-size: 1.1rem; letter-spacing: -.01em; margin-bottom: 8px; }
+  .cell p { color: var(--ink-2); font-size: .95rem; }
+
+  /* ---------- privacy ---------- */
+  .privacy-band {
+    margin-top: 56px;
+    border: 1px solid var(--line); border-radius: var(--r-lg);
+    background:
+      radial-gradient(700px 300px at 85% 0%, rgba(47,216,193,.08), transparent 70%),
+      linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+    padding: 58px 56px;
+    display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center;
+  }
+  .privacy-band .big { font-size: clamp(1.7rem, 3.4vw, 2.5rem); font-weight: 700; letter-spacing: -.03em; line-height: 1.14; }
+  .checks { list-style: none; margin-top: 26px; display: flex; flex-direction: column; gap: 4px; }
+  .checks li { display: flex; gap: 14px; align-items: baseline; padding: 8px 0; color: var(--ink-2); font-size: 1.01rem; }
+  .checks svg { width: 17px; height: 17px; color: var(--teal); flex: 0 0 auto; transform: translateY(2px); }
+  .privacy-link { display: inline-flex; align-items: center; gap: 8px; margin-top: 26px; color: var(--teal); font-weight: 600; }
+  .privacy-link:hover { text-decoration: underline; }
+  .stat-stack { display: flex; flex-direction: column; gap: 14px; }
+  .stat {
+    border: 1px solid var(--line); border-radius: var(--r-md);
+    padding: 22px 26px; background: rgba(6,8,13,.5);
+  }
+  .stat .n { font-size: 2rem; font-weight: 700; letter-spacing: -.03em; color: var(--teal); line-height: 1.1; }
+  .stat .l { color: var(--ink-3); font-size: .9rem; margin-top: 2px; }
+
+  /* ---------- gallery ---------- */
+  .gallery-wrap { margin-top: 52px; position: relative; }
+  .gallery {
+    display: flex; gap: 22px; overflow-x: auto; padding: 10px 6px 26px;
+    scroll-snap-type: x mandatory; scrollbar-width: none;
+  }
+  .gallery::-webkit-scrollbar { display: none; }
+  .shot { flex: 0 0 auto; scroll-snap-align: center; text-align: center; }
+  .shot .frame {
+    width: 236px; border-radius: 30px; padding: 8px;
+    background: linear-gradient(160deg, #232d3e, #0e131c 60%);
+    box-shadow: 0 24px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.07) inset;
+  }
+  .shot img { border-radius: 23px; aspect-ratio: 1080 / 2340; object-fit: cover; }
+  .shot figcaption { color: var(--ink-3); font-size: .86rem; margin-top: 14px; }
+  .gallery-nav { position: absolute; top: -74px; right: 6px; display: flex; gap: 10px; }
+  .gallery-nav button {
+    width: 42px; height: 42px; border-radius: 50%; cursor: pointer;
+    border: 1px solid var(--line-2); background: rgba(255,255,255,.04); color: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    transition: background .18s ease;
+  }
+  .gallery-nav button:hover { background: rgba(255,255,255,.1); }
+  .gallery-nav svg { width: 17px; height: 17px; }
+
+  /* ---------- download ---------- */
+  .dl-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 52px; }
+  .dl-card {
+    border: 1px solid var(--line); border-radius: var(--r-lg);
+    padding: 34px 30px;
+    background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.012));
+    display: flex; flex-direction: column;
+    transition: transform .22s ease, border-color .22s ease;
+  }
+  .dl-card:hover { transform: translateY(-4px); border-color: rgba(47,216,193,.35); }
+  .dl-card .tag { color: var(--teal); font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 14px; }
+  .dl-card h3 { font-size: 1.3rem; letter-spacing: -.02em; margin-bottom: 10px; }
+  .dl-card p { color: var(--ink-2); font-size: .96rem; flex: 1; }
+  .dl-card .go { display: inline-flex; align-items: center; gap: 8px; margin-top: 22px; color: var(--teal); font-weight: 600; font-size: .97rem; }
+  .dl-card .go:hover { text-decoration: underline; }
+  .dl-note { margin-top: 26px; color: var(--ink-3); font-size: .9rem; max-width: 46rem; }
+  .dl-note code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .84em;
+    background: rgba(255,255,255,.06); border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px;
   }
 
-  /* reveal on scroll */
-  .reveal { opacity: 0; transform: translateY(22px); transition: opacity .6s ease, transform .6s ease; }
+  /* ---------- footer ---------- */
+  footer { margin-top: 120px; border-top: 1px solid var(--line); padding: 44px 0 60px; }
+  .foot { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 18px; color: var(--ink-3); font-size: .92rem; }
+  .foot .links { display: flex; gap: 24px; }
+  .foot a:hover { color: var(--ink); }
+
+  /* ---------- reveal ---------- */
+  .reveal { opacity: 0; transform: translateY(26px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.8,.2,1); }
   .reveal.in { opacity: 1; transform: none; }
+  .reveal.d1 { transition-delay: .08s; } .reveal.d2 { transition-delay: .16s; } .reveal.d3 { transition-delay: .24s; }
 
-  @media (max-width: 880px) {
-    .hero { grid-template-columns: 1fr; padding: 30px 0 64px; text-align: center; }
-    .hero p.lead { margin-left: auto; margin-right: auto; }
-    .cta { justify-content: center; }
-    .phone { transform: none; }
-    .grid, .dl-cards { grid-template-columns: 1fr; }
-    .band { grid-template-columns: 1fr; padding: 32px 26px; }
-    .strip img { height: 380px; }
-    nav .links a:not(:last-child) { display: none; }
+  /* ---------- responsive ---------- */
+  @media (max-width: 940px) {
+    .hero { padding-top: 60px; }
+    .hero-grid { grid-template-columns: 1fr; gap: 48px; text-align: center; }
+    .hero .lead { margin-left: auto; margin-right: auto; }
+    .cta-row { justify-content: center; }
+    .route-svg { display: none; }
+    .hero-device { transform: none; }
+    .story { grid-template-columns: 1fr; gap: 0; }
+    .story-device-col { display: none; }
+    .step { min-height: 0; }
+    .step-inner { border-color: var(--line); background: rgba(255,255,255,.025); margin-bottom: 16px; }
+    .step-shot-mobile { display: block; margin: 22px auto 0; width: min(240px, 70vw); border-radius: 22px; border: 1px solid var(--line-2); }
+    .grid, .dl-grid { grid-template-columns: 1fr; }
+    .privacy-band { grid-template-columns: 1fr; padding: 38px 30px; }
+    .nav-links a:not(.pill) { display: none; }
+    .gallery-nav { display: none; }
+    section { padding-top: 80px; }
   }
+  @media (min-width: 941px) { .step-shot-mobile { display: none; } }
   @media (prefers-reduced-motion: reduce) {
-    .reveal { transition: none; opacity: 1; transform: none; }
-    .phone { transition: none; }
+    .reveal, .hero-device, .btn, .cell, .dl-card { transition: none !important; opacity: 1 !important; transform: none !important; }
+    .ticker .track { animation: none; }
+    .route-svg .path { animation: none; stroke-dashoffset: 0; }
+    .route-svg .pin { animation: none; opacity: 1; }
+    html { scroll-behavior: auto; }
   }
 </style>
 </head>
 <body>
-<div class="glow"></div>
+<div class="backdrop"></div>
 <div class="wrap">
 
-<nav>
-  <div class="brand">Vela<span>.</span></div>
-  <div class="links">
-    <a href="#features">Features</a>
-    <a href="#privacy">Privacy</a>
-    <a href="#download">Download</a>
-    <a href="https://github.com/PimpinPumpkin/Vela">GitHub</a>
-  </div>
-</nav>
-
-<header class="hero">
-  <div>
-    <h1>Google Maps,<br><em>degoogled.</em></h1>
-    <p class="lead">
-      Vela is a free, open-source maps and navigation app for Android.
-      Live place data, traffic-aware turn-by-turn, transit boards and real offline support.
-      No account. No API key. No Play Services.
-    </p>
-    <div class="cta">
-      <a class="btn primary" href="https://github.com/PimpinPumpkin/Vela/releases/latest">Download APK</a>
-      <a class="btn ghost" href="https://github.com/PimpinPumpkin/Vela">View source</a>
+<div class="navbar">
+  <div class="bar">
+    <a class="brand" href="#top">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="none" stroke="#2fd8c1" stroke-width="4"/><path d="M32 14 L41 44 L32 37.5 L23 44 Z" fill="#2fd8c1"/></svg>
+      Vela Maps
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#screens">Screens</a>
+      <a href="https://github.com/PimpinPumpkin/Vela">GitHub</a>
+      <a class="pill" href="#download">Download</a>
     </div>
-    <div class="sub">GPLv3 &middot; Android 10+ &middot; works on GrapheneOS and every de-googled ROM</div>
   </div>
-  <div class="phone-stage">
-    <div class="phone" id="phone">
-      <img src="assets/05-navigation.webp" alt="Vela turn-by-turn navigation" width="540" height="1170" fetchpriority="high">
+</div>
+
+<header class="hero" id="top">
+  <div class="hero-grid">
+    <div style="position:relative">
+      <span class="eyebrow"><span class="dot"></span>Free &amp; open source · GPLv3</span>
+      <h1>Google Maps,<br><span class="fade">degoogled.</span></h1>
+      <p class="lead">
+        Vela is a maps and navigation app for Android that pulls the data you actually rely on,
+        live hours, traffic, transit and reviews, straight from your own device.
+        No account. No API key. No Play Services.
+      </p>
+      <div class="cta-row">
+        <a class="btn primary" href="https://github.com/PimpinPumpkin/Vela/releases/latest">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5"/><path d="M4 18.5V20h16v-1.5"/></svg>
+          Download APK
+        </a>
+        <a class="btn quiet" href="https://github.com/PimpinPumpkin/Vela">View source</a>
+      </div>
+      <p class="fineprint"><b>Android 8+</b> · runs beautifully on GrapheneOS and every de-googled ROM · no ads, ever</p>
+      <svg class="route-svg" viewBox="0 0 560 220" aria-hidden="true">
+        <path class="casing" d="M10 200 C 120 200, 130 120, 240 120 S 380 40, 470 40 L 530 40"/>
+        <path class="path" d="M10 200 C 120 200, 130 120, 240 120 S 380 40, 470 40 L 530 40"/>
+        <g class="pin">
+          <circle cx="530" cy="40" r="13" fill="#e5484d"/>
+          <circle cx="530" cy="40" r="5" fill="#fff"/>
+        </g>
+      </svg>
+    </div>
+    <div class="hero-device-stage" id="heroStage">
+      <div class="device hero-device" id="heroDevice">
+        <div class="screen">
+          <img src="assets/05-navigation.webp" alt="Turn-by-turn navigation in Vela" fetchpriority="high" width="1080" height="2340">
+          <div class="glare"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ticker" aria-hidden="true">
+    <div class="track" id="tickerTrack">
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Live traffic ETAs</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Real departure boards</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Whole states offline</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Neural voices on device</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Street View built in</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Android Auto</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>15 languages</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Zero telemetry</span>
     </div>
   </div>
 </header>
 
 <section id="features">
-  <div class="kicker">What you get</div>
-  <h2>Everything the big app does. None of the strings.</h2>
-  <p class="sect-lead">The map data people actually rely on, pulled live and anonymously, drawn on open vector tiles.</p>
-  <div class="grid">
-    <div class="card reveal"><span class="ico">📍</span><h3>Live place data</h3><p>Ratings, reviews, hours, photos, busy times and phone numbers for real businesses, fetched fresh when you look.</p></div>
-    <div class="card reveal"><span class="ico">🧭</span><h3>Turn-by-turn with traffic</h3><p>Spoken guidance with lane diagrams, highway shields, live traffic ETAs, faster-route offers and smart rerouting.</p></div>
-    <div class="card reveal"><span class="ico">🚌</span><h3>Transit that works</h3><p>Live departure boards, stop timelines and transit directions from open GTFS feeds plus traffic-aware estimates.</p></div>
-    <div class="card reveal"><span class="ico">📶</span><h3>Properly offline</h3><p>Download whole states: map tiles, routing graphs, place search and a typed-address geocoder that all work with zero signal.</p></div>
-    <div class="card reveal"><span class="ico">🗣️</span><h3>Neural voices, on device</h3><p>Natural-sounding guidance in 14 languages through downloadable voices that never touch a server.</p></div>
-    <div class="card reveal"><span class="ico">📷</span><h3>Knows about the cameras</h3><p>Community-mapped ALPR cameras drawn on the map and counted per route, so you can pick the quiet way. Opt-in.</p></div>
-  </div>
-</section>
+  <div class="kicker reveal">The walkthrough</div>
+  <h2 class="reveal d1">Everything the big app does.<br>None of the strings.</h2>
+  <p class="sect-lead reveal d2">The same live data, drawn on open vector tiles, fetched anonymously by your phone the moment you ask for it.</p>
 
-<section id="privacy">
-  <div class="band reveal">
-    <div>
-      <div class="kicker">Privacy</div>
-      <div class="big">Your map should not have a memory.</div>
-      <ul>
-        <li>No account, no sign-in, no API key</li>
-        <li>No Play Services, no Firebase, no analytics</li>
-        <li>Your GPS trace never leaves the phone</li>
-        <li>Place lookups go out anonymously, from your device</li>
-        <li>Every network call is documented, and the optional ones have switches</li>
-      </ul>
-      <p style="margin-top:18px"><a href="https://github.com/PimpinPumpkin/Vela/blob/main/PRIVACY.md">Read the full privacy doc</a></p>
+  <div class="story">
+    <div class="story-steps" id="storySteps">
+      <div class="step" data-shot="0">
+        <div class="step-inner">
+          <span class="num">1</span>
+          <h3>Navigation that sounds like a person</h3>
+          <p>Turn-by-turn with <b>live traffic</b>, lane guidance, highway shields and speed limits, spoken by a <b>neural voice generated on the phone</b>. It reroutes when you miss a turn and offers faster routes when traffic shifts.</p>
+          <img class="step-shot-mobile" src="assets/05-navigation.webp" alt="" loading="lazy">
+        </div>
+      </div>
+      <div class="step" data-shot="1">
+        <div class="step-inner">
+          <span class="num">2</span>
+          <h3>Search that knows what&rsquo;s open</h3>
+          <p>Ratings, reviews, prices, photos and <b>live opening hours</b> for real businesses. Filter by open now, rating or price, and see it all as pins and rated bubbles right on the map.</p>
+          <img class="step-shot-mobile" src="assets/02-search.webp" alt="" loading="lazy">
+        </div>
+      </div>
+      <div class="step" data-shot="2">
+        <div class="step-inner">
+          <span class="num">3</span>
+          <h3>Bus stops that tell the truth</h3>
+          <p>Tap any stop for a <b>live departure board</b> built from open GTFS feeds: every route, real-time countdowns, official line colors. No more guessing whether the bus already left.</p>
+          <img class="step-shot-mobile" src="assets/07-bus-stop.webp" alt="" loading="lazy">
+        </div>
+      </div>
+      <div class="step" data-shot="3">
+        <div class="step-inner">
+          <span class="num">4</span>
+          <h3>Follow the whole line</h3>
+          <p>Open any route from a stop and walk its <b>full stop list</b>, with scheduled and live times for every station down the line. Tap a stop to jump to its own board and keep exploring.</p>
+          <img class="step-shot-mobile" src="assets/10-stop-routes.webp" alt="" loading="lazy">
+        </div>
+      </div>
+      <div class="step" data-shot="4">
+        <div class="step-inner">
+          <span class="num">5</span>
+          <h3>Light, dark, and fully offline</h3>
+          <p>A hand-tuned palette in both themes. Download <b>whole states</b> and keep the map, routing, place search and a typed-address geocoder working with <b>zero bars</b>.</p>
+          <img class="step-shot-mobile" src="assets/08-map-light.webp" alt="" loading="lazy">
+        </div>
+      </div>
     </div>
-    <div class="phone-stage">
-      <div class="phone" style="transform:none; width:min(240px,60vw)">
-        <img src="assets/01-map.webp" alt="Vela map view" loading="lazy" width="540" height="1170">
+    <div class="story-device-col">
+      <div class="story-sticky">
+        <div class="device story-device">
+          <div class="screen" id="storyScreen">
+            <img src="assets/05-navigation.webp" class="show" alt="" loading="lazy">
+            <img src="assets/02-search.webp" alt="" loading="lazy">
+            <img src="assets/07-bus-stop.webp" alt="" loading="lazy">
+            <img src="assets/10-stop-routes.webp" alt="" loading="lazy">
+            <img src="assets/08-map-light.webp" alt="" loading="lazy">
+            <div class="glare"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
 <section>
-  <div class="kicker">Screenshots</div>
-  <h2>Looks like the app you already know.</h2>
-  <p class="sect-lead">That is the point. Familiar where it helps, honest everywhere else.</p>
-  <div class="strip reveal">
-    <img src="assets/05-navigation.webp" alt="Navigation" loading="lazy">
-    <img src="assets/01-map.webp" alt="Map with places" loading="lazy">
-    <img src="assets/03-place.webp" alt="Place details" loading="lazy">
-    <img src="assets/04-directions.webp" alt="Route options" loading="lazy">
-    <img src="assets/02-search.webp" alt="Search results" loading="lazy">
-    <img src="assets/06-transit.webp" alt="Transit directions" loading="lazy">
-    <img src="assets/08-map-light.webp" alt="Light theme" loading="lazy">
+  <div class="kicker reveal">And then some</div>
+  <h2 class="reveal d1">Small app. Long feature list.</h2>
+  <div class="grid">
+    <div class="cell reveal">
+      <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="12" rx="3"/><path d="M7 19v2m10-2v2M6 11h4"/></svg></div>
+      <h3>Android Auto</h3>
+      <p>Full navigation on the car screen: search, route preview, turn cards and the instrument cluster, all from the same app.</p>
+    </div>
+    <div class="cell reveal d1">
+      <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a7 7 0 0 1 7 7c0 5-7 11-7 11S5 15 5 10a7 7 0 0 1 7-7z"/><circle cx="12" cy="10" r="2.6"/></svg></div>
+      <h3>Street View, in-app</h3>
+      <p>A keyless panorama viewer with walk arrows and time travel through old captures. Drop the little guy anywhere.</p>
+    </div>
+    <div class="cell reveal d2">
+      <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2-7 4 14 2-7h2"/><circle cx="19.5" cy="12" r="2.5"/></svg></div>
+      <h3>Camera aware</h3>
+      <p>Community-mapped license plate readers drawn on the map and counted per route, so you can pick the quiet way.</p>
+    </div>
+    <div class="cell reveal">
+      <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/></svg></div>
+      <h3>Self-healing</h3>
+      <p>When upstream data shifts shape, a signed remote calibration fixes the fleet in minutes. No app update needed.</p>
+    </div>
+    <div class="cell reveal d1">
+      <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/><circle cx="12" cy="12" r="4"/></svg></div>
+      <h3>Voice search, offline</h3>
+      <p>An optional on-device speech model turns "coffee near me" into results without any recognizer app or network.</p>
+    </div>
+    <div class="cell reveal d2">
+      <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3.5 9h17M3.5 15h17M12 3c-2.5 2.5-2.5 15.5 0 18M12 3c2.5 2.5 2.5 15.5 0 18"/></svg></div>
+      <h3>15 languages</h3>
+      <p>Interface, spoken guidance and place data localized end to end, with downloadable voices to match.</p>
+    </div>
+  </div>
+</section>
+
+<section id="privacy">
+  <div class="privacy-band reveal">
+    <div>
+      <div class="kicker">Privacy</div>
+      <div class="big">Your map should not have a memory.</div>
+      <ul class="checks">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>No account, no sign-in, no API key</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>No Play Services, no Firebase, no analytics SDK</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Your GPS trace never leaves the phone</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Place lookups go out anonymously, from your device</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Every network call is documented, and the optional ones have switches</li>
+      </ul>
+      <a class="privacy-link" href="https://github.com/PimpinPumpkin/Vela/blob/main/PRIVACY.md">
+        Read the full privacy doc
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg>
+      </a>
+    </div>
+    <div class="stat-stack">
+      <div class="stat"><div class="n">0</div><div class="l">accounts, trackers and ad networks</div></div>
+      <div class="stat"><div class="n">100%</div><div class="l">of navigation runs on your phone, voice included</div></div>
+      <div class="stat"><div class="n">GPLv3</div><div class="l">every line of source in the open, forever</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="screens">
+  <div class="kicker reveal">Screens</div>
+  <h2 class="reveal d1">Looks like the app you already know.</h2>
+  <p class="sect-lead reveal d2">That is the point. Familiar where it helps, honest everywhere else.</p>
+  <div class="gallery-wrap reveal">
+    <div class="gallery-nav">
+      <button id="galPrev" aria-label="Scroll screenshots left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button id="galNext" aria-label="Scroll screenshots right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <div class="gallery" id="gallery">
+      <figure class="shot"><div class="frame"><img src="assets/05-navigation.webp" alt="Turn-by-turn navigation" loading="lazy"></div><figcaption>Turn-by-turn with traffic</figcaption></figure>
+      <figure class="shot"><div class="frame"><img src="assets/01-map.webp" alt="Map with live places" loading="lazy"></div><figcaption>Live places on open tiles</figcaption></figure>
+      <figure class="shot"><div class="frame"><img src="assets/02-search.webp" alt="Search results" loading="lazy"></div><figcaption>Search with live hours</figcaption></figure>
+      <figure class="shot"><div class="frame"><img src="assets/03-place.webp" alt="Place details" loading="lazy"></div><figcaption>Reviews, photos, menus</figcaption></figure>
+      <figure class="shot"><div class="frame"><img src="assets/04-directions.webp" alt="Route options" loading="lazy"></div><figcaption>Routes with camera counts</figcaption></figure>
+      <figure class="shot"><div class="frame"><img src="assets/06-transit.webp" alt="Transit directions" loading="lazy"></div><figcaption>Transit directions</figcaption></figure>
+      <figure class="shot"><div class="frame"><img src="assets/07-bus-stop.webp" alt="Bus stop departure board" loading="lazy"></div><figcaption>Live departure boards</figcaption></figure>
+      <figure class="shot"><div class="frame"><img src="assets/10-stop-routes.webp" alt="Route stop list" loading="lazy"></div><figcaption>Every stop on the line</figcaption></figure>
+      <figure class="shot"><div class="frame"><img src="assets/08-map-light.webp" alt="Light theme map" loading="lazy"></div><figcaption>Light theme</figcaption></figure>
+    </div>
   </div>
 </section>
 
 <section id="download">
-  <div class="kicker">Get it</div>
-  <h2>Free forever. Pick your flavor.</h2>
-  <p class="sect-lead">Weekly stable releases, nightly builds if you like it fresh, and an in-app updater either way.</p>
-  <div class="dl-cards">
-    <div class="card reveal"><h3>⬇️ Direct APK</h3><p>Grab the latest release from GitHub and sideload it. The app updates itself from then on.</p><p style="margin-top:12px"><a href="https://github.com/PimpinPumpkin/Vela/releases/latest">Latest release</a></p></div>
-    <div class="card reveal"><h3>🔄 Obtainium</h3><p>Point Obtainium at the repo and choose the stable or nightly track. Clean, automatic updates.</p><p style="margin-top:12px"><a href="https://github.com/PimpinPumpkin/Vela#install">Setup guide</a></p></div>
-    <div class="card reveal"><h3>🛠️ Build it yourself</h3><p>Standard Gradle project, no secrets required. Clone, build, install. That is the whole ceremony.</p><p style="margin-top:12px"><a href="https://github.com/PimpinPumpkin/Vela#building">Build docs</a></p></div>
+  <div class="kicker reveal">Get it</div>
+  <h2 class="reveal d1">Free forever. Pick your channel.</h2>
+  <p class="sect-lead reveal d2">Weekly stables, nightly builds if you like it fresh, and an in-app updater either way.</p>
+  <div class="dl-grid">
+    <div class="dl-card reveal">
+      <div class="tag">Simplest</div>
+      <h3>Direct APK</h3>
+      <p>Grab the latest release from GitHub and sideload it. The app keeps itself up to date from then on.</p>
+      <a class="go" href="https://github.com/PimpinPumpkin/Vela/releases/latest">Latest release
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg></a>
+    </div>
+    <div class="dl-card reveal d1">
+      <div class="tag">Power users</div>
+      <h3>Obtainium</h3>
+      <p>Point Obtainium at the repo and choose the stable or nightly track. Clean, automatic, signature-checked updates.</p>
+      <a class="go" href="https://github.com/PimpinPumpkin/Vela#install">Setup guide
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg></a>
+    </div>
+    <div class="dl-card reveal d2">
+      <div class="tag">F-Droid users</div>
+      <h3>F-Droid repo</h3>
+      <p>Add the signed Vela repo to any F-Droid client and updates arrive alongside the rest of your apps.</p>
+      <a class="go" href="https://github.com/PimpinPumpkin/Vela/blob/main/FDROID.md">Add the repo
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg></a>
+    </div>
   </div>
+  <p class="dl-note">Prefer to build it yourself? It is a standard Gradle project with no secrets required: <code>git clone</code>, <code>./gradlew :app:assembleRelease</code>, done. See the <a href="https://github.com/PimpinPumpkin/Vela#building" style="color:var(--teal)">build docs</a>.</p>
 </section>
 
 <footer>
-  <div>Vela Maps &middot; GPLv3 &middot; built in the open</div>
-  <div><a href="https://github.com/PimpinPumpkin/Vela">GitHub</a> &nbsp;&middot;&nbsp; <a href="https://github.com/PimpinPumpkin/Vela/issues">Issues</a> &nbsp;&middot;&nbsp; <a href="https://buymeacoffee.com/PimpinPumpkin">Support</a></div>
+  <div class="foot">
+    <div>Vela Maps · GPLv3 · built in the open</div>
+    <div class="links">
+      <a href="https://github.com/PimpinPumpkin/Vela">GitHub</a>
+      <a href="https://github.com/PimpinPumpkin/Vela/issues">Issues</a>
+      <a href="https://github.com/PimpinPumpkin/Vela/blob/main/PRIVACY.md">Privacy</a>
+      <a href="https://buymeacoffee.com/PimpinPumpkin">Support</a>
+    </div>
+  </div>
 </footer>
 
 </div>
 <script>
+(function () {
   // scroll reveal
-  const io = new IntersectionObserver((es) => {
-    es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
-  }, { threshold: 0.12 });
-  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.14 });
+  document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
 
-  // gentle hero phone tilt (mouse only, and never for reduced motion)
-  const phone = document.getElementById('phone');
-  const fine = matchMedia('(pointer:fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (phone && fine) {
-    const stage = phone.parentElement;
-    stage.addEventListener('mousemove', (ev) => {
-      const r = stage.getBoundingClientRect();
-      const x = (ev.clientX - r.left) / r.width - 0.5;
-      const y = (ev.clientY - r.top) / r.height - 0.5;
-      phone.style.transform = `rotateY(${-10 + x * 10}deg) rotateX(${4 - y * 8}deg)`;
+  // hero device tilt
+  var device = document.getElementById('heroDevice');
+  var stage = document.getElementById('heroStage');
+  var fine = matchMedia('(pointer:fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (device && stage && fine) {
+    stage.addEventListener('mousemove', function (ev) {
+      var r = stage.getBoundingClientRect();
+      var x = (ev.clientX - r.left) / r.width - 0.5;
+      var y = (ev.clientY - r.top) / r.height - 0.5;
+      device.style.transform = 'rotateY(' + (-12 + x * 10) + 'deg) rotateX(' + (3 - y * 7) + 'deg)';
     });
-    stage.addEventListener('mouseleave', () => {
-      phone.style.transform = 'rotateY(-10deg) rotateX(4deg)';
-    });
+    stage.addEventListener('mouseleave', function () { device.style.transform = ''; });
   }
+
+  // duplicate ticker content so the loop is seamless
+  var track = document.getElementById('tickerTrack');
+  if (track) { track.innerHTML += track.innerHTML; }
+
+  // scrolly story: swap the sticky phone's screenshot per step
+  var steps = Array.prototype.slice.call(document.querySelectorAll('.step'));
+  var shots = document.querySelectorAll('#storyScreen img');
+  if (steps.length && shots.length) {
+    var so = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        var i = +e.target.getAttribute('data-shot');
+        steps.forEach(function (s) { s.classList.toggle('active', s === e.target); });
+        shots.forEach(function (img, j) { img.classList.toggle('show', i === j); });
+      });
+    }, { rootMargin: '-45% 0px -45% 0px' });
+    steps.forEach(function (s) { so.observe(s); });
+  }
+
+  // gallery arrows
+  var gal = document.getElementById('gallery');
+  var prev = document.getElementById('galPrev');
+  var next = document.getElementById('galNext');
+  if (gal && prev && next) {
+    var by = function (dir) { gal.scrollBy({ left: dir * 280, behavior: 'smooth' }); };
+    prev.addEventListener('click', function () { by(-1); });
+    next.addEventListener('click', function () { by(1); });
+  }
+})();
 </script>
 </body>
 </html>
