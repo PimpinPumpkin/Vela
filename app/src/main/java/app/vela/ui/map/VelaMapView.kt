@@ -3033,7 +3033,7 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
         listOf(org.maplibre.android.maps.ImageStretches(r + d, body - r - d)),
         org.maplibre.android.maps.ImageContent(6 * d, 3 * d, w - 6 * d, body - 3 * d),
     )
-    fun layer(id: String, classes: Array<String>, minZ: Float) {
+    fun layer(id: String, classes: Array<String>, minZ: Float, fade: Pair<Float, Float>? = null) {
         // Google only calls out OTHER streets - never the road you're driving. The exclusion list
         // is the route's own road names + ref variants (user 2026-07-16: the highway labelled
         // itself repeatedly along the drive); it applies to BOTH the name and the ref property
@@ -3079,13 +3079,28 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
                     ).apply { minZoom = minZ },
             )
         }
+        // The nav camera's zoom is SPEED-SCALED (z18 crawling -> z15.5 at highway speed), so a
+        // hard minZoom cut made the whole cross-street tier pop in/out at once as speed crossed
+        // the boundary (user drive 2026-07-16). A zoom-interpolated opacity fades the tier over
+        // ~half a zoom level instead; the layer arms slightly below the fade so tiles/placement
+        // are ready when the labels become visible. The narrow invisible-but-placed band is the
+        // cost of the smooth entrance - keep it half a level, not more.
+        if (fade != null) {
+            val op = Expression.interpolate(
+                Expression.linear(), Expression.zoom(),
+                Expression.stop(fade.first, 0f), Expression.stop(fade.second, 1f),
+            )
+            (style.getLayer(id) as? SymbolLayer)?.setProperties(
+                PropertyFactory.textOpacity(op), PropertyFactory.iconOpacity(op),
+            )
+        }
     }
     // Cross-street tier: majors from z14; MINOR streets from z16 - in a neighbourhood the streets
     // you cross ARE class minor (dropping them entirely made the layer near-mute on residential
     // drives, user 2026-07-17), and the nav camera only sits at z16+ at surface speeds, so the
     // minors show exactly when cross-streets matter and stay out of the highway view.
     layer(NAV_ROADLABEL_LAYER, arrayOf("motorway", "trunk", "primary", "secondary", "tertiary"), 14f)
-    layer(NAV_ROADLABEL_MINOR_LAYER, arrayOf("minor"), 16f)
+    layer(NAV_ROADLABEL_MINOR_LAYER, arrayOf("minor"), 16f, fade = 16.2f to 16.8f)
     ids.forEach {
         (style.getLayer(it) as? SymbolLayer)?.setProperties(
             PropertyFactory.visibility(Property.VISIBLE),
