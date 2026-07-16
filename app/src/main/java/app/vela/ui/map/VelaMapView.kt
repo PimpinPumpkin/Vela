@@ -3074,7 +3074,9 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
                         PropertyFactory.iconTextFit(Property.ICON_TEXT_FIT_BOTH),
                         PropertyFactory.textAnchor(Property.TEXT_ANCHOR_BOTTOM),
                         PropertyFactory.textOffset(arrayOf(0f, -0.9f)), // lift text into the body; the tail hangs below
-                        PropertyFactory.textPadding(10f),
+                        // Big collision padding = sparse placement: the thinning lever (user
+                        // 2026-07-16, "thin out the bubbles for rendering/efficiency").
+                        PropertyFactory.textPadding(26f),
                         PropertyFactory.textHaloWidth(0f), // the bubble IS the backing now
                     ).apply { minZoom = minZ },
             )
@@ -3099,8 +3101,11 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
     // you cross ARE class minor (dropping them entirely made the layer near-mute on residential
     // drives, user 2026-07-17), and the nav camera only sits at z16+ at surface speeds, so the
     // minors show exactly when cross-streets matter and stay out of the highway view.
-    layer(NAV_ROADLABEL_LAYER, arrayOf("motorway", "trunk", "primary", "secondary", "tertiary"), 14f)
-    layer(NAV_ROADLABEL_MINOR_LAYER, arrayOf("minor"), 16f, fade = 16.2f to 16.8f)
+    // TERTIARY rides the slow tier with the minors (2026-07-16): at highway zoom collector roads
+    // are noise, and every placed symbol is per-frame collision work - highway speed shows only
+    // motorway..secondary crossings, town speed fades the rest in.
+    layer(NAV_ROADLABEL_LAYER, arrayOf("motorway", "trunk", "primary", "secondary"), 14f)
+    layer(NAV_ROADLABEL_MINOR_LAYER, arrayOf("tertiary", "minor"), 16f, fade = 16.2f to 16.8f)
     ids.forEach {
         (style.getLayer(it) as? SymbolLayer)?.setProperties(
             PropertyFactory.visibility(Property.VISIBLE),
