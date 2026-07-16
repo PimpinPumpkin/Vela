@@ -34,6 +34,13 @@ interface NavStrings {
      *  (English-first); only added when it makes sense (1–2 signals right before a surface-street turn). */
     fun passLights(count: Int): String = ""
 
+    /** A repeated prompt's SHORT form: the instruction with its sign-destination tail ("toward X")
+     *  dropped. Spoken for a step's second/third announcement — the first one already named the
+     *  destination, and re-reading the whole sign at every band read as spam off an exit (real-drive
+     *  report 2026-07-17). Default = unchanged (a language keeps full repeats until it overrides
+     *  with its own destination marker, same English-first pattern as [passLights]). */
+    fun repeatShort(instruction: String): String = instruction
+
     /** A distance phrased for SPEECH, honouring the imperial/metric preference — "500 feet" / "150 mètres". */
     fun spokenDistance(meters: Double, imperial: Boolean): String
 
@@ -164,6 +171,11 @@ object EnNavStrings : NavStrings {
         val sideWord = when (side) { LaneSide.LEFT -> "left"; LaneSide.RIGHT -> "right"; LaneSide.CENTER -> "center" }
         return if (count > 1) "Use the $sideWord $count lanes" else "Use the $sideWord lane"
     }
+
+    // "Take the ramp on the right toward CA-99 North, Downtown" -> "Take the ramp on the right".
+    // The exit number stays ("Take exit 172"); only the sign-destination tail drops. The " toward "
+    // marker is exactly what osrmPhrase/ghPhrase emit for EN ramp/exit/fork steps.
+    override fun repeatShort(instruction: String): String = instruction.substringBefore(" toward ")
 
     override fun useLanesToDo(side: LaneSide, count: Int, instruction: String): String {
         val sideWord = when (side) { LaneSide.LEFT -> "left"; LaneSide.RIGHT -> "right"; LaneSide.CENTER -> "center" }

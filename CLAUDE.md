@@ -1510,8 +1510,11 @@ architecture note.
   re-downloaded. Device-verified: Dover-Smyrna with Avoid tolls swung off the DE-1 toll road
   onto the free route, single on-device route, no live-traffic tag.
 - Nav guidance discipline (2026-07-04 audit): prompt/turn-now distances SCALE WITH SPEED in
-  `NavEngine` (max(fixed, v×T); `spoken` stores band SLOTS not metres), one prompt per update speaking
-  the TRUE distance, silent catch-up past maneuvers >75 m behind, proximity arrival (crow ≤40 m) +
+  `NavEngine` (max(fixed, v×T), T=35/10 s since 2026-07-17; `spoken` stores band SLOTS not metres), one prompt per update speaking
+  the TRUE distance, REPEATS TRIMMED (2026-07-17: a step's non-first prompts speak
+  `NavStrings.repeatShort` - EN drops the " toward ..." sign tail, other languages default to
+  full until they override - and a MERGE skips the far band entirely; a long on-ramp narrated
+  the same road 3-4 times in declining counts, real-drive report), silent catch-up past maneuvers >75 m behind, proximity arrival (crow ≤40 m) +
   no rerouting within 150 m of the destination or while stationary (EXCEPT a FAR deviation:
   `FAR_OFF_M` 90 m counts at ANY speed since 2026-07-14 - parking-lot creep sits under the 2 m/s
   moving floor forever and the reroute/redrawn line never came; since 2026-07-15 a moving fix

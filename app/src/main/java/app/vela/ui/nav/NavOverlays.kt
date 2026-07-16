@@ -618,6 +618,7 @@ fun NavControls(
     onStop: () -> Unit,
     onSteps: () -> Unit,
     trafficRatio: Double? = null,
+    currentRef: String? = null, // highway ref of the road being driven -> a persistent shield chip
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
@@ -645,6 +646,14 @@ fun NavControls(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
+                // The road you're ON, as its stylized shield - persistent for the whole stretch,
+                // not only when a maneuver mentions it (user 2026-07-17: "the actual state
+                // route/interstate should always have the stylized version in the nav card").
+                // Google keeps a current-road chip in its bottom bar the same way. Ref only:
+                // plain street names would make this a noisy second road-name line.
+                currentRef?.trim()?.replace(Regex("\\s+"), " ")?.uppercase()?.takeIf { it.isNotBlank() }?.let {
+                    Row(Modifier.padding(bottom = 3.dp)) { SignChip(Sign(isExit = false, label = it)) }
+                }
                 // Both lines SHRINK to fit rather than wrap or ellipsise: the 54dp buttons (and
                 // any Interface-size scale) squeezed the column and "1 hr 25 min" wrapped rough,
                 // while ellipsis on the second line cut off the arrival TIME (user 2026-07-11).

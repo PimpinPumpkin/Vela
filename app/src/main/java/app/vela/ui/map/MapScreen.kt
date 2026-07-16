@@ -1478,6 +1478,8 @@ fun MapScreen(
                     onStop = vm::stopNav,
                     onSteps = vm::openSteps,
                     trafficRatio = state.activeRoute?.trafficRatio,
+                    // The road being driven = the one entered by the maneuver we last passed.
+                    currentRef = state.activeRoute?.maneuvers?.getOrNull(state.nav.stepIndex - 1)?.ref,
                     // Measured AFTER the padding → the bar surface itself; navBarClearance adds the
                     // padding + gap back. Everything stacked above the bar keys off this.
                     modifier = Modifier.onGloballyPositioned { navBarHeightPx = it.size.height },
