@@ -1148,9 +1148,16 @@ Defaults that make the safe path the easy one:
   record; the README Roadmap holds only OPEN items. Screenshot rules (user 2026-07-10): the NAV
   shot leads the table, the transit shot shows the SCHEDULE BOARD with the ambient
   transit-lines layer toggled OFF for the shot (the purple lines over the map read as ugly; the
-  schedules themselves are liked), the browse-map shots are the
-  Pixel 9 POI-dense iterations (restored over the 4a retakes), and Install sits directly UNDER
-  the screenshots.
+  schedules themselves are liked), and Install sits directly UNDER
+  the screenshots. **Full retake 2026-07-16 (supersedes the Pixel 9 browse shots):** all 11
+  shots (incl. the new 11-stop-list.png bus route timeline) shot on the 4a 5G with SystemUI
+  demo mode (clock 1200, battery 100, icons hidden) and sim-location at the Davis fixture
+  spots. **Shoot AFTER 11:30 AM Pacific**: the open/closed badge is decided by Google's
+  servers at request time, so a spoofed clock can't make a closed Mikuni read "Open" - the
+  demo clock only needs to AGREE with real time (noon clock, midday shoot, arrival times and
+  departure boards all stay coherent). Camera counts on the route picker need Avoid
+  surveillance cameras ON for the shot (restore OFF after). The site (site/assets/*.webp)
+  carries the same shots at 720px q82.
 
 ## README layout rule (2026-07-11)
 
