@@ -53,7 +53,9 @@ class TripStore @Inject constructor(
         val f = File(dir, "$id.csv")
         val safe = label.replace(',', ' ').replace('\n', ' ').take(80).ifBlank { "Trip" }
         runCatching {
-            f.writeText("META,$safe,$startedAt,${dest?.lat ?: ""},${dest?.lng ?: ""}\n")
+            // versionCode LAST: TripLog.parse reads META by index, so appending keeps old files
+            // and old parsers compatible - and an audit can now say which build recorded a trip.
+            f.writeText("META,$safe,$startedAt,${dest?.lat ?: ""},${dest?.lng ?: ""},${app.vela.BuildConfig.VERSION_CODE}\n")
             active = f
         }
         return id

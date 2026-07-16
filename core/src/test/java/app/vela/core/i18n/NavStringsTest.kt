@@ -116,7 +116,8 @@ class NavStringsTest {
     @Test fun `a comma breaks the maneuver off the sign destination so espeak keeps take`() {
         // "take the ramp toward Woodland" mis-voweled "take" -> the comma isolates the verb clause.
         assertEquals("Take the ramp, toward Woodland", EnNavStrings.expandForSpeech("Take the ramp toward Woodland"))
-        assertEquals("Take exit 15, toward Sacramento", EnNavStrings.expandForSpeech("Take exit 15 toward Sacramento"))
+        // "take exit" itself mis-vowels too ("tacake") - spoken as "take the N exit" (2026-07-16).
+        assertEquals("take the 15 exit, toward Sacramento", EnNavStrings.expandForSpeech("Take exit 15 toward Sacramento"))
         // Plain turns use "onto", not "toward", so they are untouched (no stray comma).
         assertEquals("Turn right onto Main Street", EnNavStrings.expandForSpeech("Turn right onto Main St"))
     }

@@ -94,6 +94,17 @@ class NavEngineTest {
         assertTrue("should emit an Arrived event", events.any { it is NavEvent.Arrived })
     }
 
+    /** "Take exit 186" speaks as "take the 186 exit" - the espeak G2P mangles the bare
+     *  take-exit adjacency ("tacake", user ear-report 2026-07-16); "take the" is the onset it
+     *  reliably gets right. Display text is untouched (this is the speech expansion). */
+    @Test
+    fun takeExitSpeaksWithTheArticle() {
+        val en = app.vela.core.i18n.EnNavStrings
+        assertTrue(en.expandForSpeech("Take exit 186, toward somewhere").startsWith("take the 186 exit"))
+        assertTrue(en.expandForSpeech("Take exit 72B").startsWith("take the 72B exit"))
+        assertEquals("Turn right onto Main Street", en.expandForSpeech("Turn right onto Main Street"))
+    }
+
     /** Sub-mile spoken distances phrase as quarter-mile fractions, never "zero point five miles". */
     @Test
     fun spokenMilesUseFractionsBelowAMile() {
@@ -757,7 +768,8 @@ class NavReplayTest {
             println("[NavReplay] $path has no saved route — replay re-routes; nothing to diff against")
             return
         }
-        println("[NavReplay] auditing $path\n${report.summary()}")
+        val ver = TripLog.parse(csv).versionCode
+        println("[NavReplay] auditing $path (recorded by build ${ver ?: "pre-2026-07-16, unknown"})\n${report.summary()}")
         println("[NavReplay] spoken-line timeline (fix @ metres-along-route):")
         report.cards.filter { it.spoke.isNotEmpty() }.forEach { c ->
             println("  @${c.fixIndex} (${c.alongM.toInt()} m): ${c.spoke.joinToString(" | ")}")

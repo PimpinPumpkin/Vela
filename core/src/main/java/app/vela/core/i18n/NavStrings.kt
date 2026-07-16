@@ -232,6 +232,11 @@ object EnNavStrings : NavStrings {
         // destination as its own beat (Google pauses there too). "toward" only appears on ramp/
         // exit/highway-sign steps, so plain turns ("... onto Main St") are untouched.
         s = Regex(" toward ", RegexOption.IGNORE_CASE).replace(s, ", toward ")
+        // "Take exit 186" mis-vowels the same way ("tacake") now that the short repeat forms can
+        // end right after the number - "take the ..." is the onset espeak reliably gets right
+        // (user ear-report 2026-07-16), so speak it as "take the 186 exit". Display keeps
+        // "Take exit 186"; the exit-tab chip is unaffected (it reads the banner text).
+        s = Regex("""\btake exit (\w+)""", RegexOption.IGNORE_CASE).replace(s) { "take the ${it.groupValues[1]} exit" }
         EN_SPEECH_WORDS.forEach { (re, rep) -> s = re.replace(s, rep) }
         s = SpeechText.spokenNumbers(s) // "128th" → "one twenty eighth" (space, not hyphen — the compound got a mushy -ty), not a mangled "one hundred and 28th"
         return s
