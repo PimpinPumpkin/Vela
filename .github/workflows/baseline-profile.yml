@@ -1,0 +1,64 @@
+# Regenerates the committed baseline profile (app/src/release/generated/baselineProfiles/) on a
+# headless emulator and opens a PR with the diff. The profile itself is BAKED by every normal CI
+# release build - this workflow only refreshes WHICH methods are recorded, so it runs on demand
+# (and monthly) rather than per push: per-nightly regeneration would cost ~15 emulator-minutes a
+# day for a file that only drifts when the app's hot paths change shape.
+#
+# NEVER point this (or local generation) at a connected phone: the test harness uninstalls the
+# target app when it finishes, which on a real device wipes saved places and permission grants.
+# The Gradle-managed emulator in :baselineprofile is the only sanctioned generator.
+name: Regenerate baseline profile
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "15 7 2 * *" # monthly, 2nd at 07:15 UTC
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Generate baseline profile
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          ./gradlew :app:generateBaselineProfile \
+            -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect
+
+      - name: Open a PR if the profile changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet app/src/release/generated/baselineProfiles/; then
+            echo "Profile unchanged - nothing to do."
+            exit 0
+          fi
+          BRANCH="baseline-profile-refresh-$(date -u +%Y%m%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add app/src/release/generated/baselineProfiles/
+          git commit -m "Refresh the baseline profile"
+          git push origin "$BRANCH"
+          gh pr create --base main --head "$BRANCH" \
+            --title "Refresh the baseline profile" \
+            --body "Automated monthly regeneration on the emulator. The committed profile is what every release build bakes; merging ships the refreshed hot-path list with the next nightly."

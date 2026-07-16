@@ -31,6 +31,7 @@ rootProject.name = "Vela"
 // Compose UI shell on top. Split further (core:model / core:data / …)
 // once the surface grows.
 include(":app")
+include(":baselineprofile")
 include(":core")
 // THROWAWAY: on-device GraphHopper v11 probe (instrumented test only). Delete after the
 // offline-routing prototype is decided — see ROADMAP "On-device map-matching (GraphHopper)".

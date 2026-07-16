@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.baselineprofile)
 }
 
 android {
@@ -152,6 +153,11 @@ android {
 }
 
 dependencies {
+    // Bakes the committed baseline profile into the APK and AOT-compiles it at install time -
+    // the fix for sideloaded nightlies running interpreter-cold until overnight dexopt.
+    implementation(libs.androidx.profileinstaller)
+    "baselineProfile"(project(":baselineprofile"))
+
     implementation(project(":core"))
 
     // sherpa-onnx: in-process neural TTS runtime (runs the downloaded Kokoro model). Vendored AAR
