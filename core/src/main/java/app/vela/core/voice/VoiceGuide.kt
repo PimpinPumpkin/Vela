@@ -58,6 +58,52 @@ class VoiceGuide @Inject constructor(
      *  hint so nav isn't silently mute. Set by `:app`. */
     var langUnavailable: ((String) -> Unit)? = null
 
+    /** The Google-style rerouting EARCON: a soft two-note descending chime played when a wrong turn
+     *  triggers a reroute (user 2026-07-16 - "google does this"). Synthesized in-process (no asset,
+     *  no engine): two short sines with fade envelopes on the navigation-guidance stream, so it
+     *  mixes/ducks exactly like spoken prompts. Muted guidance stays fully silent - the chime is
+     *  part of the voice channel, not a notification. Fire-and-forget; any failure is swallowed
+     *  (a missing chime must never break rerouting).
+     */
+    fun reroutingChime() {
+        if (muted) return
+        Thread {
+            runCatching {
+                val sr = 22050
+                fun tone(hz: Double, ms: Int): ShortArray {
+                    val n = sr * ms / 1000
+                    return ShortArray(n) { i ->
+                        // ~12 ms fade in/out so the notes don't click.
+                        val fade = minOf(1.0, i / (sr * 0.012), (n - 1 - i) / (sr * 0.012))
+                        (kotlin.math.sin(2.0 * Math.PI * hz * i / sr) * 9500 * fade).toInt().toShort()
+                    }
+                }
+                val pcm = tone(659.25, 140) + ShortArray(sr * 30 / 1000) + tone(440.0, 190)
+                val track = android.media.AudioTrack.Builder()
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build(),
+                    )
+                    .setAudioFormat(
+                        android.media.AudioFormat.Builder()
+                            .setSampleRate(sr)
+                            .setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT)
+                            .setChannelMask(android.media.AudioFormat.CHANNEL_OUT_MONO)
+                            .build(),
+                    )
+                    .setTransferMode(android.media.AudioTrack.MODE_STATIC)
+                    .setBufferSizeInBytes(pcm.size * 2)
+                    .build()
+                track.write(pcm, 0, pcm.size)
+                track.play()
+                Thread.sleep(500)
+                track.release()
+            }
+        }.start()
+    }
+
     /** Vela's in-process neural voice (Piper/sherpa-onnx), wired from `:app` where the native
      *  runtime lives. When the user selects [VelaPiper.ENGINE_ID], guidance goes here instead of
      *  Android TextToSpeech. Null until wired / on a build without it. */
