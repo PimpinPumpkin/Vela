@@ -236,8 +236,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   further same day: tertiary roads ride the slow tier too, and bigger collision padding spaces
   the survivors out - fewer symbols per frame. And the VOICE speaks only the primary sign
   destination ("toward I 5 North", not the whole "...: Vancouver British Columbia" sign) - the
-  full sign stayed long enough in the mouth that the next prompt cut it off mid-sentence; the
-  banner keeps the complete text.
+  full sign stayed long enough in the mouth that the next prompt cut it off mid-sentence. **The
+  card matches (2026-07-17, user-agreed design):** the banner HEADLINE is the same spoken form -
+  card and voice can never disagree - with the sign's secondary cities on a dim one-liner below
+  it for confirming against the physical sign; the compound "then" row uses the short form (its
+  chip already names the route), ending its arbitrary mid-sign ellipsis.
 - ✅ **Drive-feedback batch 2 (2026-07-17).** During nav the map now shows **gas stations only** -
   the one POI class worth a glance mid-drive; everything else hid (the full POI layer over the route
   read as clutter). **Pinch-zooming no longer detaches the free-drive follow**: zooming while the
