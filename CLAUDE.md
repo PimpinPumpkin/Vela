@@ -1157,7 +1157,11 @@ Defaults that make the safe path the easy one:
   demo clock only needs to AGREE with real time (noon clock, midday shoot, arrival times and
   departure boards all stay coherent). Camera counts on the route picker need Avoid
   surveillance cameras ON for the shot (restore OFF after). The site (site/assets/*.webp)
-  carries the same shots at 720px q82.
+  carries the same shots at 720px q82. Site assets are ALL bundled locally (no hotlinks -
+  the page makes zero external requests): the Obtainium/F-Droid badges are committed copies
+  in site/assets/, and site/assets/voice-demo.m4a is the audio track extracted from
+  docs/voice-demo.mp4 (`ffmpeg -vn -c:a copy`) - regenerate it whenever the voice demo is
+  re-rendered. No Android Auto on the site yet (user 2026-07-16, not confident it works).
 
 ## README layout rule (2026-07-11)
 
