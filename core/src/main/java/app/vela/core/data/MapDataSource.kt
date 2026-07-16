@@ -30,6 +30,24 @@ interface MapDataSource {
 
     suspend fun placeDetails(id: String): Place
 
+    /** The nearest Street View panorama to [location] (within ~50 m), or null when there's no
+     *  imagery there. Keyless via the JS-API `GeoPhotoService.SingleImageSearch`. Best-effort.
+     *
+     *  [preferStreet] is the address's own street (e.g. "5th Ave"): when the geometrically nearest
+     *  pano is on a DIFFERENT street (a mid-block address whose geocode sits between the avenue and
+     *  a parallel alley snaps to the alley pano), we hop to a nearby pano that IS on that street, the
+     *  way Google resolves an address. No-regression: only overrides on a confident match. */
+    suspend fun streetView(location: LatLng, preferStreet: String? = null): app.vela.core.model.StreetViewPano? = null
+
+    /** A specific panorama BY ID (walking to a neighbour, so it's epoch-exact - a nearest-location
+     *  lookup can snap to a different-year capture). Keyless via photometa/v1. Best-effort. */
+    suspend fun streetViewByPano(panoId: String): app.vela.core.model.StreetViewPano? = null
+
+    /** One equirectangular tile of a panorama, as raw JPEG bytes, or null on failure. The
+     *  in-app sphere viewer stitches a zoom level's grid of these. Keyless
+     *  (`streetviewpixels-pa.googleapis.com/v1/tile`, referer-gated). */
+    suspend fun streetViewTile(panoId: String, x: Int, y: Int, zoom: Int): ByteArray? = null
+
     /** Reverse-geocode a tapped point to an address (drop-a-pin / tap-a-building).
      * Best-effort - returns null if nothing is found. */
     suspend fun reverseGeocode(location: LatLng): Place? = null

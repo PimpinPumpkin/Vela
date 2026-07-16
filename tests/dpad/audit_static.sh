@@ -60,14 +60,19 @@ GESTURE = re.compile(r'(detectTapGestures|detectDragGestures|detectVerticalDragG
                      r'detectHorizontalDragGestures|detectTransformGestures|detectTapAndPress|'
                      r'awaitEachGesture|awaitPointerEventScope|awaitFirstDown|'
                      r'\.draggable\s*\(|\.swipeable\s*\(|\.anchoredDraggable\s*\(|\.transformable\s*\(|'
-                     r'\.scrollable\s*\()')
+                     r'\.scrollable\s*\(|'
+                     # raw Android View touch handlers (a custom View, e.g. the GL panorama, that
+                     # eats drags/pinches must still expose a key-driven path - onTouchEvent slipped
+                     # past the Compose-only list once, docs/dpad.md rule 3).
+                     r'override\s+fun\s+onTouchEvent|ScaleGestureDetector\s*\(|setOnTouchListener\s*\()')
 # A gesture has a D-pad alternative if the same composable also offers a KEY path: an explicit key
 # handler, a focus-target modifier, OR any Material control (IconButton/Button/Chip/onClick=…) that
 # is inherently focusable + OK-activatable (e.g. the results-sheet chevron mirrors its drag handle).
 KEYPATH = re.compile(r'(onKeyEvent|onPreviewKeyEvent|MapDpad|mapDpad|Key\.Direction|'
                      r'\.clickable|\.combinedClickable|\.focusable|\.selectable|\.toggleable|'
                      r'onClick\s*=|IconButton\s*\(|FilledTonalIconButton\s*\(|\bButton\s*\(|'
-                     r'TextButton\s*\(|OutlinedButton\s*\(|FilterChip\s*\(|AssistChip\s*\(|Chip\s*\()')
+                     r'TextButton\s*\(|OutlinedButton\s*\(|FilterChip\s*\(|AssistChip\s*\(|Chip\s*\(|'
+                     r'onKeyDown|dispatchKeyEvent|panByFraction|zoomStep|panBy\s*\()')
 def near_keypath(lines, idx, radius=50):
     lo, hi = max(0, idx - radius), min(len(lines), idx + radius)
     return KEYPATH.search("".join(code_of(l) for l in lines[lo:hi])) is not None

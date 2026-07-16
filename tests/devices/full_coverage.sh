@@ -39,11 +39,12 @@ cover_one() {
   geom="$(printf '%s\n' "$DEVICES" | awk -F'|' -v id="$id" '$1==id{print $2}')"
   dens="$(printf '%s\n' "$DEVICES" | awk -F'|' -v id="$id" '$1==id{print $3}')"
   [ -z "$geom" ] && { echo "unknown device '$id'"; return 1; }
+  local SW="${geom%%x*}" SH="${geom##*x}"
   # PHASES = which surface groups to (re)capture, so a single slow/flaky phase can be re-run WITHOUT
   # redoing the whole ~13 min tour (e.g. PHASES=settings to iterate just the deep Settings sub-sections).
   # Each phase pins its own screenshot NUMBER base, so a subset writes the SAME 01..16 filenames a full
   # run would - a partial run overwrites only its slice and leaves the rest in place. Default = all.
-  local ALLPHASES="firstrun map search place directions settings voice parking"
+  local ALLPHASES="firstrun map search place streetview directions settings voice parking"
   local phases="${PHASES:-$ALLPHASES}" full=0; [ "$phases" = "$ALLPHASES" ] && full=1
   phase() { case " $phases " in *" $1 "*) return 0;; *) return 1;; esac; }
   # Flavor-aware output: a run against the RESTRICTED flavor writes to its own directory so it can
@@ -102,6 +103,22 @@ cover_one() {
     key "$K_OK" 1; mark "place-sheet-expanded" 1
     key "$K_BACK" 1
   else mark "place-sheet" 0; mark "place-sheet-expanded" 0; fi
+  fi
+
+  # --- in-app Street View (keyless GL panorama) -----------------------------------------------
+  # Drop a pin (clean 2-pill sheet so Street View is on-screen without scrolling the pill row),
+  # tap it, wait for the tile stitch + GL render, then D-pad look-around (OK engages, RIGHT pans).
+  # NEEDS network (tile CDN) + a mock fix over a covered area; MISSED if the pill/render doesn't show.
+  if phase streetview; then i=20
+  goto_map
+  # long-press the map centre -> a reverse-geocoded pin with Directions + Street View
+  $ADB shell input swipe "$((SW/2))" "$((SH/3))" "$((SW/2))" "$((SH/3))" 800 >/dev/null 2>&1; sleep 3
+  if tap_center "Street View"; then
+    sleep 9  # nearest-pano metadata + tile fetch + stitch
+    mark "streetview" 1
+    key "$K_OK"; for _ in 1 2 3 4 5 6; do key "$K_RIGHT"; done; sleep 1; mark "streetview-dpad" 1
+    key "$K_BACK" 1; key "$K_BACK" 1  # disengage, then close
+  else mark "streetview" 0; mark "streetview-dpad" 0; fi
   fi
 
   # --- directions + steps ---------------------------------------------------------------------

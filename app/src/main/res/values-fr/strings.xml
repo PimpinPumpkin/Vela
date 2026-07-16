@@ -500,4 +500,8 @@
         <item quantity="other">+%d arrêts de plus</item>
     </plurals>
     <string name="no_browser_installed">Votre appareil ne dispose pas de navigateur</string>
+    <string name="street_view_none">No Street View imagery here</string>
+    <string name="street_view_move">Move here</string>
+    <string name="street_view_dates">See other dates</string>
+    <string name="street_view_fullscreen">Toggle full screen</string>
 </resources>

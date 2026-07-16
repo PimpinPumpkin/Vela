@@ -500,4 +500,8 @@
         <item quantity="other">+%d extra stops</item>
     </plurals>
     <string name="no_browser_installed">Je toestel heeft geen browser</string>
+    <string name="street_view_none">No Street View imagery here</string>
+    <string name="street_view_move">Move here</string>
+    <string name="street_view_dates">See other dates</string>
+    <string name="street_view_fullscreen">Toggle full screen</string>
 </resources>

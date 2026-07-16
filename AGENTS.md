@@ -143,6 +143,13 @@ at a FEATURE-PHONE display size, not only on your dev phone's native panel. Non-
      count (the verify-visually rule).
   State the matrix results in the PR body. A cell that genuinely cannot run yet (e.g. a HUD that
   only renders while driving) is DECLARED as deferred in the PR, never silently skipped.
+  5. **COMMIT the regenerated goldens** - a new feature/surface adds its OWN phase to
+     `full_coverage.sh` (rule at the top of that file) AND ships the refreshed `tests/devices/<id>/
+     screenshots/` frames in the same PR, so the repo's committed visual baseline stays CURRENT for
+     D-pad + small-screen at every geometry. Do not just eyeball local captures and discard them -
+     regenerate the affected phase for the golden devices (kyocera-e4810 240x320, sonim-x320
+     480x854; restricted sets too if the surface renders there) and commit the PNGs. A reviewer must
+     be able to see the new surface's D-pad/small-screen rendering from the PR without a device.
 - **Every screen opens focused AND stays D-pad-navigable at a SMALL display, not just native.**
   Verify at a real target size - `adb shell wm size 240x320; adb shell wm density 160` (Kyocera e4810;
   see `tests/devices/`) - by SCREENSHOT: the screen lands a visible focus ring on open AND arrows move
@@ -645,7 +652,8 @@ state - upstream's own 13ac02e8 already made the layers panel a VelaMenu):
     for any future content gate that must act inside `:core`.
 - **"Hide website & external links" toggle:** `HideExternalLinks` holder
   (`ui/PlaceContent.kt`, default **off**, init in VelaApp, row in Settings → Map). Gates the Website
-  pill/row, the Street View pano and the Book/Reserve/Order action in `PlaceSheet`. No restricted build
+  pill/row and the Book/Reserve/Order action in `PlaceSheet` (Street View is NO LONGER here - it
+  opens the in-app panorama, gated instead by `!RESTRICTED_BUILD`; see the Street View bullet). No restricted build
   flavor / LockableToggle machinery; keep holders in the plain `ShowReviews` shape. Gate any new
   external-link surface on a place page behind this holder.
 - **VelaDialog buttons are a FlowRow: filled pill confirm + text dismiss (upstream 837c7b00 +
@@ -660,10 +668,10 @@ state - upstream's own 13ac02e8 already made the layers panel a VelaMenu):
   default primary ring is invisible on a primary fill (device-found: the focused Download pill
   showed NO focus indication on a keypad phone). `dpadHighlight`'s `ringColor` param exists for
   exactly this; use it on any future primary-filled focusable.
-- **External link buttons -> real browser only (`ui/ExternalLinks.kt`, 2026-07-15).** The NINE
-  buttons that leave the app for a web page (PlaceSheet: Website pill + row, Street View,
-  Book/Reserve/Order, Open in Google Maps; Settings: Support Vela + privacy policy; map: donate
-  prompt + notice "Learn more") call `ExternalLinks.open(context, url)` instead of a bare
+- **External link buttons -> real browser only (`ui/ExternalLinks.kt`, 2026-07-15).** The EIGHT
+  buttons that leave the app for a web page (PlaceSheet: Website pill + row, Book/Reserve/Order,
+  Open in Google Maps; Settings: Support Vela + privacy policy; map: donate prompt + notice
+  "Learn more") call `ExternalLinks.open(context, url)` instead of a bare
   `startActivity(ACTION_VIEW)`. Why: keypad phones ship a preinstalled FAKE browser (a system
   WebView shell that renders an error page for every URL) and a bare ACTION_VIEW sent every link
   button into it. `open()` resolves ACTUAL browsers first - an app declaring MAIN +
@@ -682,6 +690,33 @@ state - upstream's own 13ac02e8 already made the layers panel a VelaMenu):
   `ExternalLinks.open`. Device-proven on both flavors: toast with no browser, toast after a live
   root-disable, real-browser open with the fake still the system default. The donate URL it opens
   is upstream's Buy Me a Coffee page (upstream d6e8230f; donations go to the upstream author).
+- **In-app Street View (`streetview/PanoramaView` + `ui/place/StreetViewScreen`, upstream
+  streetview-inapp ported 2026-07-16).** The place-sheet Street View pill opens a KEYLESS panorama
+  in-app - not a hand-off to Google's app, not a WebView. Pipeline: `MapDataSource.streetView`
+  (keyless `GeoPhotoService.SingleImageSearch`, referer-authorised) resolves the nearest pano ->
+  `StreetViewParser` (POSITIONAL, `CALIBRATE:`-class: `[1][2][3][1]` tile size, `[1][5][0][8]`
+  history stack, etc. - pinned to a live capture, unit-tested with a fixture) -> tiles from
+  `streetviewpixels-pa.googleapis.com/v1/tile` stitched by `StreetViewTiles` onto a GLES20
+  equirect sphere. Copy-Google shortcut: a search result's own SV thumbnail carries the exact
+  panoid+yaw (`SearchParser.svThumb`, regex not a pb index), used verbatim when present. Half-screen
+  over the map with a rotating pegman view-cone (`SV_LAYER`/`svPose` in VelaMapView), drag-look,
+  walk arrows, time-travel history, full-screen toggle. **GATED OUT of the restricted flavor**
+  (`!app.vela.ui.RESTRICTED_BUILD` in PlaceSheet) by fork policy - it still hits googleapis, so
+  the content-minimal build omits the pill (compile-time constant, R8-stripped). This is why SV was
+  REMOVED from the `HideExternalLinks` block and from the `ExternalLinks` browser-gate list (it is no
+  longer an external link). Endpoints are remote-calibratable (`Calibration.streetViewMetaUrl`/
+  `streetViewPanoUrl`); the tile template needs no calibration. Device-verified end to end in
+  Philadelphia; NB a hosts-blocked device (AdAway redirecting `streetviewpixels-pa` to 127.0.0.1)
+  fails tiles with a ConnectException - that's the device, not the code (host curl returns 200).
+  **D-pad (fork-only, `StreetViewScreen`): the GL pano is a raw-View gesture (`onTouchEvent` +
+  `ScaleGestureDetector`) so it needs a key path (rule 3) - `PanoramaView.panByFraction`/`zoomStep`
+  are called by an ENGAGE-model onKeyEvent (mirrors MapDpadController): OK engages, arrows look,
+  +/- zoom, OK-engaged walks to the nearest-facing neighbour, BACK disengages. The overlay controls
+  (Close/Fullscreen/Time) OVERLAP the fullscreen pano box, so spatial focus nav fails - they use an
+  EXPLICIT FocusRequester ring instead (pano->close->full->time). Robust `dpadAutoFocus` (not the weak
+  remember- variant, which raced the search bar and left the viewer unfocused). audit_static was
+  extended to catch a raw-View `onTouchEvent`/`ScaleGestureDetector` without a key path (it only
+  scanned Compose gestures before - this bug slipped through once).
 - **In-app updater (`app/update/SelfUpdater.kt`).**
   - Reads `releases/latest` from `alltechdev/vela-dpad` → tag `v0.0.<run>` → versionCode = `<run>`
     compared to BuildConfig; newer → `MapUiState.updateInfo` card on the bare map.

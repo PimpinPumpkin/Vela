@@ -520,4 +520,8 @@
         <item quantity="other">+%d件の経由地</item>
     </plurals>
     <string name="no_browser_installed">お使いの端末にはブラウザがありません</string>
+    <string name="street_view_none">No Street View imagery here</string>
+    <string name="street_view_move">Move here</string>
+    <string name="street_view_dates">See other dates</string>
+    <string name="street_view_fullscreen">Toggle full screen</string>
 </resources>

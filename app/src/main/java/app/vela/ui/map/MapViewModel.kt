@@ -27,6 +27,7 @@ import app.vela.core.model.Route
 import app.vela.core.model.SavedPlace
 import app.vela.core.model.ShortcutKind
 import app.vela.core.model.TravelMode
+import app.vela.core.model.bearingTo
 import app.vela.core.model.distanceTo
 import app.vela.core.nav.NavSession
 import app.vela.core.nav.NavState
@@ -151,6 +152,18 @@ data class MapUiState(
     val transit: List<TransitItinerary> = emptyList(),
     val transitLoading: Boolean = false,
     val transitNav: TransitNavState? = null,
+    // In-app Street View: the resolved pano (null until metadata lands), the stitched equirect
+    // bitmap (null while tiles load), and a loading flag covering both fetches. The full-screen
+    // sphere viewer shows while streetView != null || streetViewLoading.
+    val streetView: app.vela.core.model.StreetViewPano? = null,
+    val streetViewBitmap: android.graphics.Bitmap? = null,
+    val streetViewLoading: Boolean = false,
+    // The date currently DISPLAYED (may differ from the base pano's when time-travelling), and
+    // whether that's a historical capture (hides the walk arrows - you look around history, you
+    // don't walk it).
+    val streetViewShownYear: Int? = null,
+    val streetViewShownMonth: Int? = null,
+    val streetViewHistorical: Boolean = false,
     val navigating: Boolean = false,
     val resumeNavLabel: String? = null, // a nav session was interrupted (process killed mid-drive) and can
                                         // be resumed - drives the "Resume navigation to <label>?" prompt
@@ -1573,6 +1586,156 @@ class MapViewModel @Inject constructor(
     fun retryReviews() {
         val p = _state.value.selected ?: return
         fetchReviews(p, force = true)
+    }
+
+    private var streetViewJob: kotlinx.coroutines.Job? = null
+
+    /** Open the in-app Street View for a place: resolve the nearest pano (keyless metadata), then
+     *  stitch its tiles into the equirect the GL viewer textures. No coverage → a brief toast, no
+     *  viewer. Two-stage state so the viewer can show a spinner while tiles load. */
+    fun openStreetView(place: Place) {
+        // COPY GOOGLE when we can: the search response's own SV thumbnail carries the exact pano id
+        // + camera yaw the Google app opens (svPanoId/svYawDeg). Using them verbatim lands on the
+        // same imagery, facing the same way - no picking, no aiming. The heuristics below are only
+        // the fallback for places whose response ships no thumbnail.
+        val pid = place.svPanoId
+        if (pid != null) {
+            loadStreetView(faceHeading = place.svYawDeg) { dataSource.streetViewByPano(pid) }
+            return
+        }
+        loadStreetView(faceToward = place.location) {
+            // Prefer a pano on the place's OWN street (a mid-block geocode can otherwise snap to the
+            // alley pano behind the building). For a business the street is in `address`; for a plain
+            // address result it's the `name` ("2005 5th Ave") and `address` is just the locality - so
+            // take whichever actually parses to a street.
+            val street = listOfNotNull(place.address, place.name)
+                .firstOrNull { app.vela.core.data.google.StreetViewParser.streetOf(it) != null }
+            dataSource.streetView(place.location, preferStreet = street)
+        }
+    }
+
+    /** Walk to a neighbouring pano (arrow tap): fetch it BY ID so it's epoch-exact - a
+     *  nearest-location lookup snapped to a different-year capture (green May imagery under a
+     *  "December 2022" label). The new pano carries its own neighbours + history, so you keep
+     *  walking. Face the way you walked (the link's bearing) so it reads as moving forward. */
+    fun moveStreetView(link: app.vela.core.model.StreetViewLink) =
+        loadStreetView(faceHeading = link.bearingDeg) { dataSource.streetViewByPano(link.panoId) }
+
+    /** Tap on the mini-map while Street View is open: jump the viewer to the nearest pano at the
+     *  tapped point (pegman-drop), looking toward what was tapped. */
+    fun moveStreetViewTo(location: LatLng) =
+        loadStreetView(faceToward = location) { dataSource.streetView(location) }
+
+    /**
+     * @param faceToward when set, the initial camera faces from the resolved pano TOWARD this point
+     *   (the place we opened Street View on), so you look at the address, not the pano's capture
+     *   heading. @param faceHeading an explicit initial heading (used when walking).
+     */
+    private fun loadStreetView(
+        faceToward: app.vela.core.model.LatLng? = null,
+        faceHeading: Double? = null,
+        fetch: suspend () -> app.vela.core.model.StreetViewPano?,
+    ) {
+        streetViewJob?.cancel()
+        _state.value.streetViewBitmap?.recycle()
+        _state.update {
+            it.copy(streetViewLoading = true, streetViewHistorical = false,
+                // keep the old pano/bitmap on screen under the spinner while moving; a fresh open
+                // has none anyway.
+                )
+        }
+        streetViewJob = viewModelScope.launch {
+            val raw = runCatching { fetch() }.getOrNull()
+            if (raw == null) {
+                _state.update { it.copy(streetViewLoading = false, streetView = null, streetViewBitmap = null) }
+                flashStatus(appContext.getString(R.string.street_view_none))
+                return@launch
+            }
+            // Aim the opening view like Google: look ACROSS the street at the building, not down the
+            // road. The metadata heading is the street's direction, so snap to the road-PERPENDICULAR
+            // on the target's side, then let the real bearing nudge it toward the facade - clamped to
+            // +-40 deg so a road-snapped geocode (bearing points down the street) can't swing the view
+            // down the road. On a move we just face the way we walked (faceHeading).
+            val facing = faceToward?.let { target ->
+                // Tapped (nearly) the pano's own spot - a bearing to a coincident point is noise;
+                // fall through to the capture heading (down the street), the pegman-drop default.
+                if (LatLng(raw.lat, raw.lng).distanceTo(target) < 8.0) return@let null
+                val toTarget = LatLng(raw.lat, raw.lng).bearingTo(target)
+                val perpA = (raw.headingDeg + 90.0).mod(360.0)
+                val perpB = (raw.headingDeg + 270.0).mod(360.0)
+                val perp = if (angleDiff(perpA, toTarget) <= angleDiff(perpB, toTarget)) perpA else perpB
+                val nudge = (((toTarget - perp + 540.0) % 360.0) - 180.0).coerceIn(-40.0, 40.0)
+                (perp + nudge).mod(360.0)
+            } ?: faceHeading
+            // initialFacingDeg carries the desired view; headingDeg must STAY the capture heading -
+            // it's the texture's compass reference (overwriting it skewed the whole compass frame).
+            val pano = if (facing != null) raw.copy(initialFacingDeg = facing) else raw
+            _state.update {
+                it.copy(streetView = pano, streetViewBitmap = null,
+                    streetViewShownYear = pano.captureYear, streetViewShownMonth = pano.captureMonth,
+                    streetViewHistorical = false)
+            }
+            val bmp = runCatching { app.vela.streetview.StreetViewTiles.load(dataSource, pano) }.getOrNull()
+            if (bmp == null) {
+                _state.update { it.copy(streetViewLoading = false, streetView = null) }
+                flashStatus(appContext.getString(R.string.street_view_none))
+                return@launch
+            }
+            _state.update { it.copy(streetViewBitmap = bmp, streetViewLoading = false) }
+        }
+    }
+
+    /** Go back (or forward) in time: load a historical capture's tiles by pano id, keeping the base
+     *  pano's metadata (so the date picker + walk arrows return when you come back to the present). */
+    fun timeTravelStreetView(time: app.vela.core.model.StreetViewTime) {
+        val base = _state.value.streetView ?: return
+        streetViewJob?.cancel()
+        _state.value.streetViewBitmap?.recycle()
+        val historical = time.panoId != base.panoId
+        _state.update {
+            it.copy(streetViewLoading = true, streetViewBitmap = null,
+                streetViewShownYear = time.year, streetViewShownMonth = time.month,
+                streetViewHistorical = historical)
+        }
+        streetViewJob = viewModelScope.launch {
+            // The old capture has its OWN pyramid shape (pre-2016 = 416·2^z, not 512·2^z, and
+            // sometimes fewer levels) and its OWN heading (epochs differ by up to 180 deg) -
+            // loading its tiles on the base pano's grid left BLACK BANDS over part of the sphere,
+            // and keeping the base heading rotated the historical view. Fetch its metadata by id;
+            // if that fails, the base pyramid is the best remaining guess.
+            val hist = if (time.panoId == base.panoId) base
+            else runCatching { dataSource.streetViewByPano(time.panoId) }.getOrNull()
+            val bmp = runCatching {
+                if (hist != null) app.vela.streetview.StreetViewTiles.load(dataSource, hist)
+                else app.vela.streetview.StreetViewTiles.load(dataSource, time.panoId, base.tileSize, base.levelDims)
+            }.getOrNull()
+            if (bmp == null) {
+                // Fall back to the present rather than a black screen.
+                _state.update {
+                    it.copy(streetViewLoading = false, streetViewHistorical = false,
+                        streetViewShownYear = base.captureYear, streetViewShownMonth = base.captureMonth)
+                }
+                flashStatus(appContext.getString(R.string.street_view_none))
+                return@launch
+            }
+            _state.update {
+                // Keep the BASE metadata (arrows/dates come back with the present) but adopt the
+                // DISPLAYED capture's heading - it's the texture's compass reference. Guard on
+                // identity: a close/reopen mid-fetch must not get the old heading stamped on it.
+                val sv = it.streetView?.takeIf { cur -> cur.panoId == base.panoId }
+                    ?.copy(headingDeg = (hist ?: base).headingDeg) ?: it.streetView
+                it.copy(streetView = sv, streetViewBitmap = bmp, streetViewLoading = false)
+            }
+        }
+    }
+
+    fun closeStreetView() {
+        streetViewJob?.cancel()
+        _state.value.streetViewBitmap?.recycle()
+        _state.update {
+            it.copy(streetView = null, streetViewBitmap = null, streetViewLoading = false,
+                streetViewShownYear = null, streetViewShownMonth = null, streetViewHistorical = false)
+        }
     }
 
     fun clearSelection() {
@@ -4178,3 +4341,7 @@ class MapViewModel @Inject constructor(
         const val GEOCODE_PAD_DEG = 0.09
     }
 }
+
+/** Smallest absolute angle between two compass bearings, in degrees (0..180). */
+private fun angleDiff(a: Double, b: Double): Double =
+    kotlin.math.abs(((a - b + 540.0) % 360.0) - 180.0)
