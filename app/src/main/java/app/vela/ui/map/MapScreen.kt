@@ -1305,8 +1305,11 @@ fun MapScreen(
                 reviewsFound = state.reviewsFound,
                 photosLoading = state.photosLoading,
                 detailsLoading = state.loadingDetails,
-                stopDepartures = state.stopDepartures,
-                stopDeparturesLoading = state.stopDeparturesLoading,
+                // Board renders ONLY on the place it was fetched for (upstream d4f68a03).
+                stopDepartures = state.stopDepartures
+                    ?.takeIf { state.stopDeparturesFor != null && state.stopDeparturesFor == state.selected?.id },
+                stopDeparturesLoading = state.stopDeparturesLoading &&
+                    state.stopDeparturesFor != null && state.stopDeparturesFor == state.selected?.id,
                 onTapRoute = vm::openRouteDetail,
                 placesHere = state.placesHere,
                 onClose = vm::clearSelection,
