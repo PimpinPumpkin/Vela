@@ -1016,6 +1016,7 @@ fun MapScreen(
             val shown = mans?.getOrNull(shownIdx)
             val next = mans?.getOrNull(shownIdx + 1)
             ManeuverBanner(
+                offRoute = state.nav.offRoute,
                 text = if (previewing) (shown?.instruction.orEmpty()) else state.maneuverText,
                 // The headline distance is the APPROACH to the shown maneuver. A maneuver's own
                 // distanceMeters is the travel AFTER it (Route.kt convention) — showing it here
