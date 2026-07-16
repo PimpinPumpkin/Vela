@@ -98,10 +98,10 @@ class TripStore @Inject constructor(
      * diff the spoken/printed directions against where the turns really are. No-op if no trip is
      * recording or the route is too short to be meaningful.
      */
-    fun saveRoute(route: Route) = synchronized(lock) {
+    fun saveRoute(route: Route, reason: String = "") = synchronized(lock) {
         val f = active ?: return
         if (route.polyline.size < 2) return
-        runCatching { f.appendText(TripLog.encodeRoute(route)) }
+        runCatching { f.appendText(TripLog.encodeRoute(route, reason)) }
         Unit
     }
 

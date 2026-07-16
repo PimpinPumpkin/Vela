@@ -497,7 +497,7 @@ class MapViewModel @Inject constructor(
                 // street"). TripLog parses the blocks as segments; replay swaps at the same spot.
                 val nsRoute = ns.route
                 if (ns.navigating && nsRoute != null && nsRoute !== lastRecordedRoute) {
-                    if (lastRecordedRoute != null) tripStore.saveRoute(nsRoute)
+                    if (lastRecordedRoute != null) tripStore.saveRoute(nsRoute, navSession.lastSwapReason)
                     lastRecordedRoute = nsRoute
                 }
                 if (!ns.navigating) lastRecordedRoute = null
@@ -3431,7 +3431,7 @@ class MapViewModel @Inject constructor(
         // the pref directly so it works even before Settings has been opened.
         if (settingsPrefs.getBoolean("trip_recording_on", false)) {
             tripStore.startTrip(_state.value.selected?.name ?: appContext.getString(R.string.mapvm_trip_default_name), dest, System.currentTimeMillis())
-            tripStore.saveRoute(route) // save the blue line + maneuvers so a replay drives THIS route
+            tripStore.saveRoute(route, "start") // save the blue line + maneuvers so a replay drives THIS route
         }
         // If the phone has no voice engine, say so once instead of going silent - with a pill
         // straight to the voice library. Not when spoken directions are OFF: silence is chosen.
@@ -3601,14 +3601,16 @@ class MapViewModel @Inject constructor(
                         replayOwnsNav = true
                     }
                 }
-                val swapAt = segments.drop(1).associateBy({ it.fromPoint }, { it.route })
+                // reason -> chime: only wrong-turn reroutes chime in replay; faster/heal/
+                // stop-added swaps were quiet live. Old reason-less recordings chime for all.
+                val swapAt = segments.drop(1).associateBy({ it.fromPoint }, { it.route to (it.reason ?: "reroute") })
                 val pts = fixes.map { app.vela.core.location.ReplayFix(it.lat, it.lng, it.t, it.bearing, it.speed) }
                 var lastReplayT = 0L
                 var fixIdx = 0
                 val posOutlierStreak = intArrayOf(0)
                 locationProvider.replay(pts, speedup = REPLAY_SPEEDUP).collect { loc ->
                     // Play back the drive's own route swaps at the fix where they happened.
-                    swapAt[fixIdx]?.let { if (replayOwnsNav) navSession.replaySetRoute(it) }
+                    swapAt[fixIdx]?.let { (r, why) -> if (replayOwnsNav) navSession.replaySetRoute(r, chime = why == "reroute") }
                     fixIdx += 1
                     val rawHere = LatLng(loc.latitude, loc.longitude)
                     val prev = _state.value.myLocation
