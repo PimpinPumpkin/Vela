@@ -29,7 +29,7 @@
     --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; color-scheme: dark; }
   ::selection { background: rgba(47,216,193,.28); }
   body {
     background: var(--bg);
@@ -171,15 +171,18 @@
     background: linear-gradient(115deg, rgba(255,255,255,.10) 0%, transparent 30%);
   }
 
-  /* ---------- ticker ---------- */
-  .ticker { margin: 64px 0 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); overflow: hidden; }
-  .ticker .track {
-    display: flex; gap: 56px; width: max-content; padding: 15px 0;
-    animation: slide 36s linear infinite;
+  /* ---------- voice demo ---------- */
+  .voice-demo {
+    margin-top: 22px; padding: 16px 18px;
+    border: 1px solid var(--line); border-radius: var(--r-md);
+    background: rgba(6,8,13,.5);
   }
-  .ticker span { display: inline-flex; align-items: center; gap: 10px; color: var(--ink-3); font-size: .93rem; font-weight: 500; white-space: nowrap; }
-  .ticker svg { width: 15px; height: 15px; color: var(--teal); flex: 0 0 auto; }
-  @keyframes slide { to { transform: translateX(-50%); } }
+  .voice-demo .vd-label {
+    display: flex; align-items: center; gap: 9px;
+    color: var(--ink-2); font-size: .88rem; font-weight: 600; margin-bottom: 12px;
+  }
+  .voice-demo .vd-label svg { width: 15px; height: 15px; color: var(--teal); }
+  .voice-demo audio { width: 100%; height: 40px; display: block; }
 
   /* ---------- section scaffolding ---------- */
   section { padding: 110px 0 0; }
@@ -299,6 +302,9 @@
     font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .84em;
     background: rgba(255,255,255,.06); border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px;
   }
+  .badges { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-top: 34px; }
+  .badges img { height: 62px; width: auto; display: block; border-radius: 10px; transition: transform .18s ease; }
+  .badges a:hover img { transform: translateY(-2px); }
 
   /* ---------- footer ---------- */
   footer { margin-top: 120px; border-top: 1px solid var(--line); padding: 44px 0 60px; }
@@ -333,7 +339,6 @@
   @media (min-width: 941px) { .step-shot-mobile { display: none; } }
   @media (prefers-reduced-motion: reduce) {
     .reveal, .hero-device, .btn, .cell, .dl-card { transition: none !important; opacity: 1 !important; transform: none !important; }
-    .ticker .track { animation: none; }
     .route-svg .path { animation: none; stroke-dashoffset: 0; }
     .route-svg .pin { animation: none; opacity: 1; }
     html { scroll-behavior: auto; }
@@ -397,18 +402,6 @@
     </div>
   </div>
 
-  <div class="ticker" aria-hidden="true">
-    <div class="track" id="tickerTrack">
-      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Live traffic ETAs</span>
-      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Real departure boards</span>
-      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Whole states offline</span>
-      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Neural voices on device</span>
-      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Street View built in</span>
-      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Android Auto</span>
-      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>15 languages</span>
-      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>Zero telemetry</span>
-    </div>
-  </div>
 </header>
 
 <section id="features">
@@ -421,8 +414,15 @@
       <div class="step" data-shot="0">
         <div class="step-inner">
           <span class="num">1</span>
-          <h3>Navigation that sounds like a person</h3>
-          <p>Turn-by-turn with <b>live traffic</b>, lane guidance, highway shields and speed limits, spoken by a <b>neural voice generated on the phone</b>. It reroutes when you miss a turn and offers faster routes when traffic shifts.</p>
+          <h3>Live traffic, real ETAs</h3>
+          <p>Turn-by-turn that knows what the road is doing right now: <b>traffic-aware arrival times</b>, faster-route offers when things jam up, lane guidance, highway shields and speed limits. Spoken by a <b>neural voice generated on the phone</b>. Here is exactly how it sounds:</p>
+          <div class="voice-demo">
+            <div class="vd-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></svg>
+              The actual nav voice, generated offline
+            </div>
+            <audio controls preload="none" src="assets/voice-demo.m4a"></audio>
+          </div>
           <img class="step-shot-mobile" src="assets/05-navigation.webp" alt="" loading="lazy">
         </div>
       </div>
@@ -430,7 +430,7 @@
         <div class="step-inner">
           <span class="num">2</span>
           <h3>Search that knows what&rsquo;s open</h3>
-          <p>Ratings, reviews, prices, photos and <b>live opening hours</b> for real businesses. Filter by open now, rating or price, and see it all as pins and rated bubbles right on the map.</p>
+          <p>The business data that makes the big app hard to quit: ratings, reviews, prices, photos and <b>live opening hours</b>, fetched fresh when you look. Filter by open now, rating or price, and see it all as pins and rated bubbles right on the map.</p>
           <img class="step-shot-mobile" src="assets/02-search.webp" alt="" loading="lazy">
         </div>
       </div>
@@ -481,16 +481,11 @@
   <h2 class="reveal d1">Small app. Long feature list.</h2>
   <div class="grid">
     <div class="cell reveal">
-      <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="12" rx="3"/><path d="M7 19v2m10-2v2M6 11h4"/></svg></div>
-      <h3>Android Auto</h3>
-      <p>Full navigation on the car screen: search, route preview, turn cards and the instrument cluster, all from the same app.</p>
-    </div>
-    <div class="cell reveal d1">
       <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a7 7 0 0 1 7 7c0 5-7 11-7 11S5 15 5 10a7 7 0 0 1 7-7z"/><circle cx="12" cy="10" r="2.6"/></svg></div>
       <h3>Street View, in-app</h3>
       <p>A keyless panorama viewer with walk arrows and time travel through old captures. Drop the little guy anywhere.</p>
     </div>
-    <div class="cell reveal d2">
+    <div class="cell reveal d1">
       <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2-7 4 14 2-7h2"/><circle cx="19.5" cy="12" r="2.5"/></svg></div>
       <h3>Camera aware</h3>
       <p>Community-mapped license plate readers drawn on the map and counted per route, so you can pick the quiet way.</p>
@@ -509,6 +504,11 @@
       <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3.5 9h17M3.5 15h17M12 3c-2.5 2.5-2.5 15.5 0 18M12 3c2.5 2.5 2.5 15.5 0 18"/></svg></div>
       <h3>15 languages</h3>
       <p>Interface, spoken guidance and place data localized end to end, with downloadable voices to match.</p>
+    </div>
+    <div class="cell reveal">
+      <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M10 6h4M10 9.5h4M10 13h4M12 17.5h.01"/></svg></div>
+      <h3>Runs on keypad phones</h3>
+      <p>Every screen works with a five-key D-pad and no touchscreen, down to tiny flip-phone displays.</p>
     </div>
   </div>
 </section>
@@ -589,6 +589,10 @@
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg></a>
     </div>
   </div>
+  <div class="badges reveal">
+    <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/PimpinPumpkin/Vela"><img src="assets/badge-obtainium.png" alt="Get it on Obtainium" width="646" height="250"></a>
+    <a href="https://github.com/PimpinPumpkin/Vela/blob/main/FDROID.md"><img src="assets/badge-fdroid.png" alt="Get it on F-Droid, through Vela's own repo" width="646" height="250"></a>
+  </div>
   <p class="dl-note">Prefer to build it yourself? It is a standard Gradle project with no secrets required: <code>git clone</code>, <code>./gradlew :app:assembleRelease</code>, done. See the <a href="https://github.com/PimpinPumpkin/Vela#building" style="color:var(--teal)">build docs</a>.</p>
 </section>
 
@@ -628,10 +632,6 @@
     });
     stage.addEventListener('mouseleave', function () { device.style.transform = ''; });
   }
-
-  // duplicate ticker content so the loop is seamless
-  var track = document.getElementById('tickerTrack');
-  if (track) { track.innerHTML += track.innerHTML; }
 
   // scrolly story: swap the sticky phone's screenshot per step
   var steps = Array.prototype.slice.call(document.querySelectorAll('.step'));
