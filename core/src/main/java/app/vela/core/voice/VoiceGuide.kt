@@ -320,8 +320,13 @@ class VoiceGuide @Inject constructor(
      *  EXPLICIT speak-this-now actions (the Test button, the voice playground): a user who taps
      *  "speak" wants sound even while spoken directions are toggled off - the persisted mute
      *  silently eating those taps read as "sometimes it plays, sometimes not" (user 2026-07-10). */
+    /** Fired with every line guidance ACTUALLY speaks (post-mute gate) - the trip recorder taps
+     *  this so a shared drive shows what was said, verbatim, at what time. Set by `:app`. */
+    var onSpoken: ((String) -> Unit)? = null
+
     fun speak(text: String, interrupt: Boolean = false, ignoreMute: Boolean = false) {
         if (muted && !ignoreMute) return
+        runCatching { onSpoken?.invoke(text) }
         if (!ready) {
             pending.addLast(text to interrupt)
             return

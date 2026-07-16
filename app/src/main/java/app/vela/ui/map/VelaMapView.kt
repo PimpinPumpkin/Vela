@@ -1304,6 +1304,7 @@ fun VelaMapView(
                     )
                 // Clamp the predict step (an app-pause gap shouldn't integrate minutes of stale
                 // accel); the GPS fix after the gap re-measures anyway.
+                FrameJank.tick((dtT * 1000).toInt()) // trip flight-recorder: UI frame pacing during nav
                 navPuck.kalman.predict(fwd, dtT.coerceAtMost(0.5))
                 navPuck.speed = navPuck.kalman.speed
                 // Dead-reckon by INTEGRATING the live modelled speed — over THIS frame's part of

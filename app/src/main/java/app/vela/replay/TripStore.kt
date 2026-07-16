@@ -27,8 +27,14 @@ data class TripMeta(
  * drive can be **replayed** later for testing turn-by-turn without driving it again.
  * Opt-in (the "save my trips" telemetry toggle) — strictly local, never uploaded.
  *
- * Plain CSV (no JSON dep in `:app`): line 1 = `META,<label>,<startedAt>,<destLat>,<destLng>`,
- * then one `lat,lng,t,bearing,speed` per fix.
+ * Plain CSV (no JSON dep in `:app`): line 1 = `META,<label>,<startedAt>,<destLat>,<destLng>,
+ * <versionCode>`, then one `lat,lng,t,bearing,speed,offRoute,accuracy` per fix. FLIGHT-RECORDER
+ * lines (2026-07-16, all appended formats - every parser reads by index/prefix and skips what it
+ * doesn't know, so old files and old parsers stay compatible): `S,<epochMs>,<text>` = a line the
+ * voice actually SPOKE (the voice-vs-card questions answer themselves); `J,<epochMs>,<frames>,
+ * <janky>,<worstMs>` = a 30 s UI-thread frame-pacing sample while navigating (Choreographer
+ * cadence - catches UI/vsync stalls, though the GL map thread renders separately); `B,<epochMs>,
+ * <pct>` = battery level every ~2 min (drain per drive becomes measurable).
  *
  * Optionally the navigated **route** is saved too (right after META), so a replay drives the
  * *same* blue line the user actually saw — not a fresh re-route — and an offline analysis can
@@ -65,11 +71,24 @@ class TripStore @Inject constructor(
     fun record(loc: Location, offRoute: Boolean = false) = synchronized(lock) {
         val f = active ?: return
         runCatching {
-            // offRoute LAST (appended column, 2026-07-16): the parser reads fixes by index, so
-            // old files and old parsers stay compatible - and an audit can now see exactly which
-            // fixes the engine considered off-route, not just where the reroute segments landed.
-            f.appendText("${loc.latitude},${loc.longitude},${loc.time},${loc.bearing},${loc.speed},${if (offRoute) 1 else 0}\n")
+            // offRoute + accuracy LAST (appended columns, 2026-07-16): the parser reads fixes by
+            // index, so old files and old parsers stay compatible. offRoute = which fixes the
+            // engine considered off-route; accuracy = what the accuracy-scaled corridor actually
+            // saw (an off-route audit is unreconstructable without it).
+            f.appendText(
+                "${loc.latitude},${loc.longitude},${loc.time},${loc.bearing},${loc.speed}," +
+                    "${if (offRoute) 1 else 0},${loc.accuracy}\n",
+            )
         }
+        Unit
+    }
+
+    /** Append a flight-recorder EVENT line: [tag] is one of "S" (spoken), "J" (jank sample),
+     *  "B" (battery). No-op unless a trip is recording. Commas inside [payload] are fine for S
+     *  (the parser splits with a limit); J/B payloads are numeric. */
+    fun note(tag: String, payload: String) = synchronized(lock) {
+        val f = active ?: return
+        runCatching { f.appendText("$tag,${System.currentTimeMillis()},${payload.replace('\n', ' ')}\n") }
         Unit
     }
 

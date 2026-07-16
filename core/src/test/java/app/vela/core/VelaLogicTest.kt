@@ -770,13 +770,33 @@ class NavReplayTest {
         }
         val ver = TripLog.parse(csv).versionCode
         println("[NavReplay] auditing $path (recorded by build ${ver ?: "pre-2026-07-16, unknown"})\n${report.summary()}")
-        val pts = TripLog.parse(csv).points
+        val parsed2 = TripLog.parse(csv)
+        val pts = parsed2.points
         val offFixes = pts.count { it.offRoute }
         if (offFixes > 0) {
             var spans = 0; var prev = false
             pts.forEach { if (it.offRoute && !prev) spans++; prev = it.offRoute }
             println("[NavReplay] recorded off-route flag: $offFixes fixes in $spans span(s)")
         }
+        val spoken = parsed2.events.filter { it.tag == "S" }
+        if (spoken.isNotEmpty()) {
+            println("[NavReplay] recorded speech (${spoken.size} lines):")
+            spoken.forEach { e -> println("  @${(e.t - parsed2.startedAt) / 1000}s: ${e.text}") }
+        }
+        val jank = parsed2.events.filter { it.tag == "J" }
+        if (jank.isNotEmpty()) {
+            var fr = 0L; var ja = 0L; var worst = 0
+            jank.forEach { e ->
+                val p = e.text.split(',')
+                fr += p.getOrNull(0)?.toLongOrNull() ?: 0
+                ja += p.getOrNull(1)?.toLongOrNull() ?: 0
+                worst = maxOf(worst, p.getOrNull(2)?.toIntOrNull() ?: 0)
+            }
+            val pct = if (fr > 0) "%.1f".format(100.0 * ja / fr) else "?"
+            println("[NavReplay] recorded frame pacing: $fr frames, $ja janky ($pct%), worst ${worst}ms")
+        }
+        val batt = parsed2.events.filter { it.tag == "B" }.mapNotNull { it.text.toIntOrNull() }
+        if (batt.size >= 2) println("[NavReplay] battery over the drive: ${batt.first()}% -> ${batt.last()}%")
         println("[NavReplay] spoken-line timeline (fix @ metres-along-route):")
         report.cards.filter { it.spoke.isNotEmpty() }.forEach { c ->
             println("  @${c.fixIndex} (${c.alongM.toInt()} m): ${c.spoke.joinToString(" | ")}")
