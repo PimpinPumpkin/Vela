@@ -188,6 +188,12 @@ fun MapScreen(
     // pin visible above it.
     val screenHeightPx = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
     val placeSheetUp = state.selected != null && !state.directionsOpen && !state.navigating
+    // Street View pose [lat, lng, compassYaw] while the half-screen pano viewer is up - drives the
+    // rotating view cone + camera hold on the map underneath. Cleared when the viewer closes.
+    var svPose by remember { mutableStateOf<DoubleArray?>(null) }
+    LaunchedEffect(state.streetView == null && !state.streetViewLoading) {
+        if (state.streetView == null && !state.streetViewLoading) svPose = null
+    }
     // Push the optical centre up so the place sheet / directions panel doesn't sit on
     // top of the pin or the route (the directions panel is tall - fit the route above it).
     // The route chooser reports its minimized state up: with only the Start bar left on
@@ -199,6 +205,8 @@ fun MapScreen(
     LaunchedEffect(dirMinimized) { vm.onDirectionsCollapsed(dirMinimized) }
     LaunchedEffect(state.directionsOpen) { if (!state.directionsOpen) dirMinimized = false }
     val cameraBottomInset = when {
+        // Street View pane up: the sheet yields, so no bottom inset (the SV top inset takes over).
+        state.streetView != null || state.streetViewLoading -> 0
         placeSheetUp -> (screenHeightPx * 0.56f).toInt()
         state.directionsOpen && !state.navigating ->
             (screenHeightPx * (if (dirMinimized) 0.14f else 0.58f)).toInt()
@@ -639,6 +647,9 @@ fun MapScreen(
             },
             parkingSpot = state.parkingSpot,
             onParkingTap = { vm.showParkedCar(context.getString(R.string.map_parked_car)) },
+            svPose = svPose,
+            svTopInsetPx = (screenHeightPx * 0.55f).toInt(),
+            onSvMapTap = vm::moveStreetViewTo,
             onNavPanned = {
                 vm.onNavPanned()
                 // The fork routes NAV pans here (browse pans go through onUserPan), so the
@@ -1283,7 +1294,10 @@ fun MapScreen(
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
 
-            state.selected != null && !searchOpen && state.pickOnMap == null -> PlaceSheet(
+            // The place sheet yields while Street View is up - the pano takes the top half and the
+            // bottom half must stay pure map (the pose cone), not a sheet.
+            state.selected != null && !searchOpen && state.pickOnMap == null &&
+                state.streetView == null && !state.streetViewLoading -> PlaceSheet(
                 place = state.selected!!,
                 isSaved = state.saved.any { it.id == state.selected!!.id },
                 reviews = state.reviews,
@@ -1298,6 +1312,7 @@ fun MapScreen(
                 onClose = vm::clearSelection,
                 onToggleSave = vm::toggleSave,
                 onDirections = vm::routeToSelected,
+                onStreetView = { vm.openStreetView(state.selected!!) },
                 onOpenPlace = vm::selectPlace,
                 onOpenSimilar = vm::openSimilar,
                 onSetShortcut = vm::setSelectedAsShortcut,
@@ -1340,6 +1355,24 @@ fun MapScreen(
                 onBack = vm::backTransitNav,
                 onEnd = vm::endTransitNav,
                 onWalkDirections = vm::walkDirections,
+            )
+        }
+
+        // In-app Street View (keyless pano tiles on a GL sphere). HALF-SCREEN over the map by
+        // default (Google-style: the map underneath shows a rotating view cone at the pano and
+        // eases along as you walk), with a corner button to go full screen.
+        if (state.streetView != null || state.streetViewLoading) {
+            app.vela.ui.place.StreetViewScreen(
+                pano = state.streetView,
+                bitmap = state.streetViewBitmap,
+                loading = state.streetViewLoading,
+                shownYear = state.streetViewShownYear,
+                shownMonth = state.streetViewShownMonth,
+                historical = state.streetViewHistorical,
+                onClose = vm::closeStreetView,
+                onMove = vm::moveStreetView,
+                onTimeTravel = vm::timeTravelStreetView,
+                onPose = { la, ln, yaw -> svPose = doubleArrayOf(la, ln, yaw.toDouble()) },
             )
         }
 

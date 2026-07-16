@@ -116,6 +116,7 @@ object SearchParser {
         // nodes disagree. Deriving the boolean from the exact string displayed makes that
         // impossible.
         val statusStr = field("status118").str() ?: field("statusRich").str() ?: field("openStatus").str()
+        val sv = svThumb(entry)
         return Place(
             id = "g:" + name.hashCode() + ":" + (lat * 1e4).toInt(),
             name = name,
@@ -177,6 +178,8 @@ object SearchParser {
             ownerDescription = field("ownerDescription").str()?.trim()?.ifBlank { null },
             popularTimes = parsePopularTimes(entry, paths),
             distanceMeters = near?.distanceTo(loc),
+            svPanoId = sv?.first,
+            svYawDeg = sv?.second,
         )
     }
 
@@ -422,4 +425,17 @@ object SearchParser {
 
     private fun JsonElement?.atPath(path: List<Int>?): JsonElement? =
         if (path == null) null else this.at(*path.toIntArray())
+
+    private val SV_THUMB = Regex(
+        "streetviewpixels-pa\\.googleapis\\.com/v1/thumbnail\\?panoid=([A-Za-z0-9_-]{20,25})[^\"\\\\]*?yaw=([0-9.]+)",
+    )
+
+    /** Google's OWN Street View pick for a result: the thumbnail URL in the entry carries the exact
+     *  `panoid` and camera `yaw` the Google app opens ("copy Google" - the nearest-pano heuristics
+     *  mis-pick on set-back geocodes). Matched by REGEX over the serialized entry, not a pb index:
+     *  the URL is a distinctive constant, so this survives shape drift that would break a path. */
+    internal fun svThumb(entry: JsonElement): Pair<String, Double?>? {
+        val m = SV_THUMB.find(entry.toString()) ?: return null
+        return m.groupValues[1] to m.groupValues[2].toDoubleOrNull()
+    }
 }

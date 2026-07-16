@@ -55,3 +55,16 @@ fun LatLng.bearingTo(o: LatLng): Double {
         sin(Math.toRadians(lat)) * cos(Math.toRadians(o.lat)) * cos(dLng)
     return (Math.toDegrees(atan2(y, x)) + 360.0) % 360.0
 }
+
+/** The point [meters] away from this one along [bearingDeg] (0 = N, 90 = E) - great-circle
+ *  forward projection. Used by the Street View address-street probe (upstream, ported 2026-07-16). */
+fun LatLng.destinationPoint(meters: Double, bearingDeg: Double): LatLng {
+    val r = 6_371_000.0
+    val d = meters / r
+    val brng = Math.toRadians(bearingDeg)
+    val lat1 = Math.toRadians(lat)
+    val lng1 = Math.toRadians(lng)
+    val lat2 = asin(min(1.0, sin(lat1) * cos(d) + cos(lat1) * sin(d) * cos(brng)))
+    val lng2 = lng1 + atan2(sin(brng) * sin(d) * cos(lat1), cos(d) - sin(lat1) * sin(lat2))
+    return LatLng(Math.toDegrees(lat2), Math.toDegrees(lng2))
+}

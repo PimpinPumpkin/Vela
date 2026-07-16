@@ -90,6 +90,11 @@ private const val ALT_INDEX_PROP = "vela-alt-index"
 private const val MARKERS_SRC = "vela-markers-src"
 private const val MARKERS_LAYER = "vela-markers"
 private const val PIN_IMG = "vela-pin"
+// Street View pose: the open pano position + live view direction (rotating cone, pegman-style),
+// shown on the map under the half-screen pano viewer (upstream streetview-inapp, 2026-07-16).
+private const val SV_SRC = "vela-sv-src"
+private const val SV_LAYER = "vela-sv"
+private const val SV_IMG = "vela-sv-img"
 private const val MARKER_INDEX_PROP = "vela-marker-index"
 // Ambient Google POIs - small category dots (reusing PoiIcons' `vela-poi-<group>` images), the
 // "Google for the businesses" layer that replaces the OSM business POIs on the bare browse map.
@@ -157,6 +162,7 @@ private var lastAppliedTransitStops: List<app.vela.core.data.transit.Transitous.
 private var lastTransitBusHidden: Boolean? = null // gate the poi_transit filter flip
 private var origPoiTransitFilter: Expression? = null // basemap filter to restore when coverage goes
 private var lastAppliedParking: LatLng? = null
+private var lastAppliedSvPose: DoubleArray? = null // Street View pose identity-gate (same pattern)
 private var parkingApplied = false // distinguishes "never applied" from "applied null"
 private var lastAppliedRouteLine: List<LatLng>? = null // identity-gate the route upload - applyData runs
                                                        // every recomposition and re-tessellating a
@@ -256,6 +262,13 @@ fun VelaMapView(
     previewTarget: LatLng?,
     onPoiTap: (name: String, location: LatLng, kind: String?) -> Unit,
     onMarkerTap: (index: Int) -> Unit,
+    // Street View pose while the half-screen pano viewer is open: [lat, lng, compassYawDeg].
+    svPose: DoubleArray? = null,
+    // Height (px) of the Street View pane over the top of the screen: camera TOP padding so the
+    // pose puck centres in the visible strip below it.
+    svTopInsetPx: Int = 0,
+    // Tap the mini-map while Street View is open = jump the viewer there; pre-empts POI/pin taps.
+    onSvMapTap: (LatLng) -> Unit = {},
     ambientPois: List<MapMarker> = emptyList(),
     onAmbientTap: (index: Int) -> Unit = {},
     buildingOverlays: List<String> = emptyList(), // full pmtiles:// source URIs (file:// downloaded / https:// streamed)
@@ -312,6 +325,9 @@ fun VelaMapView(
     val addrLabelTap = rememberUpdatedState(onAddressLabelTap)
     val navPanned = rememberUpdatedState(onNavPanned)
     val parkingTap = rememberUpdatedState(onParkingTap)
+    val svMapTap = rememberUpdatedState(onSvMapTap)
+    val svActive = rememberUpdatedState(svPose != null)
+    var lastSvPos by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     val scaleChanged = rememberUpdatedState(onScaleChanged)
     val selectAlt = rememberUpdatedState(onSelectAlternate)
     val navModeHolder = rememberUpdatedState(navMode)
@@ -1062,6 +1078,12 @@ fun VelaMapView(
                 // docs/dpad.md.)
                 val handleTap = handleTap@{ tapped: MLLatLng ->
                     mapTap.value()
+                    // Street View open: any map tap is "take me there" - hand it to the viewer
+                    // and skip every other tap resolution (POIs, pins, labels).
+                    if (svActive.value) {
+                        svMapTap.value(LatLng(tapped.latitude, tapped.longitude))
+                        return@handleTap true
+                    }
                     val p = map.projection.toScreenLocation(tapped)
                     // Generous hit radius (~16dp) so taps near a POI icon register -
                     // a tight box made the bigger markers feel un-tappable.
@@ -1481,7 +1503,7 @@ fun VelaMapView(
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
                 if (satelliteOn) applySatelliteLabels(style)
-                applyData(style, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, displayLoc, meBearing, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                applyData(style, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, displayLoc, meBearing, locationStale, previewTarget, routeProgress, navMode, parkingSpot, svPose)
                 ensureSatellite(style, satelliteOn)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
@@ -1489,7 +1511,7 @@ fun VelaMapView(
             }
         } else {
             styleRef?.let {
-                applyData(it, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, displayLoc, meBearing, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                applyData(it, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, displayLoc, meBearing, locationStale, previewTarget, routeProgress, navMode, parkingSpot, svPose)
                 // The ensure* helpers are idempotent but each call probes the style over JNI
                 // (getLayer/getSource) - per recomposition, that's four probe sets during every
                 // camera flight for nothing (upstream 07d3f315). They only need to run when their
@@ -1512,6 +1534,24 @@ fun VelaMapView(
         // focused pin sits in the *visible* strip above the place sheet instead of
         // being hidden behind it. Padding is the map's single source of truth, so
         // every camera move below respects it. Reset to 0 when no sheet is up.
+        // Street View viewer open: ease the camera to the pano and pad the top so the pose puck
+        // sits in the visible strip below the pane (upstream). One owned flight per pano hop.
+        if (svPose != null) {
+            val pos = svPose[0] to svPose[1]
+            if (pos != lastSvPos) {
+                if (lastSvPos == null) map.setPadding(0, svTopInsetPx, 0, 0)
+                lastSvPos = pos
+                flightDepth[0]++
+                map.animateCamera(
+                    CameraUpdateFactory.newLatLngZoom(MLLatLng(svPose[0], svPose[1]), 17.5),
+                    600,
+                    flightCb(),
+                )
+            }
+        } else if (lastSvPos != null) {
+            lastSvPos = null
+            map.setPadding(0, 0, 0, cameraBottomInsetPx) // hand padding back to the sheet logic
+        }
         if (cameraBottomInsetPx != lastInsetPx) {
             // Only re-frame when the sheet APPEARS or grows (lift the pin above it). When it
             // shrinks to 0 (sheet closed) we must NOT null lastCameraTarget - doing so let the
@@ -1519,7 +1559,7 @@ fun VelaMapView(
             // yanking the map back to the tapped place and zooming out after you'd panned away.
             val grew = cameraBottomInsetPx > lastInsetPx
             lastInsetPx = cameraBottomInsetPx
-            map.setPadding(0, 0, 0, cameraBottomInsetPx)
+            if (svPose == null) map.setPadding(0, 0, 0, cameraBottomInsetPx)
             if (grew) lastCameraTarget = null // re-frame the current target against the new inset
         }
         // While the results sheet is closed (or a place is selected) forget the last marker fit,
@@ -1820,6 +1860,19 @@ private fun ensureLayers(style: Style) {
     // location dot. Labels themed per-mode in applyLight/applyDark.
     // The saved parking spot: one teal "P" pin above the search pins, tappable.
     if (style.getImage(PARKING_IMG) == null) style.addImage(PARKING_IMG, parkingBitmap())
+    if (style.getImage(SV_IMG) == null) style.addImage(SV_IMG, svConeBitmap())
+    if (style.getSource(SV_SRC) == null) {
+        style.addSource(GeoJsonSource(SV_SRC, GeoJsonOptions().withMaxZoom(12)))
+        style.addLayer(
+            SymbolLayer(SV_LAYER, SV_SRC).withProperties(
+                PropertyFactory.iconImage(SV_IMG),
+                PropertyFactory.iconAllowOverlap(true),
+                PropertyFactory.iconIgnorePlacement(true),
+                PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
+                PropertyFactory.iconRotate(Expression.get("yaw")),
+            ),
+        )
+    }
     if (style.getSource(PARKING_SRC) == null) {
         style.addSource(GeoJsonSource(PARKING_SRC, GeoJsonOptions().withMaxZoom(12)))
         style.addLayer(
@@ -2802,6 +2855,7 @@ private fun applyData(
     routeProgress: Float,
     navMode: Boolean,
     parkingSpot: LatLng? = null,
+    svPose: DoubleArray? = null, // Street View pose [lat, lng, compassYawDeg]; null = viewer closed
 ) {
     // The parking pin (identity-gated like the markers below).
     if (!parkingApplied || parkingSpot != lastAppliedParking) {
@@ -2810,6 +2864,19 @@ private fun applyData(
         style.getSourceAs<GeoJsonSource>(PARKING_SRC)?.setGeoJson(pfc)
         lastAppliedParking = parkingSpot
         parkingApplied = true
+    }
+    if (!(svPose contentEquals lastAppliedSvPose)) {
+        val fc = if (svPose == null) {
+            FeatureCollection.fromFeatures(emptyList<Feature>())
+        } else {
+            FeatureCollection.fromFeature(
+                Feature.fromGeometry(Point.fromLngLat(svPose[1], svPose[0])).apply {
+                    addNumberProperty("yaw", svPose[2])
+                },
+            )
+        }
+        style.getSourceAs<GeoJsonSource>(SV_SRC)?.setGeoJson(fc)
+        lastAppliedSvPose = svPose
     }
     // Identity-gate the route geometry upload (same pattern as markers/ambient below): applyData
     // runs on EVERY recomposition - during nav that's each fix/speedo tick - and re-tessellating
@@ -3324,5 +3391,32 @@ private fun alprCameraBitmap(): Bitmap {
     val arm = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt(); strokeWidth = 2.4f; style = Paint.Style.STROKE }
     c.drawLine(17f, 18f, 17f, 12f, arm)
     c.drawLine(12f, 12f, 24f, 12f, arm)
+    return bmp
+}
+
+private fun svConeBitmap(): Bitmap {
+    val s = 200
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val cx = s / 2f
+    val cy = s / 2f
+    val cone = Path().apply {
+        moveTo(cx, cy)
+        lineTo(cx - s * 0.30f, cy - s * 0.48f)
+        lineTo(cx + s * 0.30f, cy - s * 0.48f)
+        close()
+    }
+    c.drawPath(
+        cone,
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = android.graphics.LinearGradient(
+                cx, cy, cx, cy - s * 0.48f,
+                0xCC1A73E8.toInt(), 0x001A73E8, android.graphics.Shader.TileMode.CLAMP,
+            )
+        },
+    )
+    val puck = navPuckBitmap()
+    val half = s * 0.30f // puck diameter ~60% of the canvas, centred
+    c.drawBitmap(puck, null, RectF(cx - half, cy - half, cx + half, cy + half), Paint(Paint.ANTI_ALIAS_FLAG))
     return bmp
 }

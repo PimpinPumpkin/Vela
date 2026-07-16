@@ -37,6 +37,12 @@ data class Place(
     // category filter chips.
     val photoCategories: List<String?> = emptyList(),
     val featuredReview: String? = null, // Google's single highlighted review snippet
+    // Google's OWN Street View pick for this place, straight from the search response's thumbnail
+    // URL (`streetviewpixels-pa…/thumbnail?panoid=…&yaw=…`): the exact pano AND camera yaw the
+    // Google app opens. When present, in-app Street View uses these verbatim instead of the
+    // nearest-pano + facing heuristics (which mis-pick on set-back geocodes: alley panos, offset yaw).
+    val svPanoId: String? = null,
+    val svYawDeg: Double? = null,
     val featureId: String? = null,      // Google feature id "0x..:0x.." → reviews RPC
     val placeId: String? = null,        // "ChIJ..." place id (for deep links)
     val about: List<AboutSection> = emptyList(),

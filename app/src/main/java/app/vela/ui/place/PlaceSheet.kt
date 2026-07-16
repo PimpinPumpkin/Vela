@@ -221,6 +221,7 @@ fun PlaceSheet(
     onClose: () -> Unit,
     onToggleSave: () -> Unit,
     onDirections: () -> Unit,
+    onStreetView: () -> Unit = {},
     onOpenPlace: (Place) -> Unit = {},
     onOpenSimilar: (app.vela.core.model.SimilarPlace) -> Unit = {},
     onSetShortcut: (ShortcutKind) -> Unit = {},
@@ -739,16 +740,14 @@ fun PlaceSheet(
                             app.vela.ui.ExternalLinks.open(context, site)
                         }
                     }
-                    // Street View - opens Google's KEYLESS consumer pano (documented map_action=pano deep
-                    // link) EXTERNALLY (Google Maps app or the browser). The interactive pano is keyless but
-                    // renders black in an in-app WebView on some devices (ANGLE GL driver + the SV SPA served
-                    // a degraded page), so we hand it off rather than embed a maybe-black panel (see ROADMAP).
-                    ActionPill(Icons.Filled.Streetview, stringResource(R.string.place_street_view)) {
-                        val loc = place.location
-                        val pano = "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=" +
-                            "%.6f,%.6f".format(java.util.Locale.US, loc.lat, loc.lng)
-                        app.vela.ui.ExternalLinks.open(context, pano)
-                    }
+                }
+                // Street View - the IN-APP panorama viewer (keyless tile-stitch + GL sphere, upstream
+                // streetview-inapp). NOT under HideExternalLinks: it no longer hands off to Google's app,
+                // it's a first-class in-app surface. Gated OUT of the restricted flavor (RESTRICTED_BUILD)
+                // by the fork's own policy - it still fetches pano tiles from googleapis, so the
+                // content-minimal build omits it entirely.
+                if (!app.vela.ui.RESTRICTED_BUILD) {
+                    ActionPill(Icons.Filled.Streetview, stringResource(R.string.place_street_view), onClick = onStreetView)
                 }
             }
 
