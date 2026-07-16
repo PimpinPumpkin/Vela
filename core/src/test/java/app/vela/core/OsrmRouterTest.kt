@@ -169,6 +169,38 @@ class OsrmRouterTest {
         assertEquals(ManeuverType.TURN_LEFT, out[1].type)
     }
 
+    /** A shared onramp's sign lists BOTH directions of the target highway; the folded fork is the
+     *  branch actually taken. The fold must keep only the taken direction (voice + shield chips
+     *  both read the instruction) and adopt the fork's lane diagram when the ramp has none. */
+    @Test fun foldedExitKeepsOnlyTheTakenDirection() {
+        val lanes = listOf(app.vela.core.model.Lane(listOf("left"), true))
+        val ramp = app.vela.core.model.Maneuver(
+            ManeuverType.RAMP_RIGHT, "Take the ramp on the right toward CA-99 West, CA-99 East",
+            LatLng(0.0, 0.0), 120.0, 0.0,
+        )
+        val fork = app.vela.core.model.Maneuver(
+            ManeuverType.FORK_LEFT, "Keep left toward CA-99 West",
+            LatLng(0.0, 0.0), 30.0, 0.0, lanes = lanes,
+        )
+        val out = RouteGeometry.consolidateExits(listOf(ramp, fork, man(ManeuverType.ARRIVE, 0.0)))
+        assertEquals(2, out.size)
+        assertEquals("Take the ramp on the right toward CA-99 West", out[0].instruction)
+        assertEquals(lanes, out[0].lanes) // the split's lane diagram survives the fold
+    }
+
+    @Test fun disambiguateDestIsConservative() {
+        // No branch / no direction in the branch / single-part ramp text → untouched.
+        assertEquals("Take the ramp toward CA-99 West, CA-99 East",
+            RouteGeometry.disambiguateDest("Take the ramp toward CA-99 West, CA-99 East", null))
+        assertEquals("Take the ramp toward CA-99 West, CA-99 East",
+            RouteGeometry.disambiguateDest("Take the ramp toward CA-99 West, CA-99 East", "Keep left"))
+        assertEquals("Take the ramp toward Downtown",
+            RouteGeometry.disambiguateDest("Take the ramp toward Downtown", "Keep left toward CA-99 West"))
+        // Directionless parts (city names) survive alongside the matching direction.
+        assertEquals("Take the exit toward I-80 E, Downtown",
+            RouteGeometry.disambiguateDest("Take the exit toward I-80 E, I-80 W, Downtown", "Keep right toward I-80 East"))
+    }
+
     @Test fun isolatedRampAndFarForkAreNotFolded() {
         // ramp then a normal turn → untouched
         assertEquals(2, RouteGeometry.consolidateExits(listOf(

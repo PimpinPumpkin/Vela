@@ -363,8 +363,11 @@ object NavEngine {
         // city/walking behaviour — and every existing test — byte-identical. `spoken` stores the
         // band SLOT (0=far, 1=near), not the metre value: the thresholds move between fixes.
         val v = speedMps ?: 0.0
-        val farM = maxOf(400.0, round50(v * 25.0))    // ~25 s out on the open road
-        val nearM = maxOf(150.0, round50(v * 8.0))    // ~8 s out
+        // 35/10 s (were 25/8, 2026-07-17): a real-drive A/B had Google announcing up to ~0.2 mi
+        // sooner at highway speed and lockstep in town — the floors keep city/walking behaviour
+        // byte-identical, the T is what moves the open-road prompt earlier (~+0.2 mi at 70 mph).
+        val farM = maxOf(400.0, round50(v * 35.0))    // ~35 s out on the open road
+        val nearM = maxOf(150.0, round50(v * 10.0))   // ~10 s out
         if (!voiceSilent) {
             val bands = listOf(farM, nearM)
             val due = bands.withIndex().filter { (slot, d) ->
