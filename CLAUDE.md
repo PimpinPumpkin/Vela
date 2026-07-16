@@ -219,6 +219,16 @@ Defaults that make the safe path the easy one:
   MapTiler Streets (Google-like, with a dark variant by system theme); empty
   locally → keyless OpenFreeMap. **Never commit the MapTiler key** - CI-secret +
   BuildConfig only.
+- **Baseline profile (2026-07-16):** `app/src/release/generated/baselineProfiles/baseline-prof.txt`
+  is COMMITTED and baked into every release build (`androidx.baselineprofile` plugin +
+  `profileinstaller` runtime dep) so sideloaded nightlies are AOT-compiled at install time instead
+  of running interpreter-cold until overnight dexopt (the "did you even R8" jank report - the APK
+  was fine, ART just hadn't recompiled it). Regenerate with `./gradlew :app:generateBaselineProfile`
+  - it runs the `:baselineprofile` macrobenchmark journey on a Gradle-managed EMULATOR (pixel6Api34
+  aosp). ⚠️ NEVER switch it to `useConnectedDevices`: the test harness UNINSTALLS the target app
+  when it finishes, which on a real phone wipes saved places, trips and permission grants (it did
+  once, 2026-07-16, on the wired test phone). `.github/workflows/baseline-profile.yml` (monthly cron
+  + dispatch) regenerates on a KVM emulator and opens a PR when the profile drifts.
 - Toolchain: AGP 8.7.3, Kotlin 2.1.0, Gradle
   8.11.1, compileSdk 35, minSdk 26, Java 17, Compose + Hilt + version catalog.
 - Release signing from env: `VELA_KEYSTORE_PATH` / `VELA_KEYSTORE_PASSWORD` /
