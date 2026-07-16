@@ -778,6 +778,12 @@ class NavReplayTest {
             pts.forEach { if (it.offRoute && !prev) spans++; prev = it.offRoute }
             println("[NavReplay] recorded off-route flag: $offFixes fixes in $spans span(s)")
         }
+        if (parsed2.segments.size > 1) {
+            println("[NavReplay] route swaps:")
+            parsed2.segments.drop(1).forEach { seg ->
+                println("  @fix ${seg.fromPoint}: ${seg.reason ?: "(unrecorded reason)"}")
+            }
+        }
         val spoken = parsed2.events.filter { it.tag == "S" }
         if (spoken.isNotEmpty()) {
             println("[NavReplay] recorded speech (${spoken.size} lines):")
