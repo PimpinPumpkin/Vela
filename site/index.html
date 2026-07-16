@@ -306,6 +306,28 @@
   .badges img { height: 62px; width: auto; display: block; border-radius: 10px; transition: transform .18s ease; }
   .badges a:hover img { transform: translateY(-2px); }
 
+  /* ---------- support ---------- */
+  .support {
+    margin-top: 110px;
+    border: 1px solid var(--line); border-radius: var(--r-lg);
+    background:
+      radial-gradient(600px 260px at 15% 0%, rgba(255,183,77,.07), transparent 70%),
+      linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+    padding: 46px 48px;
+    display: flex; align-items: center; justify-content: space-between; gap: 32px; flex-wrap: wrap;
+  }
+  .support .s-text { max-width: 34rem; }
+  .support h3 { font-size: 1.5rem; letter-spacing: -.02em; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+  .support h3 svg { width: 22px; height: 22px; color: #ff7a90; }
+  .support p { color: var(--ink-2); font-size: 1rem; }
+  .btn.coffee {
+    color: #2b1a05; background: linear-gradient(135deg, #ffd66e, #ffb84d);
+    box-shadow: 0 10px 40px rgba(255,184,77,.22), inset 0 1px 0 rgba(255,255,255,.4);
+    flex: 0 0 auto;
+  }
+  .btn.coffee:hover { transform: translateY(-2px); box-shadow: 0 16px 50px rgba(255,184,77,.3), inset 0 1px 0 rgba(255,255,255,.4); }
+  @media (max-width: 940px) { .support { padding: 34px 28px; } }
+
   /* ---------- footer ---------- */
   footer { margin-top: 120px; border-top: 1px solid var(--line); padding: 44px 0 60px; }
   .foot { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 18px; color: var(--ink-3); font-size: .92rem; }
@@ -594,6 +616,20 @@
     <a href="https://github.com/PimpinPumpkin/Vela/blob/main/FDROID.md"><img src="assets/badge-fdroid.png" alt="Get it on F-Droid, through Vela's own repo" width="646" height="250"></a>
   </div>
   <p class="dl-note">Prefer to build it yourself? It is a standard Gradle project with no secrets required: <code>git clone</code>, <code>./gradlew :app:assembleRelease</code>, done. See the <a href="https://github.com/PimpinPumpkin/Vela#building" style="color:var(--teal)">build docs</a>.</p>
+
+  <div class="support reveal">
+    <div class="s-text">
+      <h3>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.9-10-9.2C.4 8.9 2.2 5.5 5.5 5.1c1.9-.2 3.7.7 4.7 2.2h3.6c1-1.5 2.8-2.4 4.7-2.2 3.3.4 5.1 3.8 3.5 6.7C19.5 16.1 12 21 12 21z" transform="scale(.92) translate(1 .5)"/></svg>
+        Keep Vela going
+      </h3>
+      <p>Vela is free, ad-free and always will be. No accounts to sell, no data to mine. If it has become useful, a coffee helps cover the time. Entirely optional.</p>
+    </div>
+    <a class="btn coffee" href="https://buymeacoffee.com/PimpinPumpkin">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V8z"/><path d="M8 2.5c0 1-.8 1-.8 2s.8 1 .8 2M12 2.5c0 1-.8 1-.8 2s.8 1 .8 2"/></svg>
+      Buy me a coffee
+    </a>
+  </div>
 </section>
 
 <footer>
