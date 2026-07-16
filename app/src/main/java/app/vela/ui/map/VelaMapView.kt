@@ -1949,7 +1949,7 @@ fun VelaMapView(
                 emphasizeShields(style)
                 applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot, poisEnabled, svPose)
                 ensureSatellite(style, satelliteOn)
-                ensureNavRoadLabels(style, navMode, darkTheme)
+                ensureNavRoadLabels(style, navMode, darkTheme, context.resources.displayMetrics.density)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
                 ensureTopography(style, topographyOn)
@@ -1967,7 +1967,7 @@ fun VelaMapView(
                     (if (navMode) 16 else 0) or (if (darkTheme) 32 else 0)
                 if (ensureKey != lastEnsureKey[0]) {
                     lastEnsureKey[0] = ensureKey
-                    ensureNavRoadLabels(it, navMode, darkTheme)
+                    ensureNavRoadLabels(it, navMode, darkTheme, context.resources.displayMetrics.density)
                     ensureSatellite(it, satelliteOn)
                     ensureTraffic(it, trafficOn)
                     ensureTransit(it, transitOn)
@@ -2896,6 +2896,7 @@ private fun ensureTopography(style: Style, on: Boolean) {
 /** Toggle Google's live-traffic raster overlay. Inserted below the route line +
  *  labels so they stay on top; keyless public tiles, removed cleanly when off. */
 private const val NAV_ROADLABEL_LAYER = "vela-nav-roadlabels"
+private const val NAV_ROADLABEL_MINOR_LAYER = "vela-nav-roadlabels-minor"
 
 /** Google-style floating road labels during NAV: horizontal, viewport-aligned name chips over the
  *  roads you're crossing or driving beside - far more legible than the line-following basemap
@@ -2935,48 +2936,120 @@ private fun applyPoiTierFilters(style: Style, fuelOnly: Boolean) {
     tier("poi_r20", 20, null)
 }
 
-private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean) {
-    val layer = style.getLayer(NAV_ROADLABEL_LAYER) as? SymbolLayer
+/** The Google-style nav road-name BUBBLE: a rounded chip with a pointer tail at the bottom,
+ *  registered as a STRETCHABLE style image (stretch zones skip the corners AND the tail so
+ *  icon-text-fit can widen the body around any street name without smearing either). One
+ *  bitmap per theme; addImage with the same id replaces, so a theme flip just re-registers. */
+private fun navBubbleBitmap(dark: Boolean, d: Float): android.graphics.Bitmap {
+    val w = (46 * d).toInt()
+    val body = 26 * d
+    val h = (body + 7 * d).toInt() // + tail
+    val r = 8 * d
+    val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val inset = 0.8f * d
+    val rect = android.graphics.RectF(inset, inset, w - inset, body)
+    val cx = w / 2f
+    // One united path (chip + tail) so the outline strokes the whole teardrop cleanly.
+    val p = android.graphics.Path().apply { addRoundRect(rect, r, r, android.graphics.Path.Direction.CW) }
+    val tail = android.graphics.Path().apply {
+        moveTo(cx - 5.5f * d, body - 2 * d); lineTo(cx + 5.5f * d, body - 2 * d)
+        lineTo(cx, h - inset); close()
+    }
+    p.op(tail, android.graphics.Path.Op.UNION)
+    val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = if (dark) 0xFF2B3648.toInt() else 0xFFFFFFFF.toInt()
+    }
+    val edge = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 1.1f * d
+        color = if (dark) 0xFF43536B.toInt() else 0xFFC9CFD8.toInt()
+    }
+    c.drawPath(p, fill)
+    c.drawPath(p, edge)
+    return bmp
+}
+
+private const val NAV_BUBBLE_IMG = "vela-nav-bubble"
+
+private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, density: Float) {
+    val ids = listOf(NAV_ROADLABEL_LAYER, NAV_ROADLABEL_MINOR_LAYER)
+    // The bubbles REPLACE the basemap's line-following road names during nav - both drawing is a
+    // doubled label ("2nd Street" along the road right under its own bubble, device-caught
+    // 2026-07-17), and hiding the basemap set is placement work saved every frame (Google hides
+    // them in nav too). Restored the moment nav ends.
+    val basemapNames = listOf("highway-name-path", "highway-name-minor", "highway-name-major")
+    basemapNames.forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.visibility(if (on) Property.NONE else Property.VISIBLE))
+    }
     if (!on) {
-        layer?.setProperties(PropertyFactory.visibility(Property.NONE))
+        ids.forEach { (style.getLayer(it) as? SymbolLayer)?.setProperties(PropertyFactory.visibility(Property.NONE)) }
         return
     }
-    if (layer == null) {
-        if (style.getSource("openmaptiles") == null) return
-        style.addLayer(
-            SymbolLayer(NAV_ROADLABEL_LAYER, "openmaptiles").withSourceLayer("transportation_name")
-                .withFilter(
-                    Expression.all(
-                        Expression.has("name"),
-                        Expression.match(
-                            Expression.get("class"),
-                            Expression.literal(false),
-                            Expression.stop("motorway", true), Expression.stop("trunk", true),
-                            Expression.stop("primary", true), Expression.stop("secondary", true),
-                            Expression.stop("tertiary", true),
+    if (style.getSource("openmaptiles") == null) return
+    // Stretch zones: the horizontal middle EXCLUDING the tail's span (two zones), the vertical
+    // middle of the body only; content box = where text may sit (tail stays below it).
+    val d = density
+    val w = 46 * d; val body = 26 * d; val r = 8 * d; val cx = w / 2f
+    style.addImage(
+        NAV_BUBBLE_IMG, navBubbleBitmap(dark, d),
+        listOf(
+            org.maplibre.android.maps.ImageStretches(r + d, cx - 7 * d),
+            org.maplibre.android.maps.ImageStretches(cx + 7 * d, w - r - d),
+        ),
+        listOf(org.maplibre.android.maps.ImageStretches(r + d, body - r - d)),
+        org.maplibre.android.maps.ImageContent(6 * d, 3 * d, w - 6 * d, body - 3 * d),
+    )
+    fun layer(id: String, classes: Array<String>, minZ: Float) {
+        if (style.getLayer(id) == null) {
+            style.addLayer(
+                SymbolLayer(id, "openmaptiles").withSourceLayer("transportation_name")
+                    .withFilter(
+                        Expression.all(
+                            Expression.has("name"),
+                            Expression.match(
+                                Expression.get("class"), Expression.literal(false),
+                                *classes.map { Expression.stop(it, true) }.toTypedArray(),
+                            ),
                         ),
-                    ),
-                )
-                .withProperties(
-                    PropertyFactory.textField(Expression.get("name")),
-                    PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
-                    PropertyFactory.textSize(13f),
-                    PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_LINE_CENTER),
-                    // Horizontal + upright regardless of the road's angle or the camera tilt -
-                    // the whole point vs the line-following basemap labels.
-                    PropertyFactory.textRotationAlignment(Property.TEXT_ROTATION_ALIGNMENT_VIEWPORT),
-                    PropertyFactory.textPitchAlignment(Property.TEXT_PITCH_ALIGNMENT_VIEWPORT),
-                    PropertyFactory.textPadding(8f),
-                    PropertyFactory.textHaloBlur(0.4f),
-                ).apply { minZoom = 14f }, // sparser, Google-like: cross-street tier only, not every lane
+                    )
+                    .withProperties(
+                        PropertyFactory.textField(Expression.get("name")),
+                        PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                        PropertyFactory.textSize(12.5f),
+                        PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_LINE_CENTER),
+                        // Horizontal + upright regardless of the road's angle or the camera tilt -
+                        // the whole point vs the line-following basemap labels. The ICON pins to
+                        // the viewport too, else the bubble would rotate with the road.
+                        PropertyFactory.textRotationAlignment(Property.TEXT_ROTATION_ALIGNMENT_VIEWPORT),
+                        PropertyFactory.textPitchAlignment(Property.TEXT_PITCH_ALIGNMENT_VIEWPORT),
+                        PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_VIEWPORT),
+                        PropertyFactory.iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_VIEWPORT),
+                        // Google's callout: the chip floats over the road with the tail touching
+                        // it - bottom anchor puts the tail tip on the line point.
+                        PropertyFactory.iconImage(NAV_BUBBLE_IMG),
+                        PropertyFactory.iconTextFit(Property.ICON_TEXT_FIT_BOTH),
+                        PropertyFactory.textAnchor(Property.TEXT_ANCHOR_BOTTOM),
+                        PropertyFactory.textOffset(arrayOf(0f, -0.9f)), // lift text into the body; the tail hangs below
+                        PropertyFactory.textPadding(10f),
+                        PropertyFactory.textHaloWidth(0f), // the bubble IS the backing now
+                    ).apply { minZoom = minZ },
+            )
+        }
+    }
+    // Cross-street tier: majors from z14; MINOR streets from z16 - in a neighbourhood the streets
+    // you cross ARE class minor (dropping them entirely made the layer near-mute on residential
+    // drives, user 2026-07-17), and the nav camera only sits at z16+ at surface speeds, so the
+    // minors show exactly when cross-streets matter and stay out of the highway view.
+    layer(NAV_ROADLABEL_LAYER, arrayOf("motorway", "trunk", "primary", "secondary", "tertiary"), 14f)
+    layer(NAV_ROADLABEL_MINOR_LAYER, arrayOf("minor"), 16f)
+    ids.forEach {
+        (style.getLayer(it) as? SymbolLayer)?.setProperties(
+            PropertyFactory.visibility(Property.VISIBLE),
+            PropertyFactory.textColor(if (dark) "#e8eaed" else "#202124"),
         )
     }
-    (style.getLayer(NAV_ROADLABEL_LAYER) as? SymbolLayer)?.setProperties(
-        PropertyFactory.visibility(Property.VISIBLE),
-        PropertyFactory.textColor(if (dark) "#e8eaed" else "#202124"),
-        PropertyFactory.textHaloColor(if (dark) "#2b3648" else "#ffffff"),
-        PropertyFactory.textHaloWidth(2.4f),
-    )
 }
 
 private fun ensureTraffic(style: Style, on: Boolean) {
