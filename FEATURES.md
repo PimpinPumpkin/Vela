@@ -228,7 +228,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   including the other direction's), bike-path and trail accents, transit lines, hillshade, 3D
   building extrusions and the address-overlay numbers all hide while navigating and return when
   the drive ends; the address-overlay viewport refresh pauses too. **Label bubbles got more
-  contrast** in dark mode. Unit-tested (merge single-prompt, repeat-shortening).
+  contrast** in dark mode. Unit-tested (merge single-prompt, repeat-shortening). **And the
+  cross-street tier FADES with zoom (2026-07-17)** instead of popping: the nav camera's zoom is
+  speed-scaled, so the old hard cut made every minor-street bubble appear or vanish at once as
+  speed crossed the boundary - now they ease in over half a zoom level, and only at genuinely
+  slow speeds (Google shows that tier only when zoomed further than nav feasibly sits).
 - ✅ **Drive-feedback batch 2 (2026-07-17).** During nav the map now shows **gas stations only** -
   the one POI class worth a glance mid-drive; everything else hid (the full POI layer over the route
   read as clutter). **Pinch-zooming no longer detaches the free-drive follow**: zooming while the
