@@ -49,6 +49,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
@@ -196,8 +197,28 @@ fun ManeuverBanner(
         Column(Modifier.padding(horizontal = if (compact) 12.dp else 18.dp, vertical = if (compact) 8.dp else 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val rerouting = offRoute && !previewing
-                Icon(
-                    if (rerouting) Icons.Filled.Refresh else maneuverIcon(type),
+                // The refresh glyph SPINS while rerouting (user 2026-07-16: nothing moved, so a
+                // slow fetch read as frozen). The angle is read in graphicsLayer - a draw-phase
+                // read, so the infinite transition never recomposes the banner; it only exists
+                // while rerouting is showing at all.
+                if (rerouting) {
+                    val spin = androidx.compose.animation.core.rememberInfiniteTransition(label = "reroute")
+                    val angle by spin.animateFloat(
+                        initialValue = 0f, targetValue = 360f,
+                        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                            androidx.compose.animation.core.tween(1100, easing = androidx.compose.animation.core.LinearEasing),
+                        ),
+                        label = "reroute-angle",
+                    )
+                    Icon(
+                        Icons.Filled.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(if (compact) 36.dp else 54.dp)
+                            .graphicsLayer { rotationZ = angle },
+                    )
+                } else Icon(
+                    maneuverIcon(type),
                     contentDescription = null,
                     modifier = Modifier.size(if (compact) 36.dp else 54.dp),
                 )
