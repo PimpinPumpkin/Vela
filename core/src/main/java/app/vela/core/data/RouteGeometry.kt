@@ -308,6 +308,12 @@ object RouteGeometry {
                         instruction = disambiguateDest(m.instruction, branch?.instruction),
                         lanes = m.lanes.ifEmpty { branch?.lanes.orEmpty() },
                         laneHint = m.laneHint ?: branch?.laneHint,
+                        // The road ENTERED by the fold is the branch's (the ramp itself is
+                        // nameless/ref-less) - without this, passing a folded on-ramp left the
+                        // "current road" with no ref and the bottom bar's persistent highway
+                        // shield never appeared on the freeway it exists for (device 2026-07-17).
+                        road = m.road ?: branch?.road,
+                        ref = m.ref ?: branch?.ref,
                     )
                     i = j
                     continue

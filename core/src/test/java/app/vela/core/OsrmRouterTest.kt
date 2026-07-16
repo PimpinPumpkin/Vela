@@ -180,12 +180,13 @@ class OsrmRouterTest {
         )
         val fork = app.vela.core.model.Maneuver(
             ManeuverType.FORK_LEFT, "Keep left toward CA-99 West",
-            LatLng(0.0, 0.0), 30.0, 0.0, lanes = lanes,
+            LatLng(0.0, 0.0), 30.0, 0.0, ref = "CA 99", lanes = lanes,
         )
         val out = RouteGeometry.consolidateExits(listOf(ramp, fork, man(ManeuverType.ARRIVE, 0.0)))
         assertEquals(2, out.size)
         assertEquals("Take the ramp on the right toward CA-99 West", out[0].instruction)
         assertEquals(lanes, out[0].lanes) // the split's lane diagram survives the fold
+        assertEquals("CA 99", out[0].ref) // the road ENTERED is the branch's; the ramp has no ref
     }
 
     @Test fun disambiguateDestIsConservative() {
