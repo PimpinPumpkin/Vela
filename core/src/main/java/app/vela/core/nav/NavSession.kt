@@ -555,6 +555,9 @@ class NavSession @Inject constructor(
         // Announce sparsely: the first attempt of a burst speaks, silent retries don't re-announce.
         if (now - lastRerouteSpokeMs > REROUTE_SPEAK_MIN_MS) {
             lastRerouteSpokeMs = now
+            // Google's earcon first (a soft two-note chime), then the spoken word - the chime
+            // registers even when a prompt is mid-sentence or the ear expects music (user 2026-07-16).
+            voice.reroutingChime()
             voice.speak(app.vela.core.i18n.NavStringsRegistry.current().rerouting(), interrupt = true)
             // A buzz too (its own pattern, see Haptics.reroute) — the voice is useless muted or on
             // a windy ride, and the banner's "rerouting…" needs eyes on the screen.

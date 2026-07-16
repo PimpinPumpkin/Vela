@@ -278,6 +278,8 @@ fun VelaMapView(
     stopPins: List<LatLng> = emptyList(),
     frameMarkers: Boolean,
     navMode: Boolean,
+    navDriveMode: Boolean = false, // navigating a DRIVE route -> the aggressive car-mode declutter
+    navLabelExclude: List<String> = emptyList(), // the route's own road names/refs: never bubble-label the road you're ON
     navFollowing: Boolean = true,
     navNorthUp: Boolean = false,
     // Free-drive follow (no route open): when true the camera tracks the live fix north-up and
@@ -513,7 +515,7 @@ fun VelaMapView(
     // while navigating (keeping even the top rank still left labels flickering at the threshold)
     // for a clean nav map, and restore on exit. Keyed on styleRef so it re-applies after a style
     // (re)load (dark/light flip), which recreates the layers at default visibility.
-    LaunchedEffect(navMode, styleRef) {
+    LaunchedEffect(navMode, navDriveMode, styleRef) {
         val style = styleRef ?: return@LaunchedEffect
         val vis = if (navMode) Property.NONE else Property.VISIBLE
         runCatching {
@@ -540,15 +542,17 @@ fun VelaMapView(
             style.getLayer(TRANSIT_STOPS_LAYER)
                 ?.setProperties(PropertyFactory.visibility(if (navMode) Property.NONE else Property.VISIBLE))
         }
-        // Nav strips the browse-map dressing Google also drops mid-drive (user battery report
-        // 2026-07-17: "we need to further optimize" nav, not panning): basemap highway shields
-        // (a wall of badges including the other carriageway's; the banner chips + the bottom
-        // bar's current-road chip carry the route refs), the bike/trail accent lines, hillshade,
-        // the transit-lines accent, and the address-overlay number layers (their minZoom arms at
-        // 17 during slow nav, fetching tiles for labels nobody reads while driving - the VM also
-        // skips their per-viewport refresh while navigating). Every one is a plain-visibility
-        // layer with no competing owner, so a blanket restore on nav end is safe (ensureTransit
-        // adds/removes its layer by the toggle - a missing layer just no-ops here).
+        // CAR-MODE strip (drive nav only, 2026-07-16 - the battery report): basemap highway
+        // shields (a wall of badges including the other carriageway's; the banner's chips carry
+        // the route refs), bike/trail accent lines, hillshade, the transit-lines accent, and the
+        // address-overlay number layers (their minZoom arms at 17 during slow nav, fetching tiles
+        // for labels nobody reads while driving - the VM also skips their per-viewport refresh
+        // while DRIVE-navigating). Walking and biking keep all of it: a bike route NEEDS the bike
+        // accents and a walk to an address needs the house numbers - only the car declutters this
+        // hard. Every one is a plain-visibility layer with no competing owner, so a blanket
+        // restore on nav end is safe (ensureTransit adds/removes its layer by the toggle - a
+        // missing layer just no-ops here).
+        val dvis = if (navMode && navDriveMode) Property.NONE else Property.VISIBLE
         runCatching {
             (
                 listOf(
@@ -556,7 +560,7 @@ fun VelaMapView(
                     "vela-bikeroutes", "vela-trails", HILLSHADE_LAYER, TRANSIT_LAYER,
                 ).mapNotNull { style.getLayer(it) } +
                     style.layers.filter { it.id.startsWith("vela-addr-") }
-                ).forEach { it.setProperties(PropertyFactory.visibility(vis)) }
+                ).forEach { it.setProperties(PropertyFactory.visibility(dvis)) }
         }
     }
 
@@ -1942,6 +1946,7 @@ fun VelaMapView(
                 lastAppliedMarkers = null // fresh style = empty sources; force applyData to repopulate
                 lastOsmPoiVis = null
                 lastPoiFuelOnly = null
+                lastNavLabelKey = null
                 lastControlsVis = null
                 parkingApplied = false
                 lastAppliedAmbient = null
@@ -1967,16 +1972,16 @@ fun VelaMapView(
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
                 if (satelliteOn) applySatelliteLabels(style)
                 emphasizeShields(style)
-                applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot, poisEnabled, svPose)
+                applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, poisEnabled, svPose)
                 ensureSatellite(style, satelliteOn)
-                ensureNavRoadLabels(style, navMode, darkTheme, context.resources.displayMetrics.density)
+                ensureNavRoadLabels(style, navMode, darkTheme, context.resources.displayMetrics.density, navLabelExclude)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
                 ensureTopography(style, topographyOn)
             }
         } else {
             styleRef?.let {
-                applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot, poisEnabled, svPose)
+                applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, poisEnabled, svPose)
                 // AUDIT FIX 3e (2026-07-15): the ensure* helpers are idempotent but each call
                 // probes the style over JNI (getLayer/getSource) - per recomposition, that's
                 // four probe sets during every camera flight for nothing. They only need to run
@@ -1987,7 +1992,7 @@ fun VelaMapView(
                     (if (navMode) 16 else 0) or (if (darkTheme) 32 else 0)
                 if (ensureKey != lastEnsureKey[0]) {
                     lastEnsureKey[0] = ensureKey
-                    ensureNavRoadLabels(it, navMode, darkTheme, context.resources.displayMetrics.density)
+                    ensureNavRoadLabels(it, navMode, darkTheme, context.resources.displayMetrics.density, navLabelExclude)
                     ensureSatellite(it, satelliteOn)
                     ensureTraffic(it, trafficOn)
                     ensureTransit(it, transitOn)
@@ -2993,7 +2998,14 @@ private fun navBubbleBitmap(dark: Boolean, d: Float): android.graphics.Bitmap {
 
 private const val NAV_BUBBLE_IMG = "vela-nav-bubble"
 
-private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, density: Float) {
+private var lastNavLabelKey: Any? = null // self-gate: (on, dark, exclude) - nulled on style reload
+
+private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, density: Float, exclude: List<String>) {
+    // Cheap self-gate so callers can invoke per recomposition (audit-3e rule: no per-frame JNI
+    // probes) - a change in theme, nav state or the route's own road list re-runs it.
+    val key = listOf(on, dark, exclude)
+    if (key == lastNavLabelKey) return
+    lastNavLabelKey = key
     val ids = listOf(NAV_ROADLABEL_LAYER, NAV_ROADLABEL_MINOR_LAYER)
     // The bubbles REPLACE the basemap's line-following road names during nav - both drawing is a
     // doubled label ("2nd Street" along the road right under its own bubble, device-caught
@@ -3022,18 +3034,28 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
         org.maplibre.android.maps.ImageContent(6 * d, 3 * d, w - 6 * d, body - 3 * d),
     )
     fun layer(id: String, classes: Array<String>, minZ: Float) {
-        if (style.getLayer(id) == null) {
+        // Google only calls out OTHER streets - never the road you're driving. The exclusion list
+        // is the route's own road names + ref variants (user 2026-07-16: the highway labelled
+        // itself repeatedly along the drive); it applies to BOTH the name and the ref property
+        // because the basemap names bridge/segment features independently of the ref.
+        val parts = mutableListOf(
+            Expression.has("name"),
+            Expression.match(
+                Expression.get("class"), Expression.literal(false),
+                *classes.map { Expression.stop(it, true) }.toTypedArray(),
+            ),
+        )
+        if (exclude.isNotEmpty()) {
+            val stops = exclude.map { Expression.stop(it, true) }.toTypedArray()
+            parts += Expression.not(Expression.match(Expression.get("name"), Expression.literal(false), *stops))
+            parts += Expression.not(Expression.match(Expression.get("ref"), Expression.literal(false), *stops))
+        }
+        val filter = Expression.all(*parts.toTypedArray())
+        (style.getLayer(id) as? SymbolLayer)?.let { it.setFilter(filter); return }
+        run {
             style.addLayer(
                 SymbolLayer(id, "openmaptiles").withSourceLayer("transportation_name")
-                    .withFilter(
-                        Expression.all(
-                            Expression.has("name"),
-                            Expression.match(
-                                Expression.get("class"), Expression.literal(false),
-                                *classes.map { Expression.stop(it, true) }.toTypedArray(),
-                            ),
-                        ),
-                    )
+                    .withFilter(filter)
                     .withProperties(
                         PropertyFactory.textField(Expression.get("name")),
                         PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
@@ -4043,6 +4065,7 @@ private fun applyData(
     preview: LatLng?,
     routeProgress: Float,
     navMode: Boolean,
+    navDriveMode: Boolean,
     parkingSpot: LatLng? = null,
     poisEnabled: Boolean = true,
     svPose: DoubleArray? = null, // Street View pose [lat, lng, compassYawDeg]; null = viewer closed
@@ -4280,9 +4303,10 @@ private fun applyData(
         }
         lastOsmPoiVis = osmPoiVis
     }
-    if (navMode != lastPoiFuelOnly) {
-        applyPoiTierFilters(style, fuelOnly = navMode)
-        lastPoiFuelOnly = navMode
+    val fuelOnly = navMode && navDriveMode // walking/biking keeps the normal POI mix (Google does)
+    if (fuelOnly != lastPoiFuelOnly) {
+        applyPoiTierFilters(style, fuelOnly = fuelOnly)
+        lastPoiFuelOnly = fuelOnly
     }
     // Stop signs + traffic lights step aside during a search too (results are the subject; the
     // junction furniture reads as clutter behind them) — but UNLIKE the basemap POIs they stay

@@ -392,7 +392,17 @@ Defaults that make the safe path the easy one:
   list to be open, and onPoiTap / onMapLongPress / onAddressLabelTap / onTransitStopTap
   early-return while navigating (their invisible selection popped up as a ghost sheet when
   the drive ended).
-- **Nav UI style (2026-07-08):** ManeuverBanner + NavControls are RoundedCornerShape(24/28dp)
+- **Nav declutter is MODE-AWARE (2026-07-16):** the aggressive strip (basemap shields, bike/trails,
+  hillshade, transit lines, vela-addr numbers, gas-stations-only POIs, addr-refresh pause) keys on
+  navMode && navDriveMode (DRIVE routes only) - walking/biking keeps all of it (a bike route needs
+  the bike accents). The nav label bubbles EXCLUDE the route's own road names/refs (navLabelExclude,
+  computed in MapScreen from the maneuvers, name + ref props both) so the road you're on never
+  labels itself; ensureNavRoadLabels self-gates on (on, dark, exclude) with lastNavLabelKey nulled
+  on style reload. The current-road shield chip lives on the TOP banner card (currentRef =
+  maneuvers[liveStep-1].ref; the exit fold adopts the folded branch's road/ref so it survives
+  on-ramps). Rerouting plays a two-note earcon (VoiceGuide.reroutingChime, in-process synth,
+  muted-gated) before the throttled spoken word.
+  **Nav UI style (2026-07-08):** ManeuverBanner + NavControls are RoundedCornerShape(24/28dp)
   Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
   name, FilledTonalIconButton for mute/steps. Keep new nav chrome on this treatment (no flat
   default-radius cards, no OutlinedIconButton circles - that was the "dated" look).

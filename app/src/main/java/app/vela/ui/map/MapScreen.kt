@@ -349,6 +349,15 @@ fun MapScreen(
     // tap raises it again. Suppressed whenever a focus surface owns the camera (search, a place,
     // directions, the results list) so it never fights that framing. Nav has its own follow.
     var followMe by remember { mutableStateOf(true) }
+    // The route's own road names + ref variants: the nav label bubbles must never call out the
+    // road being driven (Google labels only streets you cross). Ref variants cover the basemap's
+    // bare-number `ref` prop ("5") and the OSRM spelling ("I 5").
+    val navLabelExclude = remember(state.activeRoute, state.navigating) {
+        if (!state.navigating) emptyList() else state.activeRoute?.maneuvers?.flatMap { m ->
+            val refDigits = m.ref?.filter { it.isDigit() }
+            listOfNotNull(m.road, m.ref, refDigits)
+        }?.filter { it.isNotBlank() }?.distinct().orEmpty()
+    }
     var layersOpen by remember { mutableStateOf(false) } // the top-right layers panel
     // A programmatic camera jump far from the fix (a recents pick, a search hit, a pasted
     // coordinate, a deep link) means the user went to look somewhere else - drop follow exactly
@@ -802,6 +811,8 @@ fun MapScreen(
             // Numbered stop pins while the trip UI is active (chooser, editor or the drive itself).
             stopPins = if (state.directionsOpen || state.navigating) state.directionsWaypoints.map { it.location } else emptyList(),
             navMode = state.navigating,
+            navDriveMode = state.travelMode == app.vela.core.model.TravelMode.DRIVE,
+            navLabelExclude = navLabelExclude,
             // Follow yields to a manual pan AND to step preview: the per-frame follow ticker used
             // to keep re-pointing the camera at the puck while a banner swipe was trying to fly to
             // the previewed turn - the two fought at 60 fps (user 2026-07-14). The puck itself
@@ -1037,6 +1048,9 @@ fun MapScreen(
                 nextText = next?.instruction,
                 nextType = next?.type,
                 nextRef = next?.ref,
+                // The road being driven = the one entered by the LIVE maneuver last passed
+                // (never the previewed one - previewing shouldn't change where you "are").
+                currentRef = mans?.getOrNull(liveStep - 1)?.ref,
                 // The shown→next gap is the SHOWN maneuver's step length (a maneuver's distanceMeters is
                 // the travel AFTER it, to the next maneuver — both OSRM and the Google parser use that
                 // convention). Passing next.distanceMeters was the next→next-next gap: it made "then
@@ -1478,8 +1492,6 @@ fun MapScreen(
                     onStop = vm::stopNav,
                     onSteps = vm::openSteps,
                     trafficRatio = state.activeRoute?.trafficRatio,
-                    // The road being driven = the one entered by the maneuver we last passed.
-                    currentRef = state.activeRoute?.maneuvers?.getOrNull(state.nav.stepIndex - 1)?.ref,
                     // Measured AFTER the padding → the bar surface itself; navBarClearance adds the
                     // padding + gap back. Everything stacked above the bar keys off this.
                     modifier = Modifier.onGloballyPositioned { navBarHeightPx = it.size.height },

@@ -102,6 +102,7 @@ fun ManeuverBanner(
     nextText: String? = null,
     nextType: ManeuverType? = null,
     nextRef: String? = null,
+    currentRef: String? = null, // highway ref of the road being driven -> persistent shield chip
     nextDistanceMeters: Double? = null,
     // Destination lines for the ARRIVE step (name + address, either may be blank — offline
     // routing can have only a street, an address, or nothing but the tapped coordinates).
@@ -202,12 +203,25 @@ fun ManeuverBanner(
                 )
                 Spacer(Modifier.width(if (compact) 10.dp else 18.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(
-                        if (rerouting) stringResource(R.string.nav_rerouting) else formatDistance(distanceMeters),
-                        style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
                     val signs = if (rerouting) emptyList() else roadSigns(text, ref)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            if (rerouting) stringResource(R.string.nav_rerouting) else formatDistance(distanceMeters),
+                            style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        // The road you're ON, as its stylized shield - persistent for the whole
+                        // stretch, right-aligned on the distance row (user 2026-07-16: on the TOP
+                        // card, and always, not only when a maneuver mentions the route). Skipped
+                        // when the upcoming maneuver's own chips already show the same route, and
+                        // while rerouting (the headline owns the row).
+                        val cur = if (rerouting) null else currentRef?.trim()?.replace(Regex("\\s+"), " ")
+                            ?.uppercase()?.takeIf { c -> c.isNotBlank() && signs.none { it.label == c } }
+                        if (cur != null) {
+                            Spacer(Modifier.weight(1f))
+                            SignChip(Sign(isExit = false, label = cur))
+                        }
+                    }
                     if (signs.isNotEmpty()) {
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -306,7 +320,11 @@ private val EXIT_RE = Regex("""\bexit\s+(\w[\w-]*)""", RegexOption.IGNORE_CASE)
 // I / US / SR / Hwy (space or dash), plus any 2-letter-DASH-number for state/provincial routes
 // (TX-35, ON-401, CA-99) — the dash keeps it route-like so it doesn't grab random "to 5" text;
 // parseRouteRef's state set then filters an unknown 2-letter prefix back to a plain chip.
-private val ROUTE_RE = Regex("""\b(?:(?:I|US|CA|SR|US-?Hwy|Hwy)[-\s]?\d+|[A-Za-z]{2}-\d+)(?:\s?[NSEW]\b)?""", RegexOption.IGNORE_CASE)
+// The bare two-letter state alternative ("NV 28", "NV-28") is CASE-SENSITIVE inside the otherwise
+// case-insensitive pattern ((?-i:...)) - a case-blind "[a-z]{2} \d+" would turn "on 5" and "to 96"
+// into shields. It previously required the hyphen form, so OSRM's spaced "NV 28" never chipped
+// (user replay report 2026-07-16).
+private val ROUTE_RE = Regex("""\b(?:(?:I|US|CA|SR|US-?Hwy|Hwy)[-\s]?\d+|(?-i:[A-Z]{2}[-\s]\d+))(?:\s?[NSEW]\b)?""", RegexOption.IGNORE_CASE)
 
 /** A highway shield or exit tab extracted from an instruction. */
 internal data class Sign(val isExit: Boolean, val label: String)
@@ -618,7 +636,6 @@ fun NavControls(
     onStop: () -> Unit,
     onSteps: () -> Unit,
     trafficRatio: Double? = null,
-    currentRef: String? = null, // highway ref of the road being driven -> a persistent shield chip
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
@@ -646,14 +663,6 @@ fun NavControls(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                // The road you're ON, as its stylized shield - persistent for the whole stretch,
-                // not only when a maneuver mentions it (user 2026-07-17: "the actual state
-                // route/interstate should always have the stylized version in the nav card").
-                // Google keeps a current-road chip in its bottom bar the same way. Ref only:
-                // plain street names would make this a noisy second road-name line.
-                currentRef?.trim()?.replace(Regex("\\s+"), " ")?.uppercase()?.takeIf { it.isNotBlank() }?.let {
-                    Row(Modifier.padding(bottom = 3.dp)) { SignChip(Sign(isExit = false, label = it)) }
-                }
                 // Both lines SHRINK to fit rather than wrap or ellipsise: the 54dp buttons (and
                 // any Interface-size scale) squeezed the column and "1 hr 25 min" wrapped rough,
                 // while ellipsis on the second line cut off the arrival TIME (user 2026-07-11).
