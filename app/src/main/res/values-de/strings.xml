@@ -166,8 +166,6 @@
     <string name="place_close">Schließen</string>
     <string name="place_permanently_closed">Dauerhaft geschlossen</string>
     <string name="place_temporarily_closed">Vorübergehend geschlossen</string>
-    <string name="settings_traffic_lights">Ampel-Hinweise</string>
-    <string name="settings_traffic_lights_hint">Ergänzt Ansagen wie “an der Ampel vorbei, dann links abbiegen”. Vorerst nur auf Englisch.</string>
     <string name="map_voice_downloading">Vela-Stimme wird heruntergeladen · %1$d %%</string>
     <string name="map_voice_installing">Vela-Stimme wird installiert…</string>
     <string name="map_region_downloading">Routing für %1$s wird heruntergeladen · %2$d %%</string> <!-- format -->

@@ -166,8 +166,6 @@
     <string name="place_close">Sluiten</string>
     <string name="place_permanently_closed">Permanent gesloten</string>
     <string name="place_temporarily_closed">Tijdelijk gesloten</string>
-    <string name="settings_traffic_lights">Stoplicht-aanwijzingen</string>
-    <string name="settings_traffic_lights_hint">Voegt aanwijzingen toe zoals “voorbij het stoplicht, dan linksaf”. Voorlopig alleen Engels.</string>
     <string name="map_voice_downloading">Vela-stem wordt gedownload · %1$d %%</string>
     <string name="map_voice_installing">Vela-stem wordt geïnstalleerd…</string>
     <string name="map_region_downloading">Routes voor %1$s downloaden · %2$d%%</string> <!-- format -->
