@@ -391,8 +391,11 @@ object NavEngine {
                 val sayM = (if (dtn >= band * 0.85) band else round10(dtn)).coerceAtLeast(10.0)
                 val instruction = when {
                     isArrive -> nav().destinationAhead()
-                    firstForStep && lane != null -> nav().useLanesToDo(lane.side, lane.count, target.instruction)
-                    firstForStep -> target.instruction
+                    // spokenSign drops the secondary sign destinations for SPEECH (the banner keeps
+                    // the full sign) - speaking the whole sign took long enough that the next
+                    // prompt interrupted it mid-sentence.
+                    firstForStep && lane != null -> nav().useLanesToDo(lane.side, lane.count, nav().spokenSign(target.instruction))
+                    firstForStep -> nav().spokenSign(target.instruction)
                     // The step's SECOND prompt drops the sign-destination tail ("toward X"):
                     // the far band already named it, and repeating the whole thing at every
                     // band read as "the same shit in declining feet counts" off an exit
@@ -416,7 +419,7 @@ object NavEngine {
                 if (!voiceSilent) {
                     // Turn-now repeats short once any approach band already spoke the full
                     // instruction — "Take the ramp", not the whole sign again (see repeatShort).
-                    val turnText = if (spoken.isEmpty()) target.instruction else nav().repeatShort(target.instruction)
+                    val turnText = if (spoken.isEmpty()) nav().spokenSign(target.instruction) else nav().repeatShort(target.instruction)
                     events += NavEvent.Speak(turnText, interrupt = true)
                     events += NavEvent.Haptic(target.type) // firm, direction-coded buzz at the turn
                 }

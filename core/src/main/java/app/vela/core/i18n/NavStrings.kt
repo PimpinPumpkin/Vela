@@ -34,6 +34,14 @@ interface NavStrings {
      *  (English-first); only added when it makes sense (1–2 signals right before a surface-street turn). */
     fun passLights(count: Int): String = ""
 
+    /** The SPOKEN form of a sign instruction: the secondary sign destinations after a colon are
+     *  dropped ("Take the ramp toward I 5 North: Vancouver British Columbia" -> "... toward I 5
+     *  North"). The full sign stays on the banner; speaking it all took so long the next prompt
+     *  interrupted mid-sentence (real-drive report 2026-07-16 - Google speaks only the primary
+     *  destination too). Default = unchanged; English overrides (the colon convention is
+     *  osrmPhrase's own formatting, so per-language overrides are safe as tables adopt it). */
+    fun spokenSign(instruction: String): String = instruction
+
     /** A repeated prompt's SHORT form: the instruction with its sign-destination tail ("toward X")
      *  dropped. Spoken for a step's second/third announcement — the first one already named the
      *  destination, and re-reading the whole sign at every band read as spam off an exit (real-drive
@@ -170,6 +178,16 @@ object EnNavStrings : NavStrings {
     override fun useLanes(side: LaneSide, count: Int): String {
         val sideWord = when (side) { LaneSide.LEFT -> "left"; LaneSide.RIGHT -> "right"; LaneSide.CENTER -> "center" }
         return if (count > 1) "Use the $sideWord $count lanes" else "Use the $sideWord lane"
+    }
+
+    // Drop the secondary sign destinations: the colon only ever comes from osrmPhrase's own
+    // "ref: cities" sign formatting, and only after a " toward " - so a plain colon elsewhere
+    // (times, addresses) can never be touched.
+    override fun spokenSign(instruction: String): String {
+        val t = instruction.indexOf(" toward ")
+        if (t < 0) return instruction
+        val colon = instruction.indexOf(':', startIndex = t)
+        return if (colon > 0) instruction.substring(0, colon) else instruction
     }
 
     // "Take the ramp on the right toward CA-99 North, Downtown" -> "Take the ramp on the right".

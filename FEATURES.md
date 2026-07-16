@@ -232,7 +232,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   cross-street tier FADES with zoom (2026-07-17)** instead of popping: the nav camera's zoom is
   speed-scaled, so the old hard cut made every minor-street bubble appear or vanish at once as
   speed crossed the boundary - now they ease in over half a zoom level, and only at genuinely
-  slow speeds (Google shows that tier only when zoomed further than nav feasibly sits).
+  slow speeds (Google shows that tier only when zoomed further than nav feasibly sits). Thinned
+  further same day: tertiary roads ride the slow tier too, and bigger collision padding spaces
+  the survivors out - fewer symbols per frame. And the VOICE speaks only the primary sign
+  destination ("toward I 5 North", not the whole "...: Vancouver British Columbia" sign) - the
+  full sign stayed long enough in the mouth that the next prompt cut it off mid-sentence; the
+  banner keeps the complete text.
 - ✅ **Drive-feedback batch 2 (2026-07-17).** During nav the map now shows **gas stations only** -
   the one POI class worth a glance mid-drive; everything else hid (the full POI layer over the route
   read as clutter). **Pinch-zooming no longer detaches the free-drive follow**: zooming while the

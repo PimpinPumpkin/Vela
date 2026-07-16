@@ -94,6 +94,19 @@ class NavEngineTest {
         assertTrue("should emit an Arrived event", events.any { it is NavEvent.Arrived })
     }
 
+    /** The SPOKEN sign drops secondary destinations after the colon; plain instructions and
+     *  colons outside a sign ("Opens at 9:00") are untouched. */
+    @Test
+    fun spokenSignDropsSecondarySignDestinations() {
+        val en = app.vela.core.i18n.EnNavStrings
+        assertEquals(
+            "Take the ramp on the left toward I 5 North",
+            en.spokenSign("Take the ramp on the left toward I 5 North: Vancouver British Columbia"),
+        )
+        assertEquals("Turn right onto Main Street", en.spokenSign("Turn right onto Main Street"))
+        assertEquals("Arrive: 9:00 PM", en.spokenSign("Arrive: 9:00 PM")) // no " toward " -> untouched
+    }
+
     /** A MERGE announces at most twice (near band + turn-now): a long on-ramp used to narrate
      *  the same road three times in declining counts (real-drive report 2026-07-17). */
     @Test
