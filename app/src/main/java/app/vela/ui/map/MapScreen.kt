@@ -349,14 +349,26 @@ fun MapScreen(
     // tap raises it again. Suppressed whenever a focus surface owns the camera (search, a place,
     // directions, the results list) so it never fights that framing. Nav has its own follow.
     var followMe by remember { mutableStateOf(true) }
-    // The route's own road names + ref variants: the nav label bubbles must never call out the
-    // road being driven (Google labels only streets you cross). Ref variants cover the basemap's
+    // Roads already DRIVEN (entered by maneuvers up to the current step) + ref variants: the nav
+    // label bubbles must never call out the road being driven (Google labels only streets you
+    // cross), but the exclusion is per-step ON PURPOSE - the first cut excluded the WHOLE route,
+    // which hid exactly the label that matters most: the road you are about to turn onto ("the
+    // name of it needs to be right there", user 2026-07-16). Ref variants cover the basemap's
     // bare-number `ref` prop ("5") and the OSRM spelling ("I 5").
-    val navLabelExclude = remember(state.activeRoute, state.navigating) {
-        if (!state.navigating) emptyList() else state.activeRoute?.maneuvers?.flatMap { m ->
-            val refDigits = m.ref?.filter { it.isDigit() }
-            listOfNotNull(m.road, m.ref, refDigits)
-        }?.filter { it.isNotBlank() }?.distinct().orEmpty()
+    val navLabelExclude = remember(state.activeRoute, state.navigating, state.nav.stepIndex) {
+        if (!state.navigating) emptyList() else state.activeRoute?.maneuvers
+            ?.take(state.nav.stepIndex.coerceAtLeast(0))
+            ?.flatMap { m ->
+                val refDigits = m.ref?.filter { it.isDigit() }
+                listOfNotNull(m.road, m.ref, refDigits)
+            }?.filter { it.isNotBlank() }?.distinct().orEmpty()
+    }
+    // The next two maneuvers' target roads are force-INCLUDED in the label pass: a turn target
+    // often meets the route at a shared junction vertex, which a proper-crossing test can miss.
+    val navUpcomingRoads = remember(state.activeRoute, state.navigating, state.nav.stepIndex) {
+        if (!state.navigating) emptyList() else state.activeRoute?.maneuvers
+            ?.drop(state.nav.stepIndex)?.take(2)
+            ?.mapNotNull { m -> m.road?.takeIf { it.isNotBlank() } }.orEmpty()
     }
     var layersOpen by remember { mutableStateOf(false) } // the top-right layers panel
     // A programmatic camera jump far from the fix (a recents pick, a search hit, a pasted
@@ -814,6 +826,7 @@ fun MapScreen(
             navMode = state.navigating,
             navDriveMode = state.travelMode == app.vela.core.model.TravelMode.DRIVE,
             navLabelExclude = navLabelExclude,
+            navUpcomingRoads = navUpcomingRoads,
             // Follow yields to a manual pan AND to step preview: the per-frame follow ticker used
             // to keep re-pointing the camera at the puck while a banner swipe was trying to fly to
             // the previewed turn - the two fought at 60 fps (user 2026-07-14). The puck itself

@@ -280,7 +280,8 @@ fun VelaMapView(
     frameMarkers: Boolean,
     navMode: Boolean,
     navDriveMode: Boolean = false, // navigating a DRIVE route -> the aggressive car-mode declutter
-    navLabelExclude: List<String> = emptyList(), // the route's own road names/refs: never bubble-label the road you're ON
+    navLabelExclude: List<String> = emptyList(), // roads already DRIVEN: never bubble-label the road you're ON
+    navUpcomingRoads: List<String> = emptyList(), // the next turns' target roads: always bubble-labelled
     navFollowing: Boolean = true,
     navNorthUp: Boolean = false,
     // Free-drive follow (no route open): when true the camera tracks the live fix north-up and
@@ -506,6 +507,8 @@ fun VelaMapView(
     // MapLibre's placement fade. The query runs at most once per tick on the main thread (cheap,
     // loaded tiles only); the geometry math runs off it. An empty QUERY (tiles not loaded yet)
     // leaves the previous filter alone; an empty CROSSER set legitimately hides the tier.
+    val labelExcludeHolder = rememberUpdatedState(navLabelExclude)
+    val upcomingRoadsHolder = rememberUpdatedState(navUpcomingRoads)
     LaunchedEffect(navMode, routePolyline, styleRef) {
         val style = styleRef ?: return@LaunchedEffect
         if (!navMode || routePolyline.size < 2) return@LaunchedEffect
@@ -517,16 +520,19 @@ fun VelaMapView(
                     src.querySourceFeatures(arrayOf("transportation_name"), null)
                 }.getOrNull().orEmpty()
                 if (feats.isNotEmpty()) {
-                    // Window of route geometry around the current progress.
-                    val fromM = navPuck.progressM - 300.0
-                    val toM = navPuck.progressM + 4000.0
+                    // Window of route geometry around the current progress - kept NEAR the puck
+                    // (user 2026-07-16: callouts should hug the road you're on; a 4 km reach
+                    // labelled crossings far past the visible map).
+                    val fromM = navPuck.progressM - 150.0
+                    val toM = navPuck.progressM + 2000.0
                     val window = ArrayList<LatLng>()
                     for (k in routePolyline.indices) {
                         if (routeCum[k] in fromM..toM) window.add(routePolyline[k])
                     }
                     if (window.size >= 2) {
-                        val exclude = navLabelExclude
-                        val names = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                        val exclude = labelExcludeHolder.value
+                        val upcoming = upcomingRoadsHolder.value
+                        val crossers = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
                             val out = LinkedHashSet<String>()
                             for (f in feats) {
                                 val name = runCatching { f.getStringProperty("name") }.getOrNull() ?: continue
@@ -544,6 +550,10 @@ fun VelaMapView(
                             }
                             out.toList()
                         }
+                        // The next turns' target roads always get their bubble: a turn target
+                        // meets the route at a shared vertex, which the proper-crossing test
+                        // can miss (T-junctions especially).
+                        val names = (upcoming + crossers).filter { it !in exclude }.distinct()
                         if (names != lastApplied) {
                             lastApplied = names
                             runCatching {

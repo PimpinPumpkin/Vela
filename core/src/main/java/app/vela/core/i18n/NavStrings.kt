@@ -144,8 +144,19 @@ object EnNavStrings : NavStrings {
         val feet = meters * 3.28084
         if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} feet"
         else {
-            val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
-            if (miles == 1.0) "1 mile" else "$miles miles"
+            // Sub-mile distances SPEAK at quarter-mile granularity (user 2026-07-16: the voice
+            // read "zero point five miles"; a human says "half a mile"). Google phrases the
+            // whole band this way; the banner keeps the exact figure. Above a mile, decimals
+            // read fine ("1.2 miles").
+            when ((meters / 402.336).roundToInt().coerceAtLeast(1)) {
+                1 -> "a quarter mile"
+                2 -> "half a mile"
+                3 -> "three quarters of a mile"
+                else -> {
+                    val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
+                    if (miles == 1.0) "1 mile" else "$miles miles"
+                }
+            }
         }
     } else {
         if (meters < 950) "${(meters / 10).roundToInt() * 10} meters"
