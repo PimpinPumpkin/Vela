@@ -161,6 +161,37 @@ class NavEngineTest {
         assertTrue("30 m exceeds the 22 m walking corridor - should reroute", sawWalkReroute)
     }
 
+    /** Heading term: a wrong turn onto a road that stays INSIDE the distance corridor never used
+     *  to latch off-route - the engine kept guiding on the old route with no reroute and no
+     *  redrawn line. Moving against the route's direction now counts as off-route hits. */
+    @Test
+    fun wrongWayInsideCorridorStillReroutes() {
+        val route = straightRoute() // due north
+        var state = NavState()
+        var sawReroute = false
+        repeat(6) { i ->
+            // Fixes ON the line (offDist ~0) but coursing EAST, perpendicular to the route.
+            val pt = LatLng(37.0010 + i * 0.0001, -122.0000)
+            val (next, events) = NavEngine.update(route, state, pt, speedMps = 10.0, bearingDeg = 90.0)
+            state = next
+            if (events.any { it is NavEvent.RerouteNeeded }) sawReroute = true
+        }
+        assertTrue("driving 90 deg against the route must reroute even inside the corridor", sawReroute)
+    }
+
+    @Test
+    fun alignedCourseInsideCorridorDoesNotLatch() {
+        val route = straightRoute() // due north
+        var state = NavState()
+        repeat(6) { i ->
+            val pt = LatLng(37.0010 + i * 0.0001, -122.0000)
+            val (next, events) = NavEngine.update(route, state, pt, speedMps = 10.0, bearingDeg = 2.0)
+            state = next
+            assertTrue("aligned course on the line must not reroute", events.none { it is NavEvent.RerouteNeeded })
+        }
+        assertTrue(!state.offRoute)
+    }
+
     /** The off-route corridor scales with GPS accuracy (OsmAnd-style) and stays mode-relative:
      *  tighter on a clean fix, wider on a noisy one, foot < bike < drive, clamped both ends. */
     @Test

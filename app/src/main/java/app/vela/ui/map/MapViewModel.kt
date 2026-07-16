@@ -709,6 +709,8 @@ class MapViewModel @Inject constructor(
                     navSession.onLocation(
                         here, app.vela.ui.Units.imperial.value, speed?.toDouble(),
                         accuracyM = if (loc.hasAccuracy()) loc.accuracy.toDouble() else null,
+                        // Course for the engine's heading-vs-route off-route term.
+                        bearingDeg = bearing?.toDouble(),
                     )
                     lastNavFedMs = nowMs
                     updateSpeedLimit(here) // posted-limit badge for the road under the puck (off-thread)

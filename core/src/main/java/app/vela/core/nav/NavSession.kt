@@ -248,7 +248,7 @@ class NavSession @Inject constructor(
         }
     }
 
-    fun onLocation(loc: LatLng, imperial: Boolean = false, speedMps: Double? = null, accuracyM: Double? = null) {
+    fun onLocation(loc: LatLng, imperial: Boolean = false, speedMps: Double? = null, accuracyM: Double? = null, bearingDeg: Double? = null) {
         val s = _state.value
         val route = s.route ?: return
         if (!s.navigating || s.arrived) return
@@ -272,7 +272,7 @@ class NavSession @Inject constructor(
         // tighter than driving because the path is narrow. See NavEngine.offRouteCorridor.
         val offRoute = NavEngine.offRouteCorridor(mode, accuracyM)
         val farOff = NavEngine.farOffDistance(mode, offRoute)
-        val (next, events) = NavEngine.update(route, nav, loc, imperial, speedMps, movingFloor, offRoute, farOff)
+        val (next, events) = NavEngine.update(route, nav, loc, imperial, speedMps, movingFloor, offRoute, farOff, bearingDeg)
         val maneuver = route.maneuvers.getOrNull(next.stepIndex)
         // Guard the write on route IDENTITY: a reroute/faster-route can swap route+NavState while
         // this update was computing on the OLD route — writing `next` (old-route traveledM /

@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
@@ -110,6 +111,9 @@ fun ManeuverBanner(
     // (max(800 m, v×30 s)): a 75 mph exit needs the lanes ~1 km out, a city turn at 800 m.
     laneShowM: Double = LANE_SHOW_M,
     previewing: Boolean = false,
+    // Off-route latch: the banner headline becomes "Rerouting..." (Google-style) instead of a stale
+    // old-route instruction. Step preview still shows the previewed step normally.
+    offRoute: Boolean = false,
     onPreviewNext: () -> Unit = {},
     onPreviewPrev: () -> Unit = {},
     onExitPreview: () -> Unit = {},
@@ -190,15 +194,20 @@ fun ManeuverBanner(
     ) {
         Column(Modifier.padding(horizontal = if (compact) 12.dp else 18.dp, vertical = if (compact) 8.dp else 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(maneuverIcon(type), contentDescription = null, modifier = Modifier.size(if (compact) 36.dp else 54.dp))
+                val rerouting = offRoute && !previewing
+                Icon(
+                    if (rerouting) Icons.Filled.Refresh else maneuverIcon(type),
+                    contentDescription = null,
+                    modifier = Modifier.size(if (compact) 36.dp else 54.dp),
+                )
                 Spacer(Modifier.width(if (compact) 10.dp else 18.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        formatDistance(distanceMeters),
+                        if (rerouting) stringResource(R.string.nav_rerouting) else formatDistance(distanceMeters),
                         style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                     )
-                    val signs = roadSigns(text, ref)
+                    val signs = if (rerouting) emptyList() else roadSigns(text, ref)
                     if (signs.isNotEmpty()) {
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -206,7 +215,7 @@ fun ManeuverBanner(
                             modifier = Modifier.padding(top = 2.dp, bottom = 1.dp),
                         ) { signs.forEach { SignChip(it) } }
                     }
-                    Text(
+                    if (!rerouting) Text(
                         text.ifEmpty { stringResource(R.string.nav_maneuver_continue) },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,

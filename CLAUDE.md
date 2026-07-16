@@ -1526,7 +1526,14 @@ architecture note.
   narrow. Driving self-tightens below the old flat 40 m when GPS is clean - which is the "40 is too
   high" the user hit - without inviting false reroutes when GPS degrades. `MapViewModel` feeds
   `loc.accuracy` (null → a typical-GPS default; the dead-reckoning path passes null). Don't reintroduce
-  a fixed sub-30 m distance - it was rejected as extreme (2026-07-15), the whole point is it scales),
+  a fixed sub-30 m distance - it was rejected as extreme (2026-07-15), the whole point is it scales.
+  HEADING TERM (2026-07-16): distance alone can't catch a wrong turn onto a road that runs INSIDE the
+  corridor of the planned one - the projection kept snapping the driver onto the OLD route, guidance
+  carried on with its turns, no reroute, no redrawn line (the "not even rerouting" report). A moving
+  fix coursing >HEADING_OFF_DEG (60) against the route's local bearing counts as an off-route hit even
+  inside the corridor (`bearingDeg` rides onLocation -> update; null in replays/tests = unchanged), and
+  a heading-diverged fix never counts toward onRouteStreak (else back-on-course would discard the
+  legit wrong-way reroute mid-fetch). The 3-hit debounce absorbs turn transients/lane changes),
   off-route measured on the
   windowed/anchored projection (never whole-polyline min), reroutes are single-flight + cooldown +
   latch-clear-on-failure (a failed fetch must NOT kill rerouting - the event is edge-triggered), and

@@ -1197,7 +1197,14 @@ fun VelaMapView(
                 val predicted = navPuck.targetM + navPuck.reckonedM
                 val eased = navPuck.progressM + (predicted - navPuck.progressM) * (1f - kotlin.math.exp(-dtE / 0.25f))
                 navPuck.progressM = maxOf(navPuck.progressM, eased) // monotonic — never backward
-                val (pt, segBrg) = pointAtMeters(routePolyline, routeCum, navPuck.progressM)
+                val (ptC, segBrg) = pointAtMeters(routePolyline, routeCum, navPuck.progressM)
+                // Lateral de-jitter: drawn straight off the polyline, the puck traced every
+                // lane-level micro-kink of the dense OSM geometry - side-to-side wiggle "like a
+                // record needle" (user 2026-07-16). Average a short along-route window instead:
+                // pure geometry smoothing, no temporal lag, corners round by centimetres.
+                val (ptA, _) = pointAtMeters(routePolyline, routeCum, navPuck.progressM - PUCK_SMOOTH_WIN_M)
+                val (ptB, _) = pointAtMeters(routePolyline, routeCum, navPuck.progressM + PUCK_SMOOTH_WIN_M)
+                val pt = LatLng((ptA.lat + ptC.lat + ptB.lat) / 3.0, (ptA.lng + ptC.lng + ptB.lng) / 3.0)
                 navPuck.displayBearing = if (navPuck.displayBearing.isNaN()) segBrg
                     else smoothBearing(navPuck.displayBearing, segBrg, dtE, 0.2f)
                 navPuck.drawn = pt // the camera follows this smoothed point, not the raw fix
@@ -3727,12 +3734,16 @@ private fun indexAtMeters(cum: DoubleArray, m: Double): Int {
 }
 
 /** Point + heading at [meters] along the route. */
+private const val PUCK_SMOOTH_WIN_M = 8.0 // half-window of the puck's along-route position average
+
 private fun pointAtMeters(poly: List<LatLng>, cum: DoubleArray, meters: Double): Pair<LatLng, Float> {
     if (poly.size < 2) return (poly.firstOrNull() ?: LatLng(0.0, 0.0)) to 0f
     val total = cum.last()
     val m = meters.coerceIn(0.0, total)
-    var i = 1
-    while (i < poly.size - 1 && cum[i] < m) i++
+    // Binary search (cum is monotonic): this runs 3x per ticker frame now (the puck's smoothing
+    // window) - the old linear scan restarted at vertex 0 every call, O(vertices) per frame.
+    val idx = java.util.Arrays.binarySearch(cum, m)
+    val i = (if (idx >= 0) idx else -idx - 1).coerceIn(1, poly.size - 1)
     val a = poly[i - 1]
     val b = poly[i]
     val segLen = cum[i] - cum[i - 1]
