@@ -80,6 +80,20 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
         ((Math.toDegrees(renderer.yawRad().toDouble()) + panoHeading + 90.0) % 360.0 + 360.0).toFloat() % 360f
     fun currentFovDeg(): Float = renderer.fovDeg()
 
+    /** D-pad look-around: pan by a fraction of the view per key press (the fork's engage-model key
+     *  path for the drag gesture - every gesture needs one, docs/dpad.md rule 3). */
+    fun panByFraction(fracX: Float, fracY: Float) {
+        if (width <= 0 || height <= 0) return
+        renderer.dragBy(fracX * width, fracY * height, width, height)
+        requestRender()
+    }
+
+    /** D-pad zoom: one step in (>1) or out (<1), same clamp as pinch. */
+    fun zoomStep(scale: Float) {
+        renderer.zoomBy(scale)
+        requestRender()
+    }
+
     private var panoHeading = 0f
 
     @Suppress("ClickableViewAccessibility")
