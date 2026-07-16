@@ -343,6 +343,24 @@ class MapViewModel @Inject constructor(
         // Tunnel dead reckoning: keeps nav estimating along the route when GPS drops (see the
         // loop's own comment). Runs for the process lifetime; every tick self-gates on nav state.
         viewModelScope.launch { tunnelDeadReckonLoop() }
+        // Trip flight recorder (all no-ops unless a trip is recording): every line the voice
+        // actually speaks, a 30 s UI frame-pacing sample, and battery every ~2 min - so a shared
+        // trip answers "what did it say", "was it actually dropping frames" and "what did the
+        // drive cost" by itself.
+        voice.onSpoken = { tripStore.note("S", it) }
+        viewModelScope.launch {
+            var beat = 0
+            while (true) {
+                kotlinx.coroutines.delay(30_000)
+                if (!_state.value.navigating) { app.vela.ui.map.FrameJank.sampleAndReset(); continue }
+                tripStore.note("J", app.vela.ui.map.FrameJank.sampleAndReset())
+                if (beat++ % 4 == 0) {
+                    val bm = appContext.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
+                    val pct = bm?.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
+                    if (pct in 0..100) tripStore.note("B", "$pct")
+                }
+            }
+        }
         // Region bias for the scrape (gl=): the cell network's country is the honest "where is
         // the phone" signal (roaming-aware, no GPS wait, no permission), falling back to the
         // locale's region. Refreshed each launch. Fixes the US-shaped results a non-US user got
