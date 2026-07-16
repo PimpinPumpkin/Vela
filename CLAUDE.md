@@ -405,9 +405,14 @@ Defaults that make the safe path the easy one:
 - **Nav declutter is MODE-AWARE (2026-07-16):** the aggressive strip (basemap shields, bike/trails,
   hillshade, transit lines, vela-addr numbers, gas-stations-only POIs, addr-refresh pause) keys on
   navMode && navDriveMode (DRIVE routes only) - walking/biking keeps all of it (a bike route needs
-  the bike accents). The nav label bubbles EXCLUDE the route's own road names/refs (navLabelExclude,
-  computed in MapScreen from the maneuvers, name + ref props both) so the road you're on never
-  labels itself; ensureNavRoadLabels self-gates on (on, dark, exclude) with lastNavLabelKey nulled
+  the bike accents). The nav label bubbles show ONLY streets that geometrically CROSS the route ahead (a
+  quantized pass: querySourceFeatures over transportation_name with a class filter + segment
+  intersection against the route window, re-run once per 400 m quantum of progress or when the
+  upcoming turn targets change - NEVER on a short timer, the 4 s version was itself a
+  frame-hitch: main-thread feature materialization + placement churn per filter change). Roads
+  already DRIVEN are excluded per step (navLabelExclude - excluding the whole route hid the turn
+  target's label), the next turns' targets are force-included (a turn target meets the route at
+  a shared vertex, which a proper-crossing test can miss); ensureNavRoadLabels self-gates on (on, dark, exclude) with lastNavLabelKey nulled
   on style reload. The current-road shield chip lives on the TOP banner card (currentRef =
   maneuvers[liveStep-1].ref; the exit fold adopts the folded branch's road/ref so it survives
   on-ramps). Rerouting plays a two-note earcon (VoiceGuide.reroutingChime, in-process synth,

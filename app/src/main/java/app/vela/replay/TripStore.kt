@@ -62,10 +62,13 @@ class TripStore @Inject constructor(
     }
 
     /** Append a fix to the active trip (no-op if none is recording). */
-    fun record(loc: Location) = synchronized(lock) {
+    fun record(loc: Location, offRoute: Boolean = false) = synchronized(lock) {
         val f = active ?: return
         runCatching {
-            f.appendText("${loc.latitude},${loc.longitude},${loc.time},${loc.bearing},${loc.speed}\n")
+            // offRoute LAST (appended column, 2026-07-16): the parser reads fixes by index, so
+            // old files and old parsers stay compatible - and an audit can now see exactly which
+            // fixes the engine considered off-route, not just where the reroute segments landed.
+            f.appendText("${loc.latitude},${loc.longitude},${loc.time},${loc.bearing},${loc.speed},${if (offRoute) 1 else 0}\n")
         }
         Unit
     }

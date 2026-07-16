@@ -513,18 +513,37 @@ fun VelaMapView(
         val style = styleRef ?: return@LaunchedEffect
         if (!navMode || routePolyline.size < 2) return@LaunchedEffect
         var lastApplied: List<String>? = null
+        // QUANTIZED (2026-07-16, the "camera dropping frames since the bubbles" report): the
+        // first cut ran the query every 4 s and re-filtered whenever the sliding window moved a
+        // name in or out - querySourceFeatures materializes every loaded road-name feature on
+        // the MAIN thread, and each setFilter re-runs symbol placement, so the pass itself was
+        // a periodic frame hitch. Now the window snaps to 400 m quanta of progress: the whole
+        // pass (query + geometry + setFilter) runs only when the drive crosses into a new
+        // quantum or the upcoming turn targets change - once per ~400 m instead of 15x/minute -
+        // and the query carries a class filter so far fewer features are materialized at all.
+        var lastQuantum = Long.MIN_VALUE
+        var lastUpcoming: List<String>? = null
+        val classFilter = Expression.match(
+            Expression.get("class"), Expression.literal(false),
+            *(NAV_LABEL_MAJOR_CLASSES + NAV_LABEL_SLOW_CLASSES).map { Expression.stop(it, true) }.toTypedArray(),
+        )
         while (true) {
+            val quantum = (navPuck.progressM / 400.0).toLong()
+            val upcomingNow = upcomingRoadsHolder.value
+            if (quantum == lastQuantum && upcomingNow == lastUpcoming) {
+                kotlinx.coroutines.delay(2_000)
+                continue
+            }
             val src = style.getSource("openmaptiles") as? VectorSource
             if (src != null) {
                 val feats = runCatching {
-                    src.querySourceFeatures(arrayOf("transportation_name"), null)
+                    src.querySourceFeatures(arrayOf("transportation_name"), classFilter)
                 }.getOrNull().orEmpty()
                 if (feats.isNotEmpty()) {
-                    // Window of route geometry around the current progress - kept NEAR the puck
-                    // (user 2026-07-16: callouts should hug the road you're on; a 4 km reach
-                    // labelled crossings far past the visible map).
-                    val fromM = navPuck.progressM - 150.0
-                    val toM = navPuck.progressM + 2000.0
+                    // Window of route geometry around the current QUANTUM (not the live puck, so
+                    // the include set is byte-stable between quanta): a little behind, ~2 km ahead.
+                    val fromM = quantum * 400.0 - 200.0
+                    val toM = quantum * 400.0 + 2200.0
                     val window = ArrayList<LatLng>()
                     for (k in routePolyline.indices) {
                         if (routeCum[k] in fromM..toM) window.add(routePolyline[k])
@@ -563,10 +582,14 @@ fun VelaMapView(
                                     ?.setFilter(navLabelFilter(NAV_LABEL_SLOW_CLASSES, exclude, names))
                             }
                         }
+                        // Mark the quantum done only after a usable pass, so an early empty
+                        // query (tiles still loading) retries on the next tick.
+                        lastQuantum = quantum
+                        lastUpcoming = upcomingNow
                     }
                 }
             }
-            kotlinx.coroutines.delay(4_000)
+            kotlinx.coroutines.delay(2_000)
         }
     }
     // Accelerometer feed for the puck's speed Kalman — collected only during nav, written into a
