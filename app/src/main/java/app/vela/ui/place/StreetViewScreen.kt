@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -156,6 +159,11 @@ fun StreetViewScreen(
                     sentYaw = view.currentYawDeg()
                     onPose(pano.lat, pano.lng, sentYaw)
                 }
+                // The frame loop is keyed on `view` (which survives a pano change), so its closure
+                // must read the CURRENT pano's position, not the one captured when it started -
+                // otherwise moving the pano (map tap) then rotating reported the OLD coords and the
+                // map puck snapped back to the start pano (user 2026-07-16).
+                val posPano by androidx.compose.runtime.rememberUpdatedState(pano)
                 LaunchedEffect(view) {
                     while (true) {
                         androidx.compose.runtime.withFrameNanos { }
@@ -163,7 +171,7 @@ fun StreetViewScreen(
                         fov = view.currentFovDeg()
                         if (sentYaw.isNaN() || abs(normDeg(yaw - sentYaw)) > 1f) {
                             sentYaw = yaw
-                            onPose(pano.lat, pano.lng, yaw)
+                            onPose(posPano.lat, posPano.lng, yaw)
                         }
                     }
                 }
@@ -305,12 +313,15 @@ fun StreetViewScreen(
                         // Cap the date list to the pane's own height minus room for the toggle,
                         // the bottom padding, and the top-right fullscreen button (user 2026-07-16:
                         // a spot with many years spilled off the top and occluded that button).
-                        // Newest-first, and the list SCROLLS when the captures outnumber the cap.
+                        // The reserve INCLUDES the status-bar inset the fullscreen button sits under
+                        // (a fixed dp reserve let the list top reach the button on tall status bars);
+                        // newest-first, and the list SCROLLS when the captures outnumber the cap.
+                        val topReserve = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 200.dp
                         Column(
                             horizontalAlignment = Alignment.End,
                             verticalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier
-                                .heightIn(max = (paneH - 172.dp).coerceAtLeast(96.dp))
+                                .heightIn(max = (paneH - topReserve).coerceAtLeast(96.dp))
                                 .verticalScroll(rememberScrollState()),
                         ) {
                         for (t in pano.history) {
