@@ -16,7 +16,6 @@ import com.graphhopper.routing.WeightingFactory
 import com.graphhopper.routing.util.EdgeFilter
 import com.graphhopper.routing.weighting.SpeedWeighting
 import com.graphhopper.util.EdgeIteratorState
-import com.graphhopper.util.GHUtility
 import com.graphhopper.util.Instruction
 import org.json.JSONArray
 import java.io.File
@@ -197,11 +196,17 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
             putObject("graph.dataaccess", "MMAP") // ART lacks RAMDataAccess's VarHandle method
             putObject("graph.encoded_values", if (v2) ENCODED_VALUES_V2 else ENCODED_VALUES)
             putObject("import.osm.ignored_highways", "") // import-only; required by init() validation
-            val names = if (v2) listOf(PROFILE, PROFILE_AVOID_TOLL, PROFILE_AVOID_MOTORWAY) else listOf(PROFILE)
-            profiles = names.map { Profile(it).setCustomModel(GHUtility.loadCustomModelFromJar("car.json")) }
-            setCHProfiles(names.map { CHProfile(it) }) // prebuilt CH → fast on-device routing
         }
         hopper.init(cfg)
+        // Profiles are set DIRECTLY, never through init(): init() round-trips every profile's
+        // custom model through Jackson (writeValueAsBytes + readValue, GraphHopper.java ~1631),
+        // and bean-introspecting Statement (a Java 17 record) needs Class.getRecordComponents -
+        // which ART only has from API 34. On the API 26-33 devices Vela still supports EVERY graph
+        // load threw before ever touching the graph. The direct setters skip Jackson entirely;
+        // GraphHopper's own javadoc shows this exact pattern for programmatic setup. (ars18.)
+        val names = if (v2) listOf(PROFILE, PROFILE_AVOID_TOLL, PROFILE_AVOID_MOTORWAY) else listOf(PROFILE)
+        hopper.setProfiles(names.map { Profile(it).setCustomModel(carModel()) })
+        hopper.chPreparationHandler.setCHProfiles(names.map { CHProfile(it) }) // prebuilt CH → fast on-device routing
         hopper.importOrLoad()
         return hopper
     }
@@ -257,6 +262,23 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
          *  regions), falling through to the next-smallest if that graph can't make the trip. */
         internal fun inBox(s: Double, w: Double, n: Double, e: Double, lat: Double, lng: Double) =
             lat in s..n && lng in w..e
+
+        /** The bundled `car.json` custom model, built PROGRAMMATICALLY - never through Jackson.
+         *  `GHUtility.loadCustomModelFromJar` bean-introspects `Statement`, a Java 17 record, and
+         *  Jackson's record probe needs `Class.getRecordComponents` - which ART only has from API
+         *  34. On the API 26-33 devices Vela still supports EVERY graph load threw before ever
+         *  touching the graph (the introspection runs before any registered deserializer is
+         *  consulted, so a configured mapper doesn't help). Record CONSTRUCTORS work fine on ART;
+         *  only the reflection probe is missing. This mirrors the jar's car.json EXACTLY
+         *  (distance_influence 90; priority: if !car_access multiply_by 0; speed: if true limit_to
+         *  car_average_speed) so the content - and with it the baked per-profile version hashes -
+         *  matches a model parsed from the file (asserted by GraphHopperRouterTest.carModelMatchesJar).
+         *  Keep it in lockstep with the bundled car.json when GraphHopper is upgraded. (ars18.) */
+        internal fun carModel(): com.graphhopper.util.CustomModel =
+            com.graphhopper.util.CustomModel()
+                .setDistanceInfluence(90.0)
+                .addToPriority(com.graphhopper.json.Statement.If("!car_access", com.graphhopper.json.Statement.Op.MULTIPLY, "0"))
+                .addToSpeed(com.graphhopper.json.Statement.If("true", com.graphhopper.json.Statement.Op.LIMIT, "car_average_speed"))
 
         private const val PROFILE = "car"
         private const val PROFILE_AVOID_TOLL = "car_avoid_toll"
