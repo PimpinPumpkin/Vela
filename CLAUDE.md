@@ -249,6 +249,31 @@ Defaults that make the safe path the easy one:
   SAME final pool (the streaming `onPartial` paint keeps first dots fast). The semaphore is a class field
   so overlapping calls (a pan mid-load) share the cap. **Don't unbound this fan-out**; if a dense area
   still spikes, lower the permit or move the scrape parse off `parseToJsonElement` to a streaming reader.
+- **The MS building-overlay gate is BOUNDED render-probing; keep its three rules (2026-07-17,
+  `VelaMapView` `runOvlGate`).** The overlay (`vela-ovl-*`) is drawn beneath OSM `building` to fill
+  OSM's gaps, so where OSM is dense it is pure occluded overdraw; a gate probes rendered OSM
+  coverage and shows/hides the whole overlay per viewport. Rules learned the hard way on a Pixel 4a:
+  (1) `queryRenderedFeatures` is a SYNCHRONOUS main-to-render-thread round trip and the map's idle
+  events can fire per frame (the puck loop nudges renders), so events only mark the verdict dirty -
+  probes run at most once per `OVL_GATE_MIN_GAP_MS` (1.2 s), 12 points, z16+ only. Probing straight
+  from an idle event froze the 4a to ~1 fps. (2) Measure coverage by AREA (grid points on a
+  building), never by feature COUNT - tile generalization merges a dense downtown block into 2-3
+  giant polygons, and a count reads that as "empty" and draws MS over a city core. (3) Layers are
+  born HIDDEN and only REVEAL after `OnDidBecomeIdle` (a finished render): a "sparse" verdict
+  before tiles land is indistinguishable from a real gap, and acting on it flashes MS over a city
+  for ~3 s. Hiding is always safe immediately. A floor-blocked call schedules ONE deferred retry
+  (`postDelayed`) - on a truly idle map there is no later event, and without the retry an
+  uncommitted verdict sticks forever (the overlay never appeared in a plains town). Gate state
+  (`ovlGateKey`/`ovlDirty`/`ovlLastEval`/`ovlRenderSettled`) is COMPOSABLE-scoped because
+  `getMapAsync` can register listeners twice; per-registration state made both copies probe.
+  User off-switch: Settings → Advanced "Fill missing buildings" (`BuildingOverlay`); debug badge +
+  fps readout: Settings → Developer (`BuildingDebug`), badge in `MapScreen`.
+- **Building zoom tiers are deliberate, Google-matched (2026-07-17).** Flat `building` fill z16-24
+  (was 14); `building-3d` extrusions z17+ (was 16), growing 30% to full height by z19
+  (`applyBuilding3dGeometry`, shared by all four palettes) with `fillExtrusionVerticalGradient(true)`
+  so faces read discrete. At ~500 ft dense-city towers used to lean over and bury the roads. The
+  search/place fly-to lands at z15.5 (~1000 ft, matches the locate fly) so a city search arrives
+  BELOW every building tier - roads+labels+POIs only - instead of slamming all of it at z16.5.
 - **Memory: the browse map runs near the heap ceiling, so keep allocation LOW (2026-07-13).**
   Panning already churns ~180 MB/12 s at baseline (ambient POI scrape + parse per pan) - this is
   pre-existing (0.4.542 hit ~260 MB too), close enough to the default ~256 MB heap that any EXTRA
