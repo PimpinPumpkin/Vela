@@ -1491,16 +1491,19 @@ private fun VoiceRow(
         Spacer(Modifier.width(8.dp))
         when {
             downloading -> CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-            active -> IconButton(onClick = onDelete) {
+            active -> IconButton(onClick = onDelete, modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape)) {
                 Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_voice_row_remove, v.displayName), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             installed -> {
-                OutlinedButton(onClick = onUse) { Text(stringResource(R.string.settings_voice_row_use)) }
-                IconButton(onClick = onDelete) {
+                // Both controls carry the D-pad ring like every other control on this screen — without
+                // it there was no visible focus, so on a keypad phone the Use/Delete pair read as
+                // unreachable/"can't move sideways" (dpad-vela user report 2026-07-16).
+                OutlinedButton(onClick = onUse, modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape)) { Text(stringResource(R.string.settings_voice_row_use)) }
+                IconButton(onClick = onDelete, modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape)) {
                     Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_voice_row_remove, v.displayName), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            else -> OutlinedButton(onClick = onDownload, enabled = !anyDownloading) { Text(stringResource(R.string.settings_download)) }
+            else -> OutlinedButton(onClick = onDownload, enabled = !anyDownloading, modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape)) { Text(stringResource(R.string.settings_download)) }
         }
     }
     if (downloading) LinearProgressIndicator(progress = { downloadPct }, modifier = Modifier.fillMaxWidth())
