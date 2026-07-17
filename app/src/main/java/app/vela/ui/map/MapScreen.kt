@@ -322,8 +322,8 @@ fun MapScreen(
     // A search producing results, or any place selection, ends the entry page in BOTH input
     // modes (under touch clearFocus already did; under D-pad clearFocus leaves focus in the
     // tree, so close it here). Pick-mode keeps the overlay up (handled via searchOpen below).
-    LaunchedEffect(state.results.size, state.selected, state.pickingOrigin, state.pickingStop) {
-        if (!state.pickingOrigin && !state.pickingStop &&
+    LaunchedEffect(state.results.size, state.selected, state.pickingOrigin, state.pickingDest, state.pickingStop) {
+        if (!state.pickingOrigin && !state.pickingDest && !state.pickingStop &&
             (state.results.isNotEmpty() || state.selected != null)
         ) {
             searchExpanded = false
@@ -331,7 +331,7 @@ fun MapScreen(
     }
     // The search overlay is open when the entry page is expanded OR we're picking a custom
     // directions origin/stop (that opens the same overlay WITHOUT focusing the field).
-    val searchOpen = searchExpanded || state.pickingOrigin || state.pickingStop
+    val searchOpen = searchExpanded || state.pickingOrigin || state.pickingDest || state.pickingStop
     // The results panel is open (not collapsed to the "N results" pill) → hide the bottom map
     // chrome (scale bar / locate FAB / Search this area) so it never draws on top of the list at
     // ANY size, not just full screen. The panel and the chrome are siblings in the same Box and the
@@ -462,7 +462,7 @@ fun MapScreen(
                 !state.directionsOpen && state.activeRoute == null && state.routes.isEmpty() &&
                 state.selected == null &&
                 (state.results.isEmpty() || state.resultsCollapsed) -> mapEngaged = false
-            searchOpen -> { searchExpanded = false; focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickStop() }
+            searchOpen -> { searchExpanded = false; focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickDestination(); vm.cancelPickStop() }
             state.editingStops -> vm.closeStopsEditor()
             state.showSteps -> vm.closeSteps()
             // In-nav search: BACK peels the results list / the chip row before it can end the
@@ -1160,8 +1160,11 @@ fun MapScreen(
                             else (state.selected?.name ?: stringResource(R.string.mapscreen_destination)),
                             stops = state.directionsWaypoints.map { it.name },
                             showStopControls = state.travelMode != app.vela.core.model.TravelMode.TRANSIT,
-                            onEditOrigin = if (state.directionsReversed) null else vm::beginPickOrigin,
-                            onEditDestination = if (state.directionsReversed) vm::beginPickOrigin else null,
+                            // Both ends are editable now (issue #170): the your-location end keeps the
+                            // origin picker; the PLACE end swaps the destination in place, keeping the
+                            // origin and stops (backing out used to lose the custom origin).
+                            onEditOrigin = if (state.directionsReversed) vm::beginPickDestination else vm::beginPickOrigin,
+                            onEditDestination = if (state.directionsReversed) vm::beginPickOrigin else vm::beginPickDestination,
                             onEditStops = vm::openStopsEditor,
                             onAddStop = vm::openStopsEditor,
                             onSwap = vm::swapDirections,
@@ -1189,7 +1192,7 @@ fun MapScreen(
                             // a run search / a pick close it instead.
                             if (it) searchExpanded = true else if (!dpadMode) searchExpanded = false
                         },
-                        onBack = if (searchOpen) ({ searchExpanded = false; focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickStop() }) else null,
+                        onBack = if (searchOpen) ({ searchExpanded = false; focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickDestination(); vm.cancelPickStop() }) else null,
                         offline = state.offline,
                         dpadMode = dpadMode,
                         onMic = onMic,
@@ -1228,7 +1231,7 @@ fun MapScreen(
                         // fills the entry page with suggestions as usual.
                         searchOpen && (
                             searchFocused || state.results.isEmpty() ||
-                                ((state.pickingOrigin || state.pickingStop) && state.query.isBlank())
+                                ((state.pickingOrigin || state.pickingDest || state.pickingStop) && state.query.isBlank())
                             ) -> SearchEntryContent(
                             suggestions = state.suggestions,
                             saved = state.saved,
@@ -1238,12 +1241,15 @@ fun MapScreen(
                             work = state.work,
                             assigning = state.assigningShortcut,
                             pickingOrigin = state.pickingOrigin,
+                            pickingDest = state.pickingDest,
                             pickingStop = state.pickingStop,
                             onCancelPickStop = vm::cancelPickStop,
                             onUseMyLocation = vm::useMyLocationAsOrigin,
                             onChooseOnMap = {
                                 focusManager.clearFocus()
-                                if (state.pickingOrigin) vm.chooseOriginOnMap() else vm.chooseStopOnMap()
+                                if (state.pickingOrigin) vm.chooseOriginOnMap()
+                                else if (state.pickingDest) vm.chooseDestOnMap()
+                                else vm.chooseStopOnMap()
                             },
                             onPickSuggestion = {
                                 focusManager.clearFocus()
@@ -2852,8 +2858,11 @@ private fun ChooseOnMapOverlay(
             ) {
                 Text(
                     stringResource(
-                        if (target == MapPick.ORIGIN) R.string.mapscreen_choose_origin_hint
-                        else R.string.mapscreen_choose_stop_hint,
+                        when (target) {
+                            MapPick.ORIGIN -> R.string.mapscreen_choose_origin_hint
+                            MapPick.DEST -> R.string.mapscreen_choose_dest_hint
+                            else -> R.string.mapscreen_choose_stop_hint
+                        },
                     ),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f),
@@ -2883,8 +2892,11 @@ private fun ChooseOnMapOverlay(
             Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
             Text(
                 stringResource(
-                    if (target == MapPick.ORIGIN) R.string.mapscreen_choose_set_start
-                    else R.string.mapscreen_choose_set_stop,
+                    when (target) {
+                        MapPick.ORIGIN -> R.string.mapscreen_choose_set_start
+                        MapPick.DEST -> R.string.mapscreen_choose_set_dest
+                        else -> R.string.mapscreen_choose_set_stop
+                    },
                 ),
             )
         }
@@ -2903,6 +2915,7 @@ private fun SearchEntryContent(
     work: SavedPlace?,
     assigning: ShortcutKind?,
     pickingOrigin: Boolean = false,
+    pickingDest: Boolean = false,
     pickingStop: Boolean = false,
     onCancelPickStop: () -> Unit = {},
     onUseMyLocation: () -> Unit = {},
@@ -2963,7 +2976,7 @@ private fun SearchEntryContent(
         }
         // "Choose on map" — leave the search overlay and set this endpoint by moving a crosshair
         // over the live map (or long-pressing), Google-style. Offered for both origin and stop.
-        if (pickingOrigin || pickingStop) {
+        if (pickingOrigin || pickingDest || pickingStop) {
             SuggestionRow(
                 icon = Icons.Default.Place,
                 tint = MaterialTheme.colorScheme.primary,
