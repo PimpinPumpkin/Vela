@@ -560,6 +560,53 @@ object PoiIcons {
         return Expression.raw(sb.toString())
     }
 
+    // The list-icon keys a saved-place map pin can carry (PlaceList.icon), as classic
+    // Material Icons codepoints (the bundled MaterialIcons-Regular.ttf).
+    private val SAVED_CODEPOINTS = mapOf(
+        "bookmark" to 0xe866, "star" to 0xe838, "favorite" to 0xe87d, "flag" to 0xe153,
+        "place" to 0xe55f, "restaurant" to 0xe56c, "car" to 0xe531, "home" to 0xe88a,
+        "work" to 0xe8f9, "shopping" to 0xe8cc,
+    )
+
+    /**
+     * Saved-place map pin (issue #171): the list's colour as a small ringed disc with a white
+     * glyph, Google's saved-icon look. An "emoji:X" key draws the emoji itself on a white disc
+     * (emoji carry their own colours, a tinted disc clashed).
+     */
+    fun savedPin(context: Context, iconKey: String, colorArgb: Long): Bitmap {
+        val w = 64
+        val bmp = Bitmap.createBitmap(w, w, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        val cx = w / 2f
+        val r = w * 0.36f
+        val emoji = iconKey.startsWith("emoji:")
+        canvas.drawCircle(cx, cx + w * 0.03f, r, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0x38000000
+            maskFilter = BlurMaskFilter(w * 0.05f, BlurMaskFilter.Blur.NORMAL)
+        })
+        canvas.drawCircle(cx, cx, r, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = if (emoji) Color.WHITE else colorArgb.toInt()
+        })
+        canvas.drawCircle(cx, cx, r, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = w * 0.055f
+            color = if (emoji) 0xFFBDC1C6.toInt() else Color.WHITE
+        })
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textAlign = Paint.Align.CENTER
+            textSize = w * 0.42f
+            if (!emoji) {
+                typeface = typeface(context) ?: Typeface.DEFAULT
+                color = Color.WHITE
+            }
+        }
+        val text = if (emoji) iconKey.removePrefix("emoji:")
+        else String(Character.toChars(SAVED_CODEPOINTS[iconKey] ?: 0xe866))
+        val fm = paint.fontMetrics
+        canvas.drawText(text, cx, cx - (fm.ascent + fm.descent) / 2f, paint)
+        return bmp
+    }
+
     private fun marker(tf: Typeface, codepoint: Int, colorHex: String): Bitmap {
         // Google-style POI: a category-coloured dot with a white glyph sitting in front of a
         // muted-grey TEARDROP/pin backing whose point extends below the dot (NO white ring), with a
