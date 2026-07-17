@@ -118,6 +118,10 @@ private const val PIN_IMG = "vela-pin"
 private const val PARKING_SRC = "vela-parking-src"
 private const val PARKING_LAYER = "vela-parking"
 private const val PARKING_IMG = "vela-parking-img"
+private const val SAVED_SRC = "vela-saved-src"
+private const val SAVED_LAYER = "vela-saved"
+private const val SAVED_INDEX_PROP = "savedIdx"
+private const val SAVED_ICON_PROP = "savedIcon"
 // Street View pose: the open pano's position + live view direction (a rotating cone, pegman-style),
 // shown while the half-screen pano viewer is up so the map underneath says where you're looking.
 private const val SV_SRC = "vela-sv-src"
@@ -187,6 +191,7 @@ data class MapMarker(val name: String, val location: LatLng, val category: Strin
 private var lastAppliedMarkers: List<MapMarker>? = null
 private var lastAppliedAmbient: List<MapMarker>? = null
 private var lastAppliedParking: LatLng? = null
+private var lastAppliedSavedPins: List<SavedPin>? = null // saved-place pins (issue #171), same gate pattern
 private var lastAccuracyLoc: LatLng? = null
 private var lastAccuracyM: Float? = null
 private var parkingApplied = false // distinguishes "never applied" from "applied null"
@@ -194,6 +199,9 @@ private var lastAppliedSvPose: DoubleArray? = null // Street View pose identity-
 private var lastAppliedControls: List<app.vela.core.data.TrafficControl>? = null
 private var lastAppliedFlock: List<app.vela.core.data.AlprCamera>? = null
 private var lastAppliedTransitStops: List<app.vela.core.data.transit.Transitous.MapStop>? = null
+
+/** One saved place drawn on the browse map (issue #171): its list's icon key + colour. */
+data class SavedPin(val lat: Double, val lng: Double, val icon: String, val color: Long)
 private var lastTransitBusHidden: Boolean? = null // gate the poi_transit filter flip
 private var origPoiTransitFilter: Expression? = null // basemap filter to restore when coverage goes
 private var lastOsmPoiVis: String? = null // identity-gate the basemap-POI visibility flips
@@ -304,6 +312,8 @@ fun VelaMapView(
     onPoiTap: (name: String, location: LatLng, poiKind: String?) -> Unit,
     onMarkerTap: (index: Int) -> Unit,
     parkingSpot: LatLng? = null, // saved "parked here" pin; tap → onParkingTap
+    savedPins: List<SavedPin> = emptyList(), // saved/list places while browsing (issue #171)
+    onSavedPinTap: (index: Int) -> Unit = {},
     onParkingTap: () -> Unit = {},
     // Street View pose while the half-screen pano viewer is open: [lat, lng, compassYawDeg].
     // Draws the rotating view cone at the pano and eases the camera there on each pano hop.
@@ -378,6 +388,7 @@ fun VelaMapView(
     val svMapTap = rememberUpdatedState(onSvMapTap)
     val svActive = rememberUpdatedState(svPose != null)
     val markerTap = rememberUpdatedState(onMarkerTap)
+    val savedPinTap = rememberUpdatedState(onSavedPinTap)
     val ambientTap = rememberUpdatedState(onAmbientTap)
     val transitStopTap = rememberUpdatedState(onTransitStopTap)
     val transitStopsNow = rememberUpdatedState(transitStops)
@@ -1602,6 +1613,13 @@ fun VelaMapView(
                         markerTap.value(pin.getNumberProperty(MARKER_INDEX_PROP).toInt())
                         return@handleTap true
                     }
+                    // A saved-place pin (issue #171): a deliberate user object, opens its place.
+                    val savedHit = map.queryRenderedFeatures(RectF(p.x - r, p.y - r, p.x + r, p.y + r), SAVED_LAYER)
+                        .filter { it.hasProperty(SAVED_INDEX_PROP) }.minByOrNull(::screenDist2)
+                    if (savedHit != null) {
+                        savedPinTap.value(savedHit.getNumberProperty(SAVED_INDEX_PROP).toInt())
+                        return@handleTap true
+                    }
                     // A canonical GTFS stop icon (Transitous layer): open the stop's board directly
                     // by stop id - no name resolution at all.
                     val gtfsStop = feats.filter { it.hasProperty(TRANSIT_STOP_INDEX_PROP) }.minByOrNull(::screenDist2)
@@ -2067,6 +2085,7 @@ fun VelaMapView(
                 lastNavLabelKey = null
                 lastControlsVis = null
                 parkingApplied = false
+                lastAppliedSavedPins = null
                 lastAppliedAmbient = null
                 lastAppliedControls = null
                 lastAppliedFlock = null
@@ -2090,7 +2109,7 @@ fun VelaMapView(
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
                 if (satelliteOn) applySatelliteLabels(style)
                 emphasizeShields(style)
-                applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, poisEnabled, svPose)
+                applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, savedPins, poisEnabled, svPose)
                 ensureSatellite(style, satelliteOn)
                 ensureNavRoadLabels(style, navMode, darkTheme, context.resources.displayMetrics.density, navLabelExclude)
                 ensureTraffic(style, trafficOn)
@@ -2099,7 +2118,7 @@ fun VelaMapView(
             }
         } else {
             styleRef?.let {
-                applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, poisEnabled, svPose)
+                applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, savedPins, poisEnabled, svPose)
                 // AUDIT FIX 3e (2026-07-15): the ensure* helpers are idempotent but each call
                 // probes the style over JNI (getLayer/getSource) - per recomposition, that's
                 // four probe sets during every camera flight for nothing. They only need to run
@@ -2648,6 +2667,19 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.iconAllowOverlap(true),
                 PropertyFactory.iconIgnorePlacement(true),
             ),
+        )
+    }
+    // Saved places while browsing (issue #171): every list place + quick-save draws its list's
+    // icon on the map so a saved spot sticks out with no search needed. Sparse, deliberate
+    // objects — they always render (allowOverlap), like the parking pin.
+    if (style.getSource(SAVED_SRC) == null) {
+        style.addSource(GeoJsonSource(SAVED_SRC, GeoJsonOptions().withMaxZoom(12)))
+        style.addLayer(
+            SymbolLayer(SAVED_LAYER, SAVED_SRC).withProperties(
+                PropertyFactory.iconImage(Expression.get(SAVED_ICON_PROP)),
+                PropertyFactory.iconAllowOverlap(true),
+                PropertyFactory.iconIgnorePlacement(true),
+            ).apply { minZoom = 8f },
         )
     }
     // Street View pose: a view-direction cone at the open pano, rotating with the viewer's compass
@@ -4244,6 +4276,7 @@ private fun applyData(
     navMode: Boolean,
     navDriveMode: Boolean,
     parkingSpot: LatLng? = null,
+    savedPins: List<SavedPin> = emptyList(),
     poisEnabled: Boolean = true,
     svPose: DoubleArray? = null, // Street View pose [lat, lng, compassYawDeg]; null = viewer closed
 ) {
@@ -4279,6 +4312,21 @@ private fun applyData(
         }
         style.getSourceAs<GeoJsonSource>(SV_SRC)?.setGeoJson(fc)
         lastAppliedSvPose = svPose
+    }
+    // Saved-place pins (issue #171), identity-gated like the rest. Icon bitmaps are per
+    // (icon, colour) and added on demand; getImage probes are cheap and a style reload
+    // resets lastAppliedSavedPins so they re-add on the fresh style.
+    if (savedPins != lastAppliedSavedPins) {
+        val feats = savedPins.mapIndexed { i, pin ->
+            val imgKey = "vela-saved-${pin.icon}-${java.lang.Long.toHexString(pin.color)}"
+            if (style.getImage(imgKey) == null) style.addImage(imgKey, PoiIcons.savedPin(context, pin.icon, pin.color))
+            Feature.fromGeometry(Point.fromLngLat(pin.lng, pin.lat)).apply {
+                addNumberProperty(SAVED_INDEX_PROP, i)
+                addStringProperty(SAVED_ICON_PROP, imgKey)
+            }
+        }
+        style.getSourceAs<GeoJsonSource>(SAVED_SRC)?.setGeoJson(FeatureCollection.fromFeatures(feats))
+        lastAppliedSavedPins = savedPins
     }
     // Identity-gate the route geometry upload (same pattern as markers/ambient below): applyData
     // runs on EVERY recomposition — during nav that's each fix/speedo tick — and re-tessellating
