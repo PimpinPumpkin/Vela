@@ -43,6 +43,7 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -93,6 +94,16 @@ class GoogleMapsDataSource @Inject constructor(
     /** ISO 3166 alpha-2 of the region the phone is in (cell-network country, falling back to the
      *  locale's) — set by the app layer at startup; drives the `gl=` rewrite in [regionalized]. */
     @Volatile var glRegion: String? = null
+
+    /** Caps how many ambient category requests parse AT ONCE. Each response is loaded whole and
+     *  built into a JsonElement tree (~tens of MB for a dense area); the ~13-term fan-out fired them
+     *  all in parallel, so a fresh launch / fast far pan allocated ~400 MB of transient parse trees
+     *  in a burst, filled the 512 MB heap, and stalled every allocation on a blocking GC (measured
+     *  on a Pixel 9: 401 MB live, 80-86 ms WaitForGcToComplete storms, 400 ms frames). Bounding the
+     *  fan-out to a few at a time caps the peak transient heap (~4x30 MB instead of 13x30 MB) with the
+     *  same final pool - the streaming onPartial paint keeps first dots fast. Shared across calls so
+     *  a pan mid-load can't double the burst. */
+    private val ambientFanout = kotlinx.coroutines.sync.Semaphore(4)
 
     override suspend fun search(query: String, near: LatLng?, spanMeters: Double?): SearchResult = io {
         session.ensure()
@@ -153,14 +164,16 @@ class GoogleMapsDataSource @Inject constructor(
             // their prominence low, so they surface in quiet/residential views without crowding businesses.
             "school", "park",
         )
-        suspend fun fetchTerm(term: String): List<Place> = runCatching {
-            val pb = SearchPb.build(term, center, cal.searchPb)
-                .replaceFirst(Regex("!1d[0-9.]+"), "!1d${spanMeters.toInt()}")
-                .replaceFirst(Regex("!4f[0-9.]+"), "!4f${String.format(java.util.Locale.US, "%.1f", zoom)}")
-                .replaceFirst(Regex("!7i\\d+"), "!7i60") // deep pool per term, so zooming in can go down the rank
-            val url = "${cal.searchEndpoint}&q=${term.enc()}&pb=${pb.enc()}".localized()
-            SearchParser.parse(term, GoogleResponse.parse(get(url)), center, cal.paths).places
-        }.getOrDefault(emptyList())
+        suspend fun fetchTerm(term: String): List<Place> = ambientFanout.withPermit {
+            runCatching {
+                val pb = SearchPb.build(term, center, cal.searchPb)
+                    .replaceFirst(Regex("!1d[0-9.]+"), "!1d${spanMeters.toInt()}")
+                    .replaceFirst(Regex("!4f[0-9.]+"), "!4f${String.format(java.util.Locale.US, "%.1f", zoom)}")
+                    .replaceFirst(Regex("!7i\\d+"), "!7i60") // deep pool per term, so zooming in can go down the rank
+                val url = "${cal.searchEndpoint}&q=${term.enc()}&pb=${pb.enc()}".localized()
+                SearchParser.parse(term, GoogleResponse.parse(get(url)), center, cal.paths).places
+            }.getOrDefault(emptyList())
+        }
         // Dedup by feature id (same place returned under several terms); fall back to name+coords,
         // then rank for the map (locality + prominence — see rankAmbientPlaces).
         fun finish(pool: List<Place>): List<Place> = rankAmbientPlaces(
