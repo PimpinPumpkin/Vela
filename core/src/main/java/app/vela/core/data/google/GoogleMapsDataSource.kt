@@ -210,9 +210,24 @@ class GoogleMapsDataSource @Inject constructor(
                             // 2026-07-14). Once the map is already populated, wait for bigger
                             // batches - the user can't tell 60 dots from 85 mid-stream, but they can
                             // feel the placement passes.
-                            val minGrowth = if (paintedCount >= 60) 25 else 10
+                            // Bigger batches = FEWER whole-layer symbol-collision passes during the
+                            // cold load, which is where a weak GPU (4a) stutters (each onPartial
+                            // re-places the entire ambient layer). First paint at 25 keeps the map
+                            // feeling alive fast; after that wait for +50 so a dense area re-collides
+                            // ~2-3 times instead of ~8 (user 2026-07-17). The final return still carries
+                            // the complete pool.
+                            // Third rung (user 2026-07-17): once 100+ places are painted the map
+                            // already reads "full" - later mid-stream repaints are invisible to the
+                            // eye but each one re-places every symbol, so demand a bigger batch and
+                            // a longer quiet gap before paying for another pass. Dense downtowns go
+                            // from ~3-4 passes to ~2-3; sparse areas never reach this rung.
+                            val minGrowth = when {
+                                paintedCount == 0 -> 25
+                                paintedCount >= 100 -> 80
+                                else -> 50
+                            }
                             val grown = pool.size - paintedCount >= minGrowth
-                            val due = now - lastPaintNs > 500_000_000L
+                            val due = now - lastPaintNs > (if (paintedCount >= 100) 800_000_000L else 500_000_000L)
                             if (landed < terms.size && pool.isNotEmpty() && grown && (paintedCount == 0 || due)) {
                                 paintedCount = pool.size
                                 lastPaintNs = now

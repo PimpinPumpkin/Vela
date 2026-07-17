@@ -107,6 +107,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -413,6 +414,9 @@ fun MapScreen(
     val resultsMinimized = state.results.isNotEmpty() && state.selected == null && !searchOpen && state.resultsCollapsed
     val chromeLift = if (resultsMinimized) 76.dp else 0.dp
     var metersPerPixel by remember { mutableStateOf(0.0) }
+    // Building-overlay debug badge: the last state VelaMapView's idle gate reported
+    // ("none" / "hidden" / "drawing"). Only surfaced when the developer toggle is on.
+    var overlayDebugState by remember { mutableStateOf("none") }
     // Measured screen-Y of the maneuver banner's bottom edge → so VelaMapView can sit the compass just below
     // it during nav (the banner's height varies with lane guidance + a "then" row, so it can't be guessed).
     var navBannerBottomPx by remember { mutableStateOf(0) }
@@ -885,6 +889,7 @@ fun MapScreen(
                 if (state.directionsOpen && !searchOpen) dirPanTick++
             },
             onScaleChanged = { metersPerPixel = it },
+            onOverlayState = { overlayDebugState = it },
             darkTheme = darkTheme,
             applyKeylessTheme = !hasMapTiler,
             // Off-nav: the whole-map raster when the user toggles it on. During nav we
@@ -939,6 +944,48 @@ fun MapScreen(
             dpadController = mapDpad,
             modifier = Modifier.fillMaxSize(),
         )
+
+        // --- Debug badge (Settings → Developer → Building overlay debug) ---
+        // Canary aid: fill-buildings auto-suppression state at a glance + a UI-thread FPS readout.
+        // The FPS is the Compose/Choreographer frame rate (what the main thread achieves), so it
+        // drops exactly when panning janks - the number to watch while chasing map smoothness.
+        if (app.vela.ui.BuildingDebug.on.value) {
+            val label = when {
+                !app.vela.ui.BuildingOverlay.on.value -> "MS bldg: OFF"
+                overlayDebugState == "drawing" -> "MS bldg: DRAWING"
+                overlayDebugState == "hidden" -> "MS bldg: hidden (OSM dense)"
+                else -> "MS bldg: none here"
+            }
+            var fps by remember { mutableStateOf(0) }
+            LaunchedEffect(Unit) {
+                var frames = 0
+                var acc = 0L
+                var last = 0L
+                while (true) {
+                    withFrameNanos { now ->
+                        if (last != 0L) {
+                            acc += now - last
+                            frames++
+                            if (acc >= 500_000_000L) { // recompute twice a second
+                                fps = (frames * 1_000_000_000.0 / acc).toInt()
+                                frames = 0; acc = 0L
+                            }
+                        }
+                        last = now
+                    }
+                }
+            }
+            Column(
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 8.dp, bottom = 92.dp)
+                    .background(androidx.compose.ui.graphics.Color(0xCC000000), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 6.dp, vertical = 3.dp),
+            ) {
+                Text("$fps fps", color = androidx.compose.ui.graphics.Color.White, fontSize = 11.sp)
+                Text(label, color = androidx.compose.ui.graphics.Color.White, fontSize = 11.sp)
+            }
+        }
 
         // --- D-pad map target (docs/dpad.md) -------------------------------
         // TWO-STAGE so the chrome stays reachable (v1 trapped focus on the map):
