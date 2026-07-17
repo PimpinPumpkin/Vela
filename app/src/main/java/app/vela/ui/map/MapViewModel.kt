@@ -67,7 +67,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /** Which directions endpoint the "Choose on map" crosshair is currently setting. */
-enum class MapPick { ORIGIN, STOP }
+enum class MapPick { ORIGIN, STOP, DEST }
 
 /** Live step-by-step guidance through a transit trip (Moovit-style): the itinerary + which leg
  *  you're on. Advances by GPS proximity to each leg's end (or manually). */
@@ -146,6 +146,7 @@ data class MapUiState(
     val directionsReversed: Boolean = false, // route from the place back to you
     val directionsOrigin: Place? = null,     // custom "From" (null = your live location)
     val pickingOrigin: Boolean = false,      // the next search pick sets the origin, not a destination
+    val pickingDest: Boolean = false,        // the next search pick REPLACES the destination (issue #170)
     val directionsWaypoints: List<Place> = emptyList(), // intermediate stops, in order (multi-stop)
     val pickingStop: Boolean = false,        // the next search pick is added as a stop
     val editingStops: Boolean = false,       // the dedicated stops editor sheet is open
@@ -1213,6 +1214,7 @@ class MapViewModel @Inject constructor(
         if (consumeAssign(sp)) return
         val base = Place(id = sp.id, name = sp.name, location = sp.location)
         if (_state.value.pickingStop) { addStop(base); return }
+        if (_state.value.pickingDest) { setDirectionsDestination(base); return }
         if (_state.value.pickingOrigin) { setDirectionsOrigin(base); return }
         routeJob?.cancel()
         _state.update {
@@ -1372,7 +1374,7 @@ class MapViewModel @Inject constructor(
                         // No "Offline results" banner — the quiet offline indicator (globe-slash + the
                         // greyed "Offline" in the search bar) already says we're offline.
                         offline.isNotEmpty() ->
-                            it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false)
+                            it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false)
                         // Has a downloaded area but nothing matched — don't tell them to download again.
                         haveArea ->
                             it.copy(results = emptyList(), status = appContext.getString(R.string.mapvm_offline_no_match, q), searching = false)
@@ -1412,7 +1414,7 @@ class MapViewModel @Inject constructor(
                         // A live scrape succeeding is definitive proof we're online — clear a stuck
                         // offline flag (the network callback can miss an event after doze and leave
                         // `offline` latched until relaunch; seen on-device 2026-07-09).
-                        it.copy(results = localAddrs + res.places, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
+                        it.copy(results = localAddrs + res.places, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
                     }
                 } else {
                     // Online SUCCEEDED but found nothing. Don't leave a blank screen (the "POI list just
@@ -1421,9 +1423,9 @@ class MapViewModel @Inject constructor(
                     val offline = offlineSearch(q, near)
                     _state.update {
                         if (offline.isNotEmpty())
-                            it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
+                            it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
                         else
-                            it.copy(results = emptyList(), selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = appContext.getString(R.string.mapvm_no_results, q), searching = false, offline = false)
+                            it.copy(results = emptyList(), selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = appContext.getString(R.string.mapvm_no_results, q), searching = false, offline = false)
                     }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -1435,7 +1437,7 @@ class MapViewModel @Inject constructor(
                 // as the straight-offline branch so an address still resolves when the scrape times out).
                 val offline = offlineSearch(q, near)
                 if (offline.isNotEmpty()) {
-                    _state.update { it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false) }
+                    _state.update { it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false) }
                 } else if (isConnectivityError(e)) {
                     // A dead connection: if there's a downloaded area the query just didn't match it, else
                     // point the user at the offline download instead of a raw "Unable to resolve host".
@@ -1578,6 +1580,7 @@ class MapViewModel @Inject constructor(
             return
         }
         if (_state.value.pickingStop) { addStop(p); return }
+        if (_state.value.pickingDest) { setDirectionsDestination(p); return }
         if (_state.value.pickingOrigin) { setDirectionsOrigin(p); return }
         suggestJob?.cancel()
         routeJob?.cancel() // a directions fetch in flight must not resurrect the stale panel
@@ -2343,7 +2346,7 @@ class MapViewModel @Inject constructor(
                 routes = emptyList(), activeRoute = null, directionsOpen = false,
                 transit = emptyList(), transitLoading = false,
                 showSteps = false, previewStepIndex = null,
-                directionsOrigin = null, pickingOrigin = false, directionsReversed = false,
+                directionsOrigin = null, pickingOrigin = false, pickingDest = false, directionsReversed = false,
                 directionsWaypoints = emptyList(), pickingStop = false, pickOnMap = null,
                 alongRouteDest = null, editingStops = false,
             )
@@ -2419,7 +2422,7 @@ class MapViewModel @Inject constructor(
                 reviewsFound = 0,
                 loadingDetails = false,
                 photosLoading = false,
-                pickingOrigin = false,
+                pickingOrigin = false, pickingDest = false,
                 pickingStop = false,
                 directionsOpen = false,
             )
@@ -2577,6 +2580,7 @@ class MapViewModel @Inject constructor(
                 when (pick) {
                     MapPick.ORIGIN -> setDirectionsOrigin(place)
                     MapPick.STOP -> addStop(place)
+                MapPick.DEST -> setDirectionsDestination(place)
                 }
             }
             return
@@ -2586,7 +2590,7 @@ class MapViewModel @Inject constructor(
         // route around an area/camera - Google's keyless directions and OSRM can't be told "avoid this
         // region", but a hand-placed waypoint forces the detour. The point itself is what matters, so
         // the stop sits at the exact spot pressed; the reverse-geocode only names it.
-        if (_state.value.directionsOpen && !_state.value.pickingOrigin && !_state.value.pickingStop) {
+        if (_state.value.directionsOpen && !_state.value.pickingOrigin && !_state.value.pickingDest && !_state.value.pickingStop) {
             // Only when the chooser is MINIMIZED to its Start bar and the steps viewer is closed
             // (user 2026-07-15). Plain building/unnamed-POI taps funnel into this handler too, so
             // with the full picker (or the step list) covering the map, a stray tap on the visible
@@ -2628,7 +2632,7 @@ class MapViewModel @Inject constructor(
                 reviewsFound = 0,
                 photosLoading = false,
                 loadingDetails = false,
-                pickingOrigin = false,
+                pickingOrigin = false, pickingDest = false,
                 pickingStop = false,
                 // A pin dropped right after viewing a transit stop kept that stop's departure
                 // board (and its loading spinner) on the pin sheet - the board fields were the
@@ -2657,7 +2661,7 @@ class MapViewModel @Inject constructor(
         // route-through-here when the chooser is minimized, suppressed otherwise (the gate lives
         // in onMapLongPress). Selecting the address here instead set `selected` under the open
         // chooser - an invisible sheet that popped up when the chooser closed.
-        if (_state.value.directionsOpen && !_state.value.pickingOrigin && !_state.value.pickingStop) {
+        if (_state.value.directionsOpen && !_state.value.pickingOrigin && !_state.value.pickingDest && !_state.value.pickingStop) {
             onMapLongPress(location); return
         }
         reviewsJob?.cancel()
@@ -2675,7 +2679,7 @@ class MapViewModel @Inject constructor(
                 reviewsFound = 0,
                 photosLoading = false,
                 loadingDetails = false,
-                pickingOrigin = false,
+                pickingOrigin = false, pickingDest = false,
                 pickingStop = false,
             )
         }
@@ -2708,7 +2712,7 @@ class MapViewModel @Inject constructor(
         val sel = _state.value.selected ?: return
         // Start each directions session clean — don't inherit a custom origin, stops, or
         // pick-mode left over from a previous place's directions.
-        _state.update { it.copy(directionsOpen = true, directionsReversed = false, directionsOrigin = null, pickingOrigin = false, directionsWaypoints = emptyList(), pickingStop = false) }
+        _state.update { it.copy(directionsOpen = true, directionsReversed = false, directionsOrigin = null, pickingOrigin = false, pickingDest = false, directionsWaypoints = emptyList(), pickingStop = false) }
         // Walking back to the car is the parking spot's whole point — default to WALK there.
         // Otherwise every session opens on the STICKY last-used mode (user 2026-07-11).
         val (avTolls, avHighways) = stickyAvoid()
@@ -2910,20 +2914,49 @@ class MapViewModel @Inject constructor(
     /** Tapped the directions "From" row → the next search pick becomes the origin
      *  (not a destination). The UI opens the search overlay; [setDirectionsOrigin] or
      *  [cancelPickOrigin] ends the mode. */
-    fun beginPickOrigin() = _state.update { it.copy(pickingOrigin = true, query = "", suggestions = emptyList()) }
+    fun beginPickOrigin() = _state.update { it.copy(pickingOrigin = true, pickingDest = false, query = "", suggestions = emptyList()) }
 
-    fun cancelPickOrigin() = _state.update { it.copy(pickingOrigin = false) }
+    fun cancelPickOrigin() = _state.update { it.copy(pickingOrigin = false, pickingDest = false) }
+
+    /** Tapped the directions DESTINATION row → the next search pick replaces the destination,
+     *  keeping the origin, stops and travel mode (issue #170 — Google lets you edit both ends;
+     *  backing out and retyping lost the custom origin). [setDirectionsDestination] or
+     *  [cancelPickDestination] ends the mode. */
+    fun beginPickDestination() = _state.update {
+        it.copy(pickingDest = true, pickingOrigin = false, pickingStop = false, query = "", suggestions = emptyList())
+    }
+
+    fun cancelPickDestination() = _state.update { it.copy(pickingDest = false) }
+
+    /** Swap the destination for [p] and re-route: the chooser stays open, origin + stops stay.
+     *  The per-place content (reviews/photos/boards) resets like a fresh selection so closing
+     *  the chooser later shows [p]'s own sheet, not the old destination's leftovers. */
+    fun setDirectionsDestination(p: Place) {
+        routeJob?.cancel()
+        _state.update {
+            it.copy(
+                selected = withListNote(p), pickingDest = false, pickOnMap = null,
+                directionsOpen = true, results = emptyList(), query = "", suggestions = emptyList(),
+                reviews = emptyList(), reviewsLoading = false, reviewsFound = 0, photosLoading = false,
+                loadingDetails = false, placesHere = emptyList(),
+                stopDepartures = null, stopDeparturesLoading = false, stopDeparturesFor = null,
+            )
+        }
+        route(_state.value.travelMode)
+    }
+
+    fun chooseDestOnMap() = _state.update { it.copy(pickingDest = false, pickOnMap = MapPick.DEST) }
 
     /** Set a custom directions origin (a place other than your live location) and
      *  re-route. Clears with [clearRoute]. */
     fun setDirectionsOrigin(p: Place) {
-        _state.update { it.copy(directionsOrigin = p, pickingOrigin = false, pickOnMap = null) }
+        _state.update { it.copy(directionsOrigin = p, pickingOrigin = false, pickingDest = false, pickOnMap = null) }
         route(_state.value.travelMode)
     }
 
     /** "Choose on map" for an endpoint — leave the search overlay, show a center crosshair over the
      *  live map, and set that endpoint from wherever the map is centred (or a long-press) on confirm. */
-    fun chooseOriginOnMap() = _state.update { it.copy(pickingOrigin = false, pickOnMap = MapPick.ORIGIN) }
+    fun chooseOriginOnMap() = _state.update { it.copy(pickingOrigin = false, pickingDest = false, pickOnMap = MapPick.ORIGIN) }
     fun chooseStopOnMap() = _state.update { it.copy(pickingStop = false, pickOnMap = MapPick.STOP) }
     fun cancelChooseOnMap() = _state.update { it.copy(pickOnMap = null) }
 
@@ -2938,6 +2971,7 @@ class MapViewModel @Inject constructor(
             when (target) {
                 MapPick.ORIGIN -> setDirectionsOrigin(place)
                 MapPick.STOP -> addStop(place)
+                MapPick.DEST -> setDirectionsDestination(place)
             }
         }
     }
@@ -2945,13 +2979,13 @@ class MapViewModel @Inject constructor(
     /** Drop a custom origin → route from your live location again. Also exits
      *  pick-mode (it's offered as the top row of the origin picker). */
     fun useMyLocationAsOrigin() {
-        _state.update { it.copy(directionsOrigin = null, pickingOrigin = false) }
+        _state.update { it.copy(directionsOrigin = null, pickingOrigin = false, pickingDest = false) }
         route(_state.value.travelMode)
     }
 
     /** Tapped "Add stop" → the next search pick becomes an intermediate stop (multi-stop routing).
      *  [addStop]/[cancelPickStop] ends the mode. */
-    fun beginPickStop() = _state.update { it.copy(pickingStop = true, editingStops = false, query = "", suggestions = emptyList()) }
+    fun beginPickStop() = _state.update { it.copy(pickingStop = true, pickingDest = false, editingStops = false, query = "", suggestions = emptyList()) }
 
     /** The dedicated stops editor (reorder / remove / add in one sheet, one reroute on Done). */
     fun openStopsEditor() = _state.update { it.copy(editingStops = true) }
@@ -4794,7 +4828,7 @@ class MapViewModel @Inject constructor(
                 reviewsFound = 0,
                 loadingDetails = false,
                 photosLoading = false,
-                pickingOrigin = false,
+                pickingOrigin = false, pickingDest = false,
                 pickingStop = false,
                 directionsOpen = false,
             )
