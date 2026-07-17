@@ -2610,6 +2610,11 @@ class MapViewModel @Inject constructor(
         _state.update {
             it.copy(
                 selected = Place(id = "pin:${location.lat},${location.lng}", name = appContext.getString(R.string.mapvm_dropped_pin), location = location),
+                // Frame the PIN, not the last named place. Every other selection path sets center
+                // to the picked location; this one didn't, so the sheet-lift camera re-framed on
+                // the stale center (the previously selected store/home) and the map jumped THERE
+                // when you dropped a pin (dpad-vela user report 2026-07-16, reproduced upstream).
+                center = location, centerZoom = null,
                 results = emptyList(),
                 resultsCollapsed = false,
                 showSearchThisArea = false,
