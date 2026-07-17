@@ -780,6 +780,29 @@ fun MapScreen(
     // Toggling the Flock layer in Settings refetches for the current view right away (otherwise the
     // cameras wouldn't appear until the next pan). Clears the layer when turned off.
     LaunchedEffect(app.vela.ui.Flock.on.value) { vm.refreshFlockNow() }
+    // Saved-place pins for the browse map (issue #171): each list place carries its list's
+    // icon+colour, quick-saves ride the default bookmark blue; deduped by place id (a place in
+    // several lists draws once, newest list wins). Empty while a result set / nav / replay /
+    // Street View owns the map.
+    val savedPinData = remember(state.lists, state.saved, state.results, state.navigating, state.replaying, svPose) {
+        if (state.navigating || state.replaying || svPose != null || state.results.isNotEmpty()) emptyList()
+        else buildList {
+            val seen = HashSet<String>()
+            state.lists.forEach { l ->
+                l.places.forEach { lp ->
+                    if (seen.add(lp.id)) add(SavedPin(lp.lat, lp.lng, l.icon, l.color) to lp.toPlace())
+                }
+            }
+            state.saved.forEach { sp ->
+                if (seen.add(sp.id)) {
+                    add(
+                        SavedPin(sp.lat, sp.lng, "bookmark", 0xFF1A73E8) to
+                            app.vela.core.model.Place(id = sp.id, name = sp.name, location = sp.location, address = sp.address),
+                    )
+                }
+            }
+        }
+    }
     Box(Modifier.fillMaxSize()) {
         VelaMapView(
             styleUri = mapStyleUri,
@@ -880,6 +903,11 @@ fun MapScreen(
             onMarkerTap = { i -> displayedPlaces(state).getOrNull(i)?.let(vm::selectPlace) },
             parkingSpot = state.parkingSpot,
             onParkingTap = { vm.showParkedCar(context.getString(R.string.map_parked_car)) },
+            // Saved places stick out while browsing (issue #171): every list place + quick-save
+            // draws its list's icon/emoji in the list's colour. Hidden while a result set owns the
+            // map (a list's own results would double-draw) and during nav/replay (declutter).
+            savedPins = savedPinData.map { it.first },
+            onSavedPinTap = { i -> savedPinData.getOrNull(i)?.second?.let(vm::selectPlace) },
             svPose = svPose,
             svTopInsetPx = (screenHeightPx * 0.55f).toInt(),
             onSvMapTap = vm::moveStreetViewTo,
