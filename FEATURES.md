@@ -1967,7 +1967,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   the English base only; Weblate opens PRs to fill the locales, and untranslated strings fall
   back to English in the meantime.
 
-## Added 2026-07-16 (community QOL batch, issues #169 #171 #172 #173)
+## Added 2026-07-16 (community QOL batch, issues #169 #170 #171 #172 #173)
+
+- ✅ **Edit the destination from the route picker (issue #170).** Both endpoint rows on the
+  directions top card are editable now: the your-location end keeps the origin picker, and
+  tapping the place end opens the same search overlay to swap the destination in place,
+  keeping the custom origin, stops and travel mode (backing out used to lose the other end).
+  "Choose on map" works for the destination too, with its own crosshair labels.
 
 - ✅ **Read + copy a full business name (issue #169).** A very long place name (CJK businesses
   especially) clips at two lines in the sheet header; tapping the name now toggles the full

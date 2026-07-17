@@ -328,6 +328,8 @@
     <string name="mapscreen_choose_on_map">Choose on map</string>
     <string name="mapscreen_choose_origin_hint">Move the map to set the starting point</string>
     <string name="mapscreen_choose_stop_hint">Move the map to set the stop</string>
+    <string name="mapscreen_choose_dest_hint">Move the map to set the destination</string>
+    <string name="mapscreen_choose_set_dest">Set destination</string>
     <string name="mapscreen_choose_set_start">Set start</string>
     <string name="mapscreen_choose_set_stop">Set stop</string>
     <string name="mapscreen_destination">Destination</string>
