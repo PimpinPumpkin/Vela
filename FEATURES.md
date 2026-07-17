@@ -1967,6 +1967,18 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   the English base only; Weblate opens PRs to fill the locales, and untranslated strings fall
   back to English in the meantime.
 
+## Added 2026-07-17 (offline routing on pre-Android-14 devices)
+
+- ✅ **Downloaded routing graphs now load on Android below 14 (API 34).** Three pre-API-34 gaps in
+  the GraphHopper offline engine meant a downloaded graph loaded on API 34+ only, and silently
+  failed everywhere below (never caught because the `:ghprobe` test device was on Android 14):
+  the custom model is now built programmatically instead of via the jar's Jackson record probe
+  (`Class.getRecordComponents` is API 34+), profiles are set after `init()` to skip a second
+  Jackson round-trip, and a build-time ASM transform rewrites `MMapDataAccess`'s JDK-13
+  absolute-bulk `ByteBuffer` calls to an API-1 shim. Offline routing now works down to minSdk 26.
+  Fix contributed by ars18 (vela-dpad fork); a unit test guards the hand-built model against
+  GraphHopper-upgrade drift.
+
 ## Added 2026-07-16 (community QOL batch, issues #169 #170 #171 #172 #173)
 
 - ✅ **Edit the destination from the route picker (issue #170).** Both endpoint rows on the

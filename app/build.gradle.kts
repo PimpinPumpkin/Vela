@@ -9,6 +9,26 @@ plugins {
     alias(libs.plugins.baselineprofile)
 }
 
+// GraphHopper's MMapDataAccess uses JDK-13 absolute-bulk ByteBuffer methods (ART API 34+ only):
+// an artifact transform rewrites those call sites to app.vela.core.util.ByteBufferCompat so
+// offline region graphs load on the API 26-33 devices Vela's minSdk still supports. See
+// buildSrc/src/main/kotlin/GraphHopperByteBufferPatch.kt. The patched calls behave identically
+// on API 34+, so there is no per-device build variance. (Fix contributed by ars18.)
+val bbPatched = Attribute.of("graphhopperByteBufferPatched", Boolean::class.javaObjectType)
+dependencies {
+    attributesSchema { attribute(bbPatched) }
+    artifactTypes.getByName("jar") { attributes.attribute(bbPatched, false) }
+    registerTransform(GraphHopperByteBufferPatch::class.java) {
+        from.attribute(bbPatched, false)
+            .attribute(org.gradle.api.artifacts.type.ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, org.gradle.api.artifacts.type.ArtifactTypeDefinition.JAR_TYPE)
+        to.attribute(bbPatched, true)
+            .attribute(org.gradle.api.artifacts.type.ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, org.gradle.api.artifacts.type.ArtifactTypeDefinition.JAR_TYPE)
+    }
+}
+configurations.configureEach {
+    if (isCanBeResolved) attributes.attribute(bbPatched, true)
+}
+
 android {
     namespace = "app.vela"
     compileSdk = 35
