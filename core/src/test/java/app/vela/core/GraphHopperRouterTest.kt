@@ -65,6 +65,22 @@ class GraphHopperRouterTest {
         assertEquals("Turn right onto Elm St", GraphHopperRouteEngine.ghPhrase(ManeuverType.TURN_RIGHT, "Elm St", dest = null, exitNo = null))
     }
 
+    /**
+     * The hand-built [GraphHopperRouteEngine.carModel] must stay byte-for-byte equivalent to the
+     * `car.json` shipped inside the GraphHopper jar. The engine builds the model programmatically
+     * (Jackson's record introspection of the jar's copy needs an API-34 reflection method absent on
+     * older ART), and CH profiles are versioned by the model's contents - so any drift between the
+     * two would silently fail every prebuilt-graph load. This test runs on the desktop JVM, where the
+     * jar's own loader works, and fails loudly if a GraphHopper upgrade changes car.json.
+     */
+    @Test fun carModelMatchesJar() {
+        val jar = com.graphhopper.util.GHUtility.loadCustomModelFromJar("car.json")
+        val mine = GraphHopperRouteEngine.carModel()
+        assertEquals(jar.distanceInfluence!!, mine.distanceInfluence!!, 0.0)
+        assertEquals(jar.getPriority().toString(), mine.getPriority().toString())
+        assertEquals(jar.getSpeed().toString(), mine.getSpeed().toString())
+    }
+
     /** Multi-region: a trip routes on the first installed region whose box covers BOTH endpoints. */
     @Test fun regionBoxCoversEndpoints() {
         // the metro metro box [S, W, N, E]
