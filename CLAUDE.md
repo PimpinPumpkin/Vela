@@ -239,6 +239,16 @@ Defaults that make the safe path the easy one:
   Pixel, a >5 s ANR on a slow keypad phone (found by ys770's fork, fix taken 2026-07-08).
   Load such data with `produceState { withContext(Dispatchers.IO) { … } }`;
   `VoiceGuide.availableEngines()` also caches the system-engine enumeration per process.
+- **The ambient category fan-out is CONCURRENCY-BOUNDED (2026-07-17, `GoogleMapsDataSource.ambientFanout`,
+  a `Semaphore(4)`).** `nearbyPlaces` fires ~13 category requests, each loaded WHOLE and built into a
+  JsonElement tree (~30 MB for a dense area). Firing all 13 in parallel allocated ~400 MB of transient
+  parse trees in a burst on a fresh launch / fast far pan, filled the 512 MB largeHeap, and stalled EVERY
+  allocation on a blocking GC (P9-measured: 401 MB live, dozens of 80-86 ms `WaitForGcToComplete blocked
+  Alloc`, 13% janky frames, 400 ms 99th-percentile - the "horrible at fresh launch / fast pan" report).
+  Bounding `fetchTerm` to 4 concurrent parses cut it to ~64 MB live / 1 stall / 2.3% jank / 150 ms 99th,
+  SAME final pool (the streaming `onPartial` paint keeps first dots fast). The semaphore is a class field
+  so overlapping calls (a pan mid-load) share the cap. **Don't unbound this fan-out**; if a dense area
+  still spikes, lower the permit or move the scrape parse off `parseToJsonElement` to a streaming reader.
 - **Memory: the browse map runs near the heap ceiling, so keep allocation LOW (2026-07-13).**
   Panning already churns ~180 MB/12 s at baseline (ambient POI scrape + parse per pan) - this is
   pre-existing (0.4.542 hit ~260 MB too), close enough to the default ~256 MB heap that any EXTRA
