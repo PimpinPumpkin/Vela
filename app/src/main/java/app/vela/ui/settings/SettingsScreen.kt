@@ -6,7 +6,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -55,6 +57,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import app.vela.core.feedback.Haptics
@@ -141,6 +145,17 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
     val settingsAutoFocus = remember { FocusRequester() }
     val topRowFocus = remember { FocusRequester() } // first content row (Back routes its DOWN here)
     var atTopItem by remember { mutableStateOf(false) }   // top content row focused? (routes its UP to Back)
+    // Settings search (issue #172): rows/sections self-register their label + Y into the index;
+    // the magnifier opens a field whose matches scroll straight to the row.
+    val searchIndex = remember { mutableStateMapOf<String, Float>() }
+    var searchOpen by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val searchFieldFocus = remember { FocusRequester() }
+    val searchScope = rememberCoroutineScope()
+    BackHandler(enabled = searchOpen) { searchOpen = false; searchQuery = "" }
+    LaunchedEffect(searchOpen) { if (searchOpen) runCatching { searchFieldFocus.requestFocus() } }
+    androidx.compose.runtime.CompositionLocalProvider(LocalSettingsIndex provides searchIndex) {
+    Box {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -161,6 +176,14 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                             .dpadSwallowHorizontal(),
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = { searchOpen = !searchOpen; if (!searchOpen) searchQuery = "" },
+                        modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                    ) {
+                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.settings_search_hint))
                     }
                 },
             )
@@ -1181,6 +1204,70 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             Spacer(Modifier.height(56.dp))
         }
     }
+    // The search panel floats OVER the content just under the top bar (a dropdown, so the
+    // 1000-line settings Column needs no restructuring and stays composed — the position
+    // index the results scroll to only exists while the rows are laid out).
+    if (searchOpen) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            tonalElevation = 6.dp,
+            shadowElevation = 6.dp,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(top = 52.dp)
+                .padding(horizontal = 16.dp)
+                .fillMaxWidth(),
+        ) {
+            Column(Modifier.padding(12.dp)) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text(stringResource(R.string.settings_search_hint)) },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(searchFieldFocus)
+                        .dpadFieldEscape(),
+                )
+                val matches = if (searchQuery.isBlank()) emptyList()
+                else searchIndex.keys.filter { it.contains(searchQuery.trim(), ignoreCase = true) }.sorted().take(8)
+                if (searchQuery.isNotBlank() && matches.isEmpty()) {
+                    Text(
+                        stringResource(R.string.settings_search_none),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(12.dp),
+                    )
+                }
+                matches.forEach { label ->
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .dpadHighlight(DpadShape(6.dp))
+                            .clickable {
+                                val y = searchIndex[label]
+                                val top = viewportTopY
+                                searchOpen = false
+                                searchQuery = ""
+                                if (y != null && top != null) {
+                                    searchScope.launch {
+                                        scrollState.animateScrollTo(
+                                            (scrollState.value + (y - top)).toInt().coerceIn(0, scrollState.maxValue),
+                                        )
+                                    }
+                                }
+                            }
+                            .padding(horizontal = 8.dp, vertical = 10.dp),
+                    )
+                }
+            }
+        }
+    }
+    }
+    }
 }
 
 /** The voice library on its OWN screen (browse / download / switch / delete Vela's neural voices),
@@ -1226,15 +1313,28 @@ private fun SectionTitle(text: String) {
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(vertical = 8.dp),
+        modifier = Modifier.padding(vertical = 8.dp).registerSetting(text),
     )
+}
+
+// Settings search (issue #172): every section title and row label registers its own screen
+// position into this map as it lays out (the whole page is a plain Column, so everything is
+// composed and the index is complete); the search field filters the keys and a pick scrolls
+// there. No hand-kept keyword table to drift.
+private val LocalSettingsIndex =
+    androidx.compose.runtime.compositionLocalOf<androidx.compose.runtime.snapshots.SnapshotStateMap<String, Float>?> { null }
+
+@Composable
+private fun Modifier.registerSetting(label: String): Modifier {
+    val idx = LocalSettingsIndex.current ?: return this
+    return this.onGloballyPositioned { idx[label] = it.positionInRoot().y }
 }
 
 /** A [SectionTitle] that toggles a collapsible body — tap the whole row; a chevron shows the state. */
 @Composable
 private fun CollapsibleSectionTitle(text: String, expanded: Boolean, onToggle: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().dpadHighlight(DpadShape(6.dp)).clickable(onClick = onToggle).padding(vertical = 8.dp),
+        Modifier.fillMaxWidth().registerSetting(text).dpadHighlight(DpadShape(6.dp)).clickable(onClick = onToggle).padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -1255,7 +1355,7 @@ private fun CollapsibleSectionTitle(text: String, expanded: Boolean, onToggle: (
 @Composable
 private fun ToggleRow(label: String, checked: Boolean, onToggle: (Boolean) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().dpadHighlight(DpadShape(6.dp)).clickable { onToggle(!checked) }.padding(vertical = 4.dp),
+        Modifier.fillMaxWidth().registerSetting(label).dpadHighlight(DpadShape(6.dp)).clickable { onToggle(!checked) }.padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
@@ -1270,7 +1370,7 @@ private fun ToggleRow(label: String, checked: Boolean, onToggle: (Boolean) -> Un
 @Composable
 private fun SelectableRow(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier.fillMaxWidth().dpadHighlight(DpadShape(6.dp)).clickable(onClick = onClick).padding(vertical = 4.dp),
+        modifier.fillMaxWidth().registerSetting(label).dpadHighlight(DpadShape(6.dp)).clickable(onClick = onClick).padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // onClick = null: the RadioButton is display-only so the ROW is the single focus stop. A
