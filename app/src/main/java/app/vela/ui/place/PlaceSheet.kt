@@ -689,6 +689,18 @@ fun PlaceSheet(
                     )
                     Spacer(Modifier.width(6.dp))
                 }
+                // A very long name (CJK businesses especially) clips at 2 lines, so a TAP toggles the
+                // full name and a LONG-PRESS copies it (issue #169). D-pad: the name is a focus stop
+                // with a ring, OK toggles; copying rides the share menu's "Copy name" item (the key
+                // alternative the long-press gesture needs, docs/dpad.md).
+                var nameExpanded by remember(place.id) { mutableStateOf(false) }
+                fun copyName() {
+                    runCatching {
+                        val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText(place.name, place.name))
+                        Toast.makeText(context, context.getString(R.string.place_name_copied), Toast.LENGTH_SHORT).show()
+                    }
+                }
                 Text(
                     place.name,
                     // titleLarge (22sp) not headlineSmall (24sp) so a longer name ("Starbucks Coffee
@@ -696,9 +708,23 @@ fun PlaceSheet(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = ink,
-                    maxLines = 2,
+                    maxLines = if (nameExpanded) Int.MAX_VALUE else 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .dpadHighlight(RoundedCornerShape(8.dp))
+                        .focusable()
+                        .onKeyEvent { ev ->
+                            if (ev.type == KeyEventType.KeyDown &&
+                                (ev.key == Key.DirectionCenter || ev.key == Key.Enter || ev.key == Key.NumPadEnter)
+                            ) { nameExpanded = !nameExpanded; true } else false
+                        }
+                        .pointerInput(place.id) {
+                            detectTapGestures(
+                                onTap = { nameExpanded = !nameExpanded },
+                                onLongPress = { copyName() },
+                            )
+                        },
                 )
                 // Save + Share as compact header actions (preferred look). The name has weight(1f) and
                 // wraps to 2 lines if long, so these stay put without shoving it off.
@@ -3683,10 +3709,21 @@ private fun ShareIconButton(place: Place, tint: Color) {
         open = false
     }
 
+    // Copy the bare business name (issue #169) — also the D-pad path for the name's long-press.
+    fun copyName() {
+        runCatching {
+            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            cm.setPrimaryClip(android.content.ClipData.newPlainText(place.name, place.name))
+            Toast.makeText(context, context.getString(R.string.place_name_copied), Toast.LENGTH_SHORT).show()
+        }
+        open = false
+    }
+
     Box {
         HeaderCircleButton(Icons.Default.Share, stringResource(R.string.place_share), tint, tint) { open = true }
         VelaMenu(expanded = open, onDismissRequest = { open = false }) {
             item(stringResource(R.string.place_open_web)) { openWeb() }
+            item(stringResource(R.string.place_copy_name)) { copyName() }
             item(stringResource(R.string.place_copy_link)) { copyLink() }
             // A geo: URI opens in ANY maps app (incl. Vela) — no google.com, the
             // degoogled-friendly way to send a pin.
