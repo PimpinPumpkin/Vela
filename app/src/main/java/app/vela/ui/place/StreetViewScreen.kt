@@ -5,6 +5,9 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -114,6 +117,7 @@ fun StreetViewScreen(
         Modifier.fillMaxWidth().fillMaxHeight(if (full) 1f else 0.55f).background(Color.Black),
     ) {
             val density = LocalDensity.current
+            val paneH = maxHeight // captured: BoxWithConstraints' receiver doesn't reach nested lambdas
             val wPx = with(density) { maxWidth.toPx() }
             val hPx = with(density) { maxHeight.toPx() }
 
@@ -298,6 +302,17 @@ fun StreetViewScreen(
                     modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 56.dp),
                 ) {
                     if (open) {
+                        // Cap the date list to the pane's own height minus room for the toggle,
+                        // the bottom padding, and the top-right fullscreen button (user 2026-07-16:
+                        // a spot with many years spilled off the top and occluded that button).
+                        // Newest-first, and the list SCROLLS when the captures outnumber the cap.
+                        Column(
+                            horizontalAlignment = Alignment.End,
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier
+                                .heightIn(max = (paneH - 172.dp).coerceAtLeast(96.dp))
+                                .verticalScroll(rememberScrollState()),
+                        ) {
                         for (t in pano.history) {
                             val isShown = t.year == shownYear && t.month == shownMonth
                             Surface(
@@ -319,6 +334,7 @@ fun StreetViewScreen(
                                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                                 )
                             }
+                        }
                         }
                     }
                     Surface(
