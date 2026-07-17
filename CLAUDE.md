@@ -1938,7 +1938,19 @@ architecture note.
   static-inits a JDK-16 `VarHandle` method ART lacks); (2) **override `createWeightingFactory()`** to a
   hand-rolled `SpeedWeighting`+access-block (v11 compiles custom models via **Janino** → JVM bytecode ART
   can't load); (3) **swallow `close()`** (MMAP unmap uses `Unsafe.invokeCleaner`, absent on Android - keep
-  one engine for the process lifetime). **R8:** `consumer-rules.pro` keeps `com.graphhopper.**` + hppc/jts/
+  one engine for the process lifetime). **Three MORE ART gaps, all pre-API-34, all fixed so offline graphs
+  LOAD below Android 14 (contributed by ars18, ported 2026-07-17 - before this, a downloaded graph loaded on
+  API 34+ ONLY; the `:ghprobe` device was on 14 so it was never caught):** (4) the custom model is built
+  PROGRAMMATICALLY via `carModel()` instead of `GHUtility.loadCustomModelFromJar("car.json")` - the jar's
+  loader makes Jackson bean-introspect `Statement` (a Java 17 record), which needs `Class.getRecordComponents`
+  (ART API 34+); record CONSTRUCTORS work everywhere, only the reflection probe is missing. `carModel()` MUST
+  mirror the jar's `car.json` exactly (the CH profile version hashes are keyed on the model) - `GraphHopperRouterTest.carModelMatchesJar` asserts it and fails on any GraphHopper-upgrade drift; (5) profiles are
+  set AFTER `init()` via `hopper.setProfiles`/`chPreparationHandler.setCHProfiles`, never inside the cfg -
+  `init()` force-round-trips every profile's model through Jackson (same record probe); (6) `MMapDataAccess`
+  reads graph segments with the JDK-13 absolute-bulk `ByteBuffer.get/put(int,byte[],int,int)` (ART API 34+),
+  so a **buildSrc artifact transform** (`GraphHopperByteBufferPatch`, ASM) rewrites exactly those 6 call
+  sites in `graphhopper-core-*.jar` to `app.vela.core.util.ByteBufferCompat` (`duplicate()+position()`,
+  API 1, byte-identical). `buildSrc` carries NO AGP dep (AGP there splits the plugin classloaders). **R8:** `consumer-rules.pro` keeps `com.graphhopper.**` + hppc/jts/
   jackson wholesale (GraphHopper resolves a lot reflectively) and `-dontwarn`s the excluded/absent refs - 
   release build is clean (**but +~10 MB APK; tighter keeps / on-demand delivery is a later optimisation**).
   Graphs are built off-device, one per region, and (Phase 1b) downloaded alongside the offline tiles;
