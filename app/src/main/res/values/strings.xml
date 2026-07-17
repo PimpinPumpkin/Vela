@@ -93,6 +93,10 @@
     <string name="settings_read_all_reviews_hint">Adds a “Read all reviews” button that opens Google\'s full reviews page inside the app, with every review. Off = Vela\'s own review list only.</string>
     <string name="settings_buildings_3d">3D buildings</string>
     <string name="settings_buildings_3d_hint">Raised buildings at close zoom. Turning this off can make panning smoother on older phones.</string>
+    <string name="settings_building_overlay">Fill missing buildings</string>
+    <string name="settings_building_overlay_hint">Draws building shapes in suburbs where the map is missing them. Auto-skipped in dense areas that already have them. Turn off to render no extra buildings.</string>
+    <string name="settings_building_debug">Building overlay debug</string>
+    <string name="settings_building_debug_hint">Shows a small badge on the map reporting the fill-buildings state (off / none here / hidden / drawing). Testing aid; turn off for normal use.</string>
     <string name="settings_show_reviews">Show reviews</string>
     <string name="settings_show_reviews_hint">Off = place pages show no reviews, and Vela never fetches them.</string>
     <string name="settings_load_photos">Load photos</string>

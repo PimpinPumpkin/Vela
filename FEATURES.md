@@ -17,7 +17,32 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
-- ✅ **POI icons hold still when you open and close a place (2026-07-15, user).** Tapping a POI
+- ✅ **Big map-performance batch, worst-case-device tuned (2026-07-17, user).** A day of profiling
+  on a Pixel 4a (the deliberate low-end reference) landed a set of coordinated changes:
+  (1) **Buildings draw Google-style by zoom tier** - flat footprints from z16 (~250 ft), 3D
+  extrusions from z17 growing to full height by z19, with sides shaded (vertical gradient) so
+  same-coloured faces read as discrete buildings; dense-city towers no longer bury the roads at
+  500 ft, and the most fragment-expensive layer starts a zoom later. (2) **The Microsoft
+  building-footprint overlay auto-hides where OSM already has the area.** A bounded probe
+  (12-point coverage sample, at most one run per 1.2 s, only at z16+) reveals the overlay only
+  where OSM is genuinely sparse and only after a finished render, so it never flashes over a
+  city while tiles stream in; layers are created hidden and earn their reveal. Coverage is
+  measured by area, not feature count (tile generalization merges a dense block into a couple of
+  giant polygons, which a count misreads as empty). (3) **Settings → Advanced → Fill missing
+  buildings** turns the overlay off entirely, and **Settings → Developer → Building overlay
+  debug** shows a live badge (overlay state + a UI-thread fps readout) for testing. (4) **POI
+  density follows zoom** like Google (a tighter on-screen cap when zoomed out, the full cap when
+  close) and the mid-stream repaint batching escalates once the map reads full, so dense arrivals
+  re-run symbol placement ~2-3 times instead of ~8. (5) **Search lands at ~1000 ft** (z15.5, same
+  as the locate fly-to) instead of z16.5, so searching a dense city arrives on roads+labels+POIs
+  with the whole building stack one pinch away - a London search on the 4a settles at ~59 fps.
+  (6) **Flock/ALPR cameras hide below z13 while browsing** (they draw with overlap forced, so a
+  zoomed-out metro was a wall of badges); a planned route keeps the low floor so route overview
+  still shows its cameras. (7) **Street View pauses the ambient fan-out** - panning the mini-map
+  no longer scrapes/parses/repaints POIs behind the sphere. (8) **The place you just closed is
+  pinned into the next POI repaints** for a couple of minutes, so the icon you tapped can't
+  vanish to ranking jitter when the sheet closes. All verified on-device across a dense downtown,
+  a college town, a small plains town and a big-city search, plus the standing suburb cases.
   used to blank every ambient icon around it (the layer was gated to the bare map) and closing
   the sheet re-placed the whole layer, then a refetch a beat later reshuffled it again. Now the
   area's icons stay up around the opened place, Google-style (only the opened place's own copy

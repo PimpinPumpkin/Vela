@@ -1058,6 +1058,8 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 Hint(stringResource(R.string.settings_advanced_hint))
                 ToggleRow(stringResource(R.string.settings_buildings_3d), app.vela.ui.Buildings3d.on.value) { app.vela.ui.Buildings3d.set(context, it) }
                 Hint(stringResource(R.string.settings_buildings_3d_hint))
+                ToggleRow(stringResource(R.string.settings_building_overlay), app.vela.ui.BuildingOverlay.on.value) { app.vela.ui.BuildingOverlay.set(context, it) }
+                Hint(stringResource(R.string.settings_building_overlay_hint))
             }
 
             // ---- Developer: screenshot/testing tools, collapsed (each says "turn off for real use") ----
@@ -1072,6 +1074,8 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                     prefs.edit().putBoolean("demo_drive", it).apply()
                 }
                 Hint(stringResource(R.string.settings_demo_drive_hint))
+                ToggleRow(stringResource(R.string.settings_building_debug), app.vela.ui.BuildingDebug.on.value) { app.vela.ui.BuildingDebug.set(context, it) }
+                Hint(stringResource(R.string.settings_building_debug_hint))
                 // Simulated location — pretend to be at the current map centre (demos/screenshots
                 // without leaking where you actually are). Reactive holder reflects the state.
                 ToggleRow(stringResource(R.string.settings_sim_location), app.vela.ui.SimLocation.on) { on -> if (on) vm.simulateLocationHere() else vm.stopSimulateLocation() }

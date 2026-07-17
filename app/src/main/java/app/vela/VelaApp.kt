@@ -71,6 +71,8 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.HideAdult.init(this)
         app.vela.ui.HideExternalLinks.init(this)
         app.vela.ui.Buildings3d.init(this)
+        app.vela.ui.BuildingOverlay.init(this)
+        app.vela.ui.BuildingDebug.init(this)
         app.vela.ui.MapPoiPrefs.init(this)
         app.vela.ui.VoiceSearch.init(this)
         app.vela.ui.map.MapFonts.init(this) // Roboto basemap glyphs (cached patched style + async refresh)

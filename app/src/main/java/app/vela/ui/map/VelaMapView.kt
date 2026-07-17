@@ -133,6 +133,18 @@ private const val MARKER_INDEX_PROP = "vela-marker-index"
 private const val AMBIENT_SRC = "vela-ambient-src"
 private const val AMBIENT_LAYER = "vela-ambient"
 private const val AMBIENT_DOT_LAYER = "vela-ambient-dots"
+// Fraction of viewport grid-sample points that must sit on an OSM building for the (redundant) MS
+// footprint overlay to be HIDDEN. We measure AREA coverage, not feature COUNT: OSM building tiles are
+// generalized, so a dense block (Manhattan) merges into 2-3 giant polygons - a feature count read that
+// as "sparse" (<4) and drew MS right over downtown NYC at 500ft (user 2026-07-17). A merged block-blob
+// still covers every sample point under it, so coverage is robust to generalization. Low bar because
+// the gate is global (all-or-nothing): if OSM covers even a chunk of the view, hide the overlay rather
+// than let its footprints peek through the redundant MS ones. A true gap reads ~0 and keeps its fill.
+private const val OSM_COVER_FRAC = 0.18f
+// Hard floor between overlay-gate probe runs. The gate's queryRenderedFeatures probes are
+// synchronous render-thread round trips and its trigger events can fire per frame - the floor is
+// what makes the cost bounded regardless of event chatter (the vc2909 P4a freeze).
+private const val OVL_GATE_MIN_GAP_MS = 1200L
 private const val CONTROLS_SRC = "vela-controls-src" // OSM traffic lights + stop signs drawn at high zoom
 private const val CONTROLS_LAYER = "vela-controls"
 private const val CONTROLS_CLAIM_LAYER = "vela-controls-claim" // invisible collision box over the labels
@@ -301,6 +313,10 @@ fun VelaMapView(
     onUserPan: () -> Unit = {},
     onMapTap: () -> Unit = {}, // ANY map tap, before POI/marker resolution - dismiss-transients hook
     onScaleChanged: (metersPerPixel: Double) -> Unit = {},
+    // Debug badge feed: reports the fill-buildings overlay state on each settle - "none" (no overlay
+    // in this region), "hidden" (auto-suppressed because OSM is dense here) or "drawing" (visible).
+    // Only wired when the Building-overlay-debug developer toggle is on; a no-op otherwise.
+    onOverlayState: (String) -> Unit = {},
     darkTheme: Boolean,
     applyKeylessTheme: Boolean,
     trafficOn: Boolean,
@@ -399,6 +415,16 @@ fun VelaMapView(
     val navPanned = rememberUpdatedState(onNavPanned)
     val userPan = rememberUpdatedState(onUserPan)
     val scaleChanged = rememberUpdatedState(onScaleChanged)
+    val overlayState = rememberUpdatedState(onOverlayState)
+    // MS-overlay gate state, COMPOSABLE-scoped on purpose: getMapAsync can run more than once
+    // (the AndroidView update block re-enters before the async callback lands), so listener-local
+    // state meant every registration kept its own probe floor - the Davis logs showed interleaved
+    // ~500ms evaluations from two registrations, each individually honouring the 1.2s floor.
+    // Shared holders make a duplicate registration harmless: the second fire hits the floor.
+    val ovlGateKey = remember { arrayOf("") } // coarse pos+zoom key of the last verdict; "" = stale
+    val ovlDirty = remember { booleanArrayOf(true) } // a render finished since the last verdict
+    val ovlLastEval = remember { longArrayOf(0L) } // SystemClock of the last probe run
+    val ovlRenderSettled = remember { booleanArrayOf(false) } // a full render finished since the camera last moved
     val selectAlt = rememberUpdatedState(onSelectAlternate)
     val navModeHolder = rememberUpdatedState(navMode)
     val navFollowingHolder = rememberUpdatedState(navFollowing)
@@ -720,12 +746,22 @@ fun VelaMapView(
                 style.addSource(VectorSource(srcId, uri)) // uri already carries pmtiles://file:// or pmtiles://https://
                 val layer = FillLayer("vela-ovl-$i", srcId).apply {
                     setSourceLayer("building") // the tippecanoe layer name (build-overlay-region.sh: -l building)
-                    setMinZoom(14f)
-                    setProperties(PropertyFactory.fillColor(fill), PropertyFactory.fillOutlineColor(line))
+                    setMinZoom(16f) // match the OSM `building` layer: footprints only at close (Google-like ~250ft) zoom, where the density gate can also compare accurately
+                    // Born HIDDEN. The density gate reveals the overlay only after it has confirmed
+                    // OSM is actually sparse here. Visible-by-default did it the other way round -
+                    // MS painted immediately on every load and got yanked once the gate caught up
+                    // ("loading ms first then pulling it away", user 2026-07-17). Worst case now is
+                    // a beat with no footprints in a true gap, which reads as normal tile loading.
+                    setProperties(
+                        PropertyFactory.fillColor(fill),
+                        PropertyFactory.fillOutlineColor(line),
+                        PropertyFactory.visibility(Property.NONE),
+                    )
                 }
                 if (below != null) style.addLayerBelow(layer, below) else style.addLayer(layer)
             }
         }
+        ovlGateKey[0] = "" // fresh layers -> stale verdict; next idle/render pass re-evaluates
     }
 
     // Posted-speed-limit overlay (OSM maxspeed PMTiles, streamed): an INVISIBLE-but-queryable line layer.
@@ -1788,6 +1824,107 @@ fun VelaMapView(
                         shoving[0] = false
                     }
                 })
+                // Coarse (pos+zoom) key of the last overlay-gate decision, so a settle that didn't move
+                // the view meaningfully doesn't re-run the full-screen queryRenderedFeatures. The idle
+                // listener can fire many times a second when something nudges the camera.
+                // The MS building-footprint overlay gate. Layers are born HIDDEN; this decides when
+                // they may show: grid-sample OSM building coverage and reveal MS only where OSM is
+                // genuinely sparse (the overlay's whole point), keep it hidden where OSM covers the
+                // view (it would be occluded overdraw + offset outlines peeking through).
+                // Runs from TWO triggers sharing ovlGateKey (composable-scoped so the layer-creation
+                // effect can invalidate it):
+                //  1. camera idle - the view moved; coarse pos/zoom key skips no-op settles.
+                //  2. map DID-BECOME-IDLE (all tiles finished rendering) - key force-cleared first.
+                //     The verdict depends on OSM tiles that stream in AFTER the camera stops; judging
+                //     early and caching that judgment was the "MS paints first, gets pulled away
+                //     later" bug (user 2026-07-17): the idle-time query saw zero OSM coverage, chose
+                //     VISIBLE, and the key-skip then blocked the correction once tiles arrived.
+                // HARD LESSON (vc2909, "1 fps in a mapped suburb", user 2026-07-17): this map's idle events
+                // fire ~every 16ms (the puck/render loop keeps nudging it - measured via logcat),
+                // and queryRenderedFeatures is a SYNCHRONOUS main-thread→render-thread round trip
+                // (audit fix 11). Wiring "re-query on every rendered-idle" therefore ran dozens of
+                // blocking IPCs per frame and froze weak phones. The gate must be EVENT-MARKED but
+                // TIME-BOUND: events only set a dirty flag; the probing itself runs at most once
+                // per OVL_GATE_MIN_GAP_MS no matter how chatty the events are.
+                // Self-reference holder so the floor-blocked path can schedule a deferred retry of
+                // the gate itself (a val lambda can't name itself).
+                val ovlGateRef = arrayOfNulls<() -> Unit>(1)
+                val ovlRetryPending = booleanArrayOf(false)
+                val runOvlGate = {
+                    runCatching {
+                        val zoomNow = map.cameraPosition.zoom
+                        val style = map.style
+                        // Buildings + the overlay only draw at z16+ (Google-like close zoom). Below
+                        // that the query can't change anything - bail before any probing.
+                        if (style == null || zoomNow < 16.0) {
+                            if (ovlGateKey[0] != "off") { overlayState.value("none"); ovlGateKey[0] = "off" }
+                            return@runCatching
+                        }
+                        val ovl = style.layers.filter { it.id.startsWith("vela-ovl-") }
+                        if (ovl.isEmpty()) {
+                            if (ovlGateKey[0] != "none") { overlayState.value("none"); ovlGateKey[0] = "none" }
+                            return@runCatching
+                        }
+                        // Re-probe only when the view moved meaningfully (~500 m / a zoom level) OR
+                        // a render finished since the last verdict (tiles that arrived after the
+                        // camera stopped can change it) - and NEVER more often than the time floor.
+                        val now = android.os.SystemClock.elapsedRealtime()
+                        if (now - ovlLastEval[0] < OVL_GATE_MIN_GAP_MS) {
+                            // Don't just drop a floor-blocked call: on a fully idle map (no puck
+                            // animation nudging renders) there may be NO later event to retry it,
+                            // and an uncommitted verdict then sticks forever - Elwood's reveal
+                            // never ran and the fill never appeared. One deferred retry at floor
+                            // expiry keeps the bound AND guarantees eventual evaluation.
+                            if (!ovlRetryPending[0]) {
+                                ovlRetryPending[0] = true
+                                mv.postDelayed({
+                                    ovlRetryPending[0] = false
+                                    ovlGateRef[0]?.invoke()
+                                }, OVL_GATE_MIN_GAP_MS - (now - ovlLastEval[0]) + 50)
+                            }
+                            return@runCatching
+                        }
+                        val c = map.cameraPosition.target
+                        val key = if (c == null) "?" else "${(c.latitude * 200).toInt()}/${(c.longitude * 200).toInt()}/${zoomNow.toInt()}"
+                        if (key == ovlGateKey[0] && !ovlDirty[0]) return@runCatching
+                        ovlGateKey[0] = key
+                        ovlDirty[0] = false
+                        ovlLastEval[0] = now
+                        // Grid-sample OSM building COVERAGE (area), not feature count: OSM tiles
+                        // merge dense blocks into a few giant polygons (Manhattan read as "2
+                        // features = sparse"), but a merged blob still covers every probe point
+                        // beneath it. 12 points is plenty for a hide/show verdict, and each probe is
+                        // a blocking IPC, so fewer is a feature. The flat `building` fill renders
+                        // z16-24 and is toggle-independent (building-3d can be switched off by the
+                        // 3D setting / nav / satellite), so it carries the signal.
+                        val dm = context.resources.displayMetrics
+                        val w = dm.widthPixels.toFloat(); val h = dm.heightPixels.toFloat()
+                        val cols = 3; val rows = 4; val r = 6f
+                        var hits = 0
+                        for (ix in 1..cols) for (iy in 1..rows) {
+                            val px = w * ix / (cols + 1); val py = h * iy / (rows + 1)
+                            if (map.queryRenderedFeatures(RectF(px - r, py - r, px + r, py + r), "building", "building-3d").isNotEmpty()) hits++
+                        }
+                        val cover = hits.toFloat() / (cols * rows)
+                        val osmDense = cover >= OSM_COVER_FRAC
+                        val want = if (osmDense) Property.NONE else Property.VISIBLE
+                        if (want == Property.VISIBLE && !ovlRenderSettled[0]) {
+                            // Never REVEAL off a possibly-empty render: a "sparse" verdict before the
+                            // OSM tiles finish is indistinguishable from a real gap, and acting on it
+                            // is the NYC arrival flash (MS paints for ~3s, then gets yanked). Hiding
+                            // is always safe immediately; revealing waits for a finished render.
+                            // Un-commit the verdict so the next eligible tick re-evaluates.
+                            ovlGateKey[0] = ""
+                            ovlDirty[0] = true
+                        } else {
+                            ovl.forEach { if (it.visibility.value != want) it.setProperties(PropertyFactory.visibility(want)) }
+                            overlayState.value(if (osmDense) "hidden" else "drawing")
+                        }
+                        android.util.Log.d("VelaOverlay", "osmCover=${"%.2f".format(cover)} ($hits/${cols * rows}) dense=$osmDense settled=${ovlRenderSettled[0]} z=${"%.1f".format(zoomNow)}")
+                    }
+                    Unit
+                }
+                ovlGateRef[0] = runOvlGate
                 map.addOnCameraIdleListener {
                     if (gestureMove[0]) {
                         gestureMove[0] = false
@@ -1802,7 +1939,20 @@ fun VelaMapView(
                         b.latitudeSouth, b.longitudeWest, b.latitudeNorth, b.longitudeEast,
                         map.cameraPosition.zoom,
                     )
+                    runOvlGate()
                 }
+                // A finished render means tiles may have arrived after the camera stopped - the
+                // verdict could be stale. ONLY mark dirty here (never probe): this event can fire
+                // per frame, and probing from it is what froze the P4a. The next camera-idle tick
+                // (also ~constant) runs the gate once the time floor allows. renderSettled arms the
+                // gate's REVEAL path - before the first finished render a "sparse" verdict is just
+                // unloaded tiles, and revealing on it is the arrival flash.
+                mv.addOnDidBecomeIdleListener {
+                    ovlRenderSettled[0] = true
+                    ovlDirty[0] = true
+                    runOvlGate()
+                }
+                map.addOnCameraMoveListener { ovlRenderSettled[0] = false }
                 // Feed the on-screen scale bar: metres-per-pixel at the centre
                 // latitude (varies with zoom AND latitude on a Mercator map).
                 val reportScale = {
@@ -2372,7 +2522,12 @@ fun VelaMapView(
                     lastCameraTarget = target
                     // Zoom in closer when a place sheet is up (focusing a single pin),
                     // looser for a plain recenter - unless a deep link asked for its own zoom.
-                    val zoom = cameraTargetZoom ?: if (cameraBottomInsetPx > 0) 16.5 else 14.5
+                    // 15.5 (~1000ft), not 16.5: the search fly-to used to land one notch past
+                    // EVERY heavy tier at once (flat buildings z16, MS overlay z16, 3D z17, and a
+                    // bigger POI cap) - searching a dense city hitched on arrival while all of it
+                    // loaded (user 2026-07-17, London). At 15.5 arrival is roads+labels+POIs;
+                    // buildings are one pinch away. Matches the locate-me fly (also 15.5).
+                    val zoom = cameraTargetZoom ?: if (cameraBottomInsetPx > 0) 15.5 else 14.5
                     flightDepth[0]++
                     map.animateCamera(
                         CameraUpdateFactory.newLatLngZoom(MLLatLng(target.lat, target.lng), zoom), flightCb(),
@@ -3571,6 +3726,35 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
     ).forEach { style.getLayer(it)?.setProperties(PropertyFactory.visibility(Property.NONE)) }
 }
 
+/** Google-style 3D building geometry, shared by all four palettes. Extrusions start a zoom level
+ *  AFTER the flat footprints (z17 vs 16): at ~500ft Manhattan towers leaned over and BURIED the
+ *  roads (user 2026-07-17) - that band now gets flat fills only, roads stay visible. From z17 the
+ *  buildings grow in (30% -> full height by z19, Google's grow-as-you-approach), and the vertical
+ *  gradient shades extrusion sides darker toward the base so same-coloured faces read as discrete
+ *  buildings instead of one merged blob (the palettes had shut side shading off entirely).
+ *  Starting 3D later is also the cheapest frame win in exactly the dense views that lag: one less
+ *  zoom level of the most fragment-expensive layer the map draws. */
+private fun applyBuilding3dGeometry(style: Style) {
+    style.getLayer("building-3d")?.setMinZoom(17f)
+    style.getLayer("building-3d")?.setProperties(
+        PropertyFactory.fillExtrusionVerticalGradient(true),
+        PropertyFactory.fillExtrusionHeight(
+            Expression.interpolate(
+                Expression.linear(), Expression.zoom(),
+                Expression.stop(17f, Expression.product(Expression.get("render_height"), Expression.literal(0.3f))),
+                Expression.stop(19f, Expression.get("render_height")),
+            ),
+        ),
+        PropertyFactory.fillExtrusionBase(
+            Expression.interpolate(
+                Expression.linear(), Expression.zoom(),
+                Expression.stop(17f, Expression.product(Expression.get("render_min_height"), Expression.literal(0.3f))),
+                Expression.stop(19f, Expression.get("render_min_height")),
+            ),
+        ),
+    )
+}
+
 internal fun applyLight(style: Style) {
     // Road-name labels get a wide white halo so they stay readable over the dotted walk
     // line / route line beneath them (dark path does the same; see the symbol pass there),
@@ -3612,16 +3796,13 @@ internal fun applyLight(style: Style) {
     // and the crisp flat footprints NEVER painted (only the faint building-3d extrusion
     // showed → the "sparse residential" look). Re-open the top with setMaxZoom so the flat
     // fill+outline draws from z14 up (overzoomed z14 tiles fill z15+).
-    style.getLayer("building")?.setMinZoom(14f)
+    style.getLayer("building")?.setMinZoom(16f) // Google-like: footprints only when zoomed in close (~250ft scale), not at neighbourhood zoom
     style.getLayer("building")?.setMaxZoom(24f)
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionColor("#e8e9ed"),
         PropertyFactory.fillExtrusionOpacity(1f),
-        PropertyFactory.fillExtrusionVerticalGradient(false),
     )
-    // Extrusions only once zoomed into a block — the flat fill+outline gives the footprint
-    // look at browse zoom, and fill-extrusion is the per-pixel-expensive part on a Pixel 5a.
-    style.getLayer("building-3d")?.setMinZoom(16f)
+    applyBuilding3dGeometry(style)
     // Neutralise the tan/yellow landuse fills (residential/commercial/school/…) into
     // the land — Google keeps these flat, not coloured blobs.
     // pitch/track keep their OWN colour (the sports-field accent set beside the vela-pitch
@@ -3720,14 +3901,13 @@ internal fun applyDark(style: Style) {
         PropertyFactory.fillColor("#1c3b69"),
         PropertyFactory.fillOutlineColor("#2e3d6d"),
     )
-    style.getLayer("building")?.setMinZoom(14f) // houses from neighbourhood zoom (see light path)
+    style.getLayer("building")?.setMinZoom(16f) // Google-like: footprints only when zoomed in close (~250ft scale)
     style.getLayer("building")?.setMaxZoom(24f) // re-open the maxzoom:14 clamp (see light path — was collapsing the flat fill to empty)
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionColor("#1c3b69"),
         PropertyFactory.fillExtrusionOpacity(1f),
-        PropertyFactory.fillExtrusionVerticalGradient(false),
     )
-    style.getLayer("building-3d")?.setMinZoom(16f) // extrusions only high-zoom (Pixel 5a perf)
+    applyBuilding3dGeometry(style)
     // Greens we keep as-is; every OTHER landuse/landcover fill (commercial, school,
     // retail, industrial, sand, …) must go dark too, or it stays a jarring cream
     // patch in dark mode.
@@ -3801,13 +3981,13 @@ internal fun applyClassicLight(style: Style) {
         PropertyFactory.fillColor("#dde1e7"),
         PropertyFactory.fillOutlineColor("#c4c9d1"),
     )
-    style.getLayer("building")?.setMinZoom(14f)
+    style.getLayer("building")?.setMinZoom(16f) // Google-like: footprints only when zoomed in close (~250ft scale), not at neighbourhood zoom
     style.getLayer("building")?.setMaxZoom(24f)
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionColor("#dde1e7"),
         PropertyFactory.fillExtrusionOpacity(0.9f),
     )
-    style.getLayer("building-3d")?.setMinZoom(16f)
+    applyBuilding3dGeometry(style)
     // Classic neutralises every non-green landuse into the land (no campus/commercial tints).
     val greens = setOf("park", "landcover_grass", "landcover_wood")
     style.layers.forEach { layer ->
@@ -3887,13 +4067,13 @@ internal fun applyClassicDark(style: Style) {
         PropertyFactory.fillColor("#383d45"),          // warm neutral grey - kills the "blue houses"
         PropertyFactory.fillOutlineColor("#464c56"),
     )
-    style.getLayer("building")?.setMinZoom(14f)
+    style.getLayer("building")?.setMinZoom(16f) // Google-like: footprints only when zoomed in close (~250ft scale), not at neighbourhood zoom
     style.getLayer("building")?.setMaxZoom(24f)
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionColor("#383d45"),
         PropertyFactory.fillExtrusionOpacity(0.9f),
     )
-    style.getLayer("building-3d")?.setMinZoom(16f)
+    applyBuilding3dGeometry(style)
     val greens = setOf("park", "landcover_grass", "landcover_wood")
     style.layers.forEach { layer ->
         when {
@@ -4557,6 +4737,12 @@ private fun applyData(
         style.getSourceAs<GeoJsonSource>(CONTROLS_SRC)?.setGeoJson(controlsFc)
         lastAppliedControls = trafficControls
     }
+
+    // Declutter when browsing zoomed out: the cameras use iconAllowOverlap(true), so a dense metro
+    // draws EVERY icon (no collision culling) - a wall of badges plus the symbol cost. They're a
+    // proximity feature, so hide them below z13 while just browsing, but keep the low floor when a
+    // route is active so route-overview zoom (z11-12) still shows its cameras (issue #131 dead-band).
+    style.getLayer(FLOCK_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
 
     // ALPR/Flock cameras → icon features (identity-gated like the controls). Empty when the layer's
     // off or zoomed out, which clears the source.

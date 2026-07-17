@@ -2293,6 +2293,14 @@ class MapViewModel @Inject constructor(
     fun clearSelection() {
         reviewsJob?.cancel() // free the scrape WebView/mutex — nothing is reading its result now
         routeJob?.cancel() // a directions fetch in flight must not resurrect routes after we clear them
+        // Remember what the user just had open: the close-triggered ambient repaint re-cuts the
+        // pool to the zoom-tiered cap, and a modest place could lose its slot to ranking jitter -
+        // the icon you were JUST looking at vanished on back-out (user 2026-07-17). The pin below
+        // (withRecentClosed) force-keeps it in the next paints.
+        _state.value.selected?.let {
+            recentClosed = it
+            recentClosedAtMs = android.os.SystemClock.elapsedRealtime()
+        }
         _state.update {
             it.copy(
                 selected = null, placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false, reviewsFound = 0, loadingDetails = false,
@@ -4231,8 +4239,22 @@ class MapViewModel @Inject constructor(
         // miss a pan due to a camera-reason race). Keep the "Search this area" center = the live
         // viewport center here so the search can never bias to a stale, pre-pan location.
         mapCenter = center
-        refreshBuildingOverlays(center) // stream the building overlay for whatever region is now in view
-        refreshAddressOverlays(center) // + house-number labels for that region
+        // COLD-LOAD STAGGER (user 2026-07-17, 4a): the house-shape footprints + house-number labels
+        // are the heaviest render layers, and on a fresh launch they came online at the same instant
+        // as the ambient POI symbol-collision - three heavy things at once on a weak GPU. When ambient
+        // hasn't painted yet (cold), hold these two a beat so the POIs place first; warm pans refresh
+        // immediately. Gated on the viewport still being live so a fast pan during the wait doesn't
+        // stream a stale region.
+        if (_state.value.ambientPois.isEmpty()) {
+            val vp = viewport
+            viewModelScope.launch {
+                kotlinx.coroutines.delay(600)
+                if (viewport === vp) { refreshBuildingOverlays(center); refreshAddressOverlays(center) }
+            }
+        } else {
+            refreshBuildingOverlays(center) // stream the building overlay for whatever region is now in view
+            refreshAddressOverlays(center) // + house-number labels for that region
+        }
         refreshMaxspeedOverlay(center) // + the posted-speed-limit overlay (read under the puck for the sign)
         refreshTrafficControls(south, west, north, east, zoom) // + traffic lights / stop signs at high zoom
         lastFlockViewport = doubleArrayOf(south, west, north, east, zoom)
@@ -4389,7 +4411,12 @@ class MapViewModel @Inject constructor(
             }
             return
         }
-        if (s.navigating || s.replaying || s.results.isNotEmpty() || s.selected != null) return
+        // Street View counts as "not a bare map" too (user 2026-07-17): panning the mini-map while
+        // the sphere is up was still firing the full ambient fan-out - scrape + parse + repaint
+        // churning behind a viewer the user is actually looking at, for dots they can barely see.
+        if (s.navigating || s.replaying || s.results.isNotEmpty() || s.selected != null ||
+            s.streetView != null || s.streetViewLoading
+        ) return
         // Zoomed out past neighbourhood level → drop the dots (and let the OSM POIs come back).
         if (zoom < 14.0) {
             ambientJob?.cancel()
@@ -4426,7 +4453,7 @@ class MapViewModel @Inject constructor(
         // the best-known data for THIS centre; the fetch below still refines it.
         cachedAmbientNear(center)?.let { entry ->
             val cached = entry.places.map { it.copy(distanceMeters = center.distanceTo(it.location)) }
-            _state.update { it.copy(ambientPois = civicFiltered(keepAmbientForView(cached, viewRadiusMeters))) }
+            _state.update { it.copy(ambientPois = withRecentClosed(civicFiltered(keepAmbientForView(cached, viewRadiusMeters, zoom)))) }
             // A FRESH fetch that still COVERS this view is served as-is, no network refetch
             // (user 2026-07-15): tapping a POI shifts the camera enough to trip the moved-gate,
             // so closing the sheet re-fetched the SAME area seconds later - and Google's ranking
@@ -4453,7 +4480,10 @@ class MapViewModel @Inject constructor(
             // the same bare-map gates as the final.
             fun bareMap(): Boolean {
                 val cur = _state.value
-                return !(cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null)
+                return !(
+                    cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null ||
+                        cur.streetView != null || cur.streetViewLoading
+                    )
             }
             // A cancelled fetch's SLOW straggler must not paint: the fan-out children have no
             // suspension point between the blocking HTTP call and the merge, so they outlive
@@ -4470,8 +4500,8 @@ class MapViewModel @Inject constructor(
                             // early pool is leaner than the rich cached set, and letting it
                             // replace blinked most dots off then back (2026-07-11). The final
                             // ranked pool below always replaces outright.
-                            val kept = keepAmbientForView(partial, viewRadiusMeters)
-                            if (kept.size >= cur.ambientPois.size) cur.copy(ambientPois = civicFiltered(kept)) else cur
+                            val kept = keepAmbientForView(partial, viewRadiusMeters, zoom)
+                            if (kept.size >= cur.ambientPois.size) cur.copy(ambientPois = withRecentClosed(civicFiltered(kept))) else cur
                         }
                     }
                 }
@@ -4483,7 +4513,7 @@ class MapViewModel @Inject constructor(
             cacheAmbient(center, span, res)
             // Re-check we're still on the bare map — the user may have searched/opened a place while we fetched.
             if (!bareMap()) return@launch
-            _state.update { it.copy(ambientPois = civicFiltered(keepAmbientForView(res, viewRadiusMeters)), ambientCoversView = true) }
+            _state.update { it.copy(ambientPois = withRecentClosed(civicFiltered(keepAmbientForView(res, viewRadiusMeters, zoom))), ambientCoversView = true) }
             // Idle now: quietly warm the four NEIGHBOUR areas into the LRU so panning one screen
             // over paints instantly (unmetered connections only - it's ~4 extra fan-outs).
             prefetchAmbientNeighbours(center, span, zoom)
@@ -4495,7 +4525,26 @@ class MapViewModel @Inject constructor(
      *  so a budget GPU isn't colliding the whole ~3.5 km pool each drag frame. Off-screen POIs can't
      *  paint anyway. Preserves `res`'s prominence order (the ambient layer's collision key = index),
      *  so the anchor store still beats its in-store tenant. */
-    private fun keepAmbientForView(res: List<app.vela.core.model.Place>, viewRadiusMeters: Double): List<app.vela.core.model.Place> =
+    /** The place whose sheet was just closed, pinned into ambient paints for a couple of minutes so
+     *  the tapped icon can't vanish on back-out. The zoom-tiered cap made this visible: the
+     *  close-triggered repaint re-cuts to top-N by prominence and Google's ranking jitters between
+     *  identical requests, so a mid-tier place near the cap boundary randomly lost its slot. */
+    private var recentClosed: app.vela.core.model.Place? = null
+    private var recentClosedAtMs = 0L
+
+    private fun withRecentClosed(kept: List<app.vela.core.model.Place>): List<app.vela.core.model.Place> {
+        val p = recentClosed ?: return kept
+        if (android.os.SystemClock.elapsedRealtime() - recentClosedAtMs > 120_000L) {
+            recentClosed = null
+            return kept
+        }
+        // Same identity match the selected-copy drop uses (name + ~150 m) - if a copy survived the
+        // cut there's nothing to add. One extra symbol past the cap is nothing to the layer.
+        if (kept.any { it.name.equals(p.name, ignoreCase = true) && it.location.distanceTo(p.location) < 150.0 }) return kept
+        return kept + p
+    }
+
+    private fun keepAmbientForView(res: List<app.vela.core.model.Place>, viewRadiusMeters: Double, zoom: Double): List<app.vela.core.model.Place> =
         res.asSequence()
             .filterNot { p -> p.permanentlyClosed }
             .filter { p ->
@@ -4503,7 +4552,7 @@ class MapViewModel @Inject constructor(
                 val reach = viewRadiusMeters * (1.25 + 0.35 * (ambientProminence(p) / 8.0).coerceIn(0.0, 1.0))
                 (p.distanceMeters ?: 0.0) <= reach
             }
-            .take(AMBIENT_ONSCREEN_CAP)
+            .take(ambientCap(zoom))
             .toList()
 
     fun hasViewport(): Boolean = viewport != null
@@ -4569,6 +4618,12 @@ class MapViewModel @Inject constructor(
      * region doesn't churn the map sources.
      */
     private fun refreshBuildingOverlays(center: LatLng? = mapCenter ?: _state.value.myLocation) {
+        // Hard off switch (Settings → Advanced → Fill missing buildings). When off, clear any layers
+        // already streamed and skip the whole thing - OSM buildings are untouched.
+        if (!app.vela.ui.BuildingOverlay.on.value) {
+            if (_state.value.buildingOverlays.isNotEmpty()) _state.update { it.copy(buildingOverlays = emptyList()) }
+            return
+        }
         viewModelScope.launch {
             val installed = overlayStore.installed() // id -> local .pmtiles File
             val uris = installed.values.map { "pmtiles://file://${it.absolutePath}" }.toMutableList()
@@ -5122,7 +5177,18 @@ class MapViewModel @Inject constructor(
                                       // like live drives instead of surging per fix
         // Max ambient POIs handed to the map layer. Bounds symbol-collision cost per frame so old
         // phones (Pixel 5a) stay smooth while dragging; the collider only paints ~a few dozen anyway.
+        // Ambient on-screen cap is ZOOM-TIERED, Google-style (2026-07-17): Google shows a handful of
+        // POIs at a wide browse zoom and reveals more as you zoom in. We used a flat 140, so a dense
+        // downtown re-ran symbol-collision placement over ~140 icons+labels EVERY drag frame on the
+        // main thread = the "so many dots, laggy" report. The cap now ramps 45 (wide, ambient fetch
+        // floor z14) -> 140 (z17.5+), cutting the per-frame collision ~3x exactly where it hurts
+        // (zoomed-out) while keeping full detail zoomed in. NB Vela's MapLibre zoom reads ~1 below
+        // Google's for the same extent (512px tiles), so z14 here ~ Google z15.
         const val AMBIENT_ONSCREEN_CAP = 140
+        const val AMBIENT_ONSCREEN_CAP_MIN = 45
+        fun ambientCap(zoom: Double): Int =
+            (AMBIENT_ONSCREEN_CAP_MIN +
+                ((zoom - 14.0).coerceIn(0.0, 3.5) / 3.5) * (AMBIENT_ONSCREEN_CAP - AMBIENT_ONSCREEN_CAP_MIN)).toInt()
         // Half-span (degrees) the offline geocoder's address/street fetch is padded to around the viewport
         // centre — ~10 km lat each way (a bit less in lng at mid-latitudes), so a downloaded area can route
         // to an arbitrary address across the surrounding metro, not just the blocks that were on screen.
