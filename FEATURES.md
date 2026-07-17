@@ -1966,3 +1966,24 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   plural categories, no em dashes) and the maintainer component config. New strings are added to
   the English base only; Weblate opens PRs to fill the locales, and untranslated strings fall
   back to English in the meantime.
+
+## Added 2026-07-16 (community QOL batch, issues #169 #171 #172 #173)
+
+- ✅ **Read + copy a full business name (issue #169).** A very long place name (CJK businesses
+  especially) clips at two lines in the sheet header; tapping the name now toggles the full
+  name, long-pressing copies it to the clipboard, and the share menu carries a "Copy name"
+  item (also the key-only path on D-pad phones, where the name is its own focus stop).
+- ✅ **Saved places show on the map while browsing (issue #171).** Every list place and
+  quick-save draws a small ringed disc in its list's colour with the list's icon (or emoji)
+  on the browse map; tapping one opens the place. Hidden while search results, navigation,
+  a replay or Street View own the map. Sparse deliberate objects, so they always render
+  (no collision fade).
+- ✅ **Settings search (issue #172).** A magnifier in the Settings top bar opens a floating
+  search field; every section title and row label self-registers its position as it lays
+  out, so matches are complete with no hand-kept keyword table, and picking one scrolls
+  straight to the row. D-pad: the field auto-focuses, DOWN escapes into the results, BACK
+  closes the panel first.
+- ✅ **Custom emoji icons on lists (issue #173).** The list editor's icon row grows an emoji
+  tile: a curated picker grid (works on key-only phones) plus a free-type field for any
+  emoji. Stored in the existing icon field as "emoji:X", so old payloads and old builds
+  fall back to the bookmark; the emoji renders in list rows and as the saved-place map pin.
