@@ -154,7 +154,12 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
     val searchScope = rememberCoroutineScope()
     BackHandler(enabled = searchOpen) { searchOpen = false; searchQuery = "" }
     LaunchedEffect(searchOpen) { if (searchOpen) runCatching { searchFieldFocus.requestFocus() } }
-    androidx.compose.runtime.CompositionLocalProvider(LocalSettingsIndex provides searchIndex) {
+    // Only expose the position index WHILE the search box is open. Settings is a plain (non-lazy)
+    // scrolling Column, so every row is always laid out; registering onGloballyPositioned on all of
+    // them made each row re-report its position + write a snapshot map on every scroll frame, which
+    // stuttered ordinary scrolling (the search feature is used rarely). Null when closed → registerSetting
+    // is a no-op → normal scroll; opening search recomposes once and the rows register on that layout pass.
+    androidx.compose.runtime.CompositionLocalProvider(LocalSettingsIndex provides (if (searchOpen) searchIndex else null)) {
     Box {
     Scaffold(
         topBar = {
