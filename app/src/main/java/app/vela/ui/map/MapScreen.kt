@@ -3536,12 +3536,7 @@ private fun ListsSheet(
                                 .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Icon(
-                                listIcon(list.icon),
-                                contentDescription = null,
-                                tint = Color(list.color),
-                                modifier = Modifier.size(22.dp),
-                            )
+                            ListIconBadge(list.icon, Color(list.color), 22.dp)
                             Spacer(Modifier.width(16.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(list.name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
@@ -3681,6 +3676,25 @@ private val LIST_COLORS: List<Long> = listOf(
 private fun listIcon(key: String): androidx.compose.ui.graphics.vector.ImageVector =
     LIST_ICONS.firstOrNull { it.first == key }?.second ?: Icons.Default.Bookmark
 
+// A curated emoji palette for list icons (issue #173) — picked from a D-pad-focusable grid, so
+// keypad phones (whose keyboards have no emoji) get the feature too; touch users can also type
+// any emoji into the free-text field. Stored as "emoji:X" in PlaceList.icon (old payloads and
+// old builds decode it fine: unknown keys fall back to the bookmark vector).
+private val LIST_EMOJI = listOf(
+    "❤️", "⭐", "📍", "🎯", "🍕", "🍔", "🍜", "🍣", "🌮", "☕", "🍰", "🍺",
+    "🛒", "🎁", "🏖️", "⛰️", "🎡", "🎬", "🎵", "🏛️", "⛽", "🏥", "🐾", "✈️",
+)
+
+/** Renders a list's icon: the emoji itself for an "emoji:X" key, else the tinted vector. */
+@Composable
+private fun ListIconBadge(key: String, tint: Color, size: androidx.compose.ui.unit.Dp) {
+    if (key.startsWith("emoji:")) {
+        Text(key.removePrefix("emoji:"), fontSize = with(LocalDensity.current) { (size * 0.86f).toSp() })
+    } else {
+        Icon(listIcon(key), contentDescription = null, tint = tint, modifier = Modifier.size(size))
+    }
+}
+
 /** Create / edit a place-list: name, icon and colour; Delete when editing. */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -3693,6 +3707,8 @@ private fun ListEditorDialog(
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var icon by remember { mutableStateOf(initial?.icon ?: "bookmark") }
     var color by remember { mutableStateOf(initial?.color ?: LIST_COLORS.first()) }
+    var emojiOpen by remember { mutableStateOf(false) }
+    var emojiText by remember { mutableStateOf("") }
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.padding(20.dp).widthIn(max = 420.dp)) {
@@ -3726,6 +3742,48 @@ private fun ListEditorDialog(
                             }
                         }
                     }
+                    // Custom EMOJI icon (issue #173): the tail tile shows the picked emoji (selected
+                    // state) or a face, and toggles the picker grid below. The grid, not a bare text
+                    // field, is the primary picker so key-only phones can use it (docs/dpad.md).
+                    val isEmoji = icon.startsWith("emoji:")
+                    Surface(
+                        shape = CircleShape,
+                        color = if (isEmoji) Color(color).copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant,
+                        border = if (isEmoji) BorderStroke(2.dp, Color(color)) else null,
+                        modifier = Modifier.size(44.dp).dpadHighlight(CircleShape).clickable { emojiOpen = !emojiOpen },
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(if (isEmoji) icon.removePrefix("emoji:") else "😀", fontSize = 20.sp)
+                        }
+                    }
+                }
+                if (emojiOpen) {
+                    Spacer(Modifier.height(10.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        LIST_EMOJI.forEach { e ->
+                            val sel = icon == "emoji:$e"
+                            Surface(
+                                shape = CircleShape,
+                                color = if (sel) Color(color).copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant,
+                                border = if (sel) BorderStroke(2.dp, Color(color)) else null,
+                                modifier = Modifier.size(40.dp).dpadHighlight(CircleShape).clickable { icon = "emoji:$e" },
+                            ) {
+                                Box(contentAlignment = Alignment.Center) { Text(e, fontSize = 18.sp) }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    // Free-type field for any emoji the grid lacks (touch keyboards have the full set).
+                    OutlinedTextField(
+                        value = emojiText,
+                        onValueChange = { v ->
+                            emojiText = v.take(16)
+                            if (emojiText.isNotBlank()) icon = "emoji:${emojiText.trim()}"
+                        },
+                        label = { Text(stringResource(R.string.list_emoji_label)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
                 Spacer(Modifier.height(16.dp))
                 Text(stringResource(R.string.list_color_label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
