@@ -1079,7 +1079,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 // Compatibility rendering: TextureView instead of SurfaceView for the map's GL
                 // surface. Auto-enabled by the crash sentinel when a device's driver kills the
                 // map at init (issue #95); this row is the manual override either way.
-                var textureRender by remember { mutableStateOf(prefs.getBoolean("texture_render", false)) }
+                var textureRender by remember { mutableStateOf(prefs.getBoolean("texture_render", app.vela.ui.map.fragileGpuDefault())) }
                 ToggleRow(stringResource(R.string.settings_texture_render), textureRender) {
                     textureRender = it
                     prefs.edit().putBoolean("texture_render", it).apply()

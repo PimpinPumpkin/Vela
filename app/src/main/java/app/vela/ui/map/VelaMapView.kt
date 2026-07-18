@@ -505,7 +505,7 @@ fun VelaMapView(
         }
         prefs.edit().putBoolean("map_init_inflight", true).apply()
         val opts = org.maplibre.android.maps.MapLibreMapOptions.createFromAttributes(context)
-            .textureMode(prefs.getBoolean("texture_render", false))
+            .textureMode(prefs.getBoolean("texture_render", fragileGpuDefault()))
         MapView(context, opts).apply {
             onCreate(null)
             isFocusable = false
@@ -3752,6 +3752,21 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
         "tunnel_major_rail_hatching", "tunnel_transit_rail_hatching",
     ).forEach { style.getLayer(it)?.setProperties(PropertyFactory.visibility(Property.NONE)) }
 }
+
+/** Known-fragile GPU stacks start in compatibility (TextureView) rendering from the FIRST
+ *  launch - no crashes needed to learn. Unisoc-built devices identify themselves in
+ *  Build.HARDWARE ("ums*" for the ums512/T618 class, "sp98*" for older Spreadtrum) and pair
+ *  budget Mali GPUs with drivers documented to crash GL apps on Android 14 (libGLES_mali.so
+ *  faults; issue #95's tablet is a ums512). This only sets the DEFAULT - an explicit
+ *  Developer-toggle choice (the "texture_render" pref) beats it either way, and the two-crash
+ *  sentinel in VelaMapView remains the generic net for bad drivers not on this list. */
+internal fun fragileGpuDefault(): Boolean =
+    android.os.Build.HARDWARE.startsWith("ums") ||
+        android.os.Build.HARDWARE.startsWith("sp98") ||
+        (
+            android.os.Build.VERSION.SDK_INT >= 31 &&
+                android.os.Build.SOC_MANUFACTURER.contains("unisoc", ignoreCase = true)
+            )
 
 /** Google-style 3D building geometry, shared by all four palettes. Extrusions start a zoom level
  *  AFTER the flat footprints (z17 vs 16): at ~500ft Manhattan towers leaned over and BURIED the

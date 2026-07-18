@@ -25,8 +25,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   rendering (a different graphics path that avoids most of these driver bugs, slightly slower)
   and the app just works from then on. Zero configuration, cannot misfire on healthy devices (a
   successful render resets the counter), and Settings → Developer → Compatibility rendering is
-  the manual override in both directions. Verified on-device: two simulated init deaths flip the
-  fallback on, the map renders fully through it, and the toggle restores normal rendering.
+  the manual override in both directions. Known-fragile chips skip even the two crashes: Unisoc
+  devices (the reported tablet's family, identified from the hardware string) default straight
+  into compatibility rendering on their first launch, with the crash sentinel kept as the net
+  for bad drivers not on the list. Verified on-device: two simulated init deaths flip the
+  fallback on, the map renders fully through it, and the toggle restores normal rendering; a
+  Pixel stays on the normal path untouched.
 - ✅ **Browsed areas keep their Google-quality places for weeks, online or offline (2026-07-17,
   user).** The ambient POI layer's disk cache grew into a durable store: the newest 32 browsed
   areas (up to 200 places each, about 1 MB total) persist for 14 days, paint instantly on a cold
