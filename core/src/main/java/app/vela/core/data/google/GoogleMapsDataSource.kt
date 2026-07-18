@@ -136,17 +136,20 @@ class GoogleMapsDataSource @Inject constructor(
             }
         }
         val first = page(0)
-        // PAGINATE like the Google app: a page is 20 and a FULL first page means the viewport
-        // holds more. Google's keyless web ranking is prominence-heavy over the whole box, so a
-        // modest place sitting right next to the user ranks 21-60 for a category query - one
-        // page was exactly why "the restaurant right next to me" never made the list (user
-        // 2026-07-18). Pages 2+3 fetch CONCURRENTLY (one extra round trip, not two); either
-        // failing quietly leaves page 1 intact. Specific-name queries return partial pages and
-        // never paginate, so they cost nothing extra.
-        val more = if (first.size >= 18) {
+        // PAGINATE like the Google app: a page is !7iN results (20 today) and a FULL first page
+        // means the viewport holds more. Google's keyless web ranking is prominence-heavy over
+        // the whole box, so a modest place sitting right next to the user ranks 21-60 for a
+        // category query - one page was exactly why "the restaurant right next to me" never made
+        // the list (user 2026-07-18). Pages 2+3 fetch CONCURRENTLY (one extra round trip, not
+        // two); either failing quietly leaves page 1 intact. Specific-name queries return
+        // partial pages and never paginate, so they cost nothing extra. Page size + offsets are
+        // DERIVED from the calibrated template (searchPb is remote-updatable); a recaptured
+        // template without a !7i token skips pagination rather than guessing.
+        val pageSize = SearchPb.pageSize(cal.searchPb)
+        val more = if (pageSize != null && first.size >= pageSize - 2) {
             kotlinx.coroutines.coroutineScope {
-                val p2 = async { runCatching { page(20) }.getOrDefault(emptyList()) }
-                val p3 = async { runCatching { page(40) }.getOrDefault(emptyList()) }
+                val p2 = async { runCatching { page(pageSize) }.getOrDefault(emptyList()) }
+                val p3 = async { runCatching { page(pageSize * 2) }.getOrDefault(emptyList()) }
                 p2.await() + p3.await()
             }
         } else emptyList()
