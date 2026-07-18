@@ -26,9 +26,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   and the app just works from then on. Zero configuration, cannot misfire on healthy devices (a
   successful render resets the counter), and Settings → Developer → Compatibility rendering is
   the manual override in both directions. Known-fragile chips skip even the two crashes: Unisoc
-  devices (the reported tablet's family, identified from the hardware string) default straight
-  into compatibility rendering on their first launch, with the crash sentinel kept as the net
-  for bad drivers not on the list. Verified on-device: two simulated init deaths flip the
+  devices ON ANDROID 14 (the reported tablet's family + OS, identified from the hardware string;
+  the documented driver faults are specific to the Android 14 builds) default straight into
+  compatibility rendering on their first launch. The same silicon on older Android renders fine
+  the normal way (car head units run this chip on Android 10 without issue) and is deliberately
+  left alone, covered by the crash sentinel like everything else. Verified on-device: two simulated init deaths flip the
   fallback on, the map renders fully through it, and the toggle restores normal rendering; a
   Pixel stays on the normal path untouched.
 - ✅ **Browsed areas keep their Google-quality places for weeks, online or offline (2026-07-17,

@@ -3756,15 +3756,18 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
 /** Known-fragile GPU stacks start in compatibility (TextureView) rendering from the FIRST
  *  launch - no crashes needed to learn. Unisoc-built devices identify themselves in
  *  Build.HARDWARE ("ums*" for the ums512/T618 class, "sp98*" for older Spreadtrum) and pair
- *  budget Mali GPUs with drivers documented to crash GL apps on Android 14 (libGLES_mali.so
- *  faults; issue #95's tablet is a ums512). This only sets the DEFAULT - an explicit
- *  Developer-toggle choice (the "texture_render" pref) beats it either way, and the two-crash
- *  sentinel in VelaMapView remains the generic net for bad drivers not on this list. */
+ *  budget Mali GPUs with drivers documented to crash GL apps ON ANDROID 14 (libGLES_mali.so
+ *  faults; issue #95's tablet is a ums512 on 14). ANDROID-14-SCOPED on purpose: the same ums512
+ *  silicon on older Android renders fine through SurfaceView (car head units run this chip on
+ *  Android 10 with no crashes), and defaulting THOSE into TextureView would be a pointless perf
+ *  downgrade on exactly the weakest GPUs. Pre-14 fragile devices are covered by the two-crash
+ *  sentinel instead. This only sets the DEFAULT - an explicit Developer-toggle choice (the
+ *  "texture_render" pref) beats it either way. */
 internal fun fragileGpuDefault(): Boolean =
-    android.os.Build.HARDWARE.startsWith("ums") ||
-        android.os.Build.HARDWARE.startsWith("sp98") ||
+    android.os.Build.VERSION.SDK_INT >= 34 &&
         (
-            android.os.Build.VERSION.SDK_INT >= 31 &&
+            android.os.Build.HARDWARE.startsWith("ums") ||
+                android.os.Build.HARDWARE.startsWith("sp98") ||
                 android.os.Build.SOC_MANUFACTURER.contains("unisoc", ignoreCase = true)
             )
 
