@@ -111,23 +111,50 @@ class GoogleMapsDataSource @Inject constructor(
         // normally pass the user's location, with a fallback for the rare null.
         val viewport = near ?: DEFAULT_VIEWPORT
         val cal = calibration.current()
-        val pb = SearchPb.build(query, viewport, cal.searchPb, spanMeters)
-        val url = "${cal.searchEndpoint}&q=${query.enc()}&pb=${pb.enc()}".localized()
-        val raw = get(url)
-        // A remote transforms.js can fully re-parse a reshaped response (searchOverride);
-        // otherwise the compiled parser runs. Either way, an optional transformPlaces
-        // hook gets the last word. No hook / any error → pure compiled path.
-        val places = try {
-            jsTransforms.searchOverride(raw)
-                ?: SearchParser.parse(query, GoogleResponse.parse(raw), near, cal.paths).places
-        } catch (e: CalibrationNeededException) {
-            // Capture the exact request that drifted so an opted-in user can hand it
-            // to a dev (no-op unless diagnostics are on).
-            diag.record("drift", "search parse drift: ${e.message}", url)
-            throw e
+        val firstUrl = "${cal.searchEndpoint}&q=${query.enc()}&pb=${SearchPb.build(query, viewport, cal.searchPb, spanMeters).enc()}".localized()
+        suspend fun page(offset: Int): List<Place> {
+            val url = if (offset == 0) {
+                firstUrl
+            } else {
+                "${cal.searchEndpoint}&q=${query.enc()}&pb=${SearchPb.build(query, viewport, cal.searchPb, spanMeters, offset).enc()}".localized()
+            }
+            val raw = get(url)
+            // A remote transforms.js can fully re-parse a reshaped response (searchOverride);
+            // otherwise the compiled parser runs. Either way, an optional transformPlaces
+            // hook gets the last word. No hook / any error → pure compiled path.
+            return try {
+                jsTransforms.searchOverride(raw)
+                    ?: SearchParser.parse(query, GoogleResponse.parse(raw), near, cal.paths).places
+            } catch (e: CalibrationNeededException) {
+                if (offset == 0) {
+                    // Capture the exact request that drifted so an opted-in user can hand it
+                    // to a dev (no-op unless diagnostics are on).
+                    diag.record("drift", "search parse drift: ${e.message}", url)
+                    throw e
+                }
+                emptyList() // a later page drifting must never kill the first page's results
+            }
+        }
+        val first = page(0)
+        // PAGINATE like the Google app: a page is 20 and a FULL first page means the viewport
+        // holds more. Google's keyless web ranking is prominence-heavy over the whole box, so a
+        // modest place sitting right next to the user ranks 21-60 for a category query - one
+        // page was exactly why "the restaurant right next to me" never made the list (user
+        // 2026-07-18). Pages 2+3 fetch CONCURRENTLY (one extra round trip, not two); either
+        // failing quietly leaves page 1 intact. Specific-name queries return partial pages and
+        // never paginate, so they cost nothing extra.
+        val more = if (first.size >= 18) {
+            kotlinx.coroutines.coroutineScope {
+                val p2 = async { runCatching { page(20) }.getOrDefault(emptyList()) }
+                val p3 = async { runCatching { page(40) }.getOrDefault(emptyList()) }
+                p2.await() + p3.await()
+            }
+        } else emptyList()
+        val places = (first + more).distinctBy { p ->
+            p.featureId ?: "${p.name.lowercase()}|${(p.location.lat * 2000).toInt()}|${(p.location.lng * 2000).toInt()}"
         }
         // detail = the exact request URL so an opted-in user's export is replayable.
-        diag.record("search", "\"$query\" near ${near?.lat ?: "?"},${near?.lng ?: "?"} → ${places.size} results", url)
+        diag.record("search", "\"$query\" near ${near?.lat ?: "?"},${near?.lng ?: "?"} → ${places.size} results (page1 ${first.size})", firstUrl)
         // open/closed diagnosis: what status + hours did we actually parse for each result? (compare
         // the status string to the hours to see whether Google's string is wrong or we mis-parse.)
         places.take(6).forEach { p ->

@@ -44,8 +44,9 @@ object SearchPb {
         viewport: LatLng,
         template: String = DEFAULT_TEMPLATE,
         spanMeters: Double? = null,
+        offset: Int = 0,
     ): String {
-        val pb = template
+        var pb = template
             .replace("{QUERY}", query.replace('!', ' ').trim())
             .replace("{LNG}", viewport.lng.toString())
             .replace("{LAT}", viewport.lat.toString())
@@ -53,8 +54,14 @@ object SearchPb {
         // zoomed-out search silently kept a city-sized net (user 2026-07-11). When the caller
         // knows its real viewport, stretch the window to it (floored so street-level searches
         // keep the calibrated behaviour; capped so a whole-globe zoom asks something sane).
-        return if (spanMeters != null) {
-            pb.replaceFirst(Regex("!1d[0-9.]+"), "!1d${spanMeters.coerceIn(3_000.0, 500_000.0).toInt()}")
-        } else pb
+        if (spanMeters != null) {
+            pb = pb.replaceFirst(Regex("!1d[0-9.]+"), "!1d${spanMeters.coerceIn(3_000.0, 500_000.0).toInt()}")
+        }
+        // Result offset (!8i) rides directly after the page size (!7i20) - the same pagination
+        // the web map uses. offset 20 = Google's ranks 21-40, and so on.
+        if (offset > 0) {
+            pb = pb.replaceFirst("!7i20", "!7i20!8i$offset")
+        }
+        return pb
     }
 }
