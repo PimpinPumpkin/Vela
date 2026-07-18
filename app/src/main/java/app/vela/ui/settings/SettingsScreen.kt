@@ -1076,6 +1076,15 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 Hint(stringResource(R.string.settings_demo_drive_hint))
                 ToggleRow(stringResource(R.string.settings_building_debug), app.vela.ui.BuildingDebug.on.value) { app.vela.ui.BuildingDebug.set(context, it) }
                 Hint(stringResource(R.string.settings_building_debug_hint))
+                // Compatibility rendering: TextureView instead of SurfaceView for the map's GL
+                // surface. Auto-enabled by the crash sentinel when a device's driver kills the
+                // map at init (issue #95); this row is the manual override either way.
+                var textureRender by remember { mutableStateOf(prefs.getBoolean("texture_render", false)) }
+                ToggleRow(stringResource(R.string.settings_texture_render), textureRender) {
+                    textureRender = it
+                    prefs.edit().putBoolean("texture_render", it).apply()
+                }
+                Hint(stringResource(R.string.settings_texture_render_hint))
                 // Simulated location — pretend to be at the current map centre (demos/screenshots
                 // without leaking where you actually are). Reactive holder reflects the state.
                 ToggleRow(stringResource(R.string.settings_sim_location), app.vela.ui.SimLocation.on) { on -> if (on) vm.simulateLocationHere() else vm.stopSimulateLocation() }
