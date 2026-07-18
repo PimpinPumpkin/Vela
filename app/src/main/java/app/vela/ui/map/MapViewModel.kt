@@ -1407,6 +1407,26 @@ class MapViewModel @Inject constructor(
                             }
                         }
                     } else emptyList()
+                    // NEARBY MERGE (user 2026-07-18): even with pagination, Google's keyless
+                    // ranking is prominence-heavy over the whole viewport, so a modest place
+                    // right next to the user can miss every page of a category search. The
+                    // ambient pool (the category fan-out at a tight span) usually already holds
+                    // it - append matching ambient places the search missed, nearest first.
+                    // APPENDED, never reshuffled: the distance re-rank experiment on the dot
+                    // layer taught us not to touch Google's ordering. Zero extra network.
+                    val ambientExtra = if (near != null && !app.vela.core.data.OfflineAddressStore.looksLikeAddress(q)) {
+                        val qn = q.trim().lowercase().trimEnd('s')
+                        if (qn.length < 3) emptyList()
+                        else _state.value.ambientPois
+                            .filter { p ->
+                                val cat = p.category?.lowercase() ?: ""
+                                (cat.isNotEmpty() && (cat.contains(qn) || (cat.length >= 4 && qn.contains(cat)))) ||
+                                    p.name.lowercase().contains(qn)
+                            }
+                            .filterNot { a -> res.places.any { g -> g.name.equals(a.name, ignoreCase = true) && g.location.distanceTo(a.location) < 150.0 } }
+                            .sortedBy { it.location.distanceTo(near) }
+                            .take(20)
+                    } else emptyList()
                     _state.update {
                         // Keep the directions DESTINATION (held in `selected`) while picking an origin/stop —
                         // else typing the origin query wiped the "To" and the panel showed an empty
@@ -1414,7 +1434,7 @@ class MapViewModel @Inject constructor(
                         // A live scrape succeeding is definitive proof we're online — clear a stuck
                         // offline flag (the network callback can miss an event after doze and leave
                         // `offline` latched until relaunch; seen on-device 2026-07-09).
-                        it.copy(results = localAddrs + res.places, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
+                        it.copy(results = localAddrs + res.places + ambientExtra, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
                     }
                 } else {
                     // Online SUCCEEDED but found nothing. Don't leave a blank screen (the "POI list just

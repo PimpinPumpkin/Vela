@@ -17,7 +17,17 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
-- ✅ **Self-healing crash fallback for broken GPU drivers (2026-07-17, issue #95).** Some budget
+- ✅ **Search goes three pages deep and rescues the place next to you (2026-07-18, user).**
+  Category searches ("restaurants") used to return exactly one page of 20, ranked by Google's
+  keyless web ordering, which is prominence-heavy over the whole visible box - so a modest
+  restaurant the user was standing next to ranked 21+ and never listed. Two fixes: (1) a FULL
+  first page now triggers pages 2 and 3 concurrently (the same !8i offset pagination the web
+  map uses, verified live: each page returns 20 fresh places), one extra round trip for up to
+  60 results; specific-name queries return partial pages and never paginate, costing nothing.
+  (2) matching places from the ambient pool (the tight-span category fan-out that feeds the map
+  dots, which usually already holds the neighbour) are APPENDED to the results, nearest first,
+  deduped against Google's list - never reshuffled into it, since the old distance re-rank
+  experiment proved that floats junk above landmarks. Zero extra network for the merge. Some budget
   tablets' GL drivers (seen on a Samsung tablet's Android 14 update with a Unisoc chip) kill the
   app the instant the map's GL surface initializes - before the user can reach any setting. Vela
   now marks "map initializing" at surface creation and clears it on the first finished render;
