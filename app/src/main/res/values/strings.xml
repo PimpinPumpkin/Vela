@@ -97,6 +97,8 @@
     <string name="settings_building_overlay_hint">Draws building shapes in suburbs where the map is missing them. Auto-skipped in dense areas that already have them. Turn off to render no extra buildings.</string>
     <string name="settings_building_debug">Building overlay debug</string>
     <string name="settings_building_debug_hint">Shows a small badge on the map reporting the fill-buildings state (off / none here / hidden / drawing). Testing aid; turn off for normal use.</string>
+    <string name="settings_texture_render">Compatibility rendering</string>
+    <string name="settings_texture_render_hint">Draws the map through a compatibility path that avoids some devices\' graphics driver bugs. Turns itself on if the map crashed the app at startup. Slightly slower; needs an app restart to apply.</string>
     <string name="settings_show_reviews">Show reviews</string>
     <string name="settings_show_reviews_hint">Off = place pages show no reviews, and Vela never fetches them.</string>
     <string name="settings_load_photos">Load photos</string>

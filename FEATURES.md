@@ -17,6 +17,20 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Self-healing crash fallback for broken GPU drivers (2026-07-17, issue #95).** Some budget
+  tablets' GL drivers (seen on a Samsung tablet's Android 14 update with a Unisoc chip) kill the
+  app the instant the map's GL surface initializes - before the user can reach any setting. Vela
+  now marks "map initializing" at surface creation and clears it on the first finished render;
+  two consecutive launches dying inside that window automatically switch the map to TextureView
+  rendering (a different graphics path that avoids most of these driver bugs, slightly slower)
+  and the app just works from then on. Zero configuration, cannot misfire on healthy devices (a
+  successful render resets the counter), and Settings → Developer → Compatibility rendering is
+  the manual override in both directions. Known-fragile chips skip even the two crashes: Unisoc
+  devices (the reported tablet's family, identified from the hardware string) default straight
+  into compatibility rendering on their first launch, with the crash sentinel kept as the net
+  for bad drivers not on the list. Verified on-device: two simulated init deaths flip the
+  fallback on, the map renders fully through it, and the toggle restores normal rendering; a
+  Pixel stays on the normal path untouched.
 - ✅ **Browsed areas keep their Google-quality places for weeks, online or offline (2026-07-17,
   user).** The ambient POI layer's disk cache grew into a durable store: the newest 32 browsed
   areas (up to 200 places each, about 1 MB total) persist for 14 days, paint instantly on a cold

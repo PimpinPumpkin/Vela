@@ -486,7 +486,27 @@ fun VelaMapView(
     // surface child) non-focusable, unconditionally: touch gestures don't need view focus,
     // so nothing is lost, and key events now flow to the Compose focus system.
     val mapView = remember {
-        MapView(context).apply {
+        // GPU-driver crash fallback (issue #95): some budget tablets' GL drivers (Samsung's
+        // Android 14 update on Unisoc/Mali chips) kill the process the instant the map's GL
+        // surface initializes - before the user can reach any setting. Sentinel: mark
+        // "initializing" here, clear it on the first finished render (the didBecomeIdle
+        // listener). Two consecutive launches dying mid-init flip the map to TEXTUREVIEW
+        // rendering (`texture_render`) - a different EGL path that dodges most of these driver
+        // bugs at a small perf cost - and the flag sticks until the Developer toggle clears it.
+        // A healthy device clears the sentinel every launch and never accumulates a count.
+        val prefs = context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+        if (prefs.getBoolean("map_init_inflight", false)) {
+            val n = prefs.getInt("map_init_crashes", 0) + 1
+            if (n >= 2) {
+                prefs.edit().putBoolean("texture_render", true).putInt("map_init_crashes", 0).apply()
+            } else {
+                prefs.edit().putInt("map_init_crashes", n).apply()
+            }
+        }
+        prefs.edit().putBoolean("map_init_inflight", true).apply()
+        val opts = org.maplibre.android.maps.MapLibreMapOptions.createFromAttributes(context)
+            .textureMode(prefs.getBoolean("texture_render", fragileGpuDefault()))
+        MapView(context, opts).apply {
             onCreate(null)
             isFocusable = false
             isFocusableInTouchMode = false
@@ -1948,6 +1968,13 @@ fun VelaMapView(
                 // gate's REVEAL path - before the first finished render a "sparse" verdict is just
                 // unloaded tiles, and revealing on it is the arrival flash.
                 mv.addOnDidBecomeIdleListener {
+                    // First finished render = the GL surface survived init: clear the crash
+                    // sentinel and decay the counter (texture_render itself is untouched, so an
+                    // engaged fallback keeps carrying the device on future launches).
+                    val prefs = context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+                    if (prefs.getBoolean("map_init_inflight", false)) {
+                        prefs.edit().putBoolean("map_init_inflight", false).putInt("map_init_crashes", 0).apply()
+                    }
                     ovlRenderSettled[0] = true
                     ovlDirty[0] = true
                     runOvlGate()
@@ -3725,6 +3752,21 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
         "tunnel_major_rail_hatching", "tunnel_transit_rail_hatching",
     ).forEach { style.getLayer(it)?.setProperties(PropertyFactory.visibility(Property.NONE)) }
 }
+
+/** Known-fragile GPU stacks start in compatibility (TextureView) rendering from the FIRST
+ *  launch - no crashes needed to learn. Unisoc-built devices identify themselves in
+ *  Build.HARDWARE ("ums*" for the ums512/T618 class, "sp98*" for older Spreadtrum) and pair
+ *  budget Mali GPUs with drivers documented to crash GL apps on Android 14 (libGLES_mali.so
+ *  faults; issue #95's tablet is a ums512). This only sets the DEFAULT - an explicit
+ *  Developer-toggle choice (the "texture_render" pref) beats it either way, and the two-crash
+ *  sentinel in VelaMapView remains the generic net for bad drivers not on this list. */
+internal fun fragileGpuDefault(): Boolean =
+    android.os.Build.HARDWARE.startsWith("ums") ||
+        android.os.Build.HARDWARE.startsWith("sp98") ||
+        (
+            android.os.Build.VERSION.SDK_INT >= 31 &&
+                android.os.Build.SOC_MANUFACTURER.contains("unisoc", ignoreCase = true)
+            )
 
 /** Google-style 3D building geometry, shared by all four palettes. Extrusions start a zoom level
  *  AFTER the flat footprints (z17 vs 16): at ~500ft Manhattan towers leaned over and BURIED the
