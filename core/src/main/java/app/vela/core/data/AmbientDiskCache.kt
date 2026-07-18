@@ -27,16 +27,22 @@ data class AmbientCachedPlace(
     val rating: Double? = null,
     val reviewCount: Int? = null,
     val address: String? = null,
+    // A live place-details fetch confirmed this business permanently closed. Persisted so the
+    // verdict survives restarts: the dot stays hidden even when the row itself is still cached
+    // (cache renders, network verifies - the tap's live answer is written back here).
+    val closed: Boolean = false,
 ) {
     fun toPlace(): Place = Place(
         id = id, name = name, location = LatLng(lat, lng), category = category,
         featureId = featureId, rating = rating, reviewCount = reviewCount, address = address,
+        permanentlyClosed = closed,
     )
 
     companion object {
         fun of(p: Place) = AmbientCachedPlace(
             p.id, p.name, p.location.lat, p.location.lng, p.category,
             p.featureId, p.rating, p.reviewCount, p.address,
+            closed = p.permanentlyClosed,
         )
     }
 }

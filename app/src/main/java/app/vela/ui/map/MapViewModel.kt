@@ -2296,10 +2296,17 @@ class MapViewModel @Inject constructor(
         // Remember what the user just had open: the close-triggered ambient repaint re-cuts the
         // pool to the zoom-tiered cap, and a modest place could lose its slot to ranking jitter -
         // the icon you were JUST looking at vanished on back-out (user 2026-07-17). The pin below
-        // (withRecentClosed) force-keeps it in the next paints.
+        // (withRecentlyViewed) force-keeps it in the next paints. A place the LIVE details fetch
+        // found permanently closed gets the opposite treatment: never pinned (the pin bypasses
+        // keepAmbientForView's closed filter), and the verdict is written back into the ambient
+        // store so its cached dot stops painting from now on - cache renders, network verifies.
         _state.value.selected?.let {
-            recentClosed = it
-            recentClosedAtMs = android.os.SystemClock.elapsedRealtime()
+            if (it.permanentlyClosed) {
+                markClosedInAmbient(it)
+            } else {
+                recentlyViewed = it
+                recentlyViewedAtMs = android.os.SystemClock.elapsedRealtime()
+            }
         }
         _state.update {
             it.copy(
@@ -4292,13 +4299,18 @@ class MapViewModel @Inject constructor(
     private fun cacheAmbient(center: LatLng, spanM: Double, places: List<app.vela.core.model.Place>) {
         ambientCache.removeAll { it.center.distanceTo(center) < 400.0 } // replace a near-duplicate area
         ambientCache.addLast(AmbientEntry(center, spanM, places, android.os.SystemClock.elapsedRealtime()))
-        while (ambientCache.size > 16) ambientCache.removeFirst()
+        while (ambientCache.size > 32) ambientCache.removeFirst()
         persistAmbientCache()
     }
 
-    // ---- Ambient cache on DISK: the home area paints instantly on a COLD launch too. ----
+    // ---- Ambient cache on DISK: browsed areas paint instantly for WEEKS, online or not. ----
     // Slim rows via :core's AmbientDiskCache codec (the app stays out of kotlinx.serialization),
-    // newest 8 areas x 200 places, debounced writes; entries older than a day drop at load.
+    // newest 32 areas x 200 places (~1 MB), debounced writes; entries older than 14 days drop at
+    // load. WRITE-THROUGH: caching never skips a fetch the moved-gate would make - the store is
+    // populated as a side effect of normal browsing and every live result overwrites its area, so
+    // being online keeps it current for free. It only DECIDES anything when the network can't
+    // answer (cold launch, offline): then the dots come from here, and the live layer (the place
+    // sheet's details fetch) remains the truth for hours / closed status when tapped.
     private fun ambientDiskFile() = java.io.File(appContext.filesDir, "ambient_cache.json")
     private var ambientPersistJob: Job? = null
 
@@ -4312,7 +4324,7 @@ class MapViewModel @Inject constructor(
             delay(2000) // debounce a pan session into one write
             val nowElapsed = android.os.SystemClock.elapsedRealtime()
             val nowWall = System.currentTimeMillis()
-            val entries = snapshot.takeLast(8).map { e ->
+            val entries = snapshot.takeLast(32).map { e ->
                 app.vela.core.data.AmbientCachedArea(
                     e.center.lat, e.center.lng, nowWall - (nowElapsed - e.atMs),
                     e.places.take(200).map { app.vela.core.data.AmbientCachedPlace.of(it) },
@@ -4323,17 +4335,25 @@ class MapViewModel @Inject constructor(
                 val tmp = java.io.File(appContext.filesDir, "ambient_cache.json.tmp")
                 tmp.writeText(app.vela.core.data.AmbientDiskCache.encode(entries))
                 tmp.renameTo(ambientDiskFile())
-            }
+            }.onSuccess {
+                android.util.Log.d("VelaAmbient", "persisted ${entries.size} areas, ${entries.sumOf { it.places.size }} places")
+            }.onFailure { android.util.Log.d("VelaAmbient", "persist FAILED: $it") }
         }
     }
 
     private fun loadAmbientCacheFromDisk() {
         viewModelScope.launch(Dispatchers.IO) {
             val entries = runCatching { ambientDiskFile().readText() }.getOrNull()
-                ?.let { app.vela.core.data.AmbientDiskCache.decode(it) } ?: return@launch
+                ?.let { app.vela.core.data.AmbientDiskCache.decode(it) } ?: run {
+                android.util.Log.d("VelaAmbient", "disk load: no file / decode failed")
+                return@launch
+            }
             val nowWall = System.currentTimeMillis()
             val nowElapsed = android.os.SystemClock.elapsedRealtime()
-            val fresh = entries.filter { nowWall - it.atWallMs < 24 * 3600_000L }
+            // places.isNotEmpty(): drop areas an offline empty-success poisoned before the
+            // empty-pool guard existed - a blank area can only ever paint a blank map.
+            val fresh = entries.filter { it.places.isNotEmpty() && nowWall - it.atWallMs < 14 * 24 * 3600_000L }
+            android.util.Log.d("VelaAmbient", "disk load: ${entries.size} areas, ${fresh.size} fresh")
             if (fresh.isEmpty()) return@launch
             val loaded = fresh.map { e ->
                 // Backdated past the fresh-skip window: disk entries repaint instantly but MUST
@@ -4357,7 +4377,7 @@ class MapViewModel @Inject constructor(
         // missed most legitimate revisits (zoom-out-and-back, pan-away-and-return) and forced
         // a full ~2-4 s Google refetch - the P9 "POIs don't stick around" report (2026-07-11).
         return ambientCache
-            .filter { now - it.atMs < 30 * 60_000L && it.center.distanceTo(center) < it.spanM * 0.45 }
+            .filter { it.places.isNotEmpty() && now - it.atMs < 30 * 60_000L && it.center.distanceTo(center) < it.spanM * 0.45 }
             .minByOrNull { it.center.distanceTo(center) }
     }
 
@@ -4453,7 +4473,7 @@ class MapViewModel @Inject constructor(
         // the best-known data for THIS centre; the fetch below still refines it.
         cachedAmbientNear(center)?.let { entry ->
             val cached = entry.places.map { it.copy(distanceMeters = center.distanceTo(it.location)) }
-            _state.update { it.copy(ambientPois = withRecentClosed(civicFiltered(keepAmbientForView(cached, viewRadiusMeters, zoom)))) }
+            _state.update { it.copy(ambientPois = withRecentlyViewed(civicFiltered(keepAmbientForView(cached, viewRadiusMeters, zoom)))) }
             // A FRESH fetch that still COVERS this view is served as-is, no network refetch
             // (user 2026-07-15): tapping a POI shifts the camera enough to trip the moved-gate,
             // so closing the sheet re-fetched the SAME area seconds later - and Google's ranking
@@ -4501,11 +4521,33 @@ class MapViewModel @Inject constructor(
                             // replace blinked most dots off then back (2026-07-11). The final
                             // ranked pool below always replaces outright.
                             val kept = keepAmbientForView(partial, viewRadiusMeters, zoom)
-                            if (kept.size >= cur.ambientPois.size) cur.copy(ambientPois = withRecentClosed(civicFiltered(kept))) else cur
+                            if (kept.size >= cur.ambientPois.size) cur.copy(ambientPois = withRecentlyViewed(civicFiltered(kept))) else cur
                         }
                     }
                 }
-            }.getOrNull() ?: return@launch
+            }.getOrNull()
+            // STALE-IF-ERROR: a thrown fetch is null, but OFFLINE usually is not - each fan-out
+            // term swallows its network error into an empty list, so no-network comes back as an
+            // EMPTY SUCCESS. Both mean the same thing here: Google did not answer. Treat them
+            // identically, because caching/painting the empty "result" poisoned the durable store
+            // with a blank area and wiped the painted dots (device-caught 2026-07-17: the store
+            // dropped 1800 -> 1600 places after one airplane-mode pan). Serve the freshest
+            // covering store entry regardless of age if nothing is painted - week-old dots beat a
+            // bare map, and the sheet's live details fetch stays the truth for anything actually
+            // opened. lastAmbientCenter stays unset so the next settle retries the network.
+            if (res.isNullOrEmpty()) {
+                if (live() && bareMap() && _state.value.ambientPois.isEmpty()) {
+                    val hit = ambientCache
+                        .filter { it.places.isNotEmpty() && it.center.distanceTo(center) < it.spanM * 0.45 }
+                        .maxByOrNull { it.atMs }
+                    android.util.Log.d("VelaAmbient", "no answer (null/empty); stale-if-error hit=${hit != null} cacheSize=${ambientCache.size}")
+                    hit?.let { e ->
+                        val rec = e.places.map { p -> p.copy(distanceMeters = center.distanceTo(p.location)) }
+                        _state.update { it.copy(ambientPois = withRecentlyViewed(civicFiltered(keepAmbientForView(rec, viewRadiusMeters, zoom)))) }
+                    }
+                }
+                return@launch
+            }
             if (!live()) return@launch
             lastAmbientCenter = center
             lastAmbientZoom = zoom
@@ -4513,29 +4555,44 @@ class MapViewModel @Inject constructor(
             cacheAmbient(center, span, res)
             // Re-check we're still on the bare map — the user may have searched/opened a place while we fetched.
             if (!bareMap()) return@launch
-            _state.update { it.copy(ambientPois = withRecentClosed(civicFiltered(keepAmbientForView(res, viewRadiusMeters, zoom))), ambientCoversView = true) }
+            _state.update { it.copy(ambientPois = withRecentlyViewed(civicFiltered(keepAmbientForView(res, viewRadiusMeters, zoom))), ambientCoversView = true) }
             // Idle now: quietly warm the four NEIGHBOUR areas into the LRU so panning one screen
             // over paints instantly (unmetered connections only - it's ~4 extra fan-outs).
             prefetchAmbientNeighbours(center, span, zoom)
         }
     }
 
-    /** The on-screen ambient set the map layer renders: POIs NEAR the view (a prominence-weighted
-     *  keep-radius — anchors survive farther off-centre, like Google) capped at [AMBIENT_ONSCREEN_CAP]
-     *  so a budget GPU isn't colliding the whole ~3.5 km pool each drag frame. Off-screen POIs can't
-     *  paint anyway. Preserves `res`'s prominence order (the ambient layer's collision key = index),
-     *  so the anchor store still beats its in-store tenant. */
-    /** The place whose sheet was just closed, pinned into ambient paints for a couple of minutes so
+    /** The place the user just had OPEN (sheet since dismissed), pinned into ambient paints for a couple of minutes so
      *  the tapped icon can't vanish on back-out. The zoom-tiered cap made this visible: the
      *  close-triggered repaint re-cuts to top-N by prominence and Google's ranking jitters between
      *  identical requests, so a mid-tier place near the cap boundary randomly lost its slot. */
-    private var recentClosed: app.vela.core.model.Place? = null
-    private var recentClosedAtMs = 0L
+    private var recentlyViewed: app.vela.core.model.Place? = null
+    private var recentlyViewedAtMs = 0L
 
-    private fun withRecentClosed(kept: List<app.vela.core.model.Place>): List<app.vela.core.model.Place> {
-        val p = recentClosed ?: return kept
-        if (android.os.SystemClock.elapsedRealtime() - recentClosedAtMs > 120_000L) {
-            recentClosed = null
+    /** A live details fetch confirmed [p] permanently closed: flip the flag on every cached copy
+     *  (same name+150m identity the selected-copy drop uses) and prune it from the painted set,
+     *  then persist - so the dead dot stays gone across repaints AND restarts, not just until the
+     *  next cache paint resurrects it. */
+    private fun markClosedInAmbient(p: app.vela.core.model.Place) {
+        fun matches(o: app.vela.core.model.Place) =
+            o.name.equals(p.name, ignoreCase = true) && o.location.distanceTo(p.location) < 150.0
+        var changed = false
+        for (i in ambientCache.indices) {
+            val e = ambientCache[i]
+            if (e.places.none { matches(it) && !it.permanentlyClosed }) continue
+            ambientCache[i] = e.copy(places = e.places.map { if (matches(it)) it.copy(permanentlyClosed = true) else it })
+            changed = true
+        }
+        if (changed) persistAmbientCache()
+        if (_state.value.ambientPois.any { matches(it) }) {
+            _state.update { st -> st.copy(ambientPois = st.ambientPois.filterNot { matches(it) }) }
+        }
+    }
+
+    private fun withRecentlyViewed(kept: List<app.vela.core.model.Place>): List<app.vela.core.model.Place> {
+        val p = recentlyViewed ?: return kept
+        if (android.os.SystemClock.elapsedRealtime() - recentlyViewedAtMs > 120_000L) {
+            recentlyViewed = null
             return kept
         }
         // Same identity match the selected-copy drop uses (name + ~150 m) - if a copy survived the
@@ -4544,6 +4601,11 @@ class MapViewModel @Inject constructor(
         return kept + p
     }
 
+    /** The on-screen ambient set the map layer renders: POIs NEAR the view (a prominence-weighted
+     *  keep-radius - anchors survive farther off-centre, like Google) capped at [AMBIENT_ONSCREEN_CAP]
+     *  so a budget GPU isn't colliding the whole ~3.5 km pool each drag frame. Off-screen POIs can't
+     *  paint anyway. Preserves `res`'s prominence order (the ambient layer's collision key = index),
+     *  so the anchor store still beats its in-store tenant. */
     private fun keepAmbientForView(res: List<app.vela.core.model.Place>, viewRadiusMeters: Double, zoom: Double): List<app.vela.core.model.Place> =
         res.asSequence()
             .filterNot { p -> p.permanentlyClosed }
