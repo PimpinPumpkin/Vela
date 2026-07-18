@@ -17,6 +17,21 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Browsed areas keep their Google-quality places for weeks, online or offline (2026-07-17,
+  user).** The ambient POI layer's disk cache grew into a durable store: the newest 32 browsed
+  areas (up to 200 places each, about 1 MB total) persist for 14 days, paint instantly on a cold
+  launch, and are served whenever Google cannot answer - an airplane-mode cold start in a town
+  you browsed yesterday shows its full POI layer (device-verified). Write-through: being online
+  keeps the store current for free (every live fetch overwrites its area) and caching never
+  skips a fetch, so nothing gets staler than your last visit. The place sheet's details fetch
+  stays the live truth for hours, phone and closed status, and a business it finds permanently
+  closed is written back so its dot stays gone across restarts (and a just-closed sheet's pin
+  never resurrects a dead place). Offline can no longer poison the store: a no-network fetch
+  comes back as an empty SUCCESS (each category request swallows its error), and that empty
+  pool used to blank the painted dots and overwrite the cached area with nothing - empty pools
+  are now treated as no-answer (keep what is painted, serve the freshest covering area
+  regardless of age, retry on the next settle), and blank areas are dropped at load. Groundwork
+  for warming a whole city into the store at offline-download time (planned follow-up).
 - ✅ **Big map-performance batch, worst-case-device tuned (2026-07-17, user).** A day of profiling
   on a Pixel 4a (the deliberate low-end reference) landed a set of coordinated changes:
   (1) **Buildings draw Google-style by zoom tier** - flat footprints from z16 (~250 ft), 3D

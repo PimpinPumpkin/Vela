@@ -249,6 +249,18 @@ Defaults that make the safe path the easy one:
   SAME final pool (the streaming `onPartial` paint keeps first dots fast). The semaphore is a class field
   so overlapping calls (a pan mid-load) share the cap. **Don't unbound this fan-out**; if a dense area
   still spikes, lower the permit or move the scrape parse off `parseToJsonElement` to a streaming reader.
+- **`nearbyPlaces` returning EMPTY is not an answer and must NEVER be cached (2026-07-17).** Each
+  fan-out term swallows its network error into an empty list, so OFFLINE comes back as an empty
+  SUCCESS, not an exception. The ambient path treats null and empty identically: keep whatever is
+  painted, serve the freshest covering store entry regardless of age (stale-if-error), leave
+  `lastAmbientCenter` unset so the next settle retries. Caching an empty pool overwrote a good
+  area in the durable store with a blank one and wiped the painted dots (device-caught via the
+  `VelaAmbient` logs: 1800 -> 1600 places after one airplane-mode pan). The durable store
+  (`ambient_cache.json`, 32 areas x 200 slim places, 14-day TTL, write-through from non-empty
+  live results only) also drops blank areas at load. A place the details fetch finds permanently
+  closed is written back (`markClosedInAmbient`: flag flipped in every cached copy + pruned from
+  the painted set + persisted) so the dead dot stays gone across restarts - and the
+  recently-viewed pin deliberately skips closed places (it bypasses the closed filter).
 - **The MS building-overlay gate is BOUNDED render-probing; keep its three rules (2026-07-17,
   `VelaMapView` `runOvlGate`).** The overlay (`vela-ovl-*`) is drawn beneath OSM `building` to fill
   OSM's gaps, so where OSM is dense it is pure occluded overdraw; a gate probes rendered OSM
