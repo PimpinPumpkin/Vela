@@ -5296,9 +5296,14 @@ class MapViewModel @Inject constructor(
         // Google's for the same extent (512px tiles), so z14 here ~ Google z15.
         const val AMBIENT_ONSCREEN_CAP = 140
         const val AMBIENT_ONSCREEN_CAP_MIN = 45
-        fun ambientCap(zoom: Double): Int =
-            (AMBIENT_ONSCREEN_CAP_MIN +
-                ((zoom - 14.0).coerceIn(0.0, 3.5) / 3.5) * (AMBIENT_ONSCREEN_CAP - AMBIENT_ONSCREEN_CAP_MIN)).toInt()
+        fun ambientCap(zoom: Double): Int {
+            // Both ends of the zoom-tiered cap are fleet-tunable through calibration.json
+            // ("ambientCapMin" / "ambientCapMax") - the direct dial if a device class ever
+            // needs fewer symbols without an app release.
+            val lo = app.vela.core.config.CalibrationStore.latest.tune("ambientCapMin", AMBIENT_ONSCREEN_CAP_MIN.toDouble())
+            val hi = app.vela.core.config.CalibrationStore.latest.tune("ambientCapMax", AMBIENT_ONSCREEN_CAP.toDouble())
+            return (lo + ((zoom - 14.0).coerceIn(0.0, 3.5) / 3.5) * (hi - lo)).toInt()
+        }
         // Half-span (degrees) the offline geocoder's address/street fetch is padded to around the viewport
         // centre — ~10 km lat each way (a bit less in lng at mid-latitudes), so a downloaded area can route
         // to an arbitrary address across the surrounding metro, not just the blocks that were on screen.

@@ -67,6 +67,14 @@ data class Calibration(
     // archived pre-sample look; the app ships both compiled). Remote-pushable so the default can
     // flip without an app release; a user's explicit pick (map_palette pref) always wins.
     val defaultMapPalette: String = "modern",
+    // Fleet-tunable NUMBERS: a flat name -> value map so a new dial is a config edit, never a
+    // schema change. Read through [tune]; a missing key means the compiled default passed at the
+    // call site, so an old bundle can never break a new app (and vice versa). Current dials:
+    // browseZoom (the ~1000 ft standard fly-to), browseZoomWide (plain recenter, no sheet),
+    // browseZoomFocus (recenter with a place sheet up), overlayCoverFrac (the MS-building-overlay
+    // hide threshold), ambientFanoutPermits (parallel scrape parses; restart-applied),
+    // ambientCapMin / ambientCapMax (the zoom-tiered on-screen POI cap).
+    val tuning: Map<String, Double> = emptyMap(),
     // Remote overrides for the LANGUAGE-KEYWORD tables - the one part of the localized scrape that
     // reads localized TEXT to make a decision, so a bad or missing word in some language is exactly
     // the kind of thing that should be a config edit, not an app release (the transit gate had no
@@ -88,6 +96,9 @@ data class Calibration(
     // showed that stop's departures (device report 2026-07-13). Multilingual like the gate itself.
     val transitExcludeWords: List<String>? = null,
 ) {
+    /** A fleet tuning dial: the remote value when the bundle carries [key], else [def]. */
+    fun tune(key: String, def: Double): Double = tuning[key] ?: def
+
     companion object {
         // libritts_r speaker 14 — picked by ear as the clearest default (2026-07-02).
         const val DEFAULT_VOICE_SPEAKER = 14
