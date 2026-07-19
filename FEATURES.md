@@ -17,7 +17,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
-- ✅ **Search goes three pages deep and rescues the place next to you (2026-07-18, user).**
+- ✅ **Locate button no longer rubber-bands (2026-07-18, user).** Tapping current-location flew
+  to the fix and settled, then the next GPS fix (metres away) re-triggered the generic camera
+  branch at a slightly different default zoom - a second flight that read as a lurch or snap
+  back. A jitter gate now treats a live-fix target that moved under ~40 m as the same place
+  (adopted silently, never flown to), and every browse fly (locate, launch centre, search,
+  recenter) lands at the same 15.5 (~1000 ft) - the tap was the lone 15.0 straggler, which is
+  why the follow-up flight visibly changed zoom.
   Category searches ("restaurants") used to return exactly one page of 20, ranked by Google's
   keyless web ordering, which is prominence-heavy over the whole visible box - so a modest
   restaurant the user was standing next to ranked 21+ and never listed. Two fixes: (1) a FULL
