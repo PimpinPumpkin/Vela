@@ -122,6 +122,23 @@ class CalibrationStore @Inject constructor(
             )
         }.orEmpty()
         val transformsJs = (o["transformsJs"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
+        // Word-table overrides, lenient like tuning: bad entries are skipped, an empty result
+        // reads as absent (null = compiled tables) so a malformed block can't blank a language.
+        // These fields existed in Calibration from day one but were never parsed here - every
+        // remote bundle silently dropped them (found chasing the Hebrew openNow bug, 2026-07-19).
+        fun wordMap(k: String): Map<String, List<String>>? =
+            (o[k] as? JsonObject)?.mapNotNull { (lang, v) ->
+                val words = (v as? JsonArray)
+                    ?.mapNotNull { w -> (w as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } }
+                if (!words.isNullOrEmpty()) lang to words else null
+            }?.toMap()?.takeIf { it.isNotEmpty() }
+        fun wordList(k: String): List<String>? =
+            (o[k] as? JsonArray)
+                ?.mapNotNull { w -> (w as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } }
+                ?.takeIf { it.isNotEmpty() }
+        val stopBoardIndices = (o["stopBoardIndices"] as? JsonObject)?.mapNotNull { (k, v) ->
+            (v as? JsonPrimitive)?.content?.toIntOrNull()?.let { k to it }
+        }?.toMap()?.takeIf { it.isNotEmpty() }
         Calibration(
             version = version,
             searchEndpoint = str("searchEndpoint", d.searchEndpoint),
@@ -145,6 +162,11 @@ class CalibrationStore @Inject constructor(
             tuning = (o["tuning"] as? JsonObject)?.mapNotNull { (k, v) ->
                 (v as? JsonPrimitive)?.content?.toDoubleOrNull()?.let { k to it }
             }?.toMap() ?: d.tuning,
+            statusClosedWords = wordMap("statusClosedWords"),
+            statusOpenWords = wordMap("statusOpenWords"),
+            transitCategoryWords = wordList("transitCategoryWords"),
+            transitExcludeWords = wordList("transitExcludeWords"),
+            stopBoardIndices = stopBoardIndices,
         )
     }.getOrNull()
 

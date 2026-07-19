@@ -1221,6 +1221,24 @@ to happen" split for login/backend features - keep new won't-dos there AND in RO
 Remote calibration is a HEADLINE feature in What-you-get (the self-healing pitch), not just an
 architecture note.
 
+- **Calibration word-table overrides were DEAD until 2026-07-19:** `Calibration` had
+  statusClosedWords/statusOpenWords/transitCategoryWords/transitExcludeWords/stopBoardIndices
+  and the app pushed them into the parsers, but `CalibrationStore.parse()` never read them from
+  JSON, so every remote bundle silently dropped them. Wired now (lenient like tuning), BUT any
+  build released before this date cannot take a word-table override - a keyword fix for the
+  installed fleet still needs an app release until those builds age out. When adding a new
+  Calibration field, the parse() wiring is a separate step that WILL be forgotten unless you
+  grep for the field name in CalibrationStore.
+- **Hebrew status strings are "המקום"-prefixed (2026-07-19):** Google serves "המקום סגור ..."
+  ("the place is closed"), not bare "סגור", so parseOpenNow's startsWith needed the prefixed
+  forms in CLOSED_WORDS/OPEN_WORDS (keys "iw" AND "he"). Pinned by PlaceStatusTest with live
+  strings from an il-device diag. If another language shows openNow=null on every place, check
+  the real status text for a carrier phrase before its keyword.
+- **Search bias sanity (2026-07-19):** a no-GPS device (WiFi tablet) never moves the camera off
+  MapLibre's 0,0 default, and search/suggest biased to null island. `plausibleBias()` in
+  MapViewModel discards any bias point within ~50 km of 0,0 - keep new "near" consumers behind
+  it.
+
 - **Interface size (2026-07-11):** `UiScale` holder (pref `ui_scale`, chips 90/100/115/130% in
   Settings -> Appearance) applied as a LocalDensity override around VelaRoot's whole tree - all
   Compose UI scales, the map AndroidView keeps native size (built for car/vertical screens).

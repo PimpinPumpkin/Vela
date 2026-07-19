@@ -34,6 +34,18 @@ class PlaceStatusTest {
         assertEquals(true, SearchParser.parseOpenNow("営業中 ⋅ 営業終了: 22:00", "ja"))
     }
 
+    @Test fun `hebrew - the-place prefix matches (field bug - every il status began with hamakom)`() {
+        // Live diag 2026-07-19: Google prefixes Hebrew statuses with "המקום" ("the place"), so
+        // bare "סגור"/"פתוח" never startsWith-matched and every Hebrew place showed no colour.
+        assertEquals(false, SearchParser.parseOpenNow("המקום סגור · ייפתח ביום יום א׳ בשעה 6:30", "he"))
+        assertEquals(false, SearchParser.parseOpenNow("המקום סגור", "iw"))
+        assertEquals(true, SearchParser.parseOpenNow("המקום פתוח · נסגר בשעה 22:00", "he"))
+        assertEquals(true, SearchParser.parseOpenNow("המקום פתוח", "iw"))
+        // Un-prefixed forms keep working (closed-first invariant intact).
+        assertEquals(false, SearchParser.parseOpenNow("סגור · ייפתח בשעה 8:00", "he"))
+        assertEquals(true, SearchParser.parseOpenNow("פתוח · נסגר בשעה 22:00", "he"))
+    }
+
     @Test fun `english - Opens-prefixed statuses are CLOSED, not swallowed by the Open prefix`() {
         assertEquals(false, SearchParser.parseOpenNow("Opens 5 AM", "en"))
         assertEquals(false, SearchParser.parseOpenNow("Opens soon ⋅ 5 AM", "en"))
