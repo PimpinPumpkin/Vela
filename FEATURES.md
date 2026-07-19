@@ -17,6 +17,25 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Collapsing the results list no longer snaps the camera to your location (2026-07-18,
+  user).** The camera's generic branch fell back to the live GPS fix as a target whenever
+  nothing else claimed it, so merely minimizing the results sheet (an inset change) flew the map
+  away from the results to wherever the user physically stood, with a zoom snap on top. The live
+  fix is now only a fallback target on an EMPTY map - results/markers up means collapsing the
+  sheet leaves the camera exactly where it was.
+- ✅ **Offline indicator stops crying wolf (2026-07-18, user).** The offline flag latched the
+  instant the connectivity callback saw no active network - but WiFi-to-cellular handoffs and
+  doze wakes routinely pass through exactly that moment, so the app flashed "Offline" (and gated
+  fetches) while genuinely online. Going offline now requires the condition to hold for ~3 s;
+  coming back online applies instantly; and any completed live fetch (search or the ambient
+  fan-out) heals a stale flag on the spot. A search no longer latches offline at all - it only
+  heals, and its own failure path still shows the offline guidance when the network is truly
+  down.
+- ✅ **The Vela voice is labelled and one tap away (2026-07-18, user).** The fleet-default
+  navigation voice (HFC Female today, remote-calibratable) now reads "Vela voice (HFC Female)"
+  in the voice browser, and whenever it is not installed - a failed download, a crash
+  mid-install, cleared storage - the browser opens with an "Install the Vela voice" button at
+  the top instead of making the user hunt the English group for the starred row.
 - ✅ **Locate button no longer rubber-bands (2026-07-18, user).** Tapping current-location flew
   to the fix and settled, then the next GPS fix (metres away) re-triggered the generic camera
   branch at a slightly different default zoom - a second flight that read as a lurch or snap

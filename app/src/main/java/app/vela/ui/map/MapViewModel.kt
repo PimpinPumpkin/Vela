@@ -1267,11 +1267,28 @@ class MapViewModel @Inject constructor(
 
     /** Track connectivity so the UI can show a quiet offline indicator (no more banner). Seeds now and
      *  updates on every network change; fails safe to "online" so a quirk never falsely greys the app. */
+    private var offlineLatchJob: Job? = null
+
     private fun observeConnectivity() {
         val cm = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return
         fun refresh() {
             val off = !isOnline()
-            _state.update { if (it.offline != off) it.copy(offline = off) else it }
+            if (!off) {
+                // Online applies IMMEDIATELY (and cancels a pending offline latch).
+                offlineLatchJob?.cancel()
+                _state.update { if (it.offline) it.copy(offline = false) else it }
+            } else if (offlineLatchJob?.isActive != true) {
+                // DEBOUNCE the offline latch (user 2026-07-18, "thinks it's offline too often"):
+                // a WiFi-to-cellular handoff or a doze wake routinely passes through a moment
+                // with no active network, and latching instantly flashed the indicator and gated
+                // fetches on a device that is actually online. Only call it offline if it is
+                // STILL offline ~3 s later.
+                offlineLatchJob = viewModelScope.launch {
+                    delay(3_000)
+                    val stillOff = !isOnline()
+                    _state.update { if (it.offline != stillOff) it.copy(offline = stillOff) else it }
+                }
+            }
         }
         refresh()
         runCatching {
@@ -1319,8 +1336,15 @@ class MapViewModel @Inject constructor(
             return
         }
         // Re-poll connectivity per search: the registered callback alone proved able to
-        // wedge `offline` on (missed onAvailable after doze) until an app relaunch.
-        _state.update { val off = !isOnline(); if (it.offline != off) it.copy(offline = off) else it }
+        // wedge `offline` on (missed onAvailable after doze) until an app relaunch. HEAL ONLY:
+        // clear a stale offline when the poll says online, but never LATCH offline here - a
+        // search fired mid network-handoff read as offline for a beat and falsely greyed the
+        // app (the observer's debounced latch owns the offline verdict; the search's own
+        // failure path shows the offline guidance if the scrape really can't connect).
+        if (isOnline()) {
+            offlineLatchJob?.cancel()
+            _state.update { if (it.offline) it.copy(offline = false) else it }
+        }
         suggestJob?.cancel()
         recentStore.add(q)
         _state.update { it.copy(recents = recentStore.recent()) }
@@ -4176,8 +4200,10 @@ class MapViewModel @Inject constructor(
     }
 
     /** The Vela voice a fresh install downloads — the fleet default (calibration) for English,
-     *  else the app-language's recommended voice. */
-    private fun defaultVoiceId(): String {
+     *  else the app-language's recommended voice. Public: the voice browser brands this id
+     *  "Vela voice" and offers a one-tap reinstall when it's missing (user 2026-07-18, after a
+     *  crash mid-install left them hunting the list for which voice was the right one). */
+    fun defaultVoiceId(): String {
         val lang = app.vela.ui.AppLocale.effective().language
         return if (lang == "en") calibration.current().defaultVoiceId else PiperCatalog.defaultFor(lang).id
     }
@@ -4575,7 +4601,9 @@ class MapViewModel @Inject constructor(
             cacheAmbient(center, span, res)
             // Re-check we're still on the bare map — the user may have searched/opened a place while we fetched.
             if (!bareMap()) return@launch
-            _state.update { it.copy(ambientPois = withRecentlyViewed(civicFiltered(keepAmbientForView(res, viewRadiusMeters, zoom))), ambientCoversView = true) }
+            // A completed live fan-out is definitive proof of connectivity - heal a stale offline
+            // flag here too (same rule the search path applies).
+            _state.update { it.copy(ambientPois = withRecentlyViewed(civicFiltered(keepAmbientForView(res, viewRadiusMeters, zoom))), ambientCoversView = true, offline = false) }
             // Idle now: quietly warm the four NEIGHBOUR areas into the LRU so panning one screen
             // over paints instantly (unmetered connections only - it's ~4 extra fan-outs).
             prefetchAmbientNeighbours(center, span, zoom)
