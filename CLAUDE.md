@@ -1528,6 +1528,16 @@ architecture note.
   single-result / address-snap / fallback paths too (they used to silently keep dropping results at the
   old index). And the WebView details/popular-times path (`PopularTimesParser.parse`) threads the LIVE
   `cal.paths` through `SearchParser.parse`/`parsePopularTimes` rather than pinning `DEFAULT_PATHS` (audit 2026-07-06).
+- **Fleet tuning dials (2026-07-18): `tuning` in `calibration.json`** - a flat name->number map
+  read through `Calibration.tune(key, compiledDefault)`; a missing key means the compiled
+  default and a non-numeric value is skipped, so old/new bundles and apps never break each
+  other. Adding a dial is a config edit, not a schema change. Current dials: `browseZoom` /
+  `browseZoomWide` / `browseZoomFocus` (the browse fly-to zooms, 15.5/14.5/16.5),
+  `overlayCoverFrac` (the MS building-overlay hide threshold, 0.18), `ambientFanoutPermits`
+  (parallel scrape parses, 4; read at construction so it applies on the next process start),
+  `ambientCapMin`/`ambientCapMax` (the zoom-tiered on-screen POI cap, 45/140). View-layer
+  consumers read `CalibrationStore.latest` (a static of the last verified bundle) since
+  composables can't inject the store. Same edit+bump+re-sign flow as everything else.
 - **Signed channel (mandatory).** The bundle is **ECDSA-P256/SHA-256 signed**
   (`calibration.json.sig`, detached, base64) and the app verifies it against the
   **public key pinned in `CalibrationStore.PINNED_PUBLIC_KEY`** before adopting - 

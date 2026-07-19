@@ -44,7 +44,7 @@ class CalibrationStore @Inject constructor(
     private val sigFile = File(context.filesDir, "calibration.json.sig")
 
     @Volatile
-    private var active: Calibration = loadCached() ?: Calibration.DEFAULT
+    private var active: Calibration = (loadCached() ?: Calibration.DEFAULT).also { latest = it }
 
     @Volatile
     private var refreshed = false
@@ -68,6 +68,7 @@ class CalibrationStore @Inject constructor(
                         sigFile.writeText(sig)
                     }
                     active = remote
+                    latest = remote
                 }
             }
         }
@@ -139,6 +140,11 @@ class CalibrationStore @Inject constructor(
             defaultVoiceSpeed = (o["defaultVoiceSpeed"] as? JsonPrimitive)?.content?.toFloatOrNull() ?: d.defaultVoiceSpeed,
             defaultVoiceId = (o["defaultVoiceId"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } ?: d.defaultVoiceId,
             defaultMapPalette = (o["defaultMapPalette"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } ?: d.defaultMapPalette,
+            // Numbers only, leniently: a non-numeric value is skipped rather than failing the
+            // bundle, so one bad dial can never take down the whole calibration.
+            tuning = (o["tuning"] as? JsonObject)?.mapNotNull { (k, v) ->
+                (v as? JsonPrimitive)?.content?.toDoubleOrNull()?.let { k to it }
+            }?.toMap() ?: d.tuning,
         )
     }.getOrNull()
 
@@ -150,15 +156,23 @@ class CalibrationStore @Inject constructor(
         return hosts.all { it != null && it in ALLOWED_HOSTS }
     }
 
-    private companion object {
-        const val REMOTE_URL = "https://raw.githubusercontent.com/PimpinPumpkin/Vela/main/calibration.json"
-        const val SIG_URL = "https://raw.githubusercontent.com/PimpinPumpkin/Vela/main/calibration.json.sig"
-        val ALLOWED_HOSTS = setOf("www.google.com", "google.com")
+    companion object {
+        /** The last applied bundle, readable WITHOUT an injected store - the view layer's
+         *  tuning dials (zoom defaults, overlay threshold) live too deep in composables to
+         *  plumb the store into. Set at init (cached bundle or compiled default) and on every
+         *  accepted refresh; always signature-verified content or [Calibration.DEFAULT]. */
+        @Volatile
+        var latest: Calibration = Calibration.DEFAULT
+            private set
+
+        private const val REMOTE_URL = "https://raw.githubusercontent.com/PimpinPumpkin/Vela/main/calibration.json"
+        private const val SIG_URL = "https://raw.githubusercontent.com/PimpinPumpkin/Vela/main/calibration.json.sig"
+        private val ALLOWED_HOSTS = setOf("www.google.com", "google.com")
 
         // EC P-256 public key (SPKI, base64) — the private half lives only in
         // ~/.vela-signing/vela-calibration.key, never in the repo. Embedding the
         // PUBLIC key is safe; it just lets the app reject bundles we didn't sign.
-        const val PINNED_PUBLIC_KEY =
+        private const val PINNED_PUBLIC_KEY =
             "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEuz8/zxOJFhVqKco74fkmzrLlyPra4/pTEUm7lmue/Kig0T497fcs+hjhZkaSqVZAwloNrr0+0ILi7yATmU+d3g=="
     }
 }

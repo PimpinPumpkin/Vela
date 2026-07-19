@@ -1289,7 +1289,7 @@ fun VelaMapView(
         didLaunchCentre[0] = true
         runCatching {
             flightDepth[0]++
-            cam.animateCamera(CameraUpdateFactory.newLatLngZoom(MLLatLng(loc.lat, loc.lng), 15.5), 650, flightCb())
+            cam.animateCamera(CameraUpdateFactory.newLatLngZoom(MLLatLng(loc.lat, loc.lng), app.vela.core.config.CalibrationStore.latest.tune("browseZoom", 15.5)), 650, flightCb())
         }
     }
 
@@ -1926,7 +1926,7 @@ fun VelaMapView(
                             if (map.queryRenderedFeatures(RectF(px - r, py - r, px + r, py + r), "building", "building-3d").isNotEmpty()) hits++
                         }
                         val cover = hits.toFloat() / (cols * rows)
-                        val osmDense = cover >= OSM_COVER_FRAC
+                        val osmDense = cover >= app.vela.core.config.CalibrationStore.latest.tune("overlayCoverFrac", OSM_COVER_FRAC.toDouble()).toFloat()
                         val want = if (osmDense) Property.NONE else Property.VISIBLE
                         if (want == Property.VISIBLE && !ovlRenderSettled[0]) {
                             // Never REVEAL off a possibly-empty render: a "sparse" verdict before the
@@ -2380,11 +2380,13 @@ fun VelaMapView(
                             val mpd = (acc.toDouble() * 2 / 0.7) / screenDp
                             (Math.log((78271.517 * Math.cos(Math.toRadians(t.lat))) / mpd) / Math.log(2.0)).coerceIn(3.0, 15.0)
                         }
-                        cameraBottomInsetPx > 0 -> 16.5
+                        cameraBottomInsetPx > 0 -> app.vela.core.config.CalibrationStore.latest.tune("browseZoomFocus", 16.5)
                         // 15.5 (~1000ft), matching the launch-centre and search flies - the tap
                         // used to land at 15.0 while every other path used 15.5, so a follow-up
                         // camera move visibly changed zoom (part of the locate rubber-band).
-                        else -> 15.5
+                        // All three browse zooms are fleet-tunable through calibration.json
+                        // ("browseZoom" / "browseZoomWide" / "browseZoomFocus").
+                        else -> app.vela.core.config.CalibrationStore.latest.tune("browseZoom", 15.5)
                     }
                     if (driveFollowing && !navMode) {
                         // The free-drive ticker owns the camera and its per-frame moveCamera
@@ -2572,7 +2574,7 @@ fun VelaMapView(
                         // bigger POI cap) - searching a dense city hitched on arrival while all of it
                         // loaded (user 2026-07-17, London). At 15.5 arrival is roads+labels+POIs;
                         // buildings are one pinch away. Matches the locate-me fly (also 15.5).
-                        val zoom = cameraTargetZoom ?: if (cameraBottomInsetPx > 0) 15.5 else 14.5
+                        val zoom = cameraTargetZoom ?: if (cameraBottomInsetPx > 0) app.vela.core.config.CalibrationStore.latest.tune("browseZoom", 15.5) else app.vela.core.config.CalibrationStore.latest.tune("browseZoomWide", 14.5)
                         flightDepth[0]++
                         map.animateCamera(
                             CameraUpdateFactory.newLatLngZoom(MLLatLng(target.lat, target.lng), zoom), flightCb(),

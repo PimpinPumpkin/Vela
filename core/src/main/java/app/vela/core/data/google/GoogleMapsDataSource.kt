@@ -103,7 +103,12 @@ class GoogleMapsDataSource @Inject constructor(
      *  fan-out to a few at a time caps the peak transient heap (~4x30 MB instead of 13x30 MB) with the
      *  same final pool - the streaming onPartial paint keeps first dots fast. Shared across calls so
      *  a pan mid-load can't double the burst. */
-    private val ambientFanout = kotlinx.coroutines.sync.Semaphore(4)
+    // Permits fleet-tunable through calibration.json ("ambientFanoutPermits") - CLAUDE.md's own
+    // escape hatch ("if a dense area still spikes, lower the permit") without an app release.
+    // Read at construction, so a pushed change applies on the next process start.
+    private val ambientFanout = kotlinx.coroutines.sync.Semaphore(
+        calibration.current().tune("ambientFanoutPermits", 4.0).toInt().coerceIn(1, 13),
+    )
 
     override suspend fun search(query: String, near: LatLng?, spanMeters: Double?): SearchResult = io {
         session.ensure()
