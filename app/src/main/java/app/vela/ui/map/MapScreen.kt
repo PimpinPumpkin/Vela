@@ -344,7 +344,10 @@ fun MapScreen(
     var placeSheetExpanded by remember { mutableStateOf(false) }
     LaunchedEffect(state.selected?.id) { if (state.selected == null) placeSheetExpanded = false }
     LaunchedEffect(state.results) { filteredResultIds = null }
-    val resultsShown = state.results.isNotEmpty() && state.selected == null && !searchOpen && !state.resultsCollapsed
+    // Street View gates the panel too: opening the viewer clears `selected`, which used to flip
+    // this back ON and draw the results list over the bottom-half mini map (user 2026-07-18).
+    val resultsShown = state.results.isNotEmpty() && state.selected == null && !searchOpen && !state.resultsCollapsed &&
+        state.streetView == null && !state.streetViewLoading
     // Free-drive follow (Google's "the map tracks you as you drive, no route needed"). On by
     // default so an open, unobstructed map glides to your fix; a user pan drops it and the locate
     // tap raises it again. Suppressed whenever a focus surface owns the camera (search, a place,
@@ -845,6 +848,7 @@ fun MapScreen(
             onSelectAlternate = vm::selectRoute,
             markers = markersOf(state, filteredResultIds),
             frameMarkers = state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed,
+            holdMarkerFit = state.selected != null || state.streetView != null || state.streetViewLoading,
             // The endpoints card's measured bottom edge: the route fit frames start/end in the
             // strip between the card and the chooser instead of hiding either behind chrome.
             cameraTopInsetPx = if (state.directionsOpen && !state.navigating) topCardBottomPx else 0,
@@ -1687,8 +1691,12 @@ fun MapScreen(
 
             // Search results as a BOTTOM sheet, Google-style — same detent family as the place
             // sheet (minimized bar ↔ peek ↔ expanded). Reached only when nothing above matched,
-            // so a selected place / directions / nav always win the bottom slot.
-            state.results.isNotEmpty() && !searchOpen && state.pickOnMap == null -> {
+            // so a selected place / directions / nav always win the bottom slot. Street View
+            // gates it too: opening the viewer clears `selected`, which used to fall through to
+            // THIS branch and draw the results list over the bottom-half mini map (user
+            // 2026-07-18); the sheet returns when the viewer closes.
+            state.results.isNotEmpty() && !searchOpen && state.pickOnMap == null &&
+                state.streetView == null && !state.streetViewLoading -> {
               SearchResults(
                 results = state.results,
                 onShownChange = { filteredResultIds = it },
