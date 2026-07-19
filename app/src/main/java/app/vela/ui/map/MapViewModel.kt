@@ -955,7 +955,7 @@ class MapViewModel @Inject constructor(
         }
         suggestJob = viewModelScope.launch {
             delay(320) // only fire once typing pauses
-            val near = mapCenter ?: _state.value.myLocation // suggestions near the viewport, like search
+            val near = plausibleBias(mapCenter) ?: plausibleBias(_state.value.myLocation) // suggestions near the viewport, like search
             val vp0 = viewport
             val spanM0 = vp0?.let { LatLng(it[0], it[1]).distanceTo(LatLng(it[2], it[1])) }
             // ADDRESS queries ("123 main st") get a parallel Photon (OSM) lookup: it honours the
@@ -1252,10 +1252,16 @@ class MapViewModel @Inject constructor(
     // Bias to what the user is LOOKING at (the panned viewport), Google-style — so searching after
     // panning to another area returns results THERE, not back at your GPS location. Falls back to GPS
     // before the map has settled a centre.
-    fun search() = runSearch(_state.value.query.trim(), mapCenter ?: _state.value.myLocation)
+    fun search() = runSearch(_state.value.query.trim(), plausibleBias(mapCenter) ?: plausibleBias(_state.value.myLocation))
 
     /** Re-run the current query biased to the area the user has panned to. */
-    fun searchThisArea() = runSearch(_state.value.query.trim(), mapCenter)
+    fun searchThisArea() = runSearch(_state.value.query.trim(), plausibleBias(mapCenter))
+
+    // A point within ~50 km of 0,0 is MapLibre's virgin camera (a no-GPS device that never got a
+    // fix or a fly-to) or a bogus provider fix, open ocean, never a real position. Passing it as
+    // search bias skews ranking toward null island; no bias at all lets gl/hl regional ranking win.
+    private fun plausibleBias(l: LatLng?): LatLng? =
+        l?.takeUnless { kotlin.math.abs(it.lat) < 0.5 && kotlin.math.abs(it.lng) < 0.5 }
 
     /** Map settled after a user pan: offer "Search this area" while results show. */
     fun onCameraIdle(center: LatLng) {

@@ -2107,3 +2107,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   tile: a curated picker grid (works on key-only phones) plus a free-type field for any
   emoji. Stored in the existing icon field as "emoji:X", so old payloads and old builds
   fall back to the bookmark; the emoji renders in list rows and as the saved-place map pin.
+- ✅ **Hebrew open/closed status fix (issue #95 diag).** Google prefixes Hebrew status strings
+  with "המקום" ("the place"), so the bare closed/open words never matched at the start of the
+  string and every Hebrew place drew no status colour at all. The keyword tables now carry the
+  prefixed forms, pinned by tests against the exact strings from a live device diag.
+- ✅ **Remote keyword tables actually wired.** The signed calibration bundle's word-table
+  overrides (status open/closed words, transit gate + exclusion words, departure-board
+  indices) were parsed nowhere: the fields existed and the app pushed them into the parsers,
+  but the bundle parser silently dropped them, so every one of those overrides was dead.
+  They now parse leniently like the tuning dials (bad entries skipped, empty means absent).
+- ✅ **No-GPS search bias guard.** A device that never gets a location fix (WiFi tablet) sits
+  on MapLibre's virgin camera near 0,0 and every search was biased to open ocean. A bias
+  point within about 50 km of null island is now discarded so regional ranking wins instead.

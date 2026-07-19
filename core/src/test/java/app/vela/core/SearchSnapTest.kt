@@ -106,7 +106,7 @@ class SearchSnapTest {
 
     /** The summary-node enrichment: PopularTimesParser lifts review count / address / rating
      *  off the FULL focused node (feature-id-matched) into PlaceDetails, so a sparse snapped
-     *  place can be backfilled. Regression for "Bellagio showed 4.4 with no count". */
+     *  place can be backfilled. Regression for "a salon showed 4.4 with no count". */
     @Test fun enrichmentLiftsCountAddressRatingFromFocusedNode() {
         val rating = arr(9, 7 to "4.5", 8 to "305")                 // [4][7]=rating, [4][8]=count
         val geo = arr(4, 2 to "38.58", 3 to "-121.49")             // [9][2]/[9][3]=lat/lng

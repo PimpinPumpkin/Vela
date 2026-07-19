@@ -349,9 +349,13 @@ object SearchParser {
         // 営業時間外 = outside opening hours; 営業開始 = opens (later); 臨時休業/閉業 = temp/permanent.
         "ja" to listOf("営業時間外", "営業開始", "臨時休業", "閉業", "休業"),
         // Hebrew: "סגור" (closed, also prefixes "סגור זמנית/לצמיתות"), "נפתח"/"ייפתח" (opens → closed now).
-        // Keyed "iw" (Locale.getDefault().language yields the legacy code on Android) + "he" for parity.
-        "iw" to listOf("סגור", "נפתח", "ייפתח"),
-        "he" to listOf("סגור", "נפתח", "ייפתח"),
+        // "המקום סגור" = "the place is closed": Google's Hebrew status strings PREFIX "המקום"
+        // ("the place"), so the bare word never startsWith-matched and every Hebrew place showed
+        // no open/closed colour at all (live diag from an il user, 2026-07-19: openNow=null on
+        // "המקום סגור · ייפתח ביום..."). Keyed "iw" (Locale.getDefault().language yields the
+        // legacy code on Android) + "he" for parity.
+        "iw" to listOf("סגור", "נפתח", "ייפתח", "המקום סגור"),
+        "he" to listOf("סגור", "נפתח", "ייפתח", "המקום סגור"),
     )
 
     /** Languages [parseOpenNow] actually has a keyword table for. `GoogleMapsDataSource.localized()`
@@ -378,9 +382,10 @@ object SearchParser {
         "zh" to listOf("营业中", "營業中", "打烊", "營業至", "营业至"),
         // 営業中 = open now; 営業終了時間/まもなく営業終了 = closes later (open now).
         "ja" to listOf("営業中", "営業終了", "まもなく営業終了"),
-        // Hebrew: "פתוח" (open), "נסגר" (closes later → open now).
-        "iw" to listOf("פתוח", "נסגר"),
-        "he" to listOf("פתוח", "נסגר"),
+        // Hebrew: "פתוח" (open), "נסגר" (closes later → open now), plus the "המקום"-prefixed
+        // form Google actually serves (see CLOSED_WORDS note).
+        "iw" to listOf("פתוח", "נסגר", "המקום פתוח"),
+        "he" to listOf("פתוח", "נסגר", "המקום פתוח"),
     )
 
     /** Live status text → open/closed, in the language the scrape requested (`hl=` follows
