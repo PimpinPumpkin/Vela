@@ -298,6 +298,12 @@ fun VelaMapView(
     // trip is planned or driven; reordering the stops re-numbers the pins (list identity keys it).
     stopPins: List<LatLng> = emptyList(),
     frameMarkers: Boolean,
+    // True while a PLACE SHEET owns the camera (a result is open): the marker-cluster fit is
+    // remembered, not forgotten, so closing the sheet returns to the results WITHOUT re-framing
+    // the whole cluster (the "zooms me out when I exit the POI" report, user 2026-07-18). The
+    // forget still happens when the sheet closes with no place open (a pan away + reopening the
+    // list deliberately re-frames).
+    holdMarkerFit: Boolean = false,
     navMode: Boolean,
     navDriveMode: Boolean = false, // navigating a DRIVE route -> the aggressive car-mode declutter
     navLabelExclude: List<String> = emptyList(), // roads already DRIVEN: never bubble-label the road you're ON
@@ -2352,9 +2358,11 @@ fun VelaMapView(
             if (svPose == null) map.setPadding(0, 0, 0, cameraBottomInsetPx)
             if (grew) lastCameraTarget = null // re-frame the current target against the new inset
         }
-        // While the results sheet is closed (or a place is selected) forget the last marker fit,
-        // so pulling the list back up frames the cluster again even after a manual pan away.
-        if (!frameMarkers) lastFittedMarkersKey = null
+        // While the results sheet is closed forget the last marker fit, so pulling the list back
+        // up frames the cluster again even after a manual pan away - EXCEPT while a place sheet
+        // is open (holdMarkerFit): closing a result back to the list must not re-frame the whole
+        // cluster under the user (the "zooms me out when I exit the POI" report, 2026-07-18).
+        if (!frameMarkers && !holdMarkerFit) lastFittedMarkersKey = null
         when {
             // A recenter TAP always wins — even if we're already on the target (the
             // `target != lastCameraTarget` guard below used to swallow it after a manual pan) or a

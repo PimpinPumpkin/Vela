@@ -17,6 +17,17 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Street View from a search result shows the mini map, not the results list (2026-07-18,
+  user).** Opening the viewer clears the selected place, and the results sheet - which wins the
+  bottom slot whenever nothing else claims it - fell through and drew the POI list over the
+  bottom-half mini map. The sheet is now gated while the viewer is up (or loading) and returns
+  when it closes. Device-verified on the exact repro path (search, open a result, Street View).
+- ✅ **Closing a place from the results list leaves the camera where you are (2026-07-18,
+  user).** The map used to forget its cluster framing while a place sheet was open and re-fit
+  ALL results on close - a zoom-out yank away from the place you were just looking at. The fit
+  is now remembered across a place sheet (and Street View), so closing returns to the list with
+  the camera untouched, which is also exactly what the Google app does. The deliberate re-frame
+  still fires in its intended case: pan away, collapse the list, pull it back up.
 - ✅ **Collapsing the results list no longer snaps the camera to your location (2026-07-18,
   user).** The camera's generic branch fell back to the live GPS fix as a target whenever
   nothing else claimed it, so merely minimizing the results sheet (an inset change) flew the map
