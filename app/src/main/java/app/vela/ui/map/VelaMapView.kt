@@ -2381,7 +2381,10 @@ fun VelaMapView(
                             (Math.log((78271.517 * Math.cos(Math.toRadians(t.lat))) / mpd) / Math.log(2.0)).coerceIn(3.0, 15.0)
                         }
                         cameraBottomInsetPx > 0 -> 16.5
-                        else -> 15.0
+                        // 15.5 (~1000ft), matching the launch-centre and search flies - the tap
+                        // used to land at 15.0 while every other path used 15.5, so a follow-up
+                        // camera move visibly changed zoom (part of the locate rubber-band).
+                        else -> 15.5
                     }
                     if (driveFollowing && !navMode) {
                         // The free-drive ticker owns the camera and its per-frame moveCamera
@@ -2546,19 +2549,30 @@ fun VelaMapView(
             else -> {
                 val target = cameraTarget ?: myLocation
                 if (target != null && target != lastCameraTarget) {
-                    lastCameraTarget = target
-                    // Zoom in closer when a place sheet is up (focusing a single pin),
-                    // looser for a plain recenter - unless a deep link asked for its own zoom.
-                    // 15.5 (~1000ft), not 16.5: the search fly-to used to land one notch past
-                    // EVERY heavy tier at once (flat buildings z16, MS overlay z16, 3D z17, and a
-                    // bigger POI cap) - searching a dense city hitched on arrival while all of it
-                    // loaded (user 2026-07-17, London). At 15.5 arrival is roads+labels+POIs;
-                    // buildings are one pinch away. Matches the locate-me fly (also 15.5).
-                    val zoom = cameraTargetZoom ?: if (cameraBottomInsetPx > 0) 15.5 else 14.5
-                    flightDepth[0]++
-                    map.animateCamera(
-                        CameraUpdateFactory.newLatLngZoom(MLLatLng(target.lat, target.lng), zoom), flightCb(),
-                    )
+                    // GPS JITTER GATE (user 2026-07-18, "rubber band on the locate button"): when
+                    // the target is the LIVE FIX (no explicit cameraTarget), a fresh fix a few
+                    // metres off used to re-fly the camera right after the locate flight settled,
+                    // and at THIS branch's own default zoom rather than the tap's - a visible
+                    // snap. A fix that moved less than ~40 m is the same place: adopt it silently
+                    // so the guard stays current, and never fly for it.
+                    val prev = lastCameraTarget
+                    if (cameraTarget == null && prev != null && target.distanceTo(prev) < 40.0) {
+                        lastCameraTarget = target
+                    } else {
+                        lastCameraTarget = target
+                        // Zoom in closer when a place sheet is up (focusing a single pin),
+                        // looser for a plain recenter - unless a deep link asked for its own zoom.
+                        // 15.5 (~1000ft), not 16.5: the search fly-to used to land one notch past
+                        // EVERY heavy tier at once (flat buildings z16, MS overlay z16, 3D z17, and a
+                        // bigger POI cap) - searching a dense city hitched on arrival while all of it
+                        // loaded (user 2026-07-17, London). At 15.5 arrival is roads+labels+POIs;
+                        // buildings are one pinch away. Matches the locate-me fly (also 15.5).
+                        val zoom = cameraTargetZoom ?: if (cameraBottomInsetPx > 0) 15.5 else 14.5
+                        flightDepth[0]++
+                        map.animateCamera(
+                            CameraUpdateFactory.newLatLngZoom(MLLatLng(target.lat, target.lng), zoom), flightCb(),
+                        )
+                    }
                 }
             }
         }
