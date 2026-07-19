@@ -2547,7 +2547,12 @@ fun VelaMapView(
             }
 
             else -> {
-                val target = cameraTarget ?: myLocation
+                // The live fix is only a fallback target on an EMPTY map: with results/markers up,
+                // falling back to it meant merely COLLAPSING the results sheet (inset change ->
+                // recomposition) flew the camera away from the results to wherever the user
+                // physically is - the "minimize the list and it snaps to my location" bug (user
+                // 2026-07-18). An explicit cameraTarget still always wins.
+                val target = cameraTarget ?: myLocation?.takeIf { markers.isEmpty() }
                 if (target != null && target != lastCameraTarget) {
                     // GPS JITTER GATE (user 2026-07-18, "rubber band on the locate button"): when
                     // the target is the LIVE FIX (no explicit cameraTarget), a fresh fix a few

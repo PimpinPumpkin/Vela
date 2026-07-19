@@ -1473,6 +1473,30 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
     // Each language is its own collapsible sub-group so the ~40-voice list isn't one long scroll: a
     // group opens by default only when it's the app's language or already has a voice installed, so you
     // see your own language + what you've got and the rest stays folded away. A search forces all open.
+    // The flagship default voice (fleet-calibrated, HFC Female today): brand it "Vela voice" in
+    // the rows, and when it is MISSING (a failed install, a crash mid-download, cleared storage -
+    // user 2026-07-18) offer the reinstall right here at the top instead of making the user hunt
+    // the English group for the starred row.
+    val velaVoiceId = vm.defaultVoiceId()
+    val velaVoice = catalog.firstOrNull { it.id == velaVoiceId }
+    if (velaVoice != null && velaVoiceId !in installed && query.isBlank()) {
+        Spacer(Modifier.height(8.dp))
+        if (state.voiceDownloadingId == velaVoiceId) {
+            Text(
+                stringResource(R.string.settings_voice_row_downloading, ((state.voiceDownloadPct ?: 0f) * 100).toInt()),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            LinearProgressIndicator(progress = { state.voiceDownloadPct ?: 0f }, modifier = Modifier.fillMaxWidth())
+        } else {
+            Button(
+                onClick = { vm.downloadVoice(velaVoiceId) },
+                enabled = state.voiceDownloadingId == null,
+                modifier = Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(24.dp)),
+            ) { Text(stringResource(R.string.settings_voice_install_vela, velaVoice.sizeMb)) }
+            Hint(stringResource(R.string.settings_voice_install_vela_hint))
+        }
+    }
     val langOrder = PiperCatalog.languageCodes().let { codes ->
         if (appLang in codes) listOf(appLang) + codes.filter { it != appLang } else codes
     }
@@ -1534,6 +1558,7 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
                         downloading = state.voiceDownloadingId == v.id,
                         downloadPct = if (state.voiceDownloadingId == v.id) state.voiceDownloadPct ?: 0f else 0f,
                         anyDownloading = state.voiceDownloadingId != null,
+                        velaVoice = v.id == velaVoiceId,
                         onDownload = { vm.downloadVoice(v.id) },
                         onUse = { vm.selectVoice(v.id) },
                         onDelete = {
@@ -1576,6 +1601,7 @@ private fun VoiceRow(
     downloading: Boolean,
     downloadPct: Float,
     anyDownloading: Boolean,
+    velaVoice: Boolean = false, // the fleet-default id wears the "Vela voice (Name)" branding
     onDownload: () -> Unit,
     onUse: () -> Unit,
     onDelete: () -> Unit,
@@ -1593,7 +1619,8 @@ private fun VoiceRow(
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    (if (v.recommended) "★ " else "") + v.displayName,
+                    (if (v.recommended) "★ " else "") +
+                        (if (velaVoice) stringResource(R.string.settings_voice_vela_name, v.displayName) else v.displayName),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
                 )
