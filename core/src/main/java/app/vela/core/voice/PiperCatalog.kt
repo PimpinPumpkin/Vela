@@ -81,6 +81,13 @@ object PiperCatalog {
         PiperVoice("en_US-ljspeech-high", "LJSpeech (HQ)", VoiceGender.FEMALE, VoiceQuality.HIGH, 115, 1, "Polished audiobook-style US female"),
         PiperVoice("en_US-arctic-medium", "Arctic", VoiceGender.MULTI, VoiceQuality.MEDIUM, 80, 18, "18-voice US pack, variety in one download"),
         PiperVoice("en_US-glados-high", "GLaDOS", VoiceGender.NEUTRAL, VoiceQuality.HIGH, 115, 1, "Portal's GLaDOS, deadpan robotic, for fun", novelty = true),
+        // ── English (GB) ──
+        PiperVoice("en_GB-alba-medium", "Alba", VoiceGender.FEMALE, VoiceQuality.MEDIUM, 67, 1, "Scottish-tinged UK female, warm and characterful"),
+        PiperVoice("en_GB-jenny_dioco-medium", "Jenny", VoiceGender.FEMALE, VoiceQuality.MEDIUM, 67, 1, "Friendly UK female, clear, natural British read"),
+        PiperVoice("en_GB-cori-high", "Cori (HQ)", VoiceGender.FEMALE, VoiceQuality.HIGH, 115, 1, "Crisp UK female at top quality"),
+        PiperVoice("en_GB-northern_english_male-medium", "Northern Male", VoiceGender.MALE, VoiceQuality.MEDIUM, 67, 1, "Northern-English UK male, down-to-earth"),
+        PiperVoice("en_GB-alan-medium", "Alan", VoiceGender.MALE, VoiceQuality.MEDIUM, 67, 1, "Steady UK male, classic British navigation tone"),
+        PiperVoice("en_GB-vctk-medium", "VCTK", VoiceGender.MULTI, VoiceQuality.MEDIUM, 80, 109, "109-voice UK pack, a huge range of accents"),
         // ── Français ──
         PiperVoice("fr_FR-siwis-medium", "Siwis", VoiceGender.FEMALE, VoiceQuality.MEDIUM, 67, 1, "Voix française claire et standard", recommended = true),
         PiperVoice("fr_FR-tom-medium", "Tom", VoiceGender.MALE, VoiceQuality.MEDIUM, 67, 1, "Voix masculine française, naturelle"),
