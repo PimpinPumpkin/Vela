@@ -1115,9 +1115,19 @@ Defaults that make the safe path the easy one:
   **REAL romanized names beat ICU (2026-07-19, tiles phase):** ICU on an abjad like Hebrew is a vowel-less
   skeleton ("רחוב הרצל"->"rhwb hrzl"), unpronounceable. Real names are DATA: the OpenMapTiles
   basemap carries `name:en`/`name:latin` per road. `VelaMapView`'s existing nav-label pass
-  (querySourceFeatures over `transportation_name`, once per 400 m quantum) also records `localName ->
-  latinAliasOf(feature)` and reports it via `onNavRoadLatin` -> `MapViewModel.onNavRoadLatin` ->
-  `MapUiState.roadNameLatin` + `VoiceGuide.roadNameLatin`, growing as tiles load, reset on nav end.
+  (querySourceFeatures over `transportation_name`) also records `localName -> latinAliasOf(feature)`
+  and reports it via `onNavRoadLatin` -> `MapViewModel.onNavRoadLatin` -> `MapUiState.roadNameLatin` +
+  `VoiceGuide.roadNameLatin`, growing as tiles load, reset on nav end. **The dict query is WARMUP-paced,
+  NOT the per-400 m quantum the label pass uses:** a drive STARTS with only the route-overview (low-zoom)
+  tiles loaded, which carry ONLY major road names (device-proven: dict=19 major roads at nav start), so the
+  first turn onto a minor road spoke the ICU skeleton. The loop now re-queries the dict every 2 s tick WHILE
+  it is still growing (`dictStaleTicks < 3`, reset on each quantum), so a local road's real name lands within
+  a couple seconds of its nav-zoom tile loading (device-proven: dict jumped 19 -> 404 as local streets
+  resolved to real romanized names with vowels, not the consonant skeleton, on both the banner and the
+  voice). The expensive crossing geometry stays per-quantum, so this never puts a heavy pass on the
+  every-frame path. NB the very FIRST "Starting
+  navigation" opener still fires at dict=0 (before any tiles load) so its road can skeleton once; the banner
+  heals as the dict fills.
   `SpokenScript.forVoice(text, lang, dict)` swaps a known local name for its real Latin form FIRST, ICU only
   for the rest; `SpokenScript.forDisplay(text, uiLang, dict)` does the same for the banner + steps but with
   NO ICU fallback (a skeleton on a sign reads broken - why the earlier ICU display romanization was

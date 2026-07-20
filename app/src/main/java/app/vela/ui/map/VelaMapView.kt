@@ -598,72 +598,88 @@ fun VelaMapView(
             Expression.get("class"), Expression.literal(false),
             *(NAV_LABEL_MAJOR_CLASSES + NAV_LABEL_SLOW_CLASSES).map { Expression.stop(it, true) }.toTypedArray(),
         )
+        // While the romanized-name dict is still GROWING (an area's higher-zoom tiles loading in), we
+        // re-query every 2 s tick; once it settles (STALE_TICKS with no new name) we stop until the
+        // next quantum. This resolves a local road's real name within a couple seconds of its
+        // nav-zoom tile loading instead of waiting a full 400 m - the route-overview tile that is
+        // loaded when a drive STARTS carries only major road names, so the first turn onto a minor
+        // road would otherwise speak the ICU skeleton (issue #184). The expensive crossing geometry
+        // stays per-quantum, so this never puts a heavy pass on the every-frame path.
+        var dictStaleTicks = 0
         while (true) {
             val quantum = (navPuck.progressM / 400.0).toLong()
             val upcomingNow = upcomingRoadsHolder.value
-            if (quantum == lastQuantum && upcomingNow == lastUpcoming) {
-                kotlinx.coroutines.delay(2_000)
-                continue
-            }
-            val src = style.getSource("openmaptiles") as? VectorSource
-            if (src != null) {
-                val feats = runCatching {
+            val quantumChanged = quantum != lastQuantum || upcomingNow != lastUpcoming
+            if (quantumChanged) dictStaleTicks = 0 // new area: re-warm the dict as its tiles land
+            if (quantumChanged || dictStaleTicks < 3) {
+                val src = style.getSource("openmaptiles") as? VectorSource
+                val feats = if (src != null) runCatching {
                     src.querySourceFeatures(arrayOf("transportation_name"), classFilter)
-                }.getOrNull().orEmpty()
+                }.getOrNull().orEmpty() else emptyList()
                 if (feats.isNotEmpty()) {
-                    // Window of route geometry around the current QUANTUM (not the live puck, so
-                    // the include set is byte-stable between quanta): a little behind, ~2 km ahead.
-                    val fromM = quantum * 400.0 - 200.0
-                    val toM = quantum * 400.0 + 2200.0
-                    val window = ArrayList<LatLng>()
-                    for (k in routePolyline.indices) {
-                        if (routeCum[k] in fromM..toM) window.add(routePolyline[k])
+                    // DICT (cheap: two string props per feature): capture each named road's romanized
+                    // alias once. Runs every qualifying tick so names resolve as tiles load.
+                    val latinBefore = latinAcc.size
+                    for (f in feats) {
+                        val name = runCatching { f.getStringProperty("name") }.getOrNull() ?: continue
+                        if (name.isBlank() || name in latinAcc) continue
+                        latinAliasOf(f, name)?.let { latinAcc[name] = it }
                     }
-                    if (window.size >= 2) {
-                        val exclude = labelExcludeHolder.value
-                        val upcoming = upcomingRoadsHolder.value
-                        val latinBefore = latinAcc.size
-                        val crossers = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                            val out = LinkedHashSet<String>()
-                            for (f in feats) {
-                                val name = runCatching { f.getStringProperty("name") }.getOrNull() ?: continue
-                                if (name.isBlank()) continue
-                                // Record this road's romanized name once (issue #184) - all named roads,
-                                // not just crossers, so an upcoming turn target is captured when its tile loads.
-                                if (name !in latinAcc) latinAliasOf(f, name)?.let { latinAcc[name] = it }
-                                if (name in out || name in exclude) continue
-                                val geom = f.geometry() ?: continue
-                                val lines: List<List<org.maplibre.geojson.Point>> = when (geom) {
-                                    is org.maplibre.geojson.LineString -> listOf(geom.coordinates())
-                                    is org.maplibre.geojson.MultiLineString -> geom.coordinates()
-                                    else -> emptyList()
-                                }
-                                val hit = lines.any { pts ->
-                                    crossesWindow(pts.map { it.longitude() to it.latitude() }, window)
-                                }
-                                if (hit) { out.add(name); if (out.size >= 60) break }
-                            }
-                            out.toList()
+                    if (latinAcc.size != latinBefore) {
+                        navRoadLatinHolder.value(HashMap(latinAcc))
+                        dictStaleTicks = 0
+                    } else {
+                        dictStaleTicks++
+                    }
+                    // LABEL crossing + setFilter (the expensive geometry pass): only per quantum.
+                    if (quantumChanged) {
+                        // Window of route geometry around the current QUANTUM (not the live puck, so
+                        // the include set is byte-stable between quanta): a little behind, ~2 km ahead.
+                        val fromM = quantum * 400.0 - 200.0
+                        val toM = quantum * 400.0 + 2200.0
+                        val window = ArrayList<LatLng>()
+                        for (k in routePolyline.indices) {
+                            if (routeCum[k] in fromM..toM) window.add(routePolyline[k])
                         }
-                        // The next turns' target roads always get their bubble: a turn target
-                        // meets the route at a shared vertex, which the proper-crossing test
-                        // can miss (T-junctions especially).
-                        val names = (upcoming + crossers).filter { it !in exclude }.distinct()
-                        if (names != lastApplied) {
-                            lastApplied = names
-                            runCatching {
-                                (style.getLayer(NAV_ROADLABEL_LAYER) as? SymbolLayer)
-                                    ?.setFilter(navLabelFilter(NAV_LABEL_MAJOR_CLASSES, exclude, names))
-                                (style.getLayer(NAV_ROADLABEL_MINOR_LAYER) as? SymbolLayer)
-                                    ?.setFilter(navLabelFilter(NAV_LABEL_SLOW_CLASSES, exclude, names))
+                        if (window.size >= 2) {
+                            val exclude = labelExcludeHolder.value
+                            val upcoming = upcomingRoadsHolder.value
+                            val crossers = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                                val out = LinkedHashSet<String>()
+                                for (f in feats) {
+                                    val name = runCatching { f.getStringProperty("name") }.getOrNull() ?: continue
+                                    if (name.isBlank() || name in out || name in exclude) continue
+                                    val geom = f.geometry() ?: continue
+                                    val lines: List<List<org.maplibre.geojson.Point>> = when (geom) {
+                                        is org.maplibre.geojson.LineString -> listOf(geom.coordinates())
+                                        is org.maplibre.geojson.MultiLineString -> geom.coordinates()
+                                        else -> emptyList()
+                                    }
+                                    val hit = lines.any { pts ->
+                                        crossesWindow(pts.map { it.longitude() to it.latitude() }, window)
+                                    }
+                                    if (hit) { out.add(name); if (out.size >= 60) break }
+                                }
+                                out.toList()
                             }
+                            // The next turns' target roads always get their bubble: a turn target
+                            // meets the route at a shared vertex, which the proper-crossing test
+                            // can miss (T-junctions especially).
+                            val names = (upcoming + crossers).filter { it !in exclude }.distinct()
+                            if (names != lastApplied) {
+                                lastApplied = names
+                                runCatching {
+                                    (style.getLayer(NAV_ROADLABEL_LAYER) as? SymbolLayer)
+                                        ?.setFilter(navLabelFilter(NAV_LABEL_MAJOR_CLASSES, exclude, names))
+                                    (style.getLayer(NAV_ROADLABEL_MINOR_LAYER) as? SymbolLayer)
+                                        ?.setFilter(navLabelFilter(NAV_LABEL_SLOW_CLASSES, exclude, names))
+                                }
+                            }
+                            // Mark the quantum done only after a usable pass, so an early empty
+                            // query (tiles still loading) retries on the next tick.
+                            lastQuantum = quantum
+                            lastUpcoming = upcomingNow
                         }
-                        // Push any newly-resolved romanized names up to the VM (voice + banner).
-                        if (latinAcc.size != latinBefore) navRoadLatinHolder.value(HashMap(latinAcc))
-                        // Mark the quantum done only after a usable pass, so an early empty
-                        // query (tiles still loading) retries on the next tick.
-                        lastQuantum = quantum
-                        lastUpcoming = upcomingNow
                     }
                 }
             }
