@@ -324,6 +324,11 @@ class VoiceGuide @Inject constructor(
      *  this so a shared drive shows what was said, verbatim, at what time. Set by `:app`. */
     var onSpoken: ((String) -> Unit)? = null
 
+    /** Real romanized road names (local name -> Latin, from the basemap's name:latin), set by `:app`
+     *  as nav tiles load. Used to speak "Rehov Herzl" instead of the ICU skeleton "rhwb hrzl" for a
+     *  foreign street; empty by default so nothing changes without it (issue #184). */
+    @Volatile var roadNameLatin: Map<String, String> = emptyMap()
+
     fun speak(text: String, interrupt: Boolean = false, ignoreMute: Boolean = false) {
         if (muted && !ignoreMute) return
         runCatching { onSpoken?.invoke(text) }
@@ -349,7 +354,7 @@ class VoiceGuide @Inject constructor(
             acquireFocus()
             // Romanize any foreign-script name for this (Latin) neural voice so it isn't dropped
             // (issue #184); the on-screen banner keeps the real local-script name.
-            n.speak(forSpeech(SpokenScript.forVoice(text, n.voiceLanguage ?: t)), interrupt) { releaseFocus() }
+            n.speak(forSpeech(SpokenScript.forVoice(text, n.voiceLanguage ?: t, roadNameLatin)), interrupt) { releaseFocus() }
             return
         }
         speakViaSystem(text, interrupt, t)
@@ -385,7 +390,7 @@ class VoiceGuide @Inject constructor(
         val mode = if (interrupt) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
         // Same foreign-name romanizing as the neural path (issue #184): the system voice for [t]
         // is Latin-script for the Latin languages, so a foreign road name would otherwise be lost.
-        val result = engine.speak(forSpeech(SpokenScript.forVoice(text, t)), mode, null, "vela-${text.hashCode()}")
+        val result = engine.speak(forSpeech(SpokenScript.forVoice(text, t, roadNameLatin)), mode, null, "vela-${text.hashCode()}")
         if (result == TextToSpeech.ERROR) {
             // The utterance was never enqueued, so NONE of the onDone/onStop/onError callbacks that
             // release focus will ever fire for it — roll back the acquire here or music stays ducked

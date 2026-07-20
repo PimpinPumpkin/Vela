@@ -106,8 +106,15 @@ fun StepsSheet(
     // routing can have only a street, an address, or nothing but the tapped coordinates).
     destName: String? = null,
     destAddress: String? = null,
+    // Real romanized road names (local -> basemap Latin) + the UI language, so foreign street names
+    // in the step list show in Latin where we have a real romanization (issue #184). Empty = unchanged.
+    roadLatin: Map<String, String> = emptyMap(),
+    uiLang: String = "",
     modifier: Modifier = Modifier,
 ) {
+    fun romanize(s: String): String =
+        if (s.isEmpty() || roadLatin.isEmpty()) s
+        else app.vela.core.voice.SpokenScript.forDisplay(s, uiLang, roadLatin)
     val dark = isAppInDarkTheme()
     val ink = SheetPalette.ink(dark)
     val dim = SheetPalette.dim(dark)
@@ -236,7 +243,7 @@ fun StepsSheet(
                         Column(Modifier.weight(1f)) {
                             val continueLabel = stringResource(R.string.steps_continue)
                             Text(
-                                m.instruction.ifEmpty { continueLabel },
+                                m.instruction.ifEmpty { continueLabel }.let { romanize(it) },
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                                 color = ink,
@@ -266,7 +273,7 @@ fun StepsSheet(
                             // there's no name/address at all (it's then the only locator we have).
                             if (m.type != ManeuverType.ARRIVE || (destName.isNullOrBlank() && destAddress.isNullOrBlank())) {
                                 m.road?.let {
-                                    Text(it, style = MaterialTheme.typography.bodySmall, color = dim)
+                                    Text(romanize(it), style = MaterialTheme.typography.bodySmall, color = dim)
                                 }
                             }
                             if (m.lanes.isNotEmpty()) {

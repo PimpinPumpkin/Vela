@@ -1112,6 +1112,20 @@ Defaults that make the safe path the easy one:
   CJK/Cyrillic voice reading romanized Latin is rough (their G2P is not built for Latin), but audible beats
   dropped; the clean win is the DISPLAY side (name:latin), pending. Logic is unit-tested with an injected
   romanizer (android.icu is JVM-stubbed in unit tests); real ICU output validated via `uconv` (same libicu).
+  **REAL romanized names beat ICU (2026-07-19, tiles phase):** ICU on an abjad like Hebrew is a vowel-less
+  skeleton ("רחוב הרצל"->"rhwb hrzl"), unpronounceable. Real names are DATA: the OpenMapTiles
+  basemap carries `name:en`/`name:latin` per road. `VelaMapView`'s existing nav-label pass
+  (querySourceFeatures over `transportation_name`, once per 400 m quantum) also records `localName ->
+  latinAliasOf(feature)` and reports it via `onNavRoadLatin` -> `MapViewModel.onNavRoadLatin` ->
+  `MapUiState.roadNameLatin` + `VoiceGuide.roadNameLatin`, growing as tiles load, reset on nav end.
+  `SpokenScript.forVoice(text, lang, dict)` swaps a known local name for its real Latin form FIRST, ICU only
+  for the rest; `SpokenScript.forDisplay(text, uiLang, dict)` does the same for the banner + steps but with
+  NO ICU fallback (a skeleton on a sign reads broken - why the earlier ICU display romanization was
+  reverted; an unmapped name keeps local script). Both gate on the UI/voice's own script (a Hebrew UI keeps
+  Hebrew). Works ONLINE and in a downloaded map AREA (both carry name:latin tiles); the gap is offline nav
+  across a state where only the routing GRAPH is downloaded - needs name:en baked into the graph at build
+  time (phase 2, a 135-region rebake, NOT built). Quality tracks OSM name:en coverage (Israel well-tagged ->
+  real names; sparse areas keep local script on display / ICU by voice), same as Google.
   (2) **UI chrome** - 
   all ~330 user-facing `:app` strings live in `res/values/strings.xml` (English) + `res/values-<lang>/` for
   the 14 translated languages (fr de es it pt nl ru pl sv uk iw + zh zh-rTW ja; CJK added 2026-07-11, Hebrew 2026-07-13),

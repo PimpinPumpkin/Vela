@@ -308,6 +308,10 @@ fun VelaMapView(
     navDriveMode: Boolean = false, // navigating a DRIVE route -> the aggressive car-mode declutter
     navLabelExclude: List<String> = emptyList(), // roads already DRIVEN: never bubble-label the road you're ON
     navUpcomingRoads: List<String> = emptyList(), // the next turns' target roads: always bubble-labelled
+    // Foreign-name romanizing (issue #184): as nav road tiles load, report each road's local name ->
+    // its basemap name:latin, so guidance can SAY/SHOW the real romanized name instead of the ICU
+    // consonant skeleton. Accumulates across the drive; called only when the map grows.
+    onNavRoadLatin: (Map<String, String>) -> Unit = {},
     navFollowing: Boolean = true,
     navNorthUp: Boolean = false,
     // Free-drive follow (no route open): when true the camera tracks the live fix north-up and
@@ -572,6 +576,7 @@ fun VelaMapView(
     // leaves the previous filter alone; an empty CROSSER set legitimately hides the tier.
     val labelExcludeHolder = rememberUpdatedState(navLabelExclude)
     val upcomingRoadsHolder = rememberUpdatedState(navUpcomingRoads)
+    val navRoadLatinHolder = rememberUpdatedState(onNavRoadLatin)
     LaunchedEffect(navMode, routePolyline, styleRef) {
         val style = styleRef ?: return@LaunchedEffect
         if (!navMode || routePolyline.size < 2) return@LaunchedEffect
@@ -586,6 +591,9 @@ fun VelaMapView(
         // and the query carries a class filter so far fewer features are materialized at all.
         var lastQuantum = Long.MIN_VALUE
         var lastUpcoming: List<String>? = null
+        // Accumulate local-name -> basemap Latin name across the whole drive (issue #184). Grows as
+        // tiles for upcoming roads load; emitted to the VM (voice + banner) only when it gains entries.
+        val latinAcc = HashMap<String, String>()
         val classFilter = Expression.match(
             Expression.get("class"), Expression.literal(false),
             *(NAV_LABEL_MAJOR_CLASSES + NAV_LABEL_SLOW_CLASSES).map { Expression.stop(it, true) }.toTypedArray(),
@@ -614,11 +622,16 @@ fun VelaMapView(
                     if (window.size >= 2) {
                         val exclude = labelExcludeHolder.value
                         val upcoming = upcomingRoadsHolder.value
+                        val latinBefore = latinAcc.size
                         val crossers = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
                             val out = LinkedHashSet<String>()
                             for (f in feats) {
                                 val name = runCatching { f.getStringProperty("name") }.getOrNull() ?: continue
-                                if (name.isBlank() || name in out || name in exclude) continue
+                                if (name.isBlank()) continue
+                                // Record this road's romanized name once (issue #184) - all named roads,
+                                // not just crossers, so an upcoming turn target is captured when its tile loads.
+                                if (name !in latinAcc) latinAliasOf(f, name)?.let { latinAcc[name] = it }
+                                if (name in out || name in exclude) continue
                                 val geom = f.geometry() ?: continue
                                 val lines: List<List<org.maplibre.geojson.Point>> = when (geom) {
                                     is org.maplibre.geojson.LineString -> listOf(geom.coordinates())
@@ -645,6 +658,8 @@ fun VelaMapView(
                                     ?.setFilter(navLabelFilter(NAV_LABEL_SLOW_CLASSES, exclude, names))
                             }
                         }
+                        // Push any newly-resolved romanized names up to the VM (voice + banner).
+                        if (latinAcc.size != latinBefore) navRoadLatinHolder.value(HashMap(latinAcc))
                         // Mark the quantum done only after a usable pass, so an early empty
                         // query (tiles still loading) retries on the next tick.
                         lastQuantum = quantum
@@ -3411,6 +3426,23 @@ private fun crossesWindow(line: List<Pair<Double, Double>>, window: List<LatLng>
         }
     }
     return false
+}
+
+/** The basemap's romanized alias for a road [name] (issue #184): its name:en (a real English name),
+ *  else name:latin (which OpenMapTiles fills from name:en where OSM has one, otherwise a
+ *  transliteration). Returned only when it is a genuinely Latin-script string that differs from the
+ *  local name, so we never store another non-Latin alias as if it were romanized. */
+private fun latinAliasOf(f: org.maplibre.geojson.Feature, name: String): String? {
+    for (key in arrayOf("name:en", "name:latin")) {
+        val v = runCatching { f.getStringProperty(key) }.getOrNull()
+        if (v.isNullOrBlank() || v == name) continue
+        val hasLatinLetter = v.any { it in 'a'..'z' || it in 'A'..'Z' }
+        val noForeignLetter = v.none {
+            Character.isLetter(it) && Character.UnicodeScript.of(it.code) != Character.UnicodeScript.LATIN
+        }
+        if (hasLatinLetter && noForeignLetter) return v
+    }
+    return null
 }
 
 private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, density: Float, exclude: List<String>) {

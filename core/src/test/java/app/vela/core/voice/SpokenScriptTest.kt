@@ -63,4 +63,25 @@ class SpokenScriptTest {
     @Test fun `separators between foreign words pass through`() {
         assertEquals("<שדרות>, <בן> <גוריון>", tag("שדרות, בן גוריון", "en"))
     }
+
+    // --- Real romanized names from the basemap (dict) ---
+    private val dict = mapOf("רחוב הרצל" to "Rehov Herzl")
+
+    @Test fun `voice uses the real name from the dict, ICU only for the rest`() {
+        // The dict name speaks properly; an unmapped foreign name still falls back to ICU (tagged).
+        assertEquals(
+            "Turn onto Rehov Herzl then <דיזנגוף>",
+            SpokenScript.forVoice("Turn onto רחוב הרצל then דיזנגוף", "en", dict) { "<$it>" },
+        )
+    }
+
+    @Test fun `display uses the real name but keeps local script when the dict has none`() {
+        // No ICU on display: an unmapped name stays in Hebrew (a skeleton on a sign reads broken).
+        assertEquals("Turn onto Rehov Herzl", SpokenScript.forDisplay("Turn onto רחוב הרצל", "en", dict))
+        assertEquals("Turn onto דיזנגוף", SpokenScript.forDisplay("Turn onto דיזנגוף", "en", dict))
+    }
+
+    @Test fun `a hebrew UI keeps hebrew even when the dict has a latin name`() {
+        assertEquals("פנה אל רחוב הרצל", SpokenScript.forDisplay("פנה אל רחוב הרצל", "he", dict))
+    }
 }

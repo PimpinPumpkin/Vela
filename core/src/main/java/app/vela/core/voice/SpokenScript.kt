@@ -60,6 +60,41 @@ object SpokenScript {
         }
     }
 
+    /** Romanize for speech using REAL romanized names from [dict] (local name -> Latin, e.g. the
+     *  basemap's name:latin) where we have them, then ICU for any foreign run still left. The dict
+     *  wins because it carries proper vowels ("Rehov Herzl") where rule-based ICU only has the
+     *  consonant skeleton ("rhwb hrzl"). */
+    fun forVoice(text: String, voiceLang: String?, dict: Map<String, String>): String =
+        forVoice(applyDict(text, voiceLang, dict), voiceLang)
+
+    /** Testable core of the dict path: the ICU fallback is injected as [romanize] (android.icu is
+     *  JVM-stubbed in unit tests), so the dict-then-ICU precedence can be asserted. */
+    internal fun forVoice(text: String, voiceLang: String?, dict: Map<String, String>, romanize: (String) -> String): String =
+        forVoice(applyDict(text, voiceLang, dict), voiceLang, romanize)
+
+    /** DISPLAY romanization for the banner/steps: swap known local names for their real Latin form
+     *  from [dict], but NEVER fall back to ICU - a vowel-less skeleton on a street sign reads as
+     *  broken (why display romanization was reverted before), so a name with no real romanization
+     *  keeps its local script, which is what the actual sign shows. */
+    fun forDisplay(text: String, uiLang: String?, dict: Map<String, String>): String =
+        applyDict(text, uiLang, dict)
+
+    /** Replace each local name in [text] with its [dict] Latin form, but only names in a script that
+     *  [lang] can't read (so a Hebrew UI/voice keeps Hebrew). Longest names first so an overlapping
+     *  shorter name can't pre-empt a longer one. */
+    private fun applyDict(text: String, lang: String?, dict: Map<String, String>): String {
+        if (dict.isEmpty()) return text
+        val code = lang?.lowercase()?.substringBefore('-')?.substringBefore('_')
+        val voiceScript = VOICE_SCRIPT[code] ?: Character.UnicodeScript.LATIN
+        var s = text
+        for ((local, latin) in dict.entries.sortedByDescending { it.key.length }) {
+            if (local.isBlank() || latin.isBlank() || local == latin) continue
+            if (local.none { needsRomanizing(it, voiceScript) }) continue // reads this script itself
+            if (s.contains(local)) s = s.replace(local, latin)
+        }
+        return s
+    }
+
     /** Testable core: the ICU call is injected as [romanize] so the run-splitting, voice gating and
      *  CJK/Latin preservation can be unit-tested on the JVM (android.icu is unavailable there). */
     internal fun forVoice(text: String, voiceLang: String?, romanize: (String) -> String): String {
