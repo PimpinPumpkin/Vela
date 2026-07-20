@@ -617,6 +617,14 @@
     <string name="settings_voice_search_remove">Remove</string>
     <string name="settings_voice_search_downloading">Downloading… %1$d%%</string>  <!-- format -->
     <string name="settings_voice_search_installing">Installing…</string>
+    <string name="settings_asr_engines_title">On-device recognition engine</string>
+    <string name="settings_asr_engines_hint">Speech becomes a search right on your phone: no other app needed and nothing is uploaded. Download one or more engines and pick which the mic uses.</string>
+    <string name="settings_asr_engine_meta">%1$s · %2$d MB</string>  <!-- format: languages · size -->
+    <string name="settings_asr_langs_whisper">Every language Vela supports</string>
+    <string name="settings_asr_langs_sensevoice">English, Chinese, Japanese, Korean, Cantonese</string>
+    <string name="settings_asr_langs_moonshine">English only</string>
+    <string name="settings_asr_active">Active</string>
+    <string name="settings_asr_use">Use</string>
     <string name="settings_voice_search_engine_title">When you tap the mic</string>
     <string name="settings_voice_search_engine_auto">Vela Voice</string>
     <string name="settings_voice_search_engine_default">Android default</string>
