@@ -2125,3 +2125,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   forever. A longer text for a known review now replaces the stored entry, and the More click
   uses the button's class hook so it works in every UI language (the old label match only knew
   English). Device-verified on a busy coffee shop: multi-paragraph reviews end in real sentences.
+- ✅ **Foreign street names are spoken, not skipped (issue #184).** When guidance is in one language
+  but a road name is in another script (Hebrew "רחוב הרצל" while you drive with the English voice),
+  the name used to vanish, because a single-language voice has no phonemes for those glyphs and
+  drops them. The spoken string now romanizes foreign-script name runs into the voice's alphabet
+  (ICU, built into Android), the way Google reads "onto Rehov Herzl", while the on-screen banner
+  keeps the real local-script name that matches the street sign. It only touches the runs the voice
+  can't say (existing Latin text and its accents are left alone) and only for Latin-script voices (a
+  Hebrew or Russian voice reads its own script natively). CJK is deliberately left to the native
+  Japanese/Chinese voices, since ICU mis-reads kanji as Chinese pinyin; a proper kanji-to-romaji
+  step is a possible follow-up.

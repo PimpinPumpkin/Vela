@@ -1098,7 +1098,14 @@ Defaults that make the safe path the easy one:
   voice must actually speak that language** - `VoiceGuide` guards on `NeuralSynth.voiceLanguage` and, on a
   mismatch, falls back to a system TTS in the target language (or stays silent + fires a "get a matching voice"
   hint) rather than reading, e.g., Russian nav text through the English Piper model (see the voice bullet under
-  Degoogled constraints). (2) **UI chrome** - 
+  Degoogled constraints). **Foreign NAME romanizing (issue #184, 2026-07-20):** a road NAME can be in a
+  different script than the guidance language (Hebrew name inside English guidance), and a single-language
+  voice drops those glyphs. `SpokenScript.forVoice(text, voiceLang)` romanizes the foreign-script runs to
+  Latin (android.icu `Any-Latin; Latin-ASCII`) ONLY for a Latin-script voice, applied around `forSpeech()`
+  in BOTH speak paths; SPOKEN string only, the banner keeps the local script. CJK is excluded on purpose
+  (ICU reads Han as Chinese pinyin, "明治通り"->"ming zhitongri" not "Meiji-dori") so kanji/kana are left to
+  the native CJK voices. Logic is unit-tested with an injected romanizer (android.icu is JVM-stubbed in
+  unit tests); real ICU output validated via `uconv` (same libicu). (2) **UI chrome** - 
   all ~330 user-facing `:app` strings live in `res/values/strings.xml` (English) + `res/values-<lang>/` for
   the 14 translated languages (fr de es it pt nl ru pl sv uk iw + zh zh-rTW ja; CJK added 2026-07-11, Hebrew 2026-07-13),
   referenced via `stringResource`/`getString`. **CJK notes (2026-07-11):** Chinese ships as
