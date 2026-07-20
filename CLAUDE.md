@@ -131,7 +131,7 @@ Defaults that make the safe path the easy one:
 - **GitHub releases are TWO different things - check the tag before touching one (2026-07-09).**
   `v0.*` tags are app releases (nightly prereleases, weekly stables). Every OTHER tag is
   **infrastructure file hosting** (9 as of 2026-07-13): `tts-runtime` (the sherpa-onnx AAR CI
-  fetches at build time), `asr-models` (the Whisper dictation model), `routing-graphs` (region
+  fetches at build time), `asr-models` (the on-device dictation engines: Whisper/SenseVoice/Moonshine), `routing-graphs` (region
   graph zips + manifest), `poi-packs` (state place packs + manifest), `address-overlays`,
   `building-overlays` and `maxspeed-overlays` (PMTiles + manifests), `map-fonts` (Roboto glyph
   zip), `flock-cameras` (the ALPR/DeFlock camera dataset `.bin` + manifest, weekly-refreshed).
@@ -931,6 +931,25 @@ Defaults that make the safe path the easy one:
   instant the utterance ends. Only the in-process path needs it; tier-2 (SYSTEM) hands off to an
   external recognizer that manages its own focus. Recording itself (an input `AudioRecord`) is
   unaffected by the output-focus request.
+- **Tier-1 ASR is now a PICKABLE ENGINE, not Whisper-only (2026-07-20, device-verified on the P4a).**
+  `WhisperRecognizer`→**`AsrRecognizer`** and `AsrModel`→**`AsrEngine`** (an enum catalog): three
+  on-device engines share the sherpa-onnx runtime — **Whisper tiny** (`whisper`, multilingual default,
+  58 MB), **SenseVoice** (`sense_voice`, en/zh/ja/ko/yue, 154 MB, `OfflineSenseVoiceModelConfig`
+  useInverseTextNormalization=true), **Moonshine** (`moonshine`, English-only, 101 MB,
+  `OfflineMoonshineModelConfig` 4-onnx). `AsrRecognizer.ensureRecognizer` builds the right
+  `OfflineModelConfig` per engine and caches on `loadedKey="<engineId>|<lang>"` (rebuilds on engine OR
+  language switch). Each archive is SELF-CONTAINED — `silero_vad.onnx` ships inside every
+  `<id>/` folder, so the VAD travels with the engine. **Whisper stays `AsrEngine.DEFAULT`** so no
+  language regresses; SenseVoice/Moonshine are opt-in. `AsrEngine.active(ctx)` = the picked engine if
+  installed, else the first installed, else DEFAULT (pref `asr_engine` in `vela_settings`). Selection
+  degrades gracefully: deleting the active engine falls back. State is `asrInstalledIds:Set<String>` +
+  `asrActiveId` + `asrDownloadingId` (not the old `asrInstalled:Boolean`). Settings → Search now shows
+  a **per-engine list** (each row: name, languages, size, Download/Use/Active/Remove), always visible
+  (not gated on "model AND provider"). Models built by **`scripts/build-asr-model.sh <id>`** (repackage
+  the upstream k2-fsa sherpa int8 prebuilt + inject the VAD from the Whisper archive → `vela-asr-<id>.tar.gz`
+  on the `asr-models` release). The map's one-tap mic offer still installs the DEFAULT (Whisper). Note:
+  SenseVoice pins the app language only when it's in {zh,en,ja,ko,yue}, else "auto"; Moonshine ignores
+  language. Older single-model details above (WhisperRecognizer/AsrModel/asrInstalled) are superseded.
 - **Location is requested in onboarding, NOT on map load (2026-07-10).** `MapScreen`'s
   `LaunchedEffect` only STARTS location when it's already granted; it no longer fires the raw
   system dialog. The first ask lives in `VelaRoot`: when onboarding reaches the location step

@@ -52,7 +52,7 @@ enum class AsrEngine(
         id = "sensevoice",
         displayName = "SenseVoice",
         modelType = "sense_voice",
-        sizeMb = 240,
+        sizeMb = 154,
         url = "$ASR_BASE/vela-asr-sensevoice.tar.gz",
         files = listOf("model.int8.onnx", "tokens.txt", VAD_FILE),
     ),
@@ -60,7 +60,7 @@ enum class AsrEngine(
         id = "moonshine",
         displayName = "Moonshine",
         modelType = "moonshine",
-        sizeMb = 120,
+        sizeMb = 101,
         url = "$ASR_BASE/vela-asr-moonshine.tar.gz",
         files = listOf(
             "preprocess.onnx", "encode.int8.onnx", "uncached_decode.int8.onnx",
