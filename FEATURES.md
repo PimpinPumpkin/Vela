@@ -2119,3 +2119,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **No-GPS search bias guard.** A device that never gets a location fix (WiFi tablet) sits
   on MapLibre's virgin camera near 0,0 and every search was biased to open ocean. A bias
   point within about 50 km of null island is now discarded so regional ranking wins instead.
+- ✅ **Full review text in the inline list (issue #181).** Long reviews rendered with a data-side
+  "…" because a card is often harvested on the same tick its More toggle is clicked, before
+  Google's async re-render swaps in the full body, and the accumulator kept the first capture
+  forever. A longer text for a known review now replaces the stored entry, and the More click
+  uses the button's class hook so it works in every UI language (the old label match only knew
+  English). Device-verified on a busy coffee shop: multi-paragraph reviews end in real sentences.

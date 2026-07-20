@@ -1280,6 +1280,19 @@ architecture note.
   always wins. Changing everyone's default = edit the field, bump version, re-sign, commit
   (same channel as defaultVoiceId). Adding a whole NEW named set still needs an app release
   (palettes are compiled); make the apply fns data-driven if sets ever multiply.
+
+- **The reviews RPC is DEAD, do not re-calibrate it (proven 2026-07-19):** the
+  `listentitiesreviews` endpoint 404s for EVERYONE now - verified with a valid live feature id
+  from both a raw client and a real logged-out Chromium session. Nothing calls
+  `GoogleMapsDataSource.reviews()` anymore; ALL review content comes from the WebReviewsFetcher
+  DOM scrape. If reviews ever break, debug the scrape (selectors, virtualized-list
+  accumulation), not the RPC, and don't burn time trying to "fix" reviewsPb.
+- **Review scrape accumulation replaces on LONGER TEXT (2026-07-19, issue #181):** a card is
+  often harvested on the tick its More toggle was clicked, before Google's async re-render
+  swaps in the full body - first-capture-wins turned that race into permanent "…" truncation.
+  The accumulator keeps the longest text per review id, and expand() clicks the `.w8nwRe`
+  class hook (language-independent) with the English label regex as fallback only. Keep both
+  invariants if the scraper script is reworked.
 - **Flat vegetation (2026-07-11):** fill-pattern CANNOT be cleared once a style layer ships
   with one (empty-literal unset no-ops on device) - `ensureLayers` hides `landcover_wetland` +
   `road_area_pattern` and adds flat twins `vela-wetland`/`vela-plaza` that applyLight/applyDark
