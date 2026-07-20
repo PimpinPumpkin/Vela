@@ -203,6 +203,9 @@ data class MapUiState(
     val demoDriving: Boolean = false,          // replaying is a Settings→demo synthetic drive (not a recorded trip) — nav chrome only, no "Stop replay" pill
     val arrived: Boolean = false,
     val nav: NavState = NavState(),
+    // Foreign road name -> its basemap Latin name (issue #184), grown from map tiles as the drive
+    // proceeds; the banner/steps show the real romanized name where we have one. Empty otherwise.
+    val roadNameLatin: Map<String, String> = emptyMap(),
     val maneuverText: String = "",
     val fasterRoute: Route? = null,
     val fasterSavingSeconds: Double = 0.0,
@@ -3576,8 +3579,10 @@ class MapViewModel @Inject constructor(
                 // drive used to leave the blue line drawn on the bare map (user 2026-07-14).
                 activeRoute = null, routes = emptyList(), directionsOpen = false,
                 directionsWaypoints = emptyList(), flockOnRoute = emptyList(),
+                roadNameLatin = emptyMap(), // next drive re-resolves from its own tiles (issue #184)
             )
         }
+        voice.roadNameLatin = emptyMap()
     }
 
     /** Reset the speed-limit badge + its throttle state (shared by nav-stop and replay-teardown so the
@@ -3611,6 +3616,19 @@ class MapViewModel @Inject constructor(
 
     /** The in-nav compass button: toggle the follow camera between heading-up and north-up. */
     fun toggleNavNorthUp() = _state.update { it.copy(navNorthUp = !it.navNorthUp) }
+
+    /** VelaMapView reports romanized road names (local -> basemap Latin) as nav tiles load (issue
+     *  #184). Merge them into state (banner/steps consult it) and hand the full map to VoiceGuide so
+     *  guidance SAYS "Rehov Herzl" instead of the ICU skeleton. Only grows during a drive;
+     *  reset on nav end. */
+    fun onNavRoadLatin(map: Map<String, String>) {
+        if (map.isEmpty()) return
+        val merged = if (_state.value.roadNameLatin.isEmpty()) map
+        else _state.value.roadNameLatin + map
+        if (merged.size == _state.value.roadNameLatin.size) return
+        voice.roadNameLatin = merged
+        _state.update { it.copy(roadNameLatin = merged) }
+    }
 
     /** Mute / unmute spoken guidance (the in-nav speaker button). Persisted. */
     fun toggleVoice() = setSpokenDirections(voice.muted)
