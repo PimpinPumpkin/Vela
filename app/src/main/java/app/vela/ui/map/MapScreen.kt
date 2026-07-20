@@ -621,10 +621,10 @@ fun MapScreen(
     val micMode = when {
         !app.vela.ui.VoiceSearch.enabled.value -> app.vela.ui.VoiceSearch.Mode.NONE
         app.vela.ui.VoiceSearch.engine.value == app.vela.ui.VoiceSearch.Engine.LOCAL ->
-            if (state.asrInstalled) app.vela.ui.VoiceSearch.Mode.LOCAL else app.vela.ui.VoiceSearch.Mode.NONE
+            if (state.asrInstalledIds.isNotEmpty()) app.vela.ui.VoiceSearch.Mode.LOCAL else app.vela.ui.VoiceSearch.Mode.NONE
         app.vela.ui.VoiceSearch.engine.value == app.vela.ui.VoiceSearch.Engine.SYSTEM ->
             if (voiceProviderAvailable) app.vela.ui.VoiceSearch.Mode.SYSTEM else app.vela.ui.VoiceSearch.Mode.NONE
-        state.asrInstalled -> app.vela.ui.VoiceSearch.Mode.LOCAL       // Auto: on-device wins
+        state.asrInstalledIds.isNotEmpty() -> app.vela.ui.VoiceSearch.Mode.LOCAL       // Auto: on-device wins
         voiceProviderAvailable -> app.vela.ui.VoiceSearch.Mode.SYSTEM
         else -> app.vela.ui.VoiceSearch.Mode.NONE
     }
@@ -661,7 +661,7 @@ fun MapScreen(
         app.vela.ui.VelaDialog(
             onDismissRequest = { showAsrOffer = false },
             title = stringResource(R.string.map_asr_offer_title),
-            confirmText = stringResource(R.string.settings_voice_search_download, app.vela.voice.AsrModel.SIZE_MB),
+            confirmText = stringResource(R.string.settings_voice_search_download, app.vela.voice.AsrEngine.DEFAULT.sizeMb),
             onConfirm = { showAsrOffer = false; vm.downloadAsrModel() },
             dismissText = stringResource(R.string.root_not_now),
             onDismiss = { showAsrOffer = false },

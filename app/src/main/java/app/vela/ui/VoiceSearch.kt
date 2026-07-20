@@ -4,12 +4,12 @@ import android.content.Context
 import android.content.Intent
 import android.speech.RecognizerIntent
 import androidx.compose.runtime.mutableStateOf
-import app.vela.voice.AsrModel
+import app.vela.voice.AsrEngine
 
 /**
  * Voice search for the search bar. TWO ways to turn speech into a query:
  *  - **tier-1 (on-device):** Vela's own Whisper model records + transcribes on the phone
- *    ([app.vela.voice.WhisperRecognizer]); works with no third-party app and no account.
+ *    ([app.vela.voice.AsrRecognizer]); works with no third-party app and no account.
  *  - **tier-2 (provider):** an installed voice-input app (FUTO Voice Input, Google's recognizer on
  *    GMS phones, …) captures speech via the RECOGNIZE_SPEECH intent and hands back text. Vela records
  *    nothing itself for this - the provider does.
@@ -132,7 +132,7 @@ object VoiceSearch {
     }.getOrDefault(false)
 
     /** Is Vela's own on-device model downloaded (tier-1)? File-existence check, no model load. */
-    fun localReady(context: Context): Boolean = AsrModel.isInstalled(context)
+    fun localReady(context: Context): Boolean = AsrEngine.anyInstalled(context)
 
     /** Resolve what the mic should do right now. NONE → hide the mic. */
     fun resolvedMode(context: Context): Mode {

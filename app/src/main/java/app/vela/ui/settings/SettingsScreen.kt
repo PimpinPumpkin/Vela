@@ -515,30 +515,64 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             val hasVoiceProvider = remember { app.vela.ui.VoiceSearch.hasProvider(context) }
             Hint(stringResource(R.string.settings_voice_search_hint))
 
-            // On-device voice search (tier-1): download Vela's own Whisper model, or remove it. Works
-            // with no other app and uploads nothing; Auto uses it over a provider when it's installed.
+            // On-device voice-search ENGINES (tier-1): download one or more of Whisper / SenseVoice /
+            // Moonshine, pick which the mic uses, or remove them. All run on-device and upload nothing;
+            // Auto uses the active engine over a provider when any is installed. Whisper is the
+            // multilingual default; SenseVoice (en/zh/ja/ko/yue) and Moonshine (English) are opt-in.
             LaunchedEffect(Unit) { vm.refreshAsr() }
             Spacer(Modifier.height(8.dp))
-            Hint(stringResource(R.string.settings_voice_search_model_hint, app.vela.voice.AsrModel.SIZE_MB))
-            when {
-                state.asrDownloadPct != null -> {
-                    val pct = state.asrDownloadPct ?: 0f
-                    Text(
-                        if (state.asrInstalling) stringResource(R.string.settings_voice_search_installing)
-                        else stringResource(R.string.settings_voice_search_downloading, (pct * 100).toInt()),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    LinearProgressIndicator(progress = { pct }, modifier = Modifier.fillMaxWidth())
+            SubHead(stringResource(R.string.settings_asr_engines_title))
+            Hint(stringResource(R.string.settings_asr_engines_hint))
+            app.vela.voice.AsrEngine.entries.forEach { engine ->
+                val installed = engine.id in state.asrInstalledIds
+                val isActive = installed && engine.id == state.asrActiveId
+                val downloading = state.asrDownloadingId == engine.id
+                val langs = when (engine) {
+                    app.vela.voice.AsrEngine.WHISPER_TINY -> stringResource(R.string.settings_asr_langs_whisper)
+                    app.vela.voice.AsrEngine.SENSE_VOICE -> stringResource(R.string.settings_asr_langs_sensevoice)
+                    app.vela.voice.AsrEngine.MOONSHINE -> stringResource(R.string.settings_asr_langs_moonshine)
                 }
-                state.asrInstalled -> {
+                Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.settings_voice_search_model), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { vm.deleteAsrModel() }) { Text(stringResource(R.string.settings_voice_search_remove)) }
+                        Column(Modifier.weight(1f)) {
+                            Text(engine.displayName, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                stringResource(R.string.settings_asr_engine_meta, langs, engine.sizeMb),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        when {
+                            downloading -> {}                    // progress bar renders below
+                            isActive -> Text(
+                                stringResource(R.string.settings_asr_active),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            installed -> TextButton(onClick = { vm.selectAsrEngine(engine) }) {
+                                Text(stringResource(R.string.settings_asr_use))
+                            }
+                            else -> OutlinedButton(
+                                onClick = { vm.downloadAsrEngine(engine) },
+                                enabled = state.asrDownloadPct == null,   // one download at a time
+                            ) { Text(stringResource(R.string.settings_voice_search_download, engine.sizeMb)) }
+                        }
+                        if (installed && !downloading) {
+                            TextButton(onClick = { vm.deleteAsrEngine(engine) }) {
+                                Text(stringResource(R.string.settings_voice_search_remove))
+                            }
+                        }
                     }
-                }
-                else -> OutlinedButton(onClick = { vm.downloadAsrModel() }) {
-                    Text(stringResource(R.string.settings_voice_search_download, app.vela.voice.AsrModel.SIZE_MB))
+                    if (downloading) {
+                        val pct = state.asrDownloadPct ?: 0f
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            if (state.asrInstalling) stringResource(R.string.settings_voice_search_installing)
+                            else stringResource(R.string.settings_voice_search_downloading, (pct * 100).toInt()),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        LinearProgressIndicator(progress = { pct }, modifier = Modifier.fillMaxWidth())
+                    }
                 }
             }
             // The engine picker only matters when there's actually a choice (the model AND a voice app);
@@ -554,7 +588,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             }
             // Shown whenever there's a real choice: Vela Voice vs any app, or between two apps
             // even without the model.
-            if ((state.asrInstalled && voiceProviders.isNotEmpty()) || voiceProviders.size > 1) {
+            if ((state.asrInstalledIds.isNotEmpty() && voiceProviders.isNotEmpty()) || voiceProviders.size > 1) {
                 Spacer(Modifier.height(12.dp))
                 SubHead(stringResource(R.string.settings_voice_search_engine_title))
                 val eng = app.vela.ui.VoiceSearch.engine.value
@@ -563,7 +597,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 // installed app by name as a manual override.
                 val savedPick = app.vela.ui.VoiceSearch.provider.value
                 val savedValid = voiceProviders.any { it.component.flattenToString() == savedPick }
-                if (state.asrInstalled) {
+                if (state.asrInstalledIds.isNotEmpty()) {
                     SelectableRow(stringResource(R.string.settings_voice_search_engine_auto), eng != app.vela.ui.VoiceSearch.Engine.SYSTEM, onClick = { app.vela.ui.VoiceSearch.setEngine(context, app.vela.ui.VoiceSearch.Engine.AUTO) })
                 }
                 if (voiceProviders.isNotEmpty()) {

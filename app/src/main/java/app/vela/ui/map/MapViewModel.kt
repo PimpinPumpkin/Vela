@@ -242,9 +242,11 @@ data class MapUiState(
     val selectedVoiceId: String? = null, // the active Piper voice id (null = none installed)
     val voiceDownloadingId: String? = null, // the ONE voice currently downloading (one-at-a-time), else null
     val voiceInstalling: Boolean = false,   // download done, unpacking the archive (the map card shows "Installing…")
-    val asrDownloadPct: Float? = null,      // 0f..1f while the on-device voice-search model downloads; null = idle
+    val asrDownloadPct: Float? = null,      // 0f..1f while an on-device voice-search engine downloads; null = idle
     val asrInstalling: Boolean = false,     // ASR download done, unpacking
-    val asrInstalled: Boolean = false,      // Whisper voice-search model present on disk (Settings shows Download vs Remove)
+    val asrDownloadingId: String? = null,   // which AsrEngine.id is downloading (Settings row shows progress on it), else null
+    val asrInstalledIds: Set<String> = emptySet(), // which voice-search engines are on disk (Whisper/SenseVoice/Moonshine)
+    val asrActiveId: String = app.vela.voice.AsrEngine.DEFAULT.id, // the engine the mic will use
     val voiceSpeaker: Int = 0, // chosen speaker # for the multi-speaker Vela voice (playground stepper)
     val voiceSpeed: Float = 1.0f, // spoken-directions speed multiplier (1.0 = normal, >1 = faster)
     val showPsdsTip: Boolean = false,
@@ -323,7 +325,7 @@ class MapViewModel @Inject constructor(
     private val routeEngine: app.vela.core.data.RouteEngine,
     private val http: okhttp3.OkHttpClient,
     private val selfUpdater: app.vela.update.SelfUpdater,
-    private val whisperRecognizer: app.vela.voice.WhisperRecognizer,
+    private val asrRecognizer: app.vela.voice.AsrRecognizer,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MapUiState())
@@ -4223,56 +4225,83 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    // ---- On-device voice search (tier-1 Whisper ASR) ----
+    // ---- On-device voice search (tier-1 ASR: Whisper / SenseVoice / Moonshine) ----
 
-    /** Reflect whether the on-device speech model is present (Settings shows Download vs Remove). */
+    /** Reflect which engines are on disk + which is active (Settings picker shows Download/Remove/Use). */
     fun refreshAsr() {
-        _state.update { it.copy(asrInstalled = whisperRecognizer.isInstalled()) }
-        // Pre-build the Whisper recognizer when the mic would actually use it, so the first
-        // dictation listens immediately instead of showing a "Getting ready" beat while the
-        // ONNX model loads. refreshAsr runs at VM init and the engine pref rarely changes.
+        _state.update {
+            it.copy(
+                asrInstalledIds = app.vela.voice.AsrEngine.installed(appContext).map { e -> e.id }.toSet(),
+                asrActiveId = app.vela.voice.AsrEngine.active(appContext).id,
+            )
+        }
+        // Pre-build the active recognizer when the mic would actually use it, so the first dictation
+        // listens immediately instead of showing a "Getting ready" beat while the ONNX model loads.
         if (app.vela.ui.VoiceSearch.enabled.value &&
             app.vela.ui.VoiceSearch.engine.value != app.vela.ui.VoiceSearch.Engine.SYSTEM
         ) {
-            whisperRecognizer.warmUp()
+            asrRecognizer.warmUp()
         }
     }
 
-    /** Download the ~47 MB on-device speech-to-text model, reusing the neural-voice installer + its
-     *  no-call-timeout client (the shared 12 s cap would abort a download this size). */
-    fun downloadAsrModel() {
-        if (_state.value.asrDownloadPct != null) return // serialize
-        val bytes = app.vela.voice.AsrModel.SIZE_MB.toLong() * 1024 * 1024
+    /** Download the DEFAULT (Whisper) engine — the one-tap "install voice search" offer on the map. */
+    fun downloadAsrModel() = downloadAsrEngine(app.vela.voice.AsrEngine.DEFAULT)
+
+    /** Download a specific voice-search engine, reusing the neural-voice installer + its no-call-timeout
+     *  client (the shared 12 s cap would abort a download this size). The FIRST engine installed becomes
+     *  active automatically; later ones are downloaded but not auto-selected (the user picks in Settings). */
+    fun downloadAsrEngine(engine: app.vela.voice.AsrEngine) {
+        if (_state.value.asrDownloadPct != null) return // serialize: one engine at a time
+        val bytes = engine.sizeMb.toLong() * 1024 * 1024
         if (appContext.filesDir.usableSpace < bytes * 13 / 10) {
-            showStatus(appContext.getString(R.string.mapvm_not_enough_space, appContext.getString(R.string.settings_voice_search_model), app.vela.voice.AsrModel.SIZE_MB))
+            showStatus(appContext.getString(R.string.mapvm_not_enough_space, appContext.getString(R.string.settings_voice_search_model), engine.sizeMb))
             return
         }
-        _state.update { it.copy(asrDownloadPct = 0f, asrInstalling = false) }
+        val hadNone = app.vela.voice.AsrEngine.installed(appContext).isEmpty()
+        _state.update { it.copy(asrDownloadPct = 0f, asrInstalling = false, asrDownloadingId = engine.id) }
         viewModelScope.launch {
             val ok = kokoroInstaller.download(
-                app.vela.voice.AsrModel.URL, app.vela.voice.AsrModel.dir(appContext), bytes,
+                engine.url, engine.dir(appContext), bytes,
                 onExtracting = { _state.update { it.copy(asrInstalling = true) } },
             ) { p -> _state.update { it.copy(asrDownloadPct = p) } }
-            _state.update { it.copy(asrDownloadPct = null, asrInstalling = false, asrInstalled = whisperRecognizer.isInstalled()) }
-            if (ok && whisperRecognizer.isInstalled()) {
-                whisperRecognizer.warmUp() // a fresh install should listen immediately on first tap
-                flashStatus(appContext.getString(R.string.mapvm_asr_ready))
+            // A fresh install with nothing selected yet becomes the active engine, so voice search
+            // works right after the very first download with no extra "pick one" step.
+            if (ok && engine.isInstalled(appContext) && hadNone) {
+                app.vela.voice.AsrEngine.setActive(appContext, engine)
             }
-            else showStatus(appContext.getString(R.string.mapvm_asr_download_failed))
+            _state.update { it.copy(asrDownloadPct = null, asrInstalling = false, asrDownloadingId = null) }
+            refreshAsr()
+            if (ok && engine.isInstalled(appContext)) {
+                asrRecognizer.warmUp() // a fresh install should listen immediately on first tap
+                flashStatus(appContext.getString(R.string.mapvm_asr_ready))
+            } else {
+                showStatus(appContext.getString(R.string.mapvm_asr_download_failed))
+            }
         }
     }
 
-    fun deleteAsrModel() {
-        app.vela.voice.AsrModel.dir(appContext).deleteRecursively()
-        _state.update { it.copy(asrInstalled = false) }
+    /** Make an already-installed engine the active one and warm it, so the next mic tap uses it. */
+    fun selectAsrEngine(engine: app.vela.voice.AsrEngine) {
+        if (!engine.isInstalled(appContext)) return
+        app.vela.voice.AsrEngine.setActive(appContext, engine)
+        refreshAsr()
+        asrRecognizer.warmUp()
     }
 
-    fun voiceMicGranted(): Boolean = whisperRecognizer.hasMicPermission()
+    /** Remove a downloaded engine's files. If it was active, [AsrEngine.active] falls back to another
+     *  installed engine (or the default), so the mic keeps working when possible. */
+    fun deleteAsrEngine(engine: app.vela.voice.AsrEngine) {
+        engine.dir(appContext).deleteRecursively()
+        refreshAsr()
+        if (app.vela.voice.AsrEngine.anyInstalled(appContext)) asrRecognizer.warmUp()
+    }
+
+    fun voiceMicGranted(): Boolean = asrRecognizer.hasMicPermission()
 
     /** Record + transcribe on-device (tier-1); returns the heard text or null. Driven by the capture
      *  dialog, which supplies the loudness sink, a start callback and an early-stop check. */
     suspend fun voiceListen(onLevel: (Float) -> Unit, onListening: () -> Unit, cancelled: () -> Boolean): String? =
-        whisperRecognizer.listen(onLevel, onListening, cancelled)
+        asrRecognizer.listen(onLevel, onListening, cancelled)
 
     /** Apply a transcript from either voice tier as the query and run the search. */
     fun applyVoiceQuery(text: String) {
