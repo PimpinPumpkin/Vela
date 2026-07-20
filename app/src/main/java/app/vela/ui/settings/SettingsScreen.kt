@@ -754,6 +754,21 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 LinearProgressIndicator(progress = { pct }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
             } ?: Spacer(Modifier.height(4.dp))
+            // One-tap install of the Vela voice right here when it's missing (user 2026-07-20:
+            // don't make me dig into the Voice library for the main voice). Same download the
+            // library offers; hidden while any voice download is in flight (the line above shows it).
+            run {
+                val velaId = vm.defaultVoiceId()
+                val vela = vm.voiceCatalog().firstOrNull { it.id == velaId }
+                if (vela != null && velaId !in state.installedVoiceIds && state.voiceDownloadingId == null) {
+                    Button(
+                        onClick = { vm.downloadVoice(velaId) },
+                        modifier = Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(24.dp)),
+                    ) { Text(stringResource(R.string.settings_voice_install_vela, vela.sizeMb)) }
+                    Hint(stringResource(R.string.settings_voice_install_vela_hint))
+                    Spacer(Modifier.height(10.dp))
+                }
+            }
             // Enumerate TTS engines OFF the main thread. PackageManager.queryIntentServices + the
             // per-engine loadLabel is a binder IPC that took >5 s on the flip phone and ANR'd the UI
             // when run in composition (input-dispatch timeout). Load async (cached in VoiceGuide);
