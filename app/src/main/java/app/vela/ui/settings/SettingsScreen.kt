@@ -749,11 +749,34 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             state.voiceDownloadingId?.let { id ->
                 val nm = vm.voiceCatalog().firstOrNull { it.id == id }?.displayName ?: stringResource(R.string.settings_voice_fallback_name)
                 val pct = state.voiceDownloadPct ?: 0f
-                Text(stringResource(R.string.settings_voice_downloading, nm, (pct * 100).toInt()), style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(6.dp))
-                LinearProgressIndicator(progress = { pct }, modifier = Modifier.fillMaxWidth())
+                if (state.voiceInstalling) {
+                    // Download reached 100%; now unpacking the ~67 MB archive (~15 s). Show a distinct
+                    // "Installing…" with an indeterminate bar so it doesn't read as a stuck 100% download.
+                    Text(stringResource(R.string.settings_voice_search_installing), style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(6.dp))
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                } else {
+                    Text(stringResource(R.string.settings_voice_downloading, nm, (pct * 100).toInt()), style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(6.dp))
+                    LinearProgressIndicator(progress = { pct }, modifier = Modifier.fillMaxWidth())
+                }
                 Spacer(Modifier.height(12.dp))
             } ?: Spacer(Modifier.height(4.dp))
+            // One-tap install of the Vela voice right here when it's missing (user 2026-07-20:
+            // don't make me dig into the Voice library for the main voice). Same download the
+            // library offers; hidden while any voice download is in flight (the line above shows it).
+            run {
+                val velaId = vm.defaultVoiceId()
+                val vela = vm.voiceCatalog().firstOrNull { it.id == velaId }
+                if (vela != null && velaId !in state.installedVoiceIds && state.voiceDownloadingId == null) {
+                    Button(
+                        onClick = { vm.downloadVoice(velaId) },
+                        modifier = Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(24.dp)),
+                    ) { Text(stringResource(R.string.settings_voice_install_vela, vela.sizeMb)) }
+                    Hint(stringResource(R.string.settings_voice_install_vela_hint))
+                    Spacer(Modifier.height(10.dp))
+                }
+            }
             // Enumerate TTS engines OFF the main thread. PackageManager.queryIntentServices + the
             // per-engine loadLabel is a binder IPC that took >5 s on the flip phone and ANR'd the UI
             // when run in composition (input-dispatch timeout). Load async (cached in VoiceGuide);
@@ -1482,12 +1505,21 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
     if (velaVoice != null && velaVoiceId !in installed && query.isBlank()) {
         Spacer(Modifier.height(8.dp))
         if (state.voiceDownloadingId == velaVoiceId) {
-            Text(
-                stringResource(R.string.settings_voice_row_downloading, ((state.voiceDownloadPct ?: 0f) * 100).toInt()),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            LinearProgressIndicator(progress = { state.voiceDownloadPct ?: 0f }, modifier = Modifier.fillMaxWidth())
+            if (state.voiceInstalling) {
+                Text(
+                    stringResource(R.string.settings_voice_search_installing),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            } else {
+                Text(
+                    stringResource(R.string.settings_voice_row_downloading, ((state.voiceDownloadPct ?: 0f) * 100).toInt()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                LinearProgressIndicator(progress = { state.voiceDownloadPct ?: 0f }, modifier = Modifier.fillMaxWidth())
+            }
         } else {
             Button(
                 onClick = { vm.downloadVoice(velaVoiceId) },
@@ -1557,6 +1589,7 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
                         active = v.id == selected,
                         downloading = state.voiceDownloadingId == v.id,
                         downloadPct = if (state.voiceDownloadingId == v.id) state.voiceDownloadPct ?: 0f else 0f,
+                        installing = state.voiceDownloadingId == v.id && state.voiceInstalling,
                         anyDownloading = state.voiceDownloadingId != null,
                         velaVoice = v.id == velaVoiceId,
                         onDownload = { vm.downloadVoice(v.id) },
@@ -1600,6 +1633,7 @@ private fun VoiceRow(
     active: Boolean,
     downloading: Boolean,
     downloadPct: Float,
+    installing: Boolean = false, // download done, unpacking the archive (~15 s) - not a stuck 100%
     anyDownloading: Boolean,
     velaVoice: Boolean = false, // the fleet-default id wears the "Vela voice (Name)" branding
     onDownload: () -> Unit,
@@ -1626,6 +1660,7 @@ private fun VoiceRow(
                 )
             }
             val sub = when {
+                installing -> stringResource(R.string.settings_voice_search_installing)
                 downloading -> stringResource(R.string.settings_voice_row_downloading, (downloadPct * 100).toInt())
                 active -> stringResource(R.string.settings_voice_row_in_use, v.region, gender, v.sizeMb)
                 installed -> stringResource(R.string.settings_voice_row_downloaded, v.region, gender, v.sizeMb)
@@ -1651,5 +1686,8 @@ private fun VoiceRow(
             else -> OutlinedButton(onClick = onDownload, enabled = !anyDownloading, modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape)) { Text(stringResource(R.string.settings_download)) }
         }
     }
-    if (downloading) LinearProgressIndicator(progress = { downloadPct }, modifier = Modifier.fillMaxWidth())
+    if (downloading) {
+        if (installing) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        else LinearProgressIndicator(progress = { downloadPct }, modifier = Modifier.fillMaxWidth())
+    }
 }
