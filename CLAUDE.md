@@ -1125,9 +1125,13 @@ Defaults that make the safe path the easy one:
   a couple seconds of its nav-zoom tile loading (device-proven: dict jumped 19 -> 404 as local streets
   resolved to real romanized names with vowels, not the consonant skeleton, on both the banner and the
   voice). The expensive crossing geometry stays per-quantum, so this never puts a heavy pass on the
-  every-frame path. NB the very FIRST "Starting
-  navigation" opener still fires at dict=0 (before any tiles load) so its road can skeleton once; the banner
-  heals as the dict fills.
+  every-frame path. The nav-start OPENER ("Starting navigation. Head ... on <road>") is spoken via
+  `VoiceGuide.speakOpener` (not `speak`): it HOLDS the opener up to `OPENER_MAX_WAIT_MS` (2.5 s), retrying
+  every 200 ms until the road it names is covered by `roadNameLatin` (or the text has no foreign run), then
+  speaks - the drive begins before nav-zoom tiles load, so speaking at T=0 read the ICU skeleton; the wait
+  lets the dict fill so the opener says the real name (device-proven: opener spoke the real romanized road,
+  not the skeleton, once the dict reached ~400). `stop()` bumps `openerToken` to cancel a still-waiting
+  opener. An English opener never waits (hasForeignRun false).
   `SpokenScript.forVoice(text, lang, dict)` swaps a known local name for its real Latin form FIRST, ICU only
   for the rest; `SpokenScript.forDisplay(text, uiLang, dict)` does the same for the banner + steps but with
   NO ICU fallback (a skeleton on a sign reads broken - why the earlier ICU display romanization was
