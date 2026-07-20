@@ -4244,7 +4244,7 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /** Download the DEFAULT (Whisper) engine — the one-tap "install voice search" offer on the map. */
+    /** Download the DEFAULT (Whisper) engine - the one-tap "install voice search" offer on the map. */
     fun downloadAsrModel() = downloadAsrEngine(app.vela.voice.AsrEngine.DEFAULT)
 
     /** Download a specific voice-search engine, reusing the neural-voice installer + its no-call-timeout

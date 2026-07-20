@@ -933,12 +933,12 @@ Defaults that make the safe path the easy one:
   unaffected by the output-focus request.
 - **Tier-1 ASR is now a PICKABLE ENGINE, not Whisper-only (2026-07-20, device-verified on the P4a).**
   `WhisperRecognizer`→**`AsrRecognizer`** and `AsrModel`→**`AsrEngine`** (an enum catalog): three
-  on-device engines share the sherpa-onnx runtime — **Whisper tiny** (`whisper`, multilingual default,
+  on-device engines share the sherpa-onnx runtime - **Whisper tiny** (`whisper`, multilingual default,
   58 MB), **SenseVoice** (`sense_voice`, en/zh/ja/ko/yue, 154 MB, `OfflineSenseVoiceModelConfig`
   useInverseTextNormalization=true), **Moonshine** (`moonshine`, English-only, 101 MB,
   `OfflineMoonshineModelConfig` 4-onnx). `AsrRecognizer.ensureRecognizer` builds the right
   `OfflineModelConfig` per engine and caches on `loadedKey="<engineId>|<lang>"` (rebuilds on engine OR
-  language switch). Each archive is SELF-CONTAINED — `silero_vad.onnx` ships inside every
+  language switch). Each archive is SELF-CONTAINED - `silero_vad.onnx` ships inside every
   `<id>/` folder, so the VAD travels with the engine. **Whisper stays `AsrEngine.DEFAULT`** so no
   language regresses; SenseVoice/Moonshine are opt-in. `AsrEngine.active(ctx)` = the picked engine if
   installed, else the first installed, else DEFAULT (pref `asr_engine` in `vela_settings`). Selection

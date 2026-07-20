@@ -31,15 +31,15 @@ import kotlin.math.sqrt
 
 /**
  * On-device speech-to-text for voice search (tier-1). Loads whichever [AsrEngine] the user has
- * active — **Whisper tiny** (multilingual default), **SenseVoice** (en/zh/ja/ko/yue), or **Moonshine**
- * (English) — through the bundled sherpa-onnx runtime, records from the mic, uses Silero VAD to spot
+ * active - **Whisper tiny** (multilingual default), **SenseVoice** (en/zh/ja/ko/yue), or **Moonshine**
+ * (English) - through the bundled sherpa-onnx runtime, records from the mic, uses Silero VAD to spot
  * the end of speech, and returns the transcript. Nothing leaves the phone and no third-party voice app
- * is needed (that's tier-2 — the RECOGNIZE_SPEECH intent handoff in MapScreen).
+ * is needed (that's tier-2 - the RECOGNIZE_SPEECH intent handoff in MapScreen).
  *
  * The recognizer loads lazily and is kept for the process lifetime (~1–2 s to load); it's rebuilt when
  * the active engine OR the app language changes (both fold into [loadedKey]). The VAD is created per
  * listen (tiny, holds streaming state). R8 must keep `com.k2fsa.sherpa.onnx.**` (JNI resolves classes
- * by name) — already in `consumer-rules`/`proguard` for Piper.
+ * by name) - already in `consumer-rules`/`proguard` for Piper.
  */
 @Singleton
 class AsrRecognizer @Inject constructor(
@@ -47,14 +47,14 @@ class AsrRecognizer @Inject constructor(
 ) {
     private val loadLock = Any()
     @Volatile private var recognizer: OfflineRecognizer? = null
-    /** "<engineId>|<lang>" — the recognizer is rebuilt whenever either changes. */
+    /** "<engineId>|<lang>" - the recognizer is rebuilt whenever either changes. */
     @Volatile private var loadedKey: String? = null
 
     private val audioManager by lazy { context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager }
     @Volatile private var focusRequest: AudioFocusRequest? = null
 
     /** Take TRANSIENT audio focus so whatever is playing (music, a podcast) pauses while we listen,
-     *  the way a phone assistant does — `AUDIOFOCUS_GAIN_TRANSIENT` (not `_MAY_DUCK`) makes media
+     *  the way a phone assistant does - `AUDIOFOCUS_GAIN_TRANSIENT` (not `_MAY_DUCK`) makes media
      *  players pause rather than just duck. Abandoned in [abandonAudioFocus] the moment we stop. */
     private fun requestAudioFocus() {
         val am = audioManager ?: return
@@ -82,7 +82,7 @@ class AsrRecognizer @Inject constructor(
         const val VAD_WINDOW = 512            // Silero v4/v5 window at 16 kHz
         const val MAX_SECONDS = 15            // hard cap on one utterance
         // SenseVoice's own language codes. Vela app languages outside this set fall back to "auto"
-        // (the user picked SenseVoice knowing it's en/zh/ja/ko/yue only — the picker says so).
+        // (the user picked SenseVoice knowing it's en/zh/ja/ko/yue only - the picker says so).
         val SENSE_VOICE_LANGS = setOf("zh", "en", "ja", "ko", "yue")
     }
 
@@ -93,7 +93,7 @@ class AsrRecognizer @Inject constructor(
             PackageManager.PERMISSION_GRANTED
 
     /** The language to pin recognition to: the app language when the engine supports it, else
-     *  auto-detect (""). Pinning matters — with auto-detect, a noisy capture can be misread as a whole
+     *  auto-detect (""). Pinning matters - with auto-detect, a noisy capture can be misread as a whole
      *  other language and come back in the wrong script (a garbled far-field test transcribed to
      *  Cyrillic). The app language is what the user speaks to a maps app in practice. Moonshine is
      *  English-only and takes no language, so this is unused for it. */
@@ -117,7 +117,7 @@ class AsrRecognizer @Inject constructor(
     }
 
     /** Load the active engine's recognizer once per (engine, language) key. Returns null if no engine
-     *  is installed or the native load fails — callers then fall back to the provider intent or hide
+     *  is installed or the native load fails - callers then fall back to the provider intent or hide
      *  the mic. */
     private fun ensureRecognizer(): OfflineRecognizer? {
         val engine = AsrEngine.active(context)
@@ -286,7 +286,7 @@ class AsrRecognizer @Inject constructor(
 
     /** The recognizers write prose: capitalized, ending with a period ("Coffee shops near me.").
      *  A search query wants neither the trailing sentence punctuation nor stray wrapping, so strip
-     *  terminal . ! ? , ; : and quotes from the ends. Periods INSIDE the text are left alone —
+     *  terminal . ! ? , ; : and quotes from the ends. Periods INSIDE the text are left alone -
      *  they can be real ("St. Paul"). */
     private fun cleanTranscript(raw: String): String =
         raw.trim().trim('"', '“', '”').trimEnd('.', '!', '?', ',', ';', ':', '…').trim()
