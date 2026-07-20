@@ -578,7 +578,7 @@
     <string name="list_name_label">List name</string>
     <string name="list_icon_label">Icon</string>
     <string name="list_emoji_label">Type any emoji</string>
-    <string name="list_color_label">Colour</string>
+    <string name="list_color_label">Color</string>
     <string name="list_delete">Delete</string>
     <string name="list_cancel">Cancel</string>
     <string name="list_save">Save</string>
