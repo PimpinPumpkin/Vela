@@ -671,6 +671,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   while it listens (2026-07-12):** starting dictation takes transient audio focus
   (`AUDIOFOCUS_GAIN_TRANSIENT`, assistant usage) so whatever is playing pauses like a phone
   assistant does, and gives it back the moment the utterance ends so playback resumes.
+- ✅ **Pick your dictation engine — SenseVoice + Moonshine (2026-07-20).** On-device voice search is
+  no longer Whisper-only. Settings → Search lists three engines you can download and switch between,
+  all running on-device through the same bundled sherpa-onnx runtime: **Whisper tiny** (the
+  multilingual default, every language Vela supports), **SenseVoice** (more accurate + faster, for
+  English/Chinese/Japanese/Korean/Cantonese), and **Moonshine** (lowest latency, English only). Each
+  shows its languages and size; the first one you download becomes active, and a Use/Remove control
+  switches or frees them. Whisper stays the default so no language regresses — the other two are
+  opt-in. The recognizer rebuilds automatically when you switch engine or change app language.
 - ✅ **Transit lines are opt-in now (2026-07-10).** The purple rail highlight is off by default;
   it reads as mystery lines if you don't know what it is. Settings → Map → "Highlight transit
   lines" brings it back, and an earlier choice is kept either way.
