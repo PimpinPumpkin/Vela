@@ -1238,6 +1238,15 @@ architecture note.
   MapLibre's 0,0 default, and search/suggest biased to null island. `plausibleBias()` in
   MapViewModel discards any bias point within ~50 km of 0,0 - keep new "near" consumers behind
   it.
+- **Local suggestions (issue #180, 2026-07-19):** `onQueryChange` sets `localSuggestions` from
+  `localMatches()` SYNCHRONOUSLY (recents searches + viewed places + list/saved places, substring
+  match) BEFORE the debounced network fetch - that is why they are instant and the only thing that
+  shows offline. `LocalSuggestion` (kind RECENT_QUERY / RECENT_PLACE / SAVED_PLACE) renders above
+  the network rows in `SearchEntryContent`. Dedup of network vs local is by `nameLocKey` (name +
+  coarse location), NOT feature id - SavedPlace-backed locals carry no id, so an id-only compare
+  double-shows them. Clear `localSuggestions` everywhere `suggestions` clears. The press-hold
+  "save a Google suggestion to a list" half of #180 is NOT built (delete-from-history via the X
+  is); it needs the save-to-list sheet wired to a suggestion long-press.
 
 - **Interface size (2026-07-11):** `UiScale` holder (pref `ui_scale`, chips 90/100/115/130% in
   Settings -> Appearance) applied as a LocalDensity override around VelaRoot's whole tree - all

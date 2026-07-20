@@ -2125,3 +2125,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   forever. A longer text for a known review now replaces the stored entry, and the More click
   uses the button's class hook so it works in every UI language (the old label match only knew
   English). Device-verified on a busy coffee shop: multi-paragraph reviews end in real sentences.
+- ✅ **Search your own history and lists as you type (issue #180).** As you type, matches from
+  your recent searches, recently-viewed places, and saved lists surface at the top of the
+  suggestions, above Google's, each with an icon that tells them apart (clock for a past search,
+  pin for a place you opened, bookmark for a saved-list place). It is computed on-device, so it
+  is instant and the only thing that shows when you are offline. A network suggestion that
+  duplicates one of your own is dropped (matched by name and location, since saved places carry
+  no Google id). Tapping a place opens it; tapping a past search re-runs it; the X drops a
+  history entry. Looking up one location out of a chain no longer means re-typing the city.
