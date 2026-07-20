@@ -1211,9 +1211,10 @@ internal suspend fun androidx.compose.ui.input.pointer.PointerInputScope.sheetDr
     )
 }
 
-/** "Save to list" — check the lists this place belongs to; create a new one inline. */
+/** "Save to list": check the lists this place belongs to; create a new one inline.
+ *  internal so the search-suggestion overflow menu (MapScreen, issue #180) reuses it. */
 @Composable
-private fun SaveToListSheet(
+internal fun SaveToListSheet(
     lists: List<app.vela.core.model.PlaceList>,
     containingIds: Set<String>,
     onToggle: (listId: String, add: Boolean) -> Unit,
