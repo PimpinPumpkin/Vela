@@ -80,6 +80,21 @@ data class TransitNavState(
     val isLastStep: Boolean get() = stepIndex >= itinerary.steps.lastIndex
 }
 
+/** A match found in the user's OWN data (issue #180) as they type, surfaced above the network
+ *  suggestions, instantly and offline. A recent QUERY re-runs the search; anything place-backed
+ *  ([place] non-null: a saved-list place, a saved shortcut, or a recently-viewed place) opens
+ *  that place directly. [removable] rows carry the X to drop them from history. */
+data class LocalSuggestion(
+    val kind: Kind,
+    val label: String,
+    val sublabel: String?,
+    val place: Place? = null,
+    val query: String? = null,
+    val removable: Boolean = false,
+) {
+    enum class Kind { RECENT_QUERY, RECENT_PLACE, SAVED_PLACE }
+}
+
 data class MapUiState(
     val center: LatLng? = null,
     // Camera zoom requested by a deep link (geo:...?z=17); one-shot - any ordinary selection
@@ -124,6 +139,9 @@ data class MapUiState(
     // OSM icons back in instead of leaving the outskirts iconless (user 2026-07-10).
     val ambientCoversView: Boolean = false,
     val suggestions: List<Place> = emptyList(),
+    // Matches from the user's OWN recents + lists (issue #180), shown above the network suggestions
+    // as they type, instant and offline.
+    val localSuggestions: List<LocalSuggestion> = emptyList(),
     val selected: Place? = null,
     val placesHere: List<Place> = emptyList(), // other Google listings at the selected spot
     val reviews: List<Review> = emptyList(),
@@ -970,9 +988,13 @@ class MapViewModel @Inject constructor(
         suggestJob?.cancel()
         val term = q.trim()
         if (term.length < 2) {
-            _state.update { it.copy(suggestions = emptyList()) }
+            _state.update { it.copy(suggestions = emptyList(), localSuggestions = emptyList()) }
             return
         }
+        // Match the user's OWN history + lists FIRST, synchronous, no network, so these land
+        // instantly (and are the only thing that shows offline). Independent of the debounced
+        // Google fetch below, which appends behind them.
+        _state.update { it.copy(localSuggestions = localMatches(term)) }
         suggestJob = viewModelScope.launch {
             delay(320) // only fire once typing pauses
             val near = plausibleBias(mapCenter) ?: plausibleBias(_state.value.myLocation) // suggestions near the viewport, like search
@@ -1033,8 +1055,81 @@ class MapViewModel @Inject constructor(
                     .filter { p -> near == null || p.location.distanceTo(near) <= SUGGEST_NEAR_M }
                     .filter { p -> !coveredByGoogle(p) }
                     .distinctBy { "${(it.location.lat * 2e4).toInt()},${(it.location.lng * 2e4).toInt()}" }
-                _state.update { it.copy(suggestions = (addrLead + ranked).take(8)) }
+                // Drop any network suggestion the user's OWN data already surfaced above, so a
+                // saved/recent place doesn't appear twice. Match on BOTH keys: recents/saved
+                // usually lack a feature id (they're SavedPlace-backed), so a feature-id-only
+                // compare misses them - name + coarse location catches those.
+                val localPlaces = _state.value.localSuggestions.mapNotNull { it.place }
+                val localNameLoc = localPlaces.map { nameLocKey(it) }.toHashSet()
+                val localFids = localPlaces.mapNotNull { it.featureId }.toHashSet()
+                val deduped = (addrLead + ranked).filterNot {
+                    nameLocKey(it) in localNameLoc || (it.featureId != null && it.featureId in localFids)
+                }
+                _state.update { it.copy(suggestions = deduped.take(8)) }
             }
+        }
+    }
+
+    private fun placeKey(p: Place): String =
+        p.featureId ?: nameLocKey(p)
+
+    /** Feature-id-independent identity: lowercased name + ~5 m rounded location. The dedup key
+     *  that works for SavedPlace-backed local suggestions, which carry no feature id. */
+    private fun nameLocKey(p: Place): String =
+        "${p.name.lowercase()}|${(p.location.lat * 2e4).toInt()},${(p.location.lng * 2e4).toInt()}"
+
+    /** Substring-match the typed [term] against the user's recents (searches + viewed places) and
+     *  saved lists (issue #180): no network, so it's instant and works offline. Recent SEARCHES
+     *  lead (that's what "search your history" most means), then places, deduped and capped so the
+     *  network suggestions still get room below. */
+    private fun localMatches(term: String): List<LocalSuggestion> {
+        val t = term.lowercase()
+        val out = ArrayList<LocalSuggestion>()
+
+        // Recent SEARCHES containing the term (skip an exact echo of what's being typed).
+        recentStore.recent().asSequence()
+            .filter { it.query.lowercase().contains(t) && !it.query.equals(term, ignoreCase = true) }
+            .take(3)
+            .forEach { out.add(LocalSuggestion(LocalSuggestion.Kind.RECENT_QUERY, it.query, null, query = it.query, removable = true)) }
+
+        // Places from the user's own data, deduped across sources by stable key.
+        val seen = HashSet<String>()
+        fun addPlace(kind: LocalSuggestion.Kind, p: Place, removable: Boolean) {
+            if (!p.name.lowercase().contains(t) && p.address?.lowercase()?.contains(t) != true) return
+            if (!seen.add(placeKey(p))) return
+            out.add(LocalSuggestion(kind, p.name, p.address, place = p, removable = removable))
+        }
+        // Recently-VIEWED places (history) first, then saved-list places, then the saved shortlist.
+        _state.value.recentPlaces.forEach { addPlace(LocalSuggestion.Kind.RECENT_PLACE, it.place.toPlace(), removable = true) }
+        listStore.lists().flatMap { it.places }.forEach { addPlace(LocalSuggestion.Kind.SAVED_PLACE, it.toPlace(), removable = false) }
+        savedStore.saved().forEach { addPlace(LocalSuggestion.Kind.SAVED_PLACE, it.toPlace(), removable = false) }
+
+        return out.take(6)
+    }
+
+    /** Open (place-backed) or re-run (recent query) a local suggestion tapped in the search page. */
+    fun pickLocalSuggestion(s: LocalSuggestion) {
+        when {
+            s.place != null -> selectPlace(s.place)
+            s.query != null -> searchRecent(s.query)
+        }
+    }
+
+    /** Drop a local suggestion from history via its X (recent search or recently-viewed place);
+     *  saved-list rows aren't removable here. Refreshes the live local matches for the current query. */
+    fun removeLocalSuggestion(s: LocalSuggestion) {
+        when (s.kind) {
+            LocalSuggestion.Kind.RECENT_QUERY -> s.query?.let { recentStore.remove(it) }
+            LocalSuggestion.Kind.RECENT_PLACE -> s.place?.let { recentPlaceStore.remove(it.id) }
+            LocalSuggestion.Kind.SAVED_PLACE -> return
+        }
+        val term = _state.value.query.trim()
+        _state.update {
+            it.copy(
+                recents = recentStore.recent(),
+                recentPlaces = recentPlaceStore.recent(),
+                localSuggestions = if (term.length >= 2) localMatches(term) else emptyList(),
+            )
         }
     }
 
@@ -1047,7 +1142,7 @@ class MapViewModel @Inject constructor(
         if (backToTrip != null) {
             _state.update {
                 it.copy(
-                    query = "", results = emptyList(), suggestions = emptyList(),
+                    query = "", results = emptyList(), suggestions = emptyList(), localSuggestions = emptyList(),
                     selected = backToTrip, alongRouteDest = null, directionsOpen = true,
                     resultsCollapsed = false, showSearchThisArea = false,
                 )
@@ -1056,7 +1151,7 @@ class MapViewModel @Inject constructor(
         }
         _state.update {
             it.copy(
-                query = "", results = emptyList(), suggestions = emptyList(), selected = null,
+                query = "", results = emptyList(), suggestions = emptyList(), localSuggestions = emptyList(), selected = null,
                 resultsCollapsed = false, showSearchThisArea = false, openListId = null, pendingImport = null,
             )
         }
@@ -1179,7 +1274,7 @@ class MapViewModel @Inject constructor(
         shortcutStore.set(kind, sp)
         _state.update {
             it.copy(
-                assigningShortcut = null, selected = null, suggestions = emptyList(),
+                assigningShortcut = null, selected = null, suggestions = emptyList(), localSuggestions = emptyList(),
                 results = emptyList(), query = "",
                 home = shortcutStore.get(ShortcutKind.HOME), work = shortcutStore.get(ShortcutKind.WORK),
                 status = appContext.getString(R.string.mapvm_shortcut_set, kind.label, sp.name),
@@ -1357,7 +1452,7 @@ class MapViewModel @Inject constructor(
         MapLinkParser.parseBareCoordinate(q)?.let { link ->
             val at = LatLng(link.lat!!, link.lng!!)
             recentStore.add(q)
-            _state.update { it.copy(recents = recentStore.recent(), suggestions = emptyList(), searching = false, center = at) }
+            _state.update { it.copy(recents = recentStore.recent(), suggestions = emptyList(), localSuggestions = emptyList(), searching = false, center = at) }
             onMapLongPress(at)
             return
         }
@@ -1383,7 +1478,7 @@ class MapViewModel @Inject constructor(
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             // A fresh typed search leaves any along-route browse: picks open places normally again.
-            _state.update { it.copy(searching = true, suggestions = emptyList(), showSearchThisArea = false, resultsCollapsed = false, alongRouteDest = null) }
+            _state.update { it.copy(searching = true, suggestions = emptyList(), localSuggestions = emptyList(), showSearchThisArea = false, resultsCollapsed = false, alongRouteDest = null) }
             // A pasted Google Maps SHARE LINK: try the shared-list import (issue #1). The link
             // resolves keylessly to the list's places, each carrying the owner's note; they land
             // as results (title in the bar) and each is savable/openable like any search hit.
@@ -1546,7 +1641,7 @@ class MapViewModel @Inject constructor(
         searchJob = viewModelScope.launch {
             _state.update {
                 it.copy(
-                    query = query, searching = true, directionsOpen = false, suggestions = emptyList(),
+                    query = query, searching = true, directionsOpen = false, suggestions = emptyList(), localSuggestions = emptyList(),
                     resultsCollapsed = false, recents = recentStore.recent(),
                     // Stash the trip's destination: browsing stop candidates must not lose the trip.
                     // While this is set, picking a result ADDS IT AS A STOP and returns to the panel.
@@ -1656,7 +1751,7 @@ class MapViewModel @Inject constructor(
         routeJob?.cancel() // a directions fetch in flight must not resurrect the stale panel
         _state.update {
             it.copy(
-                selected = withListNote(p), center = p.location, centerZoom = null, reviews = emptyList(), suggestions = emptyList(),
+                selected = withListNote(p), center = p.location, centerZoom = null, reviews = emptyList(), suggestions = emptyList(), localSuggestions = emptyList(),
                 placesHere = othersAt(p, it.results), loadingDetails = false, photosLoading = false,
                 // Picking a NEW place while a route chooser is open closes it: the chooser
                 // belonged to the previous destination and kept covering the fresh place
@@ -2999,7 +3094,7 @@ class MapViewModel @Inject constructor(
     /** Tapped the directions "From" row → the next search pick becomes the origin
      *  (not a destination). The UI opens the search overlay; [setDirectionsOrigin] or
      *  [cancelPickOrigin] ends the mode. */
-    fun beginPickOrigin() = _state.update { it.copy(pickingOrigin = true, pickingDest = false, query = "", suggestions = emptyList()) }
+    fun beginPickOrigin() = _state.update { it.copy(pickingOrigin = true, pickingDest = false, query = "", suggestions = emptyList(), localSuggestions = emptyList()) }
 
     fun cancelPickOrigin() = _state.update { it.copy(pickingOrigin = false, pickingDest = false) }
 
@@ -3008,7 +3103,7 @@ class MapViewModel @Inject constructor(
      *  backing out and retyping lost the custom origin). [setDirectionsDestination] or
      *  [cancelPickDestination] ends the mode. */
     fun beginPickDestination() = _state.update {
-        it.copy(pickingDest = true, pickingOrigin = false, pickingStop = false, query = "", suggestions = emptyList())
+        it.copy(pickingDest = true, pickingOrigin = false, pickingStop = false, query = "", suggestions = emptyList(), localSuggestions = emptyList())
     }
 
     fun cancelPickDestination() = _state.update { it.copy(pickingDest = false) }
@@ -3021,7 +3116,7 @@ class MapViewModel @Inject constructor(
         _state.update {
             it.copy(
                 selected = withListNote(p), pickingDest = false, pickOnMap = null,
-                directionsOpen = true, results = emptyList(), query = "", suggestions = emptyList(),
+                directionsOpen = true, results = emptyList(), query = "", suggestions = emptyList(), localSuggestions = emptyList(),
                 reviews = emptyList(), reviewsLoading = false, reviewsFound = 0, photosLoading = false,
                 loadingDetails = false, placesHere = emptyList(),
                 stopDepartures = null, stopDeparturesLoading = false, stopDeparturesFor = null,
@@ -3070,7 +3165,7 @@ class MapViewModel @Inject constructor(
 
     /** Tapped "Add stop" → the next search pick becomes an intermediate stop (multi-stop routing).
      *  [addStop]/[cancelPickStop] ends the mode. */
-    fun beginPickStop() = _state.update { it.copy(pickingStop = true, pickingDest = false, editingStops = false, query = "", suggestions = emptyList()) }
+    fun beginPickStop() = _state.update { it.copy(pickingStop = true, pickingDest = false, editingStops = false, query = "", suggestions = emptyList(), localSuggestions = emptyList()) }
 
     /** The dedicated stops editor (reorder / remove / add in one sheet, one reroute on Done). */
     fun openStopsEditor() = _state.update { it.copy(editingStops = true) }
@@ -3097,7 +3192,7 @@ class MapViewModel @Inject constructor(
         _state.update {
             it.copy(
                 directionsWaypoints = it.directionsWaypoints + p,
-                results = emptyList(), query = "", suggestions = emptyList(),
+                results = emptyList(), query = "", suggestions = emptyList(), localSuggestions = emptyList(),
                 selected = null, alongRouteDest = null, resultsCollapsed = false,
             )
         }

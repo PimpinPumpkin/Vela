@@ -15,6 +15,8 @@ data class SavedPlace(
 ) {
     val location: LatLng get() = LatLng(lat, lng)
 
+    fun toPlace(): Place = Place(id = id, name = name, location = location, address = address)
+
     companion object {
         fun of(p: Place) = SavedPlace(p.id, p.name, p.location.lat, p.location.lng, p.address)
     }

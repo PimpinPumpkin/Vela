@@ -16,6 +16,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import android.widget.Toast
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -1293,6 +1294,16 @@ fun MapScreen(
                                 ((state.pickingOrigin || state.pickingDest || state.pickingStop) && state.query.isBlank())
                             ) -> SearchEntryContent(
                             suggestions = state.suggestions,
+                            localSuggestions = state.localSuggestions,
+                            onPickLocal = {
+                                focusManager.clearFocus()
+                                vm.pickLocalSuggestion(it)
+                            },
+                            onRemoveLocal = vm::removeLocalSuggestion,
+                            lists = state.lists,
+                            onAddToList = { place, listId -> vm.addPlaceToList(listId, place) },
+                            onRemoveFromList = { place, listId -> vm.removePlaceFromList(listId, place) },
+                            onCreateListWith = { place, name -> vm.addPlaceToList(vm.createList(name), place) },
                             saved = state.saved,
                             recents = state.recents,
                             recentPlaces = state.recentPlaces,
@@ -2973,6 +2984,13 @@ private fun ChooseOnMapOverlay(
 @Composable
 private fun SearchEntryContent(
     suggestions: List<Place>,
+    localSuggestions: List<app.vela.ui.map.LocalSuggestion>,
+    onPickLocal: (app.vela.ui.map.LocalSuggestion) -> Unit,
+    onRemoveLocal: (app.vela.ui.map.LocalSuggestion) -> Unit,
+    lists: List<app.vela.core.model.PlaceList> = emptyList(),
+    onAddToList: (Place, String) -> Unit = { _, _ -> },
+    onRemoveFromList: (Place, String) -> Unit = { _, _ -> },
+    onCreateListWith: (Place, String) -> Unit = { _, _ -> },
     saved: List<SavedPlace>,
     recents: List<RecentQuery>,
     recentPlaces: List<RecentPlace>,
@@ -2999,21 +3017,68 @@ private fun SearchEntryContent(
     onPinSavedAs: (SavedPlace, ShortcutKind) -> Unit,
     onRemoveSaved: (SavedPlace) -> Unit,
 ) {
-    // While typing, live place suggestions take over the page (Google-style);
-    // with an empty box it's the Home/Work + saved + recents shortlist.
-    if (suggestions.isNotEmpty()) {
+    // While typing, live place suggestions take over the page (Google-style). The user's OWN
+    // history + list matches (issue #180) lead, instant and offline, then the network results.
+    if (localSuggestions.isNotEmpty() || suggestions.isNotEmpty()) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 8.dp),
         ) {
             if (assigning != null) AssignBanner(assigning, onCancelAssign)
             if (pickingStop) PickStopBanner(onCancelPickStop)
+            localSuggestions.forEach { s ->
+                // Menu state is keyed on the suggestion so a keystroke that rebuilds the list
+                // closes any open menu instead of leaving it stranded on a different row.
+                var menuOpen by remember(s) { mutableStateOf(false) }
+                val place = s.place
+                SuggestionRow(
+                    icon = when (s.kind) {
+                        app.vela.ui.map.LocalSuggestion.Kind.RECENT_QUERY -> Icons.Default.History
+                        app.vela.ui.map.LocalSuggestion.Kind.RECENT_PLACE -> Icons.Default.Place
+                        app.vela.ui.map.LocalSuggestion.Kind.SAVED_PLACE -> Icons.Default.Bookmark
+                    },
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    label = s.label,
+                    sublabel = s.sublabel,
+                    onClick = { onPickLocal(s) },
+                    onLongClick = { menuOpen = true },
+                    trailing = {
+                        SuggestionOverflow(
+                            open = menuOpen,
+                            onOpenChange = { menuOpen = it },
+                            place = place,
+                            removable = s.removable,
+                            lists = lists,
+                            onRemove = { onRemoveLocal(s) },
+                            onAddToList = { id -> place?.let { onAddToList(it, id) } },
+                            onRemoveFromList = { id -> place?.let { onRemoveFromList(it, id) } },
+                            onCreateWith = { name -> place?.let { onCreateListWith(it, name) } },
+                        )
+                    },
+                )
+                Divider()
+            }
             suggestions.forEach { p ->
+                var menuOpen by remember(p.id) { mutableStateOf(false) }
                 SuggestionRow(
                     icon = Icons.Default.Search,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     label = p.name,
                     sublabel = p.address ?: p.category,
                     onClick = { onPickSuggestion(p) },
+                    onLongClick = { menuOpen = true },
+                    trailing = {
+                        SuggestionOverflow(
+                            open = menuOpen,
+                            onOpenChange = { menuOpen = it },
+                            place = p,
+                            removable = false,
+                            lists = lists,
+                            onRemove = {},
+                            onAddToList = { id -> onAddToList(p, id) },
+                            onRemoveFromList = { id -> onRemoveFromList(p, id) },
+                            onCreateWith = { name -> onCreateListWith(p, name) },
+                        )
+                    },
                 )
                 Divider()
             }
@@ -3076,22 +3141,59 @@ private fun SearchEntryContent(
             }
             merged.forEach { entry ->
                 when (entry) {
-                    is RecentPlace -> SuggestionRow(
-                        icon = Icons.Default.Place,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        label = entry.place.name,
-                        // A real place shows its address under the name (Google-style).
-                        sublabel = entry.place.address,
-                        onClick = { onPickRecentPlace(entry.place) },
-                        onRemove = { onRemoveRecentPlace(entry.place.id) },
-                    )
-                    is RecentQuery -> SuggestionRow(
-                        icon = Icons.Default.History,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        label = entry.query,
-                        onClick = { onPickRecent(entry.query) },
-                        onRemove = { onRemoveRecent(entry.query) },
-                    )
+                    is RecentPlace -> {
+                        // Long-press OR the ⋮ opens the same manage menu as the typing view (issue
+                        // #180): save this recent place to a list, or drop it from history. (The
+                        // press-hold was previously only on the typed-suggestion rows, so the entry
+                        // page (where history actually lives) had no long-press. The ⋮ opens the
+                        // menu on a plain tap too, so removal works even where long-press doesn't.)
+                        var menuOpen by remember(entry.place.id) { mutableStateOf(false) }
+                        val p = entry.place.toPlace()
+                        SuggestionRow(
+                            icon = Icons.Default.Place,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            label = entry.place.name,
+                            sublabel = entry.place.address,
+                            onClick = { onPickRecentPlace(entry.place) },
+                            onLongClick = { menuOpen = true },
+                            trailing = {
+                                SuggestionOverflow(
+                                    open = menuOpen,
+                                    onOpenChange = { menuOpen = it },
+                                    place = p,
+                                    removable = true,
+                                    lists = lists,
+                                    onRemove = { onRemoveRecentPlace(entry.place.id) },
+                                    onAddToList = { id -> onAddToList(p, id) },
+                                    onRemoveFromList = { id -> onRemoveFromList(p, id) },
+                                    onCreateWith = { name -> onCreateListWith(p, name) },
+                                )
+                            },
+                        )
+                    }
+                    is RecentQuery -> {
+                        var menuOpen by remember(entry.query) { mutableStateOf(false) }
+                        SuggestionRow(
+                            icon = Icons.Default.History,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            label = entry.query,
+                            onClick = { onPickRecent(entry.query) },
+                            onLongClick = { menuOpen = true },
+                            trailing = {
+                                SuggestionOverflow(
+                                    open = menuOpen,
+                                    onOpenChange = { menuOpen = it },
+                                    place = null, // a typed query, not a place: only "remove from history"
+                                    removable = true,
+                                    lists = lists,
+                                    onRemove = { onRemoveRecent(entry.query) },
+                                    onAddToList = {},
+                                    onRemoveFromList = {},
+                                    onCreateWith = {},
+                                )
+                            },
+                        )
+                    }
                 }
                 Divider()
             }
@@ -3287,6 +3389,10 @@ private fun SectionLabel(text: String) {
     )
 }
 
+// combinedClickable powers the press-hold on suggestion rows (issue #180). The row still
+// clicks on tap / D-pad centre; long-press (touch) opens the same menu the trailing ⋮ opens,
+// so D-pad keeps a key path via the button.
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun SuggestionRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -3295,9 +3401,14 @@ private fun SuggestionRow(
     onClick: () -> Unit,
     sublabel: String? = null,
     onRemove: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
+    val hasTrailing = onRemove != null || trailing != null
     Row(
-        Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(6.dp)).clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(6.dp))
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = null, modifier = Modifier.padding(end = 12.dp), tint = tint)
@@ -3308,7 +3419,7 @@ private fun SuggestionRow(
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = if (onRemove != null) Modifier.weight(1f) else Modifier,
+                modifier = if (hasTrailing) Modifier.weight(1f) else Modifier,
             )
         } else {
             Column(Modifier.weight(1f)) {
@@ -3328,9 +3439,11 @@ private fun SuggestionRow(
                 )
             }
         }
-        // Per-row remove (the X on recents). Its own focus stop with a visible ring, so a D-pad
-        // walk can reach it after the row itself.
-        if (onRemove != null) {
+        // A trailing slot (the ⋮ overflow + its menu) wins over the bare X when provided; both
+        // are their own D-pad focus stops with a ring, reached after the row itself.
+        if (trailing != null) {
+            trailing()
+        } else if (onRemove != null) {
             // Same circle language as the sheet headers, sized down for a list row.
             app.vela.ui.place.HeaderCircleButton(
                 Icons.Default.Close,
@@ -3340,6 +3453,49 @@ private fun SuggestionRow(
                 size = 32.dp,
             ) { onRemove() }
         }
+    }
+}
+
+/** The ⋮ overflow + its context menu for a search-suggestion row (issue #180): save a place
+ *  to a list, or drop a history row. Opened by the ⋮ button (D-pad + touch) or a row long-press.
+ *  [place] null = a bare query row (save-to-list hidden); [removable] false = not from history
+ *  (remove hidden). Reuses the place sheet's list picker so the checkmark/create flow matches. */
+@Composable
+private fun SuggestionOverflow(
+    open: Boolean,
+    onOpenChange: (Boolean) -> Unit,
+    place: Place?,
+    removable: Boolean,
+    lists: List<app.vela.core.model.PlaceList>,
+    onRemove: () -> Unit,
+    onAddToList: (String) -> Unit,
+    onRemoveFromList: (String) -> Unit,
+    onCreateWith: (String) -> Unit,
+) {
+    var showSave by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { onOpenChange(true) }) {
+            Icon(
+                Icons.Default.MoreVert,
+                contentDescription = stringResource(R.string.mapscreen_suggestion_options),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        VelaMenu(expanded = open, onDismissRequest = { onOpenChange(false) }) {
+            if (place != null) item(stringResource(R.string.place_save_to_list)) { onOpenChange(false); showSave = true }
+            if (removable) item(stringResource(R.string.mapscreen_remove_from_history)) { onOpenChange(false); onRemove() }
+        }
+    }
+    if (showSave && place != null) {
+        val containing = lists.filter { l -> l.places.any { it.matches(place.id, place.featureId) } }
+            .mapTo(HashSet()) { it.id }
+        app.vela.ui.place.SaveToListSheet(
+            lists = lists,
+            containingIds = containing,
+            onToggle = { id, add -> if (add) onAddToList(id) else onRemoveFromList(id) },
+            onCreateWith = { name -> onCreateWith(name) },
+            onDismiss = { showSave = false },
+        )
     }
 }
 
