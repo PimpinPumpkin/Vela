@@ -1146,10 +1146,24 @@ Defaults that make the safe path the easy one:
   for the rest; `SpokenScript.forDisplay(text, uiLang, dict)` does the same for the banner + steps but with
   NO ICU fallback (a skeleton on a sign reads broken - why the earlier ICU display romanization was
   reverted; an unmapped name keeps local script). Both gate on the UI/voice's own script (a Hebrew UI keeps
-  Hebrew). Works ONLINE and in a downloaded map AREA (both carry name:latin tiles); the gap is offline nav
-  across a state where only the routing GRAPH is downloaded - needs name:en baked into the graph at build
-  time (phase 2, a 135-region rebake, NOT built). Quality tracks OSM name:en coverage (Israel well-tagged ->
-  real names; sparse areas keep local script on display / ICU by voice), same as Google.
+  Hebrew). Works ONLINE and in a downloaded map AREA (both carry name:latin tiles). Quality tracks OSM
+  name:en coverage (Israel well-tagged -> real names; sparse areas keep local script on display / ICU by
+  voice), same as Google.
+  **OFFLINE across a whole state = a ROMANIZED-NAME SIDECAR next to the routing graph (2026-07-19,
+  branch offline-roadnames; chosen over baking into the GraphHopper graph, which GraphHopper can't do
+  natively without version-locked internals + a full re-download):** `scripts/roadnames_build.py` extracts
+  `<local>\t<English>` for every road with name:en/name:latin from the region PBF (name:en wins; validated
+  Latin-script, != local); `scripts/build-routing-region.sh` gzips it to `<id>-names.tsv.gz`, uploads it
+  beside the graph on the `routing-graphs` release, and adds `namesUrl`/`namesSizeKb` to the manifest
+  entry (merge script carries extra fields as-is; old apps ignore them). App: `RoutingGraphStore.download`
+  pulls the sidecar into `graphs/<id>/names.tsv.gz` (best-effort, never fails the graph); `roadNames()`
+  merges all installed regions' sidecars; `MapViewModel.offlineRoadNames` loads it at init / after a
+  region download or delete and is the BASE for `roadNameLatin` (voice + state) that the online tiles
+  merge ON TOP of, reset to on nav-end. So the graph is UNCHANGED (additive, existing downloads keep
+  working, users grab a small extra file, not a new graph). Memory note: the merged map is held in
+  memory while installed - a whole COUNTRY download could be tens of MB; per-route region loading is a
+  future optimization. **The sidecars only exist after a `routing-graphs.yml` rebake is dispatched** (the
+  bake is user-triggered; until then offline nav keeps the local script / ICU).
   (2) **UI chrome** - 
   all ~330 user-facing `:app` strings live in `res/values/strings.xml` (English) + `res/values-<lang>/` for
   the 14 translated languages (fr de es it pt nl ru pl sv uk iw + zh zh-rTW ja; CJK added 2026-07-11, Hebrew 2026-07-13),

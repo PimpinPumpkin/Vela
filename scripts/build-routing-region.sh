@@ -29,6 +29,24 @@ echo "→ building CH graph"
 ( cd "$WORK/graph" && zip -qr "$WORK/$ID$SUFFIX.zip" . )
 SIZE=$(( ( $(stat -f%z "$WORK/$ID$SUFFIX.zip" 2>/dev/null || stat -c%s "$WORK/$ID$SUFFIX.zip") + 1048575 ) / 1048576 ))
 
+# ROMANIZED road-name sidecar (issue #184): a gzipped TSV `<local name>\t<English name>` for every
+# road that carries a name:en / name:latin, so OFFLINE turn-by-turn can say/show the real romanized
+# name (the online path reads the same data off the map tiles; a downloaded graph has no tiles). The
+# graph itself is unchanged, so this is additive - old installs keep working and just grab this small
+# extra file. Best-effort: a failure here still publishes the graph, just without names.
+NAMES_ASSET="$ID$SUFFIX-names.tsv.gz"
+NAMES_URL=""
+if osmium tags-filter "$WORK/region.osm.pbf" w/name:en w/name:latin -o "$WORK/named.osm.pbf" 2>/dev/null \
+   && osmium export "$WORK/named.osm.pbf" -f geojsonseq --keep-tags name,name:en,name:latin -o - 2>/dev/null \
+        | python3 "$ROOT/scripts/roadnames_build.py" "$WORK/$NAMES_ASSET" \
+   && [ -s "$WORK/$NAMES_ASSET" ]; then
+  NAMES_KB=$(( ( $(stat -f%z "$WORK/$NAMES_ASSET" 2>/dev/null || stat -c%s "$WORK/$NAMES_ASSET") + 1023 ) / 1024 ))
+  NAMES_URL="https://github.com/$REPO/releases/download/$TAG/$NAMES_ASSET"
+  echo "→ road names: ${NAMES_KB} KB"
+else
+  echo "→ road-name sidecar skipped (extraction failed or empty)"
+fi
+
 # bbox [S,W,N,E] from the extract's HEADER box (the declared region) — NOT data.bbox, whose node
 # extent gets blown up by outlier nodes (a stray ferry/error node sends it to Alaska). osmium prints
 # (minlon,minlat,maxlon,maxlat).
@@ -43,10 +61,14 @@ gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 || \
     --notes "Prebuilt GraphHopper CH graphs for Vela offline routing. Data assets, not a code release."
 
 gh release upload "$TAG" "$WORK/$ID$SUFFIX.zip" --clobber --repo "$REPO"
+[ -n "$NAMES_URL" ] && gh release upload "$TAG" "$WORK/$NAMES_ASSET" --clobber --repo "$REPO"
 
-# this region's manifest entry
+# this region's manifest entry (namesUrl/namesSizeKb only when the sidecar was built - old apps ignore
+# the extra fields, new apps download it alongside the graph)
 ENTRY="$(jq -nc --arg id "$ID" --arg name "$NAME" --arg url "$ASSET_URL" --argjson size "$SIZE" --argjson bbox "$BBOX" \
-  '{id:$id,name:$name,url:$url,sizeMb:$size,bbox:$bbox}')"
+  --arg namesUrl "$NAMES_URL" --argjson namesKb "${NAMES_KB:-0}" \
+  '{id:$id,name:$name,url:$url,sizeMb:$size,bbox:$bbox}
+   + (if $namesUrl != "" then {namesUrl:$namesUrl, namesSizeKb:$namesKb} else {} end)')"
 
 # MANIFEST_MODE=emit (CI matrix): just drop the entry to $ENTRY_OUT and stop — the manifest merge is
 # centralised in one job (scripts/merge-routing-manifest.sh) so parallel region builds can't clobber it.

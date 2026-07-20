@@ -30,6 +30,11 @@ data class RoutingRegion(
     val deltaUrl: String? = null,           // row-level delta from [deltaFromRev] to [rev], if published
     val deltaFromRev: Int = 0,
     val deltaSizeMb: Int = 0,
+    // Romanized road-name sidecar (issue #184): a gzipped `<local>\t<English>` TSV built from the
+    // region's OSM name:en/name:latin, downloaded next to the graph so OFFLINE guidance can say/show
+    // the real romanized street name. Null on graphs baked before this existed (they just skip it).
+    val namesUrl: String? = null,
+    val namesSizeKb: Int = 0,
 )
 
 /**
@@ -65,6 +70,26 @@ class RoutingGraphStore @Inject constructor(
     fun installedIds(): Set<String> =
         readIndex().keys.filter { File(File(graphsRoot, it), "properties").exists() }.toSet()
 
+    /** The merged romanized road-name map (local name -> English/Latin) across ALL installed regions'
+     *  sidecars (issue #184), so offline turn-by-turn can say/show the real name. Empty when no region
+     *  has a names sidecar (older graphs, or none downloaded). Read off the IO thread - a state's file
+     *  is a few hundred KB gzipped / ~1-2 M entries decompressed. */
+    fun roadNames(): Map<String, String> = withGraphNamesFiles { files ->
+        val out = HashMap<String, String>()
+        for (f in files) runCatching {
+            java.util.zip.GZIPInputStream(f.inputStream()).bufferedReader().useLines { lines ->
+                for (line in lines) {
+                    val tab = line.indexOf('\t')
+                    if (tab > 0) out[line.substring(0, tab)] = line.substring(tab + 1)
+                }
+            }
+        }
+        out
+    }
+
+    private inline fun <T> withGraphNamesFiles(block: (List<File>) -> T): T =
+        block(installedIds().map { File(File(graphsRoot, it), "names.tsv.gz") }.filter { it.exists() })
+
     /** Fetch the catalog of available region graphs from [manifestUrl]. */
     suspend fun manifest(manifestUrl: String): List<RoutingRegion> = withContext(Dispatchers.IO) {
         runCatching {
@@ -77,6 +102,8 @@ class RoutingGraphStore @Inject constructor(
                 RoutingRegion(
                     o.getString("id"), o.getString("name"), o.getString("url"), o.optInt("sizeMb"),
                     b.getDouble(0), b.getDouble(1), b.getDouble(2), b.getDouble(3),
+                    namesUrl = o.optString("namesUrl").ifBlank { null },
+                    namesSizeKb = o.optInt("namesSizeKb"),
                 )
             }
         }.getOrDefault(emptyList())
@@ -109,6 +136,15 @@ class RoutingGraphStore @Inject constructor(
             dir.deleteRecursively()
             check(tmp.renameTo(dir)) { "could not install graph (rename failed)" }
             synchronized(indexLock) { writeIndex(readIndex() + (region.id to doubleArrayOf(region.s, region.w, region.n, region.e))) }
+            // Best-effort: pull the romanized road-name sidecar alongside the graph (issue #184). A
+            // failure here NEVER fails the graph install - offline nav just falls back to the local name.
+            region.namesUrl?.let { nu ->
+                runCatching {
+                    downloadHttp.newCall(Request.Builder().url(nu).build()).execute().use { r ->
+                        if (r.isSuccessful) File(dir, "names.tsv.gz").outputStream().use { out -> r.body!!.byteStream().copyTo(out) }
+                    }
+                }
+            }
             onProgress(100)
             true
         }.getOrElse { tmp.deleteRecursively(); false }
