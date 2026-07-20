@@ -2131,5 +2131,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   pin for a place you opened, bookmark for a saved-list place). It is computed on-device, so it
   is instant and the only thing that shows when you are offline. A network suggestion that
   duplicates one of your own is dropped (matched by name and location, since saved places carry
-  no Google id). Tapping a place opens it; tapping a past search re-runs it; the X drops a
-  history entry. Looking up one location out of a chain no longer means re-typing the city.
+  no Google id). Tapping a place opens it; tapping a past search re-runs it. Press-and-hold any
+  suggestion (or tap its ⋮) to save a place into one of your lists or drop a history row, the same
+  list picker the place sheet uses. Looking up one location out of a chain no longer means
+  re-typing the city.

@@ -380,6 +380,8 @@
     <string name="mapscreen_edit_shortcut">Edit %1$s</string> <!-- format -->
     <string name="mapscreen_menu_change">Change</string>
     <string name="mapscreen_menu_remove">Remove</string>
+    <string name="mapscreen_remove_from_history">Remove from history</string>
+    <string name="mapscreen_suggestion_options">Suggestion options</string>
     <string name="mapscreen_saved_place_options">Saved place options</string>
     <string name="mapscreen_set_as_home">Set as Home</string>
     <string name="mapscreen_set_as_work">Set as Work</string>

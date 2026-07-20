@@ -1244,9 +1244,15 @@ architecture note.
   shows offline. `LocalSuggestion` (kind RECENT_QUERY / RECENT_PLACE / SAVED_PLACE) renders above
   the network rows in `SearchEntryContent`. Dedup of network vs local is by `nameLocKey` (name +
   coarse location), NOT feature id - SavedPlace-backed locals carry no id, so an id-only compare
-  double-shows them. Clear `localSuggestions` everywhere `suggestions` clears. The press-hold
-  "save a Google suggestion to a list" half of #180 is NOT built (delete-from-history via the X
-  is); it needs the save-to-list sheet wired to a suggestion long-press.
+  double-shows them. Clear `localSuggestions` everywhere `suggestions` clears. **Press-hold / ⋮
+  menu on a suggestion (issue #180, 2026-07-19):** every suggestion row (local AND network) now
+  has a trailing ⋮ overflow plus a long-press (`SuggestionRow` gained `onLongClick` + a `trailing`
+  slot; the row uses `combinedClickable`), both opening a `VelaMenu` via `SuggestionOverflow` -
+  "Save to list" for any place-backed row (reuses PlaceSheet's `SaveToListSheet`, made `internal`)
+  and "Remove from history" for removable rows. The ⋮ is the D-pad key path for the long-press
+  (touch-only), so it stays D-pad-legal. The ⋮ REPLACES the bare X on local rows; the empty-query
+  recents list keeps its own X. Menu open-state is `remember(suggestion)`-keyed so a keystroke
+  that rebuilds the list closes a stranded menu.
 
 - **Interface size (2026-07-11):** `UiScale` holder (pref `ui_scale`, chips 90/100/115/130% in
   Settings -> Appearance) applied as a LocalDensity override around VelaRoot's whole tree - all
