@@ -36,10 +36,9 @@ SIZE=$(( ( $(stat -f%z "$WORK/$ID$SUFFIX.zip" 2>/dev/null || stat -c%s "$WORK/$I
 # extra file. Best-effort: a failure here still publishes the graph, just without names.
 NAMES_ASSET="$ID$SUFFIX-names.tsv.gz"
 NAMES_URL=""
-if osmium tags-filter "$WORK/region.osm.pbf" w/name:en w/name:latin -o "$WORK/named.osm.pbf" 2>/dev/null \
-   && osmium export "$WORK/named.osm.pbf" -f geojsonseq --keep-tags name,name:en,name:latin -o - 2>/dev/null \
-        | python3 "$ROOT/scripts/roadnames_build.py" "$WORK/$NAMES_ASSET" \
-   && [ -s "$WORK/$NAMES_ASSET" ]; then
+if osmium tags-filter "$WORK/region.osm.pbf" w/name:en w/name:latin -o "$WORK/named.osm.pbf" \
+   && osmium export "$WORK/named.osm.pbf" -f geojsonseq -o - \
+        | python3 "$ROOT/scripts/roadnames_build.py" "$WORK/$NAMES_ASSET"; then
   NAMES_KB=$(( ( $(stat -f%z "$WORK/$NAMES_ASSET" 2>/dev/null || stat -c%s "$WORK/$NAMES_ASSET") + 1023 ) / 1024 ))
   NAMES_URL="https://github.com/$REPO/releases/download/$TAG/$NAMES_ASSET"
   echo "→ road names: ${NAMES_KB} KB"

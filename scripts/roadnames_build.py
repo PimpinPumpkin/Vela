@@ -61,7 +61,9 @@ def main() -> int:
         for local, eng in seen.items():
             f.write(f"{local}\t{eng}\n")
     print(f"road-names: {len(seen)} local->latin pairs -> {out_path}", file=sys.stderr)
-    return 0
+    # exit 1 on an empty map so the caller skips uploading a useless sidecar (a region with no
+    # name:en/name:latin roads, e.g. an all-Latin area) instead of publishing an empty file.
+    return 0 if seen else 1
 
 
 if __name__ == "__main__":
