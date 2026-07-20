@@ -3981,14 +3981,22 @@ private fun ListEditorDialog(
     var emojiOpen by remember { mutableStateOf(false) }
     var emojiText by remember { mutableStateOf("") }
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        // Cap the dialog to most of the screen: with the emoji grid + free-type field open the
+        // content grows past a short screen, which pushed the color row and Save button off the
+        // bottom with no way to reach them (issue #193). The title and the action buttons stay
+        // pinned; only the middle scrolls.
+        val maxDialogHeight = (LocalConfiguration.current.screenHeightDp * 0.9f).dp
         Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
-            Column(Modifier.padding(20.dp).widthIn(max = 420.dp)) {
+            Column(Modifier.padding(20.dp).widthIn(max = 420.dp).heightIn(max = maxDialogHeight)) {
                 Text(
                     stringResource(if (initial == null) R.string.list_new_title else R.string.list_edit_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
                 Spacer(Modifier.height(12.dp))
+                // The form fields scroll; `fill = false` lets the column shrink to content on tall
+                // screens (no dead space) but cap + scroll on short ones so Save is always reachable.
+                Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -4073,6 +4081,7 @@ private fun ListEditorDialog(
                         )
                     }
                 }
+                } // end scrolling form column
                 Spacer(Modifier.height(20.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (onDelete != null) {
