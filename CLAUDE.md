@@ -1132,6 +1132,16 @@ Defaults that make the safe path the easy one:
   lets the dict fill so the opener says the real name (device-proven: opener spoke the real romanized road,
   not the skeleton, once the dict reached ~400). `stop()` bumps `openerToken` to cancel a still-waiting
   opener. An English opener never waits (hasForeignRun false).
+  **On-MAP labels romanize too (2026-07-19):** the maneuver banner/voice were romanized, but the nav
+  road-name BUBBLES (`ensureNavRoadLabels`, `textField(get("name"))`) and the browse basemap street
+  labels (`highway-name-*` in all four `applyLight`/`applyDark`/classic palette fns) still drew the
+  local script (user: "why are the street name bubbles in jew still when we have english set"). Both now
+  use `roadLabelTextField()` = `coalesce(get("name:en"), get("name:latin"), get("name"))` for a
+  Latin-script UI (gate `uiWantsLatinLabels()` / `NON_LATIN_UI_LANGS`; a Hebrew/Russian/etc UI keeps the
+  local `name`). Same name:latin tile data as the voice/banner, so labels + guidance agree. The nav-bubble
+  filter still matches on the canonical `name` (Hebrew) - display latin, filter on name. NB the search-result
+  markers + transit-stop labels stay on `name` (those are place-name DATA, not streets - a Hebrew business
+  keeps its Hebrew name like Google).
   `SpokenScript.forVoice(text, lang, dict)` swaps a known local name for its real Latin form FIRST, ICU only
   for the rest; `SpokenScript.forDisplay(text, uiLang, dict)` does the same for the banner + steps but with
   NO ICU fallback (a skeleton on a sign reads broken - why the earlier ICU display romanization was

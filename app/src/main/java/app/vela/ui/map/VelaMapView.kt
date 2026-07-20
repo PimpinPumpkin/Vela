@@ -3461,10 +3461,30 @@ private fun latinAliasOf(f: org.maplibre.geojson.Feature, name: String): String?
     return null
 }
 
+// UI languages whose own script is NOT Latin - a user reading in one of these keeps map labels in the
+// local script (a Hebrew UI shows Hebrew street names); everyone else gets the romanized name (issue
+// #184: an English user in Israel wants "Sderot ..." on the map bubbles, not Hebrew). Mirrors the
+// voice/banner rule (SpokenScript).
+private val NON_LATIN_UI_LANGS =
+    setOf("he", "iw", "ar", "fa", "ur", "ru", "uk", "bg", "sr", "mk", "el", "zh", "ja", "ko", "th", "hi")
+
+private fun uiWantsLatinLabels(): Boolean =
+    app.vela.ui.AppLocale.effective().language.lowercase() !in NON_LATIN_UI_LANGS
+
+/** The textField expression for a road-name label: the real Latin name (name:en, else the basemap's
+ *  name:latin) for a Latin-script UI, falling back to the local `name`; the plain local `name` for a
+ *  user who reads a non-Latin script. Same name:latin data the nav voice/banner use. */
+private fun roadLabelTextField(): Expression =
+    if (uiWantsLatinLabels()) {
+        Expression.coalesce(Expression.get("name:en"), Expression.get("name:latin"), Expression.get("name"))
+    } else {
+        Expression.get("name")
+    }
+
 private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, density: Float, exclude: List<String>) {
     // Cheap self-gate so callers can invoke per recomposition (audit-3e rule: no per-frame JNI
     // probes) - a change in theme, nav state or the route's own road list re-runs it.
-    val key = listOf(on, dark, exclude)
+    val key = listOf(on, dark, exclude, uiWantsLatinLabels())
     if (key == lastNavLabelKey) return
     lastNavLabelKey = key
     val ids = listOf(NAV_ROADLABEL_LAYER, NAV_ROADLABEL_MINOR_LAYER)
@@ -3505,7 +3525,7 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
                 SymbolLayer(id, "openmaptiles").withSourceLayer("transportation_name")
                     .withFilter(filter)
                     .withProperties(
-                        PropertyFactory.textField(Expression.get("name")),
+                        PropertyFactory.textField(roadLabelTextField()),
                         PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                         PropertyFactory.textSize(12.5f),
                         PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_LINE_CENTER),
@@ -3883,6 +3903,7 @@ internal fun applyLight(style: Style) {
     // and the BOLD font stack - Google boldens street names on the map (user 2026-07-11).
     listOf("highway-name-path", "highway-name-minor", "highway-name-major").forEach {
         style.getLayer(it)?.setProperties(
+            PropertyFactory.textField(roadLabelTextField()), // romanize for a Latin-script UI (issue #184)
             PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
             PropertyFactory.textHaloColor("#ffffff"),
             PropertyFactory.textHaloWidth(1.9f),
@@ -4055,7 +4076,10 @@ internal fun applyDark(style: Style) {
     // Street names in BOLD (Google boldens them; user 2026-07-11) - a dedicated pass AFTER the
     // blanket loop so only the road-name layers get the Bold stack, not every label.
     listOf("highway-name-path", "highway-name-minor", "highway-name-major").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.textFont(arrayOf("Noto Sans Bold")))
+        style.getLayer(it)?.setProperties(
+            PropertyFactory.textField(roadLabelTextField()), // romanize for a Latin-script UI (issue #184)
+            PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
+        )
     }
     // Drop the wetland fern-hatch + pedestrian-plaza patterns (flat, like Google dark).
     style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#0d3847"), PropertyFactory.fillOpacity(0.9f))
@@ -4087,6 +4111,7 @@ internal fun applyDark(style: Style) {
 internal fun applyClassicLight(style: Style) {
     listOf("highway-name-path", "highway-name-minor", "highway-name-major").forEach {
         style.getLayer(it)?.setProperties(
+            PropertyFactory.textField(roadLabelTextField()), // romanize for a Latin-script UI (issue #184)
             PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
             PropertyFactory.textHaloColor("#ffffff"),
             PropertyFactory.textHaloWidth(1.9f),
@@ -4211,7 +4236,10 @@ internal fun applyClassicDark(style: Style) {
     }
     // Street names bold, same rule as every other palette pass.
     listOf("highway-name-path", "highway-name-minor", "highway-name-major").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.textFont(arrayOf("Noto Sans Bold")))
+        style.getLayer(it)?.setProperties(
+            PropertyFactory.textField(roadLabelTextField()), // romanize for a Latin-script UI (issue #184)
+            PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
+        )
     }
     style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#26403c"), PropertyFactory.fillOpacity(0.9f))
     style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#31363f"))
