@@ -3131,22 +3131,59 @@ private fun SearchEntryContent(
             }
             merged.forEach { entry ->
                 when (entry) {
-                    is RecentPlace -> SuggestionRow(
-                        icon = Icons.Default.Place,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        label = entry.place.name,
-                        // A real place shows its address under the name (Google-style).
-                        sublabel = entry.place.address,
-                        onClick = { onPickRecentPlace(entry.place) },
-                        onRemove = { onRemoveRecentPlace(entry.place.id) },
-                    )
-                    is RecentQuery -> SuggestionRow(
-                        icon = Icons.Default.History,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        label = entry.query,
-                        onClick = { onPickRecent(entry.query) },
-                        onRemove = { onRemoveRecent(entry.query) },
-                    )
+                    is RecentPlace -> {
+                        // Long-press OR the ⋮ opens the same manage menu as the typing view (issue
+                        // #180): save this recent place to a list, or drop it from history. (The
+                        // press-hold was previously only on the typed-suggestion rows, so the entry
+                        // page (where history actually lives) had no long-press. The ⋮ opens the
+                        // menu on a plain tap too, so removal works even where long-press doesn't.)
+                        var menuOpen by remember(entry.place.id) { mutableStateOf(false) }
+                        val p = entry.place.toPlace()
+                        SuggestionRow(
+                            icon = Icons.Default.Place,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            label = entry.place.name,
+                            sublabel = entry.place.address,
+                            onClick = { onPickRecentPlace(entry.place) },
+                            onLongClick = { menuOpen = true },
+                            trailing = {
+                                SuggestionOverflow(
+                                    open = menuOpen,
+                                    onOpenChange = { menuOpen = it },
+                                    place = p,
+                                    removable = true,
+                                    lists = lists,
+                                    onRemove = { onRemoveRecentPlace(entry.place.id) },
+                                    onAddToList = { id -> onAddToList(p, id) },
+                                    onRemoveFromList = { id -> onRemoveFromList(p, id) },
+                                    onCreateWith = { name -> onCreateListWith(p, name) },
+                                )
+                            },
+                        )
+                    }
+                    is RecentQuery -> {
+                        var menuOpen by remember(entry.query) { mutableStateOf(false) }
+                        SuggestionRow(
+                            icon = Icons.Default.History,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            label = entry.query,
+                            onClick = { onPickRecent(entry.query) },
+                            onLongClick = { menuOpen = true },
+                            trailing = {
+                                SuggestionOverflow(
+                                    open = menuOpen,
+                                    onOpenChange = { menuOpen = it },
+                                    place = null, // a typed query, not a place: only "remove from history"
+                                    removable = true,
+                                    lists = lists,
+                                    onRemove = { onRemoveRecent(entry.query) },
+                                    onAddToList = {},
+                                    onRemoveFromList = {},
+                                    onCreateWith = {},
+                                )
+                            },
+                        )
+                    }
                 }
                 Divider()
             }
