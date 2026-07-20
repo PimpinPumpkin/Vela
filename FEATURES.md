@@ -2143,3 +2143,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Install the Vela voice straight from Voice settings.** When no Vela voice is installed, the
   one-tap install button now sits in the Voice settings section itself, not only inside the Voice
   library, so you don't have to dig for it.
+- ✅ **Search your own history and lists as you type (issue #180).** As you type, matches from
+  your recent searches, recently-viewed places, and saved lists surface at the top of the
+  suggestions, above Google's, each with an icon that tells them apart (clock for a past search,
+  pin for a place you opened, bookmark for a saved-list place). It is computed on-device, so it
+  is instant and the only thing that shows when you are offline. A network suggestion that
+  duplicates one of your own is dropped (matched by name and location, since saved places carry
+  no Google id). Tapping a place opens it; tapping a past search re-runs it. Press-and-hold any
+  suggestion (or tap its ⋮) to save a place into one of your lists or drop a history row, the same
+  list picker the place sheet uses. Looking up one location out of a chain no longer means
+  re-typing the city.
