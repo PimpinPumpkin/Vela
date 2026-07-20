@@ -39,8 +39,11 @@ Some context on the columns:
 - **Vela voice** - the downloadable on-device neural voice (Piper). The voice library
   pairs the app language to a matching voice and nudges a download if you switch to a
   language whose voice isn't installed.
-- **Dictation** - the search-bar mic transcribes on-device with a multilingual Whisper
-  model, pinned to the app language for all fifteen.
+- **Dictation** - the search-bar mic transcribes on-device. The default is a multilingual Whisper
+  model, pinned to the app language for all fifteen. Settings → Search also offers two alternative
+  engines you can download and switch to: **SenseVoice** (English, Chinese, Japanese, Korean,
+  Cantonese) and **Moonshine** (English only) - faster/more accurate for those languages, but Whisper
+  stays the default so nothing regresses.
 
 The language picker is Settings → Language ("Follow system" by default, or any of the
 fifteen by endonym).
