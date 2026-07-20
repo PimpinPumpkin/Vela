@@ -1285,6 +1285,12 @@ fun MapScreen(
                                 ((state.pickingOrigin || state.pickingDest || state.pickingStop) && state.query.isBlank())
                             ) -> SearchEntryContent(
                             suggestions = state.suggestions,
+                            localSuggestions = state.localSuggestions,
+                            onPickLocal = {
+                                focusManager.clearFocus()
+                                vm.pickLocalSuggestion(it)
+                            },
+                            onRemoveLocal = vm::removeLocalSuggestion,
                             saved = state.saved,
                             recents = state.recents,
                             recentPlaces = state.recentPlaces,
@@ -2963,6 +2969,9 @@ private fun ChooseOnMapOverlay(
 @Composable
 private fun SearchEntryContent(
     suggestions: List<Place>,
+    localSuggestions: List<app.vela.ui.map.LocalSuggestion>,
+    onPickLocal: (app.vela.ui.map.LocalSuggestion) -> Unit,
+    onRemoveLocal: (app.vela.ui.map.LocalSuggestion) -> Unit,
     saved: List<SavedPlace>,
     recents: List<RecentQuery>,
     recentPlaces: List<RecentPlace>,
@@ -2989,14 +2998,29 @@ private fun SearchEntryContent(
     onPinSavedAs: (SavedPlace, ShortcutKind) -> Unit,
     onRemoveSaved: (SavedPlace) -> Unit,
 ) {
-    // While typing, live place suggestions take over the page (Google-style);
-    // with an empty box it's the Home/Work + saved + recents shortlist.
-    if (suggestions.isNotEmpty()) {
+    // While typing, live place suggestions take over the page (Google-style). The user's OWN
+    // history + list matches (issue #180) lead, instant and offline, then the network results.
+    if (localSuggestions.isNotEmpty() || suggestions.isNotEmpty()) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 8.dp),
         ) {
             if (assigning != null) AssignBanner(assigning, onCancelAssign)
             if (pickingStop) PickStopBanner(onCancelPickStop)
+            localSuggestions.forEach { s ->
+                SuggestionRow(
+                    icon = when (s.kind) {
+                        app.vela.ui.map.LocalSuggestion.Kind.RECENT_QUERY -> Icons.Default.History
+                        app.vela.ui.map.LocalSuggestion.Kind.RECENT_PLACE -> Icons.Default.Place
+                        app.vela.ui.map.LocalSuggestion.Kind.SAVED_PLACE -> Icons.Default.Bookmark
+                    },
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    label = s.label,
+                    sublabel = s.sublabel,
+                    onClick = { onPickLocal(s) },
+                    onRemove = if (s.removable) ({ onRemoveLocal(s) }) else null,
+                )
+                Divider()
+            }
             suggestions.forEach { p ->
                 SuggestionRow(
                     icon = Icons.Default.Search,
