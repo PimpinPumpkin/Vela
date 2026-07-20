@@ -51,9 +51,16 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # For workflow_run triggers, only rebuild after a SUCCESSFUL main run - a red CI
-    # didn't publish anything, so there's nothing new to serve.
-    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    # Two gates:
+    #  - workflow_run: only rebuild after a SUCCESSFUL main run (a red CI published nothing).
+    #  - release: only for an APP release (tag like v0.4.854). The infra/data releases
+    #    (asr-models, routing-graphs, map-fonts, tts-models, poi-packs, flock-cameras...) fire
+    #    release events too when their assets are updated, and two of them overlapping raced the
+    #    single github-pages environment and failed the deploy (2026-07-20). App tags start "v";
+    #    data tags don't, so this skips them.
+    if: >-
+      (github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'))
+      && (github.event_name != 'release' || startsWith(github.event.release.tag_name, 'v'))
     steps:
       - uses: actions/checkout@v4
 
