@@ -858,6 +858,7 @@ fun MapScreen(
             navDriveMode = state.travelMode == app.vela.core.model.TravelMode.DRIVE,
             navLabelExclude = navLabelExclude,
             navUpcomingRoads = navUpcomingRoads,
+            onNavRoadLatin = { vm.onNavRoadLatin(it) },
             // Follow yields to a manual pan AND to step preview: the per-frame follow ticker used
             // to keep re-pointing the camera at the puck while a banner swipe was trying to fly to
             // the previewed turn - the two fought at 60 fps (user 2026-07-14). The puck itself
@@ -1121,9 +1122,16 @@ fun MapScreen(
             val shownIdx = (state.previewStepIndex ?: liveStep).coerceIn(0, mans?.lastIndex ?: 0)
             val shown = mans?.getOrNull(shownIdx)
             val next = mans?.getOrNull(shownIdx + 1)
+            // Show the real romanized road name where the basemap gave us one (issue #184): swap the
+            // local-script name in the instruction for its Latin form. No ICU fallback here - a name we
+            // have no real romanization for keeps its local script (a skeleton on a sign reads broken).
+            val navUiLang = app.vela.ui.AppLocale.effective().language
+            fun navRomanize(s: String): String =
+                if (s.isEmpty() || state.roadNameLatin.isEmpty()) s
+                else app.vela.core.voice.SpokenScript.forDisplay(s, navUiLang, state.roadNameLatin)
             ManeuverBanner(
                 offRoute = state.nav.offRoute,
-                text = if (previewing) (shown?.instruction.orEmpty()) else state.maneuverText,
+                text = navRomanize(if (previewing) (shown?.instruction.orEmpty()) else state.maneuverText),
                 // The headline distance is the APPROACH to the shown maneuver. A maneuver's own
                 // distanceMeters is the travel AFTER it (Route.kt convention) — showing it here
                 // put the leg-after on the previewed step's headline ("3.1 mi — Turn right onto
@@ -1138,7 +1146,7 @@ fun MapScreen(
                 ref = shown?.ref,
                 laneHint = shown?.laneHint,
                 lanes = shown?.lanes.orEmpty(),
-                nextText = next?.instruction,
+                nextText = next?.instruction?.let { navRomanize(it) },
                 nextType = next?.type,
                 nextRef = next?.ref,
                 // The road being driven = the one entered by the LIVE maneuver last passed
@@ -1558,6 +1566,8 @@ fun MapScreen(
                 currentStep = if (state.navigating) state.nav.stepIndex else null,
                 onStep = vm::previewStep,
                 onClose = vm::closeSteps,
+                roadLatin = state.roadNameLatin,
+                uiLang = app.vela.ui.AppLocale.effective().language,
                 // Arrive-row destination lines: the live nav state while navigating; pre-nav (the
                 // Steps preview from the directions panel) the selected place, unless the trip is
                 // reversed (the destination is you, so a place line would be wrong).

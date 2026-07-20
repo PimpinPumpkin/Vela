@@ -1098,7 +1098,73 @@ Defaults that make the safe path the easy one:
   voice must actually speak that language** - `VoiceGuide` guards on `NeuralSynth.voiceLanguage` and, on a
   mismatch, falls back to a system TTS in the target language (or stays silent + fires a "get a matching voice"
   hint) rather than reading, e.g., Russian nav text through the English Piper model (see the voice bullet under
-  Degoogled constraints). (2) **UI chrome** - 
+  Degoogled constraints). **Foreign NAME romanizing (issue #184, 2026-07-20):** a road NAME can be in a
+  different script than the guidance language (Hebrew name inside English guidance), and a single-language
+  voice drops those glyphs. `SpokenScript.forVoice(text, voiceLang)` romanizes to Latin (android.icu
+  `Any-Latin; Latin-ASCII`) any run in a script the SPEAKING voice can't read, applied around `forSpeech()`
+  in BOTH speak paths; SPOKEN string only, the banner keeps the local script. **Latin is the universal
+  fallback for EVERY voice, not just Latin-script ones (un-scoped 2026-07-19, user: a Chinese driver in
+  Israel wants Latin, not dropped Hebrew - that is what Google does):** each voice keeps only its OWN
+  native script (`VOICE_SCRIPT` maps he/ar/ru/el/th/hi/ko/zh/ja to their script; everything else = Latin),
+  so a Russian voice keeps Cyrillic but romanizes Hebrew, and a Chinese voice keeps Han but romanizes
+  Hebrew/Cyrillic. CJK Han/kana are the ONE exception - never romanized for any voice (ICU reads Han as
+  Chinese pinyin, "明治通り"->"ming zhitongri" not "Meiji-dori"), left to the native CJK voices. NB a
+  CJK/Cyrillic voice reading romanized Latin is rough (their G2P is not built for Latin), but audible beats
+  dropped; the clean win is the DISPLAY side (name:latin), pending. Logic is unit-tested with an injected
+  romanizer (android.icu is JVM-stubbed in unit tests); real ICU output validated via `uconv` (same libicu).
+  **REAL romanized names beat ICU (2026-07-19, tiles phase):** ICU on an abjad like Hebrew is a vowel-less
+  skeleton ("רחוב הרצל"->"rhwb hrzl"), unpronounceable. Real names are DATA: the OpenMapTiles
+  basemap carries `name:en`/`name:latin` per road. `VelaMapView`'s existing nav-label pass
+  (querySourceFeatures over `transportation_name`) also records `localName -> latinAliasOf(feature)`
+  and reports it via `onNavRoadLatin` -> `MapViewModel.onNavRoadLatin` -> `MapUiState.roadNameLatin` +
+  `VoiceGuide.roadNameLatin`, growing as tiles load, reset on nav end. **The dict query is WARMUP-paced,
+  NOT the per-400 m quantum the label pass uses:** a drive STARTS with only the route-overview (low-zoom)
+  tiles loaded, which carry ONLY major road names (device-proven: dict=19 major roads at nav start), so the
+  first turn onto a minor road spoke the ICU skeleton. The loop now re-queries the dict every 2 s tick WHILE
+  it is still growing (`dictStaleTicks < 3`, reset on each quantum), so a local road's real name lands within
+  a couple seconds of its nav-zoom tile loading (device-proven: dict jumped 19 -> 404 as local streets
+  resolved to real romanized names with vowels, not the consonant skeleton, on both the banner and the
+  voice). The expensive crossing geometry stays per-quantum, so this never puts a heavy pass on the
+  every-frame path. The nav-start OPENER ("Starting navigation. Head ... on <road>") is spoken via
+  `VoiceGuide.speakOpener` (not `speak`): it HOLDS the opener up to `OPENER_MAX_WAIT_MS` (2.5 s), retrying
+  every 200 ms until the road it names is covered by `roadNameLatin` (or the text has no foreign run), then
+  speaks - the drive begins before nav-zoom tiles load, so speaking at T=0 read the ICU skeleton; the wait
+  lets the dict fill so the opener says the real name (device-proven: opener spoke the real romanized road,
+  not the skeleton, once the dict reached ~400). `stop()` bumps `openerToken` to cancel a still-waiting
+  opener. An English opener never waits (hasForeignRun false).
+  **On-MAP labels romanize too (2026-07-19):** the maneuver banner/voice were romanized, but the nav
+  road-name BUBBLES (`ensureNavRoadLabels`, `textField(get("name"))`) and the browse basemap street
+  labels (`highway-name-*` in all four `applyLight`/`applyDark`/classic palette fns) still drew the
+  local script (user: "why are the street name bubbles in jew still when we have english set"). Both now
+  use `roadLabelTextField()` = `coalesce(get("name:en"), get("name:latin"), get("name"))` for a
+  Latin-script UI (gate `uiWantsLatinLabels()` / `NON_LATIN_UI_LANGS`; a Hebrew/Russian/etc UI keeps the
+  local `name`). Same name:latin tile data as the voice/banner, so labels + guidance agree. The nav-bubble
+  filter still matches on the canonical `name` (Hebrew) - display latin, filter on name. NB the search-result
+  markers + transit-stop labels stay on `name` (those are place-name DATA, not streets - a Hebrew business
+  keeps its Hebrew name like Google).
+  `SpokenScript.forVoice(text, lang, dict)` swaps a known local name for its real Latin form FIRST, ICU only
+  for the rest; `SpokenScript.forDisplay(text, uiLang, dict)` does the same for the banner + steps but with
+  NO ICU fallback (a skeleton on a sign reads broken - why the earlier ICU display romanization was
+  reverted; an unmapped name keeps local script). Both gate on the UI/voice's own script (a Hebrew UI keeps
+  Hebrew). Works ONLINE and in a downloaded map AREA (both carry name:latin tiles). Quality tracks OSM
+  name:en coverage (Israel well-tagged -> real names; sparse areas keep local script on display / ICU by
+  voice), same as Google.
+  **OFFLINE across a whole state = a ROMANIZED-NAME SIDECAR next to the routing graph (2026-07-19,
+  branch offline-roadnames; chosen over baking into the GraphHopper graph, which GraphHopper can't do
+  natively without version-locked internals + a full re-download):** `scripts/roadnames_build.py` extracts
+  `<local>\t<English>` for every road with name:en/name:latin from the region PBF (name:en wins; validated
+  Latin-script, != local); `scripts/build-routing-region.sh` gzips it to `<id>-names.tsv.gz`, uploads it
+  beside the graph on the `routing-graphs` release, and adds `namesUrl`/`namesSizeKb` to the manifest
+  entry (merge script carries extra fields as-is; old apps ignore them). App: `RoutingGraphStore.download`
+  pulls the sidecar into `graphs/<id>/names.tsv.gz` (best-effort, never fails the graph); `roadNames()`
+  merges all installed regions' sidecars; `MapViewModel.offlineRoadNames` loads it at init / after a
+  region download or delete and is the BASE for `roadNameLatin` (voice + state) that the online tiles
+  merge ON TOP of, reset to on nav-end. So the graph is UNCHANGED (additive, existing downloads keep
+  working, users grab a small extra file, not a new graph). Memory note: the merged map is held in
+  memory while installed - a whole COUNTRY download could be tens of MB; per-route region loading is a
+  future optimization. **The sidecars only exist after a `routing-graphs.yml` rebake is dispatched** (the
+  bake is user-triggered; until then offline nav keeps the local script / ICU).
+  (2) **UI chrome** - 
   all ~330 user-facing `:app` strings live in `res/values/strings.xml` (English) + `res/values-<lang>/` for
   the 14 translated languages (fr de es it pt nl ru pl sv uk iw + zh zh-rTW ja; CJK added 2026-07-11, Hebrew 2026-07-13),
   referenced via `stringResource`/`getString`. **CJK notes (2026-07-11):** Chinese ships as

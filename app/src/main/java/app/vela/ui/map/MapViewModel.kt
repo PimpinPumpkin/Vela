@@ -203,6 +203,9 @@ data class MapUiState(
     val demoDriving: Boolean = false,          // replaying is a Settings→demo synthetic drive (not a recorded trip) — nav chrome only, no "Stop replay" pill
     val arrived: Boolean = false,
     val nav: NavState = NavState(),
+    // Foreign road name -> its basemap Latin name (issue #184), grown from map tiles as the drive
+    // proceeds; the banner/steps show the real romanized name where we have one. Empty otherwise.
+    val roadNameLatin: Map<String, String> = emptyMap(),
     val maneuverText: String = "",
     val fasterRoute: Route? = null,
     val fasterSavingSeconds: Double = 0.0,
@@ -333,6 +336,22 @@ class MapViewModel @Inject constructor(
     private var limitJob: Job? = null // single-flight the off-thread maxspeed snap
     private val noticePrefs = appContext.getSharedPreferences("vela_notices", Context.MODE_PRIVATE)
 
+    // Romanized road names from any downloaded routing regions' sidecars (issue #184): the BASE for
+    // roadNameLatin so OFFLINE turn-by-turn says/shows real street names (there are no map tiles to
+    // read name:latin from offline). The online tile path merges on top of this; nav-end resets to it.
+    @Volatile private var offlineRoadNames: Map<String, String> = emptyMap()
+
+    /** (Re)load the downloaded regions' romanized road-name sidecars and push them to the voice + state
+     *  as the roadNameLatin base. Call off the main thread (reads/gunzips the region files). */
+    private suspend fun refreshOfflineRoadNames() {
+        val loaded = withContext(Dispatchers.IO) { routingGraphStore.roadNames() }
+        offlineRoadNames = loaded
+        if (loaded.isNotEmpty()) {
+            voice.roadNameLatin = loaded
+            _state.update { if (it.roadNameLatin.isEmpty()) it.copy(roadNameLatin = loaded) else it }
+        }
+    }
+
     init {
         loadAmbientCacheFromDisk() // ambient LRU survives restarts (paint-then-refine)
         // Privacy toggle (Settings -> Data & privacy): periodic in-drive traffic re-checks send
@@ -349,6 +368,7 @@ class MapViewModel @Inject constructor(
         // trip answers "what did it say", "was it actually dropping frames" and "what did the
         // drive cost" by itself.
         voice.onSpoken = { tripStore.note("S", it) }
+        viewModelScope.launch { refreshOfflineRoadNames() } // offline romanized road names (issue #184)
         viewModelScope.launch {
             var beat = 0
             while (true) {
@@ -3576,8 +3596,12 @@ class MapViewModel @Inject constructor(
                 // drive used to leave the blue line drawn on the bare map (user 2026-07-14).
                 activeRoute = null, routes = emptyList(), directionsOpen = false,
                 directionsWaypoints = emptyList(), flockOnRoute = emptyList(),
+                // Reset to the OFFLINE base (not empty): the next drive re-resolves from its own tiles ON
+                // TOP of the downloaded regions' names, so an offline drive still speaks real names (issue #184).
+                roadNameLatin = offlineRoadNames,
             )
         }
+        voice.roadNameLatin = offlineRoadNames
     }
 
     /** Reset the speed-limit badge + its throttle state (shared by nav-stop and replay-teardown so the
@@ -3611,6 +3635,19 @@ class MapViewModel @Inject constructor(
 
     /** The in-nav compass button: toggle the follow camera between heading-up and north-up. */
     fun toggleNavNorthUp() = _state.update { it.copy(navNorthUp = !it.navNorthUp) }
+
+    /** VelaMapView reports romanized road names (local -> basemap Latin) as nav tiles load (issue
+     *  #184). Merge them into state (banner/steps consult it) and hand the full map to VoiceGuide so
+     *  guidance SAYS "Rehov Herzl" instead of the ICU skeleton. Only grows during a drive;
+     *  reset on nav end. */
+    fun onNavRoadLatin(map: Map<String, String>) {
+        if (map.isEmpty()) return
+        val merged = if (_state.value.roadNameLatin.isEmpty()) map
+        else _state.value.roadNameLatin + map
+        if (merged.size == _state.value.roadNameLatin.size) return
+        voice.roadNameLatin = merged
+        _state.update { it.copy(roadNameLatin = merged) }
+    }
 
     /** Mute / unmute spoken guidance (the in-nav speaker button). Persisted. */
     fun toggleVoice() = setSpokenDirections(voice.muted)
@@ -5117,7 +5154,7 @@ class MapViewModel @Inject constructor(
                 it.copy(routingDownloadingId = null, routingInstalledIds = routingGraphStore.installedIds())
             }
             showStatus(if (ok) appContext.getString(R.string.mapvm_offline_routing_ready, region.name) else appContext.getString(R.string.mapvm_offline_routing_failed))
-            if (ok) downloadPoiPack(region)
+            if (ok) { refreshOfflineRoadNames(); downloadPoiPack(region) } // pick up the new region's romanized road names (issue #184)
             else _state.update { it.copy(regionDownloadName = null) }
         }
     }
@@ -5175,6 +5212,7 @@ class MapViewModel @Inject constructor(
         _state.update {
             it.copy(routingInstalledIds = routingGraphStore.installedIds(), poiPackInstalledIds = poiPackStore.installedIds())
         }
+        viewModelScope.launch { refreshOfflineRoadNames() } // drop the removed region's road names (issue #184)
         showStatus(appContext.getString(R.string.mapvm_offline_routing_removed))
     }
 
