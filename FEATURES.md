@@ -2135,3 +2135,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Hebrew or Russian voice reads its own script natively). CJK is deliberately left to the native
   Japanese/Chinese voices, since ICU mis-reads kanji as Chinese pinyin; a proper kanji-to-romaji
   step is a possible follow-up.
+- ✅ **No stale voice-prompt burst when a voice attaches late.** If you drove with no voice
+  installed (nav queues prompts with nothing to speak them) and then installed one, the whole
+  backlog used to flush at once, a burst of out-of-order directions. The queue now speaks only
+  the most recent line on attach and is cleared whenever guidance stops, so installing a voice
+  can't trigger a stale replay.
+- ✅ **Install the Vela voice straight from Voice settings.** When no Vela voice is installed, the
+  one-tap install button now sits in the Voice settings section itself, not only inside the Voice
+  library, so you don't have to dig for it.
