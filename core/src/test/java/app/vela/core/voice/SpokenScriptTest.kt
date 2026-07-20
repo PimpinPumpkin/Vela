@@ -20,11 +20,21 @@ class SpokenScriptTest {
         assertEquals("Turn right onto <רחוב> <הרצל>", tag("Turn right onto רחוב הרצל", "en"))
     }
 
-    @Test fun `a hebrew or other non-latin voice is never romanized`() {
+    @Test fun `a voice keeps its OWN script but romanizes scripts it cannot read`() {
+        // Own-script text is left alone: a Hebrew voice reads Hebrew, a Russian voice reads Cyrillic.
         val heb = "פנה ימינה לרחוב הרצל"
         assertEquals(heb, tag(heb, "he"))
         assertEquals(heb, tag(heb, "iw"))
         assertEquals("Поверните на Тверскую", tag("Поверните на Тверскую", "ru"))
+        // But a foreign script IS romanized even for a non-Latin voice - Latin is the universal
+        // fallback (a Chinese/Russian driver in Israel gets Latin, not dropped Hebrew). issue #184.
+        assertEquals("onto <רחוב> <הרצל>", tag("onto רחוב הרצל", "zh"))
+        assertEquals("на <רחוב>", tag("на רחוב", "ru")) // Cyrillic kept, Hebrew romanized
+    }
+
+    @Test fun `a chinese voice keeps Han but romanizes hebrew in the same string`() {
+        // Han is never romanized (would become pinyin), so a zh voice reads it; the Hebrew is Latinized.
+        assertEquals("往 明治通り <רחוב>", tag("往 明治通り רחוב", "zh"))
     }
 
     @Test fun `pure english is returned unchanged - ICU never invoked`() {

@@ -10,24 +10,40 @@ import android.icu.text.Transliterator
  * from the map in its local script (Hebrew "רחוב הרצל"). A single-language Piper/English voice has no
  * phonemes for those glyphs, so it drops the name entirely, exactly the words the driver needs.
  *
- * This transliterates only the FOREIGN-letter runs to Latin (ICU "Any-Latin; Latin-ASCII"), leaving
- * existing Latin text, its accents, digits and punctuation untouched, so a French "Rue de Rivoli" or
- * an English "5th Ave" is never mangled. It runs on the spoken string ONLY; the on-screen banner
- * keeps the real local-script name (that is what matches the street sign).
+ * This transliterates only the runs a given voice CAN'T pronounce to Latin (ICU
+ * "Any-Latin; Latin-ASCII"), leaving existing Latin text, its accents, digits and punctuation
+ * untouched, so a French "Rue de Rivoli" or an English "5th Ave" is never mangled. It runs on the
+ * spoken string ONLY; the on-screen banner keeps the real local-script name (that is what matches
+ * the street sign).
  *
- * Scope: applied only when the speaking voice is Latin-script (a Hebrew/Russian/Greek voice
- * pronounces its own script natively, so it is skipped). CJK ideographs and kana are deliberately
- * NOT romanized: ICU reads Han as Chinese pinyin ("明治通り" becomes "ming zhitongri", not
- * "Meiji-dori"), a confidently-wrong reading. Those are left to the native CJK voices Vela ships;
- * a proper kanji->romaji step is a possible follow-up.
+ * Scope: Latin is the universal fallback the way Google romanizes foreign signs for EVERY user, not
+ * just Latin-script ones (user 2026-07-19: a Chinese driver in Israel would rather hear the streets
+ * in Latin letters than have the Hebrew dropped). So a run is romanized whenever it is in a script
+ * the SPEAKING voice can't read: a Hebrew run is romanized for an English, Russian or Chinese voice
+ * alike; a Russian voice keeps Cyrillic (its own script) but still romanizes Hebrew. Only the voice's
+ * OWN script is left in place. CJK ideographs and kana are the one exception, NEVER romanized for any
+ * voice: ICU reads Han as Chinese pinyin ("明治通り" becomes "ming zhitongri", not "Meiji-dori"), a
+ * confidently-wrong reading, so kanji/kana are left to the native CJK voices Vela ships.
  */
 object SpokenScript {
 
-    /** Voice languages whose own script is NOT Latin: they read their native script directly, so we
-     *  never romanize for them. (Anything not here is treated as Latin-script and triggers romanizing
-     *  of foreign runs.) Legacy "iw" kept alongside "he" for Hebrew, same as the status tables. */
-    private val NON_LATIN_VOICE_LANGS =
-        setOf("he", "iw", "ar", "fa", "ur", "ru", "uk", "bg", "sr", "mk", "el", "zh", "ja", "ko", "th", "hi")
+    /** A voice language's own script (the one it pronounces natively, so we never romanize it). Any
+     *  language not listed reads Latin, which is also the fallback ICU romanizes everything else into.
+     *  Legacy "iw" kept alongside "he" for Hebrew, same as the status tables. */
+    private val VOICE_SCRIPT: Map<String, Character.UnicodeScript> = mapOf(
+        "he" to Character.UnicodeScript.HEBREW, "iw" to Character.UnicodeScript.HEBREW,
+        "ar" to Character.UnicodeScript.ARABIC, "fa" to Character.UnicodeScript.ARABIC,
+        "ur" to Character.UnicodeScript.ARABIC,
+        "ru" to Character.UnicodeScript.CYRILLIC, "uk" to Character.UnicodeScript.CYRILLIC,
+        "bg" to Character.UnicodeScript.CYRILLIC, "sr" to Character.UnicodeScript.CYRILLIC,
+        "mk" to Character.UnicodeScript.CYRILLIC,
+        "el" to Character.UnicodeScript.GREEK,
+        "th" to Character.UnicodeScript.THAI,
+        "hi" to Character.UnicodeScript.DEVANAGARI,
+        "ko" to Character.UnicodeScript.HANGUL,
+        // zh/ja read Han (kana is always left alone below), so their own script is HAN.
+        "zh" to Character.UnicodeScript.HAN, "ja" to Character.UnicodeScript.HAN,
+    )
 
     // Transliterator instances are not thread-safe; nav prompts fire ~once per maneuver on the main
     // thread, so a lazily-built, synchronized single instance is plenty (and avoids per-call setup).
@@ -35,8 +51,8 @@ object SpokenScript {
         runCatching { Transliterator.getInstance("Any-Latin; Latin-ASCII") }.getOrNull()
     }
 
-    /** Romanize foreign-script runs of [text] iff [voiceLang] is a Latin-script voice. No-op (returns
-     *  [text] unchanged) for a non-Latin voice, an all-Latin string, or if ICU is unavailable. */
+    /** Romanize the runs of [text] that the [voiceLang] voice can't pronounce. No-op (returns [text]
+     *  unchanged) when every run is in the voice's own script or Latin, or if ICU is unavailable. */
     fun forVoice(text: String, voiceLang: String?): String {
         val tl = latinizer ?: return text
         return forVoice(text, voiceLang) { run ->
@@ -48,16 +64,16 @@ object SpokenScript {
      *  CJK/Latin preservation can be unit-tested on the JVM (android.icu is unavailable there). */
     internal fun forVoice(text: String, voiceLang: String?, romanize: (String) -> String): String {
         val lang = voiceLang?.lowercase()?.substringBefore('-')?.substringBefore('_')
-        if (lang != null && lang in NON_LATIN_VOICE_LANGS) return text
-        if (text.none { needsRomanizing(it) }) return text
+        val voiceScript = VOICE_SCRIPT[lang] ?: Character.UnicodeScript.LATIN
+        if (text.none { needsRomanizing(it, voiceScript) }) return text
 
         val out = StringBuilder(text.length)
         var i = 0
         val n = text.length
         while (i < n) {
-            if (needsRomanizing(text[i])) {
+            if (needsRomanizing(text[i], voiceScript)) {
                 val start = i
-                while (i < n && needsRomanizing(text[i])) i++
+                while (i < n && needsRomanizing(text[i], voiceScript)) i++
                 out.append(romanize(text.substring(start, i)))
             } else {
                 out.append(text[i])
@@ -67,11 +83,14 @@ object SpokenScript {
         return out.toString()
     }
 
-    /** A character that a Latin voice can't pronounce and ICU can romanize well: a letter whose script
-     *  is neither Latin nor a CJK ideograph/kana (those ICU mis-reads, see the class note). */
-    private fun needsRomanizing(c: Char): Boolean {
+    /** A letter the [voiceScript] voice can't pronounce and ICU can romanize well: its script is
+     *  neither the voice's own, nor Latin, nor a CJK ideograph/kana (those ICU mis-reads as pinyin,
+     *  so they are left to a native CJK voice regardless of who is speaking; see the class note). */
+    private fun needsRomanizing(c: Char, voiceScript: Character.UnicodeScript): Boolean {
         if (!Character.isLetter(c)) return false
-        return when (Character.UnicodeScript.of(c.code)) {
+        val script = Character.UnicodeScript.of(c.code)
+        if (script == voiceScript) return false // the voice reads its own script natively
+        return when (script) {
             Character.UnicodeScript.LATIN,
             Character.UnicodeScript.COMMON,
             Character.UnicodeScript.INHERITED,
