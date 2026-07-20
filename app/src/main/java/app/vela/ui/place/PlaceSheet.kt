@@ -3545,6 +3545,9 @@ private fun emphasize(text: String, query: String): androidx.compose.ui.text.Ann
     }
 }
 
+// Lines a review's body shows before it collapses behind a "More" toggle (Google shows ~4).
+private const val REVIEW_COLLAPSED_LINES = 4
+
 @Composable
 private fun ReviewRow(review: Review, ink: Color, dim: Color, onPhotoTap: (List<String>, Int, String?) -> Unit = { _, _, _ -> }, query: String = "") {
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
@@ -3574,8 +3577,36 @@ private fun ReviewRow(review: Review, ink: Color, dim: Color, onPhotoTap: (List<
                 }
             }
         }
-        review.text?.let {
-            Text(emphasize(it, query), style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.padding(top = 6.dp))
+        review.text?.let { body ->
+            // Collapse a long review to a few lines with a tappable "More" (Google-style) so one wordy
+            // review doesn't force endless scrolling past the rest (user 2026-07-19). The full text is
+            // already captured (issue #181), so expanding is a pure display toggle, no extra fetch. The
+            // "More"/"Less" toggle shows ONLY when the body actually overflows the collapsed cap.
+            var expanded by remember(review.author, body) { mutableStateOf(false) }
+            var overflows by remember(review.author, body) { mutableStateOf(false) }
+            Text(
+                emphasize(body, query),
+                style = MaterialTheme.typography.bodyMedium,
+                color = ink,
+                maxLines = if (expanded) Int.MAX_VALUE else REVIEW_COLLAPSED_LINES,
+                overflow = TextOverflow.Ellipsis,
+                onTextLayout = { if (!expanded) overflows = it.hasVisualOverflow },
+                modifier = Modifier.padding(top = 6.dp)
+                    .then(if (overflows && !expanded) Modifier.clickable { expanded = true } else Modifier),
+            )
+            if (overflows) {
+                Text(
+                    stringResource(if (expanded) R.string.place_review_less else R.string.place_review_more),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color = ink,
+                    modifier = Modifier.padding(top = 2.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .dpadHighlight(RoundedCornerShape(6.dp))
+                        .clickable { expanded = !expanded }
+                        .padding(vertical = 2.dp, horizontal = 2.dp),
+                )
+            }
         }
         // User-attached review photos (Google-style thumbnail strip) — tap to open the shared
         // full-screen gallery, captioned "Author · date" (the whole review's photo set, opened
