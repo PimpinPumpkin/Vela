@@ -4,7 +4,7 @@ import android.content.Context
 import java.io.File
 
 // File-level consts: enum entries are initialized BEFORE the companion object, so the constructor
-// can't read companion members — these must live at file scope. [AsrEngine.VAD] re-exports VAD_FILE
+// can't read companion members - these must live at file scope. [AsrEngine.VAD] re-exports VAD_FILE
 // for callers outside this file.
 private const val ASR_BASE = "https://github.com/PimpinPumpkin/Vela/releases/download/asr-models"
 private const val VAD_FILE = "silero_vad.onnx"
@@ -13,15 +13,15 @@ private const val VAD_FILE = "silero_vad.onnx"
  * The on-device speech-to-text engines Vela can download for voice search (tier-1). All run through
  * the bundled sherpa-onnx runtime ([AsrRecognizer]) with Silero VAD; nothing leaves the phone and no
  * account or third-party voice app is needed. Each engine is an OPTIONAL one-time download hosted on
- * the `asr-models` GitHub release (like the `tts-runtime`/`routing-graphs` infra releases — the
+ * the `asr-models` GitHub release (like the `tts-runtime`/`routing-graphs` infra releases - the
  * assets live nowhere else), extracted to `filesDir/asr/<id>/`.
  *
  * Three engines, because they trade off differently and the user picks:
- *  - [WHISPER_TINY] — the multilingual default. 99-language Whisper tiny (int8); covers every
+ *  - [WHISPER_TINY] - the multilingual default. 99-language Whisper tiny (int8); covers every
  *    language Vela's UI supports (incl. Hebrew, Russian, Spanish…). The safe all-rounder.
- *  - [SENSE_VOICE] — FunAudioLLM SenseVoice. More accurate + faster than Whisper tiny, but only for
+ *  - [SENSE_VOICE] - FunAudioLLM SenseVoice. More accurate + faster than Whisper tiny, but only for
  *    English, Chinese, Cantonese, Japanese, Korean. Great if you speak one of those.
- *  - [MOONSHINE] — Useful Sensors Moonshine tiny. Lowest latency, but ENGLISH ONLY.
+ *  - [MOONSHINE] - Useful Sensors Moonshine tiny. Lowest latency, but ENGLISH ONLY.
  *
  * Whisper stays the default so no language silently regresses; the other two are opt-in via the
  * voice-search engine picker in Settings. This object holds only metadata + a cheap install check
@@ -69,7 +69,7 @@ enum class AsrEngine(
     ),
     ;
 
-    /** `filesDir/asr/<id>/` — the extracted archive's single top-level folder. */
+    /** `filesDir/asr/<id>/` - the extracted archive's single top-level folder. */
     fun dir(context: Context): File = File(context.filesDir, "asr/$id")
 
     /** True only when EVERY model file is present and non-empty. Pure file check, no model load, so
@@ -85,7 +85,7 @@ enum class AsrEngine(
         private const val PREFS = "vela_settings"
         private const val PREF_ENGINE = "asr_engine"
 
-        /** The multilingual default — never regresses a language when nothing is picked. */
+        /** The multilingual default - never regresses a language when nothing is picked. */
         val DEFAULT = WHISPER_TINY
 
         fun byId(id: String?): AsrEngine? = entries.firstOrNull { it.id == id }
