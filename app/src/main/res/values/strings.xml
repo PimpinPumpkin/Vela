@@ -111,16 +111,16 @@
     <string name="settings_hide_external_links">Hide website &amp; external links</string>
     <string name="settings_hide_external_links_hint">On = place pages don’t show the Website, Street View, or Book / Reserve / Order buttons (no launching arbitrary external sites).</string>
     <string name="settings_offline">Offline maps</string>
-    <string name="settings_offline_hint">Two ways to take Vela offline: save the area you\'re in for quick trips, or a whole state or country below for longer ones.</string>
-    <string name="settings_offline_map_area">Local area</string>
+    <string name="settings_offline_hint">Two ways to go offline. Save the area you\'re in for the full map here, or a whole state or country below for directions and search across all of it.</string>
+    <string name="settings_offline_map_area">This area (full map)</string>
     <string name="settings_offline_download_viewport">Download the area you\'re viewing</string>
-    <string name="settings_offline_download_viewport_hint">Saves the map you\'re looking at, with its roads and addresses, so this area keeps working with no signal.</string>
+    <string name="settings_offline_download_viewport_hint">Saves the whole map you\'re looking at, its streets, house numbers and buildings, plus turn-by-turn directions for the region around it. Everything here keeps working with no signal.</string>
     <string name="settings_offline_no_areas">No areas saved yet.</string>
     <string name="settings_offline_addresses_missing">Areas you saved before this update don\'t include address data. Update them to search and route to addresses offline.</string>
     <string name="settings_offline_addresses_update">Update saved areas</string>
     <string name="settings_offline_delete_area">Delete this offline area</string>
-    <string name="settings_routing_regions">States &amp; countries</string>
-    <string name="settings_routing_regions_hint">Everything needed to get around a whole state, province or country offline: its roads and places, so directions and search work anywhere inside it. Grab wherever you\'re headed.</string>
+    <string name="settings_routing_regions">States &amp; countries (directions only)</string>
+    <string name="settings_routing_regions_hint">Directions and place search for an entire state, province or country, so you can navigate and look things up anywhere inside it offline. This does not include the detailed map picture, which would be huge for a whole country; that comes from the areas you save above, or from being online.</string>
     <string name="settings_routing_no_regions">No regions available yet.</string>
     <string name="settings_clear_filter">Clear filter</string>
     <string name="settings_routing_filter_placeholder">Search</string>
