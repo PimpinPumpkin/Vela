@@ -6,7 +6,7 @@ the canonical list. Update it when a language lands or gains a layer.
 
 | Language | Code | App UI | Spoken directions | Vela voice (neural TTS) | Dictation (voice search) |
 |---|---|:-:|:-:|:-:|:-:|
-| English | `en` | ✅ | ✅ | ✅ (US voices) | ✅ |
+| English | `en` | ✅ | ✅ | ✅ (US + British voices) | ✅ |
 | French | `fr` | ✅ | ✅ | ✅ | ✅ |
 | German | `de` | ✅ | ✅ | ✅ | ✅ |
 | Spanish | `es` | ✅ | ✅ | ✅ (Spain + Mexico voices) | ✅ |
