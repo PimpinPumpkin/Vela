@@ -308,6 +308,10 @@ fun VelaMapView(
     navDriveMode: Boolean = false, // navigating a DRIVE route -> the aggressive car-mode declutter
     navLabelExclude: List<String> = emptyList(), // roads already DRIVEN: never bubble-label the road you're ON
     navUpcomingRoads: List<String> = emptyList(), // the next turns' target roads: always bubble-labelled
+    // Foreign-name romanizing (issue #184): as nav road tiles load, report each road's local name ->
+    // its basemap name:latin, so guidance can SAY/SHOW the real romanized name instead of the ICU
+    // consonant skeleton. Accumulates across the drive; called only when the map grows.
+    onNavRoadLatin: (Map<String, String>) -> Unit = {},
     navFollowing: Boolean = true,
     navNorthUp: Boolean = false,
     // Free-drive follow (no route open): when true the camera tracks the live fix north-up and
@@ -572,6 +576,7 @@ fun VelaMapView(
     // leaves the previous filter alone; an empty CROSSER set legitimately hides the tier.
     val labelExcludeHolder = rememberUpdatedState(navLabelExclude)
     val upcomingRoadsHolder = rememberUpdatedState(navUpcomingRoads)
+    val navRoadLatinHolder = rememberUpdatedState(onNavRoadLatin)
     LaunchedEffect(navMode, routePolyline, styleRef) {
         val style = styleRef ?: return@LaunchedEffect
         if (!navMode || routePolyline.size < 2) return@LaunchedEffect
@@ -586,69 +591,95 @@ fun VelaMapView(
         // and the query carries a class filter so far fewer features are materialized at all.
         var lastQuantum = Long.MIN_VALUE
         var lastUpcoming: List<String>? = null
+        // Accumulate local-name -> basemap Latin name across the whole drive (issue #184). Grows as
+        // tiles for upcoming roads load; emitted to the VM (voice + banner) only when it gains entries.
+        val latinAcc = HashMap<String, String>()
         val classFilter = Expression.match(
             Expression.get("class"), Expression.literal(false),
             *(NAV_LABEL_MAJOR_CLASSES + NAV_LABEL_SLOW_CLASSES).map { Expression.stop(it, true) }.toTypedArray(),
         )
+        // While the romanized-name dict is still GROWING (an area's higher-zoom tiles loading in), we
+        // re-query every 2 s tick; once it settles (STALE_TICKS with no new name) we stop until the
+        // next quantum. This resolves a local road's real name within a couple seconds of its
+        // nav-zoom tile loading instead of waiting a full 400 m - the route-overview tile that is
+        // loaded when a drive STARTS carries only major road names, so the first turn onto a minor
+        // road would otherwise speak the ICU skeleton (issue #184). The expensive crossing geometry
+        // stays per-quantum, so this never puts a heavy pass on the every-frame path.
+        var dictStaleTicks = 0
         while (true) {
             val quantum = (navPuck.progressM / 400.0).toLong()
             val upcomingNow = upcomingRoadsHolder.value
-            if (quantum == lastQuantum && upcomingNow == lastUpcoming) {
-                kotlinx.coroutines.delay(2_000)
-                continue
-            }
-            val src = style.getSource("openmaptiles") as? VectorSource
-            if (src != null) {
-                val feats = runCatching {
+            val quantumChanged = quantum != lastQuantum || upcomingNow != lastUpcoming
+            if (quantumChanged) dictStaleTicks = 0 // new area: re-warm the dict as its tiles land
+            if (quantumChanged || dictStaleTicks < 3) {
+                val src = style.getSource("openmaptiles") as? VectorSource
+                val feats = if (src != null) runCatching {
                     src.querySourceFeatures(arrayOf("transportation_name"), classFilter)
-                }.getOrNull().orEmpty()
+                }.getOrNull().orEmpty() else emptyList()
                 if (feats.isNotEmpty()) {
-                    // Window of route geometry around the current QUANTUM (not the live puck, so
-                    // the include set is byte-stable between quanta): a little behind, ~2 km ahead.
-                    val fromM = quantum * 400.0 - 200.0
-                    val toM = quantum * 400.0 + 2200.0
-                    val window = ArrayList<LatLng>()
-                    for (k in routePolyline.indices) {
-                        if (routeCum[k] in fromM..toM) window.add(routePolyline[k])
+                    // DICT (cheap: two string props per feature): capture each named road's romanized
+                    // alias once. Runs every qualifying tick so names resolve as tiles load.
+                    val latinBefore = latinAcc.size
+                    for (f in feats) {
+                        val name = runCatching { f.getStringProperty("name") }.getOrNull() ?: continue
+                        if (name.isBlank() || name in latinAcc) continue
+                        latinAliasOf(f, name)?.let { latinAcc[name] = it }
                     }
-                    if (window.size >= 2) {
-                        val exclude = labelExcludeHolder.value
-                        val upcoming = upcomingRoadsHolder.value
-                        val crossers = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                            val out = LinkedHashSet<String>()
-                            for (f in feats) {
-                                val name = runCatching { f.getStringProperty("name") }.getOrNull() ?: continue
-                                if (name.isBlank() || name in out || name in exclude) continue
-                                val geom = f.geometry() ?: continue
-                                val lines: List<List<org.maplibre.geojson.Point>> = when (geom) {
-                                    is org.maplibre.geojson.LineString -> listOf(geom.coordinates())
-                                    is org.maplibre.geojson.MultiLineString -> geom.coordinates()
-                                    else -> emptyList()
-                                }
-                                val hit = lines.any { pts ->
-                                    crossesWindow(pts.map { it.longitude() to it.latitude() }, window)
-                                }
-                                if (hit) { out.add(name); if (out.size >= 60) break }
-                            }
-                            out.toList()
+                    if (latinAcc.size != latinBefore) {
+                        navRoadLatinHolder.value(HashMap(latinAcc))
+                        dictStaleTicks = 0
+                    } else {
+                        dictStaleTicks++
+                    }
+                    // LABEL crossing + setFilter (the expensive geometry pass): only per quantum.
+                    if (quantumChanged) {
+                        // Window of route geometry around the current QUANTUM (not the live puck, so
+                        // the include set is byte-stable between quanta): a little behind, ~2 km ahead.
+                        val fromM = quantum * 400.0 - 200.0
+                        val toM = quantum * 400.0 + 2200.0
+                        val window = ArrayList<LatLng>()
+                        for (k in routePolyline.indices) {
+                            if (routeCum[k] in fromM..toM) window.add(routePolyline[k])
                         }
-                        // The next turns' target roads always get their bubble: a turn target
-                        // meets the route at a shared vertex, which the proper-crossing test
-                        // can miss (T-junctions especially).
-                        val names = (upcoming + crossers).filter { it !in exclude }.distinct()
-                        if (names != lastApplied) {
-                            lastApplied = names
-                            runCatching {
-                                (style.getLayer(NAV_ROADLABEL_LAYER) as? SymbolLayer)
-                                    ?.setFilter(navLabelFilter(NAV_LABEL_MAJOR_CLASSES, exclude, names))
-                                (style.getLayer(NAV_ROADLABEL_MINOR_LAYER) as? SymbolLayer)
-                                    ?.setFilter(navLabelFilter(NAV_LABEL_SLOW_CLASSES, exclude, names))
+                        if (window.size >= 2) {
+                            val exclude = labelExcludeHolder.value
+                            val upcoming = upcomingRoadsHolder.value
+                            val crossers = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                                val out = LinkedHashSet<String>()
+                                for (f in feats) {
+                                    val name = runCatching { f.getStringProperty("name") }.getOrNull() ?: continue
+                                    if (name.isBlank() || name in out || name in exclude) continue
+                                    val geom = f.geometry() ?: continue
+                                    val lines: List<List<org.maplibre.geojson.Point>> = when (geom) {
+                                        is org.maplibre.geojson.LineString -> listOf(geom.coordinates())
+                                        is org.maplibre.geojson.MultiLineString -> geom.coordinates()
+                                        else -> emptyList()
+                                    }
+                                    val hit = lines.any { pts ->
+                                        crossesWindow(pts.map { it.longitude() to it.latitude() }, window)
+                                    }
+                                    if (hit) { out.add(name); if (out.size >= 60) break }
+                                }
+                                out.toList()
                             }
+                            // The next turns' target roads always get their bubble: a turn target
+                            // meets the route at a shared vertex, which the proper-crossing test
+                            // can miss (T-junctions especially).
+                            val names = (upcoming + crossers).filter { it !in exclude }.distinct()
+                            if (names != lastApplied) {
+                                lastApplied = names
+                                runCatching {
+                                    (style.getLayer(NAV_ROADLABEL_LAYER) as? SymbolLayer)
+                                        ?.setFilter(navLabelFilter(NAV_LABEL_MAJOR_CLASSES, exclude, names))
+                                    (style.getLayer(NAV_ROADLABEL_MINOR_LAYER) as? SymbolLayer)
+                                        ?.setFilter(navLabelFilter(NAV_LABEL_SLOW_CLASSES, exclude, names))
+                                }
+                            }
+                            // Mark the quantum done only after a usable pass, so an early empty
+                            // query (tiles still loading) retries on the next tick.
+                            lastQuantum = quantum
+                            lastUpcoming = upcomingNow
                         }
-                        // Mark the quantum done only after a usable pass, so an early empty
-                        // query (tiles still loading) retries on the next tick.
-                        lastQuantum = quantum
-                        lastUpcoming = upcomingNow
                     }
                 }
             }
@@ -3413,10 +3444,47 @@ private fun crossesWindow(line: List<Pair<Double, Double>>, window: List<LatLng>
     return false
 }
 
+/** The basemap's romanized alias for a road [name] (issue #184): its name:en (a real English name),
+ *  else name:latin (which OpenMapTiles fills from name:en where OSM has one, otherwise a
+ *  transliteration). Returned only when it is a genuinely Latin-script string that differs from the
+ *  local name, so we never store another non-Latin alias as if it were romanized. */
+private fun latinAliasOf(f: org.maplibre.geojson.Feature, name: String): String? {
+    for (key in arrayOf("name:en", "name:latin")) {
+        val v = runCatching { f.getStringProperty(key) }.getOrNull()
+        if (v.isNullOrBlank() || v == name) continue
+        val hasLatinLetter = v.any { it in 'a'..'z' || it in 'A'..'Z' }
+        val noForeignLetter = v.none {
+            Character.isLetter(it) && Character.UnicodeScript.of(it.code) != Character.UnicodeScript.LATIN
+        }
+        if (hasLatinLetter && noForeignLetter) return v
+    }
+    return null
+}
+
+// UI languages whose own script is NOT Latin - a user reading in one of these keeps map labels in the
+// local script (a Hebrew UI shows Hebrew street names); everyone else gets the romanized name (issue
+// #184: an English user in Israel wants "Sderot ..." on the map bubbles, not Hebrew). Mirrors the
+// voice/banner rule (SpokenScript).
+private val NON_LATIN_UI_LANGS =
+    setOf("he", "iw", "ar", "fa", "ur", "ru", "uk", "bg", "sr", "mk", "el", "zh", "ja", "ko", "th", "hi")
+
+private fun uiWantsLatinLabels(): Boolean =
+    app.vela.ui.AppLocale.effective().language.lowercase() !in NON_LATIN_UI_LANGS
+
+/** The textField expression for a road-name label: the real Latin name (name:en, else the basemap's
+ *  name:latin) for a Latin-script UI, falling back to the local `name`; the plain local `name` for a
+ *  user who reads a non-Latin script. Same name:latin data the nav voice/banner use. */
+private fun roadLabelTextField(): Expression =
+    if (uiWantsLatinLabels()) {
+        Expression.coalesce(Expression.get("name:en"), Expression.get("name:latin"), Expression.get("name"))
+    } else {
+        Expression.get("name")
+    }
+
 private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, density: Float, exclude: List<String>) {
     // Cheap self-gate so callers can invoke per recomposition (audit-3e rule: no per-frame JNI
     // probes) - a change in theme, nav state or the route's own road list re-runs it.
-    val key = listOf(on, dark, exclude)
+    val key = listOf(on, dark, exclude, uiWantsLatinLabels())
     if (key == lastNavLabelKey) return
     lastNavLabelKey = key
     val ids = listOf(NAV_ROADLABEL_LAYER, NAV_ROADLABEL_MINOR_LAYER)
@@ -3457,7 +3525,7 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
                 SymbolLayer(id, "openmaptiles").withSourceLayer("transportation_name")
                     .withFilter(filter)
                     .withProperties(
-                        PropertyFactory.textField(Expression.get("name")),
+                        PropertyFactory.textField(roadLabelTextField()),
                         PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                         PropertyFactory.textSize(12.5f),
                         PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_LINE_CENTER),
@@ -3835,6 +3903,7 @@ internal fun applyLight(style: Style) {
     // and the BOLD font stack - Google boldens street names on the map (user 2026-07-11).
     listOf("highway-name-path", "highway-name-minor", "highway-name-major").forEach {
         style.getLayer(it)?.setProperties(
+            PropertyFactory.textField(roadLabelTextField()), // romanize for a Latin-script UI (issue #184)
             PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
             PropertyFactory.textHaloColor("#ffffff"),
             PropertyFactory.textHaloWidth(1.9f),
@@ -4007,7 +4076,10 @@ internal fun applyDark(style: Style) {
     // Street names in BOLD (Google boldens them; user 2026-07-11) - a dedicated pass AFTER the
     // blanket loop so only the road-name layers get the Bold stack, not every label.
     listOf("highway-name-path", "highway-name-minor", "highway-name-major").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.textFont(arrayOf("Noto Sans Bold")))
+        style.getLayer(it)?.setProperties(
+            PropertyFactory.textField(roadLabelTextField()), // romanize for a Latin-script UI (issue #184)
+            PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
+        )
     }
     // Drop the wetland fern-hatch + pedestrian-plaza patterns (flat, like Google dark).
     style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#0d3847"), PropertyFactory.fillOpacity(0.9f))
@@ -4039,6 +4111,7 @@ internal fun applyDark(style: Style) {
 internal fun applyClassicLight(style: Style) {
     listOf("highway-name-path", "highway-name-minor", "highway-name-major").forEach {
         style.getLayer(it)?.setProperties(
+            PropertyFactory.textField(roadLabelTextField()), // romanize for a Latin-script UI (issue #184)
             PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
             PropertyFactory.textHaloColor("#ffffff"),
             PropertyFactory.textHaloWidth(1.9f),
@@ -4163,7 +4236,10 @@ internal fun applyClassicDark(style: Style) {
     }
     // Street names bold, same rule as every other palette pass.
     listOf("highway-name-path", "highway-name-minor", "highway-name-major").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.textFont(arrayOf("Noto Sans Bold")))
+        style.getLayer(it)?.setProperties(
+            PropertyFactory.textField(roadLabelTextField()), // romanize for a Latin-script UI (issue #184)
+            PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
+        )
     }
     style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#26403c"), PropertyFactory.fillOpacity(0.9f))
     style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#31363f"))

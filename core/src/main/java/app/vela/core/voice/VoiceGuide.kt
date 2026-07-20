@@ -5,6 +5,7 @@ import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.os.SystemClock
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import androidx.core.content.getSystemService
@@ -324,6 +325,16 @@ class VoiceGuide @Inject constructor(
      *  this so a shared drive shows what was said, verbatim, at what time. Set by `:app`. */
     var onSpoken: ((String) -> Unit)? = null
 
+    /** Real romanized road names (local name -> Latin, from the basemap's name:latin), set by `:app`
+     *  as nav tiles load. Used to speak "Rehov Herzl" instead of the ICU skeleton "rhwb hrzl" for a
+     *  foreign street; empty by default so nothing changes without it (issue #184). */
+    @Volatile var roadNameLatin: Map<String, String> = emptyMap()
+
+    // Bumped by stop()/a new opener so a deferred nav-start opener (see speakOpener) that is still
+    // waiting for its road name to romanize gets cancelled instead of speaking into a dead session.
+    @Volatile private var openerToken = 0
+    private val OPENER_MAX_WAIT_MS = 2500L // cap the nav-start opener's wait for its romanized road name
+
     fun speak(text: String, interrupt: Boolean = false, ignoreMute: Boolean = false) {
         if (muted && !ignoreMute) return
         runCatching { onSpoken?.invoke(text) }
@@ -332,6 +343,29 @@ class VoiceGuide @Inject constructor(
             return
         }
         speakNow(text, interrupt)
+    }
+
+    /** Speak the nav-START opener ("Starting navigation. Head ... on <road>"), but hold it briefly if
+     *  its road name is still in a foreign script we have no real romanization for yet (issue #184). A
+     *  drive begins before the nav-zoom tiles load, so speaking immediately reads the ICU skeleton
+     *  ("rhwb hrzl"); waiting a beat lets [roadNameLatin] fill so the opener says the real name ("Rehov Herzl").
+     *  Retries every 200 ms up to [OPENER_MAX_WAIT_MS], then speaks whatever we have (never silent).
+     *  An all-Latin opener, or one whose road is already covered, speaks instantly. */
+    fun speakOpener(text: String) {
+        val token = ++openerToken
+        val deadline = SystemClock.elapsedRealtime() + OPENER_MAX_WAIT_MS
+        fun attempt() {
+            if (token != openerToken) return // a newer start / a stop superseded this opener
+            val covered = roadNameLatin.keys.any { it.isNotEmpty() && text.contains(it) }
+            val ready = covered || !hasForeignRun(text) || SystemClock.elapsedRealtime() >= deadline
+            if (ready) speak(text) else focusHandler.postDelayed(::attempt, 200)
+        }
+        attempt()
+    }
+
+    /** True if [text] has a letter in a script other than Latin (so an English opener never waits). */
+    private fun hasForeignRun(text: String): Boolean = text.any {
+        Character.isLetter(it) && Character.UnicodeScript.of(it.code) != Character.UnicodeScript.LATIN
     }
 
     private fun speakNow(text: String, interrupt: Boolean) {
@@ -347,7 +381,9 @@ class VoiceGuide @Inject constructor(
             // utterance's own onDone is still in flight and a reset would double-count it,
             // abandoning focus while the interrupting prompt speaks.
             acquireFocus()
-            n.speak(forSpeech(text), interrupt) { releaseFocus() }
+            // Romanize any foreign-script name for this (Latin) neural voice so it isn't dropped
+            // (issue #184); the on-screen banner keeps the real local-script name.
+            n.speak(forSpeech(SpokenScript.forVoice(text, n.voiceLanguage ?: t, roadNameLatin)), interrupt) { releaseFocus() }
             return
         }
         speakViaSystem(text, interrupt, t)
@@ -381,7 +417,9 @@ class VoiceGuide @Inject constructor(
         // decrement, so just acquire for the new utterance.
         acquireFocus()
         val mode = if (interrupt) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
-        val result = engine.speak(forSpeech(text), mode, null, "vela-${text.hashCode()}")
+        // Same foreign-name romanizing as the neural path (issue #184): the system voice for [t]
+        // is Latin-script for the Latin languages, so a foreign road name would otherwise be lost.
+        val result = engine.speak(forSpeech(SpokenScript.forVoice(text, t, roadNameLatin)), mode, null, "vela-${text.hashCode()}")
         if (result == TextToSpeech.ERROR) {
             // The utterance was never enqueued, so NONE of the onDone/onStop/onError callbacks that
             // release focus will ever fire for it — roll back the acquire here or music stays ducked
@@ -409,6 +447,7 @@ class VoiceGuide @Inject constructor(
         app.vela.core.i18n.NavStringsRegistry.current().expandForSpeech(text)
 
     fun stop() {
+        openerToken++ // cancel any deferred nav-start opener still waiting for its road name
         tts?.stop()
         neural?.stop()
         releaseAllFocus()
