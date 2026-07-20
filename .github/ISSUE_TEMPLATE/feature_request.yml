@@ -1,0 +1,26 @@
+name: Feature request
+description: Something Vela should do
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What you want
+      description: Describe the feature. If Google Maps or Organic Maps has it, name it. That is the fastest way to communicate the target.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it matters
+      description: The situation where you missed it.
+    validations:
+      required: false
+  - type: textarea
+    id: keyless
+    attributes:
+      label: Keyless reality check
+      description: |
+        Vela has no backend and no API keys, so features that need Google account data or a paid API usually cannot happen. If you already know the open data source that would power this, mention it.
+    validations:
+      required: false

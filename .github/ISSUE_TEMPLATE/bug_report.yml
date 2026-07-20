@@ -1,0 +1,92 @@
+name: Bug report
+description: Something broke or behaves wrong
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please write in English so everyone on the thread can follow.
+
+        The first fields are required because almost every bug comes down to which version you are on and how you installed it. Filling them in up front saves a few rounds of back and forth.
+  - type: input
+    id: version
+    attributes:
+      label: Vela version
+      description: Open Vela, go to Settings, and scroll to the bottom. Use the exact number.
+      placeholder: "0.4.827"
+    validations:
+      required: true
+  - type: dropdown
+    id: install-source
+    attributes:
+      label: How did you install Vela?
+      options:
+        - Obtainium
+        - In-app updater (the update card inside Vela)
+        - F-Droid repo
+        - Manual APK download
+        - Other or not sure
+    validations:
+      required: true
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you report
+      options:
+        - label: I updated to the newest version and the problem still happens
+          required: true
+        - label: I searched open and closed issues and did not find a duplicate
+          required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      description: Model number and Android version, from Settings then About on the phone.
+      placeholder: "Pixel 8, Android 15"
+    validations:
+      required: true
+  - type: input
+    id: rom
+    attributes:
+      label: ROM (if not stock)
+      description: GrapheneOS, LineageOS, CalyxOS, and the like. Leave blank for stock.
+      placeholder: "GrapheneOS"
+    validations:
+      required: false
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What went wrong, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What you did right before it broke. If you are not sure, say so.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: false
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Crash report or diagnostics
+      description: |
+        This is the single most useful thing you can add. If Vela crashed, reopen it and go to Settings, then Diagnostics. If a crash report card is there, tap share and paste it here. It is anonymized (coordinates are rounded to about 1 km).
+
+        If there is no crash card, say so. That means the crash is happening at a lower level, which is useful to know by itself.
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: |
+        Screenshots help. If search or places broke for everyone at once, that is usually Google reshaping a response, so say when it started. For a navigation issue, whether you can reproduce it with Simulate driving (Settings, then Navigation) is very useful.
+    validations:
+      required: false

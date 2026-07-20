@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or usage help
+    url: https://github.com/PimpinPumpkin/Vela/discussions
+    about: For help using Vela, or anything that is not a specific bug or feature request, start a discussion here.
