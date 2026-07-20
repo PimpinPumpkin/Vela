@@ -267,7 +267,13 @@ class WebReviewsFetcher @Inject constructor(
                   // anyway, so letting them through only wastes CAP slots on cards we can't render.
                 }).filter(function(x){ return x.a; });
               }
-              function expand(){ [].slice.call(document.querySelectorAll('button')).forEach(function(b){ var l=((b.getAttribute('aria-label')||b.textContent)||'').trim(); if(/^(see more|more)${'$'}/i.test(l)){ try{ b.click(); }catch(e){} } }); }
+              // Expand truncated review bodies. The class hook (`.w8nwRe` is the card's More toggle)
+              // works in EVERY UI language; the label regex stays as a fallback for older layouts
+              // (it only knows English, which silently skipped expansion under any other hl).
+              function expand(){
+                [].slice.call(document.querySelectorAll('button.w8nwRe')).forEach(function(b){ try{ b.click(); }catch(e){} });
+                [].slice.call(document.querySelectorAll('button')).forEach(function(b){ var l=((b.getAttribute('aria-label')||b.textContent)||'').trim(); if(/^(see more|more)${'$'}/i.test(l)){ try{ b.click(); }catch(e){} } });
+              }
               // De-dupe across scroll windows by the review's stable id (falls back to author+date+text).
               function key(x){ return x.rid || ((x.a||'')+'|'+(x.d||'')+'|'+((x.t||'').slice(0,48))); }
               // The accumulated reviews so far, capped — used for both the partial streams and the
@@ -320,8 +326,12 @@ class WebReviewsFetcher @Inject constructor(
                 expand();
                 // ACCUMULATE this window's cards (don't replace) — the panel virtualizes, so each
                 // scroll position exposes a fresh ~10 that would otherwise be lost when recycled.
+                // Except the TEXT: a card is often harvested on the tick its More toggle was
+                // clicked, before Google's async re-render swaps in the full body — so a longer
+                // text for a known key REPLACES the stored entry (the "…"-truncated first capture
+                // otherwise won forever; the ellipsis was in our data, not the UI).
                 var revs=extract();
-                for(var i=0;i<revs.length;i++){ var k=key(revs[i]); if(k.length>2 && !acc[k]){ acc[k]=revs[i]; accN++; } }
+                for(var i=0;i<revs.length;i++){ var k=key(revs[i]); if(k.length>2){ if(!acc[k]){ acc[k]=revs[i]; accN++; } else if((revs[i].t||'').length>(acc[k].t||'').length){ acc[k]=revs[i]; } } }
                 // Stream progress whenever the count grows: the running count (drives the "N of ~M"
                 // bar) AND the accumulated reviews themselves, so the sheet fills in under the bar
                 // while the scrape grinds instead of making the user stare at a bar for 30 s.
