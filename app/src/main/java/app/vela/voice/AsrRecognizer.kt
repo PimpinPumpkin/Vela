@@ -81,9 +81,6 @@ class AsrRecognizer @Inject constructor(
         const val SAMPLE_RATE = 16000
         const val VAD_WINDOW = 512            // Silero v4/v5 window at 16 kHz
         const val MAX_SECONDS = 15            // hard cap on one utterance
-        // SenseVoice's own language codes. Vela app languages outside this set fall back to "auto"
-        // (the user picked SenseVoice knowing it's en/zh/ja/ko/yue only - the picker says so).
-        val SENSE_VOICE_LANGS = setOf("zh", "en", "ja", "ko", "yue")
     }
 
     fun isInstalled(): Boolean = AsrEngine.anyInstalled(context)
@@ -92,17 +89,25 @@ class AsrRecognizer @Inject constructor(
         ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
             PackageManager.PERMISSION_GRANTED
 
+    /** The app language, normalized. Android hands back the LEGACY code for Hebrew ("iw"), not
+     *  "he" (2026-07-12), so map it. */
+    private fun appLang(): String =
+        app.vela.ui.AppLocale.effective().language.let { if (it == "iw") "he" else it }
+
+    /** The engine the recognizer should load for the current language: the user's pick when it
+     *  supports the language, else Whisper (see [AsrEngine.forRecognition]). */
+    private fun engineForNow(): AsrEngine = AsrEngine.forRecognition(context, appLang())
+
     /** The language to pin recognition to: the app language when the engine supports it, else
      *  auto-detect (""). Pinning matters - with auto-detect, a noisy capture can be misread as a whole
      *  other language and come back in the wrong script (a garbled far-field test transcribed to
      *  Cyrillic). The app language is what the user speaks to a maps app in practice. Moonshine is
      *  English-only and takes no language, so this is unused for it. */
     private fun pinnedLang(engine: AsrEngine): String {
-        // Android hands back the LEGACY code for Hebrew ("iw"), not "he" (2026-07-12).
-        val l = app.vela.ui.AppLocale.effective().language.let { if (it == "iw") "he" else it }
+        val l = appLang()
         return when (engine) {
             AsrEngine.WHISPER_TINY -> l.takeIf { it in app.vela.ui.AppLocale.SUPPORTED } ?: ""
-            AsrEngine.SENSE_VOICE -> l.takeIf { it in SENSE_VOICE_LANGS } ?: "auto"
+            AsrEngine.SENSE_VOICE -> l.takeIf { it in AsrEngine.SENSE_VOICE_LANGS } ?: "auto"
             AsrEngine.MOONSHINE -> ""
         }
     }
@@ -120,7 +125,7 @@ class AsrRecognizer @Inject constructor(
      *  is installed or the native load fails - callers then fall back to the provider intent or hide
      *  the mic. */
     private fun ensureRecognizer(): OfflineRecognizer? {
-        val engine = AsrEngine.active(context)
+        val engine = engineForNow()
         if (!engine.isInstalled(context)) return null
         val lang = pinnedLang(engine)
         val key = "${engine.id}|$lang"
@@ -193,7 +198,7 @@ class AsrRecognizer @Inject constructor(
         val rec = ensureRecognizer() ?: return@withContext null
         if (!hasMicPermission()) return@withContext null
 
-        val vadModel = AsrEngine.active(context).let { File(it.dir(context), AsrEngine.VAD).absolutePath }
+        val vadModel = engineForNow().let { File(it.dir(context), AsrEngine.VAD).absolutePath }
         val vad = runCatching {
             Vad(
                 config = VadModelConfig(

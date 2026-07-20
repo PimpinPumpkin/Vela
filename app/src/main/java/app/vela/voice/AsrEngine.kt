@@ -79,9 +79,20 @@ enum class AsrEngine(
         return files.all { File(d, it).length() > 0L }
     }
 
+    /** Whether this engine can actually recognize [lang] (an app language code, e.g. "en"/"he"/"ja").
+     *  Whisper covers everything; SenseVoice only en/zh/ja/ko/yue; Moonshine only English. Used to
+     *  fall back off a picked engine that can't do the current language. */
+    fun supportsLanguage(lang: String): Boolean = when (this) {
+        WHISPER_TINY -> true
+        SENSE_VOICE -> lang in SENSE_VOICE_LANGS
+        MOONSHINE -> lang == "en"
+    }
+
     companion object {
         /** Silero VAD, shipped inside every engine archive so each is self-contained. */
         const val VAD = VAD_FILE
+        /** The languages SenseVoice recognizes (its own codes). */
+        val SENSE_VOICE_LANGS = setOf("zh", "en", "ja", "ko", "yue")
         private const val PREFS = "vela_settings"
         private const val PREF_ENGINE = "asr_engine"
 
@@ -108,5 +119,17 @@ enum class AsrEngine(
         fun setActive(context: Context, engine: AsrEngine) =
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putString(PREF_ENGINE, engine.id).apply()
+
+        /** The engine to actually RUN for [lang]: the [active] pick if it supports the language, else
+         *  Whisper (the multilingual default) when it's installed, so dictating in a language the
+         *  picked engine can't do (e.g. SenseVoice picked, Hebrew spoken) still works instead of
+         *  returning garbage. Falls back to the pick as a last resort if Whisper isn't installed.
+         *  Note: the Settings picker's "Active" still reflects the user's raw pick ([active]); this
+         *  only changes which model the recognizer loads for the current language. */
+        fun forRecognition(context: Context, lang: String): AsrEngine {
+            val picked = active(context)
+            if (picked.supportsLanguage(lang)) return picked
+            return WHISPER_TINY.takeIf { it.isInstalled(context) } ?: picked
+        }
     }
 }
