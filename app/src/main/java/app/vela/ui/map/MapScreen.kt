@@ -331,9 +331,18 @@ fun MapScreen(
             searchExpanded = false
         }
     }
-    // The search overlay is open when the entry page is expanded OR we're picking a custom
-    // directions origin/stop (that opens the same overlay WITHOUT focusing the field).
-    val searchOpen = searchExpanded || state.pickingOrigin || state.pickingDest || state.pickingStop
+    // The search overlay is open when the entry page is expanded, whenever the field actually
+    // holds focus, OR while we're picking a custom directions origin/stop (that opens the same
+    // overlay WITHOUT focusing the field). The `searchFocused` term is the invariant that stops
+    // a stuck state: the collapse effect above force-clears `searchExpanded` the moment a search
+    // yields results or a place is picked, but a long-press-menu interaction can trip that while
+    // the field never loses focus — leaving you typing into a focused field with no overlay, and
+    // no way back (re-tapping an already-focused field fires no focus change, so `searchExpanded`
+    // never flips true again; only a full app exit cleared it). Tying `searchOpen` to live focus
+    // means a focused field always shows its overlay, which both prevents and self-heals that.
+    // Under D-pad the field blurs when focus walks the rows, so `searchExpanded` still carries the
+    // overlay there (blur must not close it); BACK clears both and closes as before.
+    val searchOpen = searchExpanded || searchFocused || state.pickingOrigin || state.pickingDest || state.pickingStop
     // The results panel is open (not collapsed to the "N results" pill) → hide the bottom map
     // chrome (scale bar / locate FAB / Search this area) so it never draws on top of the list at
     // ANY size, not just full screen. The panel and the chrome are siblings in the same Box and the
