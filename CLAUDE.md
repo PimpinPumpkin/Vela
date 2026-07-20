@@ -351,6 +351,14 @@ Defaults that make the safe path the easy one:
   auditions the nav sample on an EXPLICIT library pick ("Use" button); the download-completion
   (firstEver) and delete-fallback paths pass audition=false - a phone that starts talking on its
   own right after an install reads as a bug (user report). The Test button is the on-demand way.
+- **Voice download shows a distinct "Installing…" after 100% (2026-07-19):** a voice download hits
+  100% and then spends ~15 s unpacking the ~67 MB archive; the map card already flips to
+  `voiceInstalling` ("Installing Vela Voice…"), but the three SETTINGS progress sites (the Voice
+  section install line, the Voice-library reinstall line, and each `VoiceRow`) kept printing
+  "Downloading … 100%" through the unpack and read as a hang (user report). They now switch to
+  `settings_voice_search_installing` ("Installing…") with an indeterminate bar while
+  `state.voiceInstalling`. Any new voice-download progress UI must read `voiceInstalling`, not just
+  `voiceDownloadPct`.
 - **Depart at / Arrive by is confirm-driven (2026-07-11):** a time change re-routes TRANSIT
   ONLY (`setDirectionsTime`) - the keyless drive/walk/bike request has no departure field, so
   refetching it returned identical routes and just flickered the list; the chooser's arrival
