@@ -146,7 +146,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   (0.26 of a ~390dp landscape height only fit the name row). The layers button's overlap gate
   short-circuits in landscape (the panel never reaches its corner); in portrait the locate
   button now rides above a minimized place card's measured top edge instead of hiding.
-  Scale bar yields to the panel; the satellite attribution centers in the map strip.
+  Scale bar yields to the panel; the satellite attribution centers in the map strip. The
+  panel's EXPANDED detent caps below the search bar (landscape is a two-stop ladder,
+  minimized <-> tall): the bar deliberately stays in landscape, so the portrait
+  hide-the-bar-when-expanded rule is portrait-only and the panel stops under it instead
+  of sliding beneath a bar that keeps taking taps.
 - ✅ **Chinese, Chinese (Taiwan) and Japanese (2026-07-11, issue #55).** Vela speaks 14
   languages now. All three layers: UI chrome (values-zh Simplified, values-zh-rTW Traditional
   with Taiwan wording, values-ja), generated turn-by-turn text (three new NavStrings tables;

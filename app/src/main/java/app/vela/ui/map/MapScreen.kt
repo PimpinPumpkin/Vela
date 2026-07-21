@@ -1314,9 +1314,13 @@ fun MapScreen(
                                 )
                             }
                         }
-                    } else if (!(state.selected != null && placeSheetExpanded && !searchOpen) &&
+                    } else if (!(state.selected != null && placeSheetExpanded && !searchOpen && !landscapeChrome) &&
                         !(state.directionsOpen && !searchOpen)
                     ) {
+                        // The expanded-sheet hide is PORTRAIT-only: in landscape the sheet is the
+                        // side panel, which caps BELOW the bar (PlaceSheet's landscape detents), so
+                        // the bar deliberately stays - hiding it would strand the map strip with no
+                        // search while nothing actually covers the bar.
                         searchBar()
                     }
                     when {
@@ -2158,8 +2162,11 @@ fun MapScreen(
                     state.streetView == null && !state.streetViewLoading && state.pickOnMap == null &&
                         (landscapeChrome || placeSheetTopPx > layersButtonBottomPx)
                     )
+            // The expanded/results hides are portrait-only too: the landscape panel caps below
+            // the search bar and never reaches this corner at ANY detent.
             if (app.vela.ui.LayersButton.on.value && !searchOpen &&
-                !state.navigating && !state.replaying && !resultsShown && !placeSheetExpanded &&
+                !state.navigating && !state.replaying &&
+                (!resultsShown || landscapeChrome) && (!placeSheetExpanded || landscapeChrome) &&
                 clearOfPlaceSheet
             ) {
                 val ctx = androidx.compose.ui.platform.LocalContext.current
@@ -2441,7 +2448,10 @@ private fun SearchResults(
     // bar, peek, expanded), and the detent just stops the coast. Minimizing animates the list to
     // ZERO first and only then flips the collapsed state, so the bar swap happens invisibly.
     val peekL = screenH * 0.42f
-    val expL = screenH * 0.82f
+    // Landscape (side-panel layout): expanded caps below the search bar - the full-width bar
+    // deliberately stays in landscape, so the panel must stop under it, not slide beneath it.
+    val resultsLandscape = LocalConfiguration.current.screenWidthDp > screenH
+    val expL = if (resultsLandscape) minOf(screenH * 0.82f, maxOf(screenH - 104f, screenH * 0.55f)) else screenH * 0.82f
     val listH = remember { Animatable(if (collapsed) 0f else if (expanded) expL else peekL) }
     val resultsSettleSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f) }
     // Dropping to the bar GLIDES on a soft spring — at the settle stiffness the pan-triggered
