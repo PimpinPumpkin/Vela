@@ -149,6 +149,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vela.BuildConfig
@@ -352,7 +354,15 @@ fun MapScreen(
     var filteredResultIds by remember { mutableStateOf<Set<String>?>(null) }
     // True while the place sheet sits at its EXPANDED detent (covers the search bar).
     var placeSheetExpanded by remember { mutableStateOf(false) }
-    LaunchedEffect(state.selected?.id) { if (state.selected == null) placeSheetExpanded = false }
+    // The sheet's live TOP edge in root px (0 = not measured). The layers button keys its
+    // visibility off this: shown while a POI is minimized whenever the button's own corner
+    // actually clears the sheet - a measured overlap test, not an orientation/height guess,
+    // so a tablet or portrait car screen keeps the button and a phone-landscape peek (where
+    // the sheet reaches the corner) drops it, continuously as the sheet is dragged.
+    var placeSheetTopPx by remember { mutableStateOf(0) }
+    LaunchedEffect(state.selected?.id) {
+        if (state.selected == null) { placeSheetExpanded = false; placeSheetTopPx = 0 }
+    }
     LaunchedEffect(state.results) { filteredResultIds = null }
     // Street View gates the panel too: opening the viewer clears `selected`, which used to flip
     // this back ON and draw the results list over the bottom-half mini map (user 2026-07-18).
@@ -1716,7 +1726,10 @@ fun MapScreen(
                 // No navigationBarsPadding here: the sheet's background should reach
                 // the screen bottom (no map peeking through under the nav bar); the
                 // sheet pads its own content for the nav bar instead.
-                modifier = Modifier.align(Alignment.BottomCenter),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    // Live top edge for the layers button's overlap gate (see placeSheetTopPx).
+                    .onGloballyPositioned { placeSheetTopPx = it.positionInRoot().y.roundToInt() },
             )
 
             // Search results as a BOTTOM sheet, Google-style — same detent family as the place
@@ -2026,10 +2039,66 @@ fun MapScreen(
             // Scale bar, bottom-left just past the attribution ⓘ. Hidden only while ACTUALLY
             // free-driving (moving, speed box on screen) - `!driveFollowing` alone hid it on the
             // whole browse map, since follow is armed by default (regression, 0.4.542..wave).
-            // Satellite toggle, top-right under the search bar + chips (browse map only): flips
-            // the Esri World Imagery raster under the symbol stack. Filled tint = on.
-            if (app.vela.ui.LayersButton.on.value && state.selected == null && !searchOpen &&
-                !state.navigating && !state.replaying && state.results.isEmpty()
+            // Required Esri attribution while the imagery is on - bottom center, clear of the
+            // scale bar and FABs, the year centered on its own line under the credit.
+            if (app.vela.ui.SatelliteLayer.on.value) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(bottom = 16.dp + chromeLift),
+                ) {
+                    Text(
+                        stringResource(R.string.map_satellite_attribution),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (darkTheme) Color(0xFFB8C2CC) else Color(0xFF4A4A4A),
+                    )
+                    state.imageryYear?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (darkTheme) Color(0xFFB8C2CC) else Color(0xFF4A4A4A),
+                        )
+                    }
+                }
+            }
+            // Also step aside while the free-drive speed box occupies the low corner (it moved
+            // down level with the locate FAB, user 2026-07-14) - the follow gate alone missed a
+            // moving-but-panned map, where both used to want the same spot.
+            if (!(driveFollowing && speedOverlayArmed) && !movingFree) {
+                ScaleBar(
+                    metersPerPixel = metersPerPixel,
+                    dark = darkTheme,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .navigationBarsPadding()
+                        .padding(start = 46.dp, bottom = 16.dp + chromeLift),
+                )
+            }
+        }
+
+            // Layers/satellite toggle, top-right under the search bar + chips. Shown on the browse
+            // map AND while a place sheet is open, WHENEVER the button's corner actually clears the
+            // sheet (user 2026-07-20: never hide it just for orientation, only for overlap - the
+            // compass coexists the same way). The gate compares the sheet's MEASURED top edge
+            // against the button's bottom edge, so it's continuously right on any screen: phone
+            // portrait and tablets keep the button beside a minimized sheet, a phone-landscape PEEK
+            // (sheet reaches the corner) drops it, and the slim minimized bar brings it back.
+            // sheetTopPx == 0 = unmeasured (first frame) - treated as covered, no flash.
+            // Street View / pick-on-map keep a selected place with NO sheet composed, so the stale
+            // measurement must not show the button over the pano/picker - both are excluded.
+            val layersDensity = LocalDensity.current
+            val layersButtonBottomPx = WindowInsets.statusBars.getTop(layersDensity) +
+                with(layersDensity) { ((if (landscapeChrome) 74.dp else 128.dp) + 42.dp + 8.dp).toPx() }
+            val clearOfPlaceSheet = state.selected == null ||
+                (
+                    state.streetView == null && !state.streetViewLoading && state.pickOnMap == null &&
+                        placeSheetTopPx > layersButtonBottomPx
+                    )
+            if (app.vela.ui.LayersButton.on.value && !searchOpen &&
+                !state.navigating && !state.replaying && !resultsShown && !placeSheetExpanded &&
+                clearOfPlaceSheet
             ) {
                 val ctx = androidx.compose.ui.platform.LocalContext.current
                 val anyLayerOn = app.vela.ui.SatelliteLayer.on.value || Traffic.on.value ||
@@ -2082,44 +2151,6 @@ fun MapScreen(
                     }
                 }
             }
-            // Required Esri attribution while the imagery is on - bottom center, clear of the
-            // scale bar and FABs, the year centered on its own line under the credit.
-            if (app.vela.ui.SatelliteLayer.on.value) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .navigationBarsPadding()
-                        .padding(bottom = 16.dp + chromeLift),
-                ) {
-                    Text(
-                        stringResource(R.string.map_satellite_attribution),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (darkTheme) Color(0xFFB8C2CC) else Color(0xFF4A4A4A),
-                    )
-                    state.imageryYear?.let {
-                        Text(
-                            it,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (darkTheme) Color(0xFFB8C2CC) else Color(0xFF4A4A4A),
-                        )
-                    }
-                }
-            }
-            // Also step aside while the free-drive speed box occupies the low corner (it moved
-            // down level with the locate FAB, user 2026-07-14) - the follow gate alone missed a
-            // moving-but-panned map, where both used to want the same spot.
-            if (!(driveFollowing && speedOverlayArmed) && !movingFree) {
-                ScaleBar(
-                    metersPerPixel = metersPerPixel,
-                    dark = darkTheme,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .navigationBarsPadding()
-                        .padding(start = 46.dp, bottom = 16.dp + chromeLift),
-                )
-            }
-        }
 
         // --- transient surfaces --------------------------------------------
         if (state.showPsdsTip && state.selected == null && !searchOpen && !state.navigating &&
