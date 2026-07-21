@@ -282,6 +282,9 @@ fun VelaMapView(
     cameraTargetZoom: Double? = null, // deep-link z= override for the target fly (null = default framing)
     recenterTick: Int = 0, // bumped on each recenter tap → force a move even if already "centered"
     cameraBottomInsetPx: Int = 0,
+    // Landscape side-panel width (the place/results sheets as a left column): the optical centre
+    // shifts RIGHT instead of up, so a focused pin lands in the map strip beside the panel.
+    cameraLeftInsetPx: Int = 0,
     cameraTopInsetPx: Int = 0, // measured top chrome (the endpoints card) - the route fit clears it
     routePolyline: List<LatLng>,
     routeColor: String,
@@ -2371,22 +2374,25 @@ fun VelaMapView(
             }
         } else if (lastSvPos != null) {
             lastSvPos = null
-            map.setPadding(0, 0, 0, cameraBottomInsetPx) // hand padding back to the sheet logic
+            map.setPadding(cameraLeftInsetPx, 0, 0, cameraBottomInsetPx) // hand padding back to the sheet logic
         }
         // Shift the map's optical centre up by the bottom-sheet height so the
         // focused pin sits in the *visible* strip above the place sheet instead of
         // being hidden behind it. Padding is the map's single source of truth, so
         // every camera move below respects it. Reset to 0 when no sheet is up.
-        if (cameraBottomInsetPx != lastInsetPx) {
+        // Bottom (portrait sheet) and left (landscape side panel) fold into ONE key so a change
+        // on either axis re-applies padding; appearance on either axis re-frames.
+        val insetKey = cameraBottomInsetPx * 31 + cameraLeftInsetPx
+        if (insetKey != lastInsetPx) {
             // Only re-frame when the sheet APPEARS or grows (lift the pin above it). When it
             // shrinks to 0 (sheet closed) we must NOT null lastCameraTarget — doing so let the
             // else-branch below re-center on the now-stale cameraTarget at a zoomed-out level,
             // yanking the map back to the tapped place and zooming out after you'd panned away.
-            val grew = cameraBottomInsetPx > lastInsetPx
-            lastInsetPx = cameraBottomInsetPx
+            val grew = insetKey > lastInsetPx
+            lastInsetPx = insetKey
             // While Street View owns the camera padding (top inset), don't clobber it here -
             // the SV close path restores the sheet padding itself.
-            if (svPose == null) map.setPadding(0, 0, 0, cameraBottomInsetPx)
+            if (svPose == null) map.setPadding(cameraLeftInsetPx, 0, 0, cameraBottomInsetPx)
             if (grew) lastCameraTarget = null // re-frame the current target against the new inset
         }
         // While the results sheet is closed forget the last marker fit, so pulling the list back
@@ -2419,7 +2425,7 @@ fun VelaMapView(
                             val mpd = (acc.toDouble() * 2 / 0.7) / screenDp
                             (Math.log((78271.517 * Math.cos(Math.toRadians(t.lat))) / mpd) / Math.log(2.0)).coerceIn(3.0, 15.0)
                         }
-                        cameraBottomInsetPx > 0 -> app.vela.core.config.CalibrationStore.latest.tune("browseZoomFocus", 16.5)
+                        cameraBottomInsetPx > 0 || cameraLeftInsetPx > 0 -> app.vela.core.config.CalibrationStore.latest.tune("browseZoomFocus", 16.5)
                         // 15.5 (~1000ft), matching the launch-centre and search flies - the tap
                         // used to land at 15.0 while every other path used 15.5, so a follow-up
                         // camera move visibly changed zoom (part of the locate rubber-band).
@@ -2508,9 +2514,9 @@ fun VelaMapView(
             // condition) so the branches BELOW stay unreachable during nav, same pattern as the
             // nav follow branch's own pre-engage swallow.
             routePolyline.size >= 2 &&
-                (navMode || (routePolyline.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx) != lastFittedRouteKey) -> {
+                (navMode || (routePolyline.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraLeftInsetPx * 13 + cameraTopInsetPx) != lastFittedRouteKey) -> {
                 if (!navMode) { // in-nav framing is owned by the follow ticker + navOverviewTick
-                    lastFittedRouteKey = routePolyline.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx
+                    lastFittedRouteKey = routePolyline.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraLeftInsetPx * 13 + cameraTopInsetPx
                     val builder = MLLatLngBounds.Builder()
                     routePolyline.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
                     // Reserve room at the bottom for the directions panel AND at the top for the

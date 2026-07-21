@@ -136,6 +136,17 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   height. Focusing the bar grows it to full width in place (the field must not remount or focus
   bounces) and the search page renders full-width below as usual. Portrait is unchanged, and the
   tiny keypad phones the D-pad work targets are portrait devices, so they never see this layout.
+- ✅ **Landscape side panel for results and places (2026-07-20, user).** In landscape the search
+  results list and the place sheet render as a width-capped LEFT panel (Google's landscape
+  treatment) instead of a full-width bottom sheet, so the map keeps a real strip beside them and
+  every right-side button (layers, parking, my location) simply stays visible, no situational
+  hiding rules. The camera inset moves to the left axis to match: a focused pin or result
+  cluster frames in the strip beside the panel. The minimized place card keeps its name, rating
+  and action pills (Directions/Call) in landscape too, via a dp floor on the minimized detent
+  (0.26 of a ~390dp landscape height only fit the name row). The layers button's overlap gate
+  short-circuits in landscape (the panel never reaches its corner); in portrait the locate
+  button now rides above a minimized place card's measured top edge instead of hiding.
+  Scale bar yields to the panel; the satellite attribution centers in the map strip.
 - ✅ **Chinese, Chinese (Taiwan) and Japanese (2026-07-11, issue #55).** Vela speaks 14
   languages now. All three layers: UI chrome (values-zh Simplified, values-zh-rTW Traditional
   with Taiwan wording, values-ja), generated turn-by-turn text (three new NavStrings tables;
