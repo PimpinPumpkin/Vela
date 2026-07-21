@@ -2871,7 +2871,11 @@ private fun ensureLayers(style: Style) {
         style.addLayer(
             SymbolLayer(MARKERS_LAYER, MARKERS_SRC).withProperties(
                 PropertyFactory.iconImage(Expression.get("icon")),
-                PropertyFactory.iconSize(1.15f),
+                // Result pins/bubbles scaled to ~0.8x of the old 1.15 (2026-07-20): the rating
+                // "speech bubbles" read chunky next to Google's on a phone-width screen (a pill
+                // was ~18% of a 1080px width). Uniform scale keeps the circle+glyph+text in
+                // proportion and readable; slimming just the bitmap padding would distort them.
+                PropertyFactory.iconSize(0.92f),
                 PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
                 PropertyFactory.iconAllowOverlap(false),
                 PropertyFactory.iconIgnorePlacement(false),
