@@ -212,6 +212,11 @@ import app.vela.ui.item
 // for MapTiler Streets (needs the MAPTILER_KEY secret). Both paths stay wired.
 private const val USE_MAPTILER = false
 
+// Landscape side-panel width for the place/results sheets (Google's landscape treatment):
+// wide enough for the sheet content, narrow enough that a phone landscape (~730dp+) keeps a
+// real map strip with all the right-side buttons beside it.
+private val SIDE_PANEL_WIDTH = 400.dp
+
 @Composable
 fun MapScreen(
     vm: MapViewModel,
@@ -249,16 +254,28 @@ fun MapScreen(
     // minimized (stray building taps while the full picker covered the map added stops).
     LaunchedEffect(dirMinimized) { vm.onDirectionsCollapsed(dirMinimized) }
     LaunchedEffect(state.directionsOpen) { if (!state.directionsOpen) dirMinimized = false }
+    // Landscape: the place/results sheets render as a LEFT SIDE PANEL (Google's landscape
+    // layout, user 2026-07-20) - width-capped, so the right-side chrome (layers, parking,
+    // locate) never collides with them. The camera inset moves to the LEFT axis to match:
+    // a focused pin frames in the map strip beside the panel, not squeezed into a top sliver.
+    val sidePanelWidthPx = with(LocalDensity.current) { SIDE_PANEL_WIDTH.toPx() }.toInt()
     val cameraBottomInset = when {
         // Street View pane up: the sheet yields, so no bottom inset (the SV top inset takes over).
         state.streetView != null || state.streetViewLoading -> 0
-        placeSheetUp -> (screenHeightPx * 0.56f).toInt()
+        placeSheetUp -> if (landscapeChrome) 0 else (screenHeightPx * 0.56f).toInt()
         state.directionsOpen && !state.navigating ->
             (screenHeightPx * (if (dirMinimized) 0.14f else 0.58f)).toInt()
         // Results bottom sheet at peek covers ~the bottom half: frame the result pins
         // in the visible top half, not behind the sheet.
         state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed &&
-            !state.navigating -> (screenHeightPx * 0.50f).toInt()
+            !state.navigating -> if (landscapeChrome) 0 else (screenHeightPx * 0.50f).toInt()
+        else -> 0
+    }
+    val cameraLeftInset = if (!landscapeChrome) 0 else when {
+        state.streetView != null || state.streetViewLoading -> 0
+        placeSheetUp -> sidePanelWidthPx
+        state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed &&
+            !state.navigating -> sidePanelWidthPx
         else -> 0
     }
     // MapTiler (when a key is built in) gives the Google-like look + its own
@@ -852,6 +869,7 @@ fun MapScreen(
             cameraTargetZoom = state.centerZoom,
             recenterTick = state.recenterTick,
             cameraBottomInsetPx = cameraBottomInset,
+            cameraLeftInsetPx = cameraLeftInset,
             routePolyline = state.activeRoute?.polyline ?: emptyList(),
             routeColor = routeTrafficColor(state.activeRoute),
             routeDashed = state.travelMode == app.vela.core.model.TravelMode.WALK ||
@@ -1726,8 +1744,12 @@ fun MapScreen(
                 // No navigationBarsPadding here: the sheet's background should reach
                 // the screen bottom (no map peeking through under the nav bar); the
                 // sheet pads its own content for the nav bar instead.
+                // Landscape: a LEFT side panel (width-capped) instead of a full-width sheet,
+                // so the map and its right-side buttons stay usable beside it (Google's
+                // landscape layout, user 2026-07-20).
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
+                    .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
+                    .then(if (landscapeChrome) Modifier.widthIn(max = SIDE_PANEL_WIDTH) else Modifier)
                     // Live top edge for the layers button's overlap gate (see placeSheetTopPx).
                     .onGloballyPositioned { placeSheetTopPx = it.positionInRoot().y.roundToInt() },
             )
@@ -1756,7 +1778,10 @@ fun MapScreen(
                 listName = state.openListId?.let { id -> state.lists.firstOrNull { it.id == id }?.name },
                 query = state.query,
                 minimizeTick = resultsPanTick,
-                modifier = Modifier.align(Alignment.BottomCenter),
+                // Landscape: left side panel like the place sheet (see its modifier note).
+                modifier = Modifier
+                    .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
+                    .then(if (landscapeChrome) Modifier.widthIn(max = SIDE_PANEL_WIDTH) else Modifier),
               )
             // Imported Google list preview: offer to save (nothing persisted until tapped).
             // A pill under the search bar, clear of the results sheet at the bottom.
@@ -1910,12 +1935,20 @@ fun MapScreen(
             }
         }
 
-        // The locate + parking buttons yield to EVERY bottom surface, the route chooser and the
-        // step list included - a search from an open chooser could null the selection while
-        // directionsOpen stayed true, and both buttons drew on top of the panel.
-        if (!state.navigating && state.selected == null && !searchOpen && state.resumeNavLabel == null &&
-            !resultsShown && !state.directionsOpen && !state.showSteps
-        ) {
+        // The locate + parking buttons yield to the bottom surfaces that actually REACH them:
+        // the route chooser and step list always (full width), and in PORTRAIT the place/results
+        // sheets too. In LANDSCAPE those two render as the width-capped left panel, so the
+        // bottom-right corner is free and both buttons stay up beside an open list or place
+        // (user 2026-07-20: stop hiding buttons that nothing is covering). Street View keeps
+        // them hidden - its bottom half is the pose mini-map.
+        val fabChromeOk = !state.navigating && !searchOpen && state.resumeNavLabel == null &&
+            !state.directionsOpen && !state.showSteps &&
+            state.streetView == null && !state.streetViewLoading
+        // True while the landscape left panel (place sheet or results, any detent) is on screen -
+        // bottom-LEFT chrome (scale bar) yields to it and the attribution centers in the strip.
+        val sidePanelUp = landscapeChrome &&
+            (placeSheetUp || (state.results.isNotEmpty() && state.selected == null && !searchOpen))
+        if (fabChromeOk && (landscapeChrome || (state.selected == null && !resultsShown))) {
             // Stock M3 FAB, deliberately: a Google-style flat circle was tried (2026-07-08)
             // and reverted — every surface tone melted into the dark tiles.
             FloatingActionButton(
@@ -2047,6 +2080,8 @@ fun MapScreen(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
+                        // Centered in the map STRIP while the landscape panel owns the left.
+                        .padding(start = if (sidePanelUp) SIDE_PANEL_WIDTH else 0.dp)
                         .padding(bottom = 16.dp + chromeLift),
                 ) {
                     Text(
@@ -2066,7 +2101,8 @@ fun MapScreen(
             // Also step aside while the free-drive speed box occupies the low corner (it moved
             // down level with the locate FAB, user 2026-07-14) - the follow gate alone missed a
             // moving-but-panned map, where both used to want the same spot.
-            if (!(driveFollowing && speedOverlayArmed) && !movingFree) {
+            // The landscape panel owns the bottom-left corner - the bar would draw on top of it.
+            if (!(driveFollowing && speedOverlayArmed) && !movingFree && !sidePanelUp) {
                 ScaleBar(
                     metersPerPixel = metersPerPixel,
                     dark = darkTheme,
@@ -2077,6 +2113,30 @@ fun MapScreen(
                 )
             }
         }
+
+            // Portrait, place card at (or near) its minimized bar: the locate FAB rides ABOVE the
+            // card's measured top edge (user 2026-07-20: current location stays reachable with a
+            // card minimized). Offset from the sheet's live top so it tracks the card; the >55%
+            // floor keeps it to the minimized neighbourhood - at peek/expanded it stays hidden.
+            // Landscape needs none of this: the side panel leaves the normal FABs standing.
+            if (fabChromeOk && !landscapeChrome && state.selected != null && !placeSheetExpanded &&
+                state.pickOnMap == null && placeSheetTopPx > screenHeightPx * 0.55f
+            ) {
+                FloatingActionButton(
+                    onClick = onRecenter,
+                    modifier = Modifier
+                        .dpadHighlight(RoundedCornerShape(16.dp))
+                        .align(Alignment.TopEnd)
+                        .offset {
+                            androidx.compose.ui.unit.IntOffset(
+                                -16.dp.roundToPx(),
+                                placeSheetTopPx - 72.dp.roundToPx(),
+                            )
+                        },
+                ) {
+                    Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location))
+                }
+            }
 
             // Layers/satellite toggle, top-right under the search bar + chips. Shown on the browse
             // map AND while a place sheet is open, WHENEVER the button's corner actually clears the
@@ -2091,10 +2151,12 @@ fun MapScreen(
             val layersDensity = LocalDensity.current
             val layersButtonBottomPx = WindowInsets.statusBars.getTop(layersDensity) +
                 with(layersDensity) { ((if (landscapeChrome) 74.dp else 128.dp) + 42.dp + 8.dp).toPx() }
+            // Landscape short-circuits the vertical test: the sheet is the width-capped LEFT
+            // panel there, which never reaches the top-right corner whatever its detent.
             val clearOfPlaceSheet = state.selected == null ||
                 (
                     state.streetView == null && !state.streetViewLoading && state.pickOnMap == null &&
-                        placeSheetTopPx > layersButtonBottomPx
+                        (landscapeChrome || placeSheetTopPx > layersButtonBottomPx)
                     )
             if (app.vela.ui.LayersButton.on.value && !searchOpen &&
                 !state.navigating && !state.replaying && !resultsShown && !placeSheetExpanded &&

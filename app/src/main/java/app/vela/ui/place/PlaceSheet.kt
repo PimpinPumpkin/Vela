@@ -309,8 +309,18 @@ fun PlaceSheet(
     // Transit stops expand FULL-SCREEN like any other place (the short-lived peek cap from earlier
     // today blocked maximizing a stop entirely - reported independently by the user and issue #71's
     // reporter within hours; with real multi-route boards the full detent has plenty to show).
-    val minH = if (singleDetent) screenH * 0.30f else screenH * 0.26f
-    val peekH = if (singleDetent) screenH * 0.30f else screenH * 0.56f
+    // Landscape floors (2026-07-20, the side-panel layout): 0.26 of a ~390dp landscape screen is
+    // ~101dp - only the name row fits and the action pills (Directions/Call) fold out of the
+    // minimized card. The dp floor keeps the skeleton (name + rating + pills) visible minimized,
+    // and peek keeps a real gap above it so the detents stay distinguishable to drag between.
+    // Portrait numbers are untouched (0.26 of a phone portrait is already past the floor).
+    val landscapeSheet = LocalConfiguration.current.screenWidthDp > screenH
+    val minH = if (singleDetent) screenH * 0.30f
+    else if (landscapeSheet) maxOf(screenH * 0.26f, 200f).coerceAtMost(screenH * 0.6f)
+    else screenH * 0.26f
+    val peekH = if (singleDetent) screenH * 0.30f
+    else if (landscapeSheet) maxOf(screenH * 0.56f, minH + 70f)
+    else screenH * 0.56f
     val expH = if (singleDetent) screenH * 0.30f else screenH * 0.92f
     fun detentFor(expanded: Boolean, minimized: Boolean) = when {
         expanded -> expH
