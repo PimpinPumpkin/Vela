@@ -1072,6 +1072,7 @@ fun VelaMapView(
                         Expression.stop(15f, 0.78f * sc), Expression.stop(17f, 1.1f * sc), Expression.stop(19f, 1.4f * sc),
                     ),
                 ),
+                PropertyFactory.textSize(10.5f * sc),
             )
             val controlsScaled = Expression.interpolate(
                 Expression.linear(), Expression.zoom(),
@@ -1079,6 +1080,25 @@ fun VelaMapView(
             )
             st.getLayer(CONTROLS_LAYER)?.setProperties(PropertyFactory.iconSize(controlsScaled))
             st.getLayer(CONTROLS_CLAIM_LAYER)?.setProperties(PropertyFactory.iconSize(controlsScaled))
+            // Layers the first cut MISSED (2026-07-20, car-screen report "POIs still a bit large
+            // sometimes"): search-result pins/rating bubbles, the collapsed result dots, saved-place
+            // pins and the flock badges all kept their fixed-px size while everything around them
+            // shrank - on a low-density head unit exactly these (a gas search, a saved spot) were
+            // the "sometimes" giants. Base values mirror layer creation; keep them in lockstep.
+            st.getLayer(MARKERS_LAYER)?.setProperties(
+                PropertyFactory.iconSize(1.0f * sc),
+                PropertyFactory.textSize(13f * sc),
+            )
+            st.getLayer(MARKERS_DOTS_LAYER)?.setProperties(PropertyFactory.iconSize(sc))
+            st.getLayer(SAVED_LAYER)?.setProperties(PropertyFactory.iconSize(sc))
+            st.getLayer(FLOCK_LAYER)?.setProperties(
+                PropertyFactory.iconSize(
+                    Expression.interpolate(
+                        Expression.linear(), Expression.zoom(),
+                        Expression.stop(14f, 0.7f * sc), Expression.stop(17f, 1.0f * sc), Expression.stop(19f, 1.35f * sc),
+                    ),
+                ),
+            )
         }
     }
 
@@ -2871,11 +2891,13 @@ private fun ensureLayers(style: Style) {
         style.addLayer(
             SymbolLayer(MARKERS_LAYER, MARKERS_SRC).withProperties(
                 PropertyFactory.iconImage(Expression.get("icon")),
-                // Result pins/bubbles scaled to ~0.8x of the old 1.15 (2026-07-20): the rating
-                // "speech bubbles" read chunky next to Google's on a phone-width screen (a pill
-                // was ~18% of a 1080px width). Uniform scale keeps the circle+glyph+text in
-                // proportion and readable; slimming just the bitmap padding would distort them.
-                PropertyFactory.iconSize(0.92f),
+                // Result pins/bubbles at 1.0 (2026-07-20): the original 1.15 read chunky next to
+                // Google's on a phone-width screen (a rating pill was ~18% of a 1080px width), a
+                // first cut at 0.92 read a touch small on the same device - 1.0 is the calibrated
+                // middle. Uniform scale keeps the circle+glyph+text in proportion; slimming just
+                // the bitmap padding would distort them. Car screens scale this via the Settings
+                // icon-size multiplier (the poiIconScale effect re-applies it with sc baked in).
+                PropertyFactory.iconSize(1.0f),
                 PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
                 PropertyFactory.iconAllowOverlap(false),
                 PropertyFactory.iconIgnorePlacement(false),
@@ -3191,8 +3213,13 @@ private fun ensureLayers(style: Style) {
                 setProperties(
                     PropertyFactory.iconImage(TRANSIT_STOP_IMG),
                     PropertyFactory.iconSize(stopSize),
+                    // The flock pattern (2026-07-20, car-screen "icons bump into the text" report):
+                    // the badge never yields itself (allowOverlap), but with ignorePlacement TRUE it
+                    // also never claimed a collision box, so later-placed labels (ambient POI names,
+                    // street names) printed straight under/over it. ignorePlacement FALSE keeps the
+                    // badge always-drawn while text finds a clear spot around it.
                     PropertyFactory.iconAllowOverlap(true),
-                    PropertyFactory.iconIgnorePlacement(true),
+                    PropertyFactory.iconIgnorePlacement(false),
                     PropertyFactory.iconPadding(2f),
                     PropertyFactory.textField(Expression.get("name")),
                     PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
