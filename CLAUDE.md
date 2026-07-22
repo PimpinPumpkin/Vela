@@ -464,7 +464,15 @@ Defaults that make the safe path the easy one:
   quantized pass: querySourceFeatures over transportation_name with a class filter + segment
   intersection against the route window, re-run once per 400 m quantum of progress or when the
   upcoming turn targets change - NEVER on a short timer, the 4 s version was itself a
-  frame-hitch: main-thread feature materialization + placement churn per filter change). Roads
+  frame-hitch: main-thread feature materialization + placement churn per filter change). Since 2026-07-21 the crossing test ALSO counts
+  T-JUNCTIONS (touchesWindow: either endpoint of a street within ~25 m of the route window) - on
+  arterials most side streets END at your road instead of crossing it, the strict-inequality
+  crossing test read their shared endpoint as exactly zero, and the tightened filter came back
+  EMPTY = the whole bubble layer went mute on T-heavy roads (real-drive report; grid downtowns
+  were where the layer was originally verified). Endpoints only, never every vertex - a parallel
+  road must not label itself. And the MINOR tier now arms at z15 (fade 15.2-15.7, was 16/16.2-16.8)
+  so cross-street bubbles survive highway-speed zoom (~15.8 floor) instead of fading out above
+  town speed (user ask, same day). Roads
   already DRIVEN are excluded per step (navLabelExclude - excluding the whole route hid the turn
   target's label), the next turns' targets are force-included (a turn target meets the route at
   a shared vertex, which a proper-crossing test can miss); ensureNavRoadLabels self-gates on (on, dark, exclude) with lastNavLabelKey nulled
