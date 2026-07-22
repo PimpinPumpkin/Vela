@@ -1086,7 +1086,7 @@ fun VelaMapView(
             // shrank - on a low-density head unit exactly these (a gas search, a saved spot) were
             // the "sometimes" giants. Base values mirror layer creation; keep them in lockstep.
             st.getLayer(MARKERS_LAYER)?.setProperties(
-                PropertyFactory.iconSize(1.0f * sc),
+                PropertyFactory.iconSize(1.15f * sc),
                 PropertyFactory.textSize(13f * sc),
             )
             st.getLayer(MARKERS_DOTS_LAYER)?.setProperties(PropertyFactory.iconSize(sc))
@@ -2891,13 +2891,14 @@ private fun ensureLayers(style: Style) {
         style.addLayer(
             SymbolLayer(MARKERS_LAYER, MARKERS_SRC).withProperties(
                 PropertyFactory.iconImage(Expression.get("icon")),
-                // Result pins/bubbles at 1.0 (2026-07-20): the original 1.15 read chunky next to
-                // Google's on a phone-width screen (a rating pill was ~18% of a 1080px width), a
-                // first cut at 0.92 read a touch small on the same device - 1.0 is the calibrated
-                // middle. Uniform scale keeps the circle+glyph+text in proportion; slimming just
-                // the bitmap padding would distort them. Car screens scale this via the Settings
-                // icon-size multiplier (the poiIconScale effect re-applies it with sc baked in).
-                PropertyFactory.iconSize(1.0f),
+                // 1.15 is the calibrated size and it survived a full re-litigation (2026-07-20):
+                // a "too big" report led to 0.92 ("a little small"), then 1.0 ("kinda small"),
+                // before the real culprit surfaced - satellite mode was on, and the white pin
+                // backings over imagery read much heavier than the same bitmaps on the vector
+                // basemap. On the vector map 1.15 was right all along. Don't re-shrink this over
+                // a satellite-mode size report; car screens scale it via the Settings icon-size
+                // multiplier (the poiIconScale effect re-applies it with sc baked in).
+                PropertyFactory.iconSize(1.15f),
                 PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
                 PropertyFactory.iconAllowOverlap(false),
                 PropertyFactory.iconIgnorePlacement(false),
