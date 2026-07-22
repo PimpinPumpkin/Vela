@@ -1797,7 +1797,11 @@ architecture note.
   all road+bridge geometry, still below text. (2) **Exit consolidation** - OSRM splits one exit into ramp +
   fork/merge steps, each spoken separately ("Take exit 15"…"Keep right"…"Merge"). `RouteGeometry.consolidateExits`
   folds a ramp's immediately-following, <500 m-gapped FORK/MERGE run into the ramp maneuver (sums distances so
-  they still tile the polyline; stops at any real turn / far gap) → one prompt. Unit-tested. **Sibling
+  they still tile the polyline; stops at any real turn / far gap) → one prompt. Unit-tested. **Cousin `rampReclass` (2026-07-21):** a SIGNLESS
+  dead-straight "on ramp" (dual-carriageway rename transitions get tagged *_link in OSM, so OSRM
+  calls them ramps) reclassifies to "new name" before typing/phrasing - silent CONTINUE, never
+  "Take the ramp" on a road that just renames; narrow on purpose (straight/null modifier only,
+  destinations present always keeps the ramp). **Sibling
   `RouteGeometry.foldRenames` (2026-07-06)** folds a pure-rename CONTINUE (OSRM `continue`/`new name` going
   straight, no genuine fork - "Olive Dr becomes Richards Blvd") into the PRECEDING maneuver so it's not its own
   banner card / step at all - NavEngine already SILENCED its voice, but it still showed a silly "Continue onto X"
