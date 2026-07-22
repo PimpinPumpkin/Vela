@@ -2446,13 +2446,23 @@ fun VelaMapView(
                 lastNavTarget = null // so nav-follow re-centres cleanly when the preview ends
                 if (previewTarget != lastPreviewTarget) {
                     lastPreviewTarget = previewTarget
-                    flightDepth[0]++
-                    map.animateCamera(
-                        CameraUpdateFactory.newLatLngZoom(
-                            MLLatLng(previewTarget.lat, previewTarget.lng), 16.5,
+                    // JUMP, don't fly (2026-07-21, real-drive "lag when swiping through turns"):
+                    // animateCamera interpolates the camera THROUGH every intermediate viewport
+                    // for the whole flight, and at nav zoom + tilt each of those frames loads and
+                    // places tiles along the way - swiping several steps queued 700 ms flights
+                    // and the map fell behind the finger on a mid-range phone. A straight
+                    // moveCamera renders exactly ONE new viewport per swipe (Google's step
+                    // preview jumps too). The tilt/bearing reset to a flat top-down preview
+                    // rides the same single move.
+                    map.moveCamera(
+                        CameraUpdateFactory.newCameraPosition(
+                            org.maplibre.android.camera.CameraPosition.Builder()
+                                .target(MLLatLng(previewTarget.lat, previewTarget.lng))
+                                .zoom(16.5)
+                                .tilt(0.0)
+                                .bearing(0.0)
+                                .build(),
                         ),
-                        700,
-                        flightCb(),
                     )
                 }
             }
