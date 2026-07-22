@@ -2432,7 +2432,7 @@ architecture note.
   Proven: `overpass-api.de` was 504-ing while `maps.mail.ru` returned 16 Flock nodes over the same box.
   **Any NEW keyless Overpass fetch MUST go through `OverpassEndpoints.run`, never a bare hardcoded endpoint.**
   **BUNDLED + HOSTED on-device dataset (2026-07-13, supersedes the live Overpass path for cameras):** the
-  whole global DeFlock set is tiny (~124k points), so it's baked into a gzipped TSV `lat<TAB>lon<TAB>operator`
+  whole global DeFlock set is tiny (~124k points), so it's baked into a gzipped TSV `lat<TAB>lon<TAB>operator<TAB>direction` (4th col = facing degrees since 2026-07-21, cardinals normalized at bake, empty untagged; the app decodes 3-col files too, and a facing CONE layer `vela-flock-dir` draws under the badge for tagged nodes)
   (~1.3 MB) by `scripts/build-flock-cameras.py` and queried on-device by **`app/data/FlockCameras`** (flat
   lat/lng arrays + a 0.1 deg grid index, parsed once off the main thread in `VelaApp`). Map layer draws
   INSTANTLY (no per-viewport network - the "why an API not a tile" report); route "passes N cameras" count
