@@ -12,7 +12,10 @@ Overpass mirror (the main instance is often overloaded).
 
     python3 scripts/build-flock-cameras.py
 
-Format: gzipped TSV, one camera per line - `lat<TAB>lon<TAB>operator`. Simple,
+Format: gzipped TSV, one camera per line - `lat<TAB>lon<TAB>operator<TAB>direction`. The
+direction column (degrees clockwise from north the camera FACES, from OSM `direction` /
+`camera:direction`, cardinal names normalized; empty when untagged) was added 2026-07-21 -
+the app reads 3-column files too, so old bundled/hosted datasets keep decoding. Simple,
 robust to decode, and gzip crushes the repetitive operator column.
 """
 import gzip
@@ -51,6 +54,27 @@ def fetch() -> dict:
     raise SystemExit(f"all endpoints failed: {last}")
 
 
+# 16-wind cardinal names -> degrees; OSM also allows plain degrees and semicolon lists
+# (multi-head poles) - keep the FIRST head, empty when nothing parses.
+_CARDINAL = {
+    "N": 0, "NNE": 22, "NE": 45, "ENE": 67, "E": 90, "ESE": 112, "SE": 135, "SSE": 157,
+    "S": 180, "SSW": 202, "SW": 225, "WSW": 247, "W": 270, "WNW": 292, "NW": 315, "NNW": 337,
+    "NORTH": 0, "EAST": 90, "SOUTH": 180, "WEST": 270,
+}
+
+
+def norm_direction(raw):
+    v = (raw or "").strip().split(";")[0].strip().upper()
+    if not v:
+        return ""
+    if v in _CARDINAL:
+        return str(_CARDINAL[v])
+    try:
+        return str(int(round(float(v))) % 360)
+    except ValueError:
+        return ""
+
+
 def main() -> None:
     doc = fetch()
     rows = []
@@ -64,11 +88,11 @@ def main() -> None:
         # Real DeFlock nodes tag the vendor as `manufacturer` ("Flock Safety"); `operator` (the agency)
         # is usually absent - fall back to it so the camera still shows who runs it.
         op = (tags.get("operator") or tags.get("manufacturer") or "").strip().replace("\t", " ")
-        rows.append((lat, lon, op))
+        rows.append((lat, lon, op, norm_direction(tags.get("direction") or tags.get("camera:direction") or "")))
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with gzip.open(OUT, "wt", encoding="utf-8", compresslevel=9) as f:
-        for lat, lon, op in rows:
-            f.write(f"{lat:.6f}\t{lon:.6f}\t{op}\n")
+        for lat, lon, op, d in rows:
+            f.write(f"{lat:.6f}\t{lon:.6f}\t{op}\t{d}\n")
     # Version stamp (int, newest wins): CI passes FLOCK_VERSION (a run number); locally default to today's
     # date. Written beside the data as the bundled floor's version and read back by the app / CI manifest.
     import datetime

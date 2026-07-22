@@ -153,6 +153,9 @@ private const val STOP_IMG = "vela-stop"
 private const val FLOCK_SRC = "vela-flock-src" // ALPR/Flock cameras (DeFlock/OSM) drawn at high zoom
 private const val FLOCK_LAYER = "vela-flock"
 private const val FLOCK_IMG = "vela-flock-cam"
+private const val FLOCK_DIR_LAYER = "vela-flock-dir" // facing cone under the badge (dir-tagged nodes)
+private const val FLOCK_DIR_IMG = "vela-flock-cone"
+private const val FLOCK_DIR_PROP = "dir"
 private const val TRANSIT_STOPS_SRC = "vela-transit-stops-src" // canonical GTFS stops (Transitous)
 private const val TRANSIT_STOPS_LAYER = "vela-transit-stops"
 private const val TRANSIT_STOP_IMG = "vela-transit-stop"
@@ -3138,6 +3141,7 @@ private fun ensureLayers(style: Style) {
     // rendering half-covered under it (user saw a camera sitting on a street name). The POI
     // stack places before this layer, so it is unaffected by the claim and still wins on top.
     if (style.getImage(FLOCK_IMG) == null) style.addImage(FLOCK_IMG, alprCameraBitmap())
+    if (style.getImage(FLOCK_DIR_IMG) == null) style.addImage(FLOCK_DIR_IMG, alprConeBitmap())
     if (style.getSource(FLOCK_SRC) == null) {
         style.addSource(GeoJsonSource(FLOCK_SRC, GeoJsonOptions().withMaxZoom(12)))
         val flockSize = Expression.interpolate(
@@ -3166,6 +3170,28 @@ private fun ensureLayers(style: Style) {
             style.getLayer(CONTROLS_CLAIM_LAYER) != null -> style.addLayerBelow(flockLayer, CONTROLS_CLAIM_LAYER)
             else -> style.addLayer(flockLayer)
         }
+        // Facing cone UNDER the badge (2026-07-21, user: Flock units are single-direction and
+        // DeFlock's own map shows facing) - only nodes with a dir tag get the FLOCK_DIR_PROP
+        // property, so untagged cameras keep the bare badge. Map-aligned rotation: the cone
+        // bitmap points NORTH and rotates by the tag's compass degrees; non-interactive
+        // (ignorePlacement true keeps it out of the collision index - it's a glow, not a symbol).
+        style.addLayerBelow(
+            SymbolLayer(FLOCK_DIR_LAYER, FLOCK_SRC).apply {
+                setMinZoom(11f)
+                setFilter(Expression.has(FLOCK_DIR_PROP))
+                setProperties(
+                    PropertyFactory.iconImage(FLOCK_DIR_IMG),
+                    PropertyFactory.iconSize(flockSize),
+                    PropertyFactory.iconAllowOverlap(true),
+                    PropertyFactory.iconIgnorePlacement(true),
+                    PropertyFactory.iconRotate(Expression.get(FLOCK_DIR_PROP)),
+                    PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
+                    // The cone fans out FROM the camera: anchor at its base (the badge point).
+                    PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+                )
+            },
+            FLOCK_LAYER,
+        )
     }
     // Canonical GTFS transit stops (Transitous). One icon per station (bays dedupe in the VM);
     // replaces the OSM basemap bus icons wherever this layer has coverage (poi_transit filter flips
@@ -4893,13 +4919,18 @@ private fun applyData(
     // proximity feature, so hide them below z13 while just browsing, but keep the low floor when a
     // route is active so route-overview zoom (z11-12) still shows its cameras (issue #131 dead-band).
     style.getLayer(FLOCK_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
+    style.getLayer(FLOCK_DIR_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
 
     // ALPR/Flock cameras → icon features (identity-gated like the controls). Empty when the layer's
     // off or zoomed out, which clears the source.
     if (flockCameras != lastAppliedFlock) {
         val flockFc = FeatureCollection.fromFeatures(
             flockCameras.map { cam ->
-                Feature.fromGeometry(Point.fromLngLat(cam.loc.lng, cam.loc.lat))
+                Feature.fromGeometry(Point.fromLngLat(cam.loc.lng, cam.loc.lat)).apply {
+                    // Facing cone: only dir-tagged nodes get the property, and the cone layer
+                    // filters on its presence - untagged cameras draw the bare badge as before.
+                    cam.direction.toFloatOrNull()?.let { addNumberProperty(FLOCK_DIR_PROP, it) }
+                }
             },
         )
         style.getSourceAs<GeoJsonSource>(FLOCK_SRC)?.setGeoJson(flockFc)
@@ -5219,6 +5250,39 @@ private fun stopSignBitmap(): Bitmap {
 /** ALPR / "Flock" surveillance-camera marker: a maroon rounded badge with a white CCTV-camera glyph,
  *  deliberately distinct from the POI dots and the traffic controls so a plate reader reads as a
  *  "watch out" pin, not a place. */
+/** The facing cone for a direction-tagged camera: a translucent purple wedge fanning NORTH from
+ *  the bitmap's bottom-centre (the badge point); the layer rotates it by the OSM direction tag.
+ *  Gradient so it reads as a field of view, not a solid arrow. SIZE MATTERS here: the first cut
+ *  (64x56) barely peeked past the 46px badge and read as invisible on device (user 2026-07-21) -
+ *  the beam must project several badge-lengths to register as a facing at browse zoom. */
+private fun alprConeBitmap(): Bitmap {
+    val w = 160; val h = 150
+    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val cx = w / 2f
+    val apexY = h - 2f // the camera sits at the bottom edge (iconAnchor BOTTOM)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        shader = android.graphics.LinearGradient(
+            cx, apexY, cx, 0f,
+            0x9B7B1FA2.toInt(), 0x057B1FA2, android.graphics.Shader.TileMode.CLAMP,
+        )
+    }
+    val cone = Path().apply {
+        moveTo(cx, apexY)
+        lineTo(cx - w * 0.44f, 6f)
+        // A shallow arc across the far edge reads as a beam, not a triangle.
+        quadTo(cx, 26f, cx + w * 0.44f, 6f)
+        close()
+    }
+    c.drawPath(cone, paint)
+    // A thin brighter centreline gives the fan a readable axis even over busy imagery.
+    val axis = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xB37B1FA2.toInt(); strokeWidth = 3f; style = Paint.Style.STROKE
+    }
+    c.drawLine(cx, apexY, cx, 20f, axis)
+    return bmp
+}
+
 private fun alprCameraBitmap(): Bitmap {
     val s = 46
     val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)

@@ -38,6 +38,9 @@ object FlockCameras {
     private var lat = DoubleArray(0)
     private var lng = DoubleArray(0)
     private var op = arrayOf<String>()
+    // Camera FACING in degrees clockwise from north (the 2026-07-21 4th TSV column); NaN when the
+    // node is untagged or the file predates the column - 3-column datasets keep decoding.
+    private var dir = FloatArray(0)
     private val grid = HashMap<Long, MutableList<Int>>()
 
     val isLoaded: Boolean get() = loaded
@@ -45,6 +48,11 @@ object FlockCameras {
 
     private fun key(row: Long, col: Long): Long = (row shl 32) xor (col and 0xffffffffL)
     private fun rowOf(v: Double): Long = Math.floor(v / CELL).toLong()
+    /** The facing for camera [i] in AlprCamera's string form ("165"), empty when untagged. */
+    private fun dirStr(i: Int): String {
+        val d = dir.getOrElse(i) { Float.NaN }
+        return if (d.isNaN()) "" else d.toInt().toString()
+    }
 
     private fun dir(context: Context) = File(context.filesDir, "flock").apply { mkdirs() }
     private fun downloadedBin(context: Context) = File(dir(context), "cameras.bin")
@@ -75,6 +83,7 @@ object FlockCameras {
         val las = ArrayList<Double>(130_000)
         val los = ArrayList<Double>(130_000)
         val ops = ArrayList<String>(130_000)
+        val dirs = ArrayList<Float>(130_000)
         val intern = HashMap<String, String>() // operator column is highly repetitive - intern it
         raw.use { r ->
             GZIPInputStream(r).bufferedReader().useLines { lines ->
@@ -83,8 +92,17 @@ object FlockCameras {
                     val t2 = line.indexOf('\t', t1 + 1); if (t2 < 0) continue
                     val la = line.substring(0, t1).toDoubleOrNull() ?: continue
                     val lo = line.substring(t1 + 1, t2).toDoubleOrNull() ?: continue
-                    val o = line.substring(t2 + 1)
-                    las.add(la); los.add(lo); ops.add(intern.getOrPut(o) { o })
+                    // Optional 4th column: facing degrees. A 3-column file (pre-2026-07-21 bundled
+                    // or hosted data) has no third tab - the whole rest is the operator, dir = NaN.
+                    val t3 = line.indexOf('\t', t2 + 1)
+                    val o: String
+                    val dg: Float
+                    if (t3 < 0) { o = line.substring(t2 + 1); dg = Float.NaN }
+                    else {
+                        o = line.substring(t2 + 1, t3)
+                        dg = line.substring(t3 + 1).toFloatOrNull() ?: Float.NaN
+                    }
+                    las.add(la); los.add(lo); ops.add(intern.getOrPut(o) { o }); dirs.add(dg)
                 }
             }
         }
@@ -92,6 +110,7 @@ object FlockCameras {
         for (i in las.indices) g.getOrPut(key(rowOf(las[i]), rowOf(los[i]))) { ArrayList() }.add(i)
         // Publish (a bad/partial parse threw before here, so we never swap in a half-built set).
         lat = las.toDoubleArray(); lng = los.toDoubleArray(); op = ops.toTypedArray()
+        dir = dirs.toFloatArray()
         grid.clear(); grid.putAll(g)
         loaded = true
     }
@@ -142,7 +161,9 @@ object FlockCameras {
             while (c <= c1) {
                 grid[key(r, c)]?.let { bucket ->
                     for (i in bucket) {
-                        if (lat[i] in south..north && lng[i] in west..east) out.add(AlprCamera(LatLng(lat[i], lng[i]), op[i]))
+                        if (lat[i] in south..north && lng[i] in west..east) {
+                            out.add(AlprCamera(LatLng(lat[i], lng[i]), op[i], dirStr(i)))
+                        }
                     }
                 }
                 c++
@@ -166,7 +187,7 @@ object FlockCameras {
                 grid[key(r, c)]?.let { bucket ->
                     for (i in bucket) {
                         val p = LatLng(lat[i], lng[i])
-                        if (nearPolyline(p, polyline, meters)) out.add(AlprCamera(p, op[i]))
+                        if (nearPolyline(p, polyline, meters)) out.add(AlprCamera(p, op[i], dirStr(i)))
                     }
                 }
                 c++
