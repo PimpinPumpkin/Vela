@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Brand gradient behind the launcher sail, matching docs/logo.svg. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient
+        android:angle="315"
+        android:startColor="#0D3D43"
+        android:endColor="#149387"
+        android:type="linear" />
+</shape>
