@@ -336,11 +336,13 @@ Defaults that make the safe path the easy one:
   (SettingsGroup/ToggleRow/SelectableRow/GroupDivider/PageIntro/Hint), with one file per spoke in
   `ui/settings/sections/`. Spoke contents: Appearance (theme incl. the new AMOLED true-black
   ThemeMode, interface size, map colors, Material You, units, follow-system language toggle),
-  Map (layer toggles + 3D + missing-building fill + the Places-on-the-map group), Place pages,
+  Map (layer toggles + 3D + missing-building fill + the Places-on-the-map group), Offline maps
+  (moved up between Map and Place pages 2026-07-23 - people reach it often, same reasoning as the
+  old single-page order), Place pages,
   Navigation (keep-screen-on, traffic lights, vibrate chips, demo drive, sim location, parking
   history), Voice (spoken-directions master switch, engine list, inline collapsible Voice library
   - the separate VoiceBrowseScreen route is gone, `openVoiceLibrary` deep-links to the VOICE spoke
-  with the library expanded), Search (ASR engines + provider picker), Offline, Saved places
+  with the library expanded), Search (ASR engines + provider picker), Saved places
   (saved + lists export/import), Data & privacy (privacy link, live rechecks), Diagnostics
   (share-diagnostics, texture render, building debug, trip recording, crash card), About
   (support, version tap-to-copy, auto-update, nightly toggle, check now). ⚠️ The vela-dpad fork

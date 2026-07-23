@@ -162,6 +162,13 @@ internal fun SettingsHub(
             onClick = { onOpen(SettingsSection.MAP) },
         )
         HubRow(
+            icon = Icons.Outlined.CloudDownload,
+            title = stringResource(R.string.settings_offline),
+            subtitle = stringResource(R.string.settings_hub_offline_sub),
+            modifier = rowModifier(SettingsSection.OFFLINE, first = false),
+            onClick = { onOpen(SettingsSection.OFFLINE) },
+        )
+        HubRow(
             icon = Icons.Outlined.Storefront,
             title = stringResource(R.string.settings_place_pages),
             subtitle = stringResource(R.string.settings_hub_place_pages_sub),
@@ -193,13 +200,6 @@ internal fun SettingsHub(
             subtitle = stringResource(R.string.settings_hub_search_sub),
             modifier = rowModifier(SettingsSection.SEARCH, first = false),
             onClick = { onOpen(SettingsSection.SEARCH) },
-        )
-        HubRow(
-            icon = Icons.Outlined.CloudDownload,
-            title = stringResource(R.string.settings_offline),
-            subtitle = stringResource(R.string.settings_hub_offline_sub),
-            modifier = rowModifier(SettingsSection.OFFLINE, first = false),
-            onClick = { onOpen(SettingsSection.OFFLINE) },
         )
         HubRow(
             icon = Icons.Outlined.Star,
