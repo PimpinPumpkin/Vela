@@ -53,12 +53,24 @@ class WebStopDeparturesFetcher @Inject constructor(
      *  just re-creates it - a one-off warm-up, only after minutes of not using the feature. */
     private fun scheduleReap() {
         reap?.let(main::removeCallbacks)
-        val r = Runnable {
-            webView?.let { runCatching { it.loadUrl("about:blank"); it.destroy() } }
-            webView = null
-        }
+        val r = Runnable { reapNow() }
         reap = r
         main.postDelayed(r, REAP_IDLE_MS)
+    }
+
+    /** Destroy the WebView immediately. Must run on the main thread (WebView requirement). */
+    private fun reapNow() {
+        webView?.let { runCatching { it.loadUrl("about:blank"); it.destroy() } }
+        webView = null
+    }
+
+    init {
+        // Under real memory pressure the 120 s idle timer is far too slow - the OS is asking for
+        // memory NOW and a Chromium renderer is one of the largest things we hold (ported from
+        // vela-dpad, 2026-07-23). Reap on the main thread, since WebView.destroy() requires it.
+        app.vela.ui.MemoryPressure.register { level ->
+            if (app.vela.ui.MemoryPressure.isSevere(level)) main.post { cancelReap(); reapNow() }
+        }
     }
 
     private fun cancelReap() {

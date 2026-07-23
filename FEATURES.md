@@ -17,6 +17,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Vela gives memory back when the system asks, and adapts to small phones (2026-07-23,
+  adopted from the vela-dpad fork).** The speech model (about a quarter gigabyte while loaded) now
+  unloads after two minutes unused and reloads in about a second on the next mic tap; map caches,
+  the hidden web fetchers, and the image cache all release under real memory pressure instead of
+  forcing the system to kill the app. Low-memory devices additionally skip speculative warm-ups
+  and fetch a leaner map POI set, which targets exactly the out-of-memory crashes reported on
+  budget tablets.
 - ✅ **Voice search says why it failed, and a corrupt speech model can't crash-loop the app
   (2026-07-23, adopted from the vela-dpad fork).** Every voice-search failure now names its cause
   (model missing, mic permission, recorder busy, and so on) in a dialog with a retry, instead of the

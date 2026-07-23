@@ -294,6 +294,23 @@ Defaults that make the safe path the easy one:
   so faces read discrete. At ~500 ft dense-city towers used to lean over and bury the roads. The
   search/place fly-to lands at z15.5 (~1000 ft, matches the locate fly) so a city search arrives
   BELOW every building tier - roads+labels+POIs only - instead of slamming all of it at z16.5.
+- **MEMORY PRESSURE IS HANDLED NOW (2026-07-23, ported from vela-dpad, credit alltechdev):**
+  `app/ui/MemoryPressure` (holder, `init()` in VelaApp before the Coil cap reads it) fans
+  `Application.onTrimMemory` out to registered releasers - before this NOTHING implemented
+  ComponentCallbacks2 and a TRIM_MEMORY_COMPLETE freed 0 KB. Registered: the ASR model (severe
+  trims + a 120 s idle reap - the loaded model costs ~267 MB PSS and used to live for the whole
+  process; an in-flight listen blocks release via an inFlight counter, or freeing native memory
+  mid-decode is a use-after-free crash), PiperSynth (CRITICAL only - dropping the nav voice
+  mid-drive costs a missed turn), MapLibre's native caches (`mapView.onLowMemory()`, registered in
+  the map's DisposableEffect), all five hidden WebViews (severe trim = immediate reap on the main
+  thread), and Coil (severe trim clears the bitmap cache). `MemoryPressure.lowRam` (isLowRamDevice
+  OR heap class < 128 MB; debug override `adb shell setprop debug.vela.lowram true`) drives the
+  constrained-device path: 16 MB Coil cap (vs 48), no ASR warm-up at launch, no speculative
+  WebView warms per search, and - via `:core` `LowRamMode` (same seam as CategoryFilter) - an
+  8-term ambient fan-out with a !7i30 pool instead of 15 terms at !7i60 (school/park are KEPT in
+  the subset: with ambient active the OSM poi layers are hidden, so they have no second source).
+  deleteAsrEngine releases the loaded model before deleting files (Remove used to reclaim disk
+  but no memory). Any NEW large/native holding must register a releaser here.
 - **Memory: the browse map runs near the heap ceiling, so keep allocation LOW (2026-07-13).**
   Panning already churns ~180 MB/12 s at baseline (ambient POI scrape + parse per pan) - this is
   pre-existing (0.4.542 hit ~260 MB too), close enough to the default ~256 MB heap that any EXTRA
