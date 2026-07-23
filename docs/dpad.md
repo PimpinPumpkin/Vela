@@ -500,3 +500,42 @@ The whole feature follows these rules - keep following them when extending it:
 If a pull does conflict, the conflicts will be in the small anchored insertions - 
 re-apply them around the upstream change and re-read this file's design section to
 confirm the invariants still hold.
+
+## Settings is hub-and-spoke (2026-07-23 redesign, ported from the vela-dpad fork)
+
+Settings was a single extremely long page; it is now a short hub of category rows
+(`ui/settings/SettingsHub.kt`), each opening its own small sub-screen
+(`ui/settings/sections/*.kt`). Every page - the hub and each spoke - renders through
+**`SettingsScaffold`** (`ui/settings/SettingsScaffold.kt`), which carries, once, all of the
+device-found Settings focus plumbing: Back auto-focus, the DOWN-from-Back and UP-from-top-row
+bridges, and the horizontal swallow. Its content lambda hands the page a `topRow` modifier -
+**attach it to the page's FIRST focusable control** or the Back bridges dead-end. BACK peels
+spoke -> hub -> map; the hub explicitly re-focuses the row a spoke returned from (Compose's
+recovery is nondeterministic when the focused tree unmounts). When you add a Settings page,
+build it on `SettingsScaffold` - do not re-inline any of this. The shared row vocabulary is
+`SettingsComponents.kt`: `SettingsGroup`, `ToggleRow`, `SelectableRow`, `GroupDivider`,
+`PageIntro`, `Hint`, `CollapsibleSectionTitle`.
+
+Two focus findings from the fork's verification (both live in `SettingsScaffold`):
+
+- **The Back auto-focus needs a SETTLE WINDOW, not a land-once retry.** Window-focus churn on
+  open can steal freshly-landed focus off Back; `dpadAutoFocus` stops at its first landing, so
+  the steal left the page unfocused. The scaffold re-requests while focus is neither on Back
+  nor anywhere in the content; any key press ends the window at once, so it can never fight
+  the user.
+- **A second instance of the cold-open focus WALL.** When Settings is the session's first
+  focus-touching surface, `requestFocus` and `moveFocus` both no-op (same wall as the cold-open
+  bare map). Accepted: the first key press establishes focus on Back, costing exactly one press.
+
+**Settings search** on the hub is label -> OPEN-THE-SPOKE (`SEARCH_INDEX` in `SettingsHub.kt`):
+the old page scrolled to the matched row's measured Y, which died with the long page. When a
+section gains a row, add its label to the index.
+
+The redesign's focus-ring color is the fork's fixed orange (0xFFFF6D00, `DpadFocus.kt`) - the
+teal primary ring read as "green on green" against the teal ON-switch. Two new reusable
+helpers came with it: `Modifier.dpadContainVertical()` (keeps a no-target UP/DOWN at a scroll
+container's edge from clearing focus irrecoverably - the vertical twin of
+`dpadSwallowHorizontal`; the scaffold applies it) and `Modifier.dpadClickable()` (a clickable
+that drops Material's grey focus layer while input is key-driven, so the ring is the one focus
+signal; pair it with `dpadHighlight` on the same row - `dpad_test_suite/audit_static.sh`
+exempts only DpadFocus.kt itself from the ring rule).
