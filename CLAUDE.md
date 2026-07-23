@@ -2439,7 +2439,7 @@ architecture note.
   is instant + RELIABLE (the live Overpass fan-out per tile was slow and often returned 0, so the avoid
   re-rank had no data). `refreshFlock`/`refreshFlockOnRoute` use `FlockCameras.inBox`/`.along` when
   `isLoaded`, falling back to `OverpassAlprCameras` only in the ~seconds before load (or if unreadable).
-  **TWO tiers, newest wins:** a **bundled floor** (`assets/flock_cameras.bin` + `assets/flock_cameras_version.txt`)
+  **TWO tiers, newest wins BY VERSION, enforced in the loader (2026-07-23):** `ensureLoaded` compares the downloaded copy's version against the bundled floor's and loads the higher, deleting a download the bundled floor has passed - preferring any existing download served a pre-direction 3-column file over the newer 4-column bundled data, and the facing cones drew at launch (Overpass fallback) then vanished on the first viewport refresh. The tiers:  a **bundled floor** (`assets/flock_cameras.bin` + `assets/flock_cameras_version.txt`)
   so a fresh install has cameras instantly + offline; and a **hosted copy** on the `flock-cameras` INFRA
   release that `FlockCameras.refresh` downloads to `filesDir/flock/cameras.bin` when the manifest version
   beats what's on disk (`FLOCK_MANIFEST_URL`, `-PflockManifestUrl=` override) - so **camera data updates
