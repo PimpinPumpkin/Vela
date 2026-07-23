@@ -662,7 +662,11 @@ fun VelaMapView(
                                         else -> emptyList()
                                     }
                                     val hit = lines.any { pts ->
-                                        crossesWindow(pts.map { it.longitude() to it.latitude() }, window)
+                                        val pairs = pts.map { it.longitude() to it.latitude() }
+                                        // Proper crossings OR a T-junction endpoint on the route -
+                                        // arterials are T-heavy and the strict crossing test alone
+                                        // muted the whole layer there (see touchesWindow).
+                                        crossesWindow(pairs, window) || touchesWindow(pairs, window)
                                     }
                                     if (hit) { out.add(name); if (out.size >= 60) break }
                                 }
@@ -3518,6 +3522,33 @@ private fun crossesWindow(line: List<Pair<Double, Double>>, window: List<LatLng>
     return false
 }
 
+/** True when either END of [line] lands within ~[maxM] of the route [window] - the T-JUNCTION
+ *  case (real-drive 2026-07-21): on an arterial most side streets END at your road instead of
+ *  crossing it, their shared endpoint makes the strict-inequality crossing test read exactly
+ *  zero, and the tightened bubble filter came back EMPTY - the whole bubble layer went mute on
+ *  T-heavy roads, even stopped at a light (grid downtowns, where streets cross through, were
+ *  where the layer was originally verified). Endpoints only, not every vertex: a parallel road
+ *  running near the route must not label itself, and a side street's junction IS its endpoint. */
+private fun touchesWindow(line: List<Pair<Double, Double>>, window: List<LatLng>, maxM: Double = 25.0): Boolean {
+    if (line.isEmpty() || window.size < 2) return false
+    val latScale = Math.cos(Math.toRadians(window[0].lat))
+    val maxDeg = maxM / 111_320.0
+    val max2 = maxDeg * maxDeg
+    for (p in arrayOf(line.first(), line.last())) {
+        val px = p.first * latScale; val py = p.second
+        for (j in 1 until window.size) {
+            val ax = window[j - 1].lng * latScale; val ay = window[j - 1].lat
+            val bx = window[j].lng * latScale; val by = window[j].lat
+            val dx = bx - ax; val dy = by - ay
+            val len2 = dx * dx + dy * dy
+            val t = if (len2 == 0.0) 0.0 else (((px - ax) * dx + (py - ay) * dy) / len2).coerceIn(0.0, 1.0)
+            val ex = ax + t * dx - px; val ey = ay + t * dy - py
+            if (ex * ex + ey * ey <= max2) return true
+        }
+    }
+    return false
+}
+
 /** The basemap's romanized alias for a road [name] (issue #184): its name:en (a real English name),
  *  else name:latin (which OpenMapTiles fills from name:en where OSM has one, otherwise a
  *  transliteration). Returned only when it is a genuinely Latin-script string that differs from the
@@ -3647,7 +3678,11 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
     // are noise, and every placed symbol is per-frame collision work - highway speed shows only
     // motorway..secondary crossings, town speed fades the rest in.
     layer(NAV_ROADLABEL_LAYER, NAV_LABEL_MAJOR_CLASSES, 14f)
-    layer(NAV_ROADLABEL_MINOR_LAYER, NAV_LABEL_SLOW_CLASSES, 16f, fade = 16.2f to 16.8f)
+    // Minor tier from z15 (2026-07-21, user: cross-street bubbles should show at highway speed
+    // too) - the nav camera's speed-scaled zoom bottoms out at ~15.8, so the old z16.2-16.8 fade
+    // kept minors invisible above ~town speed. The include-list filter (<= 60 crossing names) and
+    // the fat textPadding keep placement bounded, so the per-frame collision cost stays tame.
+    layer(NAV_ROADLABEL_MINOR_LAYER, NAV_LABEL_SLOW_CLASSES, 15f, fade = 15.2f to 15.7f)
     ids.forEach {
         (style.getLayer(it) as? SymbolLayer)?.setProperties(
             PropertyFactory.visibility(Property.VISIBLE),
