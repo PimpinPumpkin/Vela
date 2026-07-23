@@ -336,7 +336,11 @@ fun PlaceSheet(
     }
     val heightAnim = remember(place.id) { Animatable(detentFor(expandedState.value, minimizedState.value)) }
     val settleSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f) }
-    LaunchedEffect(place.id, expandedState.value, minimizedState.value) {
+    // landscapeSheet + screenH in the keys: ROTATING kept the other orientation's pixel height
+    // (the effect never re-ran, its keys hadn't changed), so a sheet expanded in portrait came
+    // into landscape taller than the landscape cap and sat over the search bar (user 2026-07-23).
+    // Re-running on a geometry change snaps to the detent the new orientation computes.
+    LaunchedEffect(place.id, expandedState.value, minimizedState.value, landscapeSheet, screenH) {
         val target = detentFor(expandedState.value, minimizedState.value)
         // Skip when a drag-release settle is already animating to this exact detent - restarting
         // would zero the coast velocity mid-glide.
