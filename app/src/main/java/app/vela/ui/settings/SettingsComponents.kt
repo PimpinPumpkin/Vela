@@ -76,10 +76,12 @@ internal fun SelectableRow(label: String, selected: Boolean, onClick: () -> Unit
 }
 
 /**
- * A settings section group: an optional accent [SubHead] over a PLAIN column of rows - standard
- * settings layout, deliberately not a card (cards/containers everywhere read as clutter - user
- * feedback; structure comes from the heads and the [GroupDivider] hairlines, like stock Android
- * settings). Purely structural: no focus behaviour of its own.
+ * A settings section group: an optional accent [SubHead] over a FILLED rounded container of rows -
+ * the modern M3 grouped-card treatment (user 2026-07-23: the fork's outlined boxes and hairlines
+ * read dated). Structure comes from the container fill, not borders or dividers. The fill is the
+ * surfaceContainer TOKEN so it themes itself: Material You tints it from the wallpaper, light/dark
+ * pick their own step, and the AMOLED scheme's near-black container roles keep the layering on
+ * true black. Purely structural: no focus behaviour of its own.
  */
 @Composable
 internal fun SettingsGroup(
@@ -87,10 +89,16 @@ internal fun SettingsGroup(
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
     if (title != null) SubHead(title)
-    androidx.compose.foundation.layout.Column(
-        Modifier.fillMaxWidth().padding(vertical = 2.dp),
-        content = content,
-    )
+    androidx.compose.material3.Surface(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        shape = DpadShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        androidx.compose.foundation.layout.Column(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            content = content,
+        )
+    }
 }
 
 /** A lighter heading for sub-parts within a section (e.g. "Map area" / "Routing regions" under
@@ -129,16 +137,13 @@ internal fun Hint(text: String) {
 }
 
 /**
- * The hairline separator between rows INSIDE a [SettingsGroup] card - the uniform "separation"
- * every multi-row card carries. Inset to the rows' own horizontal padding; low-alpha outline so it
- * reads as structure, not content, in both themes.
+ * The gap between rows inside a [SettingsGroup]. Deliberately NOT a drawn line anymore (user
+ * 2026-07-23: the hairlines read dated) - the filled container plus row spacing carries the
+ * structure, like modern M3 settings. Kept as a composable so every call site stays valid.
  */
 @Composable
 internal fun GroupDivider() {
-    androidx.compose.material3.HorizontalDivider(
-        modifier = Modifier.padding(horizontal = 4.dp),
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-    )
+    androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 2.dp))
 }
 
 /**
