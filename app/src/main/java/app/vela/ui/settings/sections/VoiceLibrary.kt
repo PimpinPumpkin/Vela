@@ -78,7 +78,7 @@ internal fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
         if (installed.isEmpty())
             stringResource(R.string.settings_voice_lib_empty_hint)
         else
-            "Installed: $installedMb MB · ${installed.size} voice${if (installed.size == 1) "" else "s"}. Tap Use to switch (plays a sample); the trash icon frees the space.",
+            stringResource(R.string.settings_voice_lib_installed_hint, installedMb, installed.size),
     )
     if (appLang != "en" && !hasAppLangVoice) {
         val langLabel = PiperCatalog.languageLabel(appLang)
@@ -88,9 +88,11 @@ internal fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-            label = { Text(stringResource(R.string.settings_voice_search)) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+            placeholder = { Text(stringResource(R.string.settings_voice_search)) },
             singleLine = true,
+            shape = androidx.compose.foundation.shape.CircleShape,
+            colors = app.vela.ui.settings.settingsFieldColors(),
             modifier = Modifier.fillMaxWidth().padding(top = 4.dp).dpadFieldEscape(),
         )
     }

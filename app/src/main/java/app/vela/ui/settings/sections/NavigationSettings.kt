@@ -168,8 +168,8 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         if (state.parkingHistory.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
             SettingsGroup(title = stringResource(R.string.settings_parking_history)) {
-            Box(Modifier.padding(horizontal = 16.dp)) { Hint(stringResource(R.string.settings_parking_history_hint)) }
-            Box(Modifier.padding(horizontal = 16.dp)) {
+            Hint(stringResource(R.string.settings_parking_history_hint))
+            Box(Modifier.padding(horizontal = 8.dp)) {
                 TextButton(onClick = { vm.clearParkingHistory() }) { Text(stringResource(R.string.parking_history_clear_all)) }
             }
             state.parkingHistory.forEachIndexed { pi, entry ->

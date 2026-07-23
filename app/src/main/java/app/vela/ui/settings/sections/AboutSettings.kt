@@ -153,7 +153,7 @@ Onboarding.openDonate(context)
                 },
             ) { Text(stringResource(R.string.settings_update_check_now)) }
         }
-        updateStatus?.let { androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 16.dp)) { Hint(it) } }
+        updateStatus?.let { Hint(it) }
         Spacer(Modifier.height(10.dp))
         }
         // Breathing room under the last control so the button doesn't sit right on the

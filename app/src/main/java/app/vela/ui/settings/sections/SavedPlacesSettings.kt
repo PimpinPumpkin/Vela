@@ -81,11 +81,7 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             }
         }
         SettingsGroup(title = stringResource(R.string.mapscreen_section_lists)) {
-        androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 16.dp)) {
-            androidx.compose.foundation.layout.Column {
-                app.vela.ui.settings.Hint(stringResource(R.string.settings_lists_export_hint))
-            }
-        }
+        app.vela.ui.settings.Hint(stringResource(R.string.settings_lists_export_hint))
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
             // Same L/R sibling wiring as the saved-places pair above (issue #24).
             val listsFocus = remember { List(2) { FocusRequester() } }

@@ -133,7 +133,7 @@ internal fun PageIntro(text: String) {
 internal fun Hint(text: String) {
     Text(
         text,
-        style = MaterialTheme.typography.bodySmall,
+        style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
     )
@@ -180,8 +180,9 @@ internal fun ToggleRow(
             if (hint != null) {
                 Text(
                     hint,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp),
                 )
             }
         }
@@ -192,3 +193,17 @@ internal fun ToggleRow(
         )
     }
 }
+
+/**
+ * The Settings filled-field look: no outline, soft container, matching the hub search pill (an
+ * outlined field reads dated - user 2026-07-23). Token colors so every theme and Material You
+ * tint it. Pass with `shape = CircleShape` for single-line fields, a 20dp round rect for
+ * multi-line ones.
+ */
+@Composable
+internal fun settingsFieldColors() = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+    unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+)
