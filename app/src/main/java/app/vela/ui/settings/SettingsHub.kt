@@ -1,6 +1,6 @@
 package app.vela.ui.settings
 
-import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -76,10 +77,20 @@ internal fun SettingsHub(
         // The index is static (label resource -> section); matching is a simple contains() on the
         // localized label, same as before.
         var searchQuery by remember { mutableStateOf("") }
+        // Filled search pill (no outline - the outlined field read dated, user 2026-07-23). Token
+        // colors so Material You / light / dark / AMOLED all theme it; the indicator lines are
+        // transparent so it reads as one soft container, like the app's own map search bar.
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
             singleLine = true,
+            shape = androidx.compose.foundation.shape.CircleShape,
+            colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            ),
             placeholder = { Text(stringResource(R.string.settings_search_hint)) },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
             // The top focusable control: Back routes its DOWN here; UP/DOWN escape the field
@@ -116,8 +127,9 @@ internal fun SettingsHub(
                     Modifier
                         .fillMaxWidth()
                         .padding(vertical = 3.dp)
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f), DpadShape(14.dp))
-                        .dpadHighlight(DpadShape(14.dp))
+                        .clip(DpadShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
+                        .dpadHighlight(DpadShape(16.dp))
                         .dpadClickable { searchQuery = ""; onOpen(section) }
                         .padding(vertical = 10.dp, horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -240,13 +252,15 @@ private fun HubRow(
         modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp)
-            // A thin outline per category row - visible structure in light AND on AMOLED black,
-            // where borderless rows melt into the background. The orange focus ring draws over
-            // the same rounded shape when the row is focused.
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f), DpadShape(14.dp))
-            .dpadHighlight(DpadShape(14.dp))
+            // Filled M3 card per category row, no outline (the bordered boxes read dated - user
+            // 2026-07-23). surfaceContainer is a theme token, so Material You tints it and the
+            // AMOLED scheme's stepped near-blacks keep the rows visible on true black. The focus
+            // ring draws over the same rounded shape when the row is focused.
+            .clip(DpadShape(18.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .dpadHighlight(DpadShape(18.dp))
             .dpadClickable(onClick = onClick)
-            .padding(vertical = 10.dp, horizontal = 12.dp),
+            .padding(vertical = 12.dp, horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Monochrome leading icon (single-ink rule - never the teal primary).
