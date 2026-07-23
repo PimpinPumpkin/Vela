@@ -6,9 +6,7 @@
     </linearGradient>
   </defs>
   <rect x="16" y="16" width="480" height="480" rx="128" fill="url(#bg)"/>
-  <g transform="translate(-14 0)">
-    <path d="M256 88 C 208 186 178 292 160 402 L 256 354 Z" fill="#ffffff"/>
-    <path d="M256 88 C 274 200 306 306 352 402 L 256 354 Z" fill="#39e0c8"/>
-  </g>
-  <path d="M366 122 l8 22 22 8 -22 8 -8 22 -8 -22 -22 -8 22 -8 Z" fill="#ffffff"/>
+  <path d="M240 128 C 204 208 170 282 140 352 L 240 352 Z" fill="#ffffff"/>
+  <path d="M268 88 C 314 172 358 258 398 352 L 268 352 Z" fill="#39e0c8"/>
+  <path d="M130 388 L 398 388 C 390 420 356 432 310 432 L 218 432 C 172 432 138 420 130 388 Z" fill="#ffffff"/>
 </svg>
