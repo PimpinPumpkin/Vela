@@ -58,21 +58,39 @@ object FlockCameras {
     private fun downloadedBin(context: Context) = File(dir(context), "cameras.bin")
     private fun downloadedVer(context: Context) = File(dir(context), "version.txt")
 
-    /** The version currently on disk: the downloaded copy's if present, else the bundled floor's. */
-    private fun installedVersion(context: Context): Int {
-        val d = downloadedVer(context)
-        if (downloadedBin(context).exists() && d.exists()) d.readText().trim().toIntOrNull()?.let { return it }
-        return runCatching { context.assets.open(BUNDLED_VER).bufferedReader().use { it.readText() }.trim().toInt() }
+    private fun bundledVersion(context: Context): Int =
+        runCatching { context.assets.open(BUNDLED_VER).bufferedReader().use { it.readText() }.trim().toInt() }
             .getOrDefault(0)
+
+    private fun downloadedVersion(context: Context): Int {
+        val d = downloadedVer(context)
+        if (!downloadedBin(context).exists() || !d.exists()) return -1
+        return d.readText().trim().toIntOrNull() ?: -1
     }
 
-    /** Parse the newest available file once, off the main thread. Safe to call repeatedly (a loaded call no-ops). */
+    /** The newest version available locally: max of the downloaded copy and the bundled floor. */
+    private fun installedVersion(context: Context): Int =
+        maxOf(downloadedVersion(context), bundledVersion(context))
+
+    /**
+     * Parse the newest available file once, off the main thread. Safe to call repeatedly (a loaded call
+     * no-ops). NEWEST WINS BY VERSION, not by mere presence: an app update can ship a bundled floor
+     * fresher than an old hosted download (this is exactly how the 4-column direction data rolled out),
+     * and preferring any existing download served the stale 3-column file - the camera facing cones
+     * showed off the Overpass fallback at launch, then vanished when this loaded (device report,
+     * 2026-07-23). A download older than the bundled floor is deleted so refresh() comparisons and the
+     * next launch stay consistent.
+     */
     suspend fun ensureLoaded(context: Context) {
         if (loaded) return
         withContext(Dispatchers.IO) {
             if (loaded) return@withContext
             val dl = downloadedBin(context)
-            val stream = if (dl.exists()) runCatching { dl.inputStream() }.getOrNull()
+            val useDownload = downloadedVersion(context) >= bundledVersion(context) && dl.exists()
+            if (!useDownload && dl.exists()) {
+                runCatching { dl.delete(); downloadedVer(context).delete() }
+            }
+            val stream = if (useDownload) runCatching { dl.inputStream() }.getOrNull()
                 else runCatching { context.assets.open(BUNDLED) }.getOrNull()
             if (stream != null) runCatching { loadFrom(stream) }
         }
