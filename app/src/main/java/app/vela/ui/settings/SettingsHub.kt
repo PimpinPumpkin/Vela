@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Map
@@ -22,9 +23,13 @@ import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +44,7 @@ import app.vela.ui.map.MapUiState
 import app.vela.ui.dpadAutoFocus // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.dpadClickable
 import app.vela.ui.dpadHighlight
+import app.vela.ui.dpadFieldEscape
 import androidx.compose.foundation.shape.RoundedCornerShape as DpadShape
 
 /**
@@ -65,10 +71,74 @@ internal fun SettingsHub(
         autoFocusBack = returnTo == null,
     ) { topRow ->
         Spacer(Modifier.height(4.dp))
+        // Settings search, rebuilt for hub-and-spoke: the old single page scrolled to the matched
+        // row's measured Y, which died with the long page - a match now OPENS ITS SPOKE instead.
+        // The index is static (label resource -> section); matching is a simple contains() on the
+        // localized label, same as before.
+        var searchQuery by remember { mutableStateOf("") }
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            singleLine = true,
+            placeholder = { Text(stringResource(R.string.settings_search_hint)) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+            // The top focusable control: Back routes its DOWN here; UP/DOWN escape the field
+            // (dpadFieldEscape) so the rows below stay reachable by key.
+            modifier = topRow.fillMaxWidth().padding(vertical = 4.dp).dpadFieldEscape(),
+        )
+        val sectionTitles = mapOf(
+            SettingsSection.APPEARANCE to stringResource(R.string.settings_appearance),
+            SettingsSection.MAP to stringResource(R.string.settings_map),
+            SettingsSection.PLACE_PAGES to stringResource(R.string.settings_place_pages),
+            SettingsSection.NAVIGATION to stringResource(R.string.settings_navigation),
+            SettingsSection.VOICE to stringResource(R.string.settings_voice),
+            SettingsSection.SEARCH to stringResource(R.string.settings_search),
+            SettingsSection.OFFLINE to stringResource(R.string.settings_offline),
+            SettingsSection.SAVED_PLACES to stringResource(R.string.settings_saved_places),
+            SettingsSection.DATA_PRIVACY to stringResource(R.string.settings_data_privacy),
+            SettingsSection.DIAGNOSTICS to stringResource(R.string.settings_diagnostics),
+            SettingsSection.ABOUT to stringResource(R.string.settings_about),
+        )
+        if (searchQuery.isNotBlank()) {
+            val matches = SEARCH_INDEX.map { (res, section) -> stringResource(res) to section }
+                .filter { it.first.contains(searchQuery.trim(), ignoreCase = true) }
+                .take(10)
+            if (matches.isEmpty()) {
+                Text(
+                    stringResource(R.string.settings_search_none),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(12.dp),
+                )
+            }
+            matches.forEach { (label, section) ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 3.dp)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f), DpadShape(14.dp))
+                        .dpadHighlight(DpadShape(14.dp))
+                        .dpadClickable { searchQuery = ""; onOpen(section) }
+                        .padding(vertical = 10.dp, horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                        Text(
+                            sectionTitles[section] ?: "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Spacer(Modifier.height(24.dp))
+            return@SettingsScaffold
+        }
         @Composable
         fun rowModifier(section: SettingsSection, first: Boolean): Modifier {
             var m: Modifier = Modifier
-            if (first) m = m.then(topRow)
             if (section == returnTo) m = m.dpadAutoFocus(returnFocus)
             return m
         }
@@ -196,3 +266,79 @@ private fun HubRow(
     }
 }
 
+/**
+ * The settings-search index: every user-facing row label, mapped to the spoke that hosts it.
+ * A match opens the spoke (the hub-and-spoke replacement for the old measured scroll-to-Y).
+ * When a section gains a row, add its label here - the search only knows what's listed.
+ */
+private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
+    // Appearance
+    R.string.settings_follow_system to SettingsSection.APPEARANCE,
+    R.string.settings_theme_light to SettingsSection.APPEARANCE,
+    R.string.settings_theme_dark to SettingsSection.APPEARANCE,
+    R.string.settings_theme_amoled to SettingsSection.APPEARANCE,
+    R.string.settings_ui_scale to SettingsSection.APPEARANCE,
+    R.string.settings_map_colors to SettingsSection.APPEARANCE,
+    R.string.settings_dynamic_color to SettingsSection.APPEARANCE,
+    R.string.settings_units to SettingsSection.APPEARANCE,
+    R.string.settings_units_imperial to SettingsSection.APPEARANCE,
+    R.string.settings_units_metric to SettingsSection.APPEARANCE,
+    R.string.settings_language to SettingsSection.APPEARANCE,
+    R.string.settings_follow_system_language to SettingsSection.APPEARANCE,
+    // Map
+    R.string.settings_live_traffic to SettingsSection.MAP,
+    R.string.settings_transit_layer to SettingsSection.MAP,
+    R.string.settings_topography to SettingsSection.MAP,
+    R.string.settings_layers_button to SettingsSection.MAP,
+    R.string.settings_flock to SettingsSection.MAP,
+    R.string.settings_flock_route_alert to SettingsSection.MAP,
+    R.string.settings_buildings_3d to SettingsSection.MAP,
+    R.string.settings_building_overlay to SettingsSection.MAP,
+    R.string.settings_map_places to SettingsSection.MAP,
+    R.string.settings_show_pois to SettingsSection.MAP,
+    R.string.settings_show_civic to SettingsSection.MAP,
+    R.string.settings_show_transit_stops to SettingsSection.MAP,
+    R.string.settings_poi_icon_size to SettingsSection.MAP,
+    // Place pages
+    R.string.settings_show_reviews to SettingsSection.PLACE_PAGES,
+    R.string.settings_read_all_reviews to SettingsSection.PLACE_PAGES,
+    R.string.settings_load_photos to SettingsSection.PLACE_PAGES,
+    R.string.settings_hide_adult to SettingsSection.PLACE_PAGES,
+    R.string.settings_hide_external_links to SettingsSection.PLACE_PAGES,
+    // Navigation
+    R.string.settings_keep_screen_on to SettingsSection.NAVIGATION,
+    R.string.settings_traffic_lights to SettingsSection.NAVIGATION,
+    R.string.settings_vibrate_on_turns to SettingsSection.NAVIGATION,
+    R.string.settings_demo_drive to SettingsSection.NAVIGATION,
+    R.string.settings_sim_location to SettingsSection.NAVIGATION,
+    R.string.settings_parking_history to SettingsSection.NAVIGATION,
+    // Voice
+    R.string.settings_spoken_directions to SettingsSection.VOICE,
+    R.string.settings_voice_library to SettingsSection.VOICE,
+    R.string.settings_voice_advanced to SettingsSection.VOICE,
+    R.string.settings_voice_test to SettingsSection.VOICE,
+    // Search
+    R.string.settings_voice_search_toggle to SettingsSection.SEARCH,
+    R.string.settings_asr_engines_title to SettingsSection.SEARCH,
+    R.string.settings_voice_search_engine_title to SettingsSection.SEARCH,
+    // Offline
+    R.string.settings_offline to SettingsSection.OFFLINE,
+    // Saved places
+    R.string.settings_export to SettingsSection.SAVED_PLACES,
+    R.string.settings_import to SettingsSection.SAVED_PLACES,
+    R.string.mapscreen_section_lists to SettingsSection.SAVED_PLACES,
+    // Data & privacy
+    R.string.settings_privacy_button to SettingsSection.DATA_PRIVACY,
+    R.string.settings_live_rechecks to SettingsSection.DATA_PRIVACY,
+    // Diagnostics
+    R.string.settings_share_diagnostics to SettingsSection.DIAGNOSTICS,
+    R.string.settings_texture_render to SettingsSection.DIAGNOSTICS,
+    R.string.settings_save_trips to SettingsSection.DIAGNOSTICS,
+    R.string.settings_building_debug to SettingsSection.DIAGNOSTICS,
+    // About
+    R.string.settings_support to SettingsSection.ABOUT,
+    R.string.settings_version to SettingsSection.ABOUT,
+    R.string.settings_update_auto to SettingsSection.ABOUT,
+    R.string.settings_update_nightly to SettingsSection.ABOUT,
+    R.string.settings_update_check_now to SettingsSection.ABOUT,
+)
