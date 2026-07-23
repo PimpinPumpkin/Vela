@@ -309,9 +309,26 @@ fun PlaceSheet(
     // Transit stops expand FULL-SCREEN like any other place (the short-lived peek cap from earlier
     // today blocked maximizing a stop entirely - reported independently by the user and issue #71's
     // reporter within hours; with real multi-route boards the full detent has plenty to show).
-    val minH = if (singleDetent) screenH * 0.30f else screenH * 0.26f
-    val peekH = if (singleDetent) screenH * 0.30f else screenH * 0.56f
-    val expH = if (singleDetent) screenH * 0.30f else screenH * 0.92f
+    // Landscape (2026-07-20, the side-panel layout) is a TWO-detent ladder: 0.26 of a ~390dp
+    // landscape screen is ~101dp - only the name row fits and the action pills (Directions/Call)
+    // fold out of the minimized card - so minimized gets a dp floor that keeps the skeleton
+    // visible. Expanded CAPS BELOW THE SEARCH BAR (screenH - 104dp): the full-height 0.92 slid the
+    // panel's top strip under the full-width bar, which kept taking taps over it (user 2026-07-20,
+    // "maximized does not hide the search bar" - in the panel layout the bar deliberately STAYS,
+    // so the panel must stop under it instead). Between a 200dp floor and a ~286dp cap there is
+    // no room for a distinct middle stop, so peek = expanded and the panel steps minimized <->
+    // tall, Google's landscape feel. Portrait numbers are untouched.
+    val landscapeSheet = LocalConfiguration.current.screenWidthDp > screenH
+    val landscapeExpH = maxOf(screenH - 104f, screenH * 0.55f)
+    val minH = if (singleDetent) screenH * 0.30f
+    else if (landscapeSheet) maxOf(screenH * 0.26f, 200f).coerceAtMost(screenH * 0.55f)
+    else screenH * 0.26f
+    val peekH = if (singleDetent) screenH * 0.30f
+    else if (landscapeSheet) landscapeExpH
+    else screenH * 0.56f
+    val expH = if (singleDetent) screenH * 0.30f
+    else if (landscapeSheet) landscapeExpH
+    else screenH * 0.92f
     fun detentFor(expanded: Boolean, minimized: Boolean) = when {
         expanded -> expH
         minimized -> minH
