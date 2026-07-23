@@ -1683,7 +1683,17 @@ fun VelaMapView(
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
+        // MapLibre keeps its tile, glyph and sprite caches in NATIVE memory, and the only way to ask
+        // it to shrink them is onLowMemory(). Nothing called it before (ported from vela-dpad,
+        // 2026-07-23), so the map held its full cache through every trim the OS sent. Registered in
+        // the map's own DisposableEffect so the listener can never outlive the MapView it points at.
+        val trim = app.vela.ui.MemoryPressure.register { level ->
+            if (app.vela.ui.MemoryPressure.isSevere(level)) {
+                runCatching { mapView.onLowMemory() }
+            }
+        }
         onDispose {
+            trim.close()
             lifecycleOwner.lifecycle.removeObserver(observer)
             mapView.onPause()
             mapView.onStop()

@@ -1475,8 +1475,14 @@ class MapViewModel @Inject constructor(
         // popular times AND the photo gallery land faster when the user taps a result
         // (both idempotent; the photo warm primes the renderer + HTTP/2 sockets + cache
         // so the first place page skips the cold start).
-        viewModelScope.launch { runCatching { webPopularTimes.prewarm() } }
-        runCatching { webPhotos.warm() }
+        // Skipped on low-RAM devices: each warm spins up a Chromium renderer SPECULATIVELY, on
+        // the guess that a search predicts a place tap. When memory is the scarce resource that
+        // trade is backwards - two renderers paid on every search whether or not a place opens
+        // (ported from vela-dpad, 2026-07-23). Those phones build the WebView on first real use.
+        if (!app.vela.ui.MemoryPressure.lowRam) {
+            viewModelScope.launch { runCatching { webPopularTimes.prewarm() } }
+            runCatching { webPhotos.warm() }
+        }
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             // A fresh typed search leaves any along-route browse: picks open places normally again.
@@ -4292,6 +4298,10 @@ class MapViewModel @Inject constructor(
     /** Remove a downloaded engine's files. If it was active, [AsrEngine.active] falls back to another
      *  installed engine (or the default), so the mic keeps working when possible. */
     fun deleteAsrEngine(engine: app.vela.voice.AsrEngine) {
+        // Free the loaded model BEFORE removing its files. Deleting the directory alone left the
+        // native recognizer resident for the rest of the process (~267 MB measured on the fork),
+        // so Remove reclaimed disk but no memory at all (ported from vela-dpad, 2026-07-23).
+        asrRecognizer.release()
         engine.dir(appContext).deleteRecursively()
         refreshAsr()
         if (app.vela.voice.AsrEngine.anyInstalled(appContext)) asrRecognizer.warmUp()

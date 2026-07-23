@@ -63,6 +63,26 @@ class WebPhotoFetcher @Inject constructor(
     @Volatile private var webView: WebView? = null
     @Volatile private var warmed = false
 
+    init {
+        // Unlike the other four web fetchers this one has NO idle reaper, so a warmed gallery
+        // renderer was pinned for the whole session with only renderer-death to clear it. A
+        // Chromium renderer is one of the largest things the app holds, and this fetcher is one of
+        // the two warmed speculatively on every search, so it releases under pressure (ported from
+        // vela-dpad, 2026-07-23).
+        app.vela.ui.MemoryPressure.register { level ->
+            if (app.vela.ui.MemoryPressure.isSevere(level)) main.post { reapNow() }
+        }
+    }
+
+    /** Destroy the WebView immediately. Main thread only (WebView requirement). The next
+     *  [warm]/fetch rebuilds it via `ensureWebView`, exactly as after a renderer death. */
+    private fun reapNow() {
+        val wv = webView ?: return
+        webView = null
+        warmed = false
+        runCatching { wv.loadUrl("about:blank"); wv.destroy() }
+    }
+
     // featureId → its scraped gallery. Re-tapping a place (or bouncing back from directions) then
     // shows photos INSTANTLY instead of re-running the ~20 s scrape. Access-order LRU, small cap.
     private val cache = object : LinkedHashMap<String, List<Photo>>(16, 0.75f, true) {
