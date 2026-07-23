@@ -17,6 +17,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Sheet chrome and landscape fixes (2026-07-23).** Swiping the handle of a place with
+  nothing to expand no longer makes the search bar and layers button vanish: they only hide when
+  the sheet measurably covers them. Rotating the phone with a place card or results list open now
+  resizes it to the new orientation instead of keeping the old height over the search bar, and the
+  landscape side panel widens to half the screen (400 to 520dp) instead of a fixed 400dp.
 - ✅ **Street-level buildings preload while you idle (2026-07-23).** Zooming down to the ~200 ft
   view used to wait a beat while the building footprints streamed in. When the map sits still for a
   moment at a mid zoom, Vela now quietly fetches the buildings for the area you're looking at in the
