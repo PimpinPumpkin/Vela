@@ -1230,11 +1230,28 @@ class MapViewModel @Inject constructor(
     }
 
     /** Download the offered update and hand it to the system installer. */
+    /** Launch a long download OUTSIDE viewModelScope so it survives the UI (issue #212): the work
+     *  rides the app-lifetime [app.vela.download.DownloadWork] scope and [app.vela.download.DownloadService]
+     *  holds a dataSync foreground service (quiet notification) for its duration - backgrounding or
+     *  swiping the app away no longer kills an in-flight voice/region/update download. Progress
+     *  writes to a cleared ViewModel's state are inert; installed-ness is derived from disk at the
+     *  next init, so a download that outlives the UI still lands. */
+    private fun downloadLaunch(label: String, block: suspend () -> Unit) {
+        app.vela.download.DownloadWork.scope.launch {
+            app.vela.download.DownloadService.begin(appContext, label)
+            try {
+                block()
+            } finally {
+                app.vela.download.DownloadService.end(appContext, label)
+            }
+        }
+    }
+
     fun downloadUpdate() {
         val info = _state.value.updateInfo ?: return
         if (_state.value.updateDownloadPct != null) return // already downloading
         _state.update { it.copy(updateDownloadPct = 0) }
-        viewModelScope.launch {
+        downloadLaunch(appContext.getString(R.string.download_label_update)) {
             val apk = selfUpdater.download(info) { pct ->
                 _state.update { it.copy(updateDownloadPct = pct) }
             }
@@ -4203,7 +4220,7 @@ class MapViewModel @Inject constructor(
         }
         val firstEver = VelaPiper.installedVoiceIds(appContext).isEmpty()
         _state.update { it.copy(voiceDownloadingId = id, voiceDownloadPct = 0f, voiceInstalling = false) }
-        viewModelScope.launch {
+        downloadLaunch(v.displayName) {
             val ok = kokoroInstaller.download(
                 PiperCatalog.downloadUrl(id), VelaPiper.modelDirFor(appContext, id), v.sizeBytes,
                 onExtracting = { _state.update { if (it.voiceDownloadingId == id) it.copy(voiceInstalling = true) else it } },
@@ -4259,7 +4276,7 @@ class MapViewModel @Inject constructor(
         }
         val hadNone = app.vela.voice.AsrEngine.installed(appContext).isEmpty()
         _state.update { it.copy(asrDownloadPct = 0f, asrInstalling = false, asrDownloadingId = engine.id) }
-        viewModelScope.launch {
+        downloadLaunch(engine.displayName) {
             val ok = kokoroInstaller.download(
                 engine.url, engine.dir(appContext), bytes,
                 onExtracting = { _state.update { it.copy(asrInstalling = true) } },
@@ -4851,7 +4868,7 @@ class MapViewModel @Inject constructor(
     /** Saving an area offline also pulls the routing graph for the region that CONTAINS it (if one is
      *  catalogued + not already installed) — so "offline for this area" means map AND navigation, one tap. */
     private fun downloadRoutingForArea(lat: Double, lng: Double) {
-        viewModelScope.launch {
+        downloadLaunch(appContext.getString(R.string.download_label_map_data)) {
             val regions = _state.value.routingRegions.ifEmpty {
                 routingGraphStore.manifest(app.vela.BuildConfig.ROUTING_MANIFEST_URL)
                     .also { rs -> _state.update { it.copy(routingRegions = rs) } }
@@ -4859,8 +4876,8 @@ class MapViewModel @Inject constructor(
             // smallest covering box = the specific region for this area (boxes overlap at borders; a big
             // neighbour like British Columbia shouldn't be grabbed for a the metro download)
             val region = regions.filter { lat in it.s..it.n && lng in it.w..it.e }
-                .minByOrNull { (it.n - it.s) * (it.e - it.w) } ?: return@launch
-            if (region.id in routingGraphStore.installedIds() || _state.value.routingDownloadingId != null) return@launch
+                .minByOrNull { (it.n - it.s) * (it.e - it.w) } ?: return@downloadLaunch
+            if (region.id in routingGraphStore.installedIds() || _state.value.routingDownloadingId != null) return@downloadLaunch
             downloadRoutingGraph(region) // shows its own progress + status
         }
         downloadOverlayForArea(lat, lng) // also grab the open building-footprint overlay for this area
@@ -4871,11 +4888,11 @@ class MapViewModel @Inject constructor(
      *  silent (a background enhancement, not the reason the user tapped download). Smallest covering box wins,
      *  same rule as routing. */
     private fun downloadOverlayForArea(lat: Double, lng: Double) {
-        viewModelScope.launch {
+        downloadLaunch(appContext.getString(R.string.download_label_map_data)) {
             val regions = overlayStore.manifest(app.vela.BuildConfig.OVERLAY_MANIFEST_URL)
             val region = regions.filter { lat in it.s..it.n && lng in it.w..it.e }
-                .minByOrNull { (it.n - it.s) * (it.e - it.w) } ?: return@launch
-            if (region.id in overlayStore.installedIds()) return@launch
+                .minByOrNull { (it.n - it.s) * (it.e - it.w) } ?: return@downloadLaunch
+            if (region.id in overlayStore.installedIds()) return@downloadLaunch
             overlayStore.download(region) { }
             refreshBuildingOverlays()
         }
@@ -5270,7 +5287,7 @@ class MapViewModel @Inject constructor(
     fun downloadRoutingGraph(region: app.vela.offline.RoutingRegion) {
         if (_state.value.routingDownloadingId != null) return
         _state.update { it.copy(routingDownloadingId = region.id, routingDownloadPct = 0, regionDownloadName = region.name) }
-        viewModelScope.launch {
+        downloadLaunch(region.name) {
             val ok = routingGraphStore.download(region) { pct ->
                 _state.update { it.copy(routingDownloadPct = pct) }
             }
@@ -5319,12 +5336,12 @@ class MapViewModel @Inject constructor(
      *  by region), instead of silently doing nothing. */
     fun downloadPoiPackFor(region: app.vela.offline.RoutingRegion, update: Boolean = false) {
         if (_state.value.poiPackDownloadingId != null || _state.value.routingDownloadingId != null) return
-        viewModelScope.launch {
+        downloadLaunch(region.name) {
             val available = poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL)
                 .any { it.id == region.id }
             if (!available) {
                 showStatus(appContext.getString(R.string.mapvm_poipack_unavailable, region.name))
-                return@launch
+                return@downloadLaunch
             }
             downloadPoiPack(region, update = update)
         }
@@ -5343,7 +5360,7 @@ class MapViewModel @Inject constructor(
     /** When a map region is downloaded for offline use, also pull its POIs from
      *  OSM/Overpass into the on-device index so search works there with no signal. */
     fun downloadOfflinePois(south: Double, west: Double, north: Double, east: Double) {
-        viewModelScope.launch {
+        downloadLaunch(appContext.getString(R.string.download_label_offline_places)) {
             val pois = withContext(Dispatchers.IO) { OverpassPois.fetch(http, south, west, north, east) }
             if (pois.isNotEmpty()) {
                 withContext(Dispatchers.IO) { offlinePoiStore.add(pois) }
