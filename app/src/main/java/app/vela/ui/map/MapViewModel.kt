@@ -4258,6 +4258,7 @@ class MapViewModel @Inject constructor(
             return
         }
         val hadNone = app.vela.voice.AsrEngine.installed(appContext).isEmpty()
+        asrRecognizer.clearQuarantine(engine) // a fresh download replaces whatever was quarantined
         _state.update { it.copy(asrDownloadPct = 0f, asrInstalling = false, asrDownloadingId = engine.id) }
         viewModelScope.launch {
             val ok = kokoroInstaller.download(
@@ -4300,7 +4301,11 @@ class MapViewModel @Inject constructor(
 
     /** Record + transcribe on-device (tier-1); returns the heard text or null. Driven by the capture
      *  dialog, which supplies the loudness sink, a start callback and an early-stop check. */
-    suspend fun voiceListen(onLevel: (Float) -> Unit, onListening: () -> Unit, cancelled: () -> Boolean): String? =
+    suspend fun voiceListen(
+        onLevel: (Float) -> Unit,
+        onListening: () -> Unit,
+        cancelled: () -> Boolean,
+    ): app.vela.voice.VoiceResult =
         asrRecognizer.listen(onLevel, onListening, cancelled)
 
     /** Apply a transcript from either voice tier as the query and run the search. */

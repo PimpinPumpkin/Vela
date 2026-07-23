@@ -980,6 +980,20 @@ Defaults that make the safe path the easy one:
   instant the utterance ends. Only the in-process path needs it; tier-2 (SYSTEM) hands off to an
   external recognizer that manages its own focus. Recording itself (an input `AudioRecord`) is
   unaffected by the output-focus request.
+- **ASR is CRASH-SENTINELED and voice failures EXPLAIN THEMSELVES (2026-07-23, ported from
+  vela-dpad, credit ars18/alltechdev):** a truncated/corrupt engine archive makes sherpa-onnx ABORT
+  natively (uncatchable - the process dies), and warmUp() runs at startup, so a bad model was an
+  unrecoverable crash loop. `AsrRecognizer` bumps `asr_load_strikes_<id>` before every native load
+  and zeroes it after; TWO stranded loads in a row latch `asr_model_bad_<id>`, delete THAT engine's
+  dir only, and report not-installed (one stranded load is forgiven - a mid-load process kill
+  strands the counter exactly like a crash, and must not delete a healthy 154 MB download). A fresh
+  download clears its own quarantine (`clearQuarantine(engine)` in downloadAsrEngine). And
+  `listen()` returns a `VoiceResult` (Text/NoSpeech/Failed(reason)) instead of String? - the seven
+  failure exits used to collapse into one silent null; MapScreen now explains MODEL / PERMISSION /
+  VAD / AUDIO_INIT / RECORDING in a VelaDialog with retry, and a DENIED mic prompt surfaces too.
+  Transcript cleanup moved to `SpeechText.cleanSearchTranscript` (:core, unit-tested): strips
+  Whisper's bracket tags ("[music]", incl. a truncated trailing "[musi") so junk collapses to
+  no-speech instead of searching for the literal tag. Logcat tag `VELAASR` names every failure.
 - **Tier-1 ASR is now a PICKABLE ENGINE, not Whisper-only (2026-07-20, device-verified on the P4a).**
   `WhisperRecognizer`→**`AsrRecognizer`** and `AsrModel`→**`AsrEngine`** (an enum catalog): three
   on-device engines share the sherpa-onnx runtime - **Whisper tiny** (`whisper`, multilingual default,
