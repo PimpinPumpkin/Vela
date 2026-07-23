@@ -48,6 +48,65 @@ class AsrRecognizer @Inject constructor(
     @Volatile private var recognizer: OfflineRecognizer? = null
     @Volatile private var loadedKey: String? = null
 
+    /** Non-zero while a [listen] is inside the native recognizer. [release] refuses to free the
+     *  model while this is set: `OfflineRecognizer.release()` frees C++ memory that an in-flight
+     *  decode is still reading, which is a use-after-free that takes the process down rather than
+     *  throwing. A trim arriving mid-utterance simply keeps the model until the utterance ends. */
+    private val inFlight = java.util.concurrent.atomic.AtomicInteger(0)
+
+    /** Idle-reap timer, same idea as the web fetchers' REAP_IDLE_MS. One daemon thread, shared,
+     *  created lazily so a device that never loads a model never starts it. */
+    private val reaper by lazy {
+        java.util.concurrent.Executors.newSingleThreadScheduledExecutor { r ->
+            Thread(r, "asr-reaper").apply { isDaemon = true }
+        }
+    }
+    @Volatile private var reapTask: java.util.concurrent.ScheduledFuture<*>? = null
+
+    init {
+        // Measured on the fork's test phone: the loaded Whisper tiny int8 model costs ~267 MB PSS
+        // (~101 MB of weights plus ~146 MB of onnxruntime arena), resident for the whole process
+        // with no way to reclaim it. It is by far the largest single reclaimable allocation in the
+        // app, so it releases on any severe trim and reloads (~1 s) on the next listen (ported
+        // from vela-dpad, 2026-07-23).
+        app.vela.ui.MemoryPressure.register { level ->
+            if (app.vela.ui.MemoryPressure.isSevere(level)) release()
+        }
+    }
+
+    /**
+     * Drop the model after a quiet period, on EVERY device, not just low-RAM ones. Warming at
+     * startup buys an instant first mic tap (user ask, 2026-07-10) but the app was then holding
+     * ~267 MB for the whole session on the CHANCE of a tap many users never make. Reaping after
+     * idle keeps the instant first tap and stops the model outliving the user's interest; a later
+     * tap pays the same ~1 s load the very first one used to. Every load and every listen re-arm
+     * the timer, so an active dictation session never reaps mid-use.
+     */
+    private fun armIdleReap() {
+        reapTask?.cancel(false)
+        reapTask = runCatching {
+            reaper.schedule({ release() }, REAP_IDLE_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+        }.getOrNull()
+    }
+
+    /**
+     * Free the native recognizer. Safe to call any time: no-op when nothing is loaded, and declines
+     * while a listen is in flight (see [inFlight]). The next [listen]/[warmUp] rebuilds it.
+     */
+    fun release() {
+        if (inFlight.get() > 0) {
+            android.util.Log.i(TAG, "release skipped, listen in flight")
+            return
+        }
+        synchronized(loadLock) {
+            val r = recognizer ?: return
+            recognizer = null
+            loadedKey = null
+            runCatching { r.release() }
+            android.util.Log.i(TAG, "recognizer released")
+        }
+    }
+
     private val audioManager by lazy { context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager }
     @Volatile private var focusRequest: AudioFocusRequest? = null
 
@@ -90,6 +149,10 @@ class AsrRecognizer @Inject constructor(
         const val SAMPLE_RATE = 16000
         const val VAD_WINDOW = 512            // Silero v4/v5 window at 16 kHz
         const val MAX_SECONDS = 15            // hard cap on one utterance
+        // Drop the loaded model after this quiet period. Matches the web fetchers' REAP_IDLE_MS:
+        // long enough that a dictation session never reaps between utterances, short enough that
+        // a session-long ~267 MB hold cannot happen.
+        const val REAP_IDLE_MS = 120_000L
     }
 
     private fun prefs() = context.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
@@ -139,6 +202,14 @@ class AsrRecognizer @Inject constructor(
      *  built recognizer for the current engine+language. */
     fun warmUp() {
         if (!AsrEngine.anyInstalled(context)) return
+        // On a low-RAM device the warm-up is a bad trade: it spends ~267 MB at EVERY launch to
+        // save ~1 s on a mic tap the user may never make (refreshAsr calls this from VM init plus
+        // two LaunchedEffects). Those phones load on first listen instead; roomier devices keep
+        // the instant-mic behaviour they have always had.
+        if (app.vela.ui.MemoryPressure.lowRam) {
+            android.util.Log.i(TAG, "skipping ASR warm-up on a low-RAM device, will load on first listen")
+            return
+        }
         Thread({ runCatching { ensureRecognizer() } }, "asr-warmup").start()
     }
 
@@ -242,6 +313,7 @@ class AsrRecognizer @Inject constructor(
             prefs.edit().putInt(strikesKey, 0).apply()
             recognizer = r
             loadedKey = key
+            if (r != null) armIdleReap() // start the quiet-period countdown from the load
             return r
         }
     }
@@ -255,6 +327,22 @@ class AsrRecognizer @Inject constructor(
     /** Listen, transcribe, and say WHY when it does not work - see [VoiceResult]. Every failure exit
      *  logs under `VELAASR` so a tester's logcat names the cause without another round-trip. */
     suspend fun listen(
+        onLevel: (Float) -> Unit,
+        onListening: () -> Unit,
+        cancelled: () -> Boolean,
+    ): VoiceResult = withContext(Dispatchers.Default) {
+        // Mark the recognizer busy so a memory trim arriving mid-utterance cannot free the native
+        // model out from under the decode (see inFlight); re-arm the idle reap on every exit.
+        inFlight.incrementAndGet()
+        try {
+            listenInner(onLevel, onListening, cancelled)
+        } finally {
+            inFlight.decrementAndGet()
+            armIdleReap()
+        }
+    }
+
+    private suspend fun listenInner(
         onLevel: (Float) -> Unit,
         onListening: () -> Unit,
         cancelled: () -> Boolean,

@@ -30,7 +30,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
     override fun newImageLoader(): coil.ImageLoader = coil.ImageLoader.Builder(this)
         .memoryCache {
             coil.memory.MemoryCache.Builder(this)
-                .maxSizeBytes(48 * 1024 * 1024)
+                .maxSizeBytes(if (app.vela.ui.MemoryPressure.lowRam) 16 * 1024 * 1024 else 48 * 1024 * 1024)
                 .build()
         }
         .build()
@@ -38,12 +38,32 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
     /** Apply the persisted in-app language to the Application context too (no-op when following the
      *  system), so `getString` from the ViewModel/nav-notification also localizes — resolved at launch
      *  from the saved pref (an in-session change re-reads it on next launch). */
+    /**
+     * Hand OS memory pressure to every holder that owns a large or native allocation (ported from
+     * vela-dpad, 2026-07-23). Before this existed nothing in the app implemented
+     * ComponentCallbacks2, so a TRIM_MEMORY_COMPLETE released nothing at all and the OS had no
+     * option but to kill us. Coil's own cache is trimmed here; everything else releases through
+     * [app.vela.ui.MemoryPressure].
+     */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        app.vela.ui.MemoryPressure.dispatch(level)
+        if (app.vela.ui.MemoryPressure.isSevere(level)) {
+            runCatching { coil.Coil.imageLoader(this).memoryCache?.clear() }
+        }
+    }
+
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(AppLocale.wrap(app.vela.ui.AdaptiveDensity.wrap(base)))
     }
 
     override fun onCreate() {
         super.onCreate()
+        // Device memory class first: the Coil cap and the eager-warm decisions read it.
+        app.vela.ui.MemoryPressure.init(this)
+        // Push the device class down to :core, which cannot read an :app holder (same seam as
+        // CategoryFilter.enabled). Gates the ambient POI fan-out in GoogleMapsDataSource.
+        app.vela.core.data.LowRamMode.enabled = app.vela.ui.MemoryPressure.lowRam
         Units.init(this)
         AppTheme.init(this)
         DynamicColor.init(this)
