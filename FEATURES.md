@@ -1662,6 +1662,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   the mini-dot tier, the OSM POI icons, transit stops and traffic controls together - Small
   exists for low-density car head units (a 1024x600 screen renders the fixed-px bitmaps
   physically huge); phones default to 1.0 and are untouched. All toggles act immediately.
+  Since 2026-07-20 the scale also covers the layers the first cut missed: search-result
+  pins and rating bubbles (with their labels), the collapsed result dots, saved-place pins
+  and the surveillance-camera badges - so a gas or restaurant search on a head unit shrinks
+  with the rest of the map. Transit-stop badges also claim a collision box now, so nearby
+  labels place around them instead of printing over them.
 - ✅ **Fire stations are not bus stops anymore (2026-07-15).** The category classifier's
   transit branch matched the bare word "station" before the civic branch could claim "fire
   station", so fire houses drew with the transit icon. Civic now classifies first, and the

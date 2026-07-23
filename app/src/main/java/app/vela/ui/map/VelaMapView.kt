@@ -1075,6 +1075,7 @@ fun VelaMapView(
                         Expression.stop(15f, 0.78f * sc), Expression.stop(17f, 1.1f * sc), Expression.stop(19f, 1.4f * sc),
                     ),
                 ),
+                PropertyFactory.textSize(10.5f * sc),
             )
             val controlsScaled = Expression.interpolate(
                 Expression.linear(), Expression.zoom(),
@@ -1082,6 +1083,25 @@ fun VelaMapView(
             )
             st.getLayer(CONTROLS_LAYER)?.setProperties(PropertyFactory.iconSize(controlsScaled))
             st.getLayer(CONTROLS_CLAIM_LAYER)?.setProperties(PropertyFactory.iconSize(controlsScaled))
+            // Layers the first cut MISSED (2026-07-20, car-screen report "POIs still a bit large
+            // sometimes"): search-result pins/rating bubbles, the collapsed result dots, saved-place
+            // pins and the flock badges all kept their fixed-px size while everything around them
+            // shrank - on a low-density head unit exactly these (a gas search, a saved spot) were
+            // the "sometimes" giants. Base values mirror layer creation; keep them in lockstep.
+            st.getLayer(MARKERS_LAYER)?.setProperties(
+                PropertyFactory.iconSize(1.15f * sc),
+                PropertyFactory.textSize(13f * sc),
+            )
+            st.getLayer(MARKERS_DOTS_LAYER)?.setProperties(PropertyFactory.iconSize(sc))
+            st.getLayer(SAVED_LAYER)?.setProperties(PropertyFactory.iconSize(sc))
+            st.getLayer(FLOCK_LAYER)?.setProperties(
+                PropertyFactory.iconSize(
+                    Expression.interpolate(
+                        Expression.linear(), Expression.zoom(),
+                        Expression.stop(14f, 0.7f * sc), Expression.stop(17f, 1.0f * sc), Expression.stop(19f, 1.35f * sc),
+                    ),
+                ),
+            )
         }
     }
 
@@ -2877,6 +2897,13 @@ private fun ensureLayers(style: Style) {
         style.addLayer(
             SymbolLayer(MARKERS_LAYER, MARKERS_SRC).withProperties(
                 PropertyFactory.iconImage(Expression.get("icon")),
+                // 1.15 is the calibrated size and it survived a full re-litigation (2026-07-20):
+                // a "too big" report led to 0.92 ("a little small"), then 1.0 ("kinda small"),
+                // before the real culprit surfaced - satellite mode was on, and the white pin
+                // backings over imagery read much heavier than the same bitmaps on the vector
+                // basemap. On the vector map 1.15 was right all along. Don't re-shrink this over
+                // a satellite-mode size report; car screens scale it via the Settings icon-size
+                // multiplier (the poiIconScale effect re-applies it with sc baked in).
                 PropertyFactory.iconSize(1.15f),
                 PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
                 PropertyFactory.iconAllowOverlap(false),
@@ -3193,8 +3220,13 @@ private fun ensureLayers(style: Style) {
                 setProperties(
                     PropertyFactory.iconImage(TRANSIT_STOP_IMG),
                     PropertyFactory.iconSize(stopSize),
+                    // The flock pattern (2026-07-20, car-screen "icons bump into the text" report):
+                    // the badge never yields itself (allowOverlap), but with ignorePlacement TRUE it
+                    // also never claimed a collision box, so later-placed labels (ambient POI names,
+                    // street names) printed straight under/over it. ignorePlacement FALSE keeps the
+                    // badge always-drawn while text finds a clear spot around it.
                     PropertyFactory.iconAllowOverlap(true),
-                    PropertyFactory.iconIgnorePlacement(true),
+                    PropertyFactory.iconIgnorePlacement(false),
                     PropertyFactory.iconPadding(2f),
                     PropertyFactory.textField(Expression.get("name")),
                     PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
