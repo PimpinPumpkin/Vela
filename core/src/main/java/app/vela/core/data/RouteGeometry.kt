@@ -450,9 +450,10 @@ object RouteGeometry {
                     ?: return@mapNotNull null
                 Lane(inds, o["valid"]?.jsonPrimitive?.booleanOrNull ?: false)
             }.orEmpty()
+        val effType = rampReclass(type, mod, dest)
         return Maneuver(
-            type = osrmType(type, mod),
-            instruction = osrmPhrase(type, mod, road, dest, exits, man["exit"]?.jsonPrimitive?.intOrNull),
+            type = osrmType(effType, mod),
+            instruction = osrmPhrase(effType, mod, road, dest, exits, man["exit"]?.jsonPrimitive?.intOrNull),
             side = if (type == "arrive" && mod != null) {
                 when {
                     mod.contains("left") -> "left"
@@ -468,6 +469,21 @@ object RouteGeometry {
             lanes = lanes,
         )
     }
+
+    /** A SIGNLESS, DEAD-STRAIGHT "on ramp" is a divided-road transition, not a ramp (real-drive
+     *  report 2026-07-21: "take the ramp" spoken while going straight on the same physical road
+     *  through a rename, median and all). Where a dual carriageway continues straight and only
+     *  changes name, the transition way is often tagged *_link in OSM and OSRM dutifully emits
+     *  "on ramp" - but with NO destinations (there is no sign) and a straight modifier. A real
+     *  freeway entrance virtually always carries sign destinations, and one you must steer onto
+     *  carries a left/right/slight modifier. Reclassify the signless straight case as "new name"
+     *  so it rides the rename path: CONTINUE on the banner, silent by voice, foldable by
+     *  foldRenames - what Google does there. Deliberately NARROW (straight/null only): a signless
+     *  SLIGHT ramp could still be a real unsigned entrance, and a wrongly silenced real ramp is
+     *  worse than a wrongly spoken phantom one. */
+    internal fun rampReclass(type: String, mod: String?, dest: String?): String =
+        if ((type == "on ramp" || type == "ramp") && dest == null && (mod == null || mod == "straight")) "new name"
+        else type
 
     /** OSRM `maneuver.type` + `modifier` → Vela [ManeuverType] (for the arrow + haptic). */
     internal fun osrmType(type: String, mod: String?): ManeuverType {
