@@ -11,7 +11,6 @@ Live traffic, real place data and turn-by-turn navigation, with zero Google on y
 [![Stable release](https://img.shields.io/github/v/release/PimpinPumpkin/Vela?label=stable&color=149387)](https://github.com/PimpinPumpkin/Vela/releases/latest)
 [![Build](https://img.shields.io/github/actions/workflow/status/PimpinPumpkin/Vela/ci.yml?branch=main&label=build)](https://github.com/PimpinPumpkin/Vela/actions/workflows/ci.yml)
 [![License: GPL v3](https://img.shields.io/github/license/PimpinPumpkin/Vela?color=blue)](LICENSE)
-[![Downloads](https://img.shields.io/github/downloads/PimpinPumpkin/Vela/total?color=149387)](https://github.com/PimpinPumpkin/Vela/releases)
 [![Translated on Weblate](https://img.shields.io/badge/translations-Weblate-2ecccf)](https://hosted.weblate.org/projects/vela-maps/)
 [![Stars](https://img.shields.io/github/stars/PimpinPumpkin/Vela?style=flat&color=ffd43b)](https://github.com/PimpinPumpkin/Vela/stargazers)
 
