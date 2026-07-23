@@ -17,7 +17,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -71,7 +71,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
         LaunchedEffect(Unit) { vm.offlineAddressCount { offlineAddrCount = it } }
         SettingsGroup(title = stringResource(R.string.settings_offline_map_area)) {
         Column(Modifier.padding(horizontal = 16.dp)) {
-        OutlinedButton(
+        FilledTonalButton(
             // The top focusable control: Back routes its DOWN here, UP from here goes back to Back.
             modifier = topRow.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
             onClick = {
@@ -118,13 +118,13 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                         stringResource(R.string.settings_offline_addresses_missing),
                         style = MaterialTheme.typography.bodyMedium,
                     )
-                    OutlinedButton(
+                    FilledTonalButton(
                         onClick = {
                             vm.refreshOfflineDataForSavedAreas()
                             onCloseSettings() // back to the map to watch the per-area progress
                         },
                         modifier = Modifier
-                            .dpadHighlight(androidx.compose.material3.ButtonDefaults.outlinedShape)
+                            .dpadHighlight(androidx.compose.material3.ButtonDefaults.filledTonalShape)
                             .padding(top = 8.dp),
                     ) { Text(stringResource(R.string.settings_offline_addresses_update)) }
                 }
@@ -230,7 +230,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                         }
                         updateAvailable -> Row(verticalAlignment = Alignment.CenterVertically) {
                             DpadFocusHandoff(keeper)
-                            OutlinedButton(
+                            FilledTonalButton(
                                 onClick = { vm.downloadPoiPackFor(region, update = true) },
                                 enabled = state.routingDownloadingId == null && state.poiPackDownloadingId == null,
                                 modifier = Modifier.dpadFocusKept(keeper),
@@ -243,7 +243,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                         // the pack, so offline search covers the region without a graph re-download.
                         installed && !packInstalled -> Row(verticalAlignment = Alignment.CenterVertically) {
                             DpadFocusHandoff(keeper)
-                            OutlinedButton(
+                            FilledTonalButton(
                                 onClick = { vm.downloadPoiPackFor(region) },
                                 enabled = state.routingDownloadingId == null && state.poiPackDownloadingId == null,
                                 modifier = Modifier.dpadFocusKept(keeper),
@@ -260,7 +260,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                         }
                         else -> {
                             DpadFocusHandoff(keeper)
-                            OutlinedButton(
+                            FilledTonalButton(
                                 onClick = { vm.downloadRoutingGraph(region) },
                                 enabled = state.routingDownloadingId == null,
                                 modifier = Modifier.dpadFocusKept(keeper),

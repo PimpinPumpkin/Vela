@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -47,7 +47,7 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             // D-pad: the root Column swallows bare LEFT/RIGHT, so this button pair drives its OWN
             // L/R (issue #24 - Import was unreachable). Same pattern as the vibrate chips.
             val savedFocus = remember { List(2) { FocusRequester() } }
-            OutlinedButton(
+            FilledTonalButton(
                 // The top focusable control: Back routes its DOWN here, UP from here goes back to Back.
                 modifier = topRow.dpadRowSibling(savedFocus, 0),
                 onClick = {
@@ -57,7 +57,7 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 },
             ) { Text(stringResource(R.string.settings_export)) }
             Spacer(Modifier.width(8.dp))
-            OutlinedButton(
+            FilledTonalButton(
                 modifier = Modifier.dpadRowSibling(savedFocus, 1),
                 onClick = {
                     runCatching { importLauncher.launch(arrayOf("application/json", "*/*")) }
@@ -89,7 +89,7 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
             // Same L/R sibling wiring as the saved-places pair above (issue #24).
             val listsFocus = remember { List(2) { FocusRequester() } }
-            OutlinedButton(
+            FilledTonalButton(
                 modifier = Modifier.dpadRowSibling(listsFocus, 0),
                 onClick = {
                     val intent = vm.exportListsIntent()
@@ -98,7 +98,7 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 },
             ) { Text(stringResource(R.string.settings_export)) }
             Spacer(Modifier.width(8.dp))
-            OutlinedButton(
+            FilledTonalButton(
                 modifier = Modifier.dpadRowSibling(listsFocus, 1),
                 onClick = {
                     runCatching { listImportLauncher.launch(arrayOf("application/json", "*/*")) }

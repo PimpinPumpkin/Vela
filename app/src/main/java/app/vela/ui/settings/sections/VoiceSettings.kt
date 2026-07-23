@@ -11,7 +11,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -135,8 +135,8 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
             ) {
                 // D-pad L/R across the pair (issue #24 - Test voice unreachable). See dpadRowSibling.
                 val voiceTestFocus = remember { List(2) { FocusRequester() } }
-                OutlinedButton(modifier = Modifier.dpadRowSibling(voiceTestFocus, 0), onClick = { vm.testVoice() }) { Text(stringResource(R.string.settings_voice_test), maxLines = 1) }
-                OutlinedButton(
+                FilledTonalButton(modifier = Modifier.dpadRowSibling(voiceTestFocus, 0), onClick = { vm.testVoice() }) { Text(stringResource(R.string.settings_voice_test), maxLines = 1) }
+                FilledTonalButton(
                     modifier = Modifier.dpadRowSibling(voiceTestFocus, 1),
                     onClick = {
                         runCatching {
@@ -184,9 +184,9 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // D-pad L/R across the pair (issue #24). See dpadRowSibling.
                     val playFocus = remember { List(2) { FocusRequester() } }
-                    OutlinedButton(modifier = Modifier.dpadRowSibling(playFocus, 0), onClick = { vm.speakText(tryText) }, enabled = tryText.isNotBlank()) { Text(stringResource(R.string.settings_voice_speak)) }
+                    FilledTonalButton(modifier = Modifier.dpadRowSibling(playFocus, 0), onClick = { vm.speakText(tryText) }, enabled = tryText.isNotBlank()) { Text(stringResource(R.string.settings_voice_speak)) }
                     Spacer(Modifier.width(8.dp))
-                    OutlinedButton(modifier = Modifier.dpadRowSibling(playFocus, 1), onClick = {
+                    FilledTonalButton(modifier = Modifier.dpadRowSibling(playFocus, 1), onClick = {
                         vm.speakText(navSampleText)
                     }) { Text(stringResource(R.string.settings_voice_nav_sample)) }
                 }
@@ -199,9 +199,9 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
                         modifier = Modifier.weight(1f),
                     )
                     val speedFocus = remember { List(2) { FocusRequester() } }  // D-pad L/R across -/+ (issue #24)
-                    OutlinedButton(modifier = Modifier.dpadRowSibling(speedFocus, 0), onClick = { vm.setVoiceSpeed(-0.1f) }) { Text("−") }
+                    FilledTonalButton(modifier = Modifier.dpadRowSibling(speedFocus, 0), onClick = { vm.setVoiceSpeed(-0.1f) }) { Text("−") }
                     Spacer(Modifier.width(6.dp))
-                    OutlinedButton(modifier = Modifier.dpadRowSibling(speedFocus, 1), onClick = { vm.setVoiceSpeed(0.1f) }) { Text("+") }
+                    FilledTonalButton(modifier = Modifier.dpadRowSibling(speedFocus, 1), onClick = { vm.setVoiceSpeed(0.1f) }) { Text("+") }
                 }
                 Hint(stringResource(R.string.settings_voice_speed_hint))
                 // Multi-speaker Vela voices (libritts_r=904, VCTK=109, Arctic=18) - let the user audition +
@@ -217,9 +217,9 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
                             modifier = Modifier.weight(1f),
                         )
                         val speakerFocus = remember { List(2) { FocusRequester() } }  // D-pad L/R across left/right steppers (issue #24)
-                        OutlinedButton(modifier = Modifier.dpadRowSibling(speakerFocus, 0), onClick = { vm.stepSpeaker(-1) }) { Text("◀") }
+                        FilledTonalButton(modifier = Modifier.dpadRowSibling(speakerFocus, 0), onClick = { vm.stepSpeaker(-1) }) { Text("◀") }
                         Spacer(Modifier.width(6.dp))
-                        OutlinedButton(modifier = Modifier.dpadRowSibling(speakerFocus, 1), onClick = { vm.stepSpeaker(1) }) { Text("▶") }
+                        FilledTonalButton(modifier = Modifier.dpadRowSibling(speakerFocus, 1), onClick = { vm.stepSpeaker(1) }) { Text("▶") }
                     }
                     Spacer(Modifier.height(8.dp))
                     // Jump straight to a variant number (904 is a lot to step through).
@@ -244,10 +244,10 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
                         Spacer(Modifier.width(8.dp))
                         // The old page passed the ring audit here only because an unrelated ringed
                         // control sat inside the scan window; the button itself had none.
-                        OutlinedButton(
+                        FilledTonalButton(
                             onClick = goToVariant,
                             enabled = jump.isNotBlank(),
-                            modifier = Modifier.dpadHighlight(androidx.compose.material3.ButtonDefaults.outlinedShape),
+                            modifier = Modifier.dpadHighlight(androidx.compose.material3.ButtonDefaults.filledTonalShape),
                         ) { Text(stringResource(R.string.settings_voice_variant_go)) }
                     }
                     Hint(stringResource(R.string.settings_voice_variant_hint))

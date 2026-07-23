@@ -113,7 +113,7 @@ internal fun SettingsScaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             androidx.compose.material3.LargeTopAppBar(
-                title = { Text(title, fontFamily = SettingsFontFamily) },
+                title = { Text(title) },
                 scrollBehavior = scrollBehavior,
                 colors = androidx.compose.material3.TopAppBarDefaults.largeTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
