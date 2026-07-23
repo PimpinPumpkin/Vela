@@ -70,7 +70,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
         var offlineAddrCount by remember { mutableStateOf(-1) }
         LaunchedEffect(Unit) { vm.offlineAddressCount { offlineAddrCount = it } }
         SettingsGroup(title = stringResource(R.string.settings_offline_map_area)) {
-        Column(Modifier.padding(horizontal = 4.dp)) {
+        Column(Modifier.padding(horizontal = 16.dp)) {
         OutlinedButton(
             // The top focusable control: Back routes its DOWN here, UP from here goes back to Back.
             modifier = topRow.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
@@ -178,7 +178,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                 Hint(stringResource(R.string.settings_routing_no_match, routeFilter.trim()))
             }
             SettingsGroup {
-            Column(Modifier.padding(horizontal = 4.dp)) {
+            Column(Modifier.padding(horizontal = 16.dp)) {
             shown.forEachIndexed { regionIdx, region ->
                 if (regionIdx > 0) GroupDivider()
                 val installed = region.id in state.routingInstalledIds

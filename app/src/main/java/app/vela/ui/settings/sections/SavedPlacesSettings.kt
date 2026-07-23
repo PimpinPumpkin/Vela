@@ -43,7 +43,7 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             }
         }
         SettingsGroup {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
             // D-pad: the root Column swallows bare LEFT/RIGHT, so this button pair drives its OWN
             // L/R (issue #24 - Import was unreachable). Same pattern as the vibrate chips.
             val savedFocus = remember { List(2) { FocusRequester() } }
@@ -81,12 +81,12 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             }
         }
         SettingsGroup(title = stringResource(R.string.mapscreen_section_lists)) {
-        androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 4.dp)) {
+        androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 16.dp)) {
             androidx.compose.foundation.layout.Column {
                 app.vela.ui.settings.Hint(stringResource(R.string.settings_lists_export_hint))
             }
         }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
             // Same L/R sibling wiring as the saved-places pair above (issue #24).
             val listsFocus = remember { List(2) { FocusRequester() } }
             OutlinedButton(

@@ -9,19 +9,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Navigation
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.automirrored.outlined.VolumeUp
+import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.Navigation
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
@@ -91,8 +90,8 @@ internal fun SettingsHub(
                 focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             ),
-            placeholder = { Text(stringResource(R.string.settings_search_hint)) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+            placeholder = { Text(stringResource(R.string.settings_search_hint), fontFamily = SettingsFontFamily) },
+            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
             // The top focusable control: Back routes its DOWN here; UP/DOWN escape the field
             // (dpadFieldEscape) so the rows below stay reachable by key.
             modifier = topRow.fillMaxWidth().padding(vertical = 4.dp).dpadFieldEscape(),
@@ -135,14 +134,14 @@ internal fun SettingsHub(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                        Text(label, style = MaterialTheme.typography.titleMedium, fontFamily = SettingsFontFamily)
                         Text(
                             sectionTitles[section] ?: "",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontFamily = SettingsFontFamily,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Spacer(Modifier.height(24.dp))
@@ -155,35 +154,35 @@ internal fun SettingsHub(
             return m
         }
         HubRow(
-            icon = Icons.Default.Palette,
+            icon = Icons.Outlined.Palette,
             title = stringResource(R.string.settings_appearance),
             subtitle = stringResource(R.string.settings_hub_appearance_sub),
             modifier = rowModifier(SettingsSection.APPEARANCE, first = true),
             onClick = { onOpen(SettingsSection.APPEARANCE) },
         )
         HubRow(
-            icon = Icons.Default.Map,
+            icon = Icons.Outlined.Map,
             title = stringResource(R.string.settings_map),
             subtitle = stringResource(R.string.settings_hub_map_sub),
             modifier = rowModifier(SettingsSection.MAP, first = false),
             onClick = { onOpen(SettingsSection.MAP) },
         )
         HubRow(
-            icon = Icons.Default.Storefront,
+            icon = Icons.Outlined.Storefront,
             title = stringResource(R.string.settings_place_pages),
             subtitle = stringResource(R.string.settings_hub_place_pages_sub),
             modifier = rowModifier(SettingsSection.PLACE_PAGES, first = false),
             onClick = { onOpen(SettingsSection.PLACE_PAGES) },
         )
         HubRow(
-            icon = Icons.Default.Navigation,
+            icon = Icons.Outlined.Navigation,
             title = stringResource(R.string.settings_navigation),
             subtitle = stringResource(R.string.settings_hub_navigation_sub),
             modifier = rowModifier(SettingsSection.NAVIGATION, first = false),
             onClick = { onOpen(SettingsSection.NAVIGATION) },
         )
         HubRow(
-            icon = Icons.AutoMirrored.Filled.VolumeUp,
+            icon = Icons.AutoMirrored.Outlined.VolumeUp,
             title = stringResource(R.string.settings_voice),
             // A voice download keeps its progress visible from the hub (it used to sit at the top
             // of the Voice section precisely so a collapsed library couldn't hide it).
@@ -195,42 +194,42 @@ internal fun SettingsHub(
             onClick = { onOpen(SettingsSection.VOICE) },
         )
         HubRow(
-            icon = Icons.Default.Mic,
+            icon = Icons.Outlined.Mic,
             title = stringResource(R.string.settings_search),
             subtitle = stringResource(R.string.settings_hub_search_sub),
             modifier = rowModifier(SettingsSection.SEARCH, first = false),
             onClick = { onOpen(SettingsSection.SEARCH) },
         )
         HubRow(
-            icon = Icons.Default.CloudDownload,
+            icon = Icons.Outlined.CloudDownload,
             title = stringResource(R.string.settings_offline),
             subtitle = stringResource(R.string.settings_hub_offline_sub),
             modifier = rowModifier(SettingsSection.OFFLINE, first = false),
             onClick = { onOpen(SettingsSection.OFFLINE) },
         )
         HubRow(
-            icon = Icons.Default.Star,
+            icon = Icons.Outlined.Star,
             title = stringResource(R.string.settings_saved_places),
             subtitle = stringResource(R.string.settings_hub_saved_sub),
             modifier = rowModifier(SettingsSection.SAVED_PLACES, first = false),
             onClick = { onOpen(SettingsSection.SAVED_PLACES) },
         )
         HubRow(
-            icon = Icons.Default.Shield,
+            icon = Icons.Outlined.Shield,
             title = stringResource(R.string.settings_data_privacy),
             subtitle = stringResource(R.string.settings_hub_privacy_sub),
             modifier = rowModifier(SettingsSection.DATA_PRIVACY, first = false),
             onClick = { onOpen(SettingsSection.DATA_PRIVACY) },
         )
         HubRow(
-            icon = Icons.Default.BugReport,
+            icon = Icons.Outlined.BugReport,
             title = stringResource(R.string.settings_diagnostics),
             subtitle = stringResource(R.string.settings_hub_diagnostics_sub),
             modifier = rowModifier(SettingsSection.DIAGNOSTICS, first = false),
             onClick = { onOpen(SettingsSection.DIAGNOSTICS) },
         )
         HubRow(
-            icon = Icons.Default.Info,
+            icon = Icons.Outlined.Info,
             title = stringResource(R.string.settings_about),
             subtitle = stringResource(R.string.settings_hub_about_sub),
             modifier = rowModifier(SettingsSection.ABOUT, first = false),
@@ -256,27 +255,27 @@ private fun HubRow(
             // 2026-07-23). surfaceContainer is a theme token, so Material You tints it and the
             // AMOLED scheme's stepped near-blacks keep the rows visible on true black. The focus
             // ring draws over the same rounded shape when the row is focused.
-            .clip(DpadShape(18.dp))
+            .clip(DpadShape(26.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)
-            .dpadHighlight(DpadShape(18.dp))
+            .dpadHighlight(DpadShape(26.dp))
             .dpadClickable(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 14.dp),
+            .padding(vertical = 16.dp, horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Monochrome leading icon (single-ink rule - never the teal primary).
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
-        Spacer(Modifier.width(16.dp))
+        // Outlined stock-style glyph in the quiet ink (single-ink rule - never the teal primary).
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(18.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+            Text(title, style = MaterialTheme.typography.titleMedium, fontFamily = SettingsFontFamily)
             Text(
                 subtitle,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
+                fontFamily = SettingsFontFamily,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

@@ -1,6 +1,8 @@
 package app.vela.ui.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
@@ -26,11 +28,27 @@ import androidx.compose.foundation.shape.RoundedCornerShape as DpadShape
 // The shared row/heading vocabulary for every Settings page (the hub and each sub-screen).
 // Moved verbatim out of the old single-page SettingsScreen so all section files share one copy.
 
+/**
+ * The stock-Settings typeface: Pixels expose Google Sans as the system font family "google-sans",
+ * and Typeface.create falls back to the default (Roboto) on every other ROM - so this is a free
+ * fidelity win on Pixels and a no-op on GrapheneOS/AOSP. Settings-scoped on purpose; the rest of
+ * the app keeps the normal type scale.
+ */
+internal val SettingsFontFamily: androidx.compose.ui.text.font.FontFamily =
+    runCatching {
+        androidx.compose.ui.text.font.FontFamily(
+            androidx.compose.ui.text.font.Typeface(
+                android.graphics.Typeface.create("google-sans", android.graphics.Typeface.NORMAL),
+            ),
+        )
+    }.getOrDefault(androidx.compose.ui.text.font.FontFamily.Default)
+
 @Composable
 internal fun SectionTitle(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.titleMedium,
+        fontFamily = SettingsFontFamily,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(vertical = 8.dp),
@@ -47,6 +65,7 @@ internal fun CollapsibleSectionTitle(text: String, expanded: Boolean, modifier: 
         Text(
             text,
             style = MaterialTheme.typography.titleMedium,
+            fontFamily = SettingsFontFamily,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.weight(1f),
@@ -62,7 +81,7 @@ internal fun CollapsibleSectionTitle(text: String, expanded: Boolean, modifier: 
 @Composable
 internal fun SelectableRow(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier.fillMaxWidth().dpadHighlight(DpadShape(10.dp)).dpadClickable(onClick = onClick).padding(horizontal = 4.dp, vertical = 4.dp),
+        modifier.fillMaxWidth().dpadHighlight(DpadShape(10.dp)).dpadClickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // onClick = null: the RadioButton is display-only so the ROW is the single focus stop. A
@@ -70,8 +89,8 @@ internal fun SelectableRow(label: String, selected: Boolean, onClick: () -> Unit
         // RIGHT) D-pad move into that nested target cleared focus with no way back (dpad audit
         // 2026-07-08) - the Material "clickable row + indicator" pattern.
         RadioButton(selected = selected, onClick = null)
-        androidx.compose.foundation.layout.Spacer(Modifier.width(10.dp))
-        Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+        androidx.compose.foundation.layout.Spacer(Modifier.width(14.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge, fontFamily = SettingsFontFamily)
     }
 }
 
@@ -91,11 +110,11 @@ internal fun SettingsGroup(
     if (title != null) SubHead(title)
     androidx.compose.material3.Surface(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        shape = DpadShape(20.dp),
+        shape = DpadShape(24.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         androidx.compose.foundation.layout.Column(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            Modifier.fillMaxWidth().padding(vertical = 6.dp),
             content = content,
         )
     }
@@ -109,9 +128,10 @@ internal fun SubHead(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold,
+        fontFamily = SettingsFontFamily,
+        fontWeight = FontWeight.Medium,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp, start = 4.dp),
+        modifier = Modifier.padding(top = 10.dp, bottom = 4.dp, start = 16.dp),
     )
 }
 
@@ -120,9 +140,9 @@ internal fun SubHead(text: String) {
 internal fun PageIntro(text: String) {
     Text(
         text,
-        style = MaterialTheme.typography.bodySmall,
+        style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
     )
 }
 
@@ -132,18 +152,25 @@ internal fun Hint(text: String) {
         text,
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(vertical = 4.dp),
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
     )
 }
 
 /**
- * The gap between rows inside a [SettingsGroup]. Deliberately NOT a drawn line anymore (user
- * 2026-07-23: the hairlines read dated) - the filled container plus row spacing carries the
- * structure, like modern M3 settings. Kept as a composable so every call site stays valid.
+ * The stock segmented-card gap: a full-bleed band in the PAGE background color that visually
+ * splits a [SettingsGroup] into segments, exactly how the Pixel Settings app separates grouped
+ * rows (no drawn hairlines - user 2026-07-23). Works because the group has no inner horizontal
+ * padding; rows carry their own inset instead.
  */
 @Composable
 internal fun GroupDivider() {
-    androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 2.dp))
+    androidx.compose.foundation.layout.Box(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 1.dp)
+            .height(3.dp)
+            .background(MaterialTheme.colorScheme.surface),
+    )
 }
 
 /**
@@ -162,11 +189,11 @@ internal fun ToggleRow(
     switchModifier: Modifier = Modifier,
 ) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         androidx.compose.foundation.layout.Column(Modifier.weight(1f).padding(end = 12.dp)) {
-            Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            Text(label, style = MaterialTheme.typography.bodyLarge, fontFamily = SettingsFontFamily)
             if (hint != null) {
                 Text(
                     hint,

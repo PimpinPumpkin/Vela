@@ -72,7 +72,7 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         // Interface size: scales every control and sheet (not the map) - for car/tablet
         // screens where buttons run small (user 2026-07-11). Numeric labels, no i18n needed.
         SettingsGroup(title = stringResource(R.string.settings_ui_scale)) {
-            androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 4.dp)) {
+            androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
                 FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     val scaleFocus = remember { List(4) { FocusRequester() } }
                     listOf(0.9f, 1.0f, 1.15f, 1.3f).forEachIndexed { i, f ->
@@ -95,7 +95,7 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         // archived pre-sample look (white roads, yellow motorways, true greens). The fleet
         // default is remote-pushable via calibration.json; an explicit pick here wins.
         SettingsGroup(title = stringResource(R.string.settings_map_colors)) {
-            androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 4.dp)) {
+            androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
                 FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     val palFocus = remember { List(2) { FocusRequester() } }
                     listOf(

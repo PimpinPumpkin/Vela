@@ -66,7 +66,7 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         if (state.diagnosticsEnabled) {
             GroupDivider()
             Spacer(Modifier.height(6.dp))
-            DpadRingBox(androidx.compose.material3.ButtonDefaults.outlinedShape, Modifier.padding(horizontal = 4.dp)) {
+            DpadRingBox(androidx.compose.material3.ButtonDefaults.outlinedShape, Modifier.padding(horizontal = 16.dp)) {
                 OutlinedButton(onClick = {
                     val intent = vm.diagShareIntent()
                     if (intent != null) runCatching { context.startActivity(intent) }
@@ -121,11 +121,11 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         )
         if (trips.isNotEmpty()) {
             GroupDivider()
-            androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 4.dp)) { Hint(stringResource(R.string.settings_recorded_trips_hint)) }
+            androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 16.dp)) { Hint(stringResource(R.string.settings_recorded_trips_hint)) }
             trips.forEachIndexed { ti, t ->
                 if (ti > 0) GroupDivider()
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
@@ -153,7 +153,7 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
                 }
             }
         } else if (state.tripRecordingEnabled) {
-            androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 4.dp)) { Hint(stringResource(R.string.settings_no_trips_hint)) }
+            androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 16.dp)) { Hint(stringResource(R.string.settings_no_trips_hint)) }
         }
         }
         if (showTripConsent) {

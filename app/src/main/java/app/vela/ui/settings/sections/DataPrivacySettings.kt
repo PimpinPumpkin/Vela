@@ -26,7 +26,7 @@ internal fun DataPrivacySettingsScreen(vm: app.vela.ui.map.MapViewModel, onBack:
         Spacer(Modifier.height(4.dp))
         PageIntro(stringResource(R.string.settings_data_privacy_hint))
         SettingsGroup {
-        androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) {
+        androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
         OutlinedButton(
             // The top (and only) focusable control; on the old page this button sat beside a
             // VelaSwitch whose ring token satisfied the audit window - here it carries its own ring.

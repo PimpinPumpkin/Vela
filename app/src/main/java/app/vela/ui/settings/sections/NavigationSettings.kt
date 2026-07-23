@@ -85,7 +85,7 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         }
 
         SettingsGroup {
-        androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 4.dp)) {
+        androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
         Text(stringResource(R.string.settings_vibrate_on_turns), style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium, modifier = Modifier.padding(top = 2.dp))
         // One chip per travel mode (was four stacked switch rows - a lot of vertical space
         // for a setting most people touch once). Selected = that mode vibrates at turns.
@@ -168,15 +168,15 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         if (state.parkingHistory.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
             SettingsGroup(title = stringResource(R.string.settings_parking_history)) {
-            Box(Modifier.padding(horizontal = 4.dp)) { Hint(stringResource(R.string.settings_parking_history_hint)) }
-            Box(Modifier.padding(horizontal = 4.dp)) {
+            Box(Modifier.padding(horizontal = 16.dp)) { Hint(stringResource(R.string.settings_parking_history_hint)) }
+            Box(Modifier.padding(horizontal = 16.dp)) {
                 TextButton(onClick = { vm.clearParkingHistory() }) { Text(stringResource(R.string.parking_history_clear_all)) }
             }
             state.parkingHistory.forEachIndexed { pi, entry ->
                 if (pi > 0) GroupDivider()
                 val isCurrent = entry.savedAtMillis == state.parkedAtMillis
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(

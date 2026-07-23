@@ -130,7 +130,7 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
             // Row wraps INSIDE the button into a tall two-line pill (user screenshot). In a FlowRow
             // the whole pill moves to the next line instead - the VelaDialog button pattern.
             androidx.compose.foundation.layout.FlowRow(
-                Modifier.padding(horizontal = 4.dp),
+                Modifier.padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 // D-pad L/R across the pair (issue #24 - Test voice unreachable). See dpadRowSibling.
@@ -148,7 +148,7 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
                     },
                 ) { Text(stringResource(R.string.settings_voice_system_settings), maxLines = 1) }
             }
-            androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 4.dp)) { Hint(stringResource(R.string.settings_voice_test_hint)) }
+            androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 16.dp)) { Hint(stringResource(R.string.settings_voice_test_hint)) }
             }
         }
 
@@ -168,7 +168,7 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
             CollapsibleSectionTitle(stringResource(R.string.settings_voice_advanced), voiceAdvExpanded) { voiceAdvExpanded = !voiceAdvExpanded }
             if (voiceAdvExpanded) {
                 SettingsGroup {
-                androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 4.dp)) {
+                androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
                 // Playground: hear the selected voice on any text (or a nav-style sample).
                 Spacer(Modifier.height(8.dp))
                 var tryText by remember { mutableStateOf("") }
