@@ -121,7 +121,7 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         )
         if (trips.isNotEmpty()) {
             GroupDivider()
-            androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 16.dp)) { Hint(stringResource(R.string.settings_recorded_trips_hint)) }
+            Hint(stringResource(R.string.settings_recorded_trips_hint))
             trips.forEachIndexed { ti, t ->
                 if (ti > 0) GroupDivider()
                 Row(
@@ -153,7 +153,7 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
                 }
             }
         } else if (state.tripRecordingEnabled) {
-            androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 16.dp)) { Hint(stringResource(R.string.settings_no_trips_hint)) }
+            Hint(stringResource(R.string.settings_no_trips_hint))
         }
         }
         if (showTripConsent) {

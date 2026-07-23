@@ -70,10 +70,9 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
         var offlineAddrCount by remember { mutableStateOf(-1) }
         LaunchedEffect(Unit) { vm.offlineAddressCount { offlineAddrCount = it } }
         SettingsGroup(title = stringResource(R.string.settings_offline_map_area)) {
-        Column(Modifier.padding(horizontal = 16.dp)) {
         FilledTonalButton(
             // The top focusable control: Back routes its DOWN here, UP from here goes back to Back.
-            modifier = topRow.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+            modifier = topRow.padding(start = 16.dp, top = 4.dp).dpadHighlight(androidx.compose.foundation.shape.CircleShape),
             onClick = {
                 vm.downloadViewport()
                 onCloseSettings() // back to the map so the user sees the download progress
@@ -87,7 +86,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             regions.forEachIndexed { ri, r ->
                 if (ri > 0) GroupDivider()
                 Row(
-                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -101,7 +100,6 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                     }
                 }
             }
-        }
         }
         }
         // Nudge for areas saved before the offline address geocoder existed: they have tiles + POIs but no
@@ -161,7 +159,9 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                     onValueChange = { routeFilter = it },
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).dpadFieldEscape(),
                     singleLine = true,
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    colors = app.vela.ui.settings.settingsFieldColors(),
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                     trailingIcon = {
                         if (routeFilter.isNotEmpty()) {
                             IconButton(modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape), onClick = { routeFilter = "" }) {
@@ -178,7 +178,6 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                 Hint(stringResource(R.string.settings_routing_no_match, routeFilter.trim()))
             }
             SettingsGroup {
-            Column(Modifier.padding(horizontal = 16.dp)) {
             shown.forEachIndexed { regionIdx, region ->
                 if (regionIdx > 0) GroupDivider()
                 val installed = region.id in state.routingInstalledIds
@@ -192,7 +191,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                     packRegion.rev > (state.poiPackInstalledRevs[region.id] ?: 0)
                 val here = region.id == primary?.id
                 Row(
-                    Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
@@ -269,7 +268,6 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                     }
                     LaunchedEffect(downloading, packDownloading, updateAvailable, installed, packInstalled) { keeper.retarget() }
                 }
-            }
             }
             }
         }

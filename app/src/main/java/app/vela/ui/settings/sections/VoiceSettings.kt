@@ -148,7 +148,7 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
                     },
                 ) { Text(stringResource(R.string.settings_voice_system_settings), maxLines = 1) }
             }
-            androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 16.dp)) { Hint(stringResource(R.string.settings_voice_test_hint)) }
+            Hint(stringResource(R.string.settings_voice_test_hint))
             }
         }
 
@@ -176,7 +176,9 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
                     value = tryText,
                     onValueChange = { tryText = it },
                     modifier = Modifier.fillMaxWidth().dpadFieldEscape(),
-                    label = { Text(stringResource(R.string.settings_voice_try_label)) },
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                    colors = app.vela.ui.settings.settingsFieldColors(),
+                    placeholder = { Text(stringResource(R.string.settings_voice_try_label)) },
                     maxLines = 3,
                 )
                 Spacer(Modifier.height(6.dp))
@@ -233,7 +235,9 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
                             value = jump,
                             onValueChange = { s -> jump = s.filter { it.isDigit() }.take(4) },
                             singleLine = true,
-                            label = { Text(stringResource(R.string.settings_voice_variant_field)) },
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            colors = app.vela.ui.settings.settingsFieldColors(),
+                            placeholder = { Text(stringResource(R.string.settings_voice_variant_field)) },
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Number,
                                 imeAction = ImeAction.Go,

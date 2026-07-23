@@ -84,12 +84,7 @@ internal fun SettingsHub(
             onValueChange = { searchQuery = it },
             singleLine = true,
             shape = androidx.compose.foundation.shape.CircleShape,
-            colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
-                unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            ),
+            colors = settingsFieldColors(),
             placeholder = { Text(stringResource(R.string.settings_search_hint)) },
             leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
             // The top focusable control: Back routes its DOWN here; UP/DOWN escape the field

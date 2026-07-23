@@ -68,7 +68,6 @@ internal fun SearchSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         PageIntro(stringResource(R.string.settings_asr_engines_hint))
         val anyAsrBusy = state.asrDownloadingId != null
         SettingsGroup {
-        androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
         app.vela.voice.AsrEngine.entries.forEachIndexed { engineIdx, engine ->
             if (engineIdx > 0) GroupDivider()
             val installed = engine.id in state.asrInstalledIds
@@ -92,7 +91,7 @@ internal fun SearchSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     val pct = state.asrDownloadPct ?: 0f
                     val queued = state.asrDownloadPct == null
                     DpadFocusHandoff(keeper)
-                    Column(Modifier.fillMaxWidth().dpadFocusKept(keeper).dpadHighlight(DpadShape(6.dp)).focusable().padding(vertical = 8.dp)) {
+                    Column(Modifier.fillMaxWidth().dpadFocusKept(keeper).dpadHighlight(DpadShape(6.dp)).focusable().padding(horizontal = 16.dp, vertical = 8.dp)) {
                         Text(engine.displayName, style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
                         Text(
                             when {
@@ -115,7 +114,7 @@ internal fun SearchSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     // Material's grey layer under key input).
                     DpadFocusHandoff(keeper)
                     Row(
-                        Modifier.fillMaxWidth().dpadHighlight(DpadShape(6.dp)).dpadClickable(enabled = !active) { vm.selectAsrEngine(engine) }.dpadFocusKept(keeper).padding(vertical = 8.dp),
+                        Modifier.fillMaxWidth().dpadHighlight(DpadShape(6.dp)).dpadClickable(enabled = !active) { vm.selectAsrEngine(engine) }.dpadFocusKept(keeper).padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         RadioButton(selected = active, onClick = null)
@@ -132,7 +131,7 @@ internal fun SearchSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     // Remove is a SEPARATE full-width row (its own single focus stop), never a nested
                     // target inside the row above - the anti-pattern the audits reject.
                     Row(
-                        Modifier.fillMaxWidth().dpadHighlight(DpadShape(6.dp)).dpadClickable { vm.deleteAsrEngine(engine) }.padding(start = 40.dp, top = 2.dp, bottom = 6.dp),
+                        Modifier.fillMaxWidth().dpadHighlight(DpadShape(6.dp)).dpadClickable { vm.deleteAsrEngine(engine) }.padding(start = 56.dp, end = 16.dp, top = 2.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(stringResource(R.string.settings_voice_search_remove), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
@@ -141,7 +140,7 @@ internal fun SearchSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 else -> {
                     DpadFocusHandoff(keeper)
                     Row(
-                        Modifier.fillMaxWidth().dpadHighlight(DpadShape(6.dp)).dpadClickable(enabled = !anyAsrBusy) { vm.downloadAsrEngine(engine) }.dpadFocusKept(keeper).padding(vertical = 8.dp),
+                        Modifier.fillMaxWidth().dpadHighlight(DpadShape(6.dp)).dpadClickable(enabled = !anyAsrBusy) { vm.downloadAsrEngine(engine) }.dpadFocusKept(keeper).padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
@@ -154,7 +153,6 @@ internal fun SearchSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             }
             LaunchedEffect(thisDownloading, installed, active) { keeper.retarget() }
             Spacer(Modifier.height(4.dp))
-        }
         }
         }
         // The engine picker only matters when there's actually a choice (the model AND a voice app,
