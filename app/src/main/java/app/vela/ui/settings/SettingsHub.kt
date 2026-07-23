@@ -90,7 +90,7 @@ internal fun SettingsHub(
                 focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             ),
-            placeholder = { Text(stringResource(R.string.settings_search_hint), fontFamily = SettingsFontFamily) },
+            placeholder = { Text(stringResource(R.string.settings_search_hint)) },
             leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
             // The top focusable control: Back routes its DOWN here; UP/DOWN escape the field
             // (dpadFieldEscape) so the rows below stay reachable by key.
@@ -134,11 +134,10 @@ internal fun SettingsHub(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(label, style = MaterialTheme.typography.titleMedium, fontFamily = SettingsFontFamily)
+                        Text(label, style = MaterialTheme.typography.titleMedium)
                         Text(
                             sectionTitles[section] ?: "",
                             style = MaterialTheme.typography.bodyMedium,
-                            fontFamily = SettingsFontFamily,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -266,11 +265,10 @@ private fun HubRow(
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.width(18.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontFamily = SettingsFontFamily)
+            Text(title, style = MaterialTheme.typography.titleMedium)
             Text(
                 subtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = SettingsFontFamily,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

@@ -20,7 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -270,7 +270,7 @@ private fun VoiceRow(
                 // Settings button rows. The keeper's requester (dpadFocusKept) stays on Use so a
                 // Download->Use handoff still lands the row's focus here.
                 val useDeleteFocus = remember { List(2) { FocusRequester() } }
-                OutlinedButton(
+                FilledTonalButton(
                     onClick = onUse,
                     modifier = Modifier.dpadFocusKept(keeper).dpadRowSibling(useDeleteFocus, 0),
                 ) { Text(stringResource(R.string.settings_voice_row_use)) }
@@ -280,7 +280,7 @@ private fun VoiceRow(
             }
             else -> {
                 DpadFocusHandoff(keeper)
-                OutlinedButton(onClick = onDownload, enabled = !anyDownloading, modifier = Modifier.dpadFocusKept(keeper)) { Text(stringResource(R.string.settings_download)) }
+                FilledTonalButton(onClick = onDownload, enabled = !anyDownloading, modifier = Modifier.dpadFocusKept(keeper)) { Text(stringResource(R.string.settings_download)) }
             }
         }
         LaunchedEffect(downloading, active, installed) { keeper.retarget() }

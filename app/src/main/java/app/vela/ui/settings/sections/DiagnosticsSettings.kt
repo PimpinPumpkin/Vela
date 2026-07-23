@@ -12,7 +12,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -66,8 +66,8 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         if (state.diagnosticsEnabled) {
             GroupDivider()
             Spacer(Modifier.height(6.dp))
-            DpadRingBox(androidx.compose.material3.ButtonDefaults.outlinedShape, Modifier.padding(horizontal = 16.dp)) {
-                OutlinedButton(onClick = {
+            DpadRingBox(androidx.compose.material3.ButtonDefaults.filledTonalShape, Modifier.padding(horizontal = 16.dp)) {
+                FilledTonalButton(onClick = {
                     val intent = vm.diagShareIntent()
                     if (intent != null) runCatching { context.startActivity(intent) }
                     else android.widget.Toast.makeText(
@@ -176,8 +176,8 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
             // reachable - the same trap the update buttons had (issue #79, @SILB).
             val crashFocus = remember { List(2) { FocusRequester() } }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                DpadRingBox(androidx.compose.material3.ButtonDefaults.outlinedShape) {
-                    OutlinedButton(
+                DpadRingBox(androidx.compose.material3.ButtonDefaults.filledTonalShape) {
+                    FilledTonalButton(
                         modifier = Modifier.dpadRowSibling(crashFocus, 0),
                         onClick = {
                             app.vela.diag.CrashCatcher.shareIntent(context)?.let { runCatching { context.startActivity(it) } }

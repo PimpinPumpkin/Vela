@@ -3,7 +3,7 @@ package app.vela.ui.settings.sections
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,10 +27,10 @@ internal fun DataPrivacySettingsScreen(vm: app.vela.ui.map.MapViewModel, onBack:
         PageIntro(stringResource(R.string.settings_data_privacy_hint))
         SettingsGroup {
         androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-        OutlinedButton(
+        FilledTonalButton(
             // The top (and only) focusable control; on the old page this button sat beside a
             // VelaSwitch whose ring token satisfied the audit window - here it carries its own ring.
-            modifier = topRow.dpadHighlight(androidx.compose.material3.ButtonDefaults.outlinedShape),
+            modifier = topRow.dpadHighlight(androidx.compose.material3.ButtonDefaults.filledTonalShape),
             onClick = {
                 runCatching {
                     context.startActivity(

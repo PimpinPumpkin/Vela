@@ -13,7 +13,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -56,7 +56,7 @@ internal fun AboutSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
         Hint(stringResource(R.string.settings_support_hint))
         Spacer(Modifier.height(4.dp))
-        OutlinedButton(
+        FilledTonalButton(
             // The top focusable control: Back routes its DOWN here, UP from here goes back to Back.
             modifier = topRow.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
             onClick = {
@@ -78,14 +78,14 @@ Onboarding.openDonate(context)
         val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
         Text(
             versionLine,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier
                 .dpadHighlight()
                 .clickable {
                     clipboard.setText(androidx.compose.ui.text.AnnotatedString(versionLine))
                     android.widget.Toast.makeText(context, versionCopied, android.widget.Toast.LENGTH_SHORT).show()
                 }
-                .padding(horizontal = 16.dp, vertical = 4.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         )
         GroupDivider()
         // Self-updater: a launch check (throttled to ~daily) plus a manual check here.
@@ -108,7 +108,7 @@ Onboarding.openDonate(context)
         )
         GroupDivider()
         // A clear gap between the hint paragraph and the button (they read as one clump otherwise).
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(14.dp))
         var updateStatus by remember { mutableStateOf<String?>(null) }
         val checkingText = stringResource(R.string.settings_update_checking)
         val noneText = stringResource(R.string.settings_update_none)
@@ -145,8 +145,8 @@ Onboarding.openDonate(context)
                     }
                 }
             }
-        } ?: DpadRingBox(androidx.compose.material3.ButtonDefaults.outlinedShape, Modifier.padding(horizontal = 16.dp)) {
-            OutlinedButton(
+        } ?: DpadRingBox(androidx.compose.material3.ButtonDefaults.filledTonalShape, Modifier.padding(horizontal = 16.dp)) {
+            FilledTonalButton(
                 onClick = {
                     updateStatus = checkingText
                     vm.checkForUpdateNow { found -> updateStatus = if (found) null else noneText }
@@ -154,6 +154,7 @@ Onboarding.openDonate(context)
             ) { Text(stringResource(R.string.settings_update_check_now)) }
         }
         updateStatus?.let { androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 16.dp)) { Hint(it) } }
+        Spacer(Modifier.height(10.dp))
         }
         // Breathing room under the last control so the button doesn't sit right on the
         // gesture bar at the end of the scroll.

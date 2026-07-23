@@ -28,28 +28,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape as DpadShape
 // The shared row/heading vocabulary for every Settings page (the hub and each sub-screen).
 // Moved verbatim out of the old single-page SettingsScreen so all section files share one copy.
 
-/**
- * The stock-Settings typeface: Pixels expose Google Sans as the system font family "google-sans",
- * and Typeface.create falls back to the default (Roboto) on every other ROM - so this is a free
- * fidelity win on Pixels and a no-op on GrapheneOS/AOSP. Settings-scoped on purpose; the rest of
- * the app keeps the normal type scale.
- */
-internal val SettingsFontFamily: androidx.compose.ui.text.font.FontFamily =
-    runCatching {
-        androidx.compose.ui.text.font.FontFamily(
-            androidx.compose.ui.text.font.Typeface(
-                android.graphics.Typeface.create("google-sans", android.graphics.Typeface.NORMAL),
-            ),
-        )
-    }.getOrDefault(androidx.compose.ui.text.font.FontFamily.Default)
 
 @Composable
 internal fun SectionTitle(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.titleMedium,
-        fontFamily = SettingsFontFamily,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.Medium,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(vertical = 8.dp),
     )
@@ -65,8 +50,7 @@ internal fun CollapsibleSectionTitle(text: String, expanded: Boolean, modifier: 
         Text(
             text,
             style = MaterialTheme.typography.titleMedium,
-            fontFamily = SettingsFontFamily,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.weight(1f),
         )
@@ -90,7 +74,7 @@ internal fun SelectableRow(label: String, selected: Boolean, onClick: () -> Unit
         // 2026-07-08) - the Material "clickable row + indicator" pattern.
         RadioButton(selected = selected, onClick = null)
         androidx.compose.foundation.layout.Spacer(Modifier.width(14.dp))
-        Text(label, style = MaterialTheme.typography.bodyLarge, fontFamily = SettingsFontFamily)
+        Text(label, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
@@ -128,7 +112,6 @@ internal fun SubHead(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.titleSmall,
-        fontFamily = SettingsFontFamily,
         fontWeight = FontWeight.Medium,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(top = 10.dp, bottom = 4.dp, start = 16.dp),
@@ -193,7 +176,7 @@ internal fun ToggleRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         androidx.compose.foundation.layout.Column(Modifier.weight(1f).padding(end = 12.dp)) {
-            Text(label, style = MaterialTheme.typography.bodyLarge, fontFamily = SettingsFontFamily)
+            Text(label, style = MaterialTheme.typography.bodyLarge)
             if (hint != null) {
                 Text(
                     hint,
