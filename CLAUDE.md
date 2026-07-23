@@ -351,6 +351,16 @@ Defaults that make the safe path the easy one:
   card + the cluster/HUD nav data; `ManeuverMapper` maps Vela maneuvers → car `Maneuver`/`Step`/`Trip`.
   Manifest also declares `FEATURE_CLUSTER` (instrument-cluster nav) and `CAR_INFO` (AAOS car speed).
   The PHONE also feeds NavSession when not projecting; the car and phone share the one nav loop.
+- **Long downloads NEVER ride viewModelScope (issue #212, 2026-07-23).** Every multi-MB download
+  (voice model, ASR engine, region graph, place pack, overlay, update APK, offline place data)
+  launches through `MapViewModel.downloadLaunch(label) { ... }`: the work runs on the app-lifetime
+  `DownloadWork.scope` (Main.immediate, byte-identical threading to viewModelScope) and a
+  refcounted `dataSync` foreground service (`app/download/DownloadService`, quiet notification)
+  holds the process alive for its duration - viewModelScope is cancelled the moment the task is
+  swiped, and without the FGS an OEM background killer (the issue's Galaxy) reaps the process
+  seconds after Home. Labeled returns inside those blocks are `return@downloadLaunch`. Progress
+  writes to a cleared ViewModel are inert by design; installed-ness is derived from disk at next
+  init. When adding a NEW download, use downloadLaunch, not a bare scope.
 - **Settings is HUB-AND-SPOKE (2026-07-23, ported from alltechdev/vela-dpad; supersedes the
   2026-07-10 single-page order):** `ui/settings/` = `SettingsScreen` (a plain hoisted-state
   dispatcher over the `SettingsSection` enum, no nav library; BACK peels spoke -> hub -> map),
