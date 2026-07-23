@@ -1772,6 +1772,10 @@ architecture note.
   off-route measured on the
   windowed/anchored projection (never whole-polyline min), reroutes are single-flight + cooldown +
   latch-clear-on-failure (a failed fetch must NOT kill rerouting - the event is edge-triggered), and
+  since 2026-07-21 the fetch has a HARD 20 s deadline (REROUTE_FETCH_TIMEOUT_MS): the retry
+  ladders inside directions() could hold the single-flight latch for a minute on a flaky cell
+  link, silently dropping every new RerouteNeeded (a real-drive hang); past the deadline it
+  fails into the same retry-while-deviated path so the next fix fires a fresh request, and
   ETA sums the remaining STEP durations × traffic ratio (never remaining/avg-speed), and since
   2026-07-14 that ratio is LIVE-CALIBRATED: the ~2-min recheck's candidate, when it follows the
   CURRENT course (`RouteGeometry.divergent` under `SAME_COURSE_M` = 250 m), resets `etaScale`
