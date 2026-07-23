@@ -3,14 +3,14 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Single-ink sailboat for Android 13+ themed icons (system supplies the tint). -->
+    <!-- Single-ink chevron for Android 13+ themed icons (system supplies the tint). -->
     <group
-        android:scaleX="0.15"
-        android:scaleY="0.15"
-        android:translateX="14.4"
-        android:translateY="15.0">
+        android:scaleX="0.18"
+        android:scaleY="0.18"
+        android:translateX="7.92"
+        android:translateY="11.16">
         <path
             android:fillColor="#FFFFFF"
-            android:pathData="M240,128 C204,208 170,282 140,352 L240,352 Z M268,88 C314,172 358,258 398,352 L268,352 Z M130,388 L398,388 C390,420 356,432 310,432 L218,432 C172,432 138,420 130,388 Z" />
+            android:pathData="M256,100 L146,376 L256,318 Z M256,100 L366,376 L256,318 Z" />
     </group>
 </vector>

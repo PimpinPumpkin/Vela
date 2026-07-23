@@ -1354,12 +1354,12 @@ Defaults that make the safe path the easy one:
 
 ## Brand assets (2026-07-23)
 
-One mark everywhere: the two-tone SAILBOAT (white jib + `#39e0c8` main with a
-mast gap between them, white hull) on the `#0d3d43` to `#149387` gradient.
-No star, and deliberately NOT a pin (the mast gap is what stops the sail
-reading as a warped nav arrow; a pin was considered and rejected as the
-generic-maps-fork look, and a sail inside a pin turns to mush at launcher
-size). Canonical file is `docs/logo.svg` (512, rounded square). Derived copies that must stay in sync
+One mark everywhere: the two-tone NAV CHEVRON (notched arrowhead, white left
+half + `#39e0c8` right half) on the `#0d3d43` to `#149387` gradient. The
+user's explicit pick (2026-07-23) after three rounds: sailboat variants, a
+pin, a route-V, a constellation and a puck-in-circle were all considered and
+rejected; they wanted the nav-arrow paradigm, two-toned, with NO circle, NO
+star, NO pin. Canonical file is `docs/logo.svg` (512, rounded square). Derived copies that must stay in sync
 when the mark changes: the launcher adaptive icon
 (`drawable/ic_launcher_foreground.xml` + `ic_launcher_background.xml` gradient +
 `ic_launcher_monochrome.xml` for themed icons; the old
