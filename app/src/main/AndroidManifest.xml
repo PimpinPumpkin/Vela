@@ -11,6 +11,8 @@
          alive with the screen off. Declared now so the design is explicit. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- Keeps voice/region/update downloads alive in the background (DownloadService, issue #212). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Haptic turn cues during navigation (normal permission, auto-granted). -->
@@ -119,6 +121,14 @@
             android:name=".service.NavigationService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!-- Refcounted keeper that holds the process foreground-important while any long
+             download (voice model, region graph, place pack, update APK) is in flight, so
+             backgrounding or swiping the app away no longer kills it (issue #212). -->
+        <service
+            android:name=".download.DownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- Android Auto (projection). The desc XML marks Vela as a templated car
              app; the service is what the car launcher starts. Works sideloaded once

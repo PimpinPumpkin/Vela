@@ -510,6 +510,12 @@
     <string name="update_later">Not now</string>
     <string name="update_install">Update</string>
     <string name="update_download_failed">Update download failed. Try again later.</string>
+    <!-- Background-download keeper notification (DownloadService, issue #212). -->
+    <string name="download_notif_channel">Downloads</string>
+    <string name="download_notif_title">Downloading %1$s</string> <!-- format -->
+    <string name="download_label_update">Vela update</string>
+    <string name="download_label_map_data">map data</string>
+    <string name="download_label_offline_places">offline places</string>
     <string name="settings_update_auto">Check for updates on launch</string>
     <string name="settings_update_auto_hint">Checks GitHub about once a day and offers newer releases. Turn off if you update through Obtainium.</string>
     <string name="settings_update_check_now">Check for updates</string>
