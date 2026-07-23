@@ -1403,7 +1403,8 @@ rejected; they wanted the nav-arrow paradigm, two-toned, with NO circle, NO
 star, NO pin. Canonical file is `docs/logo.svg` (512, rounded square). Derived copies that must stay in sync
 when the mark changes: the launcher adaptive icon
 (`drawable/ic_launcher_foreground.xml` + `ic_launcher_background.xml` gradient +
-`ic_launcher_monochrome.xml` for themed icons; the old
+`ic_launcher_monochrome.xml` for themed icons - a hollow OUTLINE stroke, not a
+fill, per the user 2026-07-23; the old
 `@color/ic_launcher_background` is gone), the site navbar mark + favicon data
 URI (`site/index.html`), and the README hero. The README hero also carries the
 shields badge row + quick-nav links + website button (bambuddy-style); badge

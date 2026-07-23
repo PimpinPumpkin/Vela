@@ -3,14 +3,18 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Single-ink chevron for Android 13+ themed icons (system supplies the tint). -->
+    <!-- Hollow OUTLINE chevron for Android 13+ themed icons (user call 2026-07-23: the filled
+         mono read as a blob in the themed circle). Round joins - a miter would spike far past
+         the acute tip. Stroke 24 in the 512 path space = ~4.3dp at this viewport. -->
     <group
         android:scaleX="0.18"
         android:scaleY="0.18"
         android:translateX="7.92"
         android:translateY="11.16">
         <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M256,100 L146,376 L256,318 Z M256,100 L366,376 L256,318 Z" />
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="24"
+            android:strokeLineJoin="round"
+            android:pathData="M256,100 L146,376 L256,318 L366,376 Z" />
     </group>
 </vector>
