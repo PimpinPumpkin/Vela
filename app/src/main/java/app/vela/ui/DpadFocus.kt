@@ -4,17 +4,23 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.view.InputDevice
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusEvent
@@ -33,12 +39,12 @@ import androidx.compose.ui.unit.dp
 
 /**
  * D-pad / keyboard operability helpers. Vela must be FULLY drivable with a 5-key D-pad
- * (no touchscreen at all — touch is a bonus): every interactive element is reachable by
+ * (no touchscreen at all - touch is a bonus): every interactive element is reachable by
  * focus traversal, every gesture has a key alternative, and the focused element is
  * obvious. These helpers carry the "obvious" part plus the mode detection.
  *
  * Detection note (2026-07-08): there is NO signal that reliably separates a fake-touchscreen
- * keypad phone from an ordinary touch phone at startup — feature phones lie about
+ * keypad phone from an ordinary touch phone at startup - feature phones lie about
  * `FEATURE_TOUCHSCREEN`, the framework's virtual input device reports DPAD on every phone, and
  * `KeyCharacterMap.deviceHasKey(DPAD_CENTER)` is true on a Pixel too. So proactive D-pad-FIRST
  * is reserved for the unambiguous cases (genuinely no touchscreen, or a physical D-pad device);
@@ -48,7 +54,7 @@ import androidx.compose.ui.unit.dp
 
 /**
  * True on a device where the D-pad is a PRIMARY input: it has physical D-pad keys, OR it
- * genuinely has no touchscreen. On such a device the app defaults to D-pad-first —
+ * genuinely has no touchscreen. On such a device the app defaults to D-pad-first -
  * affordances (crosshair, zoom buttons, focus rings) are shown persistently and initial
  * focus is placed for the user, rather than waiting for a first keypress to flip modes.
  */
@@ -58,33 +64,41 @@ fun rememberDpadFirstDevice(): Boolean {
     return remember { detectDpadFirst(context) }
 }
 
-/** D-pad-FIRST detection — deliberately CONSERVATIVE (fixed 2026-07-08). "D-pad-first" means
- *  the app shows key affordances persistently and pre-places focus BEFORE any input, so a false
- *  positive is expensive: it forces every touch phone into keypad behaviour (the search field
- *  stops taking a plain tap, the soft keyboard is suppressed, the +/- zoom buttons appear). A
- *  device is D-pad-first only when:
- *  - it genuinely has NO touchscreen (Android TV / a real touchless keypad); or
- *  - a PHYSICAL (non-virtual) input device reports `SOURCE_DPAD` — a game controller, remote, or
- *    a keypad whose own hardware exposes the D-pad.
+/** D-pad-FIRST detection - deliberately CONSERVATIVE (fixed 2026-07-08). "D-pad-first" means
+ * the app shows key affordances persistently and pre-places focus BEFORE any input, so a false
+ * positive is expensive: it forces every touch phone into keypad behaviour (the search field
+ * stops taking a plain tap, the soft keyboard is suppressed, the +/- zoom buttons appear). A
+ * device is D-pad-first only when:
+ * - it genuinely has NO touchscreen (Android TV / a real touchless keypad); or
+ * - a PHYSICAL (non-virtual) input device reports `SOURCE_DPAD` - a game controller, remote, or
+ * a keypad whose own hardware exposes the D-pad.
  *
- *  What we do NOT trust any more, and why (both fire on an ordinary phone):
- *  - the framework's "Virtual" aggregate input device (id -1). It reports
- *    `KEYBOARD | DPAD` on essentially EVERY Android device (confirmed on a Pixel 9 via
- *    `dumpsys input`), so counting it classified normal phones as keypad devices and broke the
- *    search bar (tester + repo-owner report). An earlier note here said "do NOT exclude virtual
- *    devices" because one MTK keypad phone exposed its D-pad only on the virtual device — but
- *    there is no signal that separates that phone from a Pixel, so proactive D-pad-first can't
- *    rely on it. Such hybrid phones still get full D-pad operation the moment a key is pressed,
- *    via the LIVE input mode in [rememberDpadMode] (Compose flips to `InputMode.Keyboard`); they
- *    just aren't pre-focused on the very first frame.
- *  - `KeyCharacterMap.deviceHasKey(DPAD_CENTER)`: true on a Pixel too (the virtual keymap carries
- *    the key), and it was already false on the MTK phone — so it only added false positives. */
+ * What we do NOT trust any more, and why (both fire on an ordinary phone):
+ * - the framework's "Virtual" aggregate input device (id -1). It reports
+ * `KEYBOARD | DPAD` on essentially EVERY Android device (confirmed on a Pixel 9 via
+ * `dumpsys input`), so counting it classified normal phones as keypad devices and broke the
+ * search bar (tester + repo-owner report). An earlier note here said "do NOT exclude virtual
+ * devices" because one MTK keypad phone exposed its D-pad only on the virtual device - but
+ * there is no signal that separates that phone from a Pixel, so proactive D-pad-first can't
+ * rely on it. Such hybrid phones still get full D-pad operation the moment a key is pressed,
+ * via the LIVE input mode in [rememberDpadMode] (Compose flips to `InputMode.Keyboard`); they
+ * just aren't pre-focused on the very first frame.
+ * - `KeyCharacterMap.deviceHasKey(DPAD_CENTER)`: true on a Pixel too (the virtual keymap carries
+ * the key), and it was already false on the MTK phone - so it only added false positives. */
 private fun detectDpadFirst(context: android.content.Context): Boolean {
+    // Test override so tests/dpad can verify the D-pad-FIRST experience (auto-focus, rings,
+    // arm behaviour) on a touch dev phone or in CI, where real detection would say touch:
+    // `adb shell settings put global vela_force_dpad 1`. Reading a Global setting needs no
+    // permission; only adb/WRITE_SECURE_SETTINGS can set it, so it never turns on in normal use.
+    val forced = runCatching {
+        android.provider.Settings.Global.getInt(context.contentResolver, "vela_force_dpad", 0) == 1
+    }.getOrDefault(false)
+    if (forced) return true
     val noTouch = !context.packageManager.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN)
     val hasPhysicalDpad = runCatching {
         InputDevice.getDeviceIds().any { id ->
             val dev = InputDevice.getDevice(id) ?: return@any false
-            // Skip the framework's virtual aggregate device — it reports DPAD on every phone.
+            // Skip the framework's virtual aggregate device - it reports DPAD on every phone.
             val virtual = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) dev.isVirtual else id < 0
             !virtual && (dev.sources and InputDevice.SOURCE_DPAD) == InputDevice.SOURCE_DPAD
         }
@@ -92,13 +106,19 @@ private fun detectDpadFirst(context: android.content.Context): Boolean {
     return noTouch || hasPhysicalDpad
 }
 
+/** Non-composable, context-only view of [rememberDpadFirstDevice] for callers OUTSIDE composition
+ * (e.g. the softkey engine's AUTO detector wired in [app.vela.VelaApp]). Same conservative rule,
+ * same `vela_force_dpad` test override - so softkeys and the Compose D-pad affordances agree on
+ * which devices are keypad-first. */
+fun isDpadFirstDevice(context: android.content.Context): Boolean = detectDpadFirst(context)
+
 /** Back-compat alias kept for call sites that mean "structural D-pad-first decisions". */
 @Composable
 fun rememberNoTouchDevice(): Boolean = rememberDpadFirstDevice()
 
-/** True while the user is driving the UI with keys — always true on a D-pad-first device,
- *  and flips live from the input mode on a touch phone with an attached keyboard/remote
- *  (affordances appear on the first key press, melt away on the next tap). */
+/** True while the user is driving the UI with keys - always true on a D-pad-first device,
+ * and flips live from the input mode on a touch phone with an attached keyboard/remote
+ * (affordances appear on the first key press, melt away on the next tap). */
 @Composable
 fun rememberDpadMode(): Boolean {
     val dpadFirst = rememberDpadFirstDevice()
@@ -109,14 +129,14 @@ fun rememberDpadMode(): Boolean {
 /**
  * D-pad-FIRST initial focus (hard rule, docs/dpad.md): place focus on this element as soon
  * as the screen/overlay appears, so a D-pad user NEVER has to press a key just to "wake up"
- * focus — every screen or view must land already focused. Attach the returned
+ * focus - every screen or view must land already focused. Attach the returned
  * [FocusRequester] to the primary element via `Modifier.focusRequester(...)`.
  *
  * Retries briefly (20 × 50 ms) because a freshly-composed focus node often isn't attached on
- * the first frame — the first `requestFocus()` would silently throw and nothing would end up
+ * the first frame - the first `requestFocus()` would silently throw and nothing would end up
  * focused (this is the exact reason MapScreen's map-target acquisition retries; generalized
  * here). Only requests on a **D-pad-first device** (`rememberDpadFirstDevice`), so touch UX
- * is byte-identical — no focus ring pops up under touch. Pass [keys] to re-grab focus when an
+ * is byte-identical - no focus ring pops up under touch. Pass [keys] to re-grab focus when an
  * overlay's content swaps (e.g. a step preview); omit for a plain screen that focuses once.
  */
 @Composable
@@ -134,8 +154,8 @@ fun rememberDpadAutoFocus(vararg keys: Any?): FocusRequester {
     return fr
 }
 
-// Note (docs/dpad.md): a Compose Material secondary window — a `DropdownMenu`'s Popup or an
-// `AlertDialog` — opens with WINDOW focus but no content Compose-focused, and Compose sets that
+// Note (docs/dpad.md): a Compose Material secondary window - a `DropdownMenu`'s Popup or an
+// `AlertDialog` - opens with WINDOW focus but no content Compose-focused, and Compose sets that
 // focus ONLY on the first real key event. Nothing in-app pre-places it (~10 approaches verified
 // failing on-device: requestFocus on the item / a custom focusable child / a TextButton / a bare
 // .clickable, retry-until-onFocusEvent, outer-scope delayed request, FocusManager.moveFocus(Down),
@@ -144,10 +164,10 @@ fun rememberDpadAutoFocus(vararg keys: Any?): FocusRequester {
 // element (the photo gallery proves it). SOLVED on that seam: `VelaDialog` (ui/VelaDialog.kt)
 // replaces every AlertDialog, and `VelaMenu` (ui/VelaMenu.kt) replaces every DropdownMenu (touch
 // still gets the anchored DropdownMenu; D-pad gets a raw-Dialog chooser that auto-focuses item 0).
-// So every menu/dialog now lands already focused — see those files.
+// So every menu/dialog now lands already focused - see those files.
 
 /**
- * Robust auto-focus Modifier — the version to use when the target may be **off-screen** (below
+ * Robust auto-focus Modifier - the version to use when the target may be **off-screen** (below
  * the fold in a scroll container) or otherwise not laid out on the first frame. There,
  * [rememberDpadAutoFocus]'s "requestFocus didn't throw → stop" retry gives up while focus never
  * actually landed (measured on-device: the Welcome screen's off-screen Get-started button stayed
@@ -155,7 +175,7 @@ fun rememberDpadAutoFocus(vararg keys: Any?): FocusRequester {
  * confirms focus truly landed**, then stops (so it never fights the user once they navigate
  * away). Apply directly to the target: `Modifier.dpadAutoFocus()`. No-op under touch.
  *
- * NB this still can't focus a `DropdownMenu` popup item — that's a separate, unfixable Compose
+ * NB this still can't focus a `DropdownMenu` popup item - that's a separate, unfixable Compose
  * limitation (the popup only takes item focus on the first key event; requestFocus/moveFocus
  * can't pre-place it, five approaches verified). Menus stay stock DropdownMenus (fully
  * navigable) so touch is byte-identical. See docs/dpad.md "Known limitations".
@@ -179,6 +199,34 @@ fun Modifier.dpadAutoFocus(): Modifier = composed {
 }
 
 /**
+ * [dpadAutoFocus] gated on the LIVE input mode ([rememberDpadMode]) instead of the static
+ * device check - for surfaces that must take focus on HYBRID touch+keypad phones too (where
+ * `rememberDpadFirstDevice` is false by design and the static variant no-ops). Used by the
+ * bare-map update/notice cards: no traversal path reaches them (the search bar above opens
+ * on focus and swallows the way down), so the card grabs focus itself - immediately on a
+ * keypad-first device, and on a hybrid as soon as the surface (re)composes with dpad mode
+ * latched (e.g. after BACKing out of the search overlay the first key opened). Same
+ * confirm-until-landed retry as [dpadAutoFocus]; still a no-op under pure touch.
+ */
+fun Modifier.dpadModeAutoFocus(): Modifier = composed {
+    val fr = remember { FocusRequester() }
+    val dpadMode = rememberDpadMode()
+    var focused by remember { mutableStateOf(false) }
+    LaunchedEffect(dpadMode) {
+        if (dpadMode) {
+            repeat(40) {
+                if (focused) return@LaunchedEffect
+                runCatching { fr.requestFocus() }
+                kotlinx.coroutines.delay(50)
+            }
+        }
+    }
+    this
+        .focusRequester(fr)
+        .onFocusEvent { focused = it.isFocused }
+}
+
+/**
  * Robust auto-focus for a **caller-owned** [requester] - use when the element's focus must also be
  * re-requested elsewhere (e.g. Settings routes an UP from its top row back to the Back button via
  * `requester.requestFocus()`, so the screen needs a handle on the requester, not just a Modifier).
@@ -186,7 +234,9 @@ fun Modifier.dpadAutoFocus(): Modifier = composed {
  * `onFocusEvent` confirms focus truly landed, then stops so it never fights the user) - but on a
  * requester you own. Prefer this over `rememberDpadAutoFocus()` + `.focusRequester(...)`: the weak
  * helper bails the instant `requestFocus()` doesn't throw, even when focus never actually landed,
- * so a screen can open UNfocused (device-verified on a 240x320 feature phone). No-op under touch.
+ * so a screen can open UNfocused (device-verified: Settings' Back button did not take focus on open
+ * with the weak helper; this variant lands it - confirmed at a normal display density AND at the real
+ * feature-phone target 240x320). No-op under touch.
  */
 fun Modifier.dpadAutoFocus(requester: FocusRequester): Modifier = composed {
     val dpadFirst = rememberDpadFirstDevice()
@@ -206,6 +256,66 @@ fun Modifier.dpadAutoFocus(requester: FocusRequester): Modifier = composed {
 }
 
 /**
+ * Swallows bare LEFT/RIGHT D-pad keys so a horizontal move with NO target can't CLEAR focus.
+ * In a `Column(verticalScroll)` Compose's focus search clears focus outright on a no-target
+ * directional move (and there's no way back via arrows - dpad audit 2026-07-08; `moveFocus`
+ * clears, `focusGroup` doesn't help). Put this on a vertical-list container AND on any lone
+ * control that lives outside it (e.g. a top-bar back button). It fires via `onKeyEvent`
+ * (leaf→root) so a focused child that WANTS LEFT/RIGHT - a chip row driving its own nav with
+ * FocusRequesters - handles the key first and this never runs for it. Other keys pass through.
+ */
+fun Modifier.dpadSwallowHorizontal(): Modifier =
+    this.onKeyEvent { ev -> ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight }
+
+/**
+ * Keeps a vertical D-pad move from CLEARING focus at a scroll container's top/bottom edge - the
+ * VERTICAL twin of [dpadSwallowHorizontal]'s trap. A DOWN on the last focusable (or UP on the
+ * first, where no bridge intercepts) has no target, and Compose's focus search then clears focus
+ * irrecoverably. Device-found by audit_dynamic on the redesigned Settings' two-control Saved
+ * places page (focus LOST 5/17 walk samples); every short page has the trap at its bottom edge.
+ * `focusProperties.exit` returning [FocusRequester.Cancel] BLOCKS the subtree-leaving move, so
+ * focus stays where it is - unlike a key swallow, this leaves the KEYS themselves untouched, so
+ * in-page moves and bridges (which use requestFocus, not a focus search) work exactly as before.
+ * Apply to the scrolling content container (SettingsScaffold does).
+ */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+fun Modifier.dpadContainVertical(): Modifier =
+    this
+        .focusProperties {
+            exit = { dir ->
+                if (dir == FocusDirection.Down || dir == FocusDirection.Up) FocusRequester.Cancel
+                else FocusRequester.Default
+            }
+        }
+        .focusGroup()
+
+/**
+ * Wires LEFT/RIGHT D-pad movement across a ROW of focusable siblings (buttons/chips), so a
+ * horizontal row is reachable inside a vertical list whose container swallows bare LEFT/RIGHT
+ * (see [dpadSwallowHorizontal] - without this, only the sibling that DOWN happens to land on is
+ * reachable and the others are stranded; issue #24: Import + Test-voice unreachable on a qin f25).
+ * Attach to EACH sibling with the shared [requesters] list and this sibling's [index]: it takes
+ * that index's [FocusRequester] AND drives L/R by `requestFocus` (which, unlike `moveFocus`, never
+ * clears focus at the ends) while CONSUMING the key so it never reaches the container swallow. This
+ * is the reusable form of the inline vibrate-chip pattern - use it, don't re-inline. Inert under
+ * touch (those keys never fire); left/right at the ends are no-ops (stay put), matching the chips.
+ */
+fun Modifier.dpadRowSibling(requesters: List<FocusRequester>, index: Int): Modifier =
+    this
+        .focusRequester(requesters[index])
+        .onKeyEvent { ev ->
+            if (ev.key == Key.DirectionRight || ev.key == Key.DirectionLeft) {
+                if (ev.type == KeyEventType.KeyDown) {
+                    if (ev.key == Key.DirectionRight && index < requesters.lastIndex) requesters[index + 1].requestFocus()
+                    if (ev.key == Key.DirectionLeft && index > 0) requesters[index - 1].requestFocus()
+                }
+                true
+            } else {
+                false
+            }
+        }
+
+/**
  * Makes a text field D-pad ESCAPABLE: UP/DOWN move focus to the previous/next form control
  * instead of being swallowed by the field's own cursor handling. Without this, a single- or
  * multi-line `TextField`/`BasicTextField` eats the vertical arrows, trapping focus on the
@@ -215,6 +325,7 @@ fun Modifier.dpadAutoFocus(requester: FocusRequester): Modifier = composed {
  * (root→leaf) so it wins before the field consumes the key. Falls through (returns false)
  * at a list edge where focus can't move, so the field still behaves normally there.
  */
+
 fun Modifier.dpadFieldEscape(): Modifier = composed {
     val dpad = rememberDpadMode()
     val focusManager = LocalFocusManager.current
@@ -236,38 +347,209 @@ fun Modifier.dpadFieldEscape(): Modifier = composed {
     }
 }
 
-/**
- * Swallows bare LEFT/RIGHT D-pad keys so a horizontal move with NO target can't CLEAR focus.
- * In a `Column(verticalScroll)` Compose's focus search clears focus outright on a no-target
- * directional move (and there's no way back via arrows — dpad audit 2026-07-08; `moveFocus`
- * clears, `focusGroup` doesn't help). Put this on a vertical-list container AND on any lone
- * control that lives outside it (e.g. a top-bar back button). It fires via `onKeyEvent`
- * (leaf→root) so a focused child that WANTS LEFT/RIGHT — a chip row driving its own nav with
- * FocusRequesters — handles the key first and this never runs for it. Other keys pass through.
- */
-fun Modifier.dpadSwallowHorizontal(): Modifier =
-    this.onKeyEvent { ev -> ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight }
+/** The D-pad focus-ring colour - a distinct orange that never blends with Vela's teal-filled controls
+ * (a teal ring on the teal ON-switch read as "green on green"). Overridable per call via ringColor. */
+private val DpadFocusRing = androidx.compose.ui.graphics.Color(0xFFFF6D00)
 
 /**
  * A clearly visible focus ring for D-pad traversal, drawn only while the element (or a
- * descendant — Material buttons host their own focus target) holds focus AND the UI is
+ * descendant - Material buttons host their own focus target) holds focus AND the UI is
  * key-driven, so it never appears under touch. Apply it to any interactive element; pass
  * the element's own [shape] so the ring hugs it.
  */
-fun Modifier.dpadHighlight(shape: Shape = RoundedCornerShape(14.dp)): Modifier = composed {
+fun Modifier.dpadHighlight(
+    shape: Shape = RoundedCornerShape(14.dp),
+    // The ring is the fixed ORANGE DpadFocusRing by default (0xFFFF6D00 - the exact colour
+    // ring_walk.sh pixel-asserts); pass a contrasting colour only when a control's own fill
+    // would swallow it (the reason this param exists - VelaDialog's filled confirm, 2026-07-15).
+    ringColor: androidx.compose.ui.graphics.Color? = null,
+): Modifier = composed {
     var focused by remember { mutableStateOf(false) }
     val dpadFirst = rememberDpadFirstDevice()
     val inputModeManager = LocalInputModeManager.current
     // On a D-pad-first device the input mode may still read Touch until the first key
-    // event, so honour dpadFirst directly — rings must be visible from the very start.
+    // event, so honour dpadFirst directly - rings must be visible from the very start.
     val show = focused && (dpadFirst || inputModeManager.inputMode == InputMode.Keyboard)
     this
         .onFocusEvent { focused = it.hasFocus }
         .then(
             if (show) {
-                Modifier.border(2.dp, MaterialTheme.colorScheme.primary, shape)
+                // A distinct ORANGE ring, not the teal primary: teal blended into Vela's teal-filled
+                // controls - a teal ring on the ON (teal) switch was invisible, "green on green" (tester
+                // 2026-07-19). Orange contrasts on teal, grey, and both light/dark; 3dp reads clearly at
+                // arm's length and stays unmistakable after looking away.
+                Modifier.border(3.dp, ringColor ?: DpadFocusRing, shape)
             } else {
                 Modifier
             },
         )
+}
+
+/**
+ * The focus ring for a control whose FOCUS LIVES ON ITS ROW, not on the control itself.
+ *
+ * A menu row of "label + switch" is a single focus stop (the row), so [dpadHighlight] on the row
+ * drew the ring around the whole width - it "wraps around the whole option instead of the toggle"
+ * (user 2026-07-19), and disagreed with Settings, where the ring hugs the switch pill. Track the
+ * row's focus with `onFocusEvent` and hand it to this on a box around the trailing control.
+ */
+fun Modifier.dpadRingWhen(active: Boolean, shape: Shape): Modifier =
+    if (active) this.border(3.dp, DpadFocusRing, shape) else this
+
+/**
+ * `clickable` that drops Material's FOCUS state layer while a key user is driving, keeping the
+ * orange ring as the only focus signal.
+ *
+ * A row with `dpadHighlight(...).clickable(...)` drew two highlights at once: the ripple's grey
+ * focus layer filling the row AND the ring around it - "having both by the switches is a little
+ * strange" (tester 2026-07-19). Indication is dropped only while input is key-driven, so a touch
+ * user still gets the normal press ripple; a hybrid phone regains it the moment it takes a tap.
+ * Pair this with [dpadHighlight] on the same row.
+ */
+fun Modifier.dpadClickable(
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+): Modifier = composed {
+    val dpadFirst = rememberDpadFirstDevice()
+    val inputModeManager = LocalInputModeManager.current
+    val keyDriven = dpadFirst || inputModeManager.inputMode == InputMode.Keyboard
+    val interaction = remember { MutableInteractionSource() }
+    if (keyDriven) {
+        Modifier.clickable(
+            interactionSource = interaction,
+            indication = null,
+            enabled = enabled,
+            onClick = onClick,
+        )
+    } else {
+        Modifier.clickable(enabled = enabled, onClick = onClick)
+    }
+}
+
+/**
+ * Wraps a control in a focus ring that HUGS IT, instead of the inflated box Material would give it.
+ *
+ * Material applies `minimumInteractiveComponentSize()` INSIDE buttons and chips, padding their
+ * layout out to the 48dp minimum touch target while the visible surface stays 40dp (button) or 32dp
+ * (chip). A `dpadHighlight` on the control's own modifier sits OUTSIDE that padding, so it measures
+ * the inflated box and draws a ring visibly too tall, floating clear of the control - "the wrong
+ * shape" (tester 2026-07-19). Ringing a parent pinned to the control's real height fixes it:
+ * `hasFocus` still propagates up from the focused child, and the child keeps its full 48dp touch
+ * target by overflowing this shorter, non-clipping box.
+ *
+ * [shape] must match the control's own shape (`ButtonDefaults.shape`, `CircleShape` for a pill).
+ */
+@androidx.compose.runtime.Composable
+fun DpadRingBox(
+    shape: Shape,
+    modifier: Modifier = Modifier,
+    height: androidx.compose.ui.unit.Dp = androidx.compose.material3.ButtonDefaults.MinHeight,
+    content: @androidx.compose.runtime.Composable () -> Unit,
+) {
+    Box(
+        modifier.requiredHeight(height).dpadHighlight(shape),
+        contentAlignment = Alignment.Center,
+    ) { content() }
+}
+
+/**
+ * A Material [androidx.compose.material3.Switch] that carries the D-pad focus ring (teal) instead
+ * of only the faint default grey focus state - the Settings toggles were "always hard to tell when
+ * they are highlighted" (tester feedback 2026-07-19). Drop-in replacement for `Switch`; the ring
+ * hugs the switch pill via CircleShape.
+ */
+@androidx.compose.runtime.Composable
+fun VelaSwitch(
+    checked: Boolean,
+    onCheckedChange: ((Boolean) -> Unit)?,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    // Ring the switch's 32dp TRACK, not its 48dp min-touch-target box, so the orange ring hugs the
+    // pill exactly rather than floating as a taller oval (clean-wrap rule, tester 2026-07-19). The
+    // Switch keeps its full 48dp touch target - it overflows the shorter, non-clipping ring box.
+    Box(
+        modifier
+            .requiredHeight(32.dp)
+            .dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        androidx.compose.material3.Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            enabled = enabled,
+        )
+    }
+}
+
+/**
+ * Keeps D-pad focus glued to a row whose trailing control REPLACES itself as state changes
+ * (Download -> progress spinner -> Use/Delete). Compose clears focus when the focused node
+ * leaves composition and recovery then restarts at the TOP of the screen - a keypad user who
+ * pressed Download found the highlight teleported to the first row (user report, 2026-07-16).
+ *
+ * Usage, all three parts inside the row composable:
+ *  - `val keeper = rememberDpadFocusKeeper()`
+ *  - every variant of the swap-in control gets `Modifier.dpadFocusKept(keeper)` (a variant
+ *    with no natural focusable, e.g. a progress spinner, adds `.dpadHighlight(shape)` +
+ *    `.focusable()` so the row stays a focus stop while it works)
+ *  - after the variant `when`, `LaunchedEffect(variantKey) { keeper.retarget() }` where
+ *    `variantKey` discriminates the variants, plus `DpadFocusHandoff(keeper)` INSIDE each
+ *    disposable variant branch.
+ *
+ * The handoff arms only when the disposed control held focus at (or within 250 ms of) its
+ * disposal - the focus-loss event and `onDispose` race in either order, so a plain "was
+ * focused" check misses one ordering. No-op entirely under touch (retarget would otherwise
+ * scroll the row into view on a touch tap).
+ */
+class DpadFocusKeeper {
+    val requester = FocusRequester()
+    internal var enabled = false
+    internal var focused = false
+    internal var lostAtMs = 0L
+    internal var armed = false
+
+    internal fun armIfRecentlyFocused() {
+        if (!enabled) return
+        if (focused || android.os.SystemClock.uptimeMillis() - lostAtMs < 250) armed = true
+    }
+
+    /** Re-places focus on whatever control now wears [dpadFocusKept], if armed. */
+    suspend fun retarget() {
+        if (!enabled || !armed) return
+        armed = false
+        repeat(40) {
+            if (focused) return
+            runCatching { requester.requestFocus() }
+            kotlinx.coroutines.delay(50)
+        }
+    }
+}
+
+@Composable
+fun rememberDpadFocusKeeper(): DpadFocusKeeper {
+    val keeper = remember { DpadFocusKeeper() }
+    keeper.enabled = rememberDpadMode()
+    return keeper
+}
+
+/** Marks the row's CURRENT control variant as the keeper's focus target. */
+fun Modifier.dpadFocusKept(keeper: DpadFocusKeeper): Modifier = this
+    .focusRequester(keeper.requester)
+    .onFocusEvent {
+        if (it.isFocused) {
+            keeper.focused = true
+        } else {
+            if (keeper.focused) keeper.lostAtMs = android.os.SystemClock.uptimeMillis()
+            keeper.focused = false
+        }
+    }
+
+/** Put INSIDE each disposable variant branch: arms the keeper when the branch leaves
+ * composition while (recently) focused, so [DpadFocusKeeper.retarget] re-places focus. */
+@Composable
+fun DpadFocusHandoff(keeper: DpadFocusKeeper) {
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose { keeper.armIfRecentlyFocused() }
+    }
 }

@@ -14,6 +14,15 @@ import androidx.compose.ui.platform.LocalContext
 // primaryContainer/secondaryContainer a stock purple, which made the map FABs and
 // selected chips read "weirdly purple" against the teal brand.
 private val LightColors = lightColorScheme(
+    // Soft teal-cast off-whites instead of pure white - a full-white page is harsh to look at
+    // (user feedback); the container roles step down so bars/cards still read as layers.
+    background = androidx.compose.ui.graphics.Color(0xFFF3F7F6),
+    surface = androidx.compose.ui.graphics.Color(0xFFF3F7F6),
+    surfaceContainerLowest = androidx.compose.ui.graphics.Color(0xFFFFFFFF),
+    surfaceContainerLow = androidx.compose.ui.graphics.Color(0xFFEDF2F1),
+    surfaceContainer = androidx.compose.ui.graphics.Color(0xFFE7EEEC),
+    surfaceContainerHigh = androidx.compose.ui.graphics.Color(0xFFE1E9E7),
+    surfaceContainerHighest = androidx.compose.ui.graphics.Color(0xFFDBE4E2),
     primary = VelaTeal,
     onPrimary = androidx.compose.ui.graphics.Color.White,
     primaryContainer = androidx.compose.ui.graphics.Color(0xFFB6E7DF),
@@ -43,6 +52,20 @@ private val DarkColors = darkColorScheme(
     onTertiaryContainer = androidx.compose.ui.graphics.Color(0xFFFFDCBE),
 )
 
+// AMOLED: the dark scheme on TRUE BLACK surfaces (every lit pixel costs battery on OLED, and
+// pure black is its own look). Container roles step up in near-blacks so cards and the title bar
+// still read as layers; the thin borders on Settings cards carry the structure.
+private val AmoledColors = DarkColors.copy(
+    background = androidx.compose.ui.graphics.Color(0xFF000000),
+    surface = androidx.compose.ui.graphics.Color(0xFF000000),
+    surfaceDim = androidx.compose.ui.graphics.Color(0xFF000000),
+    surfaceContainerLowest = androidx.compose.ui.graphics.Color(0xFF000000),
+    surfaceContainerLow = androidx.compose.ui.graphics.Color(0xFF060809),
+    surfaceContainer = androidx.compose.ui.graphics.Color(0xFF0B0E0F),
+    surfaceContainerHigh = androidx.compose.ui.graphics.Color(0xFF121617),
+    surfaceContainerHighest = androidx.compose.ui.graphics.Color(0xFF191E1F),
+)
+
 /**
  * App theme. Vela's explicit teal light/dark schemes by default; Material You dynamic
  * colour (issue #15) when the user opts in via Settings -> Appearance ([DynamicColor]).
@@ -68,6 +91,7 @@ fun VelaTheme(
             val saneBackground = if (darkTheme) dyn.background.luminance() < 0.4f else dyn.background.luminance() > 0.6f
             if (saneBackground) dyn else if (darkTheme) DarkColors else LightColors
         }
+        AppTheme.mode.value == ThemeMode.AMOLED -> AmoledColors
         darkTheme -> DarkColors
         else -> LightColors
     }
