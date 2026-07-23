@@ -31,14 +31,16 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
- * On-device speech-to-text for voice search (tier-1). Loads **Whisper tiny (int8, multilingual)** +
- * **Silero VAD** through the bundled sherpa-onnx runtime, records from the mic, uses the VAD to spot
- * the end of speech, and returns the transcript. Nothing leaves the phone and no third-party voice
- * app is needed (that's tier-2 - the RECOGNIZE_SPEECH intent handoff in MapScreen).
+ * On-device speech-to-text for voice search (tier-1). Loads whichever [AsrEngine] the user has
+ * active - **Whisper tiny** (multilingual default), **SenseVoice** (en/zh/ja/ko/yue), or **Moonshine**
+ * (English) - through the bundled sherpa-onnx runtime, records from the mic, uses Silero VAD to spot
+ * the end of speech, and returns the transcript. Nothing leaves the phone and no third-party voice app
+ * is needed (that's tier-2 - the RECOGNIZE_SPEECH intent handoff in MapScreen).
  *
- * The Whisper recognizer loads lazily and is kept for the process lifetime (~1 s to load); the VAD is
- * created per listen (it's tiny and holds streaming state). R8 must keep `com.k2fsa.sherpa.onnx.**`
- * (JNI resolves classes by name) - already in `consumer-rules`/`proguard` for Piper.
+ * The recognizer loads lazily and is rebuilt when the active engine OR the app language changes (both
+ * fold into [loadedKey]); the VAD is created per listen (tiny, holds streaming state). R8 must keep
+ * `com.k2fsa.sherpa.onnx.**` (JNI resolves classes by name) - already in `consumer-rules`/`proguard`
+ * for Piper.
  */
 @Singleton
 class AsrRecognizer @Inject constructor(
@@ -111,12 +113,12 @@ class AsrRecognizer @Inject constructor(
             PackageManager.PERMISSION_GRANTED
 
     /** The app language, normalized: Android hands back the LEGACY code for Hebrew ("iw"), not "he"
-     *  (upstream PR #87), so map it. */
+     *  (2026-07-12), so map it. */
     private fun appLang(): String =
         app.vela.ui.AppLocale.effective().language.let { if (it == "iw") "he" else it }
 
     /** The engine the recognizer should LOAD for the current language: the user's pick when it can do
-     *  the language, else Whisper (upstream 137beea9). */
+     *  the language, else Whisper (see [AsrEngine.forRecognition]). */
     private fun engineForNow(): AsrEngine = AsrEngine.forRecognition(context, appLang())
 
     /** The language to pin recognition to: the app language when the engine supports it, else

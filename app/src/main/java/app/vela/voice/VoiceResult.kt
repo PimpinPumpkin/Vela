@@ -3,7 +3,7 @@ package app.vela.voice
 /**
  * What an on-device voice-search attempt actually did.
  *
- * [WhisperRecognizer.listen] used to return `String?`, so its SEVEN different exits all collapsed into
+ * [AsrRecognizer.listen] used to return `String?`, so its SEVEN different exits all collapsed into
  * one indistinguishable `null` and the listening sheet just closed again. A TCL Flip 2 tester
  * reported exactly that and nothing more - "a box pops up for a second then closes" (issue #81) - and
  * neither they nor we could say which of a missing model, a denied mic, a failed `AudioRecord` init
