@@ -3,21 +3,18 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Vela sailboat mark: white jib, teal main, white hull. Drawn in the
+    <!-- Vela mark: two-tone nav chevron (white left, teal right). Drawn in the
          512-space of docs/logo.svg, scaled into the adaptive-icon safe zone. -->
     <group
-        android:scaleX="0.15"
-        android:scaleY="0.15"
-        android:translateX="14.4"
-        android:translateY="15.0">
+        android:scaleX="0.18"
+        android:scaleY="0.18"
+        android:translateX="7.92"
+        android:translateY="11.16">
         <path
             android:fillColor="#FFFFFF"
-            android:pathData="M240,128 C204,208 170,282 140,352 L240,352 Z" />
+            android:pathData="M256,100 L146,376 L256,318 Z" />
         <path
             android:fillColor="#39E0C8"
-            android:pathData="M268,88 C314,172 358,258 398,352 L268,352 Z" />
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M130,388 L398,388 C390,420 356,432 310,432 L218,432 C172,432 138,420 130,388 Z" />
+            android:pathData="M256,100 L366,376 L256,318 Z" />
     </group>
 </vector>
