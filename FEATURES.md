@@ -17,6 +17,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Voice search says why it failed, and a corrupt speech model can't crash-loop the app
+  (2026-07-23, adopted from the vela-dpad fork).** Every voice-search failure now names its cause
+  (model missing, mic permission, recorder busy, and so on) in a dialog with a retry, instead of the
+  listening sheet silently closing. A corrupt or truncated engine download is quarantined after two
+  failed loads and only that engine's files are removed; re-downloading clears the quarantine. Voice
+  providers with no label now show their app name in the picker instead of a blank row.
 - ✅ **Sheet chrome and landscape fixes (2026-07-23).** Swiping the handle of a place with
   nothing to expand no longer makes the search bar and layers button vanish: they only hide when
   the sheet measurably covers them. Rotating the phone with a place card or results list open now
