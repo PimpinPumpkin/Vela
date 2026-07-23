@@ -53,7 +53,7 @@ internal fun AboutSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         PageIntro(stringResource(R.string.settings_about_hint))
         Spacer(Modifier.height(8.dp))
         SettingsGroup(title = stringResource(R.string.settings_support)) {
-        androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 4.dp)) {
+        androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
         Hint(stringResource(R.string.settings_support_hint))
         Spacer(Modifier.height(4.dp))
         OutlinedButton(
@@ -85,7 +85,7 @@ Onboarding.openDonate(context)
                     clipboard.setText(androidx.compose.ui.text.AnnotatedString(versionLine))
                     android.widget.Toast.makeText(context, versionCopied, android.widget.Toast.LENGTH_SHORT).show()
                 }
-                .padding(horizontal = 4.dp, vertical = 4.dp),
+                .padding(horizontal = 16.dp, vertical = 4.dp),
         )
         GroupDivider()
         // Self-updater: a launch check (throttled to ~daily) plus a manual check here.
@@ -121,16 +121,16 @@ Onboarding.openDonate(context)
                 stringResource(R.string.update_available_title, u.versionName),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             )
             state.updateDownloadPct?.let { pct ->
-                Text(stringResource(R.string.update_downloading, pct), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = 4.dp))
+                Text(stringResource(R.string.update_downloading, pct), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = 16.dp))
                 Spacer(Modifier.height(6.dp))
                 LinearProgressIndicator(progress = { pct / 100f }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
             } ?: run {
                 val updFocus = remember { List(2) { FocusRequester() } }
-                Row(Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) {
+                Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                     // D-pad (issue #65): these were plain Material buttons with no visible focus ring,
                     // so a keypad user couldn't SEE the update button highlighted. dpadHighlight gives
                     // them the fork's focus ring, like the map UpdateCard already has. The ring shape
@@ -145,7 +145,7 @@ Onboarding.openDonate(context)
                     }
                 }
             }
-        } ?: DpadRingBox(androidx.compose.material3.ButtonDefaults.outlinedShape, Modifier.padding(horizontal = 4.dp)) {
+        } ?: DpadRingBox(androidx.compose.material3.ButtonDefaults.outlinedShape, Modifier.padding(horizontal = 16.dp)) {
             OutlinedButton(
                 onClick = {
                     updateStatus = checkingText
@@ -153,7 +153,7 @@ Onboarding.openDonate(context)
                 },
             ) { Text(stringResource(R.string.settings_update_check_now)) }
         }
-        updateStatus?.let { androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 4.dp)) { Hint(it) } }
+        updateStatus?.let { androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 16.dp)) { Hint(it) } }
         }
         // Breathing room under the last control so the button doesn't sit right on the
         // gesture bar at the end of the scroll.

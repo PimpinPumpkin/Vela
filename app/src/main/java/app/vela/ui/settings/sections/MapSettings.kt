@@ -118,7 +118,7 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
             hint = stringResource(R.string.settings_show_transit_stops_hint),
         )
         GroupDivider()
-        androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 4.dp)) {
+        androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
             Text(
                 stringResource(R.string.settings_poi_icon_size),
                 style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,

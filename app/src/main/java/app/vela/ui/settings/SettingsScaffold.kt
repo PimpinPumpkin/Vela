@@ -20,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusEvent
@@ -104,14 +105,19 @@ internal fun SettingsScaffold(
             }
         }
     }
+    // Stock-Settings top bar: a LARGE collapsing title (the big left-aligned heading that shrinks
+    // into the bar as you scroll), in the Settings font. Transparent over the page background like
+    // the Pixel Settings app - the old always-elevated pinned bar read dated (user 2026-07-23).
+    val scrollBehavior = androidx.compose.material3.TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                title = { Text(title) },
-                // The bar SEPARATES from the page via the neutral elevated container role in every
-                // theme (a brand-teal bar in light was hated - user feedback; neutral it is).
-                colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            androidx.compose.material3.LargeTopAppBar(
+                title = { Text(title, fontFamily = SettingsFontFamily) },
+                scrollBehavior = scrollBehavior,
+                colors = androidx.compose.material3.TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                 ),
                 navigationIcon = {
                     IconButton(

@@ -68,7 +68,7 @@ internal fun SearchSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         PageIntro(stringResource(R.string.settings_asr_engines_hint))
         val anyAsrBusy = state.asrDownloadingId != null
         SettingsGroup {
-        androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 4.dp)) {
+        androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
         app.vela.voice.AsrEngine.entries.forEachIndexed { engineIdx, engine ->
             if (engineIdx > 0) GroupDivider()
             val installed = engine.id in state.asrInstalledIds
