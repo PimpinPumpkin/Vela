@@ -665,4 +665,64 @@
         <item quantity="one">+%d more stop</item>
         <item quantity="other">+%d more stops</item>
     </plurals>
+    <string name="settings_hub_appearance_sub">Theme, map style, units, language</string>
+    <string name="settings_hub_map_sub">Traffic, transit, layers, 3D buildings</string>
+    <string name="settings_hub_place_pages_sub">Reviews, photos, content filters</string>
+    <string name="settings_hub_navigation_sub">Guidance, alerts, demo mode</string>
+    <string name="settings_hub_voice_sub">Spoken directions and voices</string>
+    <string name="settings_hub_search_sub">Voice search and speech models</string>
+    <string name="settings_hub_offline_sub">Offline maps, routing, places</string>
+    <string name="settings_hub_saved_sub">Export and import your places</string>
+    <string name="settings_hub_privacy_sub">How Vela handles your data</string>
+    <string name="settings_hub_diagnostics_sub">Crash reports, trips, compatibility</string>
+    <string name="settings_hub_about_sub">Version, updates, support</string>
+    <string name="settings_theme_amoled">AMOLED black</string>
+    <string name="settings_traffic_lights">Traffic-light guidance</string>
+    <string name="settings_traffic_lights_hint">Spoken landmark cues: pass the light, then turn. English only, off by default.</string>
+    <string name="settings_softkeys" translatable="false">Hardware softkeys</string>
+    <string name="settings_softkeys_hint" translatable="false">Zoom the map with the phone\'s two soft keys. Keypad phones only.</string>
+    <string name="settings_softkeys_calibrate" translatable="false">Calibrate soft keys</string>
+    <string name="settings_softkeys_calibrate_hint" translatable="false">If the soft keys don\'t zoom, tap here and press your left then right soft key so Vela learns their codes.</string>
+    <string name="map_zoom_mode_hint" translatable="false">Zoom:  ◀ out   ·   in ▶      BACK to exit</string>
+    <string name="map_move_mode_hint" translatable="false">Move map:  ◀ ▲ ▼ ▶      BACK to exit</string>
+    <string name="softkey_options">Options</string>
+    <string name="softkey_search">Search</string>
+    <string name="softkey_move_map">Move map</string>
+    <string name="softkey_stop_zoom">Stop zoom</string>
+    <string name="softkey_recenter">Recenter</string>
+    <string name="softkey_mute">Mute</string>
+    <string name="softkey_unmute">Unmute</string>
+    <string name="softkey_zoom_menu" translatable="false">Zoom (◀ − ▶ +)</string>
+    <string name="map_asr_downloading">Downloading Vela Voice mic · %1$d%%</string>  <!-- format -->
+    <string name="map_asr_installing">Installing Vela Voice mic…</string>
+    <string name="map_asr_waiting">Vela Voice mic · waiting for the voice</string>
+<!-- format -->
+    <string name="mapscreen_filter_top_rated">4.0★</string>
+    <string name="mapscreen_section_recent_searches">Recent searches</string>
+    <string name="mapscreen_clear_recent_searches">Clear recent searches</string>
+    <string name="root_diag_title">Help improve Vela?</string>
+    <string name="root_diag_body">Both stay on your phone. Nothing is sent unless you export it. Change either any time in Settings.</string>
+    <string name="root_diag_share_title">Share diagnostics</string>
+    <string name="root_diag_share_desc">A short local log of searches, routes &amp; errors.</string>
+    <string name="root_diag_trips_title">Save my trips</string>
+    <string name="root_diag_trips_desc">Records your nav GPS traces so drives can be replayed for testing. More revealing: your exact routes.</string>
+    <string name="root_diag_save">Save choices</string>
+    <string name="root_voice_tts_title">Speak directions aloud</string>
+    <string name="root_voice_tts_desc">Spoken turn-by-turn. Recommended. One-time %1$d MB download.</string>  <!-- format -->
+    <string name="root_voice_mic_title">Search by speaking</string>
+    <string name="root_voice_mic_desc">Dictate searches without typing. Without it, the mic uses Google. One-time %1$d MB download.</string>  <!-- format -->
+    <string name="root_voice_none_picked">Tick an option first, or choose Not now.</string>
+    <string name="root_offline_title">Offline maps</string>
+    <string name="root_offline_body">Vela gets places, search and directions from Google, so with no signal only areas you have downloaded will work. Set up an area now so you are covered when you lose service.</string>
+    <string name="root_offline_setup">Set up offline</string>
+    <string name="mapvm_stop_added">Stop added</string>
+ <!-- format -->
+    <string name="voice_error_title">Voice search didn\'t start</string>
+    <string name="voice_error_retry">Try again</string>
+    <string name="voice_error_model">The voice model isn\'t ready. Re-download it in Settings \u2192 Search.</string>
+    <string name="voice_error_permission">Vela needs microphone permission to listen. Grant it in Android\'s app settings.</string>
+    <string name="voice_error_vad">Part of the voice model is missing. Re-download it in Settings \u2192 Search.</string>
+    <string name="voice_error_audio">This phone wouldn\'t open its microphone for Vela. Close anything else that records audio and try again.</string>
+    <string name="voice_error_recording">Recording stopped unexpectedly. Try again.</string>
+    <string name="no_browser_installed">Your device does not have a browser</string>
 </resources>

@@ -93,8 +93,10 @@ for path in walk():
         # C. theme
         if base != "AppTheme.kt" and has(RE_ISSYS, ln):
             viol.append(("MED", f"{name}:{n}", "isSystemInDarkTheme() — use isAppInDarkTheme()"))
-        # D. any ring-required interactive modifier without a ring
-        if has(RING_REQUIRED, ln):
+        # D. any ring-required interactive modifier without a ring. DpadFocus.kt is exempt:
+        # it DEFINES the primitives (dpadClickable's internal clickable is what call sites
+        # pair with dpadHighlight), so its own bodies legitimately host bare clickables.
+        if base != "DpadFocus.kt" and has(RING_REQUIRED, ln):
             if chain_has_ring(lines, i):
                 if verbose: oknote.append(f"ring {name}:{n}")
             else:

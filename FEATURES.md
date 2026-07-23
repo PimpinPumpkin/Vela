@@ -17,6 +17,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Settings redesigned hub-and-spoke (2026-07-23, ported from the vela-dpad fork by
+  alltechdev).** The single very long Settings page is now a short hub of category rows, each
+  opening its own small sub-screen (Appearance / Map / Place pages / Navigation / Voice / Search /
+  Offline maps / Saved places / Data & privacy / Diagnostics / About) - far less scrolling on any
+  screen, and a keypad phone reaches any section in a few presses. Comes with an **AMOLED black**
+  theme option (true-black surfaces) and a **settings search box on the hub**: type a setting's
+  name and the match opens the right sub-screen directly. Every mainline setting survived the port
+  (the fork's version had dropped Material You, map colors, interface size, POI sizing, parking
+  history, lists export/import, the nightly toggle and more - all restored into the new structure).
+  Device-verified on the Pixel 4a: hub, search-to-spoke, Appearance/Navigation/Voice/About walks.
 - ✅ **Street View from a search result shows the mini map, not the results list (2026-07-18,
   user).** Opening the viewer clears the selected place, and the results sheet - which wins the
   bottom slot whenever nothing else claims it - fell through and drew the POI list over the
