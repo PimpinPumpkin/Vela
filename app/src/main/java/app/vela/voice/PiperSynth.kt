@@ -38,6 +38,19 @@ class PiperSynth @Inject constructor(
     @Volatile private var loadFailed = false
     @Volatile private var generation = 0
 
+    init {
+        // The Piper VITS model is the app's second-largest native holding after the ASR model.
+        // CRITICAL only, deliberately narrower than the recognizer's severe trigger: dropping the
+        // synth costs a reload on the next prompt, and a prompt arriving late during navigation is
+        // a missed turn. TRIM_MEMORY_COMPLETE only reaches background processes, and
+        // RUNNING_CRITICAL means the device is about to start killing things regardless.
+        // release() posts to the piper-tts worker, so it is already serialized against an
+        // in-flight synthesis and cannot free the model out from under one.
+        app.vela.ui.MemoryPressure.register { level ->
+            if (app.vela.ui.MemoryPressure.isCritical(level)) release()
+        }
+    }
+
     /** Which voice id `tts` currently holds — lets [ensureLoaded] detect a voice switch and rebuild. */
     @Volatile private var loadedVoiceId: String? = null
 
