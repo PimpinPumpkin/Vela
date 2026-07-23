@@ -17,6 +17,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Street-level buildings preload while you idle (2026-07-23).** Zooming down to the ~200 ft
+  view used to wait a beat while the building footprints streamed in. When the map sits still for a
+  moment at a mid zoom, Vela now quietly fetches the buildings for the area you're looking at in the
+  background (disk cache, no extra memory), so the zoom-in paints instantly. Canceled the moment you
+  move the map; never runs during navigation.
 - ✅ **Settings redesigned hub-and-spoke (2026-07-23, ported from the vela-dpad fork by
   alltechdev).** The single very long Settings page is now a short hub of category rows, each
   opening its own small sub-screen (Appearance / Map / Place pages / Navigation / Voice / Search /
