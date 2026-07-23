@@ -1,4 +1,25 @@
+<div align="center">
+
+<img src="docs/logo.svg" width="120" alt="Vela Maps logo">
+
 # Vela Maps
+
+**Google Maps, degoogled.**
+
+Live traffic, real place data and turn-by-turn navigation, with zero Google on your phone.
+
+[![Stable release](https://img.shields.io/github/v/release/PimpinPumpkin/Vela?label=stable&color=149387)](https://github.com/PimpinPumpkin/Vela/releases/latest)
+[![Build](https://img.shields.io/github/actions/workflow/status/PimpinPumpkin/Vela/ci.yml?branch=main&label=build)](https://github.com/PimpinPumpkin/Vela/actions/workflows/ci.yml)
+[![License: GPL v3](https://img.shields.io/github/license/PimpinPumpkin/Vela?color=blue)](LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/PimpinPumpkin/Vela/total?color=149387)](https://github.com/PimpinPumpkin/Vela/releases)
+[![Translated on Weblate](https://img.shields.io/badge/translations-Weblate-2ecccf)](https://hosted.weblate.org/projects/vela-maps/)
+[![Stars](https://img.shields.io/github/stars/PimpinPumpkin/Vela?style=flat&color=ffd43b)](https://github.com/PimpinPumpkin/Vela/stargazers)
+
+[Install](#install) · [What you get](#what-you-get) · [Privacy](#privacy) · [How it works](docs/HOW-IT-WORKS.md) · [Build](#build) · [Discussions](https://github.com/PimpinPumpkin/Vela/discussions) · [Translate](docs/TRANSLATING.md)
+
+[<img src="https://img.shields.io/badge/VISIT%20THE%20WEBSITE-149387?style=for-the-badge" alt="Visit the website">](https://pimpinpumpkin.github.io/Vela/)
+
+</div>
 
 A degoogled maps & navigation client for Android - *what NewPipe is to YouTube,
 for Google Maps.* Open vector tiles for the basemap, the device itself scraping

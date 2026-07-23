@@ -1393,6 +1393,24 @@ Defaults that make the safe path the easy one:
   docs/voice-demo.mp4 (`ffmpeg -vn -c:a copy`) - regenerate it whenever the voice demo is
   re-rendered. No Android Auto on the site yet (user 2026-07-16, not confident it works).
 
+## Brand assets (2026-07-23)
+
+One mark everywhere: the two-tone NAV CHEVRON (notched arrowhead, white left
+half + `#39e0c8` right half) on the `#0d3d43` to `#149387` gradient. The
+user's explicit pick (2026-07-23) after three rounds: sailboat variants, a
+pin, a route-V, a constellation and a puck-in-circle were all considered and
+rejected; they wanted the nav-arrow paradigm, two-toned, with NO circle, NO
+star, NO pin. Canonical file is `docs/logo.svg` (512, rounded square). Derived copies that must stay in sync
+when the mark changes: the launcher adaptive icon
+(`drawable/ic_launcher_foreground.xml` + `ic_launcher_background.xml` gradient +
+`ic_launcher_monochrome.xml` for themed icons; the old
+`@color/ic_launcher_background` is gone), the site navbar mark + favicon data
+URI (`site/index.html`), and the README hero. The README hero also carries the
+shields badge row + quick-nav links + website button (bambuddy-style); badge
+URLs are shields.io (README only - the SITE stays zero-external-requests).
+The GitHub social-preview image is uploaded manually in repo Settings and does
+NOT live in the repo - re-upload it if the mark changes.
+
 ## README layout rule (2026-07-11)
 
 The README stays SHORT: pitch, screenshots, install, what-you-get, the **privacy comparison
