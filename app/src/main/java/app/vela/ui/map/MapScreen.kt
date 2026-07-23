@@ -633,24 +633,71 @@ fun MapScreen(
     var voiceLevel by remember { mutableStateOf(0f) }
     var voiceStop by remember { mutableStateOf(false) }
     var voiceAbort by remember { mutableStateOf(false) }
+    // Non-null while a voice failure is being explained. Before this existed every failure closed
+    // the listening sheet and said nothing (the fork's issue #81; ported 2026-07-23).
+    var voiceError by remember { mutableStateOf<app.vela.voice.VoiceResult.Reason?>(null) }
     fun startLocalVoice() {
         voiceStop = false; voiceAbort = false; voiceStarted = false; voiceLevel = 0f; voiceListening = true
         voiceScope.launch {
-            val text = vm.voiceListen(
+            val result = vm.voiceListen(
                 onLevel = { voiceLevel = it },
                 onListening = { voiceStarted = true },
                 cancelled = { voiceStop },
             )
             voiceListening = false
-            if (!voiceAbort && !text.isNullOrBlank()) {
-                focusManager.clearFocus()
-                vm.applyVoiceQuery(text)
+            if (voiceAbort) return@launch // the user backed out; never talk back at them
+            when (result) {
+                is app.vela.voice.VoiceResult.Text -> {
+                    focusManager.clearFocus()
+                    vm.applyVoiceQuery(result.query)
+                }
+                // Heard nothing: the sheet closing IS the feedback. An error here would scold
+                // someone who simply changed their mind.
+                app.vela.voice.VoiceResult.NoSpeech -> Unit
+                // Anything else used to close the sheet silently and identically - the user could
+                // not tell a missing model from a mic this phone would not open, and neither could we.
+                is app.vela.voice.VoiceResult.Failed -> voiceError = result.reason
             }
         }
     }
     val recordAudioLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) { granted -> if (granted) startLocalVoice() }
+    ) { granted ->
+        // A DENIED prompt used to do nothing whatsoever - the same dead silence, and the likeliest
+        // shape of it on a locked-down ROM that answers the prompt on the user's behalf.
+        if (granted) startLocalVoice() else voiceError = app.vela.voice.VoiceResult.Reason.PERMISSION
+    }
+    voiceError?.let { reason ->
+        // One dialog, the real reason, and a route to the fix. VelaDialog is already D-pad-correct.
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { voiceError = null },
+            title = stringResource(R.string.voice_error_title),
+            // "Try again" is the confirm because most of these are transient (a mic another app was
+            // holding, a recording that dropped); the message names the Settings route for the two
+            // that are not. Dismiss auto-focuses, so one OK just closes.
+            confirmText = stringResource(R.string.voice_error_retry),
+            onConfirm = {
+                voiceError = null
+                if (vm.voiceMicGranted()) startLocalVoice()
+                else recordAudioLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+            },
+            dismissText = stringResource(R.string.mapscreen_got_it),
+            onDismiss = { voiceError = null },
+            text = {
+                Text(
+                    stringResource(
+                        when (reason) {
+                            app.vela.voice.VoiceResult.Reason.MODEL -> R.string.voice_error_model
+                            app.vela.voice.VoiceResult.Reason.PERMISSION -> R.string.voice_error_permission
+                            app.vela.voice.VoiceResult.Reason.VAD -> R.string.voice_error_vad
+                            app.vela.voice.VoiceResult.Reason.AUDIO_INIT -> R.string.voice_error_audio
+                            app.vela.voice.VoiceResult.Reason.RECORDING -> R.string.voice_error_recording
+                        },
+                    ),
+                )
+            },
+        )
+    }
 
     val voiceProviderAvailable = remember { app.vela.ui.VoiceSearch.hasProvider(context) }
     val voicePrompt = stringResource(R.string.search_voice_prompt)
