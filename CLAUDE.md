@@ -261,6 +261,14 @@ Defaults that make the safe path the easy one:
   closed is written back (`markClosedInAmbient`: flag flipped in every cached copy + pruned from
   the painted set + persisted) so the dead dot stays gone across restarts - and the
   recently-viewed pin deliberately skips closed places (it bypasses the closed filter).
+- **Idle building warm-up (2026-07-23, `VelaMapView` camera-idle listener):** after 2.5 s of
+  stillness on the browse map at z13.5-15.9, an off-screen `MapSnapshotter` renders ONLY the active
+  building-overlay pmtiles sources at z16.2 over the camera target, which pulls the z15/16 footprint
+  tiles through MapLibre's shared ambient cache so the later zoom-in paints from cache (the "houses
+  take a sec at 200 ft" report; the snapshotter and the map share one cache database - the Android
+  Auto renderer already relies on that). One warm per ~2 km bucket per session, canceled by any
+  camera move, skipped during nav; logcat tag `VelaWarm`. It renders no basemap (those tiles cap at
+  z14 and are already resident) - the overlay range-fetches were the whole delay.
 - **The MS building-overlay gate is BOUNDED render-probing; keep its three rules (2026-07-17,
   `VelaMapView` `runOvlGate`).** The overlay (`vela-ovl-*`) is drawn beneath OSM `building` to fill
   OSM's gaps, so where OSM is dense it is pure occluded overdraw; a gate probes rendered OSM

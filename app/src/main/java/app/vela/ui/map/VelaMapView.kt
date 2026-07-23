@@ -781,6 +781,28 @@ fun VelaMapView(
     // streams that one via PMTiles HTTP range requests, fetching only the visible tiles, so footprints appear
     // with no download. Keyed on styleRef (re-add after a style reload) + darkTheme (fill matches the themed OSM
     // building colour, indistinguishable from a real OSM footprint).
+    // ---- Idle building warm-up (2026-07-23) ----------------------------------------------------
+    // Zooming to street level waited a beat for the building-overlay PMTiles range-fetches (the
+    // z15/16 footprint tiles only start downloading once the camera is already there). When the
+    // browse map has been SITTING STILL a moment at a mid zoom, warm the landing area ahead of
+    // time: an off-screen MapSnapshotter render of ONLY the overlay sources at z16 pulls exactly
+    // those tiles through MapLibre's shared ambient cache (the same file source the live map
+    // reads - the Android Auto renderer already relies on that sharing), so the later zoom paints
+    // from cache. Disk cache, not RAM; one warm per area bucket; canceled the moment the camera
+    // moves; browse-map only. The 2.5 s idle delay keeps it far behind the POI fetch and the
+    // overlay gate probes, so it never competes with visible work.
+    val warmHandler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
+    val warmPending = remember { arrayOf<Runnable?>(null) }
+    val warmSnapshotter = remember { arrayOf<org.maplibre.android.snapshotter.MapSnapshotter?>(null) }
+    val warmDoneBuckets = remember { HashSet<Long>() }
+    val warmCtx = rememberUpdatedState(Pair(buildingOverlays, navMode))
+    DisposableEffect(Unit) {
+        onDispose {
+            warmPending[0]?.let { warmHandler.removeCallbacks(it) }
+            warmSnapshotter[0]?.cancel(); warmSnapshotter[0] = null
+        }
+    }
+
     LaunchedEffect(buildingOverlays, styleRef, darkTheme) {
         val style = styleRef ?: return@LaunchedEffect
         // runCatching the enumerations too: the style can die between the null-check and this walk
@@ -2027,6 +2049,47 @@ fun VelaMapView(
                         map.cameraPosition.zoom,
                     )
                     runOvlGate()
+                    // Idle building warm-up: schedule after a beat of stillness; any camera move
+                    // cancels it (the move-started listener below).
+                    warmPending[0]?.let { warmHandler.removeCallbacks(it) }
+                    val warmRun = Runnable {
+                        val (overlays, naving) = warmCtx.value
+                        val z = map.cameraPosition.zoom
+                        val t = map.cameraPosition.target
+                        if (naving || overlays.isEmpty() || t == null || z < 13.5 || z >= 15.9) return@Runnable
+                        // One warm per ~2 km bucket so sitting still doesn't re-render, and a
+                        // revisit later in the session is already cached anyway.
+                        val bucket = (Math.round(t.latitude / 0.02) shl 20) xor Math.round(t.longitude / 0.02)
+                        if (!warmDoneBuckets.add(bucket)) return@Runnable
+                        val sources = StringBuilder()
+                        val layers = StringBuilder()
+                        overlays.forEachIndexed { i, uri ->
+                            if (i > 0) { sources.append(','); layers.append(',') }
+                            sources.append("\"warm$i\":{\"type\":\"vector\",\"url\":\"").append(uri).append("\"}")
+                            layers.append("{\"id\":\"warm$i\",\"type\":\"fill\",\"source\":\"warm$i\",\"source-layer\":\"building\",\"paint\":{\"fill-color\":\"#000000\"}}")
+                        }
+                        val styleJson = "{\"version\":8,\"sources\":{$sources},\"layers\":[$layers]}"
+                        runCatching {
+                            warmSnapshotter[0]?.cancel()
+                            val snap = org.maplibre.android.snapshotter.MapSnapshotter(
+                                context,
+                                org.maplibre.android.snapshotter.MapSnapshotter.Options(768, 768)
+                                    .withStyleJson(styleJson)
+                                    .withCameraPosition(
+                                        org.maplibre.android.camera.CameraPosition.Builder()
+                                            .target(t).zoom(16.2).build(),
+                                    ),
+                            )
+                            warmSnapshotter[0] = snap
+                            android.util.Log.d("VelaWarm", "warming buildings z16 at bucket=$bucket overlays=${overlays.size}")
+                            snap.start(
+                                { warmSnapshotter[0] = null; android.util.Log.d("VelaWarm", "warm done") },
+                                { warmSnapshotter[0] = null; android.util.Log.d("VelaWarm", "warm failed: $it") },
+                            )
+                        }
+                    }
+                    warmPending[0] = warmRun
+                    warmHandler.postDelayed(warmRun, 2500)
                 }
                 // A finished render means tiles may have arrived after the camera stopped - the
                 // verdict could be stale. ONLY mark dirty here (never probe): this event can fire
@@ -2046,7 +2109,11 @@ fun VelaMapView(
                     ovlDirty[0] = true
                     runOvlGate()
                 }
-                map.addOnCameraMoveListener { ovlRenderSettled[0] = false }
+                map.addOnCameraMoveListener {
+                    ovlRenderSettled[0] = false
+                    warmPending[0]?.let { warmHandler.removeCallbacks(it); warmPending[0] = null }
+                    warmSnapshotter[0]?.cancel(); warmSnapshotter[0] = null
+                }
                 // Feed the on-screen scale bar: metres-per-pixel at the centre
                 // latitude (varies with zoom AND latitude on a Mercator map).
                 val reportScale = {
