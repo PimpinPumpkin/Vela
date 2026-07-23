@@ -215,7 +215,17 @@ private const val USE_MAPTILER = false
 // Landscape side-panel width for the place/results sheets (Google's landscape treatment):
 // wide enough for the sheet content, narrow enough that a phone landscape (~730dp+) keeps a
 // real map strip with all the right-side buttons beside it.
-private val SIDE_PANEL_WIDTH = 400.dp
+// Landscape side-panel width: half the screen up to a cap, floored at the old 400dp - the fixed
+// 400 read too narrow on wide screens (user 2026-07-23); Google's landscape panel takes roughly
+// half a phone's width too. Computed per-configuration in sidePanelWidth().
+private val SIDE_PANEL_WIDTH_MIN = 400.dp
+private val SIDE_PANEL_WIDTH_MAX = 520.dp
+
+@Composable
+private fun sidePanelWidth(): androidx.compose.ui.unit.Dp {
+    val w = LocalConfiguration.current.screenWidthDp
+    return (w * 0.5f).dp.coerceIn(SIDE_PANEL_WIDTH_MIN, SIDE_PANEL_WIDTH_MAX)
+}
 
 @Composable
 fun MapScreen(
@@ -258,7 +268,8 @@ fun MapScreen(
     // layout, user 2026-07-20) - width-capped, so the right-side chrome (layers, parking,
     // locate) never collides with them. The camera inset moves to the LEFT axis to match:
     // a focused pin frames in the map strip beside the panel, not squeezed into a top sliver.
-    val sidePanelWidthPx = with(LocalDensity.current) { SIDE_PANEL_WIDTH.toPx() }.toInt()
+    val sidePanelWidthDp = sidePanelWidth()
+    val sidePanelWidthPx = with(LocalDensity.current) { sidePanelWidthDp.toPx() }.toInt()
     val cameraBottomInset = when {
         // Street View pane up: the sheet yields, so no bottom inset (the SV top inset takes over).
         state.streetView != null || state.streetViewLoading -> 0
@@ -1314,12 +1325,19 @@ fun MapScreen(
                                 )
                             }
                         }
-                    } else if (!(state.selected != null && placeSheetExpanded && !searchOpen && !landscapeChrome) &&
+                    } else if (!(state.selected != null && placeSheetExpanded && !searchOpen && !landscapeChrome &&
+                        placeSheetTopPx < screenHeightPx * 0.40f) &&
                         !(state.directionsOpen && !searchOpen)
                     ) {
-                        // The expanded-sheet hide is PORTRAIT-only: in landscape the sheet is the
-                        // side panel, which caps BELOW the bar (PlaceSheet's landscape detents), so
-                        // the bar deliberately stays - hiding it would strand the map strip with no
+                        // The expanded-sheet hide is PORTRAIT-only AND measured (2026-07-23): a
+                        // short-content place (no photos, wrap-capped card) flips the LOGICAL
+                        // expanded flag on a pill swipe while the card never grows, and the bar
+                        // vanished for no visible reason (user report, "thought we killed this").
+                        // The 0.40-screen top test only hides the bar when the sheet actually
+                        // reaches up the screen (a real expanded sheet tops out near 0.08).
+                        // In landscape the sheet is the side panel, which caps BELOW the bar
+                        // (PlaceSheet's landscape detents), so the bar deliberately stays -
+                        // hiding it would strand the map strip with no
                         // search while nothing actually covers the bar.
                         searchBar()
                     }
@@ -1753,7 +1771,7 @@ fun MapScreen(
                 // landscape layout, user 2026-07-20).
                 modifier = Modifier
                     .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
-                    .then(if (landscapeChrome) Modifier.widthIn(max = SIDE_PANEL_WIDTH) else Modifier)
+                    .then(if (landscapeChrome) Modifier.widthIn(max = sidePanelWidthDp) else Modifier)
                     // Live top edge for the layers button's overlap gate (see placeSheetTopPx).
                     .onGloballyPositioned { placeSheetTopPx = it.positionInRoot().y.roundToInt() },
             )
@@ -1785,7 +1803,7 @@ fun MapScreen(
                 // Landscape: left side panel like the place sheet (see its modifier note).
                 modifier = Modifier
                     .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
-                    .then(if (landscapeChrome) Modifier.widthIn(max = SIDE_PANEL_WIDTH) else Modifier),
+                    .then(if (landscapeChrome) Modifier.widthIn(max = sidePanelWidthDp) else Modifier),
               )
             // Imported Google list preview: offer to save (nothing persisted until tapped).
             // A pill under the search bar, clear of the results sheet at the bottom.
@@ -2085,7 +2103,7 @@ fun MapScreen(
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
                         // Centered in the map STRIP while the landscape panel owns the left.
-                        .padding(start = if (sidePanelUp) SIDE_PANEL_WIDTH else 0.dp)
+                        .padding(start = if (sidePanelUp) sidePanelWidthDp else 0.dp)
                         .padding(bottom = 16.dp + chromeLift),
                 ) {
                     Text(
@@ -2121,9 +2139,13 @@ fun MapScreen(
             // Portrait, place card at (or near) its minimized bar: the locate FAB rides ABOVE the
             // card's measured top edge (user 2026-07-20: current location stays reachable with a
             // card minimized). Offset from the sheet's live top so it tracks the card; the >55%
-            // floor keeps it to the minimized neighbourhood - at peek/expanded it stays hidden.
+            // floor keeps it to the minimized neighbourhood - at peek/expanded the measured top
+            // sits above the floor so it stays hidden. MEASURED ONLY (2026-07-23): the logical
+            // expanded flag also gated this, and a pill swipe on a short-content card flips that
+            // flag while the card never grows, so the button vanished with the card unmoved
+            // (the same phantom-expanded class as the search-bar/layers hides).
             // Landscape needs none of this: the side panel leaves the normal FABs standing.
-            if (fabChromeOk && !landscapeChrome && state.selected != null && !placeSheetExpanded &&
+            if (fabChromeOk && !landscapeChrome && state.selected != null &&
                 state.pickOnMap == null && placeSheetTopPx > screenHeightPx * 0.55f
             ) {
                 FloatingActionButton(
@@ -2166,7 +2188,7 @@ fun MapScreen(
             // the search bar and never reaches this corner at ANY detent.
             if (app.vela.ui.LayersButton.on.value && !searchOpen &&
                 !state.navigating && !state.replaying &&
-                (!resultsShown || landscapeChrome) && (!placeSheetExpanded || landscapeChrome) &&
+                (!resultsShown || landscapeChrome) &&
                 clearOfPlaceSheet
             ) {
                 val ctx = androidx.compose.ui.platform.LocalContext.current
@@ -2459,7 +2481,9 @@ private fun SearchResults(
     // feel responsive.
     val resultsGlideSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 140f) }
     val resultsDecay = remember { exponentialDecay<Float>(frictionMultiplier = 1.6f) }
-    LaunchedEffect(collapsed, expanded) {
+    // expL/peekL in the keys via screenH: rotation kept the other orientation's height (same
+    // stale-geometry trap the place sheet had - user 2026-07-23), so re-snap on a geometry change.
+    LaunchedEffect(collapsed, expanded, screenH) {
         val target = if (collapsed) 0f else if (expanded) expL else peekL
         if (listH.targetValue != target) listH.animateTo(target, if (target == 0f) resultsGlideSpec else resultsSettleSpec)
     }

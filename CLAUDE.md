@@ -656,6 +656,15 @@ Defaults that make the safe path the easy one:
   ~190dp, which sat exactly on the compass (user report); 200dp clears the touch target, not just
   the visible circle. Keyed on `LayersButton.on` (the pref), not the button's transient visibility,
   so the compass doesn't jump around as sheets open.
+  **Landscape panel width is HALF THE SCREEN, floored 400dp / capped 520dp (`sidePanelWidth()`,
+  2026-07-23)** - the fixed 400 read too narrow; every consumer (both sheets' widthIn, the camera
+  left inset, the attribution pad) reads the computed value. **Sheet heights RE-SNAP on rotation:**
+  the place-sheet and results-sheet settle effects key on screenH/landscape too - without that the
+  Animatable kept the old orientation's pixel height and an expanded portrait card came into
+  landscape over the search bar. **Chrome hides are MEASURED, not logical (2026-07-23):** a
+  short-content place flips expandedState while its wrap-capped card never grows, so the search-bar
+  hide requires placeSheetTopPx < 0.40*screen and the layers button relies on the measured
+  clearOfPlaceSheet gate alone - never re-add a bare placeSheetExpanded gate on map chrome.
   **LANDSCAPE (width > height) collapses the browse chrome to ONE line (2026-07-15, Google's
   landscape layout, device-verified on the 4a):** `landscapeChrome` in MapScreen puts the search
   bar at half width with the category chips scrolling beside it (`landscapeOneLine` Row), the
