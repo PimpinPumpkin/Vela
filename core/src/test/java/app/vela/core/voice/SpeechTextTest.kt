@@ -166,4 +166,42 @@ class SpeechTextTest {
     @Test fun `speechFragments leaves a single clause whole with no gap`() {
         assertEquals(listOf("Turn right onto Main Street" to 0f), SpeechText.speechFragments("Turn right onto Main Street", 0.32f, 0.16f))
     }
+
+    // --- cleanSearchTranscript: turn a raw Whisper transcript into a search query ---
+
+    private fun clean(t: String) = SpeechText.cleanSearchTranscript(t)
+
+    @Test fun `whisper non-speech tags collapse to blank`() {
+        // No real speech (silence / a tap / room noise) -> Whisper emits only bracketed sound tags.
+        // These must collapse to "" so the caller's ifBlank{null} runs NO search.
+        assertEquals("", clean("[music] [music] [music]"))
+        assertEquals("", clean("[thud] [thud] [thud] [thud]"))
+        assertEquals("", clean("[BLANK_AUDIO]"))
+        assertEquals("", clean("  [ Music ]  "))
+    }
+
+    @Test fun `a truncated trailing tag from a capped capture also collapses`() {
+        // Device-seen: a long non-speech run truncated at the 15 s cap ends with an UNCLOSED tag.
+        // Both the complete groups and the dangling "[musi" must go, not leave the fragment behind.
+        assertEquals("", clean("[music] [music] [musi"))
+        assertEquals("", clean("[thud] [thud] [thud] [th"))
+        // ...but a real word before a dangling tag survives.
+        assertEquals("coffee", clean("coffee [noi"))
+    }
+
+    @Test fun `real query keeps its words and drops a stray tag`() {
+        assertEquals("coffee shop", clean("coffee [noise] shop"))
+        assertEquals("gas stations near me", clean("gas stations near me"))
+    }
+
+    @Test fun `trailing sentence punctuation and quotes are trimmed`() {
+        assertEquals("Coffee near me", clean("Coffee near me."))
+        assertEquals("pharmacy", clean("“pharmacy”"))
+        assertEquals("hardware store", clean("hardware store!"))
+    }
+
+    @Test fun `an inner period is preserved`() {
+        assertEquals("St. Paul", clean("St. Paul"))
+        assertEquals("J.C. Penney", clean("J.C. Penney."))
+    }
 }

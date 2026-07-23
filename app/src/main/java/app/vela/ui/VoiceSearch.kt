@@ -66,8 +66,15 @@ object VoiceSearch {
     fun providers(context: Context): List<Provider> = runCatching {
         val pm = context.packageManager
         pm.queryIntentActivities(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH), 0).map {
+            // A provider whose activity declares NO label rendered a BLANK radio row in the
+            // Settings picker (user screenshot, 2026-07-23) - the row worked but named nothing.
+            // Fall back activity label -> application label -> package name, so every row names
+            // itself no matter how the provider is declared.
+            val label = it.loadLabel(pm).toString().ifBlank {
+                runCatching { it.activityInfo.applicationInfo.loadLabel(pm).toString() }.getOrDefault("")
+            }.ifBlank { it.activityInfo.packageName }
             Provider(
-                it.loadLabel(pm).toString(),
+                label,
                 android.content.ComponentName(it.activityInfo.packageName, it.activityInfo.name),
             )
         }
