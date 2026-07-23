@@ -326,7 +326,29 @@ Defaults that make the safe path the easy one:
   card + the cluster/HUD nav data; `ManeuverMapper` maps Vela maneuvers → car `Maneuver`/`Step`/`Trip`.
   Manifest also declares `FEATURE_CLUSTER` (instrument-cluster nav) and `CAR_INFO` (AAOS car speed).
   The PHONE also feeds NavSession when not projecting; the car and phone share the one nav loop.
-- **Settings ORDER is deliberate (declutter reorg 2026-07-10, supersedes 2026-07-08):** Appearance →
+- **Settings is HUB-AND-SPOKE (2026-07-23, ported from alltechdev/vela-dpad; supersedes the
+  2026-07-10 single-page order):** `ui/settings/` = `SettingsScreen` (a plain hoisted-state
+  dispatcher over the `SettingsSection` enum, no nav library; BACK peels spoke -> hub -> map),
+  `SettingsHub` (category rows + the SETTINGS SEARCH, a static `SEARCH_INDEX` of label-resource ->
+  section where a match OPENS THE SPOKE - the old measured scroll-to-Y died with the long page;
+  add new row labels to the index), `SettingsScaffold` (the one place all the Settings D-pad focus
+  plumbing lives - every page builds on it, see docs/dpad.md) and `SettingsComponents`
+  (SettingsGroup/ToggleRow/SelectableRow/GroupDivider/PageIntro/Hint), with one file per spoke in
+  `ui/settings/sections/`. Spoke contents: Appearance (theme incl. the new AMOLED true-black
+  ThemeMode, interface size, map colors, Material You, units, follow-system language toggle),
+  Map (layer toggles + 3D + missing-building fill + the Places-on-the-map group), Place pages,
+  Navigation (keep-screen-on, traffic lights, vibrate chips, demo drive, sim location, parking
+  history), Voice (spoken-directions master switch, engine list, inline collapsible Voice library
+  - the separate VoiceBrowseScreen route is gone, `openVoiceLibrary` deep-links to the VOICE spoke
+  with the library expanded), Search (ASR engines + provider picker), Offline, Saved places
+  (saved + lists export/import), Data & privacy (privacy link, live rechecks), Diagnostics
+  (share-diagnostics, texture render, building debug, trip recording, crash card), About
+  (support, version tap-to-copy, auto-update, nightly toggle, check now). ⚠️ The vela-dpad fork
+  DROPPED many mainline settings in its redesign (Material You, map colors, UI scale, POI sizing,
+  parking, lists export, nightly, spoken-directions toggle, live rechecks, building overlay/debug,
+  trip tools); they were all restored during the port - when cherry-picking future settings work
+  from that fork, diff the feature surface, not just the files. (Old single-page order note:
+  OLD: **Settings ORDER is deliberate (declutter reorg 2026-07-10):** Appearance →
   Map style → Units → Language → **Offline maps** → Search → Map (traffic/transit) → **Place pages**
   (ShowReviews / read-all-reviews / LoadPhotos / hide-adult / hide-external-links) → Navigation (keep-screen-on, vibrate-on-turns as
   FilterChips one per mode, parking history) → Voice → Saved places → Lists → Data & privacy →
@@ -341,7 +363,7 @@ Defaults that make the safe path the easy one:
   DEDICATED screen** (`VoiceBrowseScreen`, reached by the "Browse voices" `OutlinedButton` in the
   Voice section) not an inline accordion - `SettingsScreen` early-returns to it when
   `showVoiceLibrary`; its own Back returns to Settings. Put a new setting in the section it serves;
-  niche/experimental → Advanced, demo/test tools → Developer, place-content → Place pages not Map.
+  niche/experimental → Advanced, demo/test tools → Developer, place-content → Place pages not Map.)
 - **Route-row traffic words GRADE with the ETA colour (2026-07-10):** the "live traffic" tag in
   RouteOption's via line is now "light/moderate/heavy traffic", switched on `trafficRatio` at the
   SAME thresholds `trafficEtaColor` uses (>1.4 heavy red, >1.15 moderate amber, else light green) -
