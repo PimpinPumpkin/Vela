@@ -82,10 +82,26 @@ object OverpassAlprCameras {
                 // Real DeFlock nodes tag the vendor as `manufacturer` ("Flock Safety"), not `operator`
                 // (usually the agency, often absent) - fall back to it so the camera shows who runs it.
                 val op = (n.tags?.get("operator") ?: n.tags?.get("manufacturer")).orEmpty()
-                val dir = n.tags?.get("direction").orEmpty()
+                val dir = normDirection(n.tags?.get("direction") ?: n.tags?.get("camera:direction"))
                 AlprCamera(LatLng(lat, lng), op, dir)
             }
         }
+    }
+
+    // OSM tags facing as degrees OR a 16-wind cardinal ("N", "SSE"). The baked dataset normalizes to
+    // degrees at build time (scripts/build-flock-cameras.py); this fallback must match, or a camera the
+    // dataset draws with a cone loses it whenever a viewport is served by Overpass instead.
+    private val CARDINAL = mapOf(
+        "N" to 0f, "NNE" to 22.5f, "NE" to 45f, "ENE" to 67.5f, "E" to 90f, "ESE" to 112.5f,
+        "SE" to 135f, "SSE" to 157.5f, "S" to 180f, "SSW" to 202.5f, "SW" to 225f, "WSW" to 247.5f,
+        "W" to 270f, "WNW" to 292.5f, "NW" to 315f, "NNW" to 337.5f,
+    )
+
+    private fun normDirection(raw: String?): String {
+        val t = raw?.trim().orEmpty()
+        if (t.isEmpty()) return ""
+        t.toFloatOrNull()?.let { return ((it % 360f + 360f) % 360f).toString() }
+        return CARDINAL[t.uppercase()]?.toString() ?: ""
     }
 
     /** ALPR cameras within [nearMeters] of the route [polyline] - for the "this route passes N
