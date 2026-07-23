@@ -78,7 +78,9 @@ interface NavStrings {
     fun rerouting(): String = "Rerouting"
 
     /** The faster-route OFFER ("Faster route available, saving about N minutes"). */
-    fun fasterRouteAvailable(minutes: Int): String = "Faster route available, saving about $minutes minutes"
+    fun fasterRouteAvailable(minutes: Int): String =
+        if (minutes == 1) "Faster route available, saving about a minute"
+        else "Faster route available, saving about $minutes minutes"
 
     /** A reroute landed but couldn't route through the remaining stops. */
     fun stopsNotIncluded(): String = "Couldn't include your stops in this route. I'll keep trying."
@@ -350,7 +352,9 @@ object FrNavStrings : NavStrings {
 
     override fun fasterRoute(firstInstruction: String): String = "Itinéraire plus rapide. $firstInstruction"
     override fun rerouting(): String = "Recalcul de l'itinéraire"
-    override fun fasterRouteAvailable(minutes: Int): String = "Itinéraire plus rapide disponible, environ $minutes minutes de gagnées"
+    override fun fasterRouteAvailable(minutes: Int): String =
+        if (minutes == 1) "Itinéraire plus rapide disponible, environ une minute de gagnée"
+        else "Itinéraire plus rapide disponible, environ $minutes minutes de gagnées"
     override fun stopsNotIncluded(): String = "Impossible d'inclure vos étapes dans cet itinéraire. Je continue d'essayer."
     override fun destinationAhead(): String = "Votre destination sera devant vous"
 
@@ -439,7 +443,9 @@ object DeNavStrings : NavStrings {
 
     override fun fasterRoute(firstInstruction: String): String = "Schnellere Route wird genommen. $firstInstruction"
     override fun rerouting(): String = "Route wird neu berechnet"
-    override fun fasterRouteAvailable(minutes: Int): String = "Schnellere Route verfügbar, spart etwa $minutes Minuten"
+    override fun fasterRouteAvailable(minutes: Int): String =
+        if (minutes == 1) "Schnellere Route verfügbar, spart etwa eine Minute"
+        else "Schnellere Route verfügbar, spart etwa $minutes Minuten"
     override fun stopsNotIncluded(): String = "Ihre Zwischenstopps konnten nicht aufgenommen werden. Ich versuche es weiter."
     override fun destinationAhead(): String = "Ihr Ziel liegt voraus"
 
@@ -553,7 +559,9 @@ object EsNavStrings : NavStrings {
 
     override fun fasterRoute(firstInstruction: String): String = "Tomando la ruta más rápida. $firstInstruction"
     override fun rerouting(): String = "Recalculando la ruta"
-    override fun fasterRouteAvailable(minutes: Int): String = "Ruta más rápida disponible, ahorra unos $minutes minutos"
+    override fun fasterRouteAvailable(minutes: Int): String =
+        if (minutes == 1) "Ruta más rápida disponible, ahorra alrededor de un minuto"
+        else "Ruta más rápida disponible, ahorra unos $minutes minutos"
     override fun stopsNotIncluded(): String = "No se pudieron incluir tus paradas en esta ruta. Seguiré intentándolo."
     override fun destinationAhead(): String = "Tu destino estará más adelante"
 
@@ -650,7 +658,9 @@ object ItNavStrings : NavStrings {
 
     override fun fasterRoute(firstInstruction: String): String = "Percorso più veloce. $firstInstruction"
     override fun rerouting(): String = "Ricalcolo del percorso"
-    override fun fasterRouteAvailable(minutes: Int): String = "Percorso più veloce disponibile, risparmi circa $minutes minuti"
+    override fun fasterRouteAvailable(minutes: Int): String =
+        if (minutes == 1) "Percorso più veloce disponibile, risparmi circa un minuto"
+        else "Percorso più veloce disponibile, risparmi circa $minutes minuti"
     override fun stopsNotIncluded(): String = "Impossibile includere le tue tappe in questo percorso. Continuerò a provare."
     override fun destinationAhead(): String = "La tua destinazione sarà più avanti"
 
@@ -743,7 +753,9 @@ object PtNavStrings : NavStrings {
 
     override fun fasterRoute(firstInstruction: String): String = "Pegando a rota mais rápida. $firstInstruction"
     override fun rerouting(): String = "Recalculando a rota"
-    override fun fasterRouteAvailable(minutes: Int): String = "Rota mais rápida disponível, economiza cerca de $minutes minutos"
+    override fun fasterRouteAvailable(minutes: Int): String =
+        if (minutes == 1) "Rota mais rápida disponível, economiza cerca de um minuto"
+        else "Rota mais rápida disponível, economiza cerca de $minutes minutos"
     override fun stopsNotIncluded(): String = "Não foi possível incluir suas paradas nesta rota. Vou continuar tentando."
     override fun destinationAhead(): String = "Seu destino estará adiante"
 
@@ -864,7 +876,9 @@ object NlNavStrings : NavStrings {
 
     override fun fasterRoute(firstInstruction: String): String = "Snellere route gekozen. $firstInstruction"
     override fun rerouting(): String = "Route wordt opnieuw berekend"
-    override fun fasterRouteAvailable(minutes: Int): String = "Snellere route beschikbaar, bespaart ongeveer $minutes minuten"
+    override fun fasterRouteAvailable(minutes: Int): String =
+        if (minutes == 1) "Snellere route beschikbaar, bespaart ongeveer een minuut"
+        else "Snellere route beschikbaar, bespaart ongeveer $minutes minuten"
     override fun stopsNotIncluded(): String = "Je tussenstops konden niet in deze route worden opgenomen. Ik blijf het proberen."
     override fun destinationAhead(): String = "Je bestemming ligt verderop"
 
@@ -952,7 +966,9 @@ object RuNavStrings : NavStrings {
 
     override fun fasterRoute(firstInstruction: String): String = "Перехожу на более быстрый маршрут. $firstInstruction"
     override fun rerouting(): String = "Перестроение маршрута"
-    override fun fasterRouteAvailable(minutes: Int): String = "Доступен более быстрый маршрут, экономия около $minutes минут"
+    override fun fasterRouteAvailable(minutes: Int): String =
+        if (minutes == 1) "Доступен более быстрый маршрут, экономия около минуты"
+        else "Доступен более быстрый маршрут, экономия около $minutes минут"
     override fun stopsNotIncluded(): String = "Не удалось включить остановки в маршрут. Продолжаю попытки."
     override fun destinationAhead(): String = "Пункт назначения будет впереди"
 
@@ -1120,7 +1136,9 @@ object PlNavStrings : NavStrings {
 
     override fun fasterRoute(firstInstruction: String): String = "Wybieram szybszą trasę. $firstInstruction"
     override fun rerouting(): String = "Przeliczanie trasy"
-    override fun fasterRouteAvailable(minutes: Int): String = "Dostępna szybsza trasa, oszczędność około $minutes minut"
+    override fun fasterRouteAvailable(minutes: Int): String =
+        if (minutes == 1) "Dostępna szybsza trasa, oszczędność około minuty"
+        else "Dostępna szybsza trasa, oszczędność około $minutes minut"
     override fun stopsNotIncluded(): String = "Nie udało się uwzględnić przystanków na tej trasie. Będę próbować dalej."
     override fun destinationAhead(): String = "Cel podróży będzie przed tobą"
 
@@ -1251,7 +1269,9 @@ object SvNavStrings : NavStrings {
 
     override fun fasterRoute(firstInstruction: String): String = "Byter till en snabbare rutt. $firstInstruction"
     override fun rerouting(): String = "Räknar om rutten"
-    override fun fasterRouteAvailable(minutes: Int): String = "Snabbare rutt tillgänglig, sparar cirka $minutes minuter"
+    override fun fasterRouteAvailable(minutes: Int): String =
+        if (minutes == 1) "Snabbare rutt tillgänglig, sparar cirka en minut"
+        else "Snabbare rutt tillgänglig, sparar cirka $minutes minuter"
     override fun stopsNotIncluded(): String = "Kunde inte ta med dina stopp på denna rutt. Jag fortsätter försöka."
     override fun destinationAhead(): String = "Din destination ligger framför dig"
 
@@ -1347,7 +1367,9 @@ object UkNavStrings : NavStrings {
 
     override fun fasterRoute(firstInstruction: String): String = "Переходимо на швидший маршрут. $firstInstruction"
     override fun rerouting(): String = "Перебудова маршруту"
-    override fun fasterRouteAvailable(minutes: Int): String = "Доступний швидший маршрут, економія близько $minutes хвилин"
+    override fun fasterRouteAvailable(minutes: Int): String =
+        if (minutes == 1) "Доступний швидший маршрут, економія близько хвилини"
+        else "Доступний швидший маршрут, економія близько $minutes хвилин"
     override fun stopsNotIncluded(): String = "Не вдалося включити зупинки в маршрут. Продовжую спроби."
     override fun destinationAhead(): String = "Пункт призначення буде попереду"
 
@@ -1768,7 +1790,9 @@ object HeNavStrings : NavStrings {
 
     override fun fasterRoute(firstInstruction: String): String = "עובר למסלול המהיר יותר. $firstInstruction"
     override fun rerouting(): String = "מחשב מסלול מחדש"
-    override fun fasterRouteAvailable(minutes: Int): String = "מסלול מהיר יותר זמין, חוסך בערך $minutes דקות"
+    override fun fasterRouteAvailable(minutes: Int): String =
+        if (minutes == 1) "מסלול מהיר יותר זמין, חוסך בערך דקה"
+        else "מסלול מהיר יותר זמין, חוסך בערך $minutes דקות"
     override fun stopsNotIncluded(): String = "לא הצלחתי לכלול את העצירות שלך במסלול הזה. אמשיך לנסות."
     override fun destinationAhead(): String = "היעד שלך יהיה לפניך"
 
