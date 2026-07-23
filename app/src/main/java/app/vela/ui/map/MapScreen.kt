@@ -2139,9 +2139,13 @@ fun MapScreen(
             // Portrait, place card at (or near) its minimized bar: the locate FAB rides ABOVE the
             // card's measured top edge (user 2026-07-20: current location stays reachable with a
             // card minimized). Offset from the sheet's live top so it tracks the card; the >55%
-            // floor keeps it to the minimized neighbourhood - at peek/expanded it stays hidden.
+            // floor keeps it to the minimized neighbourhood - at peek/expanded the measured top
+            // sits above the floor so it stays hidden. MEASURED ONLY (2026-07-23): the logical
+            // expanded flag also gated this, and a pill swipe on a short-content card flips that
+            // flag while the card never grows, so the button vanished with the card unmoved
+            // (the same phantom-expanded class as the search-bar/layers hides).
             // Landscape needs none of this: the side panel leaves the normal FABs standing.
-            if (fabChromeOk && !landscapeChrome && state.selected != null && !placeSheetExpanded &&
+            if (fabChromeOk && !landscapeChrome && state.selected != null &&
                 state.pickOnMap == null && placeSheetTopPx > screenHeightPx * 0.55f
             ) {
                 FloatingActionButton(
