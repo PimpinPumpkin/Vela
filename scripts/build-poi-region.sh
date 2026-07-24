@@ -86,13 +86,15 @@ if [ "$OLD_REV" -gt 0 ] && gh release download "$TAG" --repo "$REPO" -p "$ID.zip
   fi
   rm -rf "$WORK/oldpack" "$WORK/old.zip" "$WORK/$ID.delta.db"
 fi
+INSTALLED_MB=$(du -m "$WORK/$ID.db" | cut -f1)
 rm -f "$WORK/$ID.db"
 
 gh release upload "$TAG" "$WORK/$ID.zip" --clobber --repo "$REPO"
 
 ENTRY="$(jq -nc --arg id "$ID" --arg name "$NAME" --arg url "$ASSET_URL" --argjson size "$SIZE" --argjson bbox "$BBOX" \
   --argjson rev "$REV" --arg updated "$UPDATED_AT" --argjson counts "$COUNTS" --argjson delta "$DELTA_JSON" \
-  '{id:$id,name:$name,url:$url,sizeMb:$size,bbox:$bbox,rev:$rev,updatedAt:$updated,counts:$counts}
+  --argjson installed "$INSTALLED_MB" \
+  '{id:$id,name:$name,url:$url,sizeMb:$size,installedMb:$installed,bbox:$bbox,rev:$rev,updatedAt:$updated,counts:$counts}
    + (if $delta != null then {delta:$delta} else {} end)')"
 
 # MANIFEST_MODE=emit (CI matrix): drop the entry for the central merge job (parallel builds must not

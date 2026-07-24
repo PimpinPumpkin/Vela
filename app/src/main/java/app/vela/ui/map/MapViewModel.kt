@@ -4868,6 +4868,43 @@ class MapViewModel @Inject constructor(
 
     /** Download tiles + POIs for the area the map was last showing (Google-style
      *  "download this area", but invoked from Settings → Offline maps). */
+    /** On-disk sizes for the Offline maps storage breakdown (issue #214: 8 GB arrived unannounced). */
+    data class OfflineStorage(val mapsMb: Int, val routingMb: Int, val placesMb: Int, val voicesMb: Int)
+
+    suspend fun offlineStorageBreakdown(): OfflineStorage = kotlinx.coroutines.withContext(Dispatchers.IO) {
+        fun mbOf(f: java.io.File): Int = when {
+            !f.exists() -> 0
+            f.isFile -> (f.length() / (1024 * 1024)).toInt()
+            else -> (f.walkBottomUp().filter { it.isFile }.sumOf { it.length() } / (1024 * 1024)).toInt()
+        }
+        val files = appContext.filesDir
+        OfflineStorage(
+            // MapLibre keeps saved areas AND the browsing cache in one database (.mapbox);
+            // the downloaded building/address overlays are map data too.
+            mapsMb = mbOf(java.io.File(files, ".mapbox")) + mbOf(java.io.File(files, "mbgl-offline.db")) +
+                mbOf(java.io.File(files, "overlays")),
+            routingMb = mbOf(java.io.File(files, "graphs")),
+            placesMb = mbOf(java.io.File(files, "poipacks")),
+            voicesMb = mbOf(java.io.File(files, "piper")) + mbOf(java.io.File(files, "asr")),
+        )
+    }
+
+    /** Clear MapLibre's ambient (browsing) tile cache. Saved offline areas are untouched -
+     *  clearAmbientCache only drops the cache the map filled while browsing. */
+    suspend fun clearMapCache(): Unit = kotlinx.coroutines.withContext(Dispatchers.Main) {
+        kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+            runCatching {
+                org.maplibre.android.offline.OfflineManager.getInstance(appContext).clearAmbientCache(
+                    object : org.maplibre.android.offline.OfflineManager.FileSourceCallback {
+                        override fun onSuccess() { if (cont.isActive) cont.resume(Unit) { _, _, _ -> } }
+                        override fun onError(message: String) { if (cont.isActive) cont.resume(Unit) { _, _, _ -> } }
+                    },
+                )
+            }.onFailure { if (cont.isActive) cont.resume(Unit) { _, _, _ -> } }
+        }
+        flashStatus(appContext.getString(R.string.settings_map_cache_cleared))
+    }
+
     fun downloadViewport() {
         val v = viewport ?: run { showStatus(appContext.getString(R.string.mapvm_pan_to_area_first)); return }
         val (s, w, n, e, zoom) = listOf(v[0], v[1], v[2], v[3], v[4])

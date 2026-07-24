@@ -89,8 +89,6 @@
     <string name="settings_get_places">Скачать места</string>
     <string name="settings_update_places">Обновить места</string>
     <string name="settings_routing_update_available">Установлено · доступно обновление мест</string>
-    <string name="settings_routing_size_here">%1$s МБ · покрывает ваше местоположение</string>
-    <string name="settings_routing_size">%1$s МБ</string>
     <string name="settings_routing_remove">Удалить офлайн-маршрутизацию</string>
     <string name="settings_download">Загрузить</string>
     <string name="settings_saved_places">Сохранённые места</string>

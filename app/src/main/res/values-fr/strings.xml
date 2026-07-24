@@ -89,8 +89,6 @@
     <string name="settings_get_places">Obtenir les lieux</string>
     <string name="settings_update_places">Mettre à jour les lieux</string>
     <string name="settings_routing_update_available">Installé · mise à jour des lieux disponible</string>
-    <string name="settings_routing_size_here">%1$s Mo · couvre votre position</string>
-    <string name="settings_routing_size">%1$s Mo</string>
     <string name="settings_routing_remove">Supprimer le routage hors ligne</string>
     <string name="settings_download">Télécharger</string>
     <string name="settings_saved_places">Lieux enregistrés</string>

@@ -89,8 +89,6 @@
     <string name="settings_get_places">Obter locais</string>
     <string name="settings_update_places">Atualizar locais</string>
     <string name="settings_routing_update_available">Instalado · atualização de locais disponível</string>
-    <string name="settings_routing_size_here">%1$s MB · abrange a sua localização</string>
-    <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Remover percursos offline</string>
     <string name="settings_download">Transferir</string>
     <string name="settings_saved_places">Locais guardados</string>

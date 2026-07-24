@@ -113,8 +113,6 @@
     <string name="settings_get_places">获取地点</string>
     <string name="settings_update_places">更新地点</string>
     <string name="settings_routing_update_available">已安装 · 有地点数据更新</string>
-    <string name="settings_routing_size_here">%1$s MB · 覆盖您的位置</string> <!-- format -->
-    <string name="settings_routing_size">%1$s MB</string> <!-- format -->
     <string name="settings_routing_remove">移除离线路线数据</string>
     <string name="settings_download">下载</string>
     <string name="settings_saved_places">已保存的地点</string>
