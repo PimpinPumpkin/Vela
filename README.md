@@ -47,9 +47,11 @@ with a tap-through stop list for every route; and the in-app light/dark themes
 
 [<img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="54">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/PimpinPumpkin/Vela)&nbsp;&nbsp;[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid (Vela's own repo)" height="54">](FDROID.md)
 
-Tap a badge - no Play Store, no account. Obtainium auto-tracks the
-**weekly stable** release; turn on "include prereleases" and you get the
-**nightly** channel instead (every push to main). The F-Droid badge is
+Obtainium auto-tracks the
+**weekly stable** release. Turn on "include prereleases" and you get the
+**nightly** channel instead. 
+
+The F-Droid badge is
 **Vela's own repository**, not the f-droid.org catalog - add
 `https://pimpinpumpkin.github.io/Vela/repo` to any F-Droid client and it serves
 the same signed APKs, weekly stable by default (fingerprint and nightly-channel
