@@ -276,6 +276,7 @@ data class MapUiState(
     val routingInstalledIds: Set<String> = emptySet(), // region ids whose graphs are on disk
     val routingDownloadingId: String? = null,          // region id currently downloading, else null
     val routingDownloadPct: Int = 0,
+    val obfCatalog: Boolean = false,                   // region rows serve the obf catalog (successor format)
     val regionDownloadName: String? = null,            // display name for the heads-up download card
     // Offline PLACE pack (whole-region POI/address db, pulled after the region's routing graph)
     val poiPackDownloadingId: String? = null,
@@ -320,6 +321,7 @@ class MapViewModel @Inject constructor(
     private val tripStore: app.vela.replay.TripStore,
     private val routingGraphStore: app.vela.offline.RoutingGraphStore,
     private val poiPackStore: app.vela.offline.PoiPackStore,
+    private val obfStore: app.vela.offline.ObfStore,
     private val overlayStore: app.vela.offline.OverlayTileStore,
     private val maxspeedStore: app.vela.offline.MaxspeedOverlayStore,
     private val routeEngine: app.vela.core.data.RouteEngine,
@@ -5281,10 +5283,14 @@ class MapViewModel @Inject constructor(
 
     /** Reflect what's installed + fetch the manifest of downloadable region graphs. */
     fun refreshRoutingRegions() {
-        _state.update { it.copy(routingInstalledIds = routingGraphStore.installedIds()) }
+        _state.update { it.copy(routingInstalledIds = routingGraphStore.installedIds() + obfStore.installedIds()) }
         viewModelScope.launch {
-            val regions = routingGraphStore.manifest(app.vela.BuildConfig.ROUTING_MANIFEST_URL)
-            _state.update { it.copy(routingRegions = regions) }
+            // The obf catalog is the successor (issue #214, ~4x smaller regions). While its manifest
+            // is empty (not yet baked) the legacy GraphHopper catalog serves, so this switch is a
+            // release-asset upload, not an app release - the v1->v2 graph cutover precedent.
+            val obf = routingGraphStore.manifest(app.vela.BuildConfig.OBF_MANIFEST_URL)
+            val regions = obf.ifEmpty { routingGraphStore.manifest(app.vela.BuildConfig.ROUTING_MANIFEST_URL) }
+            _state.update { it.copy(routingRegions = regions, obfCatalog = obf.isNotEmpty()) }
             // The pack catalog too (revs + deltas) — Settings compares it against the installed pack
             // revisions to offer "Update places" on stale regions.
             val packs = poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL)
@@ -5303,14 +5309,20 @@ class MapViewModel @Inject constructor(
         if (_state.value.routingDownloadingId != null) return
         _state.update { it.copy(routingDownloadingId = region.id, routingDownloadPct = 0, regionDownloadName = region.name) }
         downloadLaunch(region.name) {
-            val ok = routingGraphStore.download(region) { pct ->
-                _state.update { it.copy(routingDownloadPct = pct) }
+            val obf = _state.value.obfCatalog
+            val ok = if (obf) {
+                obfStore.download(region) { pct -> _state.update { it.copy(routingDownloadPct = pct) } }
+            } else {
+                routingGraphStore.download(region) { pct -> _state.update { it.copy(routingDownloadPct = pct) } }
             }
             _state.update {
-                it.copy(routingDownloadingId = null, routingInstalledIds = routingGraphStore.installedIds())
+                it.copy(routingDownloadingId = null, routingInstalledIds = routingGraphStore.installedIds() + obfStore.installedIds())
             }
             showStatus(if (ok) appContext.getString(R.string.mapvm_offline_routing_ready, region.name) else appContext.getString(R.string.mapvm_offline_routing_failed))
-            if (ok) { refreshOfflineRoadNames(); downloadPoiPack(region) } // pick up the new region's romanized road names (issue #184)
+            // The names sidecar is a GraphHopper-era artifact - an obf carries multilingual names
+            // itself, so only the legacy path refreshes the sidecar map. The place pack still rides
+            // along in both worlds until search moves onto the obf too.
+            if (ok) { if (!obf) refreshOfflineRoadNames(); downloadPoiPack(region) }
             else _state.update { it.copy(regionDownloadName = null) }
         }
     }
@@ -5364,9 +5376,11 @@ class MapViewModel @Inject constructor(
 
     fun deleteRoutingGraph(id: String) {
         routingGraphStore.delete(id)
+        obfStore.delete(id) // whichever format this region was installed as
         poiPackStore.delete(id) // the place pack rides with the region — remove them together
+        (routeEngine as? app.vela.core.data.OfflineRouteEngine)?.shutdown() // drop cached readers for the removed region
         _state.update {
-            it.copy(routingInstalledIds = routingGraphStore.installedIds(), poiPackInstalledIds = poiPackStore.installedIds())
+            it.copy(routingInstalledIds = routingGraphStore.installedIds() + obfStore.installedIds(), poiPackInstalledIds = poiPackStore.installedIds())
         }
         viewModelScope.launch { refreshOfflineRoadNames() } // drop the removed region's road names (issue #184)
         showStatus(appContext.getString(R.string.mapvm_offline_routing_removed))

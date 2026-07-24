@@ -2241,6 +2241,51 @@ architecture note.
   so we do **not** always-snap. Clean always-snap (and offline routing) is gated on an **on-device
   engine** - see the next bullet. Option 3 is the public-server stopgap and stays as the online/fallback
   path. **No backend needed for any of this** (the serverless constraint holds).
+- **OBF MIGRATION IN PROGRESS (2026-07-23, issue #214; user sold on the format;
+  DEVICE-VERIFIED on the 4a in airplane mode - see the canary numbers below).** Offline
+  routing's successor is OsmAnd's `.obf`: `ObfRouteEngine` (:core) routes with OsmAnd's pure-Java
+  router (GPLv3, vendored jars in `core/libs/` - gitignored, CI fetches from the `obf-runtime`
+  release like the sherpa AAR; locally copy osmand-java.jar / osmand-shared-jvm.jar /
+  gnu-trove-osmand.jar / kxml2-vela.jar from that release). MEASURED WHY: Berlin from the same PBF = GraphHopper
+  graph 105 MB vs obf routing section 26.9 MB (3.9x); a target-sections obf (routing+address+POI,
+  NO map/transport - `scripts/VelaObfShim.java` sets the IndexCreatorSettings booleans the CLI
+  lacks) makes Germany ~2 GB where graph+pack was ~8. `OfflineRouteEngine` (CoreModule) tries obf
+  then GraphHopper, so pre-cutover graphs keep working; avoids (toll/motorway) are DYNAMIC
+  routing.xml params (`avoid_toll`/`avoid_highway`) so they work offline with no baked profiles,
+  and bicycle/pedestrian profiles come free. Turn mapping pinned by ObfRouteEngineTest (CONTINUE
+  is voice-silent - a mis-mapped u-turn gets swallowed; instruction text reuses ghPhrase so all
+  languages come along). Bake: `scripts/build-obf-region.sh` + `merge-obf-manifest.sh` +
+  `.github/workflows/obf-regions.yml` (matrix clone; the MapCreator tool is pinned on the
+  `obf-tools` release); assets are RAW .obf (already deflate-compressed inside; download size ==
+  installed size). CUTOVER = the manifest: `refreshRoutingRegions` serves the obf catalog
+  (`OBF_MANIFEST_URL`, `-PobfManifestUrl=` override) whenever obf-manifest.json has entries, else
+  the legacy graph catalog - dispatching the obf-regions workflow IS the switch, no app release.
+  The trade: no precomputed shortcuts, so a cross-city route costs seconds not ~200 ms (offline is
+  the FALLBACK router, so size beats speed - user call); OsmAnd's HH precomputed mode is the
+  follow-up if long routes measure slow on-device. **4a canary numbers (2026-07-23, release build,
+  airplane mode, Berlin obf):** 1.6 km drive = 288 ms; 21 km cross-city drive = 9.1 s (252
+  segments); same trip walking = 15.9 s. Steps carry names + B-road shields + sign destinations;
+  delete via Settings removes the region and the engine drops its readers. **THREE ANDROID
+  RUNTIME TRAPS, all invisible until the engine LOGGED its failures (tag `VelaObf` - the first
+  canary swallowed them silently and read as "No drive route found"):** (1) commons-logging picks
+  LogFactoryImpl by REFLECTIVE discovery, so R8 strips it and BinaryMapIndexReader's static init
+  dies - consumer-rules keeps `org.apache.commons.logging.**`, and the discovery itself NPEs on
+  ART anyway, so ObfRouteEngine's init pins `org.apache.commons.logging.Log` ->
+  SimpleLog before any OsmAnd class loads. (2) OsmAnd instantiates `org.kxml2.io.KXmlParser`
+  directly (a desktop-classpath assumption; modern Android hides its platform copy from apps) -
+  `kxml2-vela.jar` on the obf-runtime release is upstream kxml2 2.3.0 with its bundled
+  org/xmlpull/** deleted, because the stock Maven jar duplicates the platform XmlPullParser
+  interfaces and R8 hard-fails ("Library class ... implements program class"). (3)
+  `searchRoute` UNCONDITIONALLY lazy-loads the world-regions index (its missing-maps suggestion
+  feature) from the working directory, which on Android is / and read-only -> EROFS on every
+  route; the init pre-seeds `PlatformUtil.setOsmandRegions(OsmandRegions(false))` (the no-file
+  ctor) and turns `RoutePlannerFrontEnd.CALCULATE_MISSING_MAPS` off (the flag alone does NOT
+  skip the load - the getOsmandRegions call sits before the flag check). STILL GH-ONLY: the speed-limit badge
+  (currentRoadLimit) and the romanized-names sidecar (obf carries multilingual names natively,
+  wired later). Place packs still download alongside obf regions until POI/address search moves
+  onto the obf (phase 2). NO COUNTRY SPLITS beyond the existing US states (user call - only true
+  monsters like Russia/China would ever split; obf makes unsplit Germany smaller than Organic
+  Maps' 48-piece total).
 - **On-device routing engine = GraphHopper (`core/data/RouteEngine` + `GraphHopperRouteEngine`).**
   Pure-JVM, runs on ART - **validated end-to-end on a Pixel 5a** (`:ghprobe`, a throwaway instrumented
   probe - the routing shipped long ago; the module is safe to delete whenever). Chosen over Valhalla (no maintained Android map-matching binding) /

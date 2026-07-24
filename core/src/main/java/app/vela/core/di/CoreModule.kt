@@ -3,6 +3,8 @@ package app.vela.core.di
 import android.content.Context
 import app.vela.core.VelaConfig
 import app.vela.core.data.GraphHopperRouteEngine
+import app.vela.core.data.ObfRouteEngine
+import app.vela.core.data.OfflineRouteEngine
 import app.vela.core.data.MapDataSource
 import app.vela.core.data.MockMapDataSource
 import app.vela.core.data.RouteEngine
@@ -66,7 +68,13 @@ object CoreModule {
     @Provides
     @Singleton
     fun routeEngine(@ApplicationContext context: Context): RouteEngine =
-        GraphHopperRouteEngine(File(context.filesDir, "graphs"))
+        OfflineRouteEngine(
+            // Obf regions first (filesDir/obf/<id>.obf, index by ObfStore) - the smaller format
+            // every new download uses; GraphHopper keeps answering for graphs installed before
+            // the cutover until their regions are re-downloaded.
+            ObfRouteEngine(File(context.filesDir, "obf")),
+            GraphHopperRouteEngine(File(context.filesDir, "graphs")),
+        )
 }
 
 /**
