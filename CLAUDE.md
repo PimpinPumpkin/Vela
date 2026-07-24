@@ -2307,6 +2307,13 @@ architecture note.
   offline map *tiles* for an area ALSO pulls that area's routing region (`MapViewModel.downloadRoutingForArea`).
   `directions()` uses the engine when OSRM is empty. A trip must fit ONE region's monolithic graph (cross-region
   → online).
+  **Sub-country regions (2026-07-23, issue #214):** big countries split into Geofabrik
+  first-level extracts in the catalog - Germany is 16 `de-*` Bundesland rows (group
+  `germany-sub` in both workflow dispatch choices) beside the kept whole-country row, so the
+  smallest-covering-box rule serves a Berlin user the Berlin graph+pack instead of ~8 GB of
+  Germany. No app change needed (the picker + Local-area auto-pull already prefer the smallest
+  covering region). Remaining big countries are a ROADMAP item; the pattern is copy the rows,
+  add the group to the two workflows, dispatch. \
   **Hosting + world catalog (DONE 2026-06-30):** graphs + `routing-manifest.json` are assets on the
   **`routing-graphs` GitHub release** (fixed-tag prerelease, never the "Latest" the APK tracks). The catalog is
   **`tools/routing-regions.json`** (135 regions, grouped by continent; `big:true` = country-sized). CI
