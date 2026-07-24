@@ -89,8 +89,6 @@
     <string name="settings_get_places">Plaatsen ophalen</string>
     <string name="settings_update_places">Plaatsen bijwerken</string>
     <string name="settings_routing_update_available">Geïnstalleerd · update voor plaatsen beschikbaar</string>
-    <string name="settings_routing_size_here">%1$s MB · dekt uw locatie</string>
-    <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Offline routering verwijderen</string>
     <string name="settings_download">Downloaden</string>
     <string name="settings_saved_places">Opgeslagen plaatsen</string>

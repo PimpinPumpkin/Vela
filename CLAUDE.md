@@ -1683,6 +1683,17 @@ architecture note.
   an address). Rarely seeing it = data-dependent, not removed. "People also search for"
   (`similarPlaces`) is the different, related-places row.
 
+- **Offline sizes are INSTALLED sizes (issue #214, 2026-07-23).** Region manifests carry
+  `installedMb` (measured by the bake scripts: du of the unpacked graph dir / raw pack db);
+  the app falls back to zip x 1.8 (graphs) / x 2.35 (packs, WA measured 143->335 MB) for
+  manifests baked before the field existed. The Settings row shows graph+pack SUMMED
+  (`regionInstalledMb` in OfflineSettings), regions over 1 GB installed confirm via VelaDialog
+  before downloading, and the Storage group at the bottom of Offline maps reads
+  `MapViewModel.offlineStorageBreakdown()` (.mapbox db + overlays / graphs / poipacks /
+  piper+asr) with `clearMapCache()` = MapLibre `clearAmbientCache` (saved areas untouched).
+  Old translated locales had the zip-size strings DELETED (orphans fail lint); the new
+  installed-size keys are base-English until Weblate fills them.
+
 ## Working on the scraper
 
 - The `pb` request *grammar* (`PbBuilder`) and `PolylineCodec` are correct and

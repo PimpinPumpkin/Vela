@@ -62,6 +62,7 @@ class PoiPackStore @Inject constructor(
                 RoutingRegion(
                     o.getString("id"), o.getString("name"), o.getString("url"), o.optInt("sizeMb"),
                     b.getDouble(0), b.getDouble(1), b.getDouble(2), b.getDouble(3),
+                    installedMb = o.optInt("installedMb"),
                     rev = o.optInt("rev"),
                     counts = counts,
                     deltaUrl = delta?.optString("url")?.takeIf { it.isNotBlank() },

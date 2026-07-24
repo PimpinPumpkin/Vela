@@ -52,7 +52,10 @@ fi
 read -r MINLON MINLAT MAXLON MAXLAT < <(osmium fileinfo -g header.boxes "$WORK/region.osm.pbf" | tr -d '()' | tr ',' ' ')
 BBOX="[$MINLAT,$MINLON,$MAXLAT,$MAXLON]"
 ASSET_URL="https://github.com/$REPO/releases/download/$TAG/$ID$SUFFIX.zip"
-echo "→ $ID: ${SIZE} MB, bbox $BBOX"
+# what the graph actually costs on the phone once unzipped (the zip number undersold Germany
+# by ~5x and users found out the hard way, issue #214)
+INSTALLED_MB=$(du -sm "$WORK/graph" | cut -f1)
+echo "→ $ID: ${SIZE} MB zip, ${INSTALLED_MB} MB installed, bbox $BBOX"
 
 # ensure the catalog release exists (prerelease so it never becomes the "Latest" the APK tracks)
 gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 || \
@@ -66,7 +69,8 @@ gh release upload "$TAG" "$WORK/$ID$SUFFIX.zip" --clobber --repo "$REPO"
 # the extra fields, new apps download it alongside the graph)
 ENTRY="$(jq -nc --arg id "$ID" --arg name "$NAME" --arg url "$ASSET_URL" --argjson size "$SIZE" --argjson bbox "$BBOX" \
   --arg namesUrl "$NAMES_URL" --argjson namesKb "${NAMES_KB:-0}" \
-  '{id:$id,name:$name,url:$url,sizeMb:$size,bbox:$bbox}
+  --argjson installed "$INSTALLED_MB" \
+  '{id:$id,name:$name,url:$url,sizeMb:$size,installedMb:$installed,bbox:$bbox}
    + (if $namesUrl != "" then {namesUrl:$namesUrl, namesSizeKb:$namesKb} else {} end)')"
 
 # MANIFEST_MODE=emit (CI matrix): just drop the entry to $ENTRY_OUT and stop — the manifest merge is

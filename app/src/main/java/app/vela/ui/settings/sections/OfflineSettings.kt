@@ -25,8 +25,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -61,6 +64,19 @@ import org.maplibre.android.offline.OfflineRegion
 internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onCloseSettings: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var confirmRegion by remember { mutableStateOf<app.vela.offline.RoutingRegion?>(null) }
+    confirmRegion?.let { region ->
+        val packRegion = state.poiPackRegions.firstOrNull { it.id == region.id }
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { confirmRegion = null },
+            title = stringResource(R.string.settings_region_confirm_title, region.name),
+            text = { Text(stringResource(R.string.settings_region_confirm_body, region.name, fmtMb(regionInstalledMb(region, packRegion)))) },
+            confirmText = stringResource(R.string.settings_download),
+            onConfirm = { confirmRegion = null; vm.downloadRoutingGraph(region) },
+            dismissText = stringResource(R.string.settings_cancel),
+            onDismiss = { confirmRegion = null },
+        )
+    }
     SettingsScaffold(stringResource(R.string.settings_offline), onBack) { topRow ->
         Spacer(Modifier.height(4.dp))
         PageIntro(stringResource(R.string.settings_offline_hint))
@@ -203,8 +219,8 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                                 updateAvailable -> stringResource(R.string.settings_routing_update_available)
                                 installed && packInstalled -> stringResource(R.string.settings_routing_installed_places)
                                 installed -> stringResource(R.string.settings_routing_installed)
-                                here -> stringResource(R.string.settings_routing_size_here, region.sizeMb)
-                                else -> stringResource(R.string.settings_routing_size, region.sizeMb)
+                                here -> stringResource(R.string.settings_routing_size_installed_here, fmtMb(regionInstalledMb(region, packRegion)))
+                                else -> stringResource(R.string.settings_routing_size_installed, fmtMb(regionInstalledMb(region, packRegion)))
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = if ((here && !installed && !downloading) || updateAvailable) MaterialTheme.colorScheme.primary
@@ -260,7 +276,12 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                         else -> {
                             DpadFocusHandoff(keeper)
                             FilledTonalButton(
-                                onClick = { vm.downloadRoutingGraph(region) },
+                                // Big regions confirm first with the real installed size (issue #214:
+                                // Germany reads 1.6 GB on the row but lands at ~8 GB on disk).
+                                onClick = {
+                                    if (regionInstalledMb(region, packRegion) > CONFIRM_MB) confirmRegion = region
+                                    else vm.downloadRoutingGraph(region)
+                                },
                                 enabled = state.routingDownloadingId == null,
                                 modifier = Modifier.dpadFocusKept(keeper),
                             ) { Text(stringResource(R.string.settings_download)) }
@@ -271,6 +292,58 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             }
             }
         }
+        // What offline data actually costs on this phone (issue #214: 8 GB arrived unannounced,
+        // and 533 MB of "empty" app is mostly the browsing cache with no way to clear it).
+        SubHead(stringResource(R.string.settings_storage_title))
+        var storageTick by remember { mutableStateOf(0) }
+        val storage by produceState<MapViewModel.OfflineStorage?>(null, storageTick, state.routingInstalledIds, state.poiPackInstalledIds) {
+            value = vm.offlineStorageBreakdown()
+        }
+        val storageScope = rememberCoroutineScope()
+        SettingsGroup {
+            storage?.let { st ->
+                StorageRow(stringResource(R.string.settings_storage_maps), st.mapsMb)
+                GroupDivider()
+                StorageRow(stringResource(R.string.settings_storage_routing), st.routingMb)
+                GroupDivider()
+                StorageRow(stringResource(R.string.settings_storage_places), st.placesMb)
+                GroupDivider()
+                StorageRow(stringResource(R.string.settings_storage_voices), st.voicesMb)
+            } ?: Hint(stringResource(R.string.settings_storage_measuring))
+            androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 8.dp)) {
+                androidx.compose.material3.TextButton(
+                    onClick = { storageScope.launch { vm.clearMapCache(); storageTick++ } },
+                    modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                ) { Text(stringResource(R.string.settings_clear_map_cache)) }
+            }
+            Hint(stringResource(R.string.settings_clear_map_cache_hint))
+        }
         Spacer(Modifier.height(24.dp))
     }
 }
+
+/** One "label ..... size" line in the storage group. */
+@Composable
+private fun StorageRow(label: String, mb: Int) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Text(fmtMb(mb), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** The size a region really lands at: manifest installedMb when the bake published it, else an
+ *  estimate from the zip (graphs unpack ~1.8x, packs ~2.35x - the WA pack measured 143 -> 335 MB).
+ *  The graph and its place pack install together, so the shown number is their SUM. */
+internal fun regionInstalledMb(graph: app.vela.offline.RoutingRegion, pack: app.vela.offline.RoutingRegion?): Int {
+    val g = if (graph.installedMb > 0) graph.installedMb else (graph.sizeMb * 1.8).toInt()
+    val p = pack?.let { if (it.installedMb > 0) it.installedMb else (it.sizeMb * 2.35).toInt() } ?: 0
+    return g + p
+}
+
+internal fun fmtMb(mb: Int): String =
+    if (mb >= 1024) String.format(java.util.Locale.getDefault(), "%.1f GB", mb / 1024f) else "$mb MB"
+
+private const val CONFIRM_MB = 1024
