@@ -4,8 +4,9 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <!-- Hollow OUTLINE chevron for Android 13+ themed icons (user call 2026-07-23: the filled
-         mono read as a blob in the themed circle). Round joins - a miter would spike far past
-         the acute tip. Stroke 24 in the 512 path space = ~4.3dp at this viewport. -->
+         mono read as a blob in the themed circle; thinned to Lawnicons/stock-Pixel weight the
+         same day). Round joins - a miter would spike far past the acute tip. Stroke 16 in the
+         512 path space = ~2.9dp at this viewport. -->
     <group
         android:scaleX="0.18"
         android:scaleY="0.18"
@@ -13,7 +14,7 @@
         android:translateY="11.16">
         <path
             android:strokeColor="#FFFFFF"
-            android:strokeWidth="24"
+            android:strokeWidth="16"
             android:strokeLineJoin="round"
             android:pathData="M256,100 L146,376 L256,318 L366,376 Z" />
     </group>
