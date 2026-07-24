@@ -38,6 +38,17 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Fetch obf routing runtime jars
+        # :core compiles against these (see ci.yml's identical step).
+        run: |
+          mkdir -p core/libs
+          for f in osmand-java.jar osmand-shared-jvm.jar gnu-trove-osmand.jar kxml2-vela.jar; do
+            curl -fSL -o "core/libs/$f" \
+              "https://github.com/${{ github.repository }}/releases/download/obf-runtime/$f" \
+            || curl -fSL -o "core/libs/$f" \
+              "https://github.com/PimpinPumpkin/Vela/releases/download/obf-runtime/$f"
+          done
+
       - name: Generate baseline profile
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true

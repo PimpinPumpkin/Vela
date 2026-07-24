@@ -49,3 +49,29 @@
 -dontwarn java.awt.**
 -dontwarn javax.xml.stream.**
 -dontwarn javax.measure.**
+
+# OsmAnd obf router (ObfRouteEngine): parses routing.xml/poi_types.xml resources by classloader and
+# wires GeneralRouter parameters reflectively enough that shrinking is not worth the risk - keep it
+# wholesale like GraphHopper. The desktop-only corners (awt image io in some utilities) never run on
+# Android; silence, don't fail.
+-keep class net.osmand.** { *; }
+-dontwarn net.osmand.**
+-keep class gnu.trove.** { *; }
+# commons-logging picks its LogFactory IMPLEMENTATION by reflective discovery, so R8 sees no
+# reference and strips LogFactoryImpl - then BinaryMapIndexReader's static init (PlatformUtil.getLog)
+# throws ClassNotFoundException and every obf open fails (release-canary find, 2026-07-23).
+-keep class org.apache.commons.logging.** { *; }
+-dontwarn org.apache.commons.logging.**
+# kxml2's parser is instantiated reflectively through the XmlPullParserFactory lookup - same
+# no-static-reference shape as LogFactoryImpl above.
+-keep class org.kxml2.** { *; }
+-dontwarn org.kxml2.**
+-dontwarn java.awt.**
+-dontwarn javax.imageio.**
+-dontwarn javax.xml.stream.**
+# Desktop-only corners of osmand-java that never run on Android (NMEA sentence parsing, the
+# wdtinc MVT reader's legacy-JTS path, kotlin-native concurrency shims) - silence, don't fail.
+-dontwarn co.touchlab.stately.**
+-dontwarn com.vividsolutions.jts.**
+-dontwarn com.wdtinc.**
+-dontwarn net.sf.marineapi.**

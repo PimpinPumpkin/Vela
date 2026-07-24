@@ -39,6 +39,21 @@ dependencies {
         exclude(group = "org.apache.xmlgraphics")
     }
 
+    // OsmAnd obf routing engine (ObfRouteEngine): the router + binary obf reader as plain Java
+    // jars, vendored from OsmAndMapCreator's lib (GPLv3, same license as Vela). Gitignored like
+    // the sherpa AAR - CI fetches them from the `obf-runtime` infra release; locally copy them in
+    // (see CLAUDE.md). Everything else the router needs is already on Android (org.json,
+    // kotlin-stdlib) or in this module (kotlinx-serialization). commons-logging + kxml2 are the
+    // two desktop assumptions Android does NOT satisfy: OsmAnd logs through commons-logging and
+    // instantiates org.kxml2.io.KXmlParser directly (present on a desktop classpath, not visible
+    // to apps on modern Android) - both device-caught on the release canary, 2026-07-23.
+    // kxml2-vela.jar is upstream kxml2 2.3.0 with its bundled org/xmlpull/** REMOVED - the stock
+    // Maven jar duplicates the platform's XmlPullParser interfaces and R8 hard-fails on the
+    // library/program split ("Library class android.content.res.XmlResourceParser implements
+    // program class org.xmlpull.v1.XmlPullParser").
+    implementation(files("libs/osmand-java.jar", "libs/osmand-shared-jvm.jar", "libs/gnu-trove-osmand.jar", "libs/kxml2-vela.jar"))
+    implementation("commons-logging:commons-logging:1.2")
+
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 

@@ -65,6 +65,16 @@ android {
             "\"${(project.findProperty("routingManifestUrl") as String?)
                 ?: "https://github.com/PimpinPumpkin/Vela/releases/download/routing-graphs/routing-manifest-v2.json"}\"",
         )
+        // Obf region catalog (the GraphHopper graphs' successor, issue #214). While this manifest
+        // is empty/absent the app serves the legacy routing-graph catalog; once regions are baked
+        // to the `obf-regions` release the same Settings rows download obf instead. Override for
+        // local testing with -PobfManifestUrl=http://127.0.0.1:8099/obf-manifest.json (adb reverse).
+        buildConfigField(
+            "String",
+            "OBF_MANIFEST_URL",
+            "\"${(project.findProperty("obfManifestUrl") as String?)
+                ?: "https://github.com/PimpinPumpkin/Vela/releases/download/obf-regions/obf-manifest.json"}\"",
+        )
         // Open building-footprint overlay (Microsoft, ODbL) PMTiles catalog — same override pattern
         // (-PoverlayManifestUrl=http://127.0.0.1:8099/... for local testing via `adb reverse`).
         buildConfigField(
