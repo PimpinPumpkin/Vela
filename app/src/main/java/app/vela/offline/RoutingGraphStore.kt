@@ -25,6 +25,7 @@ data class RoutingRegion(
     val w: Double,
     val n: Double,
     val e: Double,
+    val installedMb: Int = 0,               // unpacked on-disk size; 0 in old manifests (estimate from the zip)
     val rev: Int = 0,                       // pack revision (bumped every rebuild)
     val counts: Map<String, Long> = emptyMap(), // expected per-table row counts, verifies a delta apply
     val deltaUrl: String? = null,           // row-level delta from [deltaFromRev] to [rev], if published
@@ -102,6 +103,7 @@ class RoutingGraphStore @Inject constructor(
                 RoutingRegion(
                     o.getString("id"), o.getString("name"), o.getString("url"), o.optInt("sizeMb"),
                     b.getDouble(0), b.getDouble(1), b.getDouble(2), b.getDouble(3),
+                    installedMb = o.optInt("installedMb"),
                     namesUrl = o.optString("namesUrl").ifBlank { null },
                     namesSizeKb = o.optInt("namesSizeKb"),
                 )

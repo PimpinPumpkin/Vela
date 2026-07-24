@@ -89,8 +89,6 @@
     <string name="settings_get_places">Hämta platser</string>
     <string name="settings_update_places">Uppdatera platser</string>
     <string name="settings_routing_update_available">Installerad · platsuppdatering tillgänglig</string>
-    <string name="settings_routing_size_here">%1$s MB · täcker din plats</string>
-    <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Ta bort offlineruttning</string>
     <string name="settings_download">Hämta</string>
     <string name="settings_saved_places">Sparade platser</string>

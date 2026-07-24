@@ -111,7 +111,7 @@
     <string name="settings_hide_external_links">Hide website &amp; external links</string>
     <string name="settings_hide_external_links_hint">On = place pages don’t show the Website, Street View, or Book / Reserve / Order buttons (no launching arbitrary external sites).</string>
     <string name="settings_offline">Offline maps</string>
-    <string name="settings_offline_hint">Two ways to go offline. Save the area you\'re in for the full map here, or a whole state or country below for directions and search across all of it.</string>
+    <string name="settings_offline_hint">Saving the area around you is usually all you need: the full map, addresses and places nearby, plus routing. Whole states and countries are for long trips with no signal, and they are large.</string>
     <string name="settings_offline_map_area">This area (full map)</string>
     <string name="settings_offline_download_viewport">Download the area you\'re viewing</string>
     <string name="settings_offline_download_viewport_hint">Saves the whole map you\'re looking at, its streets, house numbers and buildings, plus turn-by-turn directions for the region around it. Everything here keeps working with no signal.</string>
@@ -119,7 +119,7 @@
     <string name="settings_offline_addresses_missing">Areas you saved before this update don\'t include address data. Update them to search and route to addresses offline.</string>
     <string name="settings_offline_addresses_update">Update saved areas</string>
     <string name="settings_offline_delete_area">Delete this offline area</string>
-    <string name="settings_routing_regions">States &amp; countries (directions only)</string>
+    <string name="settings_routing_regions">Entire states &amp; countries</string>
     <string name="settings_routing_regions_hint">Directions and place search for an entire state, province or country, so you can navigate and look things up anywhere inside it offline. This does not include the detailed map picture, which would be huge for a whole country; that comes from the areas you save above, or from being online.</string>
     <string name="settings_routing_no_regions">No regions available yet.</string>
     <string name="settings_clear_filter">Clear filter</string>
@@ -132,8 +132,19 @@
     <string name="settings_get_places">Get places</string>
     <string name="settings_update_places">Update places</string>
     <string name="settings_routing_update_available">Installed · places update available</string>
-    <string name="settings_routing_size_here">%1$s MB · covers your location</string> <!-- format -->
-    <string name="settings_routing_size">%1$s MB</string> <!-- format -->
+    <string name="settings_routing_size_installed_here">About %1$s once installed · covers your location</string> <!-- format -->
+    <string name="settings_routing_size_installed">About %1$s once installed</string> <!-- format -->
+    <string name="settings_region_confirm_title">Download %1$s?</string> <!-- format -->
+    <string name="settings_region_confirm_body">%1$s takes about %2$s of storage once installed. For day-to-day use, saving just the area around you (top of this page) is far smaller.</string> <!-- format -->
+    <string name="settings_storage_title">Storage</string>
+    <string name="settings_storage_maps">Saved areas &amp; map cache</string>
+    <string name="settings_storage_routing">Offline routing</string>
+    <string name="settings_storage_places">Offline places</string>
+    <string name="settings_storage_voices">Voices &amp; speech models</string>
+    <string name="settings_storage_measuring">Measuring…</string>
+    <string name="settings_clear_map_cache">Clear map cache</string>
+    <string name="settings_clear_map_cache_hint">Frees the tiles the map cached while browsing. Saved areas are kept.</string>
+    <string name="settings_map_cache_cleared">Map cache cleared</string>
     <string name="settings_routing_remove">Remove offline routing</string>
     <string name="settings_download">Download</string>
     <string name="settings_saved_places">Saved places</string>
