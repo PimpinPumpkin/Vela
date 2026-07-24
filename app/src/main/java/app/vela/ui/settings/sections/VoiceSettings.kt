@@ -84,6 +84,10 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
                 Text(stringResource(R.string.settings_voice_downloading, nm, (pct * 100).toInt()), style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(6.dp))
                 LinearProgressIndicator(progress = { pct }, modifier = Modifier.fillMaxWidth())
+                androidx.compose.material3.TextButton(
+                    onClick = { vm.cancelVoiceDownload() },
+                    modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                ) { Text(stringResource(R.string.settings_cancel)) }
             }
             Spacer(Modifier.height(12.dp))
         } ?: Spacer(Modifier.height(4.dp))

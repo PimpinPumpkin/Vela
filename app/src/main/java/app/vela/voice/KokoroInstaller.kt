@@ -38,6 +38,7 @@ class KokoroInstaller @Inject constructor(
         destDir: File,
         sizeEst: Long,
         onExtracting: () -> Unit = {},
+        active: () -> Boolean = { true },
         onProgress: (Float) -> Unit,
     ): Boolean = withContext(Dispatchers.IO) {
         val tmp = File(context.filesDir, "voice.download.tmp")
@@ -47,7 +48,7 @@ class KokoroInstaller @Inject constructor(
             // ~67 MB archive is seconds of CPU that no % can meaningfully track, so instead of mapping it
             // into the tail (which read as a download "hanging at 98%" / crawling the last 10%, user
             // 2026-07-07) we flip to a separate "Installing…" phase via [onExtracting].
-            if (!stream(url, tmp, sizeEst, 0f, 1f, onProgress)) return@withContext false
+            if (!stream(url, tmp, sizeEst, 0f, 1f, active, onProgress)) return@withContext false
 
             onExtracting()
             staging.deleteRecursively(); staging.mkdirs()
@@ -67,8 +68,9 @@ class KokoroInstaller @Inject constructor(
         }
     }
 
-    /** Stream [url] to [out], reporting progress mapped into the [base, base+span] slice of the bar. */
-    private fun stream(url: String, out: File, sizeEst: Long, base: Float, span: Float, onProgress: (Float) -> Unit): Boolean =
+    /** Stream [url] to [out], reporting progress mapped into the [base, base+span] slice of the bar.
+     *  [active] is checked per chunk - a user cancel aborts the read within ~64 KB. */
+    private fun stream(url: String, out: File, sizeEst: Long, base: Float, span: Float, active: () -> Boolean, onProgress: (Float) -> Unit): Boolean =
         downloadHttp.newCall(Request.Builder().url(url).header("User-Agent", "VelaMaps").build()).execute().use { resp ->
             val body = resp.body
             if (!resp.isSuccessful || body == null) return@use false
@@ -79,6 +81,7 @@ class KokoroInstaller @Inject constructor(
                     var read = 0L
                     var n: Int
                     while (input.read(buf).also { n = it } >= 0) {
+                        if (!active()) return@use false
                         o.write(buf, 0, n)
                         read += n
                         onProgress((base + span * (read.toFloat() / total)).coerceIn(0f, base + span))

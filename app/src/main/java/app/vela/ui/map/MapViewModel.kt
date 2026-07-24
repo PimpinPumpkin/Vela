@@ -277,6 +277,7 @@ data class MapUiState(
     val routingDownloadingId: String? = null,          // region id currently downloading, else null
     val routingDownloadPct: Int = 0,
     val regionDownloadName: String? = null,            // display name for the heads-up download card
+    val areaDownloadPct: Int? = null,                  // non-null while a map-area tile download runs
     // Offline PLACE pack (whole-region POI/address db, pulled after the region's routing graph)
     val poiPackDownloadingId: String? = null,
     val poiPackDownloadPct: Int = 0,
@@ -1247,18 +1248,52 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    // Per-kind cancel flags (user 2026-07-23: every download gets a Cancel). The store loops poll
+    // these per chunk (`active` param) and abort into their normal failure cleanup; the flag is
+    // reset at the START of each download so a stale cancel can't kill the next one. Cancelled
+    // downloads suppress the "failed" toast - the card disappearing IS the feedback.
+    private val voiceCancel = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val asrCancel = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val regionCancel = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val updateCancel = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    fun cancelVoiceDownload() = voiceCancel.set(true)
+    fun cancelAsrDownload() = asrCancel.set(true)
+    fun cancelRegionDownload() = regionCancel.set(true) // covers the graph AND its chained place pack
+    fun cancelUpdateDownload() = updateCancel.set(true)
+
+    // The map-area tile download is MapLibre's own machinery, so its cancel is region-based, not
+    // flag-based: detach the observer (no stray onDone), stop, delete the partial region.
+    @Volatile private var areaRegion: org.maplibre.android.offline.OfflineRegion? = null
+
+    fun cancelAreaDownload() {
+        val r = areaRegion ?: return
+        areaRegion = null
+        runCatching { r.setObserver(null) }
+        runCatching { r.setDownloadState(org.maplibre.android.offline.OfflineRegion.STATE_INACTIVE) }
+        runCatching {
+            r.delete(object : org.maplibre.android.offline.OfflineRegion.OfflineRegionDeleteCallback {
+                override fun onDelete() {}
+                override fun onError(error: String) {}
+            })
+        }
+        app.vela.download.DownloadService.end(appContext, appContext.getString(R.string.download_label_map_data))
+        _state.update { it.copy(areaDownloadPct = null) }
+    }
+
     fun downloadUpdate() {
         val info = _state.value.updateInfo ?: return
         if (_state.value.updateDownloadPct != null) return // already downloading
+        updateCancel.set(false)
         _state.update { it.copy(updateDownloadPct = 0) }
         downloadLaunch(appContext.getString(R.string.download_label_update)) {
-            val apk = selfUpdater.download(info) { pct ->
+            val apk = selfUpdater.download(info, active = { !updateCancel.get() }) { pct ->
                 _state.update { it.copy(updateDownloadPct = pct) }
             }
             _state.update { it.copy(updateDownloadPct = null) }
             if (apk != null) {
                 selfUpdater.install(apk)
-            } else {
+            } else if (!updateCancel.get()) { // cancelled = quiet
                 showStatus(appContext.getString(app.vela.R.string.update_download_failed))
             }
         }
@@ -4225,11 +4260,13 @@ class MapViewModel @Inject constructor(
             return
         }
         val firstEver = VelaPiper.installedVoiceIds(appContext).isEmpty()
+        voiceCancel.set(false)
         _state.update { it.copy(voiceDownloadingId = id, voiceDownloadPct = 0f, voiceInstalling = false) }
         downloadLaunch(v.displayName) {
             val ok = kokoroInstaller.download(
                 PiperCatalog.downloadUrl(id), VelaPiper.modelDirFor(appContext, id), v.sizeBytes,
                 onExtracting = { _state.update { if (it.voiceDownloadingId == id) it.copy(voiceInstalling = true) else it } },
+                active = { !voiceCancel.get() },
             ) { p -> _state.update { if (it.voiceDownloadingId == id) it.copy(voiceDownloadPct = p) else it } }
             // Clear the downloading state + refresh the installed set in ONE update (no "Download"
             // flicker between finishing and appearing installed).
@@ -4242,7 +4279,7 @@ class MapViewModel @Inject constructor(
             }
             if (ok && VelaPiper.isVoiceReady(appContext, id)) {
                 if (firstEver) selectVoice(id, audition = false) else flashStatus(appContext.getString(R.string.mapvm_voice_downloaded, v.displayName))
-            } else {
+            } else if (!voiceCancel.get()) { // a user cancel is not a failure - stay quiet
                 showStatus(appContext.getString(R.string.mapvm_voice_download_failed, v.displayName))
             }
         }
@@ -4282,11 +4319,13 @@ class MapViewModel @Inject constructor(
         }
         val hadNone = app.vela.voice.AsrEngine.installed(appContext).isEmpty()
         asrRecognizer.clearQuarantine(engine) // a fresh download replaces whatever was quarantined
+        asrCancel.set(false)
         _state.update { it.copy(asrDownloadPct = 0f, asrInstalling = false, asrDownloadingId = engine.id) }
         downloadLaunch(engine.displayName) {
             val ok = kokoroInstaller.download(
                 engine.url, engine.dir(appContext), bytes,
                 onExtracting = { _state.update { it.copy(asrInstalling = true) } },
+                active = { !asrCancel.get() },
             ) { p -> _state.update { it.copy(asrDownloadPct = p) } }
             // A fresh install with nothing selected yet becomes the active engine, so voice search
             // works right after the very first download with no extra "pick one" step.
@@ -4870,12 +4909,38 @@ class MapViewModel @Inject constructor(
      *  "download this area", but invoked from Settings → Offline maps). */
     fun downloadViewport() {
         val v = viewport ?: run { showStatus(appContext.getString(R.string.mapvm_pan_to_area_first)); return }
+        if (_state.value.areaDownloadPct != null) return // one area at a time
         val (s, w, n, e, zoom) = listOf(v[0], v[1], v[2], v[3], v[4])
         val minZ = (zoom - 1).coerceIn(0.0, 15.0)
         val maxZ = (zoom + 3).coerceIn(minZ, 16.0)
         val bounds = org.maplibre.android.geometry.LatLngBounds.from(n, e, s, w)
+        // The coordinate name is STORED metadata (it is what tells two saved areas apart in the
+        // Settings list) - it is deliberately NOT shown in any banner (user 2026-07-23: the raw
+        // coords flashing over the progress card read as a second, junk banner).
         val name = "Area near %.2f, %.2f".format((s + n) / 2, (w + e) / 2)
-        app.vela.offline.OfflineMaps.download(appContext, _state.value.styleUri, bounds, minZ, maxZ, name, ::showStatus)
+        val label = appContext.getString(R.string.download_label_map_data)
+        _state.update { it.copy(areaDownloadPct = 0) }
+        // Tile downloads are MapLibre's own machinery (not downloadLaunch), so they hold the
+        // background-download keeper directly for their duration (issue #212).
+        app.vela.download.DownloadService.begin(appContext, label)
+        app.vela.offline.OfflineMaps.download(
+            appContext, _state.value.styleUri, bounds, minZ, maxZ, name,
+            onCreated = { areaRegion = it },
+            onProgress = { pct -> _state.update { st -> st.copy(areaDownloadPct = pct) } },
+        ) { reason ->
+            areaRegion = null
+            app.vela.download.DownloadService.end(appContext, label)
+            _state.update { it.copy(areaDownloadPct = null) }
+            showStatus(
+                appContext.getString(
+                    when (reason) {
+                        app.vela.offline.OfflineMaps.DoneReason.SAVED -> R.string.offline_area_saved
+                        app.vela.offline.OfflineMaps.DoneReason.FAILED -> R.string.offline_area_failed
+                        app.vela.offline.OfflineMaps.DoneReason.TOO_LARGE -> R.string.offline_area_too_large
+                    },
+                ),
+            )
+        }
         downloadOfflinePois(s, w, n, e)
         downloadRoutingForArea((s + n) / 2, (w + e) / 2)
     }
@@ -5301,15 +5366,18 @@ class MapViewModel @Inject constructor(
      *  region's PLACE pack (whole-region POIs + addresses) so search/geocoding covers it offline too. */
     fun downloadRoutingGraph(region: app.vela.offline.RoutingRegion) {
         if (_state.value.routingDownloadingId != null) return
+        regionCancel.set(false)
         _state.update { it.copy(routingDownloadingId = region.id, routingDownloadPct = 0, regionDownloadName = region.name) }
         downloadLaunch(region.name) {
-            val ok = routingGraphStore.download(region) { pct ->
+            val ok = routingGraphStore.download(region, active = { !regionCancel.get() }) { pct ->
                 _state.update { it.copy(routingDownloadPct = pct) }
             }
             _state.update {
                 it.copy(routingDownloadingId = null, routingInstalledIds = routingGraphStore.installedIds())
             }
-            showStatus(if (ok) appContext.getString(R.string.mapvm_offline_routing_ready, region.name) else appContext.getString(R.string.mapvm_offline_routing_failed))
+            if (ok || !regionCancel.get()) { // cancelled = quiet; the card going away is the feedback
+                showStatus(if (ok) appContext.getString(R.string.mapvm_offline_routing_ready, region.name) else appContext.getString(R.string.mapvm_offline_routing_failed))
+            }
             if (ok) { refreshOfflineRoadNames(); downloadPoiPack(region) } // pick up the new region's romanized road names (issue #184)
             else _state.update { it.copy(regionDownloadName = null) }
         }
@@ -5333,8 +5401,8 @@ class MapViewModel @Inject constructor(
         if (canDelta) {
             ok = poiPackStore.applyDelta(pack) { pct -> _state.update { it.copy(poiPackDownloadPct = pct) } }
         }
-        if (!ok) { // no delta path (or it failed) → full download replaces the pack
-            ok = poiPackStore.download(pack) { pct -> _state.update { it.copy(poiPackDownloadPct = pct) } }
+        if (!ok && !regionCancel.get()) { // no delta path (or it failed) → full download replaces the pack
+            ok = poiPackStore.download(pack, active = { !regionCancel.get() }) { pct -> _state.update { it.copy(poiPackDownloadPct = pct) } }
         }
         _state.update {
             it.copy(
@@ -5351,6 +5419,7 @@ class MapViewModel @Inject constructor(
      *  by region), instead of silently doing nothing. */
     fun downloadPoiPackFor(region: app.vela.offline.RoutingRegion, update: Boolean = false) {
         if (_state.value.poiPackDownloadingId != null || _state.value.routingDownloadingId != null) return
+        regionCancel.set(false)
         downloadLaunch(region.name) {
             val available = poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL)
                 .any { it.id == region.id }

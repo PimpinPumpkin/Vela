@@ -127,6 +127,10 @@ Onboarding.openDonate(context)
                 Text(stringResource(R.string.update_downloading, pct), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = 16.dp))
                 Spacer(Modifier.height(6.dp))
                 LinearProgressIndicator(progress = { pct / 100f }, modifier = Modifier.fillMaxWidth())
+                TextButton(
+                    onClick = { vm.cancelUpdateDownload() },
+                    modifier = Modifier.padding(horizontal = 8.dp).dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                ) { Text(stringResource(R.string.settings_cancel)) }
                 Spacer(Modifier.height(8.dp))
             } ?: run {
                 val updFocus = remember { List(2) { FocusRequester() } }
