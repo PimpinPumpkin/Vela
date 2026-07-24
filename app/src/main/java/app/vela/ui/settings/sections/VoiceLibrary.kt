@@ -168,6 +168,7 @@ internal fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
                         anyDownloading = state.voiceDownloadingId != null,
                         onDownload = { vm.downloadVoice(v.id) },
                         onUse = { vm.selectVoice(v.id) },
+                        onCancel = { vm.cancelVoiceDownload() },
                         onDelete = {
                             // Confirm only when it's the last voice (guidance would lose its neural voice).
                             if (installed.size == 1 && v.id == selected) confirmDeleteId = v.id else vm.deleteVoice(v.id)
@@ -212,6 +213,7 @@ private fun VoiceRow(
     onDownload: () -> Unit,
     onUse: () -> Unit,
     onDelete: () -> Unit,
+    onCancel: () -> Unit,
 ) {
     val gender = when (v.gender) {
         app.vela.core.voice.VoiceGender.FEMALE -> stringResource(R.string.settings_voice_gender_female)
@@ -249,14 +251,25 @@ private fun VoiceRow(
         when {
             downloading -> {
                 DpadFocusHandoff(keeper)
-                CircularProgressIndicator(
-                    Modifier
-                        .size(22.dp)
-                        .dpadFocusKept(keeper)
-                        .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
-                        .focusable(),
-                    strokeWidth = 2.dp,
-                )
+                if (installing) {
+                    // Unpacking: the bytes are already down, nothing meaningful to cancel.
+                    CircularProgressIndicator(
+                        Modifier
+                            .size(22.dp)
+                            .dpadFocusKept(keeper)
+                            .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
+                            .focusable(),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                        TextButton(
+                            onClick = onCancel,
+                            modifier = Modifier.dpadFocusKept(keeper).dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                        ) { Text(stringResource(R.string.settings_cancel)) }
+                    }
+                }
             }
             active -> {
                 DpadFocusHandoff(keeper)

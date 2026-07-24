@@ -82,8 +82,9 @@ class SelfUpdater @Inject constructor(
         }.getOrNull()
     }
 
-    /** Download [info]'s APK to filesDir/updates/. 0..100 progress. Null on failure. */
-    suspend fun download(info: UpdateInfo, onProgress: (Int) -> Unit): File? = withContext(Dispatchers.IO) {
+    /** Download [info]'s APK to filesDir/updates/. 0..100 progress. Null on failure or when
+     *  [active] flips false (user cancel - the partial file is deleted by the failure path). */
+    suspend fun download(info: UpdateInfo, active: () -> Boolean = { true }, onProgress: (Int) -> Unit): File? = withContext(Dispatchers.IO) {
         val dir = File(context.filesDir, "updates").apply { mkdirs() }
         // One update on disk at a time — an old half-download or a superseded APK is junk.
         dir.listFiles()?.forEach { it.delete() }
@@ -98,6 +99,7 @@ class SelfUpdater @Inject constructor(
                         var read = 0L
                         var lastPct = -1
                         while (true) {
+                            if (!active()) error("cancelled")
                             val n = input.read(buf)
                             if (n < 0) break
                             out.write(buf, 0, n)
