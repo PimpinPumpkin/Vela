@@ -24,6 +24,14 @@ object OfflineMaps {
      *  hit it and report back so the user can zoom in. */
     private const val TILE_LIMIT = 50_000L
 
+    /** How a tile download ended - the caller turns these into localized user text. */
+    enum class DoneReason { SAVED, FAILED, TOO_LARGE }
+
+    /** Kick off a tile download for [bounds]. Progress arrives as 0..100 through [onProgress]
+     *  (state-driven card material, NOT flash-status spam - the old string callback re-flashed the
+     *  heads-up banner on every tick, which stacked a second banner over the progress card, user
+     *  2026-07-23), the created [OfflineRegion] is handed out through [onCreated] so the caller can
+     *  CANCEL (STATE_INACTIVE + delete), and [onDone] fires exactly once with the outcome. */
     fun download(
         context: Context,
         styleUrl: String,
@@ -31,7 +39,9 @@ object OfflineMaps {
         minZoom: Double,
         maxZoom: Double,
         name: String,
-        onStatus: (String) -> Unit,
+        onCreated: (OfflineRegion) -> Unit = {},
+        onProgress: (Int) -> Unit = {},
+        onDone: (DoneReason) -> Unit,
     ) {
         val manager = OfflineManager.getInstance(context)
         manager.setOfflineMapboxTileCountLimit(TILE_LIMIT)
@@ -48,29 +58,39 @@ object OfflineMaps {
             metadata,
             object : OfflineManager.CreateOfflineRegionCallback {
                 override fun onCreate(region: OfflineRegion) {
+                    onCreated(region)
                     region.setObserver(object : OfflineRegion.OfflineRegionObserver {
+                        // onStatusChanged keeps firing around completion; onDone must fire ONCE.
+                        var done = false
                         override fun onStatusChanged(status: OfflineRegionStatus) {
+                            if (done) return
                             if (status.isComplete) {
-                                onStatus("Saved “$name” for offline (${status.completedResourceCount} tiles)")
+                                done = true
+                                onDone(DoneReason.SAVED)
                             } else {
-                                val pct = (100.0 * status.completedResourceCount /
-                                    max(1L, status.requiredResourceCount)).toInt()
-                                onStatus("Downloading “$name”… $pct%")
+                                onProgress(
+                                    (100.0 * status.completedResourceCount /
+                                        max(1L, status.requiredResourceCount)).toInt(),
+                                )
                             }
                         }
                         override fun onError(error: OfflineRegionError) {
-                            onStatus("Offline download failed: ${error.reason}")
+                            if (done) return
+                            done = true
+                            onDone(DoneReason.FAILED)
                         }
                         override fun mapboxTileCountLimitExceeded(limit: Long) {
-                            onStatus("Area too large — zoom in and try a smaller area")
                             region.setDownloadState(OfflineRegion.STATE_INACTIVE)
+                            if (done) return
+                            done = true
+                            onDone(DoneReason.TOO_LARGE)
                         }
                     })
                     region.setDownloadState(OfflineRegion.STATE_ACTIVE)
                 }
 
                 override fun onError(error: String) {
-                    onStatus("Offline download failed: $error")
+                    onDone(DoneReason.FAILED)
                 }
             },
         )

@@ -516,6 +516,12 @@
     <string name="download_label_update">Vela update</string>
     <string name="download_label_map_data">map data</string>
     <string name="download_label_offline_places">offline places</string>
+    <!-- Map-area tile download: progress card + one completion flash (was hardcoded English
+         status spam that stacked a second banner over the card, 2026-07-23). -->
+    <string name="map_area_downloading">Saving this area for offline · %1$d%%</string> <!-- format -->
+    <string name="offline_area_saved">This area is saved for offline</string>
+    <string name="offline_area_failed">Offline download failed. Try again later.</string>
+    <string name="offline_area_too_large">Area too large. Zoom in and save a smaller area.</string>
     <string name="settings_update_auto">Check for updates on launch</string>
     <string name="settings_update_auto_hint">Checks GitHub about once a day and offers newer releases. Turn off if you update through Obtainium.</string>
     <string name="settings_update_check_now">Check for updates</string>

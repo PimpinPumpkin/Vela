@@ -2388,12 +2388,12 @@ fun MapScreen(
                 }
                 if (bareMap) {
                     if (downloadingVoiceId != null) {
-                        VoiceDownloadCard(installing = state.voiceInstalling, pct = state.voiceDownloadPct ?: 0f)
+                        VoiceDownloadCard(installing = state.voiceInstalling, pct = state.voiceDownloadPct ?: 0f, onCancel = { vm.cancelVoiceDownload() })
                     }
                     // The speech model download (started from the mic offer or Settings) gets the
                     // same card - it's also called Vela voice, so the one label fits both.
                     if (state.asrDownloadPct != null) {
-                        VoiceDownloadCard(installing = state.asrInstalling, pct = state.asrDownloadPct ?: 0f)
+                        VoiceDownloadCard(installing = state.asrInstalling, pct = state.asrDownloadPct ?: 0f, onCancel = { vm.cancelAsrDownload() })
                     }
                     // A region (state/country) download: the routing graph first, then its place
                     // pack — same progress card treatment as the voice download, so a Settings-
@@ -2403,7 +2403,13 @@ fun MapScreen(
                             name = state.regionDownloadName ?: "",
                             places = state.poiPackDownloadingId != null,
                             pct = if (state.poiPackDownloadingId != null) state.poiPackDownloadPct else state.routingDownloadPct,
+                            onCancel = { vm.cancelRegionDownload() },
                         )
+                    }
+                    // The "download this area" tile save: the ONE progress surface for it (its
+                    // per-tick status flashes are gone - they stacked a second banner, 2026-07-23).
+                    state.areaDownloadPct?.let { pct ->
+                        RegionDownloadCard(name = "", places = false, pct = pct, area = true, onCancel = { vm.cancelAreaDownload() })
                     }
                     // A newer release on GitHub (self-updater; the check is a Settings toggle).
                     state.updateInfo?.let { u ->
@@ -2412,6 +2418,7 @@ fun MapScreen(
                             downloadPct = state.updateDownloadPct,
                             onUpdate = { vm.downloadUpdate() },
                             onDismiss = { vm.dismissUpdate() },
+                            onCancel = { vm.cancelUpdateDownload() },
                         )
                     }
                     state.notices.filterNot { it.level == app.vela.core.config.Notice.LEVEL_URGENT }.forEach { n ->
@@ -3741,7 +3748,7 @@ private fun InfoCard(
  *  includes the extract phase (KokoroInstaller maps untar into the tail), so it no longer parks at
  *  ~98% while the archive unpacks. */
 @Composable
-private fun VoiceDownloadCard(installing: Boolean, pct: Float, modifier: Modifier = Modifier) {
+private fun VoiceDownloadCard(installing: Boolean, pct: Float, onCancel: (() -> Unit)? = null, modifier: Modifier = Modifier) {
     Card(
         modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -3750,11 +3757,20 @@ private fun VoiceDownloadCard(installing: Boolean, pct: Float, modifier: Modifie
         ),
     ) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
-            Text(
-                if (installing) stringResource(R.string.map_voice_installing)
-                else stringResource(R.string.map_voice_downloading, (pct * 100).toInt()),
-                fontWeight = FontWeight.SemiBold,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (installing) stringResource(R.string.map_voice_installing)
+                    else stringResource(R.string.map_voice_downloading, (pct * 100).toInt()),
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                // No cancel during the unpack: the bytes are already down, aborting there only wastes them.
+                if (!installing && onCancel != null) {
+                    IconButton(onClick = onCancel, modifier = Modifier.size(28.dp).dpadHighlight(androidx.compose.foundation.shape.CircleShape)) {
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.mapscreen_cancel), modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
             Spacer(Modifier.height(8.dp))
             // Determinate while downloading; the unpack step can't report a meaningful %, so it goes
             // indeterminate under the "Installing…" label rather than crawling a frozen-looking bar.
@@ -3774,7 +3790,7 @@ private fun VoiceDownloadCard(installing: Boolean, pct: Float, modifier: Modifie
  *  region's place pack. Mirrors [VoiceDownloadCard] so a Settings-started download stays visible
  *  on the map. */
 @Composable
-private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, modifier: Modifier = Modifier) {
+private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, area: Boolean = false, onCancel: (() -> Unit)? = null, modifier: Modifier = Modifier) {
     Card(
         modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -3783,11 +3799,22 @@ private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, modifier
         ),
     ) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
-            Text(
-                if (places) stringResource(R.string.map_region_places_downloading, name, pct)
-                else stringResource(R.string.map_region_downloading, name, pct),
-                fontWeight = FontWeight.SemiBold,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    when {
+                        area -> stringResource(R.string.map_area_downloading, pct)
+                        places -> stringResource(R.string.map_region_places_downloading, name, pct)
+                        else -> stringResource(R.string.map_region_downloading, name, pct)
+                    },
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                if (onCancel != null) {
+                    IconButton(onClick = onCancel, modifier = Modifier.size(28.dp).dpadHighlight(androidx.compose.foundation.shape.CircleShape)) {
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.mapscreen_cancel), modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
             Spacer(Modifier.height(8.dp))
             androidx.compose.material3.LinearProgressIndicator(
                 progress = { (pct / 100f).coerceIn(0f, 1f) },
@@ -3805,6 +3832,7 @@ private fun UpdateCard(
     downloadPct: Int?,
     onUpdate: () -> Unit,
     onDismiss: () -> Unit,
+    onCancel: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -3817,7 +3845,14 @@ private fun UpdateCard(
         Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 4.dp)) {
             Text(stringResource(R.string.update_available_title, versionName), fontWeight = FontWeight.SemiBold)
             if (downloadPct != null) {
-                Text(stringResource(R.string.update_downloading, downloadPct), style = MaterialTheme.typography.bodySmall)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.update_downloading, downloadPct), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    onCancel?.let {
+                        IconButton(onClick = it, modifier = Modifier.size(28.dp).dpadHighlight(CircleShape)) {
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.mapscreen_cancel), modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
                 androidx.compose.material3.LinearProgressIndicator(
                     progress = { downloadPct / 100f },
                     modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp),
