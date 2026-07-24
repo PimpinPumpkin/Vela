@@ -19,7 +19,7 @@ on:
       group:
         description: "Region group to build (ignored if 'ids' is set)"
         type: choice
-        options: [us, canada, europe, oceania, asia, south-america, central-america, africa]
+        options: [us, canada, europe, germany-sub, oceania, asia, south-america, central-america, africa]
         default: us
       ids:
         description: "Optional: space/comma-separated region ids (e.g. 'washington oregon'). Overrides 'group'."
