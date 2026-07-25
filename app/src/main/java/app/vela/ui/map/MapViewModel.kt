@@ -5057,9 +5057,20 @@ class MapViewModel @Inject constructor(
             // carry 1000+ signals/stop signs, and MapLibre re-collides every handed symbol per drag frame —
             // the same budget-GPU lesson as the ambient-POI cap (don't hand it the whole pool). 400 covers
             // the padded box everywhere reasonable; beyond that the excess would collide off anyway.
+            // ONE glyph per intersection, like Google: OSM maps a control node per APPROACH, so a
+            // four-way stop arrived as four stop signs. Cluster per type at the same 30 m the
+            // spoken "pass the light" counting already uses (adjacent intersections on a dense
+            // grid stay separate), each cluster drawn at its centroid. Fewer allowOverlap symbols
+            // is also a straight render win.
+            val merged = withContext(Dispatchers.Default) {
+                res.groupBy { it.stop }.flatMap { (isStop, group) ->
+                    app.vela.core.data.MapDeclutter.cluster(group, CONTROLS_CLUSTER_M) { it.loc }
+                        .map { c -> app.vela.core.data.TrafficControl(c.centroid, isStop) }
+                }
+            }
             val cLat0 = (s + n) / 2; val cLng0 = (w + e) / 2
             val lngScale = kotlin.math.cos(Math.toRadians(cLat0))
-            val kept = if (res.size <= CONTROLS_ONSCREEN_CAP) res else res.sortedBy {
+            val kept = if (merged.size <= CONTROLS_ONSCREEN_CAP) merged else merged.sortedBy {
                 val dLat = it.loc.lat - cLat0; val dLng = (it.loc.lng - cLng0) * lngScale
                 dLat * dLat + dLng * dLng
             }.take(CONTROLS_ONSCREEN_CAP)
@@ -5447,6 +5458,9 @@ class MapViewModel @Inject constructor(
     companion object {
         const val KEY_DISMISSED = "dismissed"
         const val CONTROLS_MIN_ZOOM = 16.0 // draw traffic lights/stop signs only when zoomed in this close
+        // One glyph per intersection: per-approach OSM nodes within this radius merge before draw.
+        // Same 30 m the spoken pass-the-light clustering uses; keeps dense-grid neighbours separate.
+        const val CONTROLS_CLUSTER_M = 30.0
         // Show ALPR cameras from ROUTE-OVERVIEW zoom (~z11-12), the "I know this route has cameras but
         // don't see any" view. z11 was tried 2026-07-13 and reverted the same day because the padded
         // Overpass box (~16x bigger) with a full-body read + full-DOM parse per pan OOM'd the heap; the

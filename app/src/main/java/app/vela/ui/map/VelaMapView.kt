@@ -152,6 +152,13 @@ private const val SIGNAL_IMG = "vela-signal"
 private const val STOP_IMG = "vela-stop"
 private const val FLOCK_SRC = "vela-flock-src" // ALPR/Flock cameras (DeFlock/OSM) drawn at high zoom
 private const val FLOCK_LAYER = "vela-flock"
+// Below street zoom the per-head nodes of one install merge to a single badge (Flock corners
+// typically mount 2-4 single-direction heads); the raw per-camera layer + cones take over at
+// FLOCK_DETAIL_ZOOM where the facing data is actually legible.
+private const val FLOCK_CLUSTER_SRC = "vela-flock-cluster-src"
+private const val FLOCK_CLUSTER_LAYER = "vela-flock-cluster"
+private const val FLOCK_DETAIL_ZOOM = 16f
+private const val FLOCK_CLUSTER_M = 40.0
 private const val FLOCK_IMG = "vela-flock-cam"
 private const val FLOCK_DIR_LAYER = "vela-flock-dir" // facing cone under the badge (dir-tagged nodes)
 private const val FLOCK_DIR_IMG = "vela-flock-cone"
@@ -3277,10 +3284,9 @@ private fun ensureLayers(style: Style) {
         )
         val flockLayer =
             SymbolLayer(FLOCK_LAYER, FLOCK_SRC).apply {
-                // Must match the VM's FLOCK_MIN_ZOOM fetch gate: clamped at 13.5 this layer sat on
-                // fetched cameras without drawing them (z13-13.5 was a dead band, and route-overview
-                // zoom showed nothing at all - the half-done state vela-dpad caught, issue #131).
-                setMinZoom(11f)
+                // Per-camera detail (with the facing cones below) owns street zoom only; the
+                // clustered twin covers everything wider, one badge per install.
+                setMinZoom(FLOCK_DETAIL_ZOOM)
                 setProperties(
                     PropertyFactory.iconImage(FLOCK_IMG),
                     PropertyFactory.iconSize(flockSize),
@@ -3294,6 +3300,27 @@ private fun ensureLayers(style: Style) {
             style.getLayer(CONTROLS_CLAIM_LAYER) != null -> style.addLayerBelow(flockLayer, CONTROLS_CLAIM_LAYER)
             else -> style.addLayer(flockLayer)
         }
+        // The clustered twin: below street zoom a multi-head corner draws ONE badge at the
+        // cluster centroid (no count, no cones - zooming in reveals the detail). Its own source
+        // so the zoom handoff is pure renderer work, no re-uploads on zoom crossings.
+        // minZoom must match the VM's FLOCK_MIN_ZOOM fetch gate: clamped at 13.5 this layer sat
+        // on fetched cameras without drawing them (z13-13.5 was a dead band, and route-overview
+        // zoom showed nothing at all - the half-done state vela-dpad caught, issue #131).
+        style.addSource(GeoJsonSource(FLOCK_CLUSTER_SRC, GeoJsonOptions().withMaxZoom(12)))
+        style.addLayerBelow(
+            SymbolLayer(FLOCK_CLUSTER_LAYER, FLOCK_CLUSTER_SRC).apply {
+                setMinZoom(11f)
+                setMaxZoom(FLOCK_DETAIL_ZOOM)
+                setProperties(
+                    PropertyFactory.iconImage(FLOCK_IMG),
+                    PropertyFactory.iconSize(flockSize),
+                    PropertyFactory.iconAllowOverlap(true),
+                    PropertyFactory.iconIgnorePlacement(false),
+                    PropertyFactory.iconPadding(2f),
+                )
+            },
+            FLOCK_LAYER,
+        )
         // Facing cone UNDER the badge (2026-07-21, user: Flock units are single-direction and
         // DeFlock's own map shows facing) - only nodes with a dir tag get the FLOCK_DIR_PROP
         // property, so untagged cameras keep the bare badge. Map-aligned rotation: the cone
@@ -3301,7 +3328,7 @@ private fun ensureLayers(style: Style) {
         // (ignorePlacement true keeps it out of the collision index - it's a glow, not a symbol).
         style.addLayerBelow(
             SymbolLayer(FLOCK_DIR_LAYER, FLOCK_SRC).apply {
-                setMinZoom(11f)
+                setMinZoom(FLOCK_DETAIL_ZOOM)
                 setFilter(Expression.has(FLOCK_DIR_PROP))
                 setProperties(
                     PropertyFactory.iconImage(FLOCK_DIR_IMG),
@@ -5078,11 +5105,15 @@ private fun applyData(
     // draws EVERY icon (no collision culling) - a wall of badges plus the symbol cost. They're a
     // proximity feature, so hide them below z13 while just browsing, but keep the low floor when a
     // route is active so route-overview zoom (z11-12) still shows its cameras (issue #131 dead-band).
-    style.getLayer(FLOCK_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
-    style.getLayer(FLOCK_DIR_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
+    // The browse/route floor applies to the CLUSTERED layer (the low-zoom face of the feature);
+    // the per-camera detail layers stay pinned at FLOCK_DETAIL_ZOOM.
+    style.getLayer(FLOCK_CLUSTER_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
 
     // ALPR/Flock cameras → icon features (identity-gated like the controls). Empty when the layer's
-    // off or zoomed out, which clears the source.
+    // off or zoomed out, which clears the source. Two uploads per change: the raw per-camera set
+    // (street-zoom detail + cones) and its 40 m-clustered twin (one badge per install below street
+    // zoom - a Flock corner mounts several single-direction heads). The route "passes N cameras"
+    // count stays on raw nodes on purpose; only the DRAWN badges merge.
     if (flockCameras != lastAppliedFlock) {
         val flockFc = FeatureCollection.fromFeatures(
             flockCameras.map { cam ->
@@ -5094,6 +5125,11 @@ private fun applyData(
             },
         )
         style.getSourceAs<GeoJsonSource>(FLOCK_SRC)?.setGeoJson(flockFc)
+        val clusteredFc = FeatureCollection.fromFeatures(
+            app.vela.core.data.MapDeclutter.cluster(flockCameras, FLOCK_CLUSTER_M) { it.loc }
+                .map { c -> Feature.fromGeometry(Point.fromLngLat(c.centroid.lng, c.centroid.lat)) },
+        )
+        style.getSourceAs<GeoJsonSource>(FLOCK_CLUSTER_SRC)?.setGeoJson(clusteredFc)
         lastAppliedFlock = flockCameras
     }
 
