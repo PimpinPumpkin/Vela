@@ -15,6 +15,8 @@ import app.vela.ui.map.MapViewModel
 import app.vela.ui.theme.VelaTheme
 import app.vela.ui.theme.isAppInDarkTheme
 import dagger.hilt.android.AndroidEntryPoint
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -35,6 +37,23 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         // A language change re-creates this Activity so the whole UI re-reads localized resources.
         AppLocale.onLocaleChanged = { recreate() }
+        // Picture-in-picture mini map while navigating (user 2026-07-24, the Google Maps
+        // behaviour): on Android 12+ the system auto-enters PiP on Home/gesture-up whenever the
+        // params say so, so keep autoEnter in lockstep with the nav state; pre-12 the
+        // onUserLeaveHint below calls enterPictureInPictureMode by hand. Everything is
+        // best-effort (runCatching): a launcher or ROM that forbids PiP just falls back to the
+        // notification-only background nav that already works.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            lifecycleScope.launch {
+                var last: Boolean? = null
+                vm.state.collect { s ->
+                    if (s.navigating != last) {
+                        last = s.navigating
+                        runCatching { setPictureInPictureParams(pipParams(s.navigating)) }
+                    }
+                }
+            }
+        }
         handleIntent(intent)
         setContent {
             // Read the theme at the call site (a recomposing scope) and pass it in
@@ -54,6 +73,37 @@ class MainActivity : ComponentActivity() {
                 VelaRoot(vm = vm)
             }
         }
+    }
+
+    /** A portrait-ish mini map, Google's PiP proportions. */
+    private fun pipParams(autoEnter: Boolean): android.app.PictureInPictureParams {
+        val b = android.app.PictureInPictureParams.Builder()
+            .setAspectRatio(android.util.Rational(3, 4))
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            b.setAutoEnterEnabled(autoEnter)
+            b.setSeamlessResizeEnabled(false) // map surfaces cross-fade better than they stretch
+        }
+        return b.build()
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onUserLeaveHint() {
+        @Suppress("DEPRECATION")
+        super.onUserLeaveHint()
+        // Pre-Android-12 manual PiP entry (12+ auto-enters via the params above).
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S &&
+            vm.state.value.navigating
+        ) {
+            runCatching { enterPictureInPictureMode(pipParams(true)) }
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: android.content.res.Configuration,
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        app.vela.ui.PipMode.active.value = isInPictureInPictureMode
     }
 
     override fun onNewIntent(intent: Intent) {
