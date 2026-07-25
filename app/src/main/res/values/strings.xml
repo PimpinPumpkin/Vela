@@ -504,6 +504,7 @@
     <string name="navservice_notif_text_faster_available"> · faster route available</string>
     <string name="navservice_notif_action_end">End</string>
     <string name="navservice_channel_name">Navigation</string>
+    <string name="navservice_channel_turns_name">Spoken turn alerts</string>
 
     <string name="update_available_title">Vela %1$s is available</string>
     <string name="update_downloading">Downloading… %1$d%%</string>

@@ -331,6 +331,11 @@ class VoiceGuide @Inject constructor(
      *  this so a shared drive shows what was said, verbatim, at what time. Set by `:app`. */
     var onSpoken: ((String) -> Unit)? = null
 
+    /** Fired beside [onSpoken] on every line guidance actually speaks. The nav service taps this
+     *  to pop a visible heads-up of the turn while the app is backgrounded - a separate slot so
+     *  it can't clobber the trip recorder's hook (each is set by a different `:app` owner). */
+    var onPromptAlert: (() -> Unit)? = null
+
     /** Real romanized road names (local name -> Latin, from the basemap's name:latin), set by `:app`
      *  as nav tiles load. Used to speak "Rehov Herzl" instead of the ICU skeleton "rhwb hrzl" for a
      *  foreign street; empty by default so nothing changes without it (issue #184). */
@@ -344,6 +349,7 @@ class VoiceGuide @Inject constructor(
     fun speak(text: String, interrupt: Boolean = false, ignoreMute: Boolean = false) {
         if (muted && !ignoreMute) return
         runCatching { onSpoken?.invoke(text) }
+        runCatching { onPromptAlert?.invoke() }
         if (!ready) {
             pending.addLast(text to interrupt)
             return
