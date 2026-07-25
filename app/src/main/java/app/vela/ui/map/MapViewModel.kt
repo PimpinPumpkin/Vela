@@ -5051,7 +5051,10 @@ class MapViewModel @Inject constructor(
                 withContext(Dispatchers.IO) {
                     app.vela.core.data.OverpassTrafficSignals.fetchControlsInBox(http, s, w, n, e)
                 }
-            }.getOrNull() ?: return@launch
+            }.getOrNull() ?: run {
+                android.util.Log.i("VelaControls", "fetch FAILED (all endpoints) z=${"%.1f".format(zoom)}")
+                return@launch
+            }
             controlsBox = doubleArrayOf(s, w, n, e)
             // Cap what's HANDED to the map (nearest to the box center wins): a dense metro's padded box can
             // carry 1000+ signals/stop signs, and MapLibre re-collides every handed symbol per drag frame —
@@ -5074,6 +5077,9 @@ class MapViewModel @Inject constructor(
                 val dLat = it.loc.lat - cLat0; val dLng = (it.loc.lng - cLng0) * lngScale
                 dLat * dLat + dLng * dLng
             }.take(CONTROLS_ONSCREEN_CAP)
+            // Fetch/merge visibility: like flock's diag line, "controls don't show" reports are
+            // only diagnosable when the pipeline says what it actually produced.
+            android.util.Log.i("VelaControls", "fetched=${res.size} merged=${merged.size} kept=${kept.size}")
             _state.update { it.copy(trafficControls = kept) }
         }
     }
