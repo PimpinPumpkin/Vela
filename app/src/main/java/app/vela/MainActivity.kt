@@ -50,6 +50,7 @@ class MainActivity : ComponentActivity() {
                     if (s.navigating != last) {
                         last = s.navigating
                         runCatching { setPictureInPictureParams(pipParams(s.navigating)) }
+                            .onFailure { android.util.Log.w("VelaPip", "setPictureInPictureParams failed", it) }
                     }
                 }
             }
@@ -95,6 +96,7 @@ class MainActivity : ComponentActivity() {
             vm.state.value.navigating
         ) {
             runCatching { enterPictureInPictureMode(pipParams(true)) }
+                .onFailure { android.util.Log.w("VelaPip", "enterPictureInPictureMode failed", it) }
         }
     }
 
