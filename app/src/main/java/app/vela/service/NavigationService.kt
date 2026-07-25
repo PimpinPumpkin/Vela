@@ -90,7 +90,7 @@ class NavigationService : Service() {
         // should show the turn the voice just said. Post-mute hook, so a muted drive stays
         // quiet in the shade too; foreground drives already show the banner card.
         voice.onPromptAlert = {
-            if (!app.vela.AppForeground.visible) {
+            if (!app.vela.ui.AppVisibility.foreground.value) {
                 runCatching { notificationManager().notify(TURN_ALERT_ID, buildTurnAlert()) }
             }
         }

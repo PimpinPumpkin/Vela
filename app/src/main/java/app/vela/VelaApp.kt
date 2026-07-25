@@ -61,7 +61,6 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         super.onCreate()
         // Device memory class first: the Coil cap and the eager-warm decisions read it.
         app.vela.ui.MemoryPressure.init(this)
-        AppForeground.init(this) // the nav service gates its background turn heads-up on this
         // Push the device class down to :core, which cannot read an :app holder (same seam as
         // CategoryFilter.enabled). Gates the ambient POI fan-out in GoogleMapsDataSource.
         app.vela.core.data.LowRamMode.enabled = app.vela.ui.MemoryPressure.lowRam
