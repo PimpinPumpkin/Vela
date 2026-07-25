@@ -1489,15 +1489,37 @@ fun VelaMapView(
                 val (ptC, segBrg) = pointAtMeters(routePolyline, routeCum, navPuck.progressM)
                 // Lateral de-jitter: drawn straight off the polyline, the puck traced every
                 // lane-level micro-kink of the dense OSM geometry - side-to-side wiggle "like a
-                // record needle" (user 2026-07-16). Average a short along-route window instead:
-                // pure geometry smoothing, no temporal lag, corners round by centimetres.
-                val (ptA, _) = pointAtMeters(routePolyline, routeCum, navPuck.progressM - PUCK_SMOOTH_WIN_M)
-                val (ptB, _) = pointAtMeters(routePolyline, routeCum, navPuck.progressM + PUCK_SMOOTH_WIN_M)
-                val pt = LatLng((ptA.lat + ptC.lat + ptB.lat) / 3.0, (ptA.lng + ptC.lng + ptB.lng) / 3.0)
+                // record needle" (user 2026-07-16, STILL visible 2026-07-24: the old 3-point
+                // average only cut each kink to a third, and in heading-up nav the puck is the
+                // screen anchor so every leftover millimetre moves the whole map). Real boxcar
+                // now: average evenly spaced samples across an along-route window that grows
+                // with speed (at highway speed a kink spans more metres per second of travel),
+                // so wiggle shorter than the window CANCELS instead of shrinking. Pure geometry
+                // smoothing, no temporal lag; corners round by a couple of metres at speed,
+                // which is what Google's puck does too.
+                val win = (navPuck.speed * 0.7).coerceIn(5.0, 14.0)
+                var sLat = 0.0
+                var sLng = 0.0
+                for (k in 0 until PUCK_SMOOTH_SAMPLES) {
+                    val off = -win + 2.0 * win * k / (PUCK_SMOOTH_SAMPLES - 1)
+                    val (sp, _) = pointAtMeters(routePolyline, routeCum, navPuck.progressM + off)
+                    sLat += sp.lat
+                    sLng += sp.lng
+                }
+                val pt = LatLng(sLat / PUCK_SMOOTH_SAMPLES, sLng / PUCK_SMOOTH_SAMPLES)
+                // Heading from the window ENDS, not the local segment: the segment bearing steps
+                // at every vertex and the temporal smoothing only softened the step - the chord
+                // across the window barely moves on a straight road with kinked geometry. The
+                // clamped ends coincide only at a degenerate route edge; fall back to the
+                // segment there rather than aiming the arrow north.
+                val (wA, _) = pointAtMeters(routePolyline, routeCum, navPuck.progressM - win)
+                val (wB, _) = pointAtMeters(routePolyline, routeCum, navPuck.progressM + win)
+                val chordBrg = if (kotlin.math.abs(wA.lat - wB.lat) + kotlin.math.abs(wA.lng - wB.lng) < 1e-7) segBrg
+                    else bearingDeg(wA, wB)
                 // 0.3 (was 0.2): with the camera's own bearing damping this is two-stage
                 // filtering - the polyline's vertex-level bearing steps stop reaching the glass.
-                navPuck.displayBearing = if (navPuck.displayBearing.isNaN()) segBrg
-                    else smoothBearing(navPuck.displayBearing, segBrg, dtE, 0.3f)
+                navPuck.displayBearing = if (navPuck.displayBearing.isNaN()) chordBrg
+                    else smoothBearing(navPuck.displayBearing, chordBrg, dtE, 0.3f)
                 navPuck.drawn = pt // the camera follows this smoothed point, not the raw fix
                 setMeSource(style, pt, navPuck.displayBearing)
                 // Drive the follow-camera HERE, per frame (60 fps) with a continuous ease, instead
@@ -4650,13 +4672,15 @@ private fun indexAtMeters(cum: DoubleArray, m: Double): Int {
 }
 
 /** Point + heading at [meters] along the route. */
-private const val PUCK_SMOOTH_WIN_M = 8.0 // half-window of the puck's along-route position average
+// Samples in the puck's along-route boxcar average; the half-window itself is speed-scaled at the
+// call site (5-14 m). Odd so the current position is one of the samples.
+private const val PUCK_SMOOTH_SAMPLES = 7
 
 private fun pointAtMeters(poly: List<LatLng>, cum: DoubleArray, meters: Double): Pair<LatLng, Float> {
     if (poly.size < 2) return (poly.firstOrNull() ?: LatLng(0.0, 0.0)) to 0f
     val total = cum.last()
     val m = meters.coerceIn(0.0, total)
-    // Binary search (cum is monotonic): this runs 3x per ticker frame now (the puck's smoothing
+    // Binary search (cum is monotonic): this runs ~9x per ticker frame now (the puck's smoothing
     // window) - the old linear scan restarted at vertex 0 every call, O(vertices) per frame.
     val idx = java.util.Arrays.binarySearch(cum, m)
     val i = (if (idx >= 0) idx else -idx - 1).coerceIn(1, poly.size - 1)
