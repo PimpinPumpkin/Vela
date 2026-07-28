@@ -110,6 +110,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import kotlinx.coroutines.launch
@@ -464,7 +465,7 @@ fun MapScreen(
     // lifted above the bar so the FAB / scale bar / Search this area never sit on top of it.
     val resultsMinimized = state.results.isNotEmpty() && state.selected == null && !searchOpen && state.resultsCollapsed
     val chromeLift = if (resultsMinimized) 76.dp else 0.dp
-    var metersPerPixel by remember { mutableStateOf(0.0) }
+    val metersPerPixelState = remember { mutableStateOf(0.0) }
     // Building-overlay debug badge: the last state VelaMapView's idle gate reported
     // ("none" / "hidden" / "drawing"). Only surfaced when the developer toggle is on.
     var overlayDebugState by remember { mutableStateOf("none") }
@@ -989,7 +990,7 @@ fun MapScreen(
                 if (state.selected != null && !searchOpen) sheetPanTick++
                 if (state.directionsOpen && !searchOpen) dirPanTick++
             },
-            onScaleChanged = { metersPerPixel = it },
+            onScaleChanged = { metersPerPixelState.value = it },
             onOverlayState = { overlayDebugState = it },
             darkTheme = darkTheme,
             applyKeylessTheme = !hasMapTiler,
@@ -2172,8 +2173,8 @@ fun MapScreen(
             // moving-but-panned map, where both used to want the same spot.
             // The landscape panel owns the bottom-left corner - the bar would draw on top of it.
             if (!(driveFollowing && speedOverlayArmed) && !movingFree && !sidePanelUp) {
-                ScaleBar(
-                    metersPerPixel = metersPerPixel,
+                ScaleBarReader(
+                    state = metersPerPixelState,
                     dark = darkTheme,
                     modifier = Modifier
                         .align(Alignment.BottomStart)
@@ -4355,4 +4356,15 @@ private fun SpeedWidget(
             }
         }
     }
+}
+
+/** Reads scale-bar state from an isolated [MutableState] so per-frame scale changes
+ *  recompose only the scale bar, not the entire [MapScreen]. */
+@Composable
+private fun ScaleBarReader(
+    state: MutableState<Double>,
+    dark: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    ScaleBar(metersPerPixel = state.value, dark = dark, modifier = modifier)
 }
