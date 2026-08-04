@@ -387,7 +387,7 @@ fun VelaMapView(
     poiIconScale: Float = 1f, // Settings icon-size multiplier (low-density car screens want < 1)
     onCameraIdle: (center: LatLng) -> Unit,
     onMapLongPress: (location: LatLng) -> Unit,
-    onAddressLabelTap: (number: String, location: LatLng) -> Unit = { _, _ -> },
+    onAddressLabelTap: (number: String, location: LatLng, tileStreet: String?) -> Unit = { _, _, _ -> },
     onViewport: (south: Double, west: Double, north: Double, east: Double, zoom: Double) -> Unit = { _, _, _, _, _ -> },
     dpadController: MapDpadController? = null, // key-driven pan/zoom/select for D-pad-only devices (docs/dpad.md)
     modifier: Modifier = Modifier,
@@ -1883,7 +1883,13 @@ fun VelaMapView(
                             else -> null
                         }
                         if (!num.isNullOrBlank()) {
-                            addrLabelTap.value(num, LatLng(pt.latitude(), pt.longitude()))
+                            // The map's OWN street at this label (issue #231): Google's reverse
+                            // geocode snaps to the nearest ADDRESSABLE point, which around corners
+                            // is routinely the wrong road - the tapped number then got composed
+                            // onto a street the point isn't on. Hand the VM the nearest tile
+                            // street so it can veto a mismatched geocode street.
+                            val street = nearestStreetName(map, pt.latitude(), pt.longitude())
+                            addrLabelTap.value(num, LatLng(pt.latitude(), pt.longitude()), street)
                         } else {
                             longPress.value(LatLng(pt.latitude(), pt.longitude()))
                         }
@@ -4777,6 +4783,46 @@ private fun accuracyCircle(center: LatLng, radiusM: Double): org.maplibre.geojso
 }
 
 /** Compass bearing (deg, 0 = N) from [a] to [b]. */
+/** The named road nearest [lat],[lng] from the loaded transportation_name tiles, within ~45 m of
+ *  it - point-to-SEGMENT distance, because a mid-block address on a straight road can sit half a
+ *  block from the nearest VERTEX. Null when no named road is that close (or tiles aren't loaded). */
+private fun nearestStreetName(map: MapLibreMap, lat: Double, lng: Double): String? {
+    val src = map.style?.getSourceAs<org.maplibre.android.style.sources.VectorSource>("openmaptiles") ?: return null
+    val feats = runCatching { src.querySourceFeatures(arrayOf("transportation_name"), null) }.getOrNull() ?: return null
+    val mLat = 111_320.0
+    val mLng = 111_320.0 * kotlin.math.cos(Math.toRadians(lat))
+    fun segDist2(ax: Double, ay: Double, bx: Double, by: Double): Double {
+        // meters^2 from the tap to segment a-b (equirectangular-scaled)
+        val px = 0.0; val py = 0.0
+        val dx = bx - ax; val dy = by - ay
+        val len2 = dx * dx + dy * dy
+        val t = if (len2 <= 0.0) 0.0 else (((px - ax) * dx + (py - ay) * dy) / len2).coerceIn(0.0, 1.0)
+        val cx = ax + t * dx; val cy = ay + t * dy
+        return cx * cx + cy * cy
+    }
+    var bestName: String? = null
+    var bestD2 = 45.0 * 45.0
+    for (f in feats) {
+        val name = f.getStringProperty("name")?.takeIf { it.isNotBlank() } ?: continue
+        val lines: List<List<Point>> = when (val g = f.geometry()) {
+            is org.maplibre.geojson.LineString -> listOf(g.coordinates())
+            is org.maplibre.geojson.MultiLineString -> g.coordinates()
+            else -> continue
+        }
+        for (line in lines) {
+            for (i in 1 until line.size) {
+                val a = line[i - 1]; val b = line[i]
+                val d2 = segDist2(
+                    (a.longitude() - lng) * mLng, (a.latitude() - lat) * mLat,
+                    (b.longitude() - lng) * mLng, (b.latitude() - lat) * mLat,
+                )
+                if (d2 < bestD2) { bestD2 = d2; bestName = name }
+            }
+        }
+    }
+    return bestName
+}
+
 private fun bearingDeg(a: LatLng, b: LatLng): Float {
     val dLng = Math.toRadians(b.lng - a.lng)
     val la = Math.toRadians(a.lat)
