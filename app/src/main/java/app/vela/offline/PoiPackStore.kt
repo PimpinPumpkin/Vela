@@ -89,7 +89,7 @@ class PoiPackStore @Inject constructor(
     }
 
     /** Download + unzip [region]'s pack to `poipacks/<id>.db` and register it. 0..100 progress. */
-    suspend fun download(region: RoutingRegion, onProgress: (Int) -> Unit): Boolean = withContext(Dispatchers.IO) {
+    suspend fun download(region: RoutingRegion, active: () -> Boolean = { true }, onProgress: (Int) -> Unit): Boolean = withContext(Dispatchers.IO) {
         packsRoot.mkdirs()
         val dest = File(packsRoot, "${region.id}.db")
         val tmp = File(packsRoot, "${region.id}.db.tmp")
@@ -100,6 +100,7 @@ class PoiPackStore @Inject constructor(
                 val total = resp.body!!.contentLength()
                 var lastPct = -1
                 val counting = CountingInputStream(resp.body!!.byteStream()) { read ->
+                    if (!active()) error("cancelled")
                     if (total > 0) (100 * read / total).toInt().let { p -> if (p != lastPct) { lastPct = p; onProgress(p) } }
                 }
                 ZipInputStream(counting).use { zis ->

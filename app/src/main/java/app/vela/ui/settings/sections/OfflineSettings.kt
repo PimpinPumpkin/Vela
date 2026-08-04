@@ -216,16 +216,13 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                     // the highlight doesn't teleport to the top of the page (user report).
                     val keeper = rememberDpadFocusKeeper()
                     when {
-                        downloading || packDownloading -> {
+                        downloading || packDownloading -> Row(verticalAlignment = Alignment.CenterVertically) {
                             DpadFocusHandoff(keeper)
-                            CircularProgressIndicator(
-                                Modifier
-                                    .size(20.dp)
-                                    .dpadFocusKept(keeper)
-                                    .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
-                                    .focusable(),
-                                strokeWidth = 2.dp,
-                            )
+                            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                            androidx.compose.material3.TextButton(
+                                onClick = { vm.cancelRegionDownload() },
+                                modifier = Modifier.dpadFocusKept(keeper).dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                            ) { Text(stringResource(R.string.settings_cancel)) }
                         }
                         updateAvailable -> Row(verticalAlignment = Alignment.CenterVertically) {
                             DpadFocusHandoff(keeper)

@@ -105,6 +105,13 @@ internal fun SearchSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                         // Indeterminate while queued/installing (nothing to count): a frozen bar reads as stuck.
                         if (queued || state.asrInstalling) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         else LinearProgressIndicator(progress = { pct }, modifier = Modifier.fillMaxWidth())
+                        // No cancel during the unpack - the bytes are already down.
+                        if (!state.asrInstalling) {
+                            androidx.compose.material3.TextButton(
+                                onClick = { vm.cancelAsrDownload() },
+                                modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                            ) { Text(stringResource(R.string.settings_cancel)) }
+                        }
                     }
                 }
                 installed -> {

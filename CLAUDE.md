@@ -361,6 +361,18 @@ Defaults that make the safe path the easy one:
   seconds after Home. Labeled returns inside those blocks are `return@downloadLaunch`. Progress
   writes to a cleared ViewModel are inert by design; installed-ness is derived from disk at next
   init. When adding a NEW download, use downloadLaunch, not a bare scope.
+  **And every download is CANCELLABLE (2026-07-23):** the store download fns take an
+  `active: () -> Boolean` polled per chunk (abort flows into the normal failure cleanup); the VM
+  holds per-kind AtomicBoolean cancel flags + cancelXxxDownload() fns, resets each flag at download
+  START, and suppresses the "failed" toast when the flag is set (a cancel is not a failure). The
+  map-area TILE save is the exception (MapLibre's own machinery): cancel = detach observer +
+  STATE_INACTIVE + delete the partial region (`cancelAreaDownload`), and its progress is
+  STATE-DRIVEN (`areaDownloadPct` -> the area variant of RegionDownloadCard) - OfflineMaps.download
+  takes structured callbacks now, NEVER a status-string spam callback (per-tick flashes stacked a
+  second banner with raw coords over the progress card, user 2026-07-23; the stored region name
+  keeps the coords - it is what tells saved areas apart in Settings - but no banner shows it).
+  A new download UI site must show a Cancel wherever it shows progress (skip it during the
+  unpack/install phase - the bytes are already down).
 - **Settings is HUB-AND-SPOKE (2026-07-23, ported from alltechdev/vela-dpad; supersedes the
   2026-07-10 single-page order):** `ui/settings/` = `SettingsScreen` (a plain hoisted-state
   dispatcher over the `SettingsSection` enum, no nav library; BACK peels spoke -> hub -> map),

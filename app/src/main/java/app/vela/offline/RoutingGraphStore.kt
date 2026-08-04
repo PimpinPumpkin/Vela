@@ -109,8 +109,10 @@ class RoutingGraphStore @Inject constructor(
         }.getOrDefault(emptyList())
     }
 
-    /** Download + unzip [region]'s graph into `graphs/<id>/` and register it in the index. 0..100 progress. */
-    suspend fun download(region: RoutingRegion, onProgress: (Int) -> Unit): Boolean = withContext(Dispatchers.IO) {
+    /** Download + unzip [region]'s graph into `graphs/<id>/` and register it in the index. 0..100
+     *  progress. [active] is polled as bytes stream - a user cancel aborts within a read and the
+     *  half-written tmp dir is cleaned by the normal failure path. */
+    suspend fun download(region: RoutingRegion, active: () -> Boolean = { true }, onProgress: (Int) -> Unit): Boolean = withContext(Dispatchers.IO) {
         graphsRoot.mkdirs()
         val dir = File(graphsRoot, region.id)
         val tmp = File(graphsRoot, "${region.id}.tmp")
@@ -121,6 +123,7 @@ class RoutingGraphStore @Inject constructor(
                 val total = resp.body!!.contentLength()
                 var lastPct = -1
                 val counting = CountingInputStream(resp.body!!.byteStream()) { read ->
+                    if (!active()) error("cancelled")
                     if (total > 0) (100 * read / total).toInt().let { p -> if (p != lastPct) { lastPct = p; onProgress(p) } }
                 }
                 ZipInputStream(counting).use { zis ->
