@@ -17,6 +17,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Fixed speed/radar cameras on the map (issue #229, 2026-08-03).** Settings, Map, "Speed
+  cameras": draws OSM-mapped fixed enforcement cameras as amber badges from neighbourhood zoom,
+  keyless via Overpass with the same mirror failover, area caching and stream parsing as the
+  other road-furniture layers. Off by default; fixed installations only, since mobile speed
+  traps have no keyless data source. Coverage follows OpenStreetMap, strongest in Europe.
 - ✅ **Vela gives memory back when the system asks, and adapts to small phones (2026-07-23,
   adopted from the vela-dpad fork).** The speech model (about a quarter gigabyte while loaded) now
   unloads after two minutes unused and reloads in about a second on the next mic tap; map caches,

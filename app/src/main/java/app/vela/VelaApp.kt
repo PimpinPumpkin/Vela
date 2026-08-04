@@ -74,6 +74,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.LayersButton.init(this) // persisted show/hide of the map layers button
         app.vela.ui.Topography.init(this)
         app.vela.ui.Flock.init(this) // load the persisted surveillance-camera toggle (else it read false every launch)
+        app.vela.ui.SpeedCams.init(this) // same init-or-it-reads-false trap as Flock
         app.vela.ui.FlockRouteAlert.init(this) // load the persisted "warn about cameras on route" toggle
         // Parse the bundled on-device ALPR/Flock camera dataset off the main thread (map layer draws
         // instantly, route counts are reliable), then refresh from the hosted manifest so the data updates
