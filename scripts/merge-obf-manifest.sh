@@ -11,7 +11,11 @@ set -euo pipefail
 DIR="${1:?dir of *.json entry files}"
 REPO="${VELA_REPO:-PimpinPumpkin/Vela}"
 TAG="obf-regions"
-MANIFEST_NAME="obf-manifest.json"
+# OBF_MANIFEST_NAME=obf-manifest-staging.json stages the world bake WITHOUT flipping the fleet:
+# the app cuts over to the obf catalog the moment the LIVE obf-manifest.json has entries, so the
+# region-by-region world bake merges into the staging name and one final copy publishes the whole
+# catalog atomically (see the cutover note in CLAUDE.md).
+MANIFEST_NAME="${OBF_MANIFEST_NAME:-obf-manifest.json}"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 
 gh release download "$TAG" --repo "$REPO" -p "$MANIFEST_NAME" -O "$WORK/manifest.json" 2>/dev/null \

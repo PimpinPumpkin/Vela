@@ -25,6 +25,10 @@ on:
         description: "Skip large (big:true) regions for a quick run"
         type: boolean
         default: false
+      staging:
+        description: "Merge into obf-manifest-staging.json instead of the LIVE manifest (the live one is the fleet cutover switch)"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -114,6 +118,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VELA_REPO: ${{ github.repository }}
+          OBF_MANIFEST_NAME: ${{ inputs.staging && 'obf-manifest-staging.json' || 'obf-manifest.json' }}
         run: |
           shopt -s nullglob
           files=(entries/*.json)

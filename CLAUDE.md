@@ -2277,7 +2277,12 @@ architecture note.
   languages come along). Bake: `scripts/build-obf-region.sh` + `merge-obf-manifest.sh` +
   `.github/workflows/obf-regions.yml` (matrix clone; the MapCreator tool is pinned on the
   `obf-tools` release); assets are RAW .obf (already deflate-compressed inside; download size ==
-  installed size). CUTOVER = the manifest: `refreshRoutingRegions` serves the obf catalog
+  installed size). CUTOVER = the manifest, and the world bake STAGES it (2026-08-03): dispatching obf-regions
+  with the default staging=true merges entries into `obf-manifest-staging.json`, which the app
+  never reads - bake every group there, then ONE `gh release download/upload` copy of staging
+  over the live name flips the whole catalog atomically (region-by-region merging into the live
+  manifest would have shown early updaters a half-empty region list while the legacy catalog
+  vanished). CUTOVER = the manifest: `refreshRoutingRegions` serves the obf catalog
   (`OBF_MANIFEST_URL`, `-PobfManifestUrl=` override) whenever obf-manifest.json has entries, else
   the legacy graph catalog - dispatching the obf-regions workflow IS the switch, no app release.
   The trade: no precomputed shortcuts, so a cross-city route costs seconds not ~200 ms (offline is
