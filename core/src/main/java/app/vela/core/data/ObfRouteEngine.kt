@@ -70,12 +70,26 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
     override fun route(origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean): List<Route> {
         val profile = profileFor(mode) ?: return emptyList()
         val all = regions()
-        val candidates = all
-            .filter { it.id !in failed && it.covers(origin) && it.covers(destination) }
-            .sortedBy { (it.n - it.s) * (it.e - it.w) }
-        android.util.Log.d(TAG, "route $mode: ${all.size} installed, ${candidates.size} covering")
-        for (region in candidates) {
-            val reader = reader(region) ?: continue
+        // MULTI-FILE routing (2026-08-03): OsmAnd's router reads across obf files natively - the
+        // OsmAnd app itself ships one file per region and routes over all of them - so hand it
+        // EVERY installed region that intersects the trip's padded bounding box rather than
+        // demanding one file cover both endpoints. This is what lets big countries ship as
+        // CI-bakeable sub-region pieces behind a single country button: a route across a Land
+        // border pulls road tiles from both files. The pad (a quarter of the span, floored at
+        // ~30 km) covers detours that bow outside the endpoints' box.
+        val padLat = kotlin.math.max(0.27, kotlin.math.abs(origin.lat - destination.lat) * 0.25)
+        val padLng = kotlin.math.max(0.27, kotlin.math.abs(origin.lng - destination.lng) * 0.25)
+        val bs = kotlin.math.min(origin.lat, destination.lat) - padLat
+        val bn = kotlin.math.max(origin.lat, destination.lat) + padLat
+        val bw = kotlin.math.min(origin.lng, destination.lng) - padLng
+        val be = kotlin.math.max(origin.lng, destination.lng) + padLng
+        val cands = all.filter { it.id !in failed && it.s < bn && it.n > bs && it.w < be && it.e > bw }
+        android.util.Log.d(TAG, "route $mode: ${all.size} installed, ${cands.size} intersecting trip box")
+        // The UNION must cover both endpoints, else the trip genuinely leaves the installed data.
+        if (cands.none { it.covers(origin) } || cands.none { it.covers(destination) }) return emptyList()
+        val readers = cands.mapNotNull { reader(it) }
+        if (readers.isEmpty()) return emptyList()
+        run {
             try {
                 val startMs = System.currentTimeMillis()
                 val segments = synchronized(routeLock) {
@@ -92,19 +106,18 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
                     )
                     val fe = RoutePlannerFrontEnd()
                     val ctx = fe.buildRoutingContext(
-                        config, null, arrayOf(reader),
+                        config, null, readers.toTypedArray(),
                         RoutePlannerFrontEnd.RouteCalculationMode.NORMAL,
                     )
                     fe.searchRoute(ctx, LatLon(origin.lat, origin.lng), LatLon(destination.lat, destination.lng), null)
                         ?.list.orEmpty()
                 }
-                android.util.Log.d(TAG, "route ${region.id}: ${segments.size} segments in ${System.currentTimeMillis() - startMs} ms")
+                android.util.Log.d(TAG, "route over ${readers.size} file(s): ${segments.size} segments in ${System.currentTimeMillis() - startMs} ms")
                 if (segments.isNotEmpty()) return listOf(toRoute(segments))
             } catch (e: Throwable) {
-                // Log loudly, then try the next covering region; a corrupt file latches failed
-                // via reader(). Silent swallowing made a routing failure un-diagnosable on a
-                // release build (canary 2026-07-23).
-                android.util.Log.w(TAG, "route ${region.id} failed", e)
+                // Log loudly; a corrupt file latches failed via reader(). Silent swallowing made
+                // a routing failure un-diagnosable on a release build (canary 2026-07-23).
+                android.util.Log.w(TAG, "route over ${readers.size} file(s) failed", e)
             }
         }
         return emptyList()
