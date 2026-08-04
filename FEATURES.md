@@ -594,6 +594,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Map rotation/tilt + heading-up mode during nav (tilted follow-camera, speed-adaptive zoom)
 
 ## Search & POIs (live Google data)
+- ✅ **Tapped house numbers keep their own street (issue #231, 2026-08-03).** The address built
+  for a tapped house-number label used the number from the label but the street from Google's
+  reverse geocode, which snaps to the nearest addressable point and around corners routinely
+  answers with the neighbouring road, producing right-number-wrong-street pins that then routed
+  wrong. The map's own road under the label now vetoes a mismatched geocode street (normalized
+  so Ave and Avenue compare equal); the geocode still supplies the city and zip.
 - ✅ **In-app Street View (2026-07-15, keyless, device-verified).** The Street View pill on a place
   opens a real panorama INSIDE Vela - drag to look, pinch to zoom, **walk between panos with the
   on-screen arrows, and go BACK IN TIME** through the older captures. It works keyless the way open

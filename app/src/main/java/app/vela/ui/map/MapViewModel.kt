@@ -2859,7 +2859,7 @@ class MapViewModel @Inject constructor(
      *  that exact number and use the reverse-geocode only for the street/city — otherwise Google's
      *  reverse-geocode can snap to a neighbour (tapped 1020, got 1040), which is exactly the "doesn't
      *  snap to the house number" complaint. A real business sitting on the point still wins. */
-    fun onAddressLabelTap(number: String, location: LatLng) {
+    fun onAddressLabelTap(number: String, location: LatLng, tileStreet: String? = null) {
         if (_state.value.navigating) return // dead during a live drive, like onPoiTap
         if (_state.value.pickOnMap != null) { onMapLongPress(location); return } // pick-mode reuses the endpoint flow
         // While planning a trip, a tapped house number behaves like any other pressed point:
@@ -2899,7 +2899,20 @@ class MapViewModel @Inject constructor(
                     if (base.any { it.isLetter() }) {
                         // Strip any house number the reverse-geocode led with, then prepend the tapped one.
                         val rest = base.replaceFirst(Regex("^\\s*\\d+\\S*\\s+"), "")
-                        val addr = "$number $rest"
+                        // Street veto (issue #231): the tapped number is authoritative, but the
+                        // STREET came from the reverse geocode, which snaps to the nearest
+                        // addressable point - around a corner that is routinely a different road,
+                        // composing "right number, wrong street". When the map's own road under
+                        // the label disagrees (normalized so Ave/Avenue line up), the tile street
+                        // wins and the geocode keeps only the locality tail.
+                        val street = rest.substringBefore(',').trim()
+                        val tail = rest.substringAfter(',', "").let { t -> if (t.isBlank()) "" else ",$t" }
+                        val fixed = if (
+                            !tileStreet.isNullOrBlank() &&
+                            app.vela.core.data.OfflineAddressStore.normalizeStreet(street) !=
+                            app.vela.core.data.OfflineAddressStore.normalizeStreet(tileStreet)
+                        ) "$tileStreet$tail" else rest
+                        val addr = "$number $fixed"
                         immediate.copy(name = addr.substringBefore(",").trim(), address = addr)
                     } else immediate.copy(address = number)
                 }
