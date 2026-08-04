@@ -5214,15 +5214,10 @@ private fun applyData(
     // draws EVERY icon (no collision culling) - a wall of badges plus the symbol cost. They're a
     // proximity feature, so hide them below z13 while just browsing, but keep the low floor when a
     // route is active so route-overview zoom (z11-12) still shows its cameras (issue #131 dead-band).
-<<<<<<< HEAD
-    // The browse/route floor applies to the CLUSTERED layer (the low-zoom face of the feature);
-    // the per-camera detail layers stay pinned at FLOCK_DETAIL_ZOOM.
+    // The browse/route floor applies to the CLUSTERED flock layer (the low-zoom face of that
+    // feature; detail layers stay pinned at FLOCK_DETAIL_ZOOM) and to the speed-camera layer.
     style.getLayer(FLOCK_CLUSTER_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
-=======
-    style.getLayer(FLOCK_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
-    style.getLayer(FLOCK_DIR_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
     style.getLayer(SPEEDCAM_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
->>>>>>> speed-cameras
 
     // ALPR/Flock cameras → icon features (identity-gated like the controls). Empty when the layer's
     // off or zoomed out, which clears the source. Two uploads per change: the raw per-camera set
