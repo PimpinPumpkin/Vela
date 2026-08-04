@@ -133,6 +133,24 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(8.dp))
+        SettingsGroup(title = stringResource(R.string.settings_app_name_title)) {
+            // Component state IS the persistence (survives reboots/updates); mirror it into
+            // compose state so the switch animates without a restart.
+            val generic = androidx.compose.runtime.remember {
+                androidx.compose.runtime.mutableStateOf(app.vela.ui.AppNameAlias.isGeneric(context))
+            }
+            ToggleRow(
+                label = stringResource(R.string.settings_app_name_generic),
+                checked = generic.value,
+                onCheckedChange = {
+                    generic.value = it
+                    app.vela.ui.AppNameAlias.setGeneric(context, it)
+                },
+                hint = stringResource(R.string.settings_app_name_generic_hint),
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
         SettingsGroup(title = stringResource(R.string.settings_units)) {
             SelectableRow(
                 label = stringResource(R.string.settings_units_imperial),

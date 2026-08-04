@@ -76,16 +76,17 @@
                 android:resource="@xml/provider_paths" />
         </provider>
 
+        <!-- The LAUNCHER entry lives on two aliases, not on MainActivity itself: Android can only
+             rename an app per COMPONENT, so the "call it just Maps" option (issue #226) swaps which
+             alias is enabled via PackageManager. MainActivity keeps every functional intent filter
+             (geo:, share, maps links) so deep links never depend on the cosmetic choice. NB the one-time
+             cost of moving the filter: pinned home-screen icons re-pin after this update. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
             android:theme="@style/Theme.Vela">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
 
             <!-- Share TO Vela: a Google Maps share link, a URL, or a plain address from any
                  app's share sheet opens/imports/searches without the copy-paste dance. -->
@@ -116,6 +117,30 @@
                 <data android:host="maps.app.goo.gl" />
             </intent-filter>
         </activity>
+
+        <activity-alias
+            android:name=".Launcher"
+            android:targetActivity=".MainActivity"
+            android:label="@string/app_name"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LauncherMaps"
+            android:targetActivity=".MainActivity"
+            android:label="@string/app_name_generic"
+            android:exported="true"
+            android:enabled="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <service
             android:name=".service.NavigationService"
