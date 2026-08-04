@@ -71,6 +71,13 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
         )
         GroupDivider()
         ToggleRow(
+            label = stringResource(R.string.settings_speed_cams),
+            checked = app.vela.ui.SpeedCams.on.value,
+            onCheckedChange = { app.vela.ui.SpeedCams.set(context, it) },
+            hint = stringResource(R.string.settings_speed_cams_hint),
+        )
+        GroupDivider()
+        ToggleRow(
             label = stringResource(R.string.settings_flock_route_alert),
             checked = app.vela.ui.FlockRouteAlert.on.value,
             onCheckedChange = { app.vela.ui.FlockRouteAlert.set(context, it) },

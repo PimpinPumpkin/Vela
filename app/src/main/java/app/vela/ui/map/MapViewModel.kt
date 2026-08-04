@@ -159,6 +159,7 @@ data class MapUiState(
                                                       // .pmtiles — rendered beneath OSM to fill gaps
     val trafficControls: List<app.vela.core.data.TrafficControl> = emptyList(), // OSM lights+stop signs drawn at high zoom
     val flockCameras: List<app.vela.core.data.AlprCamera> = emptyList(), // ALPR/Flock cameras (DeFlock/OSM), high zoom
+    val speedCameras: List<app.vela.core.data.SpeedCamera> = emptyList(), // fixed radar cameras (OSM), opt-in layer
     val transitStops: List<app.vela.core.data.transit.Transitous.MapStop> = emptyList(), // canonical GTFS stops (Transitous), high zoom
     val directionsOpen: Boolean = false,
     val directionsReversed: Boolean = false, // route from the place back to you
@@ -4552,6 +4553,7 @@ class MapViewModel @Inject constructor(
         refreshTrafficControls(south, west, north, east, zoom) // + traffic lights / stop signs at high zoom
         lastFlockViewport = doubleArrayOf(south, west, north, east, zoom)
         refreshFlock(south, west, north, east, zoom) // + ALPR/Flock cameras when the layer is on
+        refreshSpeedCams(south, west, north, east, zoom) // + fixed radar cameras when that layer is on
         refreshTransitStops(south, west, north, east, zoom) // + canonical GTFS stop icons at street zoom
         refreshImageryYear(south, west, north, east) // + the capture year for the satellite attribution
         // Half-diagonal of the visible box — used to hand the map only the POIs near the view (the
@@ -5155,6 +5157,47 @@ class MapViewModel @Inject constructor(
      *  so turning it on shows cameras without needing a pan first. */
     fun refreshFlockNow() {
         lastFlockViewport?.let { refreshFlock(it[0], it[1], it[2], it[3], it[4]) }
+    }
+
+    private var speedCamBox: DoubleArray? = null
+    private var speedCamJob: Job? = null
+
+    /** Re-fetch (or clear) the speed-camera layer when its toggle flips - Flock's twin. */
+    fun refreshSpeedCamsNow() {
+        lastFlockViewport?.let { refreshSpeedCams(it[0], it[1], it[2], it[3], it[4]) }
+    }
+
+    /** Fixed radar/speed cameras for the viewport (issue #229). Mirrors [refreshFlock]'s contract
+     *  minus the bundled dataset: opt-in, sparse-landmark zoom floor, padded area cache, 350 ms
+     *  settle, failure never cached so the next viewport retries. */
+    private fun refreshSpeedCams(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
+        if (!app.vela.ui.SpeedCams.on.value || zoom < FLOCK_MIN_ZOOM) {
+            speedCamBox = null
+            speedCamJob?.cancel()
+            if (_state.value.speedCameras.isNotEmpty()) _state.update { it.copy(speedCameras = emptyList()) }
+            return
+        }
+        val cLat = (south + north) / 2; val cLng = (west + east) / 2
+        speedCamBox?.let { b ->
+            val insLat = (b[2] - b[0]) * 0.25; val insLng = (b[3] - b[1]) * 0.25
+            if (cLat in (b[0] + insLat)..(b[2] - insLat) && cLng in (b[1] + insLng)..(b[3] - insLng)) return
+        }
+        speedCamJob?.cancel()
+        speedCamJob = viewModelScope.launch {
+            delay(350)
+            val padLat = (north - south) * 0.5; val padLng = (east - west) * 0.5
+            val s = south - padLat; val n = north + padLat; val w = west - padLng; val e = east + padLng
+            val res = withContext(Dispatchers.IO) {
+                runCatching { app.vela.core.data.OverpassSpeedCameras.fetchInBox(http, s, w, n, e) }.getOrNull()
+            }
+            if (res == null) {
+                diag.record("speedcam", "camera fetch failed at z${"%.1f".format(zoom)}", "Overpass box [$s,$w,$n,$e]")
+                return@launch
+            }
+            speedCamBox = doubleArrayOf(s, w, n, e)
+            diag.record("speedcam", "showing ${res.size} camera(s) at z${"%.1f".format(zoom)}", "overpass")
+            _state.update { it.copy(speedCameras = res.take(600)) }
+        }
     }
 
     /** Canonical GTFS transit stops for the viewport (Transitous `map/stops`), the same area-cached,

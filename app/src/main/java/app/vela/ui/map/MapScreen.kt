@@ -883,6 +883,7 @@ fun MapScreen(
     // Toggling the Flock layer in Settings refetches for the current view right away (otherwise the
     // cameras wouldn't appear until the next pan). Clears the layer when turned off.
     LaunchedEffect(app.vela.ui.Flock.on.value) { vm.refreshFlockNow() }
+    LaunchedEffect(app.vela.ui.SpeedCams.on.value) { vm.refreshSpeedCamsNow() }
     // Saved-place pins for the browse map (issue #171): each list place carries its list's
     // icon+colour, quick-saves ride the default bookmark blue; deduped by place id (a place in
     // several lists draws once, newest list wins). Empty while a result set / nav / replay /
@@ -1029,6 +1030,7 @@ fun MapScreen(
 
             trafficControls = state.trafficControls,
             flockCameras = state.flockCameras,
+            speedCameras = state.speedCameras,
             // Hide the tapped stop's own badge while it is selected - the red selected-place pin
             // drops at the same coordinate and the two bus glyphs stacked read as a glitch
             // (user 2026-07-13). Structural list equality keeps the identity gate quiet.

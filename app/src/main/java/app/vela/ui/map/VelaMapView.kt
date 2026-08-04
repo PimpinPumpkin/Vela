@@ -150,6 +150,9 @@ private const val CONTROLS_LAYER = "vela-controls"
 private const val CONTROLS_CLAIM_LAYER = "vela-controls-claim" // invisible collision box over the labels
 private const val SIGNAL_IMG = "vela-signal"
 private const val STOP_IMG = "vela-stop"
+private const val SPEEDCAM_SRC = "vela-speedcam-src" // fixed radar cameras (OSM), opt-in layer
+private const val SPEEDCAM_LAYER = "vela-speedcam"
+private const val SPEEDCAM_IMG = "vela-speedcam-badge"
 private const val FLOCK_SRC = "vela-flock-src" // ALPR/Flock cameras (DeFlock/OSM) drawn at high zoom
 private const val FLOCK_LAYER = "vela-flock"
 // Below street zoom the per-head nodes of one install merge to a single badge (Flock corners
@@ -220,6 +223,7 @@ private var parkingApplied = false // distinguishes "never applied" from "applie
 private var lastAppliedSvPose: DoubleArray? = null // Street View pose identity-gate (same pattern)
 private var lastAppliedControls: List<app.vela.core.data.TrafficControl>? = null
 private var lastAppliedFlock: List<app.vela.core.data.AlprCamera>? = null
+private var lastAppliedSpeedCams: List<app.vela.core.data.SpeedCamera>? = null
 private var lastAppliedTransitStops: List<app.vela.core.data.transit.Transitous.MapStop>? = null
 
 /** One saved place drawn on the browse map (issue #171): its list's icon key + colour. */
@@ -373,6 +377,7 @@ fun VelaMapView(
     speedOverlayOn: Boolean = false, // only query the overlay while it can matter (driving / navigating)
     trafficControls: List<app.vela.core.data.TrafficControl> = emptyList(), // OSM lights + stop signs drawn at high zoom
     flockCameras: List<app.vela.core.data.AlprCamera> = emptyList(), // ALPR/Flock cameras drawn at high zoom
+    speedCameras: List<app.vela.core.data.SpeedCamera> = emptyList(), // fixed radar cameras (issue #229)
     transitStops: List<app.vela.core.data.transit.Transitous.MapStop> = emptyList(), // canonical GTFS stops at street zoom
     navBannerBottomPx: Int = 0, // measured screen-Y of the maneuver banner's bottom edge; drops the compass below it during nav
     // Compass tap: return true to CONSUME (nav uses it to toggle heading-up/north-up); false runs
@@ -2441,6 +2446,7 @@ fun VelaMapView(
                 lastAppliedAmbient = null
                 lastAppliedControls = null
                 lastAppliedFlock = null
+                lastAppliedSpeedCams = null
                 lastAppliedTransitStops = null
                 lastTransitBusHidden = null
                 origPoiTransitFilter = null
@@ -2461,7 +2467,7 @@ fun VelaMapView(
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
                 if (satelliteOn) applySatelliteLabels(style)
                 emphasizeShields(style)
-                applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, savedPins, poisEnabled, svPose)
+                applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, speedCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, savedPins, poisEnabled, svPose)
                 ensureSatellite(style, satelliteOn)
                 ensureNavRoadLabels(style, navMode, darkTheme, context.resources.displayMetrics.density, navLabelExclude)
                 ensureTraffic(style, trafficOn)
@@ -2470,7 +2476,7 @@ fun VelaMapView(
             }
         } else {
             styleRef?.let {
-                applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, savedPins, poisEnabled, svPose)
+                applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, speedCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, savedPins, poisEnabled, svPose)
                 // AUDIT FIX 3e (2026-07-15): the ensure* helpers are idempotent but each call
                 // probes the style over JNI (getLayer/getSource) - per recomposition, that's
                 // four probe sets during every camera flight for nothing. They only need to run
@@ -3368,6 +3374,36 @@ private fun ensureLayers(style: Style) {
             FLOCK_LAYER,
         )
     }
+    // Fixed radar/speed cameras (issue #229): opt-in Overpass layer, same badge language as the
+    // ALPR camera but amber so enforcement reads apart from surveillance. Sparse landmarks, so it
+    // shares the flock zoom floor; no cones (facing is rarely tagged and matters less here).
+    if (style.getImage(SPEEDCAM_IMG) == null) style.addImage(SPEEDCAM_IMG, speedCamBitmap())
+    if (style.getSource(SPEEDCAM_SRC) == null) {
+        style.addSource(GeoJsonSource(SPEEDCAM_SRC, GeoJsonOptions().withMaxZoom(12)))
+        val camSize = Expression.interpolate(
+            Expression.linear(), Expression.zoom(),
+            Expression.stop(11f, 0.55f),
+            Expression.stop(14f, 0.7f),
+            Expression.stop(17f, 1.0f),
+            Expression.stop(19f, 1.35f),
+        )
+        val camLayer = SymbolLayer(SPEEDCAM_LAYER, SPEEDCAM_SRC).apply {
+            setMinZoom(11f)
+            setProperties(
+                PropertyFactory.iconImage(SPEEDCAM_IMG),
+                PropertyFactory.iconSize(camSize),
+                PropertyFactory.iconAllowOverlap(true),
+                PropertyFactory.iconIgnorePlacement(false),
+                PropertyFactory.iconPadding(2f),
+            )
+        }
+        when {
+            style.getLayer(FLOCK_LAYER) != null -> style.addLayerBelow(camLayer, FLOCK_LAYER)
+            style.getLayer(AMBIENT_LAYER) != null -> style.addLayerBelow(camLayer, AMBIENT_LAYER)
+            else -> style.addLayer(camLayer)
+        }
+    }
+
     // Canonical GTFS transit stops (Transitous). One icon per station (bays dedupe in the VM);
     // replaces the OSM basemap bus icons wherever this layer has coverage (poi_transit filter flips
     // in applyData). Drawn above the ambient POIs (and above the flock layer, which yields to both).
@@ -4835,6 +4871,7 @@ private fun applyData(
     ambientPois: List<MapMarker>,
     trafficControls: List<app.vela.core.data.TrafficControl>,
     flockCameras: List<app.vela.core.data.AlprCamera>,
+    speedCameras: List<app.vela.core.data.SpeedCamera>,
     transitStops: List<app.vela.core.data.transit.Transitous.MapStop>,
     me: LatLng?,
     bearing: Float?,
@@ -5131,9 +5168,15 @@ private fun applyData(
     // draws EVERY icon (no collision culling) - a wall of badges plus the symbol cost. They're a
     // proximity feature, so hide them below z13 while just browsing, but keep the low floor when a
     // route is active so route-overview zoom (z11-12) still shows its cameras (issue #131 dead-band).
+<<<<<<< HEAD
     // The browse/route floor applies to the CLUSTERED layer (the low-zoom face of the feature);
     // the per-camera detail layers stay pinned at FLOCK_DETAIL_ZOOM.
     style.getLayer(FLOCK_CLUSTER_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
+=======
+    style.getLayer(FLOCK_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
+    style.getLayer(FLOCK_DIR_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
+    style.getLayer(SPEEDCAM_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
+>>>>>>> speed-cameras
 
     // ALPR/Flock cameras → icon features (identity-gated like the controls). Empty when the layer's
     // off or zoomed out, which clears the source. Two uploads per change: the raw per-camera set
@@ -5157,6 +5200,16 @@ private fun applyData(
         )
         style.getSourceAs<GeoJsonSource>(FLOCK_CLUSTER_SRC)?.setGeoJson(clusteredFc)
         lastAppliedFlock = flockCameras
+    }
+
+    // Fixed radar cameras -> icon features (identity-gated like the rest). Empty clears the source.
+    if (speedCameras != lastAppliedSpeedCams) {
+        style.getSourceAs<GeoJsonSource>(SPEEDCAM_SRC)?.setGeoJson(
+            FeatureCollection.fromFeatures(
+                speedCameras.map { Feature.fromGeometry(Point.fromLngLat(it.loc.lng, it.loc.lat)) },
+            ),
+        )
+        lastAppliedSpeedCams = speedCameras
     }
 
     // Canonical GTFS stops (Transitous). Feature index -> the VM's stop list for the tap handler.
@@ -5523,6 +5576,25 @@ private fun alprCameraBitmap(): Bitmap {
     val arm = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt(); strokeWidth = 2.4f; style = Paint.Style.STROKE }
     c.drawLine(17f, 18f, 17f, 12f, arm)
     c.drawLine(12f, 12f, 24f, 12f, arm)
+    return bmp
+}
+
+/** Fixed speed-camera badge: the ALPR badge's rounded square in enforcement AMBER, with a simple
+ *  radar-box glyph (camera facing the road head-on) so the two camera layers read apart at a glance. */
+private fun speedCamBitmap(): Bitmap {
+    val s = 46
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val white = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }
+    val amber = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFEF6C00.toInt() }
+    c.drawRoundRect(2f, 2f, s - 2f, s - 2f, 11f, 11f, white)
+    c.drawRoundRect(4.5f, 4.5f, s - 4.5f, s - 4.5f, 9f, 9f, amber)
+    // Head-on speed-camera glyph: a tall housing with a big round lens and a flash slit.
+    val body = android.graphics.RectF(15f, 12f, 31f, 32f)
+    c.drawRoundRect(body, 3f, 3f, white)
+    c.drawCircle(23f, 20f, 4.6f, amber) // lens
+    c.drawCircle(23f, 20f, 2.0f, white) // lens glass
+    c.drawRect(18f, 26.5f, 28f, 29.5f, amber) // flash slit
     return bmp
 }
 
