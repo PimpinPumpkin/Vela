@@ -1435,6 +1435,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   across that window, so the lane-level micro-kinks in dense OSM geometry cancel instead of
   wobbling the whole heading-up map like a record needle. Corners round by only a couple of
   metres at speed, same as Google's puck; no temporal lag was added.
+- ✅ **Spoken turns echo as a visible heads-up while the app is backgrounded (2026-07-25).** The
+  ongoing nav notification stays silent and minimized, but when guidance speaks with no Vela
+  screen visible, a self-expiring heads-up pops with the same arrow, distance and ETA line, on
+  a separate high-importance channel that is explicitly soundless and vibration-free (the voice
+  is the audio). Foreground drives and muted drives stay exactly as they were.
 - ✅ **Steps viewer: swipe down anywhere to close + no stray stops while it's up (2026-07-15,
   user).** The route step list now dismisses with a downward swipe on the BODY once the list is
   at its top (nested-scroll into the same drag the handle uses; mid-list swipes still scroll),

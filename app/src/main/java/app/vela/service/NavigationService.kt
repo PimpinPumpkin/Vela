@@ -53,6 +53,7 @@ import javax.inject.Inject
 class NavigationService : Service() {
 
     @Inject lateinit var navSession: NavSession
+    @Inject lateinit var voice: app.vela.core.voice.VoiceGuide
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var observing = false
@@ -82,6 +83,16 @@ class NavigationService : Service() {
             Log.w(TAG, "foreground start failed; continuing without the nav service", t)
             stopSelf()
             return START_NOT_STICKY
+        }
+
+        // Backgrounded turn alerts (user 2026-07-24): the ongoing notification is deliberately
+        // silent/minimized, but when guidance SPEAKS while the app isn't visible, the shade
+        // should show the turn the voice just said. Post-mute hook, so a muted drive stays
+        // quiet in the shade too; foreground drives already show the banner card.
+        voice.onPromptAlert = {
+            if (!app.vela.ui.AppVisibility.foreground.value) {
+                runCatching { notificationManager().notify(TURN_ALERT_ID, buildTurnAlert()) }
+            }
         }
 
         if (!observing) {
@@ -204,6 +215,34 @@ class NavigationService : Service() {
     }
 
 
+    /** The transient heads-up posted when guidance speaks in the background: same title/text as
+     *  the ongoing card, but on the HIGH channel (visual pop, no sound - the voice IS the sound),
+     *  its own id (a posted notification can never change channel, so the FGS card can't just be
+     *  re-posted louder), self-expiring so the shade doesn't collect two nav rows. */
+    private fun buildTurnAlert(): Notification {
+        ensureChannel()
+        val base = buildNotification()
+        return NotificationCompat.Builder(this, TURN_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_nav)
+            .setContentTitle(base.extras.getCharSequence(Notification.EXTRA_TITLE))
+            .setContentText(base.extras.getCharSequence(Notification.EXTRA_TEXT))
+            .setLargeIcon(cachedGlyph)
+            .setColor(base.color)
+            .setAutoCancel(true)
+            .setTimeoutAfter(TURN_ALERT_TIMEOUT_MS)
+            .setShowWhen(false)
+            .setContentIntent(
+                PendingIntent.getActivity(
+                    this, 0, Intent(this, MainActivity::class.java),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                ),
+            )
+            .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .build()
+    }
+
     private fun startForegroundCompat(notification: Notification) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
@@ -213,10 +252,12 @@ class NavigationService : Service() {
     }
 
     private fun teardown() {
+        voice.onPromptAlert = null
         runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
         // Also clear a DETACHED arrival notification (the arrived branch posts one dismissable —
         // tapping Done in-app must not leave it stranded in the shade).
         runCatching { notificationManager().cancel(NOTIF_ID) }
+        runCatching { notificationManager().cancel(TURN_ALERT_ID) }
         stopSelf()
     }
 
@@ -228,6 +269,19 @@ class NavigationService : Service() {
                     getString(R.string.navservice_channel_name),
                     NotificationManager.IMPORTANCE_LOW,
                 ),
+            )
+            // HIGH so it pops as a heads-up, but explicitly soundless and buzz-free: the spoken
+            // guidance is the audio channel, and a system ding on top of "turn right onto..."
+            // would double-announce every turn.
+            notificationManager().createNotificationChannel(
+                NotificationChannel(
+                    TURN_CHANNEL_ID,
+                    getString(R.string.navservice_channel_turns_name),
+                    NotificationManager.IMPORTANCE_HIGH,
+                ).apply {
+                    setSound(null, null)
+                    enableVibration(false)
+                },
             )
         }
     }
@@ -243,7 +297,10 @@ class NavigationService : Service() {
         private const val TAG = "VelaNavService"
         private const val ACTION_STOP = "app.vela.service.NAV_STOP"
         private const val CHANNEL_ID = "vela_nav"
+        private const val TURN_CHANNEL_ID = "vela_nav_turns"
         private const val NOTIF_ID = 42
+        private const val TURN_ALERT_ID = 43
+        private const val TURN_ALERT_TIMEOUT_MS = 9_000L
 
         /** Best-effort: start the background nav service. A failure here (background
          *  start not allowed, OEM restriction) is swallowed — foreground nav, driven
