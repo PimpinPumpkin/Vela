@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name" translatable="false">Vela Maps</string>
+    <string name="app_name_generic" translatable="false">Maps</string>
 
     <!-- shared search-category chip labels (map + along-route); the search QUERY stays English in code -->
     <string name="cat_restaurants">Restaurants</string>
@@ -22,6 +23,9 @@
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_appearance_hint">Applies to Vela only.</string>
+    <string name="settings_app_name_title">App name</string>
+    <string name="settings_app_name_generic">Call it just “Maps”</string>
+    <string name="settings_app_name_generic_hint">Shows the launcher icon as plain Maps instead of Vela Maps, for a stock look. You may need to re-add a home screen shortcut after switching.</string>
     <string name="settings_dynamic_color">Material You colors</string>
     <string name="settings_dynamic_color_hint">Tints buttons and accents from your wallpaper. The map stays neutral.</string>
     <string name="settings_map_style">Map style</string>

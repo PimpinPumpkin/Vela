@@ -2069,6 +2069,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Region downloads as portable PMTiles + historical traffic
 
 ## Platform & distribution
+- ✅ **Optional generic app name (issue #226, 2026-08-03).** Settings, Appearance, "Call it just
+  Maps": the launcher entry flips to a plain Maps label for a stock look, and back. Deep links,
+  shares and the geo: handler are untouched either way; a pinned home shortcut may need
+  re-adding after switching since Android renames apps per launcher component.
 - ✅ **Project website (2026-07-15).** A single-page showcase at
   https://pimpinpumpkin.github.io/Vela/ - hero with a live nav mockup, feature grid, the
   privacy pitch, a screenshot strip and download paths (direct APK / Obtainium / build it).
