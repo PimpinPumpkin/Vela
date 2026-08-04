@@ -1020,6 +1020,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Overture/OSM POIs as a fallback source
 
 ## Routing & traffic
+- ✅ **Interchangeable transit lines no longer read as transfers (issue #234, 2026-08-03).** A
+  direct connection served by several equivalent lines carried every alternative as its own
+  summary badge, so the results list looked like a multi-change journey while the opened
+  itinerary correctly showed one train. When the summary badges outnumber the actual ride
+  legs, the alternatives now merge into one slash-joined badge per leg (S1 / S11 / S12) in
+  the ridden line's colours; mismatched shapes pass through untouched rather than guess.
 - ✅ Driving directions with **real traffic-aware ETA** (live `duration_in_traffic`)
 - ✅ **Live traffic overlay** (browse mode) - Google's congestion-coloured roads, a **keyless raster layer** (the web map's own public `/maps/vt?…!2straffic` PNG tiles on www.google.com - no API key). **Toggle moved off the map into Settings → Map** (2026-06-19) - it's a niche browse-only layer now that nav shows per-segment route traffic, so it no longer earns a map button. **Drawn below the POI/label layers at ~0.6 opacity** so it doesn't render over POIs or bury the basemap. *(Inherent caveat: Google's pre-baked raster paints free-flow green everywhere and re-rasterises on zoom - it's a subtle scanning aid, off by default.)*
 - ✅ **Per-segment route-line traffic** - the drawn route is coloured Google-style
