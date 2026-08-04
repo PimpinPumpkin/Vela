@@ -1440,6 +1440,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   screen visible, a self-expiring heads-up pops with the same arrow, distance and ETA line, on
   a separate high-importance channel that is explicitly soundless and vibration-free (the voice
   is the audio). Foreground drives and muted drives stay exactly as they were.
+- ✅ **Picture-in-picture mini map while navigating (2026-07-25).** Leaving the app mid-drive
+  shrinks Vela to a floating window with the live map, route line, puck and a one-line
+  distance-plus-turn strip, Google style. Android 12+ auto-enters whenever navigation runs;
+  older versions enter on the home gesture; expanding restores the full interface. Launchers
+  that forbid picture-in-picture keep the notification-only background nav.
 - ✅ **Steps viewer: swipe down anywhere to close + no stray stops while it's up (2026-07-15,
   user).** The route step list now dismisses with a downward swipe on the BODY once the list is
   at its top (nested-scroll into the same drag the handle uses; mid-list swipes still scroll),

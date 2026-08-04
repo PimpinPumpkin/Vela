@@ -1045,6 +1045,11 @@ fun MapScreen(
             dpadController = mapDpad,
             modifier = Modifier.fillMaxSize(),
         )
+        // Picture-in-picture strips the UI to the bare map + the turn strip below: the whole
+        // chrome tree composes only when the window is a real screen (MainActivity flips the
+        // holder). One gate around everything after the map keeps the diff merge-friendly.
+        val pipUi = app.vela.ui.PipMode.active.value
+        if (!pipUi) {
 
         // --- Debug badge (Settings → Developer → Building overlay debug) ---
         // Canary aid: fill-buildings auto-suppression state at a glance + a UI-thread FPS readout.
@@ -2425,6 +2430,23 @@ fun MapScreen(
                         NoticeCard(n, onDismiss = { vm.dismissNotice(n.id) })
                     }
                 }
+            }
+        }
+        }
+        if (pipUi && state.navigating && state.maneuverText.isNotEmpty()) {
+            // The one PiP overlay: distance + turn in a single dark strip, top of the window.
+            androidx.compose.material3.Surface(
+                modifier = Modifier.align(Alignment.TopCenter).padding(6.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                color = androidx.compose.ui.graphics.Color(0xCC1B1B1B),
+                contentColor = androidx.compose.ui.graphics.Color.White,
+            ) {
+                Text(
+                    text = formatDistance(state.nav.distanceToNextManeuver) + " \u00b7 " + state.maneuverText,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 2,
+                )
             }
         }
     }

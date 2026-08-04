@@ -351,6 +351,14 @@ Defaults that make the safe path the easy one:
   card + the cluster/HUD nav data; `ManeuverMapper` maps Vela maneuvers → car `Maneuver`/`Step`/`Trip`.
   Manifest also declares `FEATURE_CLUSTER` (instrument-cluster nav) and `CAR_INFO` (AAOS car speed).
   The PHONE also feeds NavSession when not projecting; the car and phone share the one nav loop.
+- **Picture-in-picture nav (2026-07-25):** MainActivity carries `supportsPictureInPicture` +
+  autoEnter params kept in lockstep with `vm.state.navigating` (Android 12+; pre-12 enters in
+  onUserLeaveHint). `PipMode.active` (ui/PipMode.kt) is flipped by onPictureInPictureModeChanged
+  and MapScreen wraps EVERYTHING after the VelaMapView call in one `if (!pipUi)` gate, plus a
+  tiny distance-and-turn strip for the small window - any NEW map chrome must live inside that
+  gate or it will render wall-to-wall in the mini map. The turn heads-up (NavigationService's
+  `vela_nav_turns` channel) deliberately stays quiet while PiP is up: the activity is still
+  STARTED in PiP, so AppVisibility.foreground remains true and the alert gate sees "visible".
 - **Long downloads NEVER ride viewModelScope (issue #212, 2026-07-23).** Every multi-MB download
   (voice model, ASR engine, region graph, place pack, overlay, update APK, offline place data)
   launches through `MapViewModel.downloadLaunch(label) { ... }`: the work runs on the app-lifetime
