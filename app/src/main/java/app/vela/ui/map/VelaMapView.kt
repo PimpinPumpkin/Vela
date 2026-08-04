@@ -538,6 +538,7 @@ fun VelaMapView(
     }
 
     var mapRef by remember { mutableStateOf<MapLibreMap?>(null) }
+    var mapInitRequested by remember { mutableStateOf(false) }
     // Ending nav returns the camera to Google's flat north-up browse view — the follow camera's
     // last bearing/tilt used to linger, which also left the compass pinned on the map (it only
     // hides facing north; user 2026-07-10). Below mapRef so the handle is in scope.
@@ -1738,7 +1739,8 @@ fun VelaMapView(
             mv.isFocusableInTouchMode = false
             mv.descendantFocusability = android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS
         }
-        if (mapRef == null) {
+        if (!mapInitRequested && mapRef == null) {
+            mapInitRequested = true
             mv.getMapAsync { map ->
                 map.uiSettings.isLogoEnabled = false
                 // Hide the bottom-left attribution "ⓘ" — open-tile attribution lives
