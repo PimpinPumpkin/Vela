@@ -17,6 +17,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- 🟡 **Offline regions are moving to the obf format (issue #214, in progress).** The routing
+  engine, download store, bake pipeline and catalog cutover are built and device-verified end to
+  end (a phone in airplane mode downloaded a Berlin obf, routed a 21 km drive with named steps
+  and road shields, and deleted the region cleanly); baking the world's regions is the remaining
+  step. A region download shrinks to roughly a quarter of the GraphHopper-era size (Berlin:
+  105 MB graph to a 27 MB routing section), avoid options work offline again, and
+  walking/cycling route offline for the first time. Regions installed before the cutover keep
+  routing until re-downloaded.
 - ✅ **Vela gives memory back when the system asks, and adapts to small phones (2026-07-23,
   adopted from the vela-dpad fork).** The speech model (about a quarter gigabyte while loaded) now
   unloads after two minutes unused and reloads in about a second on the next mic tap; map caches,

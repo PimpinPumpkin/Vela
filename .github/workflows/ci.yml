@@ -81,6 +81,23 @@ jobs:
             echo "No keystore secret — release APK will be debug-signed."
           fi
 
+      - name: Fetch obf routing runtime jars
+        # OsmAnd's Java router + obf reader (:core's offline routing engine, GPLv3 like Vela).
+        # No Maven artifacts exist, so they live on the fixed-tag `obf-runtime` release,
+        # gitignored out of the repo - same arrangement as the TTS AAR above.
+        run: |
+          mkdir -p core/libs
+          for f in osmand-java.jar osmand-shared-jvm.jar gnu-trove-osmand.jar kxml2-vela.jar; do
+            curl -fSL -o "core/libs/$f" \
+              "https://github.com/${{ github.repository }}/releases/download/obf-runtime/$f" \
+            || curl -fSL -o "core/libs/$f" \
+              "https://github.com/PimpinPumpkin/Vela/releases/download/obf-runtime/$f"
+          done
+          test "$(stat -c%s core/libs/osmand-java.jar)" -gt 10000000
+          test "$(stat -c%s core/libs/osmand-shared-jvm.jar)" -gt 1000000
+          test "$(stat -c%s core/libs/gnu-trove-osmand.jar)" -gt 100000
+          test "$(stat -c%s core/libs/kxml2-vela.jar)" -gt 10000
+
       - name: Unit tests
         run: ./gradlew :core:test --no-daemon
 
