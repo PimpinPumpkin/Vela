@@ -1430,6 +1430,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Self-hosted routing backend (replace the FOSSGIS community server)
 
 ## Navigation
+- ✅ **The nav puck glides on kinked road geometry (2026-07-25).** The drawn position is a real
+  boxcar average across a speed-scaled along-route window and the arrow's heading is the chord
+  across that window, so the lane-level micro-kinks in dense OSM geometry cancel instead of
+  wobbling the whole heading-up map like a record needle. Corners round by only a couple of
+  metres at speed, same as Google's puck; no temporal lag was added.
 - ✅ **Steps viewer: swipe down anywhere to close + no stray stops while it's up (2026-07-15,
   user).** The route step list now dismisses with a downward swipe on the BODY once the list is
   at its top (nested-scroll into the same drag the handle uses; mid-list swipes still scroll),
