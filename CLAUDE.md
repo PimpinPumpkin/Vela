@@ -2563,7 +2563,11 @@ architecture note.
 - **Traffic lights + stop signs drawn on the map (`OverpassTrafficSignals.fetchControlsInBox` + `VelaMapView`,
   2026-07-05).** OSM `highway=traffic_signals` (a stoplight icon) and `highway=stop` (a red STOP octagon) as a
   non-interactive `SymbolLayer` (`vela-controls`, icons `vela-signal`/`vela-stop`) drawn **beneath** the POI dots
-  + pins, `minZoom 16`. **Icon sizing/visibility (2026-07-06, device-verified in downtown Davis):** `iconSize`
+  + pins, `minZoom 16`. **CLUSTERED PER INTERSECTION (2026-07-25):** OSM maps one control node per APPROACH (a
+  four-way stop = four `highway=stop` nodes), so `refreshTrafficControls` merges same-type nodes
+  within 30 m (`MapDeclutter.cluster`, the same radius the spoken pass-the-light counting uses)
+  to their centroid before the cap - one drawn glyph per junction, like Google, and fewer
+  allowOverlap symbols to render. **Icon sizing/visibility (2026-07-06, device-verified in downtown Davis):** `iconSize`
   is a zoom-interpolated expression (~0.75 at z15.5 → 1.05 at z17 → 1.5 at z19) - the flat 0.55 was too small to
   spot, especially tilted in nav; and `iconAllowOverlap(true)`+`iconIgnorePlacement(true)` so they ALWAYS draw
   (controls are sparse - one per junction - and the earlier collision-off-below-POIs was culling them away on the
@@ -2631,7 +2635,11 @@ architecture note.
   un-gzips + renames it at build time (broke `open("...tsv.gz")`); a neutral extension is left intact and we
   gunzip it ourselves. Device-verified 2026-07-13: 124,406 loaded, purple badge drew with no network wait,
   route counts `[10,10,11]`, AND the hosted refresh downloaded a newer version (20260714) + hot-swapped +
-  is idempotent on relaunch. NB "avoid" still only RE-RANKS the alternates Google/OSRM offer (fewest-camera
+  is idempotent on relaunch. **DRAWN badges cluster below street zoom (2026-07-25):** a Flock corner mounts several
+  single-direction heads, so `vela-flock-cluster` (own source, 40 m `MapDeclutter` merge computed
+  at upload time in VelaMapView) draws ONE badge per install from z11/13 up to z16, where the raw
+  per-camera layer + facing cones take over; the browse-13/route-11 minZoom gate now lives on the
+  cluster layer. Route camera COUNTS stay per-head on purpose. NB "avoid" still only RE-RANKS the alternates Google/OSRM offer (fewest-camera
   within a small detour); it does NOT graph-route around cameras. **To publish the first hosted copy, dispatch
   Actions -> "Flock cameras" once** (until then every install just uses the bundled floor).
 - **Transitous is the PRIMARY departure-board source (2026-07-13, phase 1 of the GTFS adoption).**

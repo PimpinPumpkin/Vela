@@ -25,6 +25,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   105 MB graph to a 27 MB routing section), avoid options work offline again, and
   walking/cycling route offline for the first time. Regions installed before the cutover keep
   routing until re-downloaded.
+- ✅ **One glyph per intersection for stop signs, lights and cameras (2026-07-25).** OSM maps
+  street furniture per approach, so a four-way stop arrived as four stop signs and a signalized
+  junction as up to eight lights; they now merge to one icon at the junction centroid, like
+  Google. Flock camera multi-head corners merge to a single badge below street zoom and split
+  back into individual cameras with facing cones when zoomed in; the route camera counts stay
+  per-head. Fewer always-drawn symbols is also a small render win.
 - ✅ **Vela gives memory back when the system asks, and adapts to small phones (2026-07-23,
   adopted from the vela-dpad fork).** The speech model (about a quarter gigabyte while loaded) now
   unloads after two minutes unused and reloads in about a second on the next mic tap; map caches,
