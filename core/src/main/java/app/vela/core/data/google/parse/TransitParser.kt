@@ -70,6 +70,7 @@ object TransitParser {
         // and any service alerts; a walk leg has neither.
         val rideLegs = legsEl.arr()?.filter { it.at(5).arr() != null }.orEmpty()
         val agencyNode = rideLegs.firstNotNullOfOrNull { it.at(0, 6, 4, 0) }
+        val steps = assignWalkEndpoints(parseSteps(legsEl), origin, dest)
         return TransitItinerary(
             departureEpochSec = dep.at(0).long(),
             arrivalEpochSec = arr.at(0).long(),
@@ -81,9 +82,37 @@ object TransitParser {
             agencyPhone = agencyNode.at(4).str(),
             alerts = rideLegs.flatMap { parseAlerts(it.at(0, 9)) }.distinct(),
             fare = parseFare(t),
-            lines = parseLines(t.at(14)),
-            steps = assignWalkEndpoints(parseSteps(legsEl), origin, dest),
+            lines = mergeAlternativeLines(parseLines(t.at(14)), steps.mapNotNull { it.line?.name }),
+            steps = steps,
         )
+    }
+
+    /** Reconcile the summary badges against the REAL ride legs (issue #234): a direct connection
+     *  served by interchangeable lines carries every alternative as its own badge (S1, S11, S12),
+     *  and rendering them sequentially read as a journey with transfers. When the badges
+     *  outnumber the rides, cluster each badge onto its nearest ride (by document order around
+     *  the position where that ride's own line appears) and merge each cluster into one
+     *  slash-joined badge in the ridden line's colours - Google's "any of these" presentation.
+     *  Any ride line missing from the badges means the shapes don't line up; keep the original
+     *  list rather than guess. */
+    internal fun mergeAlternativeLines(lines: List<TransitLine>, rideNames: List<String>): List<TransitLine> {
+        if (rideNames.isEmpty() || lines.size <= rideNames.size) return lines
+        var searchFrom = 0
+        val matchIdx = rideNames.map { name ->
+            val i = (searchFrom until lines.size).firstOrNull { lines[it].name == name } ?: return lines
+            searchFrom = i + 1
+            i
+        }
+        val groups = List(rideNames.size) { mutableListOf<TransitLine>() }
+        lines.forEachIndexed { i, line ->
+            val g = matchIdx.indices.minByOrNull { k -> kotlin.math.abs(i - matchIdx[k]) } ?: 0
+            groups[g].add(line)
+        }
+        return groups.mapIndexed { k, group ->
+            val ride = lines[matchIdx[k]]
+            if (group.size == 1) group[0]
+            else ride.copy(name = group.joinToString(" / ") { it.name })
+        }
     }
 
     /** Give each WALK leg its start/end coordinates so the UI can fetch turn-by-turn walking
