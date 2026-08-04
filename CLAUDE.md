@@ -2308,9 +2308,13 @@ architecture note.
   skip the load - the getOsmandRegions call sits before the flag check). STILL GH-ONLY: the speed-limit badge
   (currentRoadLimit) and the romanized-names sidecar (obf carries multilingual names natively,
   wired later). Place packs still download alongside obf regions until POI/address search moves
-  onto the obf (phase 2). NO COUNTRY SPLITS beyond the existing US states (user call - only true
-  monsters like Russia/China would ever split; obf makes unsplit Germany smaller than Organic
-  Maps' 48-piece total).
+  onto the obf (phase 2). COUNTRY + SUB-AREA both (2026-08-03, the #214 reporter's ask): the unsplit
+  country stays the headline row, and big countries ALSO offer first-level sub-areas as smaller
+  optional rows - tools/routing-regions.json carries the 16 `de-*` Bundesland rows (group
+  `germany-sub`, named "<Land> (Germany)") beside the whole-Germany row (group `europe`,
+  big:true), so the obf bake can produce both; nobody is forced into fragments and a city user
+  grabs ~130 MB instead of ~2 GB. Extend the same pattern (fr-sub etc.) only when a country's
+  obf actually lands huge.
 - **On-device routing engine = GraphHopper (`core/data/RouteEngine` + `GraphHopperRouteEngine`).**
   Pure-JVM, runs on ART - **validated end-to-end on a Pixel 5a** (`:ghprobe`, a throwaway instrumented
   probe - the routing shipped long ago; the module is safe to delete whenever). Chosen over Valhalla (no maintained Android map-matching binding) /
