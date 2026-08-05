@@ -183,6 +183,13 @@
                 <data android:scheme="geo" />
             </intent-filter>
         </service>
+        <!-- Marks Vela as optimized for constrained satellite data (issue #235): carriers that
+             gate satellite cell service to approved apps (Rogers, AT&T, KDDI) allow its traffic.
+             Everything heavy is already optional/deferrable, so the label is honest. -->
+        <meta-data
+            android:name="android.telephony.PROPERTY_SATELLITE_DATA_OPTIMIZED"
+            android:value="app.vela" />
+
     </application>
 
 </manifest>
