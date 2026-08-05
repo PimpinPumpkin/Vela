@@ -1904,7 +1904,14 @@ architecture note.
   since 2026-07-21 the fetch has a HARD 20 s deadline (REROUTE_FETCH_TIMEOUT_MS): the retry
   ladders inside directions() could hold the single-flight latch for a minute on a flaky cell
   link, silently dropping every new RerouteNeeded (a real-drive hang); past the deadline it
-  fails into the same retry-while-deviated path so the next fix fires a fresh request, and
+  fails into the same retry-while-deviated path so the next fix fires a fresh request. And
+  since 2026-08-04 the reroute fetch is URGENT (`directions(urgent = true)`, issues #185/#236):
+  single-shot OSRM + Google (no 3x ladders), no divergence snap - the full planning ladder
+  regularly outlived the deadline on a weak link, so the timeout cancelled fetches that were
+  about to succeed (the reporter's "context canceled then 200 OK" logcat) and the driver sat
+  unrerouted through repeated 20 s attempts. A lean route lands in seconds; maybeRecheck's
+  stepsUpgrade/trafficUpgrade heal restores quality minutes later. Planning fetches keep the
+  full ladder + snap, and
   ETA sums the remaining STEP durations × traffic ratio (never remaining/avg-speed), and since
   2026-07-14 that ratio is LIVE-CALIBRATED: the ~2-min recheck's candidate, when it follows the
   CURRENT course (`RouteGeometry.divergent` under `SAME_COURSE_M` = 250 m), resets `etaScale`

@@ -155,8 +155,9 @@ object RouteGeometry {
         mode: TravelMode,
         avoidTolls: Boolean = false,
         avoidHighways: Boolean = false,
+        tries: Int = OSRM_TRIES,
     ): List<Route> =
-        routeOsrm(http, listOf(origin, dest), mode, alternatives = true, avoidTolls, avoidHighways)
+        routeOsrm(http, listOf(origin, dest), mode, alternatives = true, avoidTolls, avoidHighways, tries)
 
     /** OSRM forced THROUGH [waypoints] (origin, vias…, dest) — used to follow Google's
      *  traffic-smart path with OSRM's full street-named steps (option 3: traffic-aware routing).
@@ -177,6 +178,7 @@ object RouteGeometry {
         alternatives: Boolean,
         avoidTolls: Boolean = false,
         avoidHighways: Boolean = false,
+        tries: Int = OSRM_TRIES,
     ): List<Route> {
         val backend = backend(mode) ?: return emptyList()
         val coords = points.joinToString(";") { "${it.lng},${it.lat}" }
@@ -189,7 +191,7 @@ object RouteGeometry {
         // nav to Google's ABBREVIATED (nameless) steps — the "why aren't these street names?" bug. So retry
         // a couple times with a short backoff. A SUCCESSFUL response (even an empty route list = genuine
         // "no route") returns immediately; only transport/5xx failures retry.
-        repeat(OSRM_TRIES) { attempt ->
+        repeat(tries) { attempt ->
             try {
                 http.newCall(req).execute().use { resp ->
                     if (resp.isSuccessful) {
@@ -206,7 +208,7 @@ object RouteGeometry {
             } catch (e: Exception) {
                 // network blip / timeout — fall through to retry
             }
-            if (attempt < OSRM_TRIES - 1) runCatching { Thread.sleep(200L * (attempt + 1)) }
+            if (attempt < tries - 1) runCatching { Thread.sleep(200L * (attempt + 1)) }
         }
         return emptyList()
     }
