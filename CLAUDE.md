@@ -2201,7 +2201,10 @@ architecture note.
   same-course candidate over an adopted abbreviated route (same 250 m divergence test the ETA
   calibration uses), so a mid-drive OSRM blip no longer leaves the banner disagreeing with the
   blue line for the rest of the drive. **Since 2026-07-15 the same heal restores LIVE TRAFFIC
-  (trafficUpgrade beside stepsUpgrade, no-downgrade guard on both), and a degraded candidate is
+  (trafficUpgrade beside stepsUpgrade, no-downgrade guard on both); since 2026-08-04 a DEGRADED
+  route also SHORTENS the recheck cadence (DEGRADED_RECHECK_INTERVAL_MS 20 s, capped at
+  DEGRADED_FAST_TRIES=6 per route then back to ~2 min, issue #237) so the heal lands seconds
+  after the open router recovers instead of leaving the nameless banner up for minutes, and a degraded candidate is
   FENCED OUT of everything ETA-comparative in maybeRecheck: trafficless never calibrates etaScale
   and trafficless-or-abbreviated is never OFFERED as a faster route - free-flow vs traffic-aware
   always "wins", which was the real-drive white-ETA/no-lanes/"suspiciously fast" incident (lanes
