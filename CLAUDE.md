@@ -1918,7 +1918,11 @@ architecture note.
   `navSession.onLocation` path - puck/banner/voice keep working, `navStarved` keeps the
   "Searching for GPS" chip up for honesty, the first real fix re-anchors (route-plausible
   synthetics pass the outlier gate). Never feeds `tripStore.record` (no fake points in trips).
-  Nav zoom range is 18.0→15.5 (2026-07-14, was 17.3→15.0); GTFS stop icons hide during nav
+  Nav zoom range is 18.0→15.5 (2026-07-14, was 17.3→15.0). A pinch during nav sets a zoom
+  override WITHOUT detaching the follow camera (deliberate), which meant no Re-center path back
+  to auto-zoom existed (issue #238) - since 2026-08-04 VelaMapView reports the override up
+  (onNavZoomOverride) so MapScreen shows the nav Re-center FAB for it, and the button bumps
+  navRecenterTick which clears navUserZoom/navUserTilt back to auto; GTFS stop icons hide during nav
   (declutter effect + the VM skips the fetch). The route line's
   driven/ahead cut is a GEOMETRY split (`ROUTE_AHEAD_LAYER` suffix over a traversed-grey full line) - 
   MapLibre bakes line-gradients into a 256-texel texture, so a gradient stop can never render a crisp

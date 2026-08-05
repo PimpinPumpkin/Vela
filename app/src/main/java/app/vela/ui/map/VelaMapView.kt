@@ -352,6 +352,10 @@ fun VelaMapView(
     topographyOn: Boolean = false, // terrain-relief hillshade; OFF by default (Google-style)
     previewTarget: LatLng?,
     navOverviewTick: Int = 0, // bumped by the in-nav Overview button — fly the camera out to the whole route
+    navRecenterTick: Int = 0, // bumped by the nav Re-center button — drop the pinch zoom/tilt overrides back to auto
+    // Reports whether a manual pinch/shove override is active during nav (true on set, false on
+    // clear) so the screen can show Re-center for a zoomed-but-still-following camera (issue #238).
+    onNavZoomOverride: (Boolean) -> Unit = {},
     onPoiTap: (name: String, location: LatLng, poiKind: String?) -> Unit,
     onMarkerTap: (index: Int) -> Unit,
     parkingSpot: LatLng? = null, // saved "parked here" pin; tap → onParkingTap
@@ -441,6 +445,7 @@ fun VelaMapView(
     val longPress = rememberUpdatedState(onMapLongPress)
     val addrLabelTap = rememberUpdatedState(onAddressLabelTap)
     val navPanned = rememberUpdatedState(onNavPanned)
+    val zoomOverride = rememberUpdatedState(onNavZoomOverride)
     val userPan = rememberUpdatedState(onUserPan)
     val scaleChanged = rememberUpdatedState(onScaleChanged)
     val overlayState = rememberUpdatedState(onOverlayState)
@@ -504,7 +509,21 @@ fun VelaMapView(
     // when you PAN (in the move listener, so a pan→Re-center returns to auto-zoom) and when nav
     // ends. Keyed on navMode, NOT navFollowing — navFollowing flips while panning and would
     // otherwise nuke a just-set pinch zoom, snapping it back to auto a beat later.
-    LaunchedEffect(navMode) { if (!navMode) navUserZoom[0] = Double.NaN }
+    LaunchedEffect(navMode) {
+        if (!navMode) {
+            navUserZoom[0] = Double.NaN
+            zoomOverride.value(false)
+        }
+    }
+    // Re-center during nav also returns a pinch-zoomed/tilted camera to auto (issue #238: the
+    // override kept following, so navCameraDetached stayed false and no Re-center path existed).
+    LaunchedEffect(navRecenterTick) {
+        if (navRecenterTick > 0) {
+            navUserZoom[0] = Double.NaN
+            navUserTilt[0] = Double.NaN
+            zoomOverride.value(false)
+        }
+    }
     remember { MapLibre.getInstance(context) }
     // D-pad-only operation (docs/dpad.md): MapLibre's MapView calls requestFocus() on
     // itself and overrides onKeyDown to handle hardware D-pad keys (DPAD_CENTER = zoom in,
@@ -1952,6 +1971,7 @@ fun VelaMapView(
                         if (navModeHolder.value && !scaling[0] && !shoving[0]) {
                             navPanned.value()
                             navUserZoom[0] = Double.NaN
+                            zoomOverride.value(false)
                         }
                     }
                     override fun onMoveEnd(detector: MoveGestureDetector) {}
@@ -1964,10 +1984,16 @@ fun VelaMapView(
                     // Capture the zoom CONTINUOUSLY (not only on end) so the override is set even
                     // if the end callback is missed; we keep FOLLOWING at it and never detach.
                     override fun onScale(detector: StandardScaleGestureDetector) {
-                        if (navModeHolder.value) navUserZoom[0] = map.cameraPosition.zoom
+                        if (navModeHolder.value) {
+                            navUserZoom[0] = map.cameraPosition.zoom
+                            zoomOverride.value(true)
+                        }
                     }
                     override fun onScaleEnd(detector: StandardScaleGestureDetector) {
-                        if (navModeHolder.value) navUserZoom[0] = map.cameraPosition.zoom
+                        if (navModeHolder.value) {
+                            navUserZoom[0] = map.cameraPosition.zoom
+                            zoomOverride.value(true)
+                        }
                         scaling[0] = false
                     }
                 })
@@ -1978,10 +2004,16 @@ fun VelaMapView(
                 map.addOnShoveListener(object : MapLibreMap.OnShoveListener {
                     override fun onShoveBegin(detector: ShoveGestureDetector) { shoving[0] = true }
                     override fun onShove(detector: ShoveGestureDetector) {
-                        if (navModeHolder.value) navUserTilt[0] = map.cameraPosition.tilt
+                        if (navModeHolder.value) {
+                            navUserTilt[0] = map.cameraPosition.tilt
+                            zoomOverride.value(true)
+                        }
                     }
                     override fun onShoveEnd(detector: ShoveGestureDetector) {
-                        if (navModeHolder.value) navUserTilt[0] = map.cameraPosition.tilt
+                        if (navModeHolder.value) {
+                            navUserTilt[0] = map.cameraPosition.tilt
+                            zoomOverride.value(true)
+                        }
                         shoving[0] = false
                     }
                 })
@@ -2214,10 +2246,14 @@ fun VelaMapView(
                         if (navModeHolder.value) {
                             navPanned.value()
                             navUserZoom[0] = Double.NaN
+                            zoomOverride.value(false)
                         }
                     }
                     c.markZoom = { z ->
-                        if (navModeHolder.value) navUserZoom[0] = z else gestureMove[0] = true
+                        if (navModeHolder.value) {
+                            navUserZoom[0] = z
+                            zoomOverride.value(true)
+                        } else gestureMove[0] = true
                     }
                 }
                 // The built-in compass reorients to north on tap, which the nav follow overrides a
