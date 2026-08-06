@@ -102,6 +102,10 @@ data class MapUiState(
     val centerZoom: Double? = null,
     // The satellite imagery's capture year for the viewport (Esri metadata), shown in the attribution.
     val imageryYear: String? = null,
+    // Deep satellite imagery for this area (issue #244): 0 = none known, 20..22 = Esri serves
+    // native tiles to that level here, -1 = Esri tops out at 19 so the Google imagery fallback
+    // fills the deep zooms instead. Probed per area from Esri's own tilemap availability index.
+    val satDeep: Int = 0,
     val recenterTick: Int = 0, // bumped per recenter tap so the map force-moves even if "centered"
     val myLocation: LatLng? = null,
     val myBearing: Float? = null,
@@ -4569,6 +4573,7 @@ class MapViewModel @Inject constructor(
         refreshSpeedCams(south, west, north, east, zoom) // + fixed radar cameras when that layer is on
         refreshTransitStops(south, west, north, east, zoom) // + canonical GTFS stop icons at street zoom
         refreshImageryYear(south, west, north, east) // + the capture year for the satellite attribution
+        refreshSatDeep(south, west, north, east, zoom) // + deep-zoom imagery availability (issue #244)
         // Half-diagonal of the visible box — used to hand the map only the POIs near the view (the
         // rest can't render anyway), so an old budget phone isn't dragging 800 symbols through the
         // collider every frame.
@@ -5226,7 +5231,66 @@ class MapViewModel @Inject constructor(
      *  normal path only runs on camera idle, so the year otherwise waited for the first pan. */
     fun onSatelliteToggled() {
         imageryYearBox = null
-        viewport?.let { refreshImageryYear(it[0], it[1], it[2], it[3]) }
+        satDeepBox = null
+        viewport?.let {
+            refreshImageryYear(it[0], it[1], it[2], it[3])
+            refreshSatDeep(it[0], it[1], it[2], it[3], it[4])
+        }
+    }
+
+    private var satDeepBox: DoubleArray? = null
+    private var satDeepJob: kotlinx.coroutines.Job? = null
+
+    /** Deep-zoom satellite availability for the viewport (issue #244). The base imagery source is
+     *  capped at z19 (Esri's safe global max), so past that the renderer just stretched the z19
+     *  tile - the "blurry and unusable" report. Esri actually serves native z20+ in many areas and
+     *  publishes per-tile availability on the same service (`tilemap`), so this probes 22→21→20 at
+     *  the view centre and reports the deepest level with data; where Esri tops out at 19 the map
+     *  falls back to Google's imagery tiles for the deep zooms (Google upsamples rather than 404s
+     *  outside cities, so the fallback never paints holes). Area-cached like the other viewport
+     *  probes; a fetch failure caches nothing so the next idle retries. */
+    private fun refreshSatDeep(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
+        if (!app.vela.ui.SatelliteLayer.on.value) {
+            satDeepBox = null
+            satDeepJob?.cancel()
+            if (_state.value.satDeep != 0) _state.update { it.copy(satDeep = 0) }
+            return
+        }
+        // Only probe when close enough that deep tiles are about to matter; keep whatever the
+        // last probe found while zoomed out (the deep layers gate themselves by minZoom anyway).
+        if (zoom < SAT_DEEP_PROBE_ZOOM) return
+        val cLat = (south + north) / 2; val cLng = (west + east) / 2
+        satDeepBox?.let { b ->
+            val insLat = (b[2] - b[0]) * 0.25; val insLng = (b[3] - b[1]) * 0.25
+            if (cLat in (b[0] + insLat)..(b[2] - insLat) && cLng in (b[1] + insLng)..(b[3] - insLng)) return
+        }
+        satDeepJob?.cancel()
+        satDeepJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(350)
+            val level = withContext(Dispatchers.IO) {
+                runCatching {
+                    intArrayOf(22, 21, 20).firstOrNull { lvl -> esriTileExists(cLat, cLng, lvl) } ?: -1
+                }.getOrNull()
+            } ?: return@launch // network failure: don't cache the box, retry on the next idle
+            val padLat = (north - south) * 0.5; val padLng = (east - west) * 0.5
+            satDeepBox = doubleArrayOf(south - padLat, west - padLng, north + padLat, east + padLng)
+            if (_state.value.satDeep != level) _state.update { it.copy(satDeep = level) }
+        }
+    }
+
+    /** One cell of Esri's World_Imagery `tilemap` availability index: 1 = a native tile exists at
+     *  this level here. Throws on network/non-2xx so the caller can tell "no tile" from "no answer". */
+    private fun esriTileExists(lat: Double, lng: Double, level: Int): Boolean {
+        val n = 1 shl level
+        val x = ((lng + 180.0) / 360.0 * n).toInt().coerceIn(0, n - 1)
+        val latRad = Math.toRadians(lat)
+        val y = ((1.0 - Math.log(Math.tan(latRad) + 1.0 / Math.cos(latRad)) / Math.PI) / 2.0 * n)
+            .toInt().coerceIn(0, n - 1)
+        val url = "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tilemap/$level/$y/$x/1/1?f=json"
+        val body = http.newCall(okhttp3.Request.Builder().url(url).build()).execute()
+            .use { resp -> if (resp.isSuccessful) resp.body?.string() else throw java.io.IOException("tilemap ${resp.code}") }
+            ?: throw java.io.IOException("tilemap empty body")
+        return org.json.JSONObject(body).optJSONArray("data")?.optInt(0, 0) == 1
     }
 
     private var imageryYearBox: DoubleArray? = null
@@ -5607,6 +5671,7 @@ class MapViewModel @Inject constructor(
     companion object {
         const val KEY_DISMISSED = "dismissed"
         const val CONTROLS_MIN_ZOOM = 16.0 // draw traffic lights/stop signs only when zoomed in this close
+        const val SAT_DEEP_PROBE_ZOOM = 17.0 // probe deep-imagery availability once this close (tiles ready before the blur)
         // One glyph per intersection: per-approach OSM nodes within this radius merge before draw.
         // Same 30 m the spoken pass-the-light clustering uses; keeps dense-grid neighbours separate.
         const val CONTROLS_CLUSTER_M = 30.0
