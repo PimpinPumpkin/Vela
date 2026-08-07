@@ -111,7 +111,7 @@ class GoogleMapsDataSource @Inject constructor(
         calibration.current().tune("ambientFanoutPermits", 4.0).toInt().coerceIn(1, 13),
     )
 
-    override suspend fun search(query: String, near: LatLng?, spanMeters: Double?): SearchResult = io {
+    override suspend fun search(query: String, near: LatLng?, spanMeters: Double?, rankFrom: LatLng?): SearchResult = io {
         session.ensure()
         // Results are viewport-driven, so a location is required; callers
         // normally pass the user's location, with a fallback for the rare null.
@@ -130,7 +130,7 @@ class GoogleMapsDataSource @Inject constructor(
             // hook gets the last word. No hook / any error → pure compiled path.
             return try {
                 jsTransforms.searchOverride(raw)
-                    ?: SearchParser.parse(query, GoogleResponse.parse(raw), near, cal.paths).places
+                    ?: SearchParser.parse(query, GoogleResponse.parse(raw), rankFrom ?: near, cal.paths).places
             } catch (e: CalibrationNeededException) {
                 if (offset == 0) {
                     // Capture the exact request that drifted so an opted-in user can hand it
@@ -471,10 +471,14 @@ class GoogleMapsDataSource @Inject constructor(
                 // (which reaches the destination but loses the stops).
                 val onDevice = if (via == null && routeEngine.isReady(mode))
                     chainOnDevice(listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways) else null
-                val result = when {
+                var result = when {
                     via != null -> listOf(applyTrafficRatio(via, gD.await().firstOrNull()))
                     onDevice != null -> listOf(onDevice)
                     else -> gD.await().take(1).map { it.copy(abbreviatedSteps = true) }
+                }
+                // Online routers cannot honour the avoid toggles; only the on-device chain can.
+                if ((avoidTolls || avoidHighways) && mode == TravelMode.DRIVE && onDevice == null) {
+                    result = result.map { it.copy(avoidNotHonored = true) }
                 }
                 diag.record(
                     "directions",
@@ -486,7 +490,8 @@ class GoogleMapsDataSource @Inject constructor(
                 result
             }
         }
-        coroutineScope {
+        var avoidHonored = false
+        val planned = coroutineScope {
             // PRIMARY: the open router (OSRM) — complete, street-named turn-by-turn + real geometry.
             // Google's keyless directions endpoint hands back ABBREVIATED steps for longer routes
             // (a 6-mi route came back with 2 of ~10 turns), so Google is only the FALLBACK + the
@@ -503,8 +508,21 @@ class GoogleMapsDataSource @Inject constructor(
             // online chain below routes normally (avoid best-effort, never a dead end). No
             // live-traffic ETA on these: the offline result is free-flow, like any offline route.
             if ((avoidTolls || avoidHighways) && mode == TravelMode.DRIVE && routeEngine.isReady(mode)) {
-                val avoidRoutes = runCatching { routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways) }.getOrDefault(emptyList())
-                if (avoidRoutes.isNotEmpty()) return@coroutineScope avoidRoutes
+                // BOUNDED: the obf engine can spend many seconds on a long route, and this branch
+                // used to wait for it unconditionally - with an offline region installed an
+                // avoid-toggled plan just sat there (the Reddit report). The compute runs on an
+                // UNSTRUCTURED scope on purpose: a structured child would keep this coroutineScope
+                // from returning until the non-cancellable native compute finished, which would
+                // defeat the timeout entirely. Past the deadline the online chain answers (tagged
+                // not-honored below) and the orphaned compute finishes and is discarded.
+                val avoidD = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
+                    runCatching { routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways) }.getOrDefault(emptyList())
+                }
+                val avoidRoutes = kotlinx.coroutines.withTimeoutOrNull(AVOID_ONDEVICE_TIMEOUT_MS) { avoidD.await() } ?: emptyList()
+                if (avoidRoutes.isNotEmpty()) {
+                    avoidHonored = true
+                    return@coroutineScope avoidRoutes
+                }
             }
             // TRAFFIC-AWARE routing (option 3): if Google's live-traffic route took a DIFFERENT path
             // than OSRM's free-flow one — i.e. Google rerouted around a jam — re-run OSRM forced
@@ -579,6 +597,9 @@ class GoogleMapsDataSource @Inject constructor(
                 ).take(MAX_ROUTES)
             }
         }
+        if ((avoidTolls || avoidHighways) && mode == TravelMode.DRIVE && !avoidHonored) {
+            planned.map { it.copy(avoidNotHonored = true) }
+        } else planned
     }
 
     /** Drop routes that follow ~the same path as an earlier one (keeps the picker to genuinely distinct
@@ -852,6 +873,9 @@ class GoogleMapsDataSource @Inject constructor(
     }
 
     private companion object {
+        // Cap on waiting for the on-device avoid route: GraphHopper answers in ~200 ms, but the
+        // obf engine can take many seconds on a long route, and the route chooser must not hang.
+        const val AVOID_ONDEVICE_TIMEOUT_MS = 4_000L
         // Fallback viewport when no user location is available — search is
         // viewport-driven and needs one. Callers normally pass the real location.
         val DEFAULT_VIEWPORT = LatLng(37.7749, -122.4194)

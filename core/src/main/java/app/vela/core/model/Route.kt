@@ -127,6 +127,12 @@ data class Route(
     // drawn line. Set only on the OSRM-down fallback branches; NavSession's recheck silently
     // upgrades an adopted abbreviated route to full steps once the open router recovers.
     val abbreviatedSteps: Boolean = false,
+    // The user asked to avoid tolls/highways but this route came from a router that cannot
+    // honour that (online OSRM rejects excludes, Google keyless has no avoid param, and the
+    // on-device engine had no coverage or timed out) - the picker shows an honesty note so a
+    // toggled-on avoid is never silently ignored (the Reddit "still routed me through the
+    // motorway" report).
+    val avoidNotHonored: Boolean = false,
 ) {
     val hasLiveTraffic: Boolean get() = durationInTrafficSeconds != null
     val maneuvers: List<Maneuver> get() = legs.flatMap { it.maneuvers }

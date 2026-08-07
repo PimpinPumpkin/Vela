@@ -1560,6 +1560,18 @@ fun DirectionsPanel(
                         modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
                     )
                 }
+                // Honesty note: with a toggle on but no offline region covering the trip, the online
+                // routers cannot honour it and used to just quietly route through tolls/highways
+                // anyway - say so instead of pretending (the "still routed me through the motorway"
+                // report). Keyed on the routes' own tag so it never shows when avoid worked.
+                if ((avoidTolls || avoidHighways) && routes.isNotEmpty() && routes.all { it.avoidNotHonored }) {
+                    Text(
+                        stringResource(R.string.place_avoid_not_honored),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = dim,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
             }
             if (currentMode == TravelMode.TRANSIT) {
                 TransitBoard(transit, transitLoading, ink, dim, dark, onWalkDirections, onStartTransit)
