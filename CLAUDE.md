@@ -146,9 +146,17 @@ Defaults that make the safe path the easy one:
   prereleases by design, to stay off `releases/latest`); (2) any `gh release list` logic must
   assume 400+ releases and paginate or bound by tag - unpaginated list queries caused both the
   deletion and a wrong damage report.
-- CI: **nightly + weekly channels (2026-07-08).** `.github/workflows/ci.yml`: every push to
-  `main` builds + tests the APK and publishes a **PRERELEASE** `v0.4.<run>` (versionName
-  `0.4.<run>`, versionCode `2000+run`) - the nightly channel; Obtainium users opt in with
+- CI: **stable / nightly / canary channels (2026-08-07, supersedes the per-push nightly).**
+  `.github/workflows/ci.yml`: pushes to `main` AND `canary` build + test only (APK as a
+  workflow artifact, no release) - a push can never mint a release anymore, which retires the
+  "flurry of updates" complaint structurally (#214 feedback). The NIGHTLY prerelease
+  `v0.4.<run>` (versionName `0.4.<run>`, versionCode `2000+run`, run = ci.yml's own monotonic
+  run number - releases MUST stay in ci.yml, a separate workflow would reset the counter and
+  regress versionCode) is cut by a DAILY CRON (10:30 UTC) that skips when main has not moved
+  since the last v0.* tag, or on demand via `gh workflow run ci.yml` (`-f force=true` recuts
+  the same code) - the in-car "fix it now" path is push to main + dispatch. **`canary` is the
+  working branch**: Claude pushes there freely, batches assemble there, and merging/pushing
+  canary to main is the deliberate release-worthy act. Obtainium nightly users opt in with
   "include prereleases". **Docs-only pushes don't run CI or cut a nightly (2026-07-09):**
   `paths-ignore` skips markdown/docs/LICENSE/fdroid-metadata/issue-template changes (a mixed
   docs+code push still builds - it skips only when EVERY changed file matches). Workflow-file
