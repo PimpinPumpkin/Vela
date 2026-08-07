@@ -24,9 +24,9 @@ import kotlin.math.cos
 @Singleton
 class MockMapDataSource @Inject constructor() : MapDataSource {
 
-    override suspend fun search(query: String, near: LatLng?, spanMeters: Double?): SearchResult {
+    override suspend fun search(query: String, near: LatLng?, spanMeters: Double?, rankFrom: LatLng?): SearchResult {
         delay(150) // pretend it's a network call
-        val center = near ?: SF
+        val center = rankFrom ?: near ?: SF
         val seeds = if (query.isBlank()) SAMPLES else listOf(query to "search result") + SAMPLES
         val places = seeds.mapIndexed { i, (name, category) ->
             val loc = center.offset(metersN = (i - 3) * 180.0, metersE = ((i * 5) % 7 - 3) * 200.0)

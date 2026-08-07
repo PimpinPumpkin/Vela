@@ -482,6 +482,7 @@ class MapViewModel @Inject constructor(
         val voicePrefs = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
         val savedSpeed = voicePrefs.getFloat("voice_speed", calibration.current().defaultVoiceSpeed)
         voice.setRate(savedSpeed) // relay the saved rate to the AOSP TTS engine at startup
+        voice.setVolume(voicePrefs.getFloat("voice_volume", 1.0f)) // + the guidance volume (issue #245)
         // Spoken directions on/off is PERSISTENT: the Settings toggle and the in-nav mute
         // button share the one pref, so a muted choice survives restarts.
         if (!voicePrefs.getBoolean("spoken_directions", true)) {
@@ -1028,7 +1029,7 @@ class MapViewModel @Inject constructor(
                     runCatching { addressStore.geocode(term, near, limit = 3) }.getOrDefault(emptyList())
                 }
             } else null
-            val res = runCatching { dataSource.search(term, near, spanM0).places }.getOrDefault(emptyList())
+            val res = runCatching { dataSource.search(term, near, spanM0, rankFrom = rankBias(near)).places }.getOrDefault(emptyList())
             val photon = photonDeferred?.await().orEmpty()
             val localAddrs = localDeferred?.await().orEmpty()
             if (_state.value.query.trim() == term) { // ignore if the query changed meanwhile
@@ -1426,6 +1427,15 @@ class MapViewModel @Inject constructor(
     // before the map has settled a centre.
     fun search() = runSearch(_state.value.query.trim(), plausibleBias(mapCenter) ?: plausibleBias(_state.value.myLocation))
 
+    /** Rank results from the USER when they are searching where they are (within ~50 km of the
+     *  viewport), else from the viewport centre. Fixes the "results ordered around some weird
+     *  point" feel: the viewport stays the SEARCH AREA, but the order and the shown distances
+     *  no longer reshuffle around wherever the screen happens to be centred. */
+    private fun rankBias(near: LatLng?): LatLng? {
+        val me = plausibleBias(_state.value.myLocation) ?: return null
+        return me.takeIf { near == null || it.distanceTo(near) < 50_000.0 }
+    }
+
     /** Re-run the current query biased to the area the user has panned to. */
     fun searchThisArea() = runSearch(_state.value.query.trim(), plausibleBias(mapCenter))
 
@@ -1598,7 +1608,7 @@ class MapViewModel @Inject constructor(
                 // see (user 2026-07-11). Span = the visible box's vertical extent.
                 val vp = viewport
                 val spanM = vp?.let { LatLng(it[0], it[1]).distanceTo(LatLng(it[2], it[1])) }
-                val res = dataSource.search(q, near, spanM)
+                val res = dataSource.search(q, near, spanM, rankFrom = rankBias(near))
                 if (res.places.isNotEmpty()) {
                     // ADDRESS queries: the on-device geocoder's exact house-number hits lead even
                     // when Google returned results (user 2026-07-15) - Google's keyless ranking
@@ -4237,6 +4247,16 @@ class MapViewModel @Inject constructor(
     }
 
     /** Adjust the spoken-directions speed by [delta] (clamped 0.5–2.0×), persist, apply, and preview. */
+    /** Guidance volume tier (issue #245): persisted multiplier the neural voice applies to its
+     *  own PCM (boost possible) and the system TTS takes capped at 1.0 (Android can only
+     *  attenuate). Auditions the nav sample so the change is heard immediately. */
+    fun setVoiceVolume(v: Float) {
+        val vol = v.coerceIn(0.2f, 3.0f)
+        settingsPrefs.edit().putFloat("voice_volume", vol).apply()
+        voice.setVolume(vol)
+        voice.speak(appContext.getString(R.string.mapvm_voice_sample), interrupt = true)
+    }
+
     fun setVoiceSpeed(delta: Float) {
         var s = (_state.value.voiceSpeed + delta).coerceIn(0.5f, 2.0f)
         s = Math.round(s * 20f) / 20f // snap to 0.05 so it can't drift off exactly 1.00

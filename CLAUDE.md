@@ -446,6 +446,12 @@ Defaults that make the safe path the easy one:
   SAME thresholds `trafficEtaColor` uses (>1.4 heavy red, >1.15 moderate amber, else light green) -
   words back up the colour for colour-blind users. Ratio-less live routes keep the plain "live
   traffic"; keep the thresholds in lockstep if either side changes.
+- **Guidance volume (2026-08-08, issue #245):** Settings > Voice "Guidance volume" chips
+  (Softer 0.6 / Normal 1.0 / Louder 1.6 / Loudest 2.2; pref `voice_volume`). The neural voice
+  applies it as a plain gain over its float PCM hard-clipped at full scale (speech rarely peaks
+  there, so the boost stays clean); the system-TTS path takes `KEY_PARAM_VOLUME` capped at 1.0 -
+  Android can only ATTENUATE system voices, which the hint says. `MapViewModel.setVoiceVolume`
+  persists + relays + auditions the nav sample; init relays the saved value.
 - **Voice install/fallback never auto-speaks (2026-07-10):** `selectVoice(id, audition)` only
   auditions the nav sample on an EXPLICIT library pick ("Use" button); the download-completion
   (firstEver) and delete-fallback paths pass audition=false - a phone that starts talking on its
@@ -1479,7 +1485,13 @@ architecture note.
 - **Search bias sanity (2026-07-19):** a no-GPS device (WiFi tablet) never moves the camera off
   MapLibre's 0,0 default, and search/suggest biased to null island. `plausibleBias()` in
   MapViewModel discards any bias point within ~50 km of 0,0 - keep new "near" consumers behind
-  it.
+  it. **Rank-from-you (2026-08-08, the "results ordered around some weird point" report):**
+  `MapDataSource.search` grew `rankFrom` - the point the result ORDER and shown distances are
+  computed from; the pb REQUEST bias stays `near` (the viewport is still the search area).
+  `MapViewModel.rankBias(near)` passes the user's location when it is within ~50 km of the
+  viewport, so a local search sorts and labels distances from YOU instead of reshuffling
+  around wherever the screen is centred; browsing a far city keeps viewport-centre ranking.
+  Wired at runSearch + the suggest fetch; searchAlongRoute keeps its route-midpoint bias.
 - **Local suggestions (issue #180, 2026-07-19):** `onQueryChange` sets `localSuggestions` from
   `localMatches()` SYNCHRONOUSLY (recents searches + viewed places + list/saved places, substring
   match) BEFORE the debounced network fetch - that is why they are instant and the only thing that
@@ -1870,7 +1882,15 @@ architecture note.
   spike filters self-latch (a down-glitch to 0 then rejects every real speed as an up-spike forever).
 - **Avoid tolls / avoid highways (2026-07-11):** two sticky FilterChips in the route
   chooser (DRIVE only; prefs `avoid_tolls`/`avoid_highways`, seeded in routeToSelected like
-  the sticky mode). PLUMBING: `MapDataSource.directions`/`nameRoute` + `RouteEngine.route`
+  the sticky mode). **2026-08-08 (Reddit reports "just sat there" / "still routed through the
+  motorway"):** the on-device avoid attempt is BOUNDED (`AVOID_ONDEVICE_TIMEOUT_MS` 4 s, an
+  UNSTRUCTURED async on purpose - a structured child would pin coroutineScope open until the
+  non-cancellable native compute ends and defeat the timeout; the orphan finishes and is
+  discarded) because the obf engine can spend many seconds on a long route; and routes the
+  online chain produced while a toggle was on carry `Route.avoidNotHonored` (set in both the
+  single-dest and multi-stop paths, never on the on-device result) - DirectionsPanel shows
+  `place_avoid_not_honored` under the chips when EVERY route carries it, so a toggled avoid is
+  never silently ignored. PLUMBING: `MapDataSource.directions`/`nameRoute` + `RouteEngine.route`
   carry the flags end to end. The public FOSSGIS OSRM REJECTS `exclude=` (probed 2026-07-11:
   InvalidValue - its profiles lack excludable classes; routeOsrm bails on any 4xx instead
   of retrying, AND `OSRM_SUPPORTS_EXCLUDE=false` keeps the param OFF entirely - sending it
