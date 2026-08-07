@@ -78,8 +78,10 @@ There's also a one-page tour at
   included, reviews you can search, photo galleries, busy times, phone and
   website, with a warning if a place would be closed when you arrive.
 - **Zero Google on your phone, and almost zero in your life.** No Play Services,
-  no account, no app key, no ads, no GCM/FCM, no Play Integrity. Google never sees your GPS trace, your map browsing, or who
-  you are. The full breakdown is in the [Privacy](#privacy) section below.
+  no account, no app key, no ads, no GCM/FCM, no Play Integrity. Google never sees
+  your map browsing, your saved places, or who you are; your GPS trail stays on the
+  phone, with only anonymous re-route and traffic checks carrying a position while
+  you navigate. The full breakdown is in the [Privacy](#privacy) section below.
 - **Flock cameras, on the map.** Mapped ALPR surveillance cameras (the
   community DeFlock project's OpenStreetMap data) draw out of the box, and the
   optional **Settings → Map → Avoid surveillance cameras** counts the cameras on
