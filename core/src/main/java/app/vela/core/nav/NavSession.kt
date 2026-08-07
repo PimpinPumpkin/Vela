@@ -610,15 +610,19 @@ class NavSession @Inject constructor(
             // A reroute that doesn't actually reach the destination is a bad result — keep guiding on the
             // current route rather than swapping to a truncated/wrong one. (Guard unchanged: the route still
             // ends at the same final dest even with waypoints in between.)
-            // HARD DEADLINE on the fetch (2026-07-21, real-drive hang): directions() stacks retry
-            // ladders (OSRM 3x + Google 3x, each with its own timeout, plus the traffic snap), so a
-            // flaky cell link could hold this job for a minute or more — and the single-flight guard
+            // HARD DEADLINE on the fetch (2026-07-21, real-drive hang): a slow fetch could hold
+            // this job for a minute or more — and the single-flight guard
             // above drops every new RerouteNeeded while it runs, which read as "the second reroute
             // hung" (the driver had to kill nav). A reroute computed from a position that old is
             // stale anyway; past the deadline, fail into the same retry-while-deviated path below
             // so the next qualifying fix fires a FRESH request from where the car actually is.
+            // urgent = single-shot fetches, no divergence snap (issues #185/#236): the full
+            // planning ladder regularly outlived this deadline on a weak link, so the timeout
+            // cancelled work that was about to succeed and the driver sat unrerouted through
+            // repeated attempts. A lean route lands in seconds; the recheck loop restores
+            // traffic/steps quality afterwards.
             val r = kotlinx.coroutines.withTimeoutOrNull(REROUTE_FETCH_TIMEOUT_MS) {
-                runCatching { dataSource.directions(loc, dest, mode, remainingStops.map { it.location }) }
+                runCatching { dataSource.directions(loc, dest, mode, remainingStops.map { it.location }, urgent = true) }
                     .getOrNull()?.firstOrNull()?.takeIf { it.reaches(dest) }
             }
             if (gen != sessionGen) return@launch // session ended / restarted while fetching — drop it

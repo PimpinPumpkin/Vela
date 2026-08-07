@@ -87,6 +87,9 @@ interface MapDataSource {
         // honour them (the fallback still routes rather than failing).
         avoidTolls: Boolean = false,
         avoidHighways: Boolean = false,
+        // Mid-drive reroute: single-shot fetches, no divergence snap — a fast usable route now
+        // beats a polished one after the reroute deadline (the recheck loop upgrades it later).
+        urgent: Boolean = false,
     ): List<Route>
 
     /** Name a PROVISIONAL alternate ([Route.provisional]) — the user picked it to drive, so turn its

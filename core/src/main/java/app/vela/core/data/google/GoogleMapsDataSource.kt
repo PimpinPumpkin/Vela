@@ -450,14 +450,21 @@ class GoogleMapsDataSource @Inject constructor(
         waypoints: List<LatLng>,
         avoidTolls: Boolean,
         avoidHighways: Boolean,
+        urgent: Boolean,
     ): List<Route> = io {
+        // Mid-drive reroutes are URGENT: one shot per source, no divergence snap, no alternates
+        // polish. The retry ladders below (3x OSRM + 3x Google with backoff) are right for a
+        // planning fetch but can hold a reroute past NavSession's hard deadline on a flaky cell
+        // link, so the fetch gets cancelled mid-flight and the driver waits on the next attempt
+        // (issues #185/#236). The recheck loop upgrades the lean result minutes later anyway.
+        val tries = if (urgent) 1 else 3
         // Multi-stop: route OSRM straight THROUGH the stops (routeVia filters the spurious per-via
         // arrive/depart into one continuous trip), then overlay Google's live in-traffic ETA ratio for the
         // whole origin→dest so the time is traffic-aware. A waypointed trip is a single path — no alternates.
         if (waypoints.isNotEmpty()) {
             return@io coroutineScope {
                 val viaD = async { RouteGeometry.routeVia(http, listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways) }
-                val gD = async { googleDirectionsRetried(origin, destination, mode) }
+                val gD = async { googleDirectionsRetried(origin, destination, mode, tries) }
                 val via = viaD.await().firstOrNull()
                 // OSRM unreachable → route the legs on-device (origin→w1→…→dest chained), like the
                 // single-destination path's offline fallback; only then fall to Google's DIRECT route
@@ -484,8 +491,8 @@ class GoogleMapsDataSource @Inject constructor(
             // Google's keyless directions endpoint hands back ABBREVIATED steps for longer routes
             // (a 6-mi route came back with 2 of ~10 turns), so Google is only the FALLBACK + the
             // live-traffic source. Fetch both in parallel so the traffic round-trip is free.
-            val openD = async { RouteGeometry.route(http, origin, destination, mode, avoidTolls, avoidHighways) }
-            val googleD = async { googleDirectionsRetried(origin, destination, mode) }
+            val openD = async { RouteGeometry.route(http, origin, destination, mode, avoidTolls, avoidHighways, tries) }
+            val googleD = async { googleDirectionsRetried(origin, destination, mode, tries) }
             val open = openD.await()
             val google = googleD.await()
             val gTop = google.firstOrNull()
@@ -503,7 +510,7 @@ class GoogleMapsDataSource @Inject constructor(
             // than OSRM's free-flow one — i.e. Google rerouted around a jam — re-run OSRM forced
             // through Google's path so we follow the traffic-smart route WITH full street-named steps.
             // (Only on real divergence, so the normal case stays the fast single OSRM call.)
-            val trafficRoute = if (open.isNotEmpty() && gTop != null && gTop.polyline.size >= 5 &&
+            val trafficRoute = if (!urgent && open.isNotEmpty() && gTop != null && gTop.polyline.size >= 5 &&
                 RouteGeometry.divergent(open.first(), gTop)) {
                 RouteGeometry.routeVia(http, listOf(origin) + RouteGeometry.sampleVias(gTop.polyline) + destination, mode, avoidTolls, avoidHighways)
                     .firstOrNull()
@@ -690,14 +697,14 @@ class GoogleMapsDataSource @Inject constructor(
      *  drastically between restarts (user real-drive report 2026-07-14). Two short backoff
      *  retries recover the routine blips; a genuinely unreachable Google still degrades to
      *  free-flow exactly as before, just honestly rarer. */
-    private suspend fun googleDirectionsRetried(origin: LatLng, destination: LatLng, mode: TravelMode): List<Route> {
+    private suspend fun googleDirectionsRetried(origin: LatLng, destination: LatLng, mode: TravelMode, tries: Int = 3): List<Route> {
         var routes: List<Route> = emptyList()
-        for (attempt in 0..2) {
+        for (attempt in 0 until tries) {
             if (attempt > 0) kotlinx.coroutines.delay(300L * attempt)
             routes = runCatching { googleDirections(origin, destination, mode) }.getOrNull().orEmpty()
             if (routes.isNotEmpty()) return routes
         }
-        diag.record("directions", "google directions empty after 3 attempts — trafficless fetch")
+        diag.record("directions", "google directions empty after $tries attempt(s) — trafficless fetch")
         return routes
     }
 
