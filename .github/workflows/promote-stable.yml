@@ -38,10 +38,15 @@ jobs:
           # v0.<minor>.<run> and run is globally monotonic, so numeric-sorting the
           # final component orders releases across minor bumps too).
           runof() { echo "${1##*.}"; }
-          NIGHTLY="$(gh release list --limit 40 --json tagName,isPrerelease \
-            --jq '[.[] | select(.isPrerelease)][0].tagName // empty')"
-          STABLE="$(gh release list --limit 100 --json tagName,isPrerelease \
-            --jq '[.[] | select(.isPrerelease | not)][0].tagName // empty')"
+          # App releases ONLY: the repo also hosts infra file releases (obf-runtime, tts-runtime,
+          # routing-graphs, ...) whose tags are not versions. An unbounded "newest prerelease"
+          # picked obf-tools the week it was created and promoted IT to stable, which knocked the
+          # real stable off releases/latest and starved the updater and the F-Droid build of an
+          # APK. Every release query here must bound to the v0.* tag scheme.
+          NIGHTLY="$(gh release list --limit 100 --json tagName,isPrerelease \
+            --jq '[.[] | select(.isPrerelease) | select(.tagName | test("^v0\\.[0-9]+\\.[0-9]+$"))][0].tagName // empty')"
+          STABLE="$(gh release list --limit 200 --json tagName,isPrerelease \
+            --jq '[.[] | select(.isPrerelease | not) | select(.tagName | test("^v0\\.[0-9]+\\.[0-9]+$"))][0].tagName // empty')"
           if [ -z "$NIGHTLY" ]; then
             echo "No nightly to promote."
             exit 0
