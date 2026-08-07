@@ -1,12 +1,24 @@
 name: CI
 
-# Builds + tests the APK on every push to main and on PRs. Each push to main is
-# published as a normal, versioned GitHub release (v0.1.<run>) so update trackers
-# like Obtainium "just work" — no pre-releases, no "include prereleases" toggle,
-# plain-semver versionName. The APK is also uploaded as a workflow artifact.
+# Three channels (2026-08-07). Pushes to main and canary BUILD + TEST only (the APK
+# rides as a workflow artifact) - a push no longer mints a release, so a burst of
+# pushes can never spam the release page again. The NIGHTLY prerelease is cut once
+# a day by the cron below (skipped when main has not moved since the last nightly),
+# or on demand via workflow_dispatch when a fix genuinely cannot wait for the cron.
+# The weekly promote-stable workflow still flips the newest nightly to stable.
+# canary is the working branch: batches assemble there and merge to main when ready.
 on:
+  schedule:
+    # Daily nightly cut, 10:30 UTC. Publishes only if main moved since the last v0.* tag.
+    - cron: '30 10 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Cut a release even if main has not moved since the last one
+        type: boolean
+        default: false
   push:
-    branches: [ main ]
+    branches: [ main, canary ]
     # Docs-only pushes don't build or cut a nightly - nothing in the APK changed, and
     # every push was minting a release (a dozen doc commits on 2026-07-09 became a dozen
     # identical nightlies). A push that MIXES docs and code still builds: paths-ignore
@@ -156,20 +168,30 @@ jobs:
           if-no-files-found: error
 
       - name: Publish nightly (prerelease)
-        # Every push to main → a PRERELEASE (the nightly channel). Obtainium users who
-        # want nightlies turn on "include prereleases"; everyone else keeps tracking the
-        # latest stable release, which the weekly promote-stable workflow produces by
-        # flipping the newest healthy nightly to a full release (same APK, no rebuild).
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        # The nightly channel: ONE prerelease per day from the cron (or an on-demand
+        # dispatch for an urgent fix), never per push. Obtainium users who want nightlies
+        # turn on "include prereleases"; everyone else keeps tracking the latest stable
+        # release, which the weekly promote-stable workflow produces by flipping the
+        # newest healthy nightly to a full release (same APK, no rebuild).
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Nothing new since the last nightly -> no release (the cron fires daily
+          # regardless; force=true on a manual dispatch overrides for a same-code recut).
+          LAST="$(git tag -l 'v0.[0-9]*' --sort=-v:refname | head -n1)"
+          if [ -n "$LAST" ] && \
+             [ "$(git rev-parse "${LAST}^{commit}")" = "$(git rev-parse HEAD)" ] && \
+             [ "${{ github.event.inputs.force || 'false' }}" != "true" ]; then
+            echo "main has not moved since $LAST - no nightly today."
+            exit 0
+          fi
           VER="0.4.${{ github.run_number }}"
           cp app/build/outputs/apk/release/app-release.apk "vela-maps-v${VER}.apk"
           # Build the changelog from the commit subjects since the previous release. Our commit
           # subjects are written as plain-language changelog lines, so this reads as real release
           # notes (what Obtainium shows people), not a raw hash dump.
-          PREV="$(git tag -l 'v0.[0-9]*' --sort=-v:refname | head -n1)"
+          PREV="$LAST"
           if [ -n "$PREV" ]; then
             LOG="$(git log --no-merges --pretty=format:'- %s' "${PREV}..HEAD")"
             COMPARE="**Full changelog:** https://github.com/${{ github.repository }}/compare/${PREV}...v${VER}"
@@ -198,7 +220,7 @@ jobs:
         # address-overlays, building-overlays, asr-models) are prereleases too and
         # host live download assets - only v0.* tags are app releases; never widen
         # this filter.
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
