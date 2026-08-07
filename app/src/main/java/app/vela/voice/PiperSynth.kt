@@ -84,6 +84,14 @@ class PiperSynth @Inject constructor(
         context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
             .getFloat("voice_speed", calibration.current().defaultVoiceSpeed).coerceIn(0.5f, 2.0f)
 
+    /** Guidance-volume multiplier (Settings > Voice, issue #245): the neural voice was easy to
+     *  bury under music because the synthesized PCM peaks well below full scale. Applied as a
+     *  plain gain over the float samples, hard-clipped at full scale - speech rarely peaks
+     *  there, so the boosted settings stay clean and only the loudest syllables flatten. */
+    private fun volume(): Float =
+        context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+            .getFloat("voice_volume", 1.0f).coerceIn(0.2f, 3.0f)
+
     override fun warmUp() {
         // No `tts != null` short-circuit: ensureLoaded must be able to REBUILD when the selected voice
         // changed. It's idempotent per-voice (returns the current engine when the right voice is up), so
@@ -202,6 +210,10 @@ class PiperSynth @Inject constructor(
                     if (gapAfter > 0f) chunks.add(FloatArray((sampleRate * gapAfter).toInt())) // spliced silence
                 }
                 val samples = concat(chunks)
+                val vol = volume()
+                if (vol != 1.0f) {
+                    for (i in samples.indices) samples[i] = (samples[i] * vol).coerceIn(-1f, 1f)
+                }
                 val genMs = android.os.SystemClock.elapsedRealtime() - t0
                 if (myGen != generation) return@execute
                 if (samples.isNotEmpty()) {

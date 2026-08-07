@@ -34,6 +34,12 @@ class VoiceGuide @Inject constructor(
     /** Speech-rate multiplier (1.0 = normal, >1 = faster), settable live from Settings. Applied to the
      *  Android TextToSpeech engine; the neural voice reads its own `voice_speed` pref per utterance. */
     @Volatile private var speechRate = 0.97f
+    // Guidance volume (issue #245). The system-TTS path can only ATTENUATE (Android's
+    // KEY_PARAM_VOLUME caps at 1.0); the boost tiers act on the neural voice's own PCM.
+    @Volatile private var volume = 1.0f
+    fun setVolume(v: Float) {
+        volume = v.coerceIn(0.2f, 3.0f)
+    }
     fun setRate(rate: Float) {
         speechRate = rate.coerceIn(0.5f, 2.0f)
         tts?.setSpeechRate(speechRate)
@@ -431,7 +437,10 @@ class VoiceGuide @Inject constructor(
         val mode = if (interrupt) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
         // Same foreign-name romanizing as the neural path (issue #184): the system voice for [t]
         // is Latin-script for the Latin languages, so a foreign road name would otherwise be lost.
-        val result = engine.speak(forSpeech(SpokenScript.forVoice(text, t, roadNameLatin)), mode, null, "vela-${text.hashCode()}")
+        val params = android.os.Bundle().apply {
+            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, volume.coerceAtMost(1.0f))
+        }
+        val result = engine.speak(forSpeech(SpokenScript.forVoice(text, t, roadNameLatin)), mode, params, "vela-${text.hashCode()}")
         if (result == TextToSpeech.ERROR) {
             // The utterance was never enqueued, so NONE of the onDone/onStop/onError callbacks that
             // release focus will ever fire for it — roll back the acquire here or music stays ducked
