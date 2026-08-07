@@ -4029,6 +4029,18 @@ private fun ensureSatelliteDeep(style: Style, on: Boolean, deep: Int) {
         // Same dim + desaturate as the base imagery so labels stay readable (see ensureSatellite).
         PropertyFactory.rasterBrightnessMax(0.80f),
         PropertyFactory.rasterSaturation(-0.1f),
+        // CROSS-FADE the deep tiles in over ~a zoom level instead of popping: Esri's z20+ metro
+        // tiles come from a DIFFERENT capture program (newer aerials) than the z17-19 satellite
+        // mosaic, so the handover is an era/lighting flip in the data itself - Google's app has
+        // the same seam and hides it exactly this way. Below the fade the base (era A) shows
+        // through; by z19.6 the deep capture (era B) fully owns the view.
+        PropertyFactory.rasterOpacity(
+            Expression.interpolate(
+                Expression.linear(), Expression.zoom(),
+                Expression.stop(18.6f, 0f),
+                Expression.stop(19.6f, 1f),
+            ),
+        ),
     )
     layer.minZoom = SAT_DEEP_MIN_ZOOM
     style.addLayerAbove(layer, base.id)

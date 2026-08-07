@@ -1002,7 +1002,10 @@ Defaults that make the safe path the easy one:
   The deep source id carries provider+level so an area change swaps the source instead of
   stretching a stale cap; Google upsamples rather than 404s outside cities (probed), so the
   fallback can't paint holes, and open-ocean 404s fall back to the overzoomed parent like any
-  failed raster tile. (4) **Road-name halos are
+  failed raster tile. The deep layer CROSS-FADES in (rasterOpacity 0 at z18.6 -> 1 at z19.6):
+  Esri's z20+ metro tiles are a different capture program than the z17-19 mosaic, so the
+  handover is an era/lighting flip in the DATA - the fade blends the seam like Google does
+  (user noticed the pop, 2026-08-08). (4) **Road-name halos are
   WIDER than the blanket** (2026-07-09): applyDark/applyLight give the three `highway-name-*`
   symbol layers `textHaloWidth 1.9` vs the 1.1 every other label gets - route lines and the
   dotted walking line run right under street names and made them unreadable; the fatter halo
