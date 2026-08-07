@@ -349,6 +349,7 @@ fun VelaMapView(
     trafficOn: Boolean,
     transitOn: Boolean = false, // highlight rail (train + subway/tram) lines from the basemap tiles
     satelliteOn: Boolean = false, // Esri World Imagery raster under the symbol layers (map button)
+    satDeep: Int = 0, // deep imagery for this area (issue #244): 0 none, 20..22 Esri native level, -1 Google fallback
     topographyOn: Boolean = false, // terrain-relief hillshade; OFF by default (Google-style)
     previewTarget: LatLng?,
     navOverviewTick: Int = 0, // bumped by the in-nav Overview button — fly the camera out to the whole route
@@ -833,6 +834,15 @@ fun VelaMapView(
             warmPending[0]?.let { warmHandler.removeCallbacks(it) }
             warmSnapshotter[0]?.cancel(); warmSnapshotter[0] = null
         }
+    }
+
+    // Deep satellite imagery (issue #244): the base source is capped at z19, so past that the
+    // renderer stretched the z19 tile. Where the VM's availability probe found deeper Esri tiles,
+    // a second raster layer serves them; where Esri tops out, Google's imagery tiles fill the deep
+    // zooms instead. Both slot directly above the base imagery, below the ghost roads + labels.
+    LaunchedEffect(satelliteOn, satDeep, styleRef) {
+        val style = styleRef ?: return@LaunchedEffect
+        runCatching { ensureSatelliteDeep(style, satelliteOn, satDeep) }
     }
 
     LaunchedEffect(buildingOverlays, styleRef, darkTheme) {
@@ -3986,6 +3996,44 @@ private const val SAT_ROADS_LAYER = "vela-sat-roads"
 // while the layer is on). z/y/x order; 19 is the safe global max.
 private const val SAT_TILES = "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
 
+private const val SAT_DEEP_LAYER = "vela-sat-deep"
+private const val SAT_DEEP_SRC = "vela-sat-deep-src" // suffixed with the provider+level so a change swaps cleanly
+// Google's imagery tiles (the same keyless surface the rest of the app scrapes) - the DEEP-ZOOM
+// FALLBACK only, used where Esri's native coverage stops at z19. Outside cities Google upsamples
+// rather than 404s, so the fallback never paints holes; true 404s (open ocean) fall back to the
+// overzoomed parent tile like any failed raster fetch.
+private const val SAT_G_TILES = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
+private const val SAT_DEEP_MIN_ZOOM = 18.4f // engage just before the base z19 tiles start visibly stretching
+
+/** The deep-imagery layer for the current area: Esri at its probed native max level, or the Google
+ *  fallback to z21. The source id carries provider+level, so moving between areas with different
+ *  coverage tears the stale source down instead of stretching its old cap. Idempotent like
+ *  [ensureSatellite]; `deep == 0` (or satellite off) removes everything. */
+private fun ensureSatelliteDeep(style: Style, on: Boolean, deep: Int) {
+    val wantId = when {
+        !on || deep == 0 -> null
+        deep == -1 -> "$SAT_DEEP_SRC-g"
+        else -> "$SAT_DEEP_SRC-esri-$deep"
+    }
+    val current = style.getLayer(SAT_DEEP_LAYER)
+    val currentSrc = style.sources.firstOrNull { it.id.startsWith(SAT_DEEP_SRC) }?.id
+    if (currentSrc == wantId && (current != null) == (wantId != null)) return
+    if (current != null) style.removeLayer(current)
+    style.sources.filter { it.id.startsWith(SAT_DEEP_SRC) }.forEach { runCatching { style.removeSource(it) } }
+    if (wantId == null) return
+    val base = style.getLayer(SAT_LAYER) ?: return // base imagery must exist to sit on
+    val tiles = if (deep == -1) SAT_G_TILES else SAT_TILES
+    val max = if (deep == -1) 21f else deep.toFloat()
+    style.addSource(RasterSource(wantId, TileSet("2.2.0", tiles).apply { maxZoom = max }, 256))
+    val layer = RasterLayer(SAT_DEEP_LAYER, wantId).withProperties(
+        // Same dim + desaturate as the base imagery so labels stay readable (see ensureSatellite).
+        PropertyFactory.rasterBrightnessMax(0.80f),
+        PropertyFactory.rasterSaturation(-0.1f),
+    )
+    layer.minZoom = SAT_DEEP_MIN_ZOOM
+    style.addLayerAbove(layer, base.id)
+}
+
 /** Satellite imagery under the SYMBOL stack: the raster covers the vector fills and road lines,
  *  but every label, POI, route line and Vela layer keeps drawing on top (hybrid look). Same
  *  add/remove idempotence as [ensureTransit]; removing restores the vector map untouched. */
@@ -4071,6 +4119,7 @@ private fun ensureSatellite(style: Style, on: Boolean) {
     } else if (!on && present) {
         runCatching { style.removeLayer(SAT_LAYER) }
         runCatching { style.removeLayer(SAT_ROADS_LAYER) }
+        runCatching { ensureSatelliteDeep(style, false, 0) } // deep imagery rides the base layer off
     }
 }
 

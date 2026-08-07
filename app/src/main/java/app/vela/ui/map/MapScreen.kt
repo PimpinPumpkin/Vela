@@ -1009,6 +1009,7 @@ fun MapScreen(
             trafficOn = Traffic.on.value,
             transitOn = app.vela.ui.TransitLayer.on.value,
             satelliteOn = app.vela.ui.SatelliteLayer.on.value,
+            satDeep = state.satDeep,
             topographyOn = app.vela.ui.Topography.on.value,
             previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
             navOverviewTick = navOverviewTick,

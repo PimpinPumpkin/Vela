@@ -991,7 +991,18 @@ Defaults that make the safe path the easy one:
   bundled `liberty-roboto.json` asset (which DOES pin a dated `planet/<snapshot>` path) is **parked +
   unused** - the `asset://`/`fromJson` path in `VelaMapView` is dead code kept only as reference (a bundled
   copy blanked the vector tiles on-device; see the project memory). Don't be misled by the stale path in
-  that asset. Verify basemap edits on-device in **both** themes. (4) **Road-name halos are
+  that asset. Verify basemap edits on-device in **both** themes. (3b) **Satellite deep zoom (2026-08-06, issue #244):** the base World_Imagery raster source is
+  capped at `maxZoom 19` (Esri's safe global max) and MapLibre STRETCHES the z19 tile past that -
+  the "blurry satellite" report. `MapViewModel.refreshSatDeep` probes Esri's `tilemap` availability
+  index (1x1 cell at the view centre, levels 22→21→20, area-cached box, fetch-fail caches nothing)
+  into `MapUiState.satDeep` (0 none / 20..22 Esri native level / -1 fallback), and
+  `ensureSatelliteDeep` in VelaMapView adds ONE extra raster layer above the base imagery:
+  Esri at its probed native level, or Google's `mt1.google.com/vt/lyrs=s` tiles (maxZoom 21) only
+  where Esri tops out at 19 - Esri is deliberately the primary everywhere it has data (user call).
+  The deep source id carries provider+level so an area change swaps the source instead of
+  stretching a stale cap; Google upsamples rather than 404s outside cities (probed), so the
+  fallback can't paint holes, and open-ocean 404s fall back to the overzoomed parent like any
+  failed raster tile. (4) **Road-name halos are
   WIDER than the blanket** (2026-07-09): applyDark/applyLight give the three `highway-name-*`
   symbol layers `textHaloWidth 1.9` vs the 1.1 every other label gets - route lines and the
   dotted walking line run right under street names and made them unreadable; the fatter halo
