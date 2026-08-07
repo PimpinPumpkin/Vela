@@ -252,6 +252,11 @@ fun MapScreen(
     // top of the pin or the route (the directions panel is tall — fit the route above it).
     // Bumped by the in-nav Overview button; VelaMapView fits the whole route on each bump.
     var navOverviewTick by remember { mutableStateOf(0) }
+    var navRecenterTick by remember { mutableStateOf(0) }
+    // A pinch/shove during nav sets a zoom/tilt override WITHOUT detaching the camera, so
+    // navCameraDetached never flips and no Re-center showed (issue #238); the map reports the
+    // override up so the button appears for that case too.
+    var navZoomOverride by remember { mutableStateOf(false) }
     // The route chooser reports its minimized state up: with only the Start bar left on
     // screen the route fit gets nearly the whole map back, so it re-frames closer instead
     // of staying at the zoomed-out framing the full-height panel needed (user 2026-07-14).
@@ -1007,6 +1012,8 @@ fun MapScreen(
             topographyOn = app.vela.ui.Topography.on.value,
             previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
             navOverviewTick = navOverviewTick,
+            navRecenterTick = navRecenterTick,
+            onNavZoomOverride = { navZoomOverride = it },
             onPoiTap = vm::onPoiTap,
             onMarkerTap = { i -> displayedPlaces(state).getOrNull(i)?.let(vm::selectPlace) },
             parkingSpot = state.parkingSpot,
@@ -1537,9 +1544,12 @@ fun MapScreen(
                     .navigationBarsPadding()
                     .padding(end = 16.dp, bottom = navBarClearance),
             ) {
-                if (state.navCameraDetached || state.previewStepIndex != null) {
+                if (state.navCameraDetached || state.previewStepIndex != null || navZoomOverride) {
                     FloatingActionButton(
-                        onClick = vm::recenterNav,
+                        onClick = {
+                            vm.recenterNav()
+                            navRecenterTick++
+                        },
                         modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
                     ) { Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_recenter)) }
                 }
