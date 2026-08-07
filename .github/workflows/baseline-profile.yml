@@ -38,6 +38,16 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Fetch the TTS runtime AAR
+        # Same fetch as ci.yml: the sherpa-onnx AAR is gitignored and hosted on the tts-runtime
+        # release, and :app does not build without it (the Aug 2026 cron failed exactly here).
+        run: |
+          mkdir -p app/libs
+          curl -fSL -o app/libs/sherpa-onnx-1.13.3.aar \
+            "https://github.com/${{ github.repository }}/releases/download/tts-runtime/sherpa-onnx-1.13.3.aar" \
+          || curl -fSL -o app/libs/sherpa-onnx-1.13.3.aar \
+            "https://github.com/PimpinPumpkin/Vela/releases/download/tts-runtime/sherpa-onnx-1.13.3.aar"
+
       - name: Generate baseline profile
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
