@@ -64,6 +64,10 @@ class NavSession @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var destination: LatLng? = null
     private var lastRecheckMs = 0L
+    // Fast-heal pacing for a DEGRADED route (abbreviated steps / no live traffic): reference of
+    // the route the counter was armed for + how many short-interval rechecks it has spent.
+    private var degradedRouteRef: Route? = null
+    private var degradedFastRechecks = 0
     private var tripStartMs = 0L
     private var recheckJob: Job? = null
     // Reroute discipline: SINGLE-FLIGHT (two racing fetches used to swap the route twice, last
@@ -420,13 +424,28 @@ class NavSession @Inject constructor(
         if (replayMode) return // hermetic replays never fetch live traffic/routes
         if (!liveRechecks) return // privacy opt-out: no periodic current-position requests
         val now = SystemClock.elapsedRealtime()
-        if (now - lastRecheckMs < RECHECK_INTERVAL_MS) return
+        // A DEGRADED adopted route (abbreviated steps from the Google fallback, or no live
+        // traffic) already has a silent heal below - but on the ~2 min cadence the driver sat
+        // with a nameless banner disagreeing with the blue line for minutes after a reroute
+        // (issue #237). While degraded, recheck on a short interval so the heal lands within
+        // seconds of the open router recovering; bounded to a few tries per route (then back to
+        // the normal cadence) so a genuinely offline/trafficless drive doesn't poll forever.
+        val currentRoute = _state.value.route
+        if (currentRoute !== degradedRouteRef) {
+            degradedRouteRef = currentRoute
+            degradedFastRechecks = 0
+        }
+        val degraded = currentRoute != null && (currentRoute.abbreviatedSteps || !currentRoute.hasLiveTraffic)
+        val fastHeal = degraded && degradedFastRechecks < DEGRADED_FAST_TRIES
+        val interval = if (fastHeal) DEGRADED_RECHECK_INTERVAL_MS else RECHECK_INTERVAL_MS
+        if (now - lastRecheckMs < interval) return
         if (nav.offRoute || nav.remainingDistance < MIN_RECHECK_DISTANCE_M) return
         if (recheckJob?.isActive == true) return
         // An offer is already on screen — don't fetch/re-speak over it every interval.
         if (_state.value.fasterRoute != null) return
         val dest = destination ?: return
         lastRecheckMs = now
+        if (fastHeal) degradedFastRechecks++
         // Named remainingStops (not `remaining`) — the launch body below declares `remaining` for the
         // remaining DURATION, which would shadow this and hand a future edit seconds instead of stops.
         val remainingStops = synchronized(stopLock) { stops.drop(passedStops) }
@@ -697,6 +716,8 @@ class NavSession @Inject constructor(
     // the tuning constants stay implementation detail by convention.
     companion object {
         const val RECHECK_INTERVAL_MS = 120_000L   // re-check traffic every ~2 min
+        const val DEGRADED_RECHECK_INTERVAL_MS = 20_000L // fast heal cadence while the route is degraded
+        const val DEGRADED_FAST_TRIES = 6          // ~2 min of fast heal attempts per degraded route
         // A recheck candidate whose sampled points all sit within this of the current route line
         // counts as the SAME course -> its fresh ETA recalibrates the shown arrival time. Tighter
         // than the 700 m divergence default: a parallel arterial can sit inside 700 m of a highway
