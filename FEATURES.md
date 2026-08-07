@@ -953,7 +953,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   to a JSON file from Settings (same flow as saved places). The system status-bar icons (clock, wifi,
   battery) now flip DARK in Vela's light theme - they were white-on-white and unreadable over the
   light map. And Settings -> "Include nightly builds" points the self-updater at the newest
-  prerelease instead of only stable, for users who want the freshest CI build.
+  prerelease instead of only stable, for users who want the freshest CI build. (Superseded
+  2026-08-07: the toggle is now the three-way "Update channel" picker, see the CI entry.)
 - ✅ **Parking history (2026-07-08, device-verified).** Every "save parking" is kept in a capped,
   newest-first history so an accidental overwrite is recoverable: **long-press the P button** for a
   restore menu, or **Settings → Parking history** to restore/delete individual spots. Clearing the
@@ -2109,7 +2110,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ No Google Play Services anywhere
 - ✅ Material 3 Compose UI; Hilt DI; R8 release builds
 - ✅ Public GitHub repo + local mirror + offline bundle
-- ✅ CI (GitHub Actions): every push to main builds + tests + signs the APK and publishes a **nightly prerelease** (`v0.4.<run>`, versionCode `2000+run`); a **weekly job promotes the newest nightly to the stable release** (same APK, no rebuild). Obtainium tracks stable with zero config; nightly users flip on "include prereleases". The in-app updater follows stable
+- ✅ CI (GitHub Actions), **three channels since 2026-08-07**: pushes to main and canary build + test + sign only; a **daily cron publishes the nightly prerelease** (`v0.4.<run>`, versionCode `2000+run`) when main moved, with an on demand dispatch for urgent fixes; a **weekly job promotes the newest nightly to the stable release** (same APK, no rebuild); and every push to the canary branch replaces the APK on the rolling `canary` release. Obtainium tracks stable with zero config; nightly users flip on "include prereleases"; canary rides the in-app updater (Settings > About > Update channel, three-way picker) or a manual download from the canary release page. The in-app updater follows the picked channel
 - ✅ **Every download can be cancelled, and the area download has ONE banner (2026-07-23).** Voice
   models, dictation engines, region graphs, place packs, the update APK and the map-area tile save
   all show a Cancel wherever their progress appears (map cards and every Settings site); cancelling

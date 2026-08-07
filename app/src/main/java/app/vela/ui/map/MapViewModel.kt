@@ -1214,9 +1214,9 @@ class MapViewModel @Inject constructor(
         val now = System.currentTimeMillis()
         if (now - prefs.getLong("last_update_check_ms", 0L) < 20 * 60 * 60_000L) return
         prefs.edit().putLong("last_update_check_ms", now).apply()
-        val nightly = prefs.getBoolean("update_nightly", false)
+        val channel = app.vela.update.SelfUpdater.channel(prefs)
         viewModelScope.launch {
-            val info = selfUpdater.check(app.vela.BuildConfig.VERSION_CODE, nightly) ?: return@launch
+            val info = selfUpdater.check(app.vela.BuildConfig.VERSION_CODE, channel) ?: return@launch
             if (info.versionCode <= prefs.getInt("update_dismissed_code", 0)) return@launch
             _state.update { it.copy(updateInfo = info) }
         }
@@ -1225,9 +1225,9 @@ class MapViewModel @Inject constructor(
     /** Settings "Check for updates" button — unthrottled, reports back via [onResult]
      *  (true = an update was found and the card is up; false = already current / check failed). */
     fun checkForUpdateNow(onResult: (Boolean) -> Unit) {
-        val nightly = settingsPrefs.getBoolean("update_nightly", false)
+        val channel = app.vela.update.SelfUpdater.channel(settingsPrefs)
         viewModelScope.launch {
-            val info = selfUpdater.check(app.vela.BuildConfig.VERSION_CODE, nightly)
+            val info = selfUpdater.check(app.vela.BuildConfig.VERSION_CODE, channel)
             if (info != null) _state.update { it.copy(updateInfo = info) }
             onResult(info != null)
         }

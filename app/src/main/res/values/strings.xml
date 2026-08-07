@@ -608,6 +608,11 @@
     <string name="map_list_saved">Saved “%1$s” to your lists</string>
     <string name="settings_update_nightly">Include nightly builds</string>
     <string name="settings_update_nightly_hint">Update to the newest nightly (prerelease) instead of only stable releases. Nightlies are fresher but less tested.</string>
+    <string name="settings_update_channel">Update channel</string>
+    <string name="settings_update_channel_stable">Stable (weekly)</string>
+    <string name="settings_update_channel_nightly">Nightly (daily)</string>
+    <string name="settings_update_channel_canary">Canary (development builds)</string>
+    <string name="settings_update_channel_hint">Stable gets one tested release a week. Nightly gets a build each day there are changes. Canary follows work in progress and can break at any time.</string>
     <string name="settings_lists_export_hint">Back up your lists to a file, or restore them on another device.</string>
     <string name="settings_lists_imported">Imported %1$d list(s)</string>
     <string name="settings_places_imported">Imported %1$d place(s)</string> <!-- format -->

@@ -157,7 +157,19 @@ Defaults that make the safe path the easy one:
   the same code) - the in-car "fix it now" path is push to main + dispatch. **`canary` is the
   working branch**: Claude pushes there freely, batches assemble there, and merging/pushing
   canary to main is the deliberate release-worthy act. Obtainium nightly users opt in with
-  "include prereleases". **Docs-only pushes don't run CI or cut a nightly (2026-07-09):**
+  "include prereleases". **Canary is ALSO a real update channel (2026-08-07):** every canary
+  push replaces the single APK on the fixed-tag rolling `canary` release (versionName
+  `0.4.<run>-canary`, same monotonic `2000+run` versionCode line as every channel so switching
+  channels is always an upgrade; the tag is deliberately NOT v0.* so the nightly/stable
+  queries, the prune and F-Droid never see it). The in-app updater is channel-aware:
+  Settings > About > "Update channel" picks Stable/Nightly/Canary (pref `update_channel`,
+  migrated from the old `update_nightly` boolean via `SelfUpdater.channel()`); the canary
+  check reads versionName/versionCode out of the canary release NOTES (the tag never changes)
+  and falls back to the newest nightly when that is ahead, so a stale canary never strands
+  anyone. Obtainium CANNOT cleanly track canary (its version detection keys on tags and the
+  canary tag is constant) - canary rides the in-app updater or a manual grab from the release
+  page; that containment is deliberate, so prerelease Obtainium users never get surprise
+  canary builds. **Docs-only pushes don't run CI or cut a nightly (2026-07-09):**
   `paths-ignore` skips markdown/docs/LICENSE/fdroid-metadata/issue-template changes (a mixed
   docs+code push still builds - it skips only when EVERY changed file matches). Workflow-file
   edits deliberately still build. `[skip ci]` in a commit subject is the manual suppressor;

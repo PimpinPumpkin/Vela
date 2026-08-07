@@ -3614,7 +3614,15 @@ private fun ReviewRow(review: Review, ink: Color, dim: Color, onPhotoTap: (List<
                 overflow = TextOverflow.Ellipsis,
                 onTextLayout = { if (!expanded) overflows = it.hasVisualOverflow },
                 modifier = Modifier.padding(top = 6.dp)
-                    .then(if (overflows && !expanded) Modifier.clickable { expanded = true } else Modifier),
+                    // Touch-only convenience: the More label below is the focusable D-pad path,
+                    // so the body tap must not become an invisible focus stop (dpad audit).
+                    .then(
+                        if (overflows && !expanded) {
+                            Modifier.pointerInput(Unit) {
+                                detectTapGestures { expanded = true }
+                            }
+                        } else Modifier,
+                    ),
             )
             if (overflows) {
                 Text(

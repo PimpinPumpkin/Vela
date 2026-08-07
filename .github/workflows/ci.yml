@@ -131,7 +131,14 @@ jobs:
         # steps the release line decisively over that pollution. Keep local dev
         # builds BELOW 1000 (e.g. -PappVersionCode=1) so this can't recur.
         run: |
-          echo "name=0.4.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          # Canary builds carry a -canary suffix in the NAME so About/version screens read
+          # honestly; the CODE stays on the one monotonic 2000+run line for every channel, so
+          # moving between canary/nightly/stable is always a plain upgrade for the installer.
+          if [ "${{ github.ref }}" = "refs/heads/canary" ]; then
+            echo "name=0.4.${{ github.run_number }}-canary" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=0.4.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          fi
           echo "code=$(( 2000 + ${{ github.run_number }} ))" >> "$GITHUB_OUTPUT"
 
       - name: Fetch TTS runtime AAR
@@ -166,6 +173,27 @@ jobs:
           name: vela-maps-apk
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
+
+      - name: Publish canary build (rolling release)
+        # The canary CHANNEL: every push to the canary branch replaces the single APK on the
+        # fixed-tag `canary` release. Not a v0.* tag on purpose - the nightly/stable queries,
+        # the prune and the F-Droid build all bound to v0.* and never see it, and the in-app
+        # updater reads the versionCode line out of the release notes instead of the tag.
+        if: github.event_name == 'push' && github.ref == 'refs/heads/canary'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VER="${{ steps.ver.outputs.name }}"
+          CODE="${{ steps.ver.outputs.code }}"
+          cp app/build/outputs/apk/release/app-release.apk vela-maps-canary.apk
+          SUBJ="$(git log -1 --no-merges --pretty=%s)"
+          NOTES="$(printf 'Rolling development build, replaced on every canary push. Expect breakage: use the stable or nightly channel unless you are testing something.\n\nversionName: %s\nversionCode: %s\n\nLatest change: %s\n' "$VER" "$CODE" "$SUBJ")"
+          if gh release view canary >/dev/null 2>&1; then
+            gh release upload canary vela-maps-canary.apk --clobber
+            gh release edit canary --prerelease --title "Vela canary" --notes "$NOTES"
+          else
+            gh release create canary --prerelease --title "Vela canary" --notes "$NOTES" vela-maps-canary.apk
+          fi
 
       - name: Publish nightly (prerelease)
         # The nightly channel: ONE prerelease per day from the cron (or an on-demand

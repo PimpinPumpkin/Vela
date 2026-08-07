@@ -347,6 +347,6 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_support to SettingsSection.ABOUT,
     R.string.settings_version to SettingsSection.ABOUT,
     R.string.settings_update_auto to SettingsSection.ABOUT,
-    R.string.settings_update_nightly to SettingsSection.ABOUT,
+    R.string.settings_update_channel to SettingsSection.ABOUT,
     R.string.settings_update_check_now to SettingsSection.ABOUT,
 )

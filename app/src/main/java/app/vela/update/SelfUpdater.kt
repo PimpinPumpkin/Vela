@@ -46,11 +46,24 @@ class SelfUpdater @Inject constructor(
         .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
         .build()
 
-    /** Newest release if it's newer than this build, else null. Null on any error too
-     *  (the check is best-effort; a launch must never block or complain about it).
-     *  [includePrerelease] = the nightly channel: consider prereleases too and pick the
-     *  highest version code across ALL releases, not just the newest STABLE. */
-    suspend fun check(currentVersionCode: Int, includePrerelease: Boolean = false): UpdateInfo? = withContext(Dispatchers.IO) {
+    companion object {
+        const val CHANNEL_STABLE = "stable"
+        const val CHANNEL_NIGHTLY = "nightly"
+        const val CHANNEL_CANARY = "canary"
+
+        /** The picked update channel, migrating the old boolean nightly toggle in place. */
+        fun channel(prefs: android.content.SharedPreferences): String =
+            prefs.getString("update_channel", null)
+                ?: if (prefs.getBoolean("update_nightly", false)) CHANNEL_NIGHTLY else CHANNEL_STABLE
+    }
+
+    /** Newest release on [channel] if it's newer than this build, else null. Null on any error
+     *  too (the check is best-effort; a launch must never block or complain about it).
+     *  stable = releases/latest; nightly = highest-code v0.* prerelease; canary = the rolling
+     *  fixed-tag `canary` release (versionCode read from its notes, since the tag never
+     *  changes), falling back to the newest nightly when that is ahead so a stale canary
+     *  never strands its users behind the fleet. */
+    suspend fun check(currentVersionCode: Int, channel: String = CHANNEL_STABLE): UpdateInfo? = withContext(Dispatchers.IO) {
         runCatching {
             fun releaseToInfo(o: JSONObject): UpdateInfo? {
                 val tag = o.getString("tag_name") // v0.<minor>.<run>
@@ -67,16 +80,32 @@ class SelfUpdater @Inject constructor(
             fun getJson(url: String): String = http.newCall(
                 Request.Builder().url(url).header("Accept", "application/vnd.github+json").build(),
             ).execute().use { r -> if (!r.isSuccessful) error("HTTP ${r.code}"); r.body!!.string() }
-            val candidate = if (includePrerelease) {
+            // The rolling canary release: the tag is always "canary", so the version comes from
+            // the versionName/versionCode lines CI writes into the release notes each push.
+            fun canaryInfo(): UpdateInfo? = runCatching {
+                val o = JSONObject(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/releases/tags/canary"))
+                val body = o.optString("body")
+                val code = Regex("""versionCode:\s*(\d+)""").find(body)?.groupValues?.get(1)?.toIntOrNull() ?: return null
+                val name = Regex("""versionName:\s*(\S+)""").find(body)?.groupValues?.get(1) ?: "canary"
+                val assets = o.getJSONArray("assets")
+                val apk = (0 until assets.length())
+                    .map { assets.getJSONObject(it) }
+                    .firstOrNull { it.getString("name").endsWith(".apk") } ?: return null
+                UpdateInfo(name, code, apk.getString("browser_download_url"), apk.optLong("size"), body)
+            }.getOrNull()
+            fun nightlyInfo(): UpdateInfo? {
                 // The nightlies live in the full releases list (prereleases). Pick the highest code.
                 val arr = JSONArray(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/releases?per_page=15"))
-                (0 until arr.length())
+                return (0 until arr.length())
                     .map { arr.getJSONObject(it) }
                     .filterNot { it.optBoolean("draft") }
                     .mapNotNull { releaseToInfo(it) }
                     .maxByOrNull { it.versionCode }
-            } else {
-                releaseToInfo(JSONObject(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/releases/latest")))
+            }
+            val candidate = when (channel) {
+                CHANNEL_CANARY -> listOfNotNull(canaryInfo(), nightlyInfo()).maxByOrNull { it.versionCode }
+                CHANNEL_NIGHTLY -> nightlyInfo()
+                else -> releaseToInfo(JSONObject(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/releases/latest")))
             }
             candidate?.takeIf { it.versionCode > currentVersionCode }
         }.getOrNull()

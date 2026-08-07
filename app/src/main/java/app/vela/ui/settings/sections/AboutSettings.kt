@@ -36,6 +36,7 @@ import app.vela.ui.map.MapViewModel
 import app.vela.ui.settings.GroupDivider
 import app.vela.ui.settings.Hint
 import app.vela.ui.settings.PageIntro
+import app.vela.ui.settings.SelectableRow
 import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.settings.ToggleRow
@@ -98,14 +99,28 @@ Onboarding.openDonate(context)
             hint = stringResource(R.string.settings_update_auto_hint),
         )
         GroupDivider()
-        // Nightly channel: check against prereleases (the newest CI build) instead of stable.
-        var nightly by remember { mutableStateOf(prefs.getBoolean("update_nightly", false)) }
-        ToggleRow(
-            label = stringResource(R.string.settings_update_nightly),
-            checked = nightly,
-            onCheckedChange = { nightly = it; prefs.edit().putBoolean("update_nightly", it).apply() },
-            hint = stringResource(R.string.settings_update_nightly_hint),
+        // Update channel: stable (weekly), nightly (daily prereleases), canary (the rolling
+        // development build, replaced on every push to the canary branch). Seeded from the old
+        // nightly boolean so existing nightly users stay on nightly.
+        var channel by remember { mutableStateOf(app.vela.update.SelfUpdater.channel(prefs)) }
+        Text(
+            stringResource(R.string.settings_update_channel),
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
         )
+        listOf(
+            app.vela.update.SelfUpdater.CHANNEL_STABLE to stringResource(R.string.settings_update_channel_stable),
+            app.vela.update.SelfUpdater.CHANNEL_NIGHTLY to stringResource(R.string.settings_update_channel_nightly),
+            app.vela.update.SelfUpdater.CHANNEL_CANARY to stringResource(R.string.settings_update_channel_canary),
+        ).forEach { (id, label) ->
+            SelectableRow(
+                label = label,
+                selected = channel == id,
+                onClick = { channel = id; prefs.edit().putString("update_channel", id).apply() },
+            )
+        }
+        Hint(stringResource(R.string.settings_update_channel_hint))
         GroupDivider()
         // A clear gap between the hint paragraph and the button (they read as one clump otherwise).
         Spacer(Modifier.height(14.dp))
