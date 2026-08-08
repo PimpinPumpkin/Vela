@@ -280,6 +280,9 @@ fun MapScreen(
     val cameraBottomInset = when {
         // Street View pane up: the sheet yields, so no bottom inset (the SV top inset takes over).
         state.streetView != null || state.streetViewLoading -> 0
+        // Transit step-by-step guidance (issue #232): the bottom pane covers ~48%, so the per-leg
+        // camera fit frames the guided leg in the visible top strip, not behind the pane.
+        state.transitNav != null -> (screenHeightPx * 0.48f).toInt()
         placeSheetUp -> if (landscapeChrome) 0 else (screenHeightPx * 0.56f).toInt()
         state.directionsOpen && !state.navigating ->
             (screenHeightPx * (if (dirMinimized) 0.14f else 0.58f)).toInt()
@@ -941,10 +944,16 @@ fun MapScreen(
             routeDashed = state.travelMode == app.vela.core.model.TravelMode.WALK ||
                 state.travelMode == app.vela.core.model.TravelMode.BICYCLE,
             routeTrafficSpans = routeTrafficSpans(state.activeRoute),
-            // The expanded transit row's legs (issue #233) — only while the chooser owns the map.
-            transitPreview = state.transitPreview?.takeIf {
-                state.directionsOpen && !state.navigating && !state.replaying && state.travelMode == app.vela.core.model.TravelMode.TRANSIT
+            // The expanded transit row's legs (issue #233) while the chooser owns the map, and the
+            // WHOLE guided itinerary during step-by-step transit nav (issue #232) — there the camera
+            // frames the CURRENT leg and re-frames as Next/auto-advance moves through the trip.
+            transitPreview = when {
+                state.transitNav != null -> state.transitNav!!.itinerary
+                state.directionsOpen && !state.navigating && !state.replaying &&
+                    state.travelMode == app.vela.core.model.TravelMode.TRANSIT -> state.transitPreview
+                else -> null
             },
+            transitNavLeg = state.transitNav?.stepIndex,
             // Greyed, tappable alternates (Google-style) — only off-nav, with a chooser up.
             alternates = if (state.navigating) emptyList() else run {
                 val activeIdx = state.routes.indexOf(state.activeRoute)
@@ -1291,7 +1300,10 @@ fun MapScreen(
                     // Report the banner's bottom edge so the compass can drop just below it (any height).
                     .onGloballyPositioned { navBannerBottomPx = (it.positionInRoot().y + it.size.height).roundToInt() },
             )
-        } else if (state.pickOnMap == null) {
+        } else if (state.pickOnMap == null && state.transitNav == null) {
+            // (Hidden during transit step-by-step guidance too — its bottom pane owns the screen
+            // with the map above it, and a floating search bar over the guided map read as
+            // browse-mode clutter once the pane stopped being full-screen, issue #232.)
             // While the search box is focused the whole thing becomes a full-screen
             // page (recent searches over an opaque background, like Google Maps);
             // otherwise it's the floating bar over the map. Running a search clears
@@ -1931,7 +1943,8 @@ fun MapScreen(
             }
         }
 
-        // Full-screen transit step-by-step guidance (Moovit-style) — covers everything while active.
+        // Transit step-by-step guidance (Moovit-style) — a BOTTOM PANE since 2026-08-08 (issue
+        // #232): the map above it shows the drawn itinerary with the camera framing the guided leg.
         state.transitNav?.let { tn ->
             app.vela.ui.place.TransitNavSheet(
                 nav = tn,
@@ -1939,6 +1952,7 @@ fun MapScreen(
                 onBack = vm::backTransitNav,
                 onEnd = vm::endTransitNav,
                 onWalkDirections = vm::walkDirections,
+                modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
 
@@ -2036,7 +2050,7 @@ fun MapScreen(
         // (user 2026-07-20: stop hiding buttons that nothing is covering). Street View keeps
         // them hidden - its bottom half is the pose mini-map.
         val fabChromeOk = !state.navigating && !searchOpen && state.resumeNavLabel == null &&
-            !state.directionsOpen && !state.showSteps &&
+            !state.directionsOpen && !state.showSteps && state.transitNav == null &&
             state.streetView == null && !state.streetViewLoading
         // True while the landscape left panel (place sheet or results, any detent) is on screen -
         // bottom-LEFT chrome (scale bar) yields to it and the attribution centers in the strip.

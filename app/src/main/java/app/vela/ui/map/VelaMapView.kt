@@ -313,8 +313,11 @@ fun VelaMapView(
     routeDashed: Boolean = false, // draw the route dashed (walking / biking), Google-style
     // The transit itinerary whose drill-down is open in the chooser (issue #233): its ride legs
     // draw as agency-coloured lines through the stops with white stop dots, walk legs as dotted
-    // links. Null = nothing drawn. The caller gates it to the open, non-navigating chooser.
+    // links. Null = nothing drawn. The caller gates it to the open, non-navigating chooser — or
+    // to step-by-step transit nav (issue #232), where [transitNavLeg] is the guided leg's index
+    // and the camera frames THAT leg instead of the whole trip, re-framing on each advance.
     transitPreview: app.vela.core.model.TransitItinerary? = null,
+    transitNavLeg: Int? = null,
 
     // Per-segment live traffic as (startFraction, endFraction, level) along the route
     // — colours the route line like Google (free-flow elsewhere). Empty = no live data.
@@ -598,7 +601,13 @@ fun VelaMapView(
     var lastInsetPx by remember { mutableStateOf(-1) }
     var lastFittedRouteKey by remember { mutableStateOf<Int?>(null) }
     var lastFittedTransitKey by remember { mutableStateOf<Int?>(null) }
-    val transitPrevCoords = remember(transitPreview) { transitPreviewCoords(transitPreview) }
+    // Whole-trip coords for the chooser fit; during transit NAV the fit narrows to the guided
+    // leg's own coords (falling back to the whole trip when a leg carries no geometry).
+    val transitPrevCoords = remember(transitPreview, transitNavLeg) {
+        val all = transitPreviewCoords(transitPreview)
+        val leg = transitNavLeg?.let { transitLegCoords(transitPreview, it) }
+        if (!leg.isNullOrEmpty()) leg else all
+    }
     var lastRecenterTick by remember { mutableStateOf(-1) }
     var lastFittedMarkersKey by remember { mutableStateOf<Int?>(null) }
     var lastPreviewTarget by remember { mutableStateOf<LatLng?>(null) }
@@ -4106,6 +4115,21 @@ private fun transitPreviewCoords(itin: app.vela.core.model.TransitItinerary?): L
         }
     }
     return out
+}
+
+/** One leg's drawable coordinates (walk endpoints, or a ride's stop chain) for the per-leg
+ *  camera framing during step-by-step transit nav (issue #232). Null/empty = no geometry. */
+private fun transitLegCoords(itin: app.vela.core.model.TransitItinerary?, leg: Int): List<LatLng>? {
+    val s = itin?.steps?.getOrNull(leg) ?: return null
+    return if (s.mode == app.vela.core.model.TransitMode.WALK) {
+        listOfNotNull(s.walkFrom, s.walkTo)
+    } else {
+        buildList {
+            s.boardStop?.location?.let { add(it) }
+            s.intermediateStops.forEach { st -> st.location?.let { add(it) } }
+            s.alightStop?.location?.let { add(it) }
+        }
+    }
 }
 
 /**

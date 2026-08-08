@@ -1997,14 +1997,24 @@ fun TransitNavSheet(
     onBack: () -> Unit,
     onEnd: () -> Unit,
     onWalkDirections: suspend (LatLng, LatLng) -> List<String>,
+    modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
     val ink = if (dark) InkDark else InkLight
     val dim = if (dark) DimDark else DimLight
     val itin = nav.itinerary
     val step = itin.steps.getOrNull(nav.stepIndex)
-    Surface(Modifier.fillMaxSize(), color = if (dark) SheetDark else SheetLight) {
-        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp)) {
+    // A BOTTOM PANE, not a full-screen takeover (issue #232, 2026-08-08): the top half stays live
+    // map, where the guided itinerary draws (coloured ride legs + stop dots + dotted walks) and
+    // the camera frames the CURRENT leg, re-framing on each advance — the old full-screen sheet
+    // hid the map entirely and the guidance read as a text list ("it just tells you the
+    // instructions"). Same top-aligned-pane grammar as Street View's half-screen viewer.
+    Surface(
+        modifier.fillMaxWidth().fillMaxHeight(0.48f),
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        color = if (dark) SheetDark else SheetLight,
+    ) {
+        Column(Modifier.fillMaxSize().navigationBarsPadding().padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     if (nav.arrived) stringResource(R.string.transit_nav_arrived)

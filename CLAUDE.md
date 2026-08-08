@@ -2834,7 +2834,15 @@ architecture note.
   the route line layer (empty in transit mode) so the drawing sits above roads + the satellite
   raster and below labels; a camera-fit branch (sibling of the route fit, keyed on coords + insets)
   frames the trip between the endpoints card and the chooser. MapScreen gates the param to the
-  open, non-navigating TRANSIT chooser. **Step-by-step transit
+  open, non-navigating TRANSIT chooser - OR to step-by-step transit nav (issue #232, 2026-08-08,
+  device-verified): there the WHOLE guided itinerary draws and `transitNavLeg` (the guided leg's
+  index) narrows the camera fit to THAT leg's coords, re-framing on every Next/auto-advance;
+  `TransitNavSheet` became a BOTTOM PANE (48% height, rounded top, Street-View-pane grammar) so
+  the map is actually visible during guidance - it was a full-screen Surface and the guidance
+  read as a bare text list (the reporter's complaint); `cameraBottomInsetPx` has a transitNav
+  case (0.48 screen) so the leg frames in the visible strip, `fabChromeOk` gained a transitNav
+  gate (the P/locate FABs, scale bar and satellite attribution drew OVER the pane), and the
+  top search-bar chrome hides during guidance too. **Step-by-step transit
   guidance** (Moovit-style, `TransitNavState` + `startTransitNav`/`advance`/`back`/`endTransitNav` in
   `MapViewModel`, `TransitNavSheet` in `PlaceSheet`) walks the itinerary leg by leg, speaking each
   cue (`transitStepSpoken` → the `transit_nav_*` strings) and auto-advancing when GPS reaches the leg

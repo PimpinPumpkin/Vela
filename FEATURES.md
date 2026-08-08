@@ -1447,8 +1447,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   extra transit RPC. Collapsed by default; a chevron opens it and a spinner shows while the
   route loads.
 - ✅ Transit **step-by-step guidance (Moovit-style)** - an expanded itinerary gets a **Start**
-  button that opens a full-screen leg-by-leg guide: the current leg large (with its walk-directions
-  drill-down), the remaining legs as a timeline, and **Back / Next** controls. It **advances
+  button that opens a leg-by-leg guide: the current leg large (with its walk-directions
+  drill-down), the remaining legs as a timeline, and **Back / Next** controls. **Since 2026-08-08
+  (issue #232) the guide is a bottom pane with the live map above it**: the whole trip stays drawn
+  (colored ride lines through the stops, dotted walks) and the camera frames the leg you are on,
+  re-framing as you advance - so you can see where you are along the route, not just read about it. It **advances
   automatically** as GPS reaches each leg's end (board/alight stop or the walk destination) and
   **speaks each instruction** ("Take Route 9 towards Aventura, get off at …", "Walk 7 min",
   "You have arrived") through the selected voice, localized in all supported languages. The auto-advance is
