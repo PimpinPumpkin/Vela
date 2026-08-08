@@ -106,6 +106,14 @@ private const val TRAVERSED_LIGHT = "#B9BDC2"
 private const val TRAVERSED_DARK = "#54585C"
 private const val ALT_ROUTE_SRC = "vela-alt-route-src"
 private const val ALT_ROUTE_LAYER = "vela-alt-route"
+
+// Transit itinerary preview (issue #233): the expanded chooser row's legs drawn on the map.
+private const val TRANSIT_PREV_SRC = "vela-transit-prev-src"
+private const val TRANSIT_PREV_WALK_LAYER = "vela-transit-prev-walk"
+private const val TRANSIT_PREV_RIDE_LAYER = "vela-transit-prev-ride"
+private const val TRANSIT_PREV_STOPS_LAYER = "vela-transit-prev-stops"
+private const val TRANSIT_PREV_FALLBACK_COLOR = "#4285F4" // rides whose agency sends no line colour
+private const val TRANSIT_PREV_WALK_COLOR = "#7C8A99" // dotted walk links, legible on both themes
 private const val ALT_INDEX_PROP = "vela-alt-index"
 private const val MARKERS_SRC = "vela-markers-src"
 private const val MARKERS_LAYER = "vela-markers"
@@ -303,6 +311,10 @@ fun VelaMapView(
     routePolyline: List<LatLng>,
     routeColor: String,
     routeDashed: Boolean = false, // draw the route dashed (walking / biking), Google-style
+    // The transit itinerary whose drill-down is open in the chooser (issue #233): its ride legs
+    // draw as agency-coloured lines through the stops with white stop dots, walk legs as dotted
+    // links. Null = nothing drawn. The caller gates it to the open, non-navigating chooser.
+    transitPreview: app.vela.core.model.TransitItinerary? = null,
 
     // Per-segment live traffic as (startFraction, endFraction, level) along the route
     // — colours the route line like Google (free-flow elsewhere). Empty = no live data.
@@ -585,6 +597,8 @@ fun VelaMapView(
     var lastCameraTarget by remember { mutableStateOf<LatLng?>(null) }
     var lastInsetPx by remember { mutableStateOf(-1) }
     var lastFittedRouteKey by remember { mutableStateOf<Int?>(null) }
+    var lastFittedTransitKey by remember { mutableStateOf<Int?>(null) }
+    val transitPrevCoords = remember(transitPreview) { transitPreviewCoords(transitPreview) }
     var lastRecenterTick by remember { mutableStateOf(-1) }
     var lastFittedMarkersKey by remember { mutableStateOf<Int?>(null) }
     var lastPreviewTarget by remember { mutableStateOf<LatLng?>(null) }
@@ -845,6 +859,12 @@ fun VelaMapView(
     LaunchedEffect(satelliteOn, satDeep, styleRef) {
         val style = styleRef ?: return@LaunchedEffect
         runCatching { ensureSatelliteDeep(style, satelliteOn, satDeep) }
+    }
+
+    // Transit itinerary preview (issue #233): draw/clear the expanded chooser row's legs.
+    LaunchedEffect(transitPreview, styleRef) {
+        val style = styleRef ?: return@LaunchedEffect
+        runCatching { ensureTransitPreview(style, transitPreview) }
     }
 
     LaunchedEffect(buildingOverlays, styleRef, darkTheme) {
@@ -2752,6 +2772,26 @@ fun VelaMapView(
                 }
             }
 
+            // Transit itinerary preview fit (issue #233): frame the expanded row's legs in the
+            // visible strip between the endpoints card and the chooser, once per (itinerary,
+            // insets) - the same grammar as the route fit above. routePolyline is empty in
+            // transit mode, so the branches never compete.
+            transitPrevCoords.size >= 2 &&
+                (transitPrevCoords.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx) != lastFittedTransitKey -> {
+                lastFittedTransitKey = transitPrevCoords.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx
+                val builder = MLLatLngBounds.Builder()
+                transitPrevCoords.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
+                val pad = 140
+                val bottom = if (cameraBottomInsetPx > 0) cameraBottomInsetPx + pad else pad
+                val top = if (cameraTopInsetPx > 0) cameraTopInsetPx + pad else pad
+                runCatching {
+                    flightDepth[0]++
+                    map.animateCamera(
+                        CameraUpdateFactory.newLatLngBounds(builder.build(), pad, top, pad, bottom), 800, flightCb(),
+                    )
+                }
+            }
+
             frameMarkers && markers.isNotEmpty() && markers.hashCode() != lastFittedMarkersKey -> {
                 lastFittedMarkersKey = markers.hashCode()
                 // Consume the pending camera target: the results-sheet inset growing nulls
@@ -4051,6 +4091,121 @@ private fun ensureSatelliteDeep(style: Style, on: Boolean, deep: Int) {
 /** Satellite imagery under the SYMBOL stack: the raster covers the vector fills and road lines,
  *  but every label, POI, route line and Vela layer keeps drawing on top (hybrid look). Same
  *  add/remove idempotence as [ensureTransit]; removing restores the vector map untouched. */
+/** All drawable coordinates of a transit itinerary in travel order, for the camera fit. */
+private fun transitPreviewCoords(itin: app.vela.core.model.TransitItinerary?): List<LatLng> {
+    if (itin == null) return emptyList()
+    val out = mutableListOf<LatLng>()
+    itin.steps.forEach { s ->
+        if (s.mode == app.vela.core.model.TransitMode.WALK) {
+            s.walkFrom?.let { out.add(it) }
+            s.walkTo?.let { out.add(it) }
+        } else {
+            s.boardStop?.location?.let { out.add(it) }
+            s.intermediateStops.forEach { st -> st.location?.let { out.add(it) } }
+            s.alightStop?.location?.let { out.add(it) }
+        }
+    }
+    return out
+}
+
+/**
+ * Issue #233: draw the expanded transit itinerary's legs on the map. Ride legs are a line in the
+ * agency's own colour THROUGH the stops (board + intermediates + alight all carry coordinates in
+ * the itinerary payload; stop-to-stop chords, not the track geometry, which the keyless data does
+ * not carry) with white stop dots on top (board/alight large, in-between small); walk legs are a
+ * dotted grey link, Google's grammar. Null clears everything. Layers insert below the route line
+ * layer, which is empty in transit mode, so the drawing sits exactly where a drawn route would:
+ * above roads and the satellite raster, below every label.
+ */
+private fun ensureTransitPreview(style: Style, itin: app.vela.core.model.TransitItinerary?) {
+    if (itin == null) {
+        runCatching { style.removeLayer(TRANSIT_PREV_STOPS_LAYER) }
+        runCatching { style.removeLayer(TRANSIT_PREV_RIDE_LAYER) }
+        runCatching { style.removeLayer(TRANSIT_PREV_WALK_LAYER) }
+        runCatching { style.removeSource(TRANSIT_PREV_SRC) }
+        return
+    }
+    val feats = mutableListOf<Feature>()
+    // Chains leg endpoints: a walk leg missing walkFrom (rare) starts from wherever the previous
+    // leg ended instead of dropping the link.
+    var cursor: LatLng? = null
+    itin.steps.forEach { s ->
+        if (s.mode == app.vela.core.model.TransitMode.WALK) {
+            val a = s.walkFrom ?: cursor
+            val b = s.walkTo
+            if (a != null && b != null && (a.lat != b.lat || a.lng != b.lng)) {
+                feats += Feature.fromGeometry(
+                    LineString.fromLngLats(listOf(Point.fromLngLat(a.lng, a.lat), Point.fromLngLat(b.lng, b.lat))),
+                ).apply { addStringProperty("kind", "walk") }
+            }
+            if (b != null) cursor = b
+        } else {
+            val pts = buildList {
+                s.boardStop?.location?.let { add(it) }
+                s.intermediateStops.forEach { st -> st.location?.let { add(it) } }
+                s.alightStop?.location?.let { add(it) }
+            }
+            if (pts.size >= 2) {
+                val colour = s.line?.colorHex?.takeIf { it.startsWith("#") } ?: TRANSIT_PREV_FALLBACK_COLOR
+                feats += Feature.fromGeometry(LineString.fromLngLats(pts.map { Point.fromLngLat(it.lng, it.lat) }))
+                    .apply { addStringProperty("kind", "ride"); addStringProperty("c", colour) }
+                pts.forEachIndexed { i, p ->
+                    feats += Feature.fromGeometry(Point.fromLngLat(p.lng, p.lat)).apply {
+                        addStringProperty("kind", "stop")
+                        addStringProperty("c", colour)
+                        addNumberProperty("r", if (i == 0 || i == pts.lastIndex) 5f else 2.8f)
+                    }
+                }
+                cursor = pts.last()
+            }
+        }
+    }
+    val fc = FeatureCollection.fromFeatures(feats)
+    (style.getSource(TRANSIT_PREV_SRC) as? GeoJsonSource)?.let { it.setGeoJson(fc); return }
+    style.addSource(GeoJsonSource(TRANSIT_PREV_SRC, fc))
+    val walk = LineLayer(TRANSIT_PREV_WALK_LAYER, TRANSIT_PREV_SRC).apply {
+        setFilter(Expression.eq(Expression.get("kind"), Expression.literal("walk")))
+        setProperties(
+            PropertyFactory.lineColor(TRANSIT_PREV_WALK_COLOR),
+            PropertyFactory.lineWidth(
+                Expression.interpolate(
+                    Expression.linear(), Expression.zoom(),
+                    Expression.stop(10f, 2.5f), Expression.stop(16f, 5f),
+                ),
+            ),
+            // Round caps + a tight dash read as Google's walking DOTS, not a dashed line.
+            PropertyFactory.lineDasharray(arrayOf(0.1f, 1.8f)),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+        )
+    }
+    style.addLayerBelow(walk, ROUTE_LAYER)
+    val ride = LineLayer(TRANSIT_PREV_RIDE_LAYER, TRANSIT_PREV_SRC).apply {
+        setFilter(Expression.eq(Expression.get("kind"), Expression.literal("ride")))
+        setProperties(
+            PropertyFactory.lineColor(Expression.toColor(Expression.get("c"))),
+            PropertyFactory.lineWidth(
+                Expression.interpolate(
+                    Expression.linear(), Expression.zoom(),
+                    Expression.stop(10f, 4f), Expression.stop(16f, 9f),
+                ),
+            ),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+            PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+        )
+    }
+    style.addLayerBelow(ride, ROUTE_LAYER)
+    val stops = CircleLayer(TRANSIT_PREV_STOPS_LAYER, TRANSIT_PREV_SRC).apply {
+        setFilter(Expression.eq(Expression.get("kind"), Expression.literal("stop")))
+        setProperties(
+            PropertyFactory.circleRadius(Expression.get("r")),
+            PropertyFactory.circleColor("#FFFFFF"),
+            PropertyFactory.circleStrokeColor(Expression.toColor(Expression.get("c"))),
+            PropertyFactory.circleStrokeWidth(2f),
+        )
+    }
+    style.addLayerBelow(stops, ROUTE_LAYER)
+}
+
 private fun ensureSatellite(style: Style, on: Boolean) {
     val present = style.getLayer(SAT_LAYER) != null
     if (on && !present) {

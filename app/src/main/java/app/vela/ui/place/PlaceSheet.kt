@@ -1355,6 +1355,7 @@ fun DirectionsPanel(
     onSearchAlongRoute: (String) -> Unit,
     onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() },
     onStartTransit: (TransitItinerary) -> Unit = {},
+    onTransitPreview: (TransitItinerary, Boolean) -> Unit = { _, _ -> },
     onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
     minimizeTick: Int = 0, // bumped when the user grabs the map — glide down, then flip collapsed
     onCollapsedChange: (Boolean) -> Unit = {}, // MapScreen shrinks the route-fit camera inset while minimized
@@ -1574,7 +1575,7 @@ fun DirectionsPanel(
                 }
             }
             if (currentMode == TravelMode.TRANSIT) {
-                TransitBoard(transit, transitLoading, ink, dim, dark, onWalkDirections, onStartTransit)
+                TransitBoard(transit, transitLoading, ink, dim, dark, onWalkDirections, onStartTransit, onTransitPreview)
             } else {
                 Spacer(Modifier.height(12.dp))
                 if (routes.isEmpty()) {
@@ -1959,6 +1960,7 @@ private fun TransitBoard(
     dark: Boolean,
     onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() },
     onStartTransit: (TransitItinerary) -> Unit = {},
+    onPreview: (TransitItinerary, Boolean) -> Unit = { _, _ -> },
 ) {
     Spacer(Modifier.height(10.dp))
     when {
@@ -1980,7 +1982,7 @@ private fun TransitBoard(
                 }
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                trips.take(6).forEach { TransitRow(it, nowSec, ink, dim, dark, onWalkDirections, onStartTransit) }
+                trips.take(6).forEach { TransitRow(it, nowSec, ink, dim, dark, onWalkDirections, onStartTransit, onPreview) }
             }
         }
     }
@@ -2072,7 +2074,7 @@ private fun departsInLabel(depEpochSec: Long?, nowSec: Long): String? {
 }
 
 @Composable
-private fun TransitRow(t: TransitItinerary, nowSec: Long, ink: Color, dim: Color, dark: Boolean, onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() }, onStartTransit: (TransitItinerary) -> Unit = {}) {
+private fun TransitRow(t: TransitItinerary, nowSec: Long, ink: Color, dim: Color, dark: Boolean, onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() }, onStartTransit: (TransitItinerary) -> Unit = {}, onPreview: (TransitItinerary, Boolean) -> Unit = { _, _ -> }) {
     var expanded by remember { mutableStateOf(false) }
     val canExpand = t.steps.isNotEmpty()
     // "Departs in X min" from the parsed departure epoch, and the real-time signal (a leg
@@ -2085,7 +2087,7 @@ private fun TransitRow(t: TransitItinerary, nowSec: Long, ink: Color, dim: Color
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(SheetPalette.row(dark))
-            .then(if (canExpand) Modifier.dpadHighlight(RoundedCornerShape(12.dp)).clickable { expanded = !expanded } else Modifier)
+            .then(if (canExpand) Modifier.dpadHighlight(RoundedCornerShape(12.dp)).clickable { expanded = !expanded; onPreview(t, expanded) } else Modifier)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {

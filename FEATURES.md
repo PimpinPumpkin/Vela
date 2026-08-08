@@ -1433,6 +1433,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   All of it parsed (unit-tested) from `trip[1][0][1]` in the **same** keyless fetch - no
   extra RPC. **Calibrated + device-verified** Miami→Aventura Mall (route 9, 2026-07-07);
   single-digit route numbers ("9") now render a pill (the ≥2-char guard dropped them).
+- ✅ Transit **itinerary drawn on the map (2026-08-08, issue #233)** - expanding an itinerary in the
+  chooser draws its whole trip on the map, Google-style: each ride leg as a line in the agency's own
+  colour running through every stop (white dots along the way, bigger ones where you board and
+  alight), walk legs as dotted links, and the camera frames the full trip. Collapsing the row or
+  switching modes clears it.
 - ✅ Transit **walk-leg turn-by-turn** - tap a **Walk** leg in the drill-down to expand
   turn-by-turn walking directions between that leg's endpoints (the previous ride's alight
   stop / trip origin → the next ride's board stop / trip destination). The endpoints come

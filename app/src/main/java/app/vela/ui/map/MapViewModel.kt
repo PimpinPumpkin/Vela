@@ -187,6 +187,9 @@ data class MapUiState(
     val transit: List<TransitItinerary> = emptyList(),
     val transitLoading: Boolean = false,
     val transitNav: TransitNavState? = null,
+    // The transit itinerary whose drill-down row is EXPANDED in the chooser — the map draws its
+    // legs (issue #233: coloured ride lines through the stops, dotted walk links) while it's open.
+    val transitPreview: TransitItinerary? = null,
     // A transit stop's live departure board (keyless, from the station's own place page).
     val stopDepartures: app.vela.core.model.StopDepartures? = null,
     val stopDeparturesLoading: Boolean = false,
@@ -3513,8 +3516,19 @@ class MapViewModel @Inject constructor(
      *  WebView ([WebDirectionsFetcher]) rather than the OkHttp data source. We
      *  clear the driving route line while it loads — transit shows a results
      *  board, not a single drawn path. */
+    /** A drill-down row expanded/collapsed in the transit chooser — the map draws the expanded
+     *  itinerary's legs (issue #233). Collapsing only clears the preview if that row still owns
+     *  it, so expanding B then collapsing A can't blank B's drawing. */
+    fun onTransitRowExpanded(itin: TransitItinerary, expanded: Boolean) = _state.update {
+        when {
+            expanded -> it.copy(transitPreview = itin)
+            it.transitPreview === itin -> it.copy(transitPreview = null)
+            else -> it
+        }
+    }
+
     private fun routeTransit(origin: LatLng, dest: LatLng, timeMode: Int = 0, timeEpochSec: Long? = null) {
-        _state.update { it.copy(routes = emptyList(), activeRoute = null, transit = emptyList(), transitLoading = true, status = null) }
+        _state.update { it.copy(routes = emptyList(), activeRoute = null, transit = emptyList(), transitLoading = true, transitPreview = null, status = null) }
         viewModelScope.launch {
             val trips = runCatching { webDirections.transit(origin, dest, timeMode, timeEpochSec) }.getOrDefault(emptyList())
             _state.update {

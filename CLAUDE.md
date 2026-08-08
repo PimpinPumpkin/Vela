@@ -2816,7 +2816,17 @@ architecture note.
   and `assignWalkEndpoints` wires each WALK leg's `walkFrom`/`walkTo` from the adjacent ride's
   alight/board stop (falling back to the trip origin/dest, which `parse(raw, origin, dest)` threads
   through). The UI then fetches that walk leg's turn-by-turn steps **on demand** via the normal walk
-  router (`MapViewModel.walkDirections` → OSRM foot) - no extra transit RPC. **Step-by-step transit
+  router (`MapViewModel.walkDirections` → OSRM foot) - no extra transit RPC. **The expanded
+  itinerary DRAWS ON THE MAP (issue #233, 2026-08-08, device-verified):** expanding a chooser row
+  sets `MapUiState.transitPreview` (`onTransitRowExpanded`; cleared on refetch, and collapsing only
+  clears it if that row still owns it) -> `ensureTransitPreview` in VelaMapView draws ride legs as
+  agency-coloured lines THROUGH the stops (board + intermediates + alight coordinates from the same
+  payload; stop-to-stop chords - the keyless data carries no track geometry) with white stop dots on
+  top (board/alight large, in-between small) and walk legs as dotted grey links, all inserted below
+  the route line layer (empty in transit mode) so the drawing sits above roads + the satellite
+  raster and below labels; a camera-fit branch (sibling of the route fit, keyed on coords + insets)
+  frames the trip between the endpoints card and the chooser. MapScreen gates the param to the
+  open, non-navigating TRANSIT chooser. **Step-by-step transit
   guidance** (Moovit-style, `TransitNavState` + `startTransitNav`/`advance`/`back`/`endTransitNav` in
   `MapViewModel`, `TransitNavSheet` in `PlaceSheet`) walks the itinerary leg by leg, speaking each
   cue (`transitStepSpoken` → the `transit_nav_*` strings) and auto-advancing when GPS reaches the leg

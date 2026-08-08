@@ -940,6 +940,10 @@ fun MapScreen(
             routeDashed = state.travelMode == app.vela.core.model.TravelMode.WALK ||
                 state.travelMode == app.vela.core.model.TravelMode.BICYCLE,
             routeTrafficSpans = routeTrafficSpans(state.activeRoute),
+            // The expanded transit row's legs (issue #233) — only while the chooser owns the map.
+            transitPreview = state.transitPreview?.takeIf {
+                state.directionsOpen && !state.navigating && !state.replaying && state.travelMode == app.vela.core.model.TravelMode.TRANSIT
+            },
             // Greyed, tappable alternates (Google-style) — only off-nav, with a chooser up.
             alternates = if (state.navigating) emptyList() else run {
                 val activeIdx = state.routes.indexOf(state.activeRoute)
@@ -1784,6 +1788,7 @@ fun MapScreen(
                 onSearchAlongRoute = vm::searchAlongRoute,
                 onWalkDirections = vm::walkDirections,
                 onStartTransit = vm::startTransitNav,
+                onTransitPreview = vm::onTransitRowExpanded,
                 onTimeSelected = vm::setDirectionsTime,
                 onCollapsedChange = { dirMinimized = it },
                 modifier = Modifier.align(Alignment.BottomCenter),
