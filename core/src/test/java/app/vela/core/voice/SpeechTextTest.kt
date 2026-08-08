@@ -204,4 +204,24 @@ class SpeechTextTest {
         assertEquals("St. Paul", clean("St. Paul"))
         assertEquals("J.C. Penney", clean("J.C. Penney."))
     }
+
+    // Google's abbreviated duration/distance strings spoken through TTS read the literal "min"
+    // (transit guidance, user 2026-08-08) — units expand to words, digit-anchored so names survive.
+    @Test fun `english unit abbreviations expand for speech`() {
+        assertEquals("Walk 10 minutes", SpeechText.spokenEnUnits("Walk 10 min"))
+        assertEquals("Walk 1 minute", SpeechText.spokenEnUnits("Walk 1 min"))
+        assertEquals("11 minutes", SpeechText.spokenEnUnits("11 min"))
+        assertEquals("0.4 miles", SpeechText.spokenEnUnits("0.4 mi"))
+        assertEquals("1 mile", SpeechText.spokenEnUnits("1 mi"))
+        assertEquals("2 hours 5 minutes", SpeechText.spokenEnUnits("2 h 5 min"))
+        assertEquals("400 meters", SpeechText.spokenEnUnits("400 m"))
+        assertEquals("2 kilometers", SpeechText.spokenEnUnits("2 km"))
+    }
+
+    @Test fun `unit expansion never rewrites names or clock times`() {
+        assertEquals("M St", SpeechText.spokenEnUnits("M St"))
+        assertEquals("Walk to Mi Casa", SpeechText.spokenEnUnits("Walk to Mi Casa"))
+        assertEquals("depart 7:33 PM", SpeechText.spokenEnUnits("depart 7:33 PM"))
+        assertEquals("Route 9 to H St", SpeechText.spokenEnUnits("Route 9 to H St"))
+    }
 }

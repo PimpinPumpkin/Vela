@@ -3612,7 +3612,15 @@ class MapViewModel @Inject constructor(
     /** The spoken cue for a transit leg. */
     private fun transitStepSpoken(step: TransitStep): String =
         if (step.line == null) {
-            appContext.getString(R.string.transit_nav_walk, step.durationText ?: "").trim()
+            // durationText is Google's own abbreviated string ("10 min"), which TTS read
+            // literally as "min" (user 2026-08-08). English guidance expands the units to words;
+            // other languages carry their own hl= abbreviations and pass through unchanged.
+            val dur = (step.durationText ?: "").let {
+                if (app.vela.core.i18n.NavStringsRegistry.current().locale.language == "en") {
+                    app.vela.core.voice.SpeechText.spokenEnUnits(it)
+                } else it
+            }
+            appContext.getString(R.string.transit_nav_walk, dur).trim()
         } else {
             val s = StringBuilder(appContext.getString(R.string.transit_nav_take, step.line?.name.orEmpty()))
             step.headsign?.let { s.append(" ").append(appContext.getString(R.string.transit_nav_towards, it)) }

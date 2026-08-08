@@ -125,6 +125,27 @@ object SpeechText {
             .trimEnd('.', '!', '?', ',', ';', ':', '…')
             .trim()
 
+    /**
+     * English unit ABBREVIATIONS → spoken words, for text that carries Google's own duration/
+     * distance strings ("Walk 10 min", "0.4 mi") straight into TTS — the voice read the literal
+     * "min" (user 2026-08-08, transit guidance). ENGLISH ONLY by design: the abbreviations come
+     * from the `hl=` scrape language, so other locales carry their own forms and pass through
+     * (callers gate on the guidance language). Every pattern is anchored to a PRECEDING DIGIT so
+     * a stop or street NAME can never be rewritten ("M St" stays "M St"; "7:33 PM" is safe — the
+     * char after the digit-space is 'P', not a bare unit token).
+     */
+    fun spokenEnUnits(text: String): String = text
+        .replace(Regex("(?<=\\b1 )min\\b"), "minute")
+        .replace(Regex("(?<=\\d )min\\b"), "minutes")
+        .replace(Regex("(?<=\\b1 )(hr|h)\\b"), "hour")
+        .replace(Regex("(?<=\\d )(hr|h)\\b"), "hours")
+        .replace(Regex("(?<=\\b1 )mi\\b"), "mile")
+        .replace(Regex("(?<=\\d )mi\\b"), "miles")
+        .replace(Regex("(?<=\\d )ft\\b"), "feet")
+        .replace(Regex("(?<=\\d )km\\b"), "kilometers")
+        .replace(Regex("(?<=\\b1 )m\\b"), "meter")
+        .replace(Regex("(?<=\\d )m\\b"), "meters")
+
     private val BRACKET_TAG = Regex("\\[[^\\]]*]")
     private val BRACKET_TAIL = Regex("\\[[^\\]]*$")
     private val WHITESPACE = Regex("\\s+")

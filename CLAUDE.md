@@ -2845,7 +2845,10 @@ architecture note.
   top search-bar chrome hides during guidance too. **Step-by-step transit
   guidance** (Moovit-style, `TransitNavState` + `startTransitNav`/`advance`/`back`/`endTransitNav` in
   `MapViewModel`, `TransitNavSheet` in `PlaceSheet`) walks the itinerary leg by leg, speaking each
-  cue (`transitStepSpoken` → the `transit_nav_*` strings) and auto-advancing when GPS reaches the leg
+  cue (`transitStepSpoken` → the `transit_nav_*` strings; the walk cue's Google-abbreviated
+  duration expands via `SpeechText.spokenEnUnits` — "10 min" was READ as the literal "min",
+  user 2026-08-08; digit-anchored regexes + unit-tested so names like "M St" never rewrite;
+  English guidance only, other locales keep their own hl= abbreviations) and auto-advancing when GPS reaches the leg
   end. The auto-advance is **latched** (`maybeAdvanceTransitNav`, `TRANSIT_ARM_M=90`/`TRANSIT_ARRIVE_M=40`):
   a leg only advances once it's been ARMED by being >ARM_M from its end, so a transfer hub can't cascade
   through legs and a short final walk can't fire a premature arrival.
