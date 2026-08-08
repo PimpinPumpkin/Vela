@@ -63,6 +63,47 @@ object OverpassTrafficSignals {
         }
     }
 
+    /**
+     * Traffic-signal AND stop-sign nodes along a route CORRIDOR (~[radiusM] m either side of the
+     * polyline), for drawing during NAV: one fetch covers the whole drive, where the per-viewport
+     * [fetchControlsInBox] path churned a refetch every time the moving camera neared its cached box
+     * edge (against sometimes-flaky mirrors) and blinked the layer (issue #248). Uses Overpass's
+     * `around:` LINESTRING form — consecutive coordinates are treated as segments, so the corridor is
+     * continuous; the polyline is only SAMPLED (default ~300 m steps, hard cap [maxPts] points) to keep
+     * the GET URL within what every mirror accepts. Same null-on-failure contract as the box fetch.
+     */
+    @OptIn(ExperimentalSerializationApi::class)
+    fun fetchControlsAlongCorridor(
+        http: OkHttpClient,
+        polyline: List<LatLng>,
+        radiusM: Int = 120,
+        maxPts: Int = 250,
+        limit: Int = 6000,
+    ): List<TrafficControl>? {
+        if (polyline.size < 2) return emptyList()
+        val pts = sampleForCorridor(polyline, maxPts)
+        val coords = pts.joinToString(",") { String.format(java.util.Locale.US, "%.5f,%.5f", it.lat, it.lng) }
+        val around = "(around:$radiusM,$coords)"
+        val query = "[out:json][timeout:25];" +
+            "(node[\"highway\"=\"traffic_signals\"]$around;node[\"highway\"=\"stop\"]$around;);out $limit;"
+        return OverpassEndpoints.run(http, query) { body ->
+            json.decodeFromStream<SignalsResp>(body.byteStream()).elements.mapNotNull { n ->
+                val lat = n.lat ?: return@mapNotNull null
+                val lng = n.lon ?: return@mapNotNull null
+                TrafficControl(LatLng(lat, lng), stop = n.tags?.get("highway") == "stop")
+            }
+        }
+    }
+
+    /** Thin [polyline] to at most [maxPts] points, keeping first + last, by uniform index stride —
+     *  route polylines are already distance-dense, so an index stride approximates a distance stride
+     *  without walking haversines over thousands of vertices. */
+    private fun sampleForCorridor(polyline: List<LatLng>, maxPts: Int): List<LatLng> {
+        if (polyline.size <= maxPts) return polyline
+        val stride = (polyline.size - 1).toDouble() / (maxPts - 1)
+        return (0 until maxPts).map { polyline[Math.round(it * stride).toInt().coerceAtMost(polyline.size - 1)] }
+    }
+
     /** Traffic-signal node coordinates within the route's bounding box (padded a little). */
     @OptIn(ExperimentalSerializationApi::class)
     fun fetchAlong(http: OkHttpClient, polyline: List<LatLng>, limit: Int = 4000): List<LatLng> {

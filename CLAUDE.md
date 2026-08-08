@@ -776,8 +776,9 @@ Defaults that make the safe path the easy one:
   within 0.35x of `lastAmbientSpan` of the fetch centre AND viewRadius ≤ 0.55x span; forced true
   when a fresh fetch lands, false under z14) drives the poi_r* visibility - blanket-hiding left
   the outskirts iconless because one fetch only covers ~3.5-9 km (user 2026-07-10). Controls
-  (signs/lights) render from z17.5 on the browse map but z16 during nav (set in the nav
-  declutter effect). While a result SET is on the map (markers.size > 1) the basemap
+  (signs/lights) render from z17.5 on the browse map but z15.4 during nav (set in the nav
+  declutter effect; 15.4 sits just under the nav camera's 15.5 zoom floor so they can't blink
+  out at highway speed - half of issue #248). While a result SET is on the map (markers.size > 1) the basemap
   poi_r1/r7/r20 icons hide too, AND the traffic-control layers (stop signs + lights,
   `lastControlsVis` - controls stay up beside the ambient dots on the browse map, so their
   predicate is the result set alone). Own identity gates, NOT inside the ambient gate -
@@ -2665,7 +2666,19 @@ architecture note.
   (single-flight + 350 ms settle). The layer/updater are identity-gated like markers/ambient (`lastAppliedControls`)
   so a nav speedo tick doesn't re-tessellate them. No app setting (zoom-gated); no PMTiles/CI (live Overpass, unlike
   the building/address overlays). NB the `TRAFFIC_*` constants in `VelaMapView` are a DIFFERENT thing - Google's
-  live-traffic raster overlay; the controls use `CONTROLS_*`. Needs a real-drive glance to confirm density/size feel.
+  live-traffic raster overlay; the controls use `CONTROLS_*`. **DURING NAV the layer is fed by ONE
+  ROUTE-CORRIDOR fetch per driven route instead (issue #248, 2026-08-08):** the moving camera crossed the
+  cached box edge constantly, so the viewport path refetched over and over against sometimes-dead mirrors
+  and the icons showed rarely / vanished quickly mid-drive. `refreshNavRouteControls` (hooked into the
+  navSession observer at nav start + every reroute/faster-route swap, keyed on endpoints+length so a
+  same-course stepsUpgrade/trafficUpgrade heal never refetches; skipped during hermetic replays) calls
+  `OverpassTrafficSignals.fetchControlsAlongCorridor` - Overpass `around:` LINESTRING form, polyline
+  sampled to ≤250 points to keep the GET URL mirror-safe, ~120 m corridor - then the same
+  cluster-per-intersection pass, cap `CONTROLS_ROUTE_CAP` (800, nearest-to-start). While the corridor set
+  is loaded, `refreshTrafficControls` returns early (it must neither refetch NOR run its z<16 clear
+  branch, which would blank the layer at the 15.5 nav zoom floor); a FAILED corridor fetch leaves the
+  key unset so the viewport path stays the fallback, and nav-end (`clearNavRouteControls`) nulls
+  `controlsBox` so the next browse settle repaints. Needs a real-drive glance to confirm density/size feel.
 - **Surveillance-camera (Flock / ALPR) layer (`OverpassAlprCameras` + `refreshFlock` + `FLOCK_LAYER`, device-verified
   2026-07-12).** Settings > Map > "Surveillance cameras" (`app.vela.ui.Flock` holder, **ON by default since 2026-07-13** -
   it's a headline feature and the bundled dataset makes it free to draw; `FlockRouteAlert` route-avoid stays

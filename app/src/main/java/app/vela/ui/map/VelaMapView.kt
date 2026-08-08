@@ -766,10 +766,12 @@ fun VelaMapView(
         // state flip. Nulling the gate makes the next applyData frame re-assert the right value.
         lastOsmPoiVis = null
         lastPoiFuelOnly = null
-        // Stop signs + lights stay a NAV aid at z16; on the browse map they hold back until true
-        // street zoom (user 2026-07-10: too busy mid-zoom without a route on screen).
+        // Stop signs + lights are a NAV aid from z15.4 — a hair UNDER the nav camera's 15.5 zoom
+        // floor, so they can't blink out at highway speed (the old 16 sat above the floor and the
+        // icons vanished exactly when the auto-zoom pulled back, half of issue #248). On the browse
+        // map they hold back until true street zoom (user 2026-07-10: too busy mid-zoom otherwise).
         runCatching {
-            val minZ = if (navMode) 16f else 17.5f
+            val minZ = if (navMode) 15.4f else 17.5f
             (style.getLayer(CONTROLS_LAYER))?.minZoom = minZ
             (style.getLayer(CONTROLS_CLAIM_LAYER))?.minZoom = minZ
         }

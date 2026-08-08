@@ -549,8 +549,15 @@ class MapViewModel @Inject constructor(
                 if (ns.navigating && nsRoute != null && nsRoute !== lastRecordedRoute) {
                     if (lastRecordedRoute != null) tripStore.saveRoute(nsRoute, navSession.lastSwapReason)
                     lastRecordedRoute = nsRoute
+                    // Controls (lights/stop signs) for the WHOLE route in one corridor fetch (issue
+                    // #248) — never during a recorded-trip replay (hermetic, no live fetches), but a
+                    // DEMO drive keeps it: demoDriving ⟹ replaying under the hood, yet it's presented
+                    // as real nav and does live fetches (device-caught 2026-08-08: the bare !replaying
+                    // guard silently skipped the fetch on every simulated drive).
+                    val vs = _state.value
+                    if (!vs.replaying || vs.demoDriving) refreshNavRouteControls(nsRoute)
                 }
-                if (!ns.navigating) lastRecordedRoute = null
+                if (!ns.navigating) { lastRecordedRoute = null; clearNavRouteControls() }
                 _state.update {
                     it.copy(
                         navigating = ns.navigating,
@@ -5134,6 +5141,13 @@ class MapViewModel @Inject constructor(
      * only nearing the box edge refetches. Single-flight + a short settle so a flick doesn't scrape.
      */
     private fun refreshTrafficControls(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
+        // During NAV the layer is served by the per-route corridor set (issue #248): the moving camera
+        // crossed the cached box edge constantly, and the refetch churn against sometimes-dead mirrors
+        // blinked the icons in and out. While a corridor set is loaded (key set), viewport refreshes
+        // must neither refetch NOR clear it (the nav zoom floor 15.5 sits under CONTROLS_MIN_ZOOM, so
+        // the clear branch below would blank the corridor set at highway speed). A FAILED corridor
+        // fetch leaves the key unset and this path keeps running as the fallback.
+        if (_state.value.navigating && navControlsKey != null) return
         if (zoom < CONTROLS_MIN_ZOOM) {
             controlsBox = null
             controlsJob?.cancel()
@@ -5189,6 +5203,68 @@ class MapViewModel @Inject constructor(
             android.util.Log.i("VelaControls", "fetched=${res.size} merged=${merged.size} kept=${kept.size}")
             _state.update { it.copy(trafficControls = kept) }
         }
+    }
+
+    private var navControlsJob: Job? = null
+    private var navControlsKey: String? = null // set only after a corridor fetch SUCCEEDED
+
+    /**
+     * Issue #248: fetch the traffic lights + stop signs along the ROUTE CORRIDOR once per driven route
+     * (nav start + every reroute/faster-route swap) and serve [MapUiState.trafficControls] from that set
+     * for the whole drive — the viewport-box path refetched every time the moving camera neared its
+     * cached box edge, and the churn (against mirrors that are sometimes down) made the icons appear
+     * rarely and vanish quickly during nav. Same cluster-per-intersection pass as the box path.
+     */
+    private fun refreshNavRouteControls(route: app.vela.core.model.Route) {
+        val poly = route.polyline
+        if (poly.size < 2) return
+        // Key on endpoints + coarse length: a same-course heal (stepsUpgrade/trafficUpgrade swaps the
+        // route OBJECT, not the drive) must not refetch; a real reroute moves the start point and an
+        // accepted faster route changes the length.
+        val f = poly.first(); val l = poly.last()
+        val key = String.format(
+            java.util.Locale.US, "%.4f,%.4f|%.4f,%.4f|%d",
+            f.lat, f.lng, l.lat, l.lng, (route.distanceMeters / 500).toInt(),
+        )
+        if (key == navControlsKey) return
+        navControlsJob?.cancel()
+        navControlsJob = viewModelScope.launch {
+            val res = runCatching {
+                withContext(Dispatchers.IO) {
+                    app.vela.core.data.OverpassTrafficSignals.fetchControlsAlongCorridor(http, poly)
+                }
+            }.getOrNull() ?: run {
+                // Key stays unset → the viewport-box path keeps serving as the fallback (fetch-fail
+                // honesty, same contract as the box fetch: never cache a failure as "no controls").
+                android.util.Log.i("VelaControls", "route corridor fetch FAILED (all endpoints)")
+                return@launch
+            }
+            val merged = withContext(Dispatchers.Default) {
+                res.groupBy { it.stop }.flatMap { (isStop, group) ->
+                    app.vela.core.data.MapDeclutter.cluster(group, CONTROLS_CLUSTER_M) { it.loc }
+                        .map { c -> app.vela.core.data.TrafficControl(c.centroid, isStop) }
+                }
+            }
+            val kept = if (merged.size <= CONTROLS_ROUTE_CAP) merged else {
+                val lngScale = kotlin.math.cos(Math.toRadians(f.lat))
+                merged.sortedBy {
+                    val dLat = it.loc.lat - f.lat; val dLng = (it.loc.lng - f.lng) * lngScale
+                    dLat * dLat + dLng * dLng
+                }.take(CONTROLS_ROUTE_CAP)
+            }
+            android.util.Log.i("VelaControls", "route corridor fetched=${res.size} merged=${merged.size} kept=${kept.size}")
+            navControlsKey = key
+            controlsBox = null // the box cache is superseded; the post-nav viewport refresh repaints fresh
+            _state.update { it.copy(trafficControls = kept) }
+        }
+    }
+
+    /** Nav ended — drop the corridor set's ownership so browse viewport fetches repaint the layer. */
+    private fun clearNavRouteControls() {
+        if (navControlsKey == null && navControlsJob == null) return
+        navControlsJob?.cancel(); navControlsJob = null
+        navControlsKey = null
+        controlsBox = null
     }
 
     /** Re-fetch (or clear) the Flock layer for the current viewport - called when the toggle flips,
@@ -5695,6 +5771,9 @@ class MapViewModel @Inject constructor(
         // One glyph per intersection: per-approach OSM nodes within this radius merge before draw.
         // Same 30 m the spoken pass-the-light clustering uses; keeps dense-grid neighbours separate.
         const val CONTROLS_CLUSTER_M = 30.0
+        const val CONTROLS_ROUTE_CAP = 800 // max controls from a route-corridor fetch (nearest-to-start wins) —
+        // the corridor is thin so a whole drive stays modest; this is a dense-metro backstop, and the layer's
+        // symbols are allowOverlap (no per-frame collision), so the cap can sit above the viewport one.
         // Show ALPR cameras from ROUTE-OVERVIEW zoom (~z11-12), the "I know this route has cameras but
         // don't see any" view. z11 was tried 2026-07-13 and reverted the same day because the padded
         // Overpass box (~16x bigger) with a full-body read + full-DOM parse per pan OOM'd the heap; the
