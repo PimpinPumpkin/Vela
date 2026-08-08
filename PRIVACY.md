@@ -102,6 +102,13 @@ transmitted:
 
 There is no cloud sync. Uninstalling the app removes all of it.
 
+**Contacts (optional, off by default).** If you turn on Settings > Search > "Search your
+contacts", typing a contact's name suggests their saved postal address. The contact list is
+read and matched entirely on this phone (the permission is asked when you flip the toggle,
+never at install). Nothing about your contacts is uploaded; if you tap a suggestion, the
+ADDRESS text is searched exactly as if you had typed it yourself, which sends that one
+string to the geocoder like any other search.
+
 ## No tracking
 
 Vela contains **no analytics, no advertising, no crash reporting, and no

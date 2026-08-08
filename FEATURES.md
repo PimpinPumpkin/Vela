@@ -2288,3 +2288,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   suggestion (or tap its ⋮) to save a place into one of your lists or drop a history row, the same
   list picker the place sheet uses. Looking up one location out of a chain no longer means
   re-typing the city.
+- ✅ **Search your contacts (issue #243, 2026-08-08).** Opt-in (Settings > Search, off by default;
+  the contacts permission is asked when you flip the toggle, never at install). Typing a contact's
+  name suggests their saved postal address at the top of the results with a person icon; picking it
+  searches the address like any typed query. Matching happens entirely on the phone against an
+  in-memory copy of the address-bearing contacts, so it is instant and nothing about your contact
+  list is uploaded.

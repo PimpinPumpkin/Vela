@@ -11,8 +11,12 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
@@ -54,6 +58,32 @@ internal fun SearchSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             hint = stringResource(R.string.settings_voice_search_hint),
             // The top focusable control: Back routes its DOWN here, UP from here goes back to Back.
             switchModifier = topRow,
+        )
+        // Contacts-in-search (issue #243): READ_CONTACTS is asked HERE, at the point of use —
+        // flipping the toggle on — never at install/onboarding. A denial leaves it off.
+        val scope = rememberCoroutineScope()
+        val contactsPermission = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) { granted ->
+            if (granted) {
+                app.vela.ui.ContactsSearch.set(context, true)
+                scope.launch(Dispatchers.IO) { app.vela.data.ContactAddresses.reload(context) }
+            }
+        }
+        ToggleRow(
+            label = stringResource(R.string.settings_contacts_search),
+            checked = app.vela.ui.ContactsSearch.enabled.value,
+            onCheckedChange = { on ->
+                when {
+                    !on -> app.vela.ui.ContactsSearch.set(context, false)
+                    app.vela.data.ContactAddresses.hasPermission(context) -> {
+                        app.vela.ui.ContactsSearch.set(context, true)
+                        scope.launch(Dispatchers.IO) { app.vela.data.ContactAddresses.reload(context) }
+                    }
+                    else -> contactsPermission.launch(android.Manifest.permission.READ_CONTACTS)
+                }
+            },
+            hint = stringResource(R.string.settings_contacts_search_hint),
         )
         }
 

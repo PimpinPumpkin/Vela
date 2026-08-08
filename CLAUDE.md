@@ -1509,7 +1509,15 @@ architecture note.
   Wired at runSearch + the suggest fetch; searchAlongRoute keeps its route-midpoint bias.
 - **Local suggestions (issue #180, 2026-07-19):** `onQueryChange` sets `localSuggestions` from
   `localMatches()` SYNCHRONOUSLY (recents searches + viewed places + list/saved places, substring
-  match) BEFORE the debounced network fetch - that is why they are instant and the only thing that
+  match; min 2 chars) BEFORE the debounced network fetch. **+ CONTACTS (issue #243, 2026-08-08,
+  device-verified):** opt-in Settings > Search toggle (`ContactsSearch` holder, pref
+  `contacts_search`, OFF by default; READ_CONTACTS asked at the point of use, flipping the toggle
+  on, from SearchSettings). `app/data/ContactAddresses` loads ALL address-bearing contacts into
+  memory ONCE (VM init + toggle-on, off-main) because localMatches runs synchronously per
+  keystroke and a ContactsProvider binder query there would jank; the match is against that cache.
+  A CONTACT suggestion carries the ADDRESS as its `query`, so picking it rides the normal
+  searchRecent path (address searched exactly as if typed - the contact list itself never leaves
+  the phone; PRIVACY.md has the user-facing wording). Kind.CONTACT icon = person - that is why they are instant and the only thing that
   shows offline. `LocalSuggestion` (kind RECENT_QUERY / RECENT_PLACE / SAVED_PLACE) renders above
   the network rows in `SearchEntryContent`. Dedup of network vs local is by `nameLocKey` (name +
   coarse location), NOT feature id - SavedPlace-backed locals carry no id, so an id-only compare

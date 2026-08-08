@@ -39,6 +39,8 @@
     <string name="settings_search">Search</string>
     <string name="settings_voice_search_toggle">Voice search mic</string>
     <string name="settings_voice_search_hint">Shows a mic in the search bar to speak your search.</string>
+    <string name="settings_contacts_search">Search your contacts</string>
+    <string name="settings_contacts_search_hint">Typing a contact\'s name suggests their saved address. Your contacts stay on this phone; picking a suggestion searches the address like any typed query.</string>
     <string name="search_voice_cd">Voice search</string>
     <string name="search_voice_prompt">Speak to search</string>
     <string name="settings_voice">Voice</string>

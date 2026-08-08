@@ -14,6 +14,9 @@
     <!-- Keeps voice/region/update downloads alive in the background (DownloadService, issue #212). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Contacts-in-search (issue #243): OFF by default, asked at point of use (flipping the
+         Settings toggle on), matched entirely on-device. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
 
     <!-- Haptic turn cues during navigation (normal permission, auto-granted). -->
     <uses-permission android:name="android.permission.VIBRATE" />

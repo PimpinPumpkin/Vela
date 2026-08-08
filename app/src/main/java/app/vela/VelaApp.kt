@@ -96,6 +96,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.BuildingDebug.init(this)
         app.vela.ui.MapPoiPrefs.init(this)
         app.vela.ui.VoiceSearch.init(this)
+        app.vela.ui.ContactsSearch.init(this) // contacts-in-search toggle (issue #243)
         app.vela.ui.map.MapFonts.init(this) // Roboto basemap glyphs (cached patched style + async refresh)
         Onboarding.init(this)
         // Persist any fatal crash (stack trace + breadcrumbs) so it survives the

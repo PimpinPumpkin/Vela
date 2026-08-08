@@ -92,7 +92,9 @@ data class LocalSuggestion(
     val query: String? = null,
     val removable: Boolean = false,
 ) {
-    enum class Kind { RECENT_QUERY, RECENT_PLACE, SAVED_PLACE }
+    // CONTACT rows (issue #243) carry the contact's postal address as [query]: picking one runs it
+    // through the normal search-submit path, exactly as if the address had been typed.
+    enum class Kind { RECENT_QUERY, RECENT_PLACE, SAVED_PLACE, CONTACT }
 }
 
 data class MapUiState(
@@ -425,6 +427,11 @@ class MapViewModel @Inject constructor(
         val seed = app.vela.ui.SimLocation.point.value ?: locationProvider.lastKnown()
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
         maybeOfferResume() // a drive that was cut off by a process-kill → offer to pick it back up
+        // Warm the contacts-address cache (issue #243) so the first keystroke's synchronous local
+        // match has data — the per-keystroke path must never hit the contacts provider itself.
+        viewModelScope.launch(Dispatchers.IO) {
+            if (app.vela.ui.ContactsSearch.enabled.value) app.vela.data.ContactAddresses.ensureLoaded(appContext)
+        }
         restoreParkingSpot() // a saved "parked here" pin survives restarts
         _state.update { it.copy(lists = listStore.lists()) } // user place-lists (issue #1)
         refreshBuildingOverlays() // surface any installed open building overlays for the map to render
@@ -1113,6 +1120,15 @@ class MapViewModel @Inject constructor(
             .take(3)
             .forEach { out.add(LocalSuggestion(LocalSuggestion.Kind.RECENT_QUERY, it.query, null, query = it.query, removable = true)) }
 
+        // CONTACTS with a saved postal address (issue #243, opt-in toggle, matched on-device
+        // against the in-memory cache). Picking one searches the ADDRESS like any typed query —
+        // that string reaches the geocoder; the contact list itself never leaves the phone.
+        if (app.vela.ui.ContactsSearch.enabled.value) {
+            app.vela.data.ContactAddresses.matches(t).forEach {
+                out.add(LocalSuggestion(LocalSuggestion.Kind.CONTACT, it.name, it.address, query = it.address))
+            }
+        }
+
         // Places from the user's own data, deduped across sources by stable key.
         val seen = HashSet<String>()
         fun addPlace(kind: LocalSuggestion.Kind, p: Place, removable: Boolean) {
@@ -1143,6 +1159,7 @@ class MapViewModel @Inject constructor(
             LocalSuggestion.Kind.RECENT_QUERY -> s.query?.let { recentStore.remove(it) }
             LocalSuggestion.Kind.RECENT_PLACE -> s.place?.let { recentPlaceStore.remove(it.id) }
             LocalSuggestion.Kind.SAVED_PLACE -> return
+            LocalSuggestion.Kind.CONTACT -> return // remove it by turning the toggle off / editing the contact
         }
         val term = _state.value.query.trim()
         _state.update {

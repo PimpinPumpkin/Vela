@@ -49,6 +49,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.PublicOff
 import androidx.compose.material.icons.filled.Layers
@@ -3266,6 +3267,7 @@ private fun SearchEntryContent(
                         app.vela.ui.map.LocalSuggestion.Kind.RECENT_QUERY -> Icons.Default.History
                         app.vela.ui.map.LocalSuggestion.Kind.RECENT_PLACE -> Icons.Default.Place
                         app.vela.ui.map.LocalSuggestion.Kind.SAVED_PLACE -> Icons.Default.Bookmark
+                        app.vela.ui.map.LocalSuggestion.Kind.CONTACT -> Icons.Default.Person
                     },
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     label = s.label,
