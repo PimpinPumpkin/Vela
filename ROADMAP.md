@@ -419,9 +419,21 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
      often **token-gated** (free, but a key → the optional-user-token model we use for `MAPTILER_KEY`, never
      committed). Pluggable provider + start with one region (like the routing catalog grew), grow coverage.
   3. **Defer** - congestion colouring already covers "where's it slow"; discrete incidents are polish.
-  **Status: Google path's true cost now known (binary `vt`-tile RE, high + fragile). Given that, the
-  open-feed path is likely the pragmatic way to actually ship incidents despite its fragmentation - surfaced
-  to the user with the recalibrated tradeoff. All probes removed; nothing half-built shipped.**
+  4. **Waze live-map alerts - PROBED 2026-08-08, DEAD.** The community-report feed (crashes, hazards,
+     police, closures) would have been the perfect fit, and its `live-map/api/georss` endpoint was
+     historically an open keyless GET. No longer: it now sits behind **reCAPTCHA Enterprise token
+     scoring**. Probed four ways, all 403: plain HTTP client; a cold real browser on the direct URL;
+     a same-session fetch from inside the loaded live-map page; and a REAL desktop Chrome session,
+     where even the page's OWN api calls (reverse-geocoding) 403'd because the reCAPTCHA bootstrap
+     was blocked upstream - which is exactly the failure mode this app's audience would hit, since
+     degoogled users routinely block Google endpoints and Waze's anti-bot IS Google infrastructure.
+     Building a safety feature on "execute Google reCAPTCHA in a hidden WebView and pass its score
+     every session" is fragile by design and unrepairable via calibration when scores drop. Don't
+     re-chase without evidence the gate changed.
+  **Status: Google path = binary `vt`-tile RE (high + fragile); Waze = reCAPTCHA-gated (dead). The
+  open DOT/511 feed path is the only live option and it is fragmented + token-shaped. Deferred; the
+  congestion spans keep covering "where's it slow". Static OSM road aids (railway level crossings,
+  speed humps) remain buildable any time as a sibling of the lights/stop-signs layer.**
 - **On-device map-matching (GraphHopper) - the "Google routes, the engine names the turns" unlock.**
   > **✅ SHIPPED as the OFFLINE ROUTER (2026-06-30)** - Phase 1 is done end-to-end + on a 135-region world
   > catalog (see "Recently shipped" up top, `SPEC.md` §Offline routing, `FEATURES.md`). This long entry is
