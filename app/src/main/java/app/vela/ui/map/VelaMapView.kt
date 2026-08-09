@@ -158,6 +158,8 @@ private const val CONTROLS_LAYER = "vela-controls"
 private const val CONTROLS_CLAIM_LAYER = "vela-controls-claim" // invisible collision box over the labels
 private const val SIGNAL_IMG = "vela-signal"
 private const val STOP_IMG = "vela-stop"
+private const val RAILX_IMG = "vela-railx" // railway level crossing (static OSM road aid, 2026-08-08)
+private const val HUMP_IMG = "vela-hump" // speed hump/bump/table/cushion (same aid family)
 private const val SPEEDCAM_SRC = "vela-speedcam-src" // fixed radar cameras (OSM), opt-in layer
 private const val SPEEDCAM_LAYER = "vela-speedcam"
 private const val SPEEDCAM_IMG = "vela-speedcam-badge"
@@ -3342,6 +3344,8 @@ private fun ensureLayers(style: Style) {
     // false) keeps a dense grid of lights legible instead of a pile. minZoom matches the fetch gate.
     if (style.getImage(SIGNAL_IMG) == null) style.addImage(SIGNAL_IMG, trafficLightBitmap())
     if (style.getImage(STOP_IMG) == null) style.addImage(STOP_IMG, stopSignBitmap())
+    if (style.getImage(RAILX_IMG) == null) style.addImage(RAILX_IMG, railCrossingBitmap())
+    if (style.getImage(HUMP_IMG) == null) style.addImage(HUMP_IMG, speedHumpBitmap())
     if (style.getSource(CONTROLS_SRC) == null) {
         style.addSource(GeoJsonSource(CONTROLS_SRC, GeoJsonOptions().withMaxZoom(12)))
         val controlsSize = Expression.interpolate(
@@ -5480,7 +5484,15 @@ private fun applyData(
         val controlsFc = FeatureCollection.fromFeatures(
             trafficControls.map { ctl ->
                 Feature.fromGeometry(Point.fromLngLat(ctl.loc.lng, ctl.loc.lat)).apply {
-                    addStringProperty("icon", if (ctl.stop) STOP_IMG else SIGNAL_IMG)
+                    addStringProperty(
+                        "icon",
+                        when (ctl.kind) {
+                            app.vela.core.data.TrafficControl.Kind.STOP -> STOP_IMG
+                            app.vela.core.data.TrafficControl.Kind.SIGNAL -> SIGNAL_IMG
+                            app.vela.core.data.TrafficControl.Kind.RAIL_CROSSING -> RAILX_IMG
+                            app.vela.core.data.TrafficControl.Kind.SPEED_HUMP -> HUMP_IMG
+                        },
+                    )
                 }
             },
         )
@@ -5838,6 +5850,42 @@ private fun stopSignBitmap(): Bitmap {
         typeface = android.graphics.Typeface.DEFAULT_BOLD
     }
     c.drawText("STOP", cx, cy + 4f, label)
+    return bmp
+}
+
+/** Railway level-crossing marker: dark disc (the traffic-light housing colour) with a white
+ *  crossbuck X - the "tracks cross here" shorthand, deliberately monochrome so it can't be read
+ *  as one of the red/amber regulatory signs. Static OSM road aid (2026-08-08). */
+private fun railCrossingBitmap(): Bitmap {
+    val s = 44
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val cx = s / 2f
+    c.drawCircle(cx, cx, cx - 1f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }) // rim
+    c.drawCircle(cx, cx, cx - 3f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF263238.toInt() })
+    val bar = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFFFFFFFF.toInt(); strokeWidth = 6f
+        strokeCap = Paint.Cap.ROUND; style = Paint.Style.STROKE
+    }
+    val r = cx * 0.48f
+    c.drawLine(cx - r, cx - r, cx + r, cx + r, bar)
+    c.drawLine(cx - r, cx + r, cx + r, cx - r, bar)
+    return bmp
+}
+
+/** Speed-hump marker: white rim, amber warning field, dark bump-on-a-road glyph. Covers OSM
+ *  traffic_calming bump/hump/table/cushion - the shapes a driver feels. */
+private fun speedHumpBitmap(): Bitmap {
+    val s = 44
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val cx = s / 2f
+    c.drawCircle(cx, cx, cx - 1f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }) // rim
+    c.drawCircle(cx, cx, cx - 3f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFB300.toInt() }) // amber
+    val glyph = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF263238.toInt() }
+    // Road line with a filled bump sitting on it.
+    c.drawRect(cx - 12f, cx + 5f, cx + 12f, cx + 8f, glyph)
+    c.drawArc(android.graphics.RectF(cx - 8f, cx - 5f, cx + 8f, cx + 11f), 180f, 180f, true, glyph)
     return bmp
 }
 

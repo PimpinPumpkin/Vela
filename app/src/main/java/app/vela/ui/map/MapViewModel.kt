@@ -5226,9 +5226,9 @@ class MapViewModel @Inject constructor(
             // grid stay separate), each cluster drawn at its centroid. Fewer allowOverlap symbols
             // is also a straight render win.
             val merged = withContext(Dispatchers.Default) {
-                res.groupBy { it.stop }.flatMap { (isStop, group) ->
+                res.groupBy { it.kind }.flatMap { (kind, group) ->
                     app.vela.core.data.MapDeclutter.cluster(group, CONTROLS_CLUSTER_M) { it.loc }
-                        .map { c -> app.vela.core.data.TrafficControl(c.centroid, isStop) }
+                        .map { c -> app.vela.core.data.TrafficControl(c.centroid, kind) }
                 }
             }
             val cLat0 = (s + n) / 2; val cLng0 = (w + e) / 2
@@ -5279,9 +5279,9 @@ class MapViewModel @Inject constructor(
                 return@launch
             }
             val merged = withContext(Dispatchers.Default) {
-                res.groupBy { it.stop }.flatMap { (isStop, group) ->
+                res.groupBy { it.kind }.flatMap { (kind, group) ->
                     app.vela.core.data.MapDeclutter.cluster(group, CONTROLS_CLUSTER_M) { it.loc }
-                        .map { c -> app.vela.core.data.TrafficControl(c.centroid, isStop) }
+                        .map { c -> app.vela.core.data.TrafficControl(c.centroid, kind) }
                 }
             }
             val kept = if (merged.size <= CONTROLS_ROUTE_CAP) merged else {

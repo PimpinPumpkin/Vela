@@ -15,8 +15,12 @@ import okhttp3.OkHttpClient
  * Coverage is OSM's — dense in US/EU urban+suburban areas, thin in rural/developing regions; where a signal
  * isn't mapped, no clause is added (it's never wrong, just absent). Queried ONCE per driven route, not per fix.
  */
-/** A drawn traffic control at [loc]: a traffic light (`stop == false`) or a stop sign (`stop == true`). */
-data class TrafficControl(val loc: LatLng, val stop: Boolean)
+/** A drawn road control/aid at [loc]. Started as lights + stop signs; the static OSM AIDS
+ *  (railway level crossings, speed humps - 2026-08-08, the buildable subset of "aids on the road"
+ *  after every live-incident source proved dead, see ROADMAP) ride the same pipeline. */
+data class TrafficControl(val loc: LatLng, val kind: Kind) {
+    enum class Kind { SIGNAL, STOP, RAIL_CROSSING, SPEED_HUMP }
+}
 
 @Serializable
 private data class SignalsResp(val elements: List<SignalNode> = emptyList())
@@ -41,14 +45,29 @@ object OverpassTrafficSignals {
      * Queried per padded viewport by the caller (which area-caches it, since controls are static), NOT per fix.
      */
     @OptIn(ExperimentalSerializationApi::class)
+    /** The one node-selector set every controls fetch shares: lights, stop signs, and the static
+     *  road AIDS (level crossings, feelable traffic calming). `traffic_calming` is filtered to the
+     *  shapes a driver actually feels - island/chicane/choker are lane geometry, not a bump. */
+    private fun controlSelectors(where: String): String =
+        "node[\"highway\"=\"traffic_signals\"]$where;" +
+            "node[\"highway\"=\"stop\"]$where;" +
+            "node[\"railway\"=\"level_crossing\"]$where;" +
+            "node[\"traffic_calming\"~\"^(bump|hump|table|cushion)$\"]$where;"
+
+    private fun kindOf(tags: Map<String, String>?): TrafficControl.Kind = when {
+        tags?.get("highway") == "stop" -> TrafficControl.Kind.STOP
+        tags?.get("railway") == "level_crossing" -> TrafficControl.Kind.RAIL_CROSSING
+        tags?.get("traffic_calming") != null -> TrafficControl.Kind.SPEED_HUMP
+        else -> TrafficControl.Kind.SIGNAL
+    }
+
     fun fetchControlsInBox(
         http: OkHttpClient,
         south: Double, west: Double, north: Double, east: Double,
         limit: Int = 6000,
     ): List<TrafficControl>? {
         val box = "($south,$west,$north,$east)"
-        val query = "[out:json][timeout:25];" +
-            "(node[\"highway\"=\"traffic_signals\"]$box;node[\"highway\"=\"stop\"]$box;);out $limit;"
+        val query = "[out:json][timeout:25];(${controlSelectors(box)});out $limit;"
         // Failover across mirrors (see OverpassEndpoints): a 504 from the primary no longer blanks the layer.
         // run() returns null only when EVERY endpoint fails — a real failure, not a genuine empty area.
         return OverpassEndpoints.run(http, query) { body ->
@@ -58,7 +77,7 @@ object OverpassTrafficSignals {
             json.decodeFromStream<SignalsResp>(body.byteStream()).elements.mapNotNull { n ->
                 val lat = n.lat ?: return@mapNotNull null
                 val lng = n.lon ?: return@mapNotNull null
-                TrafficControl(LatLng(lat, lng), stop = n.tags?.get("highway") == "stop")
+                TrafficControl(LatLng(lat, lng), kindOf(n.tags))
             }
         }
     }
@@ -84,13 +103,12 @@ object OverpassTrafficSignals {
         val pts = sampleForCorridor(polyline, maxPts)
         val coords = pts.joinToString(",") { String.format(java.util.Locale.US, "%.5f,%.5f", it.lat, it.lng) }
         val around = "(around:$radiusM,$coords)"
-        val query = "[out:json][timeout:25];" +
-            "(node[\"highway\"=\"traffic_signals\"]$around;node[\"highway\"=\"stop\"]$around;);out $limit;"
+        val query = "[out:json][timeout:25];(${controlSelectors(around)});out $limit;"
         return OverpassEndpoints.run(http, query) { body ->
             json.decodeFromStream<SignalsResp>(body.byteStream()).elements.mapNotNull { n ->
                 val lat = n.lat ?: return@mapNotNull null
                 val lng = n.lon ?: return@mapNotNull null
-                TrafficControl(LatLng(lat, lng), stop = n.tags?.get("highway") == "stop")
+                TrafficControl(LatLng(lat, lng), kindOf(n.tags))
             }
         }
     }

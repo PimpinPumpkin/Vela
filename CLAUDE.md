@@ -2647,7 +2647,15 @@ architecture note.
   **The house numbers fill the exact gap the basemap `vela-housenumber` (OSM `addr:housenumber`) leaves in new
   suburbs** - verified real house numbers in the test suburb rendered over the MS footprints.
 - **Traffic lights + stop signs drawn on the map (`OverpassTrafficSignals.fetchControlsInBox` + `VelaMapView`,
-  2026-07-05).** OSM `highway=traffic_signals` (a stoplight icon) and `highway=stop` (a red STOP octagon) as a
+  2026-07-05). + STATIC ROAD AIDS (2026-08-08, device-verified crossbuck at a Davis spur crossing):**
+  `railway=level_crossing` (dark disc + white crossbuck X, RAILX_IMG) and `traffic_calming`
+  bump/hump/table/cushion (amber disc + bump glyph, HUMP_IMG - only the shapes a driver FEELS;
+  island/chicane/choker are lane geometry, excluded) ride the SAME pipeline: `TrafficControl.kind`
+  (enum SIGNAL/STOP/RAIL_CROSSING/SPEED_HUMP, replaced the old stop boolean), one shared
+  `controlSelectors()` in both the viewport-box and route-corridor queries, per-kind 30 m
+  clustering, same layers/zoom gates/caps. Built as the buildable subset of "aids on the road"
+  after every LIVE incident source proved dead (see ROADMAP: Google=binary vt tiles,
+  Waze=reCAPTCHA-gated). OSM `highway=traffic_signals` (a stoplight icon) and `highway=stop` (a red STOP octagon) as a
   non-interactive `SymbolLayer` (`vela-controls`, icons `vela-signal`/`vela-stop`) drawn **beneath** the POI dots
   + pins, `minZoom 16`. **CLUSTERED PER INTERSECTION (2026-07-25):** OSM maps one control node per APPROACH (a
   four-way stop = four `highway=stop` nodes), so `refreshTrafficControls` merges same-type nodes
