@@ -1988,7 +1988,13 @@ architecture note.
   `navSession.onLocation` path - puck/banner/voice keep working, `navStarved` keeps the
   "Searching for GPS" chip up for honesty, the first real fix re-anchors (route-plausible
   synthetics pass the outlier gate). Never feeds `tripStore.record` (no fake points in trips).
-  Nav zoom range is 18.0→15.5 (2026-07-14, was 17.3→15.0). A pinch during nav sets a zoom
+  Nav zoom range is 18.0→15.5 (2026-07-14, was 17.3→15.0). **Nav-camera eases use a CAPPED time
+  step (`dtEase` ≤ 65 ms, issue #251 2026-08-10, video-diagnosed):** a main-thread hitch (the
+  400 m road-label pass lands near junctions) used to deliver one frame whose exponential eases
+  jumped 45-70% of their error at once - the map lurched sideways under a rock-steady puck.
+  Integration (Kalman/reckoning) keeps real dtT; only the cosmetic eases (progress, bearing,
+  camera pos/brg/zoom/tilt/padding) use dtEase, spreading a hitch's catch-up over ~6 frames.
+  At smooth 60 fps the math is unchanged (16 ms << cap). A pinch during nav sets a zoom
   override WITHOUT detaching the follow camera (deliberate), which meant no Re-center path back
   to auto-zoom existed (issue #238) - since 2026-08-04 VelaMapView reports the override up
   (onNavZoomOverride) so MapScreen shows the nav Re-center FAB for it, and the button bumps

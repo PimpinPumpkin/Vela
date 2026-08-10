@@ -1522,6 +1522,17 @@ fun VelaMapView(
             val ts = speedupHolder.value.toDouble().coerceAtLeast(1.0)
             val dtT = dtRaw * ts
             val dtE = (dt * ts.toFloat()).coerceAtMost(0.3f)
+            // EASE-ONLY time step, capped at ~4 smooth frames (issue #251, video-diagnosed): a
+            // main-thread hitch (the 400 m road-label pass lands near junctions) delivered one
+            // frame with dtE up to 0.3 s, and the exponential eases then moved 45-70% of their
+            // remaining error in that SINGLE visible frame - the puck is drawn at its own point,
+            // so the whole map lurched sideways under a rock-steady puck (the reporter's clip:
+            // steady forward glide, 10-16 px lateral yanks in bursts at the intersection). The
+            // INTEGRATION steps (Kalman predict, dead-reckoning) keep real dtT - physics must
+            // not lose time - but the cosmetic eases below (progress, bearing, camera, zoom,
+            // tilt, padding) use this capped step, so a hitch's catch-up spreads over the next
+            // few frames instead of hitting the glass at once.
+            val dtEase = dtE.coerceAtMost(0.065f)
             if (navPuck.engaged && routePolyline.size >= 2) {
                 // Kalman-predict the speed each frame: fold the MEASURED forward acceleration
                 // into the modelled speed, so braking kills the prediction NOW — not at the next
@@ -1559,7 +1570,7 @@ fun VelaMapView(
                 // zoom/look-ahead don't ride a stale speed forever. A resumed fix re-measures.
                 if (sinceFix > 3.0) navPuck.kalman.decay(dtT.coerceAtMost(0.5))
                 val predicted = navPuck.targetM + navPuck.reckonedM
-                val eased = navPuck.progressM + (predicted - navPuck.progressM) * (1f - kotlin.math.exp(-dtE / 0.25f))
+                val eased = navPuck.progressM + (predicted - navPuck.progressM) * (1f - kotlin.math.exp(-dtEase / 0.25f))
                 navPuck.progressM = maxOf(navPuck.progressM, eased) // monotonic — never backward
                 val (ptC, segBrg) = pointAtMeters(routePolyline, routeCum, navPuck.progressM)
                 // Lateral de-jitter: drawn straight off the polyline, the puck traced every
@@ -1594,7 +1605,7 @@ fun VelaMapView(
                 // 0.3 (was 0.2): with the camera's own bearing damping this is two-stage
                 // filtering - the polyline's vertex-level bearing steps stop reaching the glass.
                 navPuck.displayBearing = if (navPuck.displayBearing.isNaN()) chordBrg
-                    else smoothBearing(navPuck.displayBearing, chordBrg, dtE, 0.3f)
+                    else smoothBearing(navPuck.displayBearing, chordBrg, dtEase, 0.3f)
                 navPuck.drawn = pt // the camera follows this smoothed point, not the raw fix
                 setMeSource(style, pt, navPuck.displayBearing)
                 // Drive the follow-camera HERE, per frame (60 fps) with a continuous ease, instead
@@ -1606,7 +1617,7 @@ fun VelaMapView(
                 val cam = mapRef
                 if (cam != null && navFollowingHolder.value && !scaling[0] && !shoving[0]) {
                     val sp = navPuck.speed.toFloat().coerceIn(0f, 30f)
-                    navZoomSpeed[0] += (sp - navZoomSpeed[0]) * (1f - kotlin.math.exp(-dtE / 0.6f))
+                    navZoomSpeed[0] += (sp - navZoomSpeed[0]) * (1f - kotlin.math.exp(-dtEase / 0.6f))
                     val tgtZoom = if (!navUserZoom[0].isNaN()) navUserZoom[0]
                         else 18.5 - (navZoomSpeed[0] / 30f) * (18.5 - 15.8) // even closer default (user 2026-07-15, was 18.0-15.5); speed still zooms out
                     if (camState[0].isNaN()) { // (re)seed from the live camera for a smooth hand-off
@@ -1631,9 +1642,9 @@ fun VelaMapView(
                     // (the puck is drawn at its own point, so camera lag reads as glide, not
                     // error), while bearing and zoom get much heavier damping - turns sweep
                     // around over ~a second and the zoom breathes instead of twitching.
-                    val kPos = (1f - kotlin.math.exp(-dtE / 0.25f)).toDouble()
-                    val kBrg = (1f - kotlin.math.exp(-dtE / 0.55f)).toDouble()
-                    val kZoom = (1f - kotlin.math.exp(-dtE / 0.5f)).toDouble()
+                    val kPos = (1f - kotlin.math.exp(-dtEase / 0.25f)).toDouble()
+                    val kBrg = (1f - kotlin.math.exp(-dtEase / 0.55f)).toDouble()
+                    val kZoom = (1f - kotlin.math.exp(-dtEase / 0.5f)).toDouble()
                     camState[0] += (pt.lat - camState[0]) * kPos
                     camState[1] += (pt.lng - camState[1]) * kPos
                     // Compass toggle (user 2026-07-15): north-up keeps the follow (position, zoom,
