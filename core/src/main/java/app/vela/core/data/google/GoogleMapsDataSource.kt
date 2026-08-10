@@ -6,6 +6,7 @@ import app.vela.core.config.JsTransforms
 import app.vela.core.diag.DiagLog
 import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.CategoryFilter
+import app.vela.core.data.LowDataMode
 import app.vela.core.data.LowRamMode
 import app.vela.core.data.MapDataSource
 import app.vela.core.data.RouteEngine
@@ -213,7 +214,9 @@ class GoogleMapsDataSource @Inject constructor(
         // "places"/"stores" or degrade gracefully: shopping, services, beauty salon, fast food,
         // gym, bar, pharmacy. Fewer ambient POIs is a visible trade, and the right one on a phone
         // that otherwise OOMs. Roomier devices are unaffected.
-        val terms = if (LowRamMode.enabled) {
+        // Lean fan-out on a constrained heap OR a constrained LINK (issue #235): fewer terms,
+        // smaller page - the satellite case wants bytes back, not just heap.
+        val terms = if (LowRamMode.enabled || LowDataMode.enabled) {
             listOf("places", "restaurants", "coffee", "stores", "grocery store", "gas station", "school", "park")
         } else {
             allTerms
@@ -228,7 +231,7 @@ class GoogleMapsDataSource @Inject constructor(
                         // Deep pool per term, so zooming in can go down the rank. Halved on low-RAM:
                         // the pool size drives the RESPONSE BODY size, and the body is what gets
                         // buffered and DOM-parsed per term.
-                        if (LowRamMode.enabled) "!7i30" else "!7i60",
+                        if (LowRamMode.enabled || LowDataMode.enabled) "!7i30" else "!7i60",
                     )
                 val url = "${cal.searchEndpoint}&q=${term.enc()}&pb=${pb.enc()}".localized()
                 SearchParser.parse(term, GoogleResponse.parse(get(url)), center, cal.paths).places

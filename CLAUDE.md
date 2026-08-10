@@ -2817,6 +2817,23 @@ architecture note.
   street diagonals make guessing unreliable. Transit directions are untouched - they walk to the
   itinerary's exact boarding coordinate. Unit-tested (pair -> midpoint + sibling; same name across
   town stays separate; NB/SB stays separate).
+- **Constrained / satellite networks (issue #235).** The manifest carries
+  `PROPERTY_SATELLITE_DATA_OPTIMIZED` (value = the PACKAGE NAME, not a boolean - Android's docs
+  are explicit; added 2901e0af 2026-08-04), which is what lets carriers who gate satellite service
+  (Rogers/AT&T/KDDI) pass Vela's traffic at all. **The declaration is only half the contract** -
+  Android requires a self-declared satellite-optimized app to ADAPT on such a link, which is the
+  half added 2026-08-10: `app/ui/ConstrainedNetwork` reads `NET_CAPABILITY_NOT_BANDWIDTH_CONSTRAINED`
+  (API 36) and `TRANSPORT_SATELLITE` (API 35) BY NAME through reflection - compileSdk is 35 and
+  minSdk 26, so hardcoding either framework integer would be a guess that could silently mean
+  something else on another release; absent constants yield null and the answer is false, because
+  absence of the signal is not evidence of a constrained link. Detection rides the EXISTING
+  `observeConnectivity` default-network callback (it already fires on capability changes, exactly
+  when a handset falls back to satellite) -> `MapUiState.lowData` + the `:core` `LowDataMode.enabled`
+  flag (same app-writes-a-core-flag seam as `LowRamMode`, which `:core` cannot read a holder for).
+  What actually changes on a constrained link: the per-place PHOTO walk is skipped (the heaviest
+  single transfer) and the ambient fan-out takes the LEAN path (8 terms at `!7i30` instead of
+  15 at `!7i60`) - the same trade LowRamMode makes, for bytes rather than heap. NOT verifiable
+  without a real satellite link; the plumbing is what was tested.
 - **Nav smoothness trace (`app/diag/NavTrace`, Settings > Diagnostics, OFF by default, issue #251
   2026-08-10).** One row per nav frame - t, along-route progress, speed, bearing WINDOW, chordBrg,
   displayBearing, live camera bearing, frame dt - into a bounded 72k ring (oldest dropped), written

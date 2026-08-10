@@ -137,6 +137,10 @@ data class MapUiState(
     val openListId: String? = null, // the list currently shown as results (its name is in the bar)
     val pendingImport: app.vela.core.model.ImportedList? = null, // an imported Google list shown but NOT yet saved
     val offline: Boolean = false, // no usable internet — drives the subtle offline indicator
+    // Active network is satellite / bandwidth-constrained (issue #235): Vela declares itself
+    // satellite-optimized in the manifest, so it also has to behave like it - photos and the
+    // fat ambient fan-out step aside while this is true.
+    val lowData: Boolean = false,
     val query: String = "",
     val results: List<Place> = emptyList(),
     val ambientPois: List<Place> = emptyList(), // Google places for the visible area, shown on the bare browse map
@@ -1491,6 +1495,13 @@ class MapViewModel @Inject constructor(
     private fun observeConnectivity() {
         val cm = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return
         fun refresh() {
+            // Constrained-link check rides the same callback (it already fires on capability
+            // changes, which is exactly when a handset falls back to satellite).
+            val constrained = app.vela.ui.ConstrainedNetwork.isConstrained(cm)
+            if (constrained != _state.value.lowData) {
+                app.vela.core.data.LowDataMode.enabled = constrained
+                _state.update { it.copy(lowData = constrained) }
+            }
             val off = !isOnline()
             if (!off) {
                 // Online applies IMMEDIATELY (and cancels a pending offline latch).
@@ -2379,6 +2390,10 @@ class MapViewModel @Inject constructor(
         // "Load photos" off: never start the gallery scrape (it's the heaviest per-place
         // request); the sheet also hides the photo strip, so no loading flag either.
         if (!app.vela.ui.LoadPhotos.on.value) return
+        // Satellite / bandwidth-constrained link (issue #235): the gallery walk is the single
+        // heaviest per-place transfer, so it is the first thing to go. Everything else on the
+        // sheet still loads - the place is still usable, just without photos.
+        if (_state.value.lowData) return
         val fid = p.featureId
         if (fid.isNullOrBlank() || !fid.contains(":")) return
         // Only flash the loading shimmer for places LIKELY to have photos — a rated/reviewed
