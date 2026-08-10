@@ -2817,6 +2817,16 @@ architecture note.
   street diagonals make guessing unreliable. Transit directions are untouched - they walk to the
   itinerary's exact boarding coordinate. Unit-tested (pair -> midpoint + sibling; same name across
   town stays separate; NB/SB stays separate).
+- **Nav smoothness trace (`app/diag/NavTrace`, Settings > Diagnostics, OFF by default, issue #251
+  2026-08-10).** One row per nav frame - t, along-route progress, speed, bearing WINDOW, chordBrg,
+  displayBearing, live camera bearing, frame dt - into a bounded 72k ring (oldest dropped), written
+  to a CSV only on export. Recorded from the VelaMapView motion ticker, gated on the toggle so it
+  costs nothing off. **It deliberately carries NO position data** (no lat/lng, no street, no
+  wall-clock): every column is a bearing, an along-route distance, a speed or a timing, which is
+  what separates the three jitter causes (frame drops vs route geometry vs fix cadence) while
+  staying safe to attach to a public issue - unlike a recorded TRIP, which is raw GPS and must
+  never be posted. Built because demo-drive measurements proved a bad proxy for real drives (the
+  demo path had its own 3x clock bug, see the nav-camera notes).
 - **Share diagnostics is functional now (2026-07-13):** `DiagLog` (opt-in breadcrumb ring, :core)
   PERSISTS to a bounded `filesDir/diag_log.jsonl` (appended per event, reloaded at init, deleted on
   opt-out) - it was in-memory only, and since the bug being reported usually killed or preceded a

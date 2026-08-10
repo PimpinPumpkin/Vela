@@ -1606,6 +1606,17 @@ fun VelaMapView(
                 // filtering - the polyline's vertex-level bearing steps stop reaching the glass.
                 navPuck.displayBearing = if (navPuck.displayBearing.isNaN()) chordBrg
                     else smoothBearing(navPuck.displayBearing, chordBrg, dtEase, 0.3f)
+                // Nav smoothness trace (issue #251, Settings > Diagnostics, off by default): one
+                // row per frame of the numbers behind the camera, so a real drive can be diagnosed
+                // instead of a simulated one. No-op unless the user turned it on; carries no
+                // position data (see NavTrace).
+                if (app.vela.diag.NavTrace.enabled.value) {
+                    app.vela.diag.NavTrace.record(
+                        android.os.SystemClock.elapsedRealtime(), navPuck.progressM, navPuck.speed,
+                        win, chordBrg, navPuck.displayBearing,
+                        mapRef?.cameraPosition?.bearing ?: Double.NaN, dtE,
+                    )
+                }
                 navPuck.drawn = pt // the camera follows this smoothed point, not the raw fix
                 setMeSource(style, pt, navPuck.displayBearing)
                 // Drive the follow-camera HERE, per frame (60 fps) with a continuous ease, instead

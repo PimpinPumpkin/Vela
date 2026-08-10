@@ -101,6 +101,31 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
             onCheckedChange = { app.vela.ui.BuildingDebug.set(context, it) },
             hint = stringResource(R.string.settings_building_debug_hint),
         )
+        GroupDivider()
+        // Nav smoothness trace (issue #251): records the numbers behind the nav camera during a
+        // REAL drive so a "map swims / puck jitters" report is diagnosable. Carries no position
+        // data by design, so the export is safe to attach to a public issue.
+        ToggleRow(
+            label = stringResource(R.string.settings_nav_trace),
+            checked = app.vela.diag.NavTrace.enabled.value,
+            onCheckedChange = { app.vela.diag.NavTrace.set(context, it) },
+            hint = stringResource(R.string.settings_nav_trace_hint),
+        )
+        if (app.vela.diag.NavTrace.enabled.value) {
+            Spacer(Modifier.height(6.dp))
+            DpadRingBox(androidx.compose.material3.ButtonDefaults.filledTonalShape, Modifier.padding(horizontal = 16.dp)) {
+                FilledTonalButton(onClick = {
+                    val intent = app.vela.diag.NavTrace.shareIntent(context)
+                    if (intent != null) runCatching { context.startActivity(intent) }
+                    else android.widget.Toast.makeText(
+                        context,
+                        context.getString(R.string.settings_nav_trace_empty),
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                }) { Text(stringResource(R.string.settings_nav_trace_export)) }
+            }
+            Spacer(Modifier.height(4.dp))
+        }
         }
 
         // Trip recording - more invasive than diagnostics (it's your exact routes),

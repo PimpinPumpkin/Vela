@@ -344,6 +344,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_texture_render to SettingsSection.DIAGNOSTICS,
     R.string.settings_save_trips to SettingsSection.DIAGNOSTICS,
     R.string.settings_building_debug to SettingsSection.DIAGNOSTICS,
+    R.string.settings_nav_trace to SettingsSection.DIAGNOSTICS,
     // About
     R.string.settings_support to SettingsSection.ABOUT,
     R.string.settings_version to SettingsSection.ABOUT,
