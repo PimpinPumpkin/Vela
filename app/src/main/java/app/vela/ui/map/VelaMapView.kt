@@ -5685,11 +5685,14 @@ private fun arrowBitmap(): Bitmap {
  *  and NO white ring (user 2026-07-11: bigger, drop the ring, brighter navy blue). Points up
  *  (north) so `iconRotate(bearing)` aims it down the heading. */
 private fun navPuckBitmap(): Bitmap {
-    val size = 176 // +30% per user 2026-07-15 (was 136, 112, 96)
+    val size = 202 // +15% per issue #251 (2026-08-10); the earlier chain was 96 -> 112 -> 136 -> 176
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bmp)
-    val cx = size / 2f
-    val cy = size / 2f
+    // Drawn in the original 176-space and scaled whole, so the disc/arrow/shadow proportions the
+    // user tuned in July stay byte-identical - only the rendered size grows.
+    canvas.scale(size / 176f, size / 176f)
+    val cx = 88f
+    val cy = 88f
     val r = 65f
     // Soft drop shadow, offset slightly down (blur needs a software canvas - this is one).
     canvas.drawCircle(
