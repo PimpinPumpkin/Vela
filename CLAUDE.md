@@ -1988,8 +1988,21 @@ architecture note.
   `navSession.onLocation` path - puck/banner/voice keep working, `navStarved` keeps the
   "Searching for GPS" chip up for honesty, the first real fix re-anchors (route-plausible
   synthetics pass the outlier gate). Never feeds `tripStore.record` (no fake points in trips).
-  Nav zoom range is 18.0→15.5 (2026-07-14, was 17.3→15.0). **Nav-camera eases use a CAPPED time
-  step (`dtEase` ≤ 65 ms, issue #251 2026-08-10, video-diagnosed):** a main-thread hitch (the
+  Nav zoom range is 18.0→15.5 (2026-07-14, was 17.3→15.0). **DEMO DRIVES RAN THE PUCK CLOCKS AT 3x (issue #251, fixed 2026-08-10 - the
+  dominant cause of the "record needle" swim).** `startDemoDrive` feeds
+  `locationProvider.replay(fixes, speedup = 1f)` - REAL-TIME fixes - but it also sets
+  `replaying`, and MapScreen keyed `replaySpeedup` off that flag alone, so a demo drive
+  inherited the recorded-trip 3x clock scaling. The puck then dead-reckoned 3x too far between
+  fixes, the monotonic clamp stalled it until the next fix caught up, and its route bearing
+  jumped on every surge. Instrumented on-device (temporary `VelaBrg` log, 60 Hz):
+  progress stalled on **54.7%** of frames with 2.4 m lurches, chord-bearing wiggle **1.74 deg**,
+  camera yaw wiggle **0.83 deg** - which the 55 deg tilt smears into 15-50 px of horizontal swim
+  across the TOP of the screen while the puck sits rock steady (screen-space proof: top-band
+  motion 6x the bottom band = rotation, not translation). After gating the scaling on
+  `!demoDriving`: 0% stalled, chord wiggle **0.53**, camera wiggle **0.29** deg, on-screen top-band
+  motion halved. The gate is `state.replaying && !state.demoDriving` - a genuine trip REPLAY still
+  emits fixes at 3x and MUST keep the scaling. **Nav-camera eases also use a CAPPED time
+  step (`dtEase` <= 65 ms, same issue, video-diagnosed):** a main-thread hitch (the
   400 m road-label pass lands near junctions) used to deliver one frame whose exponential eases
   jumped 45-70% of their error at once - the map lurched sideways under a rock-steady puck.
   Integration (Kalman/reckoning) keeps real dtT; only the cosmetic eases (progress, bearing,

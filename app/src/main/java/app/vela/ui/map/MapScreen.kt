@@ -930,7 +930,16 @@ fun MapScreen(
             ) 2000f else null,
             mySpeed = state.mySpeed,
             mySpeedRaw = state.mySpeedRaw,
-            replaySpeedup = if (state.replaying) MapViewModel.REPLAY_SPEEDUP else 1f,
+            // A recorded-trip REPLAY emits its fixes at REPLAY_SPEEDUP x real time, so the map
+            // view scales the puck's clocks to match. A DEMO drive does NOT: startDemoDrive feeds
+            // `locationProvider.replay(fixes, speedup = 1f)` - real-time fixes - yet it also sets
+            // `replaying`, so it inherited the 3x clock scaling. The puck then dead-reckoned 3x too
+            // far between fixes, got stalled by the monotonic clamp until the next fix caught up,
+            // and its route bearing jumped with every surge - measured on-device as progress steps
+            // of 0 m (stalled) punctuated by 2.4 m lurches, chord-bearing wiggle 1.7 deg, and a
+            // camera yaw wiggle that the 55 deg tilt smears into the "record needle" swim across
+            // the top of the screen (issue #251, 2026-08-10). Demo drives run at 1x like real ones.
+            replaySpeedup = if (state.replaying && !state.demoDriving) MapViewModel.REPLAY_SPEEDUP else 1f,
             replaying = state.replaying,
             compassHeading = state.compassHeading,
             locationStale = state.myLocationStale,
