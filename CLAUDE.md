@@ -2416,11 +2416,21 @@ architecture note.
   wired later). Place packs still download alongside obf regions until POI/address search moves
   onto the obf (phase 2). COUNTRY + SUB-AREA both (2026-08-03, the #214 reporter's ask): the unsplit
   country stays the headline row, and big countries ALSO offer first-level sub-areas as smaller
-  optional rows - tools/routing-regions.json carries the 16 `de-*` Bundesland rows (group
-  `germany-sub`, named "<Land> (Germany)") beside the whole-Germany row (group `europe`,
-  big:true), so the obf bake can produce both; nobody is forced into fragments and a city user
-  grabs ~130 MB instead of ~2 GB. Extend the same pattern (fr-sub etc.) only when a country's
-  obf actually lands huge.
+  optional rows - tools/routing-regions.json carries sub-area rows beside the whole-country row
+  (which stays group `europe`/`south-america`/... with big:true), so the obf bake produces both;
+  nobody is forced into fragments and a city user grabs a fraction of the country. **Extended from
+  Germany alone to all 15 big countries Geofabrik actually sub-divides (issue #254, 2026-08-15):
+  159 sub rows in groups `<country>-sub`** - Brazil (the reported one, 1.5 GB whole), France,
+  Spain, Poland, Italy, Netherlands, Czechia, Norway, Australia, Japan, India, Indonesia, Great
+  Britain, California, Germany. Rows are GENERATED from Geofabrik's own `index-v1.json`, so every
+  `pbf_url` is a real extract: the id is `<country>-<geofabrik child slug>`, the name is the LOCAL
+  name plus the country ("Nord-Norge (Norway)", matching the de-* rows - Geofabrik's English
+  glosses made three-part names that wrapped to three lines in the picker). Note Geofabrik ids are
+  path-shaped for US/Canada (`us/california`, not `california`) and Great Britain's sub-extracts
+  live under `united-kingdom`, not `great-britain` - deriving the id naively finds neither. The
+  17 remaining big rows (Texas, Ontario, Mexico, Sweden, Ukraine, Argentina, South Africa, ...)
+  have NO Geofabrik sub-extracts, so they stay whole. **The workflow's `group` input takes a LIST
+  now, plus the shorthand `all-sub`** - one dispatch bakes every sub-area group instead of 15.
 - **On-device routing engine = GraphHopper (`core/data/RouteEngine` + `GraphHopperRouteEngine`).**
   Pure-JVM, runs on ART - **validated end-to-end on a Pixel 5a** (`:ghprobe`, a throwaway instrumented
   probe - the routing shipped long ago; the module is safe to delete whenever). Chosen over Valhalla (no maintained Android map-matching binding) /
