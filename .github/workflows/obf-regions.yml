@@ -13,9 +13,14 @@ on:
   workflow_dispatch:
     inputs:
       group:
-        description: "Region group(s) to build - one, several comma/space separated, or 'all-sub' for every sub-area group (ignored if 'ids' is set)"
-        type: choice
-        options: [us, canada, europe, germany-sub, oceania, asia, south-america, central-america, africa]
+        # A free-text STRING, not a choice: the selector takes a LIST now, and the sub-area groups
+        # are one per big country (16 of them), which would make an unusable dropdown - and a
+        # dropdown cannot express "brazil-sub,france-sub" or "all-sub" at all.
+        # Continents: us canada europe oceania asia south-america central-america africa
+        # Sub-areas:  <country>-sub (germany-sub, brazil-sub, france-sub, ...) or all-sub for every one
+        description: "Region group(s): one, several comma/space separated, or 'all-sub' for every sub-area group (ignored if 'ids' is set)"
+        type: string
+        default: europe
         default: us
       ids:
         description: "Optional: space/comma-separated region ids (e.g. 'arizona utah colorado'). Overrides 'group'."
