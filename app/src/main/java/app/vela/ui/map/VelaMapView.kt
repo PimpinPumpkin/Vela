@@ -778,7 +778,7 @@ fun VelaMapView(
     // while navigating (keeping even the top rank still left labels flickering at the threshold)
     // for a clean nav map, and restore on exit. Keyed on styleRef so it re-applies after a style
     // (re)load (dark/light flip), which recreates the layers at default visibility.
-    LaunchedEffect(navMode, navDriveMode, styleRef) {
+    LaunchedEffect(navMode, navDriveMode, styleRef, topographyOn) {
         val style = styleRef ?: return@LaunchedEffect
         val vis = if (navMode) Property.NONE else Property.VISIBLE
         runCatching {
@@ -817,12 +817,23 @@ fun VelaMapView(
         // hard. Every one is a plain-visibility layer with no competing owner, so a blanket
         // restore on nav end is safe (ensureTransit adds/removes its layer by the toggle - a
         // missing layer just no-ops here).
+        //
+        // THE HILLSHADE IS NOT IN THAT LIST, and must not be (issue #261). It is the one layer
+        // here whose visibility has a SECOND owner - the Settings > Map "Topography" toggle,
+        // which ensureTopography applies to a layer that is always present. This effect runs at
+        // startup with navMode false, so a blanket restore turned terrain relief ON for everyone
+        // regardless of the pref; flipping the toggle then hid it "correctly" and the bug looked
+        // session-specific. Restore it to the TOGGLE instead, and key the effect on it so a flip
+        // mid-drive is not lost.
         val dvis = if (navMode && navDriveMode) Property.NONE else Property.VISIBLE
+        runCatching {
+            ensureTopography(style, topographyOn && !(navMode && navDriveMode))
+        }
         runCatching {
             (
                 listOf(
                     "highway-shield-non-us", "highway-shield-us-interstate", "road_shield_us",
-                    "vela-bikeroutes", "vela-trails", HILLSHADE_LAYER, TRANSIT_LAYER,
+                    "vela-bikeroutes", "vela-trails", TRANSIT_LAYER,
                     // Neighbourhood/hamlet titles (2026-07-16): the read-by-nobody label tier.
                     // WATER names deliberately STAY (user 2026-07-16: liked them, and rivers are
                     // real landmarks - Google keeps major water names in nav too; a viewport has

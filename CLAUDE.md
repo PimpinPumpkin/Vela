@@ -562,6 +562,16 @@ Defaults that make the safe path the easy one:
   list to be open, and onPoiTap / onMapLongPress / onAddressLabelTap / onTransitStopTap
   early-return while navigating (their invisible selection popped up as a ghost sheet when
   the drive ended).
+- **The nav-declutter blanket restore must never touch a layer that has a SECOND owner (issue
+  #261, 2026-08-15).** The car-mode strip hides a list of layers during drive nav and restores
+  them all to VISIBLE otherwise - fine for layers whose only owner is that effect, WRONG for the
+  hillshade, whose visibility also belongs to the Settings > Map "Topography" toggle (the DEM
+  layer is always present; the toggle only flips visibility). The effect runs at startup with
+  navMode false, so the blanket restore turned terrain relief on for every launch regardless of
+  the pref, and flipping the toggle then hid it - which made the bug read as session-specific.
+  The hillshade is restored via `ensureTopography(style, topographyOn && !driveNav)` and the
+  effect keys on `topographyOn`. Before adding a layer to that list, check nothing else owns its
+  visibility.
 - **Nav declutter is MODE-AWARE (2026-07-16):** the aggressive strip (basemap shields, bike/trails,
   hillshade, transit lines, vela-addr numbers, gas-stations-only POIs, addr-refresh pause) keys on
   navMode && navDriveMode (DRIVE routes only) - walking/biking keeps all of it (a bike route needs
