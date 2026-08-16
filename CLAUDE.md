@@ -1531,6 +1531,23 @@ architecture note.
   recents list keeps its own X. Menu open-state is `remember(suggestion)`-keyed so a keystroke
   that rebuilds the list closes a stranded menu.
 
+- **UI FONT: user-supplied only, and UI TEXT ONLY (issue #252, 2026-08-16).** `ui/AppFont` +
+  Settings > Appearance > Font: System font, or a font file the user picks from their own storage
+  (SAF, copied to `filesDir/fonts/ui.ttf`, applied via `velaTypography(family)` in VelaTheme).
+  **Vela ships no branded face and cannot** - the one people ask for is Google Sans, which is
+  proprietary, absent from Google Fonts, and not redistributable in a GPLv3 app; Android has no API
+  to enumerate a user's installed fonts; and Downloadable Fonts is served by Play Services, which
+  our users do not have. Handing us their own file is the one legitimate path, and Vela never
+  fetches, ships or uploads it. Three details that matter: the file is VALIDATED BY LOADING IT
+  before adoption (a silently-adopted corrupt font renders every screen in the fallback face, and a
+  silently-rejected one reads as a dead button), the picker filters `*/*` on purpose (font files
+  arrive as font/ttf, application/x-font-ttf and octet-stream depending on the file manager - a
+  filter that hides the user's own font is worse than a chooser showing too much), and init falls
+  back to the system face if the stored copy no longer loads. **MAP LABELS ARE NOT AFFECTED** and
+  cannot be by this mechanism: they are drawn by MapLibre from pre-generated SDF glyph atlases (see
+  MapFonts), so an arbitrary TTF would have to be rasterized into glyph-range PBFs on-device - a
+  separate project, not a config. If bundled faces are ever added, they slot in beside these two
+  rows; nothing else changes.
 - **Interface size (2026-07-11):** `UiScale` holder (pref `ui_scale`, chips 90/100/115/130% in
   Settings -> Appearance) applied as a LocalDensity override around VelaRoot's whole tree - all
   Compose UI scales, the map AndroidView keeps native size (built for car/vertical screens).

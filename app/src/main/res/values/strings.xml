@@ -714,6 +714,11 @@
     <string name="settings_hub_diagnostics_sub">Crash reports, trips, compatibility</string>
     <string name="settings_hub_about_sub">Version, updates, support</string>
     <string name="settings_theme_amoled">AMOLED black</string>
+    <string name="settings_font">Font</string>
+    <string name="settings_font_system">System font</string>
+    <string name="settings_font_choose">Choose a font file…</string>
+    <string name="settings_font_hint">Vela cannot ship Google Sans: it is proprietary and cannot be redistributed. You can point Vela at any font file on your own device instead. Map labels keep their own font.</string>
+    <string name="settings_font_bad">That file could not be read as a font.</string>
     <string name="settings_traffic_lights">Traffic-light guidance</string>
     <string name="settings_traffic_lights_hint">Spoken landmark cues: pass the light, then turn. English only, off by default.</string>
     <string name="settings_softkeys" translatable="false">Hardware softkeys</string>
