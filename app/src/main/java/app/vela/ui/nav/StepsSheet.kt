@@ -31,7 +31,6 @@ import androidx.compose.material.icons.filled.ForkRight
 import androidx.compose.material.icons.filled.Merge
 import androidx.compose.material.icons.filled.RampLeft
 import androidx.compose.material.icons.filled.RampRight
-import androidx.compose.material.icons.filled.RoundaboutLeft
 import androidx.compose.material.icons.filled.Straight
 import androidx.compose.material.icons.filled.TripOrigin
 import androidx.compose.material.icons.filled.TurnLeft
@@ -231,7 +230,7 @@ fun StepsSheet(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(
-                            maneuverIcon(m.type),
+                            maneuverIconFor(m),
                             contentDescription = null,
                             tint = if (active) MaterialTheme.colorScheme.primary else ink,
                             // size + gap must be SEPARATE modifiers: `.size(24).padding(end=16)`
@@ -303,7 +302,14 @@ fun StepsSheet(
     }
 }
 
-/** A turn-arrow glyph for each maneuver type (Material "turn_*" symbols). */
+/**
+ * A turn-arrow glyph for each maneuver type (Material "turn_*" symbols).
+ *
+ * Roundabouts are the exception: they are DRAWN from the maneuver's own geometry, because no fixed
+ * picture can be right about both the exit and the direction of travel (issue #259). This
+ * type-only entry point can only produce the neutral form - callers holding the whole [Maneuver]
+ * should use [maneuverIconFor] so the real exit angle is shown.
+ */
 fun maneuverIcon(type: ManeuverType): ImageVector = when (type) {
     ManeuverType.DEPART -> Icons.Filled.TripOrigin
     ManeuverType.ARRIVE -> Icons.Filled.Flag
@@ -319,7 +325,17 @@ fun maneuverIcon(type: ManeuverType): ImageVector = when (type) {
     ManeuverType.FORK_RIGHT -> Icons.Filled.ForkRight
     ManeuverType.RAMP_LEFT -> Icons.Filled.RampLeft
     ManeuverType.RAMP_RIGHT -> Icons.Filled.RampRight
-    ManeuverType.ROUNDABOUT, ManeuverType.EXIT_ROUNDABOUT -> Icons.Filled.RoundaboutLeft
+    ManeuverType.ROUNDABOUT, ManeuverType.EXIT_ROUNDABOUT -> NEUTRAL_ROUNDABOUT
     ManeuverType.CONTINUE, ManeuverType.STRAIGHT -> Icons.Filled.Straight
     ManeuverType.UNKNOWN -> Icons.AutoMirrored.Filled.ArrowForward
 }
+
+/** The neutral roundabout glyph (ring + entry, no exit claimed), built once - it is the fallback
+ *  for every call site that has only a [ManeuverType] and no measured geometry. */
+private val NEUTRAL_ROUNDABOUT: ImageVector by lazy { roundaboutGlyph(null) }
+
+/** The glyph for [m], drawing a roundabout at its real exit angle and circulation where the router
+ *  gave us the bearings to derive them (issue #259). Prefer this wherever the Maneuver is in hand. */
+@androidx.compose.runtime.Composable
+fun maneuverIconFor(m: app.vela.core.model.Maneuver): ImageVector =
+    if (isRoundabout(m.type)) rememberRoundaboutGlyph(m.roundabout) else maneuverIcon(m.type)

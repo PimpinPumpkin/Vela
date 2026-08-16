@@ -97,11 +97,15 @@ fun ManeuverBanner(
     text: String,
     distanceMeters: Double,
     type: ManeuverType = ManeuverType.STRAIGHT,
+    // Roundabout shape for [type], when the router measured one - lets the glyph be drawn at the
+    // real exit angle and circulation instead of a fixed picture (issue #259). Null draws neutral.
+    roundabout: app.vela.core.model.RoundaboutGeometry? = null,
     ref: String? = null,
     laneHint: String? = null,
     lanes: List<Lane> = emptyList(),
     nextText: String? = null,
     nextType: ManeuverType? = null,
+    nextRoundabout: app.vela.core.model.RoundaboutGeometry? = null,
     nextRef: String? = null,
     currentRef: String? = null, // highway ref of the road being driven -> persistent shield chip
     nextDistanceMeters: Double? = null,
@@ -218,7 +222,7 @@ fun ManeuverBanner(
                             .graphicsLayer { rotationZ = angle },
                     )
                 } else Icon(
-                    maneuverIcon(type),
+                    if (isRoundabout(type)) rememberRoundaboutGlyph(roundabout) else maneuverIcon(type),
                     contentDescription = null,
                     modifier = Modifier.size(if (compact) 36.dp else 54.dp),
                 )
@@ -327,7 +331,11 @@ fun ManeuverBanner(
                         color = content.copy(alpha = 0.7f),
                     )
                     Spacer(Modifier.width(8.dp))
-                    Icon(maneuverIcon(nextType), contentDescription = null, modifier = Modifier.size(20.dp))
+                    Icon(
+                        if (isRoundabout(nextType)) rememberRoundaboutGlyph(nextRoundabout) else maneuverIcon(nextType),
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
                     Spacer(Modifier.width(6.dp))
                     nextSigns.firstOrNull()?.let { SignChip(it); Spacer(Modifier.width(6.dp)) }
                     // Short form: the chip beside it names the route, and the full sign used to

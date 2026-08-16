@@ -585,6 +585,23 @@ Defaults that make the safe path the easy one:
   maneuvers[liveStep-1].ref; the exit fold adopts the folded branch's road/ref so it survives
   on-ramps). Rerouting plays a two-note earcon (VoiceGuide.reroutingChime, in-process synth,
   muted-gated) before the throttled spoken word.
+  **The ROUNDABOUT glyph is DRAWN, not picked (issue #259, 2026-08-15).** It used to be Material's
+  `RoundaboutLeft` for every roundabout on earth: a counter-clockwise circulation exiting at 270
+  degrees, so it was wrong about the exit for nearly every roundabout and wrong about the direction
+  of travel for every left-hand-traffic driver - and the glyph is what you take in at a glance while
+  the text is what you read only if you have time. `ui/nav/RoundaboutGlyph.kt` builds an ImageVector
+  per maneuver from `Maneuver.roundabout` (`RoundaboutGeometry`): the arc you TRAVEL is drawn heavier
+  than the arc you do not, going round the correct way, and the exit stub leaves at the measured
+  angle. **Both facts are derived from OSRM, never assumed:** OSRM splits a roundabout into an enter
+  and an exit step, so `RouteGeometry.roundaboutGeoms` pairs them - the exit angle is the exit road's
+  bearing relative to the road you approached on, and the DRIVING SIDE is the sign of the entry
+  turn, because you always veer toward the circulating lane (live-captured: Paris entries turn +84,
+  Milton Keynes entries turn -24 to -52; pinned in `RoundaboutGeometryTest` with those real numbers).
+  With no geometry (Google fallback, offline GraphHopper/obf, or an entry too straight for its sign
+  to mean anything) it draws its NEUTRAL form - ring plus entry stub, NO exit arrow - because an
+  arrow pointing somewhere we did not measure is the whole bug. `maneuverIcon(type)` can only produce
+  the neutral form; call `maneuverIconFor(maneuver)` wherever the Maneuver is in hand. NB the
+  notification glyph (`service/NavGlyphs`) still draws its own fixed straight-out roundabout.
   **Nav UI style (2026-07-08):** ManeuverBanner + NavControls are RoundedCornerShape(24/28dp)
   Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
   name, FilledTonalIconButton for mute/steps. Keep new nav chrome on this treatment (no flat

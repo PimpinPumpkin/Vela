@@ -24,7 +24,26 @@ data class Maneuver(
     val side: String? = null,     // ARRIVE only: "left"/"right" — which side the destination is on
                                   // (OSRM's arrive modifier); null = unknown/straight ahead
     val lanes: List<Lane> = emptyList(), // per-lane turn guidance (from OSRM) for the Google-style diagram
+    val roundabout: RoundaboutGeometry? = null, // ROUNDABOUT/EXIT_ROUNDABOUT only: how to draw the glyph
 )
+
+/**
+ * The shape of a roundabout maneuver, so its glyph can be DRAWN rather than picked from a fixed
+ * pair of icons (issue #259: the old glyph was Material's `RoundaboutLeft` for every roundabout on
+ * earth - permanently a 270-degree counter-clockwise exit, so it was wrong about the exit for
+ * nearly every roundabout and wrong about the direction of travel for every left-hand-traffic
+ * driver; a glance at it actively misinformed).
+ *
+ * [exitAngleDeg] is where the exit road leaves RELATIVE to the road you approached on: 0 = straight
+ * on through, +90 = a right turn out, -90 = a left turn out, +/-180 = back the way you came.
+ * Normalized to (-180, 180].
+ *
+ * [clockwise] is which way traffic circulates - true in left-hand-traffic countries, false in
+ * right-hand ones. It is DERIVED, never assumed: joining a roundabout you always veer toward the
+ * circulating lane, so the sign of the entry step's own turn is the driving side (verified against
+ * live OSRM: an entry in Paris turns +84 degrees, entries in Milton Keynes turn -24 to -52).
+ */
+data class RoundaboutGeometry(val exitAngleDeg: Double, val clockwise: Boolean)
 
 /** One approach lane's turn guidance: the arrow directions it permits ([indications], OSRM's set —
  *  "straight", "left", "slight right", "sharp left", "uturn", "none", …) and whether it's a valid lane
