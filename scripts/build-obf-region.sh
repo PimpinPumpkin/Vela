@@ -33,9 +33,29 @@ read -r MINLON MINLAT MAXLON MAXLAT < <(osmium fileinfo -g header.boxes "$WORK/r
 BBOX="[$MINLAT,$MINLON,$MAXLAT,$MAXLON]"
 
 javac -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*" -d "$WORK" "$ROOT/scripts/VelaObfShim.java"
-# Not processInRam: MapCreator's disk-backed pipeline is what lets a whole country bake inside a
-# 16 GB runner. The heap bound is for its indexes, not the region.
-( cd "$WORK" && java -Xmx12g -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*:$WORK" VelaObfShim region.osm.pbf )
+# Not processInRam (it already defaults to false): MapCreator's disk-backed pipeline is what lets a
+# region bake inside a small runner at all. The heap bound is for its indexes, not the region.
+#
+# HEAP (2026-08-16): 12g was not enough for anything country-sized - Czech Republic AND Bayern, a
+# mere German sub-area, both died with "OutOfMemoryError: Java heap space" on a 16 GB runner while
+# Luxembourg and Delaware sailed through. So the ceiling sits well below a country, and splitting
+# into sub-areas does NOT by itself get under it. 14g leaves the runner ~2 GB, which is enough for
+# a machine doing nothing else, and SerialGC is deliberate: G1's region bookkeeping and concurrent
+# threads cost hundreds of MB that a single-shot batch job has no use for.
+JAVA_HEAP="${JAVA_HEAP:-14g}"
+echo "→ index heap: $JAVA_HEAP"
+set +e
+( cd "$WORK" && java -Xmx"$JAVA_HEAP" -XX:+UseSerialGC -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*:$WORK" VelaObfShim region.osm.pbf )
+RC=$?
+set -e
+if [ $RC -ne 0 ]; then
+  # Say WHICH region was too big and how big its source was, so a world bake reports a usable list
+  # of what needs baking elsewhere instead of a wall of identical red crosses.
+  PBF_MB=$(( ( $(stat -f%z "$WORK/region.osm.pbf" 2>/dev/null || stat -c%s "$WORK/region.osm.pbf") + 1048575 ) / 1048576 ))
+  echo "::error::$ID FAILED to index (exit $RC). Source PBF was ${PBF_MB} MB. If this was an" \
+       "OutOfMemoryError, this region does not fit a $JAVA_HEAP heap - bake it on a bigger machine."
+  exit $RC
+fi
 OBF="$(ls "$WORK"/*.obf | head -1)"  # generateObf names the output from the pbf filename
 mv "$OBF" "$WORK/$ID.obf"
 
