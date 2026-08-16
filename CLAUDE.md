@@ -1978,7 +1978,19 @@ architecture note.
   can ABANDON (the orphan finishes into the void - same trap and same shape as
   `AVOID_ONDEVICE_TIMEOUT_MS`), and `NavSession.rerouteGate` (pure, unit-tested in
   `RerouteGateTest`) declares a job dead past deadline + `REROUTE_STUCK_GRACE_MS` so single-flight
-  can never be permanent. **Never gate rerouting on job liveness alone.**
+  can never be permanent. **Never gate rerouting on job liveness alone.** **SECOND cause, same
+  symptom (2026-08-16):** a mid-drive reroute is `urgent`, i.e. a SINGLE-SHOT fetch with no retry
+  ladder - correct, because the full ladder outlived the deadline on a weak link (#185/#236) - but
+  a single shot on a genuinely flaky link fails over and over and NOTHING escalated, so the driver
+  sat on "Re-routing" through attempt after attempt while ending nav and starting again worked
+  first time (a fresh plan is not urgent and gets the 3-try ladder). That workaround was the clue.
+  Attempts now start lean and ESCALATE: `NavSession.rerouteAttempt(failStreak)` (pure, tested)
+  keeps the first `REROUTE_ESCALATE_AFTER` attempts urgent, then switches to the full ladder with
+  the longer `REROUTE_LADDER_TIMEOUT_MS`; the streak resets on any adopted route and on session
+  start/stop, so one drive's bad coverage does not send the next drive's first reroute down the
+  slow path. `rerouteGate` therefore takes the attempt's OWN deadline - judging an escalated
+  attempt by the lean one would declare a healthy fetch wedged and kill it just before it
+  succeeded, the original bug wearing a new hat.
   since 2026-08-04 the reroute fetch is URGENT (`directions(urgent = true)`, issues #185/#236):
   single-shot OSRM + Google (no 3x ladders), no divergence snap - the full planning ladder
   regularly outlived the deadline on a weak link, so the timeout cancelled fetches that were
