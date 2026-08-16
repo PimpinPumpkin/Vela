@@ -93,6 +93,19 @@ internal fun roundaboutGlyph(geom: RoundaboutGeometry?): ImageVector {
     val sweep = if (geom.clockwise) mod360(exitDeg - 180.0) else mod360(180.0 - exitDeg)
     val (exitX, exitY) = ring(exitDeg)
 
+    // A ±180 exit - going round and back the way you came - makes one arc the WHOLE ring and the
+    // other nothing, and an arcTo whose start and end coincide is dropped entirely by the path
+    // spec: the ring vanished and the glyph was an entry stub with an arrow floating off it. Draw
+    // the closed ring instead. (Genuinely rare, genuinely reachable: a roundabout U-turn.)
+    if (sweep <= 1.0 || 360.0 - sweep <= 1.0) {
+        b.path(
+            stroke = ink, strokeLineWidth = TRAVELLED_W,
+            strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round,
+        ) { circleAt(R) }
+        exitStub(b, ink, exitDeg)
+        return b.build()
+    }
+
     // The travelled arc. isPositiveArc is the SVG sweep flag: true draws clockwise on screen, which
     // is left-hand-traffic circulation.
     if (sweep > 1.0) {
@@ -113,9 +126,15 @@ internal fun roundaboutGlyph(geom: RoundaboutGeometry?): ImageVector {
         }
     }
 
-    // The exit road, leaving radially at the measured angle, with a solid head so the direction out
-    // is unmistakable. Drawn as a triangle rather than two strokes: a stroked chevron at this size
-    // renders as a smudge on a low-density screen.
+    exitStub(b, ink, exitDeg)
+    return b.build()
+}
+
+/** The exit road leaving radially at [exitDeg], with a solid head so the direction out is
+ *  unmistakable. A triangle rather than two strokes: a stroked chevron at this size renders as a
+ *  smudge on a low-density screen. */
+private fun exitStub(b: ImageVector.Builder, ink: SolidColor, exitDeg: Double) {
+    val (exitX, exitY) = ring(exitDeg)
     val (outX, outY) = ring(exitDeg, R + STUB * 0.55f)
     b.path(
         stroke = ink, strokeLineWidth = TRAVELLED_W,
@@ -125,18 +144,16 @@ internal fun roundaboutGlyph(geom: RoundaboutGeometry?): ImageVector {
         lineTo(outX, outY)
     }
     val tip = ring(exitDeg, R + STUB + 1.4f)
-    val baseR = R + STUB * 0.55f
+    val base = ring(exitDeg, R + STUB * 0.55f)
     val perp = Math.toRadians(exitDeg + 90.0)
     val hx = (2.0 * sin(perp)).toFloat()
     val hy = (-2.0 * cos(perp)).toFloat()
-    val base = ring(exitDeg, baseR)
     b.path(fill = ink) {
         moveTo(tip.first, tip.second)
         lineTo(base.first + hx, base.second + hy)
         lineTo(base.first - hx, base.second - hy)
         close()
     }
-    return b.build()
 }
 
 /** A full circle of [radius] about the glyph centre, as four arc quadrants (a path has no circle
