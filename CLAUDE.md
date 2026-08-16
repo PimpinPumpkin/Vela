@@ -921,6 +921,24 @@ Defaults that make the safe path the easy one:
   visibility on the basemap `building-3d` fill-extrusion layer (a LaunchedEffect in VelaMapView owns
   visibility; applyLight/applyDark only colour it) - extrusion is the fragment-heavy layer, the
   documented 5a-class stutter source at z16+.
+- **Day/night theme (issue #262, 2026-08-15).** `ThemeMode.AUTO` is light by day and dark after
+  sunset, worked out on the device: `:core` `util/SunTimes` is the standard sunrise equation (no
+  network, no key, no almanac; unit-tested against published almanac times, plus both polar cases
+  where there IS no sunrise and the answer still has to be one thing or the other). This is NOT the
+  same as `SYSTEM` - the OS theme is whatever the phone is set to, and only some ROMs schedule it.
+  Two rules learned building it: (1) round the sunrise DAY in LOCAL solar terms (`+ lng/360` before
+  the floor) - rounding in UTC picks the wrong day either side of midnight UTC, so a Californian
+  evening before sunset was compared against TOMORROW's sunrise and read as night; (2) AMOLED is a
+  flavour of dark and must yield when something resolves the app to light, or a daylight drive gets
+  a black UI over a light map. The sun answer lives in ONE place (`AppTheme.night`, refreshed by a
+  single one-minute ticker in VelaRoot and whenever a fix moves) so `isAppInDarkTheme()` stays a
+  plain state read. The position is stored ROUNDED TO ~1 KM (sunset moves ~4 s per km of longitude,
+  so precision buys nothing and a theme setting has no business keeping a precise record of where
+  its owner was). Separately, **`AppTheme.navDayNight`** switches by daylight ONLY while navigating
+  and keeps the chosen mode everywhere else - the reporter's actual ask ("my default is dark, but
+  driving in daylight I want the light map"); it is hidden under AUTO, where it would claim to do
+  something already happening. `AppTheme.navigating` is mirrored from the nav state by MapViewModel.
+  Google's tunnel-darkening is NOT built (no tunnel data keyless).
 - **Light/dark is `AppTheme` (`ui/theme/AppTheme.kt`), not the OS.** Read the
   in-app theme with the composable **`isAppInDarkTheme()`** - never call
   `isSystemInDarkTheme()` directly in app UI (it ignores the user's Light/Dark/

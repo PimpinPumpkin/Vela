@@ -91,7 +91,10 @@ fun VelaTheme(
             val saneBackground = if (darkTheme) dyn.background.luminance() < 0.4f else dyn.background.luminance() > 0.6f
             if (saneBackground) dyn else if (darkTheme) DarkColors else LightColors
         }
-        AppTheme.mode.value == ThemeMode.AMOLED -> AmoledColors
+        // AMOLED is a flavour of DARK, so it must yield when something resolves the app to light -
+        // the day/night-while-navigating override (issue #262) does exactly that, and without the
+        // darkTheme guard a daylight drive got a black UI over a light map.
+        AppTheme.mode.value == ThemeMode.AMOLED && darkTheme -> AmoledColors
         darkTheme -> DarkColors
         else -> LightColors
     }

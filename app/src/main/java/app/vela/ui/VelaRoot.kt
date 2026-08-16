@@ -36,6 +36,17 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
         return
     }
 
+    // Day/night theme clock (issue #262). ONE ticker for the whole app: the sun answer lives in
+    // AppTheme.night, so every composable that asks "am I dark" reads a plain state instead of
+    // running the sun math itself. A minute is far finer than the thing being detected (sunset
+    // moves the boundary once a day) and costs a closed-form calculation per tick.
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        while (true) {
+            app.vela.ui.theme.AppTheme.refreshNight()
+            kotlinx.coroutines.delay(60_000L)
+        }
+    }
+
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var settingsOpenOffline by rememberSaveable { mutableStateOf(false) }
     var settingsOpenVoice by rememberSaveable { mutableStateOf(false) }
