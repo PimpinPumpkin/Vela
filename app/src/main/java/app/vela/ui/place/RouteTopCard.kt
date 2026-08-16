@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.Card
@@ -35,6 +34,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -117,14 +118,17 @@ fun RouteTopCard(
                         Box(Modifier.size(8.dp).clip(CircleShape).background(dim))
                     }
                     // Extra stops read as their own quiet line under the first (the old inline
-                    // "+N" was easy to miss, user 2026-07-14) - tappable with a pencil, a second
-                    // door into the stops editor (user 2026-07-14).
+                    // "+N" was easy to miss, user 2026-07-14) - a second door into the stops editor
+                    // (user 2026-07-14). Its pencil went the same way as the endpoint rows' (issue
+                    // #255); the row carries the label instead.
                     if (stops.size > 1) {
+                        val editStopsLabel = stringResource(R.string.stops_edit)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .dpadHighlight(RoundedCornerShape(8.dp))
+                                .semantics { contentDescription = editStopsLabel }
                                 .clickable { onEditStops() },
                         ) {
                             Spacer(Modifier.width(GLYPH_RAIL + 8.dp))
@@ -133,14 +137,6 @@ fun RouteTopCard(
                                 style = MaterialTheme.typography.labelMedium,
                                 color = dim,
                             )
-                            Spacer(Modifier.width(6.dp))
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = stringResource(R.string.stops_edit),
-                                tint = dim,
-                                modifier = Modifier.size(12.dp).padding(end = 0.dp),
-                            )
-                            Spacer(Modifier.width(4.dp))
                         }
                     }
                     ConnectorRow(dim)
@@ -198,7 +194,14 @@ fun RouteTopCard(
     }
 }
 
-/** One endpoint line: fixed glyph rail + the name + a pencil when tappable, gmaps' row grammar. */
+/**
+ * One endpoint line: fixed glyph rail + the name, gmaps' row grammar.
+ *
+ * [editable] no longer draws a pencil (issue #255): the whole row is the control, the glyph rail
+ * already says what each line is, and a pencil per line was three of them stacked on one small card
+ * saying nothing the tap target did not. It still decides the row's accessibility name, since that
+ * is the one thing the icon was carrying.
+ */
 @Composable
 private fun EndpointRow(
     text: String,
@@ -216,7 +219,14 @@ private fun EndpointRow(
             .height(ENDPOINT_ROW)
             .then(
                 if (onClick != null) {
-                    Modifier.clip(RoundedCornerShape(10.dp)).dpadHighlight(RoundedCornerShape(10.dp)).clickable { onClick() }
+                    Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .dpadHighlight(RoundedCornerShape(10.dp))
+                        // The pencil carried the row's accessibility name; with it gone the row
+                        // has to say what tapping it does, or a screen reader just reads a place
+                        // name with no hint that it is an edit control.
+                        .semantics { contentDescription = editLabel }
+                        .clickable { onClick() }
                 } else Modifier,
             ),
     ) {
@@ -231,11 +241,6 @@ private fun EndpointRow(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f, fill = false),
         )
-        if (editable) {
-            Spacer(Modifier.width(6.dp))
-            Icon(Icons.Default.Edit, contentDescription = editLabel, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(13.dp))
-            Spacer(Modifier.width(4.dp))
-        }
     }
 }
 

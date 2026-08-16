@@ -3371,10 +3371,10 @@ private fun SearchEntryContent(
             )
             Divider()
         }
-        // Pinned Home / Work shortcuts (Google-style), above Saved.
-        ShortcutRow(ShortcutKind.HOME, home, onPickShortcut, onAssignShortcut, onClearShortcut)
-        Divider()
-        ShortcutRow(ShortcutKind.WORK, work, onPickShortcut, onAssignShortcut, onClearShortcut)
+        // Pinned Home / Work shortcuts (Google-style), above Saved. SIDE BY SIDE since issue #255:
+        // two full-width rows for two words spent a third of the first screen on them, and Google
+        // pairs them for the same reason.
+        ShortcutPair(home, work, onPickShortcut, onAssignShortcut, onClearShortcut)
         Divider()
         if (saved.isNotEmpty()) {
             SectionLabel(stringResource(R.string.mapscreen_section_saved))
@@ -3468,8 +3468,114 @@ private fun SearchEntryContent(
     }
 }
 
+/**
+ * Home and Work side by side (issue #255).
+ *
+ * Each half opens its place, or arms assign when unset, with the same ⋮ menu (Change / Remove) the
+ * stacked rows had - halving the height must not cost an action. An unset half reads just "Add"
+ * under the label rather than a whole sentence: the label directly above it already said which one
+ * it is, and the long form was the widest text on the row for no added meaning.
+ */
+@Composable
+private fun ShortcutPair(
+    home: SavedPlace?,
+    work: SavedPlace?,
+    onPick: (ShortcutKind) -> Unit,
+    onAssign: (ShortcutKind) -> Unit,
+    onClear: (ShortcutKind) -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ShortcutCell(ShortcutKind.HOME, home, onPick, onAssign, onClear, Modifier.weight(1f))
+        // A hairline between the two, so the pair reads as two targets and not one wide row.
+        Box(
+            Modifier
+                .height(28.dp)
+                .width(1.dp)
+                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)),
+        )
+        ShortcutCell(ShortcutKind.WORK, work, onPick, onAssign, onClear, Modifier.weight(1f))
+    }
+}
+
+/** One half of [ShortcutPair]. */
+@Composable
+private fun ShortcutCell(
+    kind: ShortcutKind,
+    place: SavedPlace?,
+    onPick: (ShortcutKind) -> Unit,
+    onAssign: (ShortcutKind) -> Unit,
+    onClear: (ShortcutKind) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val icon = if (kind == ShortcutKind.HOME) Icons.Default.Home else Icons.Default.Work
+    val label = stringResource(if (kind == ShortcutKind.HOME) R.string.shortcut_home else R.string.shortcut_work)
+    val dark = isAppInDarkTheme()
+    var menu by remember { mutableStateOf(false) }
+    Row(
+        modifier
+            .dpadHighlight(RoundedCornerShape(8.dp))
+            .clickable { if (place != null) onPick(kind) else onAssign(kind) }
+            .padding(horizontal = 8.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Google's tinted disc behind the glyph - at this size a bare icon beside two lines of
+        // text reads as decoration rather than as the thing you press.
+        Box(
+            Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = if (place != null) 0.16f else 0.10f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = if (place != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = SheetPalette.ink(dark),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                place?.let { it.address ?: it.name } ?: stringResource(R.string.mapscreen_shortcut_add),
+                style = MaterialTheme.typography.bodySmall,
+                color = SheetPalette.dim(dark),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (place != null) {
+            Box {
+                IconButton(onClick = { menu = true }, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = stringResource(R.string.mapscreen_edit_shortcut, label),
+                        tint = SheetPalette.ink(dark),
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                VelaMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    item(stringResource(R.string.mapscreen_menu_change)) { menu = false; onAssign(kind) }
+                    item(stringResource(R.string.mapscreen_menu_remove)) { menu = false; onClear(kind) }
+                }
+            }
+        }
+    }
+}
+
 /** A pinned Home/Work shortcut row: opens the place, or arms assign when unset;
  *  a ⋮ menu (Change / Remove) when set. */
+@Suppress("unused") // kept for the landscape/wide layouts that still stack; see ShortcutPair
 @Composable
 private fun ShortcutRow(
     kind: ShortcutKind,

@@ -589,6 +589,16 @@ Defaults that make the safe path the easy one:
   Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
   name, FilledTonalIconButton for mute/steps. Keep new nav chrome on this treatment (no flat
   default-radius cards, no OutlinedIconButton circles - that was the "dated" look).
+- **Home/Work are SIDE BY SIDE and the endpoint rows have NO pencil (issue #255, 2026-08-15).**
+  `ShortcutPair`/`ShortcutCell` in MapScreen replace the two stacked `ShortcutRow`s on the search
+  page: two full-width rows for two words spent a third of the first screen, and an unset one now
+  reads just "Add" under its label (the label above already says which it is). Halving the height
+  must not cost an action - each cell keeps the same tap-to-open / tap-to-assign / ⋮ Change-Remove.
+  `ShortcutRow` is kept (unused) for stacked layouts. On `RouteTopCard` the per-row pencils are
+  gone: the whole row is the control and the glyph rail already says what each line is, so three
+  stacked pencils on one small card said nothing the tap target did not. **The pencil was carrying
+  the row's accessibility name** - each row now sets that `contentDescription` itself, or a screen
+  reader reads a bare place name with no hint that tapping edits it.
 - **Place-sheet surface language (2026-07-10):** header icon buttons (Save/Share/more/close) are
   40dp icons in `dim.copy(alpha = 0.12f)` CIRCLES with 5dp gaps (Google's treatment); ActionPill
   and the "All reviews" button are CircleShape stadium pills (the outlined button was the last

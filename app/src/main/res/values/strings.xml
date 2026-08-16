@@ -714,6 +714,7 @@
     <string name="settings_hub_diagnostics_sub">Crash reports, trips, compatibility</string>
     <string name="settings_hub_about_sub">Version, updates, support</string>
     <string name="settings_theme_amoled">AMOLED black</string>
+    <string name="mapscreen_shortcut_add">Add</string>
     <string name="settings_traffic_lights">Traffic-light guidance</string>
     <string name="settings_traffic_lights_hint">Spoken landmark cues: pass the light, then turn. English only, off by default.</string>
     <string name="settings_softkeys" translatable="false">Hardware softkeys</string>
