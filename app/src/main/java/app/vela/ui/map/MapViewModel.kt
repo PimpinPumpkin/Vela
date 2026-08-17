@@ -2638,6 +2638,7 @@ class MapViewModel @Inject constructor(
     /** Back out of the directions preview to the place sheet: drop the route,
      *  keep the place selected (so back peels one layer at a time). */
     fun clearRoute() {
+        autoStartOnRoute = false // backing out of directions cancels a pending auto-start (issue #272)
         destination = null
         routeJob?.cancel() // an in-flight directions fetch must not repopulate the route we're backing out of
         _state.update {
@@ -3018,6 +3019,26 @@ class MapViewModel @Inject constructor(
     fun quickSearch(category: String) {
         _state.update { it.copy(query = category) }
         search()
+    }
+
+    /**
+     * Set when Directions was entered via the place sheet's START pill (issue #272): the moment a
+     * route lands, begin guidance instead of parking on the picker. Consumed once - a later route
+     * refetch (a mode change, an added stop) must not re-launch nav behind the user.
+     */
+    @Volatile var autoStartOnRoute = false
+        private set
+
+    fun consumeAutoStart(): Boolean {
+        if (!autoStartOnRoute) return false
+        autoStartOnRoute = false
+        return true
+    }
+
+    /** Directions for the selected place, launching guidance as soon as a route exists. */
+    fun startNavToSelected() {
+        autoStartOnRoute = true
+        routeToSelected()
     }
 
     fun routeToSelected() {
@@ -3647,6 +3668,7 @@ class MapViewModel @Inject constructor(
     private var navStartJob: kotlinx.coroutines.Job? = null
 
     fun startNav() {
+        autoStartOnRoute = false // an explicit Start supersedes any pending auto-start
         val route = _state.value.activeRoute ?: return
         // RE-ENTRANCY GUARD (user 2026-07-16: multiple "Starting navigation" from double-tapping
         // while start was slow): ignore Start while a start is already in flight or nav is running.

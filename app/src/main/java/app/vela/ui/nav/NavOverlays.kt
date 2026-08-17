@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
@@ -703,12 +704,34 @@ fun NavControls(
             contentColor = SheetPalette.ink(dark),
         ),
     ) {
+        // LAYOUT (issue #273): End on the LEFT as an icon, the trip figures CENTRED, Steps on the
+        // right. Previously the figures sat left with two controls crowded right, one an icon and
+        // one a labelled button - two different shapes doing the same job at the same size. As
+        // icons they read as a matched pair with the numbers between them, which is also the one
+        // arrangement where the two 54dp targets cannot be hit by mistake for each other.
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(Modifier.weight(1f)) {
+            // End keeps a DESTRUCTIVE colour rather than the tonal fill Steps uses: it is the one
+            // control here that throws the drive away, and an unlabelled X must not look like just
+            // another button. The label survives as its accessibility name.
+            FilledTonalIconButton(
+                onClick = onStop,
+                modifier = Modifier.size(54.dp),
+                colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                ),
+            ) {
+                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.nav_end), modifier = Modifier.size(26.dp))
+            }
+            Spacer(Modifier.width(8.dp))
+            Column(
+                Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
                 // Both lines SHRINK to fit rather than wrap or ellipsise: the 54dp buttons (and
                 // any Interface-size scale) squeezed the column and "1 hr 25 min" wrapped rough,
                 // while ellipsis on the second line cut off the arrival TIME (user 2026-07-11).
@@ -726,17 +749,9 @@ fun NavControls(
                 )
             }
             Spacer(Modifier.width(8.dp))
-            // Steps is icon-only so the row stays compact (the left ETA column can
-            // grow with a longer "X mi · 7:42 PM"); End keeps its label.
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                // Bigger driving targets (user 2026-07-11, car-screen use): 54dp buttons,
-                // 26dp glyphs; End matches the height so the row reads as one control set.
-                FilledTonalIconButton(onClick = onSteps, modifier = Modifier.size(54.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.nav_steps), modifier = Modifier.size(26.dp))
-                }
-                Button(onClick = onStop, modifier = Modifier.height(54.dp)) {
-                    Text(stringResource(R.string.nav_end), maxLines = 1, softWrap = false)
-                }
+            // Bigger driving targets (user 2026-07-11, car-screen use): 54dp buttons, 26dp glyphs.
+            FilledTonalIconButton(onClick = onSteps, modifier = Modifier.size(54.dp)) {
+                Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.nav_steps), modifier = Modifier.size(26.dp))
             }
         }
     }
