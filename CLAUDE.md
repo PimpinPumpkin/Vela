@@ -2373,7 +2373,20 @@ architecture note.
   languages come along). Bake: `scripts/build-obf-region.sh` + `merge-obf-manifest.sh` +
   `.github/workflows/obf-regions.yml` (matrix clone; the MapCreator tool is pinned on the
   `obf-tools` release); assets are RAW .obf (already deflate-compressed inside; download size ==
-  installed size). CUTOVER = the manifest, and the world bake STAGES it (2026-08-03): dispatching obf-regions
+  installed size).
+  **THE BAKE DOES NOT FIT A GITHUB RUNNER AT COUNTRY SCALE (measured 2026-08-16, the first time
+  obf-regions.yml was ever run).** Luxembourg and Delaware baked fine (39 MB and 20 MB obf); Czech
+  Republic and `de-bayern` both died with `OutOfMemoryError: Java heap space` at `-Xmx12g` on a
+  16 GB runner, and Bayern (810 MB pbf) OOM'd AGAIN at 14g after three hours. Two traps in reading
+  that: (1) **a sub-area is not automatically small enough** - Bayern IS one of the germany-sub
+  rows, so #254's split helps download size but does NOT get a bake under the memory ceiling;
+  (2) **a longer run is not progress** - the 14g attempt lasted 4x longer than the 12g one and
+  still failed, because a nearly-full heap thrashes before it dies. `processInRam` already defaults
+  to false, so that knob is not the answer. Untried: ParallelGC (SerialGC's single-threaded full
+  collections are the likely reason 14g took three hours to fail), and baking big regions off-CI
+  where more RAM is available - `JAVA_HEAP` in build-obf-region.sh exists for exactly that. Until
+  this is solved the world bake CANNOT be dispatched: ~30 big rows would burn hours each and fail.
+  CUTOVER = the manifest, and the world bake STAGES it (2026-08-03): dispatching obf-regions
   with the default staging=true merges entries into `obf-manifest-staging.json`, which the app
   never reads - bake every group there, then ONE `gh release download/upload` copy of staging
   over the live name flips the whole catalog atomically (region-by-region merging into the live
