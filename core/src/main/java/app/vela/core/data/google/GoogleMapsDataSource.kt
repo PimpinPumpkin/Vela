@@ -454,6 +454,7 @@ class GoogleMapsDataSource @Inject constructor(
         avoidTolls: Boolean,
         avoidHighways: Boolean,
         urgent: Boolean,
+        departBearingDeg: Double?,
     ): List<Route> = io {
         // Mid-drive reroutes are URGENT: one shot per source, no divergence snap, no alternates
         // polish. The retry ladders below (3x OSRM + 3x Google with backoff) are right for a
@@ -499,7 +500,7 @@ class GoogleMapsDataSource @Inject constructor(
             // Google's keyless directions endpoint hands back ABBREVIATED steps for longer routes
             // (a 6-mi route came back with 2 of ~10 turns), so Google is only the FALLBACK + the
             // live-traffic source. Fetch both in parallel so the traffic round-trip is free.
-            val openD = async { RouteGeometry.route(http, origin, destination, mode, avoidTolls, avoidHighways, tries) }
+            val openD = async { RouteGeometry.route(http, origin, destination, mode, avoidTolls, avoidHighways, tries, departBearingDeg) }
             val googleD = async { googleDirectionsRetried(origin, destination, mode, tries) }
             val open = openD.await()
             val google = googleD.await()

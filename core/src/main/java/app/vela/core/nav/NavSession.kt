@@ -342,8 +342,8 @@ class NavSession @Inject constructor(
                     }
                 }
                 NavEvent.RerouteNeeded -> {
-                    diag.record("nav", "off-route → rerouting from ${loc.lat},${loc.lng}")
-                    reroute(loc)
+                    diag.record("nav", "off-route → rerouting from ${loc.lat},${loc.lng} heading ${bearingDeg?.toInt()}")
+                    reroute(loc, bearingDeg)
                 }
             }
         }
@@ -594,7 +594,7 @@ class NavSession @Inject constructor(
         }
     }
 
-    private fun reroute(loc: LatLng) {
+    private fun reroute(loc: LatLng, headingDeg: Double? = null) {
         if (replayMode) {
             diag.record("nav", "replay: live reroute suppressed (recorded swaps play back instead)")
             return
@@ -641,7 +641,15 @@ class NavSession @Inject constructor(
             // repeated attempts. A lean route lands in seconds; the recheck loop restores
             // traffic/steps quality afterwards.
             val r = kotlinx.coroutines.withTimeoutOrNull(REROUTE_FETCH_TIMEOUT_MS) {
-                runCatching { dataSource.directions(loc, dest, mode, remainingStops.map { it.location }, urgent = true) }
+                runCatching {
+                    dataSource.directions(
+                        loc, dest, mode, remainingStops.map { it.location },
+                        urgent = true,
+                        // Pin the departure to where the car is pointing, so the answer is "given
+                        // that you are going this way, what now" instead of "turn around".
+                        departBearingDeg = headingDeg,
+                    )
+                }
                     .getOrNull()?.firstOrNull()?.takeIf { it.reaches(dest) }
             }
             if (gen != sessionGen) return@launch // session ended / restarted while fetching — drop it

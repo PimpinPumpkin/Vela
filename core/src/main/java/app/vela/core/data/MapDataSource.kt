@@ -94,6 +94,12 @@ interface MapDataSource {
         // Mid-drive reroute: single-shot fetches, no divergence snap — a fast usable route now
         // beats a polished one after the reroute deadline (the recheck loop upgrades it later).
         urgent: Boolean = false,
+        // The direction the car is ACTUALLY pointing, for a mid-drive reroute (real-drive report
+        // 2026-08-17). Without it a reroute a few tens of metres down a wrong road is free to
+        // answer "U-turn and rejoin" - which is often genuinely the fastest path, so the driver is
+        // told to turn around, carries on anyway, and is told to turn around again. Null on a
+        // planning fetch: which way a parked car happens to face is not a routing constraint.
+        departBearingDeg: Double? = null,
     ): List<Route>
 
     /** Name a PROVISIONAL alternate ([Route.provisional]) — the user picked it to drive, so turn its
