@@ -2374,9 +2374,12 @@ architecture note.
   `.github/workflows/obf-regions.yml` (matrix clone; the MapCreator tool is pinned on the
   `obf-tools` release); assets are RAW .obf (already deflate-compressed inside; download size ==
   installed size).
-  **WITHOUT HH, OFFLINE OBF ROUTING FAILS OUTRIGHT PAST ~100 km - IT IS NOT MERELY SLOW (measured
-  2026-08-17 against a real baked Bayern obf, using ObfRouteEngine's own config and memory limits).**
-  The router does not degrade gracefully: past a distance it throws
+  **WITHOUT HH, A LONG OFFLINE ROUTE CAN FAIL OUTRIGHT, NOT MERELY RUN SLOW (measured 2026-08-17
+  against a real baked Bayern obf, using ObfRouteEngine's own config and memory limits).** NB the
+  threshold is REGION-DEPENDENT, not a fixed distance: a 150 km cross-file route in Saarland/
+  Rheinland-Pfalz completed on the 4a in 69 s (2026-08-03), while the same distance across Bayern's
+  denser network fails at the shipped limit. Treat the distances below as one dense sample, not a
+  universal cutoff. The router does not degrade gracefully: past its budget it throws
   `IllegalStateException: There is not enough memory ... - limit 256 MB`, which is
   `ObfRouteEngine.MEMORY_MB`. Measured on a fast desktop, car profile:
     4 km   -> 0.87 s at 256 MB
