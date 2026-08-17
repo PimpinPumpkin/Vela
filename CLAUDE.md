@@ -585,6 +585,21 @@ Defaults that make the safe path the easy one:
   maneuvers[liveStep-1].ref; the exit fold adopts the folded branch's road/ref so it survives
   on-ramps). Rerouting plays a two-note earcon (VoiceGuide.reroutingChime, in-process synth,
   muted-gated) before the throttled spoken word.
+  **Place sheet has START beside Directions; the nav bar is END | figures | STEPS (issues
+  #272/#273, 2026-08-17).** Directions opens the picker whose own Start sits BELOW the route list,
+  so with three routes on a large-font screen the commonest action (just take me there) needed a
+  scroll - the START pill routes and launches in one tap (`MapViewModel.startNavToSelected` sets
+  `autoStartOnRoute`; MapScreen consumes it ONCE when a route lands). **It fires through
+  MapScreen's `onStartNav`, never straight at the VM** - a one-tap Start must not become a way
+  around the precise-location and notification gates the picker's Start honours; and the flag is
+  consume-once + cleared by `clearRoute`/`startNav` so a later refetch (mode change, added stop)
+  cannot silently launch a drive. Not offered for the parked car (you are already at the start of
+  that walk). The nav bottom bar swapped End's labelled Button for a 54dp X icon on the LEFT with
+  the trip figures CENTRED and Steps on the right: two controls of the same size doing the same
+  job should be the same shape, and this is the arrangement where they cannot be mistaken for
+  each other. End keeps `errorContainer` colouring - it is the one control that throws the drive
+  away, and an unlabelled X must not read as just another button; its label lives on as the
+  content description.
   **Nav UI style (2026-07-08):** ManeuverBanner + NavControls are RoundedCornerShape(24/28dp)
   Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
   name, FilledTonalIconButton for mute/steps. Keep new nav chrome on this treatment (no flat
