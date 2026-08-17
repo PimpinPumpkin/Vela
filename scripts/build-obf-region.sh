@@ -50,7 +50,11 @@ javac -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*" -d "$WO
 # to full its single-threaded full collections are likely most of that three hours - try
 # ParallelGC before reading any timing from this path as the tool's true cost.
 # Regions this size need a machine with more RAM than a 16 GB runner; JAVA_HEAP exists so a local
-# bake can be handed the headroom (a 32 GB machine can spare 24g).
+# bake can be handed the headroom. MEASURED on a 32 GB machine: bayern at -Xmx22g SUCCEEDS in
+# 3h07m and produces a 694 MB obf, with the heap peaking around 18.4 GB before a full GC - which is
+# why 14g never had a chance, and why no GC flag was ever going to save it. ParallelGC vs SerialGC
+# did not change the outcome, only the time to reach it (50 min vs 3 h to the same OOM), so it is
+# still the right collector here: a doomed region should fail fast.
 JAVA_HEAP="${JAVA_HEAP:-14g}"
 echo "→ index heap: $JAVA_HEAP"
 set +e

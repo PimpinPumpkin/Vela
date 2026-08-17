@@ -2374,6 +2374,25 @@ architecture note.
   `.github/workflows/obf-regions.yml` (matrix clone; the MapCreator tool is pinned on the
   `obf-tools` release); assets are RAW .obf (already deflate-compressed inside; download size ==
   installed size).
+  **WITHOUT HH, OFFLINE OBF ROUTING FAILS OUTRIGHT PAST ~100 km - IT IS NOT MERELY SLOW (measured
+  2026-08-17 against a real baked Bayern obf, using ObfRouteEngine's own config and memory limits).**
+  The router does not degrade gracefully: past a distance it throws
+  `IllegalStateException: There is not enough memory ... - limit 256 MB`, which is
+  `ObfRouteEngine.MEMORY_MB`. Measured on a fast desktop, car profile:
+    4 km   -> 0.87 s at 256 MB
+    57 km  -> 5.65 s at 256 MB
+    151 km -> FAILS at 256 MB; 4.6 s once given 1024 MB
+    348 km -> FAILS at 256 MB and at 1024 MB; 41.9 s once given 3072 MB
+  So the requirement scales steeply with route length, and **raising MEMORY_MB is not available to
+  us**: the app runs under `largeHeap` (~512 MB total, and it already fights that ceiling - see the
+  ambient fan-out and MemoryPressure notes), so a routing context wanting 1-3 GB cannot exist on a
+  phone at all. **This means the obf migration as currently baked is a REGRESSION against the
+  GraphHopper graphs for long offline routes**, because those ship CH (contraction hierarchies)
+  and did a 24-mile route in 188 ms. HH is the obf equivalent, and `scripts/VelaObfShim.java` does
+  NOT generate it. So HH is not the "follow-up if long routes measure slow" this file used to call
+  it - it is a PREREQUISITE for offline feature parity, and it lands on top of a bake that already
+  does not fit CI. Until HH exists, offline obf routing is a city/metro feature; anything intercity
+  must stay online or stay on GraphHopper.
   **THE BAKE DOES NOT FIT A GITHUB RUNNER AT COUNTRY SCALE (measured 2026-08-16, the first time
   obf-regions.yml was ever run).** Luxembourg and Delaware baked fine (39 MB and 20 MB obf); Czech
   Republic and `de-bayern` both died with `OutOfMemoryError: Java heap space` at `-Xmx12g` on a
