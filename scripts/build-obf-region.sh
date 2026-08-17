@@ -36,12 +36,21 @@ javac -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*" -d "$WO
 # Not processInRam (it already defaults to false): MapCreator's disk-backed pipeline is what lets a
 # region bake inside a small runner at all. The heap bound is for its indexes, not the region.
 #
-# HEAP (2026-08-16): 12g was not enough for anything country-sized - Czech Republic AND Bayern, a
-# mere German sub-area, both died with "OutOfMemoryError: Java heap space" on a 16 GB runner while
-# Luxembourg and Delaware sailed through. So the ceiling sits well below a country, and splitting
-# into sub-areas does NOT by itself get under it. 14g leaves the runner ~2 GB, which is enough for
-# a machine doing nothing else, and SerialGC is deliberate: G1's region bookkeeping and concurrent
-# threads cost hundreds of MB that a single-shot batch job has no use for.
+# HEAP (2026-08-16). MEASURED, and the honest summary is that a GitHub runner cannot do this at
+# country scale:
+#   luxembourg  (~30 MB pbf)  -> 39 MB obf   OK at 12g
+#   delaware    (~30 MB pbf)  -> 20 MB obf   OK at 12g
+#   czech-republic            -> OOM at 12g (~37 min in)
+#   de-bayern   (810 MB pbf)  -> OOM at 12g (~37 min), and OOM AGAIN at 14g after THREE HOURS
+# So the ceiling sits somewhere between a US state and an 810 MB extract, and splitting a country
+# into sub-areas does NOT by itself get under it - Bayern IS a sub-area. Note the 14g run's three
+# hours: a job that slows down and then dies is thrashing a nearly-full heap, so a long runtime
+# here is a symptom of the failure, not progress toward success. SerialGC keeps G1's region
+# bookkeeping and concurrent threads (hundreds of MB) out of the way, but with the heap this close
+# to full its single-threaded full collections are likely most of that three hours - try
+# ParallelGC before reading any timing from this path as the tool's true cost.
+# Regions this size need a machine with more RAM than a 16 GB runner; JAVA_HEAP exists so a local
+# bake can be handed the headroom (a 32 GB machine can spare 24g).
 JAVA_HEAP="${JAVA_HEAP:-14g}"
 echo "→ index heap: $JAVA_HEAP"
 set +e
