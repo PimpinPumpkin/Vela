@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- DARK variant of the pre-Compose window theme (issue #280: the launch window was white on a
+         dark-themed phone). The base Theme.Vela parents android:Theme.Material.Light, which is
+         fixed at build time, so a night-qualified copy is the only way this window can be dark -
+         it is chosen by the resource system before any of our code runs.
+
+         Consequence worth knowing: this follows the SYSTEM theme, not Vela's own Light/Dark/System
+         setting. Nothing can read a preference this early, so a user who runs Vela dark on a light
+         phone still gets a light launch window for the instant before Compose takes over. Matching
+         the system is what the report asked for and is right far more often than always-white. -->
+    <style name="Theme.Vela" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+</resources>

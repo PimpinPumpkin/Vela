@@ -921,6 +921,15 @@ Defaults that make the safe path the easy one:
   visibility on the basemap `building-3d` fill-extrusion layer (a LaunchedEffect in VelaMapView owns
   visibility; applyLight/applyDark only colour it) - extrusion is the fragment-heavy layer, the
   documented 5a-class stutter source at z16+.
+- **The LAUNCH WINDOW theme is separate from AppTheme and follows the SYSTEM (issue #280,
+  2026-08-20).** `Theme.Vela` in `values/themes.xml` is the pre-Compose window (the white flash
+  before the map draws) and parented `android:Theme.Material.Light` - fixed at build time, so it
+  stayed white on a dark phone. `values-night/themes.xml` adds the dark twin; the resource system
+  picks it before any of our code runs. **It cannot follow Vela's own Light/Dark/System setting** -
+  nothing can read a preference that early - so a user running Vela dark on a light phone still
+  gets a light launch window for that instant. Matching the system is what was asked for and is
+  right far more often than always-white. Keep the two files in lockstep when the window theme
+  changes.
 - **Light/dark is `AppTheme` (`ui/theme/AppTheme.kt`), not the OS.** Read the
   in-app theme with the composable **`isAppInDarkTheme()`** - never call
   `isSystemInDarkTheme()` directly in app UI (it ignores the user's Light/Dark/
