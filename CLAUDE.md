@@ -1988,7 +1988,22 @@ architecture note.
   `navSession.onLocation` path - puck/banner/voice keep working, `navStarved` keeps the
   "Searching for GPS" chip up for honesty, the first real fix re-anchors (route-plausible
   synthetics pass the outlier gate). Never feeds `tripStore.record` (no fake points in trips).
-  Nav zoom range is 18.0→15.5 (2026-07-14, was 17.3→15.0). **DEMO DRIVES RAN THE PUCK CLOCKS AT 3x (issue #251, fixed 2026-08-10 - the
+  Nav zoom range is 18.0→15.5 (2026-07-14, was 17.3→15.0).
+  **ACCELEROMETER NOISE WAS REACHING THE PUCK (issue #251, 2026-08-20 - the jitter that survived
+  the two fixes below, still reported on a P9).** Archaeology settled it: the ORIGINAL puck
+  (498e7f49, 2026-06-21, the version remembered as smooth) took its speed STRAIGHT off the GPS fix
+  and held it constant between fixes - twelve lines, no Kalman, no boxcar. `SpeedKalman.predict`
+  now runs once per FRAME, so ~60 accelerometer samples are integrated into the speed between two
+  1 Hz fixes, and the puck ADVANCES AT THAT SPEED - so road texture, engine and mount resonance
+  became visible movement. `SpeedKalman.denoise` applies an `a^2/(a^2+n^2)` suppression gain
+  (`ACCEL_NOISE` 0.5) before integrating. **NOT a subtract-the-floor shrinkage** - that was tried
+  first and broke `brakingCollapsesThePredictionBetweenFixes`, because shrinking every sample taxes
+  a REAL brake by the floor, weakening the exact behaviour the filter exists for (the puck must
+  decelerate with a stopping car). The gain leaves a 4 m/s2 brake within ~1.5% of itself while
+  cutting 0.3 m/s2 of vibration to about a quarter. A steady bias is attenuated, not erased (~0.08
+  m/s after a second), which the next fix corrects. **Rule: anything integrated per-frame from a
+  phone sensor in a car needs a noise model, or it becomes puck motion.**
+  **DEMO DRIVES RAN THE PUCK CLOCKS AT 3x (issue #251, fixed 2026-08-10 - the
   dominant cause of the "record needle" swim).** `startDemoDrive` feeds
   `locationProvider.replay(fixes, speedup = 1f)` - REAL-TIME fixes - but it also sets
   `replaying`, and MapScreen keyed `replaySpeedup` off that flag alone, so a demo drive
