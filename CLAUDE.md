@@ -2003,7 +2003,22 @@ architecture note.
   cutting 0.3 m/s2 of vibration to about a quarter. A steady bias is attenuated, not erased (~0.08
   m/s after a second), which the next fix corrects. **Rule: anything integrated per-frame from a
   phone sensor in a car needs a noise model, or it becomes puck motion.**
-  **DEMO DRIVES RAN THE PUCK CLOCKS AT 3x (issue #251, fixed 2026-08-10 - the
+  **THE CAMERA BEARING IS ADAPTIVELY DAMPED (issue #251, 2026-08-24 - the "crinkly roads"
+  residual, and the LARGEST of the four causes).** Measured on a synthetic road that is physically
+  STRAIGHT but digitized with half-metre vertex scatter (what "crinkly" means in the data): the
+  chord bearing the puck derives swings **7.3 deg at a 5 m window, 2.3 deg at 14 m** - several
+  times the 0.83 deg camera wiggle the earlier fixes chased. The camera is anchored to the puck,
+  so that rotates the WHOLE MAP under a steady arrow. **Window WIDTH is the only lever on chord
+  noise** (angular noise ~ sigma/baseline): a least-squares fit over the same window was measured
+  NO BETTER (slightly worse at short windows) because the noise lives in the VERTICES, so interior
+  samples are correlated with the endpoints and add no information. And curvature-adaptive width
+  was measured UNWORKABLE - crinkle reads 3.0 deg median / 7.6 p90 short-vs-long disagreement, a
+  genuine 40 m bend reads 3.9, so no threshold separates them. What DOES separate cleanly is
+  AMPLITUDE at the camera: geometry noise is a couple of degrees, a turn is tens. So the camera's
+  bearing time constant follows the size of its own error - `CAM_BRG_TAU_STILL` 1.6 s when small
+  (keeps ~24% of the wiggle vs 59% at the old flat 0.55), `CAM_BRG_TAU_TURN` 0.35 s past
+  `CAM_BRG_TURN_DEG` (25 deg), which is QUICKER around a real corner than before. Tilt keeps the
+  old constant - it is not part of this. **DEMO DRIVES RAN THE PUCK CLOCKS AT 3x (issue #251, fixed 2026-08-10 - the
   dominant cause of the "record needle" swim).** `startDemoDrive` feeds
   `locationProvider.replay(fixes, speedup = 1f)` - REAL-TIME fixes - but it also sets
   `replaying`, and MapScreen keyed `replaySpeedup` off that flag alone, so a demo drive

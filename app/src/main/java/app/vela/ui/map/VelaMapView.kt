@@ -193,6 +193,14 @@ private const val ME_ARROW_IMG = "vela-arrow"
 private const val NAV_PUCK_IMG = "vela-nav-puck"
 private const val PREVIEW_SRC = "vela-preview-src"
 private const val PREVIEW_LAYER = "vela-preview"
+/** Camera-bearing damping (issue #251). Heavy while the camera is essentially tracking a straight
+ *  road, so digitization wiggle does not rotate the map; quick once the error is turn-sized. */
+private const val CAM_BRG_TAU_STILL = 1.6
+private const val CAM_BRG_TAU_TURN = 0.35
+/** Error at which the damping is fully in "this is a real turn" mode. Well above the few degrees
+ *  of geometry noise, well below a junction turn. */
+private const val CAM_BRG_TURN_DEG = 25.0
+
 private const val DEM_SRC = "vela-dem"
 private const val HILLSHADE_LAYER = "vela-hillshade"
 // Keyless open elevation tiles (AWS Open Data, terrarium-encoded) — no key, and
@@ -1663,7 +1671,25 @@ fun VelaMapView(
                     // then rotates on the north-up map instead of the map rotating under it.
                     val brgTgt = if (navNorthUpHolder.value) 0.0 else navPuck.displayBearing.toDouble()
                     val db = ((brgTgt - camState[2] + 540.0) % 360.0) - 180.0 // shortest arc
-                    camState[2] = (camState[2] + db * kBrg + 360.0) % 360.0
+                    // CAMERA BEARING IS ADAPTIVELY DAMPED (issue #251, the "crinkly roads" residual).
+                    // A road digitized from imagery wiggles even where it is physically straight, and
+                    // the bearing drawn off that geometry swings 2-7 degrees - measured, and several
+                    // times bigger than anything the earlier fixes addressed. The camera is anchored
+                    // to the puck, so that rotation swings the WHOLE MAP under a steady arrow.
+                    //
+                    // A flat heavier damping would fix the wiggle and make real turns sluggish, so the
+                    // time constant follows the SIZE of the error instead. That discriminator works
+                    // here precisely where the crinkle-vs-curve one failed: geometry noise is a couple
+                    // of degrees and a turn is tens, an order of magnitude apart, whereas a real bend
+                    // and a crinkle both read ~3-4 degrees and could not be told apart at all.
+                    // Small error -> tau 1.6 s (keeps ~24% of the wiggle, vs 59% before); a genuine
+                    // turn -> tau 0.35 s, which is actually QUICKER around a corner than the old flat
+                    // 0.55. Tilt keeps its own constant - it is not part of this problem.
+                    val brgTau = (CAM_BRG_TAU_STILL +
+                        (CAM_BRG_TAU_TURN - CAM_BRG_TAU_STILL) *
+                        (kotlin.math.abs(db) / CAM_BRG_TURN_DEG).coerceAtMost(1.0)).toFloat()
+                    val kBrgAdaptive = (1f - kotlin.math.exp(-dtEase / brgTau)).toDouble()
+                    camState[2] = (camState[2] + db * kBrgAdaptive + 360.0) % 360.0
                     camState[3] += (tgtZoom - camState[3]) * kZoom
                     // Tilt: north-up = flat; else a shove-set override wins over the 55 default.
                     val tiltTgt = when {
