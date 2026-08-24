@@ -625,7 +625,7 @@
     <string name="settings_voice_volume_louder">Louder</string>
     <string name="settings_voice_volume_loudest">Loudest</string>
     <string name="settings_voice_volume_hint">How loud spoken directions play over your media. Louder tiers apply to the Vela voice; system voices can only be made softer.</string>
-    <string name="place_avoid_not_honored">Avoiding tolls and highways needs an offline region for this trip. These routes may still use them.</string>
+    <string name="place_avoid_not_honored">These routes may still use tolls and highways. Avoiding them works on downloaded areas only, so download this area in Settings, Offline maps.</string>
     <string name="settings_lists_export_hint">Back up your lists to a file, or restore them on another device.</string>
     <string name="settings_lists_imported">Imported %1$d list(s)</string>
     <string name="settings_places_imported">Imported %1$d place(s)</string> <!-- format -->
