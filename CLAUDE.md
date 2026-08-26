@@ -85,8 +85,11 @@ Defaults that make the safe path the easy one:
   - `audit_dynamic.sh` - EXHAUSTIVE on-device tour: every surface opens focused, focus is never lost
     across a full traversal, BACK exits. "Nothing escapes the auditor."
 - **Managing saved trips (2026-08-26).** Settings > Diagnostics: every recorded trip can be
-  RENAMED (pencil on the row -> `TripStore.rename`, which rewrites ONLY the META header's first
-  field via a temp file + rename, so a recording can never be half-written), and "Select trips"
+  RENAMED (pencil on the row -> `TripStore.rename`, file IO only; the header surgery itself is
+  **`TripLog.renameHeader` in :core**, beside the format so writer and reader cannot drift, and
+  unit-tested by `TripRenameTest` - a comma or newline in a name would shift/split the header
+  fields and make the whole recording unparseable, and a drive cannot be recorded twice. The
+  write goes to a temp file and is renamed over the original, so it can never be half-written), and "Select trips"
   turns the list into a multi-select whose Share hands the whole set to ACTION_SEND_MULTIPLE
   (`MapViewModel.exportTripsIntent`; one unreadable CSV is skipped, not fatal, and a single pick
   falls through to the existing single-trip intent). Optional pref `trip_name_on_save` (Settings

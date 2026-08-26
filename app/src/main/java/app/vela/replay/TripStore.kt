@@ -158,29 +158,20 @@ class TripStore @Inject constructor(
     /**
      * Rename a saved trip.
      *
-     * The label is the FIRST field of the META header, so this rewrites that one line and leaves
-     * every other byte alone - fixes, route and maneuvers untouched. A trip is a recording of
-     * something that happened once and cannot be captured again, so a rename must not put it at
-     * risk: the new content goes to a temp file and is renamed over the original, because a
-     * half-written header makes the whole file unparseable to `TripLog.parse`.
+     * The header surgery itself is `TripLog.renameHeader` in :core (beside the format, and unit
+     * tested); this does the file IO. Written to a temp file and renamed over the original,
+     * because a half-written header makes the whole recording unparseable and a drive cannot be
+     * recorded again.
      *
-     * Sanitised exactly like [startTrip] - a comma would split the header into the wrong fields
-     * and a newline would turn one record into two.
-     *
-     * Returns false when the file is missing or is not a trip (nothing is written then).
+     * Returns false when the file is missing or is not a trip - nothing is written then.
      */
     fun rename(id: String, label: String): Boolean = synchronized(lock) {
         val f = File(dir, "$id.csv")
         return runCatching {
             if (!f.exists()) return false
-            val lines = f.readLines()
-            val first = lines.firstOrNull() ?: return false
-            if (!first.startsWith("META,")) return false
-            val safe = label.replace(',', ' ').replace('\n', ' ').trim().take(80).ifBlank { "Trip" }
-            val rest = first.removePrefix("META,").split(',').drop(1)
-            val header = (listOf("META", safe) + rest).joinToString(",")
+            val out = TripLog.renameHeader(f.readLines(), label) ?: return false
             val tmp = File(dir, "$id.csv.tmp")
-            tmp.writeText((listOf(header) + lines.drop(1)).joinToString("\n") + "\n")
+            tmp.writeText(out.joinToString("\n") + "\n")
             val ok = tmp.renameTo(f)
             if (!ok) tmp.delete()
             ok
