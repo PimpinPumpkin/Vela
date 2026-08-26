@@ -84,6 +84,17 @@ Defaults that make the safe path the easy one:
     no `isSystemInDarkTheme`; fails on any real violation. Wire it into CI.
   - `audit_dynamic.sh` - EXHAUSTIVE on-device tour: every surface opens focused, focus is never lost
     across a full traversal, BACK exits. "Nothing escapes the auditor."
+- **Managing saved trips (2026-08-26).** Settings > Diagnostics: every recorded trip can be
+  RENAMED (pencil on the row -> `TripStore.rename`, which rewrites ONLY the META header's first
+  field via a temp file + rename, so a recording can never be half-written), and "Select trips"
+  turns the list into a multi-select whose Share hands the whole set to ACTION_SEND_MULTIPLE
+  (`MapViewModel.exportTripsIntent`; one unreadable CSV is skipped, not fatal, and a single pick
+  falls through to the existing single-trip intent). Optional pref `trip_name_on_save` (Settings
+  toggle, shown only while trip recording is on, default OFF) makes `finishTrip` - which now
+  RETURNS the kept `TripMeta` instead of Unit - arm `MapUiState.tripToName`, and MapScreen prompts
+  for a name on the map right after the drive. TRAP: an early `return@forEachIndexed` inside the
+  trip-row composable lambda crashes the Compose compiler ("No mapping for symbol" during IR
+  lowering); the selection branch is if/else for that reason.
 - **Auditing a real drive.** A saved trip stores the navigated route too (`core/replay/TripLog`
   format, shared by `:app`'s `TripStore` writer and the `:core` reader). To diff what the nav
   cards/voice said against the plotted route from a shared trip CSV, call `TripLog.audit(csv)`

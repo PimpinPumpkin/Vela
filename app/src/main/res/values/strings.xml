@@ -185,6 +185,19 @@
     <string name="settings_trip_read_error">Couldn\'t read that trip</string>
     <string name="settings_trip_share">Share</string>
     <string name="settings_trip_delete">Delete trip</string>
+    <string name="settings_trip_rename">Rename</string>
+    <string name="settings_trip_rename_title">Name this trip</string>
+    <string name="settings_trip_rename_hint">Trip name</string>
+    <string name="settings_trip_rename_failed">Could not rename that trip</string>
+    <string name="settings_trip_select">Select trips</string>
+    <string name="settings_trip_select_done">Done</string>
+    <string name="settings_trip_share_selected">Share %1$d</string> <!-- format -->
+    <string name="settings_trip_select_all">Select all</string>
+    <string name="settings_name_trips">Name each trip when it is saved</string>
+    <string name="settings_name_trips_hint">After a recorded drive ends, Vela asks what to call it. Off by default; you can always rename a trip later in the list below.</string>
+    <string name="trip_name_prompt_title">Name this drive</string>
+    <string name="trip_name_prompt_save">Save name</string>
+    <string name="trip_name_prompt_skip">Not now</string>
     <string name="settings_no_trips_hint">No trips recorded yet. Navigate somewhere with this on and it\'ll show up here to replay.</string>
     <string name="settings_trip_consent_title">Save your trips?</string>
     <string name="settings_trip_consent_body">Vela will record the GPS trace of each navigation on this phone, so a drive can be replayed for testing without driving it again. This is more revealing than diagnostics (it captures your exact routes) but it stays on the phone and is never uploaded. Turn it off any time.</string>
@@ -493,6 +506,7 @@
     <string name="mapvm_export_saved_subject">Vela saved places (%1$d)</string> <!-- format -->
     <string name="mapvm_export_saved_chooser">Export saved places</string>
     <string name="mapvm_export_trip_subject">Vela trip: %1$s (%2$d points)</string> <!-- format -->
+    <string name="mapvm_export_trips_subject">Vela trips: %1$d drives (%2$d points)</string> <!-- format -->
     <string name="mapvm_share_trip_chooser">Share trip</string>
     <string name="mapvm_voice_sample">In a quarter mile, turn right onto Main Street.</string>
     <string name="mapvm_not_enough_space">Not enough free space for %1$s (%2$d MB)</string> <!-- format -->
