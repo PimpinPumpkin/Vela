@@ -4,11 +4,10 @@ Vela ships in 15 languages (the canonical layer-by-layer table is in
 [LANGUAGES.md](LANGUAGES.md)). Translations are community-maintained, and today
 they come in as ordinary pull requests.
 
-> **Weblate is not up yet.** Hosted Weblate is free for open-source projects but
-> asks that a project be established before it takes it on, and Vela is still too
-> young to qualify. Until that changes there is no Weblate project to sign in to,
-> so please use the pull-request flow below. This page will be rewritten the day
-> it is running.
+> **Weblate is not up yet.** Hosted Weblate is free for open-source projects, but
+> a project has to be at least three months old to qualify and Vela is not there
+> yet. Until it is, there is no Weblate project to sign in to, so please use the
+> pull-request flow below. This page gets rewritten the day it is running.
 
 ## Translate by pull request
 
