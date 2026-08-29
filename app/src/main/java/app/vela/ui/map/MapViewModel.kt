@@ -569,9 +569,19 @@ class MapViewModel @Inject constructor(
                     // as real nav and does live fetches (device-caught 2026-08-08: the bare !replaying
                     // guard silently skipped the fetch on every simulated drive).
                     val vs = _state.value
-                    if (!vs.replaying || vs.demoDriving) refreshNavRouteControls(nsRoute)
+                    if (!vs.replaying || vs.demoDriving) {
+                        refreshNavRouteControls(nsRoute)
+                        refreshRouteSpeedCams(nsRoute) // spoken camera warnings (issue #229)
+                    }
                 }
-                if (!ns.navigating) { lastRecordedRoute = null; clearNavRouteControls() }
+                if (!ns.navigating) {
+                    lastRecordedRoute = null
+                    clearNavRouteControls()
+                    routeCamMeters = emptyList(); routeCamKey = null; spokenCams = emptySet()
+                }
+                // Speak an approach warning for a camera coming up (issue #229). Cheap per tick:
+                // a scan of a short list; the projection was done once when the route landed.
+                if (ns.navigating) maybeWarnCamera(ns)
                 _state.update {
                     it.copy(
                         navigating = ns.navigating,
@@ -5269,6 +5279,65 @@ class MapViewModel @Inject constructor(
      * cached box edge, and the churn (against mirrors that are sometimes down) made the icons appear
      * rarely and vanish quickly during nav. Same cluster-per-intersection pass as the box path.
      */
+    // Speed cameras projected onto the CURRENT route, in ascending along-route metres, plus the
+    // indices already announced. Keyed like the controls corridor fetch so a same-course heal does
+    // not refetch or re-arm warnings the driver already heard.
+    private var routeCamKey: String? = null
+    private var routeCamMeters: List<Double> = emptyList()
+    private var spokenCams: Set<Int> = emptySet()
+    private var routeCamJob: kotlinx.coroutines.Job? = null
+
+    /** One corridor fetch of speed cameras per driven route, projected onto it for the spoken
+     *  approach warning (issue #229). No-op unless the layer AND the spoken warning are on. */
+    private fun refreshRouteSpeedCams(route: app.vela.core.model.Route) {
+        if (!app.vela.ui.SpeedCams.on.value || !app.vela.ui.SpeedCamWarn.on.value) {
+            routeCamKey = null; routeCamMeters = emptyList(); spokenCams = emptySet()
+            return
+        }
+        val poly = route.polyline
+        if (poly.size < 2) return
+        val f = poly.first(); val l = poly.last()
+        val key = String.format(
+            java.util.Locale.US, "%.4f,%.4f|%.4f,%.4f|%d",
+            f.lat, f.lng, l.lat, l.lng, (route.distanceMeters / 500).toInt(),
+        )
+        if (key == routeCamKey) return
+        routeCamKey = key
+        spokenCams = emptySet() // a genuinely new route: nothing has been announced on it yet
+        routeCamJob?.cancel()
+        routeCamJob = viewModelScope.launch {
+            val cams = runCatching {
+                withContext(Dispatchers.IO) {
+                    app.vela.core.data.OverpassSpeedCameras.fetchAlongCorridor(http, poly)
+                }
+            }.getOrNull() ?: run {
+                // Leave the key set: a failed fetch means no warnings this route rather than a
+                // retry storm mid-drive. The map layer still draws from the viewport path.
+                android.util.Log.i("VelaSpeedCam", "route corridor camera fetch FAILED (all endpoints)")
+                return@launch
+            }
+            val meters = withContext(Dispatchers.Default) {
+                val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+                cams.mapNotNull { app.vela.core.nav.RouteProjection.alongMeters(poly, cum, it.loc) }.sorted()
+            }
+            if (routeCamKey == key) {
+                routeCamMeters = meters
+                diag.record("speedcam", "${meters.size} camera(s) on route", "corridor")
+            }
+        }
+    }
+
+    /** Announce the camera coming up, once each. Timing lives in :core [CameraAlerts]. */
+    private fun maybeWarnCamera(ns: app.vela.core.nav.NavSession.State) {
+        if (routeCamMeters.isEmpty()) return
+        if (!app.vela.ui.SpeedCams.on.value || !app.vela.ui.SpeedCamWarn.on.value) return
+        val i = app.vela.core.nav.CameraAlerts.due(
+            routeCamMeters, ns.nav.traveledM, (_state.value.mySpeed ?: 0f).toDouble(), spokenCams,
+        ) ?: return
+        spokenCams = spokenCams + i
+        voice.speak(appContext.getString(R.string.nav_speed_camera_ahead))
+    }
+
     private fun refreshNavRouteControls(route: app.vela.core.model.Route) {
         val poly = route.polyline
         if (poly.size < 2) return

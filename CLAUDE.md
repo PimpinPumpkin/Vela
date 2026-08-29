@@ -2714,6 +2714,26 @@ architecture note.
   branch, which would blank the layer at the 15.5 nav zoom floor); a FAILED corridor fetch leaves the
   key unset so the viewport path stays the fallback, and nav-end (`clearNavRouteControls`) nulls
   `controlsBox` so the next browse settle repaints. Needs a real-drive glance to confirm density/size feel.
+- **Speed cameras + SPOKEN approach warning (issue #229).** The LAYER (`OverpassSpeedCameras`,
+  `SpeedCams` holder, Settings > Map "Speed cameras", OFF by default) already shipped: OSM
+  `highway=speed_camera`, keyless, viewport-box + area-cached, `out body` (never `out tags` - the
+  ALPR empty-layer trap). The 2026-08-28 addition is the WARNING the reporter actually asked for
+  ("informed about an incoming radar control" - a dot does nothing while driving):
+  `OverpassSpeedCameras.fetchAlongCorridor` runs ONCE per driven route (sibling of the controls
+  corridor fetch, keyed identically so a same-course heal never refetches or re-arms warnings
+  already heard), each hit is projected onto the route by `:core` `nav/RouteProjection` and
+  anything not genuinely on it is dropped (a corridor returns the parallel street too), and
+  `:core` `nav/CameraAlerts.due` decides when to speak. Timing is SPEED-SCALED (12 s of lead,
+  floored 150 m / capped 600 m) because a fixed distance is ample in town and ~2 s on a motorway;
+  one announcement per camera per route; never for a camera behind you; silent below 2 m/s so
+  sitting beside one is not narrated. Unit-tested (`CameraAlertsTest`, `RouteProjectionTest`).
+  **The spoken half is its own nested opt-in** (`SpeedCamWarn`, "Warn me out loud", shown only
+  while the layer is on): being spoken to is a different ask from seeing a marker, and warning
+  about cameras while driving is legally restricted in some countries. Respects the global
+  spoken-directions mute like every other prompt. STILL fixed installations only - mobile speed
+  traps need a live crowd feed the keyless model has no source for.
+  NB `nav/RouteProjection` duplicates the projection in `nav/RouteBar` (issue #228, open in
+  parallel); whichever merges second should delegate rather than keep two copies.
 - **Surveillance-camera (Flock / ALPR) layer (`OverpassAlprCameras` + `refreshFlock` + `FLOCK_LAYER`, device-verified
   2026-07-12).** Settings > Map > "Surveillance cameras" (`app.vela.ui.Flock` holder, **ON by default since 2026-07-13** -
   it's a headline feature and the bundled dataset makes it free to draw; `FlockRouteAlert` route-avoid stays

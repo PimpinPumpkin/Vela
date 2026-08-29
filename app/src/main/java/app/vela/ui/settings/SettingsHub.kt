@@ -299,6 +299,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_layers_button to SettingsSection.MAP,
     R.string.settings_flock to SettingsSection.MAP,
     R.string.settings_speed_cams to SettingsSection.MAP,
+    R.string.settings_speed_cam_warn to SettingsSection.MAP,
     R.string.settings_flock_route_alert to SettingsSection.MAP,
     R.string.settings_buildings_3d to SettingsSection.MAP,
     R.string.settings_building_overlay to SettingsSection.MAP,

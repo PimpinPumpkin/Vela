@@ -76,6 +76,17 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
             onCheckedChange = { app.vela.ui.SpeedCams.set(context, it) },
             hint = stringResource(R.string.settings_speed_cams_hint),
         )
+        // The spoken warning is nested: it only means anything once the cameras are being tracked,
+        // and it is its own opt-in because being spoken to is a different ask from seeing a marker
+        // (and is restricted in some countries).
+        if (app.vela.ui.SpeedCams.on.value) {
+            ToggleRow(
+                label = stringResource(R.string.settings_speed_cam_warn),
+                checked = app.vela.ui.SpeedCamWarn.on.value,
+                onCheckedChange = { app.vela.ui.SpeedCamWarn.set(context, it) },
+                hint = stringResource(R.string.settings_speed_cam_warn_hint),
+            )
+        }
         GroupDivider()
         ToggleRow(
             label = stringResource(R.string.settings_flock_route_alert),
