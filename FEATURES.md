@@ -2211,12 +2211,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   the old code on-device). RTL is automatic: the app already declares `android:supportsRtl` and
   re-creates the Activity with a Hebrew config, so Compose's `LayoutDirection` flips (a whole-app scan
   found no hardcoded left/right, `Absolute` arrangements or forced `LayoutDirection`). Unit-tested.
-- ✅ **Community translations via Weblate (2026-07-14).** UI-string translation moved to hosted
-  Weblate so anyone can translate or fix strings in a web editor, no git required - see
-  [docs/TRANSLATING.md](docs/TRANSLATING.md) for the project link, the rules (placeholders, CLDR
-  plural categories, no em dashes) and the maintainer component config. New strings are added to
-  the English base only; Weblate opens PRs to fill the locales, and untranslated strings fall
-  back to English in the meantime.
+- ✅ **Community translations by pull request (2026-07-14; Weblate still pending, see issue #285).**
+  Anyone can translate or fix UI strings by editing one `values-<lang>/strings.xml` in the GitHub
+  web editor and opening a PR - no git client, no Android toolchain. See
+  [docs/TRANSLATING.md](docs/TRANSLATING.md) for the flow and the rules (placeholders, CLDR plural
+  categories, no em dashes). New strings are added to the English base only, and an untranslated
+  string falls back to English, so partial contributions are safe. **Hosted Weblate is the intended
+  home and is NOT live**: it asks that a project be established before taking it on and Vela is too
+  young to qualify yet, so the docs describe the PR flow until that changes.
 
 ## Added 2026-07-17 (offline routing on pre-Android-14 devices)
 

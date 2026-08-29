@@ -41,14 +41,22 @@ class SavedPlaceStore @Inject constructor(
     /** Merge a previously-exported [json] list into the saved set, de-duped by id
      *  (existing entries kept, new ones appended). Returns how many were newly added;
      *  0 on a parse failure or nothing new. */
-    fun importMerge(json: String): Int {
-        val incoming = runCatching { this.json.decodeFromString<List<SavedPlace>>(json) }.getOrNull() ?: return 0
+    /**
+     * Merge saved places from an exported file.
+     *
+     * Reports WHICH outcome happened (issue #287): a file from another app and a re-imported
+     * backup both used to come back as 0, and the app could only say "nothing to import", which
+     * sent people looking for a bug in the wrong place.
+     */
+    fun importMerge(json: String): ImportResult {
+        val incoming = runCatching { this.json.decodeFromString<List<SavedPlace>>(json) }.getOrNull()
+            ?: return ImportResult.WrongFormat(ImportFormats.describe(json))
         val current = saved()
         val existing = current.mapTo(HashSet()) { it.id }
         val added = incoming.filterNot { it.id in existing }
-        if (added.isEmpty()) return 0
+        if (added.isEmpty()) return ImportResult.NothingNew
         prefs.edit().putString(KEY, this.json.encodeToString(current + added)).apply()
-        return added.size
+        return ImportResult.Added(added.size)
     }
 
     private companion object {

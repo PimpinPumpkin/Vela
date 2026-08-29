@@ -1,31 +1,43 @@
 # Translating Vela
 
 Vela ships in 15 languages (the canonical layer-by-layer table is in
-[LANGUAGES.md](LANGUAGES.md)). Translations are community-maintained through
-**Weblate**, a web editor where you can translate without touching git at all.
+[LANGUAGES.md](LANGUAGES.md)). Translations are community-maintained, and today
+they come in as ordinary pull requests.
 
-## Translate on Weblate
+> **Weblate is not up yet.** Hosted Weblate is free for open-source projects but
+> asks that a project be established before it takes it on, and Vela is still too
+> young to qualify. Until that changes there is no Weblate project to sign in to,
+> so please use the pull-request flow below. This page will be rewritten the day
+> it is running.
 
-Project: https://hosted.weblate.org/projects/vela-maps/
+## Translate by pull request
 
-1. Make a free account (GitHub sign-in works).
-2. Pick your language and start suggesting or translating strings.
-3. Weblate batches the work and opens a pull request against this repo; a
-   maintainer reviews and merges it. You get commit credit for your strings.
+1. Find your language file: `app/src/main/res/values-<lang>/strings.xml`
+   (for example `values-de` for German, `values-zh-rTW` for Traditional
+   Chinese). The English original is `app/src/main/res/values/strings.xml`.
+2. Edit or add the strings you want to fix. You can do this entirely in the
+   GitHub web editor: open the file, press the pencil, and commit to a new
+   branch. No git client and no Android toolchain needed.
+3. Open a pull request. A maintainer reviews it against the rules below and
+   merges. You keep commit credit for your strings.
 
-Missing your language entirely? Open the project page and hit "Start new
-translation", or open an issue here. A new language needs the UI strings
-first; spoken directions and the open/closed keyword table are separate
-layers a maintainer wires up afterwards (see below).
+Anything you do not translate simply falls back to English, so a partial
+contribution is genuinely useful and never breaks the app.
+
+Missing your language entirely? Open an issue and say which one, or copy
+`values/strings.xml` to a new `values-<lang>/` folder and translate what you
+can. A new language needs the UI strings first; spoken directions and the
+open/closed keyword table are separate layers a maintainer wires up afterwards
+(see below).
 
 ## What lives where
 
-Only the first layer is on Weblate. The rest is code or config and changes
-through normal pull requests:
+The UI strings above are the layer that is open to everyone. The rest is code
+or config and changes through pull requests too, but needs a maintainer:
 
 | Layer | Where | How to change |
 |---|---|---|
-| App UI strings (~350) | `app/src/main/res/values-<lang>/strings.xml` | Weblate |
+| App UI strings (~350) | `app/src/main/res/values-<lang>/strings.xml` | PR (the flow above) |
 | Spoken turn-by-turn | `core/src/main/java/app/vela/core/i18n/` (a `NavStrings` table per language) | PR, needs native review |
 | Open/closed status keywords | `calibration.json` (`statusClosedWords`/`statusOpenWords`) + compiled tables in `SearchParser` | PR or a signed calibration push |
 | Neural voice | Piper voice catalog (`PiperCatalog`) | depends on an upstream Piper voice existing |
@@ -38,8 +50,8 @@ through normal pull requests:
   silently doesn't show.
 - **Plurals need the right CLDR categories for your language.** Russian,
   Ukrainian and Polish need `one`/`few`/`many`/`other`; Hebrew needs
-  `one`/`two`/`many`/`other`; Chinese and Japanese only `other`. Weblate
-  shows the right set automatically.
+  `one`/`two`/`many`/`other`; Chinese and Japanese only `other`. Copy the
+  category set from an existing file in your language if you are unsure.
 - **No em dashes.** Use a comma, a colon, or rephrase. The one legitimate
   dash is a numeric range. (House style across the whole repo.)
 - **Escape apostrophes** as `\'` in strings.xml. A raw one fails the release

@@ -4130,24 +4130,24 @@ class MapViewModel @Inject constructor(
     }
 
     /** Import lists from a picked file [uri]; returns how many lists were newly added. */
-    fun importListsFromUri(uri: android.net.Uri): Int {
+    fun importListsFromUri(uri: android.net.Uri): app.vela.core.data.ImportResult {
         val json = runCatching {
             appContext.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
-        }.getOrNull() ?: return 0
-        val added = listStore.importMerge(json)
-        if (added > 0) _state.update { it.copy(lists = listStore.lists()) }
-        return added
+        }.getOrNull() ?: return app.vela.core.data.ImportResult.Unreadable
+        val res = listStore.importMerge(json)
+        if (res is app.vela.core.data.ImportResult.Added) _state.update { it.copy(lists = listStore.lists()) }
+        return res
     }
 
-    /** Import saved places from a picked file [uri]; returns how many were newly added
-     *  (refreshes the saved list in state). 0 on a read/parse failure or nothing new. */
-    fun importSavedFromUri(uri: android.net.Uri): Int {
+    /** Import saved places from a picked file [uri]. Reports WHICH outcome happened so the UI can
+     *  tell "that is another app's file" from "you already have all of these" (issue #287). */
+    fun importSavedFromUri(uri: android.net.Uri): app.vela.core.data.ImportResult {
         val json = runCatching {
             appContext.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
-        }.getOrNull() ?: return 0
-        val added = savedStore.importMerge(json)
-        if (added > 0) _state.update { it.copy(saved = savedStore.saved()) }
-        return added
+        }.getOrNull() ?: return app.vela.core.data.ImportResult.Unreadable
+        val res = savedStore.importMerge(json)
+        if (res is app.vela.core.data.ImportResult.Added) _state.update { it.copy(saved = savedStore.saved()) }
+        return res
     }
 
     /** A share intent for a recorded trip's raw CSV trace (via the same FileProvider),
