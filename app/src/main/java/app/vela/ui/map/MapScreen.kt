@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -1249,6 +1250,21 @@ fun MapScreen(
         }
 
         // --- top overlay: nav banner while navigating, else search ----------
+        // Route bar (issue #228): the road ahead as a strip down the LEFT edge, opposite the
+        // right-edge FAB stack so it competes with nothing. Portrait only and never in PiP - issue
+        // #297 is already about landscape being crowded, and adding a permanent strip there would
+        // make that worse rather than better.
+        state.routeBar?.let { bar ->
+            if (state.navigating && !landscapeChrome && !bar.isEmpty) {
+                app.vela.ui.nav.RouteBarStrip(
+                    model = bar,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = 10.dp)
+                        .fillMaxHeight(0.42f),
+                )
+            }
+        }
         if (state.navigating) {
             val mans = state.activeRoute?.maneuvers
             val liveStep = state.nav.stepIndex
