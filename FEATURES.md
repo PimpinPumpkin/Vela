@@ -224,6 +224,18 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   building-footprint OVERLAY (the layer that fills OSM's gaps) had its colour hardcoded to Modern, so
   in Classic those houses stayed Google-navy while the OSM ones went grey; it now honours the palette
   too. Also, since the two sets currently diverge mostly in dark mode, the Settings hint says so.
+- ✅ **Share a recorded trip without sharing your front door (2026-09-01).** Share on a trip now
+  opens a trim dialog instead of exporting the raw CSV. **Share trimmed** (the default button)
+  deletes every fix within 200 / 400 / 800 m of the start, the end, the recorded destination and
+  your Home and Work, keeping the middle of the drive at full precision, plus the five other
+  places the same fact hides: the trip's *name* (trips are named after where they went), the
+  destination in the file header, the spoken lines at either end ("Arrive at …"), the maneuvers
+  in the trimmed zones, and the start of the saved route line. Timestamps are rebased to zero so
+  the file does not say when you drive. Unknown line kinds are dropped rather than passed through,
+  so a tag added to the format later cannot be published by a scrubber written before it existed.
+  The dialog shows what was removed and the first surviving coordinate before anything leaves the
+  device; **Share full trace** is still there, and the on-device copy is never modified.
+  `core/replay/TripScrub`, 13 tests.
 - ✅ **Google-style nav puck (2026-07-11).** The navigation arrow is a white chevron inside a
   filled bright-navy circle with a soft drop shadow (no white ring, per user feedback); it rotates
   about the exact GPS point. Replaces the bare blue chevron. **Enlarged twice from feedback

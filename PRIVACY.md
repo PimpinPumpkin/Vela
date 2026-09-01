@@ -169,6 +169,19 @@ prompt asks for it on its own line.
   leaves the phone is if *you* tap **Share** on a trip and choose where to send it (the
   same user-initiated FileProvider export as the diagnostics log) - useful for handing a
   drive to a developer to debug a bad route.
+- **Share offers to trim the private ends first, and that is the default button.** A drive
+  starts and ends where you do, so publishing a raw trace publishes your front door. Choosing
+  **Share trimmed** deletes every recorded point within a distance you pick (200 / 400 / 800 m)
+  of the start, the end, the recorded destination, and your **Home and Work** if you have set
+  them, and with them the trip's name (trips are named after where they went, so it is usually
+  an address), the destination coordinate in the file header, the spoken directions at either
+  end, and the start of the saved route line. Timestamps are rebased to zero, so the file does
+  not say *when* you drive either. The middle of the drive is kept at **full precision**, because
+  that is the part a bug lives in. Rounding coordinates instead would protect the ends weakly
+  (a 1 km round still names a block) while destroying what the trace is for. The dialog shows
+  what it removed, and the first surviving coordinate, before anything leaves the device. The
+  untrimmed file is still available behind **Share full trace**, and the copy on your phone is
+  never modified.
 - Manage it in Settings → recorded trips have **Replay**, **Share**, and **Delete**;
   turning the switch off stops new recording. Off by default; you choose to enable it.
 

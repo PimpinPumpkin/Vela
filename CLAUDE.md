@@ -102,6 +102,19 @@ Defaults that make the safe path the easy one:
   audit/replay a multi-block trip against a single mashed route - that was the "arrow on another
   street / arrived mid-replay" corruption. NB replays of OLD trips faithfully play back the dirty
   fixes the old pipeline recorded (BeaconDB teleports) - judge the engine on fresh recordings.
+- **Sharing a trip trims its ends** (`core/replay/TripScrub`, 13 tests; Settings → Diagnostics →
+  a trip's Share). A trip leaks its owner's endpoints in SIX places, not one, and all six are
+  handled: the fixes, the `META` destination, the `META` **label** (trips are named after where
+  they went, so it is usually a street address), the maneuvers, the route polyline's start, and
+  the `S` spoken lines ("Arrive at ..."). It TRIMS rather than blurs: every fix within the chosen
+  radius of the start, the end, the destination and the user's Home/Work is deleted and the middle
+  kept at FULL precision, because rounding protects the ends weakly (a 1 km round still names a
+  block) while destroying the geometry the trip exists to diagnose. Timestamps are rebased to zero
+  (replay only ever uses the deltas). **Unknown line kinds are DROPPED, not passed through.** The
+  format is append-only, so a tag added later would otherwise be published by a scrubber written
+  before it existed: **if you add a line kind to `TripLog`, decide in `TripScrub` whether it is
+  safe to share.** The scrub is non-destructive (the on-device trip is never modified) and the
+  raw file is still reachable behind "Share full trace".
 - **Demo / simulate-driving mode** (Settings → Navigation, off by default, pref `demo_drive` in
   `vela_settings`). Drives a planned route as a SYNTHETIC GPS trace so nav can be shown/tested
   **anywhere** with no real fix - this is how the Davis `docs/screenshots/05-navigation.png` was shot
