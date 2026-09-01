@@ -2906,6 +2906,26 @@ architecture note.
   end. The auto-advance is **latched** (`maybeAdvanceTransitNav`, `TRANSIT_ARM_M=90`/`TRANSIT_ARRIVE_M=40`):
   a leg only advances once it's been ARMED by being >ARM_M from its end, so a transfer hub can't cascade
   through legs and a short final walk can't fire a premature arrival.
+- **SUBWAY LEGS RENDERED AS EMPTY WALKS (issue #284, fixed 2026-08-31, live NYC capture).** Two
+  independent defects in `TransitParser`, both proven against a real Harlem->Wall St payload:
+  (1) **A line drawn as a BULLET carries no text pill.** `[14]` is a list of tagged entries and
+  tag 5 is the line identity, expressed EITHER as a text badge at `[1]`
+  (`["M101",1,"#1d59b3","#ffffff"]`, buses) OR - with `[1]` NULL - as an agency icon at `[2]`
+  (`[3,"us-ny-mta/2.png",null,"2 Line",...]`, NYC subway). `parseLines` only matched the pill, so
+  a subway leg yielded no line, and `mode = line?.mode ?: WALK` turned every one into an empty
+  walking step. `iconLineName` now reads the name off the icon FILENAME. **The agency prefix is
+  the load-bearing rule**: a line icon is operator-scoped and contains a "/" (`us-ny-mta/2.png`)
+  while the generic vehicle icon is bare (`subway2.png`, `bus2.png`) - without that test a bus
+  would invent a line called "bus2". Filename not the label beside it ("2 Line"), because the
+  label is localized.
+  (2) **`guessMode` matched mode words inside PLACE NAMES.** It scanned every short string in the
+  subtree with "bus" tested first, so a "2" train to **Flat-BUS-h Av** reported as a BUS
+  (device-proven: the live capture guessed BUS for a subway leg). It now reads ICON FILENAMES
+  ONLY, which are language-neutral and per-mode (bus2/subway2/rail/tram/ferry/walk); Columbus,
+  Bushwick and Brisbane were the same trap. The whole LEG is passed in, not just `[14]`, because
+  the generic vehicle icon sits outside the badge node. Subway is now tested before rail.
+  Pinned by `TransitSubwayTest` using the real captured nodes; re-verified by replaying the new
+  rules over the whole live payload (6 trips -> lines 2/3/5 SUBWAY, M101 BUS, walks still WALK).
 - **Live stop departure board (`WebStopDeparturesFetcher` + `core/.../StopDeparturesParser`,
   2026-07-12, keyless + device-verified).** Tapping a transit STATION shows Google's "See departure
   board" in the place sheet. The board is embedded in the station's OWN place page's
