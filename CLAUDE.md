@@ -1989,8 +1989,58 @@ architecture note.
   "Searching for GPS" chip up for honesty, the first real fix re-anchors (route-plausible
   synthetics pass the outlier gate). Never feeds `tripStore.record` (no fake points in trips).
   Nav zoom range is 18.0→15.5 (2026-07-14, was 17.3→15.0).
-  **ACCELEROMETER NOISE WAS REACHING THE PUCK (issue #251, 2026-08-20 - the jitter that survived
-  the two fixes below, still reported on a P9).** Archaeology settled it: the ORIGINAL puck
+  **PUCK JITTER (issue #251) HAS FIVE SEPARATE CAUSES, ALL FIXED. READ THIS BEFORE TOUCHING THE
+  PUCK.** It was re-diagnosed from scratch four times because each pass found a real cause, fixed
+  it, and the symptom persisted - two of those passes then derived the SAME window fix
+  independently. The list, largest first: (1) the along-route POSITION was never filtered; (2) the
+  progress rule stalled and surged; (3) the camera bearing followed digitization wiggle; (4) the
+  smoothing window's own width rippled; (5) demo drives ran the clocks at 3x. If jitter is
+  reported again, the next thing to suspect is something NOT on this list - do not re-derive one
+  of these.
+  **(1) THE ALONG-ROUTE POSITION WAS NEVER FILTERED (2026-09-01, the biggest single cause).** The
+  puck's SPEED had been Kalman-filtered since June; its POSITION never was. The snapped fix went
+  straight into `targetM` and the puck was drawn from it, so every metre of along-route GPS noise
+  was a metre the puck genuinely had to travel, once a second, for the whole drive. **No amount of
+  downstream smoothing can fix that** - a smoother makes the movement gentler, it does not make it
+  stop happening, which is precisely why four passes of smoothing work left the symptom alive.
+  `AlongRouteFilter` (`:core`, unit-tested) is the missing measurement update: the estimate
+  dead-reckons at the modelled speed and grows variance, and each accepted fix folds in weighted by
+  its OWN reported accuracy (`Location.getAccuracy` is a 68% radius; snapping discards the lateral
+  component, so the along-route sigma is ~0.66x it). A clean 4 m fix pulls most of the way, a 25 m
+  urban-canyon one barely moves the estimate. `targetM` still exists and still takes the raw fix -
+  the plausibility gate and the snap window are built on it and keep their behaviour - but what the
+  puck DRAWS is now `navPuck.along`. Genuine discontinuities (engage, re-acquire, a persistent
+  over-cap jump) call `reseed` instead, because a teleport is not noise to average down.
+  Simulated against the old rule, 1 Hz fixes at 60 fps: along-road wobble 7.2 -> 2.8 px at cruise
+  with clean GPS, 27.1 -> 5.5 px in an urban canyon.
+  **(2) THE PROGRESS RULE STALLED AND SURGED AT THE FIX CADENCE.** The puck eased toward
+  `targetM + reckonedM` and was then clamped monotonic. Each half is individually sensible;
+  together they fight. Every fix reset the reckoning, so the target JUMPED by however much the dead
+  reckoning had over- or under-shot; an overshoot put the target BEHIND the puck, the ease pulled
+  backward, and the monotonic clamp FROZE the puck until the reckoning caught up. A few metres of
+  ordinary GPS noise did that once a second, forever. Now corrected in the RATE domain: the puck
+  always advances at the modelled speed and the estimate error enters as a BOUNDED nudge to that
+  rate (`PUCK_CORRECT_TIME_S`, catch-up capped at 0.5x speed + 1 m/s, hold-back at 0.25x + 0.5).
+  Cannot stall, cannot lurch, still monotonic. Stalled frames 2.7% -> 0% at cruise, 27.8% -> 0% in
+  a canyon; frame-to-frame speed error 36% -> 3%.
+  **(4) THE SMOOTHING WINDOW'S WIDTH RIPPLED.** `win = speed*0.7` sizes the position+bearing
+  boxcar, but that is the KALMAN speed, which the per-frame accelerometer predict ripples. On a
+  curve the averaged point sits inside the arc by ~`win^2/(6R)`, so **the width is a lateral
+  position** and speed noise became sideways movement. `navPuck.smoothWin` now eases the
+  half-width toward its speed target with a long time constant (`PUCK_WIN_TAU_S` 2.5 s): still
+  tracks town-vs-motorway, which is all it was for, but per-fix wobble cannot reach it. **Rule: a
+  fast-moving smoother is not a smoother.** Measured honestly this one is SMALL on real OSRM
+  geometry - a +/-1 m width ripple moves the drawn point ~1 cm, sub-pixel - so it is worth keeping
+  and not worth re-deriving a third time.
+  **Route geometry is requested at `polyline6`, not `polyline` (2026-09-01).** OSRM's default
+  encoding is 1e5-scaled: a 1.11 m latitude grid, so every vertex of a physically straight road
+  arrives snapped to a metre-ish step and the puck has to smooth back out scatter Vela itself
+  introduced. `geometries=polyline6` + `PolylineCodec.decode(s, 6)` removes it at the source -
+  verified on the FOSSGIS server (same vertex count, same distance, 10x the resolution). Worth
+  ~20-25% of the chord-bearing noise on real routes; the rest of the crinkle is genuinely in OSM.
+  NB `TripLog` still encodes saved routes at 1e5 (changing it would misread every existing trip
+  file by 10x), so a REPLAY sees slightly coarser geometry than the live drive did.
+  **(3a) ACCELEROMETER NOISE WAS REACHING THE PUCK (2026-08-20).** Archaeology settled it: the ORIGINAL puck
   (498e7f49, 2026-06-21, the version remembered as smooth) took its speed STRAIGHT off the GPS fix
   and held it constant between fixes - twelve lines, no Kalman, no boxcar. `SpeedKalman.predict`
   now runs once per FRAME, so ~60 accelerometer samples are integrated into the speed between two
@@ -2003,8 +2053,7 @@ architecture note.
   cutting 0.3 m/s2 of vibration to about a quarter. A steady bias is attenuated, not erased (~0.08
   m/s after a second), which the next fix corrects. **Rule: anything integrated per-frame from a
   phone sensor in a car needs a noise model, or it becomes puck motion.**
-  **THE CAMERA BEARING IS ADAPTIVELY DAMPED (issue #251, 2026-08-24 - the "crinkly roads"
-  residual, and the LARGEST of the four causes).** Measured on a synthetic road that is physically
+  **(3) THE CAMERA BEARING IS ADAPTIVELY DAMPED (2026-08-24, the "crinkly roads" residual).** Measured on a synthetic road that is physically
   STRAIGHT but digitized with half-metre vertex scatter (what "crinkly" means in the data): the
   chord bearing the puck derives swings **7.3 deg at a 5 m window, 2.3 deg at 14 m** - several
   times the 0.83 deg camera wiggle the earlier fixes chased. The camera is anchored to the puck,
