@@ -254,6 +254,15 @@ Defaults that make the safe path the easy one:
   probe would evict its cache and every install falls back to Noto). Site edits: `site/**` is
   in CI's paths-ignore (no nightly for copy tweaks) and is a push trigger on `fdroid-repo.yml`
   (the deploy still needs release APKs to exist, which they always do).
+  **The APP SIGNING CERTIFICATE is published (issue #294, 2026-08-26):** SHA-256
+  `29938b4858063e42e677ff95c901cd48248a7f032a3ae85f9b9e5617568b0d36`, in README ("Check you got
+  the real thing") + FDROID.md. Read it out of any signed release with
+  `apksigner verify --print-certs <apk>` - NO keystore password needed, the certificate is public;
+  verified identical on stable and canary, so every channel shares the one key. NB `keytool -list`
+  needs the password AND the keystore is `~/.vela-signing/vela-release.jks` (not `vela.keystore` -
+  a wrong path makes keytool print its error to stderr, so a `| grep SHA256` pipeline looks
+  silently empty). Do NOT confuse this with the F-Droid fingerprint in FDROID.md
+  (`F374920F...`), which signs the repo INDEX, not the app.
   Release signing uses repo secrets `VELA_KEYSTORE_BASE64`,
   `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS` (set; keystore at `~/.vela-signing/`,
   outside the repo - back it up). Without them the APK is debug-signed. Version

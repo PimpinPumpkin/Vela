@@ -58,6 +58,30 @@ the same signed APKs, weekly stable by default (fingerprint and nightly-channel
 setup in [FDROID.md](FDROID.md)). Or grab an APK straight from
 [Releases](https://github.com/PimpinPumpkin/Vela/releases).
 
+### Check you got the real thing
+
+Every Vela APK, from any channel, is signed with the same key. Its certificate
+fingerprint is:
+
+```
+SHA-256  29:93:8B:48:58:06:3E:42:E6:77:FF:95:C9:01:CD:48:24:8A:7F:03:2A:3A:E8:5F:9B:9E:56:17:56:8B:0D:36
+```
+
+Check a downloaded file against it before installing:
+
+```bash
+apksigner verify --print-certs vela-maps-*.apk
+```
+
+Android enforces this for you after the first install: an update signed with a
+different key is refused, so a build that installs over your existing Vela came
+from the same place this one did.
+
+This is the certificate the app is signed with, and it stays the same across
+releases. It is not a checksum of a particular APK, and it is not the same as
+the F-Droid repo fingerprint in [FDROID.md](FDROID.md), which signs the repo
+index rather than the app.
+
 There's also a one-page tour at
 **[pimpinpumpkin.github.io/Vela](https://pimpinpumpkin.github.io/Vela/)**.
 

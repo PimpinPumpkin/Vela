@@ -47,6 +47,19 @@ signed with a dedicated repo key; the APKs carry the same Vela signing key as
 the GitHub releases and the in-app updater, so switching install sources never
 forces a reinstall.
 
+**Two different fingerprints, do not mix them up.** The one in the repo URL
+above signs the repo INDEX, which is what tells your F-Droid client the listing
+is genuine. The APKs themselves are signed with the Vela app key, whose
+certificate fingerprint is:
+
+```
+SHA-256  29:93:8B:48:58:06:3E:42:E6:77:FF:95:C9:01:CD:48:24:8A:7F:03:2A:3A:E8:5F:9B:9E:56:17:56:8B:0D:36
+```
+
+That is the one to check an APK against (`apksigner verify --print-certs`), and
+it is identical on every channel, which is why moving between install sources
+never asks you to uninstall first.
+
 ## Why not the official f-droid.org catalog?
 
 The main F-Droid catalog builds every app from source on their own servers,
