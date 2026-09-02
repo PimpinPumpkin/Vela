@@ -168,7 +168,10 @@ object TransitParser {
 
     private fun parseStep(leg: JsonElement): TransitStep {
         val sum = leg.at(0) ?: leg
-        val line = parseLines(sum.at(14)).firstOrNull()
+        // The whole leg is handed over for mode inference: the generic vehicle icon
+        // ("subway2.png") sits OUTSIDE the badge node, so [14] alone cannot tell a subway from
+        // anything else (issue #284, live NYC capture).
+        val line = parseLines(sum.at(14), leg).firstOrNull()
         val stops = leg.at(5) // present on ride legs only
         val board = parseStopTime(stops.at(0))
         val alight = parseStopTime(stops.at(1))
@@ -240,13 +243,18 @@ object TransitParser {
      *  "#fill", "#text"]` — collecting them in document order, de-duplicated by
      *  name. Walk legs carry no such node, so a walk-only segment contributes
      *  nothing here (matching Google's compact card, which shows only the lines). */
-    private fun parseLines(badges: JsonElement?): List<TransitLine> {
+    /** Test seam for [parseLines] - the badge/mode shapes are the part that drifts with Google. */
+    internal fun parseLinesForTest(badges: JsonElement?, leg: JsonElement?) = parseLines(badges, leg)
+
+    /** Test seam for [guessMode]. */
+    internal fun guessModeForTest(leg: JsonElement) = guessMode(leg)
+
+    private fun parseLines(badges: JsonElement?, leg: JsonElement? = null): List<TransitLine> {
         val root = badges.arr() ?: return emptyList()
-        // The mode-icon facet ("bus2.png") sits in a sibling node of the line
-        // facet, not inside it, so derive one dominant vehicle class for the whole
-        // badge subtree and apply it to the lines (correct for single-mode trips,
-        // a sane approximation for mixed ones).
-        val mode = guessMode(root)
+        // The mode-icon facet ("bus2.png") sits in a sibling node of the line facet, not inside
+        // it, so derive one dominant vehicle class for the leg and apply it to the lines
+        // (correct for single-mode trips, a sane approximation for mixed ones).
+        val mode = guessMode(leg ?: root)
         val out = ArrayList<TransitLine>()
         val seen = HashSet<String>()
         fun walk(n: JsonElement) {
@@ -268,7 +276,43 @@ object TransitParser {
             a.forEach(::walk)
         }
         walk(root)
+        // A line drawn as a BULLET rather than a text pill carries no colour badge at all - the
+        // whole identity is an agency-scoped icon. New York's subway is the case that exposed this
+        // (issue #284): every subway leg parsed to no line, which made it fall through to WALK and
+        // render as an empty walking step, while buses (which do get a text pill) were fine.
+        if (out.isEmpty()) iconLineName(root)?.let { name ->
+            out.add(TransitLine(name = name, mode = mode))
+        }
         return out
+    }
+
+    /**
+     * The line name carried as an agency icon, e.g. `us-ny-mta/2.png` -> "2".
+     *
+     * The AGENCY PREFIX is what separates a line bullet from the generic vehicle icon: a line icon
+     * is scoped to its operator ("us-ny-mta/2.png"), while the mode icon is a bare filename
+     * ("subway2.png", "bus2.png", "walk.png"). Without that rule a bus leg would invent a line
+     * called "bus2".
+     *
+     * Read from the filename rather than the human label beside it ("2 Line") because the filename
+     * is language-neutral - the label is localized and would yield "2 Ligne" / "2 Línea".
+     */
+    private fun iconLineName(root: JsonElement): String? {
+        var best: String? = null
+        fun walk(n: JsonElement) {
+            when (n) {
+                is JsonArray -> n.forEach(::walk)
+                else -> {
+                    val v = n.str()
+                    if (best == null && v != null && v.endsWith(".png") && !v.startsWith("//") && "/" in v) {
+                        val name = v.substringAfterLast('/').removeSuffix(".png").trim()
+                        if (name.isNotEmpty() && name.length <= 12) best = name
+                    }
+                }
+            }
+        }
+        walk(root)
+        return best
     }
 
     /** Infer the vehicle class from any icon filename ("bus2.png", "tram.png",
@@ -276,19 +320,31 @@ object TransitParser {
      *  tested before WALK: line nodes only exist for ridden segments, so a trip
      *  whose badges mention both "walk" and "bus" is a bus trip with a walk leg. */
     private fun guessMode(node: JsonElement): TransitMode {
+        // ICON FILENAMES ONLY, never arbitrary strings (issue #284). The old version scanned every
+        // short string in the subtree, so a stop or headsign containing a mode word decided the
+        // vehicle: a New York "2" train to FLATBUSH Av matched "bus" - and bus is tested first -
+        // so a subway leg was reported as a bus. Columbus, Bushwick and Brisbane are the same trap.
+        // Filenames are language-neutral and Google names them per mode: bus2.png, subway2.png,
+        // rail.png, tram.png, ferry.png, walk.png.
         val hay = StringBuilder()
         fun walk(n: JsonElement) {
             when (n) {
                 is JsonArray -> n.forEach(::walk)
-                else -> n.str()?.let { if (it.length < 40) hay.append(it).append(' ') }
+                else -> n.str()?.let {
+                    if (it.endsWith(".png") || it.endsWith(".svg")) {
+                        // Keep only the filename: an agency line icon (us-ny-mta/2.png) must not
+                        // contribute its operator name to the mode guess.
+                        hay.append(it.substringAfterLast('/')).append(' ')
+                    }
+                }
             }
         }
         walk(node)
         val s = hay.toString().lowercase()
         return when {
             "bus" in s -> TransitMode.BUS
-            "tram" in s || "light rail" in s || "streetcar" in s || "lightrail" in s -> TransitMode.TRAM
             "subway" in s || "metro" in s -> TransitMode.SUBWAY
+            "tram" in s || "light rail" in s || "streetcar" in s || "lightrail" in s -> TransitMode.TRAM
             "train" in s || "rail" in s -> TransitMode.TRAIN
             "ferry" in s || "boat" in s -> TransitMode.FERRY
             "walk" in s -> TransitMode.WALK
