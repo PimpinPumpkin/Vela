@@ -92,6 +92,9 @@
     <string name="settings_flock" translatable="false">Surveillance cameras</string>
     <string name="settings_flock_hint" translatable="false">Shows mapped automated license-plate reader (Flock) cameras, from the community DeFlock project in OpenStreetMap. Off by default.</string>
     <string name="settings_speed_cams">Speed cameras</string>
+    <string name="settings_speed_cam_warn">Warn me out loud</string>
+    <string name="settings_speed_cam_warn_hint">Says \"Speed camera ahead\" as you approach one while navigating, timed to give about twelve seconds\' notice. Follows your spoken-directions setting. Warning about cameras while driving is restricted in some countries, so this is off unless you turn it on.</string>
+    <string name="nav_speed_camera_ahead">Speed camera ahead</string>
     <string name="settings_speed_cams_hint">Shows fixed radar and speed cameras mapped in OpenStreetMap. Fixed installations only; coverage follows the map, strongest in Europe. Off by default.</string>
     <string name="settings_flock_route_alert" translatable="false">Avoid surveillance cameras</string>
     <string name="settings_flock_route_alert_hint" translatable="false">Counts the license-plate reader (Flock) cameras on each route and auto-picks a lower-camera one when it costs only a little longer. It never sends you far out of the way, so where cameras are unavoidable it just shows the counts and leaves the choice to you. Long-press the map to route through a point yourself. Off by default.</string>
