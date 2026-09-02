@@ -1978,7 +1978,16 @@ architecture note.
   online chain produced while a toggle was on carry `Route.avoidNotHonored` (set in both the
   single-dest and multi-stop paths, never on the on-device result) - DirectionsPanel shows
   `place_avoid_not_honored` under the chips when EVERY route carries it, so a toggled avoid is
-  never silently ignored. PLUMBING: `MapDataSource.directions`/`nameRoute` + `RouteEngine.route`
+  never silently ignored.
+  **RE-PROBED 2026-08-24 (issue #286, a new user: "Avoid tolls doesn't appear to do anything"):
+  the public FOSSGIS OSRM STILL rejects `exclude=` for EVERY value** (`toll`, `motorway`, `ferry`
+  all return `InvalidValue: Exclude flag combination is not supported`), and Google's keyless
+  endpoint has no avoid parameter - online avoid remains IMPOSSIBLE, do not re-chase it without a
+  self-hosted OSRM. That makes the honesty note the entire user-facing answer, so it was upgraded
+  from dim `bodySmall` under the chips (it read as decoration; the reporter never registered it)
+  to an info-glyph row at `bodyMedium` in ink, worded to say what to DO (download the area) rather
+  than only what went wrong.
+  PLUMBING: `MapDataSource.directions`/`nameRoute` + `RouteEngine.route`
   carry the flags end to end. The public FOSSGIS OSRM REJECTS `exclude=` (probed 2026-07-11:
   InvalidValue - its profiles lack excludable classes; routeOsrm bails on any 4xx instead
   of retrying, AND `OSRM_SUPPORTS_EXCLUDE=false` keeps the param OFF entirely - sending it

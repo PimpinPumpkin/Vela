@@ -83,6 +83,7 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Directions
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.filled.DirectionsBoat
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
@@ -1566,12 +1567,31 @@ fun DirectionsPanel(
                 // anyway - say so instead of pretending (the "still routed me through the motorway"
                 // report). Keyed on the routes' own tag so it never shows when avoid worked.
                 if ((avoidTolls || avoidHighways) && routes.isNotEmpty() && routes.all { it.avoidNotHonored }) {
-                    Text(
-                        stringResource(R.string.place_avoid_not_honored),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = dim,
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
+                    // Treatment upgraded (issue #286): this is the EXPLANATION for a control that
+                    // otherwise looks broken - a new user flips Avoid tolls, gets routed down the
+                    // toll road, and concludes the button does nothing. As dim bodySmall under the
+                    // chips it read as decoration. It is the same weight as any other advisory now,
+                    // with a glyph so the eye lands on it, and the text says what to DO rather than
+                    // only what went wrong. (Online avoid is not a missing feature to add later:
+                    // re-probed 2026-08-24, the public OSRM still rejects `exclude=` for every
+                    // value, and Google's keyless endpoint has no avoid parameter at all.)
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = 8.dp),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Icon(
+                            Icons.Outlined.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp).padding(top = 2.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            stringResource(R.string.place_avoid_not_honored),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = ink,
+                        )
+                    }
                 }
             }
             if (currentMode == TravelMode.TRANSIT) {
