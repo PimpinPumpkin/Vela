@@ -193,6 +193,27 @@ private const val ME_ARROW_IMG = "vela-arrow"
 private const val NAV_PUCK_IMG = "vela-nav-puck"
 private const val PREVIEW_SRC = "vela-preview-src"
 private const val PREVIEW_LAYER = "vela-preview"
+/**
+ * The zoom house numbers start appearing at, shared by the basemap `vela-housenumber` layer and the
+ * streamed `vela-addr-*` overlay so the two can never disagree (they draw the same addresses from
+ * different sources; a mismatch shows one set of numbers arriving before the other).
+ *
+ * Was a hard 19 (the ~50 ft scale-bar view). Issue #257: people zoomed in on a residential street,
+ * saw street names but no numbers, and reasonably concluded Vela had no house numbers at all - the
+ * feature was one zoom step past where they stopped. 18.3 is close enough that a block does not
+ * carpet itself (17.5 did exactly that, user 2026-07-13) while being reachable by an ordinary
+ * zoom-in, and [houseNumberFade] brings them in over the last stretch instead of popping them on.
+ */
+private const val HOUSENUMBER_MIN_ZOOM = 18.3f
+
+/** Numbers fade in across [HOUSENUMBER_MIN_ZOOM]..+0.6, so they arrive as you zoom rather than
+ *  appearing all at once - the density change at street zoom is abrupt enough without a pop. */
+private fun houseNumberFade(): Expression = Expression.interpolate(
+    Expression.linear(), Expression.zoom(),
+    Expression.stop(HOUSENUMBER_MIN_ZOOM, 0f),
+    Expression.stop(HOUSENUMBER_MIN_ZOOM + 0.6f, 1f),
+)
+
 private const val DEM_SRC = "vela-dem"
 private const val HILLSHADE_LAYER = "vela-hillshade"
 // Keyless open elevation tiles (AWS Open Data, terrarium-encoded) — no key, and
@@ -1092,18 +1113,25 @@ fun VelaMapView(
                         // until some lower-zoom browse made tiles resident. So the layer arms at 17
                         // (in-zoom-range is what drives fetching) and the 50 ft UX gate lives in the
                         // TEXT FIELD: empty below z19, the number at 19+. Empty text means no symbols
-                        // exist at 17-18.9 at all - an opacity-0 gate was tried first and worked, but
-                        // it left every number doing invisible placement work each frame in the densest
-                        // band on the map (19 still = the ~50 ft view; 17.5 carpeted whole blocks,
-                        // user 2026-07-13).
+                        // exist below the gate at all - an opacity-0 gate was tried first and worked,
+                        // but it left every number doing invisible placement work each frame in the
+                        // densest band on the map.
+                        //
+                        // The gate was a hard 19 (~50 ft) until issue #257: people zoomed in
+                        // "closely" on a residential street, saw street names but no numbers, and
+                        // concluded the feature did not exist. 18.3 is roughly one zoom step out -
+                        // still close enough that a block does not carpet itself in numbers (which
+                        // is what 17.5 did, user 2026-07-13), but reachable by an ordinary zoom-in.
+                        // The last stretch FADES (see textOpacity) so they arrive rather than pop.
                         setMinZoom(17f)
                         setProperties(
                             PropertyFactory.textField(
                                 Expression.step(
                                     Expression.zoom(), Expression.literal(""),
-                                    Expression.stop(19f, Expression.get("number")),
+                                    Expression.stop(HOUSENUMBER_MIN_ZOOM, Expression.get("number")),
                                 ),
                             ),
+                            PropertyFactory.textOpacity(houseNumberFade()),
                             PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                             PropertyFactory.textSize(10f),
                             PropertyFactory.textColor(txt),
@@ -3047,12 +3075,14 @@ private fun ensureLayers(style: Style) {
                 setSourceLayer("housenumber")
                 // OpenFreeMap DOES serve the OMT `housenumber` source-layer (verified against the
                 // live TileJSON + z14 tiles), so this renders where OSM has `addr:housenumber`.
-                // 19 = the ~50 ft scale-bar view: numbers only when truly close, in lockstep with the
-                // address-overlay layers; 17.5 still carpeted whole blocks in numbers (user 2026-07-13)
-                // (16 carpeted the map — user 2026-07-06). Keep in lockstep with the vela-addr overlay.
-                setMinZoom(19f)
+                // Numbers only when close, in lockstep with the address-overlay layers: 17.5 still
+                // carpeted whole blocks in numbers (user 2026-07-13) and 16 carpeted the map
+                // (2026-07-06), but a hard 19 read as "this app has no house numbers" to people who
+                // zoomed in and gave up short of it (issue #257). Keep in lockstep with vela-addr.
+                setMinZoom(HOUSENUMBER_MIN_ZOOM)
                 setProperties(
                     PropertyFactory.textField(Expression.get("housenumber")),
+                    PropertyFactory.textOpacity(houseNumberFade()),
                     PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                     PropertyFactory.textSize(10f),
                     PropertyFactory.textColor("#8a8a8a"),

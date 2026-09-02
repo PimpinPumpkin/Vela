@@ -990,7 +990,7 @@ Defaults that make the safe path the easy one:
   the faint `building-3d` extrusion). The fill needs a matching **`setMaxZoom(24f)`** to re-open the top;
   keep it. `building-3d` (fill-extrusion) is gated to **z16+** on purpose (the flat fill carries the
   browse-zoom footprint look; extrusion is the per-pixel-expensive part on a Pixel 5a). (2) **House
-  numbers** render via the runtime `vela-housenumber` SymbolLayer (OMT `housenumber` source-layer, `minZoom 19` - numbers only at the ~50 ft scale-bar view; 17.5 still carpeted whole blocks, user 2026-07-13) - 
+  numbers** render via the runtime `vela-housenumber` SymbolLayer (OMT `housenumber` source-layer, gated by the shared `HOUSENUMBER_MIN_ZOOM` = **18.3** with a 0.6-zoom `houseNumberFade` - numbers only when close, but reachable by an ordinary zoom-in; it was a hard 19 (~50 ft) until issue #257, where people zoomed in, saw street names and no numbers, and concluded Vela had none; 17.5 still carpeted whole blocks, user 2026-07-13. The basemap layer and the `vela-addr-*` overlay MUST share the constant - they draw the same addresses from different sources, so a mismatch shows one set arriving before the other) - 
   OpenFreeMap **does** serve that source-layer (verified vs the live TileJSON + z14 tiles), so it works;
   coverage is OSM `addr:housenumber` (partial), not a render bug. The `vela-addr-*` overlay number
   layers anchor to `CONTROLS_CLAIM_LAYER` (above basemap labels, below the ambient icons) - NOT the
