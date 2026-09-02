@@ -751,6 +751,11 @@
     <string name="mapscreen_shortcut_add">Add</string>
     <string name="settings_route_bar">Road ahead bar</string>
     <string name="settings_route_bar_hint">A strip beside the map showing traffic and what is coming up on the rest of your route. Shows only what Vela actually knows: congestion, lights, stop signs, level crossings, speed bumps and surveillance cameras. Portrait only.</string>
+    <string name="settings_font">Font</string>
+    <string name="settings_font_system">System font</string>
+    <string name="settings_font_choose">Choose a font file…</string>
+    <string name="settings_font_hint">Vela cannot ship Google Sans: it is proprietary and cannot be redistributed. You can point Vela at any font file on your own device instead. Map labels keep their own font.</string>
+    <string name="settings_font_bad">That file could not be read as a font.</string>
     <string name="settings_traffic_lights">Traffic-light guidance</string>
     <string name="settings_traffic_lights_hint">Spoken landmark cues: pass the light, then turn. English only, off by default.</string>
     <string name="settings_softkeys" translatable="false">Hardware softkeys</string>

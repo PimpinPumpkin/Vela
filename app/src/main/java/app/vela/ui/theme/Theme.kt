@@ -98,5 +98,5 @@ fun VelaTheme(
         darkTheme -> DarkColors
         else -> LightColors
     }
-    MaterialTheme(colorScheme = colorScheme, typography = VelaTypography, content = content)
+    MaterialTheme(colorScheme = colorScheme, typography = velaTypography(app.vela.ui.AppFont.family.value), content = content)
 }

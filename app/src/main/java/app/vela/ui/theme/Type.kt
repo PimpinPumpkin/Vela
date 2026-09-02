@@ -17,6 +17,24 @@ private fun TextStyle.scaled(): TextStyle = copy(
     lineHeight = if (lineHeight.isSpecified) lineHeight * SCALE else lineHeight,
 )
 
+/**
+ * The type scale in [family], or the platform font when null (issue #252: a user can point Vela at
+ * a font file of their own - see [app.vela.ui.AppFont]). Applying the family here means one place
+ * decides it, rather than every composable that sets a style having to remember.
+ */
+fun velaTypography(family: androidx.compose.ui.text.font.FontFamily? = null): Typography {
+    fun TextStyle.f(): TextStyle = if (family == null) this else copy(fontFamily = family)
+    return VelaTypography.run {
+        copy(
+            displayLarge = displayLarge.f(), displayMedium = displayMedium.f(), displaySmall = displaySmall.f(),
+            headlineLarge = headlineLarge.f(), headlineMedium = headlineMedium.f(), headlineSmall = headlineSmall.f(),
+            titleLarge = titleLarge.f(), titleMedium = titleMedium.f(), titleSmall = titleSmall.f(),
+            bodyLarge = bodyLarge.f(), bodyMedium = bodyMedium.f(), bodySmall = bodySmall.f(),
+            labelLarge = labelLarge.f(), labelMedium = labelMedium.f(), labelSmall = labelSmall.f(),
+        )
+    }
+}
+
 val VelaTypography: Typography = Typography().run {
     copy(
         displayLarge = displayLarge.scaled(),

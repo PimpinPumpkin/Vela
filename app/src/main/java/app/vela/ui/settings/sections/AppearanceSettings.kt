@@ -2,6 +2,7 @@ package app.vela.ui.settings.sections
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -92,6 +93,43 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 )
             }
         }
+        // FONT (issue #252). Only two states, and deliberately so: the platform font, or a file the
+        // user supplies. We ship no faces of our own - the one people ask for is proprietary and
+        // cannot be redistributed - so the honest offer is "use what you already have a licence to".
+        Spacer(Modifier.height(8.dp))
+        val fontBad = stringResource(R.string.settings_font_bad)
+        val fontPicker = rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+        ) { uri ->
+            if (uri != null) {
+                val name = queryDisplayName(context, uri) ?: "Custom"
+                if (!app.vela.ui.AppFont.setCustom(context, uri, name)) {
+                    android.widget.Toast.makeText(context, fontBad, android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        SettingsGroup(title = stringResource(R.string.settings_font)) {
+            SelectableRow(
+                label = stringResource(R.string.settings_font_system),
+                selected = app.vela.ui.AppFont.customName.value == null,
+                onClick = { app.vela.ui.AppFont.clear(context) },
+            )
+            GroupDivider()
+            SelectableRow(
+                label = app.vela.ui.AppFont.customName.value ?: stringResource(R.string.settings_font_choose),
+                selected = app.vela.ui.AppFont.customName.value != null,
+                // Picking the row re-opens the chooser, so swapping fonts is one tap either way -
+                // whether a custom font is already set or not.
+                onClick = {
+                    // Fonts arrive under a pile of MIME types (font/ttf, application/x-font-ttf,
+                    // application/octet-stream from some file managers), so accept anything and let
+                    // AppFont reject what will not load. A filter that hides the user's font file is
+                    // worse than a chooser that shows too much.
+                    fontPicker.launch(arrayOf("*/*"))
+                },
+            )
+        }
+        Hint(stringResource(R.string.settings_font_hint))
 
         Spacer(Modifier.height(8.dp))
         // Interface size: scales every control and sheet (not the map) - for car/tablet
@@ -219,3 +257,10 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         Spacer(Modifier.height(24.dp))
     }
 }
+
+
+/** The human file name behind a document [uri], for the settings row. */
+private fun queryDisplayName(context: android.content.Context, uri: android.net.Uri): String? = runCatching {
+    context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+        ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+}.getOrNull()
