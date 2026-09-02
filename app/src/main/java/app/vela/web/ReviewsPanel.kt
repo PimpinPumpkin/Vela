@@ -444,6 +444,12 @@ private fun buildPanelWebView(
             view?.evaluateJavascript(carveScript(dark, fullScreen), null)
         }
     }
+    // DELIBERATELY still English, unlike the inline review SCRAPER, which now follows the app's
+    // language (issue #278). This full-screen page is CARVED by matching English text: the relative
+    // date ("3 months ago"), the "N stars," histogram labels, the "reviews are automatically
+    // processed" disclaimer it strips, and the Sort button. Serving it in another language would
+    // break all four at once and trade one bug for several. Localising it means hardening those
+    // four selectors first; tracked as the follow-up on #278.
     wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=en&gl=us")
     return wv
 }

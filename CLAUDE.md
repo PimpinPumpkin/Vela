@@ -1579,6 +1579,21 @@ architecture note.
   `GoogleMapsDataSource.reviews()` anymore; ALL review content comes from the WebReviewsFetcher
   DOM scrape. If reviews ever break, debug the scrape (selectors, virtualized-list
   accumulation), not the RPC, and don't burn time trying to "fix" reviewsPb.
+- **The review page follows the APP'S LANGUAGE now (issue #278, 2026-09-02).** `WebReviewsFetcher`
+  pinned `hl=en&gl=us`, and the page language decides WHICH reviews Google serves - a Chinese reader
+  looking at a Chinese restaurant got the English ones. Reviews are CONTENT and must never be
+  translated for the reader, so the fetch uses `reviewsHl()` (the app locale, with the zh-TW/zh-CN
+  script split, gated to `SUPPORTED_HL`). ⚠️ **Unpinning `hl` ALONE breaks the scraper** - it keyed
+  on English text in four places, all verified live on a zh-TW page: the star SELECTOR
+  (`aria-label*="star"` vs the real `5 顆星`), `num()`'s `/([0-9.]+)\s*star/i` (returned 0 for every
+  review), the reviews TAB (`/^reviews\b/i` vs 評論) and the more-reviews BUTTON. Ratings now read
+  the LEADING NUMBER (every language leads with it) and the labels match `:core`
+  `data/ReviewWords` - kept there, not inline in the JS, so they are unit-tested (`ReviewWordsTest`).
+  The more-reviews button requires a review word AND a "more" word: a bare match hits "Write a
+  review" (zh-TW 撰寫評論) and CLICKS THE COMPOSER, a wrong action rather than a missed one.
+  **`ReviewsPanel` (the full-screen page) stays `hl=en` deliberately** - it carves the page by
+  matching English relative dates, "N stars," histogram labels, the auto-processing disclaimer and
+  the Sort button; localising it needs those four hardened first (open follow-up).
 - **Review scrape accumulation replaces on LONGER TEXT (2026-07-19, issue #181):** a card is
   often harvested on the tick its More toggle was clicked, before Google's async re-render
   swaps in the full body - first-capture-wins turned that race into permanent "…" truncation.
