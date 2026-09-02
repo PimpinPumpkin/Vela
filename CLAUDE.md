@@ -3054,6 +3054,26 @@ architecture note.
   single transfer) and the ambient fan-out takes the LEAN path (8 terms at `!7i30` instead of
   15 at `!7i60`) - the same trade LowRamMode makes, for bytes rather than heap. NOT verifiable
   without a real satellite link; the plumbing is what was tested.
+- **Route bar (issue #228, 2026-08-28, Settings > Navigation "Road ahead bar", OFF by default).**
+  A strip down the LEFT edge during nav (opposite the FAB stack) showing the road AHEAD:
+  congestion bands from `Route.trafficSpans` plus the static furniture already fetched along the
+  corridor (lights, stops, level crossings, speed humps, ALPR cameras). Model is pure + tested in
+  `:core` `nav/RouteBar` (`RouteBarTest`); the strip is `app/ui/nav/RouteBarStrip`.
+  **It shows a 5 km WINDOW, not the whole route (`RouteBar.WINDOW_M`) - the first cut scaled to
+  the entire remaining trip and was device-proven useless:** on a 769 mi demo drive every nearby
+  mark collapsed into the bottom pixel and the bar read as a plain grey stick. Near the end the
+  window shrinks to the destination (`reachesDestination`). TomTom's original also carries live
+  HAZARDS; ours deliberately cannot (every keyless incident source is a proven dead end), so it
+  draws only what the map already knows. Two clocks: marks are projected onto the polyline ONCE
+  per route (`RouteBar.alongMeters`, 40 m corridor so a parallel street is not claimed as yours),
+  the model is rebuilt per nav tick from that cache. Portrait only + never in PiP, deliberately -
+  issue #297 is already about landscape being crowded.
+  ⚠️ **INIT-ORDER TRAP (cost a launch crash, device-caught):** `refreshRouteBar()` was first called
+  from the main `init` block, but `settingsPrefs` is declared ~3400 lines further down the class,
+  and Kotlin runs property initializers + init blocks in DECLARATION order - so it read a null
+  SharedPreferences and every launch died with an NPE before the map drew. It now lives in its own
+  `init { }` placed immediately AFTER the `settingsPrefs` property. Any future pref read that must
+  happen at construction goes there too, not in the main init block.
 - **Nav smoothness trace (`app/diag/NavTrace`, Settings > Diagnostics, OFF by default, issue #251
   2026-08-10).** One row per nav frame - t, along-route progress, speed, bearing WINDOW, chordBrg,
   displayBearing, live camera bearing, frame dt - into a bounded 72k ring (oldest dropped), written

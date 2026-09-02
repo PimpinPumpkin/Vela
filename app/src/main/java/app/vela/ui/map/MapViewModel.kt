@@ -169,6 +169,11 @@ data class MapUiState(
                                                       // .pmtiles — rendered beneath OSM to fill gaps
     val trafficControls: List<app.vela.core.data.TrafficControl> = emptyList(), // OSM lights+stop signs drawn at high zoom
     val flockCameras: List<app.vela.core.data.AlprCamera> = emptyList(), // ALPR/Flock cameras (DeFlock/OSM), high zoom
+    // The route bar's model (issue #228): what is on the road AHEAD - congestion bands plus the
+    // static road furniture already fetched along the corridor. Recomputed on progress, not per
+    // frame; empty whenever the bar has nothing honest to show.
+    val routeBar: app.vela.core.nav.RouteBar.Model? = null,
+    val routeBarEnabled: Boolean = false,
     val speedCameras: List<app.vela.core.data.SpeedCamera> = emptyList(), // fixed radar cameras (OSM), opt-in layer
     val transitStops: List<app.vela.core.data.transit.Transitous.MapStop> = emptyList(), // canonical GTFS stops (Transitous), high zoom
     val directionsOpen: Boolean = false,
@@ -603,6 +608,13 @@ class MapViewModel @Inject constructor(
                 // what the nav engine did — the tuning signal that pairs with the raw GPS trip
                 // trace. Rides the existing opt-in; never uploaded.
                 if (navStarted) diag.record("nav", "start → ${ns.destinationLabel.ifBlank { "destination" }}")
+                // Route bar (issue #228). Two clocks on purpose: the MARKS are projected onto the
+                // route once per route (O(marks x polyline), far too heavy for a progress tick),
+                // while the model itself is rebuilt from the cached marks every tick, which is
+                // just arithmetic. Nav-end clears both.
+                if (_state.value.routeBarEnabled) updateRouteBar(ns) else if (_state.value.routeBar != null) {
+                    _state.update { it.copy(routeBar = null) }
+                }
                 // Heartbeat the resume timestamp while a REAL drive is under way (skip replay/demo, which
                 // don't persist) so the resume window measures time since the INTERRUPTION, not since nav
                 // start — else a drive longer than RESUME_MAX_AGE_MS could never be resumed (audit 2026-07-06).
@@ -3942,7 +3954,18 @@ class MapViewModel @Inject constructor(
 
     private val settingsPrefs = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
 
+    // Seeded HERE, not in the main init block above: Kotlin runs property initializers and init
+    // blocks in DECLARATION order, and `settingsPrefs` is declared this far down the class, so an
+    // early caller reads it as null and the app dies on launch before the map ever draws. Any
+    // future pref read that has to happen at construction belongs after this line too.
+    init { refreshRouteBar() }
+
     /** Reflect the persisted "save my trips" flag into UI state. */
+    /** Reflect the persisted route-bar flag into UI state (pref `route_bar`, default off - it is
+     *  extra chrome on the nav screen, so it should be asked for, not imposed). */
+    fun refreshRouteBar() =
+        _state.update { it.copy(routeBarEnabled = settingsPrefs.getBoolean("route_bar", false)) }
+
     fun refreshTripRecording() =
         _state.update {
             it.copy(
@@ -5387,6 +5410,69 @@ class MapViewModel @Inject constructor(
      * cached box edge, and the churn (against mirrors that are sometimes down) made the icons appear
      * rarely and vanish quickly during nav. Same cluster-per-intersection pass as the box path.
      */
+    // Marks projected onto the CURRENT route, cached by that route's identity so a progress tick
+    // never re-walks the polyline. Null route key = nothing cached.
+    private var routeBarKey: String? = null
+    private var routeBarMarks: List<Pair<app.vela.core.nav.RouteBar.Mark, Double>> = emptyList()
+
+    /** Recompute the route bar for this nav tick (see the call site for why the work is split). */
+    private fun updateRouteBar(ns: app.vela.core.nav.NavSession.State) {
+        val route = ns.route
+        if (!ns.navigating || route == null || route.polyline.size < 2) {
+            if (_state.value.routeBar != null || routeBarKey != null) {
+                routeBarKey = null
+                routeBarMarks = emptyList()
+                _state.update { it.copy(routeBar = null) }
+            }
+            return
+        }
+        // Identity = the same key shape the corridor fetch uses, so a steps/traffic heal on the
+        // same course does not throw the projection away.
+        val key = "${route.polyline.first()}|${route.polyline.last()}|${route.distanceMeters.toInt()}|" +
+            "${_state.value.trafficControls.size}|${_state.value.flockCameras.size}"
+        if (key != routeBarKey) {
+            routeBarKey = key
+            val poly = route.polyline
+            val cum = app.vela.core.nav.RouteBar.cumulative(poly)
+            val controls = _state.value.trafficControls
+            val cams = _state.value.flockCameras
+            viewModelScope.launch(Dispatchers.Default) {
+                val marks = buildList {
+                    for (c in controls) {
+                        val m = app.vela.core.nav.RouteBar.alongMeters(poly, cum, c.loc) ?: continue
+                        add(
+                            when (c.kind) {
+                                app.vela.core.data.TrafficControl.Kind.SIGNAL -> app.vela.core.nav.RouteBar.Mark.SIGNAL
+                                app.vela.core.data.TrafficControl.Kind.STOP -> app.vela.core.nav.RouteBar.Mark.STOP
+                                app.vela.core.data.TrafficControl.Kind.RAIL_CROSSING -> app.vela.core.nav.RouteBar.Mark.RAIL_CROSSING
+                                app.vela.core.data.TrafficControl.Kind.SPEED_HUMP -> app.vela.core.nav.RouteBar.Mark.SPEED_HUMP
+                            } to m,
+                        )
+                    }
+                    for (c in cams) {
+                        val m = app.vela.core.nav.RouteBar.alongMeters(poly, cum, c.loc) ?: continue
+                        add(app.vela.core.nav.RouteBar.Mark.CAMERA to m)
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    // Guard against a route swap landing while this was computing.
+                    if (routeBarKey == key) {
+                        routeBarMarks = marks
+                        _state.update { it.copy(routeBar = app.vela.core.nav.RouteBar.build(route, ns.nav.traveledM, marks)) }
+                    }
+                }
+            }
+            return
+        }
+        _state.update { it.copy(routeBar = app.vela.core.nav.RouteBar.build(route, ns.nav.traveledM, routeBarMarks)) }
+    }
+
+    /** Show or hide the route bar (pref `route_bar`). */
+    fun setRouteBar(on: Boolean) {
+        settingsPrefs.edit().putBoolean("route_bar", on).apply()
+        _state.update { it.copy(routeBarEnabled = on, routeBar = if (on) it.routeBar else null) }
+    }
+
     private fun refreshNavRouteControls(route: app.vela.core.model.Route) {
         val poly = route.polyline
         if (poly.size < 2) return

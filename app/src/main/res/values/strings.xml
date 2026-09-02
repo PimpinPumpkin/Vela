@@ -749,6 +749,8 @@
     <string name="settings_nav_day_night">Day and night while navigating</string>
     <string name="settings_nav_day_night_hint">Keeps your chosen theme everywhere else, and switches by daylight only while you are driving.</string>
     <string name="mapscreen_shortcut_add">Add</string>
+    <string name="settings_route_bar">Road ahead bar</string>
+    <string name="settings_route_bar_hint">A strip beside the map showing traffic and what is coming up on the rest of your route. Shows only what Vela actually knows: congestion, lights, stop signs, level crossings, speed bumps and surveillance cameras. Portrait only.</string>
     <string name="settings_traffic_lights">Traffic-light guidance</string>
     <string name="settings_traffic_lights_hint">Spoken landmark cues: pass the light, then turn. English only, off by default.</string>
     <string name="settings_softkeys" translatable="false">Hardware softkeys</string>

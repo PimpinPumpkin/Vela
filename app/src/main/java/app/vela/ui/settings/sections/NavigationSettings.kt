@@ -71,6 +71,17 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             switchModifier = topRow,
         )
 
+        // Route bar (issue #228). Off by default: it is extra chrome on the nav screen, and the
+        // congestion colour already on the route line covers some of the same ground.
+        var routeBar by remember { mutableStateOf(prefs.getBoolean("route_bar", false)) }
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_route_bar),
+            checked = routeBar,
+            onCheckedChange = { routeBar = it; vm.setRouteBar(it) },
+            hint = stringResource(R.string.settings_route_bar_hint),
+        )
+
         var trafficLights by remember { mutableStateOf(prefs.getBoolean("nav_traffic_lights", false)) }
         GroupDivider()
         ToggleRow(
