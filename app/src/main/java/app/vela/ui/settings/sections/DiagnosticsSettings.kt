@@ -135,6 +135,7 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         // so it's a separate opt-in. Records nav GPS traces for replay testing.
         LaunchedEffect(Unit) { vm.refreshTripRecording() }
         var showTripConsent by remember { mutableStateOf(false) }
+        var shareTrip by remember { mutableStateOf<app.vela.replay.TripMeta?>(null) }
         var trips by remember { mutableStateOf(vm.recordedTrips()) }
         // Multi-select for export. Off until asked for: the common case is one trip, and a
         // checkbox on every row all the time would be clutter for it.
@@ -243,12 +244,12 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
                     ) {
                         Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.settings_trip_rename))
                     }
-                    // Share the raw trace off-device - works on release builds, so a
-                    // drive can be handed over for replay/debug without a dev build.
+                    // Share the trace off-device - works on release builds, so a drive can be
+                    // handed over for replay/debug without a dev build. Opens the trim dialog
+                    // rather than sharing outright: a raw trip starts and ends at its owner's
+                    // front door, and that decision should be made deliberately every time.
                     TextButton(modifier = Modifier.dpadRowSibling(tripFocus, 2), onClick = {
-                        val intent = vm.exportTripIntent(t)
-                        if (intent != null) runCatching { context.startActivity(intent) }
-                        else android.widget.Toast.makeText(context, context.getString(R.string.settings_trip_read_error), android.widget.Toast.LENGTH_SHORT).show()
+                        shareTrip = t
                     }) { Text(stringResource(R.string.settings_trip_share)) }
                     IconButton(modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape).dpadRowSibling(tripFocus, 3), onClick = { vm.deleteTrip(t.id); trips = vm.recordedTrips() }) {
                         Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_trip_delete))
@@ -296,6 +297,7 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
             }
         }
 
+        shareTrip?.let { meta -> TripShareDialog(meta, vm, context) { shareTrip = null } }
         if (showTripConsent) {
             app.vela.ui.VelaDialog(
                 onDismissRequest = { showTripConsent = false },
@@ -360,5 +362,105 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
             )
         }
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+/**
+ * The trim-before-you-share dialog for one recorded trip.
+ *
+ * A trip CSV is raw GPS whose first and last fixes are, almost always, exactly the places its
+ * owner would least like published. This is the deliberate moment to decide that: the trimmed
+ * share is the prominent button, the full trace stays available but has to be reached for, and
+ * the summary says what is actually being removed *before* anything leaves the device — including
+ * the first surviving coordinate, which is the one thing worth eyeballing yourself.
+ */
+@Composable
+private fun TripShareDialog(
+    meta: app.vela.replay.TripMeta,
+    vm: MapViewModel,
+    context: android.content.Context,
+    onClose: () -> Unit,
+) {
+    var radius by remember { mutableStateOf(app.vela.core.replay.TripScrub.DEFAULT_RADIUS_M) }
+    val report = remember(meta.id, radius) { vm.scrubTripForSharing(meta, radius) }
+    app.vela.ui.VelaDialog(
+        onDismissRequest = onClose,
+        title = stringResource(R.string.settings_trip_share_title),
+        confirmText = stringResource(R.string.settings_trip_share_trimmed),
+        onConfirm = {
+            val r = report
+            val intent = r?.let { vm.shareScrubbedTripIntent(it) }
+            if (intent != null) runCatching { context.startActivity(intent) }
+            else android.widget.Toast.makeText(
+                context, context.getString(R.string.settings_trip_read_error), android.widget.Toast.LENGTH_SHORT,
+            ).show()
+            onClose()
+        },
+        dismissText = stringResource(R.string.settings_cancel),
+        onDismiss = onClose,
+    ) {
+        Column(Modifier.fillMaxWidth()) {
+            Text(
+                stringResource(R.string.settings_trip_share_explain),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                stringResource(R.string.settings_trip_share_radius),
+                style = MaterialTheme.typography.labelLarge,
+            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                for (m in listOf(200.0, 400.0, 800.0)) {
+                    if (m == radius) {
+                        FilledTonalButton(onClick = { radius = m }) {
+                            Text(stringResource(R.string.settings_trip_share_radius_m, m.toInt()))
+                        }
+                    } else {
+                        TextButton(onClick = { radius = m }) {
+                            Text(stringResource(R.string.settings_trip_share_radius_m, m.toInt()))
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            if (report == null) {
+                Text(
+                    stringResource(R.string.settings_trip_scrub_short),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            } else {
+                Text(
+                    stringResource(
+                        R.string.settings_trip_share_summary,
+                        report.fixesRemoved, report.fixesAfter,
+                        report.trimmedStartM.toInt(), report.trimmedEndM.toInt(),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(Modifier.height(6.dp))
+                Hint(stringResource(R.string.settings_trip_share_also))
+                report.firstRemaining?.let { p ->
+                    Spacer(Modifier.height(6.dp))
+                    Hint(
+                        stringResource(
+                            R.string.settings_trip_share_first,
+                            String.format(java.util.Locale.US, "%.5f", p.lat),
+                            String.format(java.util.Locale.US, "%.5f", p.lng),
+                        ),
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            // Still reachable, but it is the reach: this is the file that names your front door.
+            TextButton(onClick = {
+                val intent = vm.exportTripIntent(meta)
+                if (intent != null) runCatching { context.startActivity(intent) }
+                else android.widget.Toast.makeText(
+                    context, context.getString(R.string.settings_trip_read_error), android.widget.Toast.LENGTH_SHORT,
+                ).show()
+                onClose()
+            }) { Text(stringResource(R.string.settings_trip_share_full)) }
+        }
     }
 }

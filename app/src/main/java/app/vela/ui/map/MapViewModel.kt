@@ -4309,6 +4309,57 @@ class MapViewModel @Inject constructor(
         }.getOrNull()
     }
 
+    /**
+     * Scrub a recorded trip for publication — trim the private ends off, see [TripScrub]. Returns
+     * what the scrub did (including the CSV) so the UI can show it BEFORE anything leaves the
+     * device, or null when the trip can't be read or is shorter than one trim zone.
+     *
+     * Home and Work are added as trim zones automatically when they're set: a drive that merely
+     * PASSES one of them leaks it just as thoroughly as one that starts there, and they're the two
+     * places most worth protecting.
+     */
+    fun scrubTripForSharing(
+        meta: app.vela.replay.TripMeta,
+        radiusM: Double = app.vela.core.replay.TripScrub.DEFAULT_RADIUS_M,
+    ): app.vela.core.replay.TripScrub.Report? {
+        val csv = tripStore.rawCsv(meta.id) ?: return null
+        val zones = listOfNotNull(
+            shortcutStore.get(ShortcutKind.HOME)?.location,
+            shortcutStore.get(ShortcutKind.WORK)?.location,
+        )
+        return runCatching {
+            app.vela.core.replay.TripScrub.scrub(csv, radiusM = radiusM, extraZones = zones)
+        }.getOrNull()
+    }
+
+    /**
+     * A share intent for an already-scrubbed trip. Deliberately separate from [exportTripIntent]:
+     * the filename and the subject line of that one both carry the trip's LABEL and id, and the
+     * label is the destination's own name (trips are named after where they went) while the id is
+     * its start timestamp. Sharing a scrubbed body under a filename that names the address would
+     * defeat the whole thing.
+     */
+    fun shareScrubbedTripIntent(report: app.vela.core.replay.TripScrub.Report): android.content.Intent? =
+        runCatching {
+            val dir = java.io.File(appContext.cacheDir, "export").apply { mkdirs() }
+            val file = java.io.File(dir, "vela-trip-shared.csv")
+            file.writeText(report.csv)
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                appContext, "${appContext.packageName}.fileprovider", file,
+            )
+            val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "text/csv"
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                putExtra(
+                    android.content.Intent.EXTRA_SUBJECT,
+                    appContext.getString(R.string.mapvm_export_trip_scrubbed_subject, report.fixesAfter),
+                )
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            android.content.Intent.createChooser(send, appContext.getString(R.string.mapvm_share_trip_chooser))
+                .apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
+        }.getOrNull()
+
     /** Dismiss the arrival summary and return to a clean map (drops the finished
      *  route + selection). */
     fun finishNav() {

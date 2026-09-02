@@ -203,6 +203,18 @@
     <string name="settings_trip_replay">Replay</string>
     <string name="settings_trip_read_error">Couldn\'t read that trip</string>
     <string name="settings_trip_share">Share</string>
+    <string name="settings_trip_share_title">Share this trip</string>
+    <string name="settings_trip_share_explain">A recorded drive starts and ends where you do. Trimming deletes every fix near the start, the end, the destination and your Home and Work, keeping the middle at full precision.</string>
+    <string name="settings_trip_share_radius">Trim distance</string>
+    <string name="settings_trip_share_radius_m">%1$d m</string>
+    <!-- 1: fixes removed, 2: fixes kept, 3: metres off the start, 4: metres off the end -->
+    <string name="settings_trip_share_summary">Removes %1$d of the recorded points, keeping %2$d. That is %3$d m off the start and %4$d m off the end.</string>
+    <string name="settings_trip_share_also">The destination, trip name, spoken directions at either end and the start of the route line go too. Times are rebased so the file does not say when you drove.</string>
+    <!-- 1: latitude, 2: longitude -->
+    <string name="settings_trip_share_first">First remaining point: %1$s, %2$s. Check it is not somewhere that identifies you.</string>
+    <string name="settings_trip_share_trimmed">Share trimmed</string>
+    <string name="settings_trip_share_full">Share full trace</string>
+    <string name="settings_trip_scrub_short">This drive is shorter than the trim distance, so there is no middle left to share. Try a smaller one.</string>
     <string name="settings_trip_delete">Delete trip</string>
     <string name="settings_trip_rename">Rename</string>
     <string name="settings_trip_rename_title">Name this trip</string>
@@ -526,6 +538,7 @@
     <string name="mapvm_export_saved_chooser">Export saved places</string>
     <string name="mapvm_export_trip_subject">Vela trip: %1$s (%2$d points)</string> <!-- format -->
     <string name="mapvm_export_trips_subject">Vela trips: %1$d drives (%2$d points)</string> <!-- format -->
+    <string name="mapvm_export_trip_scrubbed_subject">Vela trip: %1$d points, ends trimmed</string> <!-- format -->
     <string name="mapvm_share_trip_chooser">Share trip</string>
     <string name="mapvm_voice_sample">In a quarter mile, turn right onto Main Street.</string>
     <string name="mapvm_not_enough_space">Not enough free space for %1$s (%2$d MB)</string> <!-- format -->
