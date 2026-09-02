@@ -5554,6 +5554,8 @@ class MapViewModel @Inject constructor(
     fun setRouteBar(on: Boolean) {
         settingsPrefs.edit().putBoolean("route_bar", on).apply()
         _state.update { it.copy(routeBarEnabled = on, routeBar = if (on) it.routeBar else null) }
+    }
+
     // Speed cameras projected onto the CURRENT route, in ascending along-route metres, plus the
     // indices already announced. Keyed like the controls corridor fetch so a same-course heal does
     // not refetch or re-arm warnings the driver already heard.
