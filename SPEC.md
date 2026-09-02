@@ -515,16 +515,22 @@ itself shows the traffic, not the whole map.
 - **Nav puck motion model** (`VelaMapView`, `NavPuck`): the displayed position during
   nav is decoupled from the raw GPS fix. A `withFrameNanos` ticker glides the puck
   **monotonically forward along the route** by metres-along (`cumLengths`/`pointAtMeters`),
-  **dead-reckoned** and **eased** (τ≈0.25 s), with **heading smoothed** (`smoothBearing`,
-  τ≈0.2 s). The dead-reckoned speed is a **1-D Kalman fusion** (`core/location/SpeedKalman`,
+  advancing in the **rate domain** - it always moves at the modelled speed, with the position
+  error folded in as a *bounded nudge to that rate* (`PUCK_CORRECT_TIME_S`) rather than an ease
+  toward a target, which is what used to stall and surge at the fix cadence - and with **heading
+  smoothed** (`smoothBearing`, τ≈0.2 s). BOTH halves of the motion are filtered: the
+  **position** by `core/location/AlongRouteFilter` (1-D Kalman over metres-along; dead-reckons
+  at the modelled speed, folds each accepted fix in weighted by that fix's own reported accuracy,
+  and `reseed`s on a genuine discontinuity) and the **speed** by a **1-D Kalman fusion**
+  (`core/location/SpeedKalman`,
   pure + unit-tested): each GPS fix is the measurement update, and between fixes the
   **accelerometer steers the prediction** - `MotionProvider` (`core/location`, raw
   `TYPE_LINEAR_ACCELERATION` + `TYPE_ROTATION_VECTOR`, no GMS) emits world-frame horizontal
   acceleration, `forwardAccel()` projects it onto the travel bearing, and the ticker runs
   `kalman.predict(a, dt)` per frame - so braking collapses the modelled speed immediately
   instead of the puck gliding at the stale fix speed into the monotonic-progress trap (the
-  "puck sits ahead of me when I stop" bug). The advance is the **integral** of that speed
-  (`reckonedM += v·dt`, reset per fix, blind-capped at 2 s). Missing sensor → `a = 0` →
+  "puck sits ahead of me when I stop" bug). Between fixes the position estimate is the
+  **integral** of that speed, blind-capped at `DEAD_RECKON_S` (3 s). Missing sensor → `a = 0` →
   the old constant-speed reckoning. Each fix is snapped (`snapToRoute`, §honest-snap) then
   its metres-along advance is **plausibility-clamped** (`speed·Δt·2.5 + 60 m`) so a
   self-approaching route can't teleport the puck to a far leg. The **follow-camera targets the puck's smoothed point** (`NavPuck.drawn`), not

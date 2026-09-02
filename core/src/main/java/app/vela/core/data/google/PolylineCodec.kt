@@ -3,14 +3,21 @@ package app.vela.core.data.google
 import app.vela.core.model.LatLng
 
 /**
- * Google's Encoded Polyline Algorithm Format (1e5 precision). A stable, fully
- * specified format — the geometry inside a directions response is encoded
- * exactly this way, so [decode] is one of the few pieces here that needs no
- * calibration.
+ * Google's Encoded Polyline Algorithm Format. A stable, fully specified format — the geometry
+ * inside a directions response is encoded exactly this way, so [decode] is one of the few pieces
+ * here that needs no calibration.
+ *
+ * [precision] is the number of decimal places the coordinates were scaled by. Google always uses
+ * 5, which is the default and what every Google call site wants. OSRM can emit either, and Vela
+ * asks it for **6** — at 5, a latitude step is 1.11 m, so every route vertex is snapped to a
+ * metre-ish grid and a physically straight road arrives visibly kinked. That quantization is
+ * scatter the nav puck then has to smooth back out; asking for the extra digit removes it at the
+ * source and costs nothing (same vertex count, ~15% more characters).
  */
 object PolylineCodec {
 
-    fun decode(encoded: String): List<LatLng> {
+    fun decode(encoded: String, precision: Int = 5): List<LatLng> {
+        val scale = Math.pow(10.0, precision.toDouble())
         val path = ArrayList<LatLng>()
         var index = 0
         var lat = 0
@@ -35,7 +42,7 @@ object PolylineCodec {
             } while (b >= 0x20)
             lng += if (result and 1 != 0) (result shr 1).inv() else result shr 1
 
-            path.add(LatLng(lat / 1e5, lng / 1e5))
+            path.add(LatLng(lat / scale, lng / scale))
         }
         return path
     }

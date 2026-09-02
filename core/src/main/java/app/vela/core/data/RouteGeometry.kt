@@ -41,6 +41,11 @@ import okhttp3.Request
  */
 object RouteGeometry {
     private const val OSRM_BASE = "https://routing.openstreetmap.de"
+    /** We ask OSRM for `geometries=polyline6`. The default `polyline` is 1e5-scaled, i.e. a
+     *  1.11 m latitude grid — every vertex of a physically straight road snapped to a metre-ish
+     *  step, which the nav puck then has to smooth back out (issue #251). Verified supported by
+     *  the FOSSGIS community server: same vertex count, same distance, ten times the resolution. */
+    private const val OSRM_PRECISION = 6
     private const val OSRM_TRIES = 3 // FOSSGIS community server blips on mobile; a miss = nameless Google fallback
     // Max gap (m) between an exit ramp and a following fork/merge for them to count as ONE exit complex
     // (consolidateExits). Generous enough for a long ramp, short enough that a genuine km-away fork isn't folded.
@@ -83,7 +88,7 @@ object RouteGeometry {
         val backend = backend(mode) ?: return emptyList()
         val url = "$OSRM_BASE/$backend/route/v1/driving/" +
             "${origin.lng},${origin.lat};${dest.lng},${dest.lat}" +
-            "?overview=full&geometries=polyline" + if (alternatives) "&alternatives=3" else ""
+            "?overview=full&geometries=polyline6" + if (alternatives) "&alternatives=3" else ""
         val req = Request.Builder()
             .url(url)
             .header("User-Agent", VelaConfig.USER_AGENT)
@@ -93,7 +98,7 @@ object RouteGeometry {
             json.parseToJsonElement(resp.body?.string().orEmpty())
                 .jsonObject["routes"]?.jsonArray
                 ?.mapNotNull { it.jsonObject["geometry"]?.jsonPrimitive?.contentOrNull }
-                ?.map { PolylineCodec.decode(it) }
+                ?.map { PolylineCodec.decode(it, OSRM_PRECISION) }
                 ?.filter { it.size >= 2 }
                 ?: emptyList()
         }
@@ -210,7 +215,7 @@ object RouteGeometry {
         val backend = backend(mode) ?: return emptyList()
         val coords = points.joinToString(";") { "${it.lng},${it.lat}" }
         val url = "$OSRM_BASE/$backend/route/v1/driving/$coords" +
-            "?overview=full&geometries=polyline&steps=true" +
+            "?overview=full&geometries=polyline6&steps=true" +
             (if (alternatives) "&alternatives=3" else "") +
             departBearingParam(departBearingDeg, points.size) +
             excludeParam(mode, avoidTolls, avoidHighways)
@@ -260,7 +265,7 @@ object RouteGeometry {
     }
 
     private fun parseOsrmRoute(r: JsonObject): Route? {
-        val poly = r["geometry"]?.jsonPrimitive?.contentOrNull?.let { PolylineCodec.decode(it) }
+        val poly = r["geometry"]?.jsonPrimitive?.contentOrNull?.let { PolylineCodec.decode(it, OSRM_PRECISION) }
             ?.takeIf { it.size >= 2 } ?: return null
         val dist = r["distance"]?.jsonPrimitive?.doubleOrNull ?: return null
         val dur = r["duration"]?.jsonPrimitive?.doubleOrNull ?: 0.0

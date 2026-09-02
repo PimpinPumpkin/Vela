@@ -193,6 +193,13 @@ private const val ME_ARROW_IMG = "vela-arrow"
 private const val NAV_PUCK_IMG = "vela-nav-puck"
 private const val PREVIEW_SRC = "vela-preview-src"
 private const val PREVIEW_LAYER = "vela-preview"
+/** Camera-bearing damping (issue #251). Heavy while the camera is essentially tracking a straight
+ *  road, so digitization wiggle does not rotate the map; quick once the error is turn-sized. */
+private const val CAM_BRG_TAU_STILL = 1.6
+private const val CAM_BRG_TAU_TURN = 0.35
+/** Error at which the damping is fully in "this is a real turn" mode. Well above the few degrees
+ *  of geometry noise, well below a junction turn. */
+private const val CAM_BRG_TURN_DEG = 25.0
 /**
  * The zoom house numbers start appearing at, shared by the basemap `vela-housenumber` layer and the
  * streamed `vela-addr-*` overlay so the two can never disagree (they draw the same addresses from
@@ -1601,16 +1608,42 @@ fun VelaMapView(
                 // that cadence. 3 s still bounds a dropped-signal runaway to ~100 m at highway
                 // speed, and the decay below shaves the model right after it.
                 val sinceFix = (android.os.SystemClock.elapsedRealtime() - navPuck.targetAtMs) / 1000.0 * ts
-                val tEnd = sinceFix.coerceIn(0.0, 3.0)
-                val tStart = (sinceFix - dtT).coerceIn(0.0, 3.0)
-                if (tEnd > tStart) navPuck.reckonedM += navPuck.kalman.speed * (tEnd - tStart)
                 // Past the dead-reckon window with no accepted fix = a measurement outage: decay
                 // the modelled speed toward 0 (there's no evidence we're still moving) so the
                 // zoom/look-ahead don't ride a stale speed forever. A resumed fix re-measures.
-                if (sinceFix > 3.0) navPuck.kalman.decay(dtT.coerceAtMost(0.5))
-                val predicted = navPuck.targetM + navPuck.reckonedM
-                val eased = navPuck.progressM + (predicted - navPuck.progressM) * (1f - kotlin.math.exp(-dtEase / 0.25f))
-                navPuck.progressM = maxOf(navPuck.progressM, eased) // monotonic — never backward
+                if (sinceFix > DEAD_RECKON_S) navPuck.kalman.decay(dtT.coerceAtMost(0.5))
+                // ALONG-ROUTE POSITION FILTER, predict step (issue #251). The puck's SPEED has
+                // been Kalman-filtered since June; its POSITION never was — `targetM` took the
+                // snapped fix RAW, so every metre of along-route GPS noise was a metre the puck
+                // actually had to travel, once a second, for the whole drive. Here the estimate
+                // dead-reckons forward at the modelled speed and its variance grows with time;
+                // the fix folds in at the ingest site below as a MEASUREMENT weighted against
+                // that variance, rather than replacing the estimate outright. The reckoning is
+                // bounded by the same blind window as before, so a dropped signal still can't
+                // run the puck away down the route.
+                val tEnd = sinceFix.coerceIn(0.0, DEAD_RECKON_S)
+                val tStart = (sinceFix - dtT).coerceIn(0.0, DEAD_RECKON_S)
+                navPuck.along.predict(
+                    if (tEnd > tStart) navPuck.kalman.speed * (tEnd - tStart) else 0.0,
+                    dtT,
+                )
+                // FRONT-TO-BACK SMOOTHNESS (issue #251). The puck used to ease toward the predicted
+                // position and then get clamped monotonic. Both halves are individually reasonable
+                // and together they surge and stall at exactly the fix cadence: every fix reset the
+                // reckoning, so the target JUMPED by however much it had over- or under-shot. An
+                // overshoot put the target BEHIND the puck, the ease pulled backward, and the
+                // monotonic clamp FROZE the puck until the reckoning caught up. A few metres of
+                // ordinary GPS noise did that once a second, forever.
+                //
+                // Corrected in the RATE domain instead: the puck always advances at the modelled
+                // speed, and the estimate error enters as a BOUNDED nudge to that rate. It cannot
+                // stall (the floor is 0 only when the model says stopped), it cannot lurch (the
+                // nudge is capped as a fraction of speed), and it is still monotonic.
+                val err = navPuck.along.alongM - navPuck.progressM
+                val maxCatchUp = navPuck.speed * 0.5 + 1.0   // m/s of extra closing speed
+                val maxHoldBack = navPuck.speed * 0.25 + 0.5 // ...and of braking, so it never reverses
+                val corr = (err / PUCK_CORRECT_TIME_S).coerceIn(-maxHoldBack, maxCatchUp)
+                navPuck.progressM += ((navPuck.speed + corr) * dtT.coerceAtMost(0.5)).coerceAtLeast(0.0)
                 val (ptC, segBrg) = pointAtMeters(routePolyline, routeCum, navPuck.progressM)
                 // Lateral de-jitter: drawn straight off the polyline, the puck traced every
                 // lane-level micro-kink of the dense OSM geometry - side-to-side wiggle "like a
@@ -1622,7 +1655,16 @@ fun VelaMapView(
                 // so wiggle shorter than the window CANCELS instead of shrinking. Pure geometry
                 // smoothing, no temporal lag; corners round by a couple of metres at speed,
                 // which is what Google's puck does too.
-                val win = (navPuck.speed * 0.7).coerceIn(5.0, 14.0)
+                // ...but the window WIDTH must not follow the LIVE speed (issue #251). On a curve
+                // the averaged point sits inside the arc by about win^2/(6R), so the width IS a
+                // lateral position, and `navPuck.speed` is the Kalman speed, which the per-frame
+                // accelerometer predict ripples. The width now eases with a long time constant: it
+                // still tracks town-vs-motorway, which is all it was ever for, but per-fix speed
+                // wobble cannot reach it. Rule: a fast-moving smoother is not a smoother.
+                val winTarget = (navPuck.speed * 0.7).coerceIn(5.0, 14.0)
+                navPuck.smoothWin = if (navPuck.smoothWin.isNaN()) winTarget
+                    else navPuck.smoothWin + (winTarget - navPuck.smoothWin) * (1f - kotlin.math.exp(-dtEase / PUCK_WIN_TAU_S))
+                val win = navPuck.smoothWin
                 var sLat = 0.0
                 var sLng = 0.0
                 for (k in 0 until PUCK_SMOOTH_SAMPLES) {
@@ -1702,7 +1744,25 @@ fun VelaMapView(
                     // then rotates on the north-up map instead of the map rotating under it.
                     val brgTgt = if (navNorthUpHolder.value) 0.0 else navPuck.displayBearing.toDouble()
                     val db = ((brgTgt - camState[2] + 540.0) % 360.0) - 180.0 // shortest arc
-                    camState[2] = (camState[2] + db * kBrg + 360.0) % 360.0
+                    // CAMERA BEARING IS ADAPTIVELY DAMPED (issue #251, the "crinkly roads" residual).
+                    // A road digitized from imagery wiggles even where it is physically straight, and
+                    // the bearing drawn off that geometry swings 2-7 degrees - measured, and several
+                    // times bigger than anything the earlier fixes addressed. The camera is anchored
+                    // to the puck, so that rotation swings the WHOLE MAP under a steady arrow.
+                    //
+                    // A flat heavier damping would fix the wiggle and make real turns sluggish, so the
+                    // time constant follows the SIZE of the error instead. That discriminator works
+                    // here precisely where the crinkle-vs-curve one failed: geometry noise is a couple
+                    // of degrees and a turn is tens, an order of magnitude apart, whereas a real bend
+                    // and a crinkle both read ~3-4 degrees and could not be told apart at all.
+                    // Small error -> tau 1.6 s (keeps ~24% of the wiggle, vs 59% before); a genuine
+                    // turn -> tau 0.35 s, which is actually QUICKER around a corner than the old flat
+                    // 0.55. Tilt keeps its own constant - it is not part of this problem.
+                    val brgTau = (CAM_BRG_TAU_STILL +
+                        (CAM_BRG_TAU_TURN - CAM_BRG_TAU_STILL) *
+                        (kotlin.math.abs(db) / CAM_BRG_TURN_DEG).coerceAtMost(1.0)).toFloat()
+                    val kBrgAdaptive = (1f - kotlin.math.exp(-dtEase / brgTau)).toDouble()
+                    camState[2] = (camState[2] + db * kBrgAdaptive + 360.0) % 360.0
                     camState[3] += (tgtZoom - camState[3]) * kZoom
                     // Tilt: north-up = flat; else a shove-set override wins over the 55 default.
                     val tiltTgt = when {
@@ -2461,7 +2521,8 @@ fun VelaMapView(
         // Feed this fix to the puck motion model (the frame ticker above does the gliding).
         // Gated on the fix being NEW (identity — the ViewModel makes a fresh LatLng per fix and
         // recompositions re-pass the same instance): this block runs in a recomposing scope, and
-        // kalman.update / reckonedM=0 / targetAtMs=now / missCount++ are NOT idempotent — an
+        // kalman.update / the position-filter step / targetAtMs=now / missCount++ are NOT
+        // idempotent — an
         // unrelated recomposition (stale-flag flip, mute toggle) would re-inject a stale GPS
         // speed at high gain (undoing the accelerometer's braking) and re-open the blind
         // reckoning window; the miss branch would count phantom misses toward disengage.
@@ -2471,9 +2532,12 @@ fun VelaMapView(
             val m = snap.third
             val now = android.os.SystemClock.elapsedRealtime()
             var accepted = false
+            var reanchor = false // a genuine discontinuity — reseed the filter rather than average it in
             if (!navPuck.engaged) {
                 navPuck.progressM = m; navPuck.targetM = m; navPuck.engaged = true
+                navPuck.smoothWin = Double.NaN // re-seed the boxcar window from the first real speed
                 navPuck.fwdRejects = 0
+                reanchor = true
                 accepted = true
             } else {
                 // Monotonic forward only: ease in a plausible advance (speed × elapsed × 2.5 +
@@ -2507,6 +2571,11 @@ fun VelaMapView(
                         navPuck.fwdRejects += 1
                         if (navPuck.fwdRejects >= 2) {
                             navPuck.targetM = m
+                            // A persistent over-cap jump is a genuine discontinuity (a long fix
+                            // gap at speed), not noise to be averaged down — snap the position
+                            // filter to it, or the bounded correction would spend many seconds
+                            // walking the puck across a gap it should simply be on the far side of.
+                            reanchor = true
                             accepted = true
                         }
                     }
@@ -2522,9 +2591,17 @@ fun VelaMapView(
             navPuck.missCount = 0
             if (accepted) {
                 navPuck.targetAtMs = now // anchor for dead reckoning
-                navPuck.reckonedM = 0.0  // a fresh ACCEPTED fix re-anchors — the integral restarts
-                // (a REJECTED fix must NOT re-open the 2 s blind window: at a standstill that
+                // (a REJECTED fix must NOT re-open the blind window: at a standstill that
                 // re-armed the creep every second; the old anchor stays until a fix is accepted)
+                // ALONG-ROUTE POSITION FILTER, measurement step (issue #251). `targetM` above is
+                // still the raw accepted fix — the plausibility gate and the snap window are built
+                // on it and keep their hard-won behaviour. What the puck DRAWS now comes from
+                // `alongM`, which takes this fix as a measurement weighted by the fix's own
+                // reported accuracy against the estimate's grown variance. A clean 4 m fix pulls
+                // most of the way; a 25 m urban-canyon one barely moves it, which is exactly the
+                // fix that used to throw the puck a car-length down the road and back.
+                if (reanchor) navPuck.along.reseed(m, myAccuracyM)
+                else navPuck.along.update(m, myAccuracyM)
             }
             // The fix's OWN (spike-filtered) measurement is the Kalman MEASUREMENT; the
             // accelerometer steers between fixes (predict step in the frame ticker). Feeding the
@@ -5004,9 +5081,17 @@ private class NavPuck {
     var targetAtMs = 0L           // elapsedRealtime() the target was set — for dead reckoning
     var speed = 0.0               // m/s — the KALMAN speed (GPS ⊕ accelerometer), see [kalman]
     val kalman = app.vela.core.location.SpeedKalman() // GPS-fix measurement + accel prediction
-    var reckonedM = 0.0           // ∫speed·dt since the last fix — the dead-reckoned advance
+    // The puck's POSITION estimate (see AlongRouteFilter). Dead-reckons at the modelled speed each
+    // frame and takes each accepted fix as a variance-weighted MEASUREMENT, so along-route GPS
+    // noise is averaged down instead of driven straight into the puck — which is what writing the
+    // snapped fix into `targetM` and drawing from it used to do.
+    val along = app.vela.core.location.AlongRouteFilter()
+    var smoothWin = Double.NaN    // the along-route smoothing half-window ACTUALLY in use, eased —
+                                  // see the note at its use site: tying it straight to the live
+                                  // speed made speed noise into sideways puck movement
     var lastFixLoc: LatLng? = null // identity of the last INGESTED fix — the fix-processing block
-                                   // runs in a recomposing scope, and kalman.update/reckonedM=0 are
+                                   // runs in a recomposing scope, and kalman.update / the
+                                   // position-filter measurement step are
                                    // NOT idempotent: re-running them on a mere recomposition re-injects
                                    // a stale speed and re-opens the blind reckoning window
     var displayBearing = Float.NaN // smoothed heading actually drawn (NaN = not yet seeded)
@@ -5091,6 +5176,20 @@ private fun indexAtMeters(cum: DoubleArray, m: Double): Int {
 // Samples in the puck's along-route boxcar average; the half-window itself is speed-scaled at the
 // call site (5-14 m). Odd so the current position is one of the samples.
 private const val PUCK_SMOOTH_SAMPLES = 7
+
+/** Seconds the puck takes to absorb an along-route position error, spread over its own speed
+ *  rather than applied as a jump. Short enough that a real correction is not visibly late, long
+ *  enough that one noisy fix is not a lurch. */
+private const val PUCK_CORRECT_TIME_S = 0.6
+
+/** Time constant for the smoothing window's WIDTH. Deliberately long: the width is meant to track
+ *  the difference between town and motorway, not the difference between two consecutive fixes. */
+private const val PUCK_WIN_TAU_S = 2.5f
+
+/** How long the puck may dead-reckon on a stale fix. 3 s (was 2): some chipsets deliver fixes
+ *  2.5-3.5 s apart under canopy, and a 2 s cap made the puck glide-stall-lurch at exactly that
+ *  cadence. Still bounds a dropped-signal runaway to ~100 m at highway speed. */
+private const val DEAD_RECKON_S = 3.0
 
 private fun pointAtMeters(poly: List<LatLng>, cum: DoubleArray, meters: Double): Pair<LatLng, Float> {
     if (poly.size < 2) return (poly.firstOrNull() ?: LatLng(0.0, 0.0)) to 0f

@@ -224,6 +224,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   building-footprint OVERLAY (the layer that fills OSM's gaps) had its colour hardcoded to Modern, so
   in Classic those houses stayed Google-navy while the OSM ones went grey; it now honours the palette
   too. Also, since the two sets currently diverge mostly in dark mode, the Settings hint says so.
+- ✅ **Nav puck: the position is filtered too (2026-09-01).** The puck's speed had been Kalman
+  filtered since June; its *position* never was, so every metre of along-route GPS noise was a
+  metre the arrow actually travelled, once a second, all drive - and no amount of smoothing
+  downstream could stop it, only soften it. `AlongRouteFilter` folds each fix in weighted by the
+  fix's own reported accuracy, so a clean fix pulls hard and an urban-canyon one barely moves the
+  puck; progress advances in the rate domain, so it can neither stall nor lurch. Route geometry is
+  now requested from OSRM at `polyline6` as well, since the default encoding quantises every vertex
+  to a ~1.1 m grid and made straight roads arrive kinked. Simulated end to end: along-road wobble
+  7.2 → 2.8 px at cruise, 27 → 5.5 px in a canyon, stalled frames 2.7-28% → 0%.
 - ✅ **Google-style nav puck (2026-07-11).** The navigation arrow is a white chevron inside a
   filled bright-navy circle with a soft drop shadow (no white ring, per user feedback); it rotates
   about the exact GPS point. Replaces the bare blue chevron. **Enlarged twice from feedback
