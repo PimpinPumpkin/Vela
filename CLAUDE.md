@@ -2332,8 +2332,18 @@ architecture note.
   case) stay pure OSRM, untouched. The traffic-snapped route leads **only when it earns it** - its live
   ETA must be ≤ OSRM free-flow best × `SNAP_ETA_MARGIN` (1.2), else a divergent-but-not-faster snap steps
   aside for OSRM's clean route (fixed 2026-06-30 - the old code always led with the snap on divergence, the
-  "fucky reroute"). The `directions` diag logs `snapKept`/`gEta`/`osrmFF` to tune the margin from real
-  side-by-side data. **Per-alternate re-rank (2026-07-01):** each Google route in `root[0][1]` carries its
+  "fucky reroute"). The `directions` diag logs `snapKept`/`gEta`/`osrmFF`/`sameCourse` to tune the margin from real
+  side-by-side data. **FREE-FLOW CALIBRATION (2026-08-04, issue #227):** OSRM's speed model has no
+  signal timing, so on signalized arterials its free-flow time can run far under Google's TYPICAL
+  for the same road (reporter diag: osrmFF 16 min vs typ 30 min, ratio 0.97 - the shown ETA applied
+  the ratio to the wrong baseline and read absurdly fast). applyTraffic now rebases a same-course
+  OSRM route onto Google's typical: durations (route + legs + per-maneuver, so nav remaining-time
+  sums agree) scale by (gTyp*distScale)/osrmFF clamped 0.5-3.0, the live ETA becomes Google's real
+  in-traffic figure, and trafficRatio stays traffic-vs-typical so the colour/words don't turn red
+  from OSRM optimism. directions() computes ONE calibration from the top OSRM route vs gTop and
+  applies it to every OSRM-derived route in the response (alternates share the speed-model bias;
+  per-route calibration would re-rank them unfairly). Divergent-with-no-caller-cal keeps the old
+  ratio-only overlay. **Per-alternate re-rank (2026-07-01):** each Google route in `root[0][1]` carries its
   OWN `duration_in_traffic` (`parseRoute` reads `summary[10][0][0]` per route), so the returned list is now
   **sorted by live in-traffic ETA - fastest leads, Google-style.** (Earlier note that this was "impossible"
   was wrong: it's only true for the OSRM-only alts, which share `gTop`'s ratio; Google's alts carry real

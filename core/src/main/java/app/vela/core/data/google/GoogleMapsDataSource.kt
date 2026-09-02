@@ -562,7 +562,8 @@ class GoogleMapsDataSource @Inject constructor(
                     "google ${google.size} (typ=${gTop?.durationSeconds?.toInt()}s traf=${gTop?.durationInTrafficSeconds?.toInt()}s " +
                     "ratio=${gTop?.durationInTrafficSeconds?.let { t -> gTop?.durationSeconds?.takeIf { it > 0 }?.let { String.format(java.util.Locale.US, "%.2f", t / it) } }}); " +
                     "rerouted=${trafficRoute != null} snapKept=$snapWorthIt snapReaches=$snapReaches " +
-                    "(gEta=${googleEtaS?.toInt()}s osrmFF=${open.firstOrNull()?.durationSeconds?.toInt()}s); " +
+                    "(gEta=${googleEtaS?.toInt()}s osrmFF=${open.firstOrNull()?.durationSeconds?.toInt()}s " +
+                    "sameCourse=${open.firstOrNull()?.let { t -> gTop?.takeIf { it.polyline.size >= 5 }?.let { !RouteGeometry.divergent(t, it) } }}); " +
                     "onDevice=${onDevice.size}",
                 "",
             )
@@ -572,8 +573,18 @@ class GoogleMapsDataSource @Inject constructor(
                 // upgraded to full steps by the nav recheck once the open router recovers.
                 if (onDevice.isNotEmpty()) onDevice else google.map { it.copy(abbreviatedSteps = true) }
             } else {
-                val primary = if (snapWorthIt) (listOf(trafficRoute!!) + open).map { applyTraffic(it, gTop) }
-                    else open.map { applyTraffic(it, gTop) }
+                // One calibration for the whole response, taken from the TOP OSRM route when it
+                // follows Google's course — alternates share the same optimistic speed model, so
+                // rebasing them by the same factor keeps the picker's ranking fair (issue #227).
+                val freeFlowCal = open.firstOrNull()?.takeIf { top ->
+                    top.durationSeconds > 0 && gTop != null && gTop.durationSeconds > 0 &&
+                        gTop.polyline.size >= 5 && !RouteGeometry.divergent(top, gTop)
+                }?.let { top ->
+                    val dScale = if (gTop!!.distanceMeters > 0) top.distanceMeters / gTop.distanceMeters else 1.0
+                    ((gTop.durationSeconds * dScale) / top.durationSeconds).coerceIn(0.5, 3.0)
+                }
+                val primary = if (snapWorthIt) (listOf(trafficRoute!!) + open).map { applyTraffic(it, gTop, freeFlowCal) }
+                    else open.map { applyTraffic(it, gTop, freeFlowCal) }
                 // ALTERNATES to choose from = Google's OWN alternate routes (the real, traffic-aware ones you
                 // miss). Kept PROVISIONAL: their polyline + live ETA are shown now, but turn-by-turn is named
                 // only when you PICK one to drive ([nameRoute]) — so the picker loads fast and we never snap a
@@ -626,13 +637,37 @@ class GoogleMapsDataSource @Inject constructor(
     /** Overlay Google's live-traffic ETA + congestion onto an open-router [route] (best-effort):
      *  scale the route's free-flow duration by Google's in-traffic/typical ratio, and map its
      *  congestion spans onto the open geometry by fraction. No Google traffic → keep free-flow. */
-    private fun applyTraffic(route: Route, g: Route?): Route {
+    private fun applyTraffic(route: Route, g: Route?, freeFlowCal: Double? = null): Route {
         val typical = g?.durationSeconds?.takeIf { it > 0 } ?: return route
         val inTraffic = g.durationInTrafficSeconds ?: return route
         val factor = (inTraffic / typical).coerceIn(0.5, 4.0)
         val scale = if (g.distanceMeters > 0) route.distanceMeters / g.distanceMeters else 1.0
-        return route.copy(
-            durationInTrafficSeconds = route.durationSeconds * factor,
+        // FREE-FLOW CALIBRATION (issue #227): OSRM's speed model has no signal timing, so on
+        // signalized arterials its free-flow time can run far below Google's TYPICAL for the very
+        // same road (a reporter's diag: OSRM 16 min where Google's typical was 30 with a traffic
+        // ratio of ~0.97 — the shown ETA was the ratio applied to the wrong baseline). When this
+        // route follows Google's course, rebase it onto Google's typical: step/leg/route durations
+        // scale up to the typical time (so nav's remaining-time sums agree), the live ETA becomes
+        // Google's actual in-traffic figure, and trafficRatio stays traffic-vs-typical (colours
+        // don't turn red just because OSRM was optimistic). A divergent route (a genuinely
+        // different path) can inherit the caller's calibration (the bias is the road network's,
+        // not one route's); with none it keeps the old ratio-only overlay.
+        val cal = freeFlowCal ?: run {
+            val sameCourse = route.durationSeconds > 0 && route.polyline.size >= 2 &&
+                g.polyline.size >= 5 && !RouteGeometry.divergent(route, g)
+            if (sameCourse) ((typical * scale) / route.durationSeconds).coerceIn(0.5, 3.0) else 1.0
+        }
+        val calibrated = if (cal == 1.0) route else route.copy(
+            durationSeconds = route.durationSeconds * cal,
+            legs = route.legs.map { leg ->
+                leg.copy(
+                    durationSeconds = leg.durationSeconds * cal,
+                    maneuvers = leg.maneuvers.map { m -> m.copy(durationSeconds = m.durationSeconds * cal) },
+                )
+            },
+        )
+        return calibrated.copy(
+            durationInTrafficSeconds = calibrated.durationSeconds * factor,
             trafficSpans = g.trafficSpans.map { it.copy(startMeters = it.startMeters * scale, lengthMeters = it.lengthMeters * scale) },
         )
     }
