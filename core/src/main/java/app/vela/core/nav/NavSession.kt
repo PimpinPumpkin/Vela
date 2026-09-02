@@ -9,6 +9,7 @@ import app.vela.core.model.TravelMode
 import app.vela.core.model.distanceTo
 import app.vela.core.voice.VoiceGuide
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -33,6 +34,9 @@ import javax.inject.Singleton
  * behaviour traffic apps live on.
  */
 @Singleton
+/** Outcome of [NavSession.rerouteGate] - whether a reroute request may proceed. */
+enum class RerouteGate { START, SKIP_IN_FLIGHT, SKIP_COOLDOWN, ABANDON_STUCK_AND_START }
+
 class NavSession @Inject constructor(
     private val dataSource: MapDataSource,
     private val voice: VoiceGuide,
@@ -76,6 +80,11 @@ class NavSession @Inject constructor(
     // shouldn't re-announce), and a GENERATION stamp so a fetch that completes after stop()/a new
     // start() can't resurrect the previous destination's route into the fresh session.
     private var rerouteJob: Job? = null
+    private var rerouteStartedMs = 0L
+    /** Deadline the in-flight reroute is running under (see [rerouteAttempt]). */
+    private var rerouteDeadlineMs = REROUTE_FETCH_TIMEOUT_MS
+    /** Consecutive reroute attempts that came back with nothing; reset on any adopted route. */
+    private var rerouteFailStreak = 0
     // @Volatile: written on the Default dispatcher (reroute coroutine) / caller thread and read
     // on the location thread — a stale read would defeat the cooldown or the generation guard.
     @Volatile private var lastRerouteAdoptMs = 0L
@@ -166,6 +175,10 @@ class NavSession @Inject constructor(
         sessionGen += 1               // orphan any in-flight reroute/recheck from a previous session
         rerouteJob?.cancel()
         pendingLatchClear.set(false)  // a stale clear from the previous session must not leak in
+        // A new drive starts lean: the previous drive's bad patch of coverage says nothing about
+        // this one, and inheriting its streak would send the first reroute straight to the ladder.
+        rerouteFailStreak = 0
+        rerouteDeadlineMs = REROUTE_FETCH_TIMEOUT_MS
         dismissedFasterKey = 0L
         dismissedFasterSaving = 0.0
         etaScale = 1.0
@@ -219,6 +232,8 @@ class NavSession @Inject constructor(
         recheckJob?.cancel()
         rerouteJob?.cancel()
         pendingLatchClear.set(false)
+        rerouteFailStreak = 0
+        rerouteDeadlineMs = REROUTE_FETCH_TIMEOUT_MS
         voice.stop()
         destination = null
         synchronized(stopLock) { stops = emptyList(); stopMarks = emptyList(); passedStops = 0; planRoute = null }
@@ -606,7 +621,14 @@ class NavSession @Inject constructor(
         // too, 4 s later another "Rerouting…" — forever). The engine keeps emitting RerouteNeeded
         // while deviated (the latch clears on failure below), so a skipped request here is simply
         // retried by the next qualifying fix after the cooldown.
-        if (rerouteJob?.isActive == true || now - lastRerouteAdoptMs < REROUTE_COOLDOWN_MS) return
+        when (rerouteGate(rerouteJob?.isActive == true, rerouteStartedMs, lastRerouteAdoptMs, now, rerouteDeadlineMs)) {
+            RerouteGate.SKIP_IN_FLIGHT, RerouteGate.SKIP_COOLDOWN -> return
+            RerouteGate.ABANDON_STUCK_AND_START -> {
+                diag.record("nav", "previous reroute wedged past its deadline - abandoning it and retrying")
+                rerouteJob?.cancel()
+            }
+            RerouteGate.START -> Unit
+        }
         // Announce sparsely: the first attempt of a burst speaks, silent retries don't re-announce.
         if (now - lastRerouteSpokeMs > REROUTE_SPEAK_MIN_MS) {
             lastRerouteSpokeMs = now
@@ -625,6 +647,12 @@ class NavSession @Inject constructor(
         // The route we were following when we went off-route. If the driver returns to THIS line while
         // we're fetching (see the back-on-course check below), we abandon the reroute rather than swap.
         val fromRoute = _state.value.route
+        rerouteStartedMs = now
+        val attempt = rerouteAttempt(rerouteFailStreak)
+        rerouteDeadlineMs = attempt.timeoutMs
+        if (!attempt.urgent) {
+            diag.record("nav", "reroute escalating to the full ladder after $rerouteFailStreak failed attempts")
+        }
         rerouteJob = scope.launch {
             // A reroute that doesn't actually reach the destination is a bad result — keep guiding on the
             // current route rather than swapping to a truncated/wrong one. (Guard unchanged: the route still
@@ -640,10 +668,20 @@ class NavSession @Inject constructor(
             // cancelled work that was about to succeed and the driver sat unrerouted through
             // repeated attempts. A lean route lands in seconds; the recheck loop restores
             // traffic/steps quality afterwards.
-            val r = kotlinx.coroutines.withTimeoutOrNull(REROUTE_FETCH_TIMEOUT_MS) {
-                runCatching { dataSource.directions(loc, dest, mode, remainingStops.map { it.location }, urgent = true) }
+            // The fetch runs as an UNSTRUCTURED async so the deadline can actually ABANDON it
+            // (issue #258). withTimeoutOrNull only interrupts at suspension points: a structured
+            // child that blocks in non-cancellable work - a socket read that never returns, or the
+            // offline engine's native compute - keeps this coroutine alive long past the deadline,
+            // and `rerouteJob?.isActive` above then rejects EVERY later reroute for the rest of the
+            // drive. That is the "Re-routing" spinner that never exits and only a restart clears
+            // (reported on a real drive; the same trap the avoid path hit, see
+            // AVOID_ONDEVICE_TIMEOUT_MS). The orphan finishes into the void and is discarded.
+            val fetch = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
+                runCatching { dataSource.directions(loc, dest, mode, remainingStops.map { it.location }, urgent = attempt.urgent) }
                     .getOrNull()?.firstOrNull()?.takeIf { it.reaches(dest) }
             }
+            val r = kotlinx.coroutines.withTimeoutOrNull(attempt.timeoutMs) { fetch.await() }
+            if (r == null) fetch.cancel() // best effort; a wedged blocking read ignores this and is orphaned
             if (gen != sessionGen) return@launch // session ended / restarted while fetching — drop it
             // BACK ON COURSE: while we were fetching (~1-3 s), did the driver return to the ORIGINAL route?
             // A U-turn (or any wobble) fires RerouteNeeded, but by the time the fetch lands the driver has
@@ -667,7 +705,8 @@ class NavSession @Inject constructor(
                 // old route. Flag the latch clear for the LOCATION THREAD to consume (writing nav
                 // state from here raced the in-flight onLocation frame) — 4 more deviated fixes
                 // then request again (~4 s natural backoff, OsmAnd-style retry-while-deviated).
-                diag.record("nav", "reroute FAILED — will retry while off-route")
+                rerouteFailStreak++
+                diag.record("nav", "reroute FAILED (streak $rerouteFailStreak) — will retry while off-route")
                 pendingLatchClear.set(true)
                 return@launch
             }
@@ -686,6 +725,7 @@ class NavSession @Inject constructor(
                 voice.speak(app.vela.core.i18n.NavStringsRegistry.current().stopsNotIncluded())
                 diag.record("nav", "reroute missing ${marks.count { it == null }}/${remainingStops.size} stops")
             }
+            rerouteFailStreak = 0 // a route landed: back to lean, fast attempts
             lastSwapReason = "reroute"
             lastRecheckMs = SystemClock.elapsedRealtime()
             lastRerouteAdoptMs = SystemClock.elapsedRealtime()
@@ -729,6 +769,61 @@ class NavSession @Inject constructor(
         // Deadline on one reroute FETCH: generous next to Google's 1-3 s but far under the retry
         // ladders' worst case; past it the position the request was computed from is stale anyway.
         const val REROUTE_FETCH_TIMEOUT_MS = 20_000L
+        // Slack past the deadline before a still-running reroute job is declared wedged.
+        const val REROUTE_STUCK_GRACE_MS = 5_000L
+        // After this many reroute attempts in a row have come back with nothing, stop being lean
+        // and use the FULL planning ladder - see [rerouteAttempt].
+        const val REROUTE_ESCALATE_AFTER = 2
+        // Deadline for an escalated attempt: the ladder makes several tries, so the lean deadline
+        // would cut it off mid-way and we would never see the retry pay off.
+        const val REROUTE_LADDER_TIMEOUT_MS = 40_000L
+
+        /**
+         * May a reroute start right now? Pure so the rule that broke in issue #258 is pinned by a
+         * test instead of living inside a coroutine that needs a device to exercise.
+         *
+         * Single-flight is right, but it must never be PERMANENT: a fetch wedged in
+         * non-cancellable I/O outlives its own deadline, and treating that job as "in flight"
+         * forever rejected every later reroute for the rest of the drive - the spinner that only
+         * a nav restart cleared. Past the deadline plus a grace window the job is declared dead.
+         */
+        fun rerouteGate(
+            jobActive: Boolean,
+            jobStartedMs: Long,
+            lastAdoptMs: Long,
+            now: Long,
+            // The deadline THIS attempt is running under - an escalated attempt is allowed longer,
+            // and judging it by the lean deadline would declare a healthy fetch wedged and kill it.
+            deadlineMs: Long = REROUTE_FETCH_TIMEOUT_MS,
+        ): RerouteGate = when {
+            jobActive && now - jobStartedMs >= deadlineMs + REROUTE_STUCK_GRACE_MS ->
+                RerouteGate.ABANDON_STUCK_AND_START
+            jobActive -> RerouteGate.SKIP_IN_FLIGHT
+            now - lastAdoptMs < REROUTE_COOLDOWN_MS -> RerouteGate.SKIP_COOLDOWN
+            else -> RerouteGate.START
+        }
+        /** How the next reroute attempt should be made, given how many have just failed. */
+        data class RerouteAttempt(val urgent: Boolean, val timeoutMs: Long)
+
+        /**
+         * Reroute attempts start LEAN and ESCALATE (issue #258, second cause).
+         *
+         * A mid-drive reroute is `urgent`, which means a SINGLE-SHOT fetch with no retry ladder -
+         * deliberately, because the full ladder used to outlive the deadline on a weak link and got
+         * cancelled just as it was about to succeed (issues #185/#236). But a single shot on a
+         * genuinely flaky link can fail over and over, and nothing ever escalated: the driver sat
+         * on "Re-routing" through attempt after attempt, while ENDING NAV AND STARTING AGAIN worked
+         * first time - because a fresh plan is not urgent and gets the 3-try ladder. That is
+         * exactly the reported workaround, and it is a different fault from the wedged job the
+         * gate above handles.
+         *
+         * So: the first couple of attempts stay lean and fast, and after that we spend the time and
+         * use the full ladder. Fast when the network is merely blipping, thorough when it is bad.
+         */
+        fun rerouteAttempt(failStreak: Int): RerouteAttempt =
+            if (failStreak >= REROUTE_ESCALATE_AFTER) RerouteAttempt(urgent = false, timeoutMs = REROUTE_LADDER_TIMEOUT_MS)
+            else RerouteAttempt(urgent = true, timeoutMs = REROUTE_FETCH_TIMEOUT_MS)
+
         const val REROUTE_SPEAK_MIN_MS = 30_000L   // "Rerouting" spoken at most this often (retries are silent)
         const val BACK_ON_COURSE_HITS = 2          // consecutive on-corridor fixes before an in-flight reroute
                                                    // is abandoned as "back on course" — >1 so a single grazing
