@@ -1278,11 +1278,13 @@ fun MapScreen(
                     state.nav.distanceToNextManeuver
                 },
                 type = shown?.type ?: ManeuverType.STRAIGHT,
+                roundabout = shown?.roundabout,
                 ref = shown?.ref,
                 laneHint = shown?.laneHint,
                 lanes = shown?.lanes.orEmpty(),
                 nextText = next?.instruction?.let { navRomanize(it) },
                 nextType = next?.type,
+                nextRoundabout = next?.roundabout,
                 nextRef = next?.ref,
                 // The road being driven = the one entered by the LIVE maneuver last passed
                 // (never the previewed one - previewing shouldn't change where you "are").

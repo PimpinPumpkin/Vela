@@ -7,6 +7,7 @@ import app.vela.core.model.LatLng
 import app.vela.core.model.Maneuver
 import app.vela.core.model.ManeuverType
 import app.vela.core.model.Route
+import app.vela.core.model.RoundaboutGeometry
 import app.vela.core.model.RouteLeg
 import app.vela.core.model.TravelMode
 import app.vela.core.model.distanceTo
@@ -237,7 +238,13 @@ object RouteGeometry {
         val dist = r["distance"]?.jsonPrimitive?.doubleOrNull ?: return null
         val dur = r["duration"]?.jsonPrimitive?.doubleOrNull ?: 0.0
         val raw = (r["legs"]?.jsonArray ?: return null).flatMap { leg ->
-            leg.jsonObject["steps"]?.jsonArray?.mapNotNull { osrmStep(it.jsonObject) } ?: emptyList()
+            val steps: List<JsonObject> =
+                leg.jsonObject["steps"]?.jsonArray?.map { it.jsonObject } ?: emptyList()
+            // Roundabout geometry needs BOTH steps of the pair (OSRM splits a roundabout into an
+            // enter step and an exit step), so it is filled in a pass over the raw step objects
+            // rather than inside osrmStep, which only ever sees one.
+            val geoms = roundaboutGeometries(steps)
+            steps.mapIndexedNotNull { i, s -> osrmStep(s)?.let { m -> geoms[i]?.let { m.copy(roundabout = it) } ?: m } }
         }
         // A multi-waypoint (via) route splits into legs, inserting a spurious "arrive"+"depart" at
         // each via. Drop those so it reads as one continuous trip — keep only the first DEPART and
@@ -425,6 +432,72 @@ object RouteGeometry {
         }
         return route.copy(legs = legs)
     }
+
+    /** The bearings a roundabout pass needs off one OSRM step. Kept separate from the JSON so the
+     *  pairing logic below is a pure function the unit tests can drive with real captured numbers. */
+    internal data class RbStep(val type: String, val bearingBefore: Double?, val bearingAfter: Double?)
+
+    private val RB_ENTER = setOf("roundabout", "rotary")
+    private val RB_EXIT = setOf("exit roundabout", "exit rotary")
+
+    /** Below this the entry turn is too small for its SIGN to mean anything (a roundabout you enter
+     *  dead straight), so the driving side is genuinely unknown and we say so rather than guess -
+     *  the glyph then draws its neutral form instead of claiming a direction of travel. */
+    private const val RB_ENTRY_TURN_MIN_DEG = 5.0
+
+    /** Signed angle in (-180, 180]: how far you turn going from bearing [from] to bearing [to],
+     *  positive to the right. */
+    internal fun bearingDelta(from: Double, to: Double): Double {
+        var d = (to - from) % 360.0
+        if (d > 180.0) d -= 360.0
+        if (d <= -180.0) d += 360.0
+        return d
+    }
+
+    /**
+     * Fill in [RoundaboutGeometry] for the roundabout steps of one leg, indexed alongside [steps].
+     *
+     * OSRM splits a roundabout into an ENTER step and an EXIT step, and neither one alone describes
+     * the maneuver: the enter step knows the road you came in on, the exit step knows the road you
+     * leave on. Pair them and both facts fall out - the exit's direction relative to your approach,
+     * and (from the sign of the entry turn, which always points into the circulating lane) which way
+     * traffic goes round. BOTH steps get the same geometry, since both can be shown as a card.
+     */
+    internal fun roundaboutGeoms(steps: List<RbStep>): List<RoundaboutGeometry?> {
+        val out = arrayOfNulls<RoundaboutGeometry>(steps.size)
+        for (i in steps.indices) {
+            if (steps[i].type !in RB_ENTER) continue
+            val entryBefore = steps[i].bearingBefore ?: continue
+            val entryAfter = steps[i].bearingAfter ?: continue
+            // The matching exit step: the next one, but stop at another enter - two roundabouts in a
+            // row (common on a distributor road) must not borrow each other's exit.
+            var j = i + 1
+            while (j < steps.size && steps[j].type !in RB_EXIT && steps[j].type !in RB_ENTER) j++
+            if (j >= steps.size || steps[j].type !in RB_EXIT) continue
+            val exitAfter = steps[j].bearingAfter ?: continue
+            val entryTurn = bearingDelta(entryBefore, entryAfter)
+            if (kotlin.math.abs(entryTurn) < RB_ENTRY_TURN_MIN_DEG) continue
+            val g = RoundaboutGeometry(
+                exitAngleDeg = bearingDelta(entryBefore, exitAfter),
+                clockwise = entryTurn < 0,
+            )
+            out[i] = g
+            out[j] = g
+        }
+        return out.toList()
+    }
+
+    private fun roundaboutGeometries(steps: List<JsonObject>): List<RoundaboutGeometry?> =
+        roundaboutGeoms(
+            steps.map { s ->
+                val m = s["maneuver"]?.jsonObject
+                RbStep(
+                    type = m?.get("type")?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    bearingBefore = m?.get("bearing_before")?.jsonPrimitive?.doubleOrNull,
+                    bearingAfter = m?.get("bearing_after")?.jsonPrimitive?.doubleOrNull,
+                )
+            },
+        )
 
     private fun osrmStep(s: JsonObject): Maneuver? {
         val man = s["maneuver"]?.jsonObject ?: return null
