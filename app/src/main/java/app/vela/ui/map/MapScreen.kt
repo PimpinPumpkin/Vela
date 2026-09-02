@@ -859,6 +859,14 @@ fun MapScreen(
             )
         }
     }
+    // START from the place sheet (issue #272): the pill routes, and guidance begins the moment a
+    // route exists. It goes through onStartNav, NOT straight to the ViewModel, so the precise-
+    // location and notification gates still get their say - a one-tap Start must not be a way to
+    // skip the permission prompts that the picker's Start button honours. Consumed once, so a
+    // later refetch (mode change, added stop) cannot silently launch a drive.
+    LaunchedEffect(state.activeRoute, state.navigating) {
+        if (state.activeRoute != null && !state.navigating && vm.consumeAutoStart()) onStartNav()
+    }
     if (showPreciseNeeded) {
         app.vela.ui.VelaDialog(
             onDismissRequest = { showPreciseNeeded = false },
@@ -1884,6 +1892,7 @@ fun MapScreen(
                 onClose = vm::clearSelection,
                 onToggleSave = vm::toggleSave,
                 onDirections = vm::routeToSelected,
+                onStartNavigation = { vm.startNavToSelected() },
                 onStreetView = { vm.openStreetView(state.selected!!) },
                 onOpenPlace = vm::selectPlace,
                 onOpenSimilar = vm::openSimilar,

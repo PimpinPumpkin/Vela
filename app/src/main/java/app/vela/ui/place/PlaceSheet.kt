@@ -254,6 +254,8 @@ fun PlaceSheet(
     onClose: () -> Unit,
     onToggleSave: () -> Unit,
     onDirections: () -> Unit,
+    // Route AND begin guidance in one tap (issue #272). Null hides the pill.
+    onStartNavigation: (() -> Unit)? = null,
     onStreetView: () -> Unit = {},
     onOpenPlace: (Place) -> Unit = {},
     onOpenSimilar: (app.vela.core.model.SimilarPlace) -> Unit = {},
@@ -922,6 +924,14 @@ fun PlaceSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 ActionPill(Icons.Default.Directions, stringResource(R.string.place_directions), emphasized = true, onClick = onDirections)
+                // START, right beside Directions (issue #272). Directions opens the picker, whose
+                // own Start sits BELOW the route list - with three routes on a large-font screen
+                // that is off the bottom of the sheet, so the common case (just take me there)
+                // needed a scroll. Not offered for the parked car, where you are already at the
+                // start of the walk and "Directions" is the useful verb.
+                if (onStartNavigation != null && !isParking) {
+                    ActionPill(Icons.Filled.Navigation, stringResource(R.string.place_start), onClick = onStartNavigation)
+                }
                 if (isParking) {
                     ActionPill(Icons.Default.Delete, stringResource(R.string.place_clear_parking), onClick = onClearParking)
                 }
