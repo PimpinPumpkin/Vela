@@ -572,6 +572,9 @@ class MapViewModel @Inject constructor(
                     if (!vs.replaying || vs.demoDriving) refreshNavRouteControls(nsRoute)
                 }
                 if (!ns.navigating) { lastRecordedRoute = null; clearNavRouteControls() }
+                // Mirror the drive into the theme holder: the "day and night while navigating"
+                // setting (issue #262) is the one theme input that is not a preference.
+                app.vela.ui.theme.AppTheme.navigating.value = ns.navigating
                 _state.update {
                     it.copy(
                         navigating = ns.navigating,
@@ -785,6 +788,10 @@ class MapViewModel @Inject constructor(
                 }
                 lastFixRtNanos = fixRtNanos
                 prevWasGps = isGps
+                // Feed the day/night theme a position (rounded to ~1 km inside the holder). Sunset
+                // varies by hours across a country, so a theme that guesses from the clock alone is
+                // wrong for most of the world most of the year.
+                app.vela.ui.theme.AppTheme.rememberLocation(appContext, here.lat, here.lng)
                 _state.update {
                     it.copy(
                         myLocation = here, myBearing = bearing, mySpeed = speed,

@@ -725,6 +725,10 @@
     <string name="settings_hub_diagnostics_sub">Crash reports, trips, compatibility</string>
     <string name="settings_hub_about_sub">Version, updates, support</string>
     <string name="settings_theme_amoled">AMOLED black</string>
+    <string name="settings_theme_auto">Day and night</string>
+    <string name="settings_theme_auto_hint">Light during the day, dark after sunset, worked out from your location.</string>
+    <string name="settings_nav_day_night">Day and night while navigating</string>
+    <string name="settings_nav_day_night_hint">Keeps your chosen theme everywhere else, and switches by daylight only while you are driving.</string>
     <string name="settings_traffic_lights">Traffic-light guidance</string>
     <string name="settings_traffic_lights_hint">Spoken landmark cues: pass the light, then turn. English only, off by default.</string>
     <string name="settings_softkeys" translatable="false">Hardware softkeys</string>

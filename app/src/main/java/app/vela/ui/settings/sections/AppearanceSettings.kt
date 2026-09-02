@@ -65,8 +65,33 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             selected = AppTheme.mode.value == ThemeMode.AMOLED,
             onClick = { AppTheme.set(context, ThemeMode.AMOLED) },
         )
+        GroupDivider()
+        // Day/night by the actual sun, not by the clock and not by the OS (issue #262). It sits in
+        // the mode list rather than as a toggle because it IS a mode - picking it replaces whatever
+        // light/dark choice was there.
+        SelectableRow(
+            label = stringResource(R.string.settings_theme_auto),
+            selected = AppTheme.mode.value == ThemeMode.AUTO,
+            onClick = { AppTheme.set(context, ThemeMode.AUTO) },
+        )
         }
+        Hint(stringResource(R.string.settings_theme_auto_hint))
         Hint(stringResource(R.string.settings_appearance_hint))
+
+        // Orthogonal to the mode above, and only meaningful alongside a FIXED choice: keep the app
+        // dark by preference, but drive by a light map in daylight. Hidden under AUTO, where it
+        // would claim to do something already happening.
+        if (AppTheme.mode.value != ThemeMode.AUTO) {
+            Spacer(Modifier.height(8.dp))
+            SettingsGroup {
+                ToggleRow(
+                    label = stringResource(R.string.settings_nav_day_night),
+                    checked = AppTheme.navDayNight.value,
+                    onCheckedChange = { AppTheme.setNavDayNight(context, it) },
+                    hint = stringResource(R.string.settings_nav_day_night_hint),
+                )
+            }
+        }
 
         Spacer(Modifier.height(8.dp))
         // Interface size: scales every control and sheet (not the map) - for car/tablet
