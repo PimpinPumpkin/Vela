@@ -231,6 +231,10 @@ data class MapUiState(
     val voiceMuted: Boolean = false,
     val diagnosticsEnabled: Boolean = false,
     val tripRecordingEnabled: Boolean = false, // record nav GPS traces for replay (more invasive)
+    val nameTripsOnSave: Boolean = false, // ask for a name each time a recorded drive is saved
+    // A drive just finished and the user asked to be prompted for its name; the prompt shows on
+    // the map so it is answered while the drive is fresh, not found later in Settings.
+    val tripToName: app.vela.replay.TripMeta? = null,
     val replaying: Boolean = false,            // a recorded trip OR a demo drive is playing (drives the puck)
     val demoDriving: Boolean = false,          // replaying is a Settings→demo synthetic drive (not a recorded trip) — nav chrome only, no "Stop replay" pill
     val arrived: Boolean = false,
@@ -3837,7 +3841,12 @@ class MapViewModel @Inject constructor(
         if (_state.value.replaying && replayOwnsNav) { stopReplay(); return }
         NavigationService.stop(appContext)
         navSession.stop()
-        tripStore.finishTrip() // close + persist the recorded trip (drops too-short ones)
+        val recorded = tripStore.finishTrip() // close + persist the recorded trip (drops too-short ones)
+        // Offer to name it while the drive is still in mind - a trip auto-named after the
+        // destination is fine for one drive and useless once there are twenty of the same one.
+        // Only when the user asked for the prompt, and only for a trip that actually survived
+        // (finishTrip drops ones too short to be worth keeping).
+        if (recorded != null && nameTripsOnSave()) _state.update { it.copy(tripToName = recorded) }
         clearSpeedLimit() // clear the speed-limit badge for the next drive
         clearPersistedNav() // this drive is over → don't offer to resume it next launch
         _state.update {
@@ -3935,7 +3944,12 @@ class MapViewModel @Inject constructor(
 
     /** Reflect the persisted "save my trips" flag into UI state. */
     fun refreshTripRecording() =
-        _state.update { it.copy(tripRecordingEnabled = settingsPrefs.getBoolean("trip_recording_on", false)) }
+        _state.update {
+            it.copy(
+                tripRecordingEnabled = settingsPrefs.getBoolean("trip_recording_on", false),
+                nameTripsOnSave = settingsPrefs.getBoolean("trip_name_on_save", false),
+            )
+        }
 
     /** Opt in/out of recording nav trips (GPS traces) for replay — strictly local,
      *  more invasive than diagnostics, so it's its own toggle. */
@@ -3946,6 +3960,29 @@ class MapViewModel @Inject constructor(
 
     fun recordedTrips(): List<app.vela.replay.TripMeta> = tripStore.list()
     fun deleteTrip(id: String) = tripStore.delete(id)
+
+    /** Rename a saved trip. Returns false when the file could not be rewritten, so the caller
+     *  can say so rather than silently showing the old name again. */
+    fun renameTrip(id: String, label: String): Boolean = tripStore.rename(id, label)
+
+    /** Whether to ask for a name each time a recorded drive is saved (pref `trip_name_on_save`).
+     *  Off by default: a prompt after every drive is the wrong default for someone recording
+     *  continuously, and the trips list can rename after the fact either way. */
+    fun nameTripsOnSave(): Boolean = settingsPrefs.getBoolean("trip_name_on_save", false)
+
+    fun setNameTripsOnSave(on: Boolean) {
+        settingsPrefs.edit().putBoolean("trip_name_on_save", on).apply()
+        _state.update { it.copy(nameTripsOnSave = on) }
+    }
+
+    /** Dismiss the name-this-trip prompt, keeping whatever the trip was auto-named. */
+    fun dismissTripNaming() = _state.update { it.copy(tripToName = null) }
+
+    /** Apply the name from the prompt, then dismiss it. */
+    fun nameRecordedTrip(id: String, label: String) {
+        tripStore.rename(id, label)
+        dismissTripNaming()
+    }
 
     /** Replay a recorded trip's GPS trace through the live pipeline (camera + dot +
      *  nav loop), at 3× so it's quick. Auto-routes to the trip's destination and starts
@@ -4160,6 +4197,43 @@ class MapViewModel @Inject constructor(
     /** A share intent for a recorded trip's raw CSV trace (via the same FileProvider),
      *  so a drive can be pulled off a *release* build — handed to a dev for replay/debug,
      *  or kept as a backup. Null if the trip file is gone. User-initiated, user-routed. */
+    /**
+     * Share SEVERAL trips at once as separate attachments.
+     *
+     * Same files the single-trip share writes, through ACTION_SEND_MULTIPLE. Trips whose CSV
+     * cannot be read are skipped rather than failing the whole share - one unreadable file
+     * should not cost the user the other nine. Returns null only when NOTHING could be read.
+     */
+    fun exportTripsIntent(metas: List<app.vela.replay.TripMeta>): android.content.Intent? {
+        if (metas.size == 1) return exportTripIntent(metas.first())
+        return runCatching {
+            val dir = java.io.File(appContext.cacheDir, "export").apply { mkdirs() }
+            val uris = java.util.ArrayList<android.net.Uri>()
+            var points = 0
+            for (meta in metas) {
+                val csv = tripStore.rawCsv(meta.id) ?: continue
+                val file = java.io.File(dir, "vela-trip-${meta.id}.csv")
+                file.writeText(csv)
+                uris += androidx.core.content.FileProvider.getUriForFile(
+                    appContext, "${appContext.packageName}.fileprovider", file,
+                )
+                points += meta.fixCount
+            }
+            if (uris.isEmpty()) return null
+            val send = android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE).apply {
+                type = "text/csv"
+                putParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, uris)
+                putExtra(
+                    android.content.Intent.EXTRA_SUBJECT,
+                    appContext.getString(R.string.mapvm_export_trips_subject, uris.size, points),
+                )
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            android.content.Intent.createChooser(send, appContext.getString(R.string.mapvm_share_trip_chooser))
+                .apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
+        }.getOrNull()
+    }
+
     fun exportTripIntent(meta: app.vela.replay.TripMeta): android.content.Intent? {
         val csv = tripStore.rawCsv(meta.id) ?: return null
         return runCatching {

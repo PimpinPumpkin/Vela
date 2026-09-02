@@ -106,11 +106,19 @@ class TripStore @Inject constructor(
     }
 
     /** Close the active trip. Deletes it if it captured too few fixes to be useful. */
-    fun finishTrip() = synchronized(lock) {
-        val f = active ?: return
+    /**
+     * Close the active trip.
+     *
+     * Returns the saved trip when one was KEPT, so a caller can offer to name it; null when
+     * nothing was recording or the trip was too short to be worth keeping (under 5 fixes -
+     * starting nav and immediately ending it should not leave litter in the list).
+     */
+    fun finishTrip(): TripMeta? = synchronized(lock) {
+        val f = active ?: return null
         active = null
-        runCatching { if (countFixes(f) < 5) f.delete() }
-        Unit
+        return runCatching {
+            if (countFixes(f) < 5) { f.delete(); null } else readMeta(f)
+        }.getOrNull()
     }
 
     val isRecording: Boolean get() = active != null
@@ -146,6 +154,29 @@ class TripStore @Inject constructor(
 
     /** The raw CSV for a saved trip, for export/share (or null if missing). */
     fun rawCsv(id: String): String? = runCatching { File(dir, "$id.csv").readText() }.getOrNull()
+
+    /**
+     * Rename a saved trip.
+     *
+     * The header surgery itself is `TripLog.renameHeader` in :core (beside the format, and unit
+     * tested); this does the file IO. Written to a temp file and renamed over the original,
+     * because a half-written header makes the whole recording unparseable and a drive cannot be
+     * recorded again.
+     *
+     * Returns false when the file is missing or is not a trip - nothing is written then.
+     */
+    fun rename(id: String, label: String): Boolean = synchronized(lock) {
+        val f = File(dir, "$id.csv")
+        return runCatching {
+            if (!f.exists()) return false
+            val out = TripLog.renameHeader(f.readLines(), label) ?: return false
+            val tmp = File(dir, "$id.csv.tmp")
+            tmp.writeText(out.joinToString("\n") + "\n")
+            val ok = tmp.renameTo(f)
+            if (!ok) tmp.delete()
+            ok
+        }.getOrDefault(false)
+    }
 
     fun delete(id: String) {
         runCatching { File(dir, "$id.csv").delete() }

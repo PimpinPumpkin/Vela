@@ -18,6 +18,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -133,6 +136,11 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         LaunchedEffect(Unit) { vm.refreshTripRecording() }
         var showTripConsent by remember { mutableStateOf(false) }
         var trips by remember { mutableStateOf(vm.recordedTrips()) }
+        // Multi-select for export. Off until asked for: the common case is one trip, and a
+        // checkbox on every row all the time would be clutter for it.
+        var selecting by remember { mutableStateOf(false) }
+        var selected by remember { mutableStateOf(setOf<String>()) }
+        var renaming by remember { mutableStateOf<app.vela.replay.TripMeta?>(null) }
         // Re-read on entry so a trip recorded since the app launched shows up without
         // a restart (the list was otherwise only refreshed after a delete).
         LaunchedEffect(Unit) { trips = vm.recordedTrips() }
@@ -144,9 +152,59 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
             onCheckedChange = { on -> if (on) showTripConsent = true else vm.setTripRecording(false) },
             hint = stringResource(R.string.settings_save_trips_hint),
         )
+        // Naming on save only makes sense while trips are being recorded, so it hides with the
+        // switch above rather than sitting there inert.
+        if (state.tripRecordingEnabled) {
+            ToggleRow(
+                label = stringResource(R.string.settings_name_trips),
+                checked = state.nameTripsOnSave,
+                onCheckedChange = { vm.setNameTripsOnSave(it) },
+                hint = stringResource(R.string.settings_name_trips_hint),
+            )
+        }
         if (trips.isNotEmpty()) {
             GroupDivider()
             Hint(stringResource(R.string.settings_recorded_trips_hint))
+            // Selection bar. Sharing several drives at once is the point of the mode, so the
+            // Share action carries the count and does nothing at zero rather than opening an
+            // empty chooser.
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (!selecting) {
+                    TextButton(
+                        modifier = Modifier.dpadHighlight(),
+                        onClick = { selecting = true; selected = emptySet() },
+                    ) { Text(stringResource(R.string.settings_trip_select)) }
+                } else {
+                    TextButton(
+                        modifier = Modifier.dpadHighlight(),
+                        onClick = {
+                            selected = if (selected.size == trips.size) emptySet() else trips.map { it.id }.toSet()
+                        },
+                    ) { Text(stringResource(R.string.settings_trip_select_all)) }
+                    Spacer(Modifier.weight(1f))
+                    TextButton(
+                        modifier = Modifier.dpadHighlight(),
+                        enabled = selected.isNotEmpty(),
+                        onClick = {
+                            val picked = trips.filter { it.id in selected }
+                            val intent = vm.exportTripsIntent(picked)
+                            if (intent != null) runCatching { context.startActivity(intent) }
+                            else android.widget.Toast.makeText(
+                                context,
+                                context.getString(R.string.settings_trip_read_error),
+                                android.widget.Toast.LENGTH_SHORT,
+                            ).show()
+                        },
+                    ) { Text(stringResource(R.string.settings_trip_share_selected, selected.size)) }
+                    TextButton(
+                        modifier = Modifier.dpadHighlight(),
+                        onClick = { selecting = false; selected = emptySet() },
+                    ) { Text(stringResource(R.string.settings_trip_select_done)) }
+                }
+            }
             trips.forEachIndexed { ti, t ->
                 if (ti > 0) GroupDivider()
                 Row(
@@ -161,19 +219,40 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
                         else null
                         Hint(listOfNotNull(recordedAt, stringResource(R.string.settings_trip_points, t.fixCount)).joinToString(" · "))
                     }
-                    // D-pad: Replay/Share/Delete sit side by side inside the L/R-swallowing Column, so
-                    // the trio drives its own LEFT/RIGHT (issue #24 pattern).
-                    val tripFocus = remember(t.id) { List(3) { FocusRequester() } }
+                    // NB an early `return@forEachIndexed` here crashes the Compose compiler
+                    // ("No mapping for symbol" during IR lowering) - a composable lambda cannot
+                    // return early past later composable calls. Keep this as if/else.
+                    if (selecting) {
+                        // In selection mode the row IS the checkbox - tapping it toggles, which is
+                        // how every list of this shape behaves.
+                        Checkbox(
+                            modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                            checked = t.id in selected,
+                            onCheckedChange = { on ->
+                                selected = if (on) selected + t.id else selected - t.id
+                            },
+                        )
+                    } else {
+                    // D-pad: Replay/Rename/Share/Delete sit side by side inside the L/R-swallowing
+                    // Column, so the group drives its own LEFT/RIGHT (issue #24 pattern).
+                    val tripFocus = remember(t.id) { List(4) { FocusRequester() } }
                     TextButton(modifier = Modifier.dpadRowSibling(tripFocus, 0), onClick = { vm.replayTrip(t); onCloseSettings() }) { Text(stringResource(R.string.settings_trip_replay)) }
+                    IconButton(
+                        modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape).dpadRowSibling(tripFocus, 1),
+                        onClick = { renaming = t },
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.settings_trip_rename))
+                    }
                     // Share the raw trace off-device - works on release builds, so a
                     // drive can be handed over for replay/debug without a dev build.
-                    TextButton(modifier = Modifier.dpadRowSibling(tripFocus, 1), onClick = {
+                    TextButton(modifier = Modifier.dpadRowSibling(tripFocus, 2), onClick = {
                         val intent = vm.exportTripIntent(t)
                         if (intent != null) runCatching { context.startActivity(intent) }
                         else android.widget.Toast.makeText(context, context.getString(R.string.settings_trip_read_error), android.widget.Toast.LENGTH_SHORT).show()
                     }) { Text(stringResource(R.string.settings_trip_share)) }
-                    IconButton(modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape).dpadRowSibling(tripFocus, 2), onClick = { vm.deleteTrip(t.id); trips = vm.recordedTrips() }) {
+                    IconButton(modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape).dpadRowSibling(tripFocus, 3), onClick = { vm.deleteTrip(t.id); trips = vm.recordedTrips() }) {
                         Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_trip_delete))
+                    }
                     }
                 }
             }
@@ -181,6 +260,42 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
             Hint(stringResource(R.string.settings_no_trips_hint))
         }
         }
+        renaming?.let { target ->
+            // Seeded with the current name and remembered per trip, so opening the dialog on a
+            // different row does not carry the previous row's text across.
+            var draft by remember(target.id) { mutableStateOf(target.label) }
+            app.vela.ui.VelaDialog(
+                onDismissRequest = { renaming = null },
+                title = stringResource(R.string.settings_trip_rename_title),
+                confirmText = stringResource(R.string.settings_trip_rename),
+                onConfirm = {
+                    val name = draft.trim()
+                    if (name.isNotEmpty()) {
+                        val ok = vm.renameTrip(target.id, name)
+                        // A rewrite can fail (missing file, unwritable) and the list would just
+                        // redraw the old name, which reads as the button doing nothing.
+                        if (!ok) android.widget.Toast.makeText(
+                            context,
+                            context.getString(R.string.settings_trip_rename_failed),
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                        trips = vm.recordedTrips()
+                    }
+                    renaming = null
+                },
+                dismissText = stringResource(android.R.string.cancel),
+                onDismiss = { renaming = null },
+            ) {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.settings_trip_rename_hint)) },
+                    modifier = Modifier.fillMaxWidth().dpadHighlight(),
+                )
+            }
+        }
+
         if (showTripConsent) {
             app.vela.ui.VelaDialog(
                 onDismissRequest = { showTripConsent = false },

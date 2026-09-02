@@ -180,4 +180,29 @@ object TripLog {
         }
         return NavReplay.Report(cards, maneuvers)
     }
+    /** Longest a trip label may be. Long enough for a real description, short enough that the
+     *  header stays a header. */
+    private const val MAX_LABEL = 80
+
+    /**
+     * Rewrite a trip's label, returning the new file lines, or null when [lines] is not a trip
+     * (no META header) - the caller must then leave the file alone rather than write something
+     * unreadable over a recording.
+     *
+     * Lives here, beside the format it edits, so the rename can never drift from what the parser
+     * expects; `:app`'s TripStore does the file IO around it.
+     *
+     * The label is sanitised the same way the writer sanitises it: a comma would shift every
+     * later field of the header by one (the destination would be read as the start time), and a
+     * newline would turn the header into two records, the second of which parses as garbage.
+     * Only field 0 changes; the start time, destination and version code are carried through
+     * untouched, and every line after the header is untouched.
+     */
+    fun renameHeader(lines: List<String>, label: String): List<String>? {
+        val first = lines.firstOrNull() ?: return null
+        if (!first.startsWith("META,")) return null
+        val safe = label.replace(',', ' ').replace('\n', ' ').trim().take(MAX_LABEL).ifBlank { "Trip" }
+        val rest = first.removePrefix("META,").split(',').drop(1)
+        return listOf((listOf("META", safe) + rest).joinToString(",")) + lines.drop(1)
+    }
 }

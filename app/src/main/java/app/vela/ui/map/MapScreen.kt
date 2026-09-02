@@ -832,6 +832,32 @@ fun MapScreen(
     val onStartNav: () -> Unit = {
         if (!fineGranted() && !vm.demoDriveOn()) showPreciseNeeded = true else proceedStartNav()
     }
+    // Name-this-drive prompt (opt-in, Settings > Diagnostics). Shown on the MAP right after a
+    // recorded drive ends, because that is when you remember what the drive was; a name applied
+    // later from the trips list is the same rename, just harder to recall.
+    state.tripToName?.let { justRecorded ->
+        var draft by remember(justRecorded.id) { mutableStateOf(justRecorded.label) }
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { vm.dismissTripNaming() },
+            title = stringResource(R.string.trip_name_prompt_title),
+            confirmText = stringResource(R.string.trip_name_prompt_save),
+            onConfirm = {
+                val name = draft.trim()
+                // An empty box means "leave it alone", not "call it blank".
+                if (name.isNotEmpty()) vm.nameRecordedTrip(justRecorded.id, name) else vm.dismissTripNaming()
+            },
+            dismissText = stringResource(R.string.trip_name_prompt_skip),
+            onDismiss = { vm.dismissTripNaming() },
+        ) {
+            androidx.compose.material3.OutlinedTextField(
+                value = draft,
+                onValueChange = { draft = it },
+                singleLine = true,
+                label = { Text(stringResource(R.string.settings_trip_rename_hint)) },
+                modifier = Modifier.fillMaxWidth().dpadHighlight(),
+            )
+        }
+    }
     if (showPreciseNeeded) {
         app.vela.ui.VelaDialog(
             onDismissRequest = { showPreciseNeeded = false },
