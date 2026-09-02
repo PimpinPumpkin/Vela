@@ -70,14 +70,17 @@ class PlaceListStore @Inject constructor(
 
     /** Merge exported [json] lists in, de-duped by list id (existing lists keep their
      *  places; a brand-new list is appended whole). Returns how many lists were added. */
-    fun importMerge(json: String): Int {
-        val incoming = runCatching { this.json.decodeFromString<List<PlaceList>>(json) }.getOrNull() ?: return 0
+    /** Merge lists from an exported file; reports which outcome happened (issue #287, see
+     *  [ImportResult] - "not our format" and "nothing new" are different answers). */
+    fun importMerge(json: String): ImportResult {
+        val incoming = runCatching { this.json.decodeFromString<List<PlaceList>>(json) }.getOrNull()
+            ?: return ImportResult.WrongFormat(ImportFormats.describe(json))
         val current = lists()
         val existingIds = current.mapTo(HashSet()) { it.id }
         val added = incoming.filterNot { it.id in existingIds }
-        if (added.isEmpty()) return 0
+        if (added.isEmpty()) return ImportResult.NothingNew
         write(current + added)
-        return added.size
+        return ImportResult.Added(added.size)
     }
 
     private companion object {

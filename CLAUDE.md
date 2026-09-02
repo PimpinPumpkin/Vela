@@ -1019,6 +1019,21 @@ Defaults that make the safe path the easy one:
   provider is off (degoogled devices often carry a present-but-disabled NETWORK provider) ->
   AbstractMethodError, crash on every launch (user report, Android 10/Adreno 308). Override all
   four callbacks explicitly in any android.location.LocationListener implementation.
+- **Import reports WHICH outcome happened (issue #287, 2026-08-28).** `SavedPlaceStore.importMerge`
+  / `PlaceListStore.importMerge` return `:core` `data/ImportResult` (Added / NothingNew /
+  WrongFormat(format?) / Unreadable) instead of a bare Int - four very different outcomes used to
+  collapse into "0" and the UI could only say "Nothing to import", which is actively misleading
+  when the real problem is that the file came from another app (a reporter hit exactly that with
+  Google Takeout data). `ImportFormats.describe` names a recognisable foreign file (Takeout,
+  GeoJSON, GPX, KML, Organic Maps) so the message says what it IS; unit-tested
+  (`ImportFormatsTest` - the Takeout matcher was written wrong first and the test caught it, real
+  Takeout URLs are `maps.google.com/?cid=`, not `google.com/maps`). **AND the actual "button does
+  nothing" bug: `importLauncher.launch(...)` was wrapped in a bare `runCatching`**, so on a device
+  with no documents provider the ActivityNotFoundException was swallowed and the button genuinely
+  did nothing - no picker, no message. `launchImport` toasts instead. Device-verified end to end
+  with a Takeout-shaped file. NB importing another app's format is issue #279, still open.
+  ⚠️ A literal wildcard mime in a KDoc block ENDS THE COMMENT (same trap as PoiPackStore's
+  `del_*/ins_*`) - the mime array's comment is a line comment for that reason.
 - **SavedPlace carries an optional address (2026-07-10).** `SavedPlace.address` (defaulted null, so
   pre-existing payloads decode; every store's Json sets ignoreUnknownKeys so downgrades survive too)
   is filled by `SavedPlace.of(Place)` - recents rows show it as a sublabel and the Home/Work rows
@@ -1473,11 +1488,15 @@ Defaults that make the safe path the easy one:
   strings that double as a logic key (place "Open"/"Closed" → status-colour parser, the map category chips /
   search-along-route chips are also the query, review sort/tab labels branch a `when`) are NOT in strings.xml;
   they localize only once display text is split from the logic key. **Names/addresses/reviews are DATA - never
-  translated.** **Translations flow through WEBLATE now (2026-07-14, docs/TRANSLATING.md):** adding a
-  user-facing string means adding it to the ENGLISH base `values/strings.xml` only - translators fill the
-  locales via hosted Weblate (its PRs are reviewed like any other; the em-dash + placeholder rules are the
-  review checklist) and a missing translation falls back to English. Hand-filling every `values-<lang>/` in
-  the same commit (the old rule) is still fine for small batches but no longer required. Match the
+  translated.** **Translations come in as PULL REQUESTS (docs/TRANSLATING.md; issue #285):** adding a
+  user-facing string means adding it to the ENGLISH base `values/strings.xml` only - contributors fill
+  the locales by editing `values-<lang>/strings.xml` (the em-dash + placeholder rules are the review
+  checklist) and a missing translation falls back to English. Hand-filling every `values-<lang>/` in
+  the same commit (the old rule) is still fine for small batches but no longer required.
+  ⚠️ **WEBLATE IS NOT LIVE and its link 404s - do not point anyone at it** (issue #285, 2026-08-28):
+  hosted Weblate requires a project to be at least THREE MONTHS OLD to qualify and Vela is not there
+  yet. README/CONTRIBUTING/FEATURES/TRANSLATING were corrected to describe the PR flow; the README
+  roadmap keeps it as an open item. Rewrite those four the day the project is actually approved. Match the
   `%1$s`/`%2$d` placeholder TYPE to the arg (Int → `%d`, else `%s`; a `%d` fed a String crashes).
   **Count strings use `<plurals>`, not a bare `%d X` (2026-07-11, issue #56 "1 results"):** the
   results-count bar is a `<plurals name="mapscreen_results_count">` read via `pluralStringResource(...,

@@ -33,14 +33,7 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
             ActivityResultContracts.OpenDocument(),
         ) { uri ->
-            if (uri != null) {
-                val n = vm.importSavedFromUri(uri)
-                android.widget.Toast.makeText(
-                    context,
-                    if (n > 0) context.getString(R.string.settings_places_imported, n) else context.getString(R.string.settings_import_nothing),
-                    android.widget.Toast.LENGTH_SHORT,
-                ).show()
-            }
+            if (uri != null) toastImport(context, vm.importSavedFromUri(uri), places = true)
         }
         SettingsGroup {
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
@@ -59,9 +52,7 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             Spacer(Modifier.width(8.dp))
             FilledTonalButton(
                 modifier = Modifier.dpadRowSibling(savedFocus, 1),
-                onClick = {
-                    runCatching { importLauncher.launch(arrayOf("application/json", "*/*")) }
-                },
+                onClick = { launchImport(context) { importLauncher.launch(IMPORT_MIME) } },
             ) { Text(stringResource(R.string.settings_import)) }
         }
         }
@@ -71,14 +62,7 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         val listImportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
             ActivityResultContracts.OpenDocument(),
         ) { uri ->
-            if (uri != null) {
-                val n = vm.importListsFromUri(uri)
-                android.widget.Toast.makeText(
-                    context,
-                    if (n > 0) context.getString(R.string.settings_lists_imported, n) else context.getString(R.string.settings_import_nothing),
-                    android.widget.Toast.LENGTH_SHORT,
-                ).show()
-            }
+            if (uri != null) toastImport(context, vm.importListsFromUri(uri), places = false)
         }
         SettingsGroup(title = stringResource(R.string.mapscreen_section_lists)) {
         app.vela.ui.settings.Hint(stringResource(R.string.settings_lists_export_hint))
@@ -96,12 +80,53 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             Spacer(Modifier.width(8.dp))
             FilledTonalButton(
                 modifier = Modifier.dpadRowSibling(listsFocus, 1),
-                onClick = {
-                    runCatching { listImportLauncher.launch(arrayOf("application/json", "*/*")) }
-                },
+                onClick = { launchImport(context) { listImportLauncher.launch(IMPORT_MIME) } },
             ) { Text(stringResource(R.string.settings_import)) }
         }
         }
         Spacer(Modifier.height(24.dp))
     }
+}
+
+// Mime filter for a picked export. The wildcard type is kept alongside the JSON one because a lot
+// of file providers hand back application/octet-stream for a .json, and filtering that out makes
+// the file look absent - the picker opens onto an empty folder and the feature reads as broken.
+// (NB a literal wildcard mime in a KDoc block closes the comment early - see PoiPackStore.)
+private val IMPORT_MIME = arrayOf("application/json", "*/*")
+
+/**
+ * Open the file picker, and SAY SO when there isn't one (issue #287).
+ *
+ * The launch used to be wrapped in a bare `runCatching`, so on a device with no documents provider
+ * the exception was swallowed and the button genuinely did nothing at all - no picker, no message,
+ * which is exactly what was reported. A stripped-down or degoogled ROM without DocumentsUI is a
+ * realistic case for this app's users.
+ */
+private fun launchImport(context: android.content.Context, launch: () -> Unit) {
+    runCatching { launch() }.onFailure {
+        android.widget.Toast.makeText(
+            context,
+            context.getString(R.string.settings_import_no_picker),
+            android.widget.Toast.LENGTH_LONG,
+        ).show()
+    }
+}
+
+/** One message per real outcome, instead of "nothing to import" for all of them. */
+private fun toastImport(
+    context: android.content.Context,
+    result: app.vela.core.data.ImportResult,
+    places: Boolean,
+) {
+    val msg = when (result) {
+        is app.vela.core.data.ImportResult.Added ->
+            if (places) context.getString(R.string.settings_places_imported, result.count)
+            else context.getString(R.string.settings_lists_imported, result.count)
+        app.vela.core.data.ImportResult.NothingNew -> context.getString(R.string.settings_import_nothing_new)
+        app.vela.core.data.ImportResult.Unreadable -> context.getString(R.string.settings_import_unreadable)
+        is app.vela.core.data.ImportResult.WrongFormat ->
+            result.format?.let { context.getString(R.string.settings_import_wrong_format_named, it) }
+                ?: context.getString(R.string.settings_import_wrong_format)
+    }
+    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
 }

@@ -162,6 +162,11 @@
     <string name="settings_saved_places">Saved places</string>
     <string name="settings_saved_places_hint">Back up your starred places to a file, or restore them on another device. Import merges into what you already have. It never overwrites or removes anything.</string>
     <string name="settings_import_nothing">Nothing new to import</string>
+    <string name="settings_import_nothing_new">Everything in that file is already saved.</string>
+    <string name="settings_import_unreadable">That file could not be opened.</string>
+    <string name="settings_import_wrong_format">That is not a Vela export. Use a file saved with Export, from the same screen.</string>
+    <string name="settings_import_wrong_format_named">That looks like a %1$s file. Vela can only import its own exports for now.</string> <!-- format -->
+    <string name="settings_import_no_picker">No file picker is available on this device, so a file cannot be chosen.</string>
     <string name="settings_no_saved_places">No saved places yet</string>
     <string name="settings_export">Export</string>
     <string name="settings_import">Import</string>
