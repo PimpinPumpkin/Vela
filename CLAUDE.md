@@ -2141,6 +2141,21 @@ architecture note.
   slow path. `rerouteGate` therefore takes the attempt's OWN deadline - judging an escalated
   attempt by the lean one would declare a healthy fetch wedged and kill it just before it
   succeeded, the original bug wearing a new hat.
+  **A REROUTE PINS ITS DEPARTURE HEADING (real-drive report 2026-08-17: "it keeps rerouting me the
+  way I was going before").** After a wrong turn, an unconstrained reroute is perfectly entitled to
+  answer "U-turn and rejoin" - from a point a few tens of metres down the wrong road, going back
+  often IS the fastest path - so the driver is told to turn around, carries on anyway, and is told
+  to turn around again. `RouteGeometry.departBearingParam` sends OSRM `bearings=<heading>,65` for
+  the FIRST waypoint only (every later waypoint gets an empty entry; the count MUST match the
+  coordinates or OSRM rejects the whole request and the reroute dies with it), so the router answers
+  "given that I am going this way, what now" - which is what Google does. Threaded
+  NavSession.onLocation's `bearingDeg` -> reroute -> `MapDataSource.directions(departBearingDeg=)`.
+  **Planning fetches send NOTHING**: which way a parked car happens to face is not a routing
+  constraint. Null heading (stationary, or a fix without one) also sends nothing - a stale heading
+  is worse than none. Unit-tested on the STRING (`DepartBearingTest`) because a malformed parameter
+  is not an error: OSRM ignores it and routes as before, so the fix would silently do nothing.
+  Note the related gate this does NOT change: off-route detection needs `movingFloorMps` = 2.0, so
+  inching away from a junction is not counted as deviating until the 90 m far-off rule fires.
   since 2026-08-04 the reroute fetch is URGENT (`directions(urgent = true)`, issues #185/#236):
   single-shot OSRM + Google (no 3x ladders), no divergence snap - the full planning ladder
   regularly outlived the deadline on a weak link, so the timeout cancelled fetches that were

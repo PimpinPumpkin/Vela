@@ -157,8 +157,9 @@ object RouteGeometry {
         avoidTolls: Boolean = false,
         avoidHighways: Boolean = false,
         tries: Int = OSRM_TRIES,
+        departBearingDeg: Double? = null,
     ): List<Route> =
-        routeOsrm(http, listOf(origin, dest), mode, alternatives = true, avoidTolls, avoidHighways, tries)
+        routeOsrm(http, listOf(origin, dest), mode, alternatives = true, avoidTolls, avoidHighways, tries, departBearingDeg)
 
     /** OSRM forced THROUGH [waypoints] (origin, vias…, dest) — used to follow Google's
      *  traffic-smart path with OSRM's full street-named steps (option 3: traffic-aware routing).
@@ -172,6 +173,30 @@ object RouteGeometry {
     ): List<Route> =
         if (waypoints.size < 2) emptyList() else routeOsrm(http, waypoints, mode, alternatives = false, avoidTolls, avoidHighways)
 
+    /**
+     * OSRM `bearings=`, constraining only the FIRST waypoint to the direction the car is actually
+     * pointing (real-drive report, 2026-08-17: after a wrong turn the reroute kept answering "go
+     * back the way you came").
+     *
+     * Unconstrained, a reroute computed a few tens of metres down the wrong road is perfectly
+     * entitled to reply with a U-turn - from there, rejoining the old route often IS the fastest
+     * path - so the driver is told to turn around, carries on instead, and gets told to turn around
+     * again. Pinning the departure heading makes the router answer the question the driver is
+     * actually asking: given that I am going THIS way, what now. Google does the same.
+     *
+     * [TOLERANCE_DEG] either side: wide enough to absorb GPS heading noise and a car mid-turn, narrow
+     * enough that a 180 degree answer is excluded. Every later waypoint is left unconstrained (an
+     * empty entry) - only the departure is a fact about the car; the stops are just places.
+     * Null bearing (stationary, no fix heading) sends nothing at all.
+     */
+    internal fun departBearingParam(bearingDeg: Double?, waypoints: Int): String {
+        if (bearingDeg == null || waypoints < 2) return ""
+        val b = ((bearingDeg % 360.0) + 360.0) % 360.0
+        return "&bearings=${b.toInt()},$BEARING_TOLERANCE_DEG" + ";".repeat(waypoints - 1)
+    }
+
+    private const val BEARING_TOLERANCE_DEG = 65
+
     private fun routeOsrm(
         http: OkHttpClient,
         points: List<LatLng>,
@@ -180,12 +205,14 @@ object RouteGeometry {
         avoidTolls: Boolean = false,
         avoidHighways: Boolean = false,
         tries: Int = OSRM_TRIES,
+        departBearingDeg: Double? = null,
     ): List<Route> {
         val backend = backend(mode) ?: return emptyList()
         val coords = points.joinToString(";") { "${it.lng},${it.lat}" }
         val url = "$OSRM_BASE/$backend/route/v1/driving/$coords" +
             "?overview=full&geometries=polyline&steps=true" +
             (if (alternatives) "&alternatives=3" else "") +
+            departBearingParam(departBearingDeg, points.size) +
             excludeParam(mode, avoidTolls, avoidHighways)
         val req = Request.Builder().url(url).header("User-Agent", VelaConfig.USER_AGENT).build()
         // The FOSSGIS community OSRM transiently 5xx/429/resets on mobile, and each miss otherwise drops
