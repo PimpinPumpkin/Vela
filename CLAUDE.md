@@ -65,7 +65,16 @@ Defaults that make the safe path the easy one:
   search recents, POI labels and street names all talk.
 - **Recorded trips, diagnostics exports and adb dumps carry raw GPS.** Never
   attach them to issues, commits, or CI artifacts; share privately when a
-  maintainer asks.
+  maintainer asks. **`scripts/scrub-trip.py` makes a trip shareable** by TRIMMING
+  the private ends: every fix within a radius (default 400 m) of the start, the
+  end, the META destination, and any `--at lat,lng` you add is deleted, and the
+  middle is left at FULL precision. Trimming, not rounding, on purpose - a
+  bug lives in the middle of a drive and needs real geometry, while a 1 km
+  round still names your block. It also strips the destination out of the META
+  header and drops the route line + any maneuver inside a trimmed zone (a
+  polyline starting at your driveway leaks the same fact the fixes would).
+  It prints what it removed and the remaining first fix - check that before
+  sharing.
 - **Before committing, scan the diff** for coordinate-shaped numbers, numbered
   streets and zip codes, and put each one through the question above.
 
