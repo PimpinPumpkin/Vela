@@ -13,9 +13,14 @@ on:
   workflow_dispatch:
     inputs:
       group:
-        description: "Region group to build (ignored if 'ids' is set)"
-        type: choice
-        options: [us, canada, europe, germany-sub, oceania, asia, south-america, central-america, africa]
+        # A free-text STRING, not a choice: the selector takes a LIST now, and the sub-area groups
+        # are one per big country (16 of them), which would make an unusable dropdown - and a
+        # dropdown cannot express "brazil-sub,france-sub" or "all-sub" at all.
+        # Continents: us canada europe oceania asia south-america central-america africa
+        # Sub-areas:  <country>-sub (germany-sub, brazil-sub, france-sub, ...) or all-sub for every one
+        description: "Region group(s): one, several comma/space separated, or 'all-sub' for every sub-area group (ignored if 'ids' is set)"
+        type: string
+        default: europe
         default: us
       ids:
         description: "Optional: space/comma-separated region ids (e.g. 'arizona utah colorado'). Overrides 'group'."
@@ -52,9 +57,17 @@ jobs:
           SKIP_BIG: ${{ inputs.skip_big }}
         run: |
           ids_json=$(jq -cn --arg s "$IDS" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
-          sel=$(jq -c --arg group "$GROUP" --argjson ids "$ids_json" --argjson skipBig "${SKIP_BIG:-false}" '
+          # `group` accepts a LIST now, and the shorthand `all-sub` for every sub-area group at once
+          # (issue #254 added sub-areas for 15 big countries, and one dispatch per country would be
+          # 15 runs of the same thing). A single group name still behaves exactly as before.
+          groups_json=$(jq -cn --arg s "$GROUP" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
+          sel=$(jq -c --arg group "$GROUP" --argjson groups "$groups_json" --argjson ids "$ids_json" --argjson skipBig "${SKIP_BIG:-false}" '
             [ .regions[]
-              | select( if ($ids|length) > 0 then (.id as $rid | $ids | index($rid)) != null else .group == $group end )
+              | select(
+                  if ($ids|length) > 0 then (.id as $rid | $ids | index($rid)) != null
+                  elif $group == "all-sub" then (.group | endswith("-sub"))
+                  else (.group as $g | $groups | index($g)) != null end
+                )
               | select( ($skipBig | not) or (.big != true) )
               | {id, name, pbf_url} ]
           ' tools/routing-regions.json)
