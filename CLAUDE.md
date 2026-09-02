@@ -2462,7 +2462,42 @@ architecture note.
   languages come along). Bake: `scripts/build-obf-region.sh` + `merge-obf-manifest.sh` +
   `.github/workflows/obf-regions.yml` (matrix clone; the MapCreator tool is pinned on the
   `obf-tools` release); assets are RAW .obf (already deflate-compressed inside; download size ==
-  installed size). CUTOVER = the manifest, and the world bake STAGES it (2026-08-03): dispatching obf-regions
+  installed size).
+  **WITHOUT HH, A LONG OFFLINE ROUTE CAN FAIL OUTRIGHT, NOT MERELY RUN SLOW (measured 2026-08-17
+  against a real baked Bayern obf, using ObfRouteEngine's own config and memory limits).** NB the
+  threshold is REGION-DEPENDENT, not a fixed distance: a 150 km cross-file route in Saarland/
+  Rheinland-Pfalz completed on the 4a in 69 s (2026-08-03), while the same distance across Bayern's
+  denser network fails at the shipped limit. Treat the distances below as one dense sample, not a
+  universal cutoff. The router does not degrade gracefully: past its budget it throws
+  `IllegalStateException: There is not enough memory ... - limit 256 MB`, which is
+  `ObfRouteEngine.MEMORY_MB`. Measured on a fast desktop, car profile:
+    4 km   -> 0.87 s at 256 MB
+    57 km  -> 5.65 s at 256 MB
+    151 km -> FAILS at 256 MB; 4.6 s once given 1024 MB
+    348 km -> FAILS at 256 MB and at 1024 MB; 41.9 s once given 3072 MB
+  So the requirement scales steeply with route length, and **raising MEMORY_MB is not available to
+  us**: the app runs under `largeHeap` (~512 MB total, and it already fights that ceiling - see the
+  ambient fan-out and MemoryPressure notes), so a routing context wanting 1-3 GB cannot exist on a
+  phone at all. **This means the obf migration as currently baked is a REGRESSION against the
+  GraphHopper graphs for long offline routes**, because those ship CH (contraction hierarchies)
+  and did a 24-mile route in 188 ms. HH is the obf equivalent, and `scripts/VelaObfShim.java` does
+  NOT generate it. So HH is not the "follow-up if long routes measure slow" this file used to call
+  it - it is a PREREQUISITE for offline feature parity, and it lands on top of a bake that already
+  does not fit CI. Until HH exists, offline obf routing is a city/metro feature; anything intercity
+  must stay online or stay on GraphHopper.
+  **THE BAKE DOES NOT FIT A GITHUB RUNNER AT COUNTRY SCALE (measured 2026-08-16, the first time
+  obf-regions.yml was ever run).** Luxembourg and Delaware baked fine (39 MB and 20 MB obf); Czech
+  Republic and `de-bayern` both died with `OutOfMemoryError: Java heap space` at `-Xmx12g` on a
+  16 GB runner, and Bayern (810 MB pbf) OOM'd AGAIN at 14g after three hours. Two traps in reading
+  that: (1) **a sub-area is not automatically small enough** - Bayern IS one of the germany-sub
+  rows, so #254's split helps download size but does NOT get a bake under the memory ceiling;
+  (2) **a longer run is not progress** - the 14g attempt lasted 4x longer than the 12g one and
+  still failed, because a nearly-full heap thrashes before it dies. `processInRam` already defaults
+  to false, so that knob is not the answer. Untried: ParallelGC (SerialGC's single-threaded full
+  collections are the likely reason 14g took three hours to fail), and baking big regions off-CI
+  where more RAM is available - `JAVA_HEAP` in build-obf-region.sh exists for exactly that. Until
+  this is solved the world bake CANNOT be dispatched: ~30 big rows would burn hours each and fail.
+  CUTOVER = the manifest, and the world bake STAGES it (2026-08-03): dispatching obf-regions
   with the default staging=true merges entries into `obf-manifest-staging.json`, which the app
   never reads - bake every group there, then ONE `gh release download/upload` copy of staging
   over the live name flips the whole catalog atomically (region-by-region merging into the live

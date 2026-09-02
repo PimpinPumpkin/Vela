@@ -33,9 +33,42 @@ read -r MINLON MINLAT MAXLON MAXLAT < <(osmium fileinfo -g header.boxes "$WORK/r
 BBOX="[$MINLAT,$MINLON,$MAXLAT,$MAXLON]"
 
 javac -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*" -d "$WORK" "$ROOT/scripts/VelaObfShim.java"
-# Not processInRam: MapCreator's disk-backed pipeline is what lets a whole country bake inside a
-# 16 GB runner. The heap bound is for its indexes, not the region.
-( cd "$WORK" && java -Xmx12g -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*:$WORK" VelaObfShim region.osm.pbf )
+# Not processInRam (it already defaults to false): MapCreator's disk-backed pipeline is what lets a
+# region bake inside a small runner at all. The heap bound is for its indexes, not the region.
+#
+# HEAP (2026-08-16). MEASURED, and the honest summary is that a GitHub runner cannot do this at
+# country scale:
+#   luxembourg  (~30 MB pbf)  -> 39 MB obf   OK at 12g
+#   delaware    (~30 MB pbf)  -> 20 MB obf   OK at 12g
+#   czech-republic            -> OOM at 12g (~37 min in)
+#   de-bayern   (810 MB pbf)  -> OOM at 12g (~37 min), and OOM AGAIN at 14g after THREE HOURS
+# So the ceiling sits somewhere between a US state and an 810 MB extract, and splitting a country
+# into sub-areas does NOT by itself get under it - Bayern IS a sub-area. Note the 14g run's three
+# hours: a job that slows down and then dies is thrashing a nearly-full heap, so a long runtime
+# here is a symptom of the failure, not progress toward success. SerialGC keeps G1's region
+# bookkeeping and concurrent threads (hundreds of MB) out of the way, but with the heap this close
+# to full its single-threaded full collections are likely most of that three hours - try
+# ParallelGC before reading any timing from this path as the tool's true cost.
+# Regions this size need a machine with more RAM than a 16 GB runner; JAVA_HEAP exists so a local
+# bake can be handed the headroom. MEASURED on a 32 GB machine: bayern at -Xmx22g SUCCEEDS in
+# 3h07m and produces a 694 MB obf, with the heap peaking around 18.4 GB before a full GC - which is
+# why 14g never had a chance, and why no GC flag was ever going to save it. ParallelGC vs SerialGC
+# did not change the outcome, only the time to reach it (50 min vs 3 h to the same OOM), so it is
+# still the right collector here: a doomed region should fail fast.
+JAVA_HEAP="${JAVA_HEAP:-14g}"
+echo "→ index heap: $JAVA_HEAP"
+set +e
+( cd "$WORK" && java -Xmx"$JAVA_HEAP" -XX:+UseSerialGC -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*:$WORK" VelaObfShim region.osm.pbf )
+RC=$?
+set -e
+if [ $RC -ne 0 ]; then
+  # Say WHICH region was too big and how big its source was, so a world bake reports a usable list
+  # of what needs baking elsewhere instead of a wall of identical red crosses.
+  PBF_MB=$(( ( $(stat -f%z "$WORK/region.osm.pbf" 2>/dev/null || stat -c%s "$WORK/region.osm.pbf") + 1048575 ) / 1048576 ))
+  echo "::error::$ID FAILED to index (exit $RC). Source PBF was ${PBF_MB} MB. If this was an" \
+       "OutOfMemoryError, this region does not fit a $JAVA_HEAP heap - bake it on a bigger machine."
+  exit $RC
+fi
 OBF="$(ls "$WORK"/*.obf | head -1)"  # generateObf names the output from the pbf filename
 mv "$OBF" "$WORK/$ID.obf"
 
