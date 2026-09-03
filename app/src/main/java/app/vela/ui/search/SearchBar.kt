@@ -13,6 +13,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PublicOff
 import androidx.compose.material.icons.filled.Search
@@ -73,6 +74,8 @@ fun SearchBar(
     // Voice search: shown only when there's a way to service it (a voice-input app, and later an
     // on-device model). Null = no mic. Sits at the right when the field is empty, Google-style.
     onMic: (() -> Unit)? = null,
+    /** Opens Your lists. Null hides the button (issue #290 moved it here from the chip row). */
+    onOpenLists: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     // D-pad (docs/dpad.md): mere focus traversal must NOT fall into the text field (its
@@ -241,6 +244,19 @@ fun SearchBar(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.padding(end = 4.dp),
                 )
+            }
+            // Your lists, moved here from the head of the category-chip row (issue #290): there it
+            // sat on the far left competing with the quick-category chips, which is a different
+            // kind of thing. Only on the bare map (onOpenLists != null) and only with the field
+            // empty, so it never crowds the clear button while typing.
+            if (onOpenLists != null && query.isEmpty()) {
+                IconButton(onClick = onOpenLists, modifier = Modifier.size(40.dp)) {
+                    Icon(
+                        Icons.Default.Bookmarks,
+                        contentDescription = stringResource(R.string.mapscreen_section_lists),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             // Voice search mic: only with the field empty (the clear "X" owns the typing state,
             // Google-style) and only when something can service it (onMic != null). Sits just

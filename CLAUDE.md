@@ -1646,6 +1646,16 @@ architecture note.
   COMMERCIAL/RETAIL blocks cream #fdf9ef via the `vela-commercial` twin (Liberty ships no
   layer for those classes; dark paints the twin #1c2638 = the other-landuse navy so dark
   is unchanged).
+- **Heading beam + Your lists placement (issues #289 / #290, 2026-09-03).** The browse heading
+  beam (`arrowBitmap`) ran a TWO-stop gradient from alpha 150 at the APEX to 0 at the tip - but
+  the apex sits UNDER the location dot, so the strongest part was hidden and everything visible
+  had already faded most of the way out. Three stops now (210 / 165 at 30% / 0), holding real
+  opacity across the span that actually clears the dot: mean alpha over the VISIBLE part goes
+  53 -> 84, and 105 -> 165 right where the cone emerges. Slightly wider too. When tuning this,
+  reason about the visible span, not the peak. **Your lists moved OUT of the category-chip row
+  into the search bar** beside the mic and gear: leading the chip row it competed with the
+  quick-category chips, which are a different kind of control. Bare map + empty query only, so it
+  never crowds the clear button.
 - **Glyph ink rule (2026-07-11): leading/functional GLYPHS wear the SOFT ink, text keeps
   the strong ink.** Solid Material icons read heavier than text at the same colour, and
   several sites were outright BLACK (an untinted Icon on a non-Surface container falls
