@@ -84,4 +84,34 @@ class SpokenScriptTest {
     @Test fun `a hebrew UI keeps hebrew even when the dict has a latin name`() {
         assertEquals("פנה אל רחוב הרצל", SpokenScript.forDisplay("פנה אל רחוב הרצל", "he", dict))
     }
+
+    // The dict path (issue #251 stall, 2026-09-03): the road-name table can hold a whole region's
+    // names, and the banner applies it twice per GPS fix on the main thread.
+    @Test fun `display dict swaps a local name for its latin form, longest name first`() {
+        val dict = mapOf("רחוב" to "Rehov", "רחוב הרצל" to "Rehov Herzl")
+        assertEquals("Turn right onto Rehov Herzl", SpokenScript.forDisplay("Turn right onto רחוב הרצל", "en", dict))
+    }
+
+    @Test fun `plain-script text returns as-is without touching a big dict`() {
+        // Every matchable entry carries a foreign-script character, so text without one can never
+        // match: it must come back identical (and, by construction, without a sort of the table).
+        val big = HashMap<String, String>()
+        for (i in 0 until 200_000) big["רחוב $i"] = "Rehov $i"
+        val text = "Turn right onto Elm Street"
+        assertEquals(text, SpokenScript.forDisplay(text, "en", big))
+        val t0 = System.nanoTime()
+        repeat(200) { SpokenScript.forDisplay(text, "en", big) }
+        val perCallMs = (System.nanoTime() - t0) / 200 / 1e6
+        org.junit.Assert.assertTrue("plain text took ${perCallMs} ms per call", perCallMs < 1.0)
+    }
+
+    @Test fun `a replaced dict instance is honoured, not the cached digest of the old one`() {
+        val a = mapOf("רחוב" to "Rehov")
+        val b = mapOf("רחוב" to "Street")
+        assertEquals("onto Rehov", SpokenScript.forDisplay("onto רחוב", "en", a))
+        assertEquals("onto Street", SpokenScript.forDisplay("onto רחוב", "en", b))
+        assertEquals("onto Rehov", SpokenScript.forDisplay("onto רחוב", "en", a))
+        // A reader of the name's own script keeps it, whatever the dict says.
+        assertEquals("onto רחוב", SpokenScript.forDisplay("onto רחוב", "he", b))
+    }
 }

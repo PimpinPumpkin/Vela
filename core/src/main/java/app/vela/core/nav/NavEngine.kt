@@ -160,7 +160,8 @@ object NavEngine {
         // [offDist], the perpendicular distance of the projection we ADOPTED (or the best seen
         // while holding) — the off-route check below keys on it, NOT on the whole-polyline
         // minimum, so "near the RETURN leg of an out-and-back" can't mask a genuine exit.
-        val cum = cumulative(route.polyline)
+        val geom = geomFor(route)
+        val cum = geom.cum
         val total = cum.lastOrNull() ?: 0.0
         var reacquireHits = state.reacquireHits
         val traveled: Double
@@ -280,20 +281,8 @@ object NavEngine {
         // tile the polyline (Google's abbreviated fallback; old trip recordings made before via
         // distances were folded carry km-wrong step lengths). A location that can't be found on
         // the polyline at all (damaged data) falls back to the anchored global match.
-        val manAlong = DoubleArray(maneuvers.size)
-        run {
-            var fromM = 0.0
-            for (k in maneuvers.indices) {
-                // +0.5 nudge past the previous position: a segment ENDING exactly at fromM still
-                // overlaps the window and its (earlier) projection would win the strict-less tie.
-                val (wm, wd) = projectAlong(route.polyline, cum, maneuvers[k].location, fromM + 0.5, total)
-                manAlong[k] = (
-                    if (wd <= ON_ROUTE_M) wm
-                    else projectNearAnchor(route.polyline, cum, maneuvers[k].location, fromM).first
-                    ).coerceAtLeast(fromM)
-                fromM = manAlong[k]
-            }
-        }
+        // Computed once per ROUTE in [geomFor] (it depends on nothing but the route), not per fix.
+        val manAlong = geom.manAlong
         fun maneuverAlong(k: Int): Double = manAlong[k]
 
         var spoken = state.spoken
@@ -515,6 +504,35 @@ object NavEngine {
     }
 
     /** Cumulative geometric length (m) of [path] at each vertex (cum[0] = 0). */
+    /** The per-route geometry every [update] needs: cumulative metres at each vertex, and each
+     *  maneuver's along-route mark. Both depend on the ROUTE alone, yet were rebuilt on every fix:
+     *  a full-polyline pass plus a windowed projection of EVERY maneuver over the remaining line,
+     *  once a second on the main thread, ~19 ms on a long route (measured 2026-09-03: over a
+     *  frame budget by itself, so the puck dropped a frame per fix even with the banner fixed).
+     *  One slot keyed by route identity: nav follows a single route and a reroute is a new object. */
+    private class RouteGeom(val route: Route, val cum: DoubleArray, val manAlong: DoubleArray)
+    @Volatile private var geomCache: RouteGeom? = null
+
+    private fun geomFor(route: Route): RouteGeom {
+        geomCache?.let { if (it.route === route) return it }
+        val cum = cumulative(route.polyline)
+        val total = cum.lastOrNull() ?: 0.0
+        val maneuvers = route.maneuvers
+        val manAlong = DoubleArray(maneuvers.size)
+        var fromM = 0.0
+        for (k in maneuvers.indices) {
+            // +0.5 nudge past the previous position: a segment ENDING exactly at fromM still
+            // overlaps the window and its (earlier) projection would win the strict-less tie.
+            val (wm, wd) = projectAlong(route.polyline, cum, maneuvers[k].location, fromM + 0.5, total)
+            manAlong[k] = (
+                if (wd <= ON_ROUTE_M) wm
+                else projectNearAnchor(route.polyline, cum, maneuvers[k].location, fromM).first
+                ).coerceAtLeast(fromM)
+            fromM = manAlong[k]
+        }
+        return RouteGeom(route, cum, manAlong).also { geomCache = it }
+    }
+
     internal fun cumulative(path: List<LatLng>): DoubleArray {
         val cum = DoubleArray(path.size)
         for (i in 1 until path.size) cum[i] = cum[i - 1] + path[i - 1].distanceTo(path[i])
