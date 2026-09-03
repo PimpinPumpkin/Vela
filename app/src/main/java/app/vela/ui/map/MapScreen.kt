@@ -284,8 +284,10 @@ fun MapScreen(
         // camera fit frames the guided leg in the visible top strip, not behind the pane.
         state.transitNav != null -> (screenHeightPx * 0.48f).toInt()
         placeSheetUp -> if (landscapeChrome) 0 else (screenHeightPx * 0.56f).toInt()
+        // Landscape: the chooser is a LEFT side panel (see its modifier), so it costs no bottom
+        // inset - the route frames beside it instead of being squeezed into a sliver above it.
         state.directionsOpen && !state.navigating ->
-            (screenHeightPx * (if (dirMinimized) 0.14f else 0.58f)).toInt()
+            if (landscapeChrome) 0 else (screenHeightPx * (if (dirMinimized) 0.14f else 0.58f)).toInt()
         // Results bottom sheet at peek covers ~the bottom half: frame the result pins
         // in the visible top half, not behind the sheet.
         state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed &&
@@ -295,6 +297,11 @@ fun MapScreen(
     val cameraLeftInset = if (!landscapeChrome) 0 else when {
         state.streetView != null || state.streetViewLoading -> 0
         placeSheetUp -> sidePanelWidthPx
+        // Nav chrome is a left column in landscape, so the puck must sit clear of it.
+        state.navigating -> sidePanelWidthPx
+        // The route chooser is a left panel in landscape too (issue #297), so the route it is
+        // asking you to choose has to be framed clear of it.
+        state.directionsOpen && !state.navigating && !dirMinimized -> sidePanelWidthPx
         state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed &&
             !state.navigating -> sidePanelWidthPx
         else -> 0
@@ -1302,8 +1309,13 @@ fun MapScreen(
                 onPreviewNext = { vm.previewStep((shownIdx + 1).coerceAtMost(mans?.lastIndex ?: liveStep)) },
                 onPreviewPrev = { if (shownIdx - 1 <= liveStep) vm.clearPreview() else vm.previewStep(shownIdx - 1) },
                 onExitPreview = vm::clearPreview,
+                // Landscape: the turn card becomes a LEFT column rather than a full-width banner
+                // (issue #297). Spanning the width, it and the ETA bar left a thin horizontal
+                // sliver of map between them with the puck half under the bar - the road ahead is
+                // exactly what you need to see while driving.
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
+                    .align(if (landscapeChrome) Alignment.TopStart else Alignment.TopCenter)
+                    .then(if (landscapeChrome) Modifier.widthIn(max = sidePanelWidthDp) else Modifier)
                     .statusBarsPadding()
                     .padding(12.dp)
                     // Report the banner's bottom edge so the compass can drop just below it (any height).
@@ -1347,7 +1359,19 @@ fun MapScreen(
                     // stops editor own the screen.
                     if (state.directionsOpen && !searchOpen && state.pickOnMap == null && !state.showSteps && !state.editingStops) {
                         app.vela.ui.place.RouteTopCard(
-                            modifier = Modifier.onGloballyPositioned {
+                            // Landscape: capped to the side-panel width and start-aligned, so the
+                            // card sits ABOVE the chooser in the left column instead of spanning
+                            // the screen (issue #297). Full width, the chooser panel covered its
+                            // left half and the visible remainder read as an empty dark slab
+                            // floating over the map.
+                            modifier = Modifier
+                                .then(
+                                    if (landscapeChrome) Modifier
+                                        .align(Alignment.Start)
+                                        .widthIn(max = sidePanelWidthDp)
+                                    else Modifier,
+                                )
+                                .onGloballyPositioned {
                                 topCardBottomPx = (it.positionInRoot().y + it.size.height).roundToInt()
                             },
                             originName = if (state.directionsReversed) (state.selected?.name ?: stringResource(R.string.mapscreen_place))
@@ -1749,9 +1773,12 @@ fun MapScreen(
 
             // While an in-nav search has results, the results branch below takes the bottom
             // slot (Google's in-nav list does the same); clearing it brings the bar back.
+            // Landscape: the ETA/End bar joins the turn card in the LEFT column instead of
+            // spanning the width (issue #297), so the map keeps the whole right side.
             state.navigating && state.results.isEmpty() -> Column(
                 Modifier
-                    .align(Alignment.BottomCenter)
+                    .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
+                    .then(if (landscapeChrome) Modifier.widthIn(max = sidePanelWidthDp) else Modifier)
                     .navigationBarsPadding()
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -1813,7 +1840,13 @@ fun MapScreen(
                 onTransitPreview = vm::onTransitRowExpanded,
                 onTimeSelected = vm::setDirectionsTime,
                 onCollapsedChange = { dirMinimized = it },
-                modifier = Modifier.align(Alignment.BottomCenter),
+                // Landscape: a LEFT side panel, width-capped, exactly like the place and results
+                // sheets beside it (issue #297). As a full-width bottom sheet its open height ate
+                // a landscape screen whole - the map was not merely obscured, it was completely
+                // gone, which is a poor way to ask someone to choose between routes drawn on it.
+                modifier = Modifier
+                    .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
+                    .then(if (landscapeChrome) Modifier.widthIn(max = sidePanelWidthDp) else Modifier),
             )
 
             // The place sheet yields while Street View is up - the pano takes the top half and the
