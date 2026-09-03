@@ -942,6 +942,19 @@ Defaults that make the safe path the easy one:
   provider is off (degoogled devices often carry a present-but-disabled NETWORK provider) ->
   AbstractMethodError, crash on every launch (user report, Android 10/Adreno 308). Override all
   four callbacks explicitly in any android.location.LocationListener implementation.
+- **Places import from OTHER APPS (issue #279, 2026-09-02).** `:core` `data/PlaceImport` reads GPX
+  waypoints, KML placemarks and GeoJSON points (including Google Takeout, whose name/address hide
+  under `properties.location`), tried by `SavedPlaceStore.importMerge` when the file is not Vela's
+  own export. Migration path for people arriving from Organic Maps / CoMaps / OsmAnd. ⚠️ **GPX is
+  lat-then-lon but KML and GeoJSON are LNG FIRST** - reading either the wrong way round silently
+  imports a whole collection into the Gulf of Guinea, so both orders are pinned by
+  `PlaceImportTest`. Deliberately imports ONLY name + coordinate (+ address where Takeout gives
+  one): every format agrees on those, and a confidently wrong address is worse than no import.
+  Ids are content-derived from the rounded coordinate, so re-importing the same file adds nothing
+  (device-verified: "Imported 3 place(s)" then "Everything in that file is already saved").
+  0,0 and out-of-range coordinates are dropped rather than pinned at null island. The picker's
+  mime list keeps a broad `*/*` last on purpose - Android does not know `.gpx` and reports it as
+  an octet-stream BIN file, so a strict filter makes the file look absent.
 - **Import reports WHICH outcome happened (issue #287, 2026-08-28).** `SavedPlaceStore.importMerge`
   / `PlaceListStore.importMerge` return `:core` `data/ImportResult` (Added / NothingNew /
   WrongFormat(format?) / Unreadable) instead of a bare Int - four very different outcomes used to
