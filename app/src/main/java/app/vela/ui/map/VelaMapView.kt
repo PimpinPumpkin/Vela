@@ -374,6 +374,9 @@ fun VelaMapView(
     // Reports whether a manual pinch/shove override is active during nav (true on set, false on
     // clear) so the screen can show Re-center for a zoomed-but-still-following camera (issue #238).
     onNavZoomOverride: (Boolean) -> Unit = {},
+    /** The drawn puck's position in SCREEN px while navigating, so the caller can hang the
+     *  current-road label off it (issue #288). Reported only when it actually moves. */
+    onPuckScreen: (Float, Float) -> Unit = { _, _ -> },
     onPoiTap: (name: String, location: LatLng, poiKind: String?) -> Unit,
     onMarkerTap: (index: Int) -> Unit,
     parkingSpot: LatLng? = null, // saved "parked here" pin; tap → onParkingTap
@@ -464,6 +467,11 @@ fun VelaMapView(
     val addrLabelTap = rememberUpdatedState(onAddressLabelTap)
     val navPanned = rememberUpdatedState(onNavPanned)
     val zoomOverride = rememberUpdatedState(onNavZoomOverride)
+    val puckScreenCb = rememberUpdatedState(onPuckScreen)
+    // Last reported puck screen position, so the label is not re-laid-out 60x a second: the
+    // follow camera holds the puck at essentially ONE screen spot, so this fires a handful of
+    // times per drive instead of per frame.
+    val lastPuckScreen = remember { floatArrayOf(Float.NaN, Float.NaN) }
     val userPan = rememberUpdatedState(onUserPan)
     val scaleChanged = rememberUpdatedState(onScaleChanged)
     val overlayState = rememberUpdatedState(onOverlayState)
@@ -1619,6 +1627,21 @@ fun VelaMapView(
                 }
                 navPuck.drawn = pt // the camera follows this smoothed point, not the raw fix
                 setMeSource(style, pt, navPuck.displayBearing)
+                // Where the puck landed on screen, for the current-road label beneath it
+                // (issue #288). Projection is a cheap matrix op, but the REPORT is gated on real
+                // movement - the follow camera parks the puck at one spot, so pushing this into
+                // compose every frame would recompose the label 60x a second for nothing.
+                runCatching { mapRef?.projection?.toScreenLocation(MLLatLng(pt.lat, pt.lng)) }
+                    .getOrNull()?.let { sp ->
+                        if (lastPuckScreen[0].isNaN() ||
+                            kotlin.math.abs(sp.x - lastPuckScreen[0]) > 2f ||
+                            kotlin.math.abs(sp.y - lastPuckScreen[1]) > 2f
+                        ) {
+                            lastPuckScreen[0] = sp.x
+                            lastPuckScreen[1] = sp.y
+                            puckScreenCb.value(sp.x, sp.y)
+                        }
+                    }
                 // Drive the follow-camera HERE, per frame (60 fps) with a continuous ease, instead
                 // of the recomposition-driven block below (which re-pointed only ~1-3×/s in
                 // throttled 550 ms eases — the "stiff" feel). Ease the camera toward the smooth
