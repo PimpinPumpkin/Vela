@@ -223,6 +223,10 @@ private const val USE_MAPTILER = false
 private val SIDE_PANEL_WIDTH_MIN = 400.dp
 private val SIDE_PANEL_WIDTH_MAX = 520.dp
 
+/** Gap in px between the puck glyph's centre and the current-road pill below it (issue #288).
+ *  The nav puck bitmap is 202px drawn at ~half that on screen, so this clears its lower edge. */
+private const val PUCK_LABEL_GAP_PX = 62
+
 @Composable
 private fun sidePanelWidth(): androidx.compose.ui.unit.Dp {
     val w = LocalConfiguration.current.screenWidthDp
@@ -481,6 +485,9 @@ fun MapScreen(
     // Measured screen-Y of the maneuver banner's bottom edge → so VelaMapView can sit the compass just below
     // it during nav (the banner's height varies with lane guidance + a "then" row, so it can't be guessed).
     var navBannerBottomPx by remember { mutableStateOf(0) }
+    // Where the nav puck sits on screen, for the current-road label under it (issue #288).
+    // Null until the nav ticker reports one; reset when a drive ends.
+    var puckScreen by remember { mutableStateOf<Offset?>(null) }
     // The endpoints card's bottom edge, so the notification column can sit under it in
     // directions mode instead of printing over it (user 2026-07-13).
     var topCardBottomPx by remember { mutableStateOf(0) }
@@ -1038,6 +1045,7 @@ fun MapScreen(
             navOverviewTick = navOverviewTick,
             navRecenterTick = navRecenterTick,
             onNavZoomOverride = { navZoomOverride = it },
+            onPuckScreen = { x, y -> puckScreen = Offset(x, y) },
             onPoiTap = vm::onPoiTap,
             onMarkerTap = { i -> displayedPlaces(state).getOrNull(i)?.let(vm::selectPlace) },
             parkingSpot = state.parkingSpot,
@@ -1249,6 +1257,58 @@ fun MapScreen(
         }
 
         // --- top overlay: nav banner while navigating, else search ----------
+        // Current road, in a pill under the puck (issue #288) - Google's treatment. The road you
+        // are ON is the one entered by the last maneuver you passed, which is what the banner's
+        // shield already uses; prefer its ref ("US-23 S") and fall back to the street name.
+        // Hidden while previewing a step (previewing must not change where you "are"), in PiP,
+        // and until the ticker has reported a puck position.
+        if (state.navigating && !pipUi && state.previewStepIndex == null) {
+            val liveIdx = state.nav.stepIndex
+            val onRoad = state.activeRoute?.maneuvers?.getOrNull(liveIdx - 1)
+                ?.let { it.ref?.takeIf { r -> r.isNotBlank() } ?: it.road?.takeIf { r -> r.isNotBlank() } }
+            val at = puckScreen
+            if (onRoad != null && at != null) {
+                val uiLang = app.vela.ui.AppLocale.effective().language
+                val shownRoad =
+                    if (state.roadNameLatin.isEmpty()) onRoad
+                    else app.vela.core.voice.SpokenScript.forDisplay(onRoad, uiLang, state.roadNameLatin)
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 3.dp,
+                    modifier = Modifier
+                        // Long names ("Snohomish Cascade Drive Southeast") would otherwise run off
+                        // the screen when the puck sits near an edge.
+                        .widthIn(max = 260.dp)
+                        // Centred under the puck, then CLAMPED into the viewport: measured so the
+                        // pill can be any width and still sit centred, offset below the puck glyph
+                        // rather than over it.
+                        .layout { measurable, constraints ->
+                            val placeable = measurable.measure(constraints)
+                            layout(placeable.width, placeable.height) {
+                                val margin = 8.dp.roundToPx()
+                                val maxX = (constraints.maxWidth - placeable.width - margin)
+                                    .coerceAtLeast(margin)
+                                placeable.place(
+                                    (at.x - placeable.width / 2f).roundToInt()
+                                        .coerceIn(margin, maxX),
+                                    (at.y + PUCK_LABEL_GAP_PX).roundToInt(),
+                                )
+                            }
+                        },
+                ) {
+                    Text(
+                        shownRoad,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                    )
+                }
+            }
+        }
         if (state.navigating) {
             val mans = state.activeRoute?.maneuvers
             val liveStep = state.nav.stepIndex
