@@ -2206,13 +2206,33 @@ architecture note.
   `navSession.onLocation` path - puck/banner/voice keep working, `navStarved` keeps the
   "Searching for GPS" chip up for honesty, the first real fix re-anchors (route-plausible
   synthetics pass the outlier gate). Never feeds `tripStore.record` (no fake points in trips).
+  **THE UI THREAD STALLED ONCE PER GPS FIX (issue #251, the "jitter" on a demo drive, fixed
+  2026-09-03).** A demo drive has ZERO GPS noise, yet the puck still froze and lurched once a
+  second. Measured, not guessed: a screen recording showed one 65-84 ms frame every 1.02 s
+  followed by a 3.5x catch-up step, and a Perfetto trace named it: `Compose:recompose` 50-74 ms
+  in the fix's `doFrame`, "App Deadline Missed", exactly at the fix cadence. Trace markers
+  bisected it to the ARGUMENTS of the `ManeuverBanner` call in MapScreen: `navRomanize` ->
+  `SpokenScript.forDisplay` sorted the WHOLE road-name dict (`roadNameLatin`, a downloaded
+  region's entire `names.tsv.gz`) and scanned every entry, twice per fix, for an English string
+  that could never match. Fix in `SpokenScript.applyDict`: return in O(length) when the text has
+  no character the reader can't read (every matchable entry contains one), and digest the dict
+  once per instance (`preparedFor`, identity-keyed, two slots for the UI-language and
+  voice-language maps). Second cost in the same frame: `NavEngine.update` rebuilt
+  `cumulative(polyline)` and projected EVERY maneuver over the remaining line per fix (~19 ms,
+  over a frame budget by itself) - now cached per route identity (`geomFor`). On-device after:
+  recompose 7 ms max, banner 0.9 ms, onLocation 0.2 ms, the 1 Hz stall gone. **Rule: a puck
+  "jitter" report is measured with a screen recording (frame-to-frame timestamps + pixel diff)
+  and a Perfetto trace BEFORE any physics is touched; a hitch at the fix cadence is main-thread
+  work, and no filter can smooth a dropped frame.** Trace app sections with
+  `atrace_apps: "app.vela"` in the perfetto config; `android.os.Trace.beginSection` works in the
+  release build, and `Compose:recompose` slices are emitted by the runtime already.
   Nav zoom range is 18.0→15.5 (2026-07-14, was 17.3→15.0).
-  **PUCK JITTER (issue #251) HAS FIVE SEPARATE CAUSES, ALL FIXED. READ THIS BEFORE TOUCHING THE
+  **PUCK JITTER (issue #251) HAS SIX SEPARATE CAUSES, ALL FIXED. READ THIS BEFORE TOUCHING THE
   PUCK.** It was re-diagnosed from scratch four times because each pass found a real cause, fixed
   it, and the symptom persisted - two of those passes then derived the SAME window fix
   independently. The list, largest first: (1) the along-route POSITION was never filtered; (2) the
   progress rule stalled and surged; (3) the camera bearing followed digitization wiggle; (4) the
-  smoothing window's own width rippled; (5) demo drives ran the clocks at 3x. If jitter is
+  smoothing window's own width rippled; (5) demo drives ran the clocks at 3x; (6) the UI thread stalled once per fix (the paragraph just above this list: measured 2026-09-03, not physics at all). If jitter is
   reported again, the next thing to suspect is something NOT on this list - do not re-derive one
   of these.
   **(1) THE ALONG-ROUTE POSITION WAS NEVER FILTERED (2026-09-01, the biggest single cause).** The

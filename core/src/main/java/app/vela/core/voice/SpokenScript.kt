@@ -86,13 +86,44 @@ object SpokenScript {
         if (dict.isEmpty()) return text
         val code = lang?.lowercase()?.substringBefore('-')?.substringBefore('_')
         val voiceScript = VOICE_SCRIPT[code] ?: Character.UnicodeScript.LATIN
+        // Nothing can match unless the text itself carries a script this reader can't read: every
+        // entry that survives [preparedFor] contains such a character. So a plain-English
+        // instruction leaves here in O(length). It used to sort the WHOLE road-name table and scan
+        // every entry on every call, and the nav banner calls this twice per GPS fix on the main
+        // thread: with a downloaded region's names loaded that was ~60 ms once a second, four
+        // dropped frames and a visible lurch of the puck (the "jitter" of issue #251, 2026-09-03).
+        if (text.none { needsRomanizing(it, voiceScript) }) return text
         var s = text
-        for ((local, latin) in dict.entries.sortedByDescending { it.key.length }) {
-            if (local.isBlank() || latin.isBlank() || local == latin) continue
-            if (local.none { needsRomanizing(it, voiceScript) }) continue // reads this script itself
+        for ((local, latin) in preparedFor(dict, voiceScript)) {
             if (s.contains(local)) s = s.replace(local, latin)
         }
         return s
+    }
+
+    /** [dict] digested for [applyDict]: only the entries that can ever match for a reader of
+     *  [script] (a local name in a script it can't read, with a real, different Latin form),
+     *  longest first. Keyed by the dict INSTANCE: the road-name map is replaced wholesale when it
+     *  changes and never mutated in place, so identity is both cheap and exact. Two slots because
+     *  the banner (UI language) and the voice (voice language) hold their own map instances. */
+    private class Prepared(val dict: Map<String, String>, val script: Character.UnicodeScript, val entries: List<Pair<String, String>>)
+    private val prepared = arrayOfNulls<Prepared>(2)
+
+    private fun preparedFor(dict: Map<String, String>, script: Character.UnicodeScript): List<Pair<String, String>> {
+        synchronized(prepared) {
+            prepared.firstOrNull { it != null && it.dict === dict && it.script == script }?.let { return it.entries }
+        }
+        val entries = dict.entries.asSequence()
+            .filter { (local, latin) ->
+                local.isNotBlank() && latin.isNotBlank() && local != latin && local.any { needsRomanizing(it, script) }
+            }
+            .sortedByDescending { it.key.length }
+            .map { it.key to it.value }
+            .toList()
+        synchronized(prepared) {
+            prepared[1] = prepared[0]
+            prepared[0] = Prepared(dict, script, entries)
+        }
+        return entries
     }
 
     /** Testable core: the ICU call is injected as [romanize] so the run-splitting, voice gating and
