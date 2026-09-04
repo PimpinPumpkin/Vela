@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -127,6 +129,10 @@ fun StepsSheet(
     val scope = rememberCoroutineScope()
     val drag = remember { Animatable(0f) }
     var sheetHeightPx by remember { mutableIntStateOf(0) }
+    // Slides in from the bottom edge (the bar it replaces was just lifted by the finger, or the
+    // list button was tapped): the enter offset starts at the sheet's own height and eases to 0.
+    val enter = remember { Animatable(1f) }
+    LaunchedEffect(Unit) { enter.animateTo(0f, animationSpec = tween(260)) }
     val density = LocalDensity.current
     val settleDrag: (Float) -> Unit = { velocityPxS ->
         val flick = with(density) { FLING_COMMIT_DPS.dp.toPx() }
@@ -171,7 +177,7 @@ fun StepsSheet(
         modifier
             .fillMaxWidth()
             .onSizeChanged { sheetHeightPx = it.height }
-            .offset { IntOffset(0, drag.value.roundToInt().coerceAtLeast(0)) }
+            .offset { IntOffset(0, (drag.value + sheetHeightPx * enter.value).roundToInt().coerceAtLeast(0)) }
             .pointerInput(Unit) {
                 sheetDragGestures(
                     dragBy = { dy -> scope.launch { drag.snapTo((drag.value + dy).coerceAtLeast(0f)) } },

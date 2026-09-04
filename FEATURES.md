@@ -1287,6 +1287,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   DISPLAYED speed is smoothed with a stop deadband (raw 1 Hz doppler flickered 59/60/61 at cruise), and
   speed derivation requires two GPS fixes past an accuracy-scaled floor (a BeaconDB hop minted phantom
   16 mph readouts at red lights).
+  **Swipe up for the steps (2026-09-04):** the ETA bar at the bottom of the nav screen is the handle
+  for the step list, Google-style. Drag it up (it lifts with the finger) or fling it and the step
+  sheet slides in from where the bar was; swipe the sheet down and the bar is back. The list button
+  is still there and is the tap and D-pad path, so keypad phones lose nothing.
   **Road behind you (2026-09-03):** the driven part of the route no longer trails behind the arrow by
   default; only the road ahead is drawn (Google's current look). Settings > Navigation > "Road behind
   you" brings the grey trail back. Implemented as paint: the driven colour in the route gradients
