@@ -2256,6 +2256,11 @@ architecture note.
   `navSession.onLocation` path - puck/banner/voice keep working, `navStarved` keeps the
   "Searching for GPS" chip up for honesty, the first real fix re-anchors (route-plausible
   synthetics pass the outlier gate). Never feeds `tripStore.record` (no fake points in trips).
+  **Route bar (`RouteBarStrip`, 2026-09-04):** badges for CAMERA / RAIL_CROSSING / SPEED_HUMP, dots for
+  SIGNAL / STOP, an arrow marker with `remainingMeters` and a top cap with `model.spanM`; the Layout
+  centres every child on the track by its window fraction (`RouteBarSpan`). Labels are `requiredWidth`
+  wider than the strip so "768.8 mi" does not clip. The road-name pill in BAR mode caps its width at
+  screenWidth - 176 dp so it can never reach the speed-limit sign or the FAB column.
   **Road label placement (`RoadLabel`, pref `road_label`: bar|puck|off, default bar) and
   `PreferButtons` (pref `prefer_buttons`, default off; `showListButton = PreferButtons.on || dpadFirst`)
   live in `app/ui/NavChrome.kt` (2026-09-04). The bar's chevron handle is a focusable clickable Box

@@ -1307,10 +1307,11 @@ fun MapScreen(
             if (state.navigating && !landscapeChrome && !bar.isEmpty) {
                 app.vela.ui.nav.RouteBarStrip(
                     model = bar,
+                    remainingMeters = state.nav.remainingDistance,
                     modifier = Modifier
                         .align(Alignment.CenterStart)
-                        .padding(start = 10.dp)
-                        .fillMaxHeight(0.42f),
+                        .padding(start = 8.dp)
+                        .fillMaxHeight(0.46f),
                 )
             }
         }
@@ -1343,7 +1344,9 @@ fun MapScreen(
                         .then(if (landscapeChrome) Modifier.padding(start = (sidePanelWidthDp - 260.dp) / 2 + 16.dp) else Modifier)
                         .navigationBarsPadding()
                         .padding(bottom = with(LocalDensity.current) { navBarHeightPx.toDp() } + 16.dp + 10.dp)
-                        .widthIn(max = 260.dp)
+                        // Never reaches the speed-limit sign (left) or the FAB column (right):
+                        // centred, symmetric, ellipsised past this.
+                        .widthIn(max = (LocalConfiguration.current.screenWidthDp - 176).coerceAtLeast(120).dp)
                     else Modifier
                         // Long names would otherwise run off the screen when the puck sits near an edge.
                         .widthIn(max = 260.dp)

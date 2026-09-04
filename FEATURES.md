@@ -1287,6 +1287,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   DISPLAYED speed is smoothed with a stop deadband (raw 1 Hz doppler flickered 59/60/61 at cruise), and
   speed derivation requires two GPS fixes past an accuracy-scaled floor (a BeaconDB hop minted phantom
   16 mph readouts at red lights).
+  **Road-ahead bar, second cut (2026-09-04):** redrawn to the TomTom RouteBar the #228 reporter
+  attached. A track from the arrow (bottom, with the remaining trip distance) to the top of the
+  look-ahead window (labelled with the distance it spans), congestion as red/amber segments, and
+  what is coming as round icon badges: cameras, level crossings, speed humps. Lights and stop signs
+  stay small dots because a town has dozens in a few km. The first cut's 3 dp ticks were unreadable.
   **Current road name, where you want it (2026-09-04):** Settings > Navigation > "Current road name":
   above the bottom bar (default, always centred, long names fit), under the arrow (issue #288's
   mockup), or off. **The nav bar has a chevron handle** that both hints at the swipe and is a real
