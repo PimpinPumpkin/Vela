@@ -3349,6 +3349,17 @@ architecture note.
   SharedPreferences and every launch died with an NPE before the map drew. It now lives in its own
   `init { }` placed immediately AFTER the `settingsPrefs` property. Any future pref read that must
   happen at construction goes there too, not in the main init block.
+- **Current-road pill under the puck (issue #288, 2026-09-03).** Google's treatment: a rounded
+  label directly beneath the nav puck naming the road you are ON. The road is the one entered by
+  the LAST MANEUVER PASSED (`maneuvers[stepIndex - 1]`) - the same source the banner's shield
+  already uses - preferring its `ref` ("US-23 S", what the reporter's mockup showed) and falling
+  back to the street name; romanized through `SpokenScript.forDisplay` like the banner. Hidden
+  while PREVIEWING a step (previewing must not change where you "are"), in PiP, and until a puck
+  position exists. Positioned from `VelaMapView`'s new `onPuckScreen` callback, which projects the
+  drawn puck to screen px - **reported only when it moves >2 px**, because the follow camera parks
+  the puck at essentially one spot and pushing it per frame would recompose the label 60x a second.
+  The pill is width-capped and CLAMPED into the viewport so a long name near a screen edge cannot
+  run off it.
 - **Nav smoothness trace (`app/diag/NavTrace`, Settings > Diagnostics, OFF by default, issue #251
   2026-08-10).** One row per nav frame - t, along-route progress, speed, bearing WINDOW, chordBrg,
   displayBearing, live camera bearing, frame dt - into a bounded 72k ring (oldest dropped), written
