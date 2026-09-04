@@ -21,7 +21,6 @@ on:
         description: "Region group(s): one, several comma/space separated, or 'all-sub' for every sub-area group (ignored if 'ids' is set)"
         type: string
         default: europe
-        default: us
       ids:
         description: "Optional: space/comma-separated region ids (e.g. 'arizona utah colorado'). Overrides 'group'."
         type: string
