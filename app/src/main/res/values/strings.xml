@@ -766,6 +766,14 @@
     <string name="settings_nav_day_night">Day and night while navigating</string>
     <string name="settings_nav_day_night_hint">Keeps your chosen theme everywhere else, and switches by daylight only while you are driving.</string>
     <string name="mapscreen_shortcut_add">Add</string>
+    <string name="settings_road_label">Current road name</string>
+    <string name="settings_road_label_off">Off</string>
+    <string name="settings_road_label_bar">Above the bottom bar</string>
+    <string name="settings_road_label_puck">Under the arrow</string>
+    <string name="settings_road_label_hint">Where the name of the road you are on is shown while driving. Above the bar keeps it centred and readable for long names; under the arrow follows the arrow around.</string>
+    <string name="settings_prefer_buttons">Prefer buttons over swipes</string>
+    <string name="settings_prefer_buttons_hint">Keeps a button for things that also have a swipe, such as the step list on the navigation bar. Always on for phones without a touch screen.</string>
+    <string name="nav_steps_handle_cd">Show steps</string>
     <string name="settings_route_trail">Road behind you</string>
     <string name="settings_route_trail_hint">Keeps the part of the route you have already driven drawn in grey behind the arrow. Off hides it, so only the road ahead is drawn.</string>
     <string name="settings_route_bar">Road ahead bar</string>

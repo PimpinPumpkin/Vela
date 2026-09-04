@@ -1287,6 +1287,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   DISPLAYED speed is smoothed with a stop deadband (raw 1 Hz doppler flickered 59/60/61 at cruise), and
   speed derivation requires two GPS fixes past an accuracy-scaled floor (a BeaconDB hop minted phantom
   16 mph readouts at red lights).
+  **Current road name, where you want it (2026-09-04):** Settings > Navigation > "Current road name":
+  above the bottom bar (default, always centred, long names fit), under the arrow (issue #288's
+  mockup), or off. **The nav bar has a chevron handle** that both hints at the swipe and is a real
+  button (tap, focus ring, OK). Settings > Navigation > "Prefer buttons over swipes" keeps the
+  separate step-list button beside it; keypad-first phones get that button automatically.
   **Swipe up for the steps (2026-09-04):** the ETA bar at the bottom of the nav screen is the handle
   for the step list, Google-style. Drag it up (it lifts with the finger) or fling it and the step
   sheet slides in from where the bar was; swipe the sheet down and the bar is back. The list button
