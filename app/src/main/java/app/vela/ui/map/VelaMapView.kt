@@ -5961,17 +5961,30 @@ private fun arrowBitmap(): Bitmap {
     val tipY = 8f
     val path = Path().apply {
         moveTo(cx, cx)               // apex at centre (under the dot)
-        lineTo(cx - 36f, tipY)
-        quadTo(cx, tipY - 7f, cx + 36f, tipY)
+        lineTo(cx - 44f, tipY)
+        quadTo(cx, tipY - 8f, cx + 44f, tipY)
         close()
     }
     canvas.drawPath(
         path,
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            // Issue #289: the beam was hard to see, and the reason was WHERE its opacity sat, not
+            // just how much of it there was. A two-stop gradient ran from alpha 150 at the APEX to
+            // 0 at the tip - but the apex is underneath the location dot, so the strongest part
+            // was hidden and everything actually visible had already faded most of the way out.
+            // Three stops instead, holding real opacity across the part that clears the dot and
+            // only dying at the very tip, which is how Google's reads (the reporter attached
+            // Google's beam as the reference).
             shader = android.graphics.LinearGradient(
                 cx, cx, cx, tipY,
-                android.graphics.Color.argb(150, 66, 133, 244),
-                android.graphics.Color.argb(0, 66, 133, 244),
+                intArrayOf(
+                    android.graphics.Color.argb(210, 66, 133, 244),
+                    android.graphics.Color.argb(165, 66, 133, 244),
+                    android.graphics.Color.argb(0, 66, 133, 244),
+                ),
+                // 0.30 is roughly where the dot's edge is, so the mid stop is the first thing the
+                // eye actually sees; the long run to the tip keeps the soft fade.
+                floatArrayOf(0f, 0.30f, 1f),
                 android.graphics.Shader.TileMode.CLAMP,
             )
         },
