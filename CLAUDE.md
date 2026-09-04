@@ -2274,6 +2274,16 @@ architecture note.
   ticker reads it per frame through `trailHolder`; off means `routeGradient(..., driven = TRANSPARENT)`
   on the ahead and cut pieces and `ROUTE_LAYER` hidden, on means grey. A flip sets `splitReset` so the
   next frame re-applies everything. Paint only; never touch geometry for this.
+  **OBF BAKE, MEASURED 2026-09-04 (read before touching scripts/build-obf-region.sh or the shim):**
+  the memory ceiling is MapCreator's FIRST pass (`extractOsmToNodesDB`), so it does not depend on
+  which sections you index, only on the PBF and on which analysis passes run. Same 345 MB
+  Washington extract at a 12 GB heap: full routing+address+POI = OOM (7 min); routing-only with
+  default passes = OOM (peak 11 GB); routing-only LEAN (multipolygon, route-relation, proximity and
+  country-region indexing off) = SUCCESS, 48 min, 111 MB obf. Bavaria (810 MB) OOMs at 12g even
+  lean (first pass, 81%); pieces that size need osmium chunks or a 32 GB machine (22g worked).
+  Output sizes: Saarland 8 MB routing-only vs 52 MB with address+POI vs OsmAnd's own 66 MB
+  roads-only / 125 MB full; Washington 111 MB vs OsmAnd 595 MB roads-only. Also: the workflow
+  file was invalid YAML (duplicate `default:` key) from Aug 16 to Sep 3, so no bake ran at all.
   **Read `docs/puck-jitter.md` first: the eight causes, the measurement scripts in `scripts/jitter/`, and
   the order to run them. Do not start from a theory.**
   **THE PUCK ITSELF JITTERED BECAUSE IT WAS A MAP SYMBOL (issue #251, fixed 2026-09-03). In

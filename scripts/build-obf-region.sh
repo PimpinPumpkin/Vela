@@ -55,10 +55,12 @@ javac -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*" -d "$WO
 # why 14g never had a chance, and why no GC flag was ever going to save it. ParallelGC vs SerialGC
 # did not change the outcome, only the time to reach it (50 min vs 3 h to the same OOM), so it is
 # still the right collector here: a doomed region should fail fast.
-JAVA_HEAP="${JAVA_HEAP:-14g}"
+# 12g, not 14g: a 16 GB runner OOM-kills the JVM itself above that, and the lean routing-only
+# bake (see VelaObfShim.java) was MEASURED to complete a 345 MB US state at 12g.
+JAVA_HEAP="${JAVA_HEAP:-12g}"
 echo "→ index heap: $JAVA_HEAP"
 set +e
-( cd "$WORK" && java -Xmx"$JAVA_HEAP" -XX:+UseSerialGC -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*:$WORK" VelaObfShim region.osm.pbf )
+( cd "$WORK" && java -Xmx"$JAVA_HEAP" -XX:+UseParallelGC -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*:$WORK" VelaObfShim region.osm.pbf )
 RC=$?
 set -e
 if [ $RC -ne 0 ]; then
@@ -78,7 +80,7 @@ echo "→ $ID: ${SIZE} MB obf (download == installed), bbox $BBOX"
 
 gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 || \
   gh release create "$TAG" --repo "$REPO" --prerelease --title "Offline obf regions" \
-    --notes "Vela-baked obf files (routing + address + POI, no rendering section) for offline routing and search. Data assets, not a code release."
+    --notes "Vela-baked obf files (routing section only, lean bake) for offline routing. Data assets, not a code release."
 
 gh release upload "$TAG" "$WORK/$ID.obf" --clobber --repo "$REPO"
 
