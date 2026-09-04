@@ -1497,6 +1497,10 @@ fun VelaMapView(
             // this branch and its moveCamera killed the route-fit flight at frame ~0 - the
             // "picking an alternate kills the fly-over" hitch. wasNavRef makes the teardown
             // one-shot per real drive.
+            // Nav ended (or never ran): the ticker that owns the overlay is gone, so drop it HERE -
+            // the in-ticker drops never run once the effect is cancelled (the arrow stayed on the
+            // browse map after ending a demo, user 2026-09-03).
+            dropPuckOverlay()
             if (!wasNavRef[0]) return@LaunchedEffect
             wasNavRef[0] = false
             navPuck.kalman.reset() // nav ended — don't carry a stale speed into the next trip

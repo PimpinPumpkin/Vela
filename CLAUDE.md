@@ -1988,6 +1988,8 @@ architecture note.
   `navSession.onLocation` path - puck/banner/voice keep working, `navStarved` keeps the
   "Searching for GPS" chip up for honesty, the first real fix re-anchors (route-plausible
   synthetics pass the outlier gate). Never feeds `tripStore.record` (no fake points in trips).
+  **Read `docs/puck-jitter.md` first: the eight causes, the measurement scripts in `scripts/jitter/`, and
+  the order to run them. Do not start from a theory.**
   **THE PUCK ITSELF JITTERED BECAUSE IT WAS A MAP SYMBOL (issue #251, fixed 2026-09-03). In
   follow mode the puck is now a COMPOSE OVERLAY, not the `ME_ARROW_LAYER` symbol.** Measured the
   pixel that matters: the white chevron's centroid in an `adb screenrecord` (`puck2.py`: threshold
