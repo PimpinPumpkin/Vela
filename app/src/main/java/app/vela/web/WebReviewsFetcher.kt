@@ -219,6 +219,13 @@ class WebReviewsFetcher @Inject constructor(
      *  DOM nodes as you scroll, so any single snapshot holds only ~10 cards; the union across scroll
      *  positions is the full list). Bridges the accumulated JSON array back once the list is exhausted
      *  or the cap is hit. */
+    /** The :core review-word patterns, quoted for embedding in the scraper's JavaScript. */
+    private fun reviewPatternJs(): String = jsString(app.vela.core.data.ReviewWords.REVIEW_PATTERN)
+    private fun morePatternJs(): String = jsString(app.vela.core.data.ReviewWords.MORE_PATTERN)
+
+    private fun jsString(v: String): String =
+        "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
     private fun extractScript(id: String): String {
         val idj = "\"" + id.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         return """
@@ -226,7 +233,20 @@ class WebReviewsFetcher @Inject constructor(
               var ID=$idj, tries=0, opened=false, acc={}, accN=0, lastN=0, noGrow=0, atBottom=0;
               var openedAt=-1, lastRep=-1, openedBy='', sawEntry=false, everCards=false, btnReclicks=0;
               var CAP=50;
-              function num(s){ var m=(s||'').match(/([0-9.]+)\s*star/i); return m?Math.round(parseFloat(m[1])):0; }
+              // The rating sits at the FRONT of the star widget's aria-label in every language
+              // ("5 stars", "5 顆星", "5 étoiles"), so read the leading number rather than looking
+              // for the English word - that match returned 0 for every review the moment the page
+              // was not English (issue #278).
+              function num(s){ var m=(s||'').match(/^\s*([1-5])(?:[.,]0)?\b/); return m?parseInt(m[1],10):0; }
+              // "Reviews" across the languages Vela ships, for the TAB (matched only against
+              // role="tab", where the choices are Overview / Reviews / About, so a loose contains
+              // is safe) and for the "more reviews" BUTTON. The button additionally requires a
+              // "more" word: a bare review-word match there would hit "Write a review" (zh-TW
+              // "撰寫評論"), and clicking that opens the review composer instead of the list.
+              // The word lists live in :core ReviewWords so they can be unit-tested; a list that
+              // silently stops matching is invisible until someone reports missing reviews.
+              var REVIEW_WORD=new RegExp(${'$'}{reviewPatternJs()},'i');
+              var MORE_WORD=new RegExp(${'$'}{morePatternJs()},'i');
               function t1(c,sel){ var e=c.querySelector(sel); return e?(e.textContent||'').trim():''; }
               function extract(){
                 // Review cards are `.jJc9Ad`, each with a unique `data-review-id` — far more robust than the
@@ -235,7 +255,17 @@ class WebReviewsFetcher @Inject constructor(
                 var revs=[].slice.call(document.querySelectorAll('.jJc9Ad'));
                 return revs.map(function(c){
                   var idEl=c.querySelector('[data-review-id]'); var rid=idEl?(idEl.getAttribute('data-review-id')||''):'';
-                  var star=c.querySelector('[role="img"][aria-label*="star" i], span[aria-label*=" star" i]');
+                  // Rating: the star widget's aria-label LEADS WITH THE NUMBER in every language
+                  // ("5 stars", "5 顆星", "5 étoiles", "5 звёзд"), so key on that instead of the
+                  // English word. The old `aria-label*="star"` selector matched nothing the moment
+                  // the page was served in the user's own language, and every rating came back
+                  // null (issue #278; verified live on a zh-TW page where the label read "5 顆星").
+                  var star=null;
+                  var cand=[].slice.call(c.querySelectorAll('[role="img"][aria-label],span[aria-label]'));
+                  for(var si=0;si<cand.length;si++){
+                    var sl=(cand[si].getAttribute('aria-label')||'').trim();
+                    if(/^[1-5]([.,]0)?(\s|\u00a0)*\D/.test(sl)){ star=cand[si]; break; }
+                  }
                   // author: Google's review name class, else pull the NAME out of a button aria — the
                   // name is always right before "'s review" (after a "Share "/"Photo N on " prefix) or
                   // after "Photo of ". (Class names rotate; the aria phrasing is stable + semantic.)
@@ -315,7 +345,7 @@ class WebReviewsFetcher @Inject constructor(
                 var ts=[].slice.call(document.querySelectorAll('[role="tab"]'));
                 for(var i=0;i<ts.length;i++){
                   var tl=((ts[i].getAttribute('aria-label')||ts[i].textContent)||'').trim();
-                  if(/^reviews\b/i.test(tl)){
+                  if(REVIEW_WORD.test(tl)){
                     sawEntry=true;
                     if((ts[i].getAttribute('aria-selected')||'')==='true'){ if(!opened){ opened=true; openedAt=tries; openedBy='tab'; } return; }
                     try{ ts[i].click(); }catch(e){}
@@ -328,7 +358,7 @@ class WebReviewsFetcher @Inject constructor(
                 // button silently no-ops, same as the tab).
                 if(opened) return;
                 var bs=[].slice.call(document.querySelectorAll('button'));
-                for(var i=0;i<bs.length;i++){ var l=((bs[i].getAttribute('aria-label')||bs[i].textContent)||''); if(/more reviews/i.test(l)){ sawEntry=true; try{ bs[i].click(); }catch(e){} opened=true; openedAt=tries; openedBy='btn'; return; } }
+                for(var i=0;i<bs.length;i++){ var l=((bs[i].getAttribute('aria-label')||bs[i].textContent)||''); if(REVIEW_WORD.test(l)&&MORE_WORD.test(l)){ sawEntry=true; try{ bs[i].click(); }catch(e){} opened=true; openedAt=tries; openedBy='btn'; return; } }
               }
               function tick(){
                 tries++;
@@ -399,6 +429,11 @@ class WebReviewsFetcher @Inject constructor(
         const val TOTAL_TIMEOUT_MS = 45_000L
         const val REAP_IDLE_MS = 120_000L // destroy the idle WebView after this quiet period (issue #182)
         const val SETTLE_MS = 150L
+
+        /** Languages whose review-page wording the scraper's word lists cover (see `reviewsHl`).
+         *  Outside this set the page stays English: a language the scraper cannot navigate would
+         *  return FEWER reviews than English does. */
+        val SUPPORTED_HL = setOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "zh", "ja", "he")
         const val MAX_LOAD_MS = 7_000L
         // Offscreen viewport for the headless WebView — tall so the virtualized review list renders a
         // healthy batch per scroll position.
