@@ -114,6 +114,7 @@
     <string name="settings_voice_install_vela_hint">The recommended navigation voice. Reinstall it here any time it goes missing or a download failed.</string>
     <string name="settings_texture_render">Compatibility rendering</string>
     <string name="settings_texture_render_hint">Draws the map through a compatibility path that avoids some devices\' graphics driver bugs. Turns itself on if the map crashed the app at startup. Slightly slower; needs an app restart to apply.</string>
+    <string name="settings_texture_render_auto_hint">Turned on automatically on %1$s after the map crashed at startup twice. If the map works with this off, leave it off: it is slower and can make the map stutter while driving. Needs an app restart to apply.</string>
     <string name="settings_show_reviews">Show reviews</string>
     <string name="settings_show_reviews_hint">Off = place pages show no reviews, and Vela never fetches them.</string>
     <string name="settings_load_photos">Load photos</string>

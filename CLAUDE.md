@@ -1988,6 +1988,15 @@ architecture note.
   `navSession.onLocation` path - puck/banner/voice keep working, `navStarved` keeps the
   "Searching for GPS" chip up for honesty, the first real fix re-anchors (route-plausible
   synthetics pass the outlier gate). Never feeds `tripStore.record` (no fake points in trips).
+  **THE TEXTUREVIEW CRASH SENTINEL MISFIRED ON A HEALTHY PHONE (2026-09-03).** `texture_render`
+  (compatibility rendering, a TextureView map) is meant for GL drivers that kill the process at
+  init; the sentinel counted ANY death between map creation and the first idle render, so two
+  force-stops / swipe-kills / unrelated crashes flipped the Pixel 4a into it for good. Symptom: a
+  `TextureViewRend` thread at ~89% CPU in a trace and judder on every road, reported as puck jitter.
+  Now only `ApplicationExitInfo.REASON_CRASH_NATIVE` counts (`lastExitWasNativeCrash`, API 30+;
+  older devices keep the any-death rule), the flip records `texture_render_auto_ms`, and the
+  Developer row shows "Turned on automatically on <date>" so it can be seen and undone. When a
+  jitter/judder report comes in, check this toggle FIRST.
   Nav zoom range is 18.0→15.5 (2026-07-14, was 17.3→15.0). **DEMO DRIVES RAN THE PUCK CLOCKS AT 3x (issue #251, fixed 2026-08-10 - the
   dominant cause of the "record needle" swim).** `startDemoDrive` feeds
   `locationProvider.replay(fixes, speedup = 1f)` - REAL-TIME fixes - but it also sets
