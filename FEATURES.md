@@ -1287,6 +1287,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   DISPLAYED speed is smoothed with a stop deadband (raw 1 Hz doppler flickered 59/60/61 at cruise), and
   speed derivation requires two GPS fixes past an accuracy-scaled floor (a BeaconDB hop minted phantom
   16 mph readouts at red lights).
+  **The puck sits still (2026-09-03):** in follow mode the arrow is drawn as a screen overlay at
+  the projection of its smoothed point through the camera state just set, instead of as a map
+  symbol whose per-frame update could land a frame late. Measured on a straight highway, the
+  chevron moved 1 to 2 px on 95% of frames before and 0.07 px on average after. Same look:
+  rotated relative to the camera, foreshortened by the tilt.
   **Route line ("the gradient when you zoom in"):** the driven/ahead cut is now a GEOMETRY split - a
   traversed-grey full line (theme-aware, dimmer than the alternates' grey) under an ahead-suffix layer cut
   exactly at the puck, with traffic spans remapped onto the suffix. Since 2026-09-03 the moving cut
