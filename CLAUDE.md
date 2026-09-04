@@ -835,6 +835,18 @@ Defaults that make the safe path the easy one:
   short-content place flips expandedState while its wrap-capped card never grows, so the search-bar
   hide requires placeSheetTopPx < 0.40*screen and the layers button relies on the measured
   clearOfPlaceSheet gate alone - never re-add a bare placeSheetExpanded gate on map chrome.
+  **EVERY route-related overlay is a LEFT COLUMN in landscape (issue #297, 2026-09-03).** The
+  place and results sheets already had the side-panel treatment; the DIRECTIONS chooser, the
+  endpoints card, the maneuver banner and the nav ETA bar did NOT, so each stayed full-width.
+  Device-reproduced: with the chooser open in landscape the map was not merely obscured but
+  ENTIRELY hidden, and during nav the banner + bar left a thin horizontal sliver with the puck
+  half under the bar. All four now take `align(...Start) + widthIn(max = sidePanelWidthDp)` when
+  `landscapeChrome`, matching the two sheets, and the camera insets follow: directions and nav
+  claim `cameraLeftInset` instead of a bottom inset (a bottom inset in landscape squeezed the
+  route into a sliver). NB the endpoints card was the subtle one - full width, its left half sat
+  UNDER the chooser panel and the visible remainder read as an empty dark slab over the map.
+  When adding ANY new route/nav chrome, give it the same landscape treatment or it will span the
+  screen.
   **LANDSCAPE (width > height) collapses the browse chrome to ONE line (2026-07-15, Google's
   landscape layout, device-verified on the 4a):** `landscapeChrome` in MapScreen puts the search
   bar at half width with the category chips scrolling beside it (`landscapeOneLine` Row), the
