@@ -2256,6 +2256,11 @@ architecture note.
   `navSession.onLocation` path - puck/banner/voice keep working, `navStarved` keeps the
   "Searching for GPS" chip up for honesty, the first real fix re-anchors (route-plausible
   synthetics pass the outlier gate). Never feeds `tripStore.record` (no fake points in trips).
+  **Nav bottom bar = drag handle for the step sheet (2026-09-04):** `NavControls` carries a vertical
+  drag (lift follows the finger up to NAV_BAR_LIFT_MAX_DP; commit past NAV_BAR_LIFT_COMMIT_DP or an
+  upward fling faster than NAV_BAR_FLING_PX_S, else spring back); commit = the same `openSteps` the
+  list button calls, and `StepsSheet` animates in from its own height (`enter`). The button stays as
+  the key path; the gesture is touch-only on purpose (docs/dpad.md).
   **Driven trail is a setting (`RouteTrail`, `route_trail`, default OFF = hidden, 2026-09-03):** the
   ticker reads it per frame through `trailHolder`; off means `routeGradient(..., driven = TRANSPARENT)`
   on the ahead and cut pieces and `ROUTE_LAYER` hidden, on means grey. A flip sets `splitReset` so the

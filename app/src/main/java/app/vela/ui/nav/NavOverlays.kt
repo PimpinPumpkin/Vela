@@ -4,6 +4,11 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import kotlin.math.roundToInt
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -362,6 +367,11 @@ fun ManeuverBanner(
 // Show the lane diagram only within this distance of the maneuver (~0.5 mi) — beyond it the arrows are
 // just noise telling you to pick a lane for an exit miles ahead.
 private const val LANE_SHOW_M = 800.0
+// The nav bottom bar as a drag handle (see NavControls): how far it must be lifted to commit to
+// the step sheet, how far it may lift at all, and the upward fling speed that commits regardless.
+private const val NAV_BAR_LIFT_COMMIT_DP = 56
+private const val NAV_BAR_LIFT_MAX_DP = 120
+private const val NAV_BAR_FLING_PX_S = 900f
 
 // A "then <next>" compound preview only makes sense when the next maneuver closely follows this one
 // (~0.3 mi) — an exit-then-merge, not a turn 5 miles later. Matches Google's compound-maneuver treatment.
@@ -694,6 +704,14 @@ fun NavControls(
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
+    // Google's gesture: the ETA bar is the handle for the step list. Drag it UP and the card lifts
+    // with the finger; past NAV_BAR_LIFT_COMMIT_DP (or an upward fling) it commits and the step
+    // sheet slides in from where the bar was; below that it springs back. The list button stays
+    // as the tap and D-pad path (docs/dpad.md), so keypad phones lose nothing.
+    val lift = remember { Animatable(0f) }
+    val liftScope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val latestSteps by rememberUpdatedState(onSteps)
     // Colour the ETA by live traffic (Google-style): green free-flowing → amber →
     // red. Default ink when there's no live data (offline / traffic-less route).
     val etaColor = when {
@@ -703,7 +721,35 @@ fun NavControls(
         else -> SheetPalette.TrafficGreen
     }
     Card(
-        modifier.fillMaxWidth(),
+        modifier
+            .fillMaxWidth()
+            .offset { IntOffset(0, lift.value.roundToInt().coerceAtMost(0)) }
+            .pointerInput(Unit) {
+                val commitPx = with(density) { NAV_BAR_LIFT_COMMIT_DP.dp.toPx() }
+                val maxLiftPx = with(density) { NAV_BAR_LIFT_MAX_DP.dp.toPx() }
+                val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
+                detectVerticalDragGestures(
+                    onDragStart = { tracker.resetTracking() },
+                    onVerticalDrag = { change, dy ->
+                        change.consume()
+                        tracker.addPosition(change.uptimeMillis, change.position)
+                        liftScope.launch { lift.snapTo((lift.value + dy).coerceIn(-maxLiftPx, 0f)) }
+                    },
+                    onDragEnd = {
+                        val vy = tracker.calculateVelocity().y
+                        val commit = -lift.value > commitPx || vy < -NAV_BAR_FLING_PX_S
+                        liftScope.launch {
+                            if (commit) {
+                                latestSteps()
+                                lift.snapTo(0f)
+                            } else {
+                                lift.animateTo(0f)
+                            }
+                        }
+                    },
+                    onDragCancel = { liftScope.launch { lift.animateTo(0f) } },
+                )
+            },
         // Match the banner's treatment: generous radius + shadow, a floating pill not a bar.
         shape = RoundedCornerShape(28.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
