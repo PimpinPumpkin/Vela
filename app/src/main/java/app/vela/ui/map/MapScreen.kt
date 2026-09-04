@@ -1469,6 +1469,11 @@ fun MapScreen(
                         offline = state.offline,
                         dpadMode = dpadMode,
                         onMic = onMic,
+                        // Your lists sits beside the gear now (issue #290). Bare map only: with a
+                        // place or results on screen the bar has other work to do.
+                        onOpenLists = if (state.selected == null && state.results.isEmpty()) {
+                            { listsSheetOpen = true }
+                        } else null,
                     )
                     }
                     if (landscapeOneLine) {
@@ -1485,7 +1490,6 @@ fun MapScreen(
                                 Spacer(Modifier.width(10.dp))
                                 CategoryChips(
                                     onPick = vm::quickSearch,
-                                    onOpenLists = { listsSheetOpen = true },
                                     modifier = Modifier.weight(1f),
                                 )
                             }
@@ -1581,7 +1585,6 @@ fun MapScreen(
                         // beside the bar above).
                         !landscapeOneLine && state.selected == null && state.results.isEmpty() -> CategoryChips(
                             onPick = vm::quickSearch,
-                            onOpenLists = { listsSheetOpen = true },
                             modifier = Modifier.padding(top = 8.dp),
                         )
                     }
@@ -3189,7 +3192,7 @@ private fun SearchResults(
 }
 
 @Composable
-private fun CategoryChips(onPick: (String) -> Unit, onOpenLists: () -> Unit = {}, modifier: Modifier = Modifier) {
+private fun CategoryChips(onPick: (String) -> Unit, modifier: Modifier = Modifier) {
     // (localized label, STABLE English search query, icon) — the query is the logic key sent to Google
     // search (works in any locale), the label is what the user sees, so the chips localize without
     // changing what's searched.
@@ -3208,24 +3211,9 @@ private fun CategoryChips(onPick: (String) -> Unit, onOpenLists: () -> Unit = {}
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Ribbon shortcut to Your lists — leads the row, a round icon button. Light mode keeps
-        // the subtle green secondaryContainer (user liked it); dark mode matches the chips'
-        // neutral elevated grey — the green container read "too green" against the dark map.
-        val dark = isAppInDarkTheme()
-        Surface(
-            onClick = onOpenLists,
-            shape = CircleShape,
-            color = if (dark) MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp) else MaterialTheme.colorScheme.secondaryContainer,
-            // Soft glyph ink both modes - onSecondaryContainer read near-black next to the
-            // grey chip glyphs (user 2026-07-11).
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            shadowElevation = 2.dp,
-            modifier = Modifier.dpadHighlight(CircleShape).size(40.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.Bookmarks, contentDescription = stringResource(R.string.mapscreen_section_lists), modifier = Modifier.size(20.dp))
-            }
-        }
+        // Your lists used to lead this row as a round button. It moved into the search bar beside
+        // the settings gear (issue #290): on the far left it competed with the quick-category
+        // chips, which are a different kind of control, and the reach was awkward.
         categories.forEach { (labelRes, query, icon) ->
             ElevatedAssistChip(
                 onClick = { onPick(query) },
