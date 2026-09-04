@@ -88,13 +88,25 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         // VelaMapView reads when it creates the map; needs an app restart to apply. Also flips
         // itself on via the two-crash sentinel when a GPU driver kills the map at init.
         var textureRender by remember { mutableStateOf(prefs.getBoolean("texture_render", app.vela.ui.map.fragileGpuDefault())) }
+        // When the sentinel flipped it on by itself, SAY SO on the row (with the date): a user who
+        // never touched this must be able to see the app did, and that turning it off is safe to try.
+        var textureAutoMs by remember { mutableStateOf(prefs.getLong("texture_render_auto_ms", 0L)) }
         Spacer(Modifier.height(4.dp))
         SettingsGroup {
         ToggleRow(
             label = stringResource(R.string.settings_texture_render),
             checked = textureRender,
-            onCheckedChange = { on -> textureRender = on; prefs.edit().putBoolean("texture_render", on).apply() },
-            hint = stringResource(R.string.settings_texture_render_hint),
+            onCheckedChange = { on ->
+                textureRender = on
+                prefs.edit().putBoolean("texture_render", on).remove("texture_render_auto_ms").apply()
+                textureAutoMs = 0L
+            },
+            hint = if (textureRender && textureAutoMs > 0L) {
+                stringResource(
+                    R.string.settings_texture_render_auto_hint,
+                    java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM).format(java.util.Date(textureAutoMs)),
+                )
+            } else stringResource(R.string.settings_texture_render_hint),
         )
         GroupDivider()
         // Building-overlay debug badge + fps readout on the map (the runOvlGate probe tooling).

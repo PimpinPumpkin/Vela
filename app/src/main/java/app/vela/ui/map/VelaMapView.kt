@@ -599,11 +599,22 @@ fun VelaMapView(
         // A healthy device clears the sentinel every launch and never accumulates a count.
         val prefs = context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
         if (prefs.getBoolean("map_init_inflight", false)) {
-            val n = prefs.getInt("map_init_crashes", 0) + 1
-            if (n >= 2) {
-                prefs.edit().putBoolean("texture_render", true).putInt("map_init_crashes", 0).apply()
+            // Only a death the OS recorded as a NATIVE crash counts (that is what a GL driver
+            // fault is). Anything else that ends a process before its first render used to count
+            // too - a force-stop, a swipe from Recents, a low-memory kill, `adb` during testing,
+            // a Java crash elsewhere in the app - and two of those flipped a healthy Pixel 4a into
+            // TextureView for good, unnoticed: the renderer ran at 89% CPU and the resulting
+            // judder was chased as puck jitter for weeks (2026-09-03).
+            if (lastExitWasNativeCrash(context)) {
+                val n = prefs.getInt("map_init_crashes", 0) + 1
+                if (n >= 2) {
+                    prefs.edit().putBoolean("texture_render", true).putInt("map_init_crashes", 0)
+                        .putLong("texture_render_auto_ms", System.currentTimeMillis()).apply()
+                } else {
+                    prefs.edit().putInt("map_init_crashes", n).apply()
+                }
             } else {
-                prefs.edit().putInt("map_init_crashes", n).apply()
+                prefs.edit().putInt("map_init_crashes", 0).apply()
             }
         }
         prefs.edit().putBoolean("map_init_inflight", true).apply()
@@ -4613,6 +4624,19 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
  *  downgrade on exactly the weakest GPUs. Pre-14 fragile devices are covered by the two-crash
  *  sentinel instead. This only sets the DEFAULT - an explicit Developer-toggle choice (the
  *  "texture_render" pref) beats it either way. */
+/** Whether this process's PREVIOUS life ended in a native crash, per the OS's own exit record
+ *  (`ApplicationExitInfo`): the only kind of death the GPU-driver sentinel is for. Android 11+
+ *  keeps that record; older devices report true (the old any-death behaviour) because the
+ *  fragile-driver class the sentinel exists for is Android 14. */
+internal fun lastExitWasNativeCrash(context: android.content.Context): Boolean {
+    if (android.os.Build.VERSION.SDK_INT < 30) return true
+    val am = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+        ?: return true
+    val last = runCatching { am.getHistoricalProcessExitReasons(context.packageName, 0, 1).firstOrNull() }
+        .getOrNull() ?: return true
+    return last.reason == android.app.ApplicationExitInfo.REASON_CRASH_NATIVE
+}
+
 internal fun fragileGpuDefault(): Boolean =
     android.os.Build.VERSION.SDK_INT >= 34 &&
         (
