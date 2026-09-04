@@ -1286,8 +1286,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   16 mph readouts at red lights).
   **Route line ("the gradient when you zoom in"):** the driven/ahead cut is now a GEOMETRY split - a
   traversed-grey full line (theme-aware, dimmer than the alternates' grey) under an ahead-suffix layer cut
-  exactly at the puck, updated at sub-pixel granularity for the current zoom, with traffic spans remapped
-  onto the suffix. The old line-gradient stop could never be crisp: MapLibre bakes gradients into a
+  exactly at the puck, with traffic spans remapped onto the suffix. Since 2026-09-03 the moving cut
+  itself is paint, not geometry: a short overlay piece's line-gradient (1.6 m per texel) carries the
+  grey/colour boundary and slides forward every ~300 m, so nothing re-tessellates per frame or on a
+  timer (the old 150 ms re-upload dropped a map frame at a steady 6.7 Hz for the whole drive). The old line-gradient stop could never be crisp: MapLibre bakes gradients into a
   256-texel texture, smearing any "hard" cut into a routeLength/256-metre ramp (~39 m on a 10 km route,
   hundreds of px zoomed in) - and MapLibre has no `line-trim-offset`, so geometry is the only exact cut.
   Route geometry also uploads only when it CHANGES (it re-tessellated thousands of vertices on every
