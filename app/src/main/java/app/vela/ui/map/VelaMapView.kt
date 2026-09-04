@@ -100,6 +100,16 @@ private const val ROUTE_TAIL_SRC = "vela-route-tail-src"
 private const val ROUTE_TAIL_LAYER = "vela-route-tail"
 private const val NAV_WINDOW_M = 3000.0   // leading window length
 private const val NAV_WINDOW_SLACK_M = 500.0 // re-anchor when the puck gets this close to the seam
+// The CUT piece (see the nav ticker): a short overlay on top of the ahead line whose line-gradient
+// paints traversed-grey up to the arrow and route colour past it. Its geometry moves every
+// NAV_CUT_M - NAV_CUT_SLACK_M metres; only its PAINT changes per frame.
+private const val ROUTE_CUT_SRC = "vela-route-cut-src"
+private const val ROUTE_CUT_LAYER = "vela-route-cut"
+private const val NAV_CUT_M = 400.0       // cut piece length: 256 gradient texels over 400 m = 1.6 m each
+private const val NAV_CUT_SLACK_M = 100.0 // slide the piece forward when the arrow gets this close to its end
+private const val NAV_CUT_BACK_M = 20.0   // the piece starts this far behind the arrow when it slides
+private const val NAV_CUT_HIDE_M = 12.0   // the ahead line goes grey up to here past the piece start (one texel of its own
+                                          // gradient, so its soft edge lies entirely under the piece's grey)
 // Traversed-route grey, per theme — dimmer than and distinct from the alternates' #9AA0A6 so
 // the driven tail doesn't read as another tappable route.
 private const val TRAVERSED_LIGHT = "#B9BDC2"
@@ -547,7 +557,7 @@ fun VelaMapView(
     val dashHolder = rememberUpdatedState(routeDashed)
     val speedupHolder = rememberUpdatedState(replaySpeedup)
     val lastGradM = remember { doubleArrayOf(-1e9) } // progressM the route split was last set at
-    val lastGradNs = remember { longArrayOf(0L) }    // frame time of the last split upload (wall-clock floor)
+    val splitReset = remember { booleanArrayOf(false) } // style reload: re-anchor the window + coarse cut (layers came back hidden)
     val mPerPxHolder = remember { doubleArrayOf(10.0) } // metres/pixel at the camera (scale-bar feed) —
                                                         // sizes the split-update throttle to sub-pixel
     val lastScaleReport = remember { doubleArrayOf(-1.0) } // last mpp PUSHED to compose (gate, see reportScale)
@@ -1550,6 +1560,9 @@ fun VelaMapView(
         wasNavRef[0] = true
         navPuck.engaged = false
         val navWin = doubleArrayOf(Double.NaN) // route-split window end (m); relaunch = fresh route = re-anchor
+        val cutStart = doubleArrayOf(Double.NaN) // cut piece [start, end] along the route (m)
+        val cutEnd = doubleArrayOf(Double.NaN)
+        val aheadAnchor = doubleArrayOf(Double.NaN) // where the uploaded ahead line begins (m)
         var lastNanos = 0L
         while (true) {
             val now = withFrameNanos { it }
@@ -1793,92 +1806,119 @@ fun VelaMapView(
                 } else {
                     camState[0] = Double.NaN // reset → re-attach eases in from the live camera
                 }
-                // Keep the driven/ahead cut EXACTLY under the arrow — a GEOMETRY split updated
-                // here (throttled to sub-pixel at the CURRENT zoom): the ahead layer gets the
-                // polyline suffix from the puck's progress point forward (traffic spans remapped
-                // onto the suffix) and the full line beneath is painted traversed-grey. The old
-                // line-gradient stop could never be crisp: MapLibre bakes the whole gradient
-                // into a 256-texel texture, smearing the "hard" cut into a routeLength/256-metre
-                // ramp — the zoomed-in gradient the user reported. (Dashed walk/bike lines keep
-                // their plain style — dasharray disables gradients anyway.)
-                // Throttled two ways: sub-pixel distance at the current zoom (floor 1 m) AND a
-                // 150 ms wall-clock floor — each update re-uploads the remaining-suffix
-                // LineString, and an unbounded rate burned frame budget at highway speed.
+                // Keep the driven/ahead cut EXACTLY under the arrow WITHOUT moving geometry for it.
+                // The cut moves every frame, but any geometry re-upload for it - even at the old
+                // 150 ms throttle - dropped a map frame at a fixed 6.7 Hz for the whole drive
+                // (Perfetto 2026-09-03: over-budget renders spaced 133-167 ms, 46 in 8 s; a whole-map
+                // vibration that read as puck jitter, issue #251). A per-frame line source is worse
+                // still (a LineString re-tiles on every worker thread; only a POINT source is cheap).
+                // So the geometry is three static-ish pieces and the per-frame change is PAINT only:
+                //  * ROUTE_LAYER: the full line, traversed-grey (uploaded once per route);
+                //  * ROUTE_AHEAD_LAYER: the leading window, from `aheadAnchor` to `navWin` (AUDIT
+                //    FIX 9: a window, not the whole route, so the far tail on ROUTE_TAIL_LAYER only
+                //    refreshes every few km). Its gradient goes grey up to just past the cut piece's
+                //    start, colour beyond, updated when the piece slides (every ~300 m);
+                //  * ROUTE_CUT_LAYER: a NAV_CUT_M piece drawn over the ahead line from just behind
+                //    the arrow, sliding forward every NAV_CUT_M - NAV_CUT_SLACK_M metres. Its
+                //    line-gradient is the actual cut - grey before the arrow's fraction, the traffic
+                //    spans' colours after - and THAT is what changes per frame. MapLibre bakes a
+                //    gradient into 256 texels, which over the whole route smeared the cut into a
+                //    routeLength/256-metre ramp (the zoomed-in "gradient" once reported); over 400 m
+                //    a texel is 1.6 m, a few px, under the arrow.
+                // (Dashed walk/bike lines keep their plain style - dasharray disables gradients.)
                 if (!dashHolder.value && routeCum.isNotEmpty() && routeCum.last() > 0.0 &&
-                    kotlin.math.abs(navPuck.progressM - lastGradM[0]) > (mPerPxHolder[0] * 0.75).coerceIn(1.0, 3.0) &&
-                    now - lastGradNs[0] > 150_000_000L
+                    kotlin.math.abs(navPuck.progressM - lastGradM[0]) > (mPerPxHolder[0] * 0.5).coerceIn(0.25, 3.0)
                 ) {
                     lastGradM[0] = navPuck.progressM
-                    lastGradNs[0] = now
+                    if (splitReset[0]) {
+                        splitReset[0] = false
+                        navWin[0] = Double.NaN
+                        cutStart[0] = Double.NaN
+                    }
                     val gInt = runCatching { android.graphics.Color.parseColor(routeColorHolder.value) }
                         .getOrDefault(ROUTE_FREEFLOW)
                     val total = routeCum.last()
                     val prog = navPuck.progressM.coerceIn(0.0, total)
-                    // AUDIT FIX 9: only a short leading WINDOW re-uploads per tick; the far tail
-                    // sits on its own layer and refreshes only when the window advances (every few
-                    // km). The seam point is computed with the same pointAtMeters on both sides so
-                    // the two lines meet exactly; spans remap onto each piece's own 0..1. A window
-                    // this short also sharpens the gradient (256 texels over 3 km, not the trip).
+                    val spans = routeSpansHolder.value
+                    fun remap(lo: Double, hi: Double): List<Triple<Float, Float, Int>> {
+                        val g0 = (lo / total).toFloat()
+                        val g1 = (hi / total).toFloat()
+                        if (g1 - g0 <= 0.001f) return emptyList()
+                        return spans.mapNotNull { (sp, e, lvl) ->
+                            val s2 = ((sp - g0) / (g1 - g0)).coerceIn(0f, 1f)
+                            val e2 = ((e - g0) / (g1 - g0)).coerceIn(0f, 1f)
+                            if (e2 <= s2) null else Triple(s2, e2, lvl)
+                        }
+                    }
+                    fun lineFrom(lo: Double, hi: Double): FeatureCollection {
+                        if (hi - lo < 1.0) return FeatureCollection.fromFeatures(emptyList<Feature>())
+                        val i0 = indexAtMeters(routeCum, lo)
+                        val (p0, _) = pointAtMeters(routePolyline, routeCum, lo)
+                        val wholeRest = hi >= total - 1.0
+                        val i1 = if (wholeRest) routePolyline.size else indexAtMeters(routeCum, hi)
+                        val pts = ArrayList<Point>(maxOf(i1 - i0, 0) + 2)
+                        pts.add(Point.fromLngLat(p0.lng, p0.lat))
+                        for (i in i0 until i1) pts.add(Point.fromLngLat(routePolyline[i].lng, routePolyline[i].lat))
+                        if (!wholeRest) {
+                            val (p1, _) = pointAtMeters(routePolyline, routeCum, hi)
+                            pts.add(Point.fromLngLat(p1.lng, p1.lat))
+                        }
+                        return FeatureCollection.fromFeature(Feature.fromGeometry(LineString.fromLngLats(pts)))
+                    }
+                    // The cut piece slides when the arrow nears its end (or a reroute/reset left it
+                    // off the route). It starts a little BEHIND the arrow so the arrow's fraction is
+                    // never at the piece's very edge.
+                    val slide = cutStart[0].isNaN() || prog > cutEnd[0] - NAV_CUT_SLACK_M ||
+                        prog < cutStart[0] || cutEnd[0] > total + 1.0
+                    if (slide) {
+                        cutStart[0] = (prog - NAV_CUT_BACK_M).coerceAtLeast(0.0)
+                        cutEnd[0] = (cutStart[0] + NAV_CUT_M).coerceAtMost(total)
+                        style.getSourceAs<GeoJsonSource>(ROUTE_CUT_SRC)?.setGeoJson(lineFrom(cutStart[0], cutEnd[0]))
+                    }
+                    // The leading window re-anchors when the arrow nears its seam with the tail; the
+                    // ahead line is uploaded from the cut piece's start (the grey behind it is the
+                    // full line's).
+                    var aheadDirty = slide
                     if (navWin[0].isNaN() || prog > navWin[0] - NAV_WINDOW_SLACK_M || navWin[0] > total) {
                         navWin[0] = (prog + NAV_WINDOW_M).coerceAtMost(total)
                         val tw = navWin[0]
                         val tailDone = tw >= total - 1.0
-                        val tailFc = if (tailDone) FeatureCollection.fromFeatures(emptyList<Feature>()) else {
-                            val tIdx = indexAtMeters(routeCum, tw)
-                            val (tPt, _) = pointAtMeters(routePolyline, routeCum, tw)
-                            val tPts = ArrayList<Point>(routePolyline.size - tIdx + 1)
-                            tPts.add(Point.fromLngLat(tPt.lng, tPt.lat))
-                            for (i in tIdx until routePolyline.size) {
-                                tPts.add(Point.fromLngLat(routePolyline[i].lng, routePolyline[i].lat))
-                            }
-                            FeatureCollection.fromFeature(Feature.fromGeometry(LineString.fromLngLats(tPts)))
-                        }
-                        style.getSourceAs<GeoJsonSource>(ROUTE_TAIL_SRC)?.setGeoJson(tailFc)
-                        val gtw = (tw / total).toFloat()
-                        val tailSpans = if (tailDone || gtw >= 0.999f) emptyList() else routeSpansHolder.value.mapNotNull { (sp, e, lvl) ->
-                            val s2 = ((sp - gtw) / (1f - gtw)).coerceIn(0f, 1f)
-                            val e2 = ((e - gtw) / (1f - gtw)).coerceIn(0f, 1f)
-                            if (e2 <= s2) null else Triple(s2, e2, lvl)
-                        }
+                        style.getSourceAs<GeoJsonSource>(ROUTE_TAIL_SRC)?.setGeoJson(
+                            if (tailDone) FeatureCollection.fromFeatures(emptyList<Feature>()) else lineFrom(tw, total),
+                        )
                         style.getLayer(ROUTE_TAIL_LAYER)?.setProperties(
                             PropertyFactory.visibility(if (tailDone) Property.NONE else Property.VISIBLE),
-                            PropertyFactory.lineGradient(routeGradient(0f, gInt, tailSpans)),
+                            PropertyFactory.lineGradient(routeGradient(0f, gInt, if (tailDone) emptyList() else remap(tw, total))),
+                        )
+                        aheadAnchor[0] = cutStart[0]
+                        style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(lineFrom(aheadAnchor[0], tw))
+                        aheadDirty = true
+                    }
+                    if (aheadDirty) {
+                        // Grey up to one texel past the piece start, so the ahead line's own soft
+                        // edge lies under the piece's grey; colour from there.
+                        val a0 = aheadAnchor[0]
+                        val a1 = navWin[0]
+                        val pa = if (a1 - a0 <= 1.0) 0f else
+                            ((cutStart[0] + NAV_CUT_HIDE_M - a0) / (a1 - a0)).toFloat().coerceIn(0f, 0.999f)
+                        style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(
+                            PropertyFactory.visibility(Property.VISIBLE),
+                            PropertyFactory.lineGradient(routeGradient(pa, gInt, remap(a0, a1))),
+                        )
+                        val traversed = android.graphics.Color.parseColor(
+                            if (darkHolder.value) TRAVERSED_DARK else TRAVERSED_LIGHT,
+                        )
+                        style.getLayer(ROUTE_LAYER)?.setProperties(
+                            PropertyFactory.lineGradient(routeGradient(0f, traversed, emptyList())),
                         )
                     }
-                    val wEnd = navWin[0]
-                    val cutIdx = indexAtMeters(routeCum, prog)
-                    val (cutPt, _) = pointAtMeters(routePolyline, routeCum, prog)
-                    val wholeRest = wEnd >= total - 1.0
-                    val wIdx = if (wholeRest) routePolyline.size else indexAtMeters(routeCum, wEnd)
-                    val pts = ArrayList<Point>(wIdx - cutIdx + 2)
-                    pts.add(Point.fromLngLat(cutPt.lng, cutPt.lat))
-                    for (i in cutIdx until wIdx) {
-                        pts.add(Point.fromLngLat(routePolyline[i].lng, routePolyline[i].lat))
-                    }
-                    if (!wholeRest) {
-                        val (wPt, _) = pointAtMeters(routePolyline, routeCum, wEnd)
-                        pts.add(Point.fromLngLat(wPt.lng, wPt.lat))
-                    }
-                    style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(
-                        FeatureCollection.fromFeature(Feature.fromGeometry(LineString.fromLngLats(pts))),
-                    )
-                    // Remap the whole-route traffic-span fractions onto the WINDOW's 0..1.
-                    val gp = (prog / total).toFloat()
-                    val gw = (wEnd / total).toFloat()
-                    val remapped = if (gw - gp <= 0.001f) emptyList() else routeSpansHolder.value.mapNotNull { (sp, e, lvl) ->
-                        val s2 = ((sp - gp) / (gw - gp)).coerceIn(0f, 1f)
-                        val e2 = ((e - gp) / (gw - gp)).coerceIn(0f, 1f)
-                        if (e2 <= s2) null else Triple(s2, e2, lvl)
-                    }
-                    style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(
+                    // Per frame: only the cut piece's PAINT moves.
+                    val c0 = cutStart[0]
+                    val c1 = cutEnd[0]
+                    val pc = if (c1 - c0 <= 1.0) 0f else ((prog - c0) / (c1 - c0)).toFloat().coerceIn(0.0001f, 0.9999f)
+                    style.getLayer(ROUTE_CUT_LAYER)?.setProperties(
                         PropertyFactory.visibility(Property.VISIBLE),
-                        PropertyFactory.lineGradient(routeGradient(0f, gInt, remapped)),
-                    )
-                    val traversed = android.graphics.Color.parseColor(
-                        if (darkHolder.value) TRAVERSED_DARK else TRAVERSED_LIGHT,
-                    )
-                    style.getLayer(ROUTE_LAYER)?.setProperties(
-                        PropertyFactory.lineGradient(routeGradient(0f, traversed, emptyList())),
+                        PropertyFactory.lineGradient(routeGradient(pc, gInt, remap(c0, c1))),
                     )
                 }
             } else {
@@ -2685,6 +2725,7 @@ fun VelaMapView(
                 lastMeLayerKey = null
                 lastEnsureKey[0] = -1 // fresh style dropped the overlay layers - re-ensure on next pass
                 lastGradM[0] = -1e9 // force the nav split to re-render on the fresh style
+                splitReset[0] = true
                 PoiIcons.satellite = satelliteOn
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
@@ -3241,6 +3282,17 @@ private fun ensureLayers(style: Style) {
             PropertyFactory.visibility(Property.NONE),
         )
         style.addLayerBelow(routeTail, ROUTE_AHEAD_LAYER)
+        // The cut piece: identical paint, drawn ABOVE the ahead line (it paints the driven part of
+        // the ahead line grey and owns the seam under the arrow; its per-frame change is paint only).
+        style.addSource(GeoJsonSource(ROUTE_CUT_SRC, GeoJsonOptions().withLineMetrics(true)))
+        val routeCut = LineLayer(ROUTE_CUT_LAYER, ROUTE_CUT_SRC).withProperties(
+            PropertyFactory.lineColor("#1F6FEB"),
+            PropertyFactory.lineWidth(ROUTE_WIDTH),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+            PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+            PropertyFactory.visibility(Property.NONE),
+        )
+        style.addLayerAbove(routeCut, ROUTE_AHEAD_LAYER)
     }
     // Greyed, tappable alternate routes — drawn BELOW the active line (Google-style).
     if (style.getSource(ALT_ROUTE_SRC) == null) {
@@ -5483,6 +5535,8 @@ private fun applyData(
             style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
             style.getLayer(ALT_ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
             style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
+            style.getSourceAs<GeoJsonSource>(ROUTE_CUT_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
+            style.getLayer(ROUTE_CUT_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
             style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
             style.getSourceAs<GeoJsonSource>(ROUTE_TAIL_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
             style.getLayer(ROUTE_TAIL_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
@@ -5502,6 +5556,8 @@ private fun applyData(
             style.getLayer(ALT_ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
             if (lastRouteMode == 2) {
                 style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
+                style.getSourceAs<GeoJsonSource>(ROUTE_CUT_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
+                style.getLayer(ROUTE_CUT_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
                 style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
                 style.getSourceAs<GeoJsonSource>(ROUTE_TAIL_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
                 style.getLayer(ROUTE_TAIL_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
