@@ -317,6 +317,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     // Navigation
     R.string.settings_keep_screen_on to SettingsSection.NAVIGATION,
     R.string.settings_route_bar to SettingsSection.NAVIGATION,
+    R.string.settings_route_trail to SettingsSection.NAVIGATION,
     R.string.settings_traffic_lights to SettingsSection.NAVIGATION,
     R.string.settings_vibrate_on_turns to SettingsSection.NAVIGATION,
     R.string.settings_demo_drive to SettingsSection.NAVIGATION,

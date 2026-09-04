@@ -94,6 +94,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.HideAdult.init(this)
         app.vela.ui.HideExternalLinks.init(this)
         app.vela.ui.Buildings3d.init(this)
+        app.vela.ui.RouteTrail.init(this)
         app.vela.ui.BuildingOverlay.init(this)
         app.vela.ui.BuildingDebug.init(this)
         app.vela.ui.MapPoiPrefs.init(this)
