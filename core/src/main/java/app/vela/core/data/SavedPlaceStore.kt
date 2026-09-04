@@ -49,7 +49,11 @@ class SavedPlaceStore @Inject constructor(
      * sent people looking for a bug in the wrong place.
      */
     fun importMerge(json: String): ImportResult {
+        // Vela's own export first; failing that, the formats other map apps produce (issue #279),
+        // so someone arriving from Organic Maps / OsmAnd / CoMaps / Takeout keeps their pins
+        // instead of only being told the file is the wrong kind.
         val incoming = runCatching { this.json.decodeFromString<List<SavedPlace>>(json) }.getOrNull()
+            ?: PlaceImport.parse(json).ifEmpty { null }
             ?: return ImportResult.WrongFormat(ImportFormats.describe(json))
         val current = saved()
         val existing = current.mapTo(HashSet()) { it.id }

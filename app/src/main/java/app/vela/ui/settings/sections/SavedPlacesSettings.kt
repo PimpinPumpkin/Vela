@@ -92,7 +92,16 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
 // of file providers hand back application/octet-stream for a .json, and filtering that out makes
 // the file look absent - the picker opens onto an empty folder and the feature reads as broken.
 // (NB a literal wildcard mime in a KDoc block closes the comment early - see PoiPackStore.)
-private val IMPORT_MIME = arrayOf("application/json", "*/*")
+private val IMPORT_MIME = arrayOf(
+    "application/json",
+    "application/gpx+xml",
+    "application/vnd.google-earth.kml+xml",
+    "application/xml",
+    "text/xml",
+    // Kept last and deliberately broad: providers hand back application/octet-stream for a .gpx or
+    // .json often enough that filtering strictly makes the file look absent (issue #279).
+    "*/*",
+)
 
 /**
  * Open the file picker, and SAY SO when there isn't one (issue #287).
