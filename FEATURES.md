@@ -121,8 +121,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   now marks "map initializing" at surface creation and clears it on the first finished render;
   two consecutive launches dying inside that window automatically switch the map to TextureView
   rendering (a different graphics path that avoids most of these driver bugs, slightly slower)
-  and the app just works from then on. Zero configuration, cannot misfire on healthy devices (a
-  successful render resets the counter), and Settings → Developer → Compatibility rendering is
+  and the app just works from then on. Zero configuration. Since 2026-09-03 only deaths the OS
+  recorded as a NATIVE crash count (Android 11+, `ApplicationExitInfo`): a force-stop, a swipe from
+  Recents, a low-memory kill or a Java crash elsewhere no longer count, because two of those had
+  flipped a healthy phone into the slower path for good without anyone noticing. When the sentinel
+  does engage, the setting's row says so with the date, and Settings → Developer → Compatibility rendering is
   the manual override in both directions. Known-fragile chips skip even the two crashes: Unisoc
   devices ON ANDROID 14 (the reported tablet's family + OS, identified from the hardware string;
   the documented driver faults are specific to the Android 14 builds) default straight into
