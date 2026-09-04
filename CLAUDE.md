@@ -1988,6 +1988,17 @@ architecture note.
   `navSession.onLocation` path - puck/banner/voice keep working, `navStarved` keeps the
   "Searching for GPS" chip up for honesty, the first real fix re-anchors (route-plausible
   synthetics pass the outlier gate). Never feeds `tripStore.record` (no fake points in trips).
+  **THE ROUTE LINE RE-UPLOAD DROPPED A MAP FRAME EVERY 150 ms (issue #251, fixed 2026-09-03).** On a
+  demo drive (zero GPS noise) the map still vibrated. Measured: `adb screenrecord` frames fitted with
+  an ECC Euclidean transform showed the camera's turn rate through a bend stepping double-then-zero
+  every 9 frames; a Perfetto trace of the GL thread (`RenderThread N` in SurfaceView mode; sleeps
+  >0.3 ms separate renders) showed over-budget renders spaced 133-167 ms, 46 in 8 s, and a build with
+  the throttle at 2 s made the spacing random and the count 18-22. The 150 ms re-upload of the 3 km
+  ahead window (a LineString re-tessellation) was the cause. Fix: the moving cut is a `line-gradient`
+  PAINT update on a short `ROUTE_CUT_LAYER` piece; geometry moves every ~300 m. After: over-budget
+  renders random, 4% (the map's floor on a Pixel 4a), GL p90 11 ms. Also learned: the P4a had been
+  silently flipped into TextureView "compatibility rendering" by the two-crash sentinel (renderer at
+  89% CPU, judder everywhere); `adb shell` tracing shows it as a `TextureViewRend` thread.
   Nav zoom range is 18.0→15.5 (2026-07-14, was 17.3→15.0). **DEMO DRIVES RAN THE PUCK CLOCKS AT 3x (issue #251, fixed 2026-08-10 - the
   dominant cause of the "record needle" swim).** `startDemoDrive` feeds
   `locationProvider.replay(fixes, speedup = 1f)` - REAL-TIME fixes - but it also sets
@@ -2013,9 +2024,15 @@ architecture note.
   (onNavZoomOverride) so MapScreen shows the nav Re-center FAB for it, and the button bumps
   navRecenterTick which clears navUserZoom/navUserTilt back to auto; GTFS stop icons hide during nav
   (declutter effect + the VM skips the fetch). The route line's
-  driven/ahead cut is a GEOMETRY split (`ROUTE_AHEAD_LAYER` suffix over a traversed-grey full line) - 
-  MapLibre bakes line-gradients into a 256-texel texture, so a gradient stop can never render a crisp
-  cut and there is no `line-trim-offset` in MapLibre; don't "simplify" it back to a gradient.
+  driven/ahead cut is a GEOMETRY split (`ROUTE_AHEAD_LAYER` window over a traversed-grey full line) plus
+  a PAINT-ONLY moving cut since 2026-09-03: `ROUTE_CUT_LAYER`, a 400 m piece over the ahead line whose
+  `line-gradient` is the actual grey/colour cut (256 texels over 400 m = 1.6 m each, under the arrow); its
+  geometry slides every ~300 m, only its paint changes per frame. NEVER move route geometry per frame
+  or on a short timer for the cut: the old 150 ms re-upload of the 3 km window dropped a map frame at a
+  fixed 6.7 Hz (Perfetto: over-budget renders spaced 133-167 ms, 46 in 8 s) - a whole-map vibration
+  that was reported as puck jitter (#251) - and a per-frame LineString source is worse (it re-tiles on
+  every worker thread; only a POINT source like the arrow is cheap per frame). A whole-route gradient
+  is not the answer either: 256 texels over the route smears the cut into a routeLength/256 m ramp.
 - Nav drive-report fixes (2026-07-05): (1) **Route line z-order** - the route line inserts BELOW the first
   symbol layer, but Liberty's first symbol is `road_one_way_arrow` (~idx 61) which sits UNDER the `bridge_*`
   layers (~63-82) → bridges painted over the route on bridges (it "vanished"). `VelaMapView.ensureLayers`
