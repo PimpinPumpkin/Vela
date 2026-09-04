@@ -81,6 +81,13 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             onCheckedChange = { routeBar = it; vm.setRouteBar(it) },
             hint = stringResource(R.string.settings_route_bar_hint),
         )
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_route_trail),
+            checked = app.vela.ui.RouteTrail.on.value,
+            onCheckedChange = { app.vela.ui.RouteTrail.set(context, it) },
+            hint = stringResource(R.string.settings_route_trail_hint),
+        )
 
         var trafficLights by remember { mutableStateOf(prefs.getBoolean("nav_traffic_lights", false)) }
         GroupDivider()

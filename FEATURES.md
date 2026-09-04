@@ -1287,6 +1287,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   DISPLAYED speed is smoothed with a stop deadband (raw 1 Hz doppler flickered 59/60/61 at cruise), and
   speed derivation requires two GPS fixes past an accuracy-scaled floor (a BeaconDB hop minted phantom
   16 mph readouts at red lights).
+  **Road behind you (2026-09-03):** the driven part of the route no longer trails behind the arrow by
+  default; only the road ahead is drawn (Google's current look). Settings > Navigation > "Road behind
+  you" brings the grey trail back. Implemented as paint: the driven colour in the route gradients
+  becomes transparent and the full grey line is hidden, so nothing is re-uploaded.
   **The puck sits still (2026-09-03):** in follow mode the arrow is drawn as a screen overlay at
   the projection of its smoothed point through the camera state just set, instead of as a map
   symbol whose per-frame update could land a frame late. Measured on a straight highway, the

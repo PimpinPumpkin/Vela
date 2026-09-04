@@ -569,6 +569,12 @@ fun VelaMapView(
     val speedupHolder = rememberUpdatedState(replaySpeedup)
     val lastGradM = remember { doubleArrayOf(-1e9) } // progressM the route split was last set at
     val splitReset = remember { booleanArrayOf(false) } // style reload: re-anchor the window + coarse cut (layers came back hidden)
+    // "Road behind you": the driven part of the route stays grey (on) or disappears (off, the
+    // default). Read per frame by the ticker through a holder; a flip mid-drive re-anchors the
+    // split so the gradients and the full line's visibility are re-applied at once.
+    val trailOn = app.vela.ui.RouteTrail.on.value
+    val trailHolder = rememberUpdatedState(trailOn)
+    LaunchedEffect(trailOn) { splitReset[0] = true }
     val mPerPxHolder = remember { doubleArrayOf(10.0) } // metres/pixel at the camera (scale-bar feed) —
                                                         // sizes the split-update throttle to sub-pixel
     val lastScaleReport = remember { doubleArrayOf(-1.0) } // last mpp PUSHED to compose (gate, see reportScale)
@@ -1972,6 +1978,9 @@ fun VelaMapView(
                         style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(lineFrom(aheadAnchor[0], tw))
                         aheadDirty = true
                     }
+                    // Driven colour: grey with the trail on, fully transparent with it off (the
+                    // full grey line beneath is hidden too, so only the road ahead is drawn).
+                    val driven = if (trailHolder.value) ROUTE_DRIVEN else android.graphics.Color.TRANSPARENT
                     if (aheadDirty) {
                         // Grey up to one texel past the piece start, so the ahead line's own soft
                         // edge lies under the piece's grey; colour from there.
@@ -1981,12 +1990,13 @@ fun VelaMapView(
                             ((cutStart[0] + NAV_CUT_HIDE_M - a0) / (a1 - a0)).toFloat().coerceIn(0f, 0.999f)
                         style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(
                             PropertyFactory.visibility(Property.VISIBLE),
-                            PropertyFactory.lineGradient(routeGradient(pa, gInt, remap(a0, a1))),
+                            PropertyFactory.lineGradient(routeGradient(pa, gInt, remap(a0, a1), driven)),
                         )
                         val traversed = android.graphics.Color.parseColor(
                             if (darkHolder.value) TRAVERSED_DARK else TRAVERSED_LIGHT,
                         )
                         style.getLayer(ROUTE_LAYER)?.setProperties(
+                            PropertyFactory.visibility(if (trailHolder.value) Property.VISIBLE else Property.NONE),
                             PropertyFactory.lineGradient(routeGradient(0f, traversed, emptyList())),
                         )
                     }
@@ -1996,7 +2006,7 @@ fun VelaMapView(
                     val pc = if (c1 - c0 <= 1.0) 0f else ((prog - c0) / (c1 - c0)).toFloat().coerceIn(0.0001f, 0.9999f)
                     style.getLayer(ROUTE_CUT_LAYER)?.setProperties(
                         PropertyFactory.visibility(Property.VISIBLE),
-                        PropertyFactory.lineGradient(routeGradient(pc, gInt, remap(c0, c1))),
+                        PropertyFactory.lineGradient(routeGradient(pc, gInt, remap(c0, c1), driven)),
                     )
                 }
             } else {
@@ -5476,12 +5486,13 @@ private fun routeGradient(
     p: Float,
     routeInt: Int,
     spans: List<Triple<Float, Float, Int>>,
+    driven: Int = ROUTE_DRIVEN, // TRANSPARENT when the "road behind you" trail is off
 ): Expression {
     val freeflow = if (spans.isEmpty()) routeInt else ROUTE_FREEFLOW
     // Colour AT fraction f (half-open: a stop at b colours [b, next)). Driven part is grey
     // STRICTLY BEFORE p (p == 0 preview paints no grey nub), so the cut lands exactly at p.
     fun colorAt(f: Float): Int {
-        if (p > 0f && f < p) return ROUTE_DRIVEN
+        if (p > 0f && f < p) return driven
         for ((s, e, lvl) in spans) if (f >= s && f < e) return trafficLevelColor(lvl)
         return freeflow
     }
