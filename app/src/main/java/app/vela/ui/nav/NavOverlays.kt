@@ -4,6 +4,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import kotlin.math.roundToInt
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
@@ -701,6 +703,7 @@ fun NavControls(
     onStop: () -> Unit,
     onSteps: () -> Unit,
     trafficRatio: Double? = null,
+    showListButton: Boolean = true, // false = the chevron handle alone (a focusable button itself)
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
@@ -763,8 +766,26 @@ fun NavControls(
         // one a labelled button - two different shapes doing the same job at the same size. As
         // icons they read as a matched pair with the numbers between them, which is also the one
         // arrangement where the two 54dp targets cannot be hit by mistake for each other.
+        // The handle: a chevron that says "this lifts", and a real button (tap, focus ring, OK)
+        // so the gesture is never the only way in. Sits in the card's top padding.
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp)
+                .height(20.dp)
+                .dpadHighlight(RoundedCornerShape(10.dp))
+                .clickable(onClick = onSteps),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Default.KeyboardArrowUp,
+                contentDescription = stringResource(R.string.nav_steps_handle_cd),
+                tint = SheetPalette.dim(dark),
+                modifier = Modifier.size(22.dp),
+            )
+        }
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
+            Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 2.dp, bottom = 14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -804,8 +825,12 @@ fun NavControls(
             }
             Spacer(Modifier.width(8.dp))
             // Bigger driving targets (user 2026-07-11, car-screen use): 54dp buttons, 26dp glyphs.
-            FilledTonalIconButton(onClick = onSteps, modifier = Modifier.size(54.dp)) {
-                Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.nav_steps), modifier = Modifier.size(26.dp))
+            if (showListButton) {
+                FilledTonalIconButton(onClick = onSteps, modifier = Modifier.size(54.dp)) {
+                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.nav_steps), modifier = Modifier.size(26.dp))
+                }
+            } else {
+                Spacer(Modifier.size(54.dp)) // keeps the figures centred against the End button
             }
         }
     }

@@ -1319,7 +1319,8 @@ fun MapScreen(
         // shield already uses; prefer its ref ("US-23 S") and fall back to the street name.
         // Hidden while previewing a step (previewing must not change where you "are"), in PiP,
         // and until the ticker has reported a puck position.
-        if (state.navigating && !pipUi && state.previewStepIndex == null) {
+        val roadLabelMode = app.vela.ui.RoadLabel.mode.value
+        if (state.navigating && !pipUi && state.previewStepIndex == null && roadLabelMode != app.vela.ui.RoadLabel.OFF) {
             val liveIdx = state.nav.stepIndex
             val onRoad = state.activeRoute?.maneuvers?.getOrNull(liveIdx - 1)
                 ?.let { it.ref?.takeIf { r -> r.isNotBlank() } ?: it.road?.takeIf { r -> r.isNotBlank() } }
@@ -1329,13 +1330,22 @@ fun MapScreen(
                 val shownRoad =
                     if (state.roadNameLatin.isEmpty()) onRoad
                     else app.vela.core.voice.SpokenScript.forDisplay(onRoad, uiLang, state.roadNameLatin)
+                // Two placements: Google's fixed spot centred above the bottom bar (default: it
+                // can always be centred, whatever the name's length) or pinned under the arrow
+                // (issue #288's mockup; long names clamp to the screen edge there).
+                val abovePill = roadLabelMode == app.vela.ui.RoadLabel.BAR
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.surface,
                     shadowElevation = 3.dp,
-                    modifier = Modifier
-                        // Long names ("Snohomish Cascade Drive Southeast") would otherwise run off
-                        // the screen when the puck sits near an edge.
+                    modifier = if (abovePill) Modifier
+                        .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
+                        .then(if (landscapeChrome) Modifier.padding(start = (sidePanelWidthDp - 260.dp) / 2 + 16.dp) else Modifier)
+                        .navigationBarsPadding()
+                        .padding(bottom = with(LocalDensity.current) { navBarHeightPx.toDp() } + 16.dp + 10.dp)
+                        .widthIn(max = 260.dp)
+                    else Modifier
+                        // Long names would otherwise run off the screen when the puck sits near an edge.
                         .widthIn(max = 260.dp)
                         // Centred under the puck, then CLAMPED into the viewport: measured so the
                         // pill can be any width and still sit centred, offset below the puck glyph
@@ -1905,6 +1915,7 @@ fun MapScreen(
                     onStop = vm::stopNav,
                     onSteps = vm::openSteps,
                     trafficRatio = state.activeRoute?.trafficRatio,
+                    showListButton = app.vela.ui.PreferButtons.on.value || dpadFirst,
                     // Measured AFTER the padding → the bar surface itself; navBarClearance adds the
                     // padding + gap back. Everything stacked above the bar keys off this.
                     modifier = Modifier.onGloballyPositioned { navBarHeightPx = it.size.height },

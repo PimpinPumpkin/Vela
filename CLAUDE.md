@@ -2256,6 +2256,10 @@ architecture note.
   `navSession.onLocation` path - puck/banner/voice keep working, `navStarved` keeps the
   "Searching for GPS" chip up for honesty, the first real fix re-anchors (route-plausible
   synthetics pass the outlier gate). Never feeds `tripStore.record` (no fake points in trips).
+  **Road label placement (`RoadLabel`, pref `road_label`: bar|puck|off, default bar) and
+  `PreferButtons` (pref `prefer_buttons`, default off; `showListButton = PreferButtons.on || dpadFirst`)
+  live in `app/ui/NavChrome.kt` (2026-09-04). The bar's chevron handle is a focusable clickable Box
+  with `dpadHighlight`, so it is a key target on its own; the list button is the belt-and-braces one.
   **Nav bottom bar = drag handle for the step sheet (2026-09-04):** `NavControls` carries a vertical
   drag (lift follows the finger up to NAV_BAR_LIFT_MAX_DP; commit past NAV_BAR_LIFT_COMMIT_DP or an
   upward fling faster than NAV_BAR_FLING_PX_S, else spring back); commit = the same `openSteps` the

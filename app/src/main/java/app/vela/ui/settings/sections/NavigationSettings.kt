@@ -42,6 +42,7 @@ import app.vela.core.model.TravelMode
 import app.vela.ui.map.MapViewModel
 import app.vela.ui.settings.GroupDivider
 import app.vela.ui.settings.Hint
+import app.vela.ui.settings.SelectableRow
 import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.settings.ToggleRow
@@ -88,6 +89,33 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             onCheckedChange = { app.vela.ui.RouteTrail.set(context, it) },
             hint = stringResource(R.string.settings_route_trail_hint),
         )
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_prefer_buttons),
+            checked = app.vela.ui.PreferButtons.on.value,
+            onCheckedChange = { app.vela.ui.PreferButtons.set(context, it) },
+            hint = stringResource(R.string.settings_prefer_buttons_hint),
+        )
+        }
+        Spacer(Modifier.height(12.dp))
+        SettingsGroup {
+        Text(
+            stringResource(R.string.settings_road_label),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
+        )
+        listOf(
+            app.vela.ui.RoadLabel.BAR to stringResource(R.string.settings_road_label_bar),
+            app.vela.ui.RoadLabel.PUCK to stringResource(R.string.settings_road_label_puck),
+            app.vela.ui.RoadLabel.OFF to stringResource(R.string.settings_road_label_off),
+        ).forEach { (id, label) ->
+            SelectableRow(
+                label = label,
+                selected = app.vela.ui.RoadLabel.mode.value == id,
+                onClick = { app.vela.ui.RoadLabel.set(context, id) },
+            )
+        }
+        Hint(stringResource(R.string.settings_road_label_hint))
 
         var trafficLights by remember { mutableStateOf(prefs.getBoolean("nav_traffic_lights", false)) }
         GroupDivider()
