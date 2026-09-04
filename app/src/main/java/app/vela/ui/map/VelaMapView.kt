@@ -56,6 +56,9 @@ import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import org.maplibre.android.geometry.LatLng as MLLatLng
 import org.maplibre.android.geometry.LatLngBounds as MLLatLngBounds
 
@@ -598,6 +601,23 @@ fun VelaMapView(
         }
     }
     var styleRef by remember { mutableStateOf<Style?>(null) }
+    // The follow-mode puck OVERLAY (see the ticker): screen position + transform, written per
+    // frame by the ticker and read in the DRAW phase (graphicsLayer lambdas), so a frame costs
+    // one layer redraw and no recomposition.
+    val puckOverlayOn = remember { mutableStateOf(false) }
+    val puckOverlayX = remember { androidx.compose.runtime.mutableFloatStateOf(Float.NaN) }
+    val puckOverlayY = remember { androidx.compose.runtime.mutableFloatStateOf(Float.NaN) }
+    val puckOverlayRot = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    val puckOverlaySquash = remember { androidx.compose.runtime.mutableFloatStateOf(1f) }
+    val puckOverlayHidLayer = remember { booleanArrayOf(false) } // ME_ARROW_LAYER hidden for the overlay
+    fun dropPuckOverlay() {
+        if (puckOverlayOn.value) puckOverlayOn.value = false
+        if (puckOverlayHidLayer[0]) {
+            puckOverlayHidLayer[0] = false
+            lastMeLayerKey = null // applyData re-derives the symbol puck's visibility on its next pass
+            styleRef?.getLayer(ME_ARROW_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
+        }
+    }
     var appliedStyleKey by remember { mutableStateOf<String?>(null) }
     var lastCameraTarget by remember { mutableStateOf<LatLng?>(null) }
     var lastInsetPx by remember { mutableStateOf(-1) }
@@ -1691,8 +1711,28 @@ fun VelaMapView(
                                 .build(),
                         ),
                     )
+                    // SCREEN-SPACE PUCK (issue #251, "the puck itself moves", 2026-09-03). The
+                    // arrow is a GeoJSON symbol: its per-frame source update goes through
+                    // MapLibre's async workers while the camera move above is synchronous, so
+                    // the symbol lands on time or a frame late at random and the arrow jitters
+                    // by a frame of travel against a calm map (measured on a straight highway:
+                    // the white glyph moved 1-2 px on 95% of frames). In follow mode the puck is
+                    // therefore a Compose overlay at the projection of the SAME point through the
+                    // camera state just set, so the two cannot disagree by a frame. Same look:
+                    // rotated by the bearing relative to the camera, squashed by the tilt.
+                    val scr = cam.projection.toScreenLocation(MLLatLng(pt.lat, pt.lng))
+                    puckOverlayX.floatValue = scr.x
+                    puckOverlayY.floatValue = scr.y
+                    puckOverlayRot.floatValue = (((navPuck.displayBearing - camState[2]).toFloat() % 360f) + 360f) % 360f
+                    puckOverlaySquash.floatValue = kotlin.math.cos(Math.toRadians(navTiltEase[0])).toFloat().coerceIn(0.2f, 1f)
+                    if (!puckOverlayOn.value) puckOverlayOn.value = true
+                    if (!puckOverlayHidLayer[0]) {
+                        puckOverlayHidLayer[0] = true
+                        style.getLayer(ME_ARROW_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+                    }
                 } else {
                     camState[0] = Double.NaN // reset → re-attach eases in from the live camera
+                    dropPuckOverlay()
                 }
                 // Keep the driven/ahead cut EXACTLY under the arrow — a GEOMETRY split updated
                 // here (throttled to sub-pixel at the CURRENT zoom): the ahead layer gets the
@@ -1783,6 +1823,7 @@ fun VelaMapView(
                     )
                 }
             } else {
+                dropPuckOverlay()
                 navPuck.raw?.let { setMeSource(style, it, navPuck.rawBearing ?: 0f) }
             }
         }
@@ -1820,7 +1861,8 @@ fun VelaMapView(
         }
     }
 
-    AndroidView(factory = { mapView }, modifier = modifier) { mv ->
+    androidx.compose.foundation.layout.Box(modifier) {
+    AndroidView(factory = { mapView }, modifier = Modifier.matchParentSize()) { mv ->
         // Re-assert non-focusability each pass — MapLibre re-enables it on surface
         // (re)creation, which would let it eat D-pad keys again (docs/dpad.md).
         if (mv.isFocusable) {
@@ -2567,6 +2609,7 @@ fun VelaMapView(
                 lastRouteMode = -1
                 lastBrowseGradKey = null
                 lastMeLayerKey = null
+                puckOverlayHidLayer[0] = false // fresh style re-created the symbol puck visible
                 lastEnsureKey[0] = -1 // fresh style dropped the overlay layers - re-ensure on next pass
                 lastGradM[0] = -1e9 // force the nav split to re-render on the fresh style
                 PoiIcons.satellite = satelliteOn
@@ -2906,6 +2949,26 @@ fun VelaMapView(
                 }
             }
         }
+    }
+    if (puckOverlayOn.value) {
+        val puckImg = remember { navPuckBitmap().asImageBitmap() }
+        val sizePx = puckImg.width
+        androidx.compose.foundation.Image(
+            bitmap = puckImg,
+            contentDescription = null,
+            modifier = Modifier
+                // Outer layer: place the centre at the projected point and squash by the tilt
+                // (in SCREEN space, after the rotation below - hence two layers).
+                .graphicsLayer {
+                    translationX = puckOverlayX.floatValue - sizePx / 2f
+                    translationY = puckOverlayY.floatValue - sizePx / 2f
+                    scaleY = puckOverlaySquash.floatValue
+                }
+                // Inner layer: the heading, relative to the camera (the map rotates under it).
+                .graphicsLayer { rotationZ = puckOverlayRot.floatValue }
+                .size(with(density) { sizePx.toDp() }),
+        )
+    }
     }
 }
 

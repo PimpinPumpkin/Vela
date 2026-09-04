@@ -1988,6 +1988,24 @@ architecture note.
   `navSession.onLocation` path - puck/banner/voice keep working, `navStarved` keeps the
   "Searching for GPS" chip up for honesty, the first real fix re-anchors (route-plausible
   synthetics pass the outlier gate). Never feeds `tripStore.record` (no fake points in trips).
+  **THE PUCK ITSELF JITTERED BECAUSE IT WAS A MAP SYMBOL (issue #251, fixed 2026-09-03). In
+  follow mode the puck is now a COMPOSE OVERLAY, not the `ME_ARROW_LAYER` symbol.** Measured the
+  pixel that matters: the white chevron's centroid in an `adb screenrecord` (`puck2.py`: threshold
+  the white glyph in a 200 px box around the puck, centroid per frame) moved 1-2 px on 95% of
+  frames on a dead-straight highway with the map calm, in a saw-tooth (1683.3, 1682.1, 1683.2,
+  1684.3, 1686.8...). Cause: `setMeSource` is a GeoJSON source update that goes through
+  MapLibre's async worker tiling, while `moveCamera` is synchronous, so the symbol landed on time
+  or one frame late at random - one frame of travel (0.3 m, ~1 px at nav zoom) of vibration, on
+  every road, independent of physics, geometry or frame pacing. The overlay is drawn at
+  `projection.toScreenLocation(pt)` computed right after the camera move from the same camera
+  state, rotated by `displayBearing - camera bearing`, squashed by `cos(tilt)` (two
+  graphicsLayers: inner rotates, outer squashes+translates - order matters), from the same
+  `navPuckBitmap()`. Per-frame writes go to `mutableFloatStateOf` holders read in the DRAW phase,
+  so no recomposition per frame. `ME_ARROW_LAYER` is hidden while the overlay is on and restored
+  (via `lastMeLayerKey = null`) when following stops, the puck disengages or the style reloads.
+  After: chevron motion 0.07 px/frame, 2% of frames >0.5 px (was 1.39 px, 91%). The GeoJSON
+  puck is still used when not following (panned map) and in browse. Rule: anything that must
+  sit still on screen while the map moves cannot be a per-frame GeoJSON symbol.
   Nav zoom range is 18.0→15.5 (2026-07-14, was 17.3→15.0). **DEMO DRIVES RAN THE PUCK CLOCKS AT 3x (issue #251, fixed 2026-08-10 - the
   dominant cause of the "record needle" swim).** `startDemoDrive` feeds
   `locationProvider.replay(fixes, speedup = 1f)` - REAL-TIME fixes - but it also sets
