@@ -2206,6 +2206,15 @@ architecture note.
   `navSession.onLocation` path - puck/banner/voice keep working, `navStarved` keeps the
   "Searching for GPS" chip up for honesty, the first real fix re-anchors (route-plausible
   synthetics pass the outlier gate). Never feeds `tripStore.record` (no fake points in trips).
+  **THE TEXTUREVIEW CRASH SENTINEL MISFIRED ON A HEALTHY PHONE (2026-09-03).** `texture_render`
+  (compatibility rendering, a TextureView map) is meant for GL drivers that kill the process at
+  init; the sentinel counted ANY death between map creation and the first idle render, so two
+  force-stops / swipe-kills / unrelated crashes flipped the Pixel 4a into it for good. Symptom: a
+  `TextureViewRend` thread at ~89% CPU in a trace and judder on every road, reported as puck jitter.
+  Now only `ApplicationExitInfo.REASON_CRASH_NATIVE` counts (`lastExitWasNativeCrash`, API 30+;
+  older devices keep the any-death rule), the flip records `texture_render_auto_ms`, and the
+  Developer row shows "Turned on automatically on <date>" so it can be seen and undone. When a
+  jitter/judder report comes in, check this toggle FIRST.
   **THE ROUTE LINE RE-UPLOAD DROPPED A MAP FRAME EVERY 150 ms (issue #251, fixed 2026-09-03).** On a
   demo drive (zero GPS noise) the map still vibrated. Measured: `adb screenrecord` frames fitted with
   an ECC Euclidean transform showed the camera's turn rate through a bend stepping double-then-zero
