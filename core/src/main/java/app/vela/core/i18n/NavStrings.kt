@@ -134,7 +134,14 @@ object EnNavStrings : NavStrings {
             }
             "off ramp" -> if (exitNo != null) "Take exit$exitTab$toward" else "Take the exit$toward"
             "fork" -> ("Keep $m").trim() + toward
-            "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "At the roundabout, take exit $rbExit$onto" else "Enter the roundabout$onto"
+            // Ordinal, like every other language here and like Google ("take the 2nd exit"): "take
+            // exit 2" read as a numbered motorway exit (user 2026-09-05). Straight through is named
+            // as such, with the exit count kept as the confirmation.
+            "roundabout", "rotary", "exit roundabout", "exit rotary" -> when {
+                rbExit == null -> "Enter the roundabout$onto"
+                mod == "straight" -> "At the roundabout, go straight through$onto, the ${enOrdinal(rbExit)} exit"
+                else -> "At the roundabout, take the ${enOrdinal(rbExit)} exit$onto"
+            }
             "roundabout turn" -> ("At the roundabout, turn $m").trim() + onto
             "uturn" -> "Make a U-turn$onto"
             else -> if (m.isNotBlank()) ("Turn $m").trim() + onto else "Continue$onto"
@@ -214,6 +221,18 @@ object EnNavStrings : NavStrings {
         // "Use the right 2 lanes to take exit 172 toward Sacramento" — lowercase the maneuver's first
         // word so it reads as one sentence after the "In <distance>, " frame.
         return "Use $lanes to " + instruction.replaceFirstChar { it.lowercaseChar() }
+    }
+
+    /** "1st", "2nd", "3rd", "4th"... (11th-13th are "th"). TTS engines read these as the ordinal words. */
+    private fun enOrdinal(n: Int): String {
+        val suffix = when {
+            n % 100 in 11..13 -> "th"
+            n % 10 == 1 -> "st"
+            n % 10 == 2 -> "nd"
+            n % 10 == 3 -> "rd"
+            else -> "th"
+        }
+        return "$n$suffix"
     }
 
     /** Whole-word road abbreviation → spoken form, "I-80"→"Interstate 80", and 3-digit street ordinals
