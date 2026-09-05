@@ -19,7 +19,10 @@ class NavStringsTest {
         assertEquals("Turn right onto the local street", en.phrase("turn", "right", "the local street", null, null, null))
         assertEquals("Continue onto I 80", en.phrase("continue", "straight", "I 80", null, null, null))
         assertEquals("Take exit 15 toward Sacramento", en.phrase("off ramp", null, null, "Sacramento", "15", null))
-        assertEquals("At the roundabout, take exit 2 onto Elm St", en.phrase("roundabout", null, "Elm St", null, null, 2))
+        assertEquals("At the roundabout, take the 2nd exit onto Elm St", en.phrase("roundabout", null, "Elm St", null, null, 2))
+        // The spoken "take exit N" -> "take the N exit" rewrite (an espeak workaround for motorway
+        // exits) must not touch the roundabout ordinal: it read "take the 2 exit" (user 2026-09-05).
+        assertEquals("At the roundabout, take the 2nd exit onto Elm Street", en.expandForSpeech("At the roundabout, take the 2nd exit onto Elm St"))
         assertEquals("Make a U-turn onto Main St", en.phrase("uturn", null, "Main St", null, null, null))
         assertEquals("Head out on F St", en.phrase("depart", null, "F St", null, null, null))
         assertEquals("Arrive at your destination", en.phrase("arrive", null, null, null, null, null))

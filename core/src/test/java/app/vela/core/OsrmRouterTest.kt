@@ -62,7 +62,10 @@ class OsrmRouterTest {
         assertEquals("Turn right onto the local street", RouteGeometry.osrmPhrase("turn", "right", "the local street", null, null, null))
         assertEquals("Continue onto Olive Dr", RouteGeometry.osrmPhrase("new name", "straight", "Olive Dr", null, null, null))
         assertEquals("Arrive at your destination", RouteGeometry.osrmPhrase("arrive", null, null, null, null, null))
-        assertEquals("At the roundabout, take exit 2 onto Main St", RouteGeometry.osrmPhrase("roundabout", null, "Main St", null, null, 2))
+        assertEquals("At the roundabout, take the 2nd exit onto Main St", RouteGeometry.osrmPhrase("roundabout", null, "Main St", null, null, 2))
+        assertEquals("At the roundabout, go straight through onto Main St, the 2nd exit", RouteGeometry.osrmPhrase("roundabout", "straight", "Main St", null, null, 2))
+        assertEquals("At the roundabout, take the 3rd exit", RouteGeometry.osrmPhrase("roundabout", "left", null, null, null, 3))
+        assertEquals("At the roundabout, take the 11th exit", RouteGeometry.osrmPhrase("roundabout", "left", null, null, null, 11))
         assertEquals("Head out on Elm St", RouteGeometry.osrmPhrase("depart", "left", "Elm St", null, null, null))
     }
 

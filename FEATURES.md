@@ -1287,6 +1287,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   DISPLAYED speed is smoothed with a stop deadband (raw 1 Hz doppler flickered 59/60/61 at cruise), and
   speed derivation requires two GPS fixes past an accuracy-scaled floor (a BeaconDB hop minted phantom
   16 mph readouts at red lights).
+  **Roundabouts say "take the 2nd exit" (2026-09-05):** English used "take exit 2", which the spoken
+  "take exit N" rewrite (an espeak workaround for motorway exits) turned into "take the 2 exit".
+  Now ordinal like every other language, and a straight-through roundabout is named as such:
+  "go straight through onto 13th St, the 2nd exit".
   **Road-ahead bar, second cut (2026-09-04):** redrawn to the TomTom RouteBar the #228 reporter
   attached. A track from the arrow (bottom, with the remaining trip distance) to the top of the
   look-ahead window (labelled with the distance it spans), congestion as red/amber segments, and

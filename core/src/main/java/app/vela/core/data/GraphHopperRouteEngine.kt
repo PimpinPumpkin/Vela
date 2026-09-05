@@ -217,7 +217,7 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
             val type = ghType(ins.sign, first = i == 0)
             val name = ins.name?.takeIf { it.isNotBlank() }
             val at = ins.points.let { if (it.size() > 0) LatLng(it.getLat(0), it.getLon(0)) else poly.firstOrNull() ?: LatLng(0.0, 0.0) }
-            // A roundabout instruction carries its exit number — thread it so the phrase reads "take exit N"
+            // A roundabout instruction carries its exit number — thread it so the phrase reads "take the Nth exit"
             // (without it, ROUNDABOUT fell to the "Enter the roundabout" branch and lost the exit).
             val rbExit = (ins as? com.graphhopper.util.RoundaboutInstruction)?.exitNumber?.takeIf { it > 0 }
             // Highways identify by REF, signs by DESTINATION — the same fields the OSRM path reads
