@@ -2274,6 +2274,14 @@ architecture note.
   ticker reads it per frame through `trailHolder`; off means `routeGradient(..., driven = TRANSPARENT)`
   on the ahead and cut pieces and `ROUTE_LAYER` hidden, on means grey. A flip sets `splitReset` so the
   next frame re-applies everything. Paint only; never touch geometry for this.
+  **AVOID TOLLS / HIGHWAYS, the honest state (2026-09-05):** the FOSSGIS OSRM server has no
+  `exclude=` classes (`OSRM_SUPPORTS_EXCLUDE = false`), so ONLINE-ONLY users get the plain route plus
+  the "may still use tolls and highways" note (#293). With a downloaded region the on-device engine
+  routes the avoid; those routes used to leave `directions()` RAW (engine free-flow, no traffic, no
+  #242 calibration) - that is #325. Now they get Google's area traffic factor and the free-flow
+  calibration from the PLAIN pair (open OSRM vs Google when same-course), with NO congestion spans
+  (spans belong to Google's course). Google cannot be asked for an avoid route keylessly, so a
+  per-road-class calibration is not available; this is the best keyless estimate, not Google's.
   **OBF BAKE, MEASURED 2026-09-04 (read before touching scripts/build-obf-region.sh or the shim):**
   the memory ceiling is MapCreator's FIRST pass (`extractOsmToNodesDB`), so it does not depend on
   which sections you index, only on the PBF and on which analysis passes run. Same 345 MB

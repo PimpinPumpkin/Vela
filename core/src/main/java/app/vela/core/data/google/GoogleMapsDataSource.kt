@@ -525,7 +525,23 @@ class GoogleMapsDataSource @Inject constructor(
                 val avoidRoutes = kotlinx.coroutines.withTimeoutOrNull(AVOID_ONDEVICE_TIMEOUT_MS) { avoidD.await() } ?: emptyList()
                 if (avoidRoutes.isNotEmpty()) {
                     avoidHonored = true
-                    return@coroutineScope avoidRoutes
+                    // These used to go out RAW: the on-device engine's free-flow time, no traffic, no
+                    // calibration, while every other route in the app carries Google's in-traffic
+                    // factor and (since #242) a free-flow-to-typical calibration. That is the "ETA
+                    // completely broken with avoid on" reports (#325, 2026-09-05). Google can't be
+                    // asked for an avoid route keylessly, so the calibration comes from the PLAIN
+                    // pair fetched alongside (open OSRM vs Google, when they follow the same course:
+                    // a property of the area's roads and driving, carried over to the avoid route),
+                    // and the traffic factor is Google's for the area. No congestion spans: those
+                    // belong to Google's course, not this one.
+                    val plainCal = open.firstOrNull()?.takeIf { top ->
+                        top.durationSeconds > 0 && gTop != null && gTop.durationSeconds > 0 &&
+                            gTop.polyline.size >= 5 && !RouteGeometry.divergent(top, gTop)
+                    }?.let { top ->
+                        val dScale = if (gTop!!.distanceMeters > 0) top.distanceMeters / gTop.distanceMeters else 1.0
+                        ((gTop.durationSeconds * dScale) / top.durationSeconds).coerceIn(0.5, 3.0)
+                    }
+                    return@coroutineScope avoidRoutes.map { applyTraffic(it, gTop, plainCal ?: 1.0, withSpans = false) }
                 }
             }
             // TRAFFIC-AWARE routing (option 3): if Google's live-traffic route took a DIFFERENT path
@@ -638,7 +654,7 @@ class GoogleMapsDataSource @Inject constructor(
     /** Overlay Google's live-traffic ETA + congestion onto an open-router [route] (best-effort):
      *  scale the route's free-flow duration by Google's in-traffic/typical ratio, and map its
      *  congestion spans onto the open geometry by fraction. No Google traffic → keep free-flow. */
-    private fun applyTraffic(route: Route, g: Route?, freeFlowCal: Double? = null): Route {
+    private fun applyTraffic(route: Route, g: Route?, freeFlowCal: Double? = null, withSpans: Boolean = true): Route {
         val typical = g?.durationSeconds?.takeIf { it > 0 } ?: return route
         val inTraffic = g.durationInTrafficSeconds ?: return route
         val factor = (inTraffic / typical).coerceIn(0.5, 4.0)
@@ -669,7 +685,8 @@ class GoogleMapsDataSource @Inject constructor(
         )
         return calibrated.copy(
             durationInTrafficSeconds = calibrated.durationSeconds * factor,
-            trafficSpans = g.trafficSpans.map { it.copy(startMeters = it.startMeters * scale, lengthMeters = it.lengthMeters * scale) },
+            trafficSpans = if (withSpans) g.trafficSpans.map { it.copy(startMeters = it.startMeters * scale, lengthMeters = it.lengthMeters * scale) }
+            else emptyList(),
         )
     }
 
