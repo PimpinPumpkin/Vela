@@ -569,7 +569,10 @@ class GoogleMapsDataSource @Inject constructor(
             // intermediate via (short ETA, wrong last step) is the "10 min away" nav bug — AND be time-
             // competitive with OSRM's free-flow best.
             val snapReaches = trafficRoute?.polyline?.lastOrNull()
-                ?.let { it.distanceTo(destination) <= SNAP_REACH_M } == true
+                ?.let { it.distanceTo(destination) <= SNAP_REACH_M } == true &&
+                // A via route markedly LONGER than the course it was meant to follow has a detour
+                // in it (a via that snapped to a side road: the spur the puck then drives).
+                gTop != null && trafficRoute!!.distanceMeters <= gTop.distanceMeters * SNAP_LENGTH_SLACK + SNAP_LENGTH_SLACK_M
             // With avoid on, the snap is the point (Google's avoiding course is slower than the
             // open router's unrestricted one by construction), so the ETA margin test is skipped.
             val snapWorthIt = trafficRoute != null && snapReaches && open.isNotEmpty() && googleEtaS != null &&
@@ -946,6 +949,8 @@ class GoogleMapsDataSource @Inject constructor(
         // (its detour is time-competitive with OSRM's ideal → the jam justifies the reroute). Tunable from
         // real side-by-side data — the `directions` diag logs gEta/osrmFF so the threshold can be pinned.
         const val SNAP_ETA_MARGIN = 1.2
+        private const val SNAP_LENGTH_SLACK = 1.05
+        private const val SNAP_LENGTH_SLACK_M = 400.0
         const val SNAP_REACH_M = 500.0 // the snapped route's last point must be within this of the destination
         const val MAX_ROUTES = 4       // primary + up to 3 alternates in the picker
         // Radii (m) to probe out toward the street when the geocode is set-back from it. Two rings

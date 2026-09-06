@@ -2270,6 +2270,15 @@ architecture note.
   upward fling faster than NAV_BAR_FLING_PX_S, else spring back); commit = the same `openSteps` the
   list button calls, and `StepsSheet` animates in from its own height (`enter`). The button stays as
   the key path; the gesture is touch-only on purpose (docs/dpad.md).
+  **Trail OFF cannot use the cut piece (2026-09-06):** an overlay line cannot erase what is under it,
+  so a transparent "driven" stop on `ROUTE_CUT_LAYER` just revealed the blue ahead line beneath (the
+  growing stub). With the trail off, the cut piece is hidden and the AHEAD line's own gradient carries
+  the cut per frame (transparent before the arrow's window fraction); its ~12 m texel step hides under
+  the arrow. With the trail on, the cut piece paints grey over blue as before.
+  **Via-route spur guard (2026-09-06):** `routeOsrm` refuses a via route when any interior via snapped
+  >40 m (`VIA_SNAP_MAX_M`, from OSRM's `waypoints[].distance`) and `snapReaches` also requires the via
+  route to be no longer than Google's course x1.05 + 400 m. Either symptom is a sampled point that
+  landed on a frontage road or ramp; the plain route is used instead.
   **Driven trail is a setting (`RouteTrail`, `route_trail`, default OFF = hidden, 2026-09-03):** the
   ticker reads it per frame through `trailHolder`; off means `routeGradient(..., driven = TRANSPARENT)`
   on the ahead and cut pieces and `ROUTE_LAYER` hidden, on means grey. A flip sets `splitReset` so the
