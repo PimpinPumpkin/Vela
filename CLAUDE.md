@@ -2275,6 +2275,12 @@ architecture note.
   growing stub). With the trail off, the cut piece is hidden and the AHEAD line's own gradient carries
   the cut per frame (transparent before the arrow's window fraction); its ~12 m texel step hides under
   the arrow. With the trail on, the cut piece paints grey over blue as before.
+  **Via-route spur guard, the SHAPE test (2026-09-06, same day, after the reporter said the appendix
+  hung off a motorway with no turn for miles):** a via that lands on an OFF-RAMP snaps a few metres
+  and adds only a ramp pair, so the snap-distance and length guards below miss it. `hasSpur(route,
+  course)` projects the via route onto Google's line (windowed) and flags any >=250 m stretch that
+  advances <35% of the distance travelled; the first/last 300 m are exempt. Applied to every via
+  route in `directions()`; unit-tested with an out-and-back appendix and a ramp-shaped loop.
   **Via-route spur guard (2026-09-06):** `routeOsrm` refuses a via route when any interior via snapped
   >40 m (`VIA_SNAP_MAX_M`, from OSRM's `waypoints[].distance`) and `snapReaches` also requires the via
   route to be no longer than Google's course x1.05 + 400 m. Either symptom is a sampled point that

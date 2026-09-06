@@ -546,6 +546,9 @@ class GoogleMapsDataSource @Inject constructor(
                 RouteGeometry.divergent(open.first(), gTop)) {
                 RouteGeometry.routeVia(http, listOf(origin) + RouteGeometry.sampleVias(gTop.polyline) + destination, mode, avoidTolls, avoidHighways)
                     .firstOrNull()
+                    // A via that landed on a ramp or frontage road makes the route run out and
+                    // back (the "appendix"); refuse the whole via route rather than drive it.
+                    ?.takeIf { !RouteGeometry.hasSpur(it.polyline, gTop.polyline) }
             } else null
             // OFFLINE fallback: OSRM (and Google) need the network. When OSRM came back empty — no
             // connectivity, or the FOSSGIS server is down — route fully ON-DEVICE from a downloaded

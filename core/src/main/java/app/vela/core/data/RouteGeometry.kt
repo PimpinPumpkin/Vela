@@ -694,6 +694,84 @@ object RouteGeometry {
      *  dense that a via landing on a turn gets swallowed into a via arrive/depart and the turn is lost
      *  (measured ~1-in-10 named-turn loss at 60 vias; negligible at ~12). Only ever used on the
      *  divergent minority of routes, so the tradeoff rides on few requests. */
+    /**
+     * True when [route] contains a SPUR relative to [course]: a stretch where it keeps travelling
+     * but makes no progress along the course, then comes back. That is what a via that snapped
+     * onto an off-ramp or frontage road produces (real drive 2026-09-06: an appendix hanging off a
+     * motorway with no turn due for miles; the arrow drove out and back while the car went
+     * straight). Neither the snap distance (metres) nor the extra length (a ramp pair) is large in
+     * that case, so those checks miss it; this one looks at the shape.
+     *
+     * Each route vertex is projected onto the course (windowed, both advance together); over any
+     * stretch of at least [SPUR_MIN_M] metres of route where the projection advanced less than
+     * [SPUR_ADVANCE_FRACTION] of the distance travelled, the route has a spur. The first and last
+     * [SPUR_END_SLACK_M] are exempt: the origin and destination approaches legitimately differ.
+     */
+    internal fun hasSpur(route: List<LatLng>, course: List<LatLng>): Boolean {
+        if (route.size < 3 || course.size < 2) return false
+        val cum = app.vela.core.nav.RouteBar.cumulative(course)
+        val total = cum.last()
+        if (total < SPUR_MIN_M * 3) return false
+        val rcum = app.vela.core.nav.RouteBar.cumulative(route)
+        val rtotal = rcum.last()
+        // Windowed projection: a route vertex is matched to the nearest course segment near where
+        // the previous one matched, falling back to a global search when nothing is close.
+        var seg = 0
+        var stretchStartR = 0.0
+        var stretchStartC = 0.0
+        var maxC = 0.0
+        for (i in route.indices) {
+            val p = route[i]
+            var best = Double.MAX_VALUE
+            var bestAlong = 0.0
+            val lo = (seg - 3).coerceAtLeast(0)
+            val hi = (seg + 60).coerceAtMost(course.size - 2)
+            fun scan(a: Int, b: Int) {
+                for (k in a..b) {
+                    val (along, d) = projectOnSegment(course[k], course[k + 1], cum[k], p)
+                    if (d < best) { best = d; bestAlong = along; seg = k }
+                }
+            }
+            scan(lo, hi)
+            if (best > SPUR_LOCAL_M) scan(0, course.size - 2)
+            val r = rcum[i]
+            if (r < SPUR_END_SLACK_M || r > rtotal - SPUR_END_SLACK_M) {
+                stretchStartR = r; stretchStartC = bestAlong; maxC = bestAlong
+                continue
+            }
+            if (bestAlong > maxC + SPUR_ADVANCE_STEP_M) {
+                // Real progress along the course: the stretch under suspicion ends here.
+                maxC = bestAlong
+                stretchStartR = r
+                stretchStartC = bestAlong
+            } else {
+                val travelled = r - stretchStartR
+                if (travelled >= SPUR_MIN_M && (maxC - stretchStartC) < travelled * SPUR_ADVANCE_FRACTION) return true
+            }
+        }
+        return false
+    }
+
+    private fun projectOnSegment(a: LatLng, b: LatLng, cumA: Double, p: LatLng): Pair<Double, Double> {
+        val latScale = Math.cos(Math.toRadians(a.lat))
+        val bx = (b.lng - a.lng) * latScale
+        val by = b.lat - a.lat
+        val px = (p.lng - a.lng) * latScale
+        val py = p.lat - a.lat
+        val len2 = bx * bx + by * by
+        val t = if (len2 <= 0.0) 0.0 else ((px * bx + py * by) / len2).coerceIn(0.0, 1.0)
+        val dx = px - bx * t
+        val dy = py - by * t
+        val segLen = Math.sqrt(len2) * 111_320.0
+        return (cumA + segLen * t) to Math.hypot(dx, dy) * 111_320.0
+    }
+
+    private const val SPUR_MIN_M = 250.0            // a stretch this long with no progress is a spur
+    private const val SPUR_ADVANCE_FRACTION = 0.35  // progress along the course below this share of distance travelled
+    private const val SPUR_ADVANCE_STEP_M = 15.0    // how much further along the course counts as advancing
+    private const val SPUR_END_SLACK_M = 300.0      // origin/destination approaches may differ from the course
+    private const val SPUR_LOCAL_M = 200.0          // beyond this from the windowed match, search the whole course
+
     internal fun sampleVias(poly: List<LatLng>, count: Int = 12): List<LatLng> {
         if (poly.size < 3) return emptyList() // need at least one interior point
         val interior = poly.size - 2
