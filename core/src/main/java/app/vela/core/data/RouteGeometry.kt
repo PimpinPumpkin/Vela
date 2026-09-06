@@ -175,8 +175,14 @@ object RouteGeometry {
         mode: TravelMode,
         avoidTolls: Boolean = false,
         avoidHighways: Boolean = false,
+        departBearingDeg: Double? = null,
+        // True only for the traffic SNAP (vias sampled off Google's line, which must sit on the
+        // road): a via that snapped far away is refused. A user's STOP is routinely set back
+        // from the road (a mall lot, a driveway), so the multi-stop router must not use this.
+        strictVias: Boolean = false,
     ): List<Route> =
-        if (waypoints.size < 2) emptyList() else routeOsrm(http, waypoints, mode, alternatives = false, avoidTolls, avoidHighways)
+        if (waypoints.size < 2) emptyList()
+        else routeOsrm(http, waypoints, mode, alternatives = false, avoidTolls, avoidHighways, departBearingDeg = departBearingDeg, strictVias = strictVias)
 
     /**
      * OSRM `bearings=`, constraining only the FIRST waypoint to the direction the car is actually
@@ -216,6 +222,7 @@ object RouteGeometry {
         avoidHighways: Boolean = false,
         tries: Int = OSRM_TRIES,
         departBearingDeg: Double? = null,
+        strictVias: Boolean = false,
     ): List<Route> {
         val backend = backend(mode) ?: return emptyList()
         val coords = points.joinToString(";") { "${it.lng},${it.lat}" }
@@ -240,7 +247,7 @@ object RouteGeometry {
                         // vias are points sampled off Google's own line, so a big snap distance means
                         // the sample landed near a frontage road or ramp, not on the course. Refuse
                         // the whole via route; the caller falls back to the plain route.
-                        if (points.size > 2) {
+                        if (strictVias && points.size > 2) {
                             val wps = body["waypoints"]?.jsonArray
                             val badVia = wps != null && wps.size == points.size && (1 until wps.size - 1).any { i ->
                                 (wps[i].jsonObject["distance"]?.jsonPrimitive?.doubleOrNull ?: 0.0) > VIA_SNAP_MAX_M
@@ -710,11 +717,17 @@ object RouteGeometry {
      * it missed the real one. The first and last [SPUR_END_SLACK_M] are exempt: the origin and
      * destination approaches legitimately differ from the course.
      */
-    internal fun hasSpur(route: List<LatLng>, course: List<LatLng>): Boolean {
-        if (route.size < 3 || course.size < 2) return false
+    internal fun hasSpur(route: List<LatLng>, course: List<LatLng>): Boolean = spurAt(route, course) != null
+
+    /** Metres along [route] where a spur was detected (see [hasSpur]), or null. */
+    internal fun spurAt(route: List<LatLng>, course: List<LatLng>): Double? {
+        if (route.size < 3 || course.size < 2) return null
         val cum = app.vela.core.nav.RouteBar.cumulative(course)
         val total = cum.last()
-        if (total < SPUR_MIN_M * 3) return false
+        if (total < SPUR_MIN_M * 3) return null
+        // One latitude scale for the whole course (a route spans a few degrees at most): the
+        // per-projection cos() was most of the cost on a long route (review 2026-09-06).
+        val latScale = Math.cos(Math.toRadians(course[course.size / 2].lat))
         val rcum = app.vela.core.nav.RouteBar.cumulative(route)
         val rtotal = rcum.last()
         var seg = 0
@@ -727,7 +740,7 @@ object RouteGeometry {
             var bestAlong = 0.0
             fun scan(a: Int, b: Int) {
                 for (k in a..b) {
-                    val (along, d) = projectOnSegment(course[k], course[k + 1], cum[k], p)
+                    val (along, d) = projectOnSegment(course[k], course[k + 1], cum[k], p, latScale)
                     if (d < best) { best = d; bestAlong = along; seg = k }
                 }
             }
@@ -741,16 +754,15 @@ object RouteGeometry {
             if (bestAlong > maxC) maxC = bestAlong
             val travelled = r - stretchStartR
             val progress = maxC - stretchStartC
-            if (travelled >= SPUR_MIN_M && progress < travelled * SPUR_PROGRESS_FRACTION) return true
+            if (travelled >= SPUR_MIN_M && progress < travelled * SPUR_PROGRESS_FRACTION) return r
             if (progress >= travelled * SPUR_NORMAL_FRACTION) {
                 stretchStartR = r; stretchStartC = bestAlong; maxC = bestAlong
             }
         }
-        return false
+        return null
     }
 
-    private fun projectOnSegment(a: LatLng, b: LatLng, cumA: Double, p: LatLng): Pair<Double, Double> {
-        val latScale = Math.cos(Math.toRadians(a.lat))
+    private fun projectOnSegment(a: LatLng, b: LatLng, cumA: Double, p: LatLng, latScale: Double): Pair<Double, Double> {
         val bx = (b.lng - a.lng) * latScale
         val by = b.lat - a.lat
         val px = (p.lng - a.lng) * latScale

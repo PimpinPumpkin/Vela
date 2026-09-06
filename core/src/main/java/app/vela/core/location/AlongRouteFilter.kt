@@ -85,7 +85,7 @@ class AlongRouteFilter {
          * clamped so one absurd reading can neither freeze nor blow up the estimate.
          */
         fun measurementVariance(accuracyM: Float?): Double {
-            val acc = (accuracyM ?: DEFAULT_ACC_M).toDouble().coerceIn(1.0, 60.0)
+            val acc = (accuracyM?.takeIf { !it.isNaN() } ?: DEFAULT_ACC_M).toDouble().coerceIn(1.0, 60.0)
             val sigma = (acc * 0.66).coerceAtLeast(2.5)
             return sigma * sigma
         }
