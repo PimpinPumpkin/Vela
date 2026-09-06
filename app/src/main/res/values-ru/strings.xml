@@ -93,7 +93,6 @@
     <string name="settings_download">Загрузить</string>
     <string name="settings_saved_places">Сохранённые места</string>
     <string name="settings_saved_places_hint">Сделайте резервную копию отмеченных мест в файл или восстановите их на другом устройстве. Импорт объединяется с уже имеющимися, он никогда ничего не перезаписывает и не удаляет.</string>
-    <string name="settings_import_nothing">Нет ничего нового для импорта</string>
     <string name="settings_no_saved_places">Сохранённых мест пока нет</string>
     <string name="settings_export">Экспорт</string>
     <string name="settings_import">Импорт</string>

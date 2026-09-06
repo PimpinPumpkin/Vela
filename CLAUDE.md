@@ -65,16 +65,18 @@ Defaults that make the safe path the easy one:
   search recents, POI labels and street names all talk.
 - **Recorded trips, diagnostics exports and adb dumps carry raw GPS.** Never
   attach them to issues, commits, or CI artifacts; share privately when a
-  maintainer asks. **`scripts/scrub-trip.py` makes a trip shareable** by TRIMMING
-  the private ends: every fix within a radius (default 400 m) of the start, the
-  end, the META destination, and any `--at lat,lng` you add is deleted, and the
-  middle is left at FULL precision. Trimming, not rounding, on purpose - a
-  bug lives in the middle of a drive and needs real geometry, while a 1 km
-  round still names your block. It also strips the destination out of the META
-  header and drops the route line + any maneuver inside a trimmed zone (a
-  polyline starting at your driveway leaks the same fact the fixes would).
-  It prints what it removed and the remaining first fix - check that before
-  sharing.
+  maintainer asks. **The in-app Share on a trip (Settings > Diagnostics > the
+  trip > Share) makes it shareable** by TRIMMING the private ends: every fix
+  within a radius (default 400 m) of the start, the end, the META destination
+  and Home/Work is deleted, and the middle is left at FULL precision. Trimming,
+  not rounding, on purpose - a bug lives in the middle of a drive and needs real
+  geometry, while a 1 km round still names your block. It also strips the
+  destination and label out of the META header and drops the route line + any
+  maneuver + any spoken line inside a trimmed zone (a polyline starting at your
+  driveway leaks the same fact the fixes would). The dialog shows what it
+  removed and the remaining first fix - check that before sharing. The
+  implementation is `core/replay/TripScrub` (the old `scripts/scrub-trip.py`
+  was an incomplete copy of the same idea and is gone).
 - **Before committing, scan the diff** for coordinate-shaped numbers, numbered
   streets and zip codes, and put each one through the question above.
 
@@ -1996,7 +1998,8 @@ architecture note.
   `MapViewModel.offlineStorageBreakdown()` (.mapbox db + overlays / graphs / poipacks /
   piper+asr) with `clearMapCache()` = MapLibre `clearAmbientCache` (saved areas untouched).
   Old translated locales had the zip-size strings DELETED (orphans fail lint); the new
-  installed-size keys are base-English until Weblate fills them.
+  installed-size keys are base-English until a translator fills them (Weblate is still a plan,
+  see docs/LANGUAGES.md).
 
 ## Working on the scraper
 
@@ -2156,9 +2159,11 @@ architecture note.
   never silently ignored.
   **RE-PROBED 2026-08-24 (issue #286, a new user: "Avoid tolls doesn't appear to do anything"):
   the public FOSSGIS OSRM STILL rejects `exclude=` for EVERY value** (`toll`, `motorway`, `ferry`
-  all return `InvalidValue: Exclude flag combination is not supported`), and Google's keyless
-  endpoint has no avoid parameter - online avoid remains IMPOSSIBLE, do not re-chase it without a
-  self-hosted OSRM. That makes the honesty note the entire user-facing answer, so it was upgraded
+  all return `InvalidValue: Exclude flag combination is not supported`). At the time Google's
+  keyless endpoint was believed to have no avoid parameter; that was WRONG (see the keyless
+  avoid paragraph under "Directions", 2026-09-06: the flags ride in the `!6m` feature block and
+  Google's own route honours them). So online avoid is now Google-honoured + OSRM-snapped, and
+  the note is rare. Back on 2026-08-24 it was the entire user-facing answer, so it was upgraded
   from dim `bodySmall` under the chips (it read as decoration; the reporter never registered it)
   to an info-glyph row at `bodyMedium` in ink, worded to say what to DO (download the area) rather
   than only what went wrong.
@@ -2326,7 +2331,8 @@ architecture note.
   as alternates, and if the snap fails Google's abbreviated steps win over a plain route. The FOSSGIS
   server still has no `exclude=` (`OSRM_SUPPORTS_EXCLUDE = false`); the on-device engine is the avoid
   router ONLY when Google is unreachable, and the "may still use tolls" note shows only then.
-  Device-checked: Space Needle 35 min via I-5 -> 49 min via SR-522 with live traffic.
+  Device-checked on a downtown-to-suburb drive: the interstate route gave way to a state-highway
+  one, ~14 min longer, with a live-traffic ETA on both.
   **OBF BAKE, MEASURED 2026-09-04 (read before touching scripts/build-obf-region.sh or the shim):**
   the memory ceiling is MapCreator's FIRST pass (`extractOsmToNodesDB`), so it does not depend on
   which sections you index, only on the PBF and on which analysis passes run. Same 345 MB
@@ -2348,7 +2354,7 @@ architecture note.
   the order to run them. Do not start from a theory.**
   **THE PUCK ITSELF JITTERED BECAUSE IT WAS A MAP SYMBOL (issue #251, fixed 2026-09-03). In
   follow mode the puck is now a COMPOSE OVERLAY, not the `ME_ARROW_LAYER` symbol.** Measured the
-  pixel that matters: the white chevron's centroid in an `adb screenrecord` (`puck2.py`: threshold
+  pixel that matters: the white chevron's centroid in an `adb screenrecord` (`scripts/jitter/puck_track.py`: threshold
   the white glyph in a 200 px box around the puck, centroid per frame) moved 1-2 px on 95% of
   frames on a dead-straight highway with the map calm, in a saw-tooth (1683.3, 1682.1, 1683.2,
   1684.3, 1686.8...). Cause: `setMeSource` is a GeoJSON source update that goes through
@@ -2405,14 +2411,16 @@ architecture note.
   `atrace_apps: "app.vela"` in the perfetto config; `android.os.Trace.beginSection` works in the
   release build, and `Compose:recompose` slices are emitted by the runtime already.
   Nav zoom range is 18.0→15.5 (2026-07-14, was 17.3→15.0).
-  **PUCK JITTER (issue #251) HAS SIX SEPARATE CAUSES, ALL FIXED. READ THIS BEFORE TOUCHING THE
-  PUCK.** It was re-diagnosed from scratch four times because each pass found a real cause, fixed
-  it, and the symptom persisted - two of those passes then derived the SAME window fix
-  independently. The list, largest first: (1) the along-route POSITION was never filtered; (2) the
+  **PUCK JITTER (issue #251) HAS EIGHT SEPARATE CAUSES, ALL FIXED. READ `docs/puck-jitter.md`
+  BEFORE TOUCHING THE PUCK.** It was re-diagnosed from scratch four times because each pass found
+  a real cause, fixed it, and the symptom persisted - two of those passes then derived the SAME
+  window fix independently. The list: (1) the along-route POSITION was never filtered; (2) the
   progress rule stalled and surged; (3) the camera bearing followed digitization wiggle; (4) the
-  smoothing window's own width rippled; (5) demo drives ran the clocks at 3x; (6) the UI thread stalled once per fix (the paragraph just above this list: measured 2026-09-03, not physics at all). If jitter is
-  reported again, the next thing to suspect is something NOT on this list - do not re-derive one
-  of these.
+  smoothing window's own width rippled; (5) demo drives ran the clocks at 3x; (6) the UI thread
+  stalled once per fix (measured 2026-09-03, not physics at all); (7) the 150 ms route-line
+  re-upload dropped a map frame at 6.7 Hz; (8) the puck was an async GeoJSON symbol vibrating a
+  pixel against the synchronous camera, the one the user actually saw. If jitter is reported
+  again, the next thing to suspect is something NOT on this list - do not re-derive one of these.
   **(1) THE ALONG-ROUTE POSITION WAS NEVER FILTERED (2026-09-01, the biggest single cause).** The
   puck's SPEED had been Kalman-filtered since June; its POSITION never was. The snapped fix went
   straight into `targetM` and the puck was drawn from it, so every metre of along-route GPS noise
@@ -2915,10 +2923,15 @@ architecture note.
   rows, so #254's split helps download size but does NOT get a bake under the memory ceiling;
   (2) **a longer run is not progress** - the 14g attempt lasted 4x longer than the 12g one and
   still failed, because a nearly-full heap thrashes before it dies. `processInRam` already defaults
-  to false, so that knob is not the answer. Untried: ParallelGC (SerialGC's single-threaded full
-  collections are the likely reason 14g took three hours to fail), and baking big regions off-CI
-  where more RAM is available - `JAVA_HEAP` in build-obf-region.sh exists for exactly that. Until
-  this is solved the world bake CANNOT be dispatched: ~30 big rows would burn hours each and fail.
+  to false, so that knob is not the answer. Since then (2026-09-04, measured, see the OBF BAKE
+  paragraph): ParallelGC is on, and the ROUTING-ONLY LEAN bake is the default, which gets a
+  US-state-sized extract (345 MB) through at 12g in 48 min; Bavaria-sized pieces (810 MB) still
+  OOM in the first pass regardless of sections, so those need osmium chunks or an off-CI machine
+  with 22g+ (`JAVA_HEAP` in build-obf-region.sh). The world bake can be dispatched with
+  `skip_big`; the `big:true` rows are the ones that will not fit. Those flags were set from
+  Geofabrik's Content-Length on 2026-09-06 at a 450 MB PBF threshold (56 of 294 rows, including
+  the sub-area pieces that were missing it: Bayern, NRW, England, Java, Sudeste...). Re-run the
+  HEAD sweep when adding rows; a sub-area is not small just because it is a sub-area.
   CUTOVER = the manifest, and the world bake STAGES it (2026-08-03): dispatching obf-regions
   with the default staging=true merges entries into `obf-manifest-staging.json`, which the app
   never reads - bake every group there, then ONE `gh release download/upload` copy of staging
@@ -3038,8 +3051,8 @@ architecture note.
   `germany-sub` in both workflow dispatch choices) beside the kept whole-country row, so the
   smallest-covering-box rule serves a Berlin user the Berlin graph+pack instead of ~8 GB of
   Germany. No app change needed (the picker + Local-area auto-pull already prefer the smallest
-  covering region). Remaining big countries are a ROADMAP item; the pattern is copy the rows,
-  add the group to the two workflows, dispatch. \
+  covering region). Every country Geofabrik sub-divides has its `<country>-sub` rows now (issue
+  #254, 2026-08-15); all three region workflows take a list of groups or `all-sub`. \
   **Hosting + world catalog (DONE 2026-06-30):** graphs + `routing-manifest.json` are assets on the
   **`routing-graphs` GitHub release** (fixed-tag prerelease, never the "Latest" the APK tracks). The catalog is
   **`tools/routing-regions.json`** (135 regions, grouped by continent; `big:true` = country-sized). CI

@@ -1,5 +1,5 @@
 {
-  "_comment": "World catalog of offline-routing regions. CI (.github/workflows/routing-graphs.yml) builds these into GraphHopper CH graphs and publishes them to the `routing-graphs` release; the app lists whatever ends up in routing-manifest.json. Dispatch ONE `group` per run (a matrix of <=256 jobs). `big:true` regions have large PBFs (a country-sized graph) and can run long / need RAM — build them in small batches. To add a region: append {id,name,group,pbf_url} with a Geofabrik .osm.pbf URL; ids must be unique (re-running an id updates it in place).",
+  "_comment": "World catalog of offline-routing regions. CI (.github/workflows/routing-graphs.yml) builds these into GraphHopper CH graphs and publishes them to the `routing-graphs` release; the app lists whatever ends up in routing-manifest.json. `group` on dispatch takes one name, a comma/space-separated list, or all-sub for every <country>-sub group (a matrix of <=256 jobs). The same catalog feeds routing-graphs.yml, poi-packs.yml and obf-regions.yml. `big:true` regions have large PBFs (a country-sized graph) and can run long / need RAM - build them in small batches. To add a region: append {id,name,group,pbf_url} with a Geofabrik .osm.pbf URL; ids must be unique (re-running an id updates it in place).",
   "regions": [
     {
       "id": "alabama",
@@ -36,13 +36,15 @@
       "id": "california-norcal",
       "name": "Northern California (California)",
       "group": "california-sub",
-      "pbf_url": "https://download.geofabrik.de/north-america/us/california/norcal-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/north-america/us/california/norcal-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "california-socal",
       "name": "Southern California (California)",
       "group": "california-sub",
-      "pbf_url": "https://download.geofabrik.de/north-america/us/california/socal-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/north-america/us/california/socal-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "colorado",
@@ -333,7 +335,8 @@
       "id": "british-columbia",
       "name": "British Columbia (Canada)",
       "group": "canada",
-      "pbf_url": "https://download.geofabrik.de/north-america/canada/british-columbia-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/north-america/canada/british-columbia-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "manitoba",
@@ -369,7 +372,8 @@
       "id": "nunavut",
       "name": "Nunavut (Canada)",
       "group": "canada",
-      "pbf_url": "https://download.geofabrik.de/north-america/canada/nunavut-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/north-america/canada/nunavut-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "ontario",
@@ -420,7 +424,8 @@
       "id": "austria",
       "name": "Austria",
       "group": "europe",
-      "pbf_url": "https://download.geofabrik.de/europe/austria-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/europe/austria-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "belarus",
@@ -432,7 +437,8 @@
       "id": "belgium",
       "name": "Belgium",
       "group": "europe",
-      "pbf_url": "https://download.geofabrik.de/europe/belgium-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/europe/belgium-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "bosnia-herzegovina",
@@ -547,7 +553,8 @@
       "id": "denmark",
       "name": "Denmark",
       "group": "europe",
-      "pbf_url": "https://download.geofabrik.de/europe/denmark-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/europe/denmark-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "estonia",
@@ -729,7 +736,8 @@
       "id": "france-rhone-alpes",
       "name": "Rhone-Alpes (France)",
       "group": "france-sub",
-      "pbf_url": "https://download.geofabrik.de/europe/france/rhone-alpes-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/europe/france/rhone-alpes-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "germany",
@@ -742,13 +750,15 @@
       "id": "de-baden-wuerttemberg",
       "name": "Baden-Württemberg (Germany)",
       "group": "germany-sub",
-      "pbf_url": "https://download.geofabrik.de/europe/germany/baden-wuerttemberg-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/europe/germany/baden-wuerttemberg-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "de-bayern",
       "name": "Bayern (Germany)",
       "group": "germany-sub",
-      "pbf_url": "https://download.geofabrik.de/europe/germany/bayern-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/europe/germany/bayern-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "de-berlin",
@@ -790,13 +800,15 @@
       "id": "de-niedersachsen",
       "name": "Niedersachsen (Germany)",
       "group": "germany-sub",
-      "pbf_url": "https://download.geofabrik.de/europe/germany/niedersachsen-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/europe/germany/niedersachsen-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "de-nordrhein-westfalen",
       "name": "Nordrhein-Westfalen (Germany)",
       "group": "germany-sub",
-      "pbf_url": "https://download.geofabrik.de/europe/germany/nordrhein-westfalen-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/europe/germany/nordrhein-westfalen-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "de-rheinland-pfalz",
@@ -845,7 +857,8 @@
       "id": "great-britain-england",
       "name": "England (Great Britain)",
       "group": "great-britain-sub",
-      "pbf_url": "https://download.geofabrik.de/europe/united-kingdom/england-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/europe/united-kingdom/england-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "great-britain-scotland",
@@ -906,13 +919,15 @@
       "id": "italy-nord-est",
       "name": "Nord-Est (Italy)",
       "group": "italy-sub",
-      "pbf_url": "https://download.geofabrik.de/europe/italy/nord-est-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/europe/italy/nord-est-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "italy-nord-ovest",
       "name": "Nord-Ovest (Italy)",
       "group": "italy-sub",
-      "pbf_url": "https://download.geofabrik.de/europe/italy/nord-ovest-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/europe/italy/nord-ovest-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "italy-sud",
@@ -1331,7 +1346,8 @@
       "id": "switzerland",
       "name": "Switzerland",
       "group": "europe",
-      "pbf_url": "https://download.geofabrik.de/europe/switzerland-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/europe/switzerland-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "ukraine",
@@ -1448,7 +1464,8 @@
       "id": "japan-chubu",
       "name": "Chūbu region (Japan)",
       "group": "japan-sub",
-      "pbf_url": "https://download.geofabrik.de/asia/japan/chubu-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/asia/japan/chubu-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "japan-chugoku",
@@ -1472,7 +1489,8 @@
       "id": "japan-kanto",
       "name": "Kantō region (Japan)",
       "group": "japan-sub",
-      "pbf_url": "https://download.geofabrik.de/asia/japan/kanto-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/asia/japan/kanto-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "japan-kyushu",
@@ -1539,7 +1557,8 @@
       "id": "india-southern-zone",
       "name": "Southern Zone (India)",
       "group": "india-sub",
-      "pbf_url": "https://download.geofabrik.de/asia/india/southern-zone-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/asia/india/southern-zone-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "india-western-zone",
@@ -1558,7 +1577,8 @@
       "id": "indonesia-java",
       "name": "Java (Indonesia)",
       "group": "indonesia-sub",
-      "pbf_url": "https://download.geofabrik.de/asia/indonesia/java-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/asia/indonesia/java-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "indonesia-kalimantan",
@@ -1600,7 +1620,8 @@
       "id": "philippines",
       "name": "Philippines",
       "group": "asia",
-      "pbf_url": "https://download.geofabrik.de/asia/philippines-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/asia/philippines-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "thailand",
@@ -1662,7 +1683,8 @@
       "id": "brazil-sudeste",
       "name": "Sudeste (Brazil)",
       "group": "brazil-sub",
-      "pbf_url": "https://download.geofabrik.de/south-america/brazil/sudeste-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/south-america/brazil/sudeste-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "brazil-sul",
@@ -1783,13 +1805,15 @@
       "id": "nigeria",
       "name": "Nigeria",
       "group": "africa",
-      "pbf_url": "https://download.geofabrik.de/africa/nigeria-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/africa/nigeria-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "tanzania",
       "name": "Tanzania",
       "group": "africa",
-      "pbf_url": "https://download.geofabrik.de/africa/tanzania-latest.osm.pbf"
+      "pbf_url": "https://download.geofabrik.de/africa/tanzania-latest.osm.pbf",
+      "big": true
     },
     {
       "id": "ghana",

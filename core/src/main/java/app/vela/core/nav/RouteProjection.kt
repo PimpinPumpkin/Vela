@@ -11,8 +11,7 @@ import app.vela.core.model.distanceTo
  * ahead of you" would be wrong, so every consumer needs the same two operations: cumulative
  * distances once per route, then a bounded projection per point.
  *
- * NB `nav/RouteBar` (issue #228, open in parallel) carries an identical pair; whichever merges
- * second should delegate here rather than keep a second copy of this maths.
+ * `nav/RouteBar` exposes the same pair by name and delegates here.
  */
 object RouteProjection {
 

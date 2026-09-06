@@ -93,7 +93,6 @@
     <string name="settings_download">הורד</string>
     <string name="settings_saved_places">מקומות שמורים</string>
     <string name="settings_saved_places_hint">גבה את המקומות המסומנים בכוכב לקובץ, או שחזר אותם במכשיר אחר. ייבוא ממזג עם מה שכבר יש לך. הוא לעולם לא דורס או מוחק דבר.</string>
-    <string name="settings_import_nothing">אין דבר חדש לייבוא</string>
     <string name="settings_no_saved_places">עדיין אין מקומות שמורים</string>
     <string name="settings_export">ייצוא</string>
     <string name="settings_import">ייבוא</string>

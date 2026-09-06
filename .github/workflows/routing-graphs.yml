@@ -17,9 +17,12 @@ on:
   workflow_dispatch:
     inputs:
       group:
-        description: "Region group to build (ignored if 'ids' is set)"
-        type: choice
-        options: [us, canada, europe, germany-sub, oceania, asia, south-america, central-america, africa]
+        # A free-text STRING, not a choice: the sub-area groups are one per big country (15 of
+        # them), which a dropdown cannot list usably or combine. Same contract as obf-regions.yml.
+        # Continents: us canada europe oceania asia south-america central-america africa
+        # Sub-areas:  <country>-sub (germany-sub, brazil-sub, france-sub, ...) or all-sub for every one
+        description: "Region group(s): one, several comma/space separated, or 'all-sub' for every sub-area group (ignored if 'ids' is set)"
+        type: string
         default: us
       ids:
         description: "Optional: space/comma-separated region ids (e.g. 'arizona utah colorado'). Overrides 'group'."
@@ -60,9 +63,13 @@ jobs:
           # split IDS on commas/spaces, drop empties — pure jq so it's platform-independent
           # (GNU xargs runs once on empty input → would yield [""], breaking the group path).
           ids_json=$(jq -cn --arg s "$IDS" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
-          sel=$(jq -c --arg group "$GROUP" --argjson ids "$ids_json" --argjson skipBig "${SKIP_BIG:-false}" '
+          groups_json=$(jq -cn --arg s "$GROUP" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
+          sel=$(jq -c --arg group "$GROUP" --argjson groups "$groups_json" --argjson ids "$ids_json" --argjson skipBig "${SKIP_BIG:-false}" '
             [ .regions[]
-              | select( if ($ids|length) > 0 then (.id as $rid | $ids | index($rid)) != null else .group == $group end )
+              | select(
+                  if ($ids|length) > 0 then (.id as $rid | $ids | index($rid)) != null
+                  elif $group == "all-sub" then (.group | endswith("-sub"))
+                  else (.group as $g | $groups | index($g)) != null end )
               | select( ($skipBig | not) or (.big != true) )
               | {id, name, pbf_url} ]
           ' tools/routing-regions.json)

@@ -117,7 +117,6 @@
     <string name="settings_download">下载</string>
     <string name="settings_saved_places">已保存的地点</string>
     <string name="settings_saved_places_hint">将收藏的地点备份到文件，或在其他设备上恢复。导入会合并到现有数据中，绝不会覆盖或删除任何内容。</string>
-    <string name="settings_import_nothing">没有可导入的新内容</string>
     <string name="settings_no_saved_places">暂无已保存的地点</string>
     <string name="settings_export">导出</string>
     <string name="settings_import">导入</string>
