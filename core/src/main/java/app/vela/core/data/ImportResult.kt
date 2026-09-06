@@ -44,8 +44,9 @@ object ImportFormats {
                     head.contains("google.com/maps")
                 ) -> "Google Takeout"
             head.contains("\"FeatureCollection\"") || head.contains("\"features\"") -> "GeoJSON"
-            head.trimStart().startsWith("<?xml") || head.contains("<gpx") -> "GPX"
+            // KML before GPX: both start with an XML prolog.
             head.contains("<kml") || head.contains("<Placemark") -> "KML"
+            head.trimStart().startsWith("<?xml") || head.contains("<gpx") -> "GPX"
             head.contains("\"bookmarks\"") || head.contains("\"organicmaps\"") -> "Organic Maps"
             else -> null
         }
