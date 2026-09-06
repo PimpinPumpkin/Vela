@@ -495,7 +495,11 @@ fun MapScreen(
     var navBannerBottomPx by remember { mutableStateOf(0) }
     // Where the nav puck sits on screen, for the current-road label under it (issue #288).
     // Null until the nav ticker reports one; reset when a drive ends.
-    var puckScreen by remember { mutableStateOf<Offset?>(null) }
+    // The arrow's screen position, written by the ticker's rare real moves and READ IN THE
+    // LAYOUT LAMBDA of the road pill only, so a report re-lays-out one Surface rather than
+    // recomposing this screen (review 2026-09-06). Cleared when a drive ends.
+    val puckScreen = remember { mutableStateOf<Offset?>(null) }
+    LaunchedEffect(state.navigating) { if (!state.navigating) puckScreen.value = null }
     // The endpoints card's bottom edge, so the notification column can sit under it in
     // directions mode instead of printing over it (user 2026-07-13).
     var topCardBottomPx by remember { mutableStateOf(0) }
@@ -1087,7 +1091,7 @@ fun MapScreen(
             navOverviewTick = navOverviewTick,
             navRecenterTick = navRecenterTick,
             onNavZoomOverride = { navZoomOverride = it },
-            onPuckScreen = { x, y -> puckScreen = Offset(x, y) },
+            onPuckScreen = { x, y -> puckScreen.value = Offset(x, y) },
             onPoiTap = vm::onPoiTap,
             onMarkerTap = { i -> displayedPlaces(state).getOrNull(i)?.let(vm::selectPlace) },
             parkingSpot = state.parkingSpot,
@@ -1325,8 +1329,9 @@ fun MapScreen(
             val liveIdx = state.nav.stepIndex
             val onRoad = state.activeRoute?.maneuvers?.getOrNull(liveIdx - 1)
                 ?.let { it.ref?.takeIf { r -> r.isNotBlank() } ?: it.road?.takeIf { r -> r.isNotBlank() } }
-            val at = puckScreen
-            if (onRoad != null && at != null) {
+            // Composition reads only "do we have a position"; the value itself is read in layout.
+            val havePuck = puckScreen.value != null
+            if (onRoad != null && (havePuck || roadLabelMode == app.vela.ui.RoadLabel.BAR)) {
                 val uiLang = app.vela.ui.AppLocale.effective().language
                 val shownRoad =
                     if (state.roadNameLatin.isEmpty()) onRoad
@@ -1356,6 +1361,7 @@ fun MapScreen(
                         .layout { measurable, constraints ->
                             val placeable = measurable.measure(constraints)
                             layout(placeable.width, placeable.height) {
+                                val at = puckScreen.value ?: Offset(constraints.maxWidth / 2f, 0f)
                                 val margin = 8.dp.roundToPx()
                                 val maxX = (constraints.maxWidth - placeable.width - margin)
                                     .coerceAtLeast(margin)
