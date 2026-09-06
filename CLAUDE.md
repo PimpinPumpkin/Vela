@@ -2318,6 +2318,13 @@ architecture note.
   Output sizes: Saarland 8 MB routing-only vs 52 MB with address+POI vs OsmAnd's own 66 MB
   roads-only / 125 MB full; Washington 111 MB vs OsmAnd 595 MB roads-only. Also: the workflow
   file was invalid YAML (duplicate `default:` key) from Aug 16 to Sep 3, so no bake ran at all.
+  **Corner-cut lag (2026-09-06, from the reporter's trip log, replayed offline):** a cut corner
+  jumps the along-route measurement ~30 m in one fix; the puck's catch-up cap (`maxCatchUp`,
+  was 0.5v+1) then took ~7 s at 7 m/s to drain it, so the arrow ran straight after the car had
+  turned. Raising the Kalman Q did nothing (the estimate already followed); the cap was the limiter.
+  Now 1.5v+2: 34 m -> 7 m in 2.5 s, per-fix speed step unchanged (p50 0.27 m/s). A shorter
+  PUCK_CORRECT_TIME_S (0.35) would cost smoothness (0.47/1.64 m/s) - left at 0.6. The replay
+  harness is a scratch Python port of AlongRouteFilter + the rate rule over the trip's fixes.
   **Read `docs/puck-jitter.md` first: the eight causes, the measurement scripts in `scripts/jitter/`, and
   the order to run them. Do not start from a theory.**
   **THE PUCK ITSELF JITTERED BECAUSE IT WAS A MAP SYMBOL (issue #251, fixed 2026-09-03). In
