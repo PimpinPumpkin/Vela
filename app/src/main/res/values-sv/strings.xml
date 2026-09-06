@@ -93,7 +93,6 @@
     <string name="settings_download">Hämta</string>
     <string name="settings_saved_places">Sparade platser</string>
     <string name="settings_saved_places_hint">Säkerhetskopiera dina stjärnmärkta platser till en fil, eller återställ dem på en annan enhet. Import slås samman med det du redan har, den skriver aldrig över eller tar bort något.</string>
-    <string name="settings_import_nothing">Inget nytt att importera</string>
     <string name="settings_no_saved_places">Inga sparade platser ännu</string>
     <string name="settings_export">Exportera</string>
     <string name="settings_import">Importera</string>

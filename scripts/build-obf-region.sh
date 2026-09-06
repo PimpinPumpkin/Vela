@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Bake ONE region's Vela obf and publish it to the `obf-regions` release - the successor pipeline to
-# build-routing-region.sh (issue #214). The obf carries routing + address + POI sections only; the
-# map-rendering and transport sections are excluded by scripts/VelaObfShim.java (MapLibre draws the
-# map, GTFS covers transit), which is most of the size win against a stock OsmAnd file. The asset is
+# build-routing-region.sh (issue #214). By default the obf carries the ROUTING section only, indexed
+# lean (scripts/VelaObfShim.java: no multipolygon, route-relation, proximity or country-region
+# passes); address + POI come from the poi-packs SQLite, and MapLibre draws the map, GTFS covers
+# transit. VELA_OBF_SECTIONS / VELA_OBF_LEAN widen it. Routing-only lean is what fits a 16 GB CI
+# runner for a US-state-sized extract (measured 2026-09-04); the full set does not. The asset is
 # served RAW (an obf's blocks are already deflate-compressed), so download size == installed size.
 #
 #   scripts/build-obf-region.sh <id> "<display name>" <pbf-url>

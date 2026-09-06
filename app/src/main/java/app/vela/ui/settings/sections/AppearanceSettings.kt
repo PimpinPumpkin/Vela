@@ -102,7 +102,7 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
         ) { uri ->
             if (uri != null) {
-                val name = queryDisplayName(context, uri) ?: "Custom"
+                val name = queryDisplayName(context, uri) ?: context.getString(R.string.settings_font_custom)
                 if (!app.vela.ui.AppFont.setCustom(context, uri, name)) {
                     android.widget.Toast.makeText(context, fontBad, android.widget.Toast.LENGTH_SHORT).show()
                 }

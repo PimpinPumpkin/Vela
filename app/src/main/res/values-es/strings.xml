@@ -93,7 +93,6 @@
     <string name="settings_download">Descargar</string>
     <string name="settings_saved_places">Lugares guardados</string>
     <string name="settings_saved_places_hint">Haz una copia de seguridad de tus lugares favoritos en un archivo o restáuralos en otro dispositivo. La importación se combina con lo que ya tienes: nunca sobrescribe ni elimina nada.</string>
-    <string name="settings_import_nothing">No hay nada nuevo que importar</string>
     <string name="settings_no_saved_places">Aún no hay lugares guardados</string>
     <string name="settings_export">Exportar</string>
     <string name="settings_import">Importar</string>

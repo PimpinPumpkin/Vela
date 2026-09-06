@@ -93,7 +93,6 @@
     <string name="settings_download">Pobierz</string>
     <string name="settings_saved_places">Zapisane miejsca</string>
     <string name="settings_saved_places_hint">Utwórz kopię zapasową oznaczonych miejsc w pliku lub przywróć je na innym urządzeniu. Import scala z tym, co już masz, nigdy niczego nie nadpisuje ani nie usuwa.</string>
-    <string name="settings_import_nothing">Brak nowych elementów do zaimportowania</string>
     <string name="settings_no_saved_places">Brak zapisanych miejsc</string>
     <string name="settings_export">Eksportuj</string>
     <string name="settings_import">Importuj</string>

@@ -117,7 +117,6 @@
     <string name="settings_download">ダウンロード</string>
     <string name="settings_saved_places">保存済みの場所</string>
     <string name="settings_saved_places_hint">保存した場所をファイルにバックアップしたり、別の端末で復元したりできます。インポートは既存のデータに統合されるだけで、上書きや削除は一切行いません。</string>
-    <string name="settings_import_nothing">新しくインポートするものはありません</string>
     <string name="settings_no_saved_places">保存済みの場所はまだありません</string>
     <string name="settings_export">エクスポート</string>
     <string name="settings_import">インポート</string>
