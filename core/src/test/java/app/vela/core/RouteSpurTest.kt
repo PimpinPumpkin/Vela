@@ -43,9 +43,20 @@ class RouteSpurTest {
         assertTrue(RouteGeometry.hasSpur(route, course))
     }
 
+    @Test fun `the real one - a 120 m turn-right, u-turn, turn-right stub off the course`() {
+        // From a shared trip: the route left a state route onto a side street at an angle for
+        // ~60 m, U-turned and came back, while Google's course (and the car) went straight.
+        val j = course[47] // 4.7 km in
+        val ls = Math.cos(Math.toRadians(lat))
+        fun off(alongM: Double, sideM: Double) = LatLng(j.lat + sideM / 111_320.0, j.lng + alongM / (111_320.0 * ls))
+        val out = listOf(off(15.0, 20.0), off(30.0, 40.0), off(42.0, 56.0))
+        val route = course.take(48) + out + out.reversed() + course.drop(48)
+        assertTrue(RouteGeometry.hasSpur(route, course))
+    }
+
     @Test fun `a different approach at the ends is tolerated`() {
-        val detourStart = listOf(LatLng(lat + 0.002, course[0].lng), LatLng(lat + 0.002, course[2].lng))
-        val route = listOf(course[0]) + detourStart + course.drop(3)
+        val detourStart = listOf(LatLng(lat + 0.001, course[0].lng), LatLng(lat + 0.001, course[1].lng))
+        val route = listOf(course[0]) + detourStart + course.drop(2)
         assertFalse(RouteGeometry.hasSpur(route, course))
     }
 }

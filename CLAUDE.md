@@ -2275,6 +2275,12 @@ architecture note.
   growing stub). With the trail off, the cut piece is hidden and the AHEAD line's own gradient carries
   the cut per frame (transparent before the arrow's window fraction); its ~12 m texel step hides under
   the arrow. With the trail on, the cut piece paints grey over blue as before.
+  **Spur rule v2 (2026-09-06, from the reporter's trip log):** the real appendix was a 121 m
+  turn-right / U-turn / turn-right stub 56 m off a state route; the car never came within 47 m of
+  its tip. The v1 rule missed it (a side street leaving at an angle projects a little further along
+  the course every vertex, and the 15 m "advance" step reset the stretch each time). Now a stretch
+  resets only on NORMAL progress (>=80% of distance travelled) and flags at >=80 m travelled with
+  <45% progress. Validated in Python against the actual route geometry before porting.
   **Via-route spur guard, the SHAPE test (2026-09-06, same day, after the reporter said the appendix
   hung off a motorway with no turn for miles):** a via that lands on an OFF-RAMP snaps a few metres
   and adds only a ramp pair, so the snap-distance and length guards below miss it. `hasSpur(route,
