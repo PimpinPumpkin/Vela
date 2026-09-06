@@ -1287,6 +1287,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   DISPLAYED speed is smoothed with a stop deadband (raw 1 Hz doppler flickered 59/60/61 at cruise), and
   speed derivation requires two GPS fixes past an accuracy-scaled floor (a BeaconDB hop minted phantom
   16 mph readouts at red lights).
+  **Avoid tolls and highways work online (2026-09-06):** Google's keyless directions do honour the
+  avoid options after all (the flags were found by capturing Google's own web client), so with either
+  toggle on the route follows Google's avoiding course with the open router's named turns and Google's
+  live-traffic time. Alternates are avoid-aware too. A downloaded region is no longer required; the
+  on-device router only steps in when Google is unreachable, and only then does the "may still use
+  tolls and highways" note appear.
   **Roundabouts say "take the 2nd exit" (2026-09-05):** English used "take exit 2", which the spoken
   "take exit N" rewrite (an espeak workaround for motorway exits) turned into "take the 2 exit".
   Now ordinal like every other language, and a straight-through roundabout is named as such:

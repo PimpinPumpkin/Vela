@@ -468,7 +468,7 @@ class GoogleMapsDataSource @Inject constructor(
         if (waypoints.isNotEmpty()) {
             return@io coroutineScope {
                 val viaD = async { RouteGeometry.routeVia(http, listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways) }
-                val gD = async { googleDirectionsRetried(origin, destination, mode, tries) }
+                val gD = async { googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways) }
                 val via = viaD.await().firstOrNull()
                 // OSRM unreachable → route the legs on-device (origin→w1→…→dest chained), like the
                 // single-destination path's offline fallback; only then fall to Google's DIRECT route
@@ -501,7 +501,7 @@ class GoogleMapsDataSource @Inject constructor(
             // (a 6-mi route came back with 2 of ~10 turns), so Google is only the FALLBACK + the
             // live-traffic source. Fetch both in parallel so the traffic round-trip is free.
             val openD = async { RouteGeometry.route(http, origin, destination, mode, avoidTolls, avoidHighways, tries, departBearingDeg) }
-            val googleD = async { googleDirectionsRetried(origin, destination, mode, tries) }
+            val googleD = async { googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways) }
             val open = openD.await()
             val google = googleD.await()
             val gTop = google.firstOrNull()
@@ -511,7 +511,15 @@ class GoogleMapsDataSource @Inject constructor(
             // router - it goes FIRST. Old-format graphs / no coverage return empty and the
             // online chain below routes normally (avoid best-effort, never a dead end). No
             // live-traffic ETA on these: the offline result is free-flow, like any offline route.
-            if ((avoidTolls || avoidHighways) && mode == TravelMode.DRIVE && routeEngine.isReady(mode)) {
+            // Google's keyless directions DO honour avoid (DirectionsPb.withAvoid, 2026-09-06), so
+            // online the avoiding route IS gTop: the open router cannot exclude, so its plain route
+            // diverges and the snap below follows Google's course with named turns, and Google's
+            // own in-traffic time is the ETA. The on-device engine is the avoid router only when
+            // Google is unreachable. (Until today avoid was on-device-or-nothing, with the plain
+            // route and a note otherwise; #325's broken ETA came from that branch.)
+            val avoidWanted = (avoidTolls || avoidHighways) && mode == TravelMode.DRIVE
+            if (avoidWanted && gTop != null) avoidHonored = true
+            if (avoidWanted && gTop == null && routeEngine.isReady(mode)) {
                 // BOUNDED: the obf engine can spend many seconds on a long route, and this branch
                 // used to wait for it unconditionally - with an offline region installed an
                 // avoid-toggled plan just sat there (the Reddit report). The compute runs on an
@@ -525,30 +533,16 @@ class GoogleMapsDataSource @Inject constructor(
                 val avoidRoutes = kotlinx.coroutines.withTimeoutOrNull(AVOID_ONDEVICE_TIMEOUT_MS) { avoidD.await() } ?: emptyList()
                 if (avoidRoutes.isNotEmpty()) {
                     avoidHonored = true
-                    // These used to go out RAW: the on-device engine's free-flow time, no traffic, no
-                    // calibration, while every other route in the app carries Google's in-traffic
-                    // factor and (since #242) a free-flow-to-typical calibration. That is the "ETA
-                    // completely broken with avoid on" reports (#325, 2026-09-05). Google can't be
-                    // asked for an avoid route keylessly, so the calibration comes from the PLAIN
-                    // pair fetched alongside (open OSRM vs Google, when they follow the same course:
-                    // a property of the area's roads and driving, carried over to the avoid route),
-                    // and the traffic factor is Google's for the area. No congestion spans: those
-                    // belong to Google's course, not this one.
-                    val plainCal = open.firstOrNull()?.takeIf { top ->
-                        top.durationSeconds > 0 && gTop != null && gTop.durationSeconds > 0 &&
-                            gTop.polyline.size >= 5 && !RouteGeometry.divergent(top, gTop)
-                    }?.let { top ->
-                        val dScale = if (gTop!!.distanceMeters > 0) top.distanceMeters / gTop.distanceMeters else 1.0
-                        ((gTop.durationSeconds * dScale) / top.durationSeconds).coerceIn(0.5, 3.0)
-                    }
-                    return@coroutineScope avoidRoutes.map { applyTraffic(it, gTop, plainCal ?: 1.0, withSpans = false) }
+                    // Offline (no Google answer): the engine's own time is all there is. Online,
+                    // this branch never runs; Google's avoiding route carries the traffic ETA.
+                    return@coroutineScope avoidRoutes
                 }
             }
             // TRAFFIC-AWARE routing (option 3): if Google's live-traffic route took a DIFFERENT path
             // than OSRM's free-flow one — i.e. Google rerouted around a jam — re-run OSRM forced
             // through Google's path so we follow the traffic-smart route WITH full street-named steps.
             // (Only on real divergence, so the normal case stays the fast single OSRM call.)
-            val trafficRoute = if (!urgent && open.isNotEmpty() && gTop != null && gTop.polyline.size >= 5 &&
+            val trafficRoute = if ((!urgent || avoidWanted) && open.isNotEmpty() && gTop != null && gTop.polyline.size >= 5 &&
                 RouteGeometry.divergent(open.first(), gTop)) {
                 RouteGeometry.routeVia(http, listOf(origin) + RouteGeometry.sampleVias(gTop.polyline) + destination, mode, avoidTolls, avoidHighways)
                     .firstOrNull()
@@ -565,14 +559,24 @@ class GoogleMapsDataSource @Inject constructor(
             // a snap steps aside for OSRM's clean route. (A true per-alternate re-rank isn't possible: Google
             // hands back ONE live-traffic figure, so applyTraffic scales every route by the same ratio and
             // can't reorder the OSRM alternates — this ETA gate is the meaningful lever.)
+            val avoidTag = when {
+                !avoidWanted -> ""
+                gTop != null -> " avoid=google"
+                else -> " avoid=none"
+            }
             val googleEtaS = gTop?.durationInTrafficSeconds ?: gTop?.durationSeconds
             // The snapped via-route must actually REACH the destination — a truncated one ending at an
             // intermediate via (short ETA, wrong last step) is the "10 min away" nav bug — AND be time-
             // competitive with OSRM's free-flow best.
             val snapReaches = trafficRoute?.polyline?.lastOrNull()
                 ?.let { it.distanceTo(destination) <= SNAP_REACH_M } == true
+            // With avoid on, the snap is the point (Google's avoiding course is slower than the
+            // open router's unrestricted one by construction), so the ETA margin test is skipped.
             val snapWorthIt = trafficRoute != null && snapReaches && open.isNotEmpty() && googleEtaS != null &&
-                googleEtaS <= open.first().durationSeconds * SNAP_ETA_MARGIN
+                (avoidWanted || googleEtaS <= open.first().durationSeconds * SNAP_ETA_MARGIN)
+            // Avoid on, Google answered, but the open router could not be led along its course:
+            // Google's own (abbreviated) steps beat a plain route that ignores the avoid.
+            val avoidFallbackToGoogle = avoidWanted && gTop != null && !snapWorthIt
             diag.record(
                 "directions",
                 "$mode → OSRM ${open.size} routes / ${open.firstOrNull()?.maneuvers?.size ?: 0} steps; " +
@@ -581,7 +585,7 @@ class GoogleMapsDataSource @Inject constructor(
                     "rerouted=${trafficRoute != null} snapKept=$snapWorthIt snapReaches=$snapReaches " +
                     "(gEta=${googleEtaS?.toInt()}s osrmFF=${open.firstOrNull()?.durationSeconds?.toInt()}s " +
                     "sameCourse=${open.firstOrNull()?.let { t -> gTop?.takeIf { it.polyline.size >= 5 }?.let { !RouteGeometry.divergent(t, it) } }}); " +
-                    "onDevice=${onDevice.size}",
+                    "onDevice=${onDevice.size}$avoidTag",
                 "",
             )
             if (open.isEmpty()) {
@@ -590,6 +594,7 @@ class GoogleMapsDataSource @Inject constructor(
                 // upgraded to full steps by the nav recheck once the open router recovers.
                 if (onDevice.isNotEmpty()) onDevice else google.map { it.copy(abbreviatedSteps = true) }
             } else {
+                if (avoidFallbackToGoogle) return@coroutineScope google.map { it.copy(abbreviatedSteps = true) }
                 // One calibration for the whole response, taken from the TOP OSRM route when it
                 // follows Google's course — alternates share the same optimistic speed model, so
                 // rebasing them by the same factor keeps the picker's ranking fair (issue #227).
@@ -600,7 +605,8 @@ class GoogleMapsDataSource @Inject constructor(
                     val dScale = if (gTop!!.distanceMeters > 0) top.distanceMeters / gTop.distanceMeters else 1.0
                     ((gTop.durationSeconds * dScale) / top.durationSeconds).coerceIn(0.5, 3.0)
                 }
-                val primary = if (snapWorthIt) (listOf(trafficRoute!!) + open).map { applyTraffic(it, gTop, freeFlowCal) }
+                // With avoid on, the open router's unrestricted routes are not offered as alternates.
+                val primary = if (snapWorthIt) (listOf(trafficRoute!!) + (if (avoidWanted) emptyList() else open)).map { applyTraffic(it, gTop, freeFlowCal) }
                     else open.map { applyTraffic(it, gTop, freeFlowCal) }
                 // ALTERNATES to choose from = Google's OWN alternate routes (the real, traffic-aware ones you
                 // miss). Kept PROVISIONAL: their polyline + live ETA are shown now, but turn-by-turn is named
@@ -774,11 +780,11 @@ class GoogleMapsDataSource @Inject constructor(
      *  drastically between restarts (user real-drive report 2026-07-14). Two short backoff
      *  retries recover the routine blips; a genuinely unreachable Google still degrades to
      *  free-flow exactly as before, just honestly rarer. */
-    private suspend fun googleDirectionsRetried(origin: LatLng, destination: LatLng, mode: TravelMode, tries: Int = 3): List<Route> {
+    private suspend fun googleDirectionsRetried(origin: LatLng, destination: LatLng, mode: TravelMode, tries: Int = 3, avoidTolls: Boolean = false, avoidHighways: Boolean = false): List<Route> {
         var routes: List<Route> = emptyList()
         for (attempt in 0 until tries) {
             if (attempt > 0) kotlinx.coroutines.delay(300L * attempt)
-            routes = runCatching { googleDirections(origin, destination, mode) }.getOrNull().orEmpty()
+            routes = runCatching { googleDirections(origin, destination, mode, avoidTolls, avoidHighways) }.getOrNull().orEmpty()
             if (routes.isNotEmpty()) return routes
         }
         diag.record("directions", "google directions empty after $tries attempt(s) — trafficless fetch")
@@ -788,10 +794,10 @@ class GoogleMapsDataSource @Inject constructor(
     /** Google's keyless directions — now the FALLBACK router (OSRM unreachable) and the
      *  live-traffic source (ETA / duration-in-traffic / congestion spans). Its step list is
      *  abbreviated for long routes, which is exactly why OSRM is primary. */
-    private suspend fun googleDirections(origin: LatLng, destination: LatLng, mode: TravelMode): List<Route> {
+    private suspend fun googleDirections(origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean = false, avoidHighways: Boolean = false): List<Route> {
         session.ensure()
         val cal = calibration.current()
-        val pb = DirectionsPb.build(origin, destination, mode, cal.directionsPb)
+        val pb = DirectionsPb.build(origin, destination, mode, cal.directionsPb, avoidTolls, avoidHighways)
         val url = "${cal.directionsEndpoint}&pb=${pb.enc()}"
         val routes = try {
             DirectionsParser.parse(GoogleResponse.parse(get(url)))

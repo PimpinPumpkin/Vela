@@ -2274,14 +2274,19 @@ architecture note.
   ticker reads it per frame through `trailHolder`; off means `routeGradient(..., driven = TRANSPARENT)`
   on the ahead and cut pieces and `ROUTE_LAYER` hidden, on means grey. A flip sets `splitReset` so the
   next frame re-applies everything. Paint only; never touch geometry for this.
-  **AVOID TOLLS / HIGHWAYS, the honest state (2026-09-05):** the FOSSGIS OSRM server has no
-  `exclude=` classes (`OSRM_SUPPORTS_EXCLUDE = false`), so ONLINE-ONLY users get the plain route plus
-  the "may still use tolls and highways" note (#293). With a downloaded region the on-device engine
-  routes the avoid; those routes used to leave `directions()` RAW (engine free-flow, no traffic, no
-  #242 calibration) - that is #325. Now they get Google's area traffic factor and the free-flow
-  calibration from the PLAIN pair (open OSRM vs Google when same-course), with NO congestion spans
-  (spans belong to Google's course). Google cannot be asked for an avoid route keylessly, so a
-  per-road-class calibration is not available; this is the best keyless estimate, not Google's.
+  **AVOID TOLLS / HIGHWAYS ARE KEYLESS ON GOOGLE (2026-09-06; the July "cannot" note was wrong).**
+  The flags are in the `!6m` feature block's `!2m` submessage of the `/maps/preview/directions` pb:
+  `!1b1` = avoid highways, `!2b1` = avoid tolls, group counts +1 each (`DirectionsPb.withAvoid`,
+  pattern-based so a recalibrated template survives). Found by capturing Google's own web client
+  (browser pane, "Avoid highways" ticked) - NOT in the `!20m` route-options group, where every scalar
+  field was probed to no effect. Verified live: Davis-Sacramento I-80 15.3 mi/21 min -> Old River Rd
+  27.1 mi/46 min; a Chicago tollway pair loses every toll mention. Pipeline: with avoid on, gTop IS
+  the avoiding route; the plain OSRM route diverges, the via-snap follows Google's course with named
+  turns, the ETA-margin gate is skipped (`avoidWanted`), the unrestricted OSRM routes are not offered
+  as alternates, and if the snap fails Google's abbreviated steps win over a plain route. The FOSSGIS
+  server still has no `exclude=` (`OSRM_SUPPORTS_EXCLUDE = false`); the on-device engine is the avoid
+  router ONLY when Google is unreachable, and the "may still use tolls" note shows only then.
+  Device-checked: Space Needle 35 min via I-5 -> 49 min via SR-522 with live traffic.
   **OBF BAKE, MEASURED 2026-09-04 (read before touching scripts/build-obf-region.sh or the shim):**
   the memory ceiling is MapCreator's FIRST pass (`extractOsmToNodesDB`), so it does not depend on
   which sections you index, only on the PBF and on which analysis passes run. Same 345 MB
