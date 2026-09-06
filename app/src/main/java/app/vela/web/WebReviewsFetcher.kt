@@ -161,7 +161,7 @@ class WebReviewsFetcher @Inject constructor(
                         // let the MAX_LOAD fallback inject the scraper into the old page and return the
                         // previous place's reviews for THIS featureId (empty > wrong).
                         wv.evaluateJavascript("try{document.documentElement.innerHTML=''}catch(e){}", null)
-                        wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=en&gl=us")
+                        wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=${reviewsHl()}&gl=us")
                         // Proceed even if the SPA's onPageFinished is slow.
                         main.postDelayed({ if (!ready.isCompleted) ready.complete(Unit) }, MAX_LOAD_MS)
                         ready.await()
@@ -434,6 +434,22 @@ class WebReviewsFetcher @Inject constructor(
          *  Outside this set the page stays English: a language the scraper cannot navigate would
          *  return FEWER reviews than English does. */
         val SUPPORTED_HL = setOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "zh", "ja", "he")
+
+        /** The page language for the hidden reviews WebView: the app's language when the scraper's
+         *  word lists cover it (issue #278: the page language decides WHICH reviews Google serves,
+         *  so a Chinese reader on an English page got English reviews), English otherwise. Chinese
+         *  keeps its script (zh-TW for Traditional regions). This is the half of #307 that was
+         *  described but never wired (review 2026-09-06). */
+        fun reviewsHl(): String {
+            val loc = app.vela.ui.AppLocale.effective()
+            val lang = loc.language.lowercase()
+            if (lang !in SUPPORTED_HL) return "en"
+            if (lang == "zh") {
+                val hant = loc.script.equals("Hant", ignoreCase = true) || loc.country.uppercase() in setOf("TW", "HK", "MO")
+                return if (hant) "zh-TW" else "zh-CN"
+            }
+            return lang
+        }
         const val MAX_LOAD_MS = 7_000L
         // Offscreen viewport for the headless WebView — tall so the virtualized review list renders a
         // healthy batch per scroll position.

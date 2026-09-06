@@ -11,6 +11,10 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -27,13 +31,18 @@ import app.vela.ui.dpadRowSibling // D-pad-only operation (docs/dpad.md)
 @Composable
 internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     SettingsScaffold(stringResource(R.string.settings_saved_places), onBack) { topRow ->
         Spacer(Modifier.height(4.dp))
         PageIntro(stringResource(R.string.settings_saved_places_hint))
         val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
             ActivityResultContracts.OpenDocument(),
         ) { uri ->
-            if (uri != null) toastImport(context, vm.importSavedFromUri(uri), places = true)
+            // Off the main thread: a large GPX or KML is read and regex-parsed in full.
+            if (uri != null) scope.launch {
+                val res = withContext(Dispatchers.IO) { vm.importSavedFromUri(uri) }
+                toastImport(context, res, places = true)
+            }
         }
         SettingsGroup {
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
@@ -62,7 +71,10 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         val listImportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
             ActivityResultContracts.OpenDocument(),
         ) { uri ->
-            if (uri != null) toastImport(context, vm.importListsFromUri(uri), places = false)
+            if (uri != null) scope.launch {
+                val res = withContext(Dispatchers.IO) { vm.importListsFromUri(uri) }
+                toastImport(context, res, places = false)
+            }
         }
         SettingsGroup(title = stringResource(R.string.mapscreen_section_lists)) {
         app.vela.ui.settings.Hint(stringResource(R.string.settings_lists_export_hint))

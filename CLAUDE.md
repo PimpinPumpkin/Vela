@@ -100,8 +100,11 @@ Defaults that make the safe path the easy one:
   fields and make the whole recording unparseable, and a drive cannot be recorded twice. The
   write goes to a temp file and is renamed over the original, so it can never be half-written), and "Select trips"
   turns the list into a multi-select whose Share hands the whole set to ACTION_SEND_MULTIPLE
-  (`MapViewModel.exportTripsIntent`; one unreadable CSV is skipped, not fatal, and a single pick
-  falls through to the existing single-trip intent). Optional pref `trip_name_on_save` (Settings
+  (`MapViewModel.exportTripsIntent`; one unreadable CSV is skipped, not fatal). **Every trip in
+  that set goes out TRIMMED** through `scrubTripForSharing` at the default radius (review
+  2026-09-06: it used to ship the raw traces, and with one box ticked it even skipped the trim
+  dialog); a trip that trims to nothing is left out, never sent raw. The raw file is reachable
+  only from the single-trip dialog's "Share full trace". Optional pref `trip_name_on_save` (Settings
   toggle, shown only while trip recording is on, default OFF) makes `finishTrip` - which now
   RETURNS the kept `TripMeta` instead of Unit - arm `MapUiState.tripToName`, and MapScreen prompts
   for a name on the map right after the drive. TRAP: an early `return@forEachIndexed` inside the
@@ -137,7 +140,13 @@ Defaults that make the safe path the easy one:
   format is append-only, so a tag added later would otherwise be published by a scrubber written
   before it existed: **if you add a line kind to `TripLog`, decide in `TripScrub` whether it is
   safe to share.** The scrub is non-destructive (the on-device trip is never modified) and the
-  raw file is still reachable behind "Share full trace".
+  raw file is still reachable behind "Share full trace". Two rules added by the 2026-09-06 review
+  (15 tests): an `S`/`J`/`B` event survives only if a fix within `EVENT_NEAR_MS` (3 s) of it
+  survived, because a Home/Work zone passed MID-trip deletes fixes inside the kept time window
+  and the spoken "turn onto <its street>" has to go with them; and a route block whose polyline
+  trims to nothing drops its `RD` and `M` lines too, or `TripLog.parse` folds them into the
+  previous block. The share dialog computes the report in a `LaunchedEffect` on IO, not in
+  `remember` on the main thread.
 - **Demo / simulate-driving mode** (Settings → Navigation, off by default, pref `demo_drive` in
   `vela_settings`). Drives a planned route as a SYNTHETIC GPS trace so nav can be shown/tested
   **anywhere** with no real fix - this is how the Davis `docs/screenshots/05-navigation.png` was shot
@@ -664,8 +673,9 @@ Defaults that make the safe path the easy one:
   `autoStartOnRoute`; MapScreen consumes it ONCE when a route lands). **It fires through
   MapScreen's `onStartNav`, never straight at the VM** - a one-tap Start must not become a way
   around the precise-location and notification gates the picker's Start honours; and the flag is
-  consume-once + cleared by `clearRoute`/`startNav` so a later refetch (mode change, added stop)
-  cannot silently launch a drive. Not offered for the parked car (you are already at the start of
+  consume-once + cleared by `clearRoute`/`startNav` AND by a route fetch that returns nothing
+  (review 2026-09-06: an empty reply used to leave the flag armed for the next, unrelated
+  Directions request) so a later refetch (mode change, added stop) cannot silently launch a drive. Not offered for the parked car (you are already at the start of
   that walk). The nav bottom bar swapped End's labelled Button for a 54dp X icon on the LEFT with
   the trip figures CENTRED and Steps on the right: two controls of the same size doing the same
   job should be the same shape, and this is the arrangement where they cannot be mistaken for
@@ -1084,7 +1094,14 @@ Defaults that make the safe path the easy one:
   own export. Migration path for people arriving from Organic Maps / CoMaps / OsmAnd. ⚠️ **GPX is
   lat-then-lon but KML and GeoJSON are LNG FIRST** - reading either the wrong way round silently
   imports a whole collection into the Gulf of Guinea, so both orders are pinned by
-  `PlaceImportTest`. Deliberately imports ONLY name + coordinate (+ address where Takeout gives
+  `PlaceImportTest`. Review 2026-09-06: a KML placemark whose `<coordinates>` holds more than one
+  tuple (a LineString track, a Polygon area) is SKIPPED rather than pinned at its first vertex;
+  Takeout's capitalised keys (`Title`, `Location`, `Business Name`) are read as well as the
+  lower-case ones; `importMerge` runs `distinctBy { id }` over the incoming set because two
+  placemarks at one rounded coordinate share an id (every later id-keyed action would hit both);
+  `ImportFormats.describe` tests KML before the XML prolog (both are XML, so every KML used to be
+  called GPX); and both import launchers in `SavedPlacesSettings` read + parse on `Dispatchers.IO`.
+  Deliberately imports ONLY name + coordinate (+ address where Takeout gives
   one): every format agrees on those, and a confidently wrong address is worse than no import.
   Ids are content-derived from the rounded coordinate, so re-importing the same file adds nothing
   (device-verified: "Imported 3 place(s)" then "Everything in that file is already saved").
@@ -1768,7 +1785,9 @@ architecture note.
   pinned `hl=en&gl=us`, and the page language decides WHICH reviews Google serves - a Chinese reader
   looking at a Chinese restaurant got the English ones. Reviews are CONTENT and must never be
   translated for the reader, so the fetch uses `reviewsHl()` (the app locale, with the zh-TW/zh-CN
-  script split, gated to `SUPPORTED_HL`). ⚠️ **Unpinning `hl` ALONE breaks the scraper** - it keyed
+  script split, gated to `SUPPORTED_HL`). ⚠️ PR #307 shipped the scraper side of this but the
+  `loadUrl` stayed pinned to `hl=en` and `reviewsHl()` did not exist; the 2026-09-06 review pass
+  wired it (`WebReviewsFetcher.reviewsHl`, `AppLocale.effective()`). ⚠️ **Unpinning `hl` ALONE breaks the scraper** - it keyed
   on English text in four places, all verified live on a zh-TW page: the star SELECTOR
   (`aria-label*="star"` vs the real `5 顆星`), `num()`'s `/([0-9.]+)\s*star/i` (returned 0 for every
   review), the reviews TAB (`/^reviews\b/i` vs 評論) and the more-reviews BUTTON. Ratings now read

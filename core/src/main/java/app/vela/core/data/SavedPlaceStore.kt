@@ -57,7 +57,9 @@ class SavedPlaceStore @Inject constructor(
             ?: return ImportResult.WrongFormat(ImportFormats.describe(json))
         val current = saved()
         val existing = current.mapTo(HashSet()) { it.id }
-        val added = incoming.filterNot { it.id in existing }
+        // Two placemarks at one rounded coordinate share an id. Keep the first of them, or every
+        // id-keyed action afterwards (unsave, list membership) hits both at once.
+        val added = incoming.distinctBy { it.id }.filterNot { it.id in existing }
         if (added.isEmpty()) return ImportResult.NothingNew
         prefs.edit().putString(KEY, this.json.encodeToString(current + added)).apply()
         return ImportResult.Added(added.size)

@@ -3512,6 +3512,9 @@ class MapViewModel @Inject constructor(
                         status = if (routes.isEmpty()) appContext.getString(R.string.mapvm_no_mode_route_found, mode.name.lowercase()) else null,
                     )
                 }
+                // A fetch that found nothing must not leave the Start-pill auto-start armed for
+                // the next, unrelated Directions request.
+                if (routes.isEmpty()) autoStartOnRoute = false
                 val flockEpoch = ++routesEpoch // stamp THIS route set; a newer route() bumps it and stales the flock job
                 if (routes.isNotEmpty()) refreshFlockOnRoute(routes, flockEpoch)
                 // The default active route can be a PROVISIONAL Google alternate (it sorts to the
@@ -4260,19 +4263,22 @@ class MapViewModel @Inject constructor(
      * should not cost the user the other nine. Returns null only when NOTHING could be read.
      */
     fun exportTripsIntent(metas: List<app.vela.replay.TripMeta>): android.content.Intent? {
-        if (metas.size == 1) return exportTripIntent(metas.first())
         return runCatching {
             val dir = java.io.File(appContext.cacheDir, "export").apply { mkdirs() }
             val uris = java.util.ArrayList<android.net.Uri>()
             var points = 0
             for (meta in metas) {
-                val csv = tripStore.rawCsv(meta.id) ?: continue
-                val file = java.io.File(dir, "vela-trip-${meta.id}.csv")
-                file.writeText(csv)
+                // Every trip goes out TRIMMED at the default radius around Home and Work, the
+                // same treatment the single-trip Share dialog enforces. This path used to ship the
+                // raw traces, and with one box ticked it even skipped the dialog. A trip too
+                // short to keep anything after trimming is left out, not sent raw.
+                val report = scrubTripForSharing(meta) ?: continue
+                val file = java.io.File(dir, "vela-trip-shared-${meta.id}.csv")
+                file.writeText(report.csv)
                 uris += androidx.core.content.FileProvider.getUriForFile(
                     appContext, "${appContext.packageName}.fileprovider", file,
                 )
-                points += meta.fixCount
+                points += report.fixesAfter
             }
             if (uris.isEmpty()) return null
             val send = android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE).apply {

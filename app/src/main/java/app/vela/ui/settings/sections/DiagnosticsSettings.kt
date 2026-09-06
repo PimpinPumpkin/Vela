@@ -394,7 +394,14 @@ private fun TripShareDialog(
     onClose: () -> Unit,
 ) {
     var radius by remember { mutableStateOf(app.vela.core.replay.TripScrub.DEFAULT_RADIUS_M) }
-    val report = remember(meta.id, radius) { vm.scrubTripForSharing(meta, radius) }
+    // The scrub reads and rewrites the whole CSV, so it runs off the main thread and re-runs
+    // when the radius changes, instead of inside composition.
+    var report by remember(meta.id) { mutableStateOf<app.vela.core.replay.TripScrub.Report?>(null) }
+    var scrubbed by remember(meta.id) { mutableStateOf(false) }
+    LaunchedEffect(meta.id, radius) {
+        report = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { vm.scrubTripForSharing(meta, radius) }
+        scrubbed = true
+    }
     app.vela.ui.VelaDialog(
         onDismissRequest = onClose,
         title = stringResource(R.string.settings_trip_share_title),
@@ -435,7 +442,10 @@ private fun TripShareDialog(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            if (report == null) {
+            val shown = report
+            if (!scrubbed) {
+                // The summary arrives a moment after the dialog opens.
+            } else if (shown == null) {
                 Text(
                     stringResource(R.string.settings_trip_scrub_short),
                     style = MaterialTheme.typography.bodyMedium,
@@ -445,14 +455,14 @@ private fun TripShareDialog(
                 Text(
                     stringResource(
                         R.string.settings_trip_share_summary,
-                        report.fixesRemoved, report.fixesAfter,
-                        report.trimmedStartM.toInt(), report.trimmedEndM.toInt(),
+                        shown.fixesRemoved, shown.fixesAfter,
+                        shown.trimmedStartM.toInt(), shown.trimmedEndM.toInt(),
                     ),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(Modifier.height(6.dp))
                 Hint(stringResource(R.string.settings_trip_share_also))
-                report.firstRemaining?.let { p ->
+                shown.firstRemaining?.let { p ->
                     Spacer(Modifier.height(6.dp))
                     Hint(
                         stringResource(

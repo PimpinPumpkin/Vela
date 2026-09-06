@@ -155,6 +155,42 @@ class TripScrubTest {
         assertTrue(TripLog.parsePoints(withWork.csv.split('\n')).none { dist(it.latLng, mid) <= 400.0 })
     }
 
+    @Test fun `a spoken line inside a mid-trip private zone goes with its fixes`() {
+        // A zone in the MIDDLE of the drive (a Work address passed on the way) deletes fixes
+        // there; the spoken line at that moment is inside the kept window by time but names the
+        // street at that zone, so it must go too.
+        val n = 200
+        val mid = LatLng(originLat, originLng + step * (n / 2))
+        val csv = trip(n) + "S,${1756700000000L + (n / 2) * 1000},Passing the office on Zone Street\n"
+        val r = TripScrub.scrub(csv, radiusM = 400.0, extraZones = listOf(mid))!!
+        assertTrue(!r.csv.contains("Zone Street"))
+        assertTrue("a spoken line beside a surviving fix stays", r.csv.contains("Midpoint Road") || r.spokenDropped >= 3)
+    }
+
+    @Test fun `a route block trimmed to nothing takes its totals and maneuvers with it`() {
+        // A short second segment entirely inside the destination zone: its RP is dropped, so its
+        // RD and M lines must not survive to be folded into the previous block by the parser.
+        val n = 200
+        val tail = (0 until 3).map { LatLng(originLat, originLng + step * (n - 3 + it)) }
+        val csv = trip(n) + TripLog.encodeRoute(
+            Route(
+                tail,
+                listOf(
+                    RouteLeg(
+                        50.0, 10.0, null,
+                        listOf(Maneuver(ManeuverType.ARRIVE, "Arrive at the door on Door Lane", tail.last(), 0.0, 0.0)),
+                    ),
+                ),
+                50.0, 10.0, null,
+            ),
+            "reroute",
+        )
+        val r = scrub(csv)!!
+        assertTrue(!r.csv.contains("Door Lane"))
+        val lines = r.csv.split('\n')
+        assertEquals(lines.count { it.startsWith("RP,") }, lines.count { it.startsWith("RD,") })
+    }
+
     private fun dist(a: LatLng, b: LatLng): Double {
         val r = 6_371_000.0
         val p1 = Math.toRadians(a.lat)
