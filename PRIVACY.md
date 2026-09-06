@@ -103,11 +103,15 @@ transmitted:
 There is no cloud sync. Uninstalling the app removes all of it.
 
 **Contacts (optional, off by default).** If you turn on Settings > Search > "Search your
-contacts", typing a contact's name suggests their saved postal address. The contact list is
-read and matched entirely on this phone (the permission is asked when you flip the toggle,
-never at install). Nothing about your contacts is uploaded; if you tap a suggestion, the
-ADDRESS text is searched exactly as if you had typed it yourself, which sends that one
-string to the geocoder like any other search.
+contacts", typing a contact's name suggests their saved postal addresses, shown with the
+contact's photo and the label your address book gives the address ("Home", "Work"). The
+contact list is read and matched entirely on this phone (the permission is asked when you flip
+the toggle, never at install), and the photo is displayed straight from the phone's contact
+store. Nothing about your contacts is uploaded; if you tap a suggestion, the ADDRESS text is
+looked up exactly as if you had typed it yourself, which sends that one string to the geocoder
+like any other search (or to the downloaded region's address index when you are offline). The
+result opens under the contact's name on this phone only; the name is never sent anywhere.
+Opened contact places appear in your Recents on this phone like any other place you open.
 
 ## No tracking
 

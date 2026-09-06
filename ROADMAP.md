@@ -23,6 +23,13 @@ Last updated: 2026-07-13.
 - **Android Auto (2026-07-08).** Vela appears in the car launcher (AA "Unknown sources" for
   sideloads): live map, puck, route, and the current-maneuver card from the same NavSession the phone
   runs, plus car-side search and route start (see docs/ANDROID-AUTO.md).
+  **Open (agenda, pinned #179):** on most real head units it still does not show up, because
+  Android Auto only lists navigation apps installed from Google Play and Vela is sideloaded; the
+  "Unknown sources" switch and the installer spoof both get undone by the next in-app update.
+  Ideas from the thread to decide between: an AAAD-style install path, or a Play-listed shell app
+  that carries the Android Auto entitlement with the Google-scraping half delivered as a separate
+  add-on APK from GitHub (Nova/CoMaps pattern). Needs a decision on whether a Play listing is
+  acceptable at all before any code.
 - **Open building + house-number overlays (2026-07-04/05).** Microsoft footprints (ODbL) and OpenAddresses
   numbers as per-region PMTiles, streamed over the map by default where OSM is thin, downloadable for
   full offline. Traffic lights + stop signs draw at close zoom (keyless Overpass).
