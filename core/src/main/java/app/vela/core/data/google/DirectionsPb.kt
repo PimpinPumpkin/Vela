@@ -62,6 +62,11 @@ object DirectionsPb {
      *  tolls, the same field numbers the web `dir/` URL's `!2m1!1b1` carries. Counts on the
      *  enclosing `!6m` and `!2m` groups grow by the number of flags added. Done by pattern so a
      *  recalibrated template (CalibrationStore) keeps working as long as that block survives. */
+    /** Whether [withAvoid] can place the flags in [template] at all. */
+    fun avoidSupported(template: String): Boolean = AVOID_BLOCK.containsMatchIn(template)
+
+    private val AVOID_BLOCK = Regex("""!6m(\d+)(!1m5!18b1!30b1!31m1!1b1!34e1!2m)(\d+)""")
+
     internal fun withAvoid(template: String, avoidTolls: Boolean, avoidHighways: Boolean): String {
         if (!avoidTolls && !avoidHighways) return template
         val flags = buildString {
@@ -69,8 +74,7 @@ object DirectionsPb {
             if (avoidTolls) append("!2b1")
         }
         val added = flags.count { it == '!' }
-        val re = Regex("""!6m(\d+)(!1m5!18b1!30b1!31m1!1b1!34e1!2m)(\d+)""")
-        val m = re.find(template) ?: return template
+        val m = AVOID_BLOCK.find(template) ?: return template
         val outer = m.groupValues[1].toInt() + added
         val inner = m.groupValues[3].toInt() + added
         return template.replaceRange(m.range, "!6m$outer${m.groupValues[2]}$inner$flags")

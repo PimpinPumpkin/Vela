@@ -467,7 +467,7 @@ class GoogleMapsDataSource @Inject constructor(
         // whole origin→dest so the time is traffic-aware. A waypointed trip is a single path — no alternates.
         if (waypoints.isNotEmpty()) {
             return@io coroutineScope {
-                val viaD = async { RouteGeometry.routeVia(http, listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways) }
+                val viaD = async { RouteGeometry.routeVia(http, listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways, departBearingDeg) }
                 val gD = async { googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways) }
                 val via = viaD.await().firstOrNull()
                 // OSRM unreachable → route the legs on-device (origin→w1→…→dest chained), like the
@@ -481,7 +481,9 @@ class GoogleMapsDataSource @Inject constructor(
                     else -> gD.await().take(1).map { it.copy(abbreviatedSteps = true) }
                 }
                 // Online routers cannot honour the avoid toggles; only the on-device chain can.
-                if ((avoidTolls || avoidHighways) && mode == TravelMode.DRIVE && onDevice == null) {
+                // Google's direct route honours avoid (DirectionsPb.withAvoid); the open router's
+                // via route and its on-device fallback do not - only those get the note.
+                if ((avoidTolls || avoidHighways) && mode == TravelMode.DRIVE && via != null) {
                     result = result.map { it.copy(avoidNotHonored = true) }
                 }
                 diag.record(
@@ -518,7 +520,9 @@ class GoogleMapsDataSource @Inject constructor(
             // Google is unreachable. (Until today avoid was on-device-or-nothing, with the plain
             // route and a note otherwise; #325's broken ETA came from that branch.)
             val avoidWanted = (avoidTolls || avoidHighways) && mode == TravelMode.DRIVE
-            if (avoidWanted && gTop != null) avoidHonored = true
+            // Honoured only when the request could actually carry the flags: a recalibrated pb
+            // template without the feature block makes withAvoid a no-op (review 2026-09-06).
+            if (avoidWanted && gTop != null && DirectionsPb.avoidSupported(calibration.current().directionsPb)) avoidHonored = true
             if (avoidWanted && gTop == null && routeEngine.isReady(mode)) {
                 // BOUNDED: the obf engine can spend many seconds on a long route, and this branch
                 // used to wait for it unconditionally - with an offline region installed an
@@ -542,19 +546,32 @@ class GoogleMapsDataSource @Inject constructor(
             // than OSRM's free-flow one — i.e. Google rerouted around a jam — re-run OSRM forced
             // through Google's path so we follow the traffic-smart route WITH full street-named steps.
             // (Only on real divergence, so the normal case stays the fast single OSRM call.)
-            val trafficRoute = if ((!urgent || avoidWanted) && open.isNotEmpty() && gTop != null && gTop.polyline.size >= 5 &&
-                RouteGeometry.divergent(open.first(), gTop)) {
-                RouteGeometry.routeVia(http, listOf(origin) + RouteGeometry.sampleVias(gTop.polyline) + destination, mode, avoidTolls, avoidHighways)
-                    .firstOrNull()
-                    // A via that landed on a ramp or frontage road makes the route run out and
-                    // back (the "appendix"); refuse the whole via route rather than drive it.
-                    ?.takeIf { !RouteGeometry.hasSpur(it.polyline, gTop.polyline) }
+            val topDivergent = open.isNotEmpty() && gTop != null && gTop.polyline.size >= 5 &&
+                RouteGeometry.divergent(open.first(), gTop)
+            val viaRoute = if ((!urgent || avoidWanted) && topDivergent) {
+                RouteGeometry.routeVia(
+                    http, listOf(origin) + RouteGeometry.sampleVias(gTop!!.polyline) + destination, mode,
+                    avoidTolls, avoidHighways, departBearingDeg, strictVias = true,
+                ).firstOrNull()
             } else null
+            // Cheap checks first, the shape test last (it walks the whole route): the via route
+            // must reach the destination and not be markedly LONGER than the course it followed
+            // (a via that snapped to a side road adds a detour).
+            val viaReaches = viaRoute != null && gTop != null &&
+                viaRoute.polyline.lastOrNull()?.let { it.distanceTo(destination) <= SNAP_REACH_M } == true &&
+                viaRoute.distanceMeters <= gTop.distanceMeters * SNAP_LENGTH_SLACK + SNAP_LENGTH_SLACK_M
+            // The "appendix": a stretch that travels without progressing along Google's line,
+            // then comes back. Refused only when a TURN or U-TURN sits on it - a loop ramp that
+            // OSM draws in full and Google's line chords is the same shape without one (review
+            // 2026-09-06), and a loop ramp is a MERGE/RAMP, never a U-turn.
+            val trafficRoute = viaRoute?.takeIf { r ->
+                viaReaches && !spurWithTurn(r, gTop!!.polyline)
+            }
             // OFFLINE fallback: OSRM (and Google) need the network. When OSRM came back empty — no
             // connectivity, or the FOSSGIS server is down — route fully ON-DEVICE from a downloaded
             // GraphHopper graph, if one covers this area. No traffic offline, but complete named turns.
             val onDevice = if (open.isEmpty() && trafficRoute == null && routeEngine.isReady(mode))
-                routeEngine.route(origin, destination, mode) else emptyList()
+                routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways) else emptyList()
             // Lead with Google's jam-avoiding path (option 3) only when it EARNS it: its live in-traffic
             // ETA is within a small margin of OSRM's FREE-FLOW best, so even Google's detour is time-
             // competitive → the jam is real. The old code led with the snap on ANY >700 m divergence, so a
@@ -571,18 +588,17 @@ class GoogleMapsDataSource @Inject constructor(
             // The snapped via-route must actually REACH the destination — a truncated one ending at an
             // intermediate via (short ETA, wrong last step) is the "10 min away" nav bug — AND be time-
             // competitive with OSRM's free-flow best.
-            val snapReaches = trafficRoute?.polyline?.lastOrNull()
-                ?.let { it.distanceTo(destination) <= SNAP_REACH_M } == true &&
-                // A via route markedly LONGER than the course it was meant to follow has a detour
-                // in it (a via that snapped to a side road: the spur the puck then drives).
-                gTop != null && trafficRoute!!.distanceMeters <= gTop.distanceMeters * SNAP_LENGTH_SLACK + SNAP_LENGTH_SLACK_M
+            val snapReaches = trafficRoute != null
             // With avoid on, the snap is the point (Google's avoiding course is slower than the
             // open router's unrestricted one by construction), so the ETA margin test is skipped.
             val snapWorthIt = trafficRoute != null && snapReaches && open.isNotEmpty() && googleEtaS != null &&
                 (avoidWanted || googleEtaS <= open.first().durationSeconds * SNAP_ETA_MARGIN)
             // Avoid on, Google answered, but the open router could not be led along its course:
             // Google's own (abbreviated) steps beat a plain route that ignores the avoid.
-            val avoidFallbackToGoogle = avoidWanted && gTop != null && !snapWorthIt
+            // Only when the open route actually left Google's avoiding course; when it already
+            // follows it (no toll or motorway on the way anyway), the open route with its full
+            // named turns IS the avoiding route (review 2026-09-06: this used to throw it away).
+            val avoidFallbackToGoogle = avoidWanted && gTop != null && !snapWorthIt && topDivergent
             diag.record(
                 "directions",
                 "$mode → OSRM ${open.size} routes / ${open.firstOrNull()?.maneuvers?.size ?: 0} steps; " +
@@ -645,6 +661,19 @@ class GoogleMapsDataSource @Inject constructor(
         } else planned
     }
 
+    /** True when [RouteGeometry.spurAt] finds a spur on [route] AND one of the route's own
+     *  maneuvers within [SPUR_TURN_NEAR_M] of it is a turn or U-turn. */
+    private fun spurWithTurn(route: Route, course: List<LatLng>): Boolean {
+        val at = RouteGeometry.spurAt(route.polyline, course) ?: return false
+        val cum = app.vela.core.nav.RouteProjection.cumulative(route.polyline)
+        val idx = cum.indexOfFirst { it >= at }.let { if (it < 0) route.polyline.lastIndex else it }
+        val here = route.polyline[idx]
+        return route.maneuvers.any { m ->
+            (m.type == app.vela.core.model.ManeuverType.UTURN || m.type.name.startsWith("TURN")) &&
+                m.location.distanceTo(here) <= SPUR_TURN_NEAR_M
+        }
+    }
+
     /** Drop routes that follow ~the same path as an earlier one (keeps the picker to genuinely distinct
      *  choices). Order is preserved, so the primary stays first. */
     private fun dedupeRoutes(routes: List<Route>): List<Route> {
@@ -681,11 +710,9 @@ class GoogleMapsDataSource @Inject constructor(
         // don't turn red just because OSRM was optimistic). A divergent route (a genuinely
         // different path) can inherit the caller's calibration (the bias is the road network's,
         // not one route's); with none it keeps the old ratio-only overlay.
-        val cal = freeFlowCal ?: run {
-            val sameCourse = route.durationSeconds > 0 && route.polyline.size >= 2 &&
-                g.polyline.size >= 5 && !RouteGeometry.divergent(route, g)
-            if (sameCourse) ((typical * scale) / route.durationSeconds).coerceIn(0.5, 3.0) else 1.0
-        }
+        val sameCourse = route.durationSeconds > 0 && route.polyline.size >= 2 &&
+            g.polyline.size >= 5 && !RouteGeometry.divergent(route, g)
+        val cal = freeFlowCal ?: if (sameCourse) ((typical * scale) / route.durationSeconds).coerceIn(0.5, 3.0) else 1.0
         val calibrated = if (cal == 1.0) route else route.copy(
             durationSeconds = route.durationSeconds * cal,
             legs = route.legs.map { leg ->
@@ -697,7 +724,10 @@ class GoogleMapsDataSource @Inject constructor(
         )
         return calibrated.copy(
             durationInTrafficSeconds = calibrated.durationSeconds * factor,
-            trafficSpans = if (withSpans) g.trafficSpans.map { it.copy(startMeters = it.startMeters * scale, lengthMeters = it.lengthMeters * scale) }
+            // Google's congestion spans belong to Google's course: mapped by fraction onto a route
+            // that takes different roads they painted red segments on roads Google never reported
+            // on (review 2026-09-06).
+            trafficSpans = if (withSpans && sameCourse) g.trafficSpans.map { it.copy(startMeters = it.startMeters * scale, lengthMeters = it.lengthMeters * scale) }
             else emptyList(),
         )
     }
@@ -952,7 +982,8 @@ class GoogleMapsDataSource @Inject constructor(
         // (its detour is time-competitive with OSRM's ideal → the jam justifies the reroute). Tunable from
         // real side-by-side data — the `directions` diag logs gEta/osrmFF so the threshold can be pinned.
         const val SNAP_ETA_MARGIN = 1.2
-        private const val SNAP_LENGTH_SLACK = 1.05
+        private const val SPUR_TURN_NEAR_M = 150.0
+    private const val SNAP_LENGTH_SLACK = 1.05
         private const val SNAP_LENGTH_SLACK_M = 400.0
         const val SNAP_REACH_M = 500.0 // the snapped route's last point must be within this of the destination
         const val MAX_ROUTES = 4       // primary + up to 3 alternates in the picker

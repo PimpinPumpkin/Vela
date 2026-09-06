@@ -82,9 +82,9 @@ class NavSession @Inject constructor(
     private var rerouteJob: Job? = null
     private var rerouteStartedMs = 0L
     /** Deadline the in-flight reroute is running under (see [rerouteAttempt]). */
-    private var rerouteDeadlineMs = REROUTE_FETCH_TIMEOUT_MS
+    @Volatile private var rerouteDeadlineMs = REROUTE_FETCH_TIMEOUT_MS
     /** Consecutive reroute attempts that came back with nothing; reset on any adopted route. */
-    private var rerouteFailStreak = 0
+    @Volatile private var rerouteFailStreak = 0
     // @Volatile: written on the Default dispatcher (reroute coroutine) / caller thread and read
     // on the location thread — a stale read would defeat the cooldown or the generation guard.
     @Volatile private var lastRerouteAdoptMs = 0L
