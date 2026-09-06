@@ -44,6 +44,9 @@ object TripScrub {
     /** Metres trimmed around each private place by default. */
     const val DEFAULT_RADIUS_M = 400.0
 
+    /** An event survives only if a fix this close in time survived (fixes arrive at about 1 Hz). */
+    const val EVENT_NEAR_MS = 3_000L
+
     /** What a scrub did, so it can be shown before anything leaves the device. */
     data class Report(
         val csv: String,
@@ -93,6 +96,25 @@ object TripScrub {
         val tZero = kept.first().second.t
         val keptFrom = kept.first().second.t
         val keptTo = kept.last().second.t
+        // An event (spoken line, jank or battery sample) survives only if a fix within
+        // EVENT_NEAR_MS of it survived: the trimmed windows are not just the two ends. A Home or
+        // Work zone passed mid-trip deletes its fixes, and the spoken "turn onto <its street>"
+        // must go with them.
+        val keptTimes = LongArray(kept.size) { kept[it].second.t }
+        fun nearKeptFix(t: Long): Boolean {
+            var lo = 0
+            var hi = keptTimes.size - 1
+            while (lo < hi) {
+                val mid = (lo + hi) ushr 1
+                if (keptTimes[mid] < t) lo = mid + 1 else hi = mid
+            }
+            val a = keptTimes[lo]
+            val b = if (lo > 0) keptTimes[lo - 1] else a
+            return kotlin.math.abs(a - t) <= EVENT_NEAR_MS || kotlin.math.abs(b - t) <= EVENT_NEAR_MS
+        }
+        // When a route block's polyline is dropped whole, its totals and maneuvers must go too,
+        // or the parser folds them into the PREVIOUS block.
+        var blockDropped = false
 
         var maneuversDropped = 0
         var spokenDropped = 0
@@ -124,29 +146,30 @@ object TripScrub {
                     val poly = runCatching { PolylineCodec.decode(line.substring(3)) }.getOrDefault(emptyList())
                     val run = longestPublicRun(poly, ::private)
                     if (run.size != poly.size) routeTrimmed = true
-                    if (run.size >= 2) out.append("RP,").append(PolylineCodec.encode(run)).append('\n')
+                    blockDropped = run.size < 2
+                    if (!blockDropped) out.append("RP,").append(PolylineCodec.encode(run)).append('\n')
                 }
                 // Distance and duration totals identify nothing on their own and are needed to
-                // make sense of the trace.
-                "RD" -> out.append(line).append('\n')
+                // make sense of the trace, but they belong to their route block.
+                "RD" -> if (!blockDropped) out.append(line).append('\n') else otherDropped++
                 "M" -> {
                     val f = line.split(',', limit = 6)
                     val lat = f.getOrNull(2)?.toDoubleOrNull()
                     val lng = f.getOrNull(3)?.toDoubleOrNull()
-                    if (lat == null || lng == null || private(LatLng(lat, lng))) maneuversDropped++
+                    if (blockDropped || lat == null || lng == null || private(LatLng(lat, lng))) maneuversDropped++
                     else out.append(line).append('\n')
                 }
                 "S" -> {
                     // Spoken lines outside the surviving window are the ones that name the
                     // destination and the streets at either end.
                     val t = line.split(',').getOrNull(1)?.toLongOrNull()
-                    if (t == null || t < keptFrom || t > keptTo) spokenDropped++
+                    if (t == null || t < keptFrom || t > keptTo || !nearKeptFix(t)) spokenDropped++
                     else out.append(rebaseEvent(line, tZero)).append('\n')
                 }
                 // Frame pacing and battery carry no position.
                 "J", "B" -> {
                     val t = line.split(',').getOrNull(1)?.toLongOrNull()
-                    if (t == null || t < keptFrom || t > keptTo) otherDropped++
+                    if (t == null || t < keptFrom || t > keptTo || !nearKeptFix(t)) otherDropped++
                     else out.append(rebaseEvent(line, tZero)).append('\n')
                 }
                 else -> otherDropped++

@@ -247,7 +247,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   so a tag added to the format later cannot be published by a scrubber written before it existed.
   The dialog shows what was removed and the first surviving coordinate before anything leaves the
   device; **Share full trace** is still there, and the on-device copy is never modified.
-  `core/replay/TripScrub`, 13 tests.
+  Sharing several trips at once trims every one of them the same way. `core/replay/TripScrub`,
+  15 tests.
 - ✅ **Google-style nav puck (2026-07-11).** The navigation arrow is a white chevron inside a
   filled bright-navy circle with a soft drop shadow (no white ring, per user feedback); it rotates
   about the exact GPS point. Replaces the bare blue chevron. **Enlarged twice from feedback

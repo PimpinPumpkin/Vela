@@ -66,6 +66,9 @@ object PlaceImport {
             // into the sea off west Africa, so it is worth being explicit about.
             val parts = coords.split(Regex("[,\\s]+")).mapNotNull { it.toDoubleOrNull() }
             if (parts.size < 2) return@mapNotNull null
+            // A LineString or Polygon placemark (a track, an area) carries many tuples. Its first
+            // vertex is not a place, so the placemark is skipped rather than pinned at one end.
+            if (parts.size > 3) return@mapNotNull null
             val lng = parts[0]
             val lat = parts[1]
             place(nameIn(body) ?: fallbackName(lat, lng), lat, lng)
@@ -120,15 +123,19 @@ object PlaceImport {
      *  `properties.name` (or `title`). */
     private fun geoJsonName(props: JsonObject?): String? {
         val p = props ?: return null
-        val loc = p["location"] as? JsonObject
-        return (loc?.get("name")?.text() ?: p["name"]?.text() ?: p["title"]?.text())
-            ?.trim()?.takeIf { it.isNotBlank() }
+        val loc = (p["location"] ?: p["Location"]) as? JsonObject
+        // Older Takeout exports capitalise their keys ("Title", "Location", "Business Name").
+        return (
+            loc?.get("name")?.text() ?: loc?.get("Business Name")?.text()
+                ?: p["name"]?.text() ?: p["title"]?.text() ?: p["Title"]?.text()
+            )?.trim()?.takeIf { it.isNotBlank() }
     }
 
     private fun geoJsonAddress(props: JsonObject?): String? {
         val p = props ?: return null
-        val loc = p["location"] as? JsonObject
-        return (loc?.get("address")?.text() ?: p["address"]?.text())?.trim()?.takeIf { it.isNotBlank() }
+        val loc = (p["location"] ?: p["Location"]) as? JsonObject
+        return (loc?.get("address")?.text() ?: loc?.get("Address")?.text() ?: p["address"]?.text())
+            ?.trim()?.takeIf { it.isNotBlank() }
     }
 
     private fun JsonElement.num(): Double? = runCatching { jsonPrimitive.doubleOrNull }.getOrNull()
