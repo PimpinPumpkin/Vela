@@ -1702,7 +1702,14 @@ fun VelaMapView(
                 // stall (the floor is 0 only when the model says stopped), it cannot lurch (the
                 // nudge is capped as a fraction of speed), and it is still monotonic.
                 val err = navPuck.along.alongM - navPuck.progressM
-                val maxCatchUp = navPuck.speed * 0.5 + 1.0   // m/s of extra closing speed
+                // 1.5x + 2, up from 0.5x + 1 (2026-09-06, from a shared real drive): cutting a
+                // corner makes the along-route measurement jump ~30 m in one fix (the route's
+                // corner is longer than the path the car took), and at city speed the old cap
+                // needed 7 s to drain it - the arrow "kept going straight" after the car had
+                // turned. Replayed against that trip: the jump drains to 7 m in 2.5 s now, and the
+                // per-fix speed step on ordinary driving is unchanged (p50 0.27 m/s both ways).
+                // The Kalman gain was NOT the limiter (raising Q changed nothing); this cap was.
+                val maxCatchUp = navPuck.speed * 1.5 + 2.0   // m/s of extra closing speed
                 val maxHoldBack = navPuck.speed * 0.25 + 0.5 // ...and of braking, so it never reverses
                 val corr = (err / PUCK_CORRECT_TIME_S).coerceIn(-maxHoldBack, maxCatchUp)
                 navPuck.progressM += ((navPuck.speed + corr) * dtT.coerceAtMost(0.5)).coerceAtLeast(0.0)

@@ -43,6 +43,15 @@ map init, including force-stops during testing. The renderer sat at 89% of a cor
 juddered. The sentinel now counts only native crashes and says on the settings row when it
 engaged (#317).
 
+## After the fix: the puck was too sticky
+
+Once the vibration was gone, the next report was the opposite: the arrow followed the drawn
+road more faithfully than the car, running straight for a moment after a corner the driver had
+cut. From the shared trip: the along-route measurement jumps about 30 m in one fix at such a
+corner, and the catch-up cap of 0.5x speed + 1 m/s needed about 7 s to drain that at city speed.
+The Kalman gain was not the limiter; the cap was. It is now 1.5x speed + 2 m/s, which drains the
+jump in about 2.5 s with no measurable change to ordinary-driving smoothness.
+
 ## Things that were tried and are worse
 
 - A per-frame **LineString** source for the moving route cut. A line re-tiles on every worker
