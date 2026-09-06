@@ -1578,7 +1578,12 @@ Defaults that make the safe path the easy one:
   because it drives the live hl=en Google panel by clicking the matching option) - 
   strings that double as a logic key (place "Open"/"Closed" → status-colour parser, the map category chips /
   search-along-route chips are also the query, review sort/tab labels branch a `when`) are NOT in strings.xml;
-  they localize only once display text is split from the logic key. **Names/addresses/reviews are DATA - never
+  they localize only once display text is split from the logic key. One exception by REGION, not
+  language (issue #338, 2026-09-06): the fuel chip's query is `ui/CategoryQuery.fuel()`, "Petrol
+  station" when the effective locale's country says petrol (GB, IE, AU, NZ, IN, ZA...) and "Gas
+  station" elsewhere, because "gas" in the UK returned gas suppliers and car parks; `values-en-rGB`
+  carries the matching "Petrol" label and nothing else. `OfflinePoiStore` maps both queries to
+  `amenity=fuel`. **Names/addresses/reviews are DATA - never
   translated.** **Translations come in as PULL REQUESTS (docs/TRANSLATING.md; issue #285):** adding a
   user-facing string means adding it to the ENGLISH base `values/strings.xml` only - contributors fill
   the locales by editing `values-<lang>/strings.xml` (the em-dash + placeholder rules are the review
