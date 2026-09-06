@@ -1287,6 +1287,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   DISPLAYED speed is smoothed with a stop deadband (raw 1 Hz doppler flickered 59/60/61 at cruise), and
   speed derivation requires two GPS fixes past an accuracy-scaled floor (a BeaconDB hop minted phantom
   16 mph readouts at red lights).
+  **No more route "appendix", second pass (2026-09-06):** the shape itself is now detected: a via
+  route that keeps travelling while making no progress along Google's line (an off-ramp and back,
+  where the snap distance is tiny and the extra length is just a ramp pair) is refused too.
   **No more route "appendix" (2026-09-06):** when the open router is led along Google's course
   through sampled points, a point that snapped onto a side road used to produce a spur out and back
   that the arrow then drove while the car went straight. A via route is now refused when any sampled
