@@ -93,7 +93,6 @@
     <string name="settings_download">Télécharger</string>
     <string name="settings_saved_places">Lieux enregistrés</string>
     <string name="settings_saved_places_hint">Sauvegardez vos lieux favoris dans un fichier, ou restaurez-les sur un autre appareil. L\'importation fusionne avec ce que vous avez déjà, elle n\'écrase et ne supprime jamais rien.</string>
-    <string name="settings_import_nothing">Rien de nouveau à importer</string>
     <string name="settings_no_saved_places">Aucun lieu enregistré pour l\'instant</string>
     <string name="settings_export">Exporter</string>
     <string name="settings_import">Importer</string>

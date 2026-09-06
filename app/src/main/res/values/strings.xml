@@ -165,7 +165,6 @@
     <string name="settings_download">Download</string>
     <string name="settings_saved_places">Saved places</string>
     <string name="settings_saved_places_hint">Back up your starred places to a file, or restore them on another device. Import merges into what you already have. It never overwrites or removes anything, and it also reads GPX, KML and GeoJSON files exported from other map apps.</string>
-    <string name="settings_import_nothing">Nothing new to import</string>
     <string name="settings_import_nothing_new">Everything in that file is already saved.</string>
     <string name="settings_import_unreadable">That file could not be opened.</string>
     <string name="settings_import_wrong_format">No places found in that file. Vela reads its own exports, and GPX, KML or GeoJSON files saved from other map apps.</string>
@@ -783,6 +782,7 @@
     <string name="settings_font_choose">Choose a font file…</string>
     <string name="settings_font_hint">Vela cannot ship Google Sans: it is proprietary and cannot be redistributed. You can point Vela at any font file on your own device instead. Map labels keep their own font.</string>
     <string name="settings_font_bad">That file could not be read as a font.</string>
+    <string name="settings_font_custom">Custom font</string>
     <string name="settings_traffic_lights">Traffic-light guidance</string>
     <string name="settings_traffic_lights_hint">Spoken landmark cues: pass the light, then turn. English only, off by default.</string>
     <string name="settings_softkeys" translatable="false">Hardware softkeys</string>

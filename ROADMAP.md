@@ -229,10 +229,9 @@ worth an offline drive past a signed exit to hear it).
   scanning a wider area), not rebuilt (no keyless vector congestion source).
 
 
-- Split the remaining big countries into first-level sub-regions the way Germany now is
-  (France, Italy, Great Britain, Poland, then the rest of the 18 chunked countries), so a
-  city user never has to take a whole-country graph. The catalog pattern is in place; each
-  country is a batch of rows plus a workflow dispatch.
+- ~~Split the remaining big countries into first-level sub-regions the way Germany now is~~
+  (DONE 2026-08-15, issue #254: every country Geofabrik sub-divides has its `<country>-sub`
+  rows in the catalog; the workflows take a list of groups or `all-sub`).
 
 ## Big bets
 

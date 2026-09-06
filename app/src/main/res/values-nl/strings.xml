@@ -93,7 +93,6 @@
     <string name="settings_download">Downloaden</string>
     <string name="settings_saved_places">Opgeslagen plaatsen</string>
     <string name="settings_saved_places_hint">Maak een back-up van uw plaatsen met een ster naar een bestand, of herstel ze op een ander toestel. Importeren voegt samen met wat u al hebt, het overschrijft of verwijdert nooit iets.</string>
-    <string name="settings_import_nothing">Niets nieuws om te importeren</string>
     <string name="settings_no_saved_places">Nog geen opgeslagen plaatsen</string>
     <string name="settings_export">Exporteren</string>
     <string name="settings_import">Importeren</string>

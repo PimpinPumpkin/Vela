@@ -480,7 +480,6 @@ class GoogleMapsDataSource @Inject constructor(
                     onDevice != null -> listOf(onDevice)
                     else -> gD.await().take(1).map { it.copy(abbreviatedSteps = true) }
                 }
-                // Online routers cannot honour the avoid toggles; only the on-device chain can.
                 // Google's direct route honours avoid (DirectionsPb.withAvoid); the open router's
                 // via route and its on-device fallback do not - only those get the note.
                 if ((avoidTolls || avoidHighways) && mode == TravelMode.DRIVE && via != null) {
@@ -508,12 +507,8 @@ class GoogleMapsDataSource @Inject constructor(
             val google = googleD.await()
             val gTop = google.firstOrNull()
             // AVOID toggles: the public FOSSGIS OSRM rejects `exclude=` outright (probed
-            // 2026-07-11: InvalidValue - its profiles weren't built with excludable classes),
-            // so a DOWNLOADED graph with the avoid CH profiles is the authoritative avoid
-            // router - it goes FIRST. Old-format graphs / no coverage return empty and the
-            // online chain below routes normally (avoid best-effort, never a dead end). No
-            // live-traffic ETA on these: the offline result is free-flow, like any offline route.
-            // Google's keyless directions DO honour avoid (DirectionsPb.withAvoid, 2026-09-06), so
+            // 2026-07-11 and again 2026-08-24: InvalidValue, its profiles were not built with
+            // excludable classes). Google's keyless directions DO honour avoid (DirectionsPb.withAvoid, 2026-09-06), so
             // online the avoiding route IS gTop: the open router cannot exclude, so its plain route
             // diverges and the snap below follows Google's course with named turns, and Google's
             // own in-traffic time is the ETA. The on-device engine is the avoid router only when

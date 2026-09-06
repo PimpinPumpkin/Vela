@@ -117,7 +117,6 @@
     <string name="settings_download">下載</string>
     <string name="settings_saved_places">已儲存的地點</string>
     <string name="settings_saved_places_hint">將加星號的地點備份到檔案，或在另一部裝置上還原。匯入會與現有內容合併，絕不會覆寫或移除任何資料。</string>
-    <string name="settings_import_nothing">沒有新內容可匯入</string>
     <string name="settings_no_saved_places">尚未儲存任何地點</string>
     <string name="settings_export">匯出</string>
     <string name="settings_import">匯入</string>

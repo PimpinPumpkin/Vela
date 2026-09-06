@@ -93,7 +93,6 @@
     <string name="settings_download">Herunterladen</string>
     <string name="settings_saved_places">Gespeicherte Orte</string>
     <string name="settings_saved_places_hint">Sichern Sie Ihre markierten Orte in einer Datei oder stellen Sie sie auf einem anderen Gerät wieder her. Der Import wird mit Ihren vorhandenen Orten zusammengeführt, es wird nie etwas überschrieben oder entfernt.</string>
-    <string name="settings_import_nothing">Nichts Neues zu importieren</string>
     <string name="settings_no_saved_places">Noch keine gespeicherten Orte</string>
     <string name="settings_export">Exportieren</string>
     <string name="settings_import">Importieren</string>
