@@ -40,7 +40,8 @@
     <string name="settings_voice_search_toggle">Voice search mic</string>
     <string name="settings_voice_search_hint">Shows a mic in the search bar to speak your search.</string>
     <string name="settings_contacts_search">Search your contacts</string>
-    <string name="settings_contacts_search_hint">Typing a contact\'s name suggests their saved address. Your contacts stay on this phone; picking a suggestion searches the address like any typed query.</string>
+    <string name="settings_contacts_search_hint">Typing a contact\'s name suggests their saved addresses, with their photo and the address label from your address book. Your contacts stay on this phone; picking one looks up that address like any typed query and opens it under the contact\'s name.</string>
+    <string name="suggestion_contact_badge">Contact</string>
     <string name="search_voice_cd">Voice search</string>
     <string name="search_voice_prompt">Speak to search</string>
     <string name="settings_voice">Voice</string>

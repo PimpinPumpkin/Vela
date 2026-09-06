@@ -91,9 +91,14 @@ data class LocalSuggestion(
     val place: Place? = null,
     val query: String? = null,
     val removable: Boolean = false,
+    /** CONTACT rows: the address book's label for this address ("Home", "Work"), platform-localized. */
+    val badge: String? = null,
+    /** CONTACT rows: the contact's thumbnail content: URI, if they have a photo. */
+    val photoUri: String? = null,
 ) {
-    // CONTACT rows (issue #243) carry the contact's postal address as [query]: picking one runs it
-    // through the normal search-submit path, exactly as if the address had been typed.
+    // CONTACT rows (issue #243) carry the contact's postal address as [query]. Picking one
+    // geocodes that address and opens the result under the CONTACT'S name (see
+    // MapViewModel.openContactAddress); the address string is the only thing that leaves the phone.
     enum class Kind { RECENT_QUERY, RECENT_PLACE, SAVED_PLACE, CONTACT }
 }
 
@@ -1162,7 +1167,12 @@ class MapViewModel @Inject constructor(
         // that string reaches the geocoder; the contact list itself never leaves the phone.
         if (app.vela.ui.ContactsSearch.enabled.value) {
             app.vela.data.ContactAddresses.matches(t).forEach {
-                out.add(LocalSuggestion(LocalSuggestion.Kind.CONTACT, it.name, it.address, query = it.address))
+                out.add(
+                    LocalSuggestion(
+                        LocalSuggestion.Kind.CONTACT, it.name, it.address, query = it.address,
+                        badge = it.type, photoUri = it.photoUri,
+                    ),
+                )
             }
         }
 
@@ -1184,9 +1194,67 @@ class MapViewModel @Inject constructor(
     /** Open (place-backed) or re-run (recent query) a local suggestion tapped in the search page. */
     fun pickLocalSuggestion(s: LocalSuggestion) {
         when {
+            s.kind == LocalSuggestion.Kind.CONTACT && s.query != null -> openContactAddress(s.label, s.query)
             s.place != null -> selectPlace(s.place)
             s.query != null -> searchRecent(s.query)
         }
+    }
+
+    /**
+     * A contact row was picked: geocode the address, then open it under the PERSON'S name with
+     * the address beneath, the way Home and Work open (a labelled place, not a bare address).
+     * Until 2026-09-06 the pick just searched the address string, so the sheet, Save and Recents
+     * all read "1451 W Covell Blvd" with no trace of whose house it was, and typing the name
+     * again a week later found nothing in history. Honours the directions endpoint and stop
+     * pickers like any other pick, so a contact works in the "To" field. Only the address string
+     * goes to the geocoder (the offline address store first when the phone is offline); the
+     * name never leaves the phone. Falls back to the plain search when nothing geocodes, so the
+     * usual no-results / offline handling shows.
+     */
+    fun openContactAddress(name: String, address: String) {
+        val near = plausibleBias(_state.value.myLocation) ?: plausibleBias(mapCenter)
+        searchJob?.cancel()
+        suggestJob?.cancel()
+        _state.update { it.copy(searching = true, suggestions = emptyList(), localSuggestions = emptyList()) }
+        searchJob = viewModelScope.launch {
+            // Prefer the ADDRESS feature over a business that happens to sit at it: searching a
+            // house number where a shop is returns the shop first, and its rating, hours and
+            // price would otherwise dress up the contact's home (device-checked 2026-09-06).
+            fun pickAddressHit(hits: List<Place>): Place? =
+                hits.take(3).firstOrNull { it.rating == null && it.category == null } ?: hits.firstOrNull()
+            val online = runCatching { if (isOnline()) pickAddressHit(dataSource.search(address, near).places) else null }.getOrNull()
+            val hit = online ?: withContext(Dispatchers.IO) {
+                runCatching { addressStore.geocode(address, near, 1).firstOrNull() }.getOrNull()
+            } ?: runCatching { if (!isOnline()) pickAddressHit(dataSource.search(address, near).places) else null }.getOrNull()
+            _state.update { it.copy(searching = false) }
+            if (hit == null) { searchRecent(address); return@launch }
+            // A bare place on purpose: whatever else the geocoder knew about that spot is not
+            // the contact's, so the sheet shows the person, the address and the actions.
+            selectContactPlace(Place(id = hit.id, name = name, location = hit.location, address = hit.address ?: address))
+        }
+    }
+
+    /** Open a geocoded contact address as a labelled place. Same branches as [selectSaved]
+     *  (assign-as-Home/Work, stop and endpoint pickers, a stop on a live drive), minus the
+     *  search-by-name enrichment: searching "John Snow" near a house finds nothing useful. */
+    private fun selectContactPlace(base: Place) {
+        val sp = SavedPlace.of(base)
+        if (consumeAssign(sp)) return
+        if (_state.value.pickingStop) { addStop(base); return }
+        if (_state.value.pickingDest) { setDirectionsDestination(base); return }
+        if (_state.value.pickingOrigin) { setDirectionsOrigin(base); return }
+        if (_state.value.navigating) { addStopDuringNav(base); return }
+        routeJob?.cancel()
+        _state.update {
+            it.copy(
+                selected = base, center = base.location, placesHere = emptyList(), reviews = emptyList(),
+                reviewsLoading = false, reviewsFound = 0, photosLoading = false, loadingDetails = false,
+                stopDepartures = null, stopDeparturesLoading = false, stopDeparturesFor = null,
+                directionsOpen = false, routes = emptyList(), activeRoute = null,
+                transit = emptyList(), transitLoading = false, showSteps = false,
+            )
+        }
+        rememberRecentPlace(sp)
     }
 
     /** Drop a local suggestion from history via its X (recent search or recently-viewed place);

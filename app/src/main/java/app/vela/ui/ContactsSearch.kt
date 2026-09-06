@@ -6,8 +6,8 @@ import androidx.compose.runtime.mutableStateOf
 /**
  * "Search your contacts" toggle (issue #243, Settings → Search, OFF by default). When on, typing a
  * contact's name in the search box suggests their saved postal address (matched on-device against
- * [app.vela.data.ContactAddresses]; picking one searches the ADDRESS like any typed query — the
- * contact list itself never leaves the phone). READ_CONTACTS is asked at the point of use (flipping
+ * [app.vela.data.ContactAddresses]; picking one geocodes the ADDRESS like any typed query and opens
+ * it under the contact's name - the contact list itself never leaves the phone). READ_CONTACTS is asked at the point of use (flipping
  * this toggle on), never at install/onboarding. Same process-wide reactive holder shape as
  * [VoiceSearch]; init in VelaApp.
  */
