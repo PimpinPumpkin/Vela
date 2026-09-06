@@ -138,6 +138,7 @@ class OfflinePoiStore @Inject constructor(
             "gas station" to listOf("fuel"),
             "fuel" to listOf("fuel"),
             "petrol" to listOf("fuel"),
+            "petrol station" to listOf("fuel"),
             "charging" to listOf("charging station"),
             "ev charging" to listOf("charging station"),
             "coffee" to listOf("cafe", "coffee"),
