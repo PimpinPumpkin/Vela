@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -3439,6 +3440,7 @@ private fun SearchEntryContent(
                 // closes any open menu instead of leaving it stranded on a different row.
                 var menuOpen by remember(s) { mutableStateOf(false) }
                 val place = s.place
+                val isContact = s.kind == app.vela.ui.map.LocalSuggestion.Kind.CONTACT
                 SuggestionRow(
                     icon = when (s.kind) {
                         app.vela.ui.map.LocalSuggestion.Kind.RECENT_QUERY -> Icons.Default.History
@@ -3449,6 +3451,11 @@ private fun SearchEntryContent(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     label = s.label,
                     sublabel = s.sublabel,
+                    // A contact reads as a person, not a search: their photo (or a person on the
+                    // same tinted disc Home and Work use) and a "Contact · Home" chip, so the row
+                    // can never be mistaken for a place the geocoder found (user 2026-09-06).
+                    leading = if (isContact) ({ ContactAvatar(s.photoUri) }) else null,
+                    badge = if (isContact) listOfNotNull(stringResource(R.string.suggestion_contact_badge), s.badge).joinToString(" · ") else null,
                     onClick = { onPickLocal(s) },
                     onLongClick = { menuOpen = true },
                     trailing = {
@@ -3908,6 +3915,47 @@ private fun SectionLabel(text: String) {
 // combinedClickable powers the press-hold on suggestion rows (issue #180). The row still
 // clicks on tap / D-pad centre; long-press (touch) opens the same menu the trailing ⋮ opens,
 // so D-pad keeps a key path via the button.
+
+/** A contact's thumbnail on the tinted disc the Home/Work rows use; the person glyph shows
+ *  through when there is no photo (or it fails to load, the image simply never paints). */
+@Composable
+private fun ContactAvatar(photoUri: String?) {
+    Box(
+        Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        if (photoUri != null) {
+            coil.compose.AsyncImage(
+                model = photoUri,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    }
+}
+
+/** The small chip after a suggestion's label, in the accent tint so it reads as a category, not text. */
+@Composable
+private fun SuggestionBadge(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.primary,
+        maxLines = 1,
+        modifier = Modifier
+            .background(
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                RoundedCornerShape(6.dp),
+            )
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    )
+}
+
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun SuggestionRow(
@@ -3919,6 +3967,10 @@ private fun SuggestionRow(
     onRemove: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
+    /** Replaces [icon] when set (a contact's photo disc). */
+    leading: (@Composable () -> Unit)? = null,
+    /** A small chip after the label ("Contact · Home"). */
+    badge: String? = null,
 ) {
     val hasTrailing = onRemove != null || trailing != null
     Row(
@@ -3927,7 +3979,11 @@ private fun SuggestionRow(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.padding(end = 12.dp), tint = tint)
+        if (leading != null) {
+            Box(Modifier.padding(end = 12.dp)) { leading() }
+        } else {
+            Icon(icon, contentDescription = null, modifier = Modifier.padding(end = 12.dp), tint = tint)
+        }
         if (sublabel == null) {
             Text(
                 label,
@@ -3939,13 +3995,20 @@ private fun SuggestionRow(
             )
         } else {
             Column(Modifier.weight(1f)) {
-                Text(
-                    label,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (badge != null) {
+                        Spacer(Modifier.width(8.dp))
+                        SuggestionBadge(badge)
+                    }
+                }
                 Text(
                     sublabel,
                     style = MaterialTheme.typography.bodyMedium,

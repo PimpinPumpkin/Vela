@@ -1707,10 +1707,23 @@ architecture note.
   on, from SearchSettings). `app/data/ContactAddresses` loads ALL address-bearing contacts into
   memory ONCE (VM init + toggle-on, off-main) because localMatches runs synchronously per
   keystroke and a ContactsProvider binder query there would jank; the match is against that cache.
-  A CONTACT suggestion carries the ADDRESS as its `query`, so picking it rides the normal
-  searchRecent path (address searched exactly as if typed - the contact list itself never leaves
-  the phone; PRIVACY.md has the user-facing wording). Kind.CONTACT icon = person - that is why they are instant and the only thing that
-  shows offline. `LocalSuggestion` (kind RECENT_QUERY / RECENT_PLACE / SAVED_PLACE) renders above
+  A CONTACT suggestion carries the ADDRESS as its `query` plus the row's `badge` (the address
+  book's own type label via `StructuredPostal.getTypeLabel`, already platform-localized) and
+  `photoUri` (`PHOTO_THUMBNAIL_URI`, a content: URI that only resolves while the permission is
+  held; coil loads it over the person glyph so a missing photo just shows the glyph). **Picking
+  one goes through `openContactAddress(name, address)` (2026-09-06), NOT searchRecent:** geocode
+  the address (Google search when online, else `OfflineAddressStore.geocode`, the other as a
+  fallback), then `selectContactPlace` opens the hit renamed to the CONTACT with the address as
+  sublabel - the same branches as `selectSaved` (assign-as-Home/Work, stop + endpoint pickers,
+  a stop on a live drive) minus its search-by-name enrichment. That is what makes the sheet,
+  Save, Recents (`rememberRecentPlace`) and the directions To/From fields say whose place it is;
+  before, the pick searched the bare address and every trace of the person was lost. Nothing
+  geocodes → falls back to `searchRecent(address)` so the normal no-results/offline UI shows. The
+  row renders `ContactAvatar` + `SuggestionBadge` through `SuggestionRow`'s `leading`/`badge`
+  slots. `SearchCarScreen` shows up to two contact rows above the car results (`openContact`
+  geocodes then pushes RoutePreviewCarScreen under the name). The contact list itself never
+  leaves the phone; PRIVACY.md has the user-facing wording. Local rows are instant and the only
+  thing that shows offline. `LocalSuggestion` (kind RECENT_QUERY / RECENT_PLACE / SAVED_PLACE) renders above
   the network rows in `SearchEntryContent`. Dedup of network vs local is by `nameLocKey` (name +
   coarse location), NOT feature id - SavedPlace-backed locals carry no id, so an id-only compare
   double-shows them. Clear `localSuggestions` everywhere `suggestions` clears. **Press-hold / ⋮
