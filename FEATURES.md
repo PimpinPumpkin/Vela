@@ -2376,9 +2376,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   suggestion (or tap its ⋮) to save a place into one of your lists or drop a history row, the same
   list picker the place sheet uses. Looking up one location out of a chain no longer means
   re-typing the city.
-- ✅ **Search your contacts (issue #243, 2026-08-08).** Opt-in (Settings > Search, off by default;
-  the contacts permission is asked when you flip the toggle, never at install). Typing a contact's
-  name suggests their saved postal address at the top of the results with a person icon; picking it
-  searches the address like any typed query. Matching happens entirely on the phone against an
-  in-memory copy of the address-bearing contacts, so it is instant and nothing about your contact
-  list is uploaded.
+- ✅ **Search your contacts (issue #243, 2026-08-08; reworked 2026-09-06).** Opt-in (Settings >
+  Search, off by default; the contacts permission is asked when you flip the toggle, never at
+  install). Typing a contact's name suggests each of their saved addresses at the top of the
+  results as a person: their photo (or a person glyph on the same tinted disc Home and Work use)
+  and a "Contact · Home" or "Contact · Work" chip from your address book's own label. Picking one
+  looks up the address and opens it **under the contact's name** with the address beneath, so the
+  place sheet, Save, Directions and Recents all say whose place it is, and typing the name again
+  next week finds it in history. The same rows work in the directions "To" and "From" fields, as
+  a stop, and in the Android Auto search. Matching happens entirely on the phone against an
+  in-memory copy of the address-bearing contacts, so it is instant and works offline (the address
+  itself geocodes from a downloaded region when there is no signal); only the address string is
+  ever sent to a geocoder, never the name or the list.

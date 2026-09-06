@@ -17,7 +17,10 @@ import androidx.core.content.ContextCompat
  * searches the ADDRESS string like any typed query.
  */
 object ContactAddresses {
-    data class Entry(val name: String, val address: String)
+    /** One postal row of one contact. [type] is the address book's own label for the row ("Home",
+     *  "Work", or a custom one), already localized by the platform; [photoUri] is the contact's
+     *  thumbnail, a content: URI that only resolves while the permission is held. */
+    data class Entry(val name: String, val address: String, val type: String? = null, val photoUri: String? = null)
 
     @Volatile private var cache: List<Entry> = emptyList()
     @Volatile private var loaded = false
@@ -38,6 +41,9 @@ object ContactAddresses {
                 arrayOf(
                     ContactsContract.CommonDataKinds.StructuredPostal.DISPLAY_NAME,
                     ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS,
+                    ContactsContract.CommonDataKinds.StructuredPostal.TYPE,
+                    ContactsContract.CommonDataKinds.StructuredPostal.LABEL,
+                    ContactsContract.CommonDataKinds.StructuredPostal.PHOTO_THUMBNAIL_URI,
                 ),
                 null, null,
                 ContactsContract.CommonDataKinds.StructuredPostal.DISPLAY_NAME,
@@ -46,7 +52,15 @@ object ContactAddresses {
                 while (c.moveToNext() && out.size < 500) {
                     val name = c.getString(0)?.trim().orEmpty()
                     val addr = c.getString(1)?.replace('\n', ' ')?.replace(Regex("\\s+"), " ")?.trim().orEmpty()
-                    if (name.isNotEmpty() && addr.isNotEmpty()) out.add(Entry(name, addr))
+                    // The row's own label, in the platform's words (so "Home" is already "Casa" on
+                    // a Spanish phone); a custom label comes through as typed.
+                    val type = if (c.isNull(2)) null else runCatching {
+                        ContactsContract.CommonDataKinds.StructuredPostal.getTypeLabel(
+                            context.resources, c.getInt(2), c.getString(3),
+                        ).toString().trim().takeIf { it.isNotEmpty() }
+                    }.getOrNull()
+                    val photo = c.getString(4)?.takeIf { it.isNotBlank() }
+                    if (name.isNotEmpty() && addr.isNotEmpty()) out.add(Entry(name, addr, type, photo))
                 }
             }
         }
