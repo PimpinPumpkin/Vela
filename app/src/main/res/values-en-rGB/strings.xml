@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- British English: only the words that differ. Everything else falls through to the base
+     English strings. -->
+<resources>
+    <string name="cat_gas">Petrol</string>
+</resources>
