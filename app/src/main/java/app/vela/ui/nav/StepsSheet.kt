@@ -61,6 +61,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -177,6 +178,9 @@ fun StepsSheet(
         modifier
             .fillMaxWidth()
             .onSizeChanged { sheetHeightPx = it.height }
+            // Invisible until measured: the enter offset is a fraction of the sheet's own height,
+            // which is 0 on the first frame, so that frame would flash the sheet fully open.
+            .graphicsLayer { alpha = if (sheetHeightPx == 0) 0f else 1f }
             .offset { IntOffset(0, (drag.value + sheetHeightPx * enter.value).roundToInt().coerceAtLeast(0)) }
             .pointerInput(Unit) {
                 sheetDragGestures(

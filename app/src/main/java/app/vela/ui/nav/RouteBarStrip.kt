@@ -132,7 +132,9 @@ fun RouteBarStrip(model: RouteBar.Model, remainingMeters: Double, modifier: Modi
                     val p = when (d.kind) {
                         ROLE_TRACK -> m.measure(constraints.copy(minHeight = trackH, maxHeight = trackH, minWidth = 0))
                         ROLE_BAND -> {
-                            val bh = ((d.to - d.from) * trackH).toInt().coerceIn(TRACK_W.dp.roundToPx(), trackH)
+                            // coerceIn throws when min > max: on a strip shorter than the track width
+                            // (a tiny multi-window pane) clamp to the track height instead.
+                            val bh = ((d.to - d.from) * trackH).toInt().coerceAtMost(trackH).coerceAtLeast(minOf(TRACK_W.dp.roundToPx(), trackH))
                             m.measure(constraints.copy(minHeight = bh, maxHeight = bh, minWidth = 0))
                         }
                         else -> m.measure(constraints.copy(minWidth = 0, minHeight = 0))

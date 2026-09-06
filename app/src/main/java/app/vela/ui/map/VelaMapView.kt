@@ -303,6 +303,10 @@ private var previewApplied = false // distinguishes "never applied" from "applie
 private var lastRouteMode = -1     // 0=dashed 1=browse 2=nav; transition one-shots key off this
 private var lastBrowseGradKey: Int? = null
 private var lastMeLayerKey: Int? = null
+/** True while the follow-mode Compose overlay draws the puck: applyData must then keep the symbol
+ *  puck hidden whatever its own key says, or a pinch/re-center that spans no fix brought BOTH pucks
+ *  back for the rest of the drive (review 2026-09-06). Set by the ticker, cleared by dropPuckOverlay. */
+@Volatile private var puckOverlayOwnsArrow = false
 private val lastEnsureKey = intArrayOf(-1)
 
 // AUDIT FIX 6 (2026-07-15): discrete animateCamera FLIGHTS (locate, route fit, overview,
@@ -574,7 +578,7 @@ fun VelaMapView(
     // split so the gradients and the full line's visibility are re-applied at once.
     val trailOn = app.vela.ui.RouteTrail.on.value
     val trailHolder = rememberUpdatedState(trailOn)
-    LaunchedEffect(trailOn) { splitReset[0] = true }
+    LaunchedEffect(trailOn) { splitReset[0] = true; lastGradM[0] = -1e9 } // -1e9 so the block runs even while stopped
     val mPerPxHolder = remember { doubleArrayOf(10.0) } // metres/pixel at the camera (scale-bar feed) —
                                                         // sizes the split-update throttle to sub-pixel
     val lastScaleReport = remember { doubleArrayOf(-1.0) } // last mpp PUSHED to compose (gate, see reportScale)
@@ -664,6 +668,7 @@ fun VelaMapView(
         }
     }
     var styleRef by remember { mutableStateOf<Style?>(null) }
+    val navPuck = remember { NavPuck() }
     // The follow-mode puck OVERLAY (see the ticker): screen position + transform, written per
     // frame by the ticker and read in the DRAW phase (graphicsLayer lambdas), so a frame costs
     // one layer redraw and no recomposition.
@@ -675,10 +680,18 @@ fun VelaMapView(
     val puckOverlayHidLayer = remember { booleanArrayOf(false) } // ME_ARROW_LAYER hidden for the overlay
     fun dropPuckOverlay() {
         if (puckOverlayOn.value) puckOverlayOn.value = false
+        lastPuckScreen[0] = Float.NaN
+        lastPuckScreen[1] = Float.NaN
         if (puckOverlayHidLayer[0]) {
             puckOverlayHidLayer[0] = false
+            puckOverlayOwnsArrow = false
             lastMeLayerKey = null // applyData re-derives the symbol puck's visibility on its next pass
-            styleRef?.getLayer(ME_ARROW_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
+            styleRef?.let { st ->
+                // The source was not fed while the overlay drew (see the ticker), so put the symbol
+                // where the arrow last was before showing it.
+                navPuck.drawn?.let { setMeSource(st, it, navPuck.displayBearing) }
+                st.getLayer(ME_ARROW_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
+            }
         }
     }
     var appliedStyleKey by remember { mutableStateOf<String?>(null) }
@@ -709,7 +722,6 @@ fun VelaMapView(
     LaunchedEffect(navFollowing) {
         if (navFollowing) { lastNavTarget = null; lastNavBearing = null }
     }
-    val navPuck = remember { NavPuck() }
     val routeCum = remember(routePolyline) { cumLengths(routePolyline) }
 
     // CROSS-STREET-ONLY nav labels (user 2026-07-16: "only show roads we are on or that we
@@ -1768,22 +1780,10 @@ fun VelaMapView(
                     )
                 }
                 navPuck.drawn = pt // the camera follows this smoothed point, not the raw fix
-                setMeSource(style, pt, navPuck.displayBearing)
-                // Where the puck landed on screen, for the current-road label beneath it
-                // (issue #288). Projection is a cheap matrix op, but the REPORT is gated on real
-                // movement - the follow camera parks the puck at one spot, so pushing this into
-                // compose every frame would recompose the label 60x a second for nothing.
-                runCatching { mapRef?.projection?.toScreenLocation(MLLatLng(pt.lat, pt.lng)) }
-                    .getOrNull()?.let { sp ->
-                        if (lastPuckScreen[0].isNaN() ||
-                            kotlin.math.abs(sp.x - lastPuckScreen[0]) > 2f ||
-                            kotlin.math.abs(sp.y - lastPuckScreen[1]) > 2f
-                        ) {
-                            lastPuckScreen[0] = sp.x
-                            lastPuckScreen[1] = sp.y
-                            puckScreenCb.value(sp.x, sp.y)
-                        }
-                    }
+                // While the Compose overlay draws the puck the symbol layer is hidden, so the
+                // per-frame source upload is pure waste (review 2026-09-06); dropPuckOverlay
+                // re-feeds it once before the symbol comes back.
+                if (!puckOverlayHidLayer[0]) setMeSource(style, pt, navPuck.displayBearing)
                 // Drive the follow-camera HERE, per frame (60 fps) with a continuous ease, instead
                 // of the recomposition-driven block below (which re-pointed only ~1-3×/s in
                 // throttled 550 ms eases — the "stiff" feel). Ease the camera toward the smooth
@@ -1891,7 +1891,22 @@ fun VelaMapView(
                     if (!puckOverlayOn.value) puckOverlayOn.value = true
                     if (!puckOverlayHidLayer[0]) {
                         puckOverlayHidLayer[0] = true
+                        puckOverlayOwnsArrow = true
                         style.getLayer(ME_ARROW_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+                    }
+                    // Where the arrow sits on screen, for the road label pinned under it (issue
+                    // #288). Reported only while FOLLOWING (the camera parks the arrow, so this
+                    // fires on the rare real move) and from the same projection the overlay uses,
+                    // so the label can never trail the arrow by a frame. Reporting from a detached
+                    // camera recomposed the whole screen at 60 Hz while the arrow crossed it
+                    // (review 2026-09-06).
+                    if (lastPuckScreen[0].isNaN() ||
+                        kotlin.math.abs(scr.x - lastPuckScreen[0]) > 2f ||
+                        kotlin.math.abs(scr.y - lastPuckScreen[1]) > 2f
+                    ) {
+                        lastPuckScreen[0] = scr.x
+                        lastPuckScreen[1] = scr.y
+                        puckScreenCb.value(scr.x, scr.y)
                     }
                 } else {
                     camState[0] = Double.NaN // reset → re-attach eases in from the live camera
@@ -2023,7 +2038,7 @@ fun VelaMapView(
                             PropertyFactory.lineGradient(routeGradient(pc, gInt, remap(c0, c1), driven)),
                         )
                     } else {
-                        style.getLayer(ROUTE_CUT_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+                        if (aheadDirty) style.getLayer(ROUTE_CUT_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
                         val a0 = aheadAnchor[0]
                         val a1 = navWin[0]
                         val pa = if (a1 - a0 <= 1.0) 0f else ((prog - a0) / (a1 - a0)).toFloat().coerceIn(0.0001f, 0.9999f)
@@ -2836,7 +2851,7 @@ fun VelaMapView(
                 lastRouteMode = -1
                 lastBrowseGradKey = null
                 lastMeLayerKey = null
-                puckOverlayHidLayer[0] = false // fresh style re-created the symbol puck visible
+                puckOverlayHidLayer[0] = false // fresh style re-created the symbol puck; the ticker re-hides it (puckOverlayOwnsArrow keeps applyData from showing it meanwhile)
                 lastEnsureKey[0] = -1 // fresh style dropped the overlay layers - re-ensure on next pass
                 lastGradM[0] = -1e9 // force the nav split to re-render on the fresh style
                 splitReset[0] = true
@@ -5987,7 +6002,7 @@ private fun applyData(
         )
         style.getLayer(ME_ARROW_LAYER)?.setProperties(
             PropertyFactory.iconImage(if (navMode) NAV_PUCK_IMG else ME_ARROW_IMG),
-            PropertyFactory.visibility(if (me != null && bearing != null && !meStale) Property.VISIBLE else Property.NONE),
+            PropertyFactory.visibility(if (me != null && bearing != null && !meStale && !puckOverlayOwnsArrow) Property.VISIBLE else Property.NONE),
         )
     }
 
