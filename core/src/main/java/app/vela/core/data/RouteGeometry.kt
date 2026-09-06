@@ -696,16 +696,19 @@ object RouteGeometry {
      *  divergent minority of routes, so the tradeoff rides on few requests. */
     /**
      * True when [route] contains a SPUR relative to [course]: a stretch where it keeps travelling
-     * but makes no progress along the course, then comes back. That is what a via that snapped
-     * onto an off-ramp or frontage road produces (real drive 2026-09-06: an appendix hanging off a
-     * motorway with no turn due for miles; the arrow drove out and back while the car went
-     * straight). Neither the snap distance (metres) nor the extra length (a ramp pair) is large in
-     * that case, so those checks miss it; this one looks at the shape.
+     * but makes little progress along the course, then comes back. That is what a via that snapped
+     * onto a side street or off-ramp produces (real drive 2026-09-06, from the trip log: a 121 m
+     * out-and-back off a state route, 56 m to the side, turn right / U-turn / turn right, while the
+     * car went straight and never came within 47 m of its tip). Neither the snap distance nor the
+     * extra length is large in that case, so those checks miss it; this one looks at the shape.
      *
-     * Each route vertex is projected onto the course (windowed, both advance together); over any
-     * stretch of at least [SPUR_MIN_M] metres of route where the projection advanced less than
-     * [SPUR_ADVANCE_FRACTION] of the distance travelled, the route has a spur. The first and last
-     * [SPUR_END_SLACK_M] are exempt: the origin and destination approaches legitimately differ.
+     * Each route vertex is projected onto the course (windowed, both advance together). A stretch
+     * begins wherever progress was last normal; over a stretch of at least [SPUR_MIN_M] metres of
+     * route in which the best progress along the course is under [SPUR_PROGRESS_FRACTION] of the
+     * distance travelled, the route has a spur. The first version of this reset the stretch on any
+     * 15 m of forward projection, which a side street leaving at an angle supplies every vertex -
+     * it missed the real one. The first and last [SPUR_END_SLACK_M] are exempt: the origin and
+     * destination approaches legitimately differ from the course.
      */
     internal fun hasSpur(route: List<LatLng>, course: List<LatLng>): Boolean {
         if (route.size < 3 || course.size < 2) return false
@@ -714,8 +717,6 @@ object RouteGeometry {
         if (total < SPUR_MIN_M * 3) return false
         val rcum = app.vela.core.nav.RouteBar.cumulative(route)
         val rtotal = rcum.last()
-        // Windowed projection: a route vertex is matched to the nearest course segment near where
-        // the previous one matched, falling back to a global search when nothing is close.
         var seg = 0
         var stretchStartR = 0.0
         var stretchStartC = 0.0
@@ -724,29 +725,25 @@ object RouteGeometry {
             val p = route[i]
             var best = Double.MAX_VALUE
             var bestAlong = 0.0
-            val lo = (seg - 3).coerceAtLeast(0)
-            val hi = (seg + 60).coerceAtMost(course.size - 2)
             fun scan(a: Int, b: Int) {
                 for (k in a..b) {
                     val (along, d) = projectOnSegment(course[k], course[k + 1], cum[k], p)
                     if (d < best) { best = d; bestAlong = along; seg = k }
                 }
             }
-            scan(lo, hi)
+            scan((seg - 3).coerceAtLeast(0), (seg + 60).coerceAtMost(course.size - 2))
             if (best > SPUR_LOCAL_M) scan(0, course.size - 2)
             val r = rcum[i]
             if (r < SPUR_END_SLACK_M || r > rtotal - SPUR_END_SLACK_M) {
                 stretchStartR = r; stretchStartC = bestAlong; maxC = bestAlong
                 continue
             }
-            if (bestAlong > maxC + SPUR_ADVANCE_STEP_M) {
-                // Real progress along the course: the stretch under suspicion ends here.
-                maxC = bestAlong
-                stretchStartR = r
-                stretchStartC = bestAlong
-            } else {
-                val travelled = r - stretchStartR
-                if (travelled >= SPUR_MIN_M && (maxC - stretchStartC) < travelled * SPUR_ADVANCE_FRACTION) return true
+            if (bestAlong > maxC) maxC = bestAlong
+            val travelled = r - stretchStartR
+            val progress = maxC - stretchStartC
+            if (travelled >= SPUR_MIN_M && progress < travelled * SPUR_PROGRESS_FRACTION) return true
+            if (progress >= travelled * SPUR_NORMAL_FRACTION) {
+                stretchStartR = r; stretchStartC = bestAlong; maxC = bestAlong
             }
         }
         return false
@@ -766,9 +763,9 @@ object RouteGeometry {
         return (cumA + segLen * t) to Math.hypot(dx, dy) * 111_320.0
     }
 
-    private const val SPUR_MIN_M = 250.0            // a stretch this long with no progress is a spur
-    private const val SPUR_ADVANCE_FRACTION = 0.35  // progress along the course below this share of distance travelled
-    private const val SPUR_ADVANCE_STEP_M = 15.0    // how much further along the course counts as advancing
+    private const val SPUR_MIN_M = 80.0             // a stretch this long with too little progress is a spur
+    private const val SPUR_PROGRESS_FRACTION = 0.45 // progress along the course below this share of distance travelled (a 45-degree stub lands at ~37%)
+    private const val SPUR_NORMAL_FRACTION = 0.8    // progress at or above this share = normal driving, stretch resets
     private const val SPUR_END_SLACK_M = 300.0      // origin/destination approaches may differ from the course
     private const val SPUR_LOCAL_M = 200.0          // beyond this from the windowed match, search the whole course
 
