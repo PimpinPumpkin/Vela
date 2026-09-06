@@ -2000,14 +2000,30 @@ fun VelaMapView(
                             PropertyFactory.lineGradient(routeGradient(0f, traversed, emptyList())),
                         )
                     }
-                    // Per frame: only the cut piece's PAINT moves.
-                    val c0 = cutStart[0]
-                    val c1 = cutEnd[0]
-                    val pc = if (c1 - c0 <= 1.0) 0f else ((prog - c0) / (c1 - c0)).toFloat().coerceIn(0.0001f, 0.9999f)
-                    style.getLayer(ROUTE_CUT_LAYER)?.setProperties(
-                        PropertyFactory.visibility(Property.VISIBLE),
-                        PropertyFactory.lineGradient(routeGradient(pc, gInt, remap(c0, c1), driven)),
-                    )
+                    // Per frame: only PAINT moves. Trail ON: the cut piece paints grey up to the
+                    // arrow over the ahead line. Trail OFF: the cut piece cannot erase what is
+                    // under it (a transparent stop just shows the blue beneath, which is what drew
+                    // a growing blue stub behind the arrow that vanished in a chunk every 300 m,
+                    // user 2026-09-06), so the AHEAD line's own gradient carries the cut instead:
+                    // transparent before the arrow's fraction of the window, colour after. Its
+                    // texel is the window/256 (~12 m at 3 km), a step that stays under the arrow.
+                    if (trailHolder.value) {
+                        val c0 = cutStart[0]
+                        val c1 = cutEnd[0]
+                        val pc = if (c1 - c0 <= 1.0) 0f else ((prog - c0) / (c1 - c0)).toFloat().coerceIn(0.0001f, 0.9999f)
+                        style.getLayer(ROUTE_CUT_LAYER)?.setProperties(
+                            PropertyFactory.visibility(Property.VISIBLE),
+                            PropertyFactory.lineGradient(routeGradient(pc, gInt, remap(c0, c1), driven)),
+                        )
+                    } else {
+                        style.getLayer(ROUTE_CUT_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+                        val a0 = aheadAnchor[0]
+                        val a1 = navWin[0]
+                        val pa = if (a1 - a0 <= 1.0) 0f else ((prog - a0) / (a1 - a0)).toFloat().coerceIn(0.0001f, 0.9999f)
+                        style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(
+                            PropertyFactory.lineGradient(routeGradient(pa, gInt, remap(a0, a1), android.graphics.Color.TRANSPARENT)),
+                        )
+                    }
                 }
             } else {
                 dropPuckOverlay()

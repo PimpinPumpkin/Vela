@@ -1287,6 +1287,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   DISPLAYED speed is smoothed with a stop deadband (raw 1 Hz doppler flickered 59/60/61 at cruise), and
   speed derivation requires two GPS fixes past an accuracy-scaled floor (a BeaconDB hop minted phantom
   16 mph readouts at red lights).
+  **No more route "appendix" (2026-09-06):** when the open router is led along Google's course
+  through sampled points, a point that snapped onto a side road used to produce a spur out and back
+  that the arrow then drove while the car went straight. A via route is now refused when any sampled
+  point snapped more than 40 m from where it was asked for, or when the result is markedly longer
+  than the course it was meant to follow; the plain route is used instead.
+  **Road behind you, off: no stub (2026-09-06):** with the trail off, the line behind the arrow used
+  to reappear as a growing blue stub that vanished in a chunk every 300 m. The cut is now carried by
+  the ahead line's own gradient in that mode, so nothing is drawn behind the arrow at all.
   **Avoid tolls and highways work online (2026-09-06):** Google's keyless directions do honour the
   avoid options after all (the flags were found by capturing Google's own web client), so with either
   toggle on the route follows Google's avoiding course with the open router's named turns and Google's

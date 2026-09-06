@@ -202,6 +202,11 @@ object RouteGeometry {
 
     private const val BEARING_TOLERANCE_DEG = 65
 
+    /** How far (m) an interior via may snap from where it was asked before the via route is
+     *  refused as unreliable (see routeOsrm). Google's polyline points sit on the carriageway;
+     *  a snap beyond this landed on some other road. */
+    private const val VIA_SNAP_MAX_M = 40.0
+
     private fun routeOsrm(
         http: OkHttpClient,
         points: List<LatLng>,
@@ -228,8 +233,21 @@ object RouteGeometry {
             try {
                 http.newCall(req).execute().use { resp ->
                     if (resp.isSuccessful) {
-                        val routes = json.parseToJsonElement(resp.body?.string().orEmpty())
-                            .jsonObject["routes"]?.jsonArray
+                        val body = json.parseToJsonElement(resp.body?.string().orEmpty()).jsonObject
+                        // A via that OSRM had to snap far from where it was asked for is the
+                        // "appendix": the route runs out to a side road and back, and the puck then
+                        // drives that spur while the car goes straight (real drive, 2026-09-06). The
+                        // vias are points sampled off Google's own line, so a big snap distance means
+                        // the sample landed near a frontage road or ramp, not on the course. Refuse
+                        // the whole via route; the caller falls back to the plain route.
+                        if (points.size > 2) {
+                            val wps = body["waypoints"]?.jsonArray
+                            val badVia = wps != null && wps.size == points.size && (1 until wps.size - 1).any { i ->
+                                (wps[i].jsonObject["distance"]?.jsonPrimitive?.doubleOrNull ?: 0.0) > VIA_SNAP_MAX_M
+                            }
+                            if (badVia) return emptyList()
+                        }
+                        val routes = body["routes"]?.jsonArray
                         if (routes != null) return routes.mapNotNull { parseOsrmRoute(it.jsonObject) }
                     }
                     // A 4xx is deterministic (e.g. FOSSGIS answers InvalidValue for exclude=
