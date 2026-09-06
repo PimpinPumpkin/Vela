@@ -93,7 +93,6 @@
     <string name="settings_download">Transferir</string>
     <string name="settings_saved_places">Locais guardados</string>
     <string name="settings_saved_places_hint">Faça uma cópia de segurança dos locais marcados com estrela num ficheiro ou restaure-os noutro dispositivo. A importação junta ao que já tem, nunca substitui nem remove nada.</string>
-    <string name="settings_import_nothing">Nada de novo para importar</string>
     <string name="settings_no_saved_places">Ainda sem locais guardados</string>
     <string name="settings_export">Exportar</string>
     <string name="settings_import">Importar</string>

@@ -61,55 +61,17 @@ object RouteBar {
      */
     const val WINDOW_M = 5_000.0
 
-    /** Cumulative distance to each vertex, so a point can be placed along the line without
-     *  re-walking it per lookup. Computed once per route, never per frame. */
-    fun cumulative(poly: List<LatLng>): DoubleArray {
-        val cum = DoubleArray(poly.size)
-        for (i in 1 until poly.size) cum[i] = cum[i - 1] + poly[i - 1].distanceTo(poly[i])
-        return cum
-    }
+    /** Cumulative distance to each vertex; see [RouteProjection.cumulative]. Kept as a name so the
+     *  bar's callers read as one unit, but the maths lives in one place. */
+    fun cumulative(poly: List<LatLng>): DoubleArray = RouteProjection.cumulative(poly)
 
-    /**
-     * How far along the route [p] sits, or null when it is further than [maxOffRouteM] from the
-     * line - a corridor fetch returns things near the road, including some on a parallel street,
-     * and those must not be drawn as if they were ahead of you.
-     */
+    /** How far along the route [p] sits, or null when it is off it; see [RouteProjection.alongMeters]. */
     fun alongMeters(
         poly: List<LatLng>,
         cum: DoubleArray,
         p: LatLng,
         maxOffRouteM: Double = 40.0,
-    ): Double? {
-        if (poly.size < 2) return null
-        var bestD = Double.MAX_VALUE
-        var bestAlong = 0.0
-        for (i in 0 until poly.size - 1) {
-            val a = poly[i]
-            val b = poly[i + 1]
-            val segLen = cum[i + 1] - cum[i]
-            if (segLen <= 0.0) continue
-            // Project onto the segment in a local flat frame; over a segment this is exact enough
-            // and avoids trigonometry per vertex on a polyline with thousands of points.
-            val latScale = Math.cos(Math.toRadians(a.lat))
-            val ax = 0.0
-            val ay = 0.0
-            val bx = (b.lng - a.lng) * latScale
-            val by = (b.lat - a.lat)
-            val px = (p.lng - a.lng) * latScale
-            val py = (p.lat - a.lat)
-            val len2 = bx * bx + by * by
-            val t = if (len2 <= 0.0) 0.0 else (((px - ax) * bx + (py - ay) * by) / len2).coerceIn(0.0, 1.0)
-            val cx = bx * t
-            val cy = by * t
-            val dDeg = Math.hypot(px - cx, py - cy)
-            val dM = dDeg * 111_320.0
-            if (dM < bestD) {
-                bestD = dM
-                bestAlong = cum[i] + segLen * t
-            }
-        }
-        return if (bestD <= maxOffRouteM) bestAlong else null
-    }
+    ): Double? = RouteProjection.alongMeters(poly, cum, p, maxOffRouteM)
 
     /**
      * Build the bar for [route] given how far along it you are.

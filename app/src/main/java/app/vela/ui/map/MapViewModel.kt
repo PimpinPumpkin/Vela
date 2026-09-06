@@ -3995,7 +3995,6 @@ class MapViewModel @Inject constructor(
     // future pref read that has to happen at construction belongs after this line too.
     init { refreshRouteBar() }
 
-    /** Reflect the persisted "save my trips" flag into UI state. */
     /** Reflect the persisted route-bar flag into UI state (pref `route_bar`, default off - it is
      *  extra chrome on the nav screen, so it should be asked for, not imposed). */
     fun refreshRouteBar() =
@@ -4252,9 +4251,6 @@ class MapViewModel @Inject constructor(
         return res
     }
 
-    /** A share intent for a recorded trip's raw CSV trace (via the same FileProvider),
-     *  so a drive can be pulled off a *release* build — handed to a dev for replay/debug,
-     *  or kept as a backup. Null if the trip file is gone. User-initiated, user-routed. */
     /**
      * Share SEVERAL trips at once as separate attachments.
      *
@@ -5201,8 +5197,6 @@ class MapViewModel @Inject constructor(
 
     fun hasViewport(): Boolean = viewport != null
 
-    /** Download tiles + POIs for the area the map was last showing (Google-style
-     *  "download this area", but invoked from Settings → Offline maps). */
     /** On-disk sizes for the Offline maps storage breakdown (issue #214: 8 GB arrived unannounced). */
     data class OfflineStorage(val mapsMb: Int, val routingMb: Int, val placesMb: Int, val voicesMb: Int)
 

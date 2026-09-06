@@ -503,7 +503,6 @@ object NavEngine {
         }
     }
 
-    /** Cumulative geometric length (m) of [path] at each vertex (cum[0] = 0). */
     /** The per-route geometry every [update] needs: cumulative metres at each vertex, and each
      *  maneuver's along-route mark. Both depend on the ROUTE alone, yet were rebuilt on every fix:
      *  a full-polyline pass plus a windowed projection of EVERY maneuver over the remaining line,

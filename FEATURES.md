@@ -2191,7 +2191,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   separate Pages workflow would wipe `/repo` and `/fonts`, so don't add one. Site-only pushes
   skip CI (paths-ignore) and trigger the F-Droid workflow directly instead.
 - ✅ **Guidance volume (2026-08-08, issue #245)** - Softer/Normal/Louder/Loudest tiers in Settings > Voice so spoken directions can cut through music; louder tiers boost the Vela voice's own audio, system voices can only be made softer.
-- ✅ **Honest avoid toggles (2026-08-08)** - the route picker says when avoid tolls/highways could not be applied (online routers cannot honour it without an offline region), and the on-device avoid attempt is time-bounded so the chooser can never hang on it.
+- ✅ **Honest avoid toggles (2026-08-08)** - the route picker says when avoid tolls/highways could not be applied, and the on-device avoid attempt is time-bounded so the chooser can never hang on it. Since 2026-09-06 the online route honours the toggles too (Google's keyless directions carry the avoid flags), so the note is rare: it appears only for a multi-stop route or when the on-device engine had to answer without the avoid profiles.
 - ✅ **Results rank from you (2026-08-08)** - when searching where you are, the result order and distances are computed from your location instead of the viewport centre, so the list stops reshuffling as you pan; searching a far city keeps map-centre ranking.
 - ✅ **In-app updater (2026-07-08, user request).** The PipePipe pattern: Vela checks the newest GitHub
   release (about once a day on launch, or on demand from Settings → Version → Check for updates), and when

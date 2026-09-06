@@ -1,4 +1,4 @@
-# Bake Vela obf regions (routing + address + POI, no rendering section) in parallel and publish
+# Bake Vela obf regions (routing section only by default, indexed lean; no rendering) in parallel and publish
 # them to the `obf-regions` release - the successor catalog to the GraphHopper routing graphs
 # (issue #214: a country's obf is roughly a quarter of the graph+pack it replaces). The app serves
 # this catalog automatically once obf-manifest.json has entries; while it is empty the legacy
@@ -83,7 +83,7 @@ jobs:
           gh release view obf-regions --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
             gh release create obf-regions --repo "$GITHUB_REPOSITORY" --prerelease \
               --title "Offline obf regions" \
-              --notes "Vela-baked obf files (routing + address + POI, no rendering section) for offline routing and search. Data assets, not a code release."
+              --notes "Vela-baked obf files (routing section only by default, no rendering section) for offline routing. Data assets, not a code release."
 
   build:
     needs: prep
