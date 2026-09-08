@@ -234,6 +234,13 @@ object NavEngine {
             // the reroute fires after ~2 fixes instead of a full debounce (user 2026-07-15,
             // "waits far too long after a wrong turn").
             moving && offDist > farOffM -> state.offRouteHits + 2
+            // Moving AGAINST the route and already a quarter-corridor off the line: a wrong turn,
+            // not a wide legit one (which stays within a few metres of the corner while the
+            // projection catches up). Counts double, so a deliberate left-instead-of-straight
+            // reroutes on the 2nd fix after the turn instead of the 3rd; the sustained
+            // back-on-course check in NavSession discards the rare false one (real drive
+            // 2026-09-07: "kept going on the correct route for too long").
+            moving && headingOff && offDist > offRouteM * 0.25 -> state.offRouteHits + 2
             else -> state.offRouteHits + 1
         }
         val offRoute = offHits >= OFF_ROUTE_HITS
