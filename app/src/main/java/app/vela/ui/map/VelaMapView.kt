@@ -1681,7 +1681,10 @@ fun VelaMapView(
                 // canopy, and a 2 s cap made the puck glide-stall-lurch every cycle at exactly
                 // that cadence. 3 s still bounds a dropped-signal runaway to ~100 m at highway
                 // speed, and the decay below shaves the model right after it.
-                val sinceFix = (android.os.SystemClock.elapsedRealtime() - navPuck.targetAtMs) / 1000.0 * ts
+                // A heading miss (see the fix block) pins the reckoning clock past its cap: the
+                // car turned off this line, so gliding the arrow further along it is fiction.
+                val sinceFix = if (navPuck.holdReckon) DEAD_RECKON_S + 1.0
+                    else (android.os.SystemClock.elapsedRealtime() - navPuck.targetAtMs) / 1000.0 * ts
                 // Past the dead-reckon window with no accepted fix = a measurement outage: decay
                 // the modelled speed toward 0 (there's no evidence we're still moving) so the
                 // zoom/look-ahead don't ride a stale speed forever. A resumed fix re-measures.
@@ -2008,8 +2011,13 @@ fun VelaMapView(
                         // edge lies under the piece's grey; colour from there.
                         val a0 = aheadAnchor[0]
                         val a1 = navWin[0]
-                        val pa = if (a1 - a0 <= 1.0) 0f else
+                        // Trail ON: grey up to one texel past the piece start. Trail OFF: NOTHING
+                        // up to a texel before the piece's END, so the whole span under the cut
+                        // piece is clear and the piece alone decides what is drawn there.
+                        val pa = if (a1 - a0 <= 1.0) 0f else if (trailHolder.value)
                             ((cutStart[0] + NAV_CUT_HIDE_M - a0) / (a1 - a0)).toFloat().coerceIn(0f, 0.999f)
+                        else
+                            ((cutEnd[0] - a0) / (a1 - a0) - 1.5 / 256.0).toFloat().coerceIn(0f, 0.999f)
                         style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(
                             PropertyFactory.visibility(Property.VISIBLE),
                             PropertyFactory.lineGradient(routeGradient(pa, gInt, remap(a0, a1), driven)),
@@ -2022,30 +2030,20 @@ fun VelaMapView(
                             PropertyFactory.lineGradient(routeGradient(0f, traversed, emptyList())),
                         )
                     }
-                    // Per frame: only PAINT moves. Trail ON: the cut piece paints grey up to the
-                    // arrow over the ahead line. Trail OFF: the cut piece cannot erase what is
-                    // under it (a transparent stop just shows the blue beneath, which is what drew
-                    // a growing blue stub behind the arrow that vanished in a chunk every 300 m,
-                    // user 2026-09-06), so the AHEAD line's own gradient carries the cut instead:
-                    // transparent before the arrow's fraction of the window, colour after. Its
-                    // texel is the window/256 (~12 m at 3 km), a step that stays under the arrow.
-                    if (trailHolder.value) {
-                        val c0 = cutStart[0]
-                        val c1 = cutEnd[0]
-                        val pc = if (c1 - c0 <= 1.0) 0f else ((prog - c0) / (c1 - c0)).toFloat().coerceIn(0.0001f, 0.9999f)
-                        style.getLayer(ROUTE_CUT_LAYER)?.setProperties(
-                            PropertyFactory.visibility(Property.VISIBLE),
-                            PropertyFactory.lineGradient(routeGradient(pc, gInt, remap(c0, c1), driven)),
-                        )
-                    } else {
-                        if (aheadDirty) style.getLayer(ROUTE_CUT_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
-                        val a0 = aheadAnchor[0]
-                        val a1 = navWin[0]
-                        val pa = if (a1 - a0 <= 1.0) 0f else ((prog - a0) / (a1 - a0)).toFloat().coerceIn(0.0001f, 0.9999f)
-                        style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(
-                            PropertyFactory.lineGradient(routeGradient(pa, gInt, remap(a0, a1), android.graphics.Color.TRANSPARENT)),
-                        )
-                    }
+                    // Per frame: only PAINT moves, and only on the 400 m cut piece, whose 256
+                    // gradient texels are 1.6 m each. Trail ON it paints grey up to the arrow;
+                    // trail OFF it paints nothing up to the arrow, over an ahead line that is
+                    // itself clear under the whole piece (see `pa` above). The cut used to ride
+                    // the AHEAD line's gradient with the trail off, whose texel is the 3 km
+                    // window / 256 = 12 m: the line vanished in 12 m chunks with a dithered
+                    // edge a texel ahead of the arrow (real drive 2026-09-07).
+                    val c0 = cutStart[0]
+                    val c1 = cutEnd[0]
+                    val pc = if (c1 - c0 <= 1.0) 0f else ((prog - c0) / (c1 - c0)).toFloat().coerceIn(0.0001f, 0.9999f)
+                    style.getLayer(ROUTE_CUT_LAYER)?.setProperties(
+                        PropertyFactory.visibility(Property.VISIBLE),
+                        PropertyFactory.lineGradient(routeGradient(pc, gInt, remap(c0, c1), driven)),
+                    )
                 }
             } else {
                 dropPuckOverlay()
@@ -2705,6 +2703,8 @@ fun VelaMapView(
                 navPuck.progressM = m; navPuck.targetM = m; navPuck.engaged = true
                 navPuck.smoothWin = Double.NaN // re-seed the boxcar window from the first real speed
                 navPuck.fwdRejects = 0
+                navPuck.holdReckon = false
+                navPuck.headingMisses = 0
                 reanchor = true
                 accepted = true
             } else {
@@ -2757,7 +2757,9 @@ fun VelaMapView(
                 if (accepted) navPuck.fwdRejects = 0
             }
             navPuck.missCount = 0
+            navPuck.headingMisses = 0
             if (accepted) {
+                navPuck.holdReckon = false
                 navPuck.targetAtMs = now // anchor for dead reckoning
                 // (a REJECTED fix must NOT re-open the blind window: at a standstill that
                 // re-armed the creep every second; the old anchor stays until a fix is accepted)
@@ -2789,7 +2791,28 @@ fun VelaMapView(
             // — at 1 Hz that's still 3 s of frozen puck, and NavEngine's off-route detection
             // (45 m × 4 hits) drives the actual reroute in the meantime).
             navPuck.missCount += 1
-            if (navPuck.missCount >= 3) navPuck.engaged = false
+            // WHICH kind of miss? Re-run the snap without the heading gate: if the fix is within
+            // reach of the line but its course is 55°+ against it while moving, the driver has
+            // turned off the route. That is not a spike to dead-reckon through: the arrow
+            // used to glide straight on along the old line for 3 s and then freeze at the
+            // corner while the car was already down the side street (real drive 2026-09-07,
+            // "kept going on the correct route for too long"). Freeze the reckoning now and
+            // drop to the raw fix on the 2nd such miss; a distance miss keeps the 3-miss
+            // tolerance a canopy spike needs.
+            val missSpeed = maxOf(navPuck.speed, navPuck.speedAtAccept)
+            val headingMiss = myLocation != null && myBearing != null && navPuck.kalman.speed >= 2.0 &&
+                snapToRouteWindowed(
+                    myLocation, null, routePolyline, routeCum,
+                    navPuck.targetM - 25.0, navPuck.targetM + (missSpeed * 8.0).coerceIn(150.0, 600.0),
+                    maxM = 22.0 + missSpeed.coerceIn(0.0, 13.0),
+                ) != null
+            if (headingMiss) {
+                navPuck.headingMisses += 1
+                navPuck.holdReckon = true
+            } else {
+                navPuck.headingMisses = 0
+            }
+            if (navPuck.missCount >= 3 || navPuck.headingMisses >= 2) navPuck.engaged = false
             navPuck.raw = myLocation
             navPuck.rawBearing = myBearing
         } else if (!navMode || !navPuck.engaged) {
@@ -5312,6 +5335,9 @@ private class NavPuck {
     var drawn: LatLng? = null     // last point actually drawn — the camera follows THIS, not the raw fix
     var raw: LatLng? = null       // off-route fallback position
     var rawBearing: Float? = null
+    var headingMisses = 0         // consecutive misses where the fix was NEAR the route but heading
+                                  // AWAY from it (a wrong turn): disengage after 2, not 3
+    var holdReckon = false        // a heading miss froze dead reckoning: the car is not on this line
     var missCount = 0             // consecutive forward-look-ahead misses (GPS spike / off-route);
                                   // HOLD + dead-reckon through a few, then disengage to re-acquire
     var fwdRejects = 0            // consecutive over-maxStep forward steps — a persistent one is

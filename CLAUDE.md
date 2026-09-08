@@ -2232,7 +2232,16 @@ architecture note.
   fix coursing >HEADING_OFF_DEG (60) against the route's local bearing counts as an off-route hit even
   inside the corridor (`bearingDeg` rides onLocation -> update; null in replays/tests = unchanged), and
   a heading-diverged fix never counts toward onRouteStreak (else back-on-course would discard the
-  legit wrong-way reroute mid-fetch). The 3-hit debounce absorbs turn transients/lane changes),
+  legit wrong-way reroute mid-fetch). The 3-hit debounce absorbs turn transients/lane changes; a
+  heading-off fix that is ALSO a quarter-corridor (10 m) off the line counts DOUBLE while moving,
+  so a deliberate left-instead-of-straight reroutes on the 2nd fix after the turn (real drive
+  2026-09-07, `NavEngineWrongTurnTest`); a wide legit turn stays within a few metres of the corner
+  and keeps counting single. THE PUCK has its own wrong-turn rule in VelaMapView's fix block: the
+  engaged snap already rejects a fix whose course is 55°+ off the segment, but that rejection used
+  to be a plain "miss", so the arrow dead-reckoned straight on along the old line for 3 s and then
+  froze at the corner. A miss that succeeds when re-run WITHOUT the heading gate is a heading miss:
+  it sets `holdReckon` (the ticker treats the reckoning clock as expired, so the arrow stops) and
+  two of them disengage to the raw fix; a distance miss keeps the 3-miss spike tolerance),
   off-route measured on the
   windowed/anchored projection (never whole-polyline min), reroutes are single-flight + cooldown +
   latch-clear-on-failure (a failed fetch must NOT kill rerouting - the event is edge-triggered), and
@@ -2312,11 +2321,14 @@ architecture note.
   upward fling faster than NAV_BAR_FLING_PX_S, else spring back); commit = the same `openSteps` the
   list button calls, and `StepsSheet` animates in from its own height (`enter`). The button stays as
   the key path; the gesture is touch-only on purpose (docs/dpad.md).
-  **Trail OFF cannot use the cut piece (2026-09-06):** an overlay line cannot erase what is under it,
-  so a transparent "driven" stop on `ROUTE_CUT_LAYER` just revealed the blue ahead line beneath (the
-  growing stub). With the trail off, the cut piece is hidden and the AHEAD line's own gradient carries
-  the cut per frame (transparent before the arrow's window fraction); its ~12 m texel step hides under
-  the arrow. With the trail on, the cut piece paints grey over blue as before.
+  **Trail OFF is drawn by the cut piece over a CLEARED ahead line (2026-09-07).** An overlay line
+  cannot erase what is under it, so the first trail-off cut (2026-09-06) rode the AHEAD line's own
+  gradient - and that line's 256 texels span the 3 km window, 12 m each: on a real drive the blue
+  vanished in 12 m chunks with a dithered edge a texel ahead of the arrow. Now the ahead line's
+  gradient is transparent up to a texel BEFORE the cut piece's END (`pa` from `cutEnd`, recomputed
+  on each slide), so nothing sits under the piece, and the piece's per-frame gradient (1.6 m texels)
+  paints transparent before the arrow and colour after - the same per-frame path as the trail-on
+  grey cut, only the "driven" colour differs. Do not move the per-frame cut back onto the ahead line.
   **Spur rule v2 (2026-09-06, from the reporter's trip log):** the real appendix was a 121 m
   turn-right / U-turn / turn-right stub 56 m off a state route; the car never came within 47 m of
   its tip. The v1 rule missed it (a side street leaving at an angle projects a little further along
