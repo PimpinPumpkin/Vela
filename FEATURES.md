@@ -1296,6 +1296,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   that the arrow then drove while the car went straight. A via route is now refused when any sampled
   point snapped more than 40 m from where it was asked for, or when the result is markedly longer
   than the course it was meant to follow; the plain route is used instead.
+  **Wrong turns read faster (2026-09-07):** a deliberate turn off the route now asks for a new
+  route on the second fix after the turn instead of the third, and the arrow stops gliding along
+  the old line the moment your course leaves it, dropping to your real position within two fixes
+  instead of coasting straight through the corner for three seconds. **Road behind you, off: smooth
+  (2026-09-07):** the line behind the arrow now clears in a continuous edge under the arrow instead
+  of 12 m chunks with a dithered fringe.
   **Road behind you, off: no stub (2026-09-06):** with the trail off, the line behind the arrow used
   to reappear as a growing blue stub that vanished in a chunk every 300 m. The cut is now carried by
   the ahead line's own gradient in that mode, so nothing is drawn behind the arrow at all.
