@@ -4763,16 +4763,57 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
         PropertyFactory.circleStrokeColor(if (dark) "#162640" else "#f8f7f7"),
     )
     // Hide Liberty's dashed clutter that Google doesn't draw: footpaths/sidewalks,
-    // park outlines, the stepped admin/city/county BOUNDARY lines, and the railroad
-    // cross-tie hatching (the solid rail line stays). All read as weird stray dashes.
+    // park outlines, and the railroad cross-tie hatching (the solid rail line stays). All
+    // read as weird stray dashes.
     listOf(
         "road_path_pedestrian", "bridge_path_pedestrian", "bridge_path_pedestrian_casing", "tunnel_path_pedestrian",
         "park_outline",
-        "boundary_2", "boundary_3", "boundary_disputed",
         "road_major_rail_hatching", "road_transit_rail_hatching",
         "bridge_major_rail_hatching", "bridge_transit_rail_hatching",
         "tunnel_major_rail_hatching", "tunnel_transit_rail_hatching",
     ).forEach { style.getLayer(it)?.setProperties(PropertyFactory.visibility(Property.NONE)) }
+    // Country and state/province borders (discussion #353, 2026-09-09). They were hidden with
+    // the clutter above since July, but Google draws both: countries as a thin solid grey
+    // line, states and provinces dashed and lighter, from about zoom 4. What Google does NOT
+    // draw at these zooms is county and city limits, which on these tiles are admin levels
+    // 5 and 6 of the same layer and were the stray-dash mess the hide was really for, so the
+    // layer's filter is narrowed to levels 3 and 4 instead of hidden. Colours per theme: the
+    // style's own dark grey vanished on the dark map.
+    val borderInk = if (dark) "#8C95A3" else "#9AA0A6"
+    (style.getLayer("boundary_2") as? LineLayer)?.setProperties(
+        PropertyFactory.visibility(Property.VISIBLE),
+        PropertyFactory.lineColor(borderInk),
+        PropertyFactory.lineOpacity(
+            Expression.interpolate(Expression.linear(), Expression.zoom(), Expression.stop(0, 0.5f), Expression.stop(4, 1f)),
+        ),
+        PropertyFactory.lineWidth(
+            Expression.interpolate(Expression.linear(), Expression.zoom(), Expression.stop(3, 0.8f), Expression.stop(6, 1.2f), Expression.stop(12, 2f)),
+        ),
+    )
+    (style.getLayer("boundary_3") as? LineLayer)?.let { l ->
+        l.setFilter(
+            Expression.all(
+                Expression.gte(Expression.get("admin_level"), Expression.literal(3)),
+                Expression.lte(Expression.get("admin_level"), Expression.literal(4)),
+                Expression.neq(Expression.get("maritime"), Expression.literal(1)),
+                Expression.neq(Expression.get("disputed"), Expression.literal(1)),
+                Expression.not(Expression.has("claimed_by")),
+            ),
+        )
+        l.minZoom = 4f
+        l.setProperties(
+            PropertyFactory.visibility(Property.VISIBLE),
+            PropertyFactory.lineColor(if (dark) "#6F7887" else "#B4B8BC"),
+            PropertyFactory.lineDasharray(arrayOf(3f, 2f)),
+            PropertyFactory.lineWidth(
+                Expression.interpolate(Expression.linear(), Expression.zoom(), Expression.stop(4, 0.8f), Expression.stop(8, 1.2f), Expression.stop(12, 1.6f)),
+            ),
+        )
+    }
+    (style.getLayer("boundary_disputed") as? LineLayer)?.setProperties(
+        PropertyFactory.visibility(Property.VISIBLE),
+        PropertyFactory.lineColor(borderInk),
+    )
 }
 
 /** Known-fragile GPU stacks start in compatibility (TextureView) rendering from the FIRST

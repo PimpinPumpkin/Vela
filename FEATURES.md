@@ -646,6 +646,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - 🟡 Self-hosted PMTiles - the no-key, no-quota Google-look path - remains for later
 - ⬜ Protomaps "Google-Maps-ify" style (road hierarchy ✅, hillshade ✅, POI icons ✅ done; this is the bundled-style variant)
 - ✅ Satellite layer - shipped 2026-07-13 via the Layers panel (Esri World Imagery hybrid; see the Layers entry below). Terrain relief ✅ too
+- ✅ **Country and state/province borders (2026-09-09, discussion #353)** - drawn the way Google draws them: countries as a thin solid grey line, states and provinces lighter and dashed from about zoom 4, both themed for light and dark. County and city limits stay off, as on Google; they were the stray-dash clutter that got every border hidden back in July.
 - ✅ Map rotation/tilt + heading-up mode during nav (tilted follow-camera, speed-adaptive zoom)
 
 ## Search & POIs (live Google data)
