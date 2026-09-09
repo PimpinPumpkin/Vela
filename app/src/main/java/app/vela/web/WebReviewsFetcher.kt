@@ -433,7 +433,11 @@ class WebReviewsFetcher @Inject constructor(
         /** Languages whose review-page wording the scraper's word lists cover (see `reviewsHl`).
          *  Outside this set the page stays English: a language the scraper cannot navigate would
          *  return FEWER reviews than English does. */
-        val SUPPORTED_HL = setOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "zh", "ja", "he")
+        // NB "iw" as well as "he": java.util.Locale.getLanguage() returns the OBSOLETE ISO code
+        // for Hebrew on Android (the app's own resource dir is values-iw), so a "he"-only set
+        // sends every Hebrew reader back to the English page - the one locale whose review words
+        // were added by hand. Indonesian ("in") and Yiddish ("ji") carry the same trap.
+        val SUPPORTED_HL = setOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "zh", "ja", "he", "iw")
 
         /** The page language for the hidden reviews WebView: the app's language when the scraper's
          *  word lists cover it (issue #278: the page language decides WHICH reviews Google serves,
@@ -444,6 +448,9 @@ class WebReviewsFetcher @Inject constructor(
             val loc = app.vela.ui.AppLocale.effective()
             val lang = loc.language.lowercase()
             if (lang !in SUPPORTED_HL) return "en"
+            // Google's own parameter for Hebrew is the legacy code, which is also what the
+            // locale reports - pass it through rather than "correcting" it.
+            if (lang == "he") return "iw"
             if (lang == "zh") {
                 val hant = loc.script.equals("Hant", ignoreCase = true) || loc.country.uppercase() in setOf("TW", "HK", "MO")
                 return if (hant) "zh-TW" else "zh-CN"
