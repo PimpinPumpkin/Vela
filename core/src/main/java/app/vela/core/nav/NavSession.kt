@@ -33,10 +33,10 @@ import javax.inject.Singleton
  * faster route the user can accept. That's the "is there a better way right now"
  * behaviour traffic apps live on.
  */
-@Singleton
 /** Outcome of [NavSession.rerouteGate] - whether a reroute request may proceed. */
 enum class RerouteGate { START, SKIP_IN_FLIGHT, SKIP_COOLDOWN, ABANDON_STUCK_AND_START }
 
+@Singleton
 class NavSession @Inject constructor(
     private val dataSource: MapDataSource,
     private val voice: VoiceGuide,
