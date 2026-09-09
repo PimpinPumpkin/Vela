@@ -1764,6 +1764,14 @@ architecture note.
   The **Map style Settings row was removed** (only one style ships; MapStyle/setStyle plumbing
   kept for a future re-add). Nav card trip time is a `FitText` (shrinks to fit, never wraps/
   ellipsises) so the 54dp buttons + Interface-size scale can't clip the arrival time.
+- **Country and state borders are DRAWN; county and city limits are not (discussion #353,
+  2026-09-09).** Liberty's `boundary_2` (admin 2), `boundary_3` (admin 3-6) and
+  `boundary_disputed` were hidden with the footpath/rail-hatching clutter in July because the
+  admin 5-6 county/city lines read as stray dashes all over a suburb. Google draws countries
+  (thin solid grey) and states/provinces (lighter, dashed, from ~z4) and not the rest, so
+  `applyMapTheme` now narrows `boundary_3`'s filter to admin 3-4 (minzoom 4, dashed) and themes
+  all three: the style's own dark grey vanished on the dark map. Never put the boundary ids back
+  in the hide list; if a region shows dashed junk, check its admin levels before touching the filter.
 - **Map COLOUR SETS (2026-07-11): Settings -> Appearance -> "Map colors" picks Modern or
   Classic.** `ui/MapColors` holder (pref `map_palette`; init in VelaApp); `applyMapTheme`
   dispatches to `applyLight`/`applyDark` (Modern, the pixel-sampled palette) or
