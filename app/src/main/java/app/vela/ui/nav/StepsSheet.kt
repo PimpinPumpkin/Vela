@@ -83,6 +83,7 @@ import app.vela.ui.SheetPalette
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import app.vela.ui.theme.isAppInDarkTheme
+import app.vela.ui.theme.isAppInAmoled
 import app.vela.ui.dpadHighlight // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.rememberDpadAutoFocus
 import androidx.compose.ui.focus.focusRequester
@@ -118,6 +119,7 @@ fun StepsSheet(
         if (s.isEmpty() || roadLatin.isEmpty()) s
         else app.vela.core.voice.SpokenScript.forDisplay(s, uiLang, roadLatin)
     val dark = isAppInDarkTheme()
+    val amoled = isAppInAmoled()
     val ink = SheetPalette.ink(dark)
     val dim = SheetPalette.dim(dark)
     // Swipe-down to dismiss (user 2026-07-15): the card rides the finger (down only) and a
@@ -189,7 +191,8 @@ fun StepsSheet(
                 )
             },
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark), contentColor = ink),
+        border = if (amoled) androidx.compose.foundation.BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
+        colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark, amoled), contentColor = ink),
     ) {
         // Fill the card to the screen bottom; pad content off the nav bar.
         Column(Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 8.dp)) {

@@ -116,6 +116,12 @@ fun isAppInDarkTheme(): Boolean {
     }
 }
 
+/** True when the app is resolved to true-black AMOLED theme right now. */
+@Composable
+fun isAppInAmoled(): Boolean =
+    AppTheme.mode.value == ThemeMode.AMOLED && isAppInDarkTheme()
+
+
 /**
  * Material You dynamic colour preference (issue #15). Same reactive-holder shape as
  * [AppTheme]: flip it in Settings and every MaterialTheme surface recomposes with the
