@@ -660,4 +660,9 @@
     <string name="voice_error_vad">语音模型缺少部分文件。请在设置 \u2192 搜索 中重新下载。</string>
     <string name="voice_error_audio">这部手机未为 Vela 打开麦克风。请关闭其他正在录音的应用后重试。</string>
     <string name="voice_error_recording">录音意外中断。请重试。</string>
+    <string name="place_tab_reviews">评论</string>
+    <string name="place_tab_about">简介</string>
+    <string name="place_copy_name">复制名称</string>
+    <string name="update_notes_show">更新内容</string>
+    <string name="update_notes_hide">隐藏更新内容</string>
 </resources>

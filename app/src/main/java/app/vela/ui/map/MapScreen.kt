@@ -2343,16 +2343,6 @@ fun MapScreen(
                     onDismiss = { showParkingHistory = false },
                 )
             }
-            if (listsSheetOpen) {
-                ListsSheet(
-                    lists = state.lists,
-                    onOpenList = { listsSheetOpen = false; vm.openList(it) },
-                    onCreateList = { name -> vm.createList(name) },
-                    onUpdateList = vm::updateList,
-                    onDeleteList = vm::deleteList,
-                    onDismiss = { listsSheetOpen = false },
-                )
-            }
             // (The live-traffic overlay toggle moved to Settings → Map — it's a
             // niche browse-only layer, and nav now shows per-segment route traffic,
             // so it no longer earns a spot on the map.)
@@ -2400,6 +2390,19 @@ fun MapScreen(
                 )
             }
         }
+            // Outside the FAB-chrome block on purpose: the Your-lists button in the search bar is
+            // reachable while the search overlay is open, and that block is not composed then,
+            // so the button set a flag nothing rendered (issue #343).
+            if (listsSheetOpen) {
+                ListsSheet(
+                    lists = state.lists,
+                    onOpenList = { listsSheetOpen = false; vm.openList(it) },
+                    onCreateList = { name -> vm.createList(name) },
+                    onUpdateList = vm::updateList,
+                    onDeleteList = vm::deleteList,
+                    onDismiss = { listsSheetOpen = false },
+                )
+            }
 
             // Portrait, place card at (or near) its minimized bar: the locate FAB rides ABOVE the
             // card's measured top edge (user 2026-07-20: current location stays reachable with a
@@ -2633,6 +2636,7 @@ fun MapScreen(
                     state.updateInfo?.let { u ->
                         UpdateCard(
                             versionName = u.versionName,
+                            notes = u.notes,
                             downloadPct = state.updateDownloadPct,
                             onUpdate = { vm.downloadUpdate() },
                             onDismiss = { vm.dismissUpdate() },
@@ -4218,6 +4222,7 @@ private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, area: Bo
 @Composable
 private fun UpdateCard(
     versionName: String,
+    notes: String = "",
     downloadPct: Int?,
     onUpdate: () -> Unit,
     onDismiss: () -> Unit,
@@ -4233,6 +4238,25 @@ private fun UpdateCard(
     ) {
         Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 4.dp)) {
             Text(stringResource(R.string.update_available_title, versionName), fontWeight = FontWeight.SemiBold)
+            // What changed, from the release's own notes, folded by default (issue #330): the
+            // nightly notes are the commit list since the last release, which is exactly the
+            // "what am I installing" answer, minus markdown glyphs.
+            val plainNotes = remember(notes) { plainReleaseNotes(notes) }
+            if (plainNotes.isNotEmpty() && downloadPct == null) {
+                var showNotes by remember { mutableStateOf(false) }
+                TextButton(onClick = { showNotes = !showNotes }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                    Text(stringResource(if (showNotes) R.string.update_notes_hide else R.string.update_notes_show), style = MaterialTheme.typography.labelLarge)
+                }
+                if (showNotes) {
+                    Text(
+                        plainNotes,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 24,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(end = 8.dp, bottom = 4.dp),
+                    )
+                }
+            }
             if (downloadPct != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.update_downloading, downloadPct), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
@@ -4266,6 +4290,17 @@ private fun UpdateCard(
         }
     }
 }
+
+/** Release notes as plain lines: headings, bullets and links stripped, the CI's own
+ *  versionName/versionCode bookkeeping lines dropped. Keeps the first 24 lines. */
+internal fun plainReleaseNotes(notes: String): String =
+    notes.lines()
+        .map { it.trim().trimStart('#').trim() }
+        .map { it.replace(Regex("""^[-*]\s+"""), "\u2022 ") }
+        .map { it.replace(Regex("""\[([^\]]+)\]\([^)]*\)"""), "$1").replace(Regex("""\*\*|__|`"""), "") }
+        .filter { it.isNotBlank() && !it.startsWith("versionName", ignoreCase = true) && !it.startsWith("versionCode", ignoreCase = true) && !it.startsWith("<") }
+        .take(24)
+        .joinToString("\n")
 
 /** A notice pushed through the signed calibration channel - level-tinted, with an
  *  optional "Learn more" link and a per-id Dismiss. */
@@ -4500,8 +4535,7 @@ private fun ParkingHistorySheet(
                                     fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
                                 )
                                 Text(
-                                    java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault())
-                                        .format(java.util.Date(entry.savedAtMillis)),
+                                    app.vela.ui.formatDateTime(androidx.compose.ui.platform.LocalContext.current, entry.savedAtMillis),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

@@ -640,4 +640,9 @@
     <string name="voice_error_vad">Falta parte do modelo de voz. Transfere-o novamente em Definições \u2192 Pesquisa.</string>
     <string name="voice_error_audio">Este telemóvel não abriu o microfone para o Vela. Fecha outras apps que gravem áudio e tenta de novo.</string>
     <string name="voice_error_recording">A gravação parou inesperadamente. Tenta de novo.</string>
+    <string name="place_tab_reviews">Avaliações</string>
+    <string name="place_tab_about">Sobre</string>
+    <string name="place_copy_name">Copiar nome</string>
+    <string name="update_notes_show">Novidades</string>
+    <string name="update_notes_hide">Ocultar novidades</string>
 </resources>

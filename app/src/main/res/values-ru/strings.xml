@@ -648,4 +648,9 @@
     <string name="voice_error_vad">Часть голосовой модели отсутствует. Скачайте её заново в Настройках \u2192 Поиск.</string>
     <string name="voice_error_audio">Этот телефон не открыл микрофон для Vela. Закройте другие приложения, записывающие звук, и попробуйте снова.</string>
     <string name="voice_error_recording">Запись неожиданно прервалась. Попробуйте снова.</string>
+    <string name="place_tab_reviews">Отзывы</string>
+    <string name="place_tab_about">Описание</string>
+    <string name="place_copy_name">Копировать название</string>
+    <string name="update_notes_show">Что нового</string>
+    <string name="update_notes_hide">Скрыть список изменений</string>
 </resources>
