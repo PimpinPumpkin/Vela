@@ -646,6 +646,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - 🟡 Self-hosted PMTiles - the no-key, no-quota Google-look path - remains for later
 - ⬜ Protomaps "Google-Maps-ify" style (road hierarchy ✅, hillshade ✅, POI icons ✅ done; this is the bundled-style variant)
 - ✅ Satellite layer - shipped 2026-07-13 via the Layers panel (Esri World Imagery hybrid; see the Layers entry below). Terrain relief ✅ too
+- ✅ **Issue sweep 2026-09-10.** *Copy link shares the place, not a pin* (issue #359): the place sheet's Copy link now copies the same Google Maps place link that Open on web uses, so the recipient lands on the store. *Your lists opens from the search page* (issue #343): the bookmark button in the search bar did nothing while the search overlay was up. *Light-mode search bar has contrast* (issue #351): white, with a shadow and a hairline border, like Google's; dark mode unchanged. *24-hour clock* (issue #357): the arrival time, transit boards and saved-trip timestamps follow the phone's 12/24-hour setting, not just the locale. *Live overview* (issue #352): the in-nav Overview keeps refitting to the road still ahead as you drive, tightening towards the destination, until you pan, pinch or Re-center. *What's new before you update* (issue #330): the update card folds out the release notes. Plus the Reviews/About tab labels and Copy name were untranslated in every language.
 - ✅ **Country and state/province borders (2026-09-09, discussion #353)** - drawn the way Google draws them: countries as a thin solid grey line, states and provinces lighter and dashed from about zoom 4, both themed for light and dark. County and city limits stay off, as on Google; they were the stray-dash clutter that got every border hidden back in July.
 - ✅ Map rotation/tilt + heading-up mode during nav (tilted follow-camera, speed-adaptive zoom)
 
@@ -1106,7 +1107,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   factory / swallow-`close()`); graphs are built off-device by `tools/graphbuilder`. On-device end-to-end
   verified (Pixel 5a): downloaded a region from the GitHub release → offline → 21.8 mi route via the crosstown arterial
   with named steps + a correct 28-min ETA.
-  - **Get a region two ways:** pick it under **Settings → Offline → Routing regions** (regions covering your current
+  - **Get a region two ways:** pick it under **Settings → Offline maps → Entire states & countries** (regions covering your current
     location sort to the top and are flagged "covers your location"; a **name filter** appears once the
     catalog is large, so a region you're *travelling* to - "Japan", "Texas" - is one type away instead of a
     long scroll), **or** just download offline map tiles for an area - "Download the area you're viewing" now

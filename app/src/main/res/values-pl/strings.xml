@@ -648,4 +648,9 @@
     <string name="voice_error_vad">Brakuje części modelu głosowego. Pobierz go ponownie w Ustawienia \u2192 Wyszukiwanie.</string>
     <string name="voice_error_audio">Ten telefon nie udostępnił mikrofonu Veli. Zamknij inne aplikacje nagrywające dźwięk i spróbuj ponownie.</string>
     <string name="voice_error_recording">Nagrywanie nieoczekiwanie się zatrzymało. Spróbuj ponownie.</string>
+    <string name="place_tab_reviews">Opinie</string>
+    <string name="place_tab_about">Informacje</string>
+    <string name="place_copy_name">Kopiuj nazwę</string>
+    <string name="update_notes_show">Co nowego</string>
+    <string name="update_notes_hide">Ukryj nowości</string>
 </resources>

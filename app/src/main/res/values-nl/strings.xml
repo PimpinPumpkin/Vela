@@ -640,4 +640,9 @@
     <string name="voice_error_vad">Een deel van het spraakmodel ontbreekt. Download het opnieuw via Instellingen \u2192 Zoeken.</string>
     <string name="voice_error_audio">Deze telefoon opende de microfoon niet voor Vela. Sluit andere apps die audio opnemen en probeer opnieuw.</string>
     <string name="voice_error_recording">De opname stopte onverwacht. Probeer opnieuw.</string>
+    <string name="place_tab_reviews">Reviews</string>
+    <string name="place_tab_about">Info</string>
+    <string name="place_copy_name">Naam kopiëren</string>
+    <string name="update_notes_show">Wat is nieuw</string>
+    <string name="update_notes_hide">Nieuw verbergen</string>
 </resources>

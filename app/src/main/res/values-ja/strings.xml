@@ -660,4 +660,9 @@
     <string name="voice_error_vad">音声モデルの一部が不足しています。設定 \u2192 検索 から再ダウンロードしてください。</string>
     <string name="voice_error_audio">この端末でマイクを開けませんでした。録音中の他のアプリを閉じて再試行してください。</string>
     <string name="voice_error_recording">録音が予期せず停止しました。もう一度お試しください。</string>
+    <string name="place_tab_reviews">クチコミ</string>
+    <string name="place_tab_about">概要</string>
+    <string name="place_copy_name">名前をコピー</string>
+    <string name="update_notes_show">新機能</string>
+    <string name="update_notes_hide">新機能を隠す</string>
 </resources>

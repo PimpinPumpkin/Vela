@@ -640,4 +640,9 @@
     <string name="voice_error_vad">Manca una parte del modello vocale. Scaricalo di nuovo in Impostazioni \u2192 Ricerca.</string>
     <string name="voice_error_audio">Questo telefono non ha aperto il microfono per Vela. Chiudi altre app che registrano audio e riprova.</string>
     <string name="voice_error_recording">La registrazione si è interrotta inaspettatamente. Riprova.</string>
+    <string name="place_tab_reviews">Recensioni</string>
+    <string name="place_tab_about">Informazioni</string>
+    <string name="place_copy_name">Copia nome</string>
+    <string name="update_notes_show">Novità</string>
+    <string name="update_notes_hide">Nascondi novità</string>
 </resources>
