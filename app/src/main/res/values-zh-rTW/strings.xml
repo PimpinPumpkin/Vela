@@ -660,4 +660,9 @@
     <string name="voice_error_vad">語音模型缺少部分檔案。請在設定 \u2192 搜尋 中重新下載。</string>
     <string name="voice_error_audio">這部手機未為 Vela 開啟麥克風。請關閉其他正在錄音的應用程式後重試。</string>
     <string name="voice_error_recording">錄音意外中斷。請重試。</string>
+    <string name="place_tab_reviews">評論</string>
+    <string name="place_tab_about">簡介</string>
+    <string name="place_copy_name">複製名稱</string>
+    <string name="update_notes_show">更新內容</string>
+    <string name="update_notes_hide">隱藏更新內容</string>
 </resources>

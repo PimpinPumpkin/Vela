@@ -31,6 +31,12 @@ class MainActivity : ComponentActivity() {
         super.attachBaseContext(AppLocale.wrap(app.vela.ui.AdaptiveDensity.wrap(newBase)))
     }
 
+    override fun onResume() {
+        super.onResume()
+        // The 12/24-hour clock setting can change while Vela sits in the background (issue #357).
+        app.vela.ui.Clock24.refresh(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)

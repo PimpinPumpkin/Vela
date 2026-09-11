@@ -594,8 +594,11 @@ fun VelaMapView(
     }
     // Re-center during nav also returns a pinch-zoomed/tilted camera to auto (issue #238: the
     // override kept following, so navCameraDetached stayed false and no Re-center path existed).
+    val overviewLive = remember { booleanArrayOf(false) }   // live overview refit loop running (issue #352)
+    val overviewTickSeen = remember { intArrayOf(0) }
     LaunchedEffect(navRecenterTick) {
         if (navRecenterTick > 0) {
+            overviewLive[0] = false
             navUserZoom[0] = Double.NaN
             navUserTilt[0] = Double.NaN
             zoomOverride.value(false)
@@ -1518,32 +1521,57 @@ fun VelaMapView(
         }
     }
 
-    // The in-nav ROUTE OVERVIEW (Google's fly-over): fit the whole route while the drive keeps
+    // The in-nav ROUTE OVERVIEW (Google's fly-over): fit the road AHEAD while the drive keeps
     // navigating - the VM marked the camera detached, so the follow ticker has already stepped
     // aside and the existing Re-center button glides back into the puck-low follow. Camera only;
     // guidance, voice and the puck (which keeps moving along the overview) are untouched.
-    LaunchedEffect(navOverviewTick) {
+    // LIVE (issue #352): Google's overview keeps refitting to the road still ahead as you drive,
+    // so the frame tightens towards the destination and the last turns are readable. Ours was a
+    // one-shot fit of the whole route, origin to destination. After the first fit the effect
+    // keeps refitting arrow-to-destination every few seconds until a pan, a pinch or Re-center
+    // ends it (`overviewLive`, cleared by those handlers). Keyed on the polyline too, so a
+    // reroute refits the NEW route; a polyline change while the overview is not live is ignored
+    // (the tick is the user's request, the polyline key is not).
+    LaunchedEffect(navOverviewTick, routePolyline) {
+        val fresh = overviewTickSeen[0] != navOverviewTick
+        overviewTickSeen[0] = navOverviewTick
         if (navOverviewTick == 0 || !navMode || routePolyline.size < 2) return@LaunchedEffect
+        if (!fresh && !overviewLive[0]) return@LaunchedEffect
         val map = mapRef ?: return@LaunchedEffect
+        fun fitRemaining(animMs: Int) {
+            val cum = routeCum
+            if (cum.size != routePolyline.size || cum.isEmpty()) return
+            val fromM = navPuck.progressM.coerceIn(0.0, cum.last())
+            val b = MLLatLngBounds.Builder()
+            val (p0, _) = pointAtMeters(routePolyline, cum, fromM)
+            b.include(MLLatLng(p0.lat, p0.lng))
+            for (i in indexAtMeters(cum, fromM) until routePolyline.size) b.include(MLLatLng(routePolyline[i].lat, routePolyline[i].lng))
+            b.include(MLLatLng(routePolyline.last().lat, routePolyline.last().lng))
+            runCatching {
+                // Fit NORTH-UP and FLAT (the bearing/tilt overload): the plain bounds fit kept the
+                // follow's rotated 55-degree camera, and a tilted, rotated fit shows LESS than the
+                // whole route however correct the math (user 2026-07-15: "doesn't quite show the
+                // full route") - Google's overview levels out too.
+                flightDepth[0]++
+                map.animateCamera(
+                    CameraUpdateFactory.newLatLngBounds(
+                        b.build(), 0.0, 0.0,
+                        70, (map.height * 0.30).toInt(), 70, (map.height * 0.22).toInt(),
+                    ),
+                    animMs,
+                    flightCb(),
+                )
+            }
+        }
         // The puck-low top padding would skew a bounds fit; the follow re-applies it per frame
         // when Re-center re-attaches.
-        map.moveCamera(CameraUpdateFactory.paddingTo(0.0, 0.0, 0.0, 0.0))
-        val b = MLLatLngBounds.Builder()
-        routePolyline.forEach { b.include(MLLatLng(it.lat, it.lng)) }
-        runCatching {
-            // Fit NORTH-UP and FLAT (the bearing/tilt overload): the plain bounds fit kept the
-            // follow's rotated 55-degree camera, and a tilted, rotated fit shows LESS than the
-            // whole route however correct the math (user 2026-07-15: "doesn't quite show the
-            // full route") - Google's overview levels out too.
-            flightDepth[0]++
-            map.animateCamera(
-                CameraUpdateFactory.newLatLngBounds(
-                    b.build(), 0.0, 0.0,
-                    70, (map.height * 0.30).toInt(), 70, (map.height * 0.22).toInt(),
-                ),
-                700,
-                flightCb(),
-            )
+        if (fresh) map.moveCamera(CameraUpdateFactory.paddingTo(0.0, 0.0, 0.0, 0.0))
+        overviewLive[0] = true
+        fitRemaining(700)
+        while (overviewLive[0] && navModeHolder.value) {
+            kotlinx.coroutines.delay(4_000)
+            if (!overviewLive[0] || !navModeHolder.value) break
+            fitRemaining(600)
         }
     }
 
@@ -2299,6 +2327,7 @@ fun VelaMapView(
                         // misread the scaling guard fixes for pinch) - it detached the camera the
                         // moment a two-finger tilt started.
                         if (navModeHolder.value && !scaling[0] && !shoving[0]) {
+                            overviewLive[0] = false
                             navPanned.value()
                             navUserZoom[0] = Double.NaN
                             zoomOverride.value(false)
@@ -2309,6 +2338,7 @@ fun VelaMapView(
                 map.addOnScaleListener(object : MapLibreMap.OnScaleListener {
                     override fun onScaleBegin(detector: StandardScaleGestureDetector) {
                         scaling[0] = true
+                        overviewLive[0] = false
                         browseZoomGoal[0] = Double.NaN // fingers beat a pending locate-tap zoom
                     }
                     // Capture the zoom CONTINUOUSLY (not only on end) so the override is set even

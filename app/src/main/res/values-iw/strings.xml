@@ -641,4 +641,9 @@
     <string name="voice_error_vad">חלק ממודל הקול חסר. הורד אותו שוב בהגדרות \u2192 חיפוש.</string>
     <string name="voice_error_audio">הטלפון לא פתח את המיקרופון עבור Vela. סגור אפליקציות אחרות שמקליטות ונסה שוב.</string>
     <string name="voice_error_recording">ההקלטה נעצרה באופן לא צפוי. נסה שוב.</string>
+    <string name="place_tab_reviews">ביקורות</string>
+    <string name="place_tab_about">מידע</string>
+    <string name="place_copy_name">העתקת השם</string>
+    <string name="update_notes_show">מה חדש</string>
+    <string name="update_notes_hide">הסתרת מה חדש</string>
 </resources>
