@@ -117,6 +117,7 @@ private const val NAV_CUT_HIDE_M = 12.0   // the ahead line goes grey up to here
 // the driven tail doesn't read as another tappable route.
 private const val TRAVERSED_LIGHT = "#B9BDC2"
 private const val TRAVERSED_DARK = "#54585C"
+private const val TRAVERSED_AMOLED = "#26282B"
 private const val ALT_ROUTE_SRC = "vela-alt-route-src"
 private const val ALT_ROUTE_LAYER = "vela-alt-route"
 
@@ -407,6 +408,7 @@ fun VelaMapView(
     // Only wired when the Building-overlay-debug developer toggle is on; a no-op otherwise.
     onOverlayState: (String) -> Unit = {},
     darkTheme: Boolean,
+    amoled: Boolean = false,
     applyKeylessTheme: Boolean,
     trafficOn: Boolean,
     transitOn: Boolean = false, // highlight rail (train + subway/tram) lines from the basemap tiles
@@ -569,6 +571,7 @@ fun VelaMapView(
     val routeColorHolder = rememberUpdatedState(routeColor)
     val routeSpansHolder = rememberUpdatedState(routeTrafficSpans)
     val darkHolder = rememberUpdatedState(darkTheme)
+    val amoledHolder = rememberUpdatedState(amoled)
     val dashHolder = rememberUpdatedState(routeDashed)
     val speedupHolder = rememberUpdatedState(replaySpeedup)
     val lastGradM = remember { doubleArrayOf(-1e9) } // progressM the route split was last set at
@@ -2051,7 +2054,11 @@ fun VelaMapView(
                             PropertyFactory.lineGradient(routeGradient(pa, gInt, remap(a0, a1), driven)),
                         )
                         val traversed = android.graphics.Color.parseColor(
-                            if (darkHolder.value) TRAVERSED_DARK else TRAVERSED_LIGHT,
+                            when {
+                                amoledHolder.value -> TRAVERSED_AMOLED
+                                darkHolder.value -> TRAVERSED_DARK
+                                else -> TRAVERSED_LIGHT
+                            },
                         )
                         style.getLayer(ROUTE_LAYER)?.setProperties(
                             PropertyFactory.visibility(if (trailHolder.value) Property.VISIBLE else Property.NONE),
@@ -2851,7 +2858,7 @@ fun VelaMapView(
             navPuck.rawBearing = myBearing
         }
         // Palette in the key so a Settings colour-set switch reloads the style, same as a theme flip.
-        val styleKey = "$styleUri|dark=$darkTheme|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn"
+        val styleKey = "$styleUri|dark=$darkTheme|amoled=$amoled|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn"
         if (appliedStyleKey != styleKey) {
             appliedStyleKey = styleKey
             val builder = if (styleUri.startsWith("asset://")) {
@@ -2910,7 +2917,7 @@ fun VelaMapView(
                 splitReset[0] = true
                 PoiIcons.satellite = satelliteOn
                 PoiIcons.addTo(context, style)
-                if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
+                if (applyKeylessTheme) applyMapTheme(style, darkTheme, amoled) else tuneMapTiler(style, darkTheme)
                 if (satelliteOn) applySatelliteLabels(style)
                 emphasizeShields(style)
                 applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, speedCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, savedPins, poisEnabled, svPose)
@@ -4756,37 +4763,38 @@ private fun emphasizeShields(style: Style) {
  * (see styleKey), so each pass starts from Liberty's defaults — no need to undo.
  * No-ops on non-OpenMapTiles styles (e.g. the MapLibre demo basemap). Keyless.
  */
-private fun applyMapTheme(style: Style, dark: Boolean) {
+private fun applyMapTheme(style: Style, dark: Boolean, amoled: Boolean = false) {
     if (style.getSource("openmaptiles") == null) return
     // Two compiled colour sets, picked in Settings -> Appearance (MapColors): "modern" is the
     // Google-app pixel-sampled palette, "classic" the archived pre-sample look (docs/MAP-STYLE.md).
     val classic = app.vela.ui.MapColors.classic()
     when {
+        amoled -> applyAmoled(style)
         dark && classic -> applyClassicDark(style)
         dark -> applyDark(style)
         classic -> applyClassicLight(style)
         else -> applyLight(style)
     }
-    PoiIcons.applyToLiberty(style, dark)
+    PoiIcons.applyToLiberty(style, dark || amoled)
     // Ambient Google-POI labels match the ICON's category colour, Google-style — saturated in light,
     // pastel tints in dark (see PoiIcons.labelColor). Search-result pins stay plain (Google does too).
     (style.getLayer(AMBIENT_LAYER) as? SymbolLayer)?.setProperties(
-        PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark)),
-        PropertyFactory.textHaloColor(if (dark) "#11161C" else "#FFFFFF"),
+        PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark || amoled)),
+        PropertyFactory.textHaloColor(if (dark || amoled) "#11161C" else "#FFFFFF"),
     )
     // Canonical GTFS stop names take the TRANSIT category colour per theme - blue in light,
     // its pastel tint in dark, the same grammar every POI label follows. The creation-time
     // colours in ensureLayers were hardcoded for dark (no theme there) and read as grey with
     // a navy halo on the light map (issue #71 follow-up, 2026-07-14).
     (style.getLayer(TRANSIT_STOPS_LAYER) as? SymbolLayer)?.setProperties(
-        PropertyFactory.textColor(PoiIcons.labelColorFor("transit", dark)),
-        PropertyFactory.textHaloColor(if (dark) "#11161C" else "#FFFFFF"),
+        PropertyFactory.textColor(PoiIcons.labelColorFor("transit", dark || amoled)),
+        PropertyFactory.textHaloColor(if (dark || amoled) "#11161C" else "#FFFFFF"),
     )
     // Search-result labels stay NEUTRAL ink - Google doesn't category-tint result labels the
     // way it tints ambient POI labels (the red pin is the result signal, not the text colour).
     (style.getLayer(MARKERS_LAYER) as? SymbolLayer)?.setProperties(
-        PropertyFactory.textColor(if (dark) "#E8EAED" else "#3C4043"),
-        PropertyFactory.textHaloColor(if (dark) "#11161C" else "#FFFFFF"),
+        PropertyFactory.textColor(if (dark || amoled) "#E8EAED" else "#3C4043"),
+        PropertyFactory.textHaloColor(if (dark || amoled) "#11161C" else "#FFFFFF"),
     )
     // The mini-dot tier wears a land-coloured ring so dots read as crisp beads per theme.
     (style.getLayer(AMBIENT_DOT_LAYER) as? CircleLayer)?.setProperties(
@@ -5107,6 +5115,87 @@ internal fun applyDark(style: Style) {
         PropertyFactory.hillshadeShadowColor("#0a1018"),
         PropertyFactory.hillshadeHighlightColor("#3a4a68"),
         PropertyFactory.hillshadeAccentColor("#0a1018"),
+    )
+}
+
+/**
+ * AMOLED / true-black map palette: every land tile is #000000 so OLED pixels
+ * are fully off, maximising battery savings and contrast on pure-black screens.
+ * Road lines are dark-grey tiers; text halos are also pure black so labels pop
+ * off the map cleanly. Called from applyMapTheme when ThemeMode.AMOLED is active.
+ */
+internal fun applyAmoled(style: Style) {
+    val black = "#000000"
+    style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor(black))
+    style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#04080C"))
+    style.getLayer("waterway_river")?.setProperties(PropertyFactory.lineColor("#04080C"))
+    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#050E0A"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#050E0A"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#050E0A"), PropertyFactory.fillOpacity(1f))
+    listOf("road_minor", "road_secondary_tertiary", "road_link",
+        "bridge_street", "bridge_secondary_tertiary", "bridge_link").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#1A1D22"))
+    }
+    listOf("road_service_track", "bridge_service_track").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#111418"))
+    }
+    listOf("road_trunk_primary", "bridge_trunk_primary").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#22262C"))
+    }
+    listOf("road_motorway", "road_motorway_link", "bridge_motorway", "bridge_motorway_link").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#22262C"))
+    }
+    // Casings are pure black so road edges vanish against the land — maximises pixel-off area.
+    listOf("road_motorway_casing", "road_motorway_link_casing", "road_trunk_primary_casing",
+        "road_secondary_tertiary_casing", "road_minor_casing", "road_link_casing", "road_service_track_casing",
+        "bridge_motorway_casing", "bridge_trunk_primary_casing", "bridge_secondary_tertiary_casing",
+        "bridge_street_casing", "bridge_link_casing").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor(black))
+    }
+    style.getLayer("building")?.setProperties(
+        PropertyFactory.fillColor("#0A0C0F"),
+        PropertyFactory.fillOutlineColor("#14171A"),
+    )
+    style.getLayer("building")?.setMinZoom(16f)
+    style.getLayer("building")?.setMaxZoom(24f)
+    style.getLayer("building-3d")?.setProperties(
+        PropertyFactory.fillExtrusionColor("#0A0C0F"),
+        PropertyFactory.fillExtrusionOpacity(0.9f),
+    )
+    applyBuilding3dGeometry(style)
+    val greens = setOf("park", "landcover_grass", "landcover_wood", "landuse_pitch", "landuse_track")
+    style.layers.forEach { layer ->
+        when {
+            layer is SymbolLayer -> layer.setProperties(
+                PropertyFactory.textColor("#D0D4DC"),
+                PropertyFactory.textHaloColor(black),
+                PropertyFactory.textHaloWidth(if (layer.id.startsWith("highway-name")) 1.9f else 1.1f),
+            )
+            layer is FillLayer && layer.id !in greens &&
+                (layer.id.startsWith("landuse") || layer.id.startsWith("landcover")) ->
+                layer.setProperties(PropertyFactory.fillColor(black), PropertyFactory.fillOpacity(1f))
+        }
+    }
+    listOf("highway-name-path", "highway-name-minor", "highway-name-major").forEach {
+        style.getLayer(it)?.setProperties(
+            PropertyFactory.textField(roadLabelTextField()),
+            PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
+        )
+    }
+    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor(black), PropertyFactory.fillOpacity(1f))
+    style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#0A0C0F"))
+    style.getLayer("vela-commercial")?.setProperties(PropertyFactory.fillColor(black), PropertyFactory.fillOpacity(1f))
+    style.getLayer("vela-pitch")?.setProperties(PropertyFactory.fillColor("#050E0A"), PropertyFactory.fillOpacity(1f))
+    listOf("landuse_pitch", "landuse_track").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.fillColor("#050E0A"), PropertyFactory.fillOpacity(1f))
+    }
+    style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#1A3A28"))
+    style.getLayer("vela-bikeroutes")?.setProperties(PropertyFactory.lineColor("#0D2D36"))
+    style.getLayer(HILLSHADE_LAYER)?.setProperties(
+        PropertyFactory.hillshadeExaggeration(0.3f),
+        PropertyFactory.hillshadeShadowColor(black),
+        PropertyFactory.hillshadeHighlightColor("#1A2030"),
+        PropertyFactory.hillshadeAccentColor(black),
     )
 }
 

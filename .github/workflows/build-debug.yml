@@ -1,0 +1,44 @@
+name: Build Debug APK
+
+on:
+  push:
+    branches: [ feature/amoled-map-nav-theme, main ]
+  pull_request:
+    branches: [ feature/amoled-map-nav-theme, main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Fetch vendored sherpa-onnx runtime AAR
+        run: |
+          mkdir -p app/libs
+          curl -sSL -o app/libs/sherpa-onnx-1.13.3.aar \
+            https://github.com/PimpinPumpkin/Vela/releases/download/tts-runtime/sherpa-onnx-1.13.3.aar
+          ls -la app/libs/
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Assemble Debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/*.apk
