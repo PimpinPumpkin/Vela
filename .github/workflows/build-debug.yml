@@ -21,6 +21,13 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Fetch vendored sherpa-onnx runtime AAR
+        run: |
+          mkdir -p app/libs
+          curl -sSL -o app/libs/sherpa-onnx-1.13.3.aar \
+            https://github.com/PimpinPumpkin/Vela/releases/download/tts-runtime/sherpa-onnx-1.13.3.aar
+          ls -la app/libs/
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
