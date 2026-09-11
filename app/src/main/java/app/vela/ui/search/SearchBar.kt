@@ -108,10 +108,17 @@ fun SearchBar(
     // D-pad: the "arm the field" clickable goes on the TEXT REGION only (below), NOT the
     // whole Card — a card-level clickable made the entire bar ONE focus stop and swallowed
     // the Settings gear inside it (the gear became unreachable by D-pad; measured on-device).
+    // Light theme: a WHITE bar with a real shadow and a hairline border, the way Google's sits
+    // on its near-white map. surfaceContainerLow on the light land colour was almost the same
+    // tone as the map, so the bar dissolved into it (issue #351). Dark keeps the flat tone: a
+    // shadow reads as a smear on a dark map.
+    val dark = app.vela.ui.theme.isAppInDarkTheme()
     Card(
         modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = CardDefaults.cardColors(containerColor = if (dark) MaterialTheme.colorScheme.surfaceContainerLow else MaterialTheme.colorScheme.surfaceContainerLowest),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (dark) 0.dp else 6.dp),
+        border = if (dark) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
     ) {
         Row(
             Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 6.dp),

@@ -1764,6 +1764,24 @@ architecture note.
   The **Map style Settings row was removed** (only one style ships; MapStyle/setStyle plumbing
   kept for a future re-add). Nav card trip time is a `FitText` (shrinks to fit, never wraps/
   ellipsises) so the 54dp buttons + Interface-size scale can't clip the arrival time.
+- **Issue sweep 2026-09-10, the traps behind each:** (#343) `ListsSheet` must be composed
+  OUTSIDE the `fabChromeOk` block: that block is gone while the search overlay is up, and the
+  search bar's Your-lists button is exactly there, so the flag flipped and nothing rendered.
+  (#351) `SearchBar`'s Card is white + 6dp shadow + hairline border in LIGHT only (dark keeps
+  the flat surfaceContainerLow: a shadow smears on a dark map). (#357) The 12/24-hour clock is a
+  device SETTING, not the locale: `ui/Clock24` reads `DateFormat.is24HourFormat` at startup and
+  in `MainActivity.onResume`, mirrors it into `:core` `data/ClockFormat` for Transitous' board
+  times, and `formatArrivalClock` / `formatDateTime` honour it; never use
+  `ofLocalizedTime(SHORT)` alone for a clock the user sees. (#352) The nav Overview is a LIVE
+  refit loop in VelaMapView (`overviewLive`, arrow-to-destination every 4 s, keyed on the
+  polyline so a reroute refits), ended by pan/pinch/Re-center; the tick is the user's request,
+  the polyline key is not. (#330) `UpdateCard` shows `UpdateInfo.notes` through
+  `plainReleaseNotes` (markdown stripped, CI's versionName/versionCode lines dropped, 24 lines).
+  (#359) `PlaceSheet` share menu: Copy link = `placeUrl()` = the cid deep link, same as Open on
+  web. Reviews-language on #359 was NOT reproducible: the device sends `hl=zh-TW`, Google serves
+  Chinese, and the scraper completes on a zh-TW page in a 1200x3000 viewport in 19 s (browser
+  proxy); the reporter is most likely on a build older than #339. The P4a's own scrape timed out
+  in BOTH languages that day (result null at TOTAL_TIMEOUT_MS) - environmental, watch it.
 - **Country and state borders are DRAWN; county and city limits are not (discussion #353,
   2026-09-09).** Liberty's `boundary_2` (admin 2), `boundary_3` (admin 3-6) and
   `boundary_disputed` were hidden with the footpath/rail-hatching clutter in July because the

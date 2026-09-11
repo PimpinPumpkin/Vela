@@ -65,6 +65,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         // CategoryFilter.enabled). Gates the ambient POI fan-out in GoogleMapsDataSource.
         app.vela.core.data.LowRamMode.enabled = app.vela.ui.MemoryPressure.lowRam
         Units.init(this)
+        app.vela.ui.Clock24.refresh(this) // the 12/24-hour clock setting (issue #357); MainActivity refreshes it on resume
         AppTheme.init(this)
         DynamicColor.init(this)
         AppLocale.init(this) // resolve the app language (system default) → drives the nav-text locale

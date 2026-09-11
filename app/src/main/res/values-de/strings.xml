@@ -640,4 +640,9 @@
     <string name="voice_error_vad">Ein Teil des Sprachmodells fehlt. Lade es unter Einstellungen \u2192 Suche erneut herunter.</string>
     <string name="voice_error_audio">Dieses Telefon hat sein Mikrofon nicht für Vela geöffnet. Schließe andere Apps, die Audio aufnehmen, und versuche es erneut.</string>
     <string name="voice_error_recording">Die Aufnahme wurde unerwartet beendet. Versuche es erneut.</string>
+    <string name="place_tab_reviews">Rezensionen</string>
+    <string name="place_tab_about">Info</string>
+    <string name="place_copy_name">Namen kopieren</string>
+    <string name="update_notes_show">Was ist neu</string>
+    <string name="update_notes_hide">Neuerungen ausblenden</string>
 </resources>

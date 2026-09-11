@@ -233,8 +233,7 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault())
-                            .format(java.util.Date(entry.savedAtMillis)),
+                        app.vela.ui.formatDateTime(androidx.compose.ui.platform.LocalContext.current, entry.savedAtMillis),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = if (isCurrent) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal,
                         modifier = Modifier.weight(1f),

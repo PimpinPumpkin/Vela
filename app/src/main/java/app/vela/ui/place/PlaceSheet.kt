@@ -3804,18 +3804,25 @@ private fun ShareIconButton(place: Place, tint: Color) {
 
     // Open this exact place on the Google Maps website (in the browser), not share a link. Prefer the
     // place's own cid deep-link (opens the real place page); fall back to a name+coords query.
-    fun openWeb() {
+    // The place's own link: the cid deep link when the place has a feature id (opens THE STORE in
+    // Google Maps or Vela), else a name + coordinate search.
+    fun placeUrl(): String {
         val cid = place.featureId?.substringAfter(":", "")?.removePrefix("0x")?.takeIf { it.isNotBlank() }
             ?.let { runCatching { java.math.BigInteger(it, 16).toString() }.getOrNull() }
-        val url = if (cid != null) "https://www.google.com/maps?cid=$cid"
+        return if (cid != null) "https://www.google.com/maps?cid=$cid"
             else "https://www.google.com/maps/search/?api=1&query=${Uri.encode(place.name)}%20$lat%2C$lng"
-        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+    }
+
+    fun openWeb() {
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(placeUrl()))) }
         open = false
     }
 
-    // Copy the place's Google Maps link straight to the clipboard (a quiet toast confirms).
+    // Copy the place's Google Maps link straight to the clipboard (a quiet toast confirms). The
+    // same link Open-on-web uses: this used to copy a bare coordinate query, so the recipient got
+    // a pin instead of the place (issue #359).
     fun copyLink() {
-        val url = "https://www.google.com/maps/search/?api=1&query=$lat%2C$lng"
+        val url = placeUrl()
         runCatching {
             val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
             cm.setPrimaryClip(android.content.ClipData.newPlainText(place.name, url))

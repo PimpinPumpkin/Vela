@@ -640,4 +640,9 @@
     <string name="voice_error_vad">En del av röstmodellen saknas. Ladda ner den igen under Inställningar \u2192 Sök.</string>
     <string name="voice_error_audio">Telefonen öppnade inte mikrofonen för Vela. Stäng andra appar som spelar in ljud och försök igen.</string>
     <string name="voice_error_recording">Inspelningen stoppades oväntat. Försök igen.</string>
+    <string name="place_tab_reviews">Recensioner</string>
+    <string name="place_tab_about">Om</string>
+    <string name="place_copy_name">Kopiera namn</string>
+    <string name="update_notes_show">Nyheter</string>
+    <string name="update_notes_hide">Dölj nyheter</string>
 </resources>
