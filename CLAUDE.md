@@ -858,7 +858,9 @@ Defaults that make the safe path the easy one:
   route into a sliver). NB the endpoints card was the subtle one - full width, its left half sat
   UNDER the chooser panel and the visible remainder read as an empty dark slab over the map.
   When adding ANY new route/nav chrome, give it the same landscape treatment or it will span the
-  screen.
+  screen. The nav follow ticker writes the WHOLE camera padding every frame, so `cameraLeftInsetPx`
+  goes into that `.padding(left, top, 0, 0)` too (review 2026-09-12): the inset effect's
+  setPadding alone was undone on the first frame and the puck sat on the column's seam.
   **LANDSCAPE (width > height) collapses the browse chrome to ONE line (2026-07-15, Google's
   landscape layout, device-verified on the 4a):** `landscapeChrome` in MapScreen puts the search
   bar at half width with the category chips scrolling beside it (`landscapeOneLine` Row), the
@@ -1189,7 +1191,9 @@ Defaults that make the safe path the easy one:
   failed raster tile. The deep layer CROSS-FADES in (rasterOpacity 0 at z18.6 -> 1 at z19.6):
   Esri's z20+ metro tiles are a different capture program than the z17-19 mosaic, so the
   handover is an era/lighting flip in the DATA - the fade blends the seam like Google does
-  (user noticed the pop, 2026-08-08). (4) **Road-name halos are
+  (user noticed the pop, 2026-08-08). The bottom credit follows whose pixels are on screen
+  (review 2026-09-12): `satDeep == -1` past the fade reads "Google" with no Esri capture year,
+  the blend zone credits both; zoom is derived from the scale bar's metres-per-pixel. (4) **Road-name halos are
   WIDER than the blanket** (2026-07-09): applyDark/applyLight give the three `highway-name-*`
   symbol layers `textHaloWidth 1.9` vs the 1.1 every other label gets - route lines and the
   dotted walking line run right under street names and made them unreadable; the fatter halo
@@ -1745,7 +1749,10 @@ architecture note.
   our users do not have. Handing us their own file is the one legitimate path, and Vela never
   fetches, ships or uploads it. Three details that matter: the file is VALIDATED BY LOADING IT
   before adoption (a silently-adopted corrupt font renders every screen in the fallback face, and a
-  silently-rejected one reads as a dead button), the picker filters `*/*` on purpose (font files
+  silently-rejected one reads as a dead button; NB Compose's `Font(File)` does NOT throw on bad
+  data on API 26+, the platform builder returns null and Compose only fails at first draw, so a
+  PDF picked by mistake was adopted, persisted and crash-looped every launch until the 2026-09-12
+  review: `AppFont.load` now asks `Typeface.Builder(f).build()` first, and the copy runs on IO), the picker filters `*/*` on purpose (font files
   arrive as font/ttf, application/x-font-ttf and octet-stream depending on the file manager - a
   filter that hides the user's own font is worse than a chooser showing too much), and init falls
   back to the system face if the stored copy no longer loads. **MAP LABELS ARE NOT AFFECTED** and
@@ -2969,8 +2976,14 @@ architecture note.
   in-traffic figure, and trafficRatio stays traffic-vs-typical so the colour/words don't turn red
   from OSRM optimism. directions() computes ONE calibration from the top OSRM route vs gTop and
   applies it to every OSRM-derived route in the response (alternates share the speed-model bias;
-  per-route calibration would re-rank them unfairly). Divergent-with-no-caller-cal keeps the old
-  ratio-only overlay. **Per-alternate re-rank (2026-07-01):** each Google route in `root[0][1]` carries its
+  per-route calibration would re-rank them unfairly). **The basis is whichever route FOLLOWS
+  Google's course (review 2026-09-12):** the top OSRM route when it does, else the via-snap.
+  Before, a divergent top (Google routing around a jam, when accuracy matters most) got no
+  calibration, the plain OSRM route kept its free-flow fiction and sorted as "Fastest" ahead of
+  Google's honest alternates; and the snap's ETA-margin gate compared Google's live ETA against
+  the RAW free-flow, so a jam-avoiding snap lost to the fiction every time. The gate now uses the
+  calibrated free-flow, and the `directions` diag logs `cal=`. Multi-stop trips still take the
+  ratio-only `applyTrafficRatio` path (open, #227 for stops). **Per-alternate re-rank (2026-07-01):** each Google route in `root[0][1]` carries its
   OWN `duration_in_traffic` (`parseRoute` reads `summary[10][0][0]` per route), so the returned list is now
   **sorted by live in-traffic ETA - fastest leads, Google-style.** (Earlier note that this was "impossible"
   was wrong: it's only true for the OSRM-only alts, which share `gTop`'s ratio; Google's alts carry real
@@ -3431,7 +3444,9 @@ architecture note.
   `:core` `nav/CameraAlerts.due` decides when to speak. Timing is SPEED-SCALED (12 s of lead,
   floored 150 m / capped 600 m) because a fixed distance is ample in town and ~2 s on a motorway;
   one announcement per camera per route; never for a camera behind you; silent below 2 m/s so
-  sitting beside one is not narrated. Unit-tested (`CameraAlertsTest`, `RouteProjectionTest`).
+  sitting beside one is not narrated. A new route key EMPTIES `routeCamMeters` before the fetch
+  (review 2026-09-12): a reroute resets traveledM to 0, so the old route's distances against it
+  announced a camera kilometres behind you until the corridor fetch landed. Unit-tested (`CameraAlertsTest`, `RouteProjectionTest`).
   **The spoken half is its own nested opt-in** (`SpeedCamWarn`, "Warn me out loud", shown only
   while the layer is on): being spoken to is a different ask from seeing a marker, and warning
   about cameras while driving is legally restricted in some countries. Respects the global
@@ -3572,7 +3587,10 @@ architecture note.
   draws only what the map already knows. Two clocks: marks are projected onto the polyline ONCE
   per route (`RouteBar.alongMeters`, 40 m corridor so a parallel street is not claimed as yours),
   the model is rebuilt per nav tick from that cache. Portrait only + never in PiP, deliberately -
-  issue #297 is already about landscape being crowded.
+  issue #297 is already about landscape being crowded (the PiP gate was missing until the
+  2026-09-12 review; the strip sat outside the `!pipUi` block). A merged cluster keeps the member
+  that says the MOST (`Mark.priority`: camera > crossing > hump > stop > light), because ALPR
+  cameras hang on signal masts and first-by-distance hid every one behind the light's dot.
   ⚠️ **INIT-ORDER TRAP (cost a launch crash, device-caught):** `refreshRouteBar()` was first called
   from the main `init` block, but `settingsPrefs` is declared ~3400 lines further down the class,
   and Kotlin runs property initializers + init blocks in DECLARATION order - so it read a null
