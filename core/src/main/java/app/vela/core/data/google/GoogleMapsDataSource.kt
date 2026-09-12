@@ -584,10 +584,30 @@ class GoogleMapsDataSource @Inject constructor(
             // intermediate via (short ETA, wrong last step) is the "10 min away" nav bug — AND be time-
             // competitive with OSRM's free-flow best.
             val snapReaches = trafficRoute != null
+            // One calibration for the whole response (issue #227): OSRM's free-flow model has no
+            // signal timing, so on an arterial it runs far under Google's TYPICAL for the same
+            // road. Taken from the route that FOLLOWS Google's course: the top OSRM route when it
+            // does, else the via-snap, which follows Google's course by construction. Before the
+            // 2026-09-12 review the divergent case (Google routing around a jam, exactly when it
+            // matters) got no calibration at all, so the plain OSRM route kept its fiction of an
+            // ETA and sorted ahead of Google's honest alternates as "Fastest". Alternates share
+            // the same optimistic speed model, so rebasing them all by one factor keeps the
+            // picker's ranking fair.
+            val freeFlowCal = gTop?.takeIf { it.durationSeconds > 0 && it.polyline.size >= 5 }?.let { g ->
+                val basis = open.firstOrNull()?.takeIf { !RouteGeometry.divergent(it, g) }
+                    ?: trafficRoute?.takeIf { !RouteGeometry.divergent(it, g) }
+                basis?.takeIf { it.durationSeconds > 0 }?.let { b ->
+                    val dScale = if (g.distanceMeters > 0) b.distanceMeters / g.distanceMeters else 1.0
+                    ((g.durationSeconds * dScale) / b.durationSeconds).coerceIn(0.5, 3.0)
+                }
+            }
             // With avoid on, the snap is the point (Google's avoiding course is slower than the
             // open router's unrestricted one by construction), so the ETA margin test is skipped.
+            // The margin compares Google's live ETA against OSRM's CALIBRATED free-flow: the raw
+            // free-flow is the very number the calibration exists to correct, and judged against
+            // it a jam-avoiding snap lost to the fiction every time.
             val snapWorthIt = trafficRoute != null && snapReaches && open.isNotEmpty() && googleEtaS != null &&
-                (avoidWanted || googleEtaS <= open.first().durationSeconds * SNAP_ETA_MARGIN)
+                (avoidWanted || googleEtaS <= open.first().durationSeconds * (freeFlowCal ?: 1.0) * SNAP_ETA_MARGIN)
             // Avoid on, Google answered, but the open router could not be led along its course:
             // Google's own (abbreviated) steps beat a plain route that ignores the avoid.
             // Only when the open route actually left Google's avoiding course; when it already
@@ -601,7 +621,8 @@ class GoogleMapsDataSource @Inject constructor(
                     "ratio=${gTop?.durationInTrafficSeconds?.let { t -> gTop?.durationSeconds?.takeIf { it > 0 }?.let { String.format(java.util.Locale.US, "%.2f", t / it) } }}); " +
                     "rerouted=${trafficRoute != null} snapKept=$snapWorthIt snapReaches=$snapReaches " +
                     "(gEta=${googleEtaS?.toInt()}s osrmFF=${open.firstOrNull()?.durationSeconds?.toInt()}s " +
-                    "sameCourse=${open.firstOrNull()?.let { t -> gTop?.takeIf { it.polyline.size >= 5 }?.let { !RouteGeometry.divergent(t, it) } }}); " +
+                    "sameCourse=${open.firstOrNull()?.let { t -> gTop?.takeIf { it.polyline.size >= 5 }?.let { !RouteGeometry.divergent(t, it) } }} " +
+                    "cal=${freeFlowCal?.let { String.format(java.util.Locale.US, "%.2f", it) }}); " +
                     "onDevice=${onDevice.size}$avoidTag",
                 "",
             )
@@ -612,16 +633,6 @@ class GoogleMapsDataSource @Inject constructor(
                 if (onDevice.isNotEmpty()) onDevice else google.map { it.copy(abbreviatedSteps = true) }
             } else {
                 if (avoidFallbackToGoogle) return@coroutineScope google.map { it.copy(abbreviatedSteps = true) }
-                // One calibration for the whole response, taken from the TOP OSRM route when it
-                // follows Google's course — alternates share the same optimistic speed model, so
-                // rebasing them by the same factor keeps the picker's ranking fair (issue #227).
-                val freeFlowCal = open.firstOrNull()?.takeIf { top ->
-                    top.durationSeconds > 0 && gTop != null && gTop.durationSeconds > 0 &&
-                        gTop.polyline.size >= 5 && !RouteGeometry.divergent(top, gTop)
-                }?.let { top ->
-                    val dScale = if (gTop!!.distanceMeters > 0) top.distanceMeters / gTop.distanceMeters else 1.0
-                    ((gTop.durationSeconds * dScale) / top.durationSeconds).coerceIn(0.5, 3.0)
-                }
                 // With avoid on, the open router's unrestricted routes are not offered as alternates.
                 val primary = if (snapWorthIt) (listOf(trafficRoute!!) + (if (avoidWanted) emptyList() else open)).map { applyTraffic(it, gTop, freeFlowCal) }
                     else open.map { applyTraffic(it, gTop, freeFlowCal) }

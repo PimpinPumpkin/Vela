@@ -74,6 +74,17 @@ class RouteBarTest {
         assertEquals("one glyph per junction", 2, m.pins.size)
     }
 
+    @Test fun `a camera at a signalled junction keeps its badge when the cluster merges`() {
+        val marks = listOf(
+            RouteBar.Mark.SIGNAL to 5_000.0,
+            RouteBar.Mark.CAMERA to 5_030.0, // mounted on the light's mast
+            RouteBar.Mark.STOP to 5_050.0,
+        )
+        val m = RouteBar.build(route(10_000.0), traveledM = 0.0, markMeters = marks, windowM = 20_000.0)
+        assertEquals(1, m.pins.size)
+        assertEquals(RouteBar.Mark.CAMERA, m.pins[0].kind)
+    }
+
     @Test fun `the bar stands down near the destination`() {
         val m = RouteBar.build(route(10_000.0, listOf(TrafficSpan(2, 9_950.0, 50.0))), traveledM = 9_800.0, windowM = 20_000.0)
         assertTrue("a 200 m sliver is noise, the banner covers that stretch", m.isEmpty)

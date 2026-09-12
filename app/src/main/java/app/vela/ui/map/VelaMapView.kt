@@ -1900,8 +1900,12 @@ fun VelaMapView(
                                 // AHEAD owns the view instead of splitting it with what's behind
                                 // (user 2026-07-14). Eased in on (re)attach - see the seed above.
                                 // Padding is sticky camera state - the nav teardown below resets
-                                // it for the browse map.
-                                .padding(0.0, cam.height * navPadEase[0], 0.0, 0.0)
+                                // it for the browse map. The LEFT inset is the landscape nav
+                                // column (issue #297): this per-frame write replaces the whole
+                                // padding, so without it here the setPadding call in the inset
+                                // effect was undone on the first frame and the puck sat on the
+                                // column's seam (review 2026-09-12).
+                                .padding(cameraLeftInsetPx.toDouble(), cam.height * navPadEase[0], 0.0, 0.0)
                                 .build(),
                         ),
                     )

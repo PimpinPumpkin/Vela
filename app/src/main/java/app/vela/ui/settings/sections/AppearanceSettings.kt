@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -98,13 +99,19 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         // cannot be redistributed - so the honest offer is "use what you already have a licence to".
         Spacer(Modifier.height(8.dp))
         val fontBad = stringResource(R.string.settings_font_bad)
+        val fontScope = androidx.compose.runtime.rememberCoroutineScope()
         val fontPicker = rememberLauncherForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
         ) { uri ->
             if (uri != null) {
-                val name = queryDisplayName(context, uri) ?: context.getString(R.string.settings_font_custom)
-                if (!app.vela.ui.AppFont.setCustom(context, uri, name)) {
-                    android.widget.Toast.makeText(context, fontBad, android.widget.Toast.LENGTH_SHORT).show()
+                // Off the main thread: the copy is up to 12 MB and a cloud documents provider
+                // downloads the file synchronously inside openInputStream (an ANR on Drive).
+                fontScope.launch {
+                    val ok = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        val name = queryDisplayName(context, uri) ?: context.getString(R.string.settings_font_custom)
+                        app.vela.ui.AppFont.setCustom(context, uri, name)
+                    }
+                    if (!ok) android.widget.Toast.makeText(context, fontBad, android.widget.Toast.LENGTH_SHORT).show()
                 }
             }
         }

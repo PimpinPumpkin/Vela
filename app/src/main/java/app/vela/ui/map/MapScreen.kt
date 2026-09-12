@@ -1310,7 +1310,7 @@ fun MapScreen(
         // #297 is already about landscape being crowded, and adding a permanent strip there would
         // make that worse rather than better.
         state.routeBar?.let { bar ->
-            if (state.navigating && !landscapeChrome && !bar.isEmpty) {
+            if (state.navigating && !landscapeChrome && !pipUi && !bar.isEmpty) {
                 app.vela.ui.nav.RouteBarStrip(
                     model = bar,
                     remainingMeters = state.nav.remainingDistance,
@@ -2363,12 +2363,27 @@ fun MapScreen(
                         .padding(start = if (sidePanelUp) sidePanelWidthDp else 0.dp)
                         .padding(bottom = 16.dp + chromeLift),
                 ) {
+                    // Whose pixels are on screen. Past z19 where Esri has no native tiles the
+                    // deep layer is Google's imagery (satDeep == -1), cross-faded in over
+                    // z18.6..19.6 (ensureSatelliteDeep): credit Google there, both in the blend,
+                    // and drop Esri's capture year once Esri is no longer what you are looking at.
+                    val zoomNow = remember(metersPerPixelState.value, state.center) {
+                        val lat = state.center?.lat ?: 0.0
+                        val mpp = metersPerPixelState.value
+                        if (mpp <= 0.0) 0.0 else kotlin.math.ln(78271.517 * kotlin.math.cos(Math.toRadians(lat)) / mpp) / kotlin.math.ln(2.0)
+                    }
+                    val googleDeep = state.satDeep == -1 && zoomNow >= 18.6
+                    val googleOnly = state.satDeep == -1 && zoomNow >= 19.6
                     Text(
-                        stringResource(R.string.map_satellite_attribution),
+                        when {
+                            googleOnly -> stringResource(R.string.map_satellite_attribution_google)
+                            googleDeep -> stringResource(R.string.map_satellite_attribution) + " \u00b7 " + stringResource(R.string.map_satellite_attribution_google)
+                            else -> stringResource(R.string.map_satellite_attribution)
+                        },
                         style = MaterialTheme.typography.labelSmall,
                         color = if (darkTheme) Color(0xFFB8C2CC) else Color(0xFF4A4A4A),
                     )
-                    state.imageryYear?.let {
+                    state.imageryYear?.takeIf { !googleOnly }?.let {
                         Text(
                             it,
                             style = MaterialTheme.typography.labelSmall,

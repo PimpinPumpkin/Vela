@@ -92,8 +92,17 @@ object AppFont {
         prefs(context).edit().remove(KEY_NAME).apply()
     }
 
-    /** null when the file is not a font the platform can parse. */
+    /**
+     * null when the file is not a font the platform can parse. Compose's `Font(File)` does NOT
+     * throw on bad data on API 26+: the platform builder returns null and Compose only finds out
+     * at first draw, with an IllegalStateException in every screen that draws text. A PDF picked
+     * by mistake was therefore adopted, persisted, re-adopted at the next launch, and the app
+     * could not start until its data was cleared. So the platform builder is asked FIRST, on the
+     * same file, and only a font it can actually build is wrapped for Compose.
+     */
     private fun load(f: File): FontFamily? = runCatching {
+        if (f.length() <= 0L) return null
+        android.graphics.Typeface.Builder(f).build() ?: return null
         FontFamily(androidx.compose.ui.text.font.Font(f))
     }.getOrNull()
 
