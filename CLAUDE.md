@@ -2442,6 +2442,12 @@ architecture note.
   dialog, the search page's Your lists rows and the map's list pins), so no sort key was added;
   `create` still prepends. The dialog shows up/down IconButtons per row (hidden with one list,
   disabled at the ends) rather than drag-to-reorder: D-pad reachable and no gesture library.
+  **Puck snap tolerance is MODE-AWARE (2026-09-12, `puckSnapTolerance`):** driving keeps 22 m +
+  speed (lane offset + fix lag); walking/cycling use 8 m + 1.2x the fix accuracy, capped at 16 m,
+  so a shortcut over a crosswalk frees the arrow within a fix or two instead of dragging it along
+  the route (it used to be 22 m for everyone). The heading gate is not consulted below 2.5 m/s
+  off-road (GPS bearing is noise at walking pace), so a pedestrian's release is distance-driven.
+  The engine's reroute corridor was already mode-aware (`offRouteCorridor`).
   **Diagnostics events for reviews + location (2026-09-12):** `WebReviewsFetcher` records
   `reviews` events (the hl it asked for and the app language, each page Google served with its
   `document.documentElement.lang` and `navigator.language`, and the parsed count or the 45 s
