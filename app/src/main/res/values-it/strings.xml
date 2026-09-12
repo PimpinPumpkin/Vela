@@ -652,4 +652,6 @@
     <string name="settings_puck_style">Colori della freccia</string>
     <string name="settings_puck_style_blue">Disco blu, freccia bianca</string>
     <string name="settings_puck_style_white">Disco bianco, freccia blu</string>
+    <string name="list_move_up">Sposta la lista in alto</string>
+    <string name="list_move_down">Sposta la lista in basso</string>
 </resources>

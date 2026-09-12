@@ -672,4 +672,6 @@
     <string name="settings_puck_style">箭頭配色</string>
     <string name="settings_puck_style_blue">藍色圓盤，白色箭頭</string>
     <string name="settings_puck_style_white">白色圓盤，藍色箭頭</string>
+    <string name="list_move_up">上移清單</string>
+    <string name="list_move_down">下移清單</string>
 </resources>

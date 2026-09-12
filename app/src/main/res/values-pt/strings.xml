@@ -652,4 +652,6 @@
     <string name="settings_puck_style">Cores da seta</string>
     <string name="settings_puck_style_blue">Disco azul, seta branca</string>
     <string name="settings_puck_style_white">Disco branco, seta azul</string>
+    <string name="list_move_up">Mover lista para cima</string>
+    <string name="list_move_down">Mover lista para baixo</string>
 </resources>

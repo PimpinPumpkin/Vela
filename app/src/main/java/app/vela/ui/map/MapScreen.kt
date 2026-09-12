@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -2400,6 +2401,7 @@ fun MapScreen(
                     onCreateList = { name -> vm.createList(name) },
                     onUpdateList = vm::updateList,
                     onDeleteList = vm::deleteList,
+                    onMoveList = vm::moveList,
                     onDismiss = { listsSheetOpen = false },
                 )
             }
@@ -4396,6 +4398,7 @@ private fun ListsSheet(
     onCreateList: (String) -> String,
     onUpdateList: (app.vela.core.model.PlaceList) -> Unit,
     onDeleteList: (String) -> Unit,
+    onMoveList: (String, Int) -> Unit = { _, _ -> },
     onDismiss: () -> Unit,
 ) {
     var editing by remember { mutableStateOf<app.vela.core.model.PlaceList?>(null) }
@@ -4431,7 +4434,7 @@ private fun ListsSheet(
                     )
                 }
                 LazyColumn(Modifier.heightIn(max = 420.dp)) {
-                    items(lists, key = { it.id }) { list ->
+                    itemsIndexed(lists, key = { _, l -> l.id }) { index, list ->
                         Row(
                             Modifier
                                 .fillMaxWidth()
@@ -4450,7 +4453,17 @@ private fun ListsSheet(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            IconButton(onClick = { editing = list }) {
+                            // Custom order (issue #343): nudge up/down, D-pad reachable, no drag
+                            // needed. The store's array order is the display order everywhere.
+                            if (lists.size > 1) {
+                                IconButton(onClick = { onMoveList(list.id, -1) }, enabled = index > 0, modifier = Modifier.size(36.dp).dpadHighlight(CircleShape)) {
+                                    Icon(androidx.compose.material.icons.Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.list_move_up), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                                }
+                                IconButton(onClick = { onMoveList(list.id, 1) }, enabled = index < lists.size - 1, modifier = Modifier.size(36.dp).dpadHighlight(CircleShape)) {
+                                    Icon(androidx.compose.material.icons.Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.list_move_down), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                            IconButton(onClick = { editing = list }, modifier = Modifier.size(36.dp).dpadHighlight(CircleShape)) {
                                 Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.list_edit), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                             }
                         }

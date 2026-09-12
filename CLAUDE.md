@@ -2422,6 +2422,11 @@ architecture note.
   harness is a scratch Python port of AlongRouteFilter + the rate rule over the trip's fixes.
   **Read `docs/puck-jitter.md` first: the eight causes, the measurement scripts in `scripts/jitter/`, and
   the order to run them. Do not start from a theory.**
+  **List order (issue #343, 2026-09-12):** `PlaceListStore.move(id, delta)` swaps within the stored
+  JSON array, and that array order IS the display order everywhere (`state.lists` feeds the
+  dialog, the search page's Your lists rows and the map's list pins), so no sort key was added;
+  `create` still prepends. The dialog shows up/down IconButtons per row (hidden with one list,
+  disabled at the ends) rather than drag-to-reorder: D-pad reachable and no gesture library.
   **Puck size/colour setting (issue #344, 2026-09-12):** `ui/NavChrome.PuckStyle` (prefs
   `puck_size` normal/large/xl = 1x/1.25x/1.5x, `puck_style` blue/white). `navPuckBitmap(scale,
   whiteDisc)` draws both the Compose overlay (`remember(PuckStyle.key())`) and the `NAV_PUCK_IMG`

@@ -660,4 +660,6 @@
     <string name="settings_puck_style">Kolory strzałki</string>
     <string name="settings_puck_style_blue">Niebieskie kółko, biała strzałka</string>
     <string name="settings_puck_style_white">Białe kółko, niebieska strzałka</string>
+    <string name="list_move_up">Przenieś listę wyżej</string>
+    <string name="list_move_down">Przenieś listę niżej</string>
 </resources>
