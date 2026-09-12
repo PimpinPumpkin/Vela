@@ -5644,6 +5644,7 @@ class MapViewModel @Inject constructor(
     // never re-walks the polyline. Null route key = nothing cached.
     private var routeBarKey: String? = null
     private var routeBarMarks: List<Pair<app.vela.core.nav.RouteBar.Mark, Double>> = emptyList()
+    private var routeBarTotalM: Double? = null // the polyline's own length, the axis the marks are measured on
 
     /** Recompute the route bar for this nav tick (see the call site for why the work is split). */
     private fun updateRouteBar(ns: app.vela.core.nav.NavSession.State) {
@@ -5656,10 +5657,10 @@ class MapViewModel @Inject constructor(
             }
             return
         }
-        // Identity = the same key shape the corridor fetch uses, so a steps/traffic heal on the
-        // same course does not throw the projection away.
+        // Keyed on the route's endpoints + length and on the IDENTITY of the two mark lists (a
+        // replaced set with the same count used to keep stale marks; review 2026-09-12).
         val key = "${route.polyline.first()}|${route.polyline.last()}|${route.distanceMeters.toInt()}|" +
-            "${_state.value.trafficControls.size}|${_state.value.flockCameras.size}"
+            "${System.identityHashCode(_state.value.trafficControls)}|${System.identityHashCode(_state.value.flockCameras)}"
         if (key != routeBarKey) {
             routeBarKey = key
             val poly = route.polyline
@@ -5688,13 +5689,14 @@ class MapViewModel @Inject constructor(
                     // Guard against a route swap landing while this was computing.
                     if (routeBarKey == key) {
                         routeBarMarks = marks
-                        _state.update { it.copy(routeBar = app.vela.core.nav.RouteBar.build(route, ns.nav.traveledM, marks)) }
+                        routeBarTotalM = cum.last()
+                        _state.update { it.copy(routeBar = app.vela.core.nav.RouteBar.build(route, ns.nav.traveledM, marks, totalM = routeBarTotalM)) }
                     }
                 }
             }
             return
         }
-        _state.update { it.copy(routeBar = app.vela.core.nav.RouteBar.build(route, ns.nav.traveledM, routeBarMarks)) }
+        _state.update { it.copy(routeBar = app.vela.core.nav.RouteBar.build(route, ns.nav.traveledM, routeBarMarks, totalM = routeBarTotalM)) }
     }
 
     /** Show or hide the route bar (pref `route_bar`). */
@@ -5713,6 +5715,20 @@ class MapViewModel @Inject constructor(
 
     /** One corridor fetch of speed cameras per driven route, projected onto it for the spoken
      *  approach warning (issue #229). No-op unless the layer AND the spoken warning are on. */
+    // Flipping "Warn me out loud" on MID-DRIVE fetches the current route's cameras right away;
+    // before, the fetch only ran on a route change, so the toggle did nothing until the next
+    // reroute (review 2026-09-12). Flipping it off clears the list through the same function.
+    init {
+        viewModelScope.launch {
+            androidx.compose.runtime.snapshotFlow { app.vela.ui.SpeedCamWarn.on.value && app.vela.ui.SpeedCams.on.value }
+                .collect { on ->
+                    val r = navSession.state.value.route ?: return@collect
+                    if (on) routeCamKey = null // force the fetch even for the same route
+                    refreshRouteSpeedCams(r)
+                }
+        }
+    }
+
     private fun refreshRouteSpeedCams(route: app.vela.core.model.Route) {
         if (!app.vela.ui.SpeedCams.on.value || !app.vela.ui.SpeedCamWarn.on.value) {
             routeCamKey = null; routeCamMeters = emptyList(); spokenCams = emptySet()
@@ -5916,7 +5932,18 @@ class MapViewModel @Inject constructor(
             kotlinx.coroutines.delay(350)
             val level = withContext(Dispatchers.IO) {
                 runCatching {
-                    intArrayOf(22, 21, 20).firstOrNull { lvl -> esriTileExists(cLat, cLng, lvl) } ?: -1
+                    // Bottom-up: 20 first, because everywhere Esri stops at 19 (most of the
+                    // world outside metros) one request settles the Google fallback, where
+                    // 22-then-21-then-20 spent three sequential round trips on the blur. Only
+                    // areas that DO have z20 pay for the z21/z22 checks. ensureActive between
+                    // requests, or a probe cancelled by the next pan keeps burning the chain.
+                    var found = -1
+                    for (lvl in intArrayOf(20, 21, 22)) {
+                        kotlin.coroutines.coroutineContext.ensureActive()
+                        if (!esriTileExists(cLat, cLng, lvl)) break
+                        found = lvl
+                    }
+                    found
                 }.getOrNull()
             } ?: return@launch // network failure: don't cache the box, retry on the next idle
             val padLat = (north - south) * 0.5; val padLng = (east - west) * 0.5

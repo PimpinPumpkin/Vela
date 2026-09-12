@@ -2,7 +2,6 @@ package app.vela.core.nav
 
 import app.vela.core.model.LatLng
 import app.vela.core.model.Route
-import app.vela.core.model.distanceTo
 
 /**
  * The model behind the route bar (issue #228) - a strip showing the road AHEAD of you at a glance:
@@ -86,8 +85,12 @@ object RouteBar {
         traveledM: Double,
         markMeters: List<Pair<Mark, Double>> = emptyList(),
         windowM: Double = WINDOW_M,
+        totalM: Double? = null,
     ): Model {
-        val total = route.distanceMeters
+        // The polyline's own length when the caller has it: traveledM and the marks are both
+        // measured along the polyline, while Route.distanceMeters is the router's figure, and a
+        // few percent between them shifted bands against pins and stood the bar down early.
+        val total = totalM?.takeIf { it > 0.0 } ?: route.distanceMeters
         val done = traveledM.coerceIn(0.0, total)
         val remaining = total - done
         if (remaining < MIN_REMAINING_M) return Model(emptyList(), emptyList(), remaining, true)
