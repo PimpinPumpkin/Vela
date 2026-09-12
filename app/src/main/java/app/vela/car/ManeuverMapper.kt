@@ -20,9 +20,12 @@ import app.vela.core.model.Maneuver as VelaManeuver
  */
 object ManeuverMapper {
 
-    /** Right-hand traffic (US, Israel, most of the world) → counter-clockwise roundabouts; the
-     *  car API needs a concrete CW/CCW type. A future locale hook can flip this for the UK etc. */
-    private const val ROUNDABOUT_CCW = true
+    /** The car API needs a concrete CW/CCW roundabout type. The direction of travel comes from the
+     *  MEASURED geometry when the router gave one (`RoundaboutGeometry.clockwise`, derived from the
+     *  sign of the entry turn on OSRM routes, issue #259); with none, counter-clockwise, which is
+     *  right-hand traffic (US, Israel, most of the world). A UK driver on a head unit used to get
+     *  a counter-clockwise glyph for every roundabout (review 2026-09-12). */
+    private const val ROUNDABOUT_CCW_DEFAULT = true
 
     fun carManeuver(m: VelaManeuver): Maneuver {
         val type = when (m.type) {
@@ -43,15 +46,20 @@ object ManeuverMapper {
             ManeuverType.RAMP_RIGHT -> Maneuver.TYPE_ON_RAMP_NORMAL_RIGHT
             ManeuverType.KEEP_LEFT -> Maneuver.TYPE_KEEP_LEFT
             ManeuverType.KEEP_RIGHT -> Maneuver.TYPE_KEEP_RIGHT
-            ManeuverType.ROUNDABOUT, ManeuverType.EXIT_ROUNDABOUT ->
-                if (ROUNDABOUT_CCW) Maneuver.TYPE_ROUNDABOUT_ENTER_AND_EXIT_CCW
+            ManeuverType.ROUNDABOUT, ManeuverType.EXIT_ROUNDABOUT -> {
+                val ccw = m.roundabout?.let { !it.clockwise } ?: ROUNDABOUT_CCW_DEFAULT
+                if (ccw) Maneuver.TYPE_ROUNDABOUT_ENTER_AND_EXIT_CCW
                 else Maneuver.TYPE_ROUNDABOUT_ENTER_AND_EXIT_CW
+            }
         }
         val b = Maneuver.Builder(type)
         if (type == Maneuver.TYPE_ROUNDABOUT_ENTER_AND_EXIT_CCW ||
             type == Maneuver.TYPE_ROUNDABOUT_ENTER_AND_EXIT_CW
         ) {
-            b.setRoundaboutExitNumber(1) // exit count unknown from OSRM here; 1 keeps the builder valid
+            // The exit NUMBER the router phrased ("take the 2nd exit"), threaded on the maneuver by
+            // all three routers; the builder throws without one, so 1 is the floor, not a guess
+            // the card shows when the router actually said otherwise.
+            b.setRoundaboutExitNumber(m.roundaboutExit?.takeIf { it > 0 } ?: 1)
         }
         return b.build()
     }

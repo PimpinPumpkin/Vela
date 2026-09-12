@@ -35,14 +35,16 @@ object RouteProjection {
         if (poly.size < 2) return null
         var bestD = Double.MAX_VALUE
         var bestAlong = 0.0
+        // One cosine per POINT, not per segment: the route bar projects thousands of corridor
+        // marks over thousands of vertices, and cos(lat) changes by 0.02% over a degree of
+        // latitude, far below the 40 m question this answers (review 2026-09-12).
+        val latScale = Math.cos(Math.toRadians(p.lat))
         for (i in 0 until poly.size - 1) {
             val a = poly[i]
             val b = poly[i + 1]
             val segLen = cum[i + 1] - cum[i]
             if (segLen <= 0.0) continue
-            // Local flat frame per segment: exact enough over one segment, and avoids trigonometry
-            // per vertex on a polyline with thousands of points.
-            val latScale = Math.cos(Math.toRadians(a.lat))
+            // Local flat frame per segment: exact enough over one segment.
             val bx = (b.lng - a.lng) * latScale
             val by = b.lat - a.lat
             val px = (p.lng - a.lng) * latScale

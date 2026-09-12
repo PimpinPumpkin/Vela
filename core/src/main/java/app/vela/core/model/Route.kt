@@ -25,6 +25,7 @@ data class Maneuver(
                                   // (OSRM's arrive modifier); null = unknown/straight ahead
     val lanes: List<Lane> = emptyList(), // per-lane turn guidance (from OSRM) for the Google-style diagram
     val roundabout: RoundaboutGeometry? = null, // ROUNDABOUT/EXIT_ROUNDABOUT only: how to draw the glyph
+    val roundaboutExit: Int? = null, // ROUNDABOUT only: which exit to take (1 = first); every router phrases it, the car needs it as a number
 )
 
 /**

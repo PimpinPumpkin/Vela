@@ -586,6 +586,7 @@ object RouteGeometry {
         return Maneuver(
             type = osrmType(effType, mod),
             instruction = osrmPhrase(effType, mod, road, dest, exits, man["exit"]?.jsonPrimitive?.intOrNull),
+            roundaboutExit = man["exit"]?.jsonPrimitive?.intOrNull?.takeIf { it > 0 },
             side = if (type == "arrive" && mod != null) {
                 when {
                     mod.contains("left") -> "left"

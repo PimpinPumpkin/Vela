@@ -98,5 +98,7 @@ fun VelaTheme(
         darkTheme -> DarkColors
         else -> LightColors
     }
-    MaterialTheme(colorScheme = colorScheme, typography = velaTypography(app.vela.ui.AppFont.family.value), content = content)
+    val family = app.vela.ui.AppFont.family.value
+    val typography = androidx.compose.runtime.remember(family) { velaTypography(family) }
+    MaterialTheme(colorScheme = colorScheme, typography = typography, content = content)
 }

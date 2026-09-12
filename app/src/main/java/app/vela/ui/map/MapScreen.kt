@@ -155,6 +155,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -1448,7 +1452,7 @@ fun MapScreen(
                 // exactly what you need to see while driving.
                 modifier = Modifier
                     .align(if (landscapeChrome) Alignment.TopStart else Alignment.TopCenter)
-                    .then(if (landscapeChrome) Modifier.widthIn(max = sidePanelWidthDp) else Modifier)
+                    .landscapeColumn(landscapeChrome, sidePanelWidthDp)
                     .statusBarsPadding()
                     .padding(12.dp)
                     // Report the banner's bottom edge so the compass can drop just below it (any height).
@@ -1914,7 +1918,7 @@ fun MapScreen(
             state.navigating && state.results.isEmpty() -> Column(
                 Modifier
                     .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
-                    .then(if (landscapeChrome) Modifier.widthIn(max = sidePanelWidthDp) else Modifier)
+                    .landscapeColumn(landscapeChrome, sidePanelWidthDp)
                     .navigationBarsPadding()
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -1984,7 +1988,7 @@ fun MapScreen(
                 // gone, which is a poor way to ask someone to choose between routes drawn on it.
                 modifier = Modifier
                     .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
-                    .then(if (landscapeChrome) Modifier.widthIn(max = sidePanelWidthDp) else Modifier),
+                    .landscapeColumn(landscapeChrome, sidePanelWidthDp),
             )
 
             // The place sheet yields while Street View is up - the pano takes the top half and the
@@ -2036,7 +2040,7 @@ fun MapScreen(
                 // landscape layout, user 2026-07-20).
                 modifier = Modifier
                     .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
-                    .then(if (landscapeChrome) Modifier.widthIn(max = sidePanelWidthDp) else Modifier)
+                    .landscapeColumn(landscapeChrome, sidePanelWidthDp)
                     // Live top edge for the layers button's overlap gate (see placeSheetTopPx).
                     .onGloballyPositioned { placeSheetTopPx = it.positionInRoot().y.roundToInt() },
             )
@@ -2068,7 +2072,7 @@ fun MapScreen(
                 // Landscape: left side panel like the place sheet (see its modifier note).
                 modifier = Modifier
                     .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
-                    .then(if (landscapeChrome) Modifier.widthIn(max = sidePanelWidthDp) else Modifier),
+                    .landscapeColumn(landscapeChrome, sidePanelWidthDp),
               )
             // Imported Google list preview: offer to save (nothing persisted until tapped).
             // A pill under the search bar, clear of the results sheet at the bottom.
@@ -4854,3 +4858,14 @@ private fun ScaleBarReader(
 ) {
     ScaleBar(metersPerPixel = state.value, dark = dark, modifier = modifier)
 }
+
+/**
+ * Route and nav chrome in landscape is a LEFT column (issue #297): width-capped to the side panel
+ * and kept clear of a display cutout on that edge. In landscape the notch sits on the left, outside
+ * the status-bar insets these cards already pad, so without this the turn card's 12 dp margin ran
+ * under it (review 2026-09-12). Portrait is untouched. The caller keeps its own `.align`.
+ */
+@Composable
+private fun Modifier.landscapeColumn(landscape: Boolean, widthDp: androidx.compose.ui.unit.Dp): Modifier =
+    if (!landscape) this
+    else this.widthIn(max = widthDp).windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Start))

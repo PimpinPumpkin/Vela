@@ -212,6 +212,7 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
                     Maneuver(
                         type = type,
                         instruction = GraphHopperRouteEngine.ghPhrase(type, road, rbExit, dest, null),
+                        roundaboutExit = rbExit,
                         location = at,
                         distanceMeters = 0.0,
                         durationSeconds = 0.0,

@@ -666,7 +666,7 @@ Defaults that make the safe path the easy one:
   With no geometry (Google fallback, offline GraphHopper/obf, or an entry too straight for its sign
   to mean anything) it draws its NEUTRAL form - ring plus entry stub, NO exit arrow - because an
   arrow pointing somewhere we did not measure is the whole bug. `maneuverIcon(type)` can only produce
-  the neutral form; call `maneuverIconFor(maneuver)` wherever the Maneuver is in hand. NB the
+  the neutral form; call `maneuverIconFor(maneuver)` wherever the Maneuver is in hand. **Android Auto reads the same geometry (review 2026-09-12):** `ManeuverMapper` picks CW/CCW from `roundabout.clockwise` (counter-clockwise only as the no-geometry default) and the exit number from `Maneuver.roundaboutExit`, set by all three routers (OSRM `maneuver.exit`, GraphHopper `exitNumber`, obf `exitOut`); it used to hard-code CCW and exit 1. GraphHopper and obf still give NO glyph geometry: both expose a turn angle whose sign convention is undocumented in the vendored jars, and a guessed arrow is the original bug. NB the
   notification glyph (`service/NavGlyphs`) still draws its own fixed straight-out roundabout.
   **Place sheet has START beside Directions; the nav bar is END | figures | STEPS (issues
   #272/#273, 2026-08-17).** Directions opens the picker whose own Start sits BELOW the route list,
@@ -858,7 +858,7 @@ Defaults that make the safe path the easy one:
   route into a sliver). NB the endpoints card was the subtle one - full width, its left half sat
   UNDER the chooser panel and the visible remainder read as an empty dark slab over the map.
   When adding ANY new route/nav chrome, give it the same landscape treatment or it will span the
-  screen. The nav follow ticker writes the WHOLE camera padding every frame, so `cameraLeftInsetPx`
+  screen. Use `.align(if (landscapeChrome) ...Start else ...Center).landscapeColumn(landscapeChrome, sidePanelWidthDp)`: the helper caps the width AND pads the display cutout on the start edge (in landscape the notch sits on the left, outside the status-bar insets; the turn card's margin ran under it, review 2026-09-12). The nav follow ticker writes the WHOLE camera padding every frame, so `cameraLeftInsetPx`
   goes into that `.padding(left, top, 0, 0)` too (review 2026-09-12): the inset effect's
   setPadding alone was undone on the first frame and the puck sat on the column's seam.
   **LANDSCAPE (width > height) collapses the browse chrome to ONE line (2026-07-15, Google's
@@ -1057,7 +1057,7 @@ Defaults that make the safe path the easy one:
   single one-minute ticker in VelaRoot and whenever a fix moves) so `isAppInDarkTheme()` stays a
   plain state read. The position is stored ROUNDED TO ~1 KM (sunset moves ~4 s per km of longitude,
   so precision buys nothing and a theme setting has no business keeping a precise record of where
-  its owner was). Separately, **`AppTheme.navDayNight`** switches by daylight ONLY while navigating
+  its owner was). The stored point is TIMESTAMPED and trusted for 24 h and only while location permission is still granted (review 2026-09-12): with a grant a fresh fix replaces it within a minute of launch anyway, and a revoked grant plus a flight east gave a dark map at 3 pm local for the whole trip; past that it falls back to the clock. Separately, **`AppTheme.navDayNight`** switches by daylight ONLY while navigating
   and keeps the chosen mode everywhere else - the reporter's actual ask ("my default is dark, but
   driving in daylight I want the light map"); it is hidden under AUTO, where it would claim to do
   something already happening. `AppTheme.navigating` is mirrored from the nav state by MapViewModel.
@@ -1193,7 +1193,7 @@ Defaults that make the safe path the easy one:
   handover is an era/lighting flip in the DATA - the fade blends the seam like Google does
   (user noticed the pop, 2026-08-08). The bottom credit follows whose pixels are on screen
   (review 2026-09-12): `satDeep == -1` past the fade reads "Google" with no Esri capture year,
-  the blend zone credits both; zoom is derived from the scale bar's metres-per-pixel. (4) **Road-name halos are
+  the blend zone credits both; zoom is derived from the scale bar's metres-per-pixel. The probe runs 20 -> 21 -> 22 and stops at the first MISSING level (same review): where Esri tops out at 19, most of the world, one request settles the Google fallback where 22-first spent three sequential round trips on the blur; `ensureActive` between requests so a probe cancelled by the next pan stops, and the deep layer's minZoom is the fade's first stop (18.6) so it no longer loads tiles while invisible. (4) **Road-name halos are
   WIDER than the blanket** (2026-07-09): applyDark/applyLight give the three `highway-name-*`
   symbol layers `textHaloWidth 1.9` vs the 1.1 every other label gets - route lines and the
   dotted walking line run right under street names and made them unreadable; the fatter halo
@@ -2983,7 +2983,7 @@ architecture note.
   Google's honest alternates; and the snap's ETA-margin gate compared Google's live ETA against
   the RAW free-flow, so a jam-avoiding snap lost to the fiction every time. The gate now uses the
   calibrated free-flow, and the `directions` diag logs `cal=`. Multi-stop trips still take the
-  ratio-only `applyTrafficRatio` path (open, #227 for stops). **Per-alternate re-rank (2026-07-01):** each Google route in `root[0][1]` carries its
+  ratio-only `applyTrafficRatio` path (open, #227 for stops). **Multi-stop trips are calibrated too (same review):** Google's keyless answer is the DIRECT trip, so `speedCal` compares average SPEEDS (the distance difference cancels) and the via route goes through `applyTraffic` with `withSpans = false`; `applyTrafficRatio` is gone, and the recheck's `etaScale` no longer jumps when the last stop is passed. A same-course primary also carries Google's `typicalLow/High` range (distance-scaled), so the depart-time chooser shows "usually X-Y" for it, not only for provisional alternates. **Per-alternate re-rank (2026-07-01):** each Google route in `root[0][1]` carries its
   OWN `duration_in_traffic` (`parseRoute` reads `summary[10][0][0]` per route), so the returned list is now
   **sorted by live in-traffic ETA - fastest leads, Google-style.** (Earlier note that this was "impossible"
   was wrong: it's only true for the OSRM-only alts, which share `gTop`'s ratio; Google's alts carry real
@@ -3446,7 +3446,7 @@ architecture note.
   one announcement per camera per route; never for a camera behind you; silent below 2 m/s so
   sitting beside one is not narrated. A new route key EMPTIES `routeCamMeters` before the fetch
   (review 2026-09-12): a reroute resets traveledM to 0, so the old route's distances against it
-  announced a camera kilometres behind you until the corridor fetch landed. Unit-tested (`CameraAlertsTest`, `RouteProjectionTest`).
+  announced a camera kilometres behind you until the corridor fetch landed. Flipping "Warn me out loud" on MID-DRIVE fetches the current route's cameras at once (a `snapshotFlow` on the two toggles in the VM); it used to wait for the next reroute. Unit-tested (`CameraAlertsTest`, `RouteProjectionTest`).
   **The spoken half is its own nested opt-in** (`SpeedCamWarn`, "Warn me out loud", shown only
   while the layer is on): being spoken to is a different ask from seeing a marker, and warning
   about cameras while driving is legally restricted in some countries. Respects the global
@@ -3590,7 +3590,7 @@ architecture note.
   issue #297 is already about landscape being crowded (the PiP gate was missing until the
   2026-09-12 review; the strip sat outside the `!pipUi` block). A merged cluster keeps the member
   that says the MOST (`Mark.priority`: camera > crossing > hump > stop > light), because ALPR
-  cameras hang on signal masts and first-by-distance hid every one behind the light's dot.
+  cameras hang on signal masts and first-by-distance hid every one behind the light's dot. The bar's total is the POLYLINE's own length (`totalM`, cached beside the marks): traveledM and the marks are measured along it while `Route.distanceMeters` is the router's figure. The projection cache keys on the mark lists' IDENTITY (a replaced set with the same count kept stale marks), and `RouteProjection.alongMeters` takes one cosine per point, not per segment.
   ⚠️ **INIT-ORDER TRAP (cost a launch crash, device-caught):** `refreshRouteBar()` was first called
   from the main `init` block, but `settingsPrefs` is declared ~3400 lines further down the class,
   and Kotlin runs property initializers + init blocks in DECLARATION order - so it read a null
@@ -3699,7 +3699,7 @@ architecture note.
   Bushwick and Brisbane were the same trap. The whole LEG is passed in, not just `[14]`, because
   the generic vehicle icon sits outside the badge node. Subway is now tested before rail.
   Pinned by `TransitSubwayTest` using the real captured nodes; re-verified by replaying the new
-  rules over the whole live payload (6 trips -> lines 2/3/5 SUBWAY, M101 BUS, walks still WALK).
+  rules over the whole live payload (6 trips -> lines 2/3/5 SUBWAY, M101 BUS, walks still WALK). The trip SUMMARY (`parseLines` with `leg == null`) keeps EVERY bullet line beside the pills (review 2026-09-12): a two-subway trip showed one line on the card and a bus-plus-subway trip showed the bus alone. A per-leg node still takes one line, pill first.
 - **Live stop departure board (`WebStopDeparturesFetcher` + `core/.../StopDeparturesParser`,
   2026-07-12, keyless + device-verified).** Tapping a transit STATION shows Google's "See departure
   board" in the place sheet. The board is embedded in the station's OWN place page's
