@@ -201,6 +201,8 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -1355,6 +1357,7 @@ fun DirectionsPanel(
     flockOnRoute: List<Int> = emptyList(),
     transit: List<TransitItinerary>,
     transitLoading: Boolean,
+    modeEtas: Map<TravelMode, String> = emptyMap(),
     onModeSelected: (TravelMode) -> Unit,
     avoidTolls: Boolean = false,
     avoidHighways: Boolean = false,
@@ -1530,13 +1533,17 @@ fun DirectionsPanel(
                     Triple(TravelMode.BICYCLE, stringResource(R.string.place_mode_bike), Icons.AutoMirrored.Filled.DirectionsBike),
                 ).forEach { (mode, label, icon) ->
                     // Google-style mode pills: stadium shape + a mode glyph, not bare squarish chips.
+                    // Once a mode's time is known the chip shows THAT ("25 min") and the glyph says
+                    // which mode, as Google's do; the mode name stays as the accessibility name.
+                    val eta = modeEtas[mode]
                     FilterChip(
                         selected = currentMode == mode,
                         onClick = { onModeSelected(mode) },
-                        label = { Text(label) },
+                        label = { Text(eta ?: label) },
                         leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
                         shape = androidx.compose.foundation.shape.CircleShape,
-                        modifier = if (mode == TravelMode.DRIVE) Modifier.focusRequester(dirAutoFocus) else Modifier,
+                        modifier = (if (mode == TravelMode.DRIVE) Modifier.focusRequester(dirAutoFocus) else Modifier)
+                            .semantics { contentDescription = if (eta != null) "$label, $eta" else label },
                     )
                 }
             }
