@@ -2442,6 +2442,11 @@ architecture note.
   dialog, the search page's Your lists rows and the map's list pins), so no sort key was added;
   `create` still prepends. The dialog shows up/down IconButtons per row (hidden with one list,
   disabled at the ends) rather than drag-to-reorder: D-pad reachable and no gesture library.
+  **Units default reads the DEVICE locale (2026-09-12):** `Units.init` used `Locale.getDefault()`,
+  but `AppLocale.wrap` (attachBaseContext) has already replaced the JVM default with the in-app
+  language, and the plain "English" choice carries no country, so a US phone flipped to km the
+  moment the language picker was touched. It now reads `Resources.getSystem()`'s locale. Any
+  other "default from locale" decision must do the same (see `AppLocale.deviceDefaultSupported`).
   **`Route.offline` (2026-09-12, issue #350):** every route that came from `routeEngine.route`
   (the two single-leg sites and `chainOnDevice`) is tagged in GoogleMapsDataSource, and the picker
   row prints `place_route_offline` in the traffic slot. Downloaded regions are the FALLBACK, not a
