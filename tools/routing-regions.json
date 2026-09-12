@@ -1962,7 +1962,8 @@
       "name": "China",
       "group": "asia",
       "pbf_url": "https://download.geofabrik.de/asia/china-latest.osm.pbf",
-      "big": true
+      "big": true,
+      "skip_obf": true
     },
     {
       "id": "comores",

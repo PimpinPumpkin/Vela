@@ -2396,7 +2396,7 @@ architecture note.
   `sea` and whole `russia`). `big:true` from a HEAD sweep at 450 MB. Ten whole-country/state rows
   carry `skip_obf:true` (california, italy, germany, france, great-britain, spain, japan, india,
   indonesia, brazil): they OOM the obf bake even filtered, their sub-area rows cover them, and
-  obf-regions.yml's selector drops them; routing-graphs/poi-packs still build them. The list of
+  obf-regions.yml's selector drops them; routing-graphs/poi-packs still build them. China joined the list 2026-09-12 (1.5 GB, OOM at 12g, and Geofabrik has no China sub-extracts, so there is no obf for China until a bigger bake machine exists). The list of
   what Geofabrik has vs the catalog is one script against `index-v1-nogeom.json`; rerun it when
   Geofabrik adds an extract.
   **OBF BAKE, THE FILTER THAT MADE IT FIT (2026-09-11):** MapCreator's memory ceiling is its
@@ -2442,6 +2442,17 @@ architecture note.
   dialog, the search page's Your lists rows and the map's list pins), so no sort key was added;
   `create` still prepends. The dialog shows up/down IconButtons per row (hidden with one list,
   disabled at the ends) rather than drag-to-reorder: D-pad reachable and no gesture library.
+  **Per-mode ETAs on the mode chips (2026-09-12, `MapUiState.modeEtas`):** the chooser's chips
+  show the time ("25 min") and the glyph says the mode, Google's treatment; the mode name stays as
+  the chip's content description. The CURRENT mode's entry is its own route set (`shownDuration`,
+  the picker's fastest figure); the other three come from `prefetchModeEtas`, one after another
+  (OSRM modes first, transit last because it is a hidden-WebView page load), through the SAME
+  `directions()`/`transit()` calls the picker makes when the chip is tapped, so a chip never shows
+  a number the list then contradicts (an OSRM free-flow guess reads minutes under the traffic-aware
+  time on a signalled arterial). Keyed per trip (endpoints, stops, avoids, time, 5-minute bucket)
+  in `modeEtaCache`; `clearRoute` cancels the job and empties the chips. A prefetch skips the mode
+  the user has just tapped (`route()` is already on it). Google's transit summary says "hr", ours
+  "h": `transitChipText` folds the English form so the chips read alike.
   **Units default reads the DEVICE locale (2026-09-12):** `Units.init` used `Locale.getDefault()`,
   but `AppLocale.wrap` (attachBaseContext) has already replaced the JVM default with the in-app
   language, and the plain "English" choice carries no country, so a US phone flipped to km the

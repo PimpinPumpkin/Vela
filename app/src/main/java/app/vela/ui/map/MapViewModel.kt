@@ -29,6 +29,7 @@ import app.vela.core.model.Route
 import app.vela.core.model.SavedPlace
 import app.vela.core.model.ShortcutKind
 import app.vela.core.model.TravelMode
+import app.vela.ui.formatDuration
 import app.vela.core.model.bearingTo
 import app.vela.core.model.distanceTo
 import app.vela.core.nav.NavSession
@@ -202,6 +203,10 @@ data class MapUiState(
     val directionsTimeEpochSec: Long? = null,
     val transit: List<TransitItinerary> = emptyList(),
     val transitLoading: Boolean = false,
+    // One time per travel mode for the chooser's mode chips ("25 min" under the car glyph), the
+    // way Google's chips read. The current mode's entry is its own route set; the others are
+    // prefetched in the background by [MapViewModel.prefetchModeEtas]. Missing = not known yet.
+    val modeEtas: Map<TravelMode, String> = emptyMap(),
     val transitNav: TransitNavState? = null,
     // The transit itinerary whose drill-down row is EXPANDED in the chooser — the map draws its
     // legs (issue #233: coloured ride lines through the stops, dotted walk links) while it's open.
@@ -1040,6 +1045,9 @@ class MapViewModel @Inject constructor(
     // backed out of. Each route() supersedes the previous; a directionsOpen/mode guard is the belt-and-
     // suspenders for the back-out (audit 2026-07-06). Cancelled by clearRoute/clearSelection.
     private var routeJob: Job? = null
+    private var modeEtaJob: Job? = null
+    private var modeEtaKey: String? = null // the trip the chips currently describe
+    private val modeEtaCache = HashMap<String, MutableMap<TravelMode, String>>()
     // Whether the directions chooser is collapsed to its Start bar. UI-owned (the panel's drag
     // physics live in DirectionsPanel), mirrored here by MapScreen so the route-through-here
     // long-press can gate on it - only read while directionsOpen, so a stale value between
@@ -2742,10 +2750,11 @@ class MapViewModel @Inject constructor(
         autoStartOnRoute = false // backing out of directions cancels a pending auto-start (issue #272)
         destination = null
         routeJob?.cancel() // an in-flight directions fetch must not repopulate the route we're backing out of
+        modeEtaJob?.cancel(); modeEtaKey = null
         _state.update {
             it.copy(
                 routes = emptyList(), activeRoute = null, directionsOpen = false,
-                transit = emptyList(), transitLoading = false,
+                transit = emptyList(), transitLoading = false, modeEtas = emptyMap(),
                 showSteps = false, previewStepIndex = null,
                 directionsOrigin = null, pickingOrigin = false, pickingDest = false, directionsReversed = false,
                 directionsWaypoints = emptyList(), pickingStop = false, pickOnMap = null,
@@ -3564,10 +3573,12 @@ class MapViewModel @Inject constructor(
         val origin = (if (s.directionsReversed) place else fromPoint) ?: return
         val dest = (if (s.directionsReversed) fromPoint else place) ?: return
         destination = dest
-        if (mode == TravelMode.TRANSIT) { routeTransit(origin, dest, s.directionsTimeMode, s.directionsTimeEpochSec); return }
         // Stops are ALWAYS stored in travel order (swapDirections physically reverses the list), so no
         // per-call reversal here — display, reorder arrows and routing all agree on one order.
         val stops = s.directionsWaypoints.map { it.location }
+        val etaKey = modeEtaKeyOf(origin, dest, stops, s.avoidTolls, s.avoidHighways, s.directionsTimeMode, s.directionsTimeEpochSec)
+        beginModeEtas(etaKey)
+        if (mode == TravelMode.TRANSIT) { routeTransit(origin, dest, s.directionsTimeMode, s.directionsTimeEpochSec, etaKey); return }
         // Guard: this reply is only applied if directions is still open for the SAME mode (the user hasn't
         // backed out or switched away while it was fetching). Mirrors routeTransit's stale-load guard.
         fun stillWanted() = _state.value.directionsOpen && _state.value.travelMode == mode
@@ -3588,6 +3599,8 @@ class MapViewModel @Inject constructor(
                 // A fetch that found nothing must not leave the Start-pill auto-start armed for
                 // the next, unrelated Directions request.
                 if (routes.isEmpty()) autoStartOnRoute = false
+                shownDuration(routes)?.let { publishModeEta(etaKey, mode, formatDuration(it)) }
+                prefetchModeEtas(etaKey, origin, dest, stops, s.avoidTolls, s.avoidHighways, s.directionsTimeMode, s.directionsTimeEpochSec, except = mode)
                 val flockEpoch = ++routesEpoch // stamp THIS route set; a newer route() bumps it and stales the flock job
                 if (routes.isNotEmpty()) refreshFlockOnRoute(routes, flockEpoch)
                 // The default active route can be a PROVISIONAL Google alternate (it sorts to the
@@ -3689,7 +3702,7 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    private fun routeTransit(origin: LatLng, dest: LatLng, timeMode: Int = 0, timeEpochSec: Long? = null) {
+    private fun routeTransit(origin: LatLng, dest: LatLng, timeMode: Int = 0, timeEpochSec: Long? = null, etaKey: String? = null) {
         _state.update { it.copy(routes = emptyList(), activeRoute = null, transit = emptyList(), transitLoading = true, transitPreview = null, status = null) }
         viewModelScope.launch {
             val trips = runCatching { webDirections.transit(origin, dest, timeMode, timeEpochSec) }.getOrDefault(emptyList())
@@ -3700,6 +3713,67 @@ class MapViewModel @Inject constructor(
                     transitLoading = false,
                     status = if (trips.isEmpty()) appContext.getString(R.string.mapvm_no_transit_routes) else null,
                 )
+            }
+            if (etaKey != null) {
+                trips.firstOrNull()?.durationText?.let { publishModeEta(etaKey, TravelMode.TRANSIT, transitChipText(it)) }
+                val s = _state.value
+                prefetchModeEtas(etaKey, origin, dest, s.directionsWaypoints.map { it.location }, s.avoidTolls, s.avoidHighways, timeMode, timeEpochSec, except = TravelMode.TRANSIT)
+            }
+        }
+    }
+
+    // ---- Per-mode ETAs for the mode chips ------------------------------------------------------
+    // Google's chips carry the time and the glyph carries the mode; ours read the same way. The
+    // current mode's time is its own route set (the picker's "Fastest" figure); the other three
+    // are fetched in the background, one after another, through the SAME directions()/transit()
+    // calls the picker makes when that chip is tapped, so a chip never shows a number the list
+    // then contradicts (an OSRM free-flow guess reads minutes under the traffic-aware time on a
+    // signalled arterial, see the #227 calibration). Cached per trip in 5-minute buckets so
+    // flipping between modes refetches nothing.
+
+    private fun modeEtaKeyOf(origin: LatLng, dest: LatLng, stops: List<LatLng>, avoidTolls: Boolean, avoidHighways: Boolean, timeMode: Int, timeEpochSec: Long?): String {
+        val pts = (listOf(origin) + stops + dest).joinToString(";") { "%.5f,%.5f".format(java.util.Locale.US, it.lat, it.lng) }
+        return "$pts|$avoidTolls|$avoidHighways|$timeMode|$timeEpochSec|${System.currentTimeMillis() / 300_000L}"
+    }
+
+    /** Google's transit summary says "21 hr 6 min" where formatDuration says "21 h 6 min"; the chips
+     *  sit side by side, so the English form is folded to ours. Other languages pass through. */
+    private fun transitChipText(t: String): String = t.replace(Regex("(\\d+) hr\\b"), "$1 h")
+    /** The picker's shown time for a route set: the fastest route's live ETA, free-flow when no traffic. */
+    private fun shownDuration(routes: List<Route>): Double? =
+        routes.minOfOrNull { it.durationInTrafficSeconds ?: it.durationSeconds }
+
+    /** A new trip is being routed: publish whatever the cache already knows for it. */
+    private fun beginModeEtas(key: String) {
+        if (modeEtaCache.size > 16) modeEtaCache.clear()
+        modeEtaKey = key
+        _state.update { it.copy(modeEtas = modeEtaCache[key].orEmpty().toMap()) }
+    }
+
+    private fun publishModeEta(key: String, mode: TravelMode, eta: String) {
+        modeEtaCache.getOrPut(key) { mutableMapOf() }[mode] = eta
+        if (modeEtaKey == key) _state.update { it.copy(modeEtas = modeEtaCache[key].orEmpty().toMap()) }
+    }
+
+    private fun prefetchModeEtas(
+        key: String, origin: LatLng, dest: LatLng, stops: List<LatLng>,
+        avoidTolls: Boolean, avoidHighways: Boolean, timeMode: Int, timeEpochSec: Long?, except: TravelMode,
+    ) {
+        modeEtaJob?.cancel()
+        val known = modeEtaCache[key].orEmpty()
+        // Cheap OSRM modes first; transit last because it is a hidden-WebView page load.
+        val missing = listOf(TravelMode.DRIVE, TravelMode.WALK, TravelMode.BICYCLE, TravelMode.TRANSIT)
+            .filter { it != except && it !in known }
+        if (missing.isEmpty()) return
+        modeEtaJob = viewModelScope.launch {
+            for (m in missing) {
+                if (!_state.value.directionsOpen || modeEtaKey != key) return@launch
+                if (_state.value.travelMode == m) continue // the user tapped it; route() is on it
+                val eta = runCatching {
+                    if (m == TravelMode.TRANSIT) webDirections.transit(origin, dest, timeMode, timeEpochSec).firstOrNull()?.durationText?.let(::transitChipText)
+                    else shownDuration(dataSource.directions(origin, dest, m, stops, avoidTolls, avoidHighways))?.let { formatDuration(it) }
+                }.getOrNull() ?: continue
+                publishModeEta(key, m, eta)
             }
         }
     }
