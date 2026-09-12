@@ -2427,6 +2427,13 @@ architecture note.
   dialog, the search page's Your lists rows and the map's list pins), so no sort key was added;
   `create` still prepends. The dialog shows up/down IconButtons per row (hidden with one list,
   disabled at the ends) rather than drag-to-reorder: D-pad reachable and no gesture library.
+  **Diagnostics events for reviews + location (2026-09-12):** `WebReviewsFetcher` records
+  `reviews` events (the hl it asked for and the app language, each page Google served with its
+  `document.documentElement.lang` and `navigator.language`, and the parsed count or the 45 s
+  timeout) and `LocationProvider` records `location` events (which providers exist/are on, then
+  the FIRST fix's provider, latency and accuracy; never coordinates). Both landed because #359
+  (English reviews on a zh-TW phone) and #362 (a flip phone that "never" gets a fix) could not
+  be reproduced here; ask those reporters for a Settings > Diagnostics export.
   **Puck size/colour setting (issue #344, 2026-09-12):** `ui/NavChrome.PuckStyle` (prefs
   `puck_size` normal/large/xl = 1x/1.25x/1.5x, `puck_style` blue/white). `navPuckBitmap(scale,
   whiteDisc)` draws both the Compose overlay (`remember(PuckStyle.key())`) and the `NAV_PUCK_IMG`
