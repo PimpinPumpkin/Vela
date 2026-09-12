@@ -59,10 +59,26 @@ javac -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*" -d "$WO
 # still the right collector here: a doomed region should fail fast.
 # 12g, not 14g: a 16 GB runner OOM-kills the JVM itself above that, and the lean routing-only
 # bake (see VelaObfShim.java) was MEASURED to complete a 345 MB US state at 12g.
+# ROUTING-ONLY bakes index a PRE-FILTERED extract: MapCreator's memory ceiling is its first
+# pass over every node in the file, and buildings, landuse and the rest of the map are most of
+# those nodes. Keeping only highway ways (with their nodes, so barriers, signals and crossings
+# come along), ferry and shuttle-train routes and turn-restriction relations cuts a US-state
+# extract to roughly a third of its bytes and a quarter of its nodes in a few seconds, which is
+# what brings the big rows under a 16 GB runner's heap (measured on Washington 2026-09-11, see
+# CLAUDE.md). A bake that asks for the address or POI sections needs the whole file and skips it.
+INDEX_PBF="region.osm.pbf"
+if [[ "${VELA_OBF_SECTIONS:-routing}" == "routing" ]]; then
+  osmium tags-filter "$WORK/region.osm.pbf" w/highway w/route=ferry,shuttle_train r/type=restriction \
+    -o "$WORK/region-routing.osm.pbf" --overwrite
+  FULL_MB=$(( ( $(stat -f%z "$WORK/region.osm.pbf" 2>/dev/null || stat -c%s "$WORK/region.osm.pbf") + 1048575 ) / 1048576 ))
+  ROUT_MB=$(( ( $(stat -f%z "$WORK/region-routing.osm.pbf" 2>/dev/null || stat -c%s "$WORK/region-routing.osm.pbf") + 1048575 ) / 1048576 ))
+  echo "→ routing-only filter: ${FULL_MB} MB extract -> ${ROUT_MB} MB of roads"
+  INDEX_PBF="region-routing.osm.pbf"
+fi
 JAVA_HEAP="${JAVA_HEAP:-12g}"
 echo "→ index heap: $JAVA_HEAP"
 set +e
-( cd "$WORK" && java -Xmx"$JAVA_HEAP" -XX:+UseParallelGC -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*:$WORK" VelaObfShim region.osm.pbf )
+( cd "$WORK" && java -Xmx"$JAVA_HEAP" -XX:+UseParallelGC -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*:$WORK" VelaObfShim "$INDEX_PBF" )
 RC=$?
 set -e
 if [ $RC -ne 0 ]; then

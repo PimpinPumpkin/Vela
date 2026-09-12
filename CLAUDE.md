@@ -2389,6 +2389,20 @@ architecture note.
   router ONLY when Google is unreachable, and the "may still use tolls" note shows only then.
   Device-checked on a downtown-to-suburb drive: the interstate route gave way to a state-highway
   one, ~14 min longer, with a live-traffic ETA on both.
+  **OBF BAKE, THE FILTER THAT MADE IT FIT (2026-09-11):** MapCreator's memory ceiling is its
+  first pass over every NODE in the extract, and buildings, landuse and the rest of the map are
+  most of those nodes. `build-obf-region.sh` now runs `osmium tags-filter` first for a
+  routing-only bake (highway ways with their nodes, ferry and shuttle-train routes,
+  turn-restriction relations): Washington went 363 MB -> 119 MB, 49.5 M -> 13 M nodes, in 4 s;
+  the lean bake of the filtered file took 5 MINUTES at 12g instead of 48 and produced an 87 MB
+  obf instead of 111 MB (the difference is non-highway ways OsmAnd's boat/ski/train profiles
+  would use, which Vela never asks for). Device-checked: the filtered Washington obf served
+  through a local manifest (`-PobfManifestUrl=http://127.0.0.1:8099/...` + `adb reverse`)
+  routed a 40 km drive offline in ~15 s. A 150 km route ground for minutes at the engine's
+  256 MB `RoutingMemoryLimits` (tile unloads every 100 ms) - that is the pre-existing
+  intercity ceiling of the obf engine, not the bake. By the 3x rule, rows up to ~1.3 GB should
+  now fit a 16 GB runner; England (1.6 GB) and Nunavut (1.4 GB) are the ones still in doubt.
+  A bake that asks for address/POI sections (`VELA_OBF_SECTIONS`) skips the filter.
   **OBF BAKE, MEASURED 2026-09-04 (read before touching scripts/build-obf-region.sh or the shim):**
   the memory ceiling is MapCreator's FIRST pass (`extractOsmToNodesDB`), so it does not depend on
   which sections you index, only on the PBF and on which analysis passes run. Same 345 MB
