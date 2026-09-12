@@ -654,4 +654,5 @@
     <string name="settings_puck_style_white">Disco blanco, flecha azul</string>
     <string name="list_move_up">Subir la lista</string>
     <string name="list_move_down">Bajar la lista</string>
+    <string name="place_route_offline">ruta sin conexión, sin tráfico en vivo</string>
 </resources>

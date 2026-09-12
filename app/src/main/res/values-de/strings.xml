@@ -654,4 +654,5 @@
     <string name="settings_puck_style_white">Weiße Scheibe, blauer Pfeil</string>
     <string name="list_move_up">Liste nach oben</string>
     <string name="list_move_down">Liste nach unten</string>
+    <string name="place_route_offline">Offline-Route, kein Live-Verkehr</string>
 </resources>

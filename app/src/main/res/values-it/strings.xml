@@ -654,4 +654,5 @@
     <string name="settings_puck_style_white">Disco bianco, freccia blu</string>
     <string name="list_move_up">Sposta la lista in alto</string>
     <string name="list_move_down">Sposta la lista in basso</string>
+    <string name="place_route_offline">percorso offline, senza traffico in tempo reale</string>
 </resources>
