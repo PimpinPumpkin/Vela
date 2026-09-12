@@ -660,4 +660,6 @@
     <string name="settings_puck_style">Цвета стрелки</string>
     <string name="settings_puck_style_blue">Синий круг, белая стрелка</string>
     <string name="settings_puck_style_white">Белый круг, синяя стрелка</string>
+    <string name="list_move_up">Поднять список</string>
+    <string name="list_move_down">Опустить список</string>
 </resources>
