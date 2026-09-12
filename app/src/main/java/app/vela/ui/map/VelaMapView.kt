@@ -4466,7 +4466,7 @@ private const val SAT_DEEP_SRC = "vela-sat-deep-src" // suffixed with the provid
 // rather than 404s, so the fallback never paints holes; true 404s (open ocean) fall back to the
 // overzoomed parent tile like any failed raster fetch.
 private const val SAT_G_TILES = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
-private const val SAT_DEEP_MIN_ZOOM = 18.4f // engage just before the base z19 tiles start visibly stretching
+private const val SAT_DEEP_MIN_ZOOM = 18.6f // = the cross-fade's first stop; below it the layer was invisible yet loading tiles
 
 /** The deep-imagery layer for the current area: Esri at its probed native max level, or the Google
  *  fallback to z21. The source id carries provider+level, so moving between areas with different

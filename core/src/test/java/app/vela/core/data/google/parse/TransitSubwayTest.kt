@@ -49,6 +49,16 @@ class TransitSubwayTest {
         assertEquals("the line name comes from the agency icon, not the localized label", "2", lines[0].name)
     }
 
+    // The trip SUMMARY carries every ridden line. Two subway bullets used to collapse to the first,
+    // and a bus pill beside a subway bullet dropped the subway (the card people pick from).
+    @Test fun `the trip summary keeps every bullet line beside the pills`() {
+        val summary = node(
+            """[[5,["M101",1,"#1d59b3","#ffffff"]],[5,null,[3,"us-ny-mta/2.png",null,"2 Line"]],[5,null,[3,"us-ny-mta/5.png",null,"5 Line"]]]"""
+        )
+        val names = TransitParser.parseLinesForTest(summary, null).map { it.name }
+        assertEquals(listOf("M101", "2", "5"), names)
+    }
+
     @Test fun `a bus keeps its text pill and its colours`() {
         val lines = TransitParser.parseLinesForTest(busBadges, null)
         assertEquals("M101", lines[0].name)

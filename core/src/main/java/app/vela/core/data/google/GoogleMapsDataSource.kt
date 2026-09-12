@@ -476,7 +476,14 @@ class GoogleMapsDataSource @Inject constructor(
                 val onDevice = if (via == null && routeEngine.isReady(mode))
                     chainOnDevice(listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways) else null
                 var result = when {
-                    via != null -> listOf(applyTrafficRatio(via, gD.await().firstOrNull()))
+                    // Calibrated like a single-destination trip (review 2026-09-12): the ratio-only
+                    // overlay this used to take reproduced issue #227 verbatim the moment one stop was
+                    // added, and the nav recheck's etaScale jumped by up to 2.5x when the last stop
+                    // was passed and the recheck switched to the calibrated path. Google's keyless
+                    // answer is the DIRECT trip, so the bias is measured as a speed ratio (the
+                    // distance difference cancels) and Google's congestion spans stay off a route
+                    // that takes other roads.
+                    via != null -> gD.await().firstOrNull().let { g -> listOf(applyTraffic(via, g, freeFlowCal = speedCal(via, g), withSpans = false)) }
                     onDevice != null -> listOf(onDevice)
                     else -> gD.await().take(1).map { it.copy(abbreviatedSteps = true) }
                 }
@@ -730,6 +737,11 @@ class GoogleMapsDataSource @Inject constructor(
         )
         return calibrated.copy(
             durationInTrafficSeconds = calibrated.durationSeconds * factor,
+            // Google's "usually X-Y" typical range belongs to its course; on a same-course route the
+            // primary's durationSeconds IS Google's typical now, so the range applies to it too and
+            // the depart-time chooser can show it (before, only provisional alternates had one).
+            typicalLowSeconds = if (sameCourse) g.typicalLowSeconds?.times(scale) else route.typicalLowSeconds,
+            typicalHighSeconds = if (sameCourse) g.typicalHighSeconds?.times(scale) else route.typicalHighSeconds,
             // Google's congestion spans belong to Google's course: mapped by fraction onto a route
             // that takes different roads they painted red segments on roads Google never reported
             // on (review 2026-09-06).
@@ -781,11 +793,15 @@ class GoogleMapsDataSource @Inject constructor(
     /** Lighter traffic overlay for a multi-stop route: scale the ETA by Google's in-traffic ratio for a
      *  traffic-aware time, but DON'T map the congestion spans — Google's direct origin→dest path differs
      *  from the through-the-stops path, so its span offsets wouldn't line up. ETA only. */
-    private fun applyTrafficRatio(route: Route, g: Route?): Route {
-        val typical = g?.durationSeconds?.takeIf { it > 0 } ?: return route
-        val inTraffic = g.durationInTrafficSeconds ?: return route
-        val factor = (inTraffic / typical).coerceIn(0.5, 4.0)
-        return route.copy(durationInTrafficSeconds = route.durationSeconds * factor)
+    /** Free-flow calibration for a route that does NOT follow Google's course (a stops trip is
+     *  routed through its stops while Google's keyless answer is the direct trip): compare average
+     *  SPEEDS instead of times, so the distance difference cancels and what is left is the speed
+     *  model's bias for that network. Null when either side lacks a duration or a distance. */
+    private fun speedCal(route: Route, g: Route?): Double? {
+        if (g == null || g.durationSeconds <= 0 || g.distanceMeters <= 0 || route.durationSeconds <= 0 || route.distanceMeters <= 0) return null
+        val gSpeed = g.distanceMeters / g.durationSeconds
+        val rSpeed = route.distanceMeters / route.durationSeconds
+        return (rSpeed / gSpeed).coerceIn(0.5, 3.0)
     }
 
     /** Name a provisional alternate the moment the user picks it to drive: snap its (Google) polyline

@@ -280,10 +280,35 @@ object TransitParser {
         // whole identity is an agency-scoped icon. New York's subway is the case that exposed this
         // (issue #284): every subway leg parsed to no line, which made it fall through to WALK and
         // render as an empty walking step, while buses (which do get a text pill) were fine.
-        if (out.isEmpty()) iconLineName(root)?.let { name ->
+        // A per-LEG node carries one line, so the first bullet is the line. The trip SUMMARY
+        // (leg == null) carries every ridden line, and a subway trip's bullets are all it has:
+        // keeping only the first showed a two-line trip as one line on the card people pick from,
+        // and a bus-plus-subway trip as the bus alone (review 2026-09-12). Pills already seen win.
+        if (leg == null) {
+            iconLineNames(root).forEach { name -> if (seen.add(name)) out.add(TransitLine(name = name, mode = mode)) }
+        } else if (out.isEmpty()) iconLineName(root)?.let { name ->
             out.add(TransitLine(name = name, mode = mode))
         }
         return out
+    }
+
+    /** Every agency-scoped line bullet in [root], in document order, distinct; see [iconLineName]. */
+    private fun iconLineNames(root: JsonElement): List<String> {
+        val out = LinkedHashSet<String>()
+        fun walk(n: JsonElement) {
+            when (n) {
+                is JsonArray -> n.forEach(::walk)
+                else -> {
+                    val v = n.str()
+                    if (v != null && v.endsWith(".png") && !v.startsWith("//") && "/" in v) {
+                        val name = v.substringAfterLast('/').removeSuffix(".png").trim()
+                        if (name.isNotEmpty() && name.length <= 12) out.add(name)
+                    }
+                }
+            }
+        }
+        walk(root)
+        return out.toList()
     }
 
     /**
@@ -315,10 +340,10 @@ object TransitParser {
         return best
     }
 
-    /** Infer the vehicle class from any icon filename ("bus2.png", "tram.png",
-     *  "rail.png", …) or mode label in the badge subtree. Vehicle classes are
-     *  tested before WALK: line nodes only exist for ridden segments, so a trip
-     *  whose badges mention both "walk" and "bus" is a bus trip with a walk leg. */
+    /** Infer the vehicle class from the icon FILENAMES in the subtree ("bus2.png", "tram.png",
+     *  "rail.png", "subway2.png", "ferry.png"). Vehicle classes are tested before WALK: line nodes
+     *  only exist for ridden segments, so a trip whose badges mention both "walk" and "bus" is a
+     *  bus trip with a walk leg. */
     private fun guessMode(node: JsonElement): TransitMode {
         // ICON FILENAMES ONLY, never arbitrary strings (issue #284). The old version scanned every
         // short string in the subtree, so a stop or headsign containing a mode word decided the
@@ -343,10 +368,10 @@ object TransitParser {
         val s = hay.toString().lowercase()
         return when {
             "bus" in s -> TransitMode.BUS
-            "subway" in s || "metro" in s -> TransitMode.SUBWAY
-            "tram" in s || "light rail" in s || "streetcar" in s || "lightrail" in s -> TransitMode.TRAM
-            "train" in s || "rail" in s -> TransitMode.TRAIN
-            "ferry" in s || "boat" in s -> TransitMode.FERRY
+            "subway" in s -> TransitMode.SUBWAY
+            "tram" in s -> TransitMode.TRAM
+            "rail" in s || "train" in s -> TransitMode.TRAIN
+            "ferry" in s -> TransitMode.FERRY
             "walk" in s -> TransitMode.WALK
             else -> TransitMode.GENERIC
         }
