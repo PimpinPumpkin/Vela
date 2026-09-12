@@ -26,7 +26,7 @@ on:
         type: string
         default: ""
       skip_big:
-        description: "Skip large (big:true) regions for a quick run"
+        description: "Skip large (big:true) regions for a quick run. Since the routing-only pre-filter (2026-09-11) most big rows fit; only the >1.3 GB extracts are still in doubt"
         type: boolean
         default: false
       staging:
