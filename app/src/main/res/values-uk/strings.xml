@@ -653,4 +653,11 @@
     <string name="place_copy_name">Копіювати назву</string>
     <string name="update_notes_show">Що нового</string>
     <string name="update_notes_hide">Сховати зміни</string>
+    <string name="settings_puck_size">Розмір стрілки</string>
+    <string name="settings_puck_size_normal">Звичайний</string>
+    <string name="settings_puck_size_large">Великий</string>
+    <string name="settings_puck_size_xl">Дуже великий</string>
+    <string name="settings_puck_style">Кольори стрілки</string>
+    <string name="settings_puck_style_blue">Синє коло, біла стрілка</string>
+    <string name="settings_puck_style_white">Біле коло, синя стрілка</string>
 </resources>

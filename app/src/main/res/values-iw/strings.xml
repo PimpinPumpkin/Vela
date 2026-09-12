@@ -646,4 +646,11 @@
     <string name="place_copy_name">העתקת השם</string>
     <string name="update_notes_show">מה חדש</string>
     <string name="update_notes_hide">הסתרת מה חדש</string>
+    <string name="settings_puck_size">גודל החץ</string>
+    <string name="settings_puck_size_normal">רגיל</string>
+    <string name="settings_puck_size_large">גדול</string>
+    <string name="settings_puck_size_xl">גדול במיוחד</string>
+    <string name="settings_puck_style">צבעי החץ</string>
+    <string name="settings_puck_style_blue">עיגול כחול, חץ לבן</string>
+    <string name="settings_puck_style_white">עיגול לבן, חץ כחול</string>
 </resources>

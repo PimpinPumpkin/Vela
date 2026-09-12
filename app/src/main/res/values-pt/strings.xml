@@ -645,4 +645,11 @@
     <string name="place_copy_name">Copiar nome</string>
     <string name="update_notes_show">Novidades</string>
     <string name="update_notes_hide">Ocultar novidades</string>
+    <string name="settings_puck_size">Tamanho da seta</string>
+    <string name="settings_puck_size_normal">Normal</string>
+    <string name="settings_puck_size_large">Grande</string>
+    <string name="settings_puck_size_xl">Extra grande</string>
+    <string name="settings_puck_style">Cores da seta</string>
+    <string name="settings_puck_style_blue">Disco azul, seta branca</string>
+    <string name="settings_puck_style_white">Disco branco, seta azul</string>
 </resources>
