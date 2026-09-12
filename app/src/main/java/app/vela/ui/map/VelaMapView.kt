@@ -2683,11 +2683,18 @@ fun VelaMapView(
                 // window exactly when the resume fix needs it big, costing a disengage cycle.
                 val aheadSpeed = maxOf(navPuck.speed, navPuck.speedAtAccept)
                 val ahead = (aheadSpeed * 8.0).coerceIn(150.0, 600.0)
+                // Mode-aware tolerance (user 2026-09-12: "gets me unstuck slower than Google on
+                // foot"). A car sits a lane off the centreline at speed, so it keeps 22 m plus
+                // speed; a walker or cyclist is where the fix says, within its accuracy, so 8 m
+                // plus a share of the reported accuracy, capped at 16 m: cutting a corner over a
+                // crosswalk frees the arrow within a fix or two instead of dragging it along the
+                // route. The heading gate needs a real course: GPS bearing is noise at walking
+                // pace, so below 2.5 m/s off-road it is not consulted.
                 snapToRouteWindowed(
                     myLocation,
-                    if (navPuck.kalman.speed < 1.0) null else myBearing,
+                    if (navPuck.kalman.speed < (if (navDriveMode) 1.0 else 2.5)) null else myBearing,
                     routePolyline, routeCum, navPuck.targetM - 25.0, navPuck.targetM + ahead,
-                    maxM = 22.0 + aheadSpeed.coerceIn(0.0, 13.0),
+                    maxM = puckSnapTolerance(navDriveMode, aheadSpeed, myAccuracyM),
                 )
             } else {
                 // Not yet engaged (nav start, or the ticker just re-keyed on a reroute): one
@@ -2830,11 +2837,11 @@ fun VelaMapView(
             // drop to the raw fix on the 2nd such miss; a distance miss keeps the 3-miss
             // tolerance a canopy spike needs.
             val missSpeed = maxOf(navPuck.speed, navPuck.speedAtAccept)
-            val headingMiss = myLocation != null && myBearing != null && navPuck.kalman.speed >= 2.0 &&
+            val headingMiss = myLocation != null && myBearing != null && navPuck.kalman.speed >= (if (navDriveMode) 2.0 else 2.5) &&
                 snapToRouteWindowed(
                     myLocation, null, routePolyline, routeCum,
                     navPuck.targetM - 25.0, navPuck.targetM + (missSpeed * 8.0).coerceIn(150.0, 600.0),
-                    maxM = 22.0 + missSpeed.coerceIn(0.0, 13.0),
+                    maxM = puckSnapTolerance(navDriveMode, missSpeed, myAccuracyM),
                 ) != null
             if (headingMiss) {
                 navPuck.headingMisses += 1
@@ -5369,6 +5376,14 @@ private fun snapToRouteWindowed(
     if (gpsBearing != null && angleDelta(gpsBearing, routeBearing) > 55f) return null
     return Triple(pt, routeBearing, bestM)
 }
+
+/** How far off the route line a fix may sit and still be drawn ON it. Driving: 22 m plus up
+ *  to 13 m with speed (a lane offset plus fix lag on a wide road). On foot or by bike: 8 m plus
+ *  1.2x the fix's own accuracy, capped at 16 m, so a deliberate shortcut frees the arrow within
+ *  a fix or two (user 2026-09-12). */
+private fun puckSnapTolerance(drive: Boolean, speedMps: Double, accuracyM: Float?): Double =
+    if (drive) 22.0 + speedMps.coerceIn(0.0, 13.0)
+    else (8.0 + 1.2 * (accuracyM?.toDouble() ?: 8.0)).coerceIn(8.0, 16.0)
 
 /** Smallest absolute difference between two compass bearings (deg), 0..180. */
 private fun angleDelta(a: Float, b: Float): Float = kotlin.math.abs((a - b + 540f) % 360f - 180f)

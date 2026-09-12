@@ -249,6 +249,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   device; **Share full trace** is still there, and the on-device copy is never modified.
   Sharing several trips at once trims every one of them the same way. `core/replay/TripScrub`,
   15 tests.
+- ✅ **On foot or by bike the arrow lets go of the route sooner (2026-09-12).** The arrow used to stay glued to the planned line until you were 22 m off it, the car setting. Walking and cycling now use 8 m plus a share of the GPS accuracy, so cutting a corner across a crosswalk shows you where you are within a fix or two.
 - ✅ **Custom list order (2026-09-12, issue #343).** Your lists can be put in any order: up and down arrows on each row in the Your lists dialog (keypad reachable), and the order sticks everywhere lists appear, on the search page and as pins on the map.
 - ✅ **Arrow size and colours (2026-09-12, issue #344).** Settings > Navigation: the navigation arrow comes in Normal, Large (1.25x) and Extra large (1.5x), and in a white-disc-with-blue-arrow variant for people who found the blue disc blending into the blue route line. One setting drives both the follow-mode arrow and the map symbol.
 - ✅ **Google-style nav puck (2026-07-11).** The navigation arrow is a white chevron inside a
