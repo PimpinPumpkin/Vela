@@ -42,6 +42,7 @@ import javax.inject.Singleton
 @Singleton
 class WebReviewsFetcher @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val diag: app.vela.core.diag.DiagLog,
 ) {
     private val pending = ConcurrentHashMap<String, CompletableDeferred<String>>()
     private val progress = ConcurrentHashMap<String, (Int) -> Unit>()
@@ -154,6 +155,12 @@ class WebReviewsFetcher @Inject constructor(
                                 return !(host == "google.com" || host.endsWith(".google.com"))
                             }
                             override fun onPageFinished(view: WebView?, url: String?) {
+                                // Diagnostics: which page Google actually served, and in what
+                                // language (issue #359: a reader whose reviews stay English while
+                                // the app asks for zh-TW; the export says which side to blame).
+                                view?.evaluateJavascript(
+                                    "location.host+location.pathname.slice(0,40)+' lang='+document.documentElement.lang+' nav='+navigator.language",
+                                ) { v -> diag.record("reviews", "page loaded", v?.trim('"')) }
                                 main.postDelayed({ if (!ready.isCompleted) ready.complete(Unit) }, SETTLE_MS)
                             }
                         }
@@ -161,7 +168,9 @@ class WebReviewsFetcher @Inject constructor(
                         // let the MAX_LOAD fallback inject the scraper into the old page and return the
                         // previous place's reviews for THIS featureId (empty > wrong).
                         wv.evaluateJavascript("try{document.documentElement.innerHTML=''}catch(e){}", null)
-                        wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=${reviewsHl()}&gl=us")
+                        val hl = reviewsHl()
+                        diag.record("reviews", "load hl=$hl app=${app.vela.ui.AppLocale.language.value.ifBlank { "system" }}", "cid=$cid")
+                        wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=$hl&gl=us")
                         // Proceed even if the SPA's onPageFinished is slow.
                         main.postDelayed({ if (!ready.isCompleted) ready.complete(Unit) }, MAX_LOAD_MS)
                         ready.await()
@@ -174,7 +183,13 @@ class WebReviewsFetcher @Inject constructor(
                 progress.remove(id)
                 partial.remove(id)
             }
-            if (raw.isNullOrEmpty()) emptyList() else runCatching { ReviewsWebParser.parse(raw) }.getOrDefault(emptyList())
+            val parsed = if (raw.isNullOrEmpty()) emptyList() else runCatching { ReviewsWebParser.parse(raw) }.getOrDefault(emptyList())
+            diag.record(
+                "reviews",
+                if (raw == null) "timed out after ${TOTAL_TIMEOUT_MS / 1000} s with nothing" else "${parsed.size} review(s) parsed",
+                parsed.firstOrNull()?.text?.take(60)?.let { "first text: $it" },
+            )
+            parsed
         }
     }
 
