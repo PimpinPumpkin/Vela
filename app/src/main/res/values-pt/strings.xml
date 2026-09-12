@@ -654,4 +654,5 @@
     <string name="settings_puck_style_white">Disco branco, seta azul</string>
     <string name="list_move_up">Mover lista para cima</string>
     <string name="list_move_down">Mover lista para baixo</string>
+    <string name="place_route_offline">rota offline, sem trânsito em tempo real</string>
 </resources>

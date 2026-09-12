@@ -654,4 +654,5 @@
     <string name="settings_puck_style_white">Witte schijf, blauwe pijl</string>
     <string name="list_move_up">Lijst omhoog</string>
     <string name="list_move_down">Lijst omlaag</string>
+    <string name="place_route_offline">offline route, geen live verkeer</string>
 </resources>

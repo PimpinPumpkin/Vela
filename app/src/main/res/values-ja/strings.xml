@@ -674,4 +674,5 @@
     <string name="settings_puck_style_white">白い円に青い矢印</string>
     <string name="list_move_up">リストを上へ</string>
     <string name="list_move_down">リストを下へ</string>
+    <string name="place_route_offline">オフライン経路、リアルタイム交通情報なし</string>
 </resources>
