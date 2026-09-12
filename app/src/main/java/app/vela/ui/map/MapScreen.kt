@@ -1962,6 +1962,7 @@ fun MapScreen(
                 flockOnRoute = state.flockOnRoute,
                 transit = state.transit,
                 transitLoading = state.transitLoading,
+                modeEtas = state.modeEtas,
                 onModeSelected = vm::setTravelMode,
                 avoidTolls = state.avoidTolls,
                 avoidHighways = state.avoidHighways,
