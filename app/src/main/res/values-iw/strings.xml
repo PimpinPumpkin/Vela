@@ -655,4 +655,5 @@
     <string name="settings_puck_style_white">עיגול לבן, חץ כחול</string>
     <string name="list_move_up">העברת הרשימה למעלה</string>
     <string name="list_move_down">העברת הרשימה למטה</string>
+    <string name="place_route_offline">מסלול לא מקוון, ללא תנועה בזמן אמת</string>
 </resources>

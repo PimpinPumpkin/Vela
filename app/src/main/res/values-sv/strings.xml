@@ -654,4 +654,5 @@
     <string name="settings_puck_style_white">Vit skiva, blå pil</string>
     <string name="list_move_up">Flytta listan upp</string>
     <string name="list_move_down">Flytta listan ner</string>
+    <string name="place_route_offline">offline-rutt, ingen livetrafik</string>
 </resources>

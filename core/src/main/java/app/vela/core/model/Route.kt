@@ -152,6 +152,10 @@ data class Route(
     // toggled-on avoid is never silently ignored (the Reddit "still routed me through the
     // motorway" report).
     val avoidNotHonored: Boolean = false,
+    // Computed ON THE PHONE from a downloaded region (no network, or an avoid toggle Google could
+    // not honour). The picker says so instead of a traffic word: an offline route has no live
+    // traffic and the user should know which kind they are looking at (issue #350).
+    val offline: Boolean = false,
 ) {
     val hasLiveTraffic: Boolean get() = durationInTrafficSeconds != null
     val maneuvers: List<Maneuver> get() = legs.flatMap { it.maneuvers }

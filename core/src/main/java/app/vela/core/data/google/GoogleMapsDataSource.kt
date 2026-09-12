@@ -527,7 +527,7 @@ class GoogleMapsDataSource @Inject constructor(
                 // defeat the timeout entirely. Past the deadline the online chain answers (tagged
                 // not-honored below) and the orphaned compute finishes and is discarded.
                 val avoidD = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
-                    runCatching { routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways) }.getOrDefault(emptyList())
+                    runCatching { routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways).map { it.copy(offline = true) } }.getOrDefault(emptyList())
                 }
                 val avoidRoutes = kotlinx.coroutines.withTimeoutOrNull(AVOID_ONDEVICE_TIMEOUT_MS) { avoidD.await() } ?: emptyList()
                 if (avoidRoutes.isNotEmpty()) {
@@ -566,7 +566,7 @@ class GoogleMapsDataSource @Inject constructor(
             // connectivity, or the FOSSGIS server is down — route fully ON-DEVICE from a downloaded
             // GraphHopper graph, if one covers this area. No traffic offline, but complete named turns.
             val onDevice = if (open.isEmpty() && trafficRoute == null && routeEngine.isReady(mode))
-                routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways) else emptyList()
+                routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways).map { it.copy(offline = true) } else emptyList()
             // Lead with Google's jam-avoiding path (option 3) only when it EARNS it: its live in-traffic
             // ETA is within a small margin of OSRM's FREE-FLOW best, so even Google's detour is time-
             // competitive → the jam is real. The old code led with the snap on ANY >700 m divergence, so a
@@ -734,7 +734,7 @@ class GoogleMapsDataSource @Inject constructor(
      *  (cross-region or off-graph), so the caller can fall through. */
     private fun chainOnDevice(points: List<LatLng>, mode: TravelMode, avoidTolls: Boolean = false, avoidHighways: Boolean = false): Route? {
         val legs = points.zipWithNext().map { (a, b) ->
-            runCatching { routeEngine.route(a, b, mode, avoidTolls, avoidHighways).firstOrNull() }.getOrNull() ?: return null
+            runCatching { routeEngine.route(a, b, mode, avoidTolls, avoidHighways).firstOrNull()?.copy(offline = true) }.getOrNull() ?: return null
         }
         val polyline = legs.flatMapIndexed { i, leg -> if (i == 0) leg.polyline else leg.polyline.drop(1) }
         // Boundary DEPART/ARRIVE steps are dropped, but their step distance is FOLDED into the
@@ -763,6 +763,7 @@ class GoogleMapsDataSource @Inject constructor(
             durationSeconds = dur,
             durationInTrafficSeconds = null, // offline — no live traffic
             summary = legs.firstOrNull()?.summary,
+            offline = true,
         )
     }
 

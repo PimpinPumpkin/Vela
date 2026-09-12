@@ -327,6 +327,7 @@
     <string name="place_delta_min">+%1$d min</string> <!-- format -->
     <string name="place_via">via %1$s</string> <!-- format -->
     <string name="place_live_traffic">live traffic</string>
+    <string name="place_route_offline">offline route, no live traffic</string>
     <string name="place_traffic_light">light traffic</string>
     <string name="place_traffic_moderate">moderate traffic</string>
     <string name="place_traffic_heavy">heavy traffic</string>

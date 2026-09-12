@@ -662,4 +662,5 @@
     <string name="settings_puck_style_white">Białe kółko, niebieska strzałka</string>
     <string name="list_move_up">Przenieś listę wyżej</string>
     <string name="list_move_down">Przenieś listę niżej</string>
+    <string name="place_route_offline">trasa offline, bez ruchu na żywo</string>
 </resources>
