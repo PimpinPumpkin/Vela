@@ -38,6 +38,20 @@ class PlaceListStore @Inject constructor(
 
     fun delete(listId: String): List<PlaceList> = write(lists().filterNot { it.id == listId })
 
+    /** Moves [listId] by [delta] positions (negative = up). The stored array order IS the
+     *  display order everywhere (Your lists dialog, the search page, the map pins), so a
+     *  custom order is just a persisted swap (issue #343). No-op at the ends. */
+    fun move(listId: String, delta: Int): List<PlaceList> {
+        val cur = lists().toMutableList()
+        val i = cur.indexOfFirst { it.id == listId }
+        if (i < 0) return cur
+        val j = (i + delta).coerceIn(0, cur.size - 1)
+        if (j == i) return cur
+        val item = cur.removeAt(i)
+        cur.add(j, item)
+        return write(cur)
+    }
+
     /** Adds [place] to [listId] (idempotent via [ListPlace.matches] — the same chain store
      *  re-resolved under a fresh volatile id must not become a duplicate entry). */
     fun addPlace(listId: String, place: ListPlace): List<PlaceList> = write(

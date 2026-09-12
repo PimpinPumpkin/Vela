@@ -647,6 +647,8 @@
     <string name="mapscreen_section_lists">Your lists</string>
     <string name="mapscreen_new_list">New</string>
     <string name="list_edit">Edit list</string>
+    <string name="list_move_up">Move list up</string>
+    <string name="list_move_down">Move list down</string>
     <string name="list_new_title">New list</string>
     <string name="list_edit_title">Edit list</string>
     <string name="list_name_label">List name</string>
