@@ -645,4 +645,11 @@
     <string name="place_copy_name">Copier le nom</string>
     <string name="update_notes_show">Nouveautés</string>
     <string name="update_notes_hide">Masquer les nouveautés</string>
+    <string name="settings_puck_size">Taille de la flèche</string>
+    <string name="settings_puck_size_normal">Normale</string>
+    <string name="settings_puck_size_large">Grande</string>
+    <string name="settings_puck_size_xl">Très grande</string>
+    <string name="settings_puck_style">Couleurs de la flèche</string>
+    <string name="settings_puck_style_blue">Disque bleu, flèche blanche</string>
+    <string name="settings_puck_style_white">Disque blanc, flèche bleue</string>
 </resources>

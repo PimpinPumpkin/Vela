@@ -653,4 +653,11 @@
     <string name="place_copy_name">Kopiuj nazwę</string>
     <string name="update_notes_show">Co nowego</string>
     <string name="update_notes_hide">Ukryj nowości</string>
+    <string name="settings_puck_size">Rozmiar strzałki</string>
+    <string name="settings_puck_size_normal">Normalny</string>
+    <string name="settings_puck_size_large">Duży</string>
+    <string name="settings_puck_size_xl">Bardzo duży</string>
+    <string name="settings_puck_style">Kolory strzałki</string>
+    <string name="settings_puck_style_blue">Niebieskie kółko, biała strzałka</string>
+    <string name="settings_puck_style_white">Białe kółko, niebieska strzałka</string>
 </resources>

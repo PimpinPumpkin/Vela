@@ -117,6 +117,42 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         }
         Hint(stringResource(R.string.settings_road_label_hint))
 
+        // Arrow size + colours (issue #344): bigger targets for ageing eyes, and a white disc so
+        // the puck does not blend into the blue route line.
+        GroupDivider()
+        Text(
+            stringResource(R.string.settings_puck_size),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
+        )
+        listOf(
+            app.vela.ui.PuckStyle.SIZE_NORMAL to stringResource(R.string.settings_puck_size_normal),
+            app.vela.ui.PuckStyle.SIZE_LARGE to stringResource(R.string.settings_puck_size_large),
+            app.vela.ui.PuckStyle.SIZE_XL to stringResource(R.string.settings_puck_size_xl),
+        ).forEach { (id, label) ->
+            SelectableRow(
+                label = label,
+                selected = app.vela.ui.PuckStyle.size.value == id,
+                onClick = { app.vela.ui.PuckStyle.setSize(context, id) },
+            )
+        }
+        GroupDivider()
+        Text(
+            stringResource(R.string.settings_puck_style),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
+        )
+        listOf(
+            app.vela.ui.PuckStyle.STYLE_BLUE to stringResource(R.string.settings_puck_style_blue),
+            app.vela.ui.PuckStyle.STYLE_WHITE to stringResource(R.string.settings_puck_style_white),
+        ).forEach { (id, label) ->
+            SelectableRow(
+                label = label,
+                selected = app.vela.ui.PuckStyle.style.value == id,
+                onClick = { app.vela.ui.PuckStyle.setStyle(context, id) },
+            )
+        }
+
         var trafficLights by remember { mutableStateOf(prefs.getBoolean("nav_traffic_lights", false)) }
         GroupDivider()
         ToggleRow(

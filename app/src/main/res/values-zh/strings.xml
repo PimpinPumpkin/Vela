@@ -665,4 +665,11 @@
     <string name="place_copy_name">复制名称</string>
     <string name="update_notes_show">更新内容</string>
     <string name="update_notes_hide">隐藏更新内容</string>
+    <string name="settings_puck_size">箭头大小</string>
+    <string name="settings_puck_size_normal">标准</string>
+    <string name="settings_puck_size_large">大</string>
+    <string name="settings_puck_size_xl">特大</string>
+    <string name="settings_puck_style">箭头配色</string>
+    <string name="settings_puck_style_blue">蓝色圆盘，白色箭头</string>
+    <string name="settings_puck_style_white">白色圆盘，蓝色箭头</string>
 </resources>

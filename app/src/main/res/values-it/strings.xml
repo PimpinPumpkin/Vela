@@ -645,4 +645,11 @@
     <string name="place_copy_name">Copia nome</string>
     <string name="update_notes_show">Novità</string>
     <string name="update_notes_hide">Nascondi novità</string>
+    <string name="settings_puck_size">Dimensione della freccia</string>
+    <string name="settings_puck_size_normal">Normale</string>
+    <string name="settings_puck_size_large">Grande</string>
+    <string name="settings_puck_size_xl">Molto grande</string>
+    <string name="settings_puck_style">Colori della freccia</string>
+    <string name="settings_puck_style_blue">Disco blu, freccia bianca</string>
+    <string name="settings_puck_style_white">Disco bianco, freccia blu</string>
 </resources>

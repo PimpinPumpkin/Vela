@@ -653,4 +653,11 @@
     <string name="place_copy_name">Копировать название</string>
     <string name="update_notes_show">Что нового</string>
     <string name="update_notes_hide">Скрыть список изменений</string>
+    <string name="settings_puck_size">Размер стрелки</string>
+    <string name="settings_puck_size_normal">Обычный</string>
+    <string name="settings_puck_size_large">Большой</string>
+    <string name="settings_puck_size_xl">Очень большой</string>
+    <string name="settings_puck_style">Цвета стрелки</string>
+    <string name="settings_puck_style_blue">Синий круг, белая стрелка</string>
+    <string name="settings_puck_style_white">Белый круг, синяя стрелка</string>
 </resources>
