@@ -5728,6 +5728,10 @@ class MapViewModel @Inject constructor(
         if (key == routeCamKey) return
         routeCamKey = key
         spokenCams = emptySet() // a genuinely new route: nothing has been announced on it yet
+        // And nothing is KNOWN on it yet: a reroute resets traveledM to 0 on the new route, so
+        // the old route's distances compared against it would announce a camera you left
+        // kilometres behind, every tick until the fetch lands (or forever if it fails).
+        routeCamMeters = emptyList()
         routeCamJob?.cancel()
         routeCamJob = viewModelScope.launch {
             val cams = runCatching {
