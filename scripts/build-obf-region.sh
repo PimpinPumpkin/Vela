@@ -63,12 +63,13 @@ javac -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*" -d "$WO
 # pass over every node in the file, and buildings, landuse and the rest of the map are most of
 # those nodes. Keeping only highway ways (with their nodes, so barriers, signals and crossings
 # come along), ferry and shuttle-train routes and turn-restriction relations cuts a US-state
-# extract to roughly a third of its bytes and a quarter of its nodes in a few seconds, which is
+# extract to roughly a third of its bytes and a quarter of its nodes in a few seconds (route
+# relations ride along for the bicycle profile's signed-route preference), which is
 # what brings the big rows under a 16 GB runner's heap (measured on Washington 2026-09-11, see
 # CLAUDE.md). A bake that asks for the address or POI sections needs the whole file and skips it.
 INDEX_PBF="region.osm.pbf"
 if [[ "${VELA_OBF_SECTIONS:-routing}" == "routing" ]]; then
-  osmium tags-filter "$WORK/region.osm.pbf" w/highway w/route=ferry,shuttle_train r/type=restriction \
+  osmium tags-filter "$WORK/region.osm.pbf" w/highway w/route=ferry,shuttle_train r/type=restriction r/type=route \
     -o "$WORK/region-routing.osm.pbf" --overwrite
   FULL_MB=$(( ( $(stat -f%z "$WORK/region.osm.pbf" 2>/dev/null || stat -c%s "$WORK/region.osm.pbf") + 1048575 ) / 1048576 ))
   ROUT_MB=$(( ( $(stat -f%z "$WORK/region-routing.osm.pbf" 2>/dev/null || stat -c%s "$WORK/region-routing.osm.pbf") + 1048575 ) / 1048576 ))

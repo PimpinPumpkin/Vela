@@ -2412,7 +2412,12 @@ architecture note.
   256 MB `RoutingMemoryLimits` (tile unloads every 100 ms) - that is the pre-existing
   intercity ceiling of the obf engine, not the bake. By the 3x rule, rows up to ~1.3 GB should
   now fit a 16 GB runner; England (1.6 GB) and Nunavut (1.4 GB) are the ones still in doubt.
-  A bake that asks for address/POI sections (`VELA_OBF_SECTIONS`) skips the filter.
+  A bake that asks for address/POI sections (`VELA_OBF_SECTIONS`) skips the filter. **Route
+  relations are indexed again (2026-09-12):** the lean bake had dropped them (and the filter
+  dropped `type=route` relations), which cost the bicycle profile its signed-cycle-route
+  preference; measured on Washington they add 13% time and 0.4 MB, so `VelaObfShim` keeps
+  `indexRouteRelations` on (`VELA_OBF_ROUTE_RELATIONS=false` to drop) and the filter keeps
+  `r/type=route`. The world was re-baked with them.
   **OBF BAKE, MEASURED 2026-09-04 (read before touching scripts/build-obf-region.sh or the shim):**
   the memory ceiling is MapCreator's FIRST pass (`extractOsmToNodesDB`), so it does not depend on
   which sections you index, only on the PBF and on which analysis passes run. Same 345 MB
