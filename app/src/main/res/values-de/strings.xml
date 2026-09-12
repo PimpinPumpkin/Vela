@@ -645,4 +645,11 @@
     <string name="place_copy_name">Namen kopieren</string>
     <string name="update_notes_show">Was ist neu</string>
     <string name="update_notes_hide">Neuerungen ausblenden</string>
+    <string name="settings_puck_size">Pfeilgröße</string>
+    <string name="settings_puck_size_normal">Normal</string>
+    <string name="settings_puck_size_large">Groß</string>
+    <string name="settings_puck_size_xl">Extra groß</string>
+    <string name="settings_puck_style">Pfeilfarben</string>
+    <string name="settings_puck_style_blue">Blaue Scheibe, weißer Pfeil</string>
+    <string name="settings_puck_style_white">Weiße Scheibe, blauer Pfeil</string>
 </resources>

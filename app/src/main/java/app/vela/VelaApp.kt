@@ -97,6 +97,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.Buildings3d.init(this)
         app.vela.ui.RouteTrail.init(this)
         app.vela.ui.RoadLabel.init(this)
+        app.vela.ui.PuckStyle.init(this)
         app.vela.ui.PreferButtons.init(this)
         app.vela.ui.BuildingOverlay.init(this)
         app.vela.ui.BuildingDebug.init(this)

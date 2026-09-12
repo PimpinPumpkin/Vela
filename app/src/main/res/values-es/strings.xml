@@ -645,4 +645,11 @@
     <string name="place_copy_name">Copiar nombre</string>
     <string name="update_notes_show">Novedades</string>
     <string name="update_notes_hide">Ocultar novedades</string>
+    <string name="settings_puck_size">Tamaño de la flecha</string>
+    <string name="settings_puck_size_normal">Normal</string>
+    <string name="settings_puck_size_large">Grande</string>
+    <string name="settings_puck_size_xl">Extra grande</string>
+    <string name="settings_puck_style">Colores de la flecha</string>
+    <string name="settings_puck_style_blue">Disco azul, flecha blanca</string>
+    <string name="settings_puck_style_white">Disco blanco, flecha azul</string>
 </resources>

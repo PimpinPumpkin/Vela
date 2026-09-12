@@ -645,4 +645,11 @@
     <string name="place_copy_name">Naam kopiëren</string>
     <string name="update_notes_show">Wat is nieuw</string>
     <string name="update_notes_hide">Nieuw verbergen</string>
+    <string name="settings_puck_size">Pijlgrootte</string>
+    <string name="settings_puck_size_normal">Normaal</string>
+    <string name="settings_puck_size_large">Groot</string>
+    <string name="settings_puck_size_xl">Extra groot</string>
+    <string name="settings_puck_style">Pijlkleuren</string>
+    <string name="settings_puck_style_blue">Blauwe schijf, witte pijl</string>
+    <string name="settings_puck_style_white">Witte schijf, blauwe pijl</string>
 </resources>
