@@ -2422,6 +2422,12 @@ architecture note.
   harness is a scratch Python port of AlongRouteFilter + the rate rule over the trip's fixes.
   **Read `docs/puck-jitter.md` first: the eight causes, the measurement scripts in `scripts/jitter/`, and
   the order to run them. Do not start from a theory.**
+  **Puck size/colour setting (issue #344, 2026-09-12):** `ui/NavChrome.PuckStyle` (prefs
+  `puck_size` normal/large/xl = 1x/1.25x/1.5x, `puck_style` blue/white). `navPuckBitmap(scale,
+  whiteDisc)` draws both the Compose overlay (`remember(PuckStyle.key())`) and the `NAV_PUCK_IMG`
+  symbol; the symbol image is registered once per style load, so `PuckStyle.key()` rides the
+  `styleKey` and a change reloads the style. The white disc gets a hairline `#B9BDC2` ring so it
+  keeps an edge over the light map.
   **THE PUCK ITSELF JITTERED BECAUSE IT WAS A MAP SYMBOL (issue #251, fixed 2026-09-03). In
   follow mode the puck is now a COMPOSE OVERLAY, not the `ME_ARROW_LAYER` symbol.** Measured the
   pixel that matters: the white chevron's centroid in an `adb screenrecord` (`scripts/jitter/puck_track.py`: threshold

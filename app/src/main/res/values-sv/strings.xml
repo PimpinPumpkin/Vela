@@ -645,4 +645,11 @@
     <string name="place_copy_name">Kopiera namn</string>
     <string name="update_notes_show">Nyheter</string>
     <string name="update_notes_hide">Dölj nyheter</string>
+    <string name="settings_puck_size">Pilens storlek</string>
+    <string name="settings_puck_size_normal">Normal</string>
+    <string name="settings_puck_size_large">Stor</string>
+    <string name="settings_puck_size_xl">Extra stor</string>
+    <string name="settings_puck_style">Pilens färger</string>
+    <string name="settings_puck_style_blue">Blå skiva, vit pil</string>
+    <string name="settings_puck_style_white">Vit skiva, blå pil</string>
 </resources>

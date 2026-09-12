@@ -249,6 +249,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   device; **Share full trace** is still there, and the on-device copy is never modified.
   Sharing several trips at once trims every one of them the same way. `core/replay/TripScrub`,
   15 tests.
+- ✅ **Arrow size and colours (2026-09-12, issue #344).** Settings > Navigation: the navigation arrow comes in Normal, Large (1.25x) and Extra large (1.5x), and in a white-disc-with-blue-arrow variant for people who found the blue disc blending into the blue route line. One setting drives both the follow-mode arrow and the map symbol.
 - ✅ **Google-style nav puck (2026-07-11).** The navigation arrow is a white chevron inside a
   filled bright-navy circle with a soft drop shadow (no white ring, per user feedback); it rotates
   about the exact GPS point. Replaces the bare blue chevron. **Enlarged twice from feedback

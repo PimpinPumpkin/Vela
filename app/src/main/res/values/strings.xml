@@ -772,6 +772,13 @@
     <string name="settings_road_label_off">Off</string>
     <string name="settings_road_label_bar">Above the bottom bar</string>
     <string name="settings_road_label_puck">Under the arrow</string>
+    <string name="settings_puck_size">Arrow size</string>
+    <string name="settings_puck_size_normal">Normal</string>
+    <string name="settings_puck_size_large">Large</string>
+    <string name="settings_puck_size_xl">Extra large</string>
+    <string name="settings_puck_style">Arrow colours</string>
+    <string name="settings_puck_style_blue">Blue disc, white arrow</string>
+    <string name="settings_puck_style_white">White disc, blue arrow</string>
     <string name="settings_road_label_hint">Where the name of the road you are on is shown while driving. Above the bar keeps it centred and readable for long names; under the arrow follows the arrow around.</string>
     <string name="settings_prefer_buttons">Prefer buttons over swipes</string>
     <string name="settings_prefer_buttons_hint">Keeps a button for things that also have a swipe, such as the step list on the navigation bar. Always on for phones without a touch screen.</string>

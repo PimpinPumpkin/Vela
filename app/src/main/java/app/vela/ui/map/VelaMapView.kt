@@ -2851,7 +2851,9 @@ fun VelaMapView(
             navPuck.rawBearing = myBearing
         }
         // Palette in the key so a Settings colour-set switch reloads the style, same as a theme flip.
-        val styleKey = "$styleUri|dark=$darkTheme|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn"
+        // The puck style rides the key too: the symbol image is registered once per style load
+        // (issue #344), so a size/colour change reloads to re-register it.
+        val styleKey = "$styleUri|dark=$darkTheme|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn|puck=${app.vela.ui.PuckStyle.key()}"
         if (appliedStyleKey != styleKey) {
             appliedStyleKey = styleKey
             val builder = if (styleUri.startsWith("asset://")) {
@@ -3247,7 +3249,8 @@ fun VelaMapView(
         }
     }
     if (puckOverlayOn.value) {
-        val puckImg = remember { navPuckBitmap().asImageBitmap() }
+        val puckKey = app.vela.ui.PuckStyle.key()
+        val puckImg = remember(puckKey) { navPuckBitmap().asImageBitmap() }
         val sizePx = puckImg.width
         androidx.compose.foundation.Image(
             bitmap = puckImg,
@@ -6164,8 +6167,13 @@ private fun arrowBitmap(): Bitmap {
 /** Navigation puck: a WHITE chevron inside a filled BRIGHT-NAVY circle with a soft drop shadow
  *  and NO white ring (user 2026-07-11: bigger, drop the ring, brighter navy blue). Points up
  *  (north) so `iconRotate(bearing)` aims it down the heading. */
-private fun navPuckBitmap(): Bitmap {
-    val size = 202 // +15% per issue #251 (2026-08-10); the earlier chain was 96 -> 112 -> 136 -> 176
+private fun navPuckBitmap(
+    scale: Float = app.vela.ui.PuckStyle.scale(),
+    whiteDisc: Boolean = app.vela.ui.PuckStyle.whiteDisc(),
+): Bitmap {
+    // 202 = +15% per issue #251 (2026-08-10); the earlier chain was 96 -> 112 -> 136 -> 176.
+    // [scale] is the Settings "Arrow size" (issue #344): Large 1.25x, Extra large 1.5x.
+    val size = (202 * scale).toInt()
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bmp)
     // Drawn in the original 176-space and scaled whole, so the disc/arrow/shadow proportions the
@@ -6183,11 +6191,24 @@ private fun navPuckBitmap(): Bitmap {
         },
     )
     // The bright-navy disc - no white ring this time (user call). #1a46e5 = a vivid, deep blue.
+    // The "white disc" style (issue #344) inverts it: white disc, blue chevron, plus a hairline
+    // grey ring so the disc still has an edge over a light map.
+    val blue = android.graphics.Color.parseColor("#1a46e5")
     canvas.drawCircle(
         cx, cy, r,
-        Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.parseColor("#1a46e5") },
+        Paint(Paint.ANTI_ALIAS_FLAG).apply { color = if (whiteDisc) android.graphics.Color.WHITE else blue },
     )
-    // White chevron/arrow, centred, pointing up - scaled up with the bigger disc.
+    if (whiteDisc) {
+        canvas.drawCircle(
+            cx, cy, r - 1f,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = android.graphics.Color.parseColor("#B9BDC2")
+                style = Paint.Style.STROKE
+                strokeWidth = 2f
+            },
+        )
+    }
+    // Chevron/arrow, centred, pointing up - scaled up with the bigger disc.
     val arrow = Path().apply {
         moveTo(cx, cy - 32f)          // tip
         lineTo(cx + 27f, cy + 26f)    // bottom-right
@@ -6198,7 +6219,7 @@ private fun navPuckBitmap(): Bitmap {
     canvas.drawPath(
         arrow,
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.WHITE
+            color = if (whiteDisc) blue else android.graphics.Color.WHITE
             style = Paint.Style.FILL
         },
     )
