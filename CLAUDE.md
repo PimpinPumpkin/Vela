@@ -2442,6 +2442,10 @@ architecture note.
   dialog, the search page's Your lists rows and the map's list pins), so no sort key was added;
   `create` still prepends. The dialog shows up/down IconButtons per row (hidden with one list,
   disabled at the ends) rather than drag-to-reorder: D-pad reachable and no gesture library.
+  **`Route.offline` (2026-09-12, issue #350):** every route that came from `routeEngine.route`
+  (the two single-leg sites and `chainOnDevice`) is tagged in GoogleMapsDataSource, and the picker
+  row prints `place_route_offline` in the traffic slot. Downloaded regions are the FALLBACK, not a
+  replacement: online, OSRM + Google traffic still answer even with the whole state installed.
   **Puck snap tolerance is MODE-AWARE (2026-09-12, `puckSnapTolerance`):** driving keeps 22 m +
   speed (lane offset + fix lag); walking/cycling use 8 m + 1.2x the fix accuracy, capped at 16 m,
   so a shortcut over a crosswalk frees the arrow within a fix or two instead of dragging it along

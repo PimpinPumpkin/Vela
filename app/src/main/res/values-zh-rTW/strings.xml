@@ -674,4 +674,5 @@
     <string name="settings_puck_style_white">白色圓盤，藍色箭頭</string>
     <string name="list_move_up">上移清單</string>
     <string name="list_move_down">下移清單</string>
+    <string name="place_route_offline">離線路線，無即時路況</string>
 </resources>

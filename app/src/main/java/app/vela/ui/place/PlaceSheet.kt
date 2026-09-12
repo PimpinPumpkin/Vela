@@ -1939,7 +1939,9 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
             // The traffic word GRADES with the same thresholds that colour the ETA (trafficEtaColor),
             // so "heavy traffic" in words backs up the red time - colour alone isn't readable for
             // everyone. A live route whose typical time is unknown keeps the plain "live traffic".
-            val trafficWord = if (!r.hasLiveTraffic) null else when {
+            // An on-device route says so in the traffic slot (issue #350): the user asked to know
+            // which kind of route they are looking at, and "no traffic word" alone did not say.
+            val trafficWord = if (r.offline) stringResource(R.string.place_route_offline) else if (!r.hasLiveTraffic) null else when {
                 r.trafficRatio == null -> stringResource(R.string.place_live_traffic)
                 r.trafficRatio!! > 1.4 -> stringResource(R.string.place_traffic_heavy)
                 r.trafficRatio!! > 1.15 -> stringResource(R.string.place_traffic_moderate)
