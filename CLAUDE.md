@@ -2389,6 +2389,16 @@ architecture note.
   router ONLY when Google is unreachable, and the "may still use tolls" note shows only then.
   Device-checked on a downtown-to-suburb drive: the interstate route gave way to a state-highway
   one, ~14 min longer, with a live-traffic ETA on both.
+  **THE CATALOG COVERS EVERY GEOFABRIK COUNTRY (2026-09-12, 425 rows):** 131 rows added in one
+  pass (every country-level extract Geofabrik publishes that was missing: 49 in Africa, 29 in
+  Asia, 21 in Oceania, 14 in Europe, the Caribbean, Greenland, DC / Puerto Rico / USVI, plus
+  Russia's 8 federal districts as `russia-sub`; skipped only the aggregates `united-kingdom`,
+  `sea` and whole `russia`). `big:true` from a HEAD sweep at 450 MB. Ten whole-country/state rows
+  carry `skip_obf:true` (california, italy, germany, france, great-britain, spain, japan, india,
+  indonesia, brazil): they OOM the obf bake even filtered, their sub-area rows cover them, and
+  obf-regions.yml's selector drops them; routing-graphs/poi-packs still build them. The list of
+  what Geofabrik has vs the catalog is one script against `index-v1-nogeom.json`; rerun it when
+  Geofabrik adds an extract.
   **OBF BAKE, THE FILTER THAT MADE IT FIT (2026-09-11):** MapCreator's memory ceiling is its
   first pass over every NODE in the extract, and buildings, landuse and the rest of the map are
   most of those nodes. `build-obf-region.sh` now runs `osmium tags-filter` first for a

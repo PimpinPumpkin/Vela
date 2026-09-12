@@ -68,6 +68,7 @@ jobs:
                   else (.group as $g | $groups | index($g)) != null end
                 )
               | select( ($skipBig | not) or (.big != true) )
+              | select( .skip_obf != true )
               | {id, name, pbf_url} ]
           ' tools/routing-regions.json)
           n=$(printf '%s' "$sel" | jq 'length')
