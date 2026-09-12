@@ -672,4 +672,6 @@
     <string name="settings_puck_style">矢印の色</string>
     <string name="settings_puck_style_blue">青い円に白い矢印</string>
     <string name="settings_puck_style_white">白い円に青い矢印</string>
+    <string name="list_move_up">リストを上へ</string>
+    <string name="list_move_down">リストを下へ</string>
 </resources>

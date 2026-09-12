@@ -652,4 +652,6 @@
     <string name="settings_puck_style">Pijlkleuren</string>
     <string name="settings_puck_style_blue">Blauwe schijf, witte pijl</string>
     <string name="settings_puck_style_white">Witte schijf, blauwe pijl</string>
+    <string name="list_move_up">Lijst omhoog</string>
+    <string name="list_move_down">Lijst omlaag</string>
 </resources>

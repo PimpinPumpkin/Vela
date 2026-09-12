@@ -652,4 +652,6 @@
     <string name="settings_puck_style">Pfeilfarben</string>
     <string name="settings_puck_style_blue">Blaue Scheibe, weißer Pfeil</string>
     <string name="settings_puck_style_white">Weiße Scheibe, blauer Pfeil</string>
+    <string name="list_move_up">Liste nach oben</string>
+    <string name="list_move_down">Liste nach unten</string>
 </resources>

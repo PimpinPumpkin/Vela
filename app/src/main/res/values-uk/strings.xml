@@ -660,4 +660,6 @@
     <string name="settings_puck_style">Кольори стрілки</string>
     <string name="settings_puck_style_blue">Синє коло, біла стрілка</string>
     <string name="settings_puck_style_white">Біле коло, синя стрілка</string>
+    <string name="list_move_up">Підняти список</string>
+    <string name="list_move_down">Опустити список</string>
 </resources>

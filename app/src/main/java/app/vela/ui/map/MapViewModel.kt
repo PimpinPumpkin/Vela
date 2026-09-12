@@ -3205,6 +3205,11 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(lists = listStore.update(list)) }
     }
 
+    /** Custom list order (issue #343): nudge a list up or down; the store's order is the display order. */
+    fun moveList(listId: String, delta: Int) {
+        _state.update { it.copy(lists = listStore.move(listId, delta)) }
+    }
+
     fun deleteList(listId: String) {
         _state.update {
             it.copy(

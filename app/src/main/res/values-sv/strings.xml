@@ -652,4 +652,6 @@
     <string name="settings_puck_style">Pilens färger</string>
     <string name="settings_puck_style_blue">Blå skiva, vit pil</string>
     <string name="settings_puck_style_white">Vit skiva, blå pil</string>
+    <string name="list_move_up">Flytta listan upp</string>
+    <string name="list_move_down">Flytta listan ner</string>
 </resources>
