@@ -108,6 +108,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.diag.NavTrace.init(this) // opt-in nav smoothness trace (issue #251)
         app.vela.ui.map.MapFonts.init(this) // Roboto basemap glyphs (cached patched style + async refresh)
         Onboarding.init(this)
+        app.vela.ui.WhatsNew.init(this)
         // Persist any fatal crash (stack trace + breadcrumbs) so it survives the
         // restart and can be exported from Settings → Diagnostics next launch.
         CrashCatcher.install(this) { diag.snapshot() }
