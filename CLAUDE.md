@@ -2459,7 +2459,12 @@ architecture note.
   state, so the bar reappears under an identical header. The nav-form card keeps the bar's
   floating geometry (28dp corners, the host's 16dp margins + landscape column). The directions
   PREVIEW sheet (no header) keeps its old slide-in/out. Verify with a screenrecord + a frame
-  contact sheet, not by feel.
+  contact sheet, not by feel. **The list may grow to just under the turn banner** (`stepsListMax`
+  in MapScreen = screen minus the banner's measured bottom minus ~150dp for the header and
+  margins; Google's fills the screen, keeping the next turn visible is worth the strip), shared
+  by the bar's drag cap (`NavControls.maxLift`) and the sheet (`StepsSheet.maxListHeight`); the
+  FAB stack and the speed widget hide while the list is open, since they key off the bar's
+  measured height and would ride up onto the banner.
   **Trail OFF is drawn by the cut piece over a CLEARED ahead line (2026-09-07).** An overlay line
   cannot erase what is under it, so the first trail-off cut (2026-09-06) rode the AHEAD line's own
   gradient - and that line's 256 texels span the 3 km window, 12 m each: on a real drive the blue
@@ -3386,6 +3391,19 @@ architecture note.
   two dispatches); until then the manifest is empty and every phone keeps the Overpass path. Local
   test: bake one region with the osmium + `scripts/road_features_tsv.py` steps, serve it with a
   manifest on :8099, `adb reverse`, build with `-ProadFeaturesManifestUrl=`.
+  **THE CORRIDOR QUERY ANR'D THE APP ON A LONG ROUTE (2026-09-13, three ANR traces from a
+  Davis to San Francisco demo drive, caught before the 0.4.1099 successor stable shipped).**
+  `controlsAlong`/`camerasAlong`/`signalsAlong` ran on the MAIN thread from
+  `refreshNavRouteControls` and tested every feature in the route's bounding box against every
+  polyline segment: ~66k features x 15,890 polyline6 points. Three fixes, all measured on the
+  4a: the callers wrap the queries in `withContext(Dispatchers.Default)`; `SegmentIndex`
+  simplifies the line to 3 m (15,890 -> 1,339 segments) and buckets the segments into 0.01
+  degree cells so each feature tests only the segments near it (index 30 ms, scan 10-20 ms);
+  and `parse` reads the inflated bytes once and parses the decimals by hand with a primitive
+  grid build, because the line/substring/toDouble/boxed-list version took 14.3 s for Northern
+  California's 176k features (now 0.7 s, same counts). Logcat `VelaControls` prints all three
+  timings. A region parse still happens once per process at the first query; if that ever
+  matters, cache the parsed arrays in a binary sidecar.
 - **Offline forward geocoder - typed address → coordinate, no signal (`core/data/OfflineAddressStore` +
   `OverpassPois.fetchAddresses`/`fetchStreets`, DONE 2026-07-07, device-verified in the test suburb).** So an arbitrary
   typed street address routes offline (not only addresses that are an indexed POI). Populated when a map area is

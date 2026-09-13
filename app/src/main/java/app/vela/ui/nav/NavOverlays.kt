@@ -716,6 +716,9 @@ fun NavControls(
     // the same composable the sheet uses, so a partial drag already reads the list (Google's one
     // continuous sheet). Null = the bar just grows blank.
     preview: (@Composable () -> Unit)? = null,
+    // How far the drag may open the well: the same cap the sheet's list gets (null = half the
+    // screen), so the bar never stands taller than the sheet that replaces it.
+    maxLift: androidx.compose.ui.unit.Dp? = null,
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
@@ -729,7 +732,7 @@ fun NavControls(
     val liftScope = rememberCoroutineScope()
     val density = LocalDensity.current
     val latestSteps by rememberUpdatedState(onSteps)
-    val maxLiftPx = with(density) { (LocalConfiguration.current.screenHeightDp * NAV_BAR_LIFT_MAX_FRACTION).dp.toPx() }
+    val maxLiftPx = with(density) { (maxLift ?: (LocalConfiguration.current.screenHeightDp * NAV_BAR_LIFT_MAX_FRACTION).dp).toPx() }
     // The preview's natural height (set in the well's layout pass): the drag never opens the
     // well past the rows it has, or the card would stand taller than the sheet that replaces it.
     val previewNaturalPx = remember { floatArrayOf(0f) }

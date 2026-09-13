@@ -132,6 +132,10 @@ fun StepsSheet(
     // pill geometry (28dp corners; the host supplies the same margins), so the handover from the
     // bar and back is invisible. The lambda's argument closes the sheet with the exit animation.
     header: (@Composable (close: () -> Unit) -> Unit)? = null,
+    // Tallest the LIST may get. The nav form's host sets it so the sheet stops just under the
+    // turn banner (Google's expanded sheet fills the screen; keeping the next turn in view
+    // while reading the list is worth the strip); null = half the screen, the preview default.
+    maxListHeight: androidx.compose.ui.unit.Dp? = null,
     modifier: Modifier = Modifier,
 ) {
     fun romanize(s: String): String =
@@ -297,7 +301,7 @@ fun StepsSheet(
                             .padding(start = 20.dp, end = 8.dp, bottom = 8.dp)
                         else Modifier,
                     )
-                    .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.5f).dp)
+                    .heightIn(max = maxListHeight ?: (LocalConfiguration.current.screenHeightDp * 0.5f).dp)
                     .nestedScroll(dismissConn),
                 state = listState,
             ) {
