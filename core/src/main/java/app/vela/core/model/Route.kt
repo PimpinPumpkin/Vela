@@ -26,7 +26,23 @@ data class Maneuver(
     val lanes: List<Lane> = emptyList(), // per-lane turn guidance (from OSRM) for the Google-style diagram
     val roundabout: RoundaboutGeometry? = null, // ROUNDABOUT/EXIT_ROUNDABOUT only: how to draw the glyph
     val roundaboutExit: Int? = null, // ROUNDABOUT only: which exit to take (1 = first); every router phrases it, the car needs it as a number
-)
+    // Where the road you are on changes its NAME with no turn, along this maneuver's leg: the
+    // "new name" steps foldRenames folded into it (a road that is called one thing here and
+    // another a mile on). Ascending by [RoadRename.atMeters] from this maneuver. The banner and
+    // the under-the-puck pill read the current name through [roadAt].
+    val renames: List<RoadRename> = emptyList(),
+) {
+    /** The road (name, ref) you are on [traveledM] metres past this maneuver: the last rename
+     *  already passed, else the road the maneuver itself entered. */
+    fun roadAt(traveledM: Double): Pair<String?, String?> {
+        var name = road; var r = ref
+        for (x in renames) { if (x.atMeters <= traveledM) { name = x.road; r = x.ref } else break }
+        return name to r
+    }
+}
+
+/** A name change along a maneuver's leg: [atMeters] past the maneuver the road becomes [road] / [ref]. */
+data class RoadRename(val atMeters: Double, val road: String?, val ref: String?)
 
 /**
  * The shape of a roundabout maneuver, so its glyph can be DRAWN rather than picked from a fixed
