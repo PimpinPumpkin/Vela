@@ -2650,6 +2650,13 @@ fun VelaMapView(
         val map = mapRef ?: return@AndroidView
         // Keep the compass clear of the status bar (insets are ready post-layout).
         map.uiSettings.setCompassMargins(0, compassTopPx, compassRightPx, 0)
+        // Picture-in-picture (2026-09-13): no compass in a mini map (it sat on the road in the
+        // window's corner), and NO GESTURES: the system's own tap/double-tap on the PiP window
+        // reached the map as a gesture, which dropped the follow camera, so the restored app
+        // came back detached and needed a Re-center every time (user report).
+        val pipNow = app.vela.ui.PipMode.active.value
+        map.uiSettings.isCompassEnabled = !pipNow
+        map.uiSettings.setAllGesturesEnabled(!pipNow)
         // Browse keeps Google's fade-when-north; NAV shows the compass the whole drive - a
         // stationary route start is often still north-up, which faded it out right when the
         // user looked for it (user 2026-07-14; Google pins it during nav too).

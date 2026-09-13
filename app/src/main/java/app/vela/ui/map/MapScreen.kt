@@ -266,6 +266,11 @@ fun MapScreen(
     // Bumped by the in-nav Overview button; VelaMapView fits the whole route on each bump.
     var navOverviewTick by remember { mutableStateOf(0) }
     var navRecenterTick by remember { mutableStateOf(0) }
+    // Coming back from picture-in-picture re-centres the drive: the surface changed size twice
+    // under the follow camera, and whatever that did to it, the driver expects to land back on
+    // the arrow (user 2026-09-13).
+    val pipActiveNow = app.vela.ui.PipMode.active.value
+    LaunchedEffect(pipActiveNow) { if (!pipActiveNow && state.navigating) navRecenterTick++ }
     // A pinch/shove during nav sets a zoom/tilt override WITHOUT detaching the camera, so
     // navCameraDetached never flips and no Re-center showed (issue #238); the map reports the
     // override up so the button appears for that case too.
@@ -1081,7 +1086,10 @@ fun MapScreen(
             },
             onUserPan = {
                 // Grabbing the map is an explicit "let me look around" - stop tracking until the
-                // locate tap re-arms it (Google drops follow the moment you pan).
+                // locate tap re-arms it (Google drops follow the moment you pan). Not in
+                // picture-in-picture: nothing the user does to a PiP window is a pan, and the
+                // system's taps on it arrived here as one (2026-09-13).
+                if (app.vela.ui.PipMode.active.value) return@VelaMapView
                 followMe = false
                 vm.onUserPanned() // and the first fix, if it has not landed yet, must not fly the camera
                 // Bump ticks, don't flip state here: each sheet GLIDES down first and only then
@@ -2804,10 +2812,13 @@ fun MapScreen(
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                         )
+                        // The road the turn enters, not the whole sentence: "Turn left o..." said
+                        // nothing at the mini map's width; "County Rte E8" does.
+                        val roadOnly = next?.let { m -> m.ref?.takeIf { it.isNotBlank() } ?: m.road?.takeIf { it.isNotBlank() } }
                         Text(
-                            state.maneuverText,
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 1,
+                            roadOnly ?: state.maneuverText,
+                            style = if (roadOnly != null) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
+                            maxLines = if (roadOnly != null) 1 else 2,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         )
                     }
