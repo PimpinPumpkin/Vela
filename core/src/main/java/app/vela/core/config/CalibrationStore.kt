@@ -108,6 +108,15 @@ class CalibrationStore @Inject constructor(
             val list = (v as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content?.toIntOrNull() }
             if (!list.isNullOrEmpty()) k to list else null
         }?.toMap().orEmpty()
+        val remoteDirPaths = (o["directionsPaths"] as? JsonObject)?.mapNotNull { (k, v) ->
+            val list = (v as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content?.toIntOrNull() }
+            if (!list.isNullOrEmpty()) k to list else null
+        }?.toMap().orEmpty()
+        // Plain string maps (review words / selectors): blank values skipped, empty map = absent.
+        fun strMap(k: String): Map<String, String>? =
+            (o[k] as? JsonObject)?.mapNotNull { (key, v) ->
+                (v as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }?.let { key to it }
+            }?.toMap()?.takeIf { it.isNotEmpty() }
         val notices = (o["notices"] as? JsonArray)?.mapNotNull { el ->
             val n = el as? JsonObject ?: return@mapNotNull null
             fun s(k: String): String? = (n[k] as? JsonPrimitive)?.content
@@ -167,6 +176,9 @@ class CalibrationStore @Inject constructor(
             transitCategoryWords = wordList("transitCategoryWords"),
             transitExcludeWords = wordList("transitExcludeWords"),
             stopBoardIndices = stopBoardIndices,
+            directionsPaths = Calibration.DEFAULT_DIRECTIONS_PATHS + remoteDirPaths,
+            reviewWords = strMap("reviewWords"),
+            reviewSelectors = strMap("reviewSelectors"),
         )
     }.getOrNull()
 

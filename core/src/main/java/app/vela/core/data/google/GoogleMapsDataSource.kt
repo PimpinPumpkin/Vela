@@ -898,7 +898,7 @@ class GoogleMapsDataSource @Inject constructor(
         val pb = DirectionsPb.build(origin, destination, mode, cal.directionsPb, avoidTolls, avoidHighways)
         val url = "${cal.directionsEndpoint}&pb=${pb.enc()}"
         val routes = try {
-            DirectionsParser.parse(GoogleResponse.parse(get(url)))
+            DirectionsParser.parse(GoogleResponse.parse(get(url)), cal.directionsPaths)
         } catch (e: CalibrationNeededException) {
             diag.record("drift", "directions parse drift: ${e.message}", url)
             throw e
