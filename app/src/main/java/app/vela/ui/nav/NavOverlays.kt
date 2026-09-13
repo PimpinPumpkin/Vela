@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import kotlin.math.roundToInt
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.layout.layout
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -372,7 +373,7 @@ private const val LANE_SHOW_M = 800.0
 // The nav bottom bar as a drag handle (see NavControls): how far it must be lifted to commit to
 // the step sheet, how far it may lift at all, and the upward fling speed that commits regardless.
 private const val NAV_BAR_LIFT_COMMIT_DP = 56
-private const val NAV_BAR_LIFT_MAX_DP = 120
+private const val NAV_BAR_LIFT_MAX_DP = 160
 private const val NAV_BAR_FLING_PX_S = 900f
 
 // A "then <next>" compound preview only makes sense when the next maneuver closely follows this one
@@ -704,13 +705,18 @@ fun NavControls(
     onSteps: () -> Unit,
     trafficRatio: Double? = null,
     showListButton: Boolean = true, // false = the chevron handle alone (a focusable button itself)
+    // A drag that commits reports how far the bar's top edge had risen (px), so the step sheet
+    // can take over from exactly there instead of sliding in from the screen bottom.
+    onStepsFromDrag: ((liftPx: Float) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
-    // Google's gesture: the ETA bar is the handle for the step list. Drag it UP and the card lifts
-    // with the finger; past NAV_BAR_LIFT_COMMIT_DP (or an upward fling) it commits and the step
-    // sheet slides in from where the bar was; below that it springs back. The list button stays
-    // as the tap and D-pad path (docs/dpad.md), so keypad phones lose nothing.
+    // Google's gesture: the ETA bar is the handle for the step list. Drag it UP and the card GROWS
+    // with the finger, its bottom edge anchored and its top rising like a sheet (it used to float
+    // up as a whole, leaving a strip of map under it); past NAV_BAR_LIFT_COMMIT_DP (or an upward
+    // fling) it commits and the step sheet takes over from the lifted edge; below that it springs
+    // back. The list button stays as the tap and D-pad path (docs/dpad.md), so keypad phones lose
+    // nothing.
     val lift = remember { Animatable(0f) }
     val liftScope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -726,7 +732,13 @@ fun NavControls(
     Card(
         modifier
             .fillMaxWidth()
-            .offset { IntOffset(0, lift.value.roundToInt().coerceAtMost(0)) }
+            // The card reports itself taller by the lift; bottom-aligned in its parent, that moves
+            // the TOP edge up while the content stays put at the top of the card.
+            .layout { measurable, constraints ->
+                val extra = (-lift.value).roundToInt().coerceAtLeast(0)
+                val p = measurable.measure(constraints)
+                layout(p.width, p.height + extra) { p.place(0, 0) }
+            }
             .pointerInput(Unit) {
                 val commitPx = with(density) { NAV_BAR_LIFT_COMMIT_DP.dp.toPx() }
                 val maxLiftPx = with(density) { NAV_BAR_LIFT_MAX_DP.dp.toPx() }
@@ -743,8 +755,10 @@ fun NavControls(
                         val commit = -lift.value > commitPx || vy < -NAV_BAR_FLING_PX_S
                         liftScope.launch {
                             if (commit) {
-                                latestSteps()
-                                lift.snapTo(0f)
+                                // Left lifted on purpose: the sheet replaces this bar on the next
+                                // frame, starting from the edge the finger left it at.
+                                val fromDrag = onStepsFromDrag
+                                if (fromDrag != null) fromDrag(-lift.value) else latestSteps()
                             } else {
                                 lift.animateTo(0f)
                             }
