@@ -431,8 +431,12 @@ Defaults that make the safe path the easy one:
   autoEnter params kept in lockstep with `vm.state.navigating` (Android 12+; pre-12 enters in
   onUserLeaveHint). `PipMode.active` (ui/PipMode.kt) is flipped by onPictureInPictureModeChanged
   and MapScreen wraps EVERYTHING after the VelaMapView call in one `if (!pipUi)` gate, plus a
-  tiny distance-and-turn strip for the small window - any NEW map chrome must live inside that
-  gate or it will render wall-to-wall in the mini map. The turn heads-up (NavigationService's
+  banner for the small window in Google's shape (2026-09-13, was a one-line dark caption the user
+  found hard to parse): the turn card's own `primaryContainer` green across the top with the
+  maneuver glyph, the distance as a bold headline and the turn text under it. NB the 4a
+  (GrapheneOS, Android 14) never entered PiP under adb (Home key, home gesture, the window key,
+  app-op "default"), so that banner was NOT device-verified; the P9 is the phone that shows it.
+  Any NEW map chrome must live inside that gate or it will render wall-to-wall in the mini map. The turn heads-up (NavigationService's
   `vela_nav_turns` channel) deliberately stays quiet while PiP is up: the activity is still
   STARTED in PiP, so AppVisibility.foreground remains true and the alert gate sees "visible".
 - **Long downloads NEVER ride viewModelScope (issue #212, 2026-07-23).** Every multi-MB download
@@ -3807,7 +3811,15 @@ architecture note.
   label directly beneath the nav puck naming the road you are ON. The road is the one entered by
   the LAST MANEUVER PASSED (`maneuvers[stepIndex - 1]`) - the same source the banner's shield
   already uses - preferring its `ref` ("US-23 S", what the reporter's mockup showed) and falling
-  back to the street name; romanized through `SpokenScript.forDisplay` like the banner. Hidden
+  back to the street name; romanized through `SpokenScript.forDisplay` like the banner.
+  **It follows SILENT RENAMES along the leg (2026-09-13, user: the name changes a mile down the
+  same road and the pill never did).** `foldRenames` folds a rename CONTINUE into the previous
+  maneuver so it is neither a card nor a prompt, and until now the folded name was simply lost.
+  It is kept on the leg as `Maneuver.renames` (`RoadRename(atMeters, road, ref)`, ascending), and
+  `Maneuver.roadAt(travelledOnLeg)` answers the road you are on; the pill and the banner's shield
+  both call it with `distanceMeters - nav.distanceToNextManeuver`. Unit-tested in VelaLogicTest.
+  NB `TripLog` does not record renames (its M lines carry no such field), so a REPLAY of a saved
+  trip shows the old behaviour; adding a line kind means a `TripScrub` decision first. Hidden
   while PREVIEWING a step (previewing must not change where you "are"), in PiP, and until a puck
   position exists. Positioned from `VelaMapView`'s new `onPuckScreen` callback, which projects the
   drawn puck to screen px - **reported only when it moves >2 px**, because the follow camera parks
