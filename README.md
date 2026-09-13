@@ -148,8 +148,9 @@ There's also a one-page tour at
 - **Say it or type it.** "Take me home", "get me to work", "navigate to the station",
   "Davis to San Francisco", "nearest pharmacy", "what's my ETA": the search box understands
   those as actions, spoken through the mic or typed, in every language the app speaks, with
-  English understood everywhere too. Dictation is a small on-device speech model; the
-  understanding is plain rules on the phone. Nothing leaves it.
+  English understood everywhere too, and a slip in the command words ("navigat to the
+  station") still lands. Dictation is a small on-device speech model; the understanding is
+  plain rules on the phone. Nothing leaves it.
 - **The rest.** Android Auto, 15 languages,
   in-app light/dark, full D-pad operation for keypad phones, place lists, and a
   built-in updater with weekly-stable or nightly channels.
