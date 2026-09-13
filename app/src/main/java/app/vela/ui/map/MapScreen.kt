@@ -108,6 +108,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -2070,6 +2071,9 @@ fun MapScreen(
                 listName = state.openListId?.let { id -> state.lists.firstOrNull { it.id == id }?.name },
                 query = state.query,
                 minimizeTick = resultsPanTick,
+                moreAvailable = state.resultsMoreQuery != null && state.resultsMoreQuery == state.query && state.openListId == null && state.pendingImport == null,
+                loadingMore = state.resultsLoadingMore,
+                onMore = vm::loadMoreResults,
                 // Landscape: left side panel like the place sheet (see its modifier note).
                 modifier = Modifier
                     .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
@@ -2796,6 +2800,9 @@ private fun SearchResults(
     query: String = "", // the search text — leads the minimized bar so it says WHAT the results are
     minimizeTick: Int = 0, // bumped when the user grabs the map — glide down, THEN flip collapsed
     onShownChange: (Set<String>?) -> Unit = {}, // filtered-surviving ids (null = no filter active)
+    moreAvailable: Boolean = false, // a "More results" row at the end of the list (next pages of the same search)
+    loadingMore: Boolean = false,
+    onMore: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     // A BOTTOM sheet, Google-style, sharing the place sheet's detent grammar:
@@ -3320,6 +3327,16 @@ private fun SearchResults(
                 }
                 Divider()
             }
+                // Next pages of the same search, on demand (the first fetch is three pages).
+                if (moreAvailable) item {
+                    Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                        if (loadingMore) CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                        else TextButton(
+                            onClick = onMore,
+                            modifier = Modifier.dpadHighlight(CircleShape),
+                        ) { Text(stringResource(R.string.mapscreen_more_results)) }
+                    }
+                }
         }
             } // if (!collapsed) — list
         }

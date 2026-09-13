@@ -427,6 +427,7 @@
     <string name="mapscreen_expand_list">Expand list</string>
     <string name="mapscreen_close_results">Close search results</string>
     <string name="mapscreen_filter_open_now">Open now</string>
+    <string name="mapscreen_more_results">More results</string>
     <string name="mapscreen_filter_rating">Rating</string>
     <string name="mapscreen_filter_any_rating">Any rating</string>
     <string name="mapscreen_filter_any_price">Any price</string>
