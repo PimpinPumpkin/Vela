@@ -44,6 +44,15 @@ object QueryIntents {
         /** Verbs WITHOUT a preposition ("take me", "go"): only meaningful before home/work or an
          *  explicit "from A to B", never a free destination ("go karts" is a search). */
         val goBare: List<String> = emptyList(),
+        /** Languages that put the verb AFTER the place ("Xへ行く", "Xまでナビ"). */
+        val goSuffix: List<String> = emptyList(),
+        /** Connectors allowed for a BARE "A to B" (no explicit from); null = the [to] list. Languages
+         *  whose "to" is also an everyday preposition ("в", "na") keep only the unambiguous one here. */
+        val toBare: List<String>? = null,
+        /** Chinese and Japanese: no spaces, phrases attach directly. */
+        val noSpaces: Boolean = false,
+        /** Japanese "AからBまで": the from-marker is a SUFFIX on A, not a prefix. */
+        val fromIsSuffix: Boolean = false,
     )
 
     private val EN = Words(
@@ -138,7 +147,125 @@ object QueryIntents {
         goBare = listOf("breng me", "breng mij", "rijd me", "ga", "navigeer", "route", "ik wil", "ik moet"),
     )
 
-    private val TABLES = mapOf("en" to EN, "fr" to FR, "de" to DE, "es" to ES, "it" to IT, "pt" to PT, "nl" to NL)
+    private val RU = Words(
+        go = listOf("отвези меня в", "отвези меня на", "отвези меня к", "отвези меня до", "довези меня до", "довези меня в", "поехали в", "поехали на", "поехали к", "едем в", "едем на", "едем к", "навигация до", "навигация к", "навигация в", "проложи маршрут до", "проложи маршрут в", "построй маршрут до", "построй маршрут в", "маршрут до", "маршрут в", "маршрут к", "как доехать до", "как добраться до", "как проехать к", "хочу поехать в", "мне нужно в", "мне надо в", "поехать в", "ехать в", "доехать до", "веди меня в", "веди в"),
+        home = listOf("домой", "дом", "мой дом", "к себе домой", "до дома"),
+        work = listOf("на работу", "работа", "работу", "в офис", "офис", "на работе", "до работы"),
+        nearPrefix = listOf("где ближайший", "где ближайшая", "где ближайшее", "где ближайшие", "где есть", "где тут", "где здесь", "где", "найди ближайший", "найди ближайшую", "найди ближайшее", "найди мне", "найди", "покажи мне", "покажи", "поищи", "ищи", "ближайший", "ближайшая", "ближайшее", "ближайшие"),
+        nearSuffix = listOf("рядом со мной", "рядом", "поблизости", "недалеко", "недалеко от меня", "возле меня", "около меня", "здесь рядом"),
+        eta = listOf("когда я приеду", "когда мы приедем", "когда приедем", "сколько осталось", "сколько ещё ехать", "сколько еще ехать", "сколько ещё", "сколько еще", "время прибытия", "во сколько приеду", "во сколько я приеду", "мой eta", "eta", "долго ещё", "долго еще"),
+        from = listOf("из", "от", "с"),
+        to = listOf("в", "до", "на", "к"),
+        toBare = listOf("до"),
+        please = listOf("пожалуйста", "сейчас"),
+        notFrom = listOf("где", "как", "что", "когда", "кто", "почему", "хочу", "надо", "нужно"),
+        goBare = listOf("отвези меня", "довези меня", "поехали", "едем", "навигация", "маршрут", "веди меня", "хочу", "мне нужно", "мне надо"),
+    )
+    private val UK = Words(
+        go = listOf("відвези мене до", "відвези мене в", "відвези мене на", "довези мене до", "поїхали до", "поїхали в", "поїхали на", "їдемо до", "їдемо в", "навігація до", "навігація в", "прокладіть маршрут до", "проклади маршрут до", "побудуй маршрут до", "маршрут до", "маршрут в", "як доїхати до", "як дістатися до", "хочу поїхати до", "хочу поїхати в", "мені треба до", "мені потрібно до", "їхати до", "доїхати до", "веди мене до"),
+        home = listOf("додому", "дім", "мій дім", "до дому", "додому будь ласка"),
+        work = listOf("на роботу", "робота", "роботу", "в офіс", "офіс", "до роботи"),
+        nearPrefix = listOf("де найближчий", "де найближча", "де найближче", "де найближчі", "де є", "де тут", "де", "знайди найближчий", "знайди найближчу", "знайди мені", "знайди", "покажи мені", "покажи", "пошукай", "шукай", "найближчий", "найближча", "найближче", "найближчі"),
+        nearSuffix = listOf("поруч зі мною", "поруч", "поблизу", "неподалік", "біля мене", "коло мене", "тут поруч"),
+        eta = listOf("коли я приїду", "коли ми приїдемо", "коли приїдемо", "скільки залишилось", "скільки залишилося", "скільки ще їхати", "скільки ще", "час прибуття", "о котрій приїду", "мій eta", "eta", "ще довго"),
+        from = listOf("з", "із", "від"),
+        to = listOf("до", "в", "у", "на"),
+        toBare = listOf("до"),
+        please = listOf("будь ласка", "зараз"),
+        notFrom = listOf("де", "як", "що", "коли", "хто", "чому", "хочу", "треба", "потрібно"),
+        goBare = listOf("відвези мене", "довези мене", "поїхали", "їдемо", "навігація", "маршрут", "веди мене", "хочу", "мені треба", "мені потрібно"),
+    )
+    private val PL = Words(
+        go = listOf("zawieź mnie do", "zawieź mnie na", "zabierz mnie do", "zabierz mnie na", "jedź do", "jedź na", "jedziemy do", "jedziemy na", "nawiguj do", "nawiguj na", "nawigacja do", "trasa do", "trasa na", "wyznacz trasę do", "wyznacz trasę na", "pokaż trasę do", "jak dojechać do", "jak dojadę do", "chcę jechać do", "chcę pojechać do", "muszę jechać do", "muszę do", "prowadź do", "prowadź mnie do", "najszybsza trasa do", "najszybsza droga do"),
+        home = listOf("do domu", "dom", "mój dom", "domu"),
+        work = listOf("do pracy", "praca", "pracy", "do biura", "biuro", "biura"),
+        nearPrefix = listOf("gdzie jest najbliższy", "gdzie jest najbliższa", "gdzie jest najbliższe", "gdzie jest", "gdzie są", "gdzie tu", "gdzie", "znajdź najbliższy", "znajdź najbliższą", "znajdź mi", "znajdź", "poszukaj", "szukaj", "wyszukaj", "pokaż mi", "pokaż", "najbliższy", "najbliższa", "najbliższe"),
+        nearSuffix = listOf("w pobliżu", "blisko mnie", "blisko", "niedaleko", "obok mnie", "w okolicy", "tu w pobliżu"),
+        eta = listOf("kiedy dojadę", "kiedy dojedziemy", "kiedy będę na miejscu", "ile zostało", "ile jeszcze", "ile jeszcze jechać", "ile czasu zostało", "czas przyjazdu", "o której dojadę", "mój eta", "eta", "daleko jeszcze"),
+        from = listOf("z", "ze", "od"),
+        to = listOf("do", "na"),
+        toBare = listOf("do"),
+        please = listOf("proszę", "teraz"),
+        notFrom = listOf("gdzie", "jak", "co", "kiedy", "kto", "dlaczego", "chcę", "muszę", "jedź"),
+        goBare = listOf("zawieź mnie", "zabierz mnie", "jedź", "jedziemy", "nawiguj", "nawigacja", "trasa", "prowadź", "chcę", "muszę", "wracam", "wróć"),
+    )
+    private val SV = Words(
+        go = listOf("ta mig till", "kör mig till", "ta mig hem till", "åk till", "kör till", "gå till", "navigera till", "navigering till", "rutt till", "vägbeskrivning till", "snabbaste vägen till", "snabbaste rutten till", "hur kommer jag till", "jag vill åka till", "jag vill till", "jag måste till", "jag ska till", "vi åker till", "visa vägen till"),
+        home = listOf("hem", "hemma", "mitt hem", "hemåt"),
+        work = listOf("jobbet", "jobb", "till jobbet", "mitt jobb", "kontoret", "till kontoret", "arbetet"),
+        nearPrefix = listOf("var är närmaste", "var finns närmaste", "var är", "var finns", "var ligger", "hitta närmaste", "hitta", "sök efter", "sök", "leta efter", "visa mig", "visa", "närmaste", "närmsta"),
+        nearSuffix = listOf("nära mig", "i närheten", "här i närheten", "i min närhet", "nära", "runt omkring"),
+        eta = listOf("när är jag framme", "när kommer jag fram", "när är vi framme", "hur lång tid kvar", "hur långt kvar", "hur länge till", "ankomsttid", "beräknad ankomst", "min eta", "eta", "tid kvar"),
+        from = listOf("från"),
+        to = listOf("till"),
+        please = listOf("tack", "snälla", "nu"),
+        notFrom = listOf("var", "hur", "vad", "när", "vem", "varför", "åk", "kör", "vill", "måste", "ska"),
+        goBare = listOf("ta mig", "kör mig", "åk", "kör", "navigera", "rutt", "jag vill", "jag måste", "jag ska", "vi åker"),
+    )
+    private val HU = Words(
+        go = listOf("vigyél el a", "vigyél el az", "vigyél el", "vigyél a", "vigyél az", "vigyél", "menjünk a", "menjünk az", "menjünk", "navigálj a", "navigálj az", "navigálj", "navigáció a", "navigáció az", "útvonal a", "útvonal az", "útvonalat a", "útvonalat az", "leggyorsabb út a", "leggyorsabb út az", "leggyorsabb útvonal a", "leggyorsabb útvonal az", "hogy jutok el a", "hogy jutok el az", "hogyan jutok el a", "hogyan jutok el az", "el akarok menni a", "el akarok menni az", "el kell mennem a", "el kell mennem az", "irány a", "irány az", "menj a", "menj az"),
+        home = listOf("haza", "otthon", "otthonra", "hazafelé", "az otthonomba", "otthonomba"),
+        work = listOf("munkába", "a munkába", "munkahelyre", "a munkahelyre", "munkahelyemre", "irodába", "az irodába", "munka", "munkahely"),
+        nearPrefix = listOf("hol van a legközelebbi", "hol van a", "hol van az", "hol van", "hol találok", "hol vannak", "keress egy", "keress", "keresd meg a", "keresd meg", "mutasd a legközelebbi", "mutasd meg a", "mutasd", "mutass egy", "mutass", "legközelebbi", "a legközelebbi"),
+        nearSuffix = listOf("a közelben", "a közelemben", "a közelemben van", "itt a közelben", "a közelben van", "közel hozzám", "errefelé"),
+        eta = listOf("mikor érkezem", "mikor érkezünk", "mikor érek oda", "mikor érünk oda", "mennyi idő van hátra", "mennyi van még hátra", "mennyi van hátra", "mennyi idő még", "érkezési idő", "várható érkezés", "hány órakor érkezem", "eta", "az eta", "messze van még"),
+        from = emptyList(),
+        to = emptyList(),
+        please = listOf("kérlek", "légy szíves", "légyszi", "most"),
+        notFrom = emptyList(),
+        goBare = listOf("vigyél", "menjünk", "navigálj", "navigáció", "útvonal", "irány", "menj", "el akarok menni", "el kell mennem"),
+    )
+    private val HE = Words(
+        go = listOf("קח אותי ל", "קח אותי אל", "תיקח אותי ל", "תקח אותי ל", "סע ל", "סע אל", "לך ל", "נווט ל", "נווט אל", "נווט", "ניווט ל", "ניווט אל", "מסלול ל", "מסלול אל", "דרך ל", "איך מגיעים ל", "איך להגיע ל", "אני רוצה להגיע ל", "אני רוצה לנסוע ל", "אני צריך להגיע ל", "אני צריכה להגיע ל", "תוביל אותי ל", "הדרך המהירה ל", "המסלול המהיר ל"),
+        home = listOf("הביתה", "הבית", "הבית שלי", "בית", "לבית"),
+        work = listOf("לעבודה", "עבודה", "העבודה", "העבודה שלי", "למשרד", "משרד", "המשרד"),
+        nearPrefix = listOf("איפה יש", "איפה ה", "איפה", "היכן", "תמצא לי", "תמצא", "מצא לי", "מצא", "חפש לי", "חפש", "תחפש", "תראה לי", "הראה לי", "הכי קרוב", "הקרוב ביותר", "הקרובה ביותר"),
+        nearSuffix = listOf("קרוב אליי", "קרוב אלי", "ליד", "לידי", "בסביבה", "באזור", "הכי קרוב", "הכי קרובה", "הקרוב ביותר", "הקרובה ביותר", "פה קרוב", "כאן קרוב"),
+        eta = listOf("מתי אגיע", "מתי נגיע", "מתי אני מגיע", "מתי אני מגיעה", "כמה זמן נשאר", "כמה זמן עוד", "כמה עוד", "עוד כמה זמן", "זמן הגעה", "זמן הגעה משוער", "באיזו שעה אגיע", "eta", "רחוק עוד"),
+        from = emptyList(),
+        to = emptyList(),
+        please = listOf("בבקשה", "עכשיו"),
+        notFrom = emptyList(),
+        goBare = listOf("קח אותי", "תיקח אותי", "תקח אותי", "סע", "לך", "נווט", "ניווט", "מסלול", "תוביל אותי"),
+    )
+    private val ZH = Words(
+        go = listOf("带我去", "带我到", "帶我去", "帶我到", "导航到", "导航去", "導航到", "導航去", "导航", "導航", "开车去", "開車去", "开到", "開到", "前往", "我要去", "我想去", "我要到", "我想到", "怎么去", "怎麼去", "怎么走到", "怎麼走到", "路线到", "路線到", "路线去", "路線去", "去", "到"),
+        home = listOf("家", "回家", "我家", "带我回家", "帶我回家", "回家去", "家里", "家裡"),
+        work = listOf("公司", "上班", "去上班", "去公司", "办公室", "辦公室", "单位", "單位", "工作"),
+        nearPrefix = listOf("离我最近的", "離我最近的", "最近的", "附近的", "附近有没有", "附近有沒有", "附近有", "哪里有", "哪裡有", "哪里可以", "哪裡可以", "帮我找", "幫我找", "找一下", "找", "搜索", "搜尋", "搜", "查找", "查一下", "给我找", "給我找"),
+        nearSuffix = listOf("附近", "在哪里", "在哪裡", "在哪", "在哪儿", "在哪兒", "在附近"),
+        eta = listOf("预计到达时间", "預計到達時間", "预计几点到", "預計幾點到", "还有多久", "還有多久", "还要多久", "還要多久", "还有多远", "還有多遠", "什么时候到", "什麼時候到", "几点到", "幾點到", "剩余时间", "剩餘時間", "还有多长时间", "還有多長時間", "eta", "我的eta"),
+        from = listOf("从", "從", "由"),
+        to = listOf("到", "去", "至"),
+        toBare = listOf("到"),
+        please = listOf("请", "請", "谢谢", "謝謝", "吧"),
+        notFrom = emptyList(),
+        goBare = emptyList(),
+        noSpaces = true,
+    )
+    private val JA = Words(
+        go = listOf("ナビ", "目的地", "案内して", "行き先"),
+        home = listOf("家", "自宅", "うち", "家に帰る", "家へ帰る", "家に帰りたい", "自宅に帰る", "自宅へ帰る", "うちに帰る", "帰る", "帰宅", "家まで", "自宅まで", "家に", "家へ", "自宅に", "自宅へ"),
+        work = listOf("会社", "職場", "仕事", "オフィス", "会社に行く", "会社へ行く", "職場に行く", "職場へ行く", "会社まで", "職場まで", "会社に", "会社へ", "職場に", "職場へ", "仕事に", "仕事へ"),
+        nearPrefix = listOf("一番近い", "最寄りの", "最寄り", "近くの", "近所の", "付近の", "この辺の", "この近くの", "探して", "検索", "見つけて"),
+        nearSuffix = listOf("はどこですか", "はどこ", "はどこにありますか", "はどこにある", "を探して", "を探す", "を検索", "を見つけて", "が近くにある", "はありますか", "ある"),
+        eta = listOf("あとどのくらい", "あとどれくらい", "あとどのくらいで着く", "あとどれくらいで着く", "到着時間", "到着予定時刻", "到着予定", "いつ着く", "いつ着きますか", "何時に着く", "何時に着きますか", "残り時間", "あと何分", "eta"),
+        from = listOf("から"),
+        to = listOf("まで", "へ", "に"),
+        toBare = listOf("まで"),
+        please = listOf("ください", "お願いします", "お願い", "してください", "して"),
+        notFrom = emptyList(),
+        goBare = emptyList(),
+        goSuffix = listOf("へ連れて行って", "に連れて行って", "まで連れて行って", "へ連れてって", "に連れてって", "まで連れてって", "へ行きたい", "に行きたい", "へ行って", "に行って", "へ行く", "に行く", "へ向かう", "に向かう", "へ向かって", "に向かって", "まで案内して", "へ案内して", "に案内して", "まで案内", "へ案内", "に案内", "までナビ", "へナビ", "にナビ", "までの道", "への道", "への行き方", "までの行き方", "まで", "へ"),
+        noSpaces = true,
+        fromIsSuffix = true,
+    )
+
+    private val TABLES = mapOf(
+        "en" to EN, "fr" to FR, "de" to DE, "es" to ES, "it" to IT, "pt" to PT, "nl" to NL,
+        "ru" to RU, "uk" to UK, "pl" to PL, "sv" to SV, "hu" to HU, "he" to HE, "iw" to HE,
+        "zh" to ZH, "ja" to JA,
+    )
 
     /** The languages with an intent vocabulary; any other language gets plain search. */
     val supportedLanguages: Set<String> get() = TABLES.keys
@@ -161,21 +288,25 @@ object QueryIntents {
     private fun normalise(s: String): String =
         s.trim().lowercase()
             .replace(Regex("[\"“”«»]"), "")
-            .replace(Regex("[!?.,;:]+$"), "")
+            .replace(Regex("[!?.,;:！？。、，]+$"), "")
             .replace(Regex("\\s+"), " ")
             .trim()
 
     private fun parseWith(t0: String, w: Words): QueryIntent? {
         var t = t0
+        val sp = if (w.noSpaces) "" else " "
         // Trailing politeness ("... please", "... s'il te plaît").
         for (p in w.please.sortedByDescending { it.length }) {
-            if (t.endsWith(" $p")) t = t.removeSuffix(" $p").trim()
+            if (t.endsWith("$sp$p") && t.length > p.length) t = t.removeSuffix("$sp$p").trim()
         }
         if (t.isBlank()) return null
         // ETA questions are whole phrases.
         if (w.eta.any { it == t }) return QueryIntent.Eta
-        // "go home" / "take me to work" / bare "home".
-        val afterGo = stripGo(t, w)
+        // Japanese "AからBまで": the trailing "まで" is also a verb suffix, so the route shape is
+        // tried before the suffix strip eats it.
+        if (w.fromIsSuffix) splitRoute(t, w)?.let { return it }
+        // "go home" / "take me to work" / bare "home"; Japanese puts the verb after the place.
+        val afterGo = stripGo(t, w) ?: stripGoSuffix(t, w)
         val afterBare = if (afterGo == null) stripBare(t, w) else null
         val dest = afterGo ?: afterBare ?: t
         if (w.home.any { it == dest }) return QueryIntent.Home
@@ -198,10 +329,10 @@ object QueryIntents {
         var q = t
         var changed = false
         for (p in w.nearPrefix.sortedByDescending { it.length }) {
-            if (q.startsWith("$p ")) { q = q.removePrefix("$p ").trim(); changed = true; break }
+            if (q.startsWith("$p$sp") && q.length > p.length) { q = q.removePrefix("$p$sp").trim(); changed = true; break }
         }
         for (sfx in w.nearSuffix.sortedByDescending { it.length }) {
-            if (q.endsWith(" $sfx")) { q = q.removeSuffix(" $sfx").trim(); changed = true; break }
+            if (q.endsWith("$sp$sfx") && q.length > sfx.length) { q = q.removeSuffix("$sp$sfx").trim(); changed = true; break }
         }
         if (changed && q.isNotBlank() && q != t) return QueryIntent.Search(q)
         return null
@@ -210,37 +341,69 @@ object QueryIntents {
     /** The text after a "navigate to" verb phrase, or null when the query has none. The phrase may
      *  sit behind up to four filler words ("can you please take me to", "find the fastest route to"). */
     private fun stripGo(t: String, w: Words): String? {
+        val sp = if (w.noSpaces) "" else " "
         for (g in w.go.sortedByDescending { it.length }) {
             if (t == g) return ""
-            if (t.startsWith("$g ")) return t.removePrefix("$g ").trim()
-            val idx = t.indexOf(" $g ")
-            if (idx > 0 && t.substring(0, idx).split(' ').size <= 4) return t.substring(idx + g.length + 2).trim()
+            if (t.startsWith("$g$sp")) return t.removePrefix("$g$sp").trim()
+            if (!w.noSpaces) {
+                val idx = t.indexOf(" $g ")
+                if (idx > 0 && t.substring(0, idx).split(' ').size <= 4) return t.substring(idx + g.length + 2).trim()
+            }
+        }
+        return null
+    }
+
+    /** "Xへ行く" -> "X": the verb phrase trails the place (Japanese). */
+    private fun stripGoSuffix(t: String, w: Words): String? {
+        for (g in w.goSuffix.sortedByDescending { it.length }) {
+            if (t.length > g.length && t.endsWith(g)) return t.removeSuffix(g).trim()
         }
         return null
     }
 
     private fun stripBare(t: String, w: Words): String? {
+        val sp = if (w.noSpaces) "" else " "
         for (g in w.goBare.sortedByDescending { it.length }) {
-            if (t.startsWith("$g ")) return t.removePrefix("$g ").trim()
+            if (t.startsWith("$g$sp") && t.length > g.length) return t.removePrefix("$g$sp").trim()
         }
         return null
     }
 
     /** "from A to B" always; "A to B" only when A is not a question word or a verb. */
     private fun splitRoute(t: String, w: Words): QueryIntent.Route? {
-        val explicit = w.from.sortedByDescending { it.length }.firstOrNull { t.startsWith("$it ") }
-        val body = if (explicit != null) t.removePrefix("$explicit ").trim() else t
-        for (to in w.to.sortedByDescending { it.length }) {
-            val idx = body.indexOf(" $to ")
+        if (w.to.isEmpty()) return null
+        val sp = if (w.noSpaces) "" else " "
+        // Japanese "AからBまで": A is everything before the from-marker.
+        if (w.fromIsSuffix) {
+            for (f in w.from) {
+                val fi = t.indexOf(f)
+                if (fi <= 0) continue
+                val a = t.substring(0, fi).trim()
+                val rest = t.substring(fi + f.length)
+                for (to in w.to.sortedByDescending { it.length }) {
+                    val ti = rest.indexOf(to)
+                    if (ti <= 0) continue
+                    val b = rest.substring(0, ti).trim()
+                    if (a.isNotBlank() && b.isNotBlank()) return QueryIntent.Route(a, b)
+                }
+            }
+            return null
+        }
+        val explicit = w.from.sortedByDescending { it.length }.firstOrNull { t.startsWith("$it$sp") && t.length > it.length }
+        val body = if (explicit != null) t.removePrefix("$explicit$sp").trim() else t
+        val connectors = if (explicit == null) (w.toBare ?: w.to) else w.to
+        for (to in connectors.sortedByDescending { it.length }) {
+            val idx = body.indexOf("$sp$to$sp")
             if (idx <= 0) continue
             val a = body.substring(0, idx).trim()
-            val b = body.substring(idx + to.length + 2).trim()
+            val b = body.substring(idx + to.length + 2 * sp.length).trim()
             if (a.isBlank() || b.isBlank()) continue
             if (explicit == null) {
                 // A bare "X to Y" is a route only when X is a place-shaped thing, not a question.
                 val firstWord = a.substringBefore(' ')
                 if (firstWord in w.notFrom) continue
-                if (a.length < 3 || b.length < 3) continue
+                val minLen = if (w.noSpaces) 2 else 3
+                if (a.length < minLen || b.length < minLen) continue
             }
             return QueryIntent.Route(a, b)
         }

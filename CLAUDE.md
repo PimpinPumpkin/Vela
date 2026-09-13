@@ -1738,7 +1738,7 @@ architecture note.
   chooser via the one-shot `openDirectionsOnResult`), Route(from, to) (`routeBetween`: destination
   first, then the origin as a custom From), Search(q) (the filler stripped: "where is the nearest
   X near me" -> X) and Eta (spoken + flashed remaining time while navigating). Per-language word
-  tables for en/fr/de/es/it/pt/nl, English tried as the fallback in every language; a bare verb
+  tables for ALL 15 app languages (zh/ja are `noSpaces`, ja has `goSuffix` verb-after-place and `fromIsSuffix` for AからBまで; ru/uk/pl keep only the unambiguous connector for a bare A-to-B via `toBare`; hu/he have no route shape, their prepositions attach to the word), English tried as the fallback in every language; a coverage test pins the set against the app languages; a bare verb
   ("go", "take me") only counts before home/work or an explicit "from A to B", so "go karts" stays
   a search; a bare "X to Y" is a route only when X is not a question word or a verb ("where to
   eat" stays a search). `routeBetween` also runs the WHOLE phrase as a search first and shows plain
