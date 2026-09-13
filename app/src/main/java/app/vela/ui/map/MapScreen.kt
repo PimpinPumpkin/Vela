@@ -156,7 +156,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.only
@@ -524,16 +523,10 @@ fun MapScreen(
     // left the speedo half-covered by the bar (GitHub issue #2). Falls back to the old constant until
     // the first layout pass measures it.
     var navBarHeightPx by remember { mutableStateOf(0) }
-    // The step sheet grows out of the nav bar's top edge and shrinks back into it: where that
-    // edge sits, measured from the screen bottom (bar height + its 16dp bottom padding + the
-    // system nav bar), plus whatever lift a committing drag left the bar at.
-    val navBarPadDensity = LocalDensity.current
-    val navBarInsets = WindowInsets.navigationBars
-    val navBarPadPx: Float = with(navBarPadDensity) { 16.dp.toPx() } + navBarInsets.getBottom(navBarPadDensity).toFloat()
+    // The step sheet is the nav bar with its list well open: a committing drag hands over the
+    // lift (how far the well is already open) and the sheet grows the rest of the way; closing
+    // shrinks the well to nothing before the bar takes over again.
     var stepsEnterFromPx by remember { mutableStateOf(0f) }
-    // ...and where it returns to: the bar at REST (the measured bar height includes any lift a
-    // committing drag left it at, since the card grows to lift).
-    var stepsExitToPx by remember { mutableStateOf(0f) }
     var stepsCloseTick by remember { mutableStateOf(0) }
     val navBarClearance = with(LocalDensity.current) {
         // bar height + its 16dp bottom padding + a 16dp gap — reproduces the old 132dp at default font scale
@@ -1900,8 +1893,21 @@ fun MapScreen(
 
             state.showSteps -> StepsSheet(
                 enterFromPx = if (state.navigating) stepsEnterFromPx else 0f,
-                exitToPx = if (state.navigating) stepsExitToPx else 0f,
                 closeTick = stepsCloseTick,
+                // During nav the sheet wears the bar's own top, so bar -> sheet -> bar is one
+                // surface changing height; the chevron points down and closes.
+                header = if (state.navigating) { close ->
+                    app.vela.ui.nav.NavBarTop(
+                        remainingDistanceMeters = state.nav.remainingDistance,
+                        remainingSeconds = state.nav.remainingDuration,
+                        offRoute = state.nav.offRoute,
+                        onStop = vm::stopNav,
+                        onSteps = close,
+                        trafficRatio = state.activeRoute?.trafficRatio,
+                        showListButton = false,
+                        handleUp = false,
+                    )
+                } else null,
                 maneuvers = state.activeRoute?.maneuvers ?: emptyList(),
                 etaSeconds = state.activeRoute?.let { it.durationInTrafficSeconds ?: it.durationSeconds } ?: 0.0,
                 distanceMeters = state.activeRoute?.distanceMeters ?: 0.0,
@@ -1925,8 +1931,14 @@ fun MapScreen(
                     !state.directionsReversed -> state.selected?.address
                     else -> null
                 },
-                // Background fills to the bottom; StepsSheet pads its own content.
-                modifier = Modifier.align(Alignment.BottomCenter),
+                // Background fills to the bottom; StepsSheet pads its own content. During nav it
+                // takes the bar's exact margins (floating pill, left column in landscape).
+                modifier = if (state.navigating) Modifier
+                    .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
+                    .landscapeColumn(landscapeChrome, sidePanelWidthDp)
+                    .navigationBarsPadding()
+                    .padding(16.dp)
+                else Modifier.align(Alignment.BottomCenter),
             )
 
             // While an in-nav search has results, the results branch below takes the bottom
@@ -1947,18 +1959,33 @@ fun MapScreen(
                     offRoute = state.nav.offRoute,
                     onStop = vm::stopNav,
                     onSteps = {
-                        // From the button: the sheet still grows out of the bar's resting edge.
-                        stepsEnterFromPx = navBarHeightPx + navBarPadPx
-                        stepsExitToPx = stepsEnterFromPx
+                        // From the button / chevron: the well opens from closed.
+                        stepsEnterFromPx = 0f
                         stepsCloseTick = 0
                         vm.openSteps()
                     },
                     onStepsFromDrag = { liftPx ->
-                        // navBarHeightPx is the GROWN card here (the lift is part of its layout).
-                        stepsEnterFromPx = navBarHeightPx + navBarPadPx
-                        stepsExitToPx = stepsEnterFromPx - liftPx
+                        stepsEnterFromPx = liftPx
                         stepsCloseTick = 0
                         vm.openSteps()
+                    },
+                    // The rows that show under the figures while the bar is pulled up: the same
+                    // StepRow the sheet draws, at the same padding, so nothing moves at the swap.
+                    preview = {
+                        val ms = state.activeRoute?.maneuvers ?: emptyList()
+                        val lat = state.roadNameLatin
+                        val lang = app.vela.ui.AppLocale.effective().language
+                        ms.take(10).forEachIndexed { i, m ->
+                            app.vela.ui.nav.StepRow(
+                                m = m,
+                                active = i == state.nav.stepIndex,
+                                highlighted = false,
+                                romanize = { s -> if (s.isEmpty() || lat.isEmpty()) s else app.vela.core.voice.SpokenScript.forDisplay(s, lang, lat) },
+                                destName = state.arrivedLabel,
+                                destAddress = state.navDestAddress,
+                                onClick = null,
+                            )
+                        }
                     },
                     trafficRatio = state.activeRoute?.trafficRatio,
                     showListButton = app.vela.ui.PreferButtons.on.value || dpadFirst,
