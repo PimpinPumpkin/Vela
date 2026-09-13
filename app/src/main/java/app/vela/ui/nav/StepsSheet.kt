@@ -63,6 +63,8 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.platform.LocalDensity
@@ -72,6 +74,8 @@ import app.vela.ui.place.FLING_COMMIT_DPS
 import app.vela.ui.place.sheetDragGestures
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
+import androidx.compose.runtime.snapshotFlow
 import app.vela.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -114,15 +118,20 @@ fun StepsSheet(
     // in the step list show in Latin where we have a real romanization (issue #184). Empty = unchanged.
     roadLatin: Map<String, String> = emptyMap(),
     uiLang: String = "",
-    // Where the sheet's top edge starts (and returns to on close), measured up from the screen
-    // bottom: the nav bar's lifted top edge, so opening reads as the bar growing into the list
-    // and closing as the list shrinking back into the bar. 0 = from the screen bottom.
+    // With [header] (nav): how much of the list WELL is already open when the sheet takes over,
+    // i.e. the lift the finger left the bar at; the well grows from there to the list's full
+    // height and shrinks back to 0 on close, the card's bottom anchored throughout, so the
+    // sheet is the bar with its list well open. Without a header: the offset the card slides
+    // up from (0 = the screen bottom).
     enterFromPx: Float = 0f,
-    // Where the top edge slides back to on close (the bar at rest); defaults to enterFromPx.
-    exitToPx: Float = enterFromPx,
     // Bumped by the host (BACK) to close WITH the exit animation; the X and the swipe use the
     // same path internally.
     closeTick: Int = 0,
+    // During nav the sheet IS the ETA bar, grown: [header] draws the bar's own top (chevron +
+    // End + figures) in place of the "Steps" title row, and the card keeps the bar's floating
+    // pill geometry (28dp corners; the host supplies the same margins), so the handover from the
+    // bar and back is invisible. The lambda's argument closes the sheet with the exit animation.
+    header: (@Composable (close: () -> Unit) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     fun romanize(s: String): String =
@@ -141,27 +150,37 @@ fun StepsSheet(
     val scope = rememberCoroutineScope()
     val drag = remember { Animatable(0f) }
     var sheetHeightPx by remember { mutableIntStateOf(0) }
-    // Slides in from the bottom edge (the bar it replaces was just lifted by the finger, or the
-    // list button was tapped): the enter offset starts at the sheet's own height and eases to 0.
+    // Slides in from the bottom edge (the list button was tapped from the directions panel):
+    // the enter offset starts at the sheet's own height and eases to 0. In the nav form the
+    // card never slides; `enterPx` is instead how much of the list well is still CLOSED, from
+    // (list height - the bar's lift) to 0, once the list's natural height is known.
     val enter = remember { Animatable(1f) }
-    // The card takes the bar's place at the same edge and colour, so what actually changes at the
-    // handover is the CONTENT; a short fade keeps that from popping (and the exit fades it back).
-    val contentAlpha = remember { Animatable(0f) }
+    // Starts "everything closed" (a huge value clamps the well to 0) so the first frame, before
+    // the list has been measured, IS the bar; the one-shot effect below then waits for the
+    // measurement and opens the well from the handed-over lift. One effect keyed on nothing:
+    // a re-measure mid-animation (rows settle, lanes load) must not restart or cancel it.
+    val enterPx = remember { Animatable(1e9f) }
+    var listNaturalPx by remember { mutableIntStateOf(0) }
+    val navForm = header != null
     LaunchedEffect(Unit) {
-        launch { enter.animateTo(0f, animationSpec = tween(260)) }
-        contentAlpha.animateTo(1f, animationSpec = tween(180))
+        if (!navForm) {
+            enter.animateTo(0f, animationSpec = tween(260))
+        } else {
+            val natural = snapshotFlow { listNaturalPx }.first { it > 0 }
+            enterPx.snapTo((natural - enterFromPx).coerceAtLeast(0f))
+            enterPx.animateTo(0f, animationSpec = tween(240))
+        }
     }
     val density = LocalDensity.current
-    // Close = slide back down to where the bar's top edge is, THEN flip the state; the bar
-    // reappears under the same edge and nothing pops.
+    // Close = the nav form shrinks its well to nothing (the card's top edge comes back down to
+    // the bar's), the plain form slides down; THEN the state flips and nothing pops.
     var closing by remember { mutableStateOf(false) }
     val latestClose by rememberUpdatedState(onClose)
     val dismiss: () -> Unit = {
         if (!closing) {
             closing = true
-            scope.launch { contentAlpha.animateTo(0f, animationSpec = tween(160)) }
             scope.launch {
-                val target = (sheetHeightPx - exitToPx).coerceAtLeast(0f)
+                val target = if (navForm) listNaturalPx.toFloat() else sheetHeightPx.toFloat()
                 drag.animateTo(target, animationSpec = tween(220))
                 latestClose()
             }
@@ -170,8 +189,9 @@ fun StepsSheet(
     LaunchedEffect(closeTick) { if (closeTick > 0) dismiss() }
     val settleDrag: (Float) -> Unit = { velocityPxS ->
         val flick = with(density) { FLING_COMMIT_DPS.dp.toPx() }
+        val span = if (navForm) listNaturalPx else sheetHeightPx
         val committed = velocityPxS > flick ||
-            (drag.value > sheetHeightPx / 3f && velocityPxS > -flick)
+            (drag.value > span / 3f && velocityPxS > -flick)
         if (committed) dismiss() else scope.launch { drag.animateTo(0f) }
     }
     val listState = rememberLazyListState()
@@ -212,68 +232,119 @@ fun StepsSheet(
             .fillMaxWidth()
             .onSizeChanged { sheetHeightPx = it.height }
             // Invisible until measured: the enter offset is a fraction of the sheet's own height,
-            // which is 0 on the first frame, so that frame would flash the sheet fully open.
-            .graphicsLayer { alpha = if (sheetHeightPx == 0) 0f else 1f }
-            .offset { IntOffset(0, (drag.value + (sheetHeightPx - enterFromPx).coerceAtLeast(0f) * enter.value).roundToInt().coerceAtLeast(0)) }
+            // which is 0 on the first frame, so that frame would flash the sheet fully open. The
+            // nav form never slides (its first frame IS the bar: a closed well), so it skips both.
+            .graphicsLayer { alpha = if (!navForm && sheetHeightPx == 0) 0f else 1f }
+            .offset { IntOffset(0, if (navForm) 0 else (drag.value + sheetHeightPx * enter.value).roundToInt().coerceAtLeast(0)) }
             .pointerInput(Unit) {
                 sheetDragGestures(
                     dragBy = { dy -> scope.launch { drag.snapTo((drag.value + dy).coerceAtLeast(0f)) } },
                     settle = settleDrag,
                 )
             },
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        shape = if (header != null) RoundedCornerShape(28.dp) else RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        elevation = if (header != null) CardDefaults.cardElevation(defaultElevation = 6.dp) else CardDefaults.cardElevation(),
         colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark), contentColor = ink),
     ) {
-        // Fill the card to the screen bottom; pad content off the nav bar.
+        // Fill the card to the screen bottom; pad content off the nav bar (the floating nav form
+        // gets its margins from the host, so only the list padding applies there).
         Column(
-            Modifier
-                .graphicsLayer { alpha = contentAlpha.value }
-                .navigationBarsPadding()
-                .padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 8.dp),
+            if (header != null) Modifier
+            else Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 8.dp),
         ) {
-            // Grab handle - signals the sheet drags like the others.
-            Box(Modifier.fillMaxWidth().padding(bottom = 6.dp), contentAlignment = Alignment.Center) {
-                Box(
-                    Modifier
-                        .size(width = 36.dp, height = 4.dp)
-                        .background(dim.copy(alpha = 0.4f), RoundedCornerShape(2.dp)),
-                )
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.steps_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ink)
-                    Text(
-                        formatDuration(etaSeconds) + "  ·  " + formatDistance(distanceMeters) +
-                            if (hasLiveTraffic) "  ·  " + stringResource(R.string.steps_live_traffic) else "",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (hasLiveTraffic) SheetPalette.TrafficGreen else dim,
+            if (header != null) {
+                header(dismiss)
+            } else {
+                // Grab handle - signals the sheet drags like the others.
+                Box(Modifier.fillMaxWidth().padding(bottom = 6.dp), contentAlignment = Alignment.Center) {
+                    Box(
+                        Modifier
+                            .size(width = 36.dp, height = 4.dp)
+                            .background(dim.copy(alpha = 0.4f), RoundedCornerShape(2.dp)),
                     )
                 }
-                IconButton(onClick = dismiss) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.steps_close_cd), tint = dim) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.steps_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ink)
+                        Text(
+                            formatDuration(etaSeconds) + "  ·  " + formatDistance(distanceMeters) +
+                                if (hasLiveTraffic) "  ·  " + stringResource(R.string.steps_live_traffic) else "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (hasLiveTraffic) SheetPalette.TrafficGreen else dim,
+                        )
+                    }
+                    IconButton(onClick = dismiss) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.steps_close_cd), tint = dim) }
+                }
             }
             // D-pad-first (docs/dpad.md): land focus on the first step row when the sheet
             // opens, so it's the active surface (OK previews that step). No-op under touch.
             val stepsAutoFocus = rememberDpadAutoFocus()
+            // The nav form's list WELL: the list at its natural height minus whatever is still
+            // closed (entering) or being pulled shut (drag / exit), clipped; read in the layout
+            // phase so the animation never recomposes the rows.
             LazyColumn(
                 Modifier
                     .fillMaxWidth()
+                    .then(
+                        if (navForm) Modifier
+                            .clipToBounds()
+                            .layout { measurable, constraints ->
+                                val p = measurable.measure(constraints)
+                                if (p.height != listNaturalPx) listNaturalPx = p.height
+                                val h = (p.height - drag.value - enterPx.value).roundToInt().coerceIn(0, p.height)
+                                layout(p.width, h) { p.place(0, 0) }
+                            }
+                            .padding(start = 20.dp, end = 8.dp, bottom = 8.dp)
+                        else Modifier,
+                    )
                     .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.5f).dp)
                     .nestedScroll(dismissConn),
                 state = listState,
             ) {
                 itemsIndexed(maneuvers) { i, m ->
-                    val highlighted = i == previewIndex
-                    val active = i == currentStep
+                    StepRow(
+                        m = m,
+                        active = i == currentStep,
+                        highlighted = i == previewIndex,
+                        romanize = ::romanize,
+                        destName = destName,
+                        destAddress = destAddress,
+                        onClick = { onStep(i) },
+                        modifier = if (i == 0) Modifier.focusRequester(stepsAutoFocus) else Modifier,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** One step of the list: glyph, instruction, signs, road, lanes, distance, then a divider. Shared
+ *  by the sheet's lazy list and the nav bar's drag PREVIEW (the rows that show under the ETA row
+ *  while the bar is being pulled up), so both render pixel-identical. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun StepRow(
+    m: Maneuver,
+    active: Boolean,
+    highlighted: Boolean,
+    romanize: (String) -> String,
+    destName: String?,
+    destAddress: String?,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    val dark = isAppInDarkTheme()
+    val ink = SheetPalette.ink(dark)
+    val dim = SheetPalette.dim(dark)
+    Column(modifier) {
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .then(if (i == 0) Modifier.focusRequester(stepsAutoFocus) else Modifier)
                             .background(
                                 if (highlighted || active) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
                                 else Color.Transparent,
                             )
-                            .dpadHighlight(RoundedCornerShape(6.dp))
-                            .clickable { onStep(i) }
+                            .then(if (onClick != null) Modifier.dpadHighlight(RoundedCornerShape(6.dp)).clickable(onClick = onClick) else Modifier)
                             .padding(vertical = 12.dp, horizontal = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -344,9 +415,6 @@ fun StepsSheet(
                         }
                     }
                     HorizontalDivider()
-                }
-            }
-        }
     }
 }
 
