@@ -43,6 +43,7 @@ import javax.inject.Singleton
 class WebReviewsFetcher @Inject constructor(
     @ApplicationContext private val context: Context,
     private val diag: app.vela.core.diag.DiagLog,
+    private val calibration: app.vela.core.config.CalibrationStore,
 ) {
     private val pending = ConcurrentHashMap<String, CompletableDeferred<String>>()
     private val progress = ConcurrentHashMap<String, (Int) -> Unit>()
@@ -268,8 +269,21 @@ class WebReviewsFetcher @Inject constructor(
      *  positions is the full list). Bridges the accumulated JSON array back once the list is exhausted
      *  or the cap is hit. */
     /** The :core review-word patterns, quoted for embedding in the scraper's JavaScript. */
-    private fun reviewPatternJs(): String = jsString(app.vela.core.data.ReviewWords.REVIEW_PATTERN)
-    private fun morePatternJs(): String = jsString(app.vela.core.data.ReviewWords.MORE_PATTERN)
+    // Words + selectors come from the signed calibration bundle when it carries them
+    // (`reviewWords`, `reviewSelectors`), else the compiled values - so a rotated class name or a
+    // language Google renames the tab in is a config edit (2026-09-13).
+    private fun reviewPatternJs(): String =
+        jsString(calibration.current().reviewWords?.get("review") ?: app.vela.core.data.ReviewWords.REVIEW_PATTERN)
+    private fun morePatternJs(): String =
+        jsString(calibration.current().reviewWords?.get("more") ?: app.vela.core.data.ReviewWords.MORE_PATTERN)
+    private fun selectorsJs(): String {
+        val r = calibration.current().reviewSelectors.orEmpty()
+        fun sel(k: String, def: String) = "\"$k\":" + jsString(r[k] ?: def)
+        return "{" + listOf(
+            sel("card", DEFAULT_CARD_SEL), sel("id", DEFAULT_ID_SEL), sel("moreToggle", DEFAULT_MORE_TOGGLE_SEL),
+            sel("author", DEFAULT_AUTHOR_SEL), sel("text", DEFAULT_TEXT_SEL), sel("date", DEFAULT_DATE_SEL),
+        ).joinToString(",") + "}"
+    }
 
     private fun jsString(v: String): String =
         "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
@@ -300,14 +314,15 @@ class WebReviewsFetcher @Inject constructor(
               // line, every scrape timed out with nothing, issue #359 for every language).
               var REVIEW_WORD=new RegExp(${reviewPatternJs()},'i');
               var MORE_WORD=new RegExp(${morePatternJs()},'i');
+              var SEL=${selectorsJs()};
               function t1(c,sel){ var e=c.querySelector(sel); return e?(e.textContent||'').trim():''; }
               function extract(){
                 // Review cards are `.jJc9Ad`, each with a unique `data-review-id` — far more robust than the
                 // old "div with one star + text" heuristic, which also matched the place header ("4.6 stars
                 // (57,969)") and affiliate ticket cards, and missed most real reviews.
-                var revs=[].slice.call(document.querySelectorAll('.jJc9Ad'));
+                var revs=[].slice.call(document.querySelectorAll(SEL.card));
                 return revs.map(function(c){
-                  var idEl=c.querySelector('[data-review-id]'); var rid=idEl?(idEl.getAttribute('data-review-id')||''):'';
+                  var idEl=c.querySelector(SEL.id); var rid=idEl?(idEl.getAttribute('data-review-id')||idEl.getAttribute('data-id')||''):'';
                   // Rating: the star widget's aria-label LEADS WITH THE NUMBER in every language
                   // ("5 stars", "5 顆星", "5 étoiles", "5 звёзд"), so key on that instead of the
                   // English word. The old `aria-label*="star"` selector matched nothing the moment
@@ -322,14 +337,14 @@ class WebReviewsFetcher @Inject constructor(
                   // author: Google's review name class, else pull the NAME out of a button aria — the
                   // name is always right before "'s review" (after a "Share "/"Photo N on " prefix) or
                   // after "Photo of ". (Class names rotate; the aria phrasing is stable + semantic.)
-                  var author=t1(c,'.d4r55')||t1(c,'.Vpc5Fe')||t1(c,'.TSUbDb');
+                  var author=t1(c,SEL.author);
                   if(!author){ var bs=[].slice.call(c.querySelectorAll('button[aria-label],a[aria-label]'));
                     var strip=/^(?:Share|Like|Response from|Photo of|Photo\s*\d*\s*on|\+?\s*\d*\s*(?:more\s*)?photos?\s*on|\d+\s*photos?\s*on)\s+/i;
                     for(var i=0;i<bs.length;i++){ var a=bs[i].getAttribute('aria-label')||'';
                       var m=a.match(/^(.+?)'s review\b/); var cand=m?m[1]:(a.match(/^Photo of (.+)${'$'}/)||[])[1];
                       if(cand){ var nm=cand.replace(strip,'').trim(); if(nm){ author=nm; break; } } } }
                   // review text: the wiI7pd body, else the longest leaf span that isn't chrome.
-                  var text=t1(c,'.wiI7pd');
+                  var text=t1(c,SEL.text);
                   if(!text){ var best=0; [].slice.call(c.querySelectorAll('span')).forEach(function(s){ if(s.childElementCount===0){ var tt=(s.textContent||'').trim(); if(tt.length>best && tt.length>12 && !/^(see more|more|like|share|response from|local guide)/i.test(tt) && !/\bstar/i.test(tt)){ best=tt.length; text=tt; } } }); }
                   // relative date. `.rsqaWe` is the date element when present; else scan leaf spans.
                   // The old fallback grabbed the FIRST span merely CONTAINING "ago" (tt<22, /\bago\b/) —
@@ -338,7 +353,7 @@ class WebReviewsFetcher @Inject constructor(
                   // date shape ("10 months ago", "a year ago", "Edited 2 weeks ago") or a lone year,
                   // skip owner "Response" lines, and skip spans whose text is part of the review body —
                   // so we pick the real date, not a phrase out of the prose.
-                  var date=t1(c,'.rsqaWe');
+                  var date=t1(c,SEL.date);
                   if(!date){ var body=(text||'').toLowerCase();
                     var reRel=/^(?:edited\s+)?(?:an?|\d+)\s+(?:second|minute|hour|day|week|month|year)s?\s+ago${'$'}/i;
                     [].slice.call(c.querySelectorAll('span')).forEach(function(s){ if(date||s.childElementCount>0) return;
@@ -366,7 +381,7 @@ class WebReviewsFetcher @Inject constructor(
               // works in EVERY UI language; the label regex stays as a fallback for older layouts
               // (it only knows English, which silently skipped expansion under any other hl).
               function expand(){
-                [].slice.call(document.querySelectorAll('button.w8nwRe')).forEach(function(b){ try{ b.click(); }catch(e){} });
+                [].slice.call(document.querySelectorAll(SEL.moreToggle)).forEach(function(b){ try{ b.click(); }catch(e){} });
                 [].slice.call(document.querySelectorAll('button')).forEach(function(b){ var l=((b.getAttribute('aria-label')||b.textContent)||'').trim(); if(/^(see more|more)${'$'}/i.test(l)){ try{ b.click(); }catch(e){} } });
               }
               // De-dupe across scroll windows by the review's stable id (falls back to author+date+text).
@@ -444,12 +459,12 @@ class WebReviewsFetcher @Inject constructor(
                 // once-latched flag: the OVERVIEW's 3 preview cards render briefly before the tab click
                 // blanks the panel, and a latch set by those let the idle-bail fire during the blank
                 // window with exactly 3 accumulated (the "loaded 3 then stopped" bug).
-                var cardsNow = document.querySelectorAll('.jJc9Ad').length>0;
+                var cardsNow = document.querySelectorAll(SEL.card).length>0;
                 if(cardsNow) everCards=true;
                 if(tries===2 || tries%16===0){
                   try{
                     var tabLabels=[].slice.call(document.querySelectorAll('[role="tab"]')).map(function(t){ return ((t.getAttribute('aria-label')||t.textContent)||'').trim().slice(0,40); }).slice(0,4);
-                    VelaBridge.onInfo(ID, JSON.stringify({tries:tries,tabs:tabLabels,sawEntry:sawEntry,opened:opened,by:openedBy,cardsNow:document.querySelectorAll('.jJc9Ad').length,acc:accN,w:window.innerWidth,h:window.innerHeight,main:!!document.querySelector('[role="main"]'),title:(document.title||'').slice(0,40),body:((document.body&&document.body.innerText)||'').length,url:location.pathname.slice(0,60)}));
+                    VelaBridge.onInfo(ID, JSON.stringify({tries:tries,tabs:tabLabels,sawEntry:sawEntry,opened:opened,by:openedBy,cardsNow:document.querySelectorAll(SEL.card).length,acc:accN,w:window.innerWidth,h:window.innerHeight,main:!!document.querySelector('[role="main"]'),title:(document.title||'').slice(0,40),body:((document.body&&document.body.innerText)||'').length,url:location.pathname.slice(0,60)}));
                   }catch(e){}
                 }
                 var moved=scrollStep();
@@ -499,6 +514,13 @@ class WebReviewsFetcher @Inject constructor(
         // Must outlast the script's own hard stop (130 ticks × 250 ms ≈ 33 s + page load) — if Kotlin
         // times out first we return EMPTY, which is worse than few. Lazy + best-effort as ever.
         const val TOTAL_TIMEOUT_MS = 45_000L
+        // Compiled selector defaults (the calibration bundle's `reviewSelectors` overrides per key).
+        const val DEFAULT_CARD_SEL = ".jJc9Ad"
+        const val DEFAULT_ID_SEL = "[data-review-id]"
+        const val DEFAULT_MORE_TOGGLE_SEL = "button.w8nwRe"
+        const val DEFAULT_AUTHOR_SEL = ".d4r55,.Vpc5Fe,.TSUbDb"
+        const val DEFAULT_TEXT_SEL = ".wiI7pd"
+        const val DEFAULT_DATE_SEL = ".rsqaWe"
         const val REAP_IDLE_MS = 120_000L // destroy the idle WebView after this quiet period (issue #182)
         const val SETTLE_MS = 150L
 
