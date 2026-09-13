@@ -3281,6 +3281,16 @@ architecture note.
   to crowd out an exact name match in a state pack; found live while verifying deltas). v1-format packs
   (published before rev existed) have no rev; their first v2 rebuild yields no usable delta so clients just
   full-download once, then deltas kick in.
+- **The AREA SAVE reads the region's PLACE PACK, not Overpass (issue #304, 2026-09-13).**
+  `downloadOfflinePois` first looks up the smallest place-pack region covering the area's centre in
+  the poi-pack manifest: pack installed = nothing to do; graph installed but no pack (a region from
+  before packs, or a failed pack download) = `downloadPoiPackFor`; neither = a status line saying
+  the region download this save also triggers brings the pack. Only an area NO pack covers still
+  runs the three Overpass queries below (POIs, padded addresses, streets), which after the 425-row
+  catalog is nowhere Geofabrik publishes. The "Update saved areas" card goes through the same
+  function. The Nominatim maintainer filed #304 against the app's Overpass use; the remaining
+  callers are the traffic-control layer (viewport box + route corridor) and the opt-in speed-camera
+  layer, next to be moved onto baked per-region files.
 - **Offline forward geocoder - typed address → coordinate, no signal (`core/data/OfflineAddressStore` +
   `OverpassPois.fetchAddresses`/`fetchStreets`, DONE 2026-07-07, device-verified in the test suburb).** So an arbitrary
   typed street address routes offline (not only addresses that are an indexed POI). Populated when a map area is
