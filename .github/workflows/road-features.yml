@@ -1,0 +1,129 @@
+# Build per-region ROAD FEATURES files (traffic lights, stop signs, level crossings, speed humps,
+# speed cameras) from the same Geofabrik extracts the place packs use, and publish them to the
+# `road-features` release. The app downloads the small file for the region it is in instead of
+# querying the public Overpass servers per viewport and per drive (issue #304). Same matrix +
+# merge shape as poi-packs.yml; same catalog (tools/routing-regions.json).
+name: Build road features
+
+on:
+  # Monthly refresh: rebuild EVERY catalogued region from current OSM (files are small; the app
+  # re-downloads a region whenever the manifest carries a newer updatedAt).
+  schedule:
+    - cron: "45 7 4 * *"
+  workflow_dispatch:
+    inputs:
+      group:
+        # A free-text STRING, not a choice: the sub-area groups are one per big country (15 of
+        # them), which a dropdown cannot list usably or combine. Same contract as obf-regions.yml.
+        # Continents: us canada europe oceania asia south-america central-america africa
+        # Sub-areas:  <country>-sub (germany-sub, brazil-sub, france-sub, ...) or all-sub for every one
+        description: "Region group(s): one, several comma/space separated, or 'all-sub' for every sub-area group (ignored if 'ids' is set)"
+        type: string
+        default: us
+      ids:
+        description: "Optional: space/comma-separated region ids (e.g. 'washington oregon'). Overrides 'group'."
+        type: string
+        default: ""
+      skip_big:
+        description: "Skip large (big:true) regions for a quick run"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # create/upload assets on the road-features release
+
+# Serialize runs so two dispatches never race their merge jobs against road-features-manifest.json.
+concurrency:
+  group: road-features-manifest
+  cancel-in-progress: false
+
+jobs:
+  prep:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.sel.outputs.matrix }}
+      count: ${{ steps.sel.outputs.count }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: sel
+        env:
+          GROUP: ${{ inputs.group }}
+          IDS: ${{ inputs.ids }}
+          SKIP_BIG: ${{ inputs.skip_big }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          ids_json=$(jq -cn --arg s "$IDS" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
+          # scheduled runs have no inputs: rebuild the whole catalog (the monthly refresh)
+          groups_json=$(jq -cn --arg s "$GROUP" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
+          sel=$(jq -c --arg group "$GROUP" --argjson groups "$groups_json" --argjson ids "$ids_json" --argjson skipBig "${SKIP_BIG:-false}" --arg event "$EVENT" '
+            [ .regions[]
+              | select(
+                  if ($ids|length) > 0 then (.id as $rid | $ids | index($rid)) != null
+                  elif $event == "schedule" then true
+                  elif $group == "all-sub" then (.group | endswith("-sub"))
+                  else (.group as $g | $groups | index($g)) != null end )
+              | select( ($skipBig | not) or (.big != true) )
+              | {id, name, pbf_url} ]
+          ' tools/routing-regions.json)
+          n=$(printf '%s' "$sel" | jq 'length')
+          echo "selected $n region(s):"; printf '%s' "$sel" | jq -r '.[].id' | paste -sd' ' -
+          if [ "$n" -eq 0 ]; then echo "::error::no regions matched group='$GROUP' ids='$IDS'"; exit 1; fi
+          if [ "$n" -gt 256 ]; then echo "::error::$n regions > 256 matrix cap — pick a smaller group or ids"; exit 1; fi
+          echo "matrix={\"include\":$sel}" >> "$GITHUB_OUTPUT"
+          echo "count=$n" >> "$GITHUB_OUTPUT"
+      - name: Ensure the catalog release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view road-features --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create road-features --repo "$GITHUB_REPOSITORY" --prerelease \
+              --title "Road features" \
+              --notes "Baked per-region road features (traffic lights, stop signs, level crossings, speed humps, speed cameras) from OpenStreetMap (ODbL) for on-device use. INFRA release - do not delete."
+
+  build:
+    needs: prep
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # one bad region must not kill the rest of the batch
+      max-parallel: 16
+      matrix: ${{ fromJSON(needs.prep.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y osmium-tool jq python3
+      - name: Build ${{ matrix.id }} + upload file + emit entry
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VELA_REPO: ${{ github.repository }}
+          MANIFEST_MODE: emit
+          ENTRY_OUT: ${{ matrix.id }}.json
+        run: bash scripts/build-road-features.sh "${{ matrix.id }}" "${{ matrix.name }}" "${{ matrix.pbf_url }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: entry-${{ matrix.id }}
+          path: ${{ matrix.id }}.json
+          retention-days: 1
+
+  merge:
+    needs: build
+    if: ${{ !cancelled() }} # merge whatever succeeded, even if some regions failed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - uses: actions/download-artifact@v4
+        with:
+          path: entries
+          pattern: entry-*
+          merge-multiple: true
+      - name: Merge entries into road-features-manifest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VELA_REPO: ${{ github.repository }}
+        run: |
+          shopt -s nullglob
+          files=(entries/*.json)
+          if [ ${#files[@]} -eq 0 ]; then echo "no region entries were built — nothing to merge"; exit 0; fi
+          echo "merging ${#files[@]} entr(y/ies)"
+          bash scripts/merge-road-features-manifest.sh entries
