@@ -2441,18 +2441,25 @@ architecture note.
   drag (lift follows the finger up to NAV_BAR_LIFT_MAX_DP; commit past NAV_BAR_LIFT_COMMIT_DP or an
   upward fling faster than NAV_BAR_FLING_PX_S, else spring back); commit = the same `openSteps` the
   list button calls, and `StepsSheet` animates in from its own height (`enter`). The button stays as
-  the key path; the gesture is touch-only on purpose (docs/dpad.md). **Polished 2026-09-13 against a
-  screen recording:** the bar used to float up as a whole (a strip of map under it), then vanish on
-  release while the list slid in from the screen bottom, and closing was an instant swap. Now the
-  card GROWS (a `layout` modifier adds the lift to its height; bottom-aligned, the top edge rises
-  like a sheet), a committing drag reports the lift through `onStepsFromDrag`, MapScreen passes the
-  bar's edge as `StepsSheet.enterFromPx` / `exitToPx` (measured bar height + its padding + the system
-  nav bar; the measured height already includes the lift, so the exit target subtracts it), the
-  sheet's offset animates from that edge and its CONTENT fades in over the same-coloured card, and
-  every close (X, swipe, BACK via `closeTick`) slides the sheet back to the bar's resting edge and
-  fades before the state flips. Verify on the 4a with a screenrecord + a frame contact sheet, not by
-  feel: the first cut looked right in code and sprang back on close because the exit target had the
-  lift counted twice.
+  the key path; the gesture is touch-only on purpose (docs/dpad.md). **ONE CONTINUOUS SHEET (2026-09-13, verified frame by frame on the 4a; supersedes the
+  first cut the same day, which grew the bar blank and slid a separate list in):** Google's nav
+  sheet is one surface, the ETA row staying as its header while the list shows under it as you
+  drag, and Vela's is now the same thing made of two composables that meet pixel for pixel.
+  `NavBarTop` (chevron handle + End | figures | list) is drawn by `NavControls` AND as
+  `StepsSheet(header = ...)` during nav (chevron pointing down, closes). Dragging the bar opens a
+  WELL under the figures (a `layout` modifier sized to the lift, clipped, read in the layout
+  phase) holding the first rows through the shared `StepRow`, at the sheet's own list padding,
+  capped at the preview's natural height so the card never stands taller than the sheet. A
+  committing drag hands the lift over as `enterFromPx`; the nav-form sheet never slides: its
+  list is the same well, `natural - drag - enterPx` tall, `enterPx` starting at 1e9 (first frame
+  = closed = the bar) and, once the list is measured (`snapshotFlow` in a ONE-SHOT effect; an
+  effect keyed on the measured height got cancelled by a re-measure and froze the well shut),
+  snapping to `natural - lift` and easing to 0. Swipe-down shrinks the well with the finger;
+  every close (X-chevron, swipe, BACK via `closeTick`) animates the well to 0 THEN flips the
+  state, so the bar reappears under an identical header. The nav-form card keeps the bar's
+  floating geometry (28dp corners, the host's 16dp margins + landscape column). The directions
+  PREVIEW sheet (no header) keeps its old slide-in/out. Verify with a screenrecord + a frame
+  contact sheet, not by feel.
   **Trail OFF is drawn by the cut piece over a CLEARED ahead line (2026-09-07).** An overlay line
   cannot erase what is under it, so the first trail-off cut (2026-09-06) rode the AHEAD line's own
   gradient - and that line's 256 texels span the 3 km window, 12 m each: on a real drive the blue

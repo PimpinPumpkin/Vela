@@ -10,6 +10,10 @@ import kotlin.math.roundToInt
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.layout.layout
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -373,7 +377,7 @@ private const val LANE_SHOW_M = 800.0
 // The nav bottom bar as a drag handle (see NavControls): how far it must be lifted to commit to
 // the step sheet, how far it may lift at all, and the upward fling speed that commits regardless.
 private const val NAV_BAR_LIFT_COMMIT_DP = 56
-private const val NAV_BAR_LIFT_MAX_DP = 160
+private const val NAV_BAR_LIFT_MAX_FRACTION = 0.5f // of the screen height: the sheet's list cap
 private const val NAV_BAR_FLING_PX_S = 900f
 
 // A "then <next>" compound preview only makes sense when the next maneuver closely follows this one
@@ -708,47 +712,40 @@ fun NavControls(
     // A drag that commits reports how far the bar's top edge had risen (px), so the step sheet
     // can take over from exactly there instead of sliding in from the screen bottom.
     onStepsFromDrag: ((liftPx: Float) -> Unit)? = null,
+    // What shows UNDER the figures while the bar is being pulled up: the step rows, rendered by
+    // the same composable the sheet uses, so a partial drag already reads the list (Google's one
+    // continuous sheet). Null = the bar just grows blank.
+    preview: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
     // Google's gesture: the ETA bar is the handle for the step list. Drag it UP and the card GROWS
-    // with the finger, its bottom edge anchored and its top rising like a sheet (it used to float
-    // up as a whole, leaving a strip of map under it); past NAV_BAR_LIFT_COMMIT_DP (or an upward
-    // fling) it commits and the step sheet takes over from the lifted edge; below that it springs
-    // back. The list button stays as the tap and D-pad path (docs/dpad.md), so keypad phones lose
-    // nothing.
+    // with the finger, its bottom edge anchored and its top rising like a sheet, the step rows
+    // showing in the space that opens under the figures; past NAV_BAR_LIFT_COMMIT_DP (or an
+    // upward fling) it commits and StepsSheet takes over from the lifted edge with the same
+    // header and rows; below that it springs back. The list button stays as the tap and D-pad
+    // path (docs/dpad.md), so keypad phones lose nothing.
     val lift = remember { Animatable(0f) }
     val liftScope = rememberCoroutineScope()
     val density = LocalDensity.current
     val latestSteps by rememberUpdatedState(onSteps)
-    // Colour the ETA by live traffic (Google-style): green free-flowing → amber →
-    // red. Default ink when there's no live data (offline / traffic-less route).
-    val etaColor = when {
-        trafficRatio == null -> SheetPalette.ink(dark)
-        trafficRatio > 1.4 -> SheetPalette.TrafficRed
-        trafficRatio > 1.15 -> SheetPalette.TrafficAmber
-        else -> SheetPalette.TrafficGreen
-    }
+    val maxLiftPx = with(density) { (LocalConfiguration.current.screenHeightDp * NAV_BAR_LIFT_MAX_FRACTION).dp.toPx() }
+    // The preview's natural height (set in the well's layout pass): the drag never opens the
+    // well past the rows it has, or the card would stand taller than the sheet that replaces it.
+    val previewNaturalPx = remember { floatArrayOf(0f) }
     Card(
         modifier
             .fillMaxWidth()
-            // The card reports itself taller by the lift; bottom-aligned in its parent, that moves
-            // the TOP edge up while the content stays put at the top of the card.
-            .layout { measurable, constraints ->
-                val extra = (-lift.value).roundToInt().coerceAtLeast(0)
-                val p = measurable.measure(constraints)
-                layout(p.width, p.height + extra) { p.place(0, 0) }
-            }
             .pointerInput(Unit) {
                 val commitPx = with(density) { NAV_BAR_LIFT_COMMIT_DP.dp.toPx() }
-                val maxLiftPx = with(density) { NAV_BAR_LIFT_MAX_DP.dp.toPx() }
                 val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
                 detectVerticalDragGestures(
                     onDragStart = { tracker.resetTracking() },
                     onVerticalDrag = { change, dy ->
                         change.consume()
                         tracker.addPosition(change.uptimeMillis, change.position)
-                        liftScope.launch { lift.snapTo((lift.value + dy).coerceIn(-maxLiftPx, 0f)) }
+                        val cap = if (previewNaturalPx[0] > 0f) minOf(maxLiftPx, previewNaturalPx[0]) else maxLiftPx
+                        liftScope.launch { lift.snapTo((lift.value + dy).coerceIn(-cap, 0f)) }
                     },
                     onDragEnd = {
                         val vy = tracker.calculateVelocity().y
@@ -780,8 +777,61 @@ fun NavControls(
         // one a labelled button - two different shapes doing the same job at the same size. As
         // icons they read as a matched pair with the numbers between them, which is also the one
         // arrangement where the two 54dp targets cannot be hit by mistake for each other.
-        // The handle: a chevron that says "this lifts", and a real button (tap, focus ring, OK)
-        // so the gesture is never the only way in. Sits in the card's top padding.
+        NavBarTop(
+            remainingDistanceMeters = remainingDistanceMeters,
+            remainingSeconds = remainingSeconds,
+            offRoute = offRoute,
+            onStop = onStop,
+            onSteps = onSteps,
+            trafficRatio = trafficRatio,
+            showListButton = showListButton,
+            handleUp = true,
+        )
+        // The well the drag opens under the figures: exactly the lift tall, clipped, holding the
+        // step rows at the sheet's own list padding so they do not move at the handover. Read in
+        // the layout phase, so the drag never recomposes the bar.
+        if (preview != null) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clipToBounds()
+                    .layout { measurable, constraints ->
+                        val h = (-lift.value).roundToInt().coerceAtLeast(0)
+                        val p = measurable.measure(constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity))
+                        previewNaturalPx[0] = p.height.toFloat()
+                        layout(p.width, h) { p.place(0, 0) }
+                    }
+                    .padding(start = 20.dp, end = 8.dp, bottom = 8.dp),
+            ) { Column { preview() } }
+        }
+    }
+}
+
+/** The bar's top: the chevron handle and the End | figures | list row. Drawn by [NavControls] and,
+ *  with [handleUp] false, as the header of the expanded [StepsSheet] during nav, so the two are
+ *  pixel-identical where they meet. */
+@Composable
+fun NavBarTop(
+    remainingDistanceMeters: Double,
+    remainingSeconds: Double,
+    offRoute: Boolean,
+    onStop: () -> Unit,
+    onSteps: () -> Unit,
+    trafficRatio: Double?,
+    showListButton: Boolean,
+    handleUp: Boolean,
+) {
+    val dark = isAppInDarkTheme()
+    val etaColor = when {
+        trafficRatio == null -> SheetPalette.ink(dark)
+        trafficRatio > 1.4 -> SheetPalette.TrafficRed
+        trafficRatio > 1.15 -> SheetPalette.TrafficAmber
+        else -> SheetPalette.TrafficGreen
+    }
+    Column {
+        // The handle: a chevron that says "this lifts" (or "this closes", pointing down on the
+        // expanded sheet), and a real button (tap, focus ring, OK) so the gesture is never the
+        // only way in. Sits in the card's top padding.
         Box(
             Modifier
                 .fillMaxWidth()
@@ -792,8 +842,8 @@ fun NavControls(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                Icons.Default.KeyboardArrowUp,
-                contentDescription = stringResource(R.string.nav_steps_handle_cd),
+                if (handleUp) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = stringResource(if (handleUp) R.string.nav_steps_handle_cd else R.string.steps_close_cd),
                 tint = SheetPalette.dim(dark),
                 modifier = Modifier.size(22.dp),
             )
