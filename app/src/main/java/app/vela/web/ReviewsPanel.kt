@@ -426,6 +426,9 @@ private fun buildPanelWebView(
     wv.addJavascriptInterface(bridge, "VelaPanel")
     wv.webViewClient = object : WebViewClient() {
         override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+            // The review feed is a batchexecute RPC (rpcids=qv9Egd, 2026-09-13); one line per call
+            // so a page that never fetches it (Google withholding the feed) shows in logcat.
+            request?.url?.toString()?.let { u -> if (u.contains("batchexecute") && u.contains("rpcids=")) android.util.Log.i("VelaPanelNet", u.substringAfter("rpcids=").take(12)) }
             if (request != null && blocked(request)) {
                 return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)))
             }
@@ -1004,6 +1007,14 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           }
           function tick(){
             tries++;
+            // Stuck on the OVERVIEW (issue #359, the "see more reviews button is broken" report):
+            // when Google withholds the review feed for this session, clicking the Reviews tab
+            // does nothing, the page keeps showing the Overview with its "More reviews (N)"
+            // button, and that button fires the same withheld request. Nothing on our side can
+            // make it answer: after ~20 s of the tab refusing to select, hand the failure to the
+            // host so it can SAY so instead of leaving a page whose one button does nothing.
+            // (Verified 2026-09-13: in a healthy session that button loads the full feed.)
+            if(!readySent && tries>20 && revAt<0){ try{ console.error('vela-probe reviews tab never selected after '+tries+' ticks: feed withheld'); VelaPanel.fail(); }catch(e){} return; }
             var iso=isolate();
             if(readySent){
               // Maintenance: keep the carve + scroller sizing fresh for the panel's LIFETIME

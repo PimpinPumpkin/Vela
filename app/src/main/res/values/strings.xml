@@ -360,6 +360,7 @@
     <string name="place_reviews_progress">Reviews · %1$d of about %2$d</string> <!-- format -->
     <string name="place_reviews_so_far">Reviews · %1$d so far</string> <!-- format -->
     <string name="place_gathering_reviews">Gathering reviews…</string>
+    <string name="place_reviews_throttled">Google is not serving reviews for this session right now. Try again in a few minutes.</string>
     <string name="place_reviews_load_failed">Couldn\'t load reviews. Tap to retry.</string>
     <string name="place_no_reviews">No reviews available.</string>
     <string name="place_review_more">More</string>

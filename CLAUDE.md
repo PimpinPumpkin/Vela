@@ -1940,7 +1940,20 @@ architecture note.
   is fine unless a digit follows it); Japanese and Hungarian put the share verb at the END; the
   "All" chip may carry two trailing words ("Tous les avis"). When a language shows a Google
   control the carve missed, capture the page in the browser pane with `hl=<lang>` and add the
-  label to the table; do not guess a second time. A `WebChromeClient` logs the
+  label to the table; do not guess a second time.
+  **THE "SEE MORE REVIEWS BUTTON IS BROKEN" REPORT, SETTLED WITH A PROBE (issue #359, 2026-09-13).**
+  Google serves the place page in two layouts per session: the full feed (Reviews tab, chips,
+  60-110 cards, infinite scroll) or a paged Overview whose review section ends in "More reviews
+  (N)" (`更多評論 (1,326)`). In a healthy session that button, and our own click on the Reviews
+  tab, both fire the review-feed RPC (`batchexecute?rpcids=qv9Egd`; logged as `VelaPanelNet`)
+  and the page becomes the full feed: probed five opens in a row in Traditional Chinese, the
+  button took 40 cards to 107 twice. When Google WITHHOLDS that RPC for the session (the soft
+  throttle the feed watchdog already knows), the tab click does nothing, the page stays on the
+  Overview with the button showing, and the button does nothing either; that is the report, and
+  it is not language-specific and not our carve. What changed: the tick loop now calls
+  `VelaPanel.fail()` when the Reviews tab has still not selected after ~20 s, and the host's
+  `onFailed` toasts `place_reviews_throttled` before closing, so the user reads why instead of
+  finding a dead button. Reproduce a withheld session by opening the page many times in a row. A `WebChromeClient` logs the
   page's console errors under `VelaPanel`, and a probe line prints the tabs it saw.
   **WHAT'S NEW after an update (2026-09-13, `ui/WhatsNew`):** the first launch on a new
   versionName fetches that version's release notes (`releases/tags/v<version>`, or the rolling
