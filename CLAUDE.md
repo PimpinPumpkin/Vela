@@ -435,7 +435,16 @@ Defaults that make the safe path the easy one:
   found hard to parse): the turn card's own `primaryContainer` green across the top with the
   maneuver glyph, the distance as a bold headline and the turn text under it. NB the 4a
   (GrapheneOS, Android 14) never entered PiP under adb (Home key, home gesture, the window key,
-  app-op "default"), so that banner was NOT device-verified; the P9 is the phone that shows it.
+  app-op "default"). Device-verified later the same day once the app-op was set to `allow` by hand
+  (`adb shell appops set app.vela PICTURE_IN_PICTURE allow`; "default" did NOT enter PiP on that
+  GrapheneOS 14 phone). Three more PiP rules from that session: the map's COMPASS and ALL GESTURES
+  are off while `PipMode.active` (VelaMapView, beside the compass margins; the system's own taps on
+  the PiP window reached the map as gestures, dropped the follow camera, and the restored app came
+  back detached, the user's "I have to re-center every time"), `onUserPan` is ignored in PiP for
+  the same reason, MapScreen bumps `navRecenterTick` when PiP ends while navigating, and
+  `pipParams` sets `setExpandedAspectRatio(9:16)` on Android 13+ so the PiP menu can grow the
+  window taller. The banner shows the road the turn enters when the maneuver carries one and the
+  whole instruction on two small lines otherwise (a Google-abbreviated route has no road fields).
   Any NEW map chrome must live inside that gate or it will render wall-to-wall in the mini map. The turn heads-up (NavigationService's
   `vela_nav_turns` channel) deliberately stays quiet while PiP is up: the activity is still
   STARTED in PiP, so AppVisibility.foreground remains true and the alert gate sees "visible".
@@ -1950,10 +1959,15 @@ architecture note.
   button took 40 cards to 107 twice. When Google WITHHOLDS that RPC for the session (the soft
   throttle the feed watchdog already knows), the tab click does nothing, the page stays on the
   Overview with the button showing, and the button does nothing either; that is the report, and
-  it is not language-specific and not our carve. What changed: the tick loop now calls
-  `VelaPanel.fail()` when the Reviews tab has still not selected after ~20 s, and the host's
-  `onFailed` toasts `place_reviews_throttled` before closing, so the user reads why instead of
-  finding a dead button. Reproduce a withheld session by opening the page many times in a row. A `WebChromeClient` logs the
+  it is not language-specific and not our carve. What changed: when the Reviews tab has still not
+  selected after ~20 s the tick loop calls `VelaPanel.stuck()`, which RETRIES before it fails
+  (user 2026-09-13: "make it work somehow"): first a plain `reload()`, then a reload on a FRESH
+  anonymous session (`CookieManager.removeAllCookies` + the SOCS/CONSENT cookies re-seeded, else
+  an EU page bounces to consent), and only on the third strike `fail()`, whose host `onFailed`
+  toasts `place_reviews_throttled` before closing. The feed decision is per page load (five opens
+  in a row alternated between layouts), so the retries are not a long shot. The withheld state was
+  hit once by hand and is not reproducible on demand; the ladder is verified only for the healthy
+  path (no regression). Reproduce a withheld session by opening the page many times in a row. A `WebChromeClient` logs the
   page's console errors under `VelaPanel`, and a probe line prints the tabs it saw.
   **WHAT'S NEW after an update (2026-09-13, `ui/WhatsNew`):** the first launch on a new
   versionName fetches that version's release notes (`releases/tags/v<version>`, or the rolling

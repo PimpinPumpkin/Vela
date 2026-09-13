@@ -817,6 +817,18 @@ class NavReplayTest {
         assertEquals("Pine Street", folded[1].roadAt(50.0).first)
     }
 
+    /** On-demand: route A to B on the open router and print every maneuver's road / ref / text.
+     *  `-DvelaProbe=lat,lng;lat,lng` (forwarded like velaTrip). */
+    @Test
+    fun probeRouteFields() {
+        val spec = System.getProperty("velaProbe")
+        org.junit.Assume.assumeTrue("set -DvelaProbe=lat,lng;lat,lng", !spec.isNullOrBlank())
+        val (a, b) = spec!!.split(";").map { it.split(",").map(String::toDouble) }.map { LatLng(it[0], it[1]) }
+        val r = app.vela.core.data.RouteGeometry.route(okhttp3.OkHttpClient(), a, b, app.vela.core.model.TravelMode.DRIVE).firstOrNull()
+        println("[probe] ${r?.maneuvers?.size} maneuvers")
+        r?.maneuvers?.forEachIndexed { i, m -> println("   [$i] ${m.type} road=${m.road?.let { "\"$it\"" }} ref=${m.ref?.let { "\"$it\"" }} text=\"${m.instruction}\"") }
+    }
+
     @Test
     fun auditSharedTripLog() {
         val path = System.getProperty("velaTrip")

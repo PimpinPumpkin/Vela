@@ -90,6 +90,12 @@ class MainActivity : ComponentActivity() {
             b.setAutoEnterEnabled(autoEnter)
             b.setSeamlessResizeEnabled(false) // map surfaces cross-fade better than they stretch
         }
+        // Android 13+: the PiP menu's expand toggle (and a double-tap on some launchers) grows
+        // the window to a taller shape, which for a map means more road ahead; without it the
+        // window has one size and the only other option is the full app (user 2026-09-13).
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            b.setExpandedAspectRatio(android.util.Rational(9, 16))
+        }
         return b.build()
     }
 

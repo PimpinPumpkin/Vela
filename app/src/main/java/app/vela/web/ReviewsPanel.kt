@@ -347,6 +347,12 @@ private fun buildPanelWebView(
         false
     }
     var loaded = false
+    // Recovery for a page whose review feed Google withheld (issue #359): a plain reload first,
+    // then a reload on a FRESH anonymous session (all WebView cookies dropped, the consent
+    // cookies re-seeded), and only then the failure toast. The feed decision is per page load
+    // (five opens in a row on 2026-09-13 alternated between layouts), so a retry is not a long
+    // shot, and a new session gets a new allotment.
+    var stuckRetries = 0
     val bridge = object {
         @JavascriptInterface
         fun ready() { wv.post { onReady() } }
@@ -404,6 +410,30 @@ private fun buildPanelWebView(
 
         @JavascriptInterface
         fun fail() { wv.post { onFail() } }
+
+        /** The page sat on the Overview with the Reviews tab refusing to select: retry before failing. */
+        @JavascriptInterface
+        fun stuck() {
+            wv.post {
+                when (stuckRetries++) {
+                    0 -> { android.util.Log.w("VelaPanel", "feed withheld: reloading"); loaded = false; wv.reload() }
+                    1 -> {
+                        android.util.Log.w("VelaPanel", "feed withheld again: fresh session + reload")
+                        val cm = android.webkit.CookieManager.getInstance()
+                        cm.removeAllCookies { _ ->
+                            // Re-seed the EU consent cookies the anonymous session needs (else Google
+                            // bounces the page to consent.google.com), then load fresh.
+                            cm.setCookie("https://www.google.com", "SOCS=CAESHAgBEhIaAB; path=/; domain=.google.com")
+                            cm.setCookie("https://www.google.com", "CONSENT=YES+; path=/; domain=.google.com")
+                            cm.flush()
+                            loaded = false
+                            wv.post { wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=${WebReviewsFetcher.reviewsHl()}&gl=us") }
+                        }
+                    }
+                    else -> onFail()
+                }
+            }
+        }
 
         // A tapped review photo — a JSON blob {urls, index, author, date} for the tapped review.
         // Google's own photo route renders nothing inside the carve, so JS blocks it and hands the
@@ -1014,7 +1044,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
             // make it answer: after ~20 s of the tab refusing to select, hand the failure to the
             // host so it can SAY so instead of leaving a page whose one button does nothing.
             // (Verified 2026-09-13: in a healthy session that button loads the full feed.)
-            if(!readySent && tries>20 && revAt<0){ try{ console.error('vela-probe reviews tab never selected after '+tries+' ticks: feed withheld'); VelaPanel.fail(); }catch(e){} return; }
+            if(!readySent && tries>20 && revAt<0){ try{ console.error('vela-probe reviews tab never selected after '+tries+' ticks: feed withheld'); VelaPanel.stuck(); }catch(e){} return; }
             var iso=isolate();
             if(readySent){
               // Maintenance: keep the carve + scroller sizing fresh for the panel's LIFETIME

@@ -66,4 +66,5 @@ dependencies {
 tasks.withType<Test>().configureEach {
     System.getProperty("velaTrip")?.let { systemProperty("velaTrip", it) }
     System.getProperty("velaSeg")?.let { systemProperty("velaSeg", it) }
+    System.getProperty("velaProbe")?.let { systemProperty("velaProbe", it) }
 }
