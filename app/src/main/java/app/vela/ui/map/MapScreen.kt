@@ -156,6 +156,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.only
@@ -523,6 +524,17 @@ fun MapScreen(
     // left the speedo half-covered by the bar (GitHub issue #2). Falls back to the old constant until
     // the first layout pass measures it.
     var navBarHeightPx by remember { mutableStateOf(0) }
+    // The step sheet grows out of the nav bar's top edge and shrinks back into it: where that
+    // edge sits, measured from the screen bottom (bar height + its 16dp bottom padding + the
+    // system nav bar), plus whatever lift a committing drag left the bar at.
+    val navBarPadDensity = LocalDensity.current
+    val navBarInsets = WindowInsets.navigationBars
+    val navBarPadPx: Float = with(navBarPadDensity) { 16.dp.toPx() } + navBarInsets.getBottom(navBarPadDensity).toFloat()
+    var stepsEnterFromPx by remember { mutableStateOf(0f) }
+    // ...and where it returns to: the bar at REST (the measured bar height includes any lift a
+    // committing drag left it at, since the card grows to lift).
+    var stepsExitToPx by remember { mutableStateOf(0f) }
+    var stepsCloseTick by remember { mutableStateOf(0) }
     val navBarClearance = with(LocalDensity.current) {
         // bar height + its 16dp bottom padding + a 16dp gap — reproduces the old 132dp at default font scale
         if (navBarHeightPx > 0) navBarHeightPx.toDp() + 32.dp else 132.dp
@@ -555,7 +567,8 @@ fun MapScreen(
                 (state.results.isEmpty() || state.resultsCollapsed) -> mapEngaged = false
             searchOpen -> { searchExpanded = false; focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickDestination(); vm.cancelPickStop() }
             state.editingStops -> vm.closeStopsEditor()
-            state.showSteps -> vm.closeSteps()
+            // During nav the sheet animates back into the bar first (StepsSheet closeTick).
+            state.showSteps -> if (state.navigating) stepsCloseTick++ else vm.closeSteps()
             // In-nav search: BACK peels the results list / the chip row before it can end the
             // whole drive - ending nav because you browsed gas stations would be brutal.
             state.navigating && state.results.isNotEmpty() -> vm.clearSearch()
@@ -1886,6 +1899,9 @@ fun MapScreen(
             )
 
             state.showSteps -> StepsSheet(
+                enterFromPx = if (state.navigating) stepsEnterFromPx else 0f,
+                exitToPx = if (state.navigating) stepsExitToPx else 0f,
+                closeTick = stepsCloseTick,
                 maneuvers = state.activeRoute?.maneuvers ?: emptyList(),
                 etaSeconds = state.activeRoute?.let { it.durationInTrafficSeconds ?: it.durationSeconds } ?: 0.0,
                 distanceMeters = state.activeRoute?.distanceMeters ?: 0.0,
@@ -1930,7 +1946,20 @@ fun MapScreen(
                     remainingSeconds = state.nav.remainingDuration,
                     offRoute = state.nav.offRoute,
                     onStop = vm::stopNav,
-                    onSteps = vm::openSteps,
+                    onSteps = {
+                        // From the button: the sheet still grows out of the bar's resting edge.
+                        stepsEnterFromPx = navBarHeightPx + navBarPadPx
+                        stepsExitToPx = stepsEnterFromPx
+                        stepsCloseTick = 0
+                        vm.openSteps()
+                    },
+                    onStepsFromDrag = { liftPx ->
+                        // navBarHeightPx is the GROWN card here (the lift is part of its layout).
+                        stepsEnterFromPx = navBarHeightPx + navBarPadPx
+                        stepsExitToPx = stepsEnterFromPx - liftPx
+                        stepsCloseTick = 0
+                        vm.openSteps()
+                    },
                     trafficRatio = state.activeRoute?.trafficRatio,
                     showListButton = app.vela.ui.PreferButtons.on.value || dpadFirst,
                     // Measured AFTER the padding → the bar surface itself; navBarClearance adds the
