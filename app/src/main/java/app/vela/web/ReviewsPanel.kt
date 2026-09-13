@@ -574,9 +574,9 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
             if(!document.querySelector('.jJc9Ad,[data-review-id]')) return;
             // A row: a single leading digit (not a decimal, not a thousands group), then the count,
             // and a star word somewhere ("5 stars, 1,189 reviews", "5 星級、908 則評論").
-            var HROW=/^\s*([1-5])(?![\d.,])\D+?(\d[\d.,\s\u00a0\u202f]*)/;
+            var HROW=/^\s*([1-5])(?!\d|[.,]\d)\D+?(\d[\d.,\s\u00a0\u202f]*)/;
             var rows=[].slice.call(document.querySelectorAll('tr[aria-label]')).filter(function(r){
-              var t=r.getAttribute('aria-label')||''; return HROW.test(t) && VW.star.test(t);
+              var t=r.getAttribute('aria-label')||''; return HROW.test(t); // no star word: Ukrainian rows have none
             });
             if(rows.length<5) return;
             if(!window.__velaHistSent){
