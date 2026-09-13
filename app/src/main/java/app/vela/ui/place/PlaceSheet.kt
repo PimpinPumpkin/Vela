@@ -3378,12 +3378,19 @@ private fun FullScreenReviewsContent(featureId: String, place: Place, ink: Color
                         Text(stringResource(R.string.place_reviews_title), style = MaterialTheme.typography.bodySmall, color = dim)
                     }
                 }
+                val ctxForToast = androidx.compose.ui.platform.LocalContext.current
                 app.vela.web.GoogleReviewsPanel(
                     featureId = featureId,
                     dark = dark,
                     fullScreen = true,
                     modifier = Modifier.fillMaxSize(),
-                    onFailed = onClose, // can't carve (throttle / markup drift) → bounce back; the inline native list is still there
+                    // Can't carve (throttle / markup drift), or Google withheld the review feed
+                    // so the page never left the Overview: bounce back AND say why, or the close
+                    // reads as a crash (issue #359). The inline native list is still there.
+                    onFailed = {
+                        android.widget.Toast.makeText(ctxForToast, ctxForToast.getString(R.string.place_reviews_throttled), android.widget.Toast.LENGTH_LONG).show()
+                        onClose()
+                    },
                     // Tapping a review photo opens Vela's own gallery (Google's photo viewer is a
                     // page-nav the lockdown blocks + the carve can't host).
                     onPhotos = { urls, caps, start -> reviewPhotos = Triple(urls, caps, start) },
