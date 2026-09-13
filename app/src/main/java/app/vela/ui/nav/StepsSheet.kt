@@ -52,6 +52,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -112,6 +114,15 @@ fun StepsSheet(
     // in the step list show in Latin where we have a real romanization (issue #184). Empty = unchanged.
     roadLatin: Map<String, String> = emptyMap(),
     uiLang: String = "",
+    // Where the sheet's top edge starts (and returns to on close), measured up from the screen
+    // bottom: the nav bar's lifted top edge, so opening reads as the bar growing into the list
+    // and closing as the list shrinking back into the bar. 0 = from the screen bottom.
+    enterFromPx: Float = 0f,
+    // Where the top edge slides back to on close (the bar at rest); defaults to enterFromPx.
+    exitToPx: Float = enterFromPx,
+    // Bumped by the host (BACK) to close WITH the exit animation; the X and the swipe use the
+    // same path internally.
+    closeTick: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     fun romanize(s: String): String =
@@ -133,13 +144,35 @@ fun StepsSheet(
     // Slides in from the bottom edge (the bar it replaces was just lifted by the finger, or the
     // list button was tapped): the enter offset starts at the sheet's own height and eases to 0.
     val enter = remember { Animatable(1f) }
-    LaunchedEffect(Unit) { enter.animateTo(0f, animationSpec = tween(260)) }
+    // The card takes the bar's place at the same edge and colour, so what actually changes at the
+    // handover is the CONTENT; a short fade keeps that from popping (and the exit fades it back).
+    val contentAlpha = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        launch { enter.animateTo(0f, animationSpec = tween(260)) }
+        contentAlpha.animateTo(1f, animationSpec = tween(180))
+    }
     val density = LocalDensity.current
+    // Close = slide back down to where the bar's top edge is, THEN flip the state; the bar
+    // reappears under the same edge and nothing pops.
+    var closing by remember { mutableStateOf(false) }
+    val latestClose by rememberUpdatedState(onClose)
+    val dismiss: () -> Unit = {
+        if (!closing) {
+            closing = true
+            scope.launch { contentAlpha.animateTo(0f, animationSpec = tween(160)) }
+            scope.launch {
+                val target = (sheetHeightPx - exitToPx).coerceAtLeast(0f)
+                drag.animateTo(target, animationSpec = tween(220))
+                latestClose()
+            }
+        }
+    }
+    LaunchedEffect(closeTick) { if (closeTick > 0) dismiss() }
     val settleDrag: (Float) -> Unit = { velocityPxS ->
         val flick = with(density) { FLING_COMMIT_DPS.dp.toPx() }
         val committed = velocityPxS > flick ||
             (drag.value > sheetHeightPx / 3f && velocityPxS > -flick)
-        if (committed) onClose() else scope.launch { drag.animateTo(0f) }
+        if (committed) dismiss() else scope.launch { drag.animateTo(0f) }
     }
     val listState = rememberLazyListState()
     val dismissConn = remember(listState) {
@@ -181,7 +214,7 @@ fun StepsSheet(
             // Invisible until measured: the enter offset is a fraction of the sheet's own height,
             // which is 0 on the first frame, so that frame would flash the sheet fully open.
             .graphicsLayer { alpha = if (sheetHeightPx == 0) 0f else 1f }
-            .offset { IntOffset(0, (drag.value + sheetHeightPx * enter.value).roundToInt().coerceAtLeast(0)) }
+            .offset { IntOffset(0, (drag.value + (sheetHeightPx - enterFromPx).coerceAtLeast(0f) * enter.value).roundToInt().coerceAtLeast(0)) }
             .pointerInput(Unit) {
                 sheetDragGestures(
                     dragBy = { dy -> scope.launch { drag.snapTo((drag.value + dy).coerceAtLeast(0f)) } },
@@ -192,7 +225,12 @@ fun StepsSheet(
         colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark), contentColor = ink),
     ) {
         // Fill the card to the screen bottom; pad content off the nav bar.
-        Column(Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 8.dp)) {
+        Column(
+            Modifier
+                .graphicsLayer { alpha = contentAlpha.value }
+                .navigationBarsPadding()
+                .padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 8.dp),
+        ) {
             // Grab handle - signals the sheet drags like the others.
             Box(Modifier.fillMaxWidth().padding(bottom = 6.dp), contentAlignment = Alignment.Center) {
                 Box(
@@ -211,7 +249,7 @@ fun StepsSheet(
                         color = if (hasLiveTraffic) SheetPalette.TrafficGreen else dim,
                     )
                 }
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.steps_close_cd), tint = dim) }
+                IconButton(onClick = dismiss) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.steps_close_cd), tint = dim) }
             }
             // D-pad-first (docs/dpad.md): land focus on the first step row when the sheet
             // opens, so it's the active surface (OK previews that step). No-op under touch.
