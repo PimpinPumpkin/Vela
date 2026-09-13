@@ -4131,7 +4131,7 @@ class MapViewModel @Inject constructor(
     private suspend fun enrichLights(route: app.vela.core.model.Route): app.vela.core.model.Route {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             val signals = when (roadFeaturesCoverRoute(route.polyline)) {
-                RoadCover.LOADED -> app.vela.data.RoadFeatures.signalsAlong(route.polyline)
+                RoadCover.LOADED -> withContext(Dispatchers.Default) { app.vela.data.RoadFeatures.signalsAlong(route.polyline) }
                 RoadCover.FAILED -> emptyList()
                 RoadCover.NONE -> app.vela.core.data.OverpassTrafficSignals.fetchAlong(http, route.polyline)
             }
@@ -5899,7 +5899,7 @@ class MapViewModel @Inject constructor(
         routeCamJob?.cancel()
         routeCamJob = viewModelScope.launch {
             val cams = when (roadFeaturesCoverRoute(poly)) {
-                RoadCover.LOADED -> app.vela.data.RoadFeatures.camerasAlong(poly, 150.0)
+                RoadCover.LOADED -> withContext(Dispatchers.Default) { app.vela.data.RoadFeatures.camerasAlong(poly, 150.0) }
                 RoadCover.FAILED -> null
                 RoadCover.NONE -> runCatching {
                     withContext(Dispatchers.IO) {
@@ -5948,8 +5948,10 @@ class MapViewModel @Inject constructor(
         if (key == navControlsKey) return
         navControlsJob?.cancel()
         navControlsJob = viewModelScope.launch {
+            val t0 = android.os.SystemClock.elapsedRealtime()
             val res = when (roadFeaturesCoverRoute(poly)) {
-                RoadCover.LOADED -> app.vela.data.RoadFeatures.controlsAlong(poly, 120.0)
+                RoadCover.LOADED -> withContext(Dispatchers.Default) { app.vela.data.RoadFeatures.controlsAlong(poly, 120.0) }
+                    .also { android.util.Log.i("VelaControls", "baked route controls=${it.size} pts=${poly.size} in ${android.os.SystemClock.elapsedRealtime() - t0} ms") }
                 RoadCover.FAILED -> { android.util.Log.i("VelaControls", "route road-features download FAILED"); return@launch }
                 RoadCover.NONE -> runCatching {
                     withContext(Dispatchers.IO) {

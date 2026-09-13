@@ -45,9 +45,16 @@ object RoadFeatures {
     private class Loaded(val lat: DoubleArray, val lng: DoubleArray, val kind: ByteArray) {
         val grid = HashMap<Long, IntArray>()
         init {
-            val tmp = HashMap<Long, MutableList<Int>>()
-            for (i in lat.indices) tmp.getOrPut(key(rowOf(lat[i]), rowOf(lng[i]))) { ArrayList() }.add(i)
-            for ((k, v) in tmp) grid[k] = v.toIntArray()
+            // Two passes over primitive arrays (count, then fill) instead of a map of boxed lists.
+            val keys = LongArray(lat.size) { key(rowOf(lat[it]), rowOf(lng[it])) }
+            val counts = HashMap<Long, Int>()
+            for (k in keys) counts[k] = (counts[k] ?: 0) + 1
+            for ((k, c) in counts) grid[k] = IntArray(c)
+            val fill = HashMap<Long, Int>()
+            for (i in keys.indices) {
+                val k = keys[i]; val at = fill[k] ?: 0
+                grid[k]!![at] = i; fill[k] = at + 1
+            }
         }
     }
 
@@ -104,6 +111,7 @@ object RoadFeatures {
             return@withLock true
         }
         if (!f.exists() || stale) {
+            android.util.Log.i("VelaControls", "road-features ${region.id}: ${if (stale) "stale (stamp != ${region.updatedAt})" else "missing"}, downloading")
             val ok = withContext(Dispatchers.IO) {
                 runCatching {
                     val tmp = File(dir(context), "${region.id}.bin.tmp")
@@ -120,25 +128,57 @@ object RoadFeatures {
             }
             if (!ok && !f.exists()) return@withLock false
         }
+        val tp = System.nanoTime()
         val parsed = withContext(Dispatchers.IO) { runCatching { f.inputStream().use(::parse) }.getOrNull() } ?: return@withLock false
+        android.util.Log.i("VelaControls", "road-features ${region.id}: parsed ${parsed.lat.size} in ${(System.nanoTime() - tp) / 1_000_000} ms")
         loaded.remove(region.id)
         loaded[region.id] = parsed
         while (loaded.size > MAX_LOADED) loaded.remove(loaded.keys.first())
         true
     }
 
+    /** Hand-rolled: the file is `lat<TAB>lon<TAB>kind` lines of plain decimals. The line/
+     *  substring/toDouble/boxed-list version took 14 s for Northern California's 176k features
+     *  on a Pixel 4a (2026-09-13); this reads the inflated bytes once and parses the decimals as
+     *  integers, a few hundred ms for the same file. */
     private fun parse(raw: InputStream): Loaded {
-        val las = ArrayList<Double>(60_000); val los = ArrayList<Double>(60_000); val ks = ArrayList<Byte>(60_000)
-        GZIPInputStream(raw).bufferedReader().useLines { lines ->
-            for (line in lines) {
-                val t1 = line.indexOf('\t'); if (t1 <= 0) continue
-                val t2 = line.indexOf('\t', t1 + 1); if (t2 < 0 || t2 + 1 >= line.length) continue
-                val la = line.substring(0, t1).toDoubleOrNull() ?: continue
-                val lo = line.substring(t1 + 1, t2).toDoubleOrNull() ?: continue
-                las.add(la); los.add(lo); ks.add(line[t2 + 1].code.toByte())
+        val bytes = GZIPInputStream(raw, 1 shl 16).readBytes()
+        var las = DoubleArray(1 shl 16); var los = DoubleArray(1 shl 16); var ks = ByteArray(1 shl 16); var n = 0
+        var i = 0; val end = bytes.size
+        while (i < end) {
+            // lat
+            var neg = false; var ip = 0L; var fp = 0L; var fd = 0; var ok = false; var seenDot = false
+            if (bytes[i] == '-'.code.toByte()) { neg = true; i++ }
+            while (i < end) {
+                val c = bytes[i].toInt()
+                if (c in 48..57) { if (seenDot) { if (fd < 9) { fp = fp * 10 + (c - 48); fd++ } } else ip = ip * 10 + (c - 48); ok = true; i++ }
+                else if (c == '.'.code && !seenDot) { seenDot = true; i++ } else break
             }
+            val la = if (ok) (ip + fp / POW10[fd]).let { if (neg) -it else it } else Double.NaN
+            if (i < end && bytes[i] == '\t'.code.toByte()) i++ else { i = skipLine(bytes, i); continue }
+            // lon
+            neg = false; ip = 0L; fp = 0L; fd = 0; ok = false; seenDot = false
+            if (bytes[i] == '-'.code.toByte()) { neg = true; i++ }
+            while (i < end) {
+                val c = bytes[i].toInt()
+                if (c in 48..57) { if (seenDot) { if (fd < 9) { fp = fp * 10 + (c - 48); fd++ } } else ip = ip * 10 + (c - 48); ok = true; i++ }
+                else if (c == '.'.code && !seenDot) { seenDot = true; i++ } else break
+            }
+            val lo = if (ok) (ip + fp / POW10[fd]).let { if (neg) -it else it } else Double.NaN
+            if (i < end && bytes[i] == '\t'.code.toByte()) i++ else { i = skipLine(bytes, i); continue }
+            if (i >= end || la.isNaN() || lo.isNaN()) { i = skipLine(bytes, i); continue }
+            val k = bytes[i]
+            if (n == las.size) { las = las.copyOf(n * 2); los = los.copyOf(n * 2); ks = ks.copyOf(n * 2) }
+            las[n] = la; los[n] = lo; ks[n] = k; n++
+            i = skipLine(bytes, i)
         }
-        return Loaded(las.toDoubleArray(), los.toDoubleArray(), ks.toByteArray())
+        return Loaded(las.copyOf(n), los.copyOf(n), ks.copyOf(n))
+    }
+    private val POW10 = doubleArrayOf(1.0, 10.0, 100.0, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9)
+    private fun skipLine(b: ByteArray, from: Int): Int {
+        var i = from
+        while (i < b.size && b[i] != '\n'.code.toByte()) i++
+        return i + 1
     }
 
     /** Does the catalog have a region for this spot at all (so a false from ensure* means a failed
@@ -220,26 +260,37 @@ object RoadFeatures {
     }
 
     /** Controls within [meters] of the route line. */
+    // The corridor queries are CPU-bound over the whole bounding box of the route: a long drive
+    // (Davis to San Francisco, ~5000 polyline points, ~50k features in its box) ANR'd the app
+    // three times on 2026-09-13 when this ran on the main thread and tested every feature against
+    // every segment. Two fixes: callers run these on Dispatchers.Default, and the polyline is
+    // indexed into ~1 km cells first so each feature is tested against the handful of segments
+    // near it instead of the whole line.
     fun controlsAlong(polyline: List<LatLng>, meters: Double = 120.0): List<TrafficControl> {
         if (polyline.size < 2) return emptyList()
         val b = corridorBox(polyline, meters)
+        val t0 = System.nanoTime()
+        val idx = SegmentIndex(polyline, meters)
+        val t1 = System.nanoTime()
         val out = ArrayList<TrafficControl>()
+        var visited = 0
         scan(b[0], b[1], b[2], b[3]) { la, lo, k ->
             val kind = kindOf(k) ?: return@scan
-            val p = LatLng(la, lo)
-            if (nearPolyline(p, polyline, meters)) out.add(TrafficControl(p, kind))
+            visited++
+            if (idx.near(la, lo)) out.add(TrafficControl(LatLng(la, lo), kind))
         }
+        android.util.Log.i("VelaControls", "corridor pts=${polyline.size} kept=${idx.segments} index=${(t1 - t0) / 1_000_000} ms scan=${(System.nanoTime() - t1) / 1_000_000} ms visited=$visited hits=${out.size}")
         return out
     }
 
     fun camerasAlong(polyline: List<LatLng>, meters: Double = 150.0): List<SpeedCamera> {
         if (polyline.size < 2) return emptyList()
         val b = corridorBox(polyline, meters)
+        val idx = SegmentIndex(polyline, meters)
         val out = ArrayList<SpeedCamera>()
         scan(b[0], b[1], b[2], b[3]) { la, lo, k ->
             if (k != 'C') return@scan
-            val p = LatLng(la, lo)
-            if (nearPolyline(p, polyline, meters)) out.add(SpeedCamera(p))
+            if (idx.near(la, lo)) out.add(SpeedCamera(LatLng(la, lo)))
         }
         return out
     }
@@ -248,19 +299,77 @@ object RoadFeatures {
     fun signalsAlong(polyline: List<LatLng>, meters: Double = 40.0): List<LatLng> =
         controlsAlong(polyline, meters).filter { it.kind == TrafficControl.Kind.SIGNAL }.map { it.loc }
 
-    private fun nearPolyline(p: LatLng, poly: List<LatLng>, meters: Double): Boolean {
-        for (i in 0 until poly.size - 1) if (segDistMeters(p, poly[i], poly[i + 1]) <= meters) return true
-        return false
+    /** The polyline's segments bucketed into [FINE] degree cells (about 1.1 km), each segment
+     *  registered in every cell its padded bounding box touches, so a point-to-line test reads
+     *  only the segments that can possibly be within [meters] of the point. */
+    private class SegmentIndex(polyline: List<LatLng>, private val meters: Double) {
+        private val cells = HashMap<Long, IntArrayList>()
+        // The route arrives at polyline6 resolution (a vertex every ~15 m on a highway); for a
+        // "within 120 m" test that is 10x more segments than the shape needs, so the line is
+        // simplified to 3 m first (Douglas-Peucker, iterative).
+        private val poly: List<LatLng> = simplify(polyline, 3.0)
+        val segments get() = poly.size - 1
+        init {
+            val padLat = meters / 111_320.0
+            for (i in 0 until poly.size - 1) {
+                val a = poly[i]; val b = poly[i + 1]
+                val padLng = meters / (111_320.0 * Math.cos(Math.toRadians((a.lat + b.lat) / 2.0))).coerceAtLeast(1.0)
+                val r0 = fine(minOf(a.lat, b.lat) - padLat); val r1 = fine(maxOf(a.lat, b.lat) + padLat)
+                val c0 = fine(minOf(a.lng, b.lng) - padLng); val c1 = fine(maxOf(a.lng, b.lng) + padLng)
+                var r = r0
+                while (r <= r1) {
+                    var c = c0
+                    while (c <= c1) { cells.getOrPut(key(r, c)) { IntArrayList() }.add(i); c++ }
+                    r++
+                }
+            }
+        }
+        fun near(lat: Double, lng: Double): Boolean {
+            val bucket = cells[key(fine(lat), fine(lng))] ?: return false
+            val p = LatLng(lat, lng)
+            for (j in 0 until bucket.size) {
+                val i = bucket.data[j]
+                if (segDist(p, poly[i], poly[i + 1]) <= meters) return true
+            }
+            return false
+        }
+        private fun fine(v: Double): Long = Math.floor(v / FINE).toLong()
+        private fun key(row: Long, col: Long): Long = (row shl 32) xor (col and 0xffffffffL)
+        private fun simplify(pts: List<LatLng>, tolM: Double): List<LatLng> {
+            if (pts.size < 3) return pts
+            val keep = BooleanArray(pts.size); keep[0] = true; keep[pts.size - 1] = true
+            val stack = ArrayDeque<IntArray>(); stack.add(intArrayOf(0, pts.size - 1))
+            while (stack.isNotEmpty()) {
+                val (a, b) = stack.removeLast()
+                if (b - a < 2) continue
+                var best = -1; var bestD = tolM
+                val pa = pts[a]; val pb = pts[b]
+                for (i in a + 1 until b) {
+                    val d = segDist(pts[i], pa, pb)
+                    if (d > bestD) { bestD = d; best = i }
+                }
+                if (best >= 0) { keep[best] = true; stack.add(intArrayOf(a, best)); stack.add(intArrayOf(best, b)) }
+            }
+            val out = ArrayList<LatLng>()
+            for (i in pts.indices) if (keep[i]) out.add(pts[i])
+            return out
+        }
+        private class IntArrayList {
+            var data = IntArray(8); var size = 0
+            fun add(v: Int) { if (size == data.size) data = data.copyOf(size * 2); data[size++] = v }
+        }
+        companion object { const val FINE = 0.01 }
     }
 
-    private fun segDistMeters(p: LatLng, a: LatLng, b: LatLng): Double {
-        val mPerLat = 111_320.0
-        val mPerLng = 111_320.0 * Math.cos(Math.toRadians((a.lat + b.lat) / 2.0))
-        val bx = (b.lng - a.lng) * mPerLng; val by = (b.lat - a.lat) * mPerLat
-        val px = (p.lng - a.lng) * mPerLng; val py = (p.lat - a.lat) * mPerLat
-        val len2 = bx * bx + by * by
-        val t = if (len2 <= 0.0) 0.0 else ((px * bx + py * by) / len2).coerceIn(0.0, 1.0)
-        val dx = px - bx * t; val dy = py - by * t
-        return Math.sqrt(dx * dx + dy * dy)
-    }
+}
+
+private fun segDist(p: LatLng, a: LatLng, b: LatLng): Double {
+    val mPerLat = 111_320.0
+    val mPerLng = 111_320.0 * Math.cos(Math.toRadians((a.lat + b.lat) / 2.0))
+    val bx = (b.lng - a.lng) * mPerLng; val by = (b.lat - a.lat) * mPerLat
+    val px = (p.lng - a.lng) * mPerLng; val py = (p.lat - a.lat) * mPerLat
+    val len2 = bx * bx + by * by
+    val t = if (len2 <= 0.0) 0.0 else ((px * bx + py * by) / len2).coerceIn(0.0, 1.0)
+    val dx = px - bx * t; val dy = py - by * t
+    return Math.sqrt(dx * dx + dy * dy)
 }

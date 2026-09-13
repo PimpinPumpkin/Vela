@@ -528,6 +528,12 @@ fun MapScreen(
     // shrinks the well to nothing before the bar takes over again.
     var stepsEnterFromPx by remember { mutableStateOf(0f) }
     var stepsCloseTick by remember { mutableStateOf(0) }
+    // The list may grow until the sheet's top sits just under the turn banner: the screen
+    // minus the banner's measured bottom, the bar's margins and the header row (~110dp).
+    val stepsListMax = with(LocalDensity.current) {
+        val bannerBottom = if (navBannerBottomPx > 0) navBannerBottomPx.toDp() else 140.dp
+        (LocalConfiguration.current.screenHeightDp.dp - bannerBottom - 150.dp).coerceAtLeast(200.dp)
+    }
     val navBarClearance = with(LocalDensity.current) {
         // bar height + its 16dp bottom padding + a 16dp gap — reproduces the old 132dp at default font scale
         if (navBarHeightPx > 0) navBarHeightPx.toDp() + 32.dp else 132.dp
@@ -1733,8 +1739,9 @@ fun MapScreen(
         // Right-edge nav FAB stack: volume + search live ON THE MAP (the bottom bar was
         // cramming four controls - user 2026-07-14; Google floats these there too), with the
         // re-center button joining the stack when panned away / previewing a step. Hidden
-        // while the along-route results own the bottom slot.
-        if (state.navigating && state.results.isEmpty()) {
+        // while the along-route results own the bottom slot, and while the step list is open
+        // (the sheet reaches the turn banner; they would sit on top of it).
+        if (state.navigating && state.results.isEmpty() && !state.showSteps) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -1817,7 +1824,7 @@ fun MapScreen(
         val movingFree = !state.navigating && (state.mySpeed ?: 0f) > 3f &&
             !searchOpen && state.selected == null && !state.directionsOpen && !state.showSteps && !resultsShown
         val postedLimitKmh = state.speedLimitKmh ?: state.speedLimitOverlayKmh
-        if ((state.navigating && state.mySpeed != null) || movingFree) {
+        if (((state.navigating && !state.showSteps) && state.mySpeed != null) || movingFree) {
             SpeedWidget(
                 speedMps = state.mySpeed,
                 limitKmh = postedLimitKmh,
@@ -1894,6 +1901,7 @@ fun MapScreen(
             state.showSteps -> StepsSheet(
                 enterFromPx = if (state.navigating) stepsEnterFromPx else 0f,
                 closeTick = stepsCloseTick,
+                maxListHeight = if (state.navigating) stepsListMax else null,
                 // During nav the sheet wears the bar's own top, so bar -> sheet -> bar is one
                 // surface changing height; the chevron points down and closes.
                 header = if (state.navigating) { close ->
@@ -1969,13 +1977,14 @@ fun MapScreen(
                         stepsCloseTick = 0
                         vm.openSteps()
                     },
+                    maxLift = stepsListMax,
                     // The rows that show under the figures while the bar is pulled up: the same
                     // StepRow the sheet draws, at the same padding, so nothing moves at the swap.
                     preview = {
                         val ms = state.activeRoute?.maneuvers ?: emptyList()
                         val lat = state.roadNameLatin
                         val lang = app.vela.ui.AppLocale.effective().language
-                        ms.take(10).forEachIndexed { i, m ->
+                        ms.take(14).forEachIndexed { i, m ->
                             app.vela.ui.nav.StepRow(
                                 m = m,
                                 active = i == state.nav.stepIndex,
