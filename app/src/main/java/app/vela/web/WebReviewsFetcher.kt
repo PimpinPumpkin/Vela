@@ -101,6 +101,16 @@ class WebReviewsFetcher @Inject constructor(
         // The accumulated reviews SO FAR, sent whenever the count grows — the sheet streams them
         // into the list under the progress bar instead of making the user stare at a bar for 30 s.
         // Same JavaBridge thread; parse failures are dropped (the final onResult is authoritative).
+        // Scrape PROBE (diagnostics only): what the page looks like from inside the hidden
+        // WebView every few seconds - tabs found, whether the reviews tab opened, cards on
+        // screen, viewport size. This is how a "collecting reviews" that never lands gets
+        // diagnosed from a Diagnostics export instead of a guess (issue #359).
+        @JavascriptInterface
+        fun onInfo(id: String, text: String) {
+            android.util.Log.i("VelaReviews", text)
+            diag.record("reviews", "probe", text)
+        }
+
         @JavascriptInterface
         fun onPartial(id: String, payload: String) {
             val cb = partial[id] ?: return
@@ -144,6 +154,14 @@ class WebReviewsFetcher @Inject constructor(
                     withContext(Dispatchers.Main) {
                         val wv = ensureWebView()
                         val ready = CompletableDeferred<Unit>()
+                        wv.webChromeClient = object : android.webkit.WebChromeClient() {
+                            override fun onConsoleMessage(m: android.webkit.ConsoleMessage?): Boolean {
+                                if (m != null && m.messageLevel() == android.webkit.ConsoleMessage.MessageLevel.ERROR) {
+                                    android.util.Log.i("VelaReviews", "console: ${m.message().take(200)} @${m.lineNumber()}")
+                                }
+                                return true
+                            }
+                        }
                         wv.webViewClient = object : WebViewClient() {
                             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                                 // Only google.com pages — a stray click on an external link (e.g. the
@@ -208,17 +226,32 @@ class WebReviewsFetcher @Inject constructor(
         wv.settings.domStorageEnabled = true
         // Desktop UA so Google serves the desktop web Maps (a mobile UA deep-links to intent://).
         wv.settings.userAgentString = VelaConfig.USER_AGENT
+        // Desktop-WIDTH layout, not just a desktop UA: without the wide viewport the page lays
+        // out at the WebView's CSS width (1200 physical px is ~450 CSS px on a 2.75x phone), which
+        // is Google's narrow layout where the Reviews tab shows five cards and a button, and the
+        // scrape settled on those five (2026-09-13). With it the CSS viewport is the desktop 980
+        // px and the tab holds the full paged list the browser shows.
+        wv.settings.useWideViewPort = true
+        wv.settings.loadWithOverviewMode = true
         wv.addJavascriptInterface(Bridge(), "VelaBridge")
         // Give the hidden (never-attached) WebView a REAL offscreen viewport. Google's reviews list is
         // virtualized + lazy-loaded off the scroll viewport; a 0×0 headless WebView renders the chrome
         // (rating histogram, topic filters) but NEVER the review cards. A tall explicit layout makes the
         // scroll pane real so the list renders + pages. (The photo gallery's category grids need the
         // same treatment — see WebPhotoFetcher.)
+        // The size is in CSS px x density: Google's page carries a width=device-width viewport
+        // meta, which makes useWideViewPort a no-op, so the DESKTOP layout (the full paged review
+        // list in the tab) only comes from a physically wide view. 1200 physical px on a 2.75x phone
+        // was 436 CSS px, the narrow layout with five cards and a button, and the scrape settled
+        // on those five (2026-09-13).
+        val density = wv.resources.displayMetrics.density.coerceAtLeast(1f)
+        val wPx = (WV_WIDTH * density).toInt()
+        val hPx = (WV_HEIGHT * density).toInt()
         wv.measure(
-            android.view.View.MeasureSpec.makeMeasureSpec(WV_WIDTH, android.view.View.MeasureSpec.EXACTLY),
-            android.view.View.MeasureSpec.makeMeasureSpec(WV_HEIGHT, android.view.View.MeasureSpec.EXACTLY),
+            android.view.View.MeasureSpec.makeMeasureSpec(wPx, android.view.View.MeasureSpec.EXACTLY),
+            android.view.View.MeasureSpec.makeMeasureSpec(hPx, android.view.View.MeasureSpec.EXACTLY),
         )
-        wv.layout(0, 0, WV_WIDTH, WV_HEIGHT)
+        wv.layout(0, 0, wPx, hPx)
         // A never-attached WebView reads as a BACKGROUND page to Chromium: JS timers throttle
         // toward 1 Hz and rAF-driven rendering slows, which is why the visible Google Maps
         // WebView pages reviews near-instantly while this scrape crawled. Explicitly resume
@@ -246,7 +279,9 @@ class WebReviewsFetcher @Inject constructor(
         return """
             (function(){
               var ID=$idj, tries=0, opened=false, acc={}, accN=0, lastN=0, noGrow=0, atBottom=0;
-              var openedAt=-1, lastRep=-1, openedBy='', sawEntry=false, everCards=false, btnReclicks=0;
+              try{ VelaBridge.onInfo(ID, JSON.stringify({start:1,title:(document.title||'').slice(0,40),url:location.pathname.slice(0,60),ready:document.readyState,w:window.innerWidth,h:window.innerHeight})); }catch(e){}
+              window.onerror=function(m,src,l){ try{ VelaBridge.onInfo(ID,'jserror '+m+' @'+l); }catch(e){} };
+              var openedAt=-1, lastRep=-1, openedBy='', sawEntry=false, everCards=false, btnReclicks=0, allClicked=false;
               var CAP=50;
               // The rating sits at the FRONT of the star widget's aria-label in every language
               // ("5 stars", "5 顆星", "5 étoiles"), so read the leading number rather than looking
@@ -260,8 +295,11 @@ class WebReviewsFetcher @Inject constructor(
               // "撰寫評論"), and clicking that opens the review composer instead of the list.
               // The word lists live in :core ReviewWords so they can be unit-tested; a list that
               // silently stops matching is invisible until someone reports missing reviews.
-              var REVIEW_WORD=new RegExp(${'$'}{reviewPatternJs()},'i');
-              var MORE_WORD=new RegExp(${'$'}{morePatternJs()},'i');
+              // Kotlin templates: `${'$'}{...}` here would emit the LITERAL text into the page
+              // (it did from 2026-09-06 to 2026-09-13: "missing ) after argument list" at this
+              // line, every scrape timed out with nothing, issue #359 for every language).
+              var REVIEW_WORD=new RegExp(${reviewPatternJs()},'i');
+              var MORE_WORD=new RegExp(${morePatternJs()},'i');
               function t1(c,sel){ var e=c.querySelector(sel); return e?(e.textContent||'').trim():''; }
               function extract(){
                 // Review cards are `.jJc9Ad`, each with a unique `data-review-id` — far more robust than the
@@ -346,6 +384,10 @@ class WebReviewsFetcher @Inject constructor(
                     if(d.scrollTop>before+5) moved=true;
                   }
                 }); }catch(e){}
+                // Narrow layout (the hidden WebView is ~450 CSS px wide on a 2.75x phone): the
+                // review feed is not always an inner scroller, the DOCUMENT pages it. Scroll the
+                // window too, or the scrape settles on the first 5 cards (2026-09-13).
+                if(!moved){ try{ var y0=window.scrollY; window.scrollBy(0, Math.round(window.innerHeight*0.8)); if(window.scrollY>y0+5) moved=true; }catch(e){} }
                 return moved;
               }
               // Open the FULL reviews list. The canonical entry is the "Reviews" role=tab; fall back to a
@@ -404,10 +446,25 @@ class WebReviewsFetcher @Inject constructor(
                 // window with exactly 3 accumulated (the "loaded 3 then stopped" bug).
                 var cardsNow = document.querySelectorAll('.jJc9Ad').length>0;
                 if(cardsNow) everCards=true;
+                if(tries===2 || tries%16===0){
+                  try{
+                    var tabLabels=[].slice.call(document.querySelectorAll('[role="tab"]')).map(function(t){ return ((t.getAttribute('aria-label')||t.textContent)||'').trim().slice(0,40); }).slice(0,4);
+                    VelaBridge.onInfo(ID, JSON.stringify({tries:tries,tabs:tabLabels,sawEntry:sawEntry,opened:opened,by:openedBy,cardsNow:document.querySelectorAll('.jJc9Ad').length,acc:accN,w:window.innerWidth,h:window.innerHeight,main:!!document.querySelector('[role="main"]'),title:(document.title||'').slice(0,40),body:((document.body&&document.body.innerText)||'').length,url:location.pathname.slice(0,60)}));
+                  }catch(e){}
+                }
                 var moved=scrollStep();
                 atBottom = moved ? 0 : atBottom+1;
                 noGrow = (accN===lastN) ? noGrow+1 : 0;
                 lastN=accN;
+                // Desktop layout (2026-09-13): the Reviews TAB shows a handful of cards and an
+                // "All reviews" button opens the full paged list. The tab path latches `opened`,
+                // so that button was never pressed and the scrape settled on the handful. Press
+                // it once, after the tab has had its render window, if the list is still short.
+                if(opened && openedBy==='tab' && !allClicked && tries>=openedAt+10 && accN<=12){
+                  allClicked=true;
+                  var abs=[].slice.call(document.querySelectorAll('button'));
+                  for(var i=0;i<abs.length;i++){ var al=((abs[i].getAttribute('aria-label')||abs[i].textContent)||''); if(REVIEW_WORD.test(al)&&MORE_WORD.test(al)){ try{ abs[i].click(); }catch(e){} openedAt=tries; break; } }
+                }
                 // Button-path no-op retry: the click was fired blind (no aria-selected to confirm)
                 // and nothing has rendered since — re-arm openFull once. Tab clicks self-retry.
                 if(opened && openedBy==='btn' && !everCards && tries>=openedAt+18 && btnReclicks<1){ opened=false; openedAt=-1; btnReclicks++; }
@@ -475,7 +532,7 @@ class WebReviewsFetcher @Inject constructor(
         const val MAX_LOAD_MS = 7_000L
         // Offscreen viewport for the headless WebView — tall so the virtualized review list renders a
         // healthy batch per scroll position.
-        const val WV_WIDTH = 1200
-        const val WV_HEIGHT = 6000
+        const val WV_WIDTH = 1200  // CSS px (scaled by density at layout): the desktop layout's width
+        const val WV_HEIGHT = 1000 // CSS px: SHORTER than the feed, so the pane scrolls and Google pages the next cards in (a 2400 px pane held the first 8 with nothing to scroll, 2026-09-13)
     }
 }

@@ -304,7 +304,9 @@ private fun buildPanelWebView(
                         // Otherwise forward only clearly-vertical boundary drags (a horizontal
                         // chip swipe with a slight slope must not jiggle the sheet).
                         (kotlin.math.abs(dy) > kotlin.math.abs(dx) &&
-                            ((panelAtTop.get() && dy > 0f) ||
+                            // Full-screen: the WebView itself may be the scroller; a pull needs
+                            // its own scroll at the top as well as the page's verdict.
+                            ((panelAtTop.get() && (!fullScreen || v.scrollY <= 0) && dy > 0f) ||
                                 (!fullScreen && panelAtBottom.get() && dy < 0f)))
                     ) {
                         forwarded = true
@@ -699,7 +701,10 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           var __velaTop=true, __velaBot=false;
           function velaReportEdge(){
             var sc=window.__velaSc; if(!sc) return;
-            var at=sc.scrollTop<=1;
+            // The document can scroll too (full-screen, or a page whose feed is not the inner
+            // div): "at top" needs BOTH at their top, or a drag down mid-page reads as a pull.
+            var docY=(window.scrollY||document.documentElement.scrollTop||0);
+            var at=sc.scrollTop<=1 && docY<=1;
             var ab=(sc.scrollTop+sc.clientHeight)>=(sc.scrollHeight-2);
             if(at) window.__velaEngaged=0; // back at the top: re-arm the sheet-takeover signal
             if(at!==__velaTop || ab!==__velaBot){ __velaTop=at; __velaBot=ab; try{ VelaPanel.onPanelEdge(at, ab); }catch(x){} }
@@ -875,7 +880,12 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           // the real list (the "black panel" regression). Un-stretches a stale target when the
           // SPA swaps nodes.
           function stretch(){
-            if(FULL) return; // full-screen: Google's own inner scroller sizes itself natively
+            // Full-screen: Google's own inner scroller sizes itself natively, so no height
+            // styling - but the scroller is STILL adopted and its edge reporter hooked. The
+            // early return that used to sit here left __velaSc unset in full-screen, so the
+            // native side never heard an edge change and kept its initial "at top" verdict:
+            // every downward finger drag (scrolling UP to re-read an earlier review) was
+            // forwarded as a pull-to-close and past 120 dp the page shut (issue #359, item 2).
             var main=document.querySelector('[role="main"]');
             if(!main) return;
             var h=window.innerHeight;
@@ -884,15 +894,19 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
               if(d.scrollHeight>d.clientHeight+50 && d.clientHeight>100 && d.scrollHeight>best){ best=d.scrollHeight; sc=d; }
             });
             if(window.__velaSc && window.__velaSc!==sc){
-              window.__velaSc.style.removeProperty('height');
-              window.__velaSc.style.removeProperty('max-height');
+              if(!FULL){
+                window.__velaSc.style.removeProperty('height');
+                window.__velaSc.style.removeProperty('max-height');
+              }
               window.__velaSc=null;
             }
             if(sc){
               var top=Math.max(0, Math.round(sc.getBoundingClientRect().top));
-              if(h-top>=150){
-                sc.style.setProperty('height',(h-top)+'px','important');
-                sc.style.setProperty('max-height',(h-top)+'px','important');
+              if(FULL || h-top>=150){
+                if(!FULL){
+                  sc.style.setProperty('height',(h-top)+'px','important');
+                  sc.style.setProperty('max-height',(h-top)+'px','important');
+                }
                 window.__velaSc=sc;
                 // Attach the edge reporter once per scroller (the SPA can swap the node). The
                 // scroll listener also (a) tracks a low-passed scroll VELOCITY so an inertial
