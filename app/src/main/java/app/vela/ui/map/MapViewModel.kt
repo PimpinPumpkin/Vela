@@ -838,7 +838,7 @@ class MapViewModel @Inject constructor(
                         // Drives the map's accuracy halo: a coarse-permission or network fix reports
                         // hundreds-to-thousands of meters and gets an honest circle; GPS won't.
                         myAccuracyM = if (loc.hasAccuracy()) loc.accuracy else null,
-                        showPsdsTip = false, center = it.center ?: here, myLocationStale = false,
+                        showPsdsTip = false, center = it.center ?: here.takeUnless { userPannedSinceLaunch }, myLocationStale = false,
                     )
                 }
                 restartStaleTimer()
@@ -1056,6 +1056,13 @@ class MapViewModel @Inject constructor(
 
     /** MapScreen mirrors the chooser's collapsed state (DirectionsPanel onCollapsedChange). */
     fun onDirectionsCollapsed(minimized: Boolean) { directionsMinimized = minimized }
+
+    /** The user has grabbed the map at least once this launch. The FIRST fix flies the camera to
+     *  the phone only while this is false: a cold GPS start can take 30 s indoors, and a fix that
+     *  lands after the user has started looking around used to yank the camera back and zoom in
+     *  (issue #362, and the same complaint on the 4a; 2026-09-13). */
+    @Volatile private var userPannedSinceLaunch = false
+    fun onUserPanned() { userPannedSinceLaunch = true }
 
     /** As the user types, fetch live place suggestions (debounced) so the search
      *  page shows real matches — name + address — to tap, like Google's

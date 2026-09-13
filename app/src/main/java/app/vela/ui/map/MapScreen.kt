@@ -1070,6 +1070,7 @@ fun MapScreen(
                 // Grabbing the map is an explicit "let me look around" - stop tracking until the
                 // locate tap re-arms it (Google drops follow the moment you pan).
                 followMe = false
+                vm.onUserPanned() // and the first fix, if it has not landed yet, must not fly the camera
                 // Bump ticks, don't flip state here: each sheet GLIDES down first and only then
                 // flips its collapsed state, so the bar/card swap happens invisibly (flipping
                 // straight away unmounted the content mid-drop — the "pops down" report).
