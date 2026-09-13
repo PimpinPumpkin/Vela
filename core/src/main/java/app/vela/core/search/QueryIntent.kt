@@ -280,37 +280,125 @@ object QueryIntents {
         if (t.isBlank()) return null
         val code = lang.lowercase().substringBefore('-').substringBefore('_')
         val primary = TABLES[code]
-        if (primary != null) parseWith(t, primary)?.let { return it }
-        if (primary !== EN) parseWith(t, EN)?.let { return it }
+        if (primary != null) parseWith(t, primary, fuzzy = false)?.let { return it }
+        if (primary !== EN) parseWith(t, EN, fuzzy = false)?.let { return it }
+        // FUZZY pass (2026-09-13): dictation mishears ("navigat to", "nearst", "ofice") and the
+        // exact phrases miss. A second pass lets each vocabulary WORD differ by one edit (two for
+        // long words), never a whole phrase, and never the free text after it. Word-per-word, so
+        // "home depot" cannot become "home". Spaced languages only.
+        if (primary != null && !primary.noSpaces) parseWith(t, primary, fuzzy = true)?.let { return it }
+        if (primary !== EN) parseWith(t, EN, fuzzy = true)?.let { return it }
         return null
+    }
+
+    // ---- word-level fuzzy matching --------------------------------------------------------
+    /** Optimal-string-alignment distance (Levenshtein + adjacent transposition). */
+    private fun dist(a: String, b: String): Int {
+        val d = Array(a.length + 1) { IntArray(b.length + 1) }
+        for (i in 0..a.length) d[i][0] = i
+        for (j in 0..b.length) d[0][j] = j
+        for (i in 1..a.length) for (j in 1..b.length) {
+            val cost = if (a[i - 1] == b[j - 1]) 0 else 1
+            d[i][j] = minOf(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost)
+            if (i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1]) d[i][j] = minOf(d[i][j], d[i - 2][j - 2] + 1)
+        }
+        return d[a.length][b.length]
+    }
+
+    /** One vocabulary word vs one query word. Short words must match exactly (a one-letter slip
+     *  in "home" reaches "hope", a real town); from [minLen] one edit is allowed, from eight two. */
+    private fun wordOk(q: String, p: String, fuzzy: Boolean, minLen: Int): Boolean {
+        if (q == p) return true
+        if (!fuzzy || q.isEmpty()) return false
+        // Dictation drops accents ("emmene moi a la gare"): an accent-only difference is a match
+        // at any length, so the one-letter French "à" still lines up.
+        val fq = fold(q); val fp = fold(p)
+        if (fq == fp) return true
+        if (p.length < minLen) return false
+        val allowed = if (p.length >= 8) 2 else 1
+        return kotlin.math.abs(fq.length - fp.length) <= allowed && dist(fq, fp) <= allowed
+    }
+
+    private val MARKS = Regex("\\p{Mn}+")
+    private fun fold(s: String): String = MARKS.replace(java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD), "")
+
+    /** Is [a] a (possibly misheard) verb phrase such as "navigat" or "take me"? A rejection test
+     *  for the bare A-to-B rule, so it is generous: single words fuzz too. */
+    private fun looksLikeVerb(a: String, to: String, w: Words): Boolean {
+        val aw = a.split(' ')
+        val phrases = w.go.map { it.removeSuffix(" $to").removeSuffix(" to") } + w.goBare
+        return phrases.any { ph ->
+            val pw = ph.split(' ')
+            pw.size == aw.size && pw.indices.all { wordOk(aw[it], pw[it], true, 4) }
+        }
+    }
+
+    /** [t] starts with [phrase] (word by word): the remainder, or null. */
+    private fun pre(t: String, phrase: String, w: Words, fuzzy: Boolean): String? {
+        if (w.noSpaces) return if (t.startsWith(phrase)) t.removePrefix(phrase).trim() else null
+        if (t == phrase) return ""
+        if (t.startsWith("$phrase ")) return t.removePrefix("$phrase ").trim()
+        if (!fuzzy) return null
+        val pw = phrase.split(' '); val tw = t.split(' ')
+        // Single-word fillers stay exact: "fine dining" must not read as "find dining".
+        if (pw.size < 2 || tw.size <= pw.size) return null
+        for (i in pw.indices) if (!wordOk(tw[i], pw[i], true, 4)) return null
+        return tw.drop(pw.size).joinToString(" ")
+    }
+
+    /** [t] equals [phrase] word by word. */
+    private fun eq(t: String, phrase: String, w: Words, fuzzy: Boolean): Boolean {
+        if (t == phrase) return true
+        if (!fuzzy || w.noSpaces) return false
+        val pw = phrase.split(' '); val tw = t.split(' ')
+        if (pw.size < 2 || tw.size != pw.size) return false
+        for (i in pw.indices) if (!wordOk(tw[i], pw[i], true, 5)) return false
+        return true
+    }
+
+    /** [t] ends with [phrase] (word by word): the head, or null. */
+    private fun suf(t: String, phrase: String, w: Words, fuzzy: Boolean): String? {
+        if (w.noSpaces) return if (t.length > phrase.length && t.endsWith(phrase)) t.removeSuffix(phrase).trim() else null
+        if (t.endsWith(" $phrase")) return t.removeSuffix(" $phrase").trim()
+        if (!fuzzy) return null
+        val pw = phrase.split(' '); val tw = t.split(' ')
+        if (pw.size < 2 || tw.size <= pw.size) return null
+        val tail = tw.takeLast(pw.size)
+        for (i in pw.indices) if (!wordOk(tail[i], pw[i], true, 4)) return null
+        return tw.dropLast(pw.size).joinToString(" ")
     }
 
     private fun normalise(s: String): String =
         s.trim().lowercase()
-            .replace(Regex("[\"“”«»]"), "")
+            .replace(Regex("[\"“”«»'’`]"), "")
             .replace(Regex("[!?.,;:！？。、，]+$"), "")
+            // "e.t.a." / "e t a" -> "eta": dictation spells acronyms out.
+            .replace(Regex("\\b([a-z])[. ]([a-z])[. ]([a-z])\\b"), "$1$2$3")
             .replace(Regex("\\s+"), " ")
             .trim()
 
-    private fun parseWith(t0: String, w: Words): QueryIntent? {
+    private fun parseWith(t0: String, w: Words, fuzzy: Boolean): QueryIntent? {
         var t = t0
         val sp = if (w.noSpaces) "" else " "
         // Trailing politeness ("... please", "... s'il te plaît").
         for (p in w.please.sortedByDescending { it.length }) {
-            if (t.endsWith("$sp$p") && t.length > p.length) t = t.removeSuffix("$sp$p").trim()
+            suf(t, p, w, fuzzy)?.let { if (it.isNotBlank()) t = it }
         }
         if (t.isBlank()) return null
         // ETA questions are whole phrases.
-        if (w.eta.any { it == t }) return QueryIntent.Eta
+        if (w.eta.any { eq(t, it, w, fuzzy) }) return QueryIntent.Eta
         // Japanese "AからBまで": the trailing "まで" is also a verb suffix, so the route shape is
         // tried before the suffix strip eats it.
         if (w.fromIsSuffix) splitRoute(t, w)?.let { return it }
         // "go home" / "take me to work" / bare "home"; Japanese puts the verb after the place.
-        val afterGo = stripGo(t, w) ?: stripGoSuffix(t, w)
-        val afterBare = if (afterGo == null) stripBare(t, w) else null
+        val afterGo = stripGo(t, w, fuzzy) ?: stripGoSuffix(t, w)
+        val afterBare = if (afterGo == null) stripBare(t, w, fuzzy) else null
         val dest = afterGo ?: afterBare ?: t
-        if (w.home.any { it == dest }) return QueryIntent.Home
-        if (w.work.any { it == dest }) return QueryIntent.Work
+        // Home/work are a closed vocabulary, so they take the fuzzy compare in BOTH passes: the
+        // exact pass already owns "take me to my ofice" (its verb matched) and would otherwise
+        // return NavigateTo before the fuzzy pass ran. Single words stay exact ("hope" is a town).
+        if (w.home.any { eq(dest, it, w, true) }) return QueryIntent.Home
+        if (w.work.any { eq(dest, it, w, true) }) return QueryIntent.Work
         if (afterGo != null) {
             // "navigate from A to B" reads as a route; otherwise the rest is the destination.
             splitRoute(afterGo, w)?.let { return it }
@@ -328,11 +416,19 @@ object QueryIntents {
         // "where is the nearest X" / "X near me" / "find X".
         var q = t
         var changed = false
-        for (p in w.nearPrefix.sortedByDescending { it.length }) {
-            if (q.startsWith("$p$sp") && q.length > p.length) { q = q.removePrefix("$p$sp").trim(); changed = true; break }
+        // Fillers can chain ("where is" + "the nearest"), and a misheard second one only shows
+        // in the fuzzy form, so each side strips twice: the pass's own mode, then fuzzy.
+        for (mode in listOf(fuzzy, true)) {
+            for (p in w.nearPrefix.sortedByDescending { it.length }) {
+                val r = pre(q, p, w, mode) ?: continue
+                if (r.isNotBlank()) { q = r; changed = true; break }
+            }
         }
-        for (sfx in w.nearSuffix.sortedByDescending { it.length }) {
-            if (q.endsWith("$sp$sfx") && q.length > sfx.length) { q = q.removeSuffix("$sp$sfx").trim(); changed = true; break }
+        for (mode in listOf(fuzzy, true)) {
+            for (sfx in w.nearSuffix.sortedByDescending { it.length }) {
+                val r = suf(q, sfx, w, mode) ?: continue
+                if (r.isNotBlank()) { q = r; changed = true; break }
+            }
         }
         if (changed && q.isNotBlank() && q != t) return QueryIntent.Search(q)
         return null
@@ -340,15 +436,23 @@ object QueryIntents {
 
     /** The text after a "navigate to" verb phrase, or null when the query has none. The phrase may
      *  sit behind up to four filler words ("can you please take me to", "find the fastest route to"). */
-    private fun stripGo(t: String, w: Words): String? {
-        val sp = if (w.noSpaces) "" else " "
+    private fun stripGo(t: String, w: Words, fuzzy: Boolean): String? {
         for (g in w.go.sortedByDescending { it.length }) {
-            if (t == g) return ""
-            if (t.startsWith("$g$sp")) return t.removePrefix("$g$sp").trim()
-            if (!w.noSpaces) {
-                val idx = t.indexOf(" $g ")
-                if (idx > 0 && t.substring(0, idx).split(' ').size <= 4) return t.substring(idx + g.length + 2).trim()
-            }
+            preSkippingFillers(t, g, w, fuzzy)?.let { return it }
+        }
+        return null
+    }
+
+    /** [pre], but the phrase may also sit behind up to four filler words ("can you please take
+     *  me to"); a filler-skipped match must leave something after the phrase. */
+    private fun preSkippingFillers(t: String, g: String, w: Words, fuzzy: Boolean): String? {
+        pre(t, g, w, fuzzy)?.let { return it }
+        if (w.noSpaces) return null
+        val tw = t.split(' ')
+        val pw = g.split(' ')
+        for (skip in 1..minOf(4, tw.size - pw.size - 1)) {
+            val rest = tw.drop(skip).joinToString(" ")
+            pre(rest, g, w, fuzzy)?.let { if (it.isNotBlank()) return it }
         }
         return null
     }
@@ -361,10 +465,9 @@ object QueryIntents {
         return null
     }
 
-    private fun stripBare(t: String, w: Words): String? {
-        val sp = if (w.noSpaces) "" else " "
+    private fun stripBare(t: String, w: Words, fuzzy: Boolean): String? {
         for (g in w.goBare.sortedByDescending { it.length }) {
-            if (t.startsWith("$g$sp") && t.length > g.length) return t.removePrefix("$g$sp").trim()
+            preSkippingFillers(t, g, w, fuzzy)?.let { if (it.isNotBlank()) return it }
         }
         return null
     }
@@ -402,6 +505,8 @@ object QueryIntents {
                 // A bare "X to Y" is a route only when X is a place-shaped thing, not a question.
                 val firstWord = a.substringBefore(' ')
                 if (firstWord in w.notFrom) continue
+                // ...and not a misheard verb ("navigat to the station"): the fuzzy pass owns those.
+                if (looksLikeVerb(a, to, w)) continue
                 val minLen = if (w.noSpaces) 2 else 3
                 if (a.length < minLen || b.length < minLen) continue
             }
