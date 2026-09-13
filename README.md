@@ -145,6 +145,11 @@ There's also a one-page tour at
   config the app checks at launch - when Google shifts a field or an endpoint, a
   repair ships to every install in minutes, no update needed. The same channel can
   push a heads-up notice ("search is down, fix coming") straight onto the map. See [`docs/CALIBRATION.md`](docs/CALIBRATION.md): for details.
+- **Say it or type it.** "Take me home", "get me to work", "navigate to the station",
+  "Davis to San Francisco", "nearest pharmacy", "what's my ETA": the search box understands
+  those as actions, spoken through the mic or typed, in English, French, German, Spanish,
+  Italian, Portuguese and Dutch, with English understood everywhere. Dictation is a small
+  on-device speech model; the understanding is plain rules on the phone. Nothing leaves it.
 - **The rest.** Android Auto, 15 languages,
   in-app light/dark, full D-pad operation for keypad phones, place lists, and a
   built-in updater with weekly-stable or nightly channels.
@@ -232,6 +237,13 @@ release notes of each build. Still open (details in [ROADMAP.md](ROADMAP.md)):
 
 - [ ] Move to Weblate translations (project needs to exist for at least three months)
 - [ ] F-Droid submission + reproducible build
+- [ ] A Google Play listing, so Android Auto works on factory head units: a clean shell on Play
+      (map, offline routing, places from OpenStreetMap) with the Google-reading half as an
+      add-on APK from GitHub, the way Nova and CoMaps handle plugins Play would not carry.
+      A big job (a developer account, review, a split build); on the radar, not started.
+- [ ] An iOS build. The engine module is plain Kotlin and would move to Kotlin Multiplatform;
+      the map (MapLibre), the neural voice (sherpa-onnx) and the hidden-page scrapes all have
+      iOS counterparts. The whole interface would be rewritten. On the radar, not started.
 
 **Not going to happen** - anything that needs you to sign in to Google or hand data to a
 backend: contributing reviews/photos/edits, live location sharing and share-ETA, a location
