@@ -178,6 +178,11 @@
     <string name="settings_data_privacy_hint">Vela talks to Google\'s public endpoints straight from this device: no backend, no account, no API key. Google sees your IP, query and map area, not who you are.</string>
     <string name="nav_overview">Route overview</string>
     <string name="settings_map_places">Places on the map</string>
+    <string name="settings_house_numbers">House numbers</string>
+    <string name="settings_house_numbers_near">Only when zoomed right in</string>
+    <string name="settings_house_numbers_normal">Normal</string>
+    <string name="settings_house_numbers_far">Further out</string>
+    <string name="settings_house_numbers_hint">House numbers come from OpenStreetMap and, in the US, OpenAddresses. A building that has no number in either shows none, even though search still finds the address through Google.</string>
     <string name="settings_show_pois">Show places</string>
     <string name="settings_show_pois_hint">Business and place icons on the browse map. Off = a clean map; searched places still show.</string>
     <string name="settings_show_civic">Parks, schools and civic places</string>

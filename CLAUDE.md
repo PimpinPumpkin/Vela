@@ -1165,7 +1165,7 @@ Defaults that make the safe path the easy one:
   the faint `building-3d` extrusion). The fill needs a matching **`setMaxZoom(24f)`** to re-open the top;
   keep it. `building-3d` (fill-extrusion) is gated to **z16+** on purpose (the flat fill carries the
   browse-zoom footprint look; extrusion is the per-pixel-expensive part on a Pixel 5a). (2) **House
-  numbers** render via the runtime `vela-housenumber` SymbolLayer (OMT `housenumber` source-layer, gated by the shared `HOUSENUMBER_MIN_ZOOM` = **18.3** with a 0.6-zoom `houseNumberFade` - numbers only when close, but reachable by an ordinary zoom-in; it was a hard 19 (~50 ft) until issue #257, where people zoomed in, saw street names and no numbers, and concluded Vela had none; 17.5 still carpeted whole blocks, user 2026-07-13. The basemap layer and the `vela-addr-*` overlay MUST share the constant - they draw the same addresses from different sources, so a mismatch shows one set arriving before the other) - 
+  numbers** render via the runtime `vela-housenumber` SymbolLayer (OMT `housenumber` source-layer, gated by the shared `houseNumberMinZoom()` = **a SETTING since 2026-09-13 (issue #329, `ui/HouseNumbers`, Settings > Map "House numbers": near 18.3 / normal 17.8 default / far 17.3; the level rides `styleKey`)** with a 0.6-zoom `houseNumberFade` - numbers only when close, but reachable by an ordinary zoom-in; it was a hard 19 (~50 ft) until issue #257, where people zoomed in, saw street names and no numbers, and concluded Vela had none; 17.5 still carpeted whole blocks, user 2026-07-13. The basemap layer and the `vela-addr-*` overlay MUST share the constant - they draw the same addresses from different sources, so a mismatch shows one set arriving before the other) - 
   OpenFreeMap **does** serve that source-layer (verified vs the live TileJSON + z14 tiles), so it works;
   coverage is OSM `addr:housenumber` (partial), not a render bug. The `vela-addr-*` overlay number
   layers anchor to `CONTROLS_CLAIM_LAYER` (above basemap labels, below the ambient icons) - NOT the
@@ -1296,6 +1296,12 @@ Defaults that make the safe path the easy one:
   on the `asr-models` release). The map's one-tap mic offer still installs the DEFAULT (Whisper). Note:
   SenseVoice pins the app language only when it's in {zh,en,ja,ko,yue}, else "auto"; Moonshine ignores
   language. Older single-model details above (WhisperRecognizer/AsrModel/asrInstalled) are superseded.
+- **The FIRST fix never yanks a map the user has already panned (issue #362, 2026-09-13).** A cold
+  GPS start takes 15 to 30 s indoors; a fix landing after the user had started looking around
+  set `center` and the camera flew home and zoomed in (benwiley's "cannot recenter, it
+  autocenters", and the same complaint on the 4a). `MapScreen.onUserPan` now also calls
+  `vm.onUserPanned()`, and the first-fix branch sets `center` only while that flag is false. The
+  locate FAB (`recenterTick`) is untouched: a tap is an explicit ask.
 - **Location is requested in onboarding, NOT on map load (2026-07-10).** `MapScreen`'s
   `LaunchedEffect` only STARTS location when it's already granted; it no longer fires the raw
   system dialog. The first ask lives in `VelaRoot`: when onboarding reaches the location step

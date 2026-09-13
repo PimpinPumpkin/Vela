@@ -98,6 +98,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.RouteTrail.init(this)
         app.vela.ui.RoadLabel.init(this)
         app.vela.ui.PuckStyle.init(this)
+        app.vela.ui.HouseNumbers.init(this) // house-number zoom gate (issue #329)
         app.vela.ui.PreferButtons.init(this)
         app.vela.ui.BuildingOverlay.init(this)
         app.vela.ui.BuildingDebug.init(this)
