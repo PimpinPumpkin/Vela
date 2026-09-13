@@ -253,6 +253,15 @@ send a change. There is no separate code-of-conduct document by design: keep it
 about the code. Security issues go through [`SECURITY.md`](SECURITY.md) (GitHub
 private vulnerability reporting), not a public issue.
 
+## Map data
+
+The map itself is [OpenStreetMap](https://www.openstreetmap.org/copyright) data, © OpenStreetMap
+contributors, available under the Open Database License, served as vector tiles by
+[OpenFreeMap](https://openfreemap.org). Offline routing regions, place packs, house-number and
+building overlays are built from OpenStreetMap, OpenAddresses and Microsoft Building Footprints
+extracts and carry their licences in the release notes of the hosting release. Satellite imagery
+is Esri World Imagery, with Google imagery where Esri has none at close zoom.
+
 ## License
 
 [![GNU GPLv3 Image](https://www.gnu.org/graphics/gplv3-127x51.png)](http://www.gnu.org/licenses/gpl-3.0.en.html)

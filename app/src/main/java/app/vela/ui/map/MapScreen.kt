@@ -2400,6 +2400,32 @@ fun MapScreen(
             // down level with the locate FAB, user 2026-07-14) - the follow gate alone missed a
             // moving-but-panned map, where both used to want the same spot.
             // The landscape panel owns the bottom-left corner - the bar would draw on top of it.
+            // OpenStreetMap attribution (issue #302): the basemap is OSM data and the ODbL asks
+            // for a visible credit wherever the map is shown, so this stays up in every map
+            // state, browse and nav alike; MapLibre's own ⓘ button is off (it covered the
+            // scale bar and read as a control). Bottom-left under the scale bar, lifted over
+            // the nav bar and the minimized results bar, into the map strip in landscape.
+            // Tapping it opens the OSM copyright page. Satellite keeps its own centred credit.
+            run {
+                val osmUri = "https://www.openstreetmap.org/copyright"
+                val navLift = if (state.navigating) with(LocalDensity.current) { navBarHeightPx.toDp() } + 6.dp else 0.dp
+                Text(
+                    stringResource(R.string.map_osm_attribution),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (darkTheme) Color(0xFFB8C2CC) else Color(0xFF4A4A4A),
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .navigationBarsPadding()
+                        .padding(start = if (sidePanelUp) sidePanelWidthDp + 8.dp else 8.dp, bottom = 2.dp + chromeLift + navLift)
+                        .dpadHighlight(RoundedCornerShape(6.dp))
+                        .clickable {
+                            runCatching {
+                                context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(osmUri)))
+                            }
+                        }
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                )
+            }
             if (!(driveFollowing && speedOverlayArmed) && !movingFree && !sidePanelUp) {
                 ScaleBarReader(
                     state = metersPerPixelState,
@@ -2407,7 +2433,8 @@ fun MapScreen(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .navigationBarsPadding()
-                        .padding(start = 46.dp, bottom = 16.dp + chromeLift),
+                        // 30 dp, not 16: the OSM credit owns the strip under the bar now.
+                        .padding(start = 46.dp, bottom = 30.dp + chromeLift),
                 )
             }
         }

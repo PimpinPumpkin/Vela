@@ -71,6 +71,28 @@ Onboarding.openDonate(context)
         }
 
         Spacer(Modifier.height(8.dp))
+        // Where the map comes from (issue #302): the ODbL credit belongs in About as well as on
+        // the map, and people asked where the streets come from when they differ from Google.
+        SettingsGroup(title = stringResource(R.string.settings_map_data)) {
+        androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
+        Hint(stringResource(R.string.settings_map_data_hint))
+        Spacer(Modifier.height(4.dp))
+        FilledTonalButton(
+            modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+            onClick = {
+                runCatching {
+                    context.startActivity(
+                        android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://www.openstreetmap.org/copyright")),
+                    )
+                }
+            },
+        ) {
+            Text(stringResource(R.string.settings_map_data_button))
+        }
+        }
+        }
+
+        Spacer(Modifier.height(8.dp))
         SettingsGroup(title = stringResource(R.string.settings_version)) {
         // Tap to copy - bug reports need the exact version, and typing it from the screen
         // is error-prone (issue #58's one keeper suggestion).
