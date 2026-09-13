@@ -574,7 +574,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
             if(!document.querySelector('.jJc9Ad,[data-review-id]')) return;
             // A row: a single leading digit (not a decimal, not a thousands group), then the count,
             // and a star word somewhere ("5 stars, 1,189 reviews", "5 星級、908 則評論").
-            var HROW=/^\s*([1-5])(?![\d.,])\D+?(\d[\d,]*)/;
+            var HROW=/^\s*([1-5])(?![\d.,])\D+?(\d[\d.,\s\u00a0\u202f]*)/;
             var rows=[].slice.call(document.querySelectorAll('tr[aria-label]')).filter(function(r){
               var t=r.getAttribute('aria-label')||''; return HROW.test(t) && VW.star.test(t);
             });
@@ -583,7 +583,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
               var counts={};
               rows.forEach(function(r){
                 var m=(r.getAttribute('aria-label')||'').match(HROW);
-                if(m) counts[m[1]]=parseInt(m[2].replace(/,/g,''),10);
+                if(m) counts[m[1]]=parseInt(m[2].replace(/\D/g,''),10);
               });
               if(counts['5']!==undefined && counts['1']!==undefined){
                 window.__velaHistSent=1;
@@ -703,6 +703,15 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           };
           window.velaSort=function(label,index){
             var bs=[].slice.call(document.querySelectorAll('[role="main"] button')).filter(function(b){ return VW.sort.test((b.getAttribute('aria-label')||b.textContent||'')); });
+            if(!bs.length){
+              // Russian labels the sort button with the CURRENT choice ("Самые релевантные"), no
+              // sort word at all: fall back to the last popup-opening button before the first
+              // review card (the ⓘ info button also has aria-haspopup, but sits above the histogram).
+              var card=document.querySelector('.jJc9Ad,[data-review-id]');
+              var pops=[].slice.call(document.querySelectorAll('[role="main"] button[aria-haspopup="true"]'));
+              if(card) pops=pops.filter(function(b){ return b.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING; });
+              if(pops.length) bs=[pops[pops.length-1]];
+            }
             if(!bs.length) return;
             try{ bs[0].click(); }catch(e){}
             var attempts=0;

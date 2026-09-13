@@ -1730,6 +1730,14 @@ architecture note.
   Wired at runSearch + the suggest fetch; searchAlongRoute keeps its route-midpoint bias.
 - **Release cadence (user 2026-09-13): merges go to `canary` (push main to the canary branch); nightlies
   are the daily cron's job. Do not dispatch CI after every merge.**
+- **EVERY STABLE'S NOTES LEAD WITH A SHORT "WHAT'S NEW" LIST (user 2026-09-13).** The in-app
+  What's new dialog (`ui/WhatsNew`) shows the release body verbatim, so a stable whose notes are
+  only the generated commit list reads like a git log to the people it is for. When a stable is
+  cut (the Monday promotion or an early one), edit its notes (`gh release edit vX --notes-file`)
+  to put a hand-written list of the major user-facing changes above the generated
+  "Everything since" commit list: one line per feature, plain words, the reason for an early
+  cut first if there is one (0.4.1217 is the model). The promote workflow cannot write this
+  part; it is the release's own job, the same day. Nightlies keep the commit list alone.
 - **QUERY INTENTS (discussion #365, 2026-09-13): `core/search/QueryIntents.parse(text, lang)`.**
   Voice search was dictation into the search box, so "take me home" searched for a place called
   that. Every submitted query (typed `search()` and the two voice paths through
@@ -1915,7 +1923,14 @@ architecture note.
   star widgets get a `.vela-stars` class from JS (the dark-mode re-invert CSS cannot match a word in
   every language), and the sort menu is clicked BY INDEX (Google keeps one order in every language;
   the English label stays as the fallback). Verified on the 4a in Traditional Chinese and English
-  with the zh-TW labels captured live; `ReviewWordsTest` pins them. A `WebChromeClient` logs the
+  with the zh-TW labels captured live, and the German and Russian labels captured the same day in
+  the browser pane (`ReviewWordsTest` pins all three): German puts "teilen" at the END of the
+  Share label and names the chip "Alle Rezensionen", its histogram counts use a dot for thousands
+  ("1.329") and Russian a space ("1 324"), Russian's Like is "Лайк", its Write is "Оставить отзыв",
+  and its SORT BUTTON carries no sort word at all (its label is the current choice, "Самые
+  релевантные"), so `velaSort` falls back to the last `aria-haspopup` button before the first
+  review card. When a language shows a Google control the carve missed, capture the page in the
+  browser pane with `hl=<lang>` and add the label to the table; do not guess a second time. A `WebChromeClient` logs the
   page's console errors under `VelaPanel`, and a probe line prints the tabs it saw.
   **WHAT'S NEW after an update (2026-09-13, `ui/WhatsNew`):** the first launch on a new
   versionName fetches that version's release notes (`releases/tags/v<version>`, or the rolling

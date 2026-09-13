@@ -66,27 +66,30 @@ object ReviewWords {
     const val AGO_PATTERN = "\\bago$|前$|^il y a\\b|^vor\\b|^hace\\b|\\bfa$|^há\\b|geleden$|назад$|тому$|temu$|sedan$|^לפני|(napja|hete|hónapja|éve|órája|perce)$"
 
     /** "Write a review" (blocked: it leads to sign-in). */
-    const val WRITE_PATTERN = "write a review|撰寫評論|写评价|撰写评价|rezension schreiben|bewertung schreiben|escribir una reseña|rédiger un avis|scrivi una recensione|escrever uma avaliação|review schrijven|написать отзыв|написати відгук|napisz opinię|skriv en recension|értékelés írása|כתיבת ביקורת|クチコミを投稿|クチコミを書く"
+    const val WRITE_PATTERN = "write a review|撰寫評論|写评价|撰写评价|rezension schreiben|bewertung schreiben|escribir una reseña|rédiger un avis|scrivi una recensione|escrever uma avaliação|review schrijven|написать отзыв|оставить отзыв|написати відгук|залишити відгук|napisz opinię|skriv en recension|értékelés írása|כתיבת ביקורת|クチコミを投稿|クチコミを書く"
 
     /** The per-review Like button, whole label. */
-    const val LIKE_PATTERN = "^(like|喜歡|赞|j.aime|gefällt mir|me gusta|mi piace|gostei|vind ik leuk|нравится|подобається|lubię to|gilla|tetszik|אהבתי|いいね)$"
+    const val LIKE_PATTERN = "^(like|喜歡|赞|j.aime|gefällt mir|me gusta|mi piace|gostei|vind ik leuk|нравится|лайк|подобається|lubię to|gilla|tetszik|אהבתי|いいね)$"
 
-    /** The per-review Share button ("Share Jane's review."), label prefix. */
-    const val SHARE_PATTERN = "^(share|分享|partag|teilen|compartir|condividi|compartilhar|delen|поделиться|поділитися|udostępnij|dela|megosztás|שיתוף|共有)"
+    /** The per-review Share button: a prefix in most languages ("Share Jane's review.",
+     *  "分享…的評論"), a SUFFIX in German and Dutch ("Rezension von X teilen."). */
+    const val SHARE_PATTERN = "^(share|分享|partag|compartir|condividi|compartilhar|поделиться|поділитися|udostępnij|dela|megosztás|שיתוף|共有)|(teilen|delen)\\.?$"
 
     /** The per-review overflow ("Actions for Jane's review", "對…的評論採取動作"). */
     const val ACTIONS_PATTERN = "^actions for|採取動作|采取操作|^actions pour|^aktionen für|^acciones para|^azioni per|^ações para|^acties voor|^действия|^дії|^działania|^åtgärder|^műveletek|^פעולות|に対する操作|の操作"
 
-    /** The "All" topic chip that anchors the chips row, whole label. */
-    const val ALL_PATTERN = "^(all|所有評論|全部|alle|todas|todos|tous|toutes|tutte|tutti|mais|meer|все|всі|wszystkie|alla|összes|כל|すべて)$"
+    /** The "All" topic chip that anchors the chips row: the word alone ("All"), or the word plus
+     *  one review word ("Alle Rezensionen", "所有評論"). Anchored so "Allergens 4" is not it. */
+    const val ALL_PATTERN = "^(all|alle|todas|todos|tous|toutes|tutte|tutti|mais|meer|все|всі|wszystkie|alla|összes|כל|すべて|全部|所有評論|全部評論|所有评价|全部评价)$|^(all|alle|todas|todos|tous|toutes|tutte|tutti|все|всі|wszystkie|alla|összes)\\s+\\S+$"
 
     /** The "reviews are automatically processed" disclaimer row the panel strips. */
     const val PROCESSED_PATTERN = "automatically processed|自動處理|自动处理|automatisch verarbeitet|traités automatiquement|procesan automáticamente|elaborate automaticamente|processadas automaticamente|automatisch verwerkt|автоматически обрабатыва|автоматично обробля|automatycznie przetwarzane|behandlas automatiskt|automatikusan|מעובדות באופן אוטומטי|自動的に処理"
 
     /** A histogram row's star and count, language-neutral: a single leading digit (not part of
      *  a decimal or a thousands group), then anything up to the first number ("5 stars, 1,189
-     *  reviews", "5 星級、908 則評論"). */
-    val HISTOGRAM_ROW = Regex("""^\s*([1-5])(?![\d.,])\D+?(\d[\d,]*)""")
+     *  reviews", "5 星級、908 則評論", "5 Sterne,1.329 Rezensionen", "5-звездочные,1 324 отзывов"
+     *  - the count's thousands separator is a comma, a dot or a space by language). */
+    val HISTOGRAM_ROW = Regex("""^\s*([1-5])(?![\d.,])\D+?(\d[\d.,\s\u00a0\u202f]*)""")
 
     /** The word tables the page script needs, keyed as the calibration override map is. */
     val DEFAULT_WORDS: Map<String, String> = mapOf(
@@ -103,7 +106,7 @@ object ReviewWords {
     fun histogramRow(ariaLabel: String): Pair<Int, Int>? {
         val m = HISTOGRAM_ROW.find(ariaLabel) ?: return null
         if (!Regex(STAR_PATTERN, RegexOption.IGNORE_CASE).containsMatchIn(ariaLabel)) return null
-        return m.groupValues[1].toInt() to m.groupValues[2].replace(",", "").toInt()
+        return m.groupValues[1].toInt() to m.groupValues[2].replace(Regex("\\D"), "").toInt()
     }
 
     private val review = Regex(REVIEW_PATTERN, RegexOption.IGNORE_CASE)

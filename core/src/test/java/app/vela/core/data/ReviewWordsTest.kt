@@ -76,6 +76,11 @@ class ReviewWordsTest {
         assertEquals(5 to 908, ReviewWords.histogramRow("5 星級、908 則評論"))
         assertEquals(1 to 18, ReviewWords.histogramRow("1 星級、18 則評論"))
         assertEquals(5 to 1189, ReviewWords.histogramRow("5 stars, 1,189 reviews"))
+        assertEquals(5 to 1329, ReviewWords.histogramRow("5 Sterne,1.329 Rezensionen"))   // live, de
+        assertEquals(5 to 1324, ReviewWords.histogramRow("5-звездочные,1 324 отзывов"))   // live, ru
+        assertNull(ReviewWords.histogramRow("4,5 Sterne"))
+        assertNull(ReviewWords.histogramRow("4,5-звездочные"))
+        assertNull(ReviewWords.histogramRow("1.329 Rezensionen"))
         assertNull(ReviewWords.histogramRow("4.5 顆星"))
         assertNull(ReviewWords.histogramRow("1,329 則評論"))
         assertNull(ReviewWords.histogramRow("4.5 stars"))
@@ -94,6 +99,17 @@ class ReviewWordsTest {
         assertFalse(m("ago", "Mikuni")); assertFalse(m("ago", "500 1st St"))
         assertTrue(m("star", "4.5 顆星")); assertTrue(m("star", "5 stars"))
         assertTrue(m("review", "對「Mikuni」的評論")); assertFalse(m("review", "「Mikuni」總覽"))
+        // German and Russian, captured live the same day.
+        assertTrue(m("review", "Rezensionen zu „Mikuni“")); assertTrue(m("review", "Отзывы о месте \"Mikuni\""))
+        assertTrue(m("sort", "Rezensionen sortieren"))
+        assertTrue(m("write", "Rezension schreiben")); assertTrue(m("write", "Оставить отзыв"))
+        assertTrue(m("like", "Gefällt mir")); assertTrue(m("like", "Лайк"))
+        assertTrue(m("share", "Rezension von Raul Guzman teilen.")); assertTrue(m("share", "Поделиться отзывом пользователя C Varty"))
+        assertFalse(m("share", "Teilen Sie uns mit"))
+        assertTrue(m("actions", "Aktionen für die Rezension von Raul Guzman")); assertTrue(m("actions", "Действия с отзывом пользователя C Varty"))
+        assertTrue(m("all", "Alle Rezensionen")); assertFalse(m("all", "Alle 36 Rezensionen ansehen"))
+        assertTrue(m("ago", "vor 7 Jahren")); assertTrue(m("ago", "4 месяца назад"))
+        assertTrue(m("star", "4,5 Sterne")); assertTrue(m("star", "5-звездочные,908 отзывов"))
     }
 
     @Test fun `remote overrides lay over the defaults by key`() {
