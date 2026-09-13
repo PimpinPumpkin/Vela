@@ -43,7 +43,7 @@ class ReviewWordsTest {
         listOf(
             "Reviews", "評論", "评论", "Rezensionen", "Bewertungen", "Avis", "Reseñas",
             "Recensioni", "Avaliações", "Beoordelingen", "Отзывы", "Opinie", "Omdömen",
-            "Відгуки", "ביקורות", "クチコミ", "レビュー",
+            "Відгуки", "ביקורות", "クチコミ", "レビュー", "Vélemények",
         ).forEach { assertTrue("tab not recognised: $it", ReviewWords.isReviewsTab(it)) }
     }
 

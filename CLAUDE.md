@@ -1556,7 +1556,7 @@ Defaults that make the safe path the easy one:
   bake is user-triggered; until then offline nav keeps the local script / ICU).
   (2) **UI chrome** - 
   all ~330 user-facing `:app` strings live in `res/values/strings.xml` (English) + `res/values-<lang>/` for
-  the 14 translated languages (fr de es it pt nl ru pl sv uk iw + zh zh-rTW ja; CJK added 2026-07-11, Hebrew 2026-07-13),
+  the 15 translated languages (fr de es it pt nl ru pl sv uk hu iw + zh zh-rTW ja; CJK added 2026-07-11, Hungarian contributed by Zsolt Laszlo Kaiser from the kaiser-app fork and ported 2026-09-13 with its NavStrings table, status words, review words, transit words and the Anna Piper voice, Hebrew 2026-07-13),
   referenced via `stringResource`/`getString`. **CJK notes (2026-07-11):** Chinese ships as
   `values-zh` (Simplified, also the fallback for any zh region without its own folder) +
   `values-zh-rTW` (Traditional, Taiwan wording - issue #55); the in-app picker codes are "zh",

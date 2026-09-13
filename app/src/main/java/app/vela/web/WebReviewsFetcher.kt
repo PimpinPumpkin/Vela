@@ -509,7 +509,7 @@ class WebReviewsFetcher @Inject constructor(
         // for Hebrew on Android (the app's own resource dir is values-iw), so a "he"-only set
         // sends every Hebrew reader back to the English page - the one locale whose review words
         // were added by hand. Indonesian ("in") and Yiddish ("ji") carry the same trap.
-        val SUPPORTED_HL = setOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "zh", "ja", "he", "iw")
+        val SUPPORTED_HL = setOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "hu", "zh", "ja", "he", "iw")
 
         /** The page language for the hidden reviews WebView: the app's language when the scraper's
          *  word lists cover it (issue #278: the page language decides WHICH reviews Google serves,

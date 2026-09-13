@@ -341,6 +341,7 @@ object SearchParser {
         "pl" to listOf("Zamknięte", "Otwarcie", "Tymczasowo"),
         "sv" to listOf("Stängt", "Öppnar", "Tillfälligt"),
         "uk" to listOf("Зачинено", "Відчиниться", "Тимчасово"),
+        "hu" to listOf("Zárva", "Nyitás", "Hamarosan zár", "Végleg bezárt", "Ideiglenesen zárva"),
         // Chinese carries BOTH scripts under one key: parseOpenNow is keyed by the bare language
         // ("zh"), and hl=zh-CN answers Simplified while hl=zh-TW answers Traditional.
         // 已打烊/已歇業 = closed; 即将开始营业/即將開始營業 and 尚未营业 = opens later (closed now);
@@ -378,6 +379,7 @@ object SearchParser {
         "pl" to listOf("Otwarte", "Zamknięcie"),
         "sv" to listOf("Öppet", "Stänger"),
         "uk" to listOf("Відчинено", "Зачиняється"),
+        "hu" to listOf("Nyitva", "Zárás", "Hamarosan nyit"),
         // 营业中/營業中 = open now; 即将打烊/即將打烊 and 打烊时间/打烊時間 = closes later (open now).
         "zh" to listOf("营业中", "營業中", "打烊", "營業至", "营业至"),
         // 営業中 = open now; 営業終了時間/まもなく営業終了 = closes later (open now).

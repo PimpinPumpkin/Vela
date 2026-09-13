@@ -1832,6 +1832,149 @@ object HeNavStrings : NavStrings {
  * assembled off the main thread. Defaults to [EnNavStrings] so nothing (and no test) depends on the
  * device locale until a language is chosen.
  */
+/** Hungarian (Magyar): contributed by Zsolt Laszlo Kaiser (kaiser-app fork), ported 2026-09-13. */
+object HuNavStrings : NavStrings {
+    override val locale: Locale = Locale("hu", "HU")
+
+    override fun passLights(count: Int): String =
+        if (count <= 1) "Menj el a közlekedési lámpa mellett" else "Menj el $count közlekedési lámpa mellett"
+
+    private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
+        "left" -> "balra"
+        "right" -> "jobbra"
+        "slight left" -> "enyhén balra"
+        "slight right" -> "enyhén jobbra"
+        "sharp left" -> "élesen balra"
+        "sharp right" -> "élesen jobbra"
+        "straight" -> "egyenesen"
+        "uturn" -> "fordulj vissza"
+        else -> ""
+    }
+
+    /** Hungarian definite article helper: "a" or "az" based on the first letter or number. */
+    private fun det(text: String?): String {
+        if (text == null || text.isBlank()) return ""
+        val trimmed = text.trim().lowercase()
+        val first = trimmed.firstOrNull() ?: return "a"
+
+        // Handle numbers (especially for roundabout exits)
+        if (first.isDigit()) {
+            // 1 (első), 5 (ötödik) start with vowels in Hungarian speech
+            return if (first == '1' || first == '5') "az $text" else "a $text"
+        }
+
+        return if (first in "aeiouáéíóöőúüű") "az $text" else "a $text"
+    }
+
+    /**
+     * Hungarian road name helper: handles suffixes like "utca", "út" to avoid "utca útra".
+     * [onto] = true for "onto <road>" (suffix -ra/-re/-ba/-be), false for "on <road>" (suffix -n/-on/-en/-ön).
+     */
+    private fun huRoad(road: String?, onto: Boolean): String {
+        if (road == null || road.isBlank()) return ""
+        val r = road.trim()
+        val low = r.lowercase()
+        return when {
+            low.endsWith(" utca") || low.endsWith("utca") -> if (onto) r.substring(0, r.length - 1) + "ára" else r.substring(0, r.length - 1) + "án"
+            low.endsWith(" u.") || low.endsWith("u.") -> {
+                val base = if (low.endsWith(" u.")) r.dropLast(3) else r.dropLast(2)
+                if (onto) base + "utcára" else base + "utcán"
+            }
+            low.endsWith(" út") || low.endsWith("út") -> if (onto) r + "ra" else r + "on"
+            low.endsWith(" útja") || low.endsWith("útja") -> if (onto) r.substring(0, r.length - 2) + "ára" else r.substring(0, r.length - 2) + "án"
+            low.endsWith(" tér") || low.endsWith("tér") -> if (onto) r + "re" else r + "en"
+            low.endsWith(" tere") || low.endsWith("tere") -> if (onto) r.substring(0, r.length - 1) + "ére" else r.substring(0, r.length - 1) + "én"
+            low.endsWith(" körút") || low.endsWith("körút") -> if (onto) r + "ra" else r + "on"
+            low.endsWith(" krt.") || low.endsWith("krt.") -> {
+                val base = if (low.endsWith(" krt.")) r.dropLast(4) else r.dropLast(3)
+                if (onto) base + "körútra" else base + "körúton"
+            }
+            low.endsWith(" sétány") || low.endsWith("sétány") -> if (onto) r + "ra" else r + "on"
+            low.endsWith(" köz") || low.endsWith("köz") -> if (onto) r + "be" else r + "ben"
+            low.endsWith(" rakpart") || low.endsWith("rakpart") -> if (onto) r + "ra" else r + "on"
+            low.endsWith(" dűlő") || low.endsWith("dűlő") -> if (onto) r + "re" else r + "n"
+            // Default: if it doesn't end with a known suffix, only THEN append "útra" / "úton"
+            else -> if (onto) "$r útra" else "$r úton"
+        }
+    }
+
+    override fun phrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
+        val onto = if (road != null) " ${det(huRoad(road, onto = true))}" else ""
+        val onRoad = if (road != null) " ${det(huRoad(road, onto = false))}" else ""
+        val toward = when {
+            dest != null -> " $dest felé"
+            road != null -> " ${det(road)} irányába"
+            else -> ""
+        }
+        val m = modWord(mod)
+        return when (type) {
+            "depart" -> if (road != null) "Indulj el $onRoad" else "Kezdődik az útvonal"
+            "arrive" -> "Megérkeztél az úti célodhoz"
+            "turn", "end of road" -> ("Fordulj $m").trim() + onto
+            "continue", "new name" -> if (m.isNotBlank() && m != "egyenesen") ("Tarts $m").trim() + onto else "Haladj tovább$onRoad"
+            "merge" -> "Sorolj be$toward"
+            "on ramp", "ramp" -> when {
+                mod?.contains("right") == true -> "Hajts fel a pályára jobbra$toward"
+                mod?.contains("left") == true -> "Hajts fel a pályára balra$toward"
+                else -> "Hajts fel a pályára$toward"
+            }
+            "off ramp" -> if (exitNo != null) "Hajts ki ${det(exitNo)} kijáratnál$toward" else "Hajts ki a kijáratnál$toward"
+            "fork" -> ("Tarts $m").trim() + toward
+            "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "A körforgalomnál hajts ki ${det(rbExit.toString() + ".")} kijáratnál$onto" else "Hajts be a körforgalomba$onto"
+            "roundabout turn" -> ("A körforgalomnál fordulj $m").trim() + onto
+            "uturn" -> "Fordulj vissza$onto"
+            else -> if (m.isNotBlank()) ("Fordulj $m").trim() + onto else "Haladj tovább$onRoad"
+        }
+    }
+
+    override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
+        val feet = meters * 3.28084
+        if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} láb"
+        else {
+            val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
+            if (miles == 1.0) "1 mérföld" else "${huNum(miles)} mérföld"
+        }
+    } else {
+        if (meters < 950) "${(meters / 10).roundToInt() * 10} méter"
+        else {
+            val km = (meters / 100).roundToInt() / 10.0
+            if (km == 1.0) "1 kilométer" else "${huNum(km)} kilométer"
+        }
+    }
+
+    override fun inThen(distancePhrase: String, instruction: String): String = "$distancePhrase múlva $instruction"
+
+    override fun arrived(): String = "Megérkeztél"
+
+    override fun destinationSide(left: Boolean): String = if (left) "Az úti célod a bal oldalon lesz" else "Az úti célod a jobb oldalon lesz"
+
+    override fun startNav(firstInstruction: String): String = "Navigáció indítása. $firstInstruction"
+
+    override fun reachedStop(label: String): String =
+        if (label.isNotBlank()) "Megérkeztél ide: $label" else "Megérkeztél a köztes megállóhoz"
+
+    override fun fasterRoute(firstInstruction: String): String = "Gyorsabb útvonalra váltás. $firstInstruction"
+    override fun rerouting(): String = "Újratervezés"
+    override fun fasterRouteAvailable(minutes: Int): String =
+        if (minutes == 1) "Gyorsabb útvonal érhető el, amivel körülbelül egy percet takaríthatsz meg"
+        else "Gyorsabb útvonal érhető el, amivel körülbelül $minutes percet takaríthatsz meg"
+    override fun stopsNotIncluded(): String = "Nem sikerült beilleszteni a megállóidat ebbe az útvonalba. Továbbra is próbálkozom."
+    override fun destinationAhead(): String = "Az úti célod előtted lesz"
+
+    override fun voiceTest(): String = "A hangos navigáció be van kapcsolva. Négyszáz méter múlva fordulj jobbra."
+
+    override fun useLanes(side: LaneSide, count: Int): String {
+        val sideWord = when (side) { LaneSide.LEFT -> "bal"; LaneSide.RIGHT -> "jobb"; LaneSide.CENTER -> "középső" }
+        return if (count > 1) "Használd a $sideWord $count sávot" else "Használd a $sideWord sávot"
+    }
+
+
+    private fun huNum(x: Double): String {
+        val s = x.toString().replace('.', ',')
+        return if (s.endsWith(",0")) s.dropLast(2) else s
+    }
+}
+
 object NavStringsRegistry {
     @Volatile
     private var active: NavStrings = EnNavStrings
@@ -1862,6 +2005,7 @@ object NavStringsRegistry {
         "pl" -> PlNavStrings
         "sv" -> SvNavStrings
         "uk" -> UkNavStrings
+        "hu" -> HuNavStrings
         "zh" -> ZhNavStrings
         "zh-tw" -> ZhTwNavStrings
         "ja" -> JaNavStrings
