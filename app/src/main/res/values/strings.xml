@@ -428,6 +428,11 @@
     <string name="mapscreen_close_results">Close search results</string>
     <string name="mapscreen_filter_open_now">Open now</string>
     <string name="mapscreen_more_results">More results</string>
+    <string name="intent_home_unset">Set Home first (search page, under the search bar)</string>
+    <string name="intent_work_unset">Set Work first (search page, under the search bar)</string>
+    <string name="intent_eta_reply">About %1$s to go</string>
+    <string name="intent_eta_not_navigating">Start a drive first, then ask again</string>
+    <string name="intent_place_not_found">Could not find \"%1$s\"</string>
     <string name="mapscreen_filter_rating">Rating</string>
     <string name="mapscreen_filter_any_rating">Any rating</string>
     <string name="mapscreen_filter_any_price">Any price</string>

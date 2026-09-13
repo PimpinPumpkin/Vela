@@ -1299,6 +1299,7 @@ class MapViewModel @Inject constructor(
      *  browse instead returns to the trip it belongs to (restore the destination + panel) —
      *  the user was hunting for a stop, not abandoning the drive. */
     fun clearSearch() {
+        openDirectionsOnResult = false
         suggestJob?.cancel()
         val backToTrip = _state.value.alongRouteDest
         if (backToTrip != null) {
@@ -1580,7 +1581,88 @@ class MapViewModel @Inject constructor(
     // Bias to what the user is LOOKING at (the panned viewport), Google-style — so searching after
     // panning to another area returns results THERE, not back at your GPS location. Falls back to GPS
     // before the map has settled a centre.
-    fun search() = runSearch(_state.value.query.trim(), plausibleBias(mapCenter) ?: plausibleBias(_state.value.myLocation))
+    fun search() {
+        val q = _state.value.query.trim()
+        val near = plausibleBias(mapCenter) ?: plausibleBias(_state.value.myLocation)
+        if (handleQueryIntent(q, near)) return
+        runSearch(q, near)
+    }
+
+    // ---- Query intents (discussion #365, 2026-09-13) ------------------------------------------
+    // Typed or spoken, "take me home", "Davis to San Francisco", "nearest pharmacy" and "what is
+    // my ETA" are ACTIONS, not search strings. `QueryIntents` (:core, per app language, English as
+    // the fallback) reads the shape; anything it does not recognise runs as a plain search, so a
+    // business called "Home Depot" still searches. Rule-based and on-device: no server, no model.
+
+    /** One-shot: the next search result set opens the route chooser on its top hit. */
+    @Volatile private var openDirectionsOnResult = false
+
+    /** True when [q] was an intent and has been acted on; false = run it as a search. */
+    private fun handleQueryIntent(q: String, near: LatLng?): Boolean {
+        val lang = app.vela.ui.AppLocale.effective().language
+        val intent = app.vela.core.search.QueryIntents.parse(q, lang) ?: return false
+        diag.record("search", "intent ${intent::class.simpleName} for \"$q\" ($lang)")
+        when (intent) {
+            is app.vela.core.search.QueryIntent.Home -> {
+                val home = _state.value.home ?: run { showStatus(appContext.getString(R.string.intent_home_unset)); return true }
+                _state.update { it.copy(query = q, suggestions = emptyList(), localSuggestions = emptyList()) }
+                // A BARE place under the shortcut's own name: selectSaved enriches by searching
+                // the address, which dresses Home as the business at that address (the same
+                // trap the contact pick had, issue #342).
+                selectPlace(Place(id = home.id, name = appContext.getString(R.string.shortcut_home), location = home.location, address = home.address)); routeToSelected()
+            }
+            is app.vela.core.search.QueryIntent.Work -> {
+                val work = _state.value.work ?: run { showStatus(appContext.getString(R.string.intent_work_unset)); return true }
+                _state.update { it.copy(query = q, suggestions = emptyList(), localSuggestions = emptyList()) }
+                selectPlace(Place(id = work.id, name = appContext.getString(R.string.shortcut_work), location = work.location, address = work.address)); routeToSelected()
+            }
+            is app.vela.core.search.QueryIntent.NavigateTo -> {
+                openDirectionsOnResult = true
+                _state.update { it.copy(query = intent.query) }
+                runSearch(intent.query, near)
+            }
+            is app.vela.core.search.QueryIntent.Search -> {
+                _state.update { it.copy(query = intent.query) }
+                runSearch(intent.query, near)
+            }
+            is app.vela.core.search.QueryIntent.Route -> routeBetween(intent.from, intent.to, near)
+            is app.vela.core.search.QueryIntent.Eta -> {
+                val s = _state.value
+                if (s.navigating && s.nav.remainingDuration > 0.0) {
+                    val msg = appContext.getString(R.string.intent_eta_reply, formatDuration(s.nav.remainingDuration))
+                    showStatus(msg)
+                    voice.speak(msg, interrupt = true)
+                } else showStatus(appContext.getString(R.string.intent_eta_not_navigating))
+            }
+        }
+        return true
+    }
+
+    /** "A to B": the destination becomes the selected place with the chooser open, then the
+     *  origin is geocoded and set as a custom From (which re-routes). Best-effort; a miss on
+     *  either end says so instead of silently routing from the wrong place. */
+    private fun routeBetween(from: String, to: String, near: LatLng?) {
+        _state.update { it.copy(query = "$from → $to", searching = true, suggestions = emptyList(), localSuggestions = emptyList()) }
+        viewModelScope.launch {
+            val bias = rankBias(near)
+            // A route ENDPOINT is usually a town or an address, not the nearest business whose
+            // name contains the word (on-device test: "Davis" picked "Davis Built Homes" next to
+            // the phone). Prefer an exact name match, then a result with no rating (a locality or
+            // an address), then whatever ranked first.
+            fun endpoint(q: String, places: List<Place>): Place? =
+                places.firstOrNull { it.name.equals(q, ignoreCase = true) }
+                    ?: places.firstOrNull { it.rating == null && it.category == null }
+                    ?: places.firstOrNull()
+            val dest = runCatching { endpoint(to, dataSource.search(to, near, rankFrom = bias).places) }.getOrNull()
+            if (dest == null) { _state.update { it.copy(searching = false) }; showStatus(appContext.getString(R.string.intent_place_not_found, to)); return@launch }
+            val origin = runCatching { endpoint(from, dataSource.search(from, near, rankFrom = bias).places) }.getOrNull()
+            _state.update { it.copy(searching = false) }
+            selectPlace(dest)
+            routeToSelected()
+            if (origin != null) setDirectionsOrigin(origin)
+            else showStatus(appContext.getString(R.string.intent_place_not_found, from))
+        }
+    }
 
     /** Rank results from the USER when they are searching where they are (within ~50 km of the
      *  viewport), else from the viewport centre. Fixes the "results ordered around some weird
@@ -1847,7 +1929,13 @@ class MapViewModel @Inject constructor(
                         )
                     }
                     moreSearch = Triple(q, near, spanM); moreFromPage = 3
+                    // "Navigate to X": the top hit is the destination, straight into the chooser.
+                    if (openDirectionsOnResult) {
+                        openDirectionsOnResult = false
+                        (res.places.firstOrNull())?.let { top -> selectPlace(top); routeToSelected() }
+                    }
                 } else {
+                    openDirectionsOnResult = false
                     // Online SUCCEEDED but found nothing. Don't leave a blank screen (the "POI list just
                     // isn't showing up" report): try the on-device OSM index (it may hold a small local
                     // place Google misses), and if that's empty too, say "No results" plainly.
@@ -4860,7 +4948,7 @@ class MapViewModel @Inject constructor(
     /** Apply a transcript from either voice tier as the query and run the search. */
     fun applyVoiceQuery(text: String) {
         onQueryChange(text)
-        search()
+        search() // intents first ("take me home"), else the plain search
     }
 
     /** Make an already-downloaded voice active: persist the pick, reload the synth (the single switch
