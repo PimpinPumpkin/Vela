@@ -1193,7 +1193,15 @@ Defaults that make the safe path the easy one:
   handover is an era/lighting flip in the DATA - the fade blends the seam like Google does
   (user noticed the pop, 2026-08-08). The bottom credit follows whose pixels are on screen
   (review 2026-09-12): `satDeep == -1` past the fade reads "Google" with no Esri capture year,
-  the blend zone credits both; zoom is derived from the scale bar's metres-per-pixel. The probe runs 20 -> 21 -> 22 and stops at the first MISSING level (same review): where Esri tops out at 19, most of the world, one request settles the Google fallback where 22-first spent three sequential round trips on the blur; `ensureActive` between requests so a probe cancelled by the next pan stops, and the deep layer's minZoom is the fade's first stop (18.6) so it no longer loads tiles while invisible. (4) **Road-name halos are
+  the blend zone credits both; zoom is derived from the scale bar's metres-per-pixel.
+  **OpenStreetMap attribution is ALWAYS on the map (issue #302, 2026-09-12):** MapLibre's own
+  ⓘ button is disabled in VelaMapView (it covered the scale bar), and nothing else said OSM on
+  screen, which the ODbL requires wherever the map is shown. A tappable "© OpenStreetMap
+  contributors" label sits bottom-left under the scale bar in EVERY map state (lifted over the nav
+  bar via `navBarHeightPx`, over the minimized results bar via `chromeLift`, into the map strip in
+  landscape), Settings > About has a "Map data" group with the same link, and README + the site
+  footer carry the credit. Never gate the label on a chrome state; the satellite credit stays a
+  separate centred line because Esri's terms want their own wording. The probe runs 20 -> 21 -> 22 and stops at the first MISSING level (same review): where Esri tops out at 19, most of the world, one request settles the Google fallback where 22-first spent three sequential round trips on the blur; `ensureActive` between requests so a probe cancelled by the next pan stops, and the deep layer's minZoom is the fade's first stop (18.6) so it no longer loads tiles while invisible. (4) **Road-name halos are
   WIDER than the blanket** (2026-07-09): applyDark/applyLight give the three `highway-name-*`
   symbol layers `textHaloWidth 1.9` vs the 1.1 every other label gets - route lines and the
   dotted walking line run right under street names and made them unreadable; the fatter halo

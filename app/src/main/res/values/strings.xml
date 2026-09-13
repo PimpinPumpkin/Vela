@@ -748,6 +748,10 @@
     <string name="map_satellite_toggle">Satellite view</string>
     <string name="map_satellite_attribution" translatable="false">Esri, Maxar, Earthstar Geographics</string>
     <string name="map_satellite_attribution_google" translatable="false">Google</string>
+    <string name="map_osm_attribution" translatable="false">© OpenStreetMap contributors</string>
+    <string name="settings_map_data">Map data</string>
+    <string name="settings_map_data_hint">The map, its streets, labels and house numbers are OpenStreetMap data, available under the Open Database License, served as vector tiles by OpenFreeMap. Places, reviews, routing and traffic come from Google. Satellite imagery is from Esri and Google.</string>
+    <string name="settings_map_data_button">OpenStreetMap copyright</string>
     <string name="map_layers">Layers</string>
     <string name="settings_layers_button">Show layers button</string>
     <string name="settings_layers_button_hint">The button on the map that flips satellite, traffic, transit and terrain.</string>
