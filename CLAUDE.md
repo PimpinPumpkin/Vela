@@ -2192,6 +2192,17 @@ architecture note.
   single-result / address-snap / fallback paths too (they used to silently keep dropping results at the
   old index). And the WebView details/popular-times path (`PopularTimesParser.parse`) threads the LIVE
   `cal.paths` through `SearchParser.parse`/`parsePopularTimes` rather than pinning `DEFAULT_PATHS` (audit 2026-07-06).
+- **Directions response paths + review scrape levers are REMOTE too (2026-09-13).**
+  `directionsPaths` in `calibration.json` merges over `Calibration.DEFAULT_DIRECTIONS_PATHS` one
+  key at a time (keys: routes, geometries, summary, distance, typical, traffic, typicalLow,
+  typicalHigh, start, end, summaryText, spans; `DirectionsParser.parse(root, paths)`, pinned by
+  `DirectionsPathsTest`), so Google moving the in-traffic figure is a config edit. `reviewWords`
+  ({"review": alternation, "more": alternation}) replaces `ReviewWords`' compiled patterns and
+  `reviewSelectors` ({card, id, moreToggle, author, text, date}) replaces the compiled CSS class
+  hooks in `WebReviewsFetcher` (the `SEL` object in the scrape script; defaults are the
+  `DEFAULT_*_SEL` consts). Null / missing keys = compiled. Still compiled-only: the transit
+  itinerary parser, the photo walk, the Street View parser, and the full-screen review page's
+  carve (`ReviewsPanel`, its own script).
 - **Fleet tuning dials (2026-07-18): `tuning` in `calibration.json`** - a flat name->number map
   read through `Calibration.tune(key, compiledDefault)`; a missing key means the compiled
   default and a non-numeric value is skipped, so old/new bundles and apps never break each

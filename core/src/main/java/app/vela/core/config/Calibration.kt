@@ -95,6 +95,19 @@ data class Calibration(
     // contains "station", and boards now fetch by proximity, so a fuel stop next to a bus stop
     // showed that stop's departures (device report 2026-07-13). Multilingual like the gate itself.
     val transitExcludeWords: List<String>? = null,
+    // Field-index paths of the DIRECTIONS response (2026-09-13): the route list, the per-route
+    // summary and its distance / typical / in-traffic / typical-range / endpoint fields, and
+    // the congestion spans. Remote keys merge over [DEFAULT_DIRECTIONS_PATHS] one at a time, like
+    // [paths] does for search, so a moved traffic field is a config edit, not an app release.
+    val directionsPaths: Map<String, List<Int>> = DEFAULT_DIRECTIONS_PATHS,
+    // The review scrape's two levers that Google actually moves (2026-09-13): the WORD
+    // alternations that find the reviews tab ("review") and the more-reviews button ("more"),
+    // and the CSS SELECTORS of the review card and its parts ("card", "id", "moreToggle",
+    // "author", "text", "date"). Null / missing keys = the compiled values in ReviewWords and
+    // WebReviewsFetcher. Selectors are class names Google rotates; a rotation used to be an
+    // app release.
+    val reviewWords: Map<String, String>? = null,
+    val reviewSelectors: Map<String, String>? = null,
 ) {
     /** A fleet tuning dial: the remote value when the bundle carries [key], else [def]. */
     fun tune(key: String, def: Double): Double = tuning[key] ?: def
@@ -132,6 +145,24 @@ data class Calibration(
                 "[null,[1200,1000],[null,{COUNT},null,null,1],null,null,null," +
                 "[[[1,0,3],[2,1,2],[2,0,3],[8,0,3],[10,0,3],[10,1,2],[10,0,4],[9,1,2]],1],null,0]," +
                 "null,null,null,null,null,null,null,null,null,null,[null,1,null,1]]"
+
+        /** Directions response anchors (see DirectionsParser's header for the shape). Relative to
+         *  the response root for routes/geometries, to the route node for summary/spans, and to
+         *  the summary node for the rest. */
+        val DEFAULT_DIRECTIONS_PATHS: Map<String, List<Int>> = mapOf(
+            "routes" to listOf(0, 1),
+            "geometries" to listOf(0, 7),
+            "summary" to listOf(0),
+            "distance" to listOf(2, 0),
+            "typical" to listOf(3, 0),
+            "traffic" to listOf(10, 0, 0),
+            "typicalLow" to listOf(10, 4, 0),
+            "typicalHigh" to listOf(10, 4, 1),
+            "start" to listOf(7, 3, 2),
+            "end" to listOf(7, 3, 3),
+            "summaryText" to listOf(1),
+            "spans" to listOf(3, 5, 0),
+        )
 
         val DEFAULT_PATHS: Map<String, List<Int>> = mapOf(
             "results" to listOf(64),
@@ -218,6 +249,7 @@ data class Calibration(
             streetViewMetaUrl = DEFAULT_STREETVIEW_META,
             streetViewPanoUrl = DEFAULT_STREETVIEW_PANO,
             paths = DEFAULT_PATHS,
+            directionsPaths = DEFAULT_DIRECTIONS_PATHS,
         )
     }
 }

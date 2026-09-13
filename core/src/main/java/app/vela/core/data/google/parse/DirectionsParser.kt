@@ -1,5 +1,6 @@
 package app.vela.core.data.google.parse
 
+import app.vela.core.config.Calibration
 import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.google.arr
 import app.vela.core.data.google.at
@@ -43,34 +44,42 @@ import kotlinx.serialization.json.JsonPrimitive
  * per-step polyline is the one remaining calibration item (CALIBRATE: geometry).
  */
 object DirectionsParser {
+    /** [key]'s remote path when the bundle carries one, else the compiled [fallback] indices. */
+    private fun JsonElement?.atPath(paths: Map<String, List<Int>>, key: String, vararg fallback: Int): JsonElement? {
+        val p = paths[key] ?: fallback.toList()
+        var n: JsonElement? = this
+        for (i in p) { n = n.at(i) }
+        return n
+    }
 
-    fun parse(root: JsonElement): List<Route> {
-        val routes = root.at(0, 1).arr()
+    fun parse(root: JsonElement, paths: Map<String, List<Int>> = Calibration.DEFAULT_DIRECTIONS_PATHS): List<Route> {
+        val P = paths
+        val routes = root.atPath(P, "routes", 0, 1).arr()
             ?: throw CalibrationNeededException("directions routes (root[0][1])")
         // Google ships each route's real geometry as delta-encoded E7 coordinate
         // arrays at root[0][7][i] (index-aligned with the route summaries) — so the
         // drawn line follows the actual roads of *that* route, alternates included.
-        val geoms = root.at(0, 7).arr()
+        val geoms = root.atPath(P, "geometries", 0, 7).arr()
         val parsed = routes.mapIndexedNotNull { i, r ->
-            runCatching { parseRoute(r, decodeGeometry(geoms?.getOrNull(i))) }.getOrNull()
+            runCatching { parseRoute(r, decodeGeometry(geoms?.getOrNull(i)), P) }.getOrNull()
         }
         if (parsed.isEmpty()) throw CalibrationNeededException("directions: 0 routes parsed")
         return parsed
     }
 
-    private fun parseRoute(route: JsonElement, googleGeometry: List<LatLng>?): Route? {
-        val summary = route.at(0) ?: return null
-        val distance = summary.at(2, 0).dbl() ?: return null
-        val typicalDur = summary.at(3, 0).dbl() ?: return null
-        val trafficDur = summary.at(10, 0, 0).dbl() // null when no live traffic (e.g. off-peak)
+    private fun parseRoute(route: JsonElement, googleGeometry: List<LatLng>?, P: Map<String, List<Int>>): Route? {
+        val summary = route.atPath(P, "summary", 0) ?: return null
+        val distance = summary.atPath(P, "distance", 2, 0).dbl() ?: return null
+        val typicalDur = summary.atPath(P, "typical", 3, 0).dbl() ?: return null
+        val trafficDur = summary.atPath(P, "traffic", 10, 0, 0).dbl() // null when no live traffic (e.g. off-peak)
         // Typical best→worst spread: summary[10][4] = [lowSeconds, highSeconds, "label"].
         // Google's own depart-time planning hint ("usually 1 hr 8 min to 1 hr 27 min"),
         // present on longer trips; absent (null) on short/no-traffic ones.
-        val typicalLow = summary.at(10, 4, 0).dbl()
-        val typicalHigh = summary.at(10, 4, 1).dbl()
+        val typicalLow = summary.atPath(P, "typicalLow", 10, 4, 0).dbl()
+        val typicalHigh = summary.atPath(P, "typicalHigh", 10, 4, 1).dbl()
 
-        val start = coord(summary.at(7, 3, 2))
-        val end = coord(summary.at(7, 3, 3))
+        val start = coord(summary.atPath(P, "start", 7, 3, 2))
+        val end = coord(summary.atPath(P, "end", 7, 3, 3))
         // Google's own geometry when present; otherwise a straight start→end segment
         // (the data source can still snap that to an open router). Never a guess that
         // doubles back on itself.
@@ -83,8 +92,8 @@ object DirectionsParser {
             distanceMeters = distance,
             durationSeconds = typicalDur,
             durationInTrafficSeconds = trafficDur,
-            summary = summary.at(1).str(),
-            trafficSpans = parseTrafficSpans(route),
+            summary = summary.atPath(P, "summaryText", 1).str(),
+            trafficSpans = parseTrafficSpans(route, P),
             typicalLowSeconds = typicalLow,
             typicalHighSeconds = typicalHigh,
         )
@@ -95,8 +104,8 @@ object DirectionsParser {
      *  Note this hangs off the route node itself, NOT the `[0]` summary. Calibrated
      *  2026-06-19 against Davis→Sac + Berkeley→SF (levels 1=moderate, 2=heavy seen;
      *  span starts+lengths chain contiguously through each jam, sum < route length). */
-    private fun parseTrafficSpans(route: JsonElement): List<TrafficSpan> {
-        val arr = route.at(3, 5, 0).arr() ?: return emptyList()
+    private fun parseTrafficSpans(route: JsonElement, P: Map<String, List<Int>>): List<TrafficSpan> {
+        val arr = route.atPath(P, "spans", 3, 5, 0).arr() ?: return emptyList()
         return arr.mapNotNull { s ->
             val level = s.at(0).int() ?: return@mapNotNull null
             val start = s.at(1).dbl() ?: return@mapNotNull null
