@@ -427,9 +427,16 @@ object RouteGeometry {
                 !app.vela.core.model.continueHasGenuineFork(m.lanes)
             if (redundant && out.isNotEmpty()) {
                 val prev = out.removeAt(out.lastIndex)
+                // The rename is silent on the banner and the voice, but the road you are ON did
+                // change its name at this point of the leg: keep that so the current-road pill
+                // and shield follow it (real drive 2026-09-13: the pill stuck on the old name for
+                // a mile because the leg only ever knew the road the turn entered).
+                val renamed = if (m.road.isNullOrBlank() && m.ref.isNullOrBlank()) prev.renames
+                    else prev.renames + app.vela.core.model.RoadRename(prev.distanceMeters, m.road, m.ref)
                 out += prev.copy(
                     distanceMeters = prev.distanceMeters + m.distanceMeters,
                     durationSeconds = prev.durationSeconds + m.durationSeconds,
+                    renames = renamed,
                 )
             } else {
                 out += m

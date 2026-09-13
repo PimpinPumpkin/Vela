@@ -1347,8 +1347,12 @@ fun MapScreen(
         val roadLabelMode = app.vela.ui.RoadLabel.mode.value
         if (state.navigating && !pipUi && state.previewStepIndex == null && roadLabelMode != app.vela.ui.RoadLabel.OFF) {
             val liveIdx = state.nav.stepIndex
-            val onRoad = state.activeRoute?.maneuvers?.getOrNull(liveIdx - 1)
-                ?.let { it.ref?.takeIf { r -> r.isNotBlank() } ?: it.road?.takeIf { r -> r.isNotBlank() } }
+            // The road you are ON right now: the leg's road, or the last silent rename already
+            // passed on it (travelled = leg length minus what is left to the next turn).
+            val onRoad = state.activeRoute?.maneuvers?.getOrNull(liveIdx - 1)?.let { m ->
+                val (name, ref) = m.roadAt(m.distanceMeters - state.nav.distanceToNextManeuver)
+                ref?.takeIf { r -> r.isNotBlank() } ?: name?.takeIf { r -> r.isNotBlank() }
+            }
             // Composition reads only "do we have a position"; the value itself is read in layout.
             val havePuck = puckScreen.value != null
             if (onRoad != null && (havePuck || roadLabelMode == app.vela.ui.RoadLabel.BAR)) {
@@ -1444,7 +1448,7 @@ fun MapScreen(
                 nextRef = next?.ref,
                 // The road being driven = the one entered by the LIVE maneuver last passed
                 // (never the previewed one - previewing shouldn't change where you "are").
-                currentRef = mans?.getOrNull(liveStep - 1)?.ref,
+                currentRef = mans?.getOrNull(liveStep - 1)?.let { m -> m.roadAt(m.distanceMeters - state.nav.distanceToNextManeuver).second },
                 // The shown→next gap is the SHOWN maneuver's step length (a maneuver's distanceMeters is
                 // the travel AFTER it, to the next maneuver — both OSRM and the Google parser use that
                 // convention). Passing next.distanceMeters was the next→next-next gap: it made "then
@@ -2770,19 +2774,44 @@ fun MapScreen(
         }
         }
         if (pipUi && state.navigating && state.maneuverText.isNotEmpty()) {
-            // The one PiP overlay: distance + turn in a single dark strip, top of the window.
+            // The one PiP overlay, Google's shape: the turn card's own green with the glyph, the
+            // distance as the headline and the turn text under it, across the top of the window.
+            // The old dark strip put everything on one small line and read as a caption
+            // (user 2026-09-13: hard to parse next to Google's).
+            val next = state.activeRoute?.maneuvers?.getOrNull(state.nav.stepIndex)
             androidx.compose.material3.Surface(
-                modifier = Modifier.align(Alignment.TopCenter).padding(6.dp),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
-                color = androidx.compose.ui.graphics.Color(0xCC1B1B1B),
-                contentColor = androidx.compose.ui.graphics.Color.White,
+                modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(4.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             ) {
-                Text(
-                    text = formatDistance(state.nav.distanceToNextManeuver) + " \u00b7 " + state.maneuverText,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 2,
-                )
+                Row(
+                    Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (next != null) {
+                        Icon(
+                            app.vela.ui.nav.maneuverIconFor(next),
+                            contentDescription = null,
+                            modifier = Modifier.size(30.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Column {
+                        Text(
+                            formatDistance(state.nav.distanceToNextManeuver),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                        )
+                        Text(
+                            state.maneuverText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        )
+                    }
+                }
             }
         }
     }

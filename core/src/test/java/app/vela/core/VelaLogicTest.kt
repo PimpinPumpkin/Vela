@@ -800,6 +800,24 @@ class NavReplayTest {
     }
 
     @Test
+    fun `a folded rename is kept on the leg and roadAt follows it`() {
+        val turn = Maneuver(ManeuverType.TURN_RIGHT, "Turn right onto Oak Street", LatLng(38.5, -121.7), 400.0, 30.0, road = "Oak Street")
+        val rename = Maneuver(ManeuverType.CONTINUE, "Continue onto Elm Street", LatLng(38.51, -121.7), 600.0, 40.0, road = "Elm Street")
+        val next = Maneuver(ManeuverType.TURN_LEFT, "Turn left onto Pine Street", LatLng(38.52, -121.7), 100.0, 10.0, road = "Pine Street")
+        val folded = app.vela.core.data.RouteGeometry.foldRenames(listOf(turn, rename, next))
+        assertEquals(2, folded.size)
+        val leg = folded[0]
+        assertEquals(1000.0, leg.distanceMeters, 0.001)
+        assertEquals(listOf(app.vela.core.model.RoadRename(400.0, "Elm Street", null)), leg.renames)
+        assertEquals("Oak Street", leg.roadAt(0.0).first)
+        assertEquals("Oak Street", leg.roadAt(399.0).first)
+        assertEquals("Elm Street", leg.roadAt(400.0).first)
+        assertEquals("Elm Street", leg.roadAt(950.0).first)
+        // A leg with no rename answers its own road at any distance.
+        assertEquals("Pine Street", folded[1].roadAt(50.0).first)
+    }
+
+    @Test
     fun auditSharedTripLog() {
         val path = System.getProperty("velaTrip")
         org.junit.Assume.assumeTrue("set -DvelaTrip=<csv> to audit a real travel log", !path.isNullOrBlank())
