@@ -561,6 +561,7 @@
     <string name="mapvm_offline_routing_failed">Offline routing download failed</string>
     <string name="mapvm_offline_routing_removed">Offline routing removed</string>
     <string name="mapvm_saved_places_offline">Saved %1$d places for offline search</string> <!-- format -->
+    <string name="mapvm_area_uses_pack">Places and addresses for this area come with the %1$s download</string> <!-- format -->
     <string name="mapvm_saved_addresses_offline">Saved %1$d addresses and %2$d streets for offline routing</string> <!-- format -->
 
     <!-- navservice: NavigationService.kt -->

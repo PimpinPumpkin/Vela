@@ -6316,6 +6316,29 @@ class MapViewModel @Inject constructor(
      *  OSM/Overpass into the on-device index so search works there with no signal. */
     fun downloadOfflinePois(south: Double, west: Double, north: Double, east: Double) {
         downloadLaunch(appContext.getString(R.string.download_label_offline_places)) {
+            // PACK FIRST (issue #304, 2026-09-13). The place pack for the region that contains this
+            // area is built on CI from a Geofabrik extract and already holds every POI, address and
+            // street the Overpass queries below used to fetch live, for the whole region rather
+            // than a 15 km box. Saving an area also pulls the region's graph, and the graph's
+            // completion pulls its pack, so where a pack exists in the catalog the public Overpass
+            // servers are not asked at all. The live path survives only for an area no pack
+            // covers, which after the world catalog is nowhere Geofabrik publishes.
+            val cLat0 = (south + north) / 2.0
+            val cLng0 = (west + east) / 2.0
+            val pack = runCatching { poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL) }.getOrDefault(emptyList())
+                .filter { cLat0 in it.s..it.n && cLng0 in it.w..it.e }
+                .minByOrNull { (it.n - it.s) * (it.e - it.w) }
+            if (pack != null) {
+                val graphHere = pack.id in routingGraphStore.installedIds() || pack.id in obfStore.installedIds()
+                when {
+                    pack.id in poiPackStore.installedIds() -> Unit // already searchable offline
+                    // Region installed before packs existed (or the pack download failed): fetch it now.
+                    graphHere -> downloadPoiPackFor(pack)
+                    // Otherwise the region download this save triggered brings the pack with it.
+                    else -> showStatus(appContext.getString(R.string.mapvm_area_uses_pack, pack.name))
+                }
+                return@downloadLaunch
+            }
             val pois = withContext(Dispatchers.IO) { OverpassPois.fetch(http, south, west, north, east) }
             if (pois.isNotEmpty()) {
                 withContext(Dispatchers.IO) { offlinePoiStore.add(pois) }
