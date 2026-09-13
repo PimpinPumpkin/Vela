@@ -509,6 +509,11 @@
     <string name="welcome_feature_open_source_title">Free &amp; open source</string>
     <string name="welcome_feature_open_source_body">GPLv3, built for GrapheneOS and other de-Googled phones.</string>
     <string name="welcome_get_started">Get started</string>
+    <string name="whatsnew_title">What\'s new in %1$s</string> <!-- format -->
+    <string name="whatsnew_got_it">Got it</string>
+    <string name="whatsnew_full_notes">Full notes</string>
+    <string name="settings_whatsnew">What\'s new in this version</string>
+    <string name="settings_whatsnew_hint">The release notes for the build you are on. They also show once after each update.</string>
     <string name="welcome_donate_title">Enjoying Vela?</string>
     <string name="welcome_donate_body">Vela is free and ad-free, built on a shoestring. If it\'s become useful, a small one-off donation helps keep it going. Entirely optional, and this is the only time it\'ll ask. There\'s always a Support entry in Settings too.</string>
     <string name="welcome_donate_confirm">Support Vela</string>

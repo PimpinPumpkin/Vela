@@ -1903,9 +1903,29 @@ architecture note.
   `data/ReviewWords` - kept there, not inline in the JS, so they are unit-tested (`ReviewWordsTest`).
   The more-reviews button requires a review word AND a "more" word: a bare match hits "Write a
   review" (zh-TW 撰寫評論) and CLICKS THE COMPOSER, a wrong action rather than a missed one.
-  **`ReviewsPanel` (the full-screen page) stays `hl=en` deliberately** - it carves the page by
-  matching English relative dates, "N stars," histogram labels, the auto-processing disclaimer and
-  the Sort button; localising it needs those four hardened first (open follow-up).
+  **`ReviewsPanel` (the full-screen page) FOLLOWS THE APP LANGUAGE TOO (issue #359, 2026-09-13; it
+  was pinned to `hl=en` until then).** Everything its carve keyed on by English text now reads the
+  per-language word tables in `:core` `ReviewWords` (`words(overrides)`, keys review / more / sort /
+  star / ago / write / like / share / actions / all / processed, each remotely overridable through
+  calibration `reviewWords`), injected into the script as the `VW` regex map: the reviews tab, the
+  Sort button, the Like / Share / actions buttons, "Write a review", the "All" chip that anchors the
+  chip row, the disclaimer row, and the relative-date "reviews have rendered" check. The histogram
+  rows are parsed by their LEADING DIGIT (`ReviewWords.HISTOGRAM_ROW`: a single digit not part of a
+  decimal or a thousands group, then the count; "5 stars, 1,189 reviews", "5 星級、908 則評論"), the
+  star widgets get a `.vela-stars` class from JS (the dark-mode re-invert CSS cannot match a word in
+  every language), and the sort menu is clicked BY INDEX (Google keeps one order in every language;
+  the English label stays as the fallback). Verified on the 4a in Traditional Chinese and English
+  with the zh-TW labels captured live; `ReviewWordsTest` pins them. A `WebChromeClient` logs the
+  page's console errors under `VelaPanel`, and a probe line prints the tabs it saw.
+  **WHAT'S NEW after an update (2026-09-13, `ui/WhatsNew`):** the first launch on a new
+  versionName fetches that version's release notes (`releases/tags/v<version>`, or the rolling
+  `canary` release for a canary build) and shows them once in `WhatsNewPrompt` (WelcomeScreen, the
+  donate prompt's shape), last in VelaRoot's one-time-prompt chain so it never stacks on a setup
+  step. Never on a fresh install (`last_seen_version` in `vela_onboarding` is seeded silently the
+  first time), never without the notes in hand (a failed fetch leaves the version unseen, so the
+  next launch retries), and Settings > About > "What's new in this version" reopens it on demand.
+  The notes are the commit subjects CI writes into every release, run through `plainReleaseNotes`;
+  nothing is bundled.
 - **THE REVIEW SCRAPE WAS DEAD FROM 2026-09-06 TO 2026-09-13 (issue #359, every language).** The
   review-pass commit that moved the tab/button words into `ReviewWords` wrote the two regex lines
   of the scrape script as `${'$'}{reviewPatternJs()}` inside the Kotlin raw string, which emits
