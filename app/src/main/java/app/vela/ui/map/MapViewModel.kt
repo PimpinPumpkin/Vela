@@ -4034,7 +4034,11 @@ class MapViewModel @Inject constructor(
      *  a fetch miss just leaves the route unchanged. */
     private suspend fun enrichLights(route: app.vela.core.model.Route): app.vela.core.model.Route {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            val signals = app.vela.core.data.OverpassTrafficSignals.fetchAlong(http, route.polyline)
+            val signals = when (roadFeaturesCoverRoute(route.polyline)) {
+                RoadCover.LOADED -> app.vela.data.RoadFeatures.signalsAlong(route.polyline)
+                RoadCover.FAILED -> emptyList()
+                RoadCover.NONE -> app.vela.core.data.OverpassTrafficSignals.fetchAlong(http, route.polyline)
+            }
             app.vela.core.data.RouteGeometry.enrichWithLights(route, signals)
         }
     }
@@ -5635,13 +5639,19 @@ class MapViewModel @Inject constructor(
             // null = FETCH FAILED (fetchControlsInBox returns null on network/non-2xx, empty list only on a
             // real empty area) or the job was cancelled — either way DON'T cache the box, so the next viewport
             // retries instead of stamping a padded "no controls here" that blanks the layer until the box edge.
-            val res = runCatching {
-                withContext(Dispatchers.IO) {
-                    app.vela.core.data.OverpassTrafficSignals.fetchControlsInBox(http, s, w, n, e)
+            // BAKED FIRST (issue #304): the region's road-features file, downloaded once and read from
+            // memory. Overpass only where the manifest has no region for this spot.
+            val res = when (roadFeaturesCover(s, w, n, e)) {
+                RoadCover.LOADED -> app.vela.data.RoadFeatures.controlsInBox(s, w, n, e).also { android.util.Log.i("VelaControls", "baked box controls=${it.size}") }
+                RoadCover.FAILED -> { android.util.Log.i("VelaControls", "road-features download FAILED"); return@launch }
+                RoadCover.NONE -> runCatching {
+                    withContext(Dispatchers.IO) {
+                        app.vela.core.data.OverpassTrafficSignals.fetchControlsInBox(http, s, w, n, e)
+                    }
+                }.getOrNull() ?: run {
+                    android.util.Log.i("VelaControls", "fetch FAILED (all endpoints) z=${"%.1f".format(zoom)}")
+                    return@launch
                 }
-            }.getOrNull() ?: run {
-                android.util.Log.i("VelaControls", "fetch FAILED (all endpoints) z=${"%.1f".format(zoom)}")
-                return@launch
             }
             controlsBox = doubleArrayOf(s, w, n, e)
             // Cap what's HANDED to the map (nearest to the box center wins): a dense metro's padded box can
@@ -5792,11 +5802,15 @@ class MapViewModel @Inject constructor(
         routeCamMeters = emptyList()
         routeCamJob?.cancel()
         routeCamJob = viewModelScope.launch {
-            val cams = runCatching {
-                withContext(Dispatchers.IO) {
-                    app.vela.core.data.OverpassSpeedCameras.fetchAlongCorridor(http, poly)
-                }
-            }.getOrNull() ?: run {
+            val cams = when (roadFeaturesCoverRoute(poly)) {
+                RoadCover.LOADED -> app.vela.data.RoadFeatures.camerasAlong(poly, 150.0)
+                RoadCover.FAILED -> null
+                RoadCover.NONE -> runCatching {
+                    withContext(Dispatchers.IO) {
+                        app.vela.core.data.OverpassSpeedCameras.fetchAlongCorridor(http, poly)
+                    }
+                }.getOrNull()
+            } ?: run {
                 // Leave the key set: a failed fetch means no warnings this route rather than a
                 // retry storm mid-drive. The map layer still draws from the viewport path.
                 android.util.Log.i("VelaSpeedCam", "route corridor camera fetch FAILED (all endpoints)")
@@ -5838,15 +5852,19 @@ class MapViewModel @Inject constructor(
         if (key == navControlsKey) return
         navControlsJob?.cancel()
         navControlsJob = viewModelScope.launch {
-            val res = runCatching {
-                withContext(Dispatchers.IO) {
-                    app.vela.core.data.OverpassTrafficSignals.fetchControlsAlongCorridor(http, poly)
+            val res = when (roadFeaturesCoverRoute(poly)) {
+                RoadCover.LOADED -> app.vela.data.RoadFeatures.controlsAlong(poly, 120.0)
+                RoadCover.FAILED -> { android.util.Log.i("VelaControls", "route road-features download FAILED"); return@launch }
+                RoadCover.NONE -> runCatching {
+                    withContext(Dispatchers.IO) {
+                        app.vela.core.data.OverpassTrafficSignals.fetchControlsAlongCorridor(http, poly)
+                    }
+                }.getOrNull() ?: run {
+                    // Key stays unset → the viewport-box path keeps serving as the fallback (fetch-fail
+                    // honesty, same contract as the box fetch: never cache a failure as "no controls").
+                    android.util.Log.i("VelaControls", "route corridor fetch FAILED (all endpoints)")
+                    return@launch
                 }
-            }.getOrNull() ?: run {
-                // Key stays unset → the viewport-box path keeps serving as the fallback (fetch-fail
-                // honesty, same contract as the box fetch: never cache a failure as "no controls").
-                android.util.Log.i("VelaControls", "route corridor fetch FAILED (all endpoints)")
-                return@launch
             }
             val merged = withContext(Dispatchers.Default) {
                 res.groupBy { it.kind }.flatMap { (kind, group) ->
@@ -5867,6 +5885,19 @@ class MapViewModel @Inject constructor(
             _state.update { it.copy(trafficControls = kept) }
         }
     }
+
+    /** Whether the baked road-features data covers a spot (issue #304): LOADED = read memory;
+     *  NONE = the manifest has no region there, the live Overpass path may answer; FAILED = a
+     *  region exists but its file could not be fetched right now (show nothing, retry later). */
+    private enum class RoadCover { LOADED, NONE, FAILED }
+    private suspend fun roadFeaturesCover(s: Double, w: Double, n: Double, e: Double): RoadCover =
+        roadCoverOf(app.vela.data.RoadFeatures.ensureBox(appContext, app.vela.BuildConfig.ROAD_FEATURES_MANIFEST_URL, s, w, n, e), (s + n) / 2, (w + e) / 2)
+    private suspend fun roadFeaturesCoverRoute(poly: List<LatLng>): RoadCover =
+        roadCoverOf(app.vela.data.RoadFeatures.ensureAlong(appContext, app.vela.BuildConfig.ROAD_FEATURES_MANIFEST_URL, poly), poly.first().lat, poly.first().lng)
+    private suspend fun roadCoverOf(ok: Boolean, lat: Double, lng: Double): RoadCover =
+        if (ok) RoadCover.LOADED
+        else if (app.vela.data.RoadFeatures.hasRegion(appContext, app.vela.BuildConfig.ROAD_FEATURES_MANIFEST_URL, lat, lng)) RoadCover.FAILED
+        else RoadCover.NONE
 
     /** Nav ended — drop the corridor set's ownership so browse viewport fetches repaint the layer. */
     private fun clearNavRouteControls() {
@@ -5910,15 +5941,20 @@ class MapViewModel @Inject constructor(
             delay(350)
             val padLat = (north - south) * 0.5; val padLng = (east - west) * 0.5
             val s = south - padLat; val n = north + padLat; val w = west - padLng; val e = east + padLng
-            val res = withContext(Dispatchers.IO) {
-                runCatching { app.vela.core.data.OverpassSpeedCameras.fetchInBox(http, s, w, n, e) }.getOrNull()
+            val cover = roadFeaturesCover(s, w, n, e)
+            val res = when (cover) {
+                RoadCover.LOADED -> app.vela.data.RoadFeatures.camerasInBox(s, w, n, e)
+                RoadCover.FAILED -> null
+                RoadCover.NONE -> withContext(Dispatchers.IO) {
+                    runCatching { app.vela.core.data.OverpassSpeedCameras.fetchInBox(http, s, w, n, e) }.getOrNull()
+                }
             }
             if (res == null) {
-                diag.record("speedcam", "camera fetch failed at z${"%.1f".format(zoom)}", "Overpass box [$s,$w,$n,$e]")
+                diag.record("speedcam", "camera fetch failed at z${"%.1f".format(zoom)}", "box [$s,$w,$n,$e] source=${cover.name.lowercase()}")
                 return@launch
             }
             speedCamBox = doubleArrayOf(s, w, n, e)
-            diag.record("speedcam", "showing ${res.size} camera(s) at z${"%.1f".format(zoom)}", "overpass")
+            diag.record("speedcam", "showing ${res.size} camera(s) at z${"%.1f".format(zoom)}", if (cover == RoadCover.LOADED) "baked" else "overpass")
             _state.update { it.copy(speedCameras = res.take(600)) }
         }
     }

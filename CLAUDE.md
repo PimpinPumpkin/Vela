@@ -3289,8 +3289,22 @@ architecture note.
   runs the three Overpass queries below (POIs, padded addresses, streets), which after the 425-row
   catalog is nowhere Geofabrik publishes. The "Update saved areas" card goes through the same
   function. The Nominatim maintainer filed #304 against the app's Overpass use; the remaining
-  callers are the traffic-control layer (viewport box + route corridor) and the opt-in speed-camera
-  layer, next to be moved onto baked per-region files.
+  callers were the traffic-control layer and the opt-in speed-camera layer, moved the same day:
+  **ROAD FEATURES ARE BAKED PER REGION (`app/data/RoadFeatures`, `scripts/build-road-features.sh`,
+  `.github/workflows/road-features.yml`, release `road-features`).** Lights, stop signs, level
+  crossings, speed humps and fixed speed cameras come out of the Geofabrik extract as one gzipped
+  `lat<TAB>lon<TAB>kind` file per catalog region (kind S/T/R/H/C; a US state is a few hundred KB),
+  emitted + merged with the poi-packs matrix shape. The app fetches the manifest (6 h TTL), downloads
+  the smallest covering region's file ONCE into `filesDir/roadfeatures/<id>.bin` (re-downloaded
+  when the manifest's `updatedAt` moves), keeps up to 4 regions in memory with a 0.1 degree grid,
+  and answers the viewport box, the nav corridor, the camera corridor and the pass-the-light
+  enrichment from memory. `MapViewModel.roadFeaturesCover*` returns LOADED / NONE / FAILED: NONE
+  (no region in the manifest) is the only case that still reaches Overpass; FAILED shows nothing
+  and retries next viewport (a failure is never cached). **Nothing is baked until the workflow is
+  dispatched** (`gh workflow run road-features.yml -f group=us` etc.; all 425 catalog rows fit in
+  two dispatches); until then the manifest is empty and every phone keeps the Overpass path. Local
+  test: bake one region with the osmium + `scripts/road_features_tsv.py` steps, serve it with a
+  manifest on :8099, `adb reverse`, build with `-ProadFeaturesManifestUrl=`.
 - **Offline forward geocoder - typed address → coordinate, no signal (`core/data/OfflineAddressStore` +
   `OverpassPois.fetchAddresses`/`fetchStreets`, DONE 2026-07-07, device-verified in the test suburb).** So an arbitrary
   typed street address routes offline (not only addresses that are an indexed POI). Populated when a map area is
