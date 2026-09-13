@@ -569,7 +569,18 @@ Defaults that make the safe path the easy one:
   reads "rate it"; matches the saved-places map button). Search span: `SearchPb.build` takes
   the caller's real viewport height and stretches the template's baked ~25 km `!1d` window
   (floor 3 km, cap 500 km) - zoomed-out searches used to keep a city-sized net; the VM threads
-  its live viewport span into the main + category-chip searches. Results-sheet FILTERS drop
+  its live viewport span into the main + category-chip searches. **Search is three pages plus a
+  NEARBY pass plus "More results" (2026-09-13):** `GoogleMapsDataSource.search` fetches pages
+  0-2 (20 each) over the viewport window, and when the user's location is INSIDE that window and
+  the window is wider than ~2.5 km it also fetches one page over a 2.5 km window around the user
+  and LEADS with it (the Google app weights distance the same way; before this, the outlet next
+  to you lost its slot to better-known places across a town-zoom window and missed all three
+  pages, the "Subway near me never shows" complaint). Over another neighbourhood or city no
+  nearby pass runs, so Google's order for where you are looking stands. The list ends in a "More
+  results" row (`MapDataSource.searchMore`, `MapViewModel.loadMoreResults`, `resultsMoreQuery`)
+  that pulls the next three pages of the same request and appends what is new; it disappears
+  when a pull adds fewer than five or the query changes. The `search` diag line says `nearby N`.
+  Results-sheet FILTERS drop
   MAP PINS too: SearchResults reports surviving ids via onShownChange -> MapScreen's
   filteredResultIds -> markersOf (null = filters off).
  its body height is a

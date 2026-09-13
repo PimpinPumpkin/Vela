@@ -27,6 +27,10 @@ interface MapDataSource {
     // `near` (the viewport), which stays the SEARCH AREA either way.
     suspend fun search(query: String, near: LatLng? = null, spanMeters: Double? = null, rankFrom: LatLng? = null): SearchResult
 
+    /** The NEXT [pages] result pages of the same query, starting at page [fromPage] (zero-based;
+     *  [search] itself covers pages 0..2). Empty when the source cannot page. */
+    suspend fun searchMore(query: String, near: LatLng? = null, spanMeters: Double? = null, rankFrom: LatLng? = null, fromPage: Int, pages: Int = 3): List<Place> = emptyList()
+
     /** Prominent places in the viewport, for the ambient map-POI overlay. [spanMeters] is the
      *  viewport's height — a SMALLER span (zoomed in) returns DENSER, more local results than the
      *  wide default search, so a strip mall fills with its own businesses. Default falls back to a
