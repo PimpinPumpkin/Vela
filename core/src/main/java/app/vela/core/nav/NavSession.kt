@@ -261,7 +261,7 @@ class NavSession @Inject constructor(
         rerouteJob?.cancel()
         rerouteJob = scope.launch {
             val r = runCatching { dataSource.directions(loc, dest, mode, newRemaining.map { it.location }) }
-                .getOrNull()?.firstOrNull()?.takeIf { it.reaches(dest) }
+                .getOrNull()?.let { driveable(it, loc, dest) }?.takeIf { it.reaches(dest) }
             if (gen != sessionGen) return@launch
             if (r == null) {
                 diag.record("nav", "add-stop reroute FAILED — stop kept, next reroute/recheck retries")
@@ -466,8 +466,8 @@ class NavSession @Inject constructor(
         val remainingStops = synchronized(stopLock) { stops.drop(passedStops) }
         val gen = sessionGen
         recheckJob = scope.launch {
-            val candidate = runCatching { dataSource.directions(loc, dest, mode, remainingStops.map { it.location }).firstOrNull() }.getOrNull()
-                ?.takeIf { it.reaches(dest) } ?: return@launch
+            val candidate = runCatching { dataSource.directions(loc, dest, mode, remainingStops.map { it.location }) }.getOrNull()
+                ?.let { driveable(it, loc, dest) }?.takeIf { it.reaches(dest) } ?: return@launch
             if (gen != sessionGen) return@launch // session ended/restarted while fetching
             // The waypointed directions call falls back to a DIRECT origin→dest route when the via
             // routing fails — that route passes reaches(dest) but skips the stops, and it reads minutes
@@ -686,7 +686,7 @@ class NavSession @Inject constructor(
                         departBearingDeg = headingDeg,
                     )
                 }
-                    .getOrNull()?.firstOrNull()?.takeIf { it.reaches(dest) }
+                    .getOrNull()?.let { driveable(it, loc, dest) }?.takeIf { it.reaches(dest) }
             }
             val r = kotlinx.coroutines.withTimeoutOrNull(attempt.timeoutMs) { fetch.await() }
             if (r == null) fetch.cancel() // best effort; a wedged blocking read ignores this and is orphaned
@@ -753,6 +753,32 @@ class NavSession @Inject constructor(
                 )
             }
         }
+    }
+
+    /**
+     * The route this session may DRIVE out of a directions() reply. The reply is sorted by ETA
+     * and one of Google's alternates can lead it, and those are PROVISIONAL: Google's polyline and
+     * ETA with Google's abbreviated steps, whose positions are only guessed along the line. Driven
+     * as-is, a 17.9 km faster route arrived with a single "Take exit 176" maneuver sitting at the
+     * on-ramp the car was on, was announced at 30 feet, and the reroute that followed did the same
+     * (real drive 2026-09-13, replayed with `probeTripSegmentRoute`). The picker names a provisional
+     * route the moment it is picked; every fetch the session makes for itself has to do the same.
+     * Naming that fails comes back tagged abbreviatedSteps, which the recheck heals and the
+     * faster-route fence rejects; when the reply also carries a full-stepped open-router route,
+     * that one is better guidance than Google's guessed steps, even a little slower.
+     */
+    private suspend fun driveable(routes: List<Route>, from: LatLng, dest: LatLng): Route? {
+        val top = routes.firstOrNull() ?: return null
+        if (!top.provisional) return top
+        val named = runCatching { dataSource.nameRoute(top, from, dest, mode) }.getOrNull()
+        diag.record(
+            "nav",
+            "named a provisional route: ${top.maneuvers.size} -> ${named?.maneuvers?.size} steps, " +
+                "abbreviated=${named?.abbreviatedSteps}, provisional=${named?.provisional}",
+        )
+        if (named != null && !named.provisional && !named.abbreviatedSteps) return named
+        return routes.firstOrNull { !it.provisional && !it.abbreviatedSteps } ?: named?.takeIf { !it.provisional }
+            ?: routes.firstOrNull { !it.provisional }
     }
 
     /** Does this route actually END near [dest]? A route whose last point is far from the destination is

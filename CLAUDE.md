@@ -2428,6 +2428,23 @@ architecture note.
   slow path. `rerouteGate` therefore takes the attempt's OWN deadline - judging an escalated
   attempt by the lean one would declare a healthy fetch wedged and kill it just before it
   succeeded, the original bug wearing a new hat.
+  **THE SESSION NAMES A PROVISIONAL ROUTE BEFORE DRIVING IT (real drive 2026-09-13).** A
+  `directions()` reply is sorted by ETA, and a Google alternate can lead it; those are PROVISIONAL
+  (Google's polyline + ETA, Google's abbreviated steps with positions guessed along the line by
+  cumulative step length). The picker names one on pick, but the three fetches NavSession makes
+  for itself (add-stop reroute, the 2-minute recheck, the off-route reroute) took `firstOrNull()`
+  raw: a 17.9 km "faster" route arrived as ONE maneuver, "Take exit 176" typed MERGE, sitting at
+  the on-ramp the car was on, was announced "in 30 feet", the engine then thought the route was
+  done, and the reroute after it did the same with "Turn left onto the ramp". All three now go
+  through `NavSession.driveable`: a provisional top is `nameRoute`d; if naming fails (tagged
+  abbreviatedSteps) a full-stepped open-router route from the same reply is preferred even when
+  slower. Diagnosed by replaying the shared trip with the new on-demand harness
+  `probeTripSegmentRoute` (`-DvelaTrip=<csv> -DvelaSeg=<n>`: re-runs the open router from a
+  segment's recorded start through vias off its recorded polyline and prints every maneuver with
+  where it resolved; `velaSeg` is forwarded by core/build.gradle.kts like `velaTrip`). Second
+  finding from the same replay, NOT fixed: a start point ON an on-ramp snaps to the surface street
+  under it on OSRM, with or without the bearing hint, so a recheck fetched from a ramp routes the
+  first kilometres over local streets; Google snaps it right, which is why its alternate led.
   **A REROUTE PINS ITS DEPARTURE HEADING (real-drive report 2026-08-17: "it keeps rerouting me the
   way I was going before").** After a wrong turn, an unconstrained reroute is perfectly entitled to
   answer "U-turn and rejoin" - from a point a few tens of metres down the wrong road, going back

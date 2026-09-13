@@ -758,6 +758,47 @@ class NavReplayTest {
      *
      * Skipped (not failed) when `-DvelaTrip` is unset, so normal/CI runs ignore it.
      */
+    /**
+     * ON-DEMAND ROUTER PROBE for a shared trip's segment (2026-09-13, built for the faster-route
+     * swap that collapsed a 17.9 km route into one maneuver at the start): re-runs the open
+     * router from the segment's recorded start through vias sampled off its recorded polyline,
+     * exactly as the traffic snap does, and prints every maneuver with its type, text, distance
+     * and where it resolved. Compare with the trip's own M lines to see whether the routing or
+     * the engine mangled it.
+     *
+     *   ./gradlew :core:testDebugUnitTest --tests '*probeTripSegmentRoute' -DvelaTrip=/abs/trip.csv -DvelaSeg=1 --rerun-tasks
+     */
+    @Test
+    fun probeTripSegmentRoute() {
+        val path = System.getProperty("velaTrip")
+        org.junit.Assume.assumeTrue("set -DvelaTrip=<csv> and -DvelaSeg=<n>", !path.isNullOrBlank())
+        val seg = (System.getProperty("velaSeg") ?: "0").toInt()
+        val parsed = TripLog.parse(java.io.File(path!!).readText())
+        val route = parsed.segments.getOrNull(seg)?.route ?: run { println("[probe] no segment $seg"); return }
+        val poly = route.polyline
+        val http = okhttp3.OkHttpClient()
+        fun dump(tag: String, r: Route?) {
+            if (r == null) { println("[probe] $tag: null"); return }
+            println("[probe] $tag: ${r.distanceMeters.toInt()} m, ${r.maneuvers.size} maneuvers, abbreviated=${r.abbreviatedSteps}")
+            r.maneuvers.forEachIndexed { i, m ->
+                val d = m.location.distanceTo(poly.first()).toInt()
+                println("   [$i] ${m.type} \"${m.instruction}\" road=${m.road} ref=${m.ref} dist=${m.distanceMeters.toInt()} atStart=${d}m")
+            }
+        }
+        println("[probe] segment $seg: recorded ${route.distanceMeters.toInt()} m, ${route.maneuvers.size} maneuvers; start=${poly.first()} end=${poly.last()}")
+        route.maneuvers.forEachIndexed { i, m -> println("   rec[$i] ${m.type} \"${m.instruction}\" dist=${m.distanceMeters.toInt()} atStart=${m.location.distanceTo(poly.first()).toInt()}m") }
+        val p0 = poly.first(); val p1 = poly[minOf(3, poly.lastIndex)]
+        val b = (Math.toDegrees(Math.atan2(
+            Math.sin(Math.toRadians(p1.lng - p0.lng)) * Math.cos(Math.toRadians(p1.lat)),
+            Math.cos(Math.toRadians(p0.lat)) * Math.sin(Math.toRadians(p1.lat)) - Math.sin(Math.toRadians(p0.lat)) * Math.cos(Math.toRadians(p1.lat)) * Math.cos(Math.toRadians(p1.lng - p0.lng)),
+        )) + 360.0) % 360.0
+        dump("plain OSRM", app.vela.core.data.RouteGeometry.route(http, poly.first(), poly.last(), app.vela.core.model.TravelMode.DRIVE).firstOrNull())
+        dump("plain OSRM with depart bearing $b", app.vela.core.data.RouteGeometry.route(http, poly.first(), poly.last(), app.vela.core.model.TravelMode.DRIVE, departBearingDeg = b).firstOrNull())
+        val vias = app.vela.core.data.RouteGeometry.sampleVias(poly)
+        dump("via snap (${vias.size} vias, strict)", app.vela.core.data.RouteGeometry.routeVia(http, listOf(poly.first()) + vias + poly.last(), app.vela.core.model.TravelMode.DRIVE, strictVias = true).firstOrNull())
+        dump("via snap with depart bearing", app.vela.core.data.RouteGeometry.routeVia(http, listOf(poly.first()) + vias + poly.last(), app.vela.core.model.TravelMode.DRIVE, departBearingDeg = b, strictVias = true).firstOrNull())
+    }
+
     @Test
     fun auditSharedTripLog() {
         val path = System.getProperty("velaTrip")

@@ -65,4 +65,5 @@ dependencies {
 // NOT inherit — without this the documented audit command silently skipped the test every time.
 tasks.withType<Test>().configureEach {
     System.getProperty("velaTrip")?.let { systemProperty("velaTrip", it) }
+    System.getProperty("velaSeg")?.let { systemProperty("velaSeg", it) }
 }
