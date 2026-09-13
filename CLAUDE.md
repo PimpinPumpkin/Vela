@@ -1728,6 +1728,8 @@ architecture note.
   viewport, so a local search sorts and labels distances from YOU instead of reshuffling
   around wherever the screen is centred; browsing a far city keeps viewport-centre ranking.
   Wired at runSearch + the suggest fetch; searchAlongRoute keeps its route-midpoint bias.
+- **Release cadence (user 2026-09-13): merges go to `canary` (push main to the canary branch); nightlies
+  are the daily cron's job. Do not dispatch CI after every merge.**
 - **QUERY INTENTS (discussion #365, 2026-09-13): `core/search/QueryIntents.parse(text, lang)`.**
   Voice search was dictation into the search box, so "take me home" searched for a place called
   that. Every submitted query (typed `search()` and the two voice paths through
@@ -1739,7 +1741,9 @@ architecture note.
   tables for en/fr/de/es/it/pt/nl, English tried as the fallback in every language; a bare verb
   ("go", "take me") only counts before home/work or an explicit "from A to B", so "go karts" stays
   a search; a bare "X to Y" is a route only when X is not a question word or a verb ("where to
-  eat" stays a search). Null = plain search, so the parser can never make a query worse. Pinned by
+  eat" stays a search). `routeBetween` also runs the WHOLE phrase as a search first and shows plain
+  results when a listing's name contains it ("Road to Hana", "Flights to Denver" are places, not
+  trips). Null = plain search, so the parser can never make a query worse. Pinned by
   `QueryIntentTest` with the sentences from the discussion. Adding a language = one `Words` table.
 - **Local suggestions (issue #180, 2026-07-19):** `onQueryChange` sets `localSuggestions` from
   `localMatches()` SYNCHRONOUSLY (recents searches + viewed places + list/saved places, substring

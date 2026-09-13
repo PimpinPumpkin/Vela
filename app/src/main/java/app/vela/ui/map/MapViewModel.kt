@@ -1645,6 +1645,14 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(query = "$from → $to", searching = true, suggestions = emptyList(), localSuggestions = emptyList()) }
         viewModelScope.launch {
             val bias = rankBias(near)
+            // GUARD: a name that merely contains "to" ("Road to Hana", "Flights to Denver") is a
+            // place, not a trip. If the whole phrase matches a real listing by name, show the
+            // plain results instead of routing between its halves.
+            val whole = runCatching { dataSource.search("$from to $to", near, rankFrom = bias).places }.getOrDefault(emptyList())
+            if (whole.any { it.name.contains("$from to $to", ignoreCase = true) }) {
+                _state.update { it.copy(query = "$from to $to", results = whole, searching = false, resultsCollapsed = false, selected = null) }
+                return@launch
+            }
             // A route ENDPOINT is usually a town or an address, not the nearest business whose
             // name contains the word (on-device test: "Davis" picked "Davis Built Homes" next to
             // the phone). Prefer an exact name match, then a result with no rating (a locality or

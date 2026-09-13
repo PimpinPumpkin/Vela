@@ -28,8 +28,20 @@ Last updated: 2026-07-13.
   "Unknown sources" switch and the installer spoof both get undone by the next in-app update.
   Ideas from the thread to decide between: an AAAD-style install path, or a Play-listed shell app
   that carries the Android Auto entitlement with the Google-scraping half delivered as a separate
-  add-on APK from GitHub (Nova/CoMaps pattern). Needs a decision on whether a Play listing is
-  acceptable at all before any code.
+  add-on APK from GitHub (Nova/CoMaps pattern). **Decision 2026-09-13: the Play split goes on the
+  roadmap.** The shell would be map + offline routing + OpenStreetMap places, everything Play can
+  carry; the Google-reading half stays a GitHub add-on. Hurdles, honestly: a developer account and
+  identity verification, Play review of a navigation app, a two-APK build with a plugin seam, and
+  keeping the shell useful on its own. Not started. Aftermarket head units with their own receiver
+  (a user's EKIY M13A PRO, 2026-09-13) already list sideloaded Vela after King Installer + an ADB
+  install; factory Android Auto (gearhead) does not, and that is the case the split is for.
+- **iOS (on the radar 2026-09-13, not started).** Feasibility: `:core` is plain Kotlin (routing,
+  parsers, nav engine, i18n) and would move to Kotlin Multiplatform with the Android-only bits
+  (SQLite stores, WebView bridges, LocationManager) behind expect/actual seams; MapLibre has an
+  iOS SDK, sherpa-onnx ships iOS builds for the neural voice and dictation, and the hidden-page
+  scrapes map onto WKWebView. The Compose UI would be rewritten (SwiftUI or Compose Multiplatform)
+  and CarPlay is its own approval. A second app's worth of work; listed so nobody thinks it is
+  off the table.
 - **Open building + house-number overlays (2026-07-04/05).** Microsoft footprints (ODbL) and OpenAddresses
   numbers as per-region PMTiles, streamed over the map by default where OSM is thin, downloadable for
   full offline. Traffic lights + stop signs draw at close zoom (keyless Overpass).
