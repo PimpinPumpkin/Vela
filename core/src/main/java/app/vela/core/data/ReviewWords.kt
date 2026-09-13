@@ -23,7 +23,7 @@ object ReviewWords {
     const val REVIEW_PATTERN =
         "review|rezension|bewertung|reseña|opini|avis|commentaire|recension|recensioni|" +
             "avalia|beoordel|отзыв|відгук|" +
-            "omdöme|ביקור|评论|評論|评价|" +
+            "omdöme|vélemény|értékelés|ביקור|评论|評論|评价|" +
             "クチコミ|口コミ|レビュー"
 
     /**
@@ -35,7 +35,7 @@ object ReviewWords {
      */
     const val MORE_PATTERN =
         "more|all|mehr|alle|más|todas|plus|tous|più|tutte|mais|meer|" +
-            "ещё|все|więcej|wszystkie|fler|alla|" +
+            "ещё|все|więcej|wszystkie|fler|alla|több|összes|" +
             "більше|всі|עוד|כל|" +
             "更多|全部|もっと|すべて"
 
