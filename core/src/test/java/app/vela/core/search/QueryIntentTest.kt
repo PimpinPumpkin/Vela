@@ -122,4 +122,23 @@ class QueryIntentTest {
         assertNull(p("ラーメン", "ja"))
         assertNull(p("咖啡", "zh"))
     }
+
+    @Test fun `dictation slips still land`() {
+        assertEquals(QueryIntent.NavigateTo("the station"), en("navigat to the station"))
+        assertEquals(QueryIntent.Search("pharmacy"), en("where is the nearst pharmacy"))
+        assertEquals(QueryIntent.Work, en("take me to my ofice"))
+        assertEquals(QueryIntent.Eta, en("what's my E.T.A."))
+        assertEquals(QueryIntent.Eta, en("whats my e t a"))
+        assertEquals(QueryIntent.Home, en("can you please take me home"))
+        assertEquals(QueryIntent.NavigateTo("la gare"), fr("emmene moi a la gare"))
+    }
+
+    @Test fun `fuzziness never rewrites a short word or the destination`() {
+        assertEquals(QueryIntent.NavigateTo("hope"), en("take me to hope"))
+        assertNull(en("home depot"))
+        assertNull(en("hone"))
+        assertEquals(QueryIntent.NavigateTo("the stashun"), en("navigate to the stashun"))
+        assertNull(en("fine dining"))
+        assertNull(en("finds"))
+    }
 }

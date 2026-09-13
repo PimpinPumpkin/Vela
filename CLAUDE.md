@@ -1745,6 +1745,19 @@ architecture note.
   results when a listing's name contains it ("Road to Hana", "Flights to Denver" are places, not
   trips). Null = plain search, so the parser can never make a query worse. Pinned by
   `QueryIntentTest` with the sentences from the discussion. Adding a language = one `Words` table.
+  **FUZZY PASS (2026-09-13):** dictation mishears ("navigat to", "nearst", "ofice", "emmene moi a
+  la gare"), so after the exact passes miss, `parseWith(fuzzy = true)` runs per language (spaced
+  languages only). The tolerance is WORD-LEVEL and only over the VOCABULARY, never the free text:
+  `wordOk` folds accents (an accent-only difference matches at any length) and allows one edit
+  (optimal string alignment) from five letters in `eq`, four in `pre`/`suf`, two edits from eight;
+  a single-word phrase never fuzzes ("fine dining" is not "find dining", "hone" is not "home") and
+  a multi-word phrase must match word for word, so "home depot" cannot collapse to "home". Home /
+  Work take the fuzzy compare in BOTH passes (the exact pass owns "take me to my ofice" once its
+  verb matched), a bare verb may sit behind up to four filler words like the full verbs
+  (`preSkippingFillers`: "can you please take me home"), the bare A-to-B rule rejects a misheard
+  verb as A (`looksLikeVerb`), and `normalise` strips apostrophes and joins spelled acronyms
+  ("E.T.A.", "e t a" -> "eta"). Pinned by the `dictation slips still land` and `fuzziness never
+  rewrites a short word or the destination` tests.
 - **Local suggestions (issue #180, 2026-07-19):** `onQueryChange` sets `localSuggestions` from
   `localMatches()` SYNCHRONOUSLY (recents searches + viewed places + list/saved places, substring
   match; min 2 chars) BEFORE the debounced network fetch. **+ CONTACTS (issue #243, 2026-08-08,
