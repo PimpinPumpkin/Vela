@@ -2045,7 +2045,7 @@ class MapViewModel @Inject constructor(
             // The gaps issue #71 exposed (a Hebrew-locale stop's category is "תחנת אוטובוס" and
             // nothing here matched): Hebrew stems + the app languages that were missing entirely.
             """תחנ|אוטובוס|רכבת|מסוף|רציף|""" + // he: stop/station stem, bus, rail, terminal, platform
-            """arrêt|parada|paragem|hållplats|przystanek|dworzec|зупинка|станція""",
+            """arrêt|parada|paragem|hållplats|przystanek|dworzec|зупинка|станція|megálló|állomás|pályaudvar""",
         RegexOption.IGNORE_CASE,
     )
 

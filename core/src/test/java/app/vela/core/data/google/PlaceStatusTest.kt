@@ -134,7 +134,7 @@ class PlaceStatusTest {
      *  the UI can't colour open/closed. It MUST equal the shipped keyword-table languages (Hebrew
      *  is keyed under both "iw" and "he"). */
     @Test fun `STATUS_LANGS covers exactly the shipped status-table languages`() {
-        val expected = setOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "zh", "ja", "iw", "he")
+        val expected = setOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "hu", "zh", "ja", "iw", "he")
         assertEquals(expected, SearchParser.STATUS_LANGS)
     }
 

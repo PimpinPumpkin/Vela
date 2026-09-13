@@ -17,6 +17,7 @@ the canonical list. Update it when a language lands or gains a layer.
 | Polish | `pl` | ✅ | ✅ | ✅ | ✅ |
 | Swedish | `sv` | ✅ | ✅ | ✅ | ✅ |
 | Ukrainian | `uk` | ✅ | ✅ | ✅ | ✅ |
+| Hungarian | `hu` | ✅ | ✅ | ✅ (Anna) | ✅ (contributed by Zsolt Laszlo Kaiser, 2026-09-13) |
 | Chinese (Simplified) | `zh` | ✅ | ✅ | ✅ (Mandarin voice) | ✅ |
 | Chinese (Traditional) | `zh-TW` | ✅ | ✅ | ✅ (shares the Mandarin voice) | ✅ |
 | Japanese | `ja` | ✅ | ✅ | ❌ system TTS* | ✅ |
