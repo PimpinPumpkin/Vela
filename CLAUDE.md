@@ -1876,6 +1876,28 @@ architecture note.
   **`ReviewsPanel` (the full-screen page) stays `hl=en` deliberately** - it carves the page by
   matching English relative dates, "N stars," histogram labels, the auto-processing disclaimer and
   the Sort button; localising it needs those four hardened first (open follow-up).
+- **THE REVIEW SCRAPE WAS DEAD FROM 2026-09-06 TO 2026-09-13 (issue #359, every language).** The
+  review-pass commit that moved the tab/button words into `ReviewWords` wrote the two regex lines
+  of the scrape script as `${'$'}{reviewPatternJs()}` inside the Kotlin raw string, which emits
+  the LITERAL text `${reviewPatternJs()}` into the page: "Uncaught SyntaxError: missing ) after
+  argument list" on line 19, the whole IIFE never ran, and every scrape "timed out after 45 s
+  with nothing" while the full-screen WebView page (a different script) kept working. It read as
+  environmental on the 4a for a week. Three guards now: the script reports a start marker and any
+  JS error through `VelaBridge.onInfo` (diag kind `reviews`, summary `probe`, logcat
+  `VelaReviews`), a `WebChromeClient` logs console ERRORS, and the probe line every 16 ticks says
+  tabs/opened/cards/viewport. **In a Kotlin raw string, `${'$'}{x}` is NOT a template.** Same
+  day: the hidden WebView is sized in CSS px x density (`WV_WIDTH`/`WV_HEIGHT` 1200x1000 CSS;
+  1200 physical px was ~450 CSS px on a 2.75x phone = Google's narrow layout), `scrollStep` also
+  scrolls the window, and the tab path presses an "All reviews" button once if the list stays
+  short. NB the count is still small (3-8 on the 4a; the browser pane showed 3-5 for the same
+  place with the feed withheld, 37 for another): Google gates how much of the feed an anonymous
+  desktop session gets, and that is not a parser problem.
+- **The full-screen reviews page could not be scrolled back up (issue #359, item 2, 2026-09-13).**
+  `stretch()` returned early in FULL mode, so `__velaSc` was never set, the edge reporter never
+  fired, and the native side kept its initial "at top" verdict: a downward finger drag anywhere
+  in the list (scrolling UP to re-read) was forwarded as a pull-to-close and past 120 dp the page
+  shut. FULL now adopts the scroller and hooks the reporter (no height styling), the edge test
+  also requires the document at its top, and the native pull needs `wv.scrollY <= 0` too.
 - **Review scrape accumulation replaces on LONGER TEXT (2026-07-19, issue #181):** a card is
   often harvested on the tick its More toggle was clicked, before Google's async re-render
   swaps in the full body - first-capture-wins turned that race into permanent "…" truncation.
