@@ -108,9 +108,38 @@ class GoogleMapsDataSource @Inject constructor(
     // Permits fleet-tunable through calibration.json ("ambientFanoutPermits") - CLAUDE.md's own
     // escape hatch ("if a dense area still spikes, lower the permit") without an app release.
     // Read at construction, so a pushed change applies on the next process start.
+    /** The nearby pass's window height: a walkable radius, the Google app's own bias. */
+    private val NEARBY_SPAN_M = 2500.0
+
     private val ambientFanout = kotlinx.coroutines.sync.Semaphore(
         calibration.current().tune("ambientFanoutPermits", 4.0).toInt().coerceIn(1, 13),
     )
+
+    /** One result page: [offset] rows in, over a [viewport]-centred window [spanMeters] tall. A
+     *  parse drift on page 0 is thrown (and recorded) so the caller can surface it; on any later
+     *  page it yields an empty list, because a later page drifting must never kill page 0. */
+    private suspend fun searchPage(query: String, viewport: LatLng, spanMeters: Double?, rankFrom: LatLng?, offset: Int, cal: app.vela.core.config.Calibration): List<Place> {
+        val url = "${cal.searchEndpoint}&q=${query.enc()}&pb=${SearchPb.build(query, viewport, cal.searchPb, spanMeters, offset).enc()}".localized()
+        val raw = get(url)
+        // A remote transforms.js can fully re-parse a reshaped response (searchOverride);
+        // otherwise the compiled parser runs. Either way, an optional transformPlaces
+        // hook gets the last word. No hook / any error → pure compiled path.
+        return try {
+            jsTransforms.searchOverride(raw)
+                ?: SearchParser.parse(query, GoogleResponse.parse(raw), rankFrom ?: viewport, cal.paths).places
+        } catch (e: CalibrationNeededException) {
+            if (offset == 0) {
+                // Capture the exact request that drifted so an opted-in user can hand it
+                // to a dev (no-op unless diagnostics are on).
+                diag.record("drift", "search parse drift: ${e.message}", url)
+                throw e
+            }
+            emptyList()
+        }
+    }
+
+    private fun placeKey(p: Place) =
+        p.featureId ?: "${p.name.lowercase()}|${(p.location.lat * 2000).toInt()}|${(p.location.lng * 2000).toInt()}"
 
     override suspend fun search(query: String, near: LatLng?, spanMeters: Double?, rankFrom: LatLng?): SearchResult = io {
         session.ensure()
@@ -119,30 +148,25 @@ class GoogleMapsDataSource @Inject constructor(
         val viewport = near ?: DEFAULT_VIEWPORT
         val cal = calibration.current()
         val firstUrl = "${cal.searchEndpoint}&q=${query.enc()}&pb=${SearchPb.build(query, viewport, cal.searchPb, spanMeters).enc()}".localized()
-        suspend fun page(offset: Int): List<Place> {
-            val url = if (offset == 0) {
-                firstUrl
-            } else {
-                "${cal.searchEndpoint}&q=${query.enc()}&pb=${SearchPb.build(query, viewport, cal.searchPb, spanMeters, offset).enc()}".localized()
+        suspend fun page(offset: Int): List<Place> = searchPage(query, viewport, spanMeters, rankFrom, offset, cal)
+        // NEARBY PASS (2026-09-13): Google's keyless ranking is prominence-heavy over the WHOLE
+        // window, so at town zoom the outlet next to the user loses its slot to better-known
+        // places across the visible area and misses all three pages; the ambient merge below
+        // only catches it when the category fan-out happened to hold it. A second request over
+        // a tight window around the user (the Google app weights distance the same way) leads
+        // the list. Only when the user is INSIDE the search window and that window is wider
+        // than the nearby one, so a search over another neighbourhood or another city keeps
+        // Google's order for where the user is looking.
+        val nearbyWanted = rankFrom != null &&
+            (spanMeters == null || (rankFrom.distanceTo(viewport) <= spanMeters / 2 && spanMeters > NEARBY_SPAN_M * 1.5))
+        val (nearby, first) = kotlinx.coroutines.coroutineScope {
+            val n = async {
+                if (nearbyWanted) runCatching { searchPage(query, rankFrom!!, NEARBY_SPAN_M, rankFrom, 0, cal) }.getOrDefault(emptyList())
+                else emptyList()
             }
-            val raw = get(url)
-            // A remote transforms.js can fully re-parse a reshaped response (searchOverride);
-            // otherwise the compiled parser runs. Either way, an optional transformPlaces
-            // hook gets the last word. No hook / any error → pure compiled path.
-            return try {
-                jsTransforms.searchOverride(raw)
-                    ?: SearchParser.parse(query, GoogleResponse.parse(raw), rankFrom ?: near, cal.paths).places
-            } catch (e: CalibrationNeededException) {
-                if (offset == 0) {
-                    // Capture the exact request that drifted so an opted-in user can hand it
-                    // to a dev (no-op unless diagnostics are on).
-                    diag.record("drift", "search parse drift: ${e.message}", url)
-                    throw e
-                }
-                emptyList() // a later page drifting must never kill the first page's results
-            }
+            val f = async { page(0) }
+            n.await() to f.await()
         }
-        val first = page(0)
         // PAGINATE like the Google app: a page is !7iN results (20 today) and a FULL first page
         // means the viewport holds more. Google's keyless web ranking is prominence-heavy over
         // the whole box, so a modest place sitting right next to the user ranks 21-60 for a
@@ -160,11 +184,9 @@ class GoogleMapsDataSource @Inject constructor(
                 p2.await() + p3.await()
             }
         } else emptyList()
-        val places = (first + more).distinctBy { p ->
-            p.featureId ?: "${p.name.lowercase()}|${(p.location.lat * 2000).toInt()}|${(p.location.lng * 2000).toInt()}"
-        }
+        val places = (nearby + first + more).distinctBy(::placeKey)
         // detail = the exact request URL so an opted-in user's export is replayable.
-        diag.record("search", "\"$query\" near ${near?.lat ?: "?"},${near?.lng ?: "?"} → ${places.size} results (page1 ${first.size})", firstUrl)
+        diag.record("search", "\"$query\" near ${near?.lat ?: "?"},${near?.lng ?: "?"} → ${places.size} results (page1 ${first.size}, nearby ${if (nearbyWanted) nearby.size.toString() else "off"})", firstUrl)
         // open/closed diagnosis: what status + hours did we actually parse for each result? (compare
         // the status string to the hours to see whether Google's string is wrong or we mis-parse.)
         places.take(6).forEach { p ->
@@ -176,6 +198,23 @@ class GoogleMapsDataSource @Inject constructor(
             )
         }
         SearchResult(query, CategoryFilter.applyIfEnabled(jsTransforms.refineSearch(places)))
+    }
+
+    /** Pages [fromPage] onward of the same query, for the results list's "More results" row
+     *  (2026-09-13). Same window, same ranking point; the pages fetch concurrently and a
+     *  failing one is just missing. Dedupe against what is already shown is the caller's. */
+    override suspend fun searchMore(query: String, near: LatLng?, spanMeters: Double?, rankFrom: LatLng?, fromPage: Int, pages: Int): List<Place> = io {
+        session.ensure()
+        val viewport = near ?: DEFAULT_VIEWPORT
+        val cal = calibration.current()
+        val pageSize = SearchPb.pageSize(cal.searchPb) ?: return@io emptyList()
+        val got = kotlinx.coroutines.coroutineScope {
+            (fromPage until fromPage + pages).map { pg ->
+                async { runCatching { searchPage(query, viewport, spanMeters, rankFrom, pg * pageSize, cal) }.getOrDefault(emptyList()) }
+            }.map { it.await() }
+        }.flatten().distinctBy(::placeKey)
+        diag.record("search", "\"$query\" pages $fromPage..${fromPage + pages - 1} → ${got.size} more results")
+        got
     }
 
     override suspend fun nearbyPlaces(center: LatLng, spanMeters: Double, onPartial: ((List<Place>) -> Unit)?): List<Place> = io {

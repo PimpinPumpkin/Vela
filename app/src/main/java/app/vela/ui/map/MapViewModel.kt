@@ -149,6 +149,10 @@ data class MapUiState(
     val lowData: Boolean = false,
     val query: String = "",
     val results: List<Place> = emptyList(),
+    // The query whose results can page further ("More results" row at the end of the list);
+    // null when the list came from somewhere else or is exhausted. Compared against [query].
+    val resultsMoreQuery: String? = null,
+    val resultsLoadingMore: Boolean = false,
     val ambientPois: List<Place> = emptyList(), // Google places for the visible area, shown on the bare browse map
     // True while the CURRENT viewport sits inside the area the ambient Google fetch covered —
     // the basemap OSM POIs hide only then, so panning/zooming past the fetched area blends the
@@ -1590,6 +1594,32 @@ class MapViewModel @Inject constructor(
     /** Re-run the current query biased to the area the user has panned to. */
     fun searchThisArea() = runSearch(_state.value.query.trim(), plausibleBias(mapCenter))
 
+    // "More results" (2026-09-13): the search fetches three pages; this pulls the next three of
+    // the SAME request (query, window, ranking point) and appends what is new. The row disappears
+    // when a pull adds fewer than a handful, or when the query changes.
+    private var moreSearch: Triple<String, LatLng?, Double?>? = null
+    private var moreFromPage = 3
+    private var moreJob: Job? = null
+    fun loadMoreResults() {
+        val (q, near, spanM) = moreSearch ?: return
+        val s = _state.value
+        if (s.resultsLoadingMore || s.resultsMoreQuery != q || s.query != q) return
+        _state.update { it.copy(resultsLoadingMore = true) }
+        moreJob?.cancel()
+        moreJob = viewModelScope.launch {
+            val got = runCatching { dataSource.searchMore(q, near, spanM, rankBias(near), moreFromPage) }.getOrDefault(emptyList())
+            val have = _state.value.results
+            val key = { p: Place -> p.featureId ?: "${p.name.lowercase()}|${(p.location.lat * 2000).toInt()}|${(p.location.lng * 2000).toInt()}" }
+            val seen = have.map(key).toHashSet()
+            val fresh = got.filter { seen.add(key(it)) }
+            moreFromPage += 3
+            _state.update {
+                if (it.query != q) it.copy(resultsLoadingMore = false)
+                else it.copy(results = it.results + fresh, resultsLoadingMore = false, resultsMoreQuery = if (fresh.size >= 5) q else null)
+            }
+        }
+    }
+
     // A point within ~50 km of 0,0 is MapLibre's virgin camera (a no-GPS device that never got a
     // fix or a fly-to) or a bogus provider fix, open ocean, never a real position. Passing it as
     // search bias skews ranking toward null island; no bias at all lets gl/hl regional ranking win.
@@ -1810,8 +1840,13 @@ class MapViewModel @Inject constructor(
                         // A live scrape succeeding is definitive proof we're online — clear a stuck
                         // offline flag (the network callback can miss an event after doze and leave
                         // `offline` latched until relaunch; seen on-device 2026-07-09).
-                        it.copy(results = localAddrs + res.places + ambientExtra, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
+                        it.copy(
+                            results = localAddrs + res.places + ambientExtra, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false,
+                            // Three full pages back = the window holds more; offer the next three.
+                            resultsMoreQuery = if (res.places.size >= 40) q else null, resultsLoadingMore = false,
+                        )
                     }
+                    moreSearch = Triple(q, near, spanM); moreFromPage = 3
                 } else {
                     // Online SUCCEEDED but found nothing. Don't leave a blank screen (the "POI list just
                     // isn't showing up" report): try the on-device OSM index (it may hold a small local
