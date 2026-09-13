@@ -224,14 +224,16 @@ private const val CAM_BRG_TURN_DEG = 25.0
  * carpet itself (17.5 did exactly that, user 2026-07-13) while being reachable by an ordinary
  * zoom-in, and [houseNumberFade] brings them in over the last stretch instead of popping them on.
  */
-private const val HOUSENUMBER_MIN_ZOOM = 18.3f
+/** The house-number zoom gate is a SETTING now (issue #329, `HouseNumbers`); read at style-apply
+ *  time, and the level rides `styleKey` so a change reloads the style like a theme flip. */
+private fun houseNumberMinZoom(): Float = app.vela.ui.HouseNumbers.minZoom()
 
-/** Numbers fade in across [HOUSENUMBER_MIN_ZOOM]..+0.6, so they arrive as you zoom rather than
+/** Numbers fade in across [houseNumberMinZoom()]..+0.6, so they arrive as you zoom rather than
  *  appearing all at once - the density change at street zoom is abrupt enough without a pop. */
 private fun houseNumberFade(): Expression = Expression.interpolate(
     Expression.linear(), Expression.zoom(),
-    Expression.stop(HOUSENUMBER_MIN_ZOOM, 0f),
-    Expression.stop(HOUSENUMBER_MIN_ZOOM + 0.6f, 1f),
+    Expression.stop(houseNumberMinZoom(), 0f),
+    Expression.stop(houseNumberMinZoom() + 0.6f, 1f),
 )
 
 private const val DEM_SRC = "vela-dem"
@@ -1205,7 +1207,7 @@ fun VelaMapView(
                             PropertyFactory.textField(
                                 Expression.step(
                                     Expression.zoom(), Expression.literal(""),
-                                    Expression.stop(HOUSENUMBER_MIN_ZOOM, Expression.get("number")),
+                                    Expression.stop(houseNumberMinZoom(), Expression.get("number")),
                                 ),
                             ),
                             PropertyFactory.textOpacity(houseNumberFade()),
@@ -2864,7 +2866,7 @@ fun VelaMapView(
         // Palette in the key so a Settings colour-set switch reloads the style, same as a theme flip.
         // The puck style rides the key too: the symbol image is registered once per style load
         // (issue #344), so a size/colour change reloads to re-register it.
-        val styleKey = "$styleUri|dark=$darkTheme|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn|puck=${app.vela.ui.PuckStyle.key()}"
+        val styleKey = "$styleUri|dark=$darkTheme|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn|puck=${app.vela.ui.PuckStyle.key()}|hn=${app.vela.ui.HouseNumbers.level.value}"
         if (appliedStyleKey != styleKey) {
             appliedStyleKey = styleKey
             val builder = if (styleUri.startsWith("asset://")) {
@@ -3413,7 +3415,7 @@ private fun ensureLayers(style: Style) {
                 // carpeted whole blocks in numbers (user 2026-07-13) and 16 carpeted the map
                 // (2026-07-06), but a hard 19 read as "this app has no house numbers" to people who
                 // zoomed in and gave up short of it (issue #257). Keep in lockstep with vela-addr.
-                setMinZoom(HOUSENUMBER_MIN_ZOOM)
+                setMinZoom(houseNumberMinZoom())
                 setProperties(
                     PropertyFactory.textField(Expression.get("housenumber")),
                     PropertyFactory.textOpacity(houseNumberFade()),

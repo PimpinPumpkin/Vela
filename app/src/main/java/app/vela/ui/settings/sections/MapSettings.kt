@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -20,6 +21,7 @@ import app.vela.ui.settings.GroupDivider
 import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.settings.Hint
+import app.vela.ui.settings.SelectableRow
 import app.vela.ui.settings.ToggleRow
 import app.vela.ui.dpadHighlight // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.dpadRowSibling
@@ -108,6 +110,26 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
             onCheckedChange = { app.vela.ui.BuildingOverlay.set(context, it) },
             hint = stringResource(R.string.settings_building_overlay_hint),
         )
+        // House numbers: how far out they appear (issue #329). Numbers come from OpenStreetMap
+        // and, in the US, OpenAddresses, so a missing number is usually missing data.
+        GroupDivider()
+        Text(
+            stringResource(R.string.settings_house_numbers),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
+        )
+        listOf(
+            app.vela.ui.HouseNumbers.NEAR to stringResource(R.string.settings_house_numbers_near),
+            app.vela.ui.HouseNumbers.NORMAL to stringResource(R.string.settings_house_numbers_normal),
+            app.vela.ui.HouseNumbers.FAR to stringResource(R.string.settings_house_numbers_far),
+        ).forEach { (id, label) ->
+            SelectableRow(
+                label = label,
+                selected = app.vela.ui.HouseNumbers.level.value == id,
+                onClick = { app.vela.ui.HouseNumbers.set(context, id) },
+            )
+        }
+        Hint(stringResource(R.string.settings_house_numbers_hint))
         }
 
         // Places on the map: POI visibility + sizing (user 2026-07-15).
