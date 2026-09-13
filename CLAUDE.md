@@ -1929,8 +1929,14 @@ architecture note.
   ("1.329") and Russian a space ("1 324"), Russian's Like is "Лайк", its Write is "Оставить отзыв",
   and its SORT BUTTON carries no sort word at all (its label is the current choice, "Самые
   релевантные"), so `velaSort` falls back to the last `aria-haspopup` button before the first
-  review card. When a language shows a Google control the carve missed, capture the page in the
-  browser pane with `hl=<lang>` and add the label to the table; do not guess a second time. A `WebChromeClient` logs the
+  review card. **Every app language was captured the same day** (fr, es, it, pt-BR, nl, pl, sv,
+  uk, hu, he, ja, zh-CN too): Polish, Swedish, Ukrainian, Hungarian and Hebrew also label the
+  sort button with the current choice; Ukrainian's histogram rows carry NO star word ("5, 908
+  відгуків"), so the row test is the leading-digit rule alone (a separator right after the digit
+  is fine unless a digit follows it); Japanese and Hungarian put the share verb at the END; the
+  "All" chip may carry two trailing words ("Tous les avis"). When a language shows a Google
+  control the carve missed, capture the page in the browser pane with `hl=<lang>` and add the
+  label to the table; do not guess a second time. A `WebChromeClient` logs the
   page's console errors under `VelaPanel`, and a probe line prints the tabs it saw.
   **WHAT'S NEW after an update (2026-09-13, `ui/WhatsNew`):** the first launch on a new
   versionName fetches that version's release notes (`releases/tags/v<version>`, or the rolling

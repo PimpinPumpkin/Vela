@@ -110,6 +110,20 @@ class ReviewWordsTest {
         assertTrue(m("all", "Alle Rezensionen")); assertFalse(m("all", "Alle 36 Rezensionen ansehen"))
         assertTrue(m("ago", "vor 7 Jahren")); assertTrue(m("ago", "4 месяца назад"))
         assertTrue(m("star", "4,5 Sterne")); assertTrue(m("star", "5-звездочные,908 отзывов"))
+        // Every other app language, captured live the same day.
+        assertTrue(m("all", "Tous les avis")); assertTrue(m("all", "Todas las reseñas")); assertTrue(m("all", "Tutte le recensioni")); assertTrue(m("all", "すべてのクチコミ"))
+        assertTrue(m("actions", "Acciones en la reseña de X")); assertTrue(m("actions", "Ações para a avaliação de X")); assertTrue(m("actions", "刑部耕平 さんのクチコミへのアクション")); assertTrue(m("actions", "可对张丰铖的评价执行的操作"))
+        assertTrue(m("write", "Avaliar")); assertTrue(m("write", "Vélemény írása")); assertTrue(m("write", "我要评价")); assertFalse(m("write", "Avaliar o restaurante"))
+        assertTrue(m("sort", "Classificar avaliações")); assertTrue(m("sort", "Trier les avis")); assertTrue(m("sort", "クチコミの並べ替え")); assertTrue(m("sort", "对评价排序"))
+        assertTrue(m("like", "Liken")); assertTrue(m("like", "Polubienie")); assertTrue(m("like", "Lájk")); assertTrue(m("like", "לייק")); assertTrue(m("like", "点赞")); assertTrue(m("like", "Позначка \"подобається\"")); assertTrue(m("like", "J'aime"))
+        assertTrue(m("share", "Powoduje udostępnienie opinii użytkownika X.")); assertTrue(m("share", "C Varty véleményének megosztása.")); assertTrue(m("share", "刑部耕平 さんのクチコミを共有")); assertTrue(m("share", "Review van C Varty delen."))
+        assertTrue(m("star", "5 зірочок")); assertTrue(m("star", "5 つ星、クチコミ 908 件")); assertTrue(m("star", "5 csillag, 908 vélemény"))
+        assertTrue(m("ago", "4 meses atrás")); assertTrue(m("ago", "4 hónapja")); assertTrue(m("ago", "לפני 4 חודשים")); assertTrue(m("ago", "för 4 månader sedan")); assertTrue(m("ago", "4 か月前"))
+        assertEquals(5 to 908, ReviewWords.histogramRow("5, 908 відгуків"))        // uk, no star word
+        assertEquals(5 to 908, ReviewWords.histogramRow("5 つ星、クチコミ 908 件"))
+        assertEquals(5 to 908, ReviewWords.histogramRow("5星级，908 条评价"))
+        assertEquals(5 to 908, ReviewWords.histogramRow("5-gwiazdkowy,908 opinii"))
+        assertNull(ReviewWords.histogramRow("4.5 星级"))
     }
 
     @Test fun `remote overrides lay over the defaults by key`() {
