@@ -510,7 +510,7 @@ class WebReviewsFetcher @Inject constructor(
         """.trimIndent()
     }
 
-    private companion object {
+    internal companion object {
         // Must outlast the script's own hard stop (130 ticks × 250 ms ≈ 33 s + page load) — if Kotlin
         // times out first we return EMPTY, which is worse than few. Lazy + best-effort as ever.
         const val TOTAL_TIMEOUT_MS = 45_000L

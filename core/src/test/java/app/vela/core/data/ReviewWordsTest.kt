@@ -70,4 +70,36 @@ class ReviewWordsTest {
         assertFalse(ReviewWords.isMoreReviewsButton("Reviews"))
         assertFalse(ReviewWords.isMoreReviewsButton("評論"))
     }
+
+    // The full-screen page's hooks, against the zh-TW labels captured live on 2026-09-13.
+    @Test fun `histogram rows parse in any language and a decimal rating is not a row`() {
+        assertEquals(5 to 908, ReviewWords.histogramRow("5 星級、908 則評論"))
+        assertEquals(1 to 18, ReviewWords.histogramRow("1 星級、18 則評論"))
+        assertEquals(5 to 1189, ReviewWords.histogramRow("5 stars, 1,189 reviews"))
+        assertNull(ReviewWords.histogramRow("4.5 顆星"))
+        assertNull(ReviewWords.histogramRow("1,329 則評論"))
+        assertNull(ReviewWords.histogramRow("4.5 stars"))
+    }
+
+    @Test fun `the page controls are recognised in Chinese and English`() {
+        val w = ReviewWords.words(null)
+        fun m(key: String, s: String) = Regex(w.getValue(key), RegexOption.IGNORE_CASE).containsMatchIn(s)
+        assertTrue(m("sort", "排序評論")); assertTrue(m("sort", "Sort reviews"))
+        assertTrue(m("write", "撰寫評論")); assertTrue(m("write", "Write a review"))
+        assertTrue(m("like", "喜歡")); assertTrue(m("like", "Like")); assertFalse(m("like", "Likely"))
+        assertTrue(m("share", "分享chang nikko的評論。")); assertTrue(m("share", "Share Jane's review."))
+        assertTrue(m("actions", "對chang nikko的評論採取動作")); assertTrue(m("actions", "Actions for Jane's review"))
+        assertTrue(m("all", "所有評論")); assertTrue(m("all", "All")); assertFalse(m("all", "Allergens 4"))
+        assertTrue(m("ago", "4 個月前")); assertTrue(m("ago", "2 years ago")); assertTrue(m("ago", "il y a 3 mois"))
+        assertFalse(m("ago", "Mikuni")); assertFalse(m("ago", "500 1st St"))
+        assertTrue(m("star", "4.5 顆星")); assertTrue(m("star", "5 stars"))
+        assertTrue(m("review", "對「Mikuni」的評論")); assertFalse(m("review", "「Mikuni」總覽"))
+    }
+
+    @Test fun `remote overrides lay over the defaults by key`() {
+        val w = ReviewWords.words(mapOf("sort" to "ordenar|sort", "bogus" to ""))
+        assertEquals("ordenar|sort", w["sort"])
+        assertEquals(ReviewWords.STAR_PATTERN, w["star"])
+        assertFalse(w.containsKey("bogus"))
+    }
 }

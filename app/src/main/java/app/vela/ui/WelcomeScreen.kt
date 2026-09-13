@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
@@ -176,6 +177,32 @@ private fun WelcomeFeature(icon: ImageVector, title: String, body: String) {
             Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+}
+
+/** The release notes of the build just updated to, shown once (see [WhatsNew]). Same shape as the
+ *  donate prompt: an icon, a title, the text, a filled "Got it" and a quiet "Full notes". */
+@Composable
+fun WhatsNewPrompt(version: String, notes: String, onOpenRelease: () -> Unit, onDismiss: () -> Unit) {
+    VelaDialog(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.whatsnew_title, version),
+        confirmText = stringResource(R.string.whatsnew_got_it),
+        onConfirm = onDismiss,
+        dismissText = stringResource(R.string.whatsnew_full_notes),
+        onDismiss = onOpenRelease,
+        dismissLowEmphasis = true,
+        icon = { Icon(Icons.Default.NewReleases, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        text = {
+            // The list can be long after a week of nightlies; cap it and scroll inside the dialog.
+            Column(
+                Modifier
+                    .heightIn(max = 320.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Text(notes, style = MaterialTheme.typography.bodyMedium)
+            }
+        },
+    )
 }
 
 /** The one-time, low-pressure donation prompt (see [Onboarding] for the etiquette). */

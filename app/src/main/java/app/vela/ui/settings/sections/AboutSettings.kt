@@ -111,6 +111,17 @@ Onboarding.openDonate(context)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         )
         GroupDivider()
+        // The release notes of this build, on demand (they also show once after an update).
+        Text(
+            stringResource(R.string.settings_whatsnew),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier
+                .dpadHighlight()
+                .clickable { app.vela.ui.WhatsNew.show(context, force = true) }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+        )
+        Hint(stringResource(R.string.settings_whatsnew_hint))
+        GroupDivider()
         // Self-updater: a launch check (throttled to ~daily) plus a manual check here.
         // The system installer does the install either way.
         var selfUpdate by remember { mutableStateOf(prefs.getBoolean("self_update_check", true)) }

@@ -189,6 +189,18 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
                     },
                     onDismiss = { Onboarding.dismissDonatePrompt(context) },
                 )
+            } else if (app.vela.ui.WhatsNew.notes.value != null) {
+                // After an update: this build's release notes, once. Last in the chain so it
+                // never stacks on a setup prompt.
+                WhatsNewPrompt(
+                    version = app.vela.ui.WhatsNew.version.value,
+                    notes = app.vela.ui.WhatsNew.notes.value.orEmpty(),
+                    onOpenRelease = {
+                        app.vela.ui.WhatsNew.openRelease(context)
+                        app.vela.ui.WhatsNew.dismiss(context)
+                    },
+                    onDismiss = { app.vela.ui.WhatsNew.dismiss(context) },
+                )
             }
         }
         // Full-screen photo viewer + reviews page render HERE, in the activity's own edge-to-edge
