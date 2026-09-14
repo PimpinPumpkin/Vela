@@ -1878,9 +1878,22 @@ private fun DepartTimeChooser(
 @Composable
 private fun PickerDialog(onConfirm: () -> Unit, onDismiss: () -> Unit, content: @Composable () -> Unit) {
     val dark = isAppInDarkTheme()
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = RoundedCornerShape(28.dp), color = if (dark) SheetDark else SheetLight) {
-            Column(Modifier.padding(horizontal = 14.dp, vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    // Own the width (issue #432): the platform dialog keeps side margins that on a 360 dp phone
+    // leave less than the Material date picker's fixed 360 dp, and the last weekday column was
+    // clipped off, so Sundays could not be picked. Edge to edge on narrow phones, capped wider.
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        androidx.compose.foundation.layout.BoxWithConstraints {
+        // Under 392 dp the Material date picker (a fixed 360 dp) only fits with NO side gap.
+        val tight = maxWidth < 392.dp
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = if (dark) SheetDark else SheetLight,
+            modifier = Modifier.widthIn(max = 400.dp).padding(horizontal = if (tight) 0.dp else 8.dp),
+        ) {
+            Column(Modifier.padding(vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 content()
                 Row(
                     Modifier.fillMaxWidth().padding(top = 6.dp, end = 6.dp),
@@ -1902,6 +1915,7 @@ private fun PickerDialog(onConfirm: () -> Unit, onDismiss: () -> Unit, content: 
                     ) { Text(stringResource(android.R.string.ok)) }
                 }
             }
+        }
         }
     }
 }
