@@ -3243,6 +3243,18 @@ architecture note.
   reviews, not routing. **`OSRM_BASE` is the FOSSGIS community server (fair-use) - point at a
   self-hosted OSRM/Valhalla before any real release.** (This retired the keyless-step parsing as the
   primary path + the Nominatim "fill the missing road name" hack.)
+- **Bike routing is SAFETY-weighted by default (issue #401, 2026-09-14).** `directions()` takes an
+  early branch for `TravelMode.BICYCLE` when `RoutingPrefs.bikeSafe` (core holder, mirrored from
+  the `app.vela.ui.BikeSafe` pref `bike_safe`, Settings > Navigation, default ON): the on-device
+  obf bicycle profile (prefers signed cycle routes and lanes, no network) where a region covers
+  the trip, BOUNDED like the avoid branch (6 s planning / 3 s urgent), else `ValhallaRouter`
+  (FOSSGIS Valhalla `/route`, costing bicycle, `use_roads` 0.1, hybrid, alternates=2 for a plain
+  trip, `through` stops). Valhalla maneuver types are mapped into the OSRM grammar
+  (`osrmGrammar`) and phrased by `osrmPhrase`, so voice/banner/list are localized and identical
+  to every other route; "bear left to stay on X" maps to a rename and folds silent. No Google
+  traffic overlay for bikes. Toggle off = the plain fastest OSRM bike route. Probed 2026-09-14:
+  same Davis trip, 26 maneuvers along a cycleway corridor at 0.1 vs four turns on a county road at
+  0.9. `ValhallaRouterTest` parses a captured two-leg reply with a roundabout.
 - **Traffic-AWARE routing (option 3, 2026-06-28).** OSRM's free-flow route ignores live traffic, so
   when Google *rerouted around a jam* its path differs from OSRM's. `directions()` detects this
   (`RouteGeometry.divergent` - sample Google's polyline, true if any point strays >700 m from OSRM's
