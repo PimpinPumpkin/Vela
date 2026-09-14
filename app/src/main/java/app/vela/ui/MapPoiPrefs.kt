@@ -22,6 +22,9 @@ object MapPoiPrefs {
     val showTransit = mutableStateOf(true)
     val showCivic = mutableStateOf(true)
     val iconScale = mutableFloatStateOf(1.0f)
+    /** The open-data places layer (Overture, baked tiles) instead of Google's ambient fan-out. Beta:
+     *  off until it clears the density bar; where it covers the view Google is asked only on tap. */
+    val openPlaces = mutableStateOf(false)
 
     fun init(context: Context) {
         val p = prefs(context)
@@ -29,6 +32,12 @@ object MapPoiPrefs {
         showTransit.value = p.getBoolean(KEY_TRANSIT, true)
         showCivic.value = p.getBoolean(KEY_CIVIC, true)
         iconScale.floatValue = p.getFloat(KEY_SCALE, 1.0f)
+        openPlaces.value = p.getBoolean(KEY_OPEN_PLACES, false)
+    }
+
+    fun setOpenPlaces(context: Context, value: Boolean) {
+        openPlaces.value = value
+        prefs(context).edit().putBoolean(KEY_OPEN_PLACES, value).apply()
     }
 
     fun setShowPois(context: Context, value: Boolean) {
@@ -56,4 +65,5 @@ object MapPoiPrefs {
     private const val KEY_TRANSIT = "map_show_transit_stops"
     private const val KEY_CIVIC = "map_show_civic_pois"
     private const val KEY_SCALE = "map_poi_icon_scale"
+    private const val KEY_OPEN_PLACES = "map_open_places"
 }
