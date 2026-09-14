@@ -47,6 +47,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.EvStation
 import androidx.compose.material.icons.filled.LocalGroceryStore
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Search
@@ -674,6 +675,7 @@ fun NavSearchChips(
             // (localized label, STABLE English query, icon) — query is the logic key, label localizes.
             listOf(
                 Triple(R.string.cat_gas, app.vela.ui.CategoryQuery.fuel(), Icons.Default.LocalGasStation),
+                Triple(R.string.cat_ev, "EV charging station", Icons.Default.EvStation),
                 Triple(R.string.cat_food, "Food", Icons.Default.Restaurant),
                 Triple(R.string.cat_coffee, "Coffee", Icons.Default.LocalCafe),
                 Triple(R.string.cat_groceries, "Groceries", Icons.Default.LocalGroceryStore),
