@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.Column
@@ -1178,43 +1179,7 @@ fun MapScreen(
         // Canary aid: fill-buildings auto-suppression state at a glance + a UI-thread FPS readout.
         // The FPS is the Compose/Choreographer frame rate (what the main thread achieves), so it
         // drops exactly when panning janks - the number to watch while chasing map smoothness.
-        if (app.vela.ui.BuildingDebug.on.value) {
-            val label = when {
-                !app.vela.ui.BuildingOverlay.on.value -> "MS bldg: OFF"
-                overlayDebugState == "drawing" -> "MS bldg: DRAWING"
-                overlayDebugState == "hidden" -> "MS bldg: hidden (OSM dense)"
-                else -> "MS bldg: none here"
-            }
-            var fps by remember { mutableStateOf(0) }
-            LaunchedEffect(Unit) {
-                var frames = 0
-                var acc = 0L
-                var last = 0L
-                while (true) {
-                    withFrameNanos { now ->
-                        if (last != 0L) {
-                            acc += now - last
-                            frames++
-                            if (acc >= 500_000_000L) { // recompute twice a second
-                                fps = (frames * 1_000_000_000.0 / acc).toInt()
-                                frames = 0; acc = 0L
-                            }
-                        }
-                        last = now
-                    }
-                }
-            }
-            Column(
-                Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 8.dp, bottom = 92.dp)
-                    .background(androidx.compose.ui.graphics.Color(0xCC000000), RoundedCornerShape(4.dp))
-                    .padding(horizontal = 6.dp, vertical = 3.dp),
-            ) {
-                Text("$fps fps", color = androidx.compose.ui.graphics.Color.White, fontSize = 11.sp)
-                Text(label, color = androidx.compose.ui.graphics.Color.White, fontSize = 11.sp)
-            }
-        }
+        if (app.vela.ui.BuildingDebug.on.value) BuildingDebugBadge(overlayDebugState)
 
         // --- D-pad map target (docs/dpad.md) -------------------------------
         // TWO-STAGE so the chrome stays reachable (v1 trapped focus on the map):
@@ -1425,72 +1390,7 @@ fun MapScreen(
             }
         }
         if (state.navigating) {
-            val mans = state.activeRoute?.maneuvers
-            val liveStep = state.nav.stepIndex
-            val previewing = state.previewStepIndex != null
-            // Show the previewed step when swiping ahead, else the live maneuver.
-            val shownIdx = (state.previewStepIndex ?: liveStep).coerceIn(0, mans?.lastIndex ?: 0)
-            val shown = mans?.getOrNull(shownIdx)
-            val next = mans?.getOrNull(shownIdx + 1)
-            // Show the real romanized road name where the basemap gave us one (issue #184): swap the
-            // local-script name in the instruction for its Latin form. No ICU fallback here - a name we
-            // have no real romanization for keeps its local script (a skeleton on a sign reads broken).
-            val navUiLang = app.vela.ui.AppLocale.effective().language
-            fun navRomanize(s: String): String =
-                if (s.isEmpty() || state.roadNameLatin.isEmpty()) s
-                else app.vela.core.voice.SpokenScript.forDisplay(s, navUiLang, state.roadNameLatin)
-            ManeuverBanner(
-                offRoute = state.nav.offRoute,
-                text = navRomanize(if (previewing) (shown?.instruction.orEmpty()) else state.maneuverText),
-                // The headline distance is the APPROACH to the shown maneuver. A maneuver's own
-                // distanceMeters is the travel AFTER it (Route.kt convention) — showing it here
-                // put the leg-after on the previewed step's headline ("3.1 mi — Turn right onto
-                // Elm St" for a turn 500 ft after the previous one). The approach leg is the
-                // PREVIOUS maneuver's after-distance.
-                distanceMeters = if (previewing) {
-                    mans?.getOrNull(shownIdx - 1)?.distanceMeters ?: state.nav.distanceToNextManeuver
-                } else {
-                    state.nav.distanceToNextManeuver
-                },
-                type = shown?.type ?: ManeuverType.STRAIGHT,
-                roundabout = shown?.roundabout,
-                ref = shown?.ref,
-                laneHint = shown?.laneHint,
-                lanes = shown?.lanes.orEmpty(),
-                nextText = next?.instruction?.let { navRomanize(it) },
-                nextType = next?.type,
-                nextRoundabout = next?.roundabout,
-                nextRef = next?.ref,
-                // The road being driven = the one entered by the LIVE maneuver last passed
-                // (never the previewed one - previewing shouldn't change where you "are").
-                currentRef = mans?.getOrNull(liveStep - 1)?.let { m -> m.roadAt(m.distanceMeters - state.nav.distanceToNextManeuver).second },
-                // The shown→next gap is the SHOWN maneuver's step length (a maneuver's distanceMeters is
-                // the travel AFTER it, to the next maneuver — both OSRM and the Google parser use that
-                // convention). Passing next.distanceMeters was the next→next-next gap: it made "then
-                // Arrive" (ARRIVE has 0 after it) show permanently while approaching the final turn, and
-                // suppressed true exit-then-merge compounds whose merge had a long following leg.
-                nextDistanceMeters = shown?.distanceMeters,
-                destName = state.arrivedLabel,
-                destAddress = state.navDestAddress,
-                // Speed-scaled approach gate for lanes + the "then" row: identity at city speeds
-                // (≤ ~60 mph), ~1 km ≈ 30 s at highway speed — Google's cadence.
-                laneShowM = maxOf(800.0, (state.mySpeed ?: 0f).toDouble() * 30.0),
-                previewing = previewing,
-                onPreviewNext = { vm.previewStep((shownIdx + 1).coerceAtMost(mans?.lastIndex ?: liveStep)) },
-                onPreviewPrev = { if (shownIdx - 1 <= liveStep) vm.clearPreview() else vm.previewStep(shownIdx - 1) },
-                onExitPreview = vm::clearPreview,
-                // Landscape: the turn card becomes a LEFT column rather than a full-width banner
-                // (issue #297). Spanning the width, it and the ETA bar left a thin horizontal
-                // sliver of map between them with the puck half under the bar - the road ahead is
-                // exactly what you need to see while driving.
-                modifier = Modifier
-                    .align(if (landscapeChrome) Alignment.TopStart else Alignment.TopCenter)
-                    .landscapeColumn(landscapeChrome, sidePanelWidthDp)
-                    .statusBarsPadding()
-                    .padding(12.dp)
-                    // Report the banner's bottom edge so the compass can drop just below it (any height).
-                    .onGloballyPositioned { navBannerBottomPx = (it.positionInRoot().y + it.size.height).roundToInt() },
-            )
+            NavTurnBanner(state, vm, landscapeChrome, sidePanelWidthDp) { navBannerBottomPx = it }
         } else if (state.pickOnMap == null && state.transitNav == null) {
             // (Hidden during transit step-by-step guidance too — its bottom pane owns the screen
             // with the map above it, and a floating search bar over the guided map read as
@@ -1638,64 +1538,7 @@ fun MapScreen(
                         searchOpen && (
                             searchFocused || state.results.isEmpty() ||
                                 ((state.pickingOrigin || state.pickingDest || state.pickingStop) && state.query.isBlank())
-                            ) -> SearchEntryContent(
-                            suggestions = state.suggestions,
-                            localSuggestions = state.localSuggestions,
-                            onPickLocal = {
-                                focusManager.clearFocus()
-                                vm.pickLocalSuggestion(it)
-                            },
-                            onRemoveLocal = vm::removeLocalSuggestion,
-                            lists = state.lists,
-                            onAddToList = { place, listId -> vm.addPlaceToList(listId, place) },
-                            onRemoveFromList = { place, listId -> vm.removePlaceFromList(listId, place) },
-                            onCreateListWith = { place, name -> vm.addPlaceToList(vm.createList(name), place) },
-                            saved = state.saved,
-                            recents = state.recents,
-                            recentPlaces = state.recentPlaces,
-                            home = state.home,
-                            work = state.work,
-                            assigning = state.assigningShortcut,
-                            pickingOrigin = state.pickingOrigin,
-                            pickingDest = state.pickingDest,
-                            pickingStop = state.pickingStop,
-                            onCancelPickStop = vm::cancelPickStop,
-                            onUseMyLocation = vm::useMyLocationAsOrigin,
-                            onChooseOnMap = {
-                                focusManager.clearFocus()
-                                if (state.pickingOrigin) vm.chooseOriginOnMap()
-                                else if (state.pickingDest) vm.chooseDestOnMap()
-                                else vm.chooseStopOnMap()
-                            },
-                            onPickSuggestion = {
-                                focusManager.clearFocus()
-                                vm.selectPlace(it)
-                            },
-                            onPickSaved = {
-                                focusManager.clearFocus()
-                                vm.selectSaved(it)
-                            },
-                            onPickRecent = {
-                                focusManager.clearFocus()
-                                vm.searchRecent(it)
-                            },
-                            onPickRecentPlace = {
-                                focusManager.clearFocus()
-                                vm.selectSaved(it)
-                            },
-                            onRemoveRecent = vm::removeRecentQuery,
-                            onRemoveRecentPlace = vm::removeRecentPlace,
-                            onClearRecents = vm::clearRecents,
-                            onPickShortcut = {
-                                focusManager.clearFocus()
-                                vm.openShortcut(it)
-                            },
-                            onAssignShortcut = vm::beginAssignShortcut,
-                            onClearShortcut = vm::clearShortcut,
-                            onCancelAssign = vm::cancelAssign,
-                            onPinSavedAs = vm::pinSavedAs,
-                            onRemoveSaved = vm::removeSaved,
-                        )
+                            ) -> SearchEntryHost(state, vm, focusManager)
 
                         // Results now live in a BOTTOM sheet (rendered with the other bottom
                         // surfaces below, Google-style); the top bar keeps only the category
@@ -3455,6 +3298,190 @@ private fun SearchResults(
             } // if (!collapsed) — list
         }
     }
+}
+
+/** Building-overlay debug badge + UI-thread FPS readout (Settings -> Developer). Split out of
+ *  MapScreen on 2026-09-13: the MapScreen composable had grown past the JVM 64 KB method limit
+ *  in the debug variant (Compose source info counts), and this block was the cleanest cut. */
+@Composable
+private fun BoxScope.BuildingDebugBadge(overlayDebugState: String) {
+    val label = when {
+        !app.vela.ui.BuildingOverlay.on.value -> "MS bldg: OFF"
+        overlayDebugState == "drawing" -> "MS bldg: DRAWING"
+        overlayDebugState == "hidden" -> "MS bldg: hidden (OSM dense)"
+        else -> "MS bldg: none here"
+    }
+    var fps by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) {
+        var frames = 0
+        var acc = 0L
+        var last = 0L
+        while (true) {
+            withFrameNanos { now ->
+                if (last != 0L) {
+                    acc += now - last
+                    frames++
+                    if (acc >= 500_000_000L) { // recompute twice a second
+                        fps = (frames * 1_000_000_000.0 / acc).toInt()
+                        frames = 0; acc = 0L
+                    }
+                }
+                last = now
+            }
+        }
+    }
+    Column(
+        Modifier
+            .align(Alignment.BottomStart)
+            .padding(start = 8.dp, bottom = 92.dp)
+            .background(androidx.compose.ui.graphics.Color(0xCC000000), RoundedCornerShape(4.dp))
+            .padding(horizontal = 6.dp, vertical = 3.dp),
+    ) {
+        Text("$fps fps", color = androidx.compose.ui.graphics.Color.White, fontSize = 11.sp)
+        Text(label, color = androidx.compose.ui.graphics.Color.White, fontSize = 11.sp)
+    }
+}
+
+/** The turn card at the top of the nav screen (live maneuver, or the previewed step while
+ *  swiping ahead). Split out of MapScreen on 2026-09-13 - see [BuildingDebugBadge]. */
+@Composable
+private fun BoxScope.NavTurnBanner(
+    state: MapUiState,
+    vm: MapViewModel,
+    landscapeChrome: Boolean,
+    sidePanelWidthDp: androidx.compose.ui.unit.Dp,
+    onBottomPx: (Int) -> Unit,
+) {
+    val mans = state.activeRoute?.maneuvers
+    val liveStep = state.nav.stepIndex
+    val previewing = state.previewStepIndex != null
+    // Show the previewed step when swiping ahead, else the live maneuver.
+    val shownIdx = (state.previewStepIndex ?: liveStep).coerceIn(0, mans?.lastIndex ?: 0)
+    val shown = mans?.getOrNull(shownIdx)
+    val next = mans?.getOrNull(shownIdx + 1)
+    // Show the real romanized road name where the basemap gave us one (issue #184): swap the
+    // local-script name in the instruction for its Latin form. No ICU fallback here - a name we
+    // have no real romanization for keeps its local script (a skeleton on a sign reads broken).
+    val navUiLang = app.vela.ui.AppLocale.effective().language
+    fun navRomanize(s: String): String =
+        if (s.isEmpty() || state.roadNameLatin.isEmpty()) s
+        else app.vela.core.voice.SpokenScript.forDisplay(s, navUiLang, state.roadNameLatin)
+    ManeuverBanner(
+        offRoute = state.nav.offRoute,
+        text = navRomanize(if (previewing) (shown?.instruction.orEmpty()) else state.maneuverText),
+        // The headline distance is the APPROACH to the shown maneuver. A maneuver's own
+        // distanceMeters is the travel AFTER it (Route.kt convention) — showing it here
+        // put the leg-after on the previewed step's headline ("3.1 mi — Turn right onto
+        // Elm St" for a turn 500 ft after the previous one). The approach leg is the
+        // PREVIOUS maneuver's after-distance.
+        distanceMeters = if (previewing) {
+            mans?.getOrNull(shownIdx - 1)?.distanceMeters ?: state.nav.distanceToNextManeuver
+        } else {
+            state.nav.distanceToNextManeuver
+        },
+        type = shown?.type ?: ManeuverType.STRAIGHT,
+        roundabout = shown?.roundabout,
+        ref = shown?.ref,
+        laneHint = shown?.laneHint,
+        lanes = shown?.lanes.orEmpty(),
+        nextText = next?.instruction?.let { navRomanize(it) },
+        nextType = next?.type,
+        nextRoundabout = next?.roundabout,
+        nextRef = next?.ref,
+        // The road being driven = the one entered by the LIVE maneuver last passed
+        // (never the previewed one - previewing shouldn't change where you "are").
+        currentRef = mans?.getOrNull(liveStep - 1)?.let { m -> m.roadAt(m.distanceMeters - state.nav.distanceToNextManeuver).second },
+        // The shown→next gap is the SHOWN maneuver's step length (a maneuver's distanceMeters is
+        // the travel AFTER it, to the next maneuver — both OSRM and the Google parser use that
+        // convention). Passing next.distanceMeters was the next→next-next gap: it made "then
+        // Arrive" (ARRIVE has 0 after it) show permanently while approaching the final turn, and
+        // suppressed true exit-then-merge compounds whose merge had a long following leg.
+        nextDistanceMeters = shown?.distanceMeters,
+        destName = state.arrivedLabel,
+        destAddress = state.navDestAddress,
+        // Speed-scaled approach gate for lanes + the "then" row: identity at city speeds
+        // (≤ ~60 mph), ~1 km ≈ 30 s at highway speed — Google's cadence.
+        laneShowM = maxOf(800.0, (state.mySpeed ?: 0f).toDouble() * 30.0),
+        previewing = previewing,
+        onPreviewNext = { vm.previewStep((shownIdx + 1).coerceAtMost(mans?.lastIndex ?: liveStep)) },
+        onPreviewPrev = { if (shownIdx - 1 <= liveStep) vm.clearPreview() else vm.previewStep(shownIdx - 1) },
+        onExitPreview = vm::clearPreview,
+        // Landscape: the turn card becomes a LEFT column rather than a full-width banner
+        // (issue #297). Spanning the width, it and the ETA bar left a thin horizontal
+        // sliver of map between them with the puck half under the bar - the road ahead is
+        // exactly what you need to see while driving.
+        modifier = Modifier
+            .align(if (landscapeChrome) Alignment.TopStart else Alignment.TopCenter)
+            .landscapeColumn(landscapeChrome, sidePanelWidthDp)
+            .statusBarsPadding()
+            .padding(12.dp)
+            // Report the banner's bottom edge so the compass can drop just below it (any height).
+            .onGloballyPositioned { onBottomPx((it.positionInRoot().y + it.size.height).roundToInt()) },
+    )
+}
+
+/** The search entry page (recents, saved, Home/Work, suggestions, pickers). Split out of
+ *  MapScreen on 2026-09-13 - see [BuildingDebugBadge]. */
+@Composable
+private fun SearchEntryHost(state: MapUiState, vm: MapViewModel, focusManager: androidx.compose.ui.focus.FocusManager) {
+    SearchEntryContent(
+        suggestions = state.suggestions,
+        localSuggestions = state.localSuggestions,
+        onPickLocal = {
+            focusManager.clearFocus()
+            vm.pickLocalSuggestion(it)
+        },
+        onRemoveLocal = vm::removeLocalSuggestion,
+        lists = state.lists,
+        onAddToList = { place, listId -> vm.addPlaceToList(listId, place) },
+        onRemoveFromList = { place, listId -> vm.removePlaceFromList(listId, place) },
+        onCreateListWith = { place, name -> vm.addPlaceToList(vm.createList(name), place) },
+        saved = state.saved,
+        recents = state.recents,
+        recentPlaces = state.recentPlaces,
+        home = state.home,
+        work = state.work,
+        assigning = state.assigningShortcut,
+        pickingOrigin = state.pickingOrigin,
+        pickingDest = state.pickingDest,
+        pickingStop = state.pickingStop,
+        onCancelPickStop = vm::cancelPickStop,
+        onUseMyLocation = vm::useMyLocationAsOrigin,
+        onChooseOnMap = {
+            focusManager.clearFocus()
+            if (state.pickingOrigin) vm.chooseOriginOnMap()
+            else if (state.pickingDest) vm.chooseDestOnMap()
+            else vm.chooseStopOnMap()
+        },
+        onPickSuggestion = {
+            focusManager.clearFocus()
+            vm.selectPlace(it)
+        },
+        onPickSaved = {
+            focusManager.clearFocus()
+            vm.selectSaved(it)
+        },
+        onPickRecent = {
+            focusManager.clearFocus()
+            vm.searchRecent(it)
+        },
+        onPickRecentPlace = {
+            focusManager.clearFocus()
+            vm.selectSaved(it)
+        },
+        onRemoveRecent = vm::removeRecentQuery,
+        onRemoveRecentPlace = vm::removeRecentPlace,
+        onClearRecents = vm::clearRecents,
+        onPickShortcut = {
+            focusManager.clearFocus()
+            vm.openShortcut(it)
+        },
+        onAssignShortcut = vm::beginAssignShortcut,
+        onClearShortcut = vm::clearShortcut,
+        onCancelAssign = vm::cancelAssign,
+        onPinSavedAs = vm::pinSavedAs,
+        onRemoveSaved = vm::removeSaved,
+    )
 }
 
 @Composable

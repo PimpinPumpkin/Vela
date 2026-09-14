@@ -3141,9 +3141,10 @@ fun VelaMapView(
                     // Reserve room at the bottom for the directions panel AND at the top for the
                     // endpoints card, so the route's start/end frame in the VISIBLE strip between
                     // them instead of hiding behind either (user 2026-07-14).
-                    val pad = 140
-                    val bottom = if (cameraBottomInsetPx > 0) cameraBottomInsetPx + pad else pad
-                    val top = if (cameraTopInsetPx > 0) cameraTopInsetPx + pad else pad
+                    val fp = fitPadding(map, cameraTopInsetPx, cameraBottomInsetPx, 140)
+                    val pad = fp.side
+                    val bottom = fp.bottom
+                    val top = fp.top
                     val bounds = builder.build()
                     // A continental trip fit zooms out until nothing has context; past ~12 degrees
                     // of span, frame the DESTINATION area instead - the end point is the part worth
@@ -3175,13 +3176,11 @@ fun VelaMapView(
                 lastFittedTransitKey = transitPrevCoords.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx
                 val builder = MLLatLngBounds.Builder()
                 transitPrevCoords.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
-                val pad = 140
-                val bottom = if (cameraBottomInsetPx > 0) cameraBottomInsetPx + pad else pad
-                val top = if (cameraTopInsetPx > 0) cameraTopInsetPx + pad else pad
+                val fp = fitPadding(map, cameraTopInsetPx, cameraBottomInsetPx, 140)
                 runCatching {
                     flightDepth[0]++
                     map.animateCamera(
-                        CameraUpdateFactory.newLatLngBounds(builder.build(), pad, top, pad, bottom), 800, flightCb(),
+                        CameraUpdateFactory.newLatLngBounds(builder.build(), fp.side, fp.top, fp.side, fp.bottom), 800, flightCb(),
                     )
                 }
             }
@@ -3217,10 +3216,10 @@ fun VelaMapView(
                     val builder = MLLatLngBounds.Builder()
                     cluster.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
                     // Keep the cluster above the results sheet (peek covers the bottom half).
-                    val bottom = if (cameraBottomInsetPx > 0) cameraBottomInsetPx + 160 else 160
+                    val fp = fitPadding(map, 0, cameraBottomInsetPx, 160)
                     runCatching {
                         flightDepth[0]++
-                        map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 160, 160, 160, bottom), 700, flightCb())
+                        map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), fp.side, fp.top, fp.side, fp.bottom), 700, flightCb())
                     }
                 }
             }
@@ -6527,4 +6526,38 @@ private fun transitStopBitmap(): Bitmap {
     c.drawCircle(15.5f, 27.5f, 2.2f, white) // wheels
     c.drawCircle(24.5f, 27.5f, 2.2f, white)
     return bmp
+}
+
+/** Bounds-fit padding in px: sides, top and bottom, each already including the UI inset. */
+internal class FitPadding(val side: Int, val top: Int, val bottom: Int)
+
+/**
+ * Padding for a bounds fit that always leaves the map somewhere to draw. The route, transit
+ * and cluster fits used a FIXED margin (140 or 160 px) on every side plus the card/sheet
+ * insets. In raw pixels that margin is a quarter of a 240 px wide screen per side, so on a
+ * 240x320 phone (issue #400) the two side margins alone exceeded the viewport, MapLibre
+ * got a negative fit area and never zoomed out, and the route showed as a slice at whatever
+ * zoom it settled on. Now the margin is capped at a sixth of the strip that is actually
+ * visible between the top card and the bottom sheet, and when those two together leave
+ * less than a fifth of the map the insets themselves are trimmed so at least that much
+ * of the route is framed instead of nothing.
+ */
+internal fun fitPadding(map: MapLibreMap, topInsetPx: Int, bottomInsetPx: Int, wanted: Int): FitPadding {
+    val w = map.width.toInt().coerceAtLeast(1)
+    val h = map.height.toInt().coerceAtLeast(1)
+    var top = topInsetPx.coerceAtLeast(0)
+    var bottom = bottomInsetPx.coerceAtLeast(0)
+    val minStrip = h / 5
+    val strip = h - top - bottom
+    if (strip < minStrip) {
+        // Shrink both insets in proportion so the visible strip is a fifth of the map.
+        val excess = minStrip - strip
+        val total = (top + bottom).coerceAtLeast(1)
+        top -= excess * top / total
+        bottom -= excess * bottom / total
+        if (h - top - bottom < minStrip) bottom = (h - top - minStrip).coerceAtLeast(0)
+    }
+    val visibleH = (h - top - bottom).coerceAtLeast(1)
+    val side = minOf(wanted, w / 6, visibleH / 6).coerceAtLeast(4)
+    return FitPadding(side, top + side, bottom + side)
 }
