@@ -1050,10 +1050,16 @@ fun VelaMapView(
     // plain browse was pure overhead AND rendered a BLACK stripe over every road: MapLibre's colour parser
     // rejected the 8-digit "#00000000" and fell back to its default OPAQUE BLACK. Fixed by the transparent
     // @ColorInt overload (no string parsing) and by not carrying the layer on the browse map at all.
-    // The open-data places layer (Overture PMTiles): one symbol layer per source, dressed exactly
-    // like the Google ambient layer (same icon images by group, the same prominence-driven size and
-    // label thresholds) so the switch is invisible. Density is in the data: each feature carries a
-    // tippecanoe minzoom from its prominence, and MapLibre's collision does the rest.
+    // The open-data places layer (Overture PMTiles): one symbol layer plus one dot layer per source,
+    // dressed like the Google ambient layer (same icon images by group, the same prominence-driven
+    // size) so the switch is invisible. Density is decided by RANK, not by collision alone: the bake
+    // ranks every place against its neighbors inside a ~400 m cell (`rank`) and a ~1.6 km cell
+    // (`crank`), and at each zoom only the top few per cell get an icon and fewer still a label;
+    // the rest draw as small category-colored dots, the way Google thins a downtown to its
+    // landmarks at z15 and fills in the shops as you zoom. A strong prominence (a hospital, a
+    // supermarket, a branded chain) bypasses the rank so a lone landmark is never demoted by a
+    // busier neighbor. The tile minzoom (bake) already leaves the long tail out of the z13-z16
+    // tiles, so this is a cheap second cut on what the tile carries.
     LaunchedEffect(placesOverlays, styleRef, darkTheme) {
         val style = styleRef ?: return@LaunchedEffect
         runCatching { style.layers.filter { it.id.startsWith("vela-places-") }.forEach { style.removeLayer(it) } }
@@ -1062,16 +1068,46 @@ fun VelaMapView(
             runCatching {
                 val srcId = "vela-places-src-$i"
                 style.addSource(VectorSource(srcId, uri))
-                fun nameAbove(p: Double) = Expression.switchCase(
-                    Expression.gte(Expression.get("prominence"), Expression.literal(p)),
-                    Expression.get("name"),
-                    Expression.literal(""),
+                // "top `n` in the cell, or prominent enough on its own" -> the value, else nothing.
+                fun topOr(rankProp: String, n: Int, prom: Double, value: Expression) = Expression.switchCase(
+                    Expression.any(
+                        Expression.lte(Expression.get(rankProp), Expression.literal(n)),
+                        Expression.gte(Expression.get("prominence"), Expression.literal(prom)),
+                    ),
+                    value, Expression.literal(""),
                 )
+                val icon = Expression.get("icon") // "vela-poi-<group>", baked
+                val name = Expression.get("name")
+                val dots = CircleLayer("vela-places-dots-$i", srcId).apply {
+                    setSourceLayer("places")
+                    setMinZoom(14f)
+                    setProperties(
+                        PropertyFactory.circleColor(PoiIcons.groupColor()),
+                        PropertyFactory.circleRadius(
+                            Expression.interpolate(
+                                Expression.linear(), Expression.get("prominence"),
+                                Expression.stop(0.0, 2.2f), Expression.stop(8.0, 3.6f),
+                            ),
+                        ),
+                        PropertyFactory.circleStrokeWidth(1.2f),
+                        PropertyFactory.circleStrokeColor(if (darkTheme) "#162640" else "#f8f7f7"),
+                        PropertyFactory.circleOpacity(0.92f),
+                    )
+                }
                 val layer = SymbolLayer("vela-places-$i", srcId).apply {
                     setSourceLayer("places") // tippecanoe layer name (tools/build-places-region.sh: -l places)
                     setMinZoom(13f)
                     setProperties(
-                        PropertyFactory.iconImage(Expression.get("icon")), // "vela-poi-<group>", baked
+                        PropertyFactory.iconImage(
+                            Expression.step(
+                                Expression.zoom(),
+                                topOr("crank", 2, 6.0, icon),
+                                Expression.stop(15f, topOr("rank", 1, 5.0, icon)),
+                                Expression.stop(16f, topOr("rank", 5, 4.0, icon)),
+                                Expression.stop(17f, topOr("rank", 12, 3.0, icon)),
+                                Expression.stop(17.5f, icon),
+                            ),
+                        ),
                         PropertyFactory.iconSize(
                             Expression.interpolate(
                                 Expression.linear(), Expression.get("prominence"),
@@ -1085,10 +1121,11 @@ fun VelaMapView(
                         PropertyFactory.textField(
                             Expression.step(
                                 Expression.zoom(),
-                                nameAbove(6.0),
-                                Expression.stop(15.5f, nameAbove(5.0)),
-                                Expression.stop(16.5f, nameAbove(3.0)),
-                                Expression.stop(17.5f, Expression.get("name")),
+                                topOr("crank", 1, 6.0, name),
+                                Expression.stop(15f, topOr("rank", 1, 5.0, name)),
+                                Expression.stop(16f, topOr("rank", 3, 4.5, name)),
+                                Expression.stop(16.5f, topOr("rank", 6, 4.0, name)),
+                                Expression.stop(17.5f, name),
                             ),
                         ),
                         PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
@@ -1113,7 +1150,9 @@ fun VelaMapView(
                         PropertyFactory.textHaloWidth(0.9f),
                     )
                 }
+                // Dots under icons: an icon that renders simply covers its own dot.
                 if (style.getLayer(AMBIENT_LAYER) != null) style.addLayerBelow(layer, AMBIENT_LAYER) else style.addLayer(layer)
+                style.addLayerBelow(dots, layer.id)
             }
         }
     }
@@ -4888,6 +4927,9 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
         (l as? SymbolLayer)?.setProperties(
             PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark)),
             PropertyFactory.textHaloColor(if (dark) "#11161C" else "#FFFFFF"),
+        )
+        (l as? CircleLayer)?.setProperties(
+            PropertyFactory.circleStrokeColor(if (dark) "#162640" else "#f8f7f7"),
         )
     }
     // Canonical GTFS stop names take the TRANSIT category colour per theme - blue in light,
