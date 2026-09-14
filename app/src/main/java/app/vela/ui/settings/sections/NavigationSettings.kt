@@ -255,13 +255,19 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
 
         // Parking history - recent "parked here" saves, so an accidental overwrite is
         // recoverable (also reachable by long-pressing the P button on the map).
+        // Always present (issue #426): the settings search lists "Parking history", and a group
+        // that only existed once you had parked led the match to nothing on a fresh install.
         val state by vm.state.collectAsStateWithLifecycle()
-        if (state.parkingHistory.isNotEmpty()) {
+        run {
             Spacer(Modifier.height(8.dp))
             SettingsGroup(title = stringResource(R.string.settings_parking_history)) {
+            if (state.parkingHistory.isEmpty()) {
+                Hint(stringResource(R.string.settings_parking_history_empty))
+            } else {
             Hint(stringResource(R.string.settings_parking_history_hint))
             Box(Modifier.padding(horizontal = 8.dp)) {
                 TextButton(onClick = { vm.clearParkingHistory() }) { Text(stringResource(R.string.parking_history_clear_all)) }
+            }
             }
             state.parkingHistory.forEachIndexed { pi, entry ->
                 if (pi > 0) GroupDivider()

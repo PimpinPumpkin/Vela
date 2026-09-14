@@ -497,7 +497,12 @@ Defaults that make the safe path the easy one:
   dispatcher over the `SettingsSection` enum, no nav library; BACK peels spoke -> hub -> map),
   `SettingsHub` (category rows + the SETTINGS SEARCH, a static `SEARCH_INDEX` of label-resource ->
   section where a match OPENS THE SPOKE - the old measured scroll-to-Y died with the long page;
-  add new row labels to the index), `SettingsScaffold` (the one place all the Settings D-pad focus
+  add new row labels to the index. **Since 2026-09-14 (issue #426) the match also SCROLLS TO
+  THE ROW:** `onOpen(section, label)` carries the tapped label, `SettingsScreen` holds it and
+  provides `LocalSettingsHighlight`, and `Modifier.settingsAnchor(label)` on ToggleRow /
+  SelectableRow / SubHead / SectionTitle brings the matching element into view and glows it for
+  a beat; the Parking history group is always rendered, with an empty-state hint, so its index
+  entry never leads to nothing), `SettingsScaffold` (the one place all the Settings D-pad focus
   plumbing lives - every page builds on it, see docs/dpad.md) and `SettingsComponents`
   (SettingsGroup/ToggleRow/SelectableRow/GroupDivider/PageIntro/Hint), with one file per spoke in
   `ui/settings/sections/`. Spoke contents: Appearance (theme incl. the new AMOLED true-black
