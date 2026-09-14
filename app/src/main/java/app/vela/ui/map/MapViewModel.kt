@@ -1349,6 +1349,14 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(recents = emptyList(), recentPlaces = emptyList()) }
     }
 
+    /** Settings > Data and privacy > Clear history (issue #425): recent searches, recent places,
+     *  parking history and every recorded trip in one go. Saved places and lists are untouched. */
+    fun clearAllHistory() {
+        clearRecents()
+        clearParkingHistory()
+        tripStore.list().forEach { runCatching { tripStore.delete(it.id) } }
+    }
+
     /** Show notices pushed via the signed calibration channel, minus dismissed ones. */
     private fun refreshNotices() {
         val dismissed = noticePrefs.getStringSet(KEY_DISMISSED, emptySet()).orEmpty()

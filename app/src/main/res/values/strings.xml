@@ -196,6 +196,12 @@
     <string name="settings_poi_icon_size_hint">Small suits low-resolution screens like car head units, where the default icons render oversized.</string>
     <string name="settings_live_rechecks">Live traffic re-checks while navigating</string>
     <string name="settings_live_rechecks_hint">Every couple of minutes during a drive, Vela asks Google for fresh traffic from your current position. That powers faster-route offers and the live arrival time, but it also tells Google where along the route you are. Off: your route still recalculates when you leave it.</string>
+    <string name="settings_clear_history">Clear history</string>
+    <string name="settings_clear_history_hint">Recent searches, recent places, parking history and recorded trips. Saved places and lists stay.</string>
+    <string name="settings_clear_history_action">Clear</string>
+    <string name="settings_clear_history_confirm_title">Clear all history?</string>
+    <string name="settings_clear_history_confirm_body">Recent searches, recent places, parking history and every recorded trip will be deleted. This cannot be undone. Saved places and lists are not affected.</string>
+    <string name="settings_clear_history_done">History cleared</string>
     <string name="settings_privacy_button">What data Google receives</string>
     <string name="settings_diagnostics">Diagnostics</string>
     <string name="settings_diagnostics_hint">Off by default. When on, Vela keeps a short local log you can export and hand to a developer. Nothing is uploaded, and turning it off wipes the log.</string>
