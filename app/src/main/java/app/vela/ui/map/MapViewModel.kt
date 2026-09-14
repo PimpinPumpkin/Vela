@@ -1791,6 +1791,14 @@ class MapViewModel @Inject constructor(
         return false
     }
 
+    /** Prime the hidden WebViews behind the place sheet's popular times and photos, once results
+     *  are on screen. Low-RAM phones skip it and build the WebView on first real use. */
+    private fun warmPlaceWebViews() {
+        if (app.vela.ui.MemoryPressure.lowRam) return
+        viewModelScope.launch { runCatching { webPopularTimes.prewarm() } }
+        runCatching { webPhotos.warm() }
+    }
+
     private fun runSearch(q: String, near: LatLng?) {
         if (q.isEmpty()) return
         // Pasted coordinates ("37.77, -122.42" or a geo: string) drop a reverse-geocoded pin
@@ -1824,10 +1832,11 @@ class MapViewModel @Inject constructor(
         // the guess that a search predicts a place tap. When memory is the scarce resource that
         // trade is backwards - two renderers paid on every search whether or not a place opens
         // (ported from vela-dpad, 2026-07-23). Those phones build the WebView on first real use.
-        if (!app.vela.ui.MemoryPressure.lowRam) {
-            viewModelScope.launch { runCatching { webPopularTimes.prewarm() } }
-            runCatching { webPhotos.warm() }
-        }
+        // Since 2026-09-14 the warm-up runs AFTER the results land (warmPlaceWebViews): two
+        // Chromium instances built on the main thread and loading google.com while the search
+        // ran held a cold-start search (a geo: deep link into a fresh process) at 13 s against
+        // 4 s warm, with the map blank the whole time. Nothing there is needed until a result
+        // is opened.
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             // A fresh typed search leaves any along-route browse: picks open places normally again.
@@ -1939,6 +1948,7 @@ class MapViewModel @Inject constructor(
                         )
                     }
                     moreSearch = Triple(q, near, spanM); moreFromPage = 3
+                    warmPlaceWebViews()
                     // "Navigate to X": the top hit is the destination, straight into the chooser.
                     if (openDirectionsOnResult) {
                         openDirectionsOnResult = false
