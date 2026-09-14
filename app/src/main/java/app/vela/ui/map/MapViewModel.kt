@@ -1545,6 +1545,18 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(saved = savedStore.saved()) }
     }
 
+    /** Rename a saved place (issue #434). The open sheet follows if it is showing that place. */
+    fun renameSaved(sp: SavedPlace, name: String) {
+        if (!savedStore.rename(sp.id, name)) return
+        val trimmed = name.trim()
+        _state.update {
+            it.copy(
+                saved = savedStore.saved(),
+                selected = it.selected?.let { p -> if (p.id == sp.id) p.copy(name = trimmed) else p },
+            )
+        }
+    }
+
     fun toggleSave() {
         val p = _state.value.selected ?: return
         savedStore.toggle(SavedPlace.of(p))
