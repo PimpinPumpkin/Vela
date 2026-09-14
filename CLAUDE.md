@@ -567,7 +567,9 @@ Defaults that make the safe path the easy one:
   DIRECTLY and NOTHING emits until a picker confirms (the old flow fetched on the bare chip
   tap with an unpicked "now", then again per dial); the default time rounds to the next 5
   minutes. Pickers are Material 3 TimePicker/DatePicker in `PickerDialog` (a raw-Dialog Vela
-  shell, D-pad rule compliant; NB DatePicker's selectedDateMillis is UTC midnight - decode
+  shell, D-pad rule compliant, `usePlatformDefaultWidth = false` + `widthIn(max = 400.dp)` since
+  2026-09-14 because the platform margins on a 360 dp phone clipped the DatePicker's fixed
+  360 dp and hid the Sunday column, issue #432; NB DatePicker's selectedDateMillis is UTC midnight - decode
   with UTC or picks land a day early). The old android.app Holo dialogs are gone. The chooser's single-estimate
   fallback shows the plain time (the "~" prefix read as clutter, user 2026-07-11), and every
   OutlinedButton on the directions family (Steps, the time/date fields, transit Back) is a
