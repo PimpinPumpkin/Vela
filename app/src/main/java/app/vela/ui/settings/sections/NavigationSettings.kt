@@ -89,6 +89,14 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             onCheckedChange = { app.vela.ui.RouteTrail.set(context, it) },
             hint = stringResource(R.string.settings_route_trail_hint),
         )
+        // Bike routing preference (issue #401): safety over speed, on by default.
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_bike_safe),
+            checked = app.vela.ui.BikeSafe.on.value,
+            onCheckedChange = { app.vela.ui.BikeSafe.set(context, it) },
+            hint = stringResource(R.string.settings_bike_safe_hint),
+        )
         GroupDivider()
         ToggleRow(
             label = stringResource(R.string.settings_prefer_buttons),

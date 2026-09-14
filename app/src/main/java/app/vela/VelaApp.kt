@@ -78,6 +78,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.SpeedCams.init(this) // same init-or-it-reads-false trap as Flock
         app.vela.ui.SpeedCamWarn.init(this) // spoken camera warning (issue #229), off by default
         app.vela.ui.SpeedingAlert.init(this) // spoken over-the-limit alert (issue #404), off by default
+        app.vela.ui.BikeSafe.init(this) // bike routes prefer lanes and quiet streets (issue #401), on by default
         app.vela.ui.FlockRouteAlert.init(this) // load the persisted "warn about cameras on route" toggle
         // Parse the bundled on-device ALPR/Flock camera dataset off the main thread (map layer draws
         // instantly, route counts are reliable), then refresh from the hosted manifest so the data updates

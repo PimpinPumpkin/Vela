@@ -11,6 +11,8 @@ import app.vela.core.data.LowRamMode
 import app.vela.core.data.MapDataSource
 import app.vela.core.data.RouteEngine
 import app.vela.core.data.RouteGeometry
+import app.vela.core.data.RoutingPrefs
+import app.vela.core.data.ValhallaRouter
 import app.vela.core.data.google.parse.DirectionsParser
 import app.vela.core.data.google.parse.EntityListParser
 import app.vela.core.data.google.parse.PhotosParser
@@ -501,6 +503,12 @@ class GoogleMapsDataSource @Inject constructor(
         // link, so the fetch gets cancelled mid-flight and the driver waits on the next attempt
         // (issues #185/#236). The recheck loop upgrades the lean result minutes later anyway.
         val tries = if (urgent) 1 else 3
+        // Bike mode routes for safety over speed (issue #401, default on): the offline engine's
+        // bicycle profile where a region is downloaded, else the open Valhalla router told to stay
+        // off busy roads. Null = neither answered, so the fastest-route chain below takes over.
+        if (mode == TravelMode.BICYCLE && RoutingPrefs.bikeSafe) {
+            bikeSafeRoutes(origin, destination, waypoints, avoidTolls, avoidHighways, urgent)?.let { return@io it }
+        }
         // Multi-stop: route OSRM straight THROUGH the stops (routeVia filters the spurious per-via
         // arrive/depart into one continuous trip), then overlay Google's live in-traffic ETA ratio for the
         // whole origin→dest so the time is traffic-aware. A waypointed trip is a single path — no alternates.
@@ -711,6 +719,48 @@ class GoogleMapsDataSource @Inject constructor(
         if ((avoidTolls || avoidHighways) && mode == TravelMode.DRIVE && !avoidHonored) {
             planned.map { it.copy(avoidNotHonored = true) }
         } else planned
+    }
+
+    /**
+     * Safety-weighted bike routes (issue #401). The on-device bicycle profile prefers signed cycle
+     * routes and lanes and needs no network, so where a downloaded region covers the trip it is the
+     * router, consistently, for planning and for every reroute; it is BOUNDED like the avoid branch
+     * (the obf engine can spend seconds on a long route and the chooser must not hang), and past
+     * the deadline the online router answers. Online that is FOSSGIS Valhalla with low `use_roads`
+     * ([ValhallaRouter]); alternates only for a plain trip. No Google traffic overlay: bikes do not
+     * sit in car traffic and Google's bike ETA models a different route. Null when nothing answered.
+     */
+    private suspend fun bikeSafeRoutes(
+        origin: LatLng,
+        destination: LatLng,
+        waypoints: List<LatLng>,
+        avoidTolls: Boolean,
+        avoidHighways: Boolean,
+        urgent: Boolean,
+    ): List<Route>? {
+        val mode = TravelMode.BICYCLE
+        val points = listOf(origin) + waypoints + destination
+        if (routeEngine.isReady(mode)) {
+            val onDeviceD = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
+                runCatching {
+                    if (waypoints.isEmpty()) routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways).map { it.copy(offline = true) }
+                    else listOfNotNull(chainOnDevice(points, mode, avoidTolls, avoidHighways))
+                }.getOrDefault(emptyList())
+            }
+            val budget = if (urgent) BIKE_ONDEVICE_URGENT_MS else BIKE_ONDEVICE_TIMEOUT_MS
+            val onDevice = kotlinx.coroutines.withTimeoutOrNull(budget) { onDeviceD.await() } ?: emptyList()
+            if (onDevice.isNotEmpty()) {
+                diag.record("directions", "BICYCLE safe → on-device ${onDevice.size} routes / ${onDevice.first().maneuvers.size} steps", "")
+                return onDevice
+            }
+        }
+        val online = ValhallaRouter.route(http, points, alternates = waypoints.isEmpty(), tries = if (urgent) 1 else 2)
+        if (online.isNotEmpty()) {
+            diag.record("directions", "BICYCLE safe → valhalla ${online.size} routes / ${online.first().maneuvers.size} steps", "")
+            return online
+        }
+        diag.record("directions", "BICYCLE safe → nothing answered, falling to the fastest chain", "")
+        return null
     }
 
     /** True when [RouteGeometry.spurAt] finds a spur on [route] AND one of the route's own
@@ -1036,6 +1086,10 @@ class GoogleMapsDataSource @Inject constructor(
         // Cap on waiting for the on-device avoid route: GraphHopper answers in ~200 ms, but the
         // obf engine can take many seconds on a long route, and the route chooser must not hang.
         const val AVOID_ONDEVICE_TIMEOUT_MS = 4_000L
+        /** The bike-safe branch's on-device budgets (issue #401): a bike trip is short, so the obf
+         *  engine usually answers well inside these; past them the online router takes over. */
+        const val BIKE_ONDEVICE_TIMEOUT_MS = 6_000L
+        const val BIKE_ONDEVICE_URGENT_MS = 3_000L
         // Fallback viewport when no user location is available — search is
         // viewport-driven and needs one. Callers normally pass the real location.
         val DEFAULT_VIEWPORT = LatLng(37.7749, -122.4194)
