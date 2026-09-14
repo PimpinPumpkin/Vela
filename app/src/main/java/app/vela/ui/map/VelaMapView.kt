@@ -1157,6 +1157,12 @@ fun VelaMapView(
                 style.addLayerBelow(dots, layer.id)
             }
         }
+        // The OSM basemap business POIs yield to the open layer right away (applyData keeps the
+        // rule from here on, see osmPoiVis); without this they stay up until the next
+        // recomposition, which on a still map can be a while.
+        val vis = if (placesOverlays.isNotEmpty()) Property.NONE else Property.VISIBLE
+        listOf("poi_r1", "poi_r7", "poi_r20").forEach { id -> style.getLayer(id)?.setProperties(PropertyFactory.visibility(vis)) }
+        lastOsmPoiVis = null
     }
 
     LaunchedEffect(maxspeedOverlays, styleRef, speedOverlayOn) {
@@ -6134,7 +6140,11 @@ private fun applyData(
     // refining 2026-07-16's "keep gas stations in nav": everything else is clutter over the
     // route); only the master switch hides them outright. The ambient-dots and many-results
     // suppressors apply to the browse map alone.
-    val osmPoiVis = if (!poisEnabled || (!navMode && (ambientCoversView || markers.size > 1))) Property.NONE else Property.VISIBLE
+    // The open places layer covering the view hides them the same way the Google dots do: the
+    // Overture data and the OSM basemap POIs are two drawings of the same businesses (a bank
+    // showed twice, once per source, before this), and the open layer is the richer one.
+    val openCovers = style.sources.any { it.id.startsWith("vela-places-src-") }
+    val osmPoiVis = if (!poisEnabled || (!navMode && (ambientCoversView || openCovers || markers.size > 1))) Property.NONE else Property.VISIBLE
     if (osmPoiVis != lastOsmPoiVis) {
         listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
             style.getLayer(id)?.setProperties(PropertyFactory.visibility(osmPoiVis))
