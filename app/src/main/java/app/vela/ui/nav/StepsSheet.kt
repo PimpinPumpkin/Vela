@@ -27,6 +27,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.ForkLeft
 import androidx.compose.material.icons.filled.ForkRight
@@ -136,6 +138,9 @@ fun StepsSheet(
     // turn banner (Google's expanded sheet fills the screen; keeping the next turn in view
     // while reading the list is worth the strip); null = half the screen, the preview default.
     maxListHeight: androidx.compose.ui.unit.Dp? = null,
+    // Nav only (issue #402): a row above the steps listing the stops still ahead, with the way
+    // into the stops editor. Null = no row (no stops on the trip, or the pre-nav preview).
+    stopsRow: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     fun romanize(s: String): String =
@@ -305,6 +310,7 @@ fun StepsSheet(
                     .nestedScroll(dismissConn),
                 state = listState,
             ) {
+                if (stopsRow != null) item { stopsRow() }
                 itemsIndexed(maneuvers) { i, m ->
                     StepRow(
                         m = m,
@@ -319,6 +325,57 @@ fun StepsSheet(
                 }
             }
         }
+    }
+}
+
+/** The stops still ahead on the drive, above the step list (issue #402): a pin glyph, the names
+ *  in order, and Edit stops, which opens the same stops editor the chooser uses (reorder, remove,
+ *  add; one replan on Done). Same padding grammar as [StepRow] so it reads as part of the list;
+ *  drawn by the sheet AND the bar's drag preview. */
+@Composable
+fun NavStopsRow(stops: List<String>, onEdit: () -> Unit, modifier: Modifier = Modifier) {
+    val dark = isAppInDarkTheme()
+    val ink = SheetPalette.ink(dark)
+    val dim = SheetPalette.dim(dark)
+    Column(modifier.fillMaxWidth()) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .dpadHighlight(RoundedCornerShape(12.dp))
+                .clickable(onClick = onEdit)
+                .padding(top = 10.dp, bottom = 10.dp, end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Default.Place,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp),
+            )
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.stops_editor_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ink,
+                )
+                Text(
+                    stops.joinToString(" · "),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = dim,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            Text(
+                stringResource(R.string.stops_edit),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        HorizontalDivider(color = dim.copy(alpha = 0.25f))
     }
 }
 

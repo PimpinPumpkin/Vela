@@ -668,7 +668,17 @@ Defaults that make the safe path the easy one:
   shows, and `selectPlace` gates on `navigating` -> `addStopDuringNav` -> `NavSession.addStop`
   (user-ordered replan: the pick becomes the NEXT stop, marks null until the new route lands so
   a failed fetch keeps the stop for the next reroute/recheck; no back-on-course discard, no
-  cooldown). BACK order: results list, then the chip row, then end-nav - browsing gas stations
+  cooldown). **Stops editor mid-drive (issue #402, 2026-09-14):** the nav step sheet (and the
+  bar's drag preview) leads with `NavStopsRow` (StepsSheet.kt) listing the stops still ahead
+  from `NavSession.remainingStops()`, with Edit stops -> `openStopsEditor` (closes the step
+  sheet first so Done lands on the bar); MapScreen's bottom `when` renders the chooser's
+  `StopsEditorSheet` for `navigating && editingStops` with origin = your location and rows =
+  `navStopsForEditor()` (the chooser Place where the coordinates match, else a bare Place from
+  the label); Done -> `applyStops` -> `NavSession.setStops(newRemaining, loc)` which `addStop`
+  now delegates to: ONE user-ordered replan through the new list, unchanged list = no fetch,
+  and the chooser's `directionsWaypoints` becomes the remaining stops. FAB stack and speed
+  widget hide under the editor like under the step sheet. BACK order: results list, then the
+  chip row, then end-nav - browsing gas stations
   must never end the drive. **Only a RESULTS pick adds a stop (2026-07-14):** every map tap
   during a drive funnels into selectPlace too (ambient dots, resolved POIs), and a stray tap
   used to silently pin itself onto the route - selectPlace's nav gate now requires the results
