@@ -86,6 +86,13 @@ Defaults that make the safe path the easy one:
   during map scroll/nav. R8 lives in the `release`
   buildType. Use `./gradlew :app:assembleDebug` only as a compile check.
 - `./gradlew :core:test` runs the pure-logic unit tests (polyline, nav engine).
+- **MapScreen is at the JVM 64 KB method limit (2026-09-13).** CI builds release only; the
+  DEBUG variant (what the 4a runs) carries Compose source info and failed with "Method too
+  large: MapScreenKt.MapScreen" while main built green. Three blocks were split into
+  `BoxScope.BuildingDebugBadge`, `BoxScope.NavTurnBanner` and `SearchEntryHost` (same file,
+  below MapScreen). Content lambdas do not count toward the limit, direct composable calls
+  and their argument lists do, so when you add to MapScreen and the debug compile dies with
+  that error, move a call with a long argument list into a small private composable.
 - **D-pad regression suite (`dpad_test_suite/`).** On-device, reproducible. Run after any change
   that touches focus (see `docs/dpad.md`):
   - `run_all.sh` - per-surface focus assertions (bare map → search bar, Settings/Welcome/dialog/menu
@@ -584,6 +591,11 @@ Defaults that make the safe path the easy one:
   with only the Start bar left, the route gets nearly the whole map. Deliberately NOT
   auto-minimized after a beat: the list is what you're choosing from, and surprise motion
   right after opening reads as the UI fighting you; one flick down now has a real payoff.
+  **Fit padding scales to the visible strip (#400, 2026-09-13):** the route, transit and
+  cluster fits went through a fixed 140/160 px margin per side plus the insets; on a 240x320
+  phone the two side margins alone exceeded the viewport, MapLibre got a negative fit area and
+  never zoomed out. `fitPadding()` (bottom of VelaMapView) caps the margin at a sixth of the
+  visible strip and trims the insets when card + sheet leave under a fifth of the map.
 - **Start is a FOOTER under the route list (user 2026-09-13):** the chooser body is an outer
   capped-and-faded Column holding a `weight(1f, fill = false)` scroll Column and, below it, the
   Start / Steps row, so four alternates scroll under a Start that stays put; the cap wraps both,
