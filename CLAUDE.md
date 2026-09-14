@@ -509,7 +509,7 @@ Defaults that make the safe path the easy one:
   history), Voice (spoken-directions master switch, engine list, inline collapsible Voice library
   - the separate VoiceBrowseScreen route is gone, `openVoiceLibrary` deep-links to the VOICE spoke
   with the library expanded), Search (ASR engines + provider picker), Saved places
-  (saved + lists export/import), Data & privacy (privacy link, live rechecks), Diagnostics
+  (saved + lists export/import), Data & privacy (privacy link, live rechecks, **Clear history** since 2026-09-14 for issue #425: `MapViewModel.clearAllHistory()` = recent queries + recent places + parking history + every recorded trip behind a `VelaDialog` confirm, saved places and lists untouched, indexed for the settings search), Diagnostics
   (share-diagnostics, texture render, building debug, trip recording, crash card), About
   (support, version tap-to-copy, auto-update, nightly toggle, check now). ⚠️ The vela-dpad fork
   DROPPED many mainline settings in its redesign (Material You, map colors, UI scale, POI sizing,
