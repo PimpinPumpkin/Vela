@@ -67,6 +67,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.LocalAtm
 import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.EvStation
 import androidx.compose.material.icons.filled.LocalGroceryStore
 import androidx.compose.material.icons.filled.LocalPharmacy
 import androidx.compose.material.icons.filled.AddLocationAlt
@@ -3562,6 +3563,7 @@ private fun CategoryChips(onPick: (String) -> Unit, modifier: Modifier = Modifie
         Triple(R.string.cat_restaurants, "Restaurants", Icons.Default.Restaurant),
         Triple(R.string.cat_coffee, "Coffee", Icons.Default.LocalCafe),
         Triple(R.string.cat_gas, app.vela.ui.CategoryQuery.fuel(), Icons.Default.LocalGasStation),
+        Triple(R.string.cat_ev, "EV charging station", Icons.Default.EvStation),
         Triple(R.string.cat_groceries, "Groceries", Icons.Default.LocalGroceryStore),
         Triple(R.string.cat_hotels, "Hotels", Icons.Default.Hotel),
         Triple(R.string.cat_pharmacy, "Pharmacy", Icons.Default.LocalPharmacy),
