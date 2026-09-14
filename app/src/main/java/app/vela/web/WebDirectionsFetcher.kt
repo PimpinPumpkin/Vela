@@ -125,8 +125,14 @@ class WebDirectionsFetcher @Inject constructor(
         // and the outer 4m2 → 4m6. Verified against a real Google Maps transit-with-time URL (2026-07-08);
         // an earlier `!4m8!4m7` guess had the wrong counts, so Google silently fell back to "now".
         val timeRef = when (timeMode) { 2 -> 1; 3 -> 2; else -> 0 } // depart=0, arrive=1, last available=2
-        val data = if (timeMode == 0 || timeEpochSec == null) "!4m2!4m1!3e3"
-        else "!4m6!4m5!2m3!6e$timeRef!7e2!8j$timeEpochSec!3e3"
+        // `!8j` is NOT a unix timestamp: Google reads it as a LOCAL clock in seconds, i.e. the
+        // wall-clock time as if it were UTC. Sending the true epoch shifted every schedule by the
+        // zone offset (issue #433: BST users saw buses an hour early, a UTC+3 user three hours),
+        // and the western US only looked right because 7 hours of shift is a different day's
+        // worth of departures nobody noticed. The phone's zone stands in for the origin's.
+        val localSec = timeEpochSec?.let { it + java.util.TimeZone.getDefault().getOffset(it * 1000L) / 1000L }
+        val data = if (timeMode == 0 || localSec == null) "!4m2!4m1!3e3"
+        else "!4m6!4m5!2m3!6e$timeRef!7e2!8j$localSec!3e3"
         val url = "https://www.google.com/maps/dir/" +
             "${origin.lat},${origin.lng}/${destination.lat},${destination.lng}" +
             "/data=$data?hl=en&gl=us"
