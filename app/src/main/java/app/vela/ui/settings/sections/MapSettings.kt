@@ -144,6 +144,13 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
         if (app.vela.ui.MapPoiPrefs.showPois.value) {
             GroupDivider()
             ToggleRow(
+                label = stringResource(R.string.settings_open_places),
+                checked = app.vela.ui.MapPoiPrefs.openPlaces.value,
+                onCheckedChange = { app.vela.ui.MapPoiPrefs.setOpenPlaces(context, it) },
+                hint = stringResource(R.string.settings_open_places_hint),
+            )
+            GroupDivider()
+            ToggleRow(
                 label = stringResource(R.string.settings_show_civic),
                 checked = app.vela.ui.MapPoiPrefs.showCivic.value,
                 onCheckedChange = { app.vela.ui.MapPoiPrefs.setShowCivic(context, it) },

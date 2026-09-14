@@ -3124,6 +3124,20 @@ architecture note.
   strip those, and don't let a `Set-Cookie` downgrade `CONSENT` to `PENDING`.
 - No GMS: no FCM/Firebase/Play Integrity/Fused. If push is needed later, use
   UnifiedPush; crash reporting via ACRA/self-hosted Sentry.
+- **Open places layer, beta (2026-09-14, issue #441, the Overture direction).** `tools/build-places-region.sh
+  <id> S W N E out.pmtiles [release] [local.parquet]` bakes Overture Places (DuckDB over the public S3
+  parquet, or a local extract) into PMTiles: business POIs only (parks/schools/civic/transit excluded, OSM
+  has them), each feature with `name`, `class` (humanized category), `group` (the PoiIcons icon group),
+  `prominence` (OsmProminence-style: category prior + brand + website/phone/address + confidence, 0-9.5),
+  `confidence`, `brand`, `addr`, `website`, `phone`, `src=overture`, and a tippecanoe minzoom from the
+  prominence (>=6 z13, >=4.5 z14, >=3 z15, >=2 z16, else z17). `PlacesTileStore` = `files/places/*.pmtiles`
+  (offline) + `PLACES_MANIFEST_URL` regions streamed; `MapPoiPrefs.openPlaces` (Settings > Map, default
+  OFF) gates it; `refreshPlacesOverlays` fills `placesOverlays` on camera idle; `maybeLoadAmbientPois`
+  returns early (no Google fan-out) while the layer covers the view. VelaMapView draws `vela-places-<i>`
+  SymbolLayers dressed identically to the ambient layer; a tap on a `src=overture` feature builds a seeded
+  `Place` (category/address/phone/website from the tile) and `onOpenPlaceTap` -> `onPoiTap(seed=...)`, so
+  the sheet reads offline and the existing Google correlation upgrades it online. Davis is the test bake
+  (2,335 features, 752 KB). Licence: CDLA-Permissive 2.0, attribution still to add to About.
 - **The hidden WebViews are warmed AFTER results land, never before the fetch (2026-09-14).**
   `runSearch` used to call `webPopularTimes.prewarm()` + `webPhotos.warm()` before the search:
   two Chromium instances created on the main thread and loading google.com while the search ran.

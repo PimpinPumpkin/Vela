@@ -186,6 +186,8 @@
     <string name="settings_house_numbers_hint">House numbers come from OpenStreetMap and, in the US, OpenAddresses. A building that has no number in either shows none, even though search still finds the address through Google.</string>
     <string name="settings_show_pois">Show places</string>
     <string name="settings_show_pois_hint">Business and place icons on the browse map. Off = a clean map; searched places still show.</string>
+    <string name="settings_open_places">Open places layer (beta)</string>
+    <string name="settings_open_places_hint">Draws the map\'s businesses from open data (Overture Maps) where a region file covers the view, instead of asking Google as you pan. Google is asked only when you tap a place. Works offline with a downloaded region.</string>
     <string name="settings_show_civic">Parks, schools and civic places</string>
     <string name="settings_show_civic_hint">The non-business tier of place icons. Off shows businesses only.</string>
     <string name="settings_show_transit_stops">Transit stops</string>

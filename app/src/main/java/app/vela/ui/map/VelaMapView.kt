@@ -445,6 +445,8 @@ fun VelaMapView(
     buildingOverlays: List<String> = emptyList(), // full pmtiles:// source URIs (file:// downloaded / https:// streamed)
     addressOverlays: List<String> = emptyList(), // pmtiles:// URIs for house-number labels (streamed, OpenAddresses)
     maxspeedOverlays: List<String> = emptyList(), // pmtiles:// URIs for the posted-speed overlay (streamed); read under the puck
+    placesOverlays: List<String> = emptyList(),   // pmtiles:// URIs of the open-data places layer (Overture), file:// or streamed
+    onOpenPlaceTap: (app.vela.core.model.Place) -> Unit = {}, // a tapped open-places feature, seeded from its tile attributes
     onRoadLimitKmh: (Double?) -> Unit = {}, // reports the maxspeed (km/h) read from the overlay under the puck, or null
     speedOverlayOn: Boolean = false, // only query the overlay while it can matter (driving / navigating)
     trafficControls: List<app.vela.core.data.TrafficControl> = emptyList(), // OSM lights + stop signs drawn at high zoom
@@ -500,6 +502,7 @@ fun VelaMapView(
     }
     val compassRightPx = with(density) { 8.dp.roundToPx() }
     val poiTap = rememberUpdatedState(onPoiTap)
+    val openPlaceTap = rememberUpdatedState(onOpenPlaceTap)
     val mapTap = rememberUpdatedState(onMapTap)
     val svMapTap = rememberUpdatedState(onSvMapTap)
     val svActive = rememberUpdatedState(svPose != null)
@@ -1047,6 +1050,75 @@ fun VelaMapView(
     // plain browse was pure overhead AND rendered a BLACK stripe over every road: MapLibre's colour parser
     // rejected the 8-digit "#00000000" and fell back to its default OPAQUE BLACK. Fixed by the transparent
     // @ColorInt overload (no string parsing) and by not carrying the layer on the browse map at all.
+    // The open-data places layer (Overture PMTiles): one symbol layer per source, dressed exactly
+    // like the Google ambient layer (same icon images by group, the same prominence-driven size and
+    // label thresholds) so the switch is invisible. Density is in the data: each feature carries a
+    // tippecanoe minzoom from its prominence, and MapLibre's collision does the rest.
+    LaunchedEffect(placesOverlays, styleRef) {
+        val style = styleRef ?: return@LaunchedEffect
+        runCatching { style.layers.filter { it.id.startsWith("vela-places-") }.forEach { style.removeLayer(it) } }
+        runCatching { style.sources.filter { it.id.startsWith("vela-places-src-") }.forEach { style.removeSource(it) } }
+        placesOverlays.forEachIndexed { i, uri ->
+            runCatching {
+                val srcId = "vela-places-src-$i"
+                style.addSource(VectorSource(srcId, uri))
+                fun nameAbove(p: Double) = Expression.switchCase(
+                    Expression.gte(Expression.get("prominence"), Expression.literal(p)),
+                    Expression.get("name"),
+                    Expression.literal(""),
+                )
+                val layer = SymbolLayer("vela-places-$i", srcId).apply {
+                    setSourceLayer("places") // tippecanoe layer name (tools/build-places-region.sh: -l places)
+                    setMinZoom(13f)
+                    setProperties(
+                        PropertyFactory.iconImage(Expression.concat(Expression.literal("vela-poi-"), Expression.get("group"))),
+                        PropertyFactory.iconSize(
+                            Expression.interpolate(
+                                Expression.linear(), Expression.get("prominence"),
+                                Expression.stop(0.0, 0.78f), Expression.stop(8.0, 1.3f),
+                            ),
+                        ),
+                        PropertyFactory.iconAllowOverlap(false),
+                        PropertyFactory.iconIgnorePlacement(false),
+                        PropertyFactory.iconPadding(1.5f),
+                        PropertyFactory.symbolSortKey(Expression.subtract(Expression.literal(10f), Expression.get("prominence"))),
+                        PropertyFactory.textField(
+                            Expression.step(
+                                Expression.zoom(),
+                                nameAbove(6.0),
+                                Expression.stop(15.5f, nameAbove(5.0)),
+                                Expression.stop(16.5f, nameAbove(3.0)),
+                                Expression.stop(17.5f, Expression.get("name")),
+                            ),
+                        ),
+                        PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                        PropertyFactory.textSize(
+                            Expression.interpolate(
+                                Expression.linear(), Expression.get("prominence"),
+                                Expression.stop(0.0, 11f), Expression.stop(8.0, 14f),
+                            ),
+                        ),
+                        PropertyFactory.textVariableAnchor(
+                            arrayOf(
+                                Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_LEFT,
+                                Property.TEXT_ANCHOR_TOP, Property.TEXT_ANCHOR_BOTTOM,
+                            ),
+                        ),
+                        PropertyFactory.textRadialOffset(1.4f),
+                        PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
+                        PropertyFactory.textMaxWidth(7f),
+                        PropertyFactory.textOptional(true),
+                        PropertyFactory.textAllowOverlap(false),
+                        PropertyFactory.textColor("#3C4043"),
+                        PropertyFactory.textHaloColor("#FFFFFF"),
+                        PropertyFactory.textHaloWidth(0.9f),
+                    )
+                }
+                if (style.getLayer(AMBIENT_LAYER) != null) style.addLayerBelow(layer, AMBIENT_LAYER) else style.addLayer(layer)
+            }
+        }
+    }
+
     LaunchedEffect(maxspeedOverlays, styleRef, speedOverlayOn) {
         val style = styleRef ?: return@LaunchedEffect
         runCatching { style.layers.filter { it.id.startsWith("vela-ms-") }.forEach { style.removeLayer(it) } }
@@ -2232,6 +2304,23 @@ fun VelaMapView(
                     // The BUSINESS pick: ambient vs basemap POI by distance to the finger (see above).
                     if (amb != null && (hit == null || screenDist2(amb) <= screenDist2(hit))) {
                         ambientTap.value(amb.getNumberProperty(AMBIENT_INDEX_PROP).toInt())
+                        return@handleTap true
+                    }
+                    if (hit != null && hit.hasProperty("src") && hit.getStringProperty("src") == "overture") {
+                        // An open-places feature: seed the sheet from the tile's own attributes so it
+                        // reads offline, then let the VM correlate it to Google's listing.
+                        val pt = hit.geometry() as Point
+                        fun prop(k: String) = if (hit.hasProperty(k)) hit.getStringProperty(k)?.takeIf { it.isNotBlank() && it != "null" } else null
+                        val place = app.vela.core.model.Place(
+                            id = "overture:" + (prop("id") ?: nameOf(hit)!!.hashCode().toString()),
+                            name = nameOf(hit)!!,
+                            location = LatLng(pt.latitude(), pt.longitude()),
+                            category = prop("class"),
+                            address = prop("addr"),
+                            phone = prop("phone"),
+                            website = prop("website"),
+                        )
+                        openPlaceTap.value(place)
                         return@handleTap true
                     }
                     if (hit != null) {
