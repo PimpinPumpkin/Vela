@@ -22,9 +22,16 @@ object MapPoiPrefs {
     val showTransit = mutableStateOf(true)
     val showCivic = mutableStateOf(true)
     val iconScale = mutableFloatStateOf(1.0f)
-    /** The open-data places layer (Overture, baked tiles) instead of Google's ambient fan-out. Beta:
-     *  off until it clears the density bar; where it covers the view Google is asked only on tap. */
-    val openPlaces = mutableStateOf(false)
+    /** Where the businesses on the browse map come from, one of [SOURCE_OPEN] (the Overture places
+     *  layer where a region file covers the view, Google only on tap, works offline), [SOURCE_GOOGLE]
+     *  (the ambient fan-out on every pan, nothing offline) or [SOURCE_BOTH] (the open layer draws the
+     *  map and one Google fetch per settled view fills in what it lacks). Outside any region file all
+     *  three behave like Google. The user picks; each option's costs are stated in Settings. */
+    val placesSource = mutableStateOf(SOURCE_OPEN)
+    /** The open places layer is on the map (open data or both). */
+    val openPlaces: Boolean get() = placesSource.value != SOURCE_GOOGLE
+    /** The open places layer alone owns the map's businesses where it covers the view. */
+    val openPlacesOnly: Boolean get() = placesSource.value == SOURCE_OPEN
 
     fun init(context: Context) {
         val p = prefs(context)
@@ -32,12 +39,12 @@ object MapPoiPrefs {
         showTransit.value = p.getBoolean(KEY_TRANSIT, true)
         showCivic.value = p.getBoolean(KEY_CIVIC, true)
         iconScale.floatValue = p.getFloat(KEY_SCALE, 1.0f)
-        openPlaces.value = p.getBoolean(KEY_OPEN_PLACES, false)
+        placesSource.value = p.getString(KEY_PLACES_SOURCE, null) ?: SOURCE_OPEN
     }
 
-    fun setOpenPlaces(context: Context, value: Boolean) {
-        openPlaces.value = value
-        prefs(context).edit().putBoolean(KEY_OPEN_PLACES, value).apply()
+    fun setPlacesSource(context: Context, value: String) {
+        placesSource.value = value
+        prefs(context).edit().putString(KEY_PLACES_SOURCE, value).apply()
     }
 
     fun setShowPois(context: Context, value: Boolean) {
@@ -65,5 +72,8 @@ object MapPoiPrefs {
     private const val KEY_TRANSIT = "map_show_transit_stops"
     private const val KEY_CIVIC = "map_show_civic_pois"
     private const val KEY_SCALE = "map_poi_icon_scale"
-    private const val KEY_OPEN_PLACES = "map_open_places"
+    private const val KEY_PLACES_SOURCE = "map_places_source"
+    const val SOURCE_OPEN = "open"
+    const val SOURCE_GOOGLE = "google"
+    const val SOURCE_BOTH = "both"
 }

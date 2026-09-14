@@ -143,11 +143,36 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
         )
         if (app.vela.ui.MapPoiPrefs.showPois.value) {
             GroupDivider()
-            ToggleRow(
-                label = stringResource(R.string.settings_open_places),
-                checked = app.vela.ui.MapPoiPrefs.openPlaces.value,
-                onCheckedChange = { app.vela.ui.MapPoiPrefs.setOpenPlaces(context, it) },
-                hint = stringResource(R.string.settings_open_places_hint),
+            // Where the map's businesses come from. Each option states its own cost so the choice
+            // is the user's: open data is offline and quiet, Google is complete and chatty, both
+            // is the open layer plus one Google fetch per settled view.
+            androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
+                Text(
+                    stringResource(R.string.settings_places_source),
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+            listOf(
+                app.vela.ui.MapPoiPrefs.SOURCE_OPEN to R.string.settings_places_source_open,
+                app.vela.ui.MapPoiPrefs.SOURCE_GOOGLE to R.string.settings_places_source_google,
+                app.vela.ui.MapPoiPrefs.SOURCE_BOTH to R.string.settings_places_source_both,
+            ).forEach { (id, label) ->
+                SelectableRow(
+                    label = stringResource(label),
+                    selected = app.vela.ui.MapPoiPrefs.placesSource.value == id,
+                    onClick = { app.vela.ui.MapPoiPrefs.setPlacesSource(context, id) },
+                )
+            }
+            Hint(
+                stringResource(
+                    when (app.vela.ui.MapPoiPrefs.placesSource.value) {
+                        app.vela.ui.MapPoiPrefs.SOURCE_GOOGLE -> R.string.settings_places_source_google_hint
+                        app.vela.ui.MapPoiPrefs.SOURCE_BOTH -> R.string.settings_places_source_both_hint
+                        else -> R.string.settings_places_source_open_hint
+                    },
+                ),
             )
             GroupDivider()
             ToggleRow(
