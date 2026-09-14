@@ -18,8 +18,29 @@ object VelaConfig {
      */
     const val USE_GOOGLE_SOURCE = true
 
-    /** Vela identifies as a normal desktop Chrome to the web endpoints. */
+    /**
+     * COMPILED FALLBACK ONLY — the live value is `Calibration.userAgent`, pushed through the
+     * signed bundle (Chrome ships every ~4 weeks, so a constant is stale again next month by
+     * construction; this one sat at Chrome 124 ≈ April 2024 well into 2026). Read it through
+     * `CalibrationStore.current().userAgent`, never directly, on any Google-facing request.
+     * Kept in sync with [SEC_CH_UA] — the hint's major version must match the UA's.
+     */
     const val USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        "(KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36"
+
+    /** Client-hint brand list matching [USER_AGENT]'s major version. Pushed alongside it. */
+    const val SEC_CH_UA =
+        "\"Chromium\";v=\"154\", \"Google Chrome\";v=\"154\", \"Not/A)Brand\";v=\"24\""
+
+    /**
+     * HONEST identifier for COMMUNITY services (FOSSGIS OSRM, Nominatim, Photon, Overpass) — never
+     * the Chrome string. Their usage policies ask for a contactable UA so they can reach an abusive
+     * client instead of blanket-blocking, and they are free infrastructure Vela depends on. Sending
+     * them a spoofed browser UA is both impolite and self-defeating: FOSSGIS already "transiently
+     * 5xx/429/resets on mobile" (see RouteGeometry), and being an anonymous Chrome in their logs is
+     * the opposite of what earns headroom there. Google-facing requests are the ONLY place the
+     * browser UA belongs.
+     */
+    const val VELA_UA = "VelaMaps/0.4 (+https://github.com/PimpinPumpkin/Vela)"
 }

@@ -1,7 +1,7 @@
 package app.vela.core.data.google
 
-import app.vela.core.VelaConfig
 import app.vela.core.config.CalibrationStore
+import app.vela.core.data.google.BrowserHeaders.browserHeaders
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -35,11 +35,12 @@ class GoogleSession @Inject constructor(
         if (warmed) return
         withContext(Dispatchers.IO) {
             runCatching {
+                val cal = calibration.current()
+                // A real first navigation to maps.google.com: document dest, no Referer,
+                // Sec-Fetch-Site "none". The data RPCs that follow use browserXhrHeaders instead.
                 val req = Request.Builder()
-                    .url(calibration.current().sessionWarmUrl)
-                    .header("User-Agent", VelaConfig.USER_AGENT)
-                    .header("Accept-Language", "en-US,en;q=0.9")
-                    .header("Accept", "text/html,application/xhtml+xml")
+                    .url(cal.sessionWarmUrl)
+                    .browserHeaders(cal.userAgent, cal.secChUa)
                     .build()
                 http.newCall(req).execute().use { it.body?.string() }
             }

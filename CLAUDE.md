@@ -2440,6 +2440,54 @@ architecture note.
   field. Wired in `GoogleMapsDataSource.search`. Verified on-device (a pushed
   `transformPlaces` marked the first result; cleared after).
 
+## Browser identity (`BrowserHeaders`, calibrated UA, 2026-09-14)
+
+Two user agents, and mixing them up is the bug:
+
+- **Google-facing** requests send the CALIBRATED browser UA plus the coherent Chrome header set
+  (`Sec-CH-UA*`, `Sec-Fetch-*`) via `BrowserHeaders.browserHeaders` / `browserXhrHeaders`. Read it
+  from `calibration.current().userAgent`, NEVER `VelaConfig.USER_AGENT` directly - that const is
+  only the compiled fallback.
+- **Community services** (FOSSGIS OSRM, Nominatim, Photon, Overpass, Transitous) send
+  `VelaConfig.VELA_UA`, the honest contactable identifier their usage policies ask for. Never the
+  browser string: they are free infrastructure Vela depends on, FOSSGIS already "transiently
+  5xx/429/resets on mobile", and being an anonymous Chrome in their logs is the opposite of what
+  earns headroom there. RouteGeometry was sending them the spoofed Chrome UA until this landed, and
+  Overpass/Nominatim carried hardcoded "VelaMaps/0.1" copies long after the app shipped 0.4.
+
+Gotchas:
+
+- **DO NOT push a `userAgent` in calibration.json yet.** Six WebView scrapes in `:app`
+  (`WebReviewsFetcher`, `WebPhotoFetcher`, `WebPopularTimesFetcher`, `WebDirectionsFetcher`,
+  `WebStopDeparturesFetcher`, `ReviewsPanel`) still set `wv.settings.userAgentString =
+  VelaConfig.USER_AGENT`, the compiled const. Today that MATCHES `Calibration.DEFAULT.userAgent`, so
+  the app speaks with one voice; push a different UA and the WebView half keeps the old one - the
+  same client presenting two Chrome versions, which is worse than being merely stale. Wire those six
+  to `CalibrationStore` before using this channel.
+- **`secChUa` major version must match `userAgent`.** Separate fields pushed together for exactly
+  that reason; a hint advertising a different version than the UA string is worse than sending no
+  hint at all. `BrowserHeadersTest` locks the compiled pair so a careless bump of one is caught.
+- **Both are sanitized on parse** (`BrowserHeaders.sanitize`). OkHttp throws on a control character
+  at request-BUILD time, inside `runCatching` blocks that swallow it - one stray newline in a pushed
+  bundle would kill every scrape with no crash and no log, the same silent-failure class as the 12 s
+  `callTimeout` hiding the 197 MB overlay download. Surrounding whitespace is TRIMMED (a trailing
+  newline in hand-edited JSON is recovered, not rejected); interior control characters and any
+  non-ASCII are rejected and fall back to the compiled default.
+- **The desktop UA is load-bearing.** A mobile string would match the Android TLS stack and carrier
+  IP better, but mobile web Maps serves DIFFERENT markup and endpoints - every parser is calibrated
+  against desktop, so that swap is a recalibration, not a header edit. The `Sec-CH-UA-Mobile: ?0`
+  and `"Windows"` platform hints track the desktop default and must move with it.
+- **Why calibrate at all:** Chrome ships stable every ~4 weeks, so a compiled constant is stale by
+  construction - the shipped UA sat at Chrome 124 (April 2024) well into 2026. Stale is a
+  CORRECTNESS risk before a fingerprinting one: Google serves different response shapes to different
+  browser generations, so an old UA can pin the scrape to a legacy code path that gets retired with
+  no warning, arriving as indistinguishable-from-ordinary calibration drift.
+- **Do not chase the TLS fingerprint.** Matching Chrome JA3/JA4 and HTTP/2 frame ordering needs a
+  custom TLS stack: permanent maintenance, native deps, and trouble for reproducible F-Droid builds.
+  Vela's defence is diffusion (every user on their own carrier IP, nothing central to block), not
+  disguise. A current, coherent UA is ordinary client hygiene; a bespoke TLS stack is an arms race
+  on a solo budget, and a worse posture if it ever mattered.
+
 ## Degoogled constraints (hard rules)
 
 - Location: AOSP `LocationManager` only - never `FusedLocationProviderClient`. **Fix discipline

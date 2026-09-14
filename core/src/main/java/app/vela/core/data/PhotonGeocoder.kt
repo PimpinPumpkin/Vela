@@ -42,7 +42,7 @@ object PhotonGeocoder {
             if (lang in setOf("en", "de", "fr")) append("&lang=").append(lang)
         }
         val body = runCatching {
-            http.newCall(Request.Builder().url(url).header("User-Agent", "VelaMaps/0.4 (+https://github.com/PimpinPumpkin/Vela)").build())
+            http.newCall(Request.Builder().url(url).header("User-Agent", app.vela.core.VelaConfig.VELA_UA).build())
                 .execute().use { if (it.isSuccessful) it.body?.string() else null }
         }.getOrNull() ?: return emptyList()
         val parsed = runCatching { json.decodeFromString<PhotonResp>(body) }.getOrNull() ?: return emptyList()

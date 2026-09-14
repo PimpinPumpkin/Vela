@@ -17,7 +17,11 @@ import java.net.URLEncoder
  * whole feature down; the caller only sees a failure when EVERY endpoint is unreachable.
  */
 object OverpassEndpoints {
-    private const val USER_AGENT = "VelaMaps/0.1 (+https://github.com/PimpinPumpkin/Vela)"
+    /** Overpass mirrors are community infrastructure and their policies want a contactable client,
+     *  so this is the honest identifier, never the scrape's browser UA. Single-sourced from
+     *  [app.vela.core.VelaConfig.VELA_UA] — the old local copy said "0.1" long after the app
+     *  shipped 0.4, which is exactly the drift a contact string must not have. */
+    private const val USER_AGENT = app.vela.core.VelaConfig.VELA_UA
 
     /** Primary first, then community mirrors. Order is preference; each is tried until one answers 2xx.
      *  All speak the same Overpass QL, so the query string is endpoint-agnostic. */

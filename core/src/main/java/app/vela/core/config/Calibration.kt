@@ -108,12 +108,29 @@ data class Calibration(
     // app release.
     val reviewWords: Map<String, String>? = null,
     val reviewSelectors: Map<String, String>? = null,
+    // The browser identity the keyless scrape presents (2026-09-14). Chrome ships a stable release
+    // every ~4 weeks, so a compiled constant is stale by construction - the shipped UA was Chrome
+    // 124 (April 2024) well into 2026. Stale is a CORRECTNESS risk before a fingerprinting one:
+    // Google serves different response shapes to different browser generations, so an old UA can
+    // pin the scrape to a legacy code path that gets retired with no warning, arriving as
+    // indistinguishable-from-ordinary calibration drift. [secChUa]'s major version MUST match
+    // [userAgent]'s - they are pushed together for that reason. Both are sanitized on parse
+    // (BrowserHeaders.sanitize): OkHttp throws on a control character inside a runCatching that
+    // swallows it, so one stray newline in a pushed bundle would silently kill every scrape.
+    val userAgent: String = DEFAULT_USER_AGENT,
+    val secChUa: String = DEFAULT_SEC_CH_UA,
 ) {
     /** A fleet tuning dial: the remote value when the bundle carries [key], else [def]. */
     fun tune(key: String, def: Double): Double = tuning[key] ?: def
 
     companion object {
         // libritts_r speaker 14 — picked by ear as the clearest default (2026-07-02).
+        // Browser identity for the scrape. Mirrors VelaConfig's compiled fallback; the live value
+        // arrives in the signed bundle. Bump BOTH together - a hint advertising a different version
+        // than the UA string is worse than sending no hint.
+        const val DEFAULT_USER_AGENT = app.vela.core.VelaConfig.USER_AGENT
+        const val DEFAULT_SEC_CH_UA = app.vela.core.VelaConfig.SEC_CH_UA
+
         const val DEFAULT_VOICE_SPEAKER = 14
         // 0.8× — the user's preferred nav cadence. (Briefly 0.72 on 2026-07-06 for consonant clarity,
         // reverted 2026-07-07 — the fragment-punctuation + 152nd fixes handle articulation directly.)

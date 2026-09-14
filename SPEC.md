@@ -613,6 +613,20 @@ handed - no filesystem, network, or device access.
 
 ---
 
+**Browser identity (`userAgent` / `secChUa`, 2026-09-14).** The UA the scrape presents moved into
+the signed bundle alongside the pb templates. Chrome ships stable every ~4 weeks, so a compiled
+constant is stale by construction - the shipped one sat at Chrome 124 (April 2024) well into 2026 -
+and stale is a CORRECTNESS risk before a fingerprinting one: Google serves different response shapes
+to different browser generations, so an old UA can pin the scrape to a legacy code path retired
+without notice, arriving as indistinguishable-from-ordinary calibration drift. Google-facing requests
+now also send the coherent Chrome header set (`Sec-CH-UA*`, `Sec-Fetch-*`) rather than a lone UA
+string, whose absence next to a Chrome UA was a sharper inconsistency than the version. Community
+services (FOSSGIS OSRM, Nominatim, Photon, Overpass, Transitous) send `VelaConfig.VELA_UA`, the
+honest contactable identifier their policies ask for. Both remote fields are sanitized on parse:
+OkHttp throws on a control character at request-build time inside `runCatching`, so one stray
+newline would otherwise kill every scrape silently. NOT YET SAFE TO PUSH - six WebView scrapes in
+`:app` still read the compiled const; see CLAUDE.md.
+
 ## 6. Degoogled constraints (hard rules - do not regress)
 
 - Location: AOSP `LocationManager` only - never `FusedLocationProviderClient`.
