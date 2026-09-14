@@ -3156,7 +3156,10 @@ architecture note.
   fan-out whose overlap the map drops (`openPlacesLoaded` + `namesAgree` in applyData: same name
   within 80 m of a loaded open feature). The open layers sit ABOVE the ambient layer so open icons
   win collision and Google's extras fill gaps. Outside any region file all three behave like Google.
-  About > Map data credits Overture (CDLA-Permissive 2.0) with a license button. VelaMapView draws `vela-places-<i>`
+  About > Map data credits Overture (CDLA-Permissive 2.0) with a license button. The OSM basemap
+  business POIs (`poi_r1/r7/r20`) hide while an open places source is on the style (`openCovers` in
+  applyData's `osmPoiVis`, plus a direct flip in the overlay effect), the same yield the Google dots
+  get, so a business is never drawn by both OSM and Overture. VelaMapView draws `vela-places-<i>`
   SymbolLayers dressed identically to the ambient layer; a tap on a `src=overture` feature builds a seeded
   `Place` (category/address/phone/website from the tile) and `onOpenPlaceTap` -> `onPoiTap(seed=...)`, so
   the sheet reads offline and the existing Google correlation upgrades it online. Davis is the test bake
