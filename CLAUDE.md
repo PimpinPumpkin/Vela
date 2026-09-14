@@ -1047,7 +1047,12 @@ Defaults that make the safe path the easy one:
   shares the tapped label's words (`nameAgrees`, word-set overlap needing the shorter name's
   tokens, cap 2); only an EMPTY pool (renamed/closed business) falls back to all results. The
   clear-dominance duplicate override still runs WITHIN the pool (a co-brand's two profiles both
-  agree with the tapped label, and the rich one should win). **The house-number case must SNAP to the tapped number:**
+  agree with the tapped label, and the rich one should win). **And the pick must be NEAR THE
+  TAP (issue #429, 2026-09-14):** a town label for Salem, Arkansas searched "Salem" and Google's
+  nearest answer was Salem, Massachusetts, 1191 mi away, opened as the place; now a settlement
+  label (`poiKind` in `SETTLEMENT_KINDS`, the OMT `place` classes) accepts a hit within 30 km,
+  any other label within 1.5 km, transit stops unbounded (they resolve by board), and a farther
+  hit is dropped so the bare label at its own coordinates stays selected. **The house-number case must SNAP to the tapped number:**
   `MapViewModel.onAddressLabelTap` LEADS the pin with the label's own number and uses the reverse-
   geocode only for the street/city, replacing whatever house number the geocode led with (a regex
   strips `^\s*\d+\S*\s+` then prepends the tapped number). Reason: Google's reverse-geocode snaps to

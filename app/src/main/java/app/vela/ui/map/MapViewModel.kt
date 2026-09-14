@@ -2933,6 +2933,13 @@ class MapViewModel @Inject constructor(
 
     /** Tapped a POI on the map: show it immediately, then enrich with full
      *  details (hours, rating, …) from a search for that name nearby. */
+    /** OpenMapTiles `place` classes: a tapped label of these is a settlement, whose search hit
+     *  may legitimately sit kilometres from the label point (the label marks the centre). */
+    private val SETTLEMENT_KINDS = setOf(
+        "city", "town", "village", "hamlet", "suburb", "neighbourhood", "quarter", "locality",
+        "borough", "island", "islet", "state", "province", "country", "continent",
+    )
+
     fun onPoiTap(name: String, location: LatLng, poiKind: String? = null) {
         // Dead during a live drive: the map is carpeted with tappable POIs at nav zoom, the
         // sheet this would build can't render under nav's bottom slot, and the stale selection
@@ -3038,7 +3045,17 @@ class MapViewModel @Inject constructor(
                         (canonical.reviewCount ?: 0) >= 2 * (poolNearest.reviewCount ?: 0) + 5
                     ) canonical else poolNearest
                 }
-                pick to results
+                // The pick must be NEAR THE TAP (issue #429): a town label for Salem, Arkansas
+                // searched "Salem" and Google's nearest answer was Salem, Massachusetts, 1191 mi
+                // away, which then opened as the place. A settlement label may resolve within a
+                // town's radius, anything else within walking distance; farther than that the
+                // tap keeps the bare label at its own coordinates instead of a stranger.
+                val maxM = when {
+                    transitHint != null -> Double.MAX_VALUE
+                    poiKind?.lowercase() in SETTLEMENT_KINDS -> 30_000.0
+                    else -> 1_500.0
+                }
+                pick?.takeIf { it.location.distanceTo(location) <= maxM } to results
             }.getOrNull()
             val full = resolved?.first
             if (full != null && _state.value.selected == placeholder) {
