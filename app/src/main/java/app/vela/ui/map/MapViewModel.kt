@@ -205,6 +205,8 @@ data class MapUiState(
     // that time (Google's board is time-dependent).
     val directionsTimeMode: Int = 0,
     val directionsTimeEpochSec: Long? = null,
+    // Preferred transit vehicle kinds (issue #431): 0 bus, 1 subway, 2 train, 3 tram. Empty = any.
+    val transitPrefer: Set<Int> = emptySet(),
     val transit: List<TransitItinerary> = emptyList(),
     val transitLoading: Boolean = false,
     // One time per travel mode for the chooser's mode chips ("25 min" under the car glyph), the
@@ -3916,10 +3918,19 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** Prefer bus / subway / train / tram on transit trips (issue #431): the pick rides along on
+     *  Google's request, so a bus-only rider gets the slower all-bus itinerary instead of the train. */
+    fun setTransitPrefer(modes: Set<Int>) {
+        if (_state.value.transitPrefer == modes) return
+        _state.update { it.copy(transitPrefer = modes) }
+        if (_state.value.travelMode == TravelMode.TRANSIT) route(TravelMode.TRANSIT)
+    }
+
     private fun routeTransit(origin: LatLng, dest: LatLng, timeMode: Int = 0, timeEpochSec: Long? = null, etaKey: String? = null) {
         _state.update { it.copy(routes = emptyList(), activeRoute = null, transit = emptyList(), transitLoading = true, transitPreview = null, status = null) }
+        val prefer = _state.value.transitPrefer
         viewModelScope.launch {
-            val trips = runCatching { webDirections.transit(origin, dest, timeMode, timeEpochSec) }.getOrDefault(emptyList())
+            val trips = runCatching { webDirections.transit(origin, dest, timeMode, timeEpochSec, prefer) }.getOrDefault(emptyList())
             _state.update {
                 if (it.travelMode != TravelMode.TRANSIT) it // user switched away mid-load
                 else it.copy(
