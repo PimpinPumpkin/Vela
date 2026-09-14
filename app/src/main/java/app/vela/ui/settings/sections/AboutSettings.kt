@@ -89,6 +89,19 @@ Onboarding.openDonate(context)
         ) {
             Text(stringResource(R.string.settings_map_data_button))
         }
+        Spacer(Modifier.height(4.dp))
+        FilledTonalButton(
+            modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+            onClick = {
+                runCatching {
+                    context.startActivity(
+                        android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://cdla.dev/permissive-2-0/")),
+                    )
+                }
+            },
+        ) {
+            Text(stringResource(R.string.settings_map_data_overture_button))
+        }
         }
         }
 

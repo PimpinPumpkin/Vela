@@ -1150,8 +1150,10 @@ fun VelaMapView(
                         PropertyFactory.textHaloWidth(0.9f),
                     )
                 }
-                // Dots under icons: an icon that renders simply covers its own dot.
-                if (style.getLayer(AMBIENT_LAYER) != null) style.addLayerBelow(layer, AMBIENT_LAYER) else style.addLayer(layer)
+                // Above the Google ambient layer, so in the "both" setting the open layer's icons
+                // win the collision slots and Google's extras fill the gaps, not the other way
+                // around. Dots under icons: an icon that renders simply covers its own dot.
+                if (style.getLayer(AMBIENT_LAYER) != null) style.addLayerAbove(layer, AMBIENT_LAYER) else style.addLayer(layer)
                 style.addLayerBelow(dots, layer.id)
             }
         }
@@ -4905,6 +4907,32 @@ private fun emphasizeShields(style: Style) {
  * (see styleKey), so each pass starts from Liberty's defaults — no need to undo.
  * No-ops on non-OpenMapTiles styles (e.g. the MapLibre demo basemap). Keyless.
  */
+/** The open places (Overture) features in the tiles MapLibre has loaded, as (name, location). Empty
+ *  when no open places source is on the style, which is the common case. */
+private fun openPlacesLoaded(style: Style): List<Pair<String, LatLng>> {
+    val out = ArrayList<Pair<String, LatLng>>()
+    style.sources.filter { it.id.startsWith("vela-places-src-") }.forEach { src ->
+        runCatching {
+            (src as? VectorSource)?.querySourceFeatures(arrayOf("places"), null)?.forEach { f ->
+                val pt = f.geometry() as? Point ?: return@forEach
+                val n = f.getStringProperty("name") ?: return@forEach
+                out += n to LatLng(pt.latitude(), pt.longitude())
+            }
+        }
+    }
+    return out
+}
+
+/** Two business names for the same place, allowing for the usual drift between sources
+ *  ("Panera Bread" vs "Panera", "Joe's Cafe" vs "Joes Cafe"): they share as many words as the
+ *  shorter name has, capped at two. Mirrors MapViewModel.nameAgrees. */
+private fun namesAgree(a: String, b: String): Boolean {
+    fun words(s: String) = s.lowercase().replace(Regex("[^\\p{L}\\p{N} ]"), " ").split(Regex("\\s+")).filter { it.length > 1 }.toSet()
+    val x = words(a); val y = words(b)
+    if (x.isEmpty() || y.isEmpty()) return false
+    return x.intersect(y).size >= minOf(x.size, y.size).coerceAtMost(2)
+}
+
 private fun applyMapTheme(style: Style, dark: Boolean) {
     if (style.getSource("openmaptiles") == null) return
     // Two compiled colour sets, picked in Settings -> Appearance (MapColors): "modern" is the
@@ -6057,8 +6085,15 @@ private fun applyData(
     // Deferred while a camera flight is in the air (AUDIT FIX 6, see flightDepth) - the gate
     // stays stale so the first recomposition after landing uploads the full set.
     if (ambientPois != lastAppliedAmbient && flightDepth[0] == 0) {
+        // "Both" places setting: the open places layer already draws most of these. Drop the
+        // Google places that agree by name with an open place within 80 m of them, so the map
+        // gets Google's extras (a new business, one the open data missed) and not two icons
+        // for every restaurant. The index property stays the list index, so a tap still opens
+        // the right place.
+        val openInView = openPlacesLoaded(style)
         val ambientFc = FeatureCollection.fromFeatures(
-            ambientPois.mapIndexed { i, m ->
+            ambientPois.mapIndexedNotNull { i, m ->
+                if (openInView.isNotEmpty() && openInView.any { (n, ll) -> ll.distanceTo(m.location) < 80.0 && namesAgree(n, m.name) }) return@mapIndexedNotNull null
                 Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
                     val group = PoiIcons.groupFor(m.name, m.category)
                     addStringProperty("name", m.name)

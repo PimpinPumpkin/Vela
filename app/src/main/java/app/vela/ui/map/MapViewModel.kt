@@ -5450,13 +5450,27 @@ class MapViewModel @Inject constructor(
      * bare map only (no results / open place / nav / replay), debounced, re-queried on a real pan
      * OR zoom change.
      */
-    private fun maybeLoadAmbientPois(center: LatLng, zoom: Double, viewRadiusMeters: Double = 0.0) {
+    private fun maybeLoadAmbientPois(center: LatLng, zoom: Double, viewRadiusMeters: Double = 0.0, settled: Boolean = false) {
         val s = _state.value
+        // "Both" places setting with the open layer covering the view: Google is a top-up, not the
+        // paint, so nothing (not even the cache) goes on the map until the view has properly
+        // settled. One fetch at the end of a pan across town instead of one per flick, and by
+        // then the open tiles are loaded, which the map needs to drop the overlap.
+        if (!settled && app.vela.ui.MapPoiPrefs.openPlaces && s.placesOverlays.isNotEmpty() && app.vela.ui.MapPoiPrefs.showPois.value) {
+            ambientJob?.cancel()
+            ambientJob = viewModelScope.launch {
+                delay(1500)
+                maybeLoadAmbientPois(center, zoom, viewRadiusMeters, settled = true)
+            }
+            return
+        }
         // "Show places on the map" master switch (user 2026-07-15): off = clean basemap, only
         // searched results draw. Clear whatever is up so flipping the toggle acts immediately.
         // The open places layer owns the dots where it covers the view (2026-09-14): no Google
         // fan-out at all, the map draws the baked tiles, Google is asked only when a place is tapped.
-        if (!app.vela.ui.MapPoiPrefs.showPois.value || (app.vela.ui.MapPoiPrefs.openPlaces.value && s.placesOverlays.isNotEmpty())) {
+        // In the "both" setting the layer still draws the map, and the fan-out below runs once the
+        // view has properly settled to fill in what the open data lacks (the map drops the overlap).
+        if (!app.vela.ui.MapPoiPrefs.showPois.value || (app.vela.ui.MapPoiPrefs.openPlacesOnly && s.placesOverlays.isNotEmpty())) {
             ambientJob?.cancel()
             lastAmbientCenter = null
             if (s.ambientPois.isNotEmpty() || s.ambientCoversView) {
@@ -5828,7 +5842,7 @@ class MapViewModel @Inject constructor(
     /** The open-data places layer for [center] (beta setting): installed archives plus streamed
      *  manifest regions. Empty when the setting is off, which also hands the dots back to Google. */
     private fun refreshPlacesOverlays(center: LatLng? = mapCenter ?: _state.value.myLocation) {
-        if (!app.vela.ui.MapPoiPrefs.openPlaces.value) {
+        if (!app.vela.ui.MapPoiPrefs.openPlaces) {
             if (_state.value.placesOverlays.isNotEmpty()) _state.update { it.copy(placesOverlays = emptyList()) }
             return
         }
