@@ -1949,6 +1949,8 @@ fun MapScreen(
                 onStartTransit = vm::startTransitNav,
                 onTransitPreview = vm::onTransitRowExpanded,
                 onTimeSelected = vm::setDirectionsTime,
+                transitPrefer = state.transitPrefer,
+                onTransitPrefer = vm::setTransitPrefer,
                 onCollapsedChange = { dirMinimized = it },
                 // Portrait: the body may open only as far as the endpoints card leaves over a
                 // minimum strip of map (issue #400, 240x320 phones); the chooser's own header

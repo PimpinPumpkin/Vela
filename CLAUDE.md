@@ -4002,7 +4002,11 @@ architecture note.
   Google silently fell back to "now"). **`!8j` is a LOCAL clock, not a unix timestamp (issue #433,
   2026-09-14):** Google reads the seconds as wall-clock-as-UTC, so the fetcher adds the phone's
   zone offset to the picker's epoch; sending the true epoch shifted every schedule east of
-  Greenwich by the offset (BST an hour early, UTC+3 three hours). **Gotchas:**
+  Greenwich by the offset (BST an hour early, UTC+3 three hours). **Preferred vehicles (issue
+  #431, 2026-09-14):** `!5e{k}` entries (0 bus, 1 subway, 2 train, 3 tram) sit in the same `!2m`
+  options group ahead of the time block; the fetcher builds the group from an entries list and
+  sizes the `!4m` wrappers from it (`entries + 2` inner, `+ 3` outer). `MapUiState.transitPrefer`,
+  `setTransitPrefer` refetches, chips under the time chooser on the transit tab. **Gotchas:**
   the directions payload is the **longest** `)]}'`-guarded string under slot `[3]`
   (a ~1.7 KB stub sits alongside the ~165 KB real one - take the longest, and poll
   for it: the SPA fills it a beat after page-finish). `TransitParser` (`:core`,

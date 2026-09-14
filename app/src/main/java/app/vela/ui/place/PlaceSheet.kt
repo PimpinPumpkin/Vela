@@ -1371,6 +1371,8 @@ fun DirectionsPanel(
     onStartTransit: (TransitItinerary) -> Unit = {},
     onTransitPreview: (TransitItinerary, Boolean) -> Unit = { _, _ -> },
     onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
+    transitPrefer: Set<Int> = emptySet(), // preferred vehicle kinds, transit only (issue #431)
+    onTransitPrefer: (Set<Int>) -> Unit = {},
     minimizeTick: Int = 0, // bumped when the user grabs the map — glide down, then flip collapsed
     onCollapsedChange: (Boolean) -> Unit = {}, // MapScreen shrinks the route-fit camera inset while minimized
     // Tallest the BODY may open (dp), from the host: what the endpoints card leaves above a
@@ -1566,6 +1568,31 @@ fun DirectionsPanel(
                 isTransit = currentMode == TravelMode.TRANSIT,
                 onTimeSelected = onTimeSelected,
             )
+            // Transit only (issue #431): which vehicles to prefer. Google's own option, carried on
+            // the request, so a bus-only rider sees the all-bus itinerary instead of the train.
+            if (currentMode == TravelMode.TRANSIT) {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(stringResource(R.string.place_transit_prefer), style = MaterialTheme.typography.labelLarge, color = dim)
+                    listOf(
+                        0 to R.string.place_transit_bus,
+                        1 to R.string.place_transit_subway,
+                        2 to R.string.place_transit_train,
+                        3 to R.string.place_transit_tram,
+                    ).forEach { (kind, label) ->
+                        FilterChip(
+                            selected = kind in transitPrefer,
+                            onClick = { onTransitPrefer(if (kind in transitPrefer) transitPrefer - kind else transitPrefer + kind) },
+                            label = { Text(stringResource(label)) },
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                        )
+                    }
+                }
+            }
             // Route preferences, drive only (tolls/motorways mean nothing on foot or transit).
             // Honoured on-device where the region graph carries the avoid profiles; online the
             // route falls back to normal rather than failing (the public OSRM can't exclude).
