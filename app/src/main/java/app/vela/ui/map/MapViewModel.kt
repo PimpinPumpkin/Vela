@@ -126,6 +126,7 @@ data class MapUiState(
     // overlay layer under the puck). The "Speed B" online source used when the offline graph can't answer
     // ([speedLimitKmh] null) - so a limit shows anywhere online without a downloaded region.
     val maxspeedOverlays: List<String> = emptyList(), // pmtiles://https:// source URIs covering the view
+    val placesOverlays: List<String> = emptyList(),   // open-data places layer (Overture PMTiles), file:// or streamed
     val speedLimitOverlayKmh: Double? = null,
     val speedLimitKmh: Double? = null, // posted limit of the current road (OSM maxspeed via GraphHopper),
                                        // km/h; null = unknown/untagged/no offline graph → badge hidden.
@@ -364,6 +365,7 @@ class MapViewModel @Inject constructor(
     private val obfStore: app.vela.offline.ObfStore,
     private val overlayStore: app.vela.offline.OverlayTileStore,
     private val maxspeedStore: app.vela.offline.MaxspeedOverlayStore,
+    private val placesStore: app.vela.offline.PlacesTileStore,
     private val routeEngine: app.vela.core.data.RouteEngine,
     private val http: okhttp3.OkHttpClient,
     private val selfUpdater: app.vela.update.SelfUpdater,
@@ -2954,7 +2956,12 @@ class MapViewModel @Inject constructor(
         "borough", "island", "islet", "state", "province", "country", "continent",
     )
 
-    fun onPoiTap(name: String, location: LatLng, poiKind: String? = null) {
+    /** A tap on the open places layer (Overture tile feature): the tile's own attributes seed the
+     *  sheet at once, so offline it already shows the category, address, phone and website, and the
+     *  Google correlation in [onPoiTap] upgrades it to the listing when online. */
+    fun onOpenPlaceTap(p: Place) = onPoiTap(p.name, p.location, p.category, seed = p)
+
+    fun onPoiTap(name: String, location: LatLng, poiKind: String? = null, seed: Place? = null) {
         // Dead during a live drive: the map is carpeted with tappable POIs at nav zoom, the
         // sheet this would build can't render under nav's bottom slot, and the stale selection
         // popped up when the drive ended. In-nav picks go through the search results instead.
@@ -2975,7 +2982,7 @@ class MapViewModel @Inject constructor(
         // Capture the placeholder so the async resolve can gate on FULL equality (name AND location) — two
         // same-named POIs tapped in quick succession (a chain's two branches) otherwise let the slower
         // resolve for the first hijack the second's sheet, since the old gate matched name only (audit 2026-07-06).
-        val placeholder = Place(id = "poi:" + name.hashCode(), name = name, location = location)
+        val placeholder = seed ?: Place(id = "poi:" + name.hashCode(), name = name, location = location)
         // A transit STOP is usually named by its intersection ("Main St & 1st Ave"), and Google resolves
         // that bare string to the road JUNCTION, not the stop - so a tapped stop opened as an "Intersection"
         // with no board (issue #71 follow-up; verified in a live capture: "<x> & <y>" -> Intersection,
@@ -5234,6 +5241,7 @@ class MapViewModel @Inject constructor(
             refreshAddressOverlays(center) // + house-number labels for that region
         }
         refreshMaxspeedOverlay(center) // + the posted-speed-limit overlay (read under the puck for the sign)
+        refreshPlacesOverlays(center)
         refreshTrafficControls(south, west, north, east, zoom) // + traffic lights / stop signs at high zoom
         lastFlockViewport = doubleArrayOf(south, west, north, east, zoom)
         refreshFlock(south, west, north, east, zoom) // + ALPR/Flock cameras when the layer is on
@@ -5396,7 +5404,9 @@ class MapViewModel @Inject constructor(
         val s = _state.value
         // "Show places on the map" master switch (user 2026-07-15): off = clean basemap, only
         // searched results draw. Clear whatever is up so flipping the toggle acts immediately.
-        if (!app.vela.ui.MapPoiPrefs.showPois.value) {
+        // The open places layer owns the dots where it covers the view (2026-09-14): no Google
+        // fan-out at all, the map draws the baked tiles, Google is asked only when a place is tapped.
+        if (!app.vela.ui.MapPoiPrefs.showPois.value || (app.vela.ui.MapPoiPrefs.openPlaces.value && s.placesOverlays.isNotEmpty())) {
             ambientJob?.cancel()
             lastAmbientCenter = null
             if (s.ambientPois.isNotEmpty() || s.ambientCoversView) {
@@ -5751,6 +5761,19 @@ class MapViewModel @Inject constructor(
     /** Stream the posted-speed-limit overlay covering [center] so the map can read a limit under the puck
      *  ("Speed B"). Streaming-only (no download): MapLibre range-fetches the visible tiles. De-duped so
      *  panning within one region doesn't churn the source. */
+    /** The open-data places layer for [center] (beta setting): installed archives plus streamed
+     *  manifest regions. Empty when the setting is off, which also hands the dots back to Google. */
+    private fun refreshPlacesOverlays(center: LatLng? = mapCenter ?: _state.value.myLocation) {
+        if (!app.vela.ui.MapPoiPrefs.openPlaces.value) {
+            if (_state.value.placesOverlays.isNotEmpty()) _state.update { it.copy(placesOverlays = emptyList()) }
+            return
+        }
+        viewModelScope.launch {
+            val uris = runCatching { placesStore.sourcesFor(center, app.vela.BuildConfig.PLACES_MANIFEST_URL) }.getOrDefault(emptyList())
+            if (uris != _state.value.placesOverlays) _state.update { it.copy(placesOverlays = uris) }
+        }
+    }
+
     private fun refreshMaxspeedOverlay(center: LatLng? = mapCenter ?: _state.value.myLocation) {
         val c = center ?: return
         viewModelScope.launch {

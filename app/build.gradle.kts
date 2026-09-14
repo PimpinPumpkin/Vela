@@ -99,6 +99,14 @@ android {
             "\"${(project.findProperty("addressManifestUrl") as String?)
                 ?: "https://github.com/PimpinPumpkin/Vela/releases/download/address-overlays/address-overlay-manifest.json"}\"",
         )
+        // Open-data PLACES layer (Overture Places baked to PMTiles, tools/build-places-region.sh) catalog,
+        // same override pattern (-PplacesManifestUrl=…). Drawn like the Google ambient dots; Google is asked on tap.
+        buildConfigField(
+            "String",
+            "PLACES_MANIFEST_URL",
+            "\"${(project.findProperty("placesManifestUrl") as String?)
+                ?: "https://github.com/PimpinPumpkin/Vela/releases/download/places-overlays/places-overlay-manifest.json"}\"",
+        )
         // Offline PLACE packs (whole-region POI/address SQLite, pulled with a routing-region download so a
         // state is searchable offline) — same override pattern (-PpoiPackManifestUrl=… via `adb reverse`).
         buildConfigField(
