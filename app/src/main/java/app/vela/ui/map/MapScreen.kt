@@ -428,7 +428,14 @@ fun MapScreen(
     LaunchedEffect(state.results) { filteredResultIds = null }
     // Street View gates the panel too: opening the viewer clears `selected`, which used to flip
     // this back ON and draw the results list over the bottom-half mini map (user 2026-07-18).
-    val resultsShown = state.results.isNotEmpty() && state.selected == null && !searchOpen && !state.resultsCollapsed &&
+    // A typed query SUBMITTED while picking an origin, destination or stop (issue #405,
+    // 2026-09-13): the overlay stays "open" for the pick and the chosen place stays selected, so
+    // the results sheet's two gates both held and a search for "Coffee" from Add stop showed
+    // nothing at all. The sheet shows for a pick once the field is blurred and results exist;
+    // a tap on a row goes through selectPlace, which already adds it as the stop / endpoint.
+    val pickingResults = (state.pickingOrigin || state.pickingDest || state.pickingStop) &&
+        state.results.isNotEmpty() && !searchFocused && state.query.isNotBlank()
+    val resultsShown = state.results.isNotEmpty() && (state.selected == null || pickingResults) && (!searchOpen || pickingResults) && !state.resultsCollapsed &&
         state.streetView == null && !state.streetViewLoading
     // Free-drive follow (Google's "the map tracks you as you drive, no route needed"). On by
     // default so an open, unobstructed map glides to your fix; a user pan drops it and the locate
@@ -496,7 +503,7 @@ fun MapScreen(
     LaunchedEffect(state.results) { if (state.results.isEmpty()) resultsExpanded = false }
     // The results sheet minimized to its short bottom bar — the chrome shows again then, but
     // lifted above the bar so the FAB / scale bar / Search this area never sit on top of it.
-    val resultsMinimized = state.results.isNotEmpty() && state.selected == null && !searchOpen && state.resultsCollapsed
+    val resultsMinimized = state.results.isNotEmpty() && (state.selected == null || pickingResults) && (!searchOpen || pickingResults) && state.resultsCollapsed
     val chromeLift = if (resultsMinimized) 76.dp else 0.dp
     val metersPerPixelState = remember { mutableStateOf(0.0) }
     // Building-overlay debug badge: the last state VelaMapView's idle gate reported
@@ -2130,7 +2137,7 @@ fun MapScreen(
             // gates it too: opening the viewer clears `selected`, which used to fall through to
             // THIS branch and draw the results list over the bottom-half mini map (user
             // 2026-07-18); the sheet returns when the viewer closes.
-            state.results.isNotEmpty() && !searchOpen && state.pickOnMap == null &&
+            state.results.isNotEmpty() && (!searchOpen || pickingResults) && state.pickOnMap == null &&
                 state.streetView == null && !state.streetViewLoading -> {
               SearchResults(
                 results = state.results,
