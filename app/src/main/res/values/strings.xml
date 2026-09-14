@@ -669,6 +669,7 @@
     <string name="parking_history_restore">Restore</string>
     <string name="settings_parking_history">Parking history</string>
     <string name="settings_parking_history_hint">Recent parking spots. Tap Restore if you overwrote your spot by mistake.</string>
+    <string name="settings_parking_history_empty">No parking spots saved yet. Tap the P button on the map to save where you parked.</string>
     <string name="mapscreen_section_lists">Your lists</string>
     <string name="mapscreen_new_list">New</string>
     <string name="list_edit">Edit list</string>

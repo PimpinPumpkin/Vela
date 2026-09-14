@@ -16,6 +16,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -29,6 +31,50 @@ import androidx.compose.foundation.shape.RoundedCornerShape as DpadShape
 // Moved verbatim out of the old single-page SettingsScreen so all section files share one copy.
 
 
+/** The row label a settings-search result asked for (issue #426). A section reads it through
+ *  [settingsAnchor]: the matching row scrolls into view and glows for a moment, then the glow
+ *  fades. Null when the spoke was opened from the hub rows. */
+internal val LocalSettingsHighlight = androidx.compose.runtime.compositionLocalOf<String?> { null }
+
+/** Marks a row or title by its visible [label]. When that label is the search result the user
+ *  tapped, the element is brought into view (the scaffold's scroll column honours the request)
+ *  and painted with a primary tint that fades after a beat. A no-op for every other row. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+internal fun Modifier.settingsAnchor(label: String, glow: Boolean = true): Modifier {
+    val target = LocalSettingsHighlight.current
+    if (target == null || !target.equals(label, ignoreCase = true)) return this
+    if (!glow) {
+        // Scroll only: a titled group brings its WHOLE card into view (a title alone would
+        // land on the bottom edge with the rows below the fold); the title paints the glow.
+        val req = androidx.compose.runtime.remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+        androidx.compose.runtime.LaunchedEffect(label) {
+            kotlinx.coroutines.delay(150)
+            runCatching { req.bringIntoView() }
+        }
+        return this.bringIntoViewRequester(req)
+    }
+    val requester = androidx.compose.runtime.remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+    val glow = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(0f) }
+    androidx.compose.runtime.LaunchedEffect(label) {
+        kotlinx.coroutines.delay(150)
+        runCatching { requester.bringIntoView() }
+        kotlinx.coroutines.delay(250)
+        glow.snapTo(1f)
+        kotlinx.coroutines.delay(1400)
+        glow.animateTo(0f, androidx.compose.animation.core.tween(900))
+    }
+    val tint = MaterialTheme.colorScheme.primary
+    return this
+        .bringIntoViewRequester(requester)
+        .drawBehind {
+            if (glow.value > 0f) drawRoundRect(
+                color = tint.copy(alpha = 0.18f * glow.value),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(12.dp.toPx()),
+            )
+        }
+}
+
 @Composable
 internal fun SectionTitle(text: String) {
     Text(
@@ -36,7 +82,7 @@ internal fun SectionTitle(text: String) {
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Medium,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(vertical = 8.dp),
+        modifier = Modifier.settingsAnchor(text).padding(vertical = 8.dp),
     )
 }
 
@@ -44,7 +90,7 @@ internal fun SectionTitle(text: String) {
 @Composable
 internal fun CollapsibleSectionTitle(text: String, expanded: Boolean, modifier: Modifier = Modifier, onToggle: () -> Unit) {
     Row(
-        modifier.fillMaxWidth().dpadHighlight(DpadShape(6.dp)).dpadClickable(onClick = onToggle).padding(vertical = 8.dp),
+        modifier.fillMaxWidth().settingsAnchor(text).dpadHighlight(DpadShape(6.dp)).dpadClickable(onClick = onToggle).padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -65,7 +111,7 @@ internal fun CollapsibleSectionTitle(text: String, expanded: Boolean, modifier: 
 @Composable
 internal fun SelectableRow(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier.fillMaxWidth().dpadHighlight(DpadShape(10.dp)).dpadClickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier.fillMaxWidth().settingsAnchor(label).dpadHighlight(DpadShape(10.dp)).dpadClickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // onClick = null: the RadioButton is display-only so the ROW is the single focus stop. A
@@ -91,6 +137,7 @@ internal fun SettingsGroup(
     title: String? = null,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
+    androidx.compose.foundation.layout.Column(if (title != null) Modifier.settingsAnchor(title, glow = false) else Modifier) {
     if (title != null) SubHead(title)
     androidx.compose.material3.Surface(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -101,6 +148,7 @@ internal fun SettingsGroup(
             Modifier.fillMaxWidth().padding(vertical = 6.dp),
             content = content,
         )
+    }
     }
 }
 
@@ -114,7 +162,7 @@ internal fun SubHead(text: String) {
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.Medium,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = 10.dp, bottom = 4.dp, start = 16.dp),
+        modifier = Modifier.settingsAnchor(text).padding(top = 10.dp, bottom = 4.dp, start = 16.dp),
     )
 }
 
@@ -172,7 +220,7 @@ internal fun ToggleRow(
     switchModifier: Modifier = Modifier,
 ) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+        Modifier.fillMaxWidth().settingsAnchor(label).padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         androidx.compose.foundation.layout.Column(Modifier.weight(1f).padding(end = 12.dp)) {

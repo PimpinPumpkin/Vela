@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -47,17 +48,22 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
     // The spoke last left, so the hub restores focus to the row you came back from (Compose's own
     // recovery is nondeterministic when a focused tree unmounts - docs/dpad.md).
     var cameFrom by rememberSaveable { mutableStateOf(startSection) }
+    // The search result's row label, for the spoke to scroll to and glow (issue #426); cleared on
+    // the way back so a later hub-row open does not re-glow it.
+    var highlight by remember { mutableStateOf<String?>(null) }
     val toHub = {
         cameFrom = section
+        highlight = null
         section = SettingsSection.HUB
     }
     // System back mirrors the top-bar Back button: spoke -> hub, hub -> map.
     BackHandler { if (section == SettingsSection.HUB) onBack() else toHub() }
+    androidx.compose.runtime.CompositionLocalProvider(LocalSettingsHighlight provides highlight) {
     when (section) {
         SettingsSection.HUB -> SettingsHub(
             state = state,
             returnTo = cameFrom.takeIf { it != SettingsSection.HUB },
-            onOpen = { section = it },
+            onOpen = { s, label -> highlight = label; section = s },
             onBack = onBack,
         )
         SettingsSection.APPEARANCE -> AppearanceSettingsScreen(vm, onBack = toHub)
@@ -71,5 +77,6 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
         SettingsSection.DATA_PRIVACY -> DataPrivacySettingsScreen(vm, onBack = toHub)
         SettingsSection.DIAGNOSTICS -> DiagnosticsSettingsScreen(vm, onBack = toHub, onCloseSettings = onBack)
         SettingsSection.ABOUT -> AboutSettingsScreen(vm, onBack = toHub)
+    }
     }
 }

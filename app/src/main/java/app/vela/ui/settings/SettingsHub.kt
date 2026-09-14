@@ -61,7 +61,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape as DpadShape
 internal fun SettingsHub(
     state: MapUiState,
     returnTo: SettingsSection?,
-    onOpen: (SettingsSection) -> Unit,
+    onOpen: (SettingsSection, String?) -> Unit, // the matched row label for a search result, else null
     onBack: () -> Unit,
 ) {
     val returnFocus = remember { FocusRequester() }
@@ -124,7 +124,7 @@ internal fun SettingsHub(
                         .clip(DpadShape(16.dp))
                         .background(MaterialTheme.colorScheme.surfaceContainer)
                         .dpadHighlight(DpadShape(16.dp))
-                        .dpadClickable { searchQuery = ""; onOpen(section) }
+                        .dpadClickable { searchQuery = ""; onOpen(section, label) }
                         .padding(vertical = 10.dp, horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -152,35 +152,35 @@ internal fun SettingsHub(
             title = stringResource(R.string.settings_appearance),
             subtitle = stringResource(R.string.settings_hub_appearance_sub),
             modifier = rowModifier(SettingsSection.APPEARANCE, first = true),
-            onClick = { onOpen(SettingsSection.APPEARANCE) },
+            onClick = { onOpen(SettingsSection.APPEARANCE, null) },
         )
         HubRow(
             icon = Icons.Outlined.Map,
             title = stringResource(R.string.settings_map),
             subtitle = stringResource(R.string.settings_hub_map_sub),
             modifier = rowModifier(SettingsSection.MAP, first = false),
-            onClick = { onOpen(SettingsSection.MAP) },
+            onClick = { onOpen(SettingsSection.MAP, null) },
         )
         HubRow(
             icon = Icons.Outlined.CloudDownload,
             title = stringResource(R.string.settings_offline),
             subtitle = stringResource(R.string.settings_hub_offline_sub),
             modifier = rowModifier(SettingsSection.OFFLINE, first = false),
-            onClick = { onOpen(SettingsSection.OFFLINE) },
+            onClick = { onOpen(SettingsSection.OFFLINE, null) },
         )
         HubRow(
             icon = Icons.Outlined.Storefront,
             title = stringResource(R.string.settings_place_pages),
             subtitle = stringResource(R.string.settings_hub_place_pages_sub),
             modifier = rowModifier(SettingsSection.PLACE_PAGES, first = false),
-            onClick = { onOpen(SettingsSection.PLACE_PAGES) },
+            onClick = { onOpen(SettingsSection.PLACE_PAGES, null) },
         )
         HubRow(
             icon = Icons.Outlined.Navigation,
             title = stringResource(R.string.settings_navigation),
             subtitle = stringResource(R.string.settings_hub_navigation_sub),
             modifier = rowModifier(SettingsSection.NAVIGATION, first = false),
-            onClick = { onOpen(SettingsSection.NAVIGATION) },
+            onClick = { onOpen(SettingsSection.NAVIGATION, null) },
         )
         HubRow(
             icon = Icons.AutoMirrored.Outlined.VolumeUp,
@@ -192,42 +192,42 @@ internal fun SettingsHub(
                 else stringResource(R.string.settings_voice_search_downloading, ((state.voiceDownloadPct ?: 0f) * 100).toInt())
             } else stringResource(R.string.settings_hub_voice_sub),
             modifier = rowModifier(SettingsSection.VOICE, first = false),
-            onClick = { onOpen(SettingsSection.VOICE) },
+            onClick = { onOpen(SettingsSection.VOICE, null) },
         )
         HubRow(
             icon = Icons.Outlined.Mic,
             title = stringResource(R.string.settings_search),
             subtitle = stringResource(R.string.settings_hub_search_sub),
             modifier = rowModifier(SettingsSection.SEARCH, first = false),
-            onClick = { onOpen(SettingsSection.SEARCH) },
+            onClick = { onOpen(SettingsSection.SEARCH, null) },
         )
         HubRow(
             icon = Icons.Outlined.Star,
             title = stringResource(R.string.settings_saved_places),
             subtitle = stringResource(R.string.settings_hub_saved_sub),
             modifier = rowModifier(SettingsSection.SAVED_PLACES, first = false),
-            onClick = { onOpen(SettingsSection.SAVED_PLACES) },
+            onClick = { onOpen(SettingsSection.SAVED_PLACES, null) },
         )
         HubRow(
             icon = Icons.Outlined.Shield,
             title = stringResource(R.string.settings_data_privacy),
             subtitle = stringResource(R.string.settings_hub_privacy_sub),
             modifier = rowModifier(SettingsSection.DATA_PRIVACY, first = false),
-            onClick = { onOpen(SettingsSection.DATA_PRIVACY) },
+            onClick = { onOpen(SettingsSection.DATA_PRIVACY, null) },
         )
         HubRow(
             icon = Icons.Outlined.BugReport,
             title = stringResource(R.string.settings_diagnostics),
             subtitle = stringResource(R.string.settings_hub_diagnostics_sub),
             modifier = rowModifier(SettingsSection.DIAGNOSTICS, first = false),
-            onClick = { onOpen(SettingsSection.DIAGNOSTICS) },
+            onClick = { onOpen(SettingsSection.DIAGNOSTICS, null) },
         )
         HubRow(
             icon = Icons.Outlined.Info,
             title = stringResource(R.string.settings_about),
             subtitle = stringResource(R.string.settings_hub_about_sub),
             modifier = rowModifier(SettingsSection.ABOUT, first = false),
-            onClick = { onOpen(SettingsSection.ABOUT) },
+            onClick = { onOpen(SettingsSection.ABOUT, null) },
         )
         Spacer(Modifier.height(24.dp))
     }
