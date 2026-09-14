@@ -23,10 +23,11 @@ at **runtime**, by system theme:
   OpenStreetMap coverage (dense in metros, patchy in some suburbs).
 - **Neutralised landuse** - the tan/yellow residential/commercial/school fills are
   flattened into the land (Google keeps these untinted), so no colored blobs.
-- **Light / dark** - a light-grey-land light palette and Google's canonical night
-  palette for dark; casings blend into the land in **both** so roads stay clean.
+- **Light / dark / AMOLED** - a light-grey-land light palette and Google's canonical night
+  palette for dark; AMOLED layers a pure-black (`#000000`) land, dark-grey road network and
+  black halos over dark; casings blend into the land in all three so roads stay clean.
   (Palette tuned live in a MapLibre GL JS harness against Google, then verified
-  on-device in light + dark.)
+  on-device in light + dark + AMOLED.)
 - **Terrain relief (hillshade)** - shaded relief from the keyless open **terrarium**
   DEM (AWS Open Data; native fetch, no key, no CORS), added under the road layers
   and capped at z16, tuned per theme (a soft warm-grey shadow in light, deeper
@@ -67,3 +68,11 @@ buildings `#323f54` (outline `#3f4e66`, extrusion same fill), roads
 `#49536a` minor / `#5e6a85` secondary / `#6f7a96` trunk+motorway, casings
 `#242f3e` (= land). Greens here are true greens; the current sampled palette
 uses Google's dark teal vegetation instead.
+
+
+## AMOLED palette (true-black OLED)
+
+Layered on top of `applyDark` (`applyAmoled`): land `#000000`, water `#04080C`, park/grass/wood
+`#050E0A`, buildings `#0A0C0F` (outline `#14171A`), minor roads `#1A1D22`, service tracks `#111418`,
+trunk/motorway `#22262C`, casings `#000000`, text halos `#000000`. Turns off OLED pixels across
+land and outlines for maximum battery savings.

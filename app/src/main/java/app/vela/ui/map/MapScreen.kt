@@ -1006,7 +1006,7 @@ fun MapScreen(
             cameraBottomInsetPx = cameraBottomInset,
             cameraLeftInsetPx = cameraLeftInset,
             routePolyline = state.activeRoute?.polyline ?: emptyList(),
-            routeColor = routeTrafficColor(state.activeRoute, amoled),
+            routeColor = routeTrafficColor(state.activeRoute),
             routeDashed = state.travelMode == app.vela.core.model.TravelMode.WALK ||
                 state.travelMode == app.vela.core.model.TravelMode.BICYCLE,
             routeTrafficSpans = routeTrafficSpans(state.activeRoute),
@@ -1348,7 +1348,7 @@ fun MapScreen(
                 Surface(
                     shape = CircleShape,
                     border = if (amoled) BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
-                    color = if (amoled) Color(0xFF000000) else MaterialTheme.colorScheme.surface,
+                    color = if (amoled) SheetPalette.Amoled else MaterialTheme.colorScheme.surface,
                     shadowElevation = 3.dp,
                     modifier = if (abovePill) Modifier
                         .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
@@ -2673,13 +2673,13 @@ fun MapScreen(
 /** Route line colour by congestion: blue when free-flowing, amber/red when the
  *  live traffic-aware time runs meaningfully over the typical time. Walk/bike and
  *  traffic-less routes stay the default blue. */
-private fun routeTrafficColor(route: app.vela.core.model.Route?, amoled: Boolean = false): String =
+private fun routeTrafficColor(route: app.vela.core.model.Route?): String =
     when (val ratio = route?.trafficRatio) {
-        null -> if (amoled) "#FFFFFF" else "#1F6FEB"
+        null -> "#1F6FEB"
         else -> when {
             ratio > 1.4 -> "#D93838"  // heavy
             ratio > 1.15 -> "#E8923D" // moderate
-            else -> if (amoled) "#FFFFFF" else "#1F6FEB" // light / free-flowing (high contrast white in AMOLED)
+            else -> "#1F6FEB"          // light / free-flowing
         }
     }
 

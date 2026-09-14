@@ -83,6 +83,7 @@ import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import app.vela.ui.theme.isAppInDarkTheme
 import app.vela.ui.theme.isAppInAmoled
+import androidx.compose.foundation.BorderStroke
 // D-pad-only operation (docs/dpad.md) — one import block so upstream merges stay clean.
 import androidx.compose.foundation.focusable
 import androidx.compose.ui.input.key.Key
@@ -134,19 +135,13 @@ fun ManeuverBanner(
     onExitPreview: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val amoled = isAppInAmoled()
-    val container = when {
-        previewing && amoled -> Color(0xFF14171A)
-        previewing -> MaterialTheme.colorScheme.surfaceVariant
-        amoled -> Color(0xFF000000)
-        else -> MaterialTheme.colorScheme.primaryContainer
-    }
-    val content = when {
-        previewing && amoled -> Color(0xFFC0C5CC)
-        previewing -> MaterialTheme.colorScheme.onSurfaceVariant
-        amoled -> Color.White
-        else -> MaterialTheme.colorScheme.onPrimaryContainer
-    }
+    // Swiping the banner left/right walks the upcoming steps (Google-style): the
+    // card greys out, shows that step, and the map's preview marker + camera move
+    // there (driven by previewStepIndex). Tapping it resumes live guidance.
+    val container = if (previewing) MaterialTheme.colorScheme.surfaceVariant
+    else MaterialTheme.colorScheme.primaryContainer
+    val content = if (previewing) MaterialTheme.colorScheme.onSurfaceVariant
+    else MaterialTheme.colorScheme.onPrimaryContainer
     // The card tracks your finger as you drag (translationX = offsetX); on release
     // past a threshold it slides the rest of the way out, swaps to the next/prev
     // step, then the new card slides in from the opposite edge — like flicking a
@@ -208,7 +203,6 @@ fun ManeuverBanner(
                 if (previewing) Modifier.clickable(onClick = onExitPreview) else Modifier.focusable(),
             ),
         shape = RoundedCornerShape(24.dp),
-        border = if (amoled) androidx.compose.foundation.BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
     ) {
@@ -628,7 +622,7 @@ fun NavSearchChips(
     Card(
         modifier,
         shape = RoundedCornerShape(28.dp),
-        border = if (amoled) androidx.compose.foundation.BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
+        border = if (amoled) BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(
             containerColor = SheetPalette.bg(dark, amoled),
@@ -764,7 +758,7 @@ fun NavControls(
             },
         // Match the banner's treatment: generous radius + shadow, a floating pill not a bar.
         shape = RoundedCornerShape(28.dp),
-        border = if (amoled) androidx.compose.foundation.BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
+        border = if (amoled) BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(
             containerColor = SheetPalette.bg(dark, amoled),

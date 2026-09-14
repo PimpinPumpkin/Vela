@@ -84,6 +84,7 @@ import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import app.vela.ui.theme.isAppInDarkTheme
 import app.vela.ui.theme.isAppInAmoled
+import androidx.compose.foundation.BorderStroke
 import app.vela.ui.dpadHighlight // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.rememberDpadAutoFocus
 import androidx.compose.ui.focus.focusRequester
@@ -191,7 +192,7 @@ fun StepsSheet(
                 )
             },
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        border = if (amoled) androidx.compose.foundation.BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
+        border = if (amoled) BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
         colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark, amoled), contentColor = ink),
     ) {
         // Fill the card to the screen bottom; pad content off the nav bar.

@@ -1802,6 +1802,18 @@ architecture note.
   always wins. Changing everyone's default = edit the field, bump version, re-sign, commit
   (same channel as defaultVoiceId). Adding a whole NEW named set still needs an app release
   (palettes are compiled); make the apply fns data-driven if sets ever multiply.
+- **AMOLED true-black map & navigation palette (2026-09-14).** When `ThemeMode.AMOLED` is active,
+  `applyAmoled(style: Style)` layers a pure-black (`#000000`) palette on top of `applyDark(style)`.
+  Layering on top of `applyDark` ensures every layer `applyDark` themes that `applyAmoled` does not
+  touch (boundaries, rail, aeroways, campus fills, untouched labels) inherits the dark styling
+  instead of falling back to Liberty's light defaults on a black map. Palette functions must NOT
+  change zoom gates or extrusion opacity (those belong in `ensureLayers`/`applyDark`, with extrusion
+  opacity documented at 1). The `styleKey` carries `|amoled=` so switching to/from AMOLED immediately
+  reloads the style. The route polyline color stays standard traffic-coded blue (`#1F6FEB` / congestion
+  amber & red) because white is the puck's color and reads as missing traffic data. Navigation
+  overlays (`NavControls`, `NavSearchChips`, `StepsSheet`, `SpeedWidget`, and the road label pill)
+  consume `SheetPalette.bg(dark, amoled)` with `SheetPalette.BorderAmoled`, while `ManeuverBanner`
+  keeps its distinct teal container accent for instruction hierarchy.
 
 - **The reviews RPC is DEAD, do not re-calibrate it (proven 2026-07-19):** the
   `listentitiesreviews` endpoint 404s for EVERYONE now - verified with a valid live feature id

@@ -4750,7 +4750,7 @@ private fun applyMapTheme(style: Style, dark: Boolean, amoled: Boolean = false) 
     // pastel tints in dark (see PoiIcons.labelColor). Search-result pins stay plain (Google does too).
     (style.getLayer(AMBIENT_LAYER) as? SymbolLayer)?.setProperties(
         PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark || amoled)),
-        PropertyFactory.textHaloColor(if (dark || amoled) "#11161C" else "#FFFFFF"),
+        PropertyFactory.textHaloColor(if (amoled) "#000000" else if (dark) "#11161C" else "#FFFFFF"),
     )
     // Canonical GTFS stop names take the TRANSIT category colour per theme - blue in light,
     // its pastel tint in dark, the same grammar every POI label follows. The creation-time
@@ -4758,13 +4758,13 @@ private fun applyMapTheme(style: Style, dark: Boolean, amoled: Boolean = false) 
     // a navy halo on the light map (issue #71 follow-up, 2026-07-14).
     (style.getLayer(TRANSIT_STOPS_LAYER) as? SymbolLayer)?.setProperties(
         PropertyFactory.textColor(PoiIcons.labelColorFor("transit", dark || amoled)),
-        PropertyFactory.textHaloColor(if (dark || amoled) "#11161C" else "#FFFFFF"),
+        PropertyFactory.textHaloColor(if (amoled) "#000000" else if (dark) "#11161C" else "#FFFFFF"),
     )
     // Search-result labels stay NEUTRAL ink - Google doesn't category-tint result labels the
     // way it tints ambient POI labels (the red pin is the result signal, not the text colour).
     (style.getLayer(MARKERS_LAYER) as? SymbolLayer)?.setProperties(
         PropertyFactory.textColor(if (dark || amoled) "#E8EAED" else "#3C4043"),
-        PropertyFactory.textHaloColor(if (dark || amoled) "#11161C" else "#FFFFFF"),
+        PropertyFactory.textHaloColor(if (amoled) "#000000" else if (dark) "#11161C" else "#FFFFFF"),
     )
     // The mini-dot tier wears a land-coloured ring so dots read as crisp beads per theme.
     (style.getLayer(AMBIENT_DOT_LAYER) as? CircleLayer)?.setProperties(
@@ -5089,12 +5089,15 @@ internal fun applyDark(style: Style) {
 }
 
 /**
- * AMOLED / true-black map palette: every land tile is #000000 so OLED pixels
- * are fully off, maximising battery savings and contrast on pure-black screens.
- * Road lines are dark-grey tiers; text halos are also pure black so labels pop
- * off the map cleanly. Called from applyMapTheme when ThemeMode.AMOLED is active.
+ * AMOLED / true-black map palette: layers pure-black #000000 land, water, dark-grey road network,
+ * and pure-black halos on top of [applyDark] so every layer applyDark themes that applyAmoled does
+ * not touch (boundaries, rail, aeroways, campus fills, untouched labels) inherits the dark styling
+ * instead of falling back to Liberty's light defaults.
+ * Called from applyMapTheme when ThemeMode.AMOLED is active.
  */
 internal fun applyAmoled(style: Style) {
+    applyDark(style)
+
     val black = "#000000"
     style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor(black))
     style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#04080C"))
@@ -5126,31 +5129,20 @@ internal fun applyAmoled(style: Style) {
         PropertyFactory.fillColor("#0A0C0F"),
         PropertyFactory.fillOutlineColor("#14171A"),
     )
-    style.getLayer("building")?.setMinZoom(16f)
-    style.getLayer("building")?.setMaxZoom(24f)
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionColor("#0A0C0F"),
-        PropertyFactory.fillExtrusionOpacity(0.9f),
     )
-    applyBuilding3dGeometry(style)
     val greens = setOf("park", "landcover_grass", "landcover_wood", "landuse_pitch", "landuse_track")
     style.layers.forEach { layer ->
         when {
             layer is SymbolLayer -> layer.setProperties(
                 PropertyFactory.textColor("#D0D4DC"),
                 PropertyFactory.textHaloColor(black),
-                PropertyFactory.textHaloWidth(if (layer.id.startsWith("highway-name")) 1.9f else 1.1f),
             )
             layer is FillLayer && layer.id !in greens &&
                 (layer.id.startsWith("landuse") || layer.id.startsWith("landcover")) ->
                 layer.setProperties(PropertyFactory.fillColor(black), PropertyFactory.fillOpacity(1f))
         }
-    }
-    listOf("highway-name-path", "highway-name-minor", "highway-name-major").forEach {
-        style.getLayer(it)?.setProperties(
-            PropertyFactory.textField(roadLabelTextField()),
-            PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
-        )
     }
     style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor(black), PropertyFactory.fillOpacity(1f))
     style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#0A0C0F"))
