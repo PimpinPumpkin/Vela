@@ -3117,7 +3117,12 @@ class MapViewModel @Inject constructor(
                 pick?.takeIf { it.location.distanceTo(location) <= maxM } to results
             }.getOrNull()
             val full = resolved?.first
-            if (full != null && seed != null) synchronized(openPlaceCache) { openPlaceCache[seed.id] = full }
+            // Remember the listing for an instant second tap, unless the session was still on the
+            // slim flavor (no review count, no hours) and would pin a stripped listing for the
+            // rest of the session. A later tap then resolves it again, fuller.
+            if (full != null && seed != null && (full.reviewCount != null || full.hours.isNotEmpty())) {
+                synchronized(openPlaceCache) { openPlaceCache[seed.id] = full }
+            }
             if (full != null && _state.value.selected == placeholder) {
                 _state.update { it.copy(selected = withListNote(full), placesHere = othersAt(full, resolved.second)) }
                 fetchReviews(full)

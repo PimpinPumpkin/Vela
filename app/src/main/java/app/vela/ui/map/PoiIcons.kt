@@ -46,6 +46,14 @@ object PoiIcons {
     /** The category colour for a dot group (the ambient mini-dot tier tints circles with it). */
     fun colorFor(group: String): String = GROUPS.firstOrNull { it.first == group }?.third ?: "#5F6368"
 
+    /** [colorFor] as a style expression over a feature's baked `group` property, for tile-sourced
+     *  layers (the open places dots) that carry no per-feature `dotColor`. */
+    fun groupColor(): Expression = Expression.match(
+        Expression.get("group"),
+        Expression.color(Color.parseColor("#5F6368")),
+        *GROUPS.map { (key, _, color) -> Expression.stop(key, Expression.color(Color.parseColor(color))) }.toTypedArray(),
+    )
+
     /** Set by VelaMapView at style load: over satellite imagery the teardrop backings render
      *  WHITE (Google hybrid's treatment) instead of the muted grey - grey sank into rooftops.
      *  A satellite toggle reloads the style (it's in the styleKey), so every bitmap regenerates
