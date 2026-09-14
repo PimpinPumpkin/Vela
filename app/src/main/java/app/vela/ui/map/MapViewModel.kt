@@ -418,6 +418,7 @@ class MapViewModel @Inject constructor(
 
     init {
         loadAmbientCacheFromDisk() // ambient LRU survives restarts (paint-then-refine)
+        warmWebViewsWhenQuiet() // boot the hidden WebViews at a quiet moment, not at the first place tap
         // Privacy toggle (Settings -> Data & privacy): periodic in-drive traffic re-checks send
         // the CURRENT position to Google; the opt-out lives on the session so :core enforces it.
         // (Raw prefs read: the settingsPrefs property is declared below this init block.)
@@ -1762,12 +1763,21 @@ class MapViewModel @Inject constructor(
         if (webWarmScheduled || app.vela.ui.MemoryPressure.lowRam) return
         webWarmScheduled = true
         viewModelScope.launch {
-            kotlinx.coroutines.delay(4_000)
-            if (_state.value.navigating || _state.value.selected != null) { webWarmScheduled = false; return@launch }
-            android.os.Looper.myQueue().addIdleHandler {
-                if (_state.value.selected == null) warmPlaceWebViews()
-                false
+            // Keep looking for a quiet moment on our own: the first idle often comes with a sheet
+            // already up (a geo: link opens straight onto a place), and the map may never move
+            // again to hand us another idle. A plain delayed run, not an idle handler: the main
+            // looper is rarely idle for long with a live map and a fix a second.
+            repeat(12) {
+                kotlinx.coroutines.delay(4_000)
+                val st = _state.value
+                if (!st.navigating && st.selected == null && st.results.isEmpty()) {
+                    android.util.Log.i("VelaWarm", "webviews: warming at a quiet moment")
+                    warmPlaceWebViews()
+                    return@launch
+                }
             }
+            android.util.Log.i("VelaWarm", "webviews: no quiet moment found, leaving it to the first search")
+            webWarmScheduled = false
         }
     }
 
