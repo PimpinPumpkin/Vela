@@ -3148,9 +3148,15 @@ architecture note.
   fine at z15, top 3 at z16, top 6 at z16.5, all from z17.5); everything else in the tile draws as a small
   category-colored dot on a `vela-places-dots-<i>` CircleLayer (from z14, `PoiIcons.groupColor()` over the
   baked `group`), so a downtown thins to its landmarks and fills in as you zoom, the way Google's does. `PlacesTileStore` = `files/places/*.pmtiles`
-  (offline) + `PLACES_MANIFEST_URL` regions streamed; `MapPoiPrefs.openPlaces` (Settings > Map, default
-  OFF) gates it; `refreshPlacesOverlays` fills `placesOverlays` on camera idle; `maybeLoadAmbientPois`
-  returns early (no Google fan-out) while the layer covers the view. VelaMapView draws `vela-places-<i>`
+  (offline) + `PLACES_MANIFEST_URL` regions streamed; `MapPoiPrefs.placesSource` (Settings > Map,
+  "Businesses on the map come from": `open` default / `google` / `both`, pref `map_places_source`,
+  each option's cost stated in its hint) gates it; `refreshPlacesOverlays` fills `placesOverlays` on
+  camera idle; `maybeLoadAmbientPois` returns early (no Google fan-out) while the layer covers the
+  view in `open`, and in `both` waits for a 1.5 s settle (cache paint included) and then runs one
+  fan-out whose overlap the map drops (`openPlacesLoaded` + `namesAgree` in applyData: same name
+  within 80 m of a loaded open feature). The open layers sit ABOVE the ambient layer so open icons
+  win collision and Google's extras fill gaps. Outside any region file all three behave like Google.
+  About > Map data credits Overture (CDLA-Permissive 2.0) with a license button. VelaMapView draws `vela-places-<i>`
   SymbolLayers dressed identically to the ambient layer; a tap on a `src=overture` feature builds a seeded
   `Place` (category/address/phone/website from the tile) and `onOpenPlaceTap` -> `onPoiTap(seed=...)`, so
   the sheet reads offline and the existing Google correlation upgrades it online. Davis is the test bake

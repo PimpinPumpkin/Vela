@@ -186,8 +186,13 @@
     <string name="settings_house_numbers_hint">House numbers come from OpenStreetMap and, in the US, OpenAddresses. A building that has no number in either shows none, even though search still finds the address through Google.</string>
     <string name="settings_show_pois">Show places</string>
     <string name="settings_show_pois_hint">Business and place icons on the browse map. Off = a clean map; searched places still show.</string>
-    <string name="settings_open_places">Open places layer (beta)</string>
-    <string name="settings_open_places_hint">Draws the map\'s businesses from open data (Overture Maps) where a region file covers the view, instead of asking Google as you pan. Google is asked only when you tap a place. Works offline with a downloaded region.</string>
+    <string name="settings_places_source">Businesses on the map come from</string>
+    <string name="settings_places_source_open">Open data</string>
+    <string name="settings_places_source_google">Google</string>
+    <string name="settings_places_source_both">Both</string>
+    <string name="settings_places_source_open_hint">Where a region file covers the view, the businesses on the map come from Overture Maps data in the tiles. Nothing is fetched as you pan, and it works offline with a downloaded region. Google is asked only when you tap a place, and search always uses Google. Where no region file exists yet, the map falls back to Google.</string>
+    <string name="settings_places_source_google_hint">Google is asked for the businesses in view every time you pan, the way Vela always worked. Complete coverage everywhere, but nothing draws offline, every pan is a round of requests to Google, and the first seconds of a fresh session can come back thin until Google warms up.</string>
+    <string name="settings_places_source_both_hint">The open data draws the map, and once the view has settled for a moment one Google request fills in anything the open data lacks. Fewer requests than Google alone and the open layer still works offline, but the extra places only appear online and a beat after you stop panning.</string>
     <string name="settings_show_civic">Parks, schools and civic places</string>
     <string name="settings_show_civic_hint">The non-business tier of place icons. Off shows businesses only.</string>
     <string name="settings_show_transit_stops">Transit stops</string>
@@ -792,8 +797,9 @@
     <string name="map_satellite_attribution_google" translatable="false">Google</string>
     <string name="map_osm_attribution" translatable="false">© OpenStreetMap contributors</string>
     <string name="settings_map_data">Map data</string>
-    <string name="settings_map_data_hint">The map, its streets, labels and house numbers are OpenStreetMap data, available under the Open Database License, served as vector tiles by OpenFreeMap. Places, reviews, routing and traffic come from Google. Satellite imagery is from Esri and Google.</string>
+    <string name="settings_map_data_hint">The map, its streets, labels and house numbers are OpenStreetMap data, available under the Open Database License, served as vector tiles by OpenFreeMap. The businesses on the map in covered regions are places data from the Overture Maps Foundation (sourced from Meta and Microsoft), available under the Community Data License Agreement, Permissive 2.0. Place details, reviews, routing and traffic come from Google. Satellite imagery is from Esri and Google.</string>
     <string name="settings_map_data_button">OpenStreetMap copyright</string>
+    <string name="settings_map_data_overture_button">Overture Maps license</string>
     <string name="map_layers">Layers</string>
     <string name="settings_layers_button">Show layers button</string>
     <string name="settings_layers_button_hint">The button on the map that flips satellite, traffic, transit and terrain.</string>
