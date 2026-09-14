@@ -3549,6 +3549,7 @@ private fun SearchEntryHost(state: MapUiState, vm: MapViewModel, focusManager: a
         onCancelAssign = vm::cancelAssign,
         onPinSavedAs = vm::pinSavedAs,
         onRemoveSaved = vm::removeSaved,
+        onRenameSaved = vm::renameSaved,
     )
 }
 
@@ -3706,6 +3707,7 @@ private fun SearchEntryContent(
     onCancelAssign: () -> Unit,
     onPinSavedAs: (SavedPlace, ShortcutKind) -> Unit,
     onRemoveSaved: (SavedPlace) -> Unit,
+    onRenameSaved: (SavedPlace, String) -> Unit = { _, _ -> },
 ) {
     // While typing, live place suggestions take over the page (Google-style). The user's OWN
     // history + list matches (issue #180) lead, instant and offline, then the network results.
@@ -3820,7 +3822,7 @@ private fun SearchEntryContent(
         if (saved.isNotEmpty()) {
             SectionLabel(stringResource(R.string.mapscreen_section_saved))
             saved.forEach { sp ->
-                SavedRow(sp, onPickSaved, onPinSavedAs, onRemoveSaved)
+                SavedRow(sp, onPickSaved, onPinSavedAs, onRemoveSaved, onRenameSaved)
                 Divider()
             }
         }
@@ -4087,7 +4089,28 @@ private fun SavedRow(
     onPick: (SavedPlace) -> Unit,
     onPinAs: (SavedPlace, ShortcutKind) -> Unit,
     onRemove: (SavedPlace) -> Unit,
+    onRename: (SavedPlace, String) -> Unit = { _, _ -> },
 ) {
+    // Rename (issue #434): a saved lot named by its coordinates or road gets a name of yours.
+    var renaming by remember { mutableStateOf(false) }
+    var draft by remember { mutableStateOf(place.name) }
+    if (renaming) {
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { renaming = false },
+            title = stringResource(R.string.saved_rename_title),
+            confirmText = stringResource(R.string.saved_rename_action),
+            onConfirm = { if (draft.isNotBlank()) onRename(place, draft); renaming = false },
+            dismissText = stringResource(android.R.string.cancel),
+            onDismiss = { renaming = false },
+        ) {
+            androidx.compose.material3.OutlinedTextField(
+                value = draft,
+                onValueChange = { draft = it },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
     Row(
         Modifier
             .fillMaxWidth()
@@ -4119,6 +4142,7 @@ private fun SavedRow(
             VelaMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 item(stringResource(R.string.mapscreen_set_as_home)) { menu = false; onPinAs(place, ShortcutKind.HOME) }
                 item(stringResource(R.string.mapscreen_set_as_work)) { menu = false; onPinAs(place, ShortcutKind.WORK) }
+                item(stringResource(R.string.mapscreen_menu_rename)) { menu = false; renaming = true }
                 item(stringResource(R.string.mapscreen_menu_remove)) { menu = false; onRemove(place) }
             }
         }
