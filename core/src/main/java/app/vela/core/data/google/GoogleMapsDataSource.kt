@@ -530,7 +530,7 @@ class GoogleMapsDataSource @Inject constructor(
                     // answer is the DIRECT trip, so the bias is measured as a speed ratio (the
                     // distance difference cancels) and Google's congestion spans stay off a route
                     // that takes other roads.
-                    via != null -> gD.await().firstOrNull().let { g -> listOf(applyTraffic(via, g, freeFlowCal = speedCal(via, g), withSpans = false)) }
+                    via != null -> gD.await().firstOrNull().let { g -> listOf(applyTraffic(via, g, freeFlowCal = speedCal(via, g))) }
                     onDevice != null -> listOf(onDevice)
                     else -> gD.await().take(1).map { it.copy(abbreviatedSteps = true) }
                 }
@@ -834,8 +834,14 @@ class GoogleMapsDataSource @Inject constructor(
             // Google's congestion spans belong to Google's course: mapped by fraction onto a route
             // that takes different roads they painted red segments on roads Google never reported
             // on (review 2026-09-06).
-            trafficSpans = if (withSpans && sameCourse) g.trafficSpans.map { it.copy(startMeters = it.startMeters * scale, lengthMeters = it.lengthMeters * scale) }
-            else emptyList(),
+            // Same course: Google's spans map by fraction. Any other geometry (a divergent open
+            // route, an alternate, a trip with stops): carry the spans over wherever the two
+            // share the road (issue #403); the stretches Google did not drive stay uncoloured.
+            trafficSpans = when {
+                !withSpans -> emptyList()
+                sameCourse -> g.trafficSpans.map { it.copy(startMeters = it.startMeters * scale, lengthMeters = it.lengthMeters * scale) }
+                else -> RouteGeometry.transferSpans(g, route)
+            },
         )
     }
 

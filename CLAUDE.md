@@ -3260,6 +3260,15 @@ architecture note.
   traffic overlay for bikes. Toggle off = the plain fastest OSRM bike route. Probed 2026-09-14:
   same Davis trip, 26 maneuvers along a cycleway corridor at 0.1 vs four turns on a county road at
   0.9. `ValhallaRouterTest` parses a captured two-leg reply with a roundabout.
+- **Congestion colours on every route (issue #403, 2026-09-14).** `applyTraffic` used to paint
+  Google's spans only on a same-course route (mapped by fraction) and never on a multi-stop
+  trip (`withSpans = false`), so a long trip that diverged anywhere and every trip with stops
+  was solid blue. `RouteGeometry.transferSpans(from, to)` now carries the spans geometrically:
+  each span's stretch on Google's line is sampled every 25 m and projected onto the other route
+  through a cell grid (`SegmentGrid`, 0.005 degrees, so a ten-hour route stays cheap); samples
+  within 35 m mark that along-distance, runs become spans (gap 80 m, min 40 m). Same course
+  keeps the fraction map; anything else, alternates and multi-stop included, gets the transfer;
+  what Google did not drive stays uncoloured. `TransferSpansTest`.
 - **Traffic-AWARE routing (option 3, 2026-06-28).** OSRM's free-flow route ignores live traffic, so
   when Google *rerouted around a jam* its path differs from OSRM's. `directions()` detects this
   (`RouteGeometry.divergent` - sample Google's polyline, true if any point strays >700 m from OSRM's
