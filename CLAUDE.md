@@ -596,6 +596,12 @@ Defaults that make the safe path the easy one:
   phone the two side margins alone exceeded the viewport, MapLibre got a negative fit area and
   never zoomed out. `fitPadding()` (bottom of VelaMapView) caps the margin at a sixth of the
   visible strip and trims the insets when card + sheet leave under a fifth of the map.
+  **Chooser body cap on short screens (#400, 2026-09-14):** MapScreen passes DirectionsPanel a
+  `bodyMaxDp` = screen - endpoints card bottom - `CHOOSER_MAP_STRIP_DP` (96) -
+  `CHOOSER_HEADER_DP` (84), floored at `CHOOSER_BODY_MIN_DP` (120); the panel takes the smaller
+  of that and its 58% cap, so a normal phone is unchanged and a 240x320 phone keeps a strip of
+  map above the chooser. **POI icons on low density:** `lowDensityIconScale(density)` multiplies
+  the Settings icon-size pref below 1.75x (fixed-pixel bitmaps were a fifth of a 120 dpi screen).
 - **Start is a FOOTER under the route list (user 2026-09-13):** the chooser body is an outer
   capped-and-faded Column holding a `weight(1f, fill = false)` scroll Column and, below it, the
   Start / Steps row, so four alternates scroll under a Start that stays put; the cap wraps both,

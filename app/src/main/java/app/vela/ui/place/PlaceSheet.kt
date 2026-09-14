@@ -1373,6 +1373,10 @@ fun DirectionsPanel(
     onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
     minimizeTick: Int = 0, // bumped when the user grabs the map — glide down, then flip collapsed
     onCollapsedChange: (Boolean) -> Unit = {}, // MapScreen shrinks the route-fit camera inset while minimized
+    // Tallest the BODY may open (dp), from the host: what the endpoints card leaves above a
+    // minimum map strip. Null = the old 58%-of-screen cap alone. On a 240x320 phone (issue #400)
+    // the 58% cap plus the card covered the whole map, so the route was chosen blind.
+    bodyMaxDp: Float? = null,
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
@@ -1386,7 +1390,7 @@ fun DirectionsPanel(
     // 1:1, release projects the throw's decay to the nearest end (0 = minimized, bodyMax = open)
     // and rides the coast there. The body and the minimized Start bar both fold WITH this height
     // (SheetFold), so the collapsed flip changes nothing visible.
-    val bodyMax = LocalConfiguration.current.screenHeightDp * 0.58f
+    val bodyMax = (LocalConfiguration.current.screenHeightDp * 0.58f).let { cap -> bodyMaxDp?.let { minOf(cap, it) } ?: cap }
     val dirH = remember(destinationName) { Animatable(if (collapsed.value) 0f else bodyMax) }
     val dirSettle = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f) }
     val dirDecay = remember { exponentialDecay<Float>(frictionMultiplier = 1.6f) }
