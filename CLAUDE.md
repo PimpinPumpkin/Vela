@@ -3739,6 +3739,14 @@ architecture note.
   about cameras while driving is legally restricted in some countries. Respects the global
   spoken-directions mute like every other prompt. STILL fixed installations only - mobile speed
   traps need a live crowd feed the keyless model has no source for.
+  **Speeding alert (issue #404, 2026-09-14):** Settings > Navigation > "Speeding alert"
+  (`app.vela.ui.SpeedingAlert` holder, pref `speeding_alert`, OFF by default) says "You're over
+  the speed limit" once you have been over the posted limit for 4 s; re-arms after 8 s back
+  under it, never more than once per 45 s. The limit is the badge's own (`speedLimitKmh` from
+  the offline graph, else `speedLimitOverlayKmh`) and the 5 km/h tolerance matches the badge's
+  red state, so the voice never contradicts it. Timing is pure in `:core nav/SpeedingAlerts`
+  (`SpeedingAlertsTest`); `MapViewModel.maybeWarnSpeeding` runs beside `maybeWarnCamera` on the
+  nav tick, logs a `K` trip note, and `speeding.reset()` on nav end.
   NB `nav/RouteProjection` duplicates the projection in `nav/RouteBar` (issue #228, open in
   parallel); whichever merges second should delegate rather than keep two copies.
 - **Surveillance-camera (Flock / ALPR) layer (`OverpassAlprCameras` + `refreshFlock` + `FLOCK_LAYER`, device-verified
