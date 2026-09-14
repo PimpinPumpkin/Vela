@@ -1603,7 +1603,7 @@ fun MapScreen(
         // re-center button joining the stack when panned away / previewing a step. Hidden
         // while the along-route results own the bottom slot, and while the step list is open
         // (the sheet reaches the turn banner; they would sit on top of it).
-        if (state.navigating && state.results.isEmpty() && !state.showSteps) {
+        if (state.navigating && state.results.isEmpty() && !state.showSteps && !state.editingStops) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -1686,7 +1686,7 @@ fun MapScreen(
         val movingFree = !state.navigating && (state.mySpeed ?: 0f) > 3f &&
             !searchOpen && state.selected == null && !state.directionsOpen && !state.showSteps && !resultsShown
         val postedLimitKmh = state.speedLimitKmh ?: state.speedLimitOverlayKmh
-        if (((state.navigating && !state.showSteps) && state.mySpeed != null) || movingFree) {
+        if (((state.navigating && !state.showSteps && !state.editingStops) && state.mySpeed != null) || movingFree) {
             SpeedWidget(
                 speedMps = state.mySpeed,
                 limitKmh = postedLimitKmh,
@@ -1760,10 +1760,30 @@ fun MapScreen(
                     .padding(16.dp),
             )
 
+            // Mid-drive stops editor (issue #402): the chooser's editor over the ETA bar's slot,
+            // origin = where you are, rows = the stops still ahead; Done replans once. Hidden while
+            // the editor's own Add stop runs the search page.
+            state.navigating && state.editingStops && !searchOpen -> app.vela.ui.place.StopsEditorSheet(
+                originName = stringResource(R.string.mapscreen_your_location),
+                originIsMe = true,
+                destinationName = state.arrivedLabel.ifBlank { stringResource(R.string.mapscreen_destination) },
+                stops = vm.navStopsForEditor(),
+                onApply = vm::applyStops,
+                onAddStop = vm::beginPickStop,
+                onDismiss = vm::closeStopsEditor,
+                modifier = Modifier
+                    .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
+                    .landscapeColumn(landscapeChrome, sidePanelWidthDp),
+            )
+
             state.showSteps -> StepsSheet(
                 enterFromPx = if (state.navigating) stepsEnterFromPx else 0f,
                 closeTick = stepsCloseTick,
                 maxListHeight = if (state.navigating) stepsListMax else null,
+                stopsRow = if (state.navigating) {
+                    val labels = vm.navRemainingStopLabels()
+                    if (labels.isEmpty()) null else ({ app.vela.ui.nav.NavStopsRow(labels, onEdit = vm::openStopsEditor) })
+                } else null,
                 // During nav the sheet wears the bar's own top, so bar -> sheet -> bar is one
                 // surface changing height; the chevron points down and closes.
                 header = if (state.navigating) { close ->
@@ -1846,6 +1866,8 @@ fun MapScreen(
                         val ms = state.activeRoute?.maneuvers ?: emptyList()
                         val lat = state.roadNameLatin
                         val lang = app.vela.ui.AppLocale.effective().language
+                        val stopLabels = vm.navRemainingStopLabels()
+                        if (stopLabels.isNotEmpty()) app.vela.ui.nav.NavStopsRow(stopLabels, onEdit = vm::openStopsEditor)
                         ms.take(14).forEachIndexed { i, m ->
                             app.vela.ui.nav.StepRow(
                                 m = m,

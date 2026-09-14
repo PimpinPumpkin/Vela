@@ -3577,14 +3577,42 @@ class MapViewModel @Inject constructor(
      *  [addStop]/[cancelPickStop] ends the mode. */
     fun beginPickStop() = _state.update { it.copy(pickingStop = true, pickingDest = false, editingStops = false, query = "", suggestions = emptyList(), localSuggestions = emptyList(), results = emptyList(), resultsCollapsed = false) }
 
-    /** The dedicated stops editor (reorder / remove / add in one sheet, one reroute on Done). */
-    fun openStopsEditor() = _state.update { it.copy(editingStops = true) }
+    /** The dedicated stops editor (reorder / remove / add in one sheet, one reroute on Done).
+     *  During nav (issue #402) it opens over the ETA bar; the step sheet closes first so Done
+     *  lands back on the bar, not on a list you were not reading. */
+    fun openStopsEditor() = _state.update {
+        if (it.navigating) it.copy(editingStops = true, showSteps = false, previewStepIndex = null)
+        else it.copy(editingStops = true)
+    }
 
     fun closeStopsEditor() = _state.update { it.copy(editingStops = false) }
 
+    /** The stops still ahead on the drive, as the editor's rows: the chooser's Place where the
+     *  session's stop came from one (same coordinates), else a bare Place carrying the label. */
+    fun navStopsForEditor(): List<Place> {
+        val known = _state.value.directionsWaypoints
+        return navSession.remainingStops().map { st ->
+            known.firstOrNull { it.location == st.location }
+                ?: Place(id = "stop:${st.location.lat},${st.location.lng}", name = st.label, location = st.location)
+        }
+    }
+
+    /** The labels of the stops still ahead, for the nav sheet's Stops row. */
+    fun navRemainingStopLabels(): List<String> = navSession.remainingStops().map { it.label }
+
     /** Apply the editor's final ordering in ONE shot — a single reroute per visit, not one per
-     *  micro-edit like the old inline arrows. */
+     *  micro-edit like the old inline arrows. Mid-drive (issue #402) the session replans through
+     *  the new list from where you are; the chooser's list becomes the remaining stops, so
+     *  ending nav back into the panel shows the trip as it stands. */
     fun applyStops(stops: List<Place>) {
+        if (_state.value.navigating) {
+            val loc = _state.value.myLocation
+            val remaining = navSession.remainingStops()
+            val next = stops.map { app.vela.core.nav.NavSession.NavStop(it.location, it.name) }
+            _state.update { it.copy(directionsWaypoints = stops, editingStops = false) }
+            if (loc != null && next != remaining) navSession.setStops(next, loc, "stops edited mid-nav → ${next.size} ahead")
+            return
+        }
         val changed = stops != _state.value.directionsWaypoints
         _state.update { it.copy(directionsWaypoints = stops, editingStops = false) }
         if (changed) route(_state.value.travelMode)
@@ -4082,8 +4110,11 @@ class MapViewModel @Inject constructor(
                 neuralSynthFor(engine)?.let { voice.neural = it }
                 navSession.replayMode = true
                 // Pass the REAL travel mode: haptics are per-mode (bike buzzes by default, driving
-                // doesn't), so a demo of a bike route must buzz like the real ride would.
-                navSession.start(route, dest, label, engine, mode = _state.value.travelMode)
+                // doesn't), so a demo of a bike route must buzz like the real ride would. And the
+                // stops (2026-09-14): a demo used to start the session without them, so per-stop
+                // cues and the mid-drive stops editor (#402) had nothing to work with.
+                val demoStops = _state.value.directionsWaypoints.map { NavSession.NavStop(it.location, it.name) }
+                navSession.start(route, dest, label, engine, demoStops, _state.value.travelMode)
                 replayOwnsNav = true
                 // Demo mode presents as REAL nav, so the ongoing turn notification is part of
                 // what's being demoed (and how it gets verified without a drive).
