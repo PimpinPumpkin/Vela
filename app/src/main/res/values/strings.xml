@@ -745,6 +745,12 @@
     <string name="settings_voice_search_engine_system">Other voice app</string>
     <string name="map_asr_offer_title">Voice search</string>
     <string name="map_asr_offer_body">Download Vela Voice to speak your searches. It runs entirely on your phone and uploads nothing.</string>
+    <string name="voice_capture_examples_title">Things you can say</string>
+    <string name="voice_capture_example_home">\"Take me home\" or \"get me to work\"</string>
+    <string name="voice_capture_example_go">\"Go to 615 3rd Street, Davis\"</string>
+    <string name="voice_capture_example_route">\"Davis to San Francisco\"</string>
+    <string name="voice_capture_example_nearest">\"Nearest gas station\"</string>
+    <string name="voice_capture_example_eta">\"What is my ETA\" while driving</string>
     <string name="nav_precise_title">Precise location needed</string>
     <string name="nav_precise_body">Turn-by-turn follows you with GPS, which needs precise location. Right now Vela only knows your rough area.</string>
     <string name="nav_precise_allow">Allow precise</string>

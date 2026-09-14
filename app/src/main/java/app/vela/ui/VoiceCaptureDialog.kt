@@ -104,7 +104,32 @@ fun VoiceCaptureDialog(
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
                 )
-                Spacer(Modifier.height(24.dp))
+                // What the mic understands (discussion #365): the command shapes are a closed
+                // list and nobody should have to guess them, so the dialog shows them while it
+                // listens. Anything else still runs as a plain search.
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    stringResource(R.string.voice_capture_examples_title),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(4.dp))
+                listOf(
+                    R.string.voice_capture_example_home,
+                    R.string.voice_capture_example_go,
+                    R.string.voice_capture_example_route,
+                    R.string.voice_capture_example_nearest,
+                    R.string.voice_capture_example_eta,
+                ).forEach { res ->
+                    Text(
+                        stringResource(res),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                Spacer(Modifier.height(20.dp))
                 DoneButton(onDone)
             }
         }
