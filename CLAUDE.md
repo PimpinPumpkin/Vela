@@ -2403,6 +2403,11 @@ architecture note.
   Google's own route honours them). So online avoid is now Google-honoured + OSRM-snapped, and
   the note is rare. Back on 2026-08-24 it was the entire user-facing answer, so it was upgraded
   from dim `bodySmall` under the chips (it read as decoration; the reporter never registered it)
+  **Wording fixed 2026-09-13:** the note said avoiding "works on downloaded areas only", which
+  stopped being true when the keyless Google avoid landed; today it shows mainly on trips WITH
+  STOPS (the via route through the open router cannot exclude) and says exactly that. The
+  endpoints card's stop rows carry Google's double-dot drag handle (issue #405) as the door to
+  the stops editor, and the layers button hides while the route chooser is open.
   to an info-glyph row at `bodyMedium` in ink, worded to say what to DO (download the area) rather
   than only what went wrong.
   PLUMBING: `MapDataSource.directions`/`nameRoute` + `RouteEngine.route`

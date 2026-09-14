@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.Card
@@ -108,12 +109,17 @@ fun RouteTopCard(
                 }
                 ConnectorRow(dim)
                 if (stops.isNotEmpty() && showStopControls) {
+                    // Google's double-dot handle on stop rows (issue #405): the card's own
+                    // controls were a swap and a plus, so nothing said stops can be reordered.
+                    // The handle is the same glyph the stops editor drags by; tapping the row
+                    // opens that editor.
                     EndpointRow(
                         text = stops.first(),
                         textColor = ink,
                         editable = true,
                         editLabel = stringResource(R.string.stops_edit),
                         onClick = onEditStops,
+                        trailing = { Icon(Icons.Default.DragHandle, contentDescription = null, tint = dim, modifier = Modifier.size(20.dp).padding(end = 2.dp)) },
                     ) {
                         Box(Modifier.size(8.dp).clip(CircleShape).background(dim))
                     }
@@ -137,6 +143,8 @@ fun RouteTopCard(
                                 style = MaterialTheme.typography.labelMedium,
                                 color = dim,
                             )
+                            Spacer(Modifier.weight(1f))
+                            Icon(Icons.Default.DragHandle, contentDescription = null, tint = dim, modifier = Modifier.size(20.dp).padding(end = 2.dp))
                         }
                     }
                     ConnectorRow(dim)
@@ -210,6 +218,8 @@ private fun EndpointRow(
     editLabel: String,
     onClick: (() -> Unit)?,
     bold: Boolean = false,
+    // Drawn after the text at the row's end (the stops' drag handle).
+    trailing: (@Composable () -> Unit)? = null,
     glyph: @Composable () -> Unit,
 ) {
     Row(
@@ -241,6 +251,7 @@ private fun EndpointRow(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f, fill = false),
         )
+        if (trailing != null) { Spacer(Modifier.weight(1f)); trailing() }
     }
 }
 

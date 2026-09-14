@@ -2592,7 +2592,9 @@ fun MapScreen(
                     )
             // The expanded/results hides are portrait-only too: the landscape panel caps below
             // the search bar and never reaches this corner at ANY detent.
-            if (app.vela.ui.LayersButton.on.value && !searchOpen &&
+            // Not over the route chooser either (issue #405): the endpoints card owns that corner
+            // and a map-style button beside a route list is noise.
+            if (app.vela.ui.LayersButton.on.value && !searchOpen && !state.directionsOpen &&
                 !state.navigating && !state.replaying &&
                 (!resultsShown || landscapeChrome) &&
                 clearOfPlaceSheet
