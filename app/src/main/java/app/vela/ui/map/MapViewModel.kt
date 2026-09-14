@@ -602,13 +602,14 @@ class MapViewModel @Inject constructor(
                     lastRecordedRoute = null
                     clearNavRouteControls()
                     routeCamMeters = emptyList(); routeCamKey = null; spokenCams = emptySet()
+                    speeding.reset()
                 }
                 // Mirror the drive into the theme holder: the "day and night while navigating"
                 // setting (issue #262) is the one theme input that is not a preference.
                 app.vela.ui.theme.AppTheme.navigating.value = ns.navigating
                 // Speak an approach warning for a camera coming up (issue #229). Cheap per tick:
                 // a scan of a short list; the projection was done once when the route landed.
-                if (ns.navigating) maybeWarnCamera(ns)
+                if (ns.navigating) { maybeWarnCamera(ns); maybeWarnSpeeding() }
                 _state.update {
                     it.copy(
                         navigating = ns.navigating,
@@ -5962,6 +5963,21 @@ class MapViewModel @Inject constructor(
                 diag.record("speedcam", "${meters.size} camera(s) on route", "corridor")
             }
         }
+    }
+
+    private val speeding = app.vela.core.nav.SpeedingAlerts()
+
+    /** Say so when you have been over the posted limit for a few seconds (issue #404, opt-in).
+     *  The limit is the one the speed badge shows: the offline graph's maxspeed, else the online
+     *  overlay under the puck. Timing (hold, re-arm, minimum gap) lives in :core [SpeedingAlerts]. */
+    private fun maybeWarnSpeeding() {
+        if (!app.vela.ui.SpeedingAlert.on.value) return
+        val st = _state.value
+        val limit = st.speedLimitKmh ?: st.speedLimitOverlayKmh
+        val speedKmh = st.mySpeed?.let { it.toDouble() * 3.6 }
+        if (!speeding.update(speedKmh, limit, android.os.SystemClock.elapsedRealtime())) return
+        voice.speak(appContext.getString(R.string.nav_speeding_alert))
+        tripStore.note("K", "speeding alert: ${speedKmh?.toInt()} km/h, limit ${limit?.toInt()}")
     }
 
     /** Announce the camera coming up, once each. Timing lives in :core [CameraAlerts]. */
