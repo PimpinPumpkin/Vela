@@ -4558,7 +4558,7 @@ class MapViewModel @Inject constructor(
                 // raw traces, and with one box ticked it even skipped the dialog. A trip too
                 // short to keep anything after trimming is left out, not sent raw.
                 val report = scrubTripForSharing(meta) ?: continue
-                val file = java.io.File(dir, "vela-trip-shared-${meta.id}.csv")
+                val file = java.io.File(dir, "vela-trip-${tripStamp(meta.startedAt)}.csv")
                 file.writeText(report.csv)
                 uris += androidx.core.content.FileProvider.getUriForFile(
                     appContext, "${appContext.packageName}.fileprovider", file,
@@ -4584,7 +4584,7 @@ class MapViewModel @Inject constructor(
         val csv = tripStore.rawCsv(meta.id) ?: return null
         return runCatching {
             val dir = java.io.File(appContext.cacheDir, "export").apply { mkdirs() }
-            val file = java.io.File(dir, "vela-trip-${meta.id}.csv")
+            val file = java.io.File(dir, "vela-trip-${tripStamp(meta.startedAt)}-full.csv")
             file.writeText(csv)
             val uri = androidx.core.content.FileProvider.getUriForFile(
                 appContext, "${appContext.packageName}.fileprovider", file,
@@ -4609,6 +4609,10 @@ class MapViewModel @Inject constructor(
      * PASSES one of them leaks it just as thoroughly as one that starts there, and they're the two
      * places most worth protecting.
      */
+    /** "2026-09-13-1432": the local date and time a drive started, for export file names. */
+    fun tripStamp(startedAt: Long): String =
+        java.text.SimpleDateFormat("yyyy-MM-dd-HHmm", java.util.Locale.US).format(java.util.Date(startedAt))
+
     fun scrubTripForSharing(
         meta: app.vela.replay.TripMeta,
         radiusM: Double = app.vela.core.replay.TripScrub.DEFAULT_RADIUS_M,
@@ -4630,10 +4634,12 @@ class MapViewModel @Inject constructor(
      * its start timestamp. Sharing a scrubbed body under a filename that names the address would
      * defeat the whole thing.
      */
-    fun shareScrubbedTripIntent(report: app.vela.core.replay.TripScrub.Report): android.content.Intent? =
+    fun shareScrubbedTripIntent(report: app.vela.core.replay.TripScrub.Report, startedAt: Long? = null): android.content.Intent? =
         runCatching {
             val dir = java.io.File(appContext.cacheDir, "export").apply { mkdirs() }
-            val file = java.io.File(dir, "vela-trip-shared.csv")
+            // Named by the drive's date and time (user 2026-09-13: "vela-trip-shared.csv" says
+            // nothing), never by its label or destination, which the scrub removed from the body.
+            val file = java.io.File(dir, "vela-trip-${startedAt?.let { tripStamp(it) } ?: "shared"}.csv")
             file.writeText(report.csv)
             val uri = androidx.core.content.FileProvider.getUriForFile(
                 appContext, "${appContext.packageName}.fileprovider", file,

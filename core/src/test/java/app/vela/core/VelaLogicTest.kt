@@ -830,6 +830,23 @@ class NavReplayTest {
     }
 
     @Test
+    fun `route provenance flags ride the RD line and parse back`() {
+        val route = Route(
+            listOf(LatLng(38.5, -121.7), LatLng(38.51, -121.71)),
+            listOf(app.vela.core.model.RouteLeg(1500.0, 120.0, null, listOf(
+                Maneuver(ManeuverType.DEPART, "Head out", LatLng(38.5, -121.7), 1500.0, 120.0),
+            ))),
+            1500.0, 120.0, null, provisional = true, abbreviatedSteps = true,
+        )
+        val block = TripLog.encodeRoute(route, "faster")
+        val rd = block.lines().first { it.startsWith("RD,") }
+        assertTrue(rd, rd.endsWith(",faster,provisional;abbreviated;steps=1"))
+        val parsed = TripLog.parse("META,x,0,,,3217\n" + block + "38.5,-121.7,0,0,0\n")
+        assertEquals("faster", parsed.segments.single().reason)
+        assertEquals("provisional;abbreviated;steps=1", parsed.segments.single().flags)
+    }
+
+    @Test
     fun auditSharedTripLog() {
         val path = System.getProperty("velaTrip")
         org.junit.Assume.assumeTrue("set -DvelaTrip=<csv> to audit a real travel log", !path.isNullOrBlank())
@@ -852,7 +869,7 @@ class NavReplayTest {
         if (parsed2.segments.size > 1) {
             println("[NavReplay] route swaps:")
             parsed2.segments.drop(1).forEach { seg ->
-                println("  @fix ${seg.fromPoint}: ${seg.reason ?: "(unrecorded reason)"}")
+                println("  @fix ${seg.fromPoint}: ${seg.reason ?: "(unrecorded reason)"}${seg.flags?.let { " [$it]" } ?: ""}")
             }
         }
         val spoken = parsed2.events.filter { it.tag == "S" }

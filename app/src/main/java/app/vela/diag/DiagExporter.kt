@@ -46,7 +46,7 @@ class DiagExporter @Inject constructor(
         }
 
         val dir = File(context.cacheDir, "diag").apply { mkdirs() }
-        val file = File(dir, "vela-diag-${System.currentTimeMillis()}.json")
+        val file = File(dir, "vela-diag-${java.text.SimpleDateFormat("yyyy-MM-dd-HHmm", java.util.Locale.US).format(java.util.Date())}.json")
         file.writeText(json)
 
         return shareFileIntent(
