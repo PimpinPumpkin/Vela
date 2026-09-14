@@ -1516,7 +1516,10 @@ Defaults that make the safe path the easy one:
   Virtual aggregate device (id −1): it reports `KEYBOARD | DPAD` on essentially every phone
   (verified on a Pixel 9 via `dumpsys input`), so counting it made `dpadMode` always-true on
   ordinary phones and BROKE the search bar (a tap no longer opened the field / raised the keyboard;
-  the `+`/`−` zoom buttons showed under touch). A fake-touchscreen keypad phone is NOT D-pad-first
+  the `+`/`−` zoom buttons showed under touch). **Since 2026-09-14 (issue #393) the zoom pair ALSO
+  shows under touch when "Prefer buttons over swipes" is on**: one pill (two 40 dp boxes, the
+  parking button's Surface dress) in the bottom-right stack above the parking button, gated by
+  `dpadMode || PreferButtons.on`. A fake-touchscreen keypad phone is NOT D-pad-first
   then; it gets full D-pad operation reactively on the first key via `rememberDpadMode`
   (`dpadFirst || inputMode == Keyboard`). The soft keyboard in `SearchBar` is likewise keyed off the
   LIVE `inputMode`, not the static device type, so a touch tap raises it even on a hybrid phone. See

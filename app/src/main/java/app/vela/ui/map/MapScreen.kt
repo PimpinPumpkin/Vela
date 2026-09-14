@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -2167,25 +2168,44 @@ fun MapScreen(
         // DOWN traversal into their rows (measured: DOWN from the results header jumped to
         // the zoom + button instead of the first result). During those, the map is behind
         // a panel anyway; zoom the map via the engaged crosshair after closing the panel.
-        val zoomButtonsVisible = dpadMode && !searchOpen && !state.navigating &&
+        // Touch phones get the same pair behind Settings > Navigation > "Prefer buttons over
+        // swipes" (issue #393): one pill in the bottom-right stack, above the parking button,
+        // in the parking button's own dress so the corner reads as one set of controls.
+        val zoomButtonsVisible = (dpadMode || app.vela.ui.PreferButtons.on.value) && !searchOpen && !state.navigating &&
             state.selected == null && !state.directionsOpen && !state.showSteps &&
             state.activeRoute == null && state.routes.isEmpty() &&
             (state.results.isEmpty() || state.resultsCollapsed)
         if (zoomButtonsVisible) {
-            Column(
-                Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                shadowElevation = 6.dp,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(end = 24.dp, bottom = chromeLift + 144.dp),
             ) {
-                SmallFloatingActionButton(
-                    onClick = { mapDpad.zoomBy(1.0) },
-                    modifier = Modifier.dpadHighlight(RoundedCornerShape(12.dp)),
-                ) { Icon(Icons.Default.Add, contentDescription = stringResource(R.string.mapscreen_zoom_in)) }
-                SmallFloatingActionButton(
-                    onClick = { mapDpad.zoomBy(-1.0) },
-                    modifier = Modifier.dpadHighlight(RoundedCornerShape(12.dp)),
-                ) { Icon(Icons.Default.Remove, contentDescription = stringResource(R.string.mapscreen_zoom_out)) }
+                Column(Modifier.width(40.dp)) {
+                    Box(
+                        Modifier
+                            .size(40.dp)
+                            .dpadHighlight(RoundedCornerShape(12.dp))
+                            .clickable(onClick = { mapDpad.zoomBy(1.0) }),
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Default.Add, contentDescription = stringResource(R.string.mapscreen_zoom_in)) }
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f),
+                    )
+                    Box(
+                        Modifier
+                            .size(40.dp)
+                            .dpadHighlight(RoundedCornerShape(12.dp))
+                            .clickable(onClick = { mapDpad.zoomBy(-1.0) }),
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Default.Remove, contentDescription = stringResource(R.string.mapscreen_zoom_out)) }
+                }
             }
         }
 
