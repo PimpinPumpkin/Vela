@@ -2112,6 +2112,33 @@ architecture note.
   field. Wired in `GoogleMapsDataSource.search`. Verified on-device (a pushed
   `transformPlaces` marked the first result; cleared after).
 
+## OSM prominence (`OsmProminence`, 2026-09-14)
+
+The open-data twin of `ambientProminence`, so an OSM/Overture dot layer can be RANKED rather than
+drawn as a uniform blanket. Gotchas, in the order they will bite:
+
+- **The weights are hand-set, not measured.** They encode the ordering the Google layer's comments
+  call for (anchors lead, "a 0-review mobile mechanic / a road intersection" sink) but no constant
+  has been validated against a real viewport. Tune on a DENSE downtown tile before flipping any
+  default, and treat it as a performance pass too - per-tile symbol collision scales badly, so
+  "how many POIs clear the bar" *is* the render cost.
+- **`category` arrives HUMANIZED.** `OverpassPois.toPlace` stores `"Fast food"`, not `"fast_food"`.
+  `normalize()` lowercases and maps spaces to underscores to accept both. If that regresses, every
+  OSM POI silently falls to `PRIOR_UNKNOWN` and the ranking FLATTENS - it looks like "the scorer
+  does nothing", not like a crash. `OsmProminenceTest` pins both spellings; keep those tests.
+- **Furniture returns exactly `0.0`, and suppression is absolute** (checked before any bonus).
+  OSM maps benches, post boxes and individual parking spaces as first-class nodes; a well-tagged
+  vending machine must never beat a bare cafe. Adding a bonus term ahead of the furniture check
+  would reintroduce that.
+- **Same scale as `ambientProminence` (~0-9.5) on purpose**, so a mixed rollout can sort both
+  sources in one pool without either winning every collision by construction. Don't rescale one
+  side alone; `OsmProminenceTest` has a guard test for the range overlap.
+- **The `Place` overload is capped.** `toPlace` drops `wikidata`, `wikipedia` and `brand`, which
+  are the strongest notability signals, so scoring from a `Place` alone cannot reach a landmark
+  tier. Plumbing those three tags through is the highest-value follow-up.
+- Not wired to any UI yet - pure scoring plus tests. Nothing changes behaviour until the dot
+  layer's source is switched.
+
 ## Degoogled constraints (hard rules)
 
 - Location: AOSP `LocationManager` only - never `FusedLocationProviderClient`. **Fix discipline

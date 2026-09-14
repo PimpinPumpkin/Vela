@@ -411,6 +411,19 @@ listings within 35 m, picks the most-reviewed **only when it clearly dominates**
 (`canonical.reviews >= 2·nearest.reviews + 5`) so co-located-but-distinct shops aren't
 wrongly merged; "Also at this location" lists the others.
 
+**Inverting the hybrid (planned, 2026-09-14).** The resolve path above is the load-bearing
+half, and it already works for POIs Google never supplied - `onPoiTap` needs only a name and a
+coordinate. So the ambient Google fan-out is not required to *find* POIs, only to RANK them:
+`ambientProminence` scores on review count, the one signal neither OSM nor Overture carries, and
+without a replacement an OSM-sourced dot layer is a uniform blanket (arbitrary collision winner,
+take-N drops landmarks as readily as benches). That uniformity - not coverage - is why `PoiIcons`
+shows the OSM layers only "whenever ambient ISN'T". `OsmProminence` (`:core`, `data/`) is the
+open-data stand-in, deliberately on the same ~0-9.5 scale as `ambientProminence` so both can sort
+in ONE pool during a mixed rollout. Once tuned, the dot layer comes from OSM/Overture and Google
+collapses to ONE request per tap instead of a 15-term fan-out per viewport settle - which also
+deletes the app's largest allocation burst (~180 MB/12 s of parse trees) and its most
+machine-shaped request pattern. Weights are UNTUNED; see CLAUDE.md before flipping any default.
+
 **Ambient POI icon = category, with a NAME fallback** (`PoiIcons.groupFor(name, category)`).
 Google's keyless data sometimes returns a generic administrative category
 ("Non-profit organization", "Establishment") that themes to the grey `default` teardrop even

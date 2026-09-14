@@ -298,6 +298,39 @@ done so it *earns* trust rather than spends it:
   says "no telemetry"; that line changes the day this ships.
 - Could ride the existing **signed channel** for config (endpoint, sample rate, kill-switch).
 
+### Open-data POI layer  *(in progress - `OsmProminence` landed 2026-09-14, untuned)*
+
+Make the dot layer OSM/Overture and let Google collapse to one request per TAP. The resolve half
+already exists and is hardened: `onPoiTap` takes a bare name + coordinate, searches Google near
+it, and picks by name agreement then proximity with a dominance override - so it never needed the
+ambient fan-out to work. What was missing is RANKING (`ambientProminence` is review-count-based,
+and open data has no review counts), which `OsmProminence` now supplies on the same scale.
+
+Remaining, in order:
+1. **Tune the weights** on a dense downtown tile. They are hand-set, not measured. Density is also
+   the render cost - symbol collision scales badly per tile - so the tuning pass is a performance
+   pass too.
+2. **Plumb `wikidata` / `wikipedia` / `brand` through `OverpassPois.toPlace`.** It currently keeps
+   name/category/address/phone/website/hours and drops those three, which are the strongest
+   notability signals available; the `Place` overload of `score` cannot reach a landmark tier
+   without them.
+3. **Overture ingestion** for business attributes only - website, phone, brand, `confidence`.
+   NOT for parks or civic: measured 2026-09-14, Overture carries 281 parks per 33,633 Boston
+   places because its sources (Meta Pages, Bing, business registries) index businesses, and OSM's
+   area-mapped `nwr` coverage is far better. CDLA-Permissive 2.0, LWG-blessed as ODbL-compatible,
+   and its attribution condition needs an about/licences screen.
+4. **Bake it into tiles** rather than ranking at runtime: tippecanoe with the prominence score
+   translated to per-feature `tippecanoe.minzoom`, shipped as PMTiles (one file, HTTP range
+   requests, no tile server - the same static host as the F-Droid repo). Prominence stops being a
+   runtime problem: MapLibre already does symbol collision, and LOD lives in the data. Deletes the
+   JSON parse, the runtime Overpass dependency and the rank/declutter path. City extract ~ single-
+   digit MB.
+5. **Flip the default**, keeping the Google ambient layer behind a setting until the open layer
+   clears the density bar the fan-out set (~52 unique POIs within 600 m).
+
+Second payoff beyond independence: every layer moved off Google is fewer requests and fewer
+endpoint types, so this shrinks the fingerprint on the layers that CAN'T be moved.
+
 ### Vela traffic layer
 
 Depends on the telemetry above. Aggregate opted-in traces → per-segment speed vs.
