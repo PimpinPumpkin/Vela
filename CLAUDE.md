@@ -584,6 +584,12 @@ Defaults that make the safe path the easy one:
   with only the Start bar left, the route gets nearly the whole map. Deliberately NOT
   auto-minimized after a beat: the list is what you're choosing from, and surprise motion
   right after opening reads as the UI fighting you; one flick down now has a real payoff.
+- **Start is a FOOTER under the route list (user 2026-09-13):** the chooser body is an outer
+  capped-and-faded Column holding a `weight(1f, fill = false)` scroll Column and, below it, the
+  Start / Steps row, so four alternates scroll under a Start that stays put; the cap wraps both,
+  so the footer folds with the body on collapse (the minimized Start bar takes over as before).
+  The first cut put the footer INSIDE the scroll by matching the wrong closing brace; anchor
+  edits in PlaceSheet on a comment line, never on braces.
 - **The directions chooser drags like the other sheets (2026-07-11):** its settle flips
   `collapsed` AFTER the glide, never before - flipping first fired `LaunchedEffect(collapsed)`
   into a SECOND animateTo racing the decay (the "bounces off the top" on swipe-up-to-reopen,
