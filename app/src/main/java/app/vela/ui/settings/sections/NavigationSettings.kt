@@ -164,6 +164,15 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             },
             hint = stringResource(R.string.settings_traffic_lights_hint),
         )
+        // Over-the-limit voice alert (issue #404): its own opt-in, off by default. Sits with the
+        // other spoken extras; the timing is in :core SpeedingAlerts.
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_speeding_alert),
+            checked = app.vela.ui.SpeedingAlert.on.value,
+            onCheckedChange = { app.vela.ui.SpeedingAlert.set(context, it) },
+            hint = stringResource(R.string.settings_speeding_alert_hint),
+        )
         }
 
         SettingsGroup {

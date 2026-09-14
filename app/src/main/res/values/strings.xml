@@ -821,6 +821,9 @@
     <string name="settings_font_custom">Custom font</string>
     <string name="settings_traffic_lights">Traffic-light guidance</string>
     <string name="settings_traffic_lights_hint">Spoken landmark cues: pass the light, then turn. English only, off by default.</string>
+    <string name="settings_speeding_alert">Speeding alert</string>
+    <string name="settings_speeding_alert_hint">Says \"You\'re over the speed limit\" once you have been over the posted limit for a few seconds, and again after you slow down and creep back over it. Only where a posted limit is known, the one the speed badge shows. Off unless you turn it on.</string>
+    <string name="nav_speeding_alert">You\'re over the speed limit</string>
     <string name="settings_softkeys" translatable="false">Hardware softkeys</string>
     <string name="settings_softkeys_hint" translatable="false">Zoom the map with the phone\'s two soft keys. Keypad phones only.</string>
     <string name="settings_softkeys_calibrate" translatable="false">Calibrate soft keys</string>

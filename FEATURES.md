@@ -36,6 +36,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   keyless via Overpass with the same mirror failover, area caching and stream parsing as the
   other road-furniture layers. Off by default; fixed installations only, since mobile speed
   traps have no keyless data source. Coverage follows OpenStreetMap, strongest in Europe.
+- ✅ **Speeding alert (issue #404, 2026-09-14).** Settings, Navigation, "Speeding alert": off by
+  default. Once you have been over the posted limit for a few seconds Vela says "You're over the
+  speed limit", once; it speaks again only after you have slowed back under the limit for a
+  while and crept over it again. Uses the same posted limit and the same tolerance as the speed
+  badge, so it fires exactly when the badge turns red, and only where a limit is known.
 - ✅ **Vela gives memory back when the system asks, and adapts to small phones (2026-07-23,
   adopted from the vela-dpad fork).** The speech model (about a quarter gigabyte while loaded) now
   unloads after two minutes unused and reloads in about a second on the next mic tap; map caches,
