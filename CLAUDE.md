@@ -3100,6 +3100,12 @@ architecture note.
   strip those, and don't let a `Set-Cookie` downgrade `CONSENT` to `PENDING`.
 - No GMS: no FCM/Firebase/Play Integrity/Fused. If push is needed later, use
   UnifiedPush; crash reporting via ACRA/self-hosted Sentry.
+- **The hidden WebViews are warmed AFTER results land, never before the fetch (2026-09-14).**
+  `runSearch` used to call `webPopularTimes.prewarm()` + `webPhotos.warm()` before the search:
+  two Chromium instances created on the main thread and loading google.com while the search ran.
+  On a cold start (a `geo:...?q=` deep link into a fresh process) that held the search at 13 s
+  against 4 s warm and left the map blank throughout; measured on the 4a, results now land 10 s
+  after process launch instead of 18.5 s. `warmPlaceWebViews()` runs from the results publish.
 - **Photos use a hidden WebView** (`app/web/WebPhotoFetcher`). The full gallery RPC
   (`hspqX`) serves real photos only to a real browser engine - OkHttp gets a
   bot-degraded Street-View-only reply (TLS-fingerprint detection, not headers).
