@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.foundation.layout.fillMaxWidth
+import app.vela.ui.settings.settingsAnchor
 import app.vela.ui.dpadHighlight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -66,7 +68,7 @@ internal fun DataPrivacySettingsScreen(vm: app.vela.ui.map.MapViewModel, onBack:
         Spacer(Modifier.height(8.dp))
         var confirmClear by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
         SettingsGroup {
-        androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+        androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().settingsAnchor(stringResource(R.string.settings_clear_history)).padding(horizontal = 16.dp, vertical = 10.dp)) {
             Text(stringResource(R.string.settings_clear_history), style = MaterialTheme.typography.bodyLarge)
             Text(
                 stringResource(R.string.settings_clear_history_hint),
