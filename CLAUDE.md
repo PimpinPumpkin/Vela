@@ -515,7 +515,11 @@ Defaults that make the safe path the easy one:
   - the separate VoiceBrowseScreen route is gone, `openVoiceLibrary` deep-links to the VOICE spoke
   with the library expanded), Search (ASR engines + provider picker), Saved places
   (saved + lists export/import), Data & privacy (privacy link, live rechecks, **Clear history** since 2026-09-14 for issue #425: `MapViewModel.clearAllHistory()` = recent queries + recent places + parking history + every recorded trip behind a `VelaDialog` confirm, saved places and lists untouched, indexed for the settings search), Diagnostics
-  (share-diagnostics, texture render, building debug, trip recording, crash card), About
+  (share-diagnostics, texture render, building debug, trip recording, crash card; NB the update
+  card's notes are CUMULATIVE since 2026-09-14, issue #330: `SelfUpdater.check` pulls
+  `/releases?per_page=40`, keeps the channel's releases with a code in (installed, offered],
+  and `cumulativeNotes` joins them newest first under their versions, falling back to the single
+  release's notes; canary keeps its rolling list), About
   (support, version tap-to-copy, auto-update, nightly toggle, check now). ⚠️ The vela-dpad fork
   DROPPED many mainline settings in its redesign (Material You, map colors, UI scale, POI sizing,
   parking, lists export, nightly, spoken-directions toggle, live rechecks, building overlay/debug,

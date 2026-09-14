@@ -107,9 +107,23 @@ class SelfUpdater @Inject constructor(
                 CHANNEL_NIGHTLY -> nightlyInfo()
                 else -> releaseToInfo(JSONObject(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/releases/latest")))
             }
-            candidate?.takeIf { it.versionCode > currentVersionCode }
+            val picked = candidate?.takeIf { it.versionCode > currentVersionCode } ?: return@runCatching null
+            // Every release between the one installed and the one offered, newest first (issue
+            // #330): a phone that skipped a few releases gets their notes too, not just the
+            // last. Canary's rolling tag carries its own list already, and a failure here
+            // falls back to the single release's notes.
+            if (channel == CHANNEL_CANARY) return@runCatching picked
+            val history = runCatching {
+                val arr = JSONArray(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/releases?per_page=40"))
+                (0 until arr.length()).map { arr.getJSONObject(it) }
+                    .filterNot { it.optBoolean("draft") }
+                    .filter { it.optBoolean("prerelease") == (channel != CHANNEL_STABLE) }
+                    .mapNotNull { o -> releaseToInfo(o)?.let { it to o.optString("body") } }
+            }.getOrDefault(emptyList())
+            picked.copy(notes = cumulativeNotes(history, currentVersionCode, picked))
         }.getOrNull()
     }
+
 
     /** Download [info]'s APK to filesDir/updates/. 0..100 progress. Null on failure or when
      *  [active] flips false (user cancel - the partial file is deleted by the failure path). */
@@ -160,4 +174,16 @@ class SelfUpdater @Inject constructor(
             },
         )
     }
+}
+
+/** The notes to show for [picked] (issue #330): every release in [history] with a code above
+ *  [currentVersionCode] and at or below the picked one, newest first, each under its version,
+ *  when there are at least two; else the picked release's own notes. */
+internal fun cumulativeNotes(history: List<Pair<SelfUpdater.UpdateInfo, String>>, currentVersionCode: Int, picked: SelfUpdater.UpdateInfo): String {
+    val between = history
+        .filter { (info, _) -> info.versionCode > currentVersionCode && info.versionCode <= picked.versionCode }
+        .distinctBy { it.first.versionCode }
+        .sortedByDescending { it.first.versionCode }
+    if (between.size < 2) return picked.notes
+    return between.joinToString("\n\n") { (info, body) -> "${info.versionName}\n\n${body.trim()}" }
 }
