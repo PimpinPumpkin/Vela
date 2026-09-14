@@ -23,10 +23,14 @@ class OsmProminenceTest {
         hours: List<String> = emptyList(),
         address: String? = null,
         dist: Double? = null,
+        brand: String? = null,
+        wikidata: String? = null,
+        wikipedia: String? = null,
     ) = Place(
         id = "osm:$name", name = name, location = LatLng(38.5, -121.7),
         category = category, website = website, phone = phone, hours = hours,
         address = address, distanceMeters = dist,
+        brand = brand, wikidata = wikidata, wikipedia = wikipedia,
     )
 
     // ---- suppression -----------------------------------------------------------------------
@@ -175,6 +179,50 @@ class OsmProminenceTest {
         val rich = place("Co-op", "supermarket", website = "https://x", phone = "555", hours = listOf("Mo-Fr 9-5"), address = "1 Main St")
         val bare = place("Co-op Two", "supermarket")
         assertTrue(OsmProminence.score(rich) > OsmProminence.score(bare))
+    }
+
+    @Test fun `the Place overload can now reach a landmark tier`() {
+        // Before brand/wikidata/wikipedia were plumbed through toPlace this overload topped out
+        // below a notable place's score, and the whole open dot layer ranked flat. A wikidata-tagged
+        // museum must now beat an exhaustively tagged ordinary shop.
+        val museum = place("City Museum", "museum", wikidata = "Q12345")
+        val shop = place(
+            "Best Florist", "florist",
+            website = "https://x", phone = "555", hours = listOf("Mo-Fr 9-5"), address = "1 Main St",
+        )
+        assertTrue(
+            "museum=${OsmProminence.score(museum)} should beat shop=${OsmProminence.score(shop)}",
+            OsmProminence.score(museum) > OsmProminence.score(shop),
+        )
+    }
+
+    @Test fun `a branded Place outranks an unbranded peer`() {
+        assertTrue(
+            OsmProminence.score(place("Safeway", "supermarket", brand = "Safeway")) >
+                OsmProminence.score(place("Corner Grocer", "supermarket")),
+        )
+    }
+
+    @Test fun `notability on a Place still cannot lift furniture`() {
+        assertEquals(0.0, OsmProminence.score(place("Odd bench", "bench", wikidata = "Q1")), 0.0)
+    }
+
+    @Test fun `blank notability tags read as absent`() {
+        val blank = place("X", "museum", brand = "  ", wikidata = "", wikipedia = " ")
+        assertEquals(OsmProminence.score(place("Y", "museum")), OsmProminence.score(blank), 0.0)
+    }
+
+    @Test fun `the Place overload maps each field to the right parameter`() {
+        // Guards the wiring itself: if a field is ever hooked to the wrong parameter these diverge.
+        val p = place("Museum", "museum", website = "https://x", phone = "555", address = "1 Main St", wikidata = "Q1")
+        assertEquals(
+            OsmProminence.score(
+                category = "museum",
+                hasWebsite = true, hasPhone = true, hasAddress = true, wikidata = true,
+            ),
+            OsmProminence.score(p),
+            0.0,
+        )
     }
 
     @Test fun `blank strings do not count as filled attributes`() {

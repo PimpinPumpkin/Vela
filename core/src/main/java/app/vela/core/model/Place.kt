@@ -67,6 +67,24 @@ data class Place(
     val popularTimes: PopularTimes? = null, // Google's "popular times" histogram
     val similarPlaces: List<SimilarPlace> = emptyList(), // "People also search for"
     val distanceMeters: Double? = null, // filled when searched relative to a point
+
+    // --- OSM/Overture notability -------------------------------------------------------------
+    // Open data has no review count, so [app.vela.core.data.OsmProminence] leans on these three
+    // instead: they are the closest thing OSM and Overture carry to "how many people know this".
+    // Appended at the end of the class on purpose — every construction site here is named, but a
+    // mid-class insert would still be the riskier edit in a 50-field data class.
+    /** OSM `brand` (or Overture's `brand.names.primary`). A chain is recognizable BECAUSE it is a
+     *  chain, which is exactly what the review-count ranking surfaced first — and it's worth
+     *  showing, not just scoring. */
+    val brand: String? = null,
+    /** OSM `wikidata` — the Q-id. The strongest open notability signal there is: mappers attach it
+     *  to things notable enough to have their own entity, roughly the population high review
+     *  counts select for. Also set from OSM `brand:wikidata` when the plain tag is absent, since
+     *  chains carry the branded form far more often. */
+    val wikidata: String? = null,
+    /** OSM `wikipedia` — the "lang:Title" tag value. Same family as [wikidata] and usually
+     *  co-occurring, so prominence scoring takes the STRONGER of the two rather than summing. */
+    val wikipedia: String? = null,
 )
 
 /** A "People also search for" entry — a related place, enough to show a card and open it. */

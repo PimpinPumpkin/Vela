@@ -179,6 +179,14 @@ object OverpassPois {
             // OSM's compact opening_hours syntax ("Mo-Fr 08:00-20:00; Sa 09:00-17:00")
             // as a single line — better than nothing offline.
             hours = (tag("opening_hours"))?.let { listOf(it) } ?: emptyList(),
+            // NOTABILITY, for OsmProminence: open data has no review count, so these are the
+            // closest stand-ins it has. Dropping them capped the Place-based score below a
+            // landmark tier, which made the whole open dot layer rank flat.
+            // `brand:wikidata` is the fallback because chains carry the branded form far more
+            // often than the plain tag, and a chain is precisely what should rank up.
+            brand = tag("brand") ?: tag("operator:brand"),
+            wikidata = tag("wikidata") ?: tag("brand:wikidata"),
+            wikipedia = tag("wikipedia") ?: tag("brand:wikipedia"),
         )
     }
 }

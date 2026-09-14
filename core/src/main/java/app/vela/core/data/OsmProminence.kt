@@ -165,12 +165,13 @@ object OsmProminence {
     }
 
     /**
-     * Prominence from a [Place] alone — what an `osm:`-id POI carries today.
+     * Prominence from a [Place] — the full signal set, now that `OverpassPois.toPlace` retains
+     * `brand`, `wikidata` and `wikipedia` (falling back to the `brand:*` forms, which chains carry
+     * far more often than the plain tags).
      *
-     * NOTE the ceiling: `OverpassPois.toPlace` does not retain `wikidata`, `wikipedia` or
-     * `brand`, so this overload can never award [NOTABLE_WIKIDATA] and tops out around
-     * PRIOR_ANCHOR + completeness. Plumbing those three tags through is the single highest-value
-     * follow-up — notability is the term that separates a landmark from a well-tagged shop.
+     * Overture's `confidence` is the one input a [Place] cannot express — there is no field for it
+     * — so an Overture-sourced caller should use the signal overload directly rather than
+     * round-tripping through [Place], where confidence silently reads as neutral.
      */
     fun score(p: Place): Double = score(
         category = p.category,
@@ -178,6 +179,9 @@ object OsmProminence {
         hasPhone = !p.phone.isNullOrBlank(),
         hasHours = p.hours.isNotEmpty(),
         hasAddress = !p.address.isNullOrBlank(),
+        wikidata = !p.wikidata.isNullOrBlank(),
+        wikipedia = !p.wikipedia.isNullOrBlank(),
+        brand = !p.brand.isNullOrBlank(),
     )
 
     /** Lowercase, and accept the humanized form Vela stores on [Place] ("Fast food" →

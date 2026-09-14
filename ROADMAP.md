@@ -310,10 +310,10 @@ Remaining, in order:
 1. **Tune the weights** on a dense downtown tile. They are hand-set, not measured. Density is also
    the render cost - symbol collision scales badly per tile - so the tuning pass is a performance
    pass too.
-2. **Plumb `wikidata` / `wikipedia` / `brand` through `OverpassPois.toPlace`.** It currently keeps
-   name/category/address/phone/website/hours and drops those three, which are the strongest
-   notability signals available; the `Place` overload of `score` cannot reach a landmark tier
-   without them.
+2. ~~**Plumb `wikidata` / `wikipedia` / `brand` through `OverpassPois.toPlace`.**~~ DONE - it now
+   keeps all three (with `brand:*` fallbacks, which chains carry far more often than the plain
+   tags), so the `Place` overload of `score` reaches a landmark tier. Overture `confidence` has no
+   `Place` field, so Overture-sourced callers must use the signal overload directly.
 3. **Overture ingestion** for business attributes only - website, phone, brand, `confidence`.
    NOT for parks or civic: measured 2026-09-14, Overture carries 281 parks per 33,633 Boston
    places because its sources (Meta Pages, Bing, business registries) index businesses, and OSM's

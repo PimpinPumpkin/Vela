@@ -2133,9 +2133,11 @@ drawn as a uniform blanket. Gotchas, in the order they will bite:
 - **Same scale as `ambientProminence` (~0-9.5) on purpose**, so a mixed rollout can sort both
   sources in one pool without either winning every collision by construction. Don't rescale one
   side alone; `OsmProminenceTest` has a guard test for the range overlap.
-- **The `Place` overload is capped.** `toPlace` drops `wikidata`, `wikipedia` and `brand`, which
-  are the strongest notability signals, so scoring from a `Place` alone cannot reach a landmark
-  tier. Plumbing those three tags through is the highest-value follow-up.
+- **The `Place` overload now carries notability.** `toPlace` retains `brand` / `wikidata` /
+  `wikipedia`, falling back to the `brand:*` forms (chains carry those far more often than the
+  plain tags), so a `Place` can reach a landmark tier. Overture `confidence` is the one input
+  `Place` still cannot express - an Overture-sourced caller must use the SIGNAL overload, or
+  confidence silently reads as neutral.
 - Not wired to any UI yet - pure scoring plus tests. Nothing changes behaviour until the dot
   layer's source is switched.
 
