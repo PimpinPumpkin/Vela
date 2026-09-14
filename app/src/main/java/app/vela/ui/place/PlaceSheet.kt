@@ -1504,6 +1504,9 @@ fun DirectionsPanel(
                 derivedStateOf { !collapsed.value || dirH.value > 1f }
             }
             if (bodyComposed) {
+              // Start is a FOOTER under the scrolling list (2026-09-13, Google's layout): with
+              // four alternates it used to scroll off the bottom of the open chooser. The cap
+              // and fade wrap BOTH, so the footer folds away with the body when it collapses.
               Column(
                   Modifier
                       .graphicsLayer { alpha = (dirH.value / 160f).coerceIn(0f, 1f); clip = true }
@@ -1511,7 +1514,11 @@ fun DirectionsPanel(
                           val capPx = dirH.value.dp.roundToPx().coerceAtLeast(0)
                           val pl = measurable.measure(constraints.copy(maxHeight = minOf(constraints.maxHeight, capPx)))
                           layout(pl.width, pl.height) { pl.place(0, 0) }
-                      }
+                      },
+              ) {
+              Column(
+                  Modifier
+                      .weight(1f, fill = false)
                       .nestedScroll(dirConn)
                       .verticalScroll(dirBodyScroll),
               ) {
@@ -1636,26 +1643,6 @@ fun DirectionsPanel(
                         }
                     }
                     Spacer(Modifier.height(14.dp))
-                    Row(Modifier.padding(end = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = onStartNav, modifier = Modifier.weight(1f)) {
-                            Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                            Text(stringResource(R.string.place_start))
-                        }
-                        onSteps?.let {
-                            FilledTonalButton(onClick = it) {
-                                // Soft glyph ink: the solid List glyph at the label's own colour
-                                // read darker than the word beside it (user 2026-07-11).
-                                Icon(
-                                    Icons.AutoMirrored.Filled.List,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(end = 8.dp),
-                                    tint = dim,
-                                )
-                                Text(stringResource(R.string.place_steps))
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(14.dp))
                     Text(stringResource(R.string.place_search_along_route), style = MaterialTheme.typography.labelMedium, color = dim)
                     Spacer(Modifier.height(6.dp))
                     Row(
@@ -1698,6 +1685,30 @@ fun DirectionsPanel(
                     }
                 }
             }
+              }
+                if (routes.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    Row(Modifier.padding(end = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(onClick = onStartNav, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                            Text(stringResource(R.string.place_start))
+                        }
+                        onSteps?.let {
+                            FilledTonalButton(onClick = it) {
+                                // Soft glyph ink: the solid List glyph at the label's own colour
+                                // read darker than the word beside it (user 2026-07-11).
+                                Icon(
+                                    Icons.AutoMirrored.Filled.List,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(end = 8.dp),
+                                    tint = dim,
+                                )
+                                Text(stringResource(R.string.place_steps))
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                }
               }
             }
             // Minimised: keep a Start button reachable without expanding. It FOLDS IN as the
