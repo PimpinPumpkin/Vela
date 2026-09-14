@@ -148,7 +148,15 @@ Defaults that make the safe path the easy one:
   lines were read by hand; and every export is named by the drive's local date and time
   (`vela-trip-2026-09-13-1432.csv`, `-full` for the raw trace, `vela-diag-<stamp>.json`,
   `vela-nav-trace-<stamp>.csv`, `MapViewModel.tripStamp`) instead of an opaque id or a bare
-  "shared". The name still never carries the label or the destination. The scrub is non-destructive (the on-device trip is never modified) and the
+  "shared". The name still never carries the label or the destination. **And three more columns the same day:** every fix carries its PROVIDER
+  (`loc.provider`, so a network fix that slipped into a drive is visible) and the engine's
+  off-route hit count (`nav.offRouteHits`, a reroute about to fire shows as 1, 2, 3); and every
+  nav DECISION goes into the trip as a `K,<t>,<text>` line through `NavSession.onNote` (the same
+  text `diag.record("nav", ...)` gets): recheck offered / kept with the candidate's saving and
+  why, faster route accepted / dismissed, reroute attempts, swaps. A K line never holds a
+  coordinate by contract (the one note with a position keeps it in the diag ring only), so
+  `TripScrub` passes K through like J and B. The audit prints fixes-by-provider and the decision
+  timeline. Adding a note: call `note()` in NavSession, never `diag.record` directly. The scrub is non-destructive (the on-device trip is never modified) and the
   raw file is still reachable behind "Share full trace". Two rules added by the 2026-09-06 review
   (15 tests): an `S`/`J`/`B` event survives only if a fix within `EVENT_NEAR_MS` (3 s) of it
   survived, because a Home/Work zone passed MID-trip deletes fixes inside the kept time window
