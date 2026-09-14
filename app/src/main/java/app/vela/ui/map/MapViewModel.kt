@@ -3501,7 +3501,10 @@ class MapViewModel @Inject constructor(
     /** Tapped the directions "From" row → the next search pick becomes the origin
      *  (not a destination). The UI opens the search overlay; [setDirectionsOrigin] or
      *  [cancelPickOrigin] ends the mode. */
-    fun beginPickOrigin() = _state.update { it.copy(pickingOrigin = true, pickingDest = false, query = "", suggestions = emptyList(), localSuggestions = emptyList()) }
+    // Every pick starts CLEAN (issue #405, 2026-09-13): the destination search's results were
+    // still in state, so the picker's first keystroke flipped the overlay off the entry page,
+    // the field lost focus after one character, and a stale list sat under the picker.
+    fun beginPickOrigin() = _state.update { it.copy(pickingOrigin = true, pickingDest = false, query = "", suggestions = emptyList(), localSuggestions = emptyList(), results = emptyList(), resultsCollapsed = false) }
 
     fun cancelPickOrigin() = _state.update { it.copy(pickingOrigin = false, pickingDest = false) }
 
@@ -3510,7 +3513,7 @@ class MapViewModel @Inject constructor(
      *  backing out and retyping lost the custom origin). [setDirectionsDestination] or
      *  [cancelPickDestination] ends the mode. */
     fun beginPickDestination() = _state.update {
-        it.copy(pickingDest = true, pickingOrigin = false, pickingStop = false, query = "", suggestions = emptyList(), localSuggestions = emptyList())
+        it.copy(pickingDest = true, pickingOrigin = false, pickingStop = false, query = "", suggestions = emptyList(), localSuggestions = emptyList(), results = emptyList(), resultsCollapsed = false)
     }
 
     fun cancelPickDestination() = _state.update { it.copy(pickingDest = false) }
@@ -3572,7 +3575,7 @@ class MapViewModel @Inject constructor(
 
     /** Tapped "Add stop" → the next search pick becomes an intermediate stop (multi-stop routing).
      *  [addStop]/[cancelPickStop] ends the mode. */
-    fun beginPickStop() = _state.update { it.copy(pickingStop = true, pickingDest = false, editingStops = false, query = "", suggestions = emptyList(), localSuggestions = emptyList()) }
+    fun beginPickStop() = _state.update { it.copy(pickingStop = true, pickingDest = false, editingStops = false, query = "", suggestions = emptyList(), localSuggestions = emptyList(), results = emptyList(), resultsCollapsed = false) }
 
     /** The dedicated stops editor (reorder / remove / add in one sheet, one reroute on Done). */
     fun openStopsEditor() = _state.update { it.copy(editingStops = true) }
