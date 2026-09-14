@@ -3139,8 +3139,15 @@ architecture note.
   parquet, or a local extract) into PMTiles: business POIs only (parks/schools/civic/transit excluded, OSM
   has them), each feature with `name`, `class` (humanized category), `group` (the PoiIcons icon group),
   `prominence` (OsmProminence-style: category prior + brand + website/phone/address + confidence, 0-9.5),
-  `confidence`, `brand`, `addr`, `website`, `phone`, `src=overture`, and a tippecanoe minzoom from the
-  prominence (>=6 z13, >=4.5 z14, >=3 z15, >=2 z16, else z17). `PlacesTileStore` = `files/places/*.pmtiles`
+  `confidence`, `brand`, `addr`, `website`, `phone`, `src=overture`, `rank` (position by prominence
+  inside a ~400 m cell) and `crank` (same inside a ~1.6 km cell), and a tippecanoe minzoom from the ranks
+  (crank 1 and prominence >=6 z13; crank <=2 or prominence >=5 z14; rank <=3 or >=4.5 z15; rank <=12 or
+  >=3.5 z16; else z17). Density on the map is the rank, not collision: VelaMapView steps `iconImage` by
+  zoom (top 2 per coarse cell below z15, top 1 per fine cell at z15, top 5 at z16, top 12 at z17, all from
+  z17.5, a high prominence always qualifies) and `textField` the same way (top 1 coarse below z15, top 1
+  fine at z15, top 3 at z16, top 6 at z16.5, all from z17.5); everything else in the tile draws as a small
+  category-colored dot on a `vela-places-dots-<i>` CircleLayer (from z14, `PoiIcons.groupColor()` over the
+  baked `group`), so a downtown thins to its landmarks and fills in as you zoom, the way Google's does. `PlacesTileStore` = `files/places/*.pmtiles`
   (offline) + `PLACES_MANIFEST_URL` regions streamed; `MapPoiPrefs.openPlaces` (Settings > Map, default
   OFF) gates it; `refreshPlacesOverlays` fills `placesOverlays` on camera idle; `maybeLoadAmbientPois`
   returns early (no Google fan-out) while the layer covers the view. VelaMapView draws `vela-places-<i>`

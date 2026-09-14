@@ -8,8 +8,12 @@
 # SELECT below). Business places only: parks, schools, civic and transit stay with OSM, whose
 # area mapping is far better for them. Each feature carries the icon group the app already
 # themes with, a prominence on the ambient layer's 0-9.5 scale (category prior, brand, contact
-# details, Overture confidence), and a tippecanoe minzoom from that prominence so density on the
-# map falls out of the data, not a runtime rank.
+# details, Overture confidence), a rank within its ~400 m cell (`rank`) and within its ~1.6 km cell
+# (`crank`) by that prominence, and a tippecanoe minzoom from the ranks: the best place in each
+# 1.6 km cell is in the z13/z14 tiles, the top three per 400 m cell reach z15, the top twelve z16,
+# everything z17. The app then decides per zoom which of the features in a tile get an icon, a
+# label, or just a dot (VelaMapView), so a downtown thins to its landmarks the way Google's does
+# and a village keeps its one cafe at z15.
 set -euo pipefail
 ID="$1"; S="$2"; W="$3"; N="$4"; E="$5"; OUT="$6"; RELEASE="${7:-2026-08-19.0}"; LOCAL="${8:-}"
 WORK="$(mktemp -d)"
@@ -57,20 +61,33 @@ WHERE name IS NOT NULL AND name <> ''
   AND COALESCE(confidence, 0.5) >= 0.4
   AND (category IS NULL OR category NOT IN ('park','campus_building','apartments','housing_development','real_estate','transportation','bus_station','train_station','public_transportation','school','elementary_school','middle_school','high_school'))
   AND NOT (category IS NULL AND website IS NULL);
+-- Rank by prominence inside a fine (~400 m) and a coarse (~1.6 km) cell. Longitude cells are
+-- widened by 1/cos(lat) so the cells stay roughly square away from the equator.
+CREATE TABLE ranked AS
+SELECT *,
+  row_number() OVER (PARTITION BY floor(lat / 0.0036), floor(lng * cos(radians(lat)) / 0.0036) ORDER BY prominence DESC, id) AS rank,
+  row_number() OVER (PARTITION BY floor(lat / 0.0144), floor(lng * cos(radians(lat)) / 0.0144) ORDER BY prominence DESC, id) AS crank
+FROM scored;
 COPY (
   SELECT json_object(
     'type', 'Feature',
-    'tippecanoe', json_object('minzoom', CASE WHEN prominence >= 6 THEN 13 WHEN prominence >= 4.5 THEN 14 WHEN prominence >= 3.5 THEN 15 WHEN prominence >= 2.5 THEN 16 ELSE 17 END),
+    'tippecanoe', json_object('minzoom', CASE
+      WHEN crank = 1 AND prominence >= 6 THEN 13
+      WHEN crank <= 2 OR prominence >= 5 THEN 14
+      WHEN rank <= 3 OR prominence >= 4.5 THEN 15
+      WHEN rank <= 12 OR prominence >= 3.5 THEN 16
+      ELSE 17 END),
     'geometry', json_object('type', 'Point', 'coordinates', [lng, lat]),
     'properties', json_object(
       'id', id, 'name', name,
       'class', COALESCE(upper(substr(replace(category, '_', ' '), 1, 1)) || substr(replace(category, '_', ' '), 2), 'Place'),
       'group', grp, 'icon', 'vela-poi-' || grp, 'prominence', round(prominence, 2), 'confidence', round(COALESCE(confidence, 0.5), 2),
+      'rank', rank, 'crank', crank,
       'brand', brand, 'addr', addr, 'website', website, 'phone', phone, 'src', 'overture'
     )
-  ) FROM scored
+  ) FROM ranked
 ) TO '$WORK/places.ndjson' (FORMAT CSV, HEADER false, QUOTE '', ESCAPE '', DELIMITER '\t');
-SELECT count(*) AS features, round(avg(prominence),2) AS prom_avg, sum(CASE WHEN prominence>=4.5 THEN 1 ELSE 0 END) AS z14, sum(CASE WHEN prominence>=3 THEN 1 ELSE 0 END) AS z15 FROM scored;
+SELECT count(*) AS features, round(avg(prominence),2) AS prom_avg, sum(CASE WHEN crank <= 2 OR prominence >= 5 THEN 1 ELSE 0 END) AS z14, sum(CASE WHEN rank <= 3 OR prominence >= 4.5 THEN 1 ELSE 0 END) AS z15, sum(CASE WHEN rank <= 12 OR prominence >= 3.5 THEN 1 ELSE 0 END) AS z16 FROM ranked;
 SQL
 tippecanoe -o "$OUT" -l places -f -P -Z12 -z17 -B12 --no-feature-limit --no-tile-size-limit --extend-zooms-if-still-dropping "$WORK/places.ndjson" >/dev/null 2>&1
 rm -rf "$WORK"
