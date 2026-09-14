@@ -236,6 +236,19 @@ private val SIDE_PANEL_WIDTH_MAX = 520.dp
  *  The nav puck bitmap is 202px drawn at ~half that on screen, so this clears its lower edge. */
 private const val PUCK_LABEL_GAP_PX = 62
 
+// The route chooser's body cap on short screens (issue #400): the map strip that must stay
+// visible between the endpoints card and the chooser, the chooser's own header (handle + mode
+// chips) above the body, and the least the body may shrink to.
+private const val CHOOSER_MAP_STRIP_DP = 96f
+private const val CHOOSER_HEADER_DP = 84f
+private const val CHOOSER_BODY_MIN_DP = 120f
+
+/** Density-aware default for the POI icon size: 1 at hdpi and above (every phone), scaling down
+ *  with the density below that so fixed-pixel bitmaps keep a phone's physical size on ldpi/mdpi
+ *  screens (car units, tiny phones). Floored so icons stay tappable. */
+internal fun lowDensityIconScale(density: Float): Float =
+    if (density >= 1.75f) 1f else (density / 2.625f).coerceIn(0.4f, 1f)
+
 @Composable
 private fun sidePanelWidth(): androidx.compose.ui.unit.Dp {
     val w = LocalConfiguration.current.screenWidthDp
@@ -1080,7 +1093,10 @@ fun MapScreen(
             // (a reorient-to-north tap would be overridden by the follow a frame later anyway).
             onCompassTap = { if (state.navigating) { vm.toggleNavNorthUp(); true } else false },
             poisEnabled = app.vela.ui.MapPoiPrefs.showPois.value,
-            poiIconScale = app.vela.ui.MapPoiPrefs.iconScale.floatValue,
+            // The POI bitmaps are fixed pixels, so below hdpi they render physically huge (a 240x320
+            // phone at 120 dpi, issue #400, showed pins a fifth of the screen wide). Below 1.75x the
+            // default shrinks with the density; the Settings multiplier still applies on top.
+            poiIconScale = app.vela.ui.MapPoiPrefs.iconScale.floatValue * lowDensityIconScale(LocalDensity.current.density),
             onNavPanned = vm::onNavPanned,
             ambientCoversView = state.ambientCoversView,
             // Grabbing the map with a sheet up drops it down out of the way so the map is yours
@@ -1933,6 +1949,14 @@ fun MapScreen(
                 onTransitPreview = vm::onTransitRowExpanded,
                 onTimeSelected = vm::setDirectionsTime,
                 onCollapsedChange = { dirMinimized = it },
+                // Portrait: the body may open only as far as the endpoints card leaves over a
+                // minimum strip of map (issue #400, 240x320 phones); the chooser's own header
+                // (handle + mode chips) is allowed for above the body. Floored so the list is
+                // never a sliver; a normal phone never hits this cap.
+                bodyMaxDp = if (landscapeChrome) null else with(LocalDensity.current) {
+                    (screenHeightPx.toDp().value - topCardBottomPx.toDp().value - CHOOSER_MAP_STRIP_DP - CHOOSER_HEADER_DP)
+                        .coerceAtLeast(CHOOSER_BODY_MIN_DP)
+                },
                 // Landscape: a LEFT side panel, width-capped, exactly like the place and results
                 // sheets beside it (issue #297). As a full-width bottom sheet its open height ate
                 // a landscape screen whole - the map was not merely obscured, it was completely
