@@ -727,6 +727,18 @@ Defaults that make the safe path the easy one:
   Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
   name, FilledTonalIconButton for mute/steps. Keep new nav chrome on this treatment (no flat
   default-radius cards, no OutlinedIconButton circles - that was the "dated" look).
+- **A SUBMITTED search while picking an origin / destination / stop shows its results (issue
+  #405, 2026-09-13).** The pickers keep the overlay open (`searchOpen` includes the three
+  picking flags) and keep the chosen place selected, and the results sheet's two gates
+  (`!searchOpen`, `selected == null`) both held, so typing "Coffee" into Add stop and pressing
+  Enter ran the search and showed nothing: only a suggestion-row pick ever worked. `pickingResults`
+  (picking + results + field blurred + non-blank query) now lets `resultsShown` / `resultsMinimized`
+  and the bottom-sheet branch through; a row tap goes to `selectPlace`, which already adds the
+  stop / endpoint. The three `beginPick*` also clear `results` so a picker never starts over the
+  destination search's stale list. NB testing this with `adb shell input text/keyevent` is a
+  trap: key events flip the live input mode to Keyboard, `rememberDpadMode` turns on, and the
+  unarmed field is DISABLED and blurs after one character. That is the test tool, not a bug; a
+  real keyboard commits text. Verified on the 4a through the picker's Recent row instead.
 - **Home/Work are SIDE BY SIDE and the endpoint rows have NO pencil (issue #255, 2026-08-15).**
   `ShortcutPair`/`ShortcutCell` in MapScreen replace the two stacked `ShortcutRow`s on the search
   page: two full-width rows for two words spent a third of the first screen, and an unset one now
