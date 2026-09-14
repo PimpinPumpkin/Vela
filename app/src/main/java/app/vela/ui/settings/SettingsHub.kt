@@ -344,6 +344,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     // Data & privacy
     R.string.settings_privacy_button to SettingsSection.DATA_PRIVACY,
     R.string.settings_live_rechecks to SettingsSection.DATA_PRIVACY,
+    R.string.settings_clear_history to SettingsSection.DATA_PRIVACY,
     // Diagnostics
     R.string.settings_share_diagnostics to SettingsSection.DIAGNOSTICS,
     R.string.settings_texture_render to SettingsSection.DIAGNOSTICS,
