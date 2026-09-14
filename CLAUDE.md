@@ -1023,7 +1023,12 @@ Defaults that make the safe path the easy one:
   few-px ambient dot anywhere in the box steal a tap landed dead on a basemap icon): nearest of
   the two → `onAmbientTap` / `onPoiTap`; (5) a **HOUSE-NUMBER label** (basemap `vela-housenumber` `housenumber`
   or the address overlay `vela-addr-*` `number`, queried by layer id) → `onAddressLabelTap(number,
-  labelPoint)`; (6) an unnamed POI icon (has `class`, no name) → reverse-geocode at the tap; (7) a
+  labelPoint, tileStreet)`, where `tileStreet` = `nearestStreetName` (the `transportation_name`
+  road within 45 m). The VM reverse-geocodes the label point (Nominatim, zoom 18); if the answer's
+  house_number IS the tapped number its road wins (the node's own `addr:street`), otherwise the
+  tile road vetoes a mismatched geocode street (issue #231 rounds one 2026-08-03 and two
+  2026-09-14: the veto used to fire even on a number-exact geocode and moved side-street houses
+  onto the bigger road beside them); (6) an unnamed POI icon (has `class`, no name) → reverse-geocode at the tap; (7) a
   **BUILDING footprint** (`building`/`building-3d` basemap fill or the `vela-ovl-*` overlay fill,
   queried by layer id) → reverse-geocode at the tap; else nothing (only a long-press drops a raw
   coordinate pin on empty land, as before). NB the long-press-while-planning "route through here"

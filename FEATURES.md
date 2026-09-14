@@ -668,7 +668,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   reverse geocode, which snaps to the nearest addressable point and around corners routinely
   answers with the neighbouring road, producing right-number-wrong-street pins that then routed
   wrong. The map's own road under the label now vetoes a mismatched geocode street (normalized
-  so Ave and Avenue compare equal); the geocode still supplies the city and zip.
+  so Ave and Avenue compare equal); the geocode still supplies the city and zip. *Round two
+  (2026-09-14):* that veto only applies when the geocode snapped to a DIFFERENT number. When
+  Nominatim answers with the tapped number itself, its street is the address node's own and
+  wins; the veto had been putting a side-street house on the bigger road drawn next to it.
 - ✅ **In-app Street View (2026-07-15, keyless, device-verified).** The Street View pill on a place
   opens a real panorama INSIDE Vela - drag to look, pinch to zoom, **walk between panos with the
   on-screen arrows, and go BACK IN TIME** through the older captures. It works keyless the way open

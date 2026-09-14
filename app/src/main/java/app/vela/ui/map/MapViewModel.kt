@@ -3287,7 +3287,15 @@ class MapViewModel @Inject constructor(
                         // wins and the geocode keeps only the locality tail.
                         val street = rest.substringBefore(',').trim()
                         val tail = rest.substringAfter(',', "").let { t -> if (t.isBlank()) "" else ",$t" }
+                        // Round two (issue #231, 2026-09-14): the veto only applies when the geocode
+                        // snapped to a DIFFERENT number. When Nominatim answers with the tapped
+                        // number itself, its road is that address node's own street and wins; the
+                        // veto had been moving a side-street house onto the bigger road drawn
+                        // beside it.
+                        val geoNumber = base.trim().takeWhile { !it.isWhitespace() }
+                        val sameNumber = geoNumber.equals(number.trim(), ignoreCase = true)
                         val fixed = if (
+                            !sameNumber &&
                             !tileStreet.isNullOrBlank() &&
                             app.vela.core.data.OfflineAddressStore.normalizeStreet(street) !=
                             app.vela.core.data.OfflineAddressStore.normalizeStreet(tileStreet)
