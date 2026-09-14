@@ -68,16 +68,19 @@ class TripStore @Inject constructor(
     }
 
     /** Append a fix to the active trip (no-op if none is recording). */
-    fun record(loc: Location, offRoute: Boolean = false) = synchronized(lock) {
+    fun record(loc: Location, offRoute: Boolean = false, offRouteHits: Int = 0) = synchronized(lock) {
         val f = active ?: return
         runCatching {
             // offRoute + accuracy LAST (appended columns, 2026-07-16): the parser reads fixes by
             // index, so old files and old parsers stay compatible. offRoute = which fixes the
             // engine considered off-route; accuracy = what the accuracy-scaled corridor actually
             // saw (an off-route audit is unreconstructable without it).
+            // provider + offRouteHits LAST (appended columns, 2026-09-13): which provider the fix
+            // came from (a network fix that slipped in explains a teleport) and how far the
+            // engine's off-route debounce had counted (a reroute about to fire shows as 1, 2, 3).
             f.appendText(
                 "${loc.latitude},${loc.longitude},${loc.time},${loc.bearing},${loc.speed}," +
-                    "${if (offRoute) 1 else 0},${loc.accuracy}\n",
+                    "${if (offRoute) 1 else 0},${loc.accuracy},${loc.provider ?: ""},$offRouteHits\n",
             )
         }
         Unit

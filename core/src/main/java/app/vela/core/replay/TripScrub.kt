@@ -166,8 +166,9 @@ object TripScrub {
                     if (t == null || t < keptFrom || t > keptTo || !nearKeptFix(t)) spokenDropped++
                     else out.append(rebaseEvent(line, tZero)).append('\n')
                 }
-                // Frame pacing and battery carry no position.
-                "J", "B" -> {
+                // Frame pacing, battery and nav decisions carry no position (a K line never
+                // holds a coordinate by contract; NavSession keeps those in the diag ring).
+                "J", "B", "K" -> {
                     val t = line.split(',').getOrNull(1)?.toLongOrNull()
                     if (t == null || t < keptFrom || t > keptTo || !nearKeptFix(t)) otherDropped++
                     else out.append(rebaseEvent(line, tZero)).append('\n')

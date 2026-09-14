@@ -428,6 +428,7 @@ class MapViewModel @Inject constructor(
         // trip answers "what did it say", "was it actually dropping frames" and "what did the
         // drive cost" by itself.
         voice.onSpoken = { tripStore.note("S", it) }
+        navSession.onNote = { tripStore.note("K", it) } // nav decisions (rechecks, reroutes, swaps)
         viewModelScope.launch { refreshOfflineRoadNames() } // offline romanized road names (issue #184)
         viewModelScope.launch {
             var beat = 0
@@ -849,7 +850,7 @@ class MapViewModel @Inject constructor(
                 // Advance transit step-by-step guidance when we reach the current leg's end (no-op off transit).
                 maybeAdvanceTransitNav(here)
                 // Save the fix to the active trip (no-op unless one is recording).
-                tripStore.record(loc, offRoute = _state.value.nav.offRoute)
+                tripStore.record(loc, offRoute = _state.value.nav.offRoute, offRouteHits = _state.value.nav.offRouteHits)
                 // Drive turn-by-turn from here so navigation works even if the
                 // foreground NavigationService can't start (Android-14 FGS-location
                 // restrictions / GrapheneOS). No-op unless a session is active. GUIDANCE IS

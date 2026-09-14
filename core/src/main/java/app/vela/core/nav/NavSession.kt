@@ -256,7 +256,7 @@ class NavSession @Inject constructor(
             remaining
         }
         voice.speak(app.vela.core.i18n.NavStringsRegistry.current().rerouting(), interrupt = true)
-        diag.record("nav", "add stop mid-nav → ${stop.label}")
+        note("add stop mid-nav → ${stop.label}")
         val gen = sessionGen
         rerouteJob?.cancel()
         rerouteJob = scope.launch {
@@ -264,7 +264,7 @@ class NavSession @Inject constructor(
                 .getOrNull()?.let { driveable(it, loc, dest) }?.takeIf { it.reaches(dest) }
             if (gen != sessionGen) return@launch
             if (r == null) {
-                diag.record("nav", "add-stop reroute FAILED — stop kept, next reroute/recheck retries")
+                note("add-stop reroute FAILED — stop kept, next reroute/recheck retries")
                 return@launch
             }
             val marks = NavEngine.stopMarks(r, newRemaining.map { it.location })
@@ -347,7 +347,7 @@ class NavSession @Inject constructor(
                 is NavEvent.Speak -> voice.speak(ev.text, ev.interrupt)
                 is NavEvent.Haptic -> haptics.cue(ev.type, ev.approaching, mode)
                 NavEvent.Arrived -> {
-                    diag.record("nav", "arrived (trip ${((SystemClock.elapsedRealtime() - tripStartMs) / 1000)}s)")
+                    note("arrived (trip ${((SystemClock.elapsedRealtime() - tripStartMs) / 1000)}s)")
                     _state.update {
                         it.copy(
                             navigating = false,
@@ -357,7 +357,7 @@ class NavSession @Inject constructor(
                     }
                 }
                 NavEvent.RerouteNeeded -> {
-                    diag.record("nav", "off-route → rerouting from ${loc.lat},${loc.lng} heading ${bearingDeg?.toInt()}")
+                    diag.record("nav", "off-route → rerouting from ${loc.lat},${loc.lng} heading ${bearingDeg?.toInt()}"); onNote?.invoke("off-route -> rerouting, heading ${bearingDeg?.toInt()}")
                     reroute(loc, bearingDeg)
                 }
             }
@@ -386,9 +386,16 @@ class NavSession @Inject constructor(
         }
         toSpeak.forEach { label ->
             voice.speak(app.vela.core.i18n.NavStringsRegistry.current().reachedStop(label))
-            diag.record("nav", "reached stop: ${label.ifBlank { "(unnamed)" }}")
+            note("reached stop: ${label.ifBlank { "(unnamed)" }}")
         }
     }
+
+    /** Every nav decision the session makes, for the diag ring AND the trip file (`K` lines,
+     *  2026-09-13): rechecks offered and rejected, reroute attempts, swaps. The trip used to hold
+     *  only the spoken lines and the route blocks, so a bad decision was invisible until the
+     *  maneuver lines were read by hand. Never pass a coordinate through here. */
+    var onNote: ((String) -> Unit)? = null
+    private fun note(msg: String) { diag.record("nav", msg); onNote?.invoke(msg) }
 
     fun acceptFasterRoute() {
         val faster = _state.value.fasterRoute ?: return
@@ -421,6 +428,7 @@ class NavSession @Inject constructor(
             )
         }
         voice.speak(app.vela.core.i18n.NavStringsRegistry.current().fasterRoute(first), interrupt = true)
+        note("accepted faster route (${faster.maneuvers.size} steps)")
     }
 
     fun dismissFasterRoute() {
@@ -431,6 +439,7 @@ class NavSession @Inject constructor(
             dismissedFasterSaving = _state.value.fasterSavingSeconds
         }
         _state.update { it.copy(fasterRoute = null, fasterSavingSeconds = 0.0) }
+        note("dismissed faster route")
     }
 
     // --- live re-check ------------------------------------------------------
@@ -467,7 +476,8 @@ class NavSession @Inject constructor(
         val gen = sessionGen
         recheckJob = scope.launch {
             val candidate = runCatching { dataSource.directions(loc, dest, mode, remainingStops.map { it.location }) }.getOrNull()
-                ?.let { driveable(it, loc, dest) }?.takeIf { it.reaches(dest) } ?: return@launch
+                ?.let { driveable(it, loc, dest) }?.takeIf { it.reaches(dest) }
+                ?: run { note("recheck: no usable candidate"); return@launch }
             if (gen != sessionGen) return@launch // session ended/restarted while fetching
             // The waypointed directions call falls back to a DIRECT origin→dest route when the via
             // routing fails — that route passes reaches(dest) but skips the stops, and it reads minutes
@@ -555,13 +565,18 @@ class NavSession @Inject constructor(
             // the same trip to a fraction of the time left is a bad route, not a real faster path. And only
             // when its ETA is traffic-aware and its steps are real (never trade a healthy route for an
             // abbreviated one on the strength of an incomparable ETA).
-            if (trafficAware && !candidate.abbreviatedSteps &&
-                saving > FASTER_THRESHOLD_S && candidateEta in (remaining * MIN_PLAUSIBLE_ETA_FRACTION)..(remaining * 0.9)
-            ) {
+            val plausible = candidateEta in (remaining * MIN_PLAUSIBLE_ETA_FRACTION)..(remaining * 0.9)
+            if (trafficAware && !candidate.abbreviatedSteps && saving > FASTER_THRESHOLD_S && plausible) {
+                note("recheck: offering faster route, saves ${saving.toInt()} s (${candidate.maneuvers.size} steps)")
                 _state.update { it.copy(fasterRoute = candidate, fasterSavingSeconds = saving) }
                 voice.speak(
                     app.vela.core.i18n.NavStringsRegistry.current()
                         .fasterRouteAvailable((saving / 60).toInt().coerceAtLeast(1)),
+                )
+            } else {
+                note(
+                    "recheck: kept current route (candidate saves ${saving.toInt()} s, traffic=$trafficAware, " +
+                        "abbreviated=${candidate.abbreviatedSteps}, plausible=$plausible, sameCourse=$sameCourse)",
                 )
             }
         }
@@ -592,7 +607,7 @@ class NavSession @Inject constructor(
         // (the RD line's reason field), so the caller passes chime=false for swaps that were
         // quiet live (faster/heal/stop-added); reason-less old recordings chime for every swap.
         if (chime) voice.reroutingChime()
-        diag.record("nav", "replay: route swap (${r.maneuvers.size} steps)")
+        note("replay: route swap (${r.maneuvers.size} steps)")
         _state.update {
             it.copy(
                 route = r,
@@ -611,7 +626,7 @@ class NavSession @Inject constructor(
 
     private fun reroute(loc: LatLng, headingDeg: Double? = null) {
         if (replayMode) {
-            diag.record("nav", "replay: live reroute suppressed (recorded swaps play back instead)")
+            note("replay: live reroute suppressed (recorded swaps play back instead)")
             return
         }
         val dest = destination ?: return
@@ -624,7 +639,7 @@ class NavSession @Inject constructor(
         when (rerouteGate(rerouteJob?.isActive == true, rerouteStartedMs, lastRerouteAdoptMs, now, rerouteDeadlineMs)) {
             RerouteGate.SKIP_IN_FLIGHT, RerouteGate.SKIP_COOLDOWN -> return
             RerouteGate.ABANDON_STUCK_AND_START -> {
-                diag.record("nav", "previous reroute wedged past its deadline - abandoning it and retrying")
+                note("previous reroute wedged past its deadline - abandoning it and retrying")
                 rerouteJob?.cancel()
             }
             RerouteGate.START -> Unit
@@ -651,7 +666,7 @@ class NavSession @Inject constructor(
         val attempt = rerouteAttempt(rerouteFailStreak)
         rerouteDeadlineMs = attempt.timeoutMs
         if (!attempt.urgent) {
-            diag.record("nav", "reroute escalating to the full ladder after $rerouteFailStreak failed attempts")
+            note("reroute escalating to the full ladder after $rerouteFailStreak failed attempts")
         }
         rerouteJob = scope.launch {
             // A reroute that doesn't actually reach the destination is a bad result — keep guiding on the
@@ -703,7 +718,7 @@ class NavSession @Inject constructor(
             // re-fires RerouteNeeded on the next rising edge (no cooldown charged — we return before adopt).
             val backNav = _state.value.nav
             if (_state.value.route === fromRoute && !backNav.offRoute && backNav.onRouteStreak >= BACK_ON_COURSE_HITS) {
-                diag.record("nav", "reroute discarded — driver solidly back on the original route (streak ${backNav.onRouteStreak})")
+                note("reroute discarded — driver solidly back on the original route (streak ${backNav.onRouteStreak})")
                 return@launch
             }
             if (r == null) {
@@ -714,7 +729,7 @@ class NavSession @Inject constructor(
                 // state from here raced the in-flight onLocation frame) — 4 more deviated fixes
                 // then request again (~4 s natural backoff, OsmAnd-style retry-while-deviated).
                 rerouteFailStreak++
-                diag.record("nav", "reroute FAILED (streak $rerouteFailStreak) — will retry while off-route")
+                note("reroute FAILED (streak $rerouteFailStreak) — will retry while off-route")
                 pendingLatchClear.set(true)
                 return@launch
             }
@@ -731,7 +746,7 @@ class NavSession @Inject constructor(
             }
             if (remainingStops.isNotEmpty() && marks.any { it == null }) {
                 voice.speak(app.vela.core.i18n.NavStringsRegistry.current().stopsNotIncluded())
-                diag.record("nav", "reroute missing ${marks.count { it == null }}/${remainingStops.size} stops")
+                note("reroute missing ${marks.count { it == null }}/${remainingStops.size} stops")
             }
             rerouteFailStreak = 0 // a route landed: back to lean, fast attempts
             lastSwapReason = "reroute"

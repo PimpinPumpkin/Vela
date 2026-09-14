@@ -830,6 +830,22 @@ class NavReplayTest {
     }
 
     @Test
+    fun `provider, off-route hits and K lines ride the trip and survive the scrub`() {
+        val csv = "META,x,0,,,3217\n" +
+            "38.5,-121.7,1000,10,5,0,4.0,gps,0\n" +
+            "K,1500,recheck: kept current route (candidate saves 12 s)\n" +
+            "38.51,-121.71,2000,10,5,1,25.0,network,2\n"
+        val parsed = TripLog.parse(csv)
+        assertEquals("gps", parsed.points[0].provider)
+        assertEquals(0, parsed.points[0].offRouteHits)
+        assertEquals("network", parsed.points[1].provider)
+        assertEquals(2, parsed.points[1].offRouteHits)
+        assertEquals(listOf("K"), parsed.events.map { it.tag })
+        // Older recordings without the columns still parse.
+        assertEquals(null, TripLog.parse("META,x,0,,,3217\n38.5,-121.7,1000,10,5\n").points[0].provider)
+    }
+
+    @Test
     fun `route provenance flags ride the RD line and parse back`() {
         val route = Route(
             listOf(LatLng(38.5, -121.7), LatLng(38.51, -121.71)),
@@ -871,6 +887,13 @@ class NavReplayTest {
             parsed2.segments.drop(1).forEach { seg ->
                 println("  @fix ${seg.fromPoint}: ${seg.reason ?: "(unrecorded reason)"}${seg.flags?.let { " [$it]" } ?: ""}")
             }
+        }
+        val byProvider = pts.groupingBy { it.provider ?: "(unrecorded)" }.eachCount()
+        println("[NavReplay] fixes by provider: " + byProvider.entries.joinToString { "${it.key}=${it.value}" })
+        val decisions = parsed2.events.filter { it.tag == "K" }
+        if (decisions.isNotEmpty()) {
+            println("[NavReplay] nav decisions (${decisions.size}):")
+            decisions.forEach { println("  @${it.t / 1000}s: ${it.text}") }
         }
         val spoken = parsed2.events.filter { it.tag == "S" }
         if (spoken.isNotEmpty()) {
