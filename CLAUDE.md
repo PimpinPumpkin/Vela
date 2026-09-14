@@ -141,7 +141,14 @@ Defaults that make the safe path the easy one:
   (replay only ever uses the deltas). **Unknown line kinds are DROPPED, not passed through.** The
   format is append-only, so a tag added later would otherwise be published by a scrubber written
   before it existed: **if you add a line kind to `TripLog`, decide in `TripScrub` whether it is
-  safe to share.** The scrub is non-destructive (the on-device trip is never modified) and the
+  safe to share.** **Two things added 2026-09-13 (user ask, after the faster-route replay):** `RD` carries
+  a fifth appended field, the route's PROVENANCE flags (`provisional;abbreviated;offline;traffic;
+  steps=N`, `TripLog.encodeRoute`, read back as `RouteSegment.flags` and printed beside each swap
+  in the audit), because the adopted-Google-alternate bug was invisible in the file until the M
+  lines were read by hand; and every export is named by the drive's local date and time
+  (`vela-trip-2026-09-13-1432.csv`, `-full` for the raw trace, `vela-diag-<stamp>.json`,
+  `vela-nav-trace-<stamp>.csv`, `MapViewModel.tripStamp`) instead of an opaque id or a bare
+  "shared". The name still never carries the label or the destination. The scrub is non-destructive (the on-device trip is never modified) and the
   raw file is still reachable behind "Share full trace". Two rules added by the 2026-09-06 review
   (15 tests): an `S`/`J`/`B` event survives only if a fix within `EVENT_NEAR_MS` (3 s) of it
   survived, because a Home/Work zone passed MID-trip deletes fixes inside the kept time window
