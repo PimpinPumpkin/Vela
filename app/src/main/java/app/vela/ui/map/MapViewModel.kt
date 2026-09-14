@@ -2961,6 +2961,12 @@ class MapViewModel @Inject constructor(
      *  Google correlation in [onPoiTap] upgrades it to the listing when online. */
     fun onOpenPlaceTap(p: Place) = onPoiTap(p.name, p.location, p.category, seed = p)
 
+    /** Open-places id -> the Google listing it resolved to, so a second tap on the same pin is
+     *  instant. Local to the device only (a published crosswalk would redistribute Google ids). */
+    private val openPlaceCache = object : LinkedHashMap<String, Place>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Place>?) = size > 200
+    }
+
     fun onPoiTap(name: String, location: LatLng, poiKind: String? = null, seed: Place? = null) {
         // Dead during a live drive: the map is carpeted with tappable POIs at nav zoom, the
         // sheet this would build can't render under nav's bottom slot, and the stale selection
@@ -3024,7 +3030,8 @@ class MapViewModel @Inject constructor(
             )
         }
         viewModelScope.launch {
-            val resolved = runCatching {
+            val remembered = seed?.let { synchronized(openPlaceCache) { openPlaceCache[it.id] } }
+            val resolved = if (remembered != null) (remembered to emptyList<Place>()) else runCatching {
                 val results = dataSource.search(searchQuery, location).places
                 val pick = if (transitHint != null) {
                     // Transit tap: pick the OPERATING stop, not the nearest/most-reviewed thing at the
@@ -3079,6 +3086,7 @@ class MapViewModel @Inject constructor(
                 pick?.takeIf { it.location.distanceTo(location) <= maxM } to results
             }.getOrNull()
             val full = resolved?.first
+            if (full != null && seed != null) synchronized(openPlaceCache) { openPlaceCache[seed.id] = full }
             if (full != null && _state.value.selected == placeholder) {
                 _state.update { it.copy(selected = withListNote(full), placesHere = othersAt(full, resolved.second)) }
                 fetchReviews(full)
@@ -5695,6 +5703,7 @@ class MapViewModel @Inject constructor(
             downloadRoutingGraph(region) // shows its own progress + status
         }
         downloadOverlayForArea(lat, lng) // also grab the open building-footprint overlay for this area
+        downloadPlacesForArea(lat, lng)  // and the open places layer, so the map's businesses show offline
     }
 
     /** Download the open building-footprint overlay (Microsoft, ODbL) covering ([lat],[lng]) alongside the
@@ -5709,6 +5718,19 @@ class MapViewModel @Inject constructor(
             if (region.id in overlayStore.installedIds()) return@downloadLaunch
             overlayStore.download(region) { }
             refreshBuildingOverlays()
+        }
+    }
+
+    /** The open places archive covering ([lat],[lng]), pulled with a region download so the map's
+     *  businesses draw offline. Best-effort and silent, like the building overlay. */
+    private fun downloadPlacesForArea(lat: Double, lng: Double) {
+        downloadLaunch(appContext.getString(R.string.download_label_map_data)) {
+            val regions = placesStore.manifest(app.vela.BuildConfig.PLACES_MANIFEST_URL)
+            val region = regions.filter { lat in it.s..it.n && lng in it.w..it.e }
+                .minByOrNull { it.area() } ?: return@downloadLaunch
+            if (region.id in placesStore.installedIds()) return@downloadLaunch
+            placesStore.download(region) { }
+            refreshPlacesOverlays()
         }
     }
 
@@ -6580,10 +6602,22 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** The routing manifest's bbox `[S,W,N,E]` for region [id], from the cached manifest, or null. */
+    private fun routingRegionBox(id: String): DoubleArray? =
+        overlayManifestCache?.firstOrNull { it.id == id }?.let { doubleArrayOf(it.s, it.w, it.n, it.e) }
+
     fun deleteRoutingGraph(id: String) {
         routingGraphStore.delete(id)
         obfStore.delete(id) // whichever format this region was installed as
         poiPackStore.delete(id) // the place pack rides with the region — remove them together
+        // The open places archives that came with this region go too: any whose bbox centre sits
+        // inside the region's box, plus a same-id archive.
+        runCatching {
+            val box = routingRegionBox(id)
+            (listOf(id) + (box?.let { placesStore.idsInside(it[0], it[1], it[2], it[3]) } ?: emptyList()))
+                .distinct().forEach { placesStore.delete(it) }
+        }
+        refreshPlacesOverlays()
         (routeEngine as? app.vela.core.data.OfflineRouteEngine)?.shutdown() // drop cached readers for the removed region
         _state.update {
             it.copy(routingInstalledIds = routingGraphStore.installedIds() + obfStore.installedIds(), poiPackInstalledIds = poiPackStore.installedIds())

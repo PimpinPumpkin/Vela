@@ -3137,7 +3137,17 @@ architecture note.
   SymbolLayers dressed identically to the ambient layer; a tap on a `src=overture` feature builds a seeded
   `Place` (category/address/phone/website from the tile) and `onOpenPlaceTap` -> `onPoiTap(seed=...)`, so
   the sheet reads offline and the existing Google correlation upgrades it online. Davis is the test bake
-  (2,335 features, 752 KB). Licence: CDLA-Permissive 2.0, attribution still to add to About.
+  (2,335 features, 728 KB). **Regions (same day):** the `places-overlays` release hosts the archives +
+  `places-overlay-manifest.json` (`{regions:[{id,name,url,sizeMb,bbox}]}`), baked by
+  `.github/workflows/places-overlays.yml` from `tools/places-regions.json` (manual dispatch while beta,
+  `scripts/merge-places-manifest.sh` folds entries); `PlacesTileStore.download` (index.json by bbox,
+  PMTiles magic check) rides along with a region download (`downloadPlacesForArea`, next to the building
+  overlay), `deleteRoutingGraph` removes archives whose bbox centre sits in the region; manifest misses are
+  memoised 10 min (the lookup runs on every camera idle). Labels use `PoiIcons.ambientLabelColor(dark)` off
+  the baked `icon` property (the fixed grey was the "text looks off" report), two label anchors not four
+  (hundreds of features per view), minzooms >=6 z13 / >=4.5 z14 / >=3.5 z15 / >=2.5 z16 / else z17.
+  `openPlaceCache` (VM, LRU 200, device-local) makes a second tap on the same pin instant. Licence:
+  CDLA-Permissive 2.0, attribution still to add to About.
 - **The hidden WebViews are warmed AFTER results land, never before the fetch (2026-09-14).**
   `runSearch` used to call `webPopularTimes.prewarm()` + `webPhotos.warm()` before the search:
   two Chromium instances created on the main thread and loading google.com while the search ran.

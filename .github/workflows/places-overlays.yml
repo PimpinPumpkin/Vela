@@ -1,0 +1,101 @@
+name: Open places overlays
+
+# Bakes the open places layer (Overture Maps Places -> PMTiles) per region from tools/places-regions.json
+# and publishes the archives + places-overlay-manifest.json on the `places-overlays` release. ADDITIVE and
+# reversible: its own release + manifest; delete the release to revert. Manual only while the layer is beta.
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: Region id to bake (blank = every region in tools/places-regions.json)
+        required: false
+        default: ""
+      release:
+        description: Overture release
+        required: false
+        default: "2026-08-19.0"
+
+permissions:
+  contents: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: m
+        run: |
+          if [ -n "${{ github.event.inputs.only }}" ]; then
+            jq -c --arg id "${{ github.event.inputs.only }}" '{include: [.regions[] | select(.id == $id)]}' tools/places-regions.json > m.json
+          else
+            jq -c '{include: .regions}' tools/places-regions.json > m.json
+          fi
+          echo "matrix=$(cat m.json)" >> "$GITHUB_OUTPUT"
+      - name: Ensure the release exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view places-overlays --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create places-overlays --repo "$GITHUB_REPOSITORY" --prerelease \
+              --title "Open places overlays" \
+              --notes "Data release: the open places layer, Overture Maps Places baked to PMTiles per region. Not an app build. Overture Places is CDLA-Permissive 2.0."
+
+  bake:
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install duckdb + tippecanoe
+        run: |
+          curl -sL https://github.com/duckdb/duckdb/releases/latest/download/duckdb_cli-linux-amd64.zip -o duckdb.zip
+          unzip -q duckdb.zip && sudo mv duckdb /usr/local/bin/duckdb
+          sudo apt-get update -qq && sudo apt-get install -y -qq build-essential libsqlite3-dev zlib1g-dev jq
+          git clone --depth 1 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
+          make -C /tmp/tippecanoe -j"$(nproc)" >/dev/null && sudo make -C /tmp/tippecanoe install >/dev/null
+      - name: Bake ${{ matrix.id }}
+        run: |
+          B='${{ toJson(matrix.bbox) }}'
+          S=$(echo "$B" | jq '.[0]'); W=$(echo "$B" | jq '.[1]'); N=$(echo "$B" | jq '.[2]'); E=$(echo "$B" | jq '.[3]')
+          bash tools/build-places-region.sh "${{ matrix.id }}" "$S" "$W" "$N" "$E" "places-${{ matrix.id }}.pmtiles" "${{ github.event.inputs.release }}"
+      - name: Upload archive + emit manifest entry
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload places-overlays "places-${{ matrix.id }}.pmtiles" --clobber --repo "$GITHUB_REPOSITORY"
+          mkdir -p entries
+          SIZE=$(stat -c %s "places-${{ matrix.id }}.pmtiles")
+          jq -n --arg id "${{ matrix.id }}" --arg name "${{ matrix.name }}" \
+            --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/places-overlays/places-${{ matrix.id }}.pmtiles" \
+            --argjson sizeMb "$(echo "scale=2; $SIZE/1000000" | bc)" --argjson bbox '${{ toJson(matrix.bbox) }}' \
+            '{id:$id,name:$name,url:$url,sizeMb:$sizeMb,bbox:$bbox}' > "entries/${{ matrix.id }}.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: places-entry-${{ matrix.id }}
+          path: entries/
+
+  manifest:
+    needs: bake
+    if: always()
+    runs-on: ubuntu-latest
+    concurrency:
+      group: places-overlays-manifest-merge
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: places-entry-*
+          path: entries
+          merge-multiple: true
+      - name: Merge entries into places-overlay-manifest.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls entries/*.json >/dev/null 2>&1 || { echo "no entries"; exit 0; }
+          bash scripts/merge-places-manifest.sh entries

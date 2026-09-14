@@ -1054,7 +1054,7 @@ fun VelaMapView(
     // like the Google ambient layer (same icon images by group, the same prominence-driven size and
     // label thresholds) so the switch is invisible. Density is in the data: each feature carries a
     // tippecanoe minzoom from its prominence, and MapLibre's collision does the rest.
-    LaunchedEffect(placesOverlays, styleRef) {
+    LaunchedEffect(placesOverlays, styleRef, darkTheme) {
         val style = styleRef ?: return@LaunchedEffect
         runCatching { style.layers.filter { it.id.startsWith("vela-places-") }.forEach { style.removeLayer(it) } }
         runCatching { style.sources.filter { it.id.startsWith("vela-places-src-") }.forEach { style.removeSource(it) } }
@@ -1071,7 +1071,7 @@ fun VelaMapView(
                     setSourceLayer("places") // tippecanoe layer name (tools/build-places-region.sh: -l places)
                     setMinZoom(13f)
                     setProperties(
-                        PropertyFactory.iconImage(Expression.concat(Expression.literal("vela-poi-"), Expression.get("group"))),
+                        PropertyFactory.iconImage(Expression.get("icon")), // "vela-poi-<group>", baked
                         PropertyFactory.iconSize(
                             Expression.interpolate(
                                 Expression.linear(), Expression.get("prominence"),
@@ -1098,19 +1098,18 @@ fun VelaMapView(
                                 Expression.stop(0.0, 11f), Expression.stop(8.0, 14f),
                             ),
                         ),
-                        PropertyFactory.textVariableAnchor(
-                            arrayOf(
-                                Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_LEFT,
-                                Property.TEXT_ANCHOR_TOP, Property.TEXT_ANCHOR_BOTTOM,
-                            ),
-                        ),
+                        // Two anchors, not the ambient layer's four: this layer carries hundreds of
+                        // features per view where the ambient one carries dozens, and each anchor
+                        // is another placement attempt per label per frame.
+                        PropertyFactory.textVariableAnchor(arrayOf(Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_LEFT)),
                         PropertyFactory.textRadialOffset(1.4f),
                         PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
                         PropertyFactory.textMaxWidth(7f),
                         PropertyFactory.textOptional(true),
                         PropertyFactory.textAllowOverlap(false),
-                        PropertyFactory.textColor("#3C4043"),
-                        PropertyFactory.textHaloColor("#FFFFFF"),
+                        // The ambient layer's own label colours: per-group tints, pastel in dark.
+                        PropertyFactory.textColor(PoiIcons.ambientLabelColor(darkTheme)),
+                        PropertyFactory.textHaloColor(if (darkTheme) "#11161C" else "#FFFFFF"),
                         PropertyFactory.textHaloWidth(0.9f),
                     )
                 }
@@ -4885,6 +4884,12 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
         PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark)),
         PropertyFactory.textHaloColor(if (dark) "#11161C" else "#FFFFFF"),
     )
+    style.layers.filter { it.id.startsWith("vela-places-") }.forEach { l ->
+        (l as? SymbolLayer)?.setProperties(
+            PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark)),
+            PropertyFactory.textHaloColor(if (dark) "#11161C" else "#FFFFFF"),
+        )
+    }
     // Canonical GTFS stop names take the TRANSIT category colour per theme - blue in light,
     // its pastel tint in dark, the same grammar every POI label follows. The creation-time
     // colours in ensureLayers were hardcoded for dark (no theme there) and read as grey with

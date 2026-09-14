@@ -60,12 +60,12 @@ WHERE name IS NOT NULL AND name <> ''
 COPY (
   SELECT json_object(
     'type', 'Feature',
-    'tippecanoe', json_object('minzoom', CASE WHEN prominence >= 6 THEN 13 WHEN prominence >= 4.5 THEN 14 WHEN prominence >= 3 THEN 15 WHEN prominence >= 2 THEN 16 ELSE 17 END),
+    'tippecanoe', json_object('minzoom', CASE WHEN prominence >= 6 THEN 13 WHEN prominence >= 4.5 THEN 14 WHEN prominence >= 3.5 THEN 15 WHEN prominence >= 2.5 THEN 16 ELSE 17 END),
     'geometry', json_object('type', 'Point', 'coordinates', [lng, lat]),
     'properties', json_object(
       'id', id, 'name', name,
       'class', COALESCE(upper(substr(replace(category, '_', ' '), 1, 1)) || substr(replace(category, '_', ' '), 2), 'Place'),
-      'group', grp, 'prominence', round(prominence, 2), 'confidence', round(COALESCE(confidence, 0.5), 2),
+      'group', grp, 'icon', 'vela-poi-' || grp, 'prominence', round(prominence, 2), 'confidence', round(COALESCE(confidence, 0.5), 2),
       'brand', brand, 'addr', addr, 'website', website, 'phone', phone, 'src', 'overture'
     )
   ) FROM scored

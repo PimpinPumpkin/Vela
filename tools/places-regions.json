@@ -1,0 +1,25 @@
+{
+  "_comment": "Open places layer catalog (Overture Maps Places, CDLA-Permissive 2.0), baked per region by tools/build-places-region.sh on the places-overlays workflow. bbox=[S,W,N,E]. Start small: the test box and one state; add states as the layer proves out.",
+  "regions": [
+    {
+      "id": "davis",
+      "name": "Davis, California (test)",
+      "bbox": [
+        38.52,
+        -121.8,
+        38.58,
+        -121.7
+      ]
+    },
+    {
+      "id": "california",
+      "name": "California",
+      "bbox": [
+        32.53,
+        -124.48,
+        42.01,
+        -114.13
+      ]
+    }
+  ]
+}
