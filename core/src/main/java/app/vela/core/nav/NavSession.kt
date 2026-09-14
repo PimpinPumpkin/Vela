@@ -247,16 +247,27 @@ class NavSession @Inject constructor(
      *  IMMEDIATELY (marks null until the new route lands), so even a failed fetch keeps it -
      *  the next reroute/recheck routes through it once the network recovers. */
     fun addStop(stop: NavStop, loc: LatLng) {
+        val remaining = synchronized(stopLock) { stops.drop(passedStops) }
+        setStops(listOf(stop) + remaining, loc, "add stop mid-nav → ${stop.label}", "stop-added")
+    }
+
+    /** The stops still ahead on the drive, in order (the ones already passed are dropped). */
+    fun remainingStops(): List<NavStop> = synchronized(stopLock) { stops.drop(passedStops) }
+
+    /** Replace the stops still ahead with [newRemaining] (the stops editor's Done during nav,
+     *  issue #402: reorder, remove, add, then ONE replan from [loc]) and replan the drive through
+     *  them. The same user-ordered reroute as [addStop]: no cooldown, no back-on-course discard,
+     *  and the new list is the plan at once, so even a failed fetch keeps it for the next
+     *  reroute/recheck. */
+    fun setStops(newRemaining: List<NavStop>, loc: LatLng, reason: String, swapReason: String = "stops-edited") {
         val dest = destination ?: return
-        val newRemaining = synchronized(stopLock) {
-            val remaining = listOf(stop) + stops.drop(passedStops)
-            stops = remaining
-            stopMarks = List(remaining.size) { null } // measured against no route yet: cues hold
+        synchronized(stopLock) {
+            stops = newRemaining
+            stopMarks = List(newRemaining.size) { null } // measured against no route yet: cues hold
             passedStops = 0
-            remaining
         }
         voice.speak(app.vela.core.i18n.NavStringsRegistry.current().rerouting(), interrupt = true)
-        note("add stop mid-nav → ${stop.label}")
+        note(reason)
         val gen = sessionGen
         rerouteJob?.cancel()
         rerouteJob = scope.launch {
@@ -264,7 +275,7 @@ class NavSession @Inject constructor(
                 .getOrNull()?.let { driveable(it, loc, dest) }?.takeIf { it.reaches(dest) }
             if (gen != sessionGen) return@launch
             if (r == null) {
-                note("add-stop reroute FAILED — stop kept, next reroute/recheck retries")
+                note("stops reroute FAILED, list kept, next reroute/recheck retries")
                 return@launch
             }
             val marks = NavEngine.stopMarks(r, newRemaining.map { it.location })
@@ -274,7 +285,7 @@ class NavSession @Inject constructor(
                 passedStops = 0
                 planRoute = r
             }
-            lastSwapReason = "stop-added"
+            lastSwapReason = swapReason
             lastRecheckMs = SystemClock.elapsedRealtime()
             lastRerouteAdoptMs = SystemClock.elapsedRealtime()
             etaScale = 1.0 // the fresh route carries fresh traffic
