@@ -84,7 +84,17 @@ Defaults that make the safe path the easy one:
 
 - **Always build release** for anything run on-device - debug builds visibly lag
   during map scroll/nav. R8 lives in the `release`
-  buildType. Use `./gradlew :app:assembleDebug` only as a compile check.
+  buildType. Use `./gradlew :app:assembleDebug` only as a compile check. **Measured 2026-09-14
+  on the 4a, same cold place tap + sheet drag + review scroll: DEBUG 14.8% janky frames, 90th
+  percentile 69 ms; RELEASE 1.1%, 28 ms.** A whole session of "the sheet lags" was the debug
+  build. `assembleRelease` falls back to the debug keystore when no env keystore is set, so it
+  installs over the 4a's app with `adb install -r`; use it for anything the user will feel.
+- **WebView boot is off the tap path (2026-09-14):** Chromium's first start (half a second of
+  main thread + a sandbox process) used to land at the first place tap of a fresh app, under the
+  sheet's open animation. `warmWebViewsWhenQuiet` (first camera idle + 4 s, main-thread idle
+  handler, skipped while navigating or with a sheet up) boots it early; searching still warms
+  after results. On a resolved tap the photos and popular-times loads start 700 ms after the
+  reviews scrape, so three page loads do not hit the 4a together under the animation.
 - `./gradlew :core:test` runs the pure-logic unit tests (polyline, nav engine).
 - **MapScreen is at the JVM 64 KB method limit (2026-09-13).** CI builds release only; the
   DEBUG variant (what the 4a runs) carries Compose source info and failed with "Method too

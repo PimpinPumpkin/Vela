@@ -1748,6 +1748,27 @@ class MapViewModel @Inject constructor(
         if (_state.value.results.isNotEmpty() && _state.value.selected == null) {
             _state.update { it.copy(showSearchThisArea = true) }
         }
+        warmWebViewsWhenQuiet()
+    }
+
+    private var webWarmScheduled = false
+
+    /** Boot the hidden WebViews once, at a quiet moment a few seconds after the map first settles,
+     *  and only when the main thread is idle. Chromium's first start is a good half second of
+     *  main-thread work plus a sandbox process, and it used to land at the first place tap of a
+     *  fresh app, right under the sheet's open animation (the 4a dropped frames "like crazy",
+     *  2026-09-14). Searching warms them anyway; this covers the map-tap-first session. */
+    private fun warmWebViewsWhenQuiet() {
+        if (webWarmScheduled || app.vela.ui.MemoryPressure.lowRam) return
+        webWarmScheduled = true
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(4_000)
+            if (_state.value.navigating || _state.value.selected != null) { webWarmScheduled = false; return@launch }
+            android.os.Looper.myQueue().addIdleHandler {
+                if (_state.value.selected == null) warmPlaceWebViews()
+                false
+            }
+        }
     }
 
     /** Track connectivity so the UI can show a quiet offline indicator (no more banner). Seeds now and
@@ -3090,9 +3111,15 @@ class MapViewModel @Inject constructor(
             if (full != null && _state.value.selected == placeholder) {
                 _state.update { it.copy(selected = withListNote(full), placesHere = othersAt(full, resolved.second)) }
                 fetchReviews(full)
-                fetchPhotos(full)
-                fetchPlaceDetails(full) // popular times + editorial/owner, like a search-result tap
                 fetchStopDepartures(full) // issue #71: a bus stop / station tapped on the MAP gets its board too
+                // Photos and popular times are two more Chromium page loads; a beat later, so they
+                // do not land under the sheet's open animation together with the reviews scrape.
+                launch {
+                    kotlinx.coroutines.delay(700)
+                    if (_state.value.selected?.id != full.id) return@launch
+                    fetchPhotos(full)
+                    fetchPlaceDetails(full) // popular times + editorial/owner, like a search-result tap
+                }
                 rememberRecentPlace(SavedPlace.of(full))
             } else if (transitHint != null && _state.value.selected == placeholder) {
                 // Issue #71 (Jerusalem): a tapped stop with NO resolvable Google stop listing used to
