@@ -2,6 +2,7 @@ package app.vela.web
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -62,6 +63,20 @@ abstract class HiddenWebView(
     /** Extra setup for a freshly created view (an offscreen viewport for virtualized pages, say). */
     protected open fun configure(view: WebView) {}
 
+    /** The object the page sees as `VelaBridge`. A fetcher whose script reports more than one
+     *  result kind returns its own object here; its `onResult` must call [deliver]. */
+    protected open fun bridge(): Any = Bridge()
+
+    /** Hand request [id] its payload (the bridge's `onResult`). A stale page's id is already
+     *  gone, so a late call is a no-op. */
+    protected fun deliver(id: String, payload: String) {
+        pending.remove(id)?.complete(payload)
+    }
+
+    /** Whether the page may navigate to [url] (http/https only, already checked). A scrape that
+     *  must stay on one host refuses the rest, so an action link cannot walk it off the page. */
+    protected open fun allowNavigation(url: Uri): Boolean = true
+
     /** The view was destroyed (idle reap or memory pressure): drop anything tied to it, such as a
      *  warmed session, so the next fetch rebuilds it. */
     protected open fun onReaped() {}
@@ -117,7 +132,7 @@ abstract class HiddenWebView(
         wv.settings.javaScriptEnabled = true
         wv.settings.domStorageEnabled = true
         wv.settings.userAgentString = VelaConfig.USER_AGENT // desktop UA -> desktop web Maps (mobile deep-links to intent://)
-        wv.addJavascriptInterface(Bridge(), "VelaBridge")
+        wv.addJavascriptInterface(bridge(), "VelaBridge")
         wv.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(m: ConsoleMessage): Boolean {
                 if (m.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
@@ -128,8 +143,10 @@ abstract class HiddenWebView(
         }
         wv.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                val scheme = request?.url?.scheme
-                return scheme != null && scheme != "https" && scheme != "http"
+                val u = request?.url ?: return false
+                val scheme = u.scheme
+                if (scheme != "https" && scheme != "http") return true
+                return !allowNavigation(u)
             }
             override fun onPageFinished(view: WebView?, url: String?) {
                 // Bake THIS page's request id in, so a late poller can only complete its own request.
@@ -143,9 +160,7 @@ abstract class HiddenWebView(
 
     private inner class Bridge {
         @JavascriptInterface
-        fun onResult(id: String, payload: String) {
-            pending.remove(id)?.complete(payload) // a stale page's id is already gone -> no-op
-        }
+        fun onResult(id: String, payload: String) = deliver(id, payload)
     }
 
     private fun scheduleReap() {
