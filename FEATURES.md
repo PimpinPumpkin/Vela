@@ -593,7 +593,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   already pointed the right way, now the words match). A shared onramp whose sign lists BOTH
   directions of the target highway ("99 North, 99 South") now announces only the branch you take -
   the folded fork disambiguates the destination, and its lane diagram survives the fold. Highway
-  shields got roomier too (bigger badge, larger number).
+  shields got roomier too (bigger badge, larger number). **Google-style shields (2026-09-15):**
+  the map's route badges are now drawn by Vela over the sprite's outline-only ones: interstates
+  are a blue shield with the red band and a white number, US routes a white shield, state routes
+  and international refs a white rounded badge (state routes had no badge at all before), and
+  every badge stretches to fit its number instead of the number squeezing into a fixed badge.
 - ✅ **Wrong-way detection + a real "Rerouting" banner (2026-07-16).** Off-route used to be judged by
   distance from the route line alone, so a wrong turn onto a road running close alongside the planned
   one never registered: no reroute, the old blue line stayed, and guidance kept speaking the old
