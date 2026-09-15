@@ -1,0 +1,129 @@
+name: Offline basemap tiles
+
+# Bakes the offline basemap (Geofabrik OSM extract -> OpenMapTiles-schema PMTiles, planetiler) per
+# region from tools/routing-regions.json and publishes the archives + basemap-manifest.json on the
+# `basemap-tiles` release. Same region rows and extracts as the obf routing bake, so a region
+# download gets routing, places and the map picture as one set. ADDITIVE and reversible.
+
+on:
+  workflow_dispatch:
+    inputs:
+      group:
+        description: "Region group(s) from tools/routing-regions.json (space or comma separated; `all-sub` = every sub-area group)"
+        required: false
+        default: ""
+      ids:
+        description: "Explicit region ids (space or comma separated); overrides group"
+        required: false
+        default: ""
+      maxzoom:
+        description: "Tile max zoom (14 = full detail, overzoomed past it)"
+        required: false
+        default: "14"
+
+permissions:
+  contents: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.sel.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: sel
+        env:
+          GROUP: ${{ inputs.group }}
+          IDS: ${{ inputs.ids }}
+        run: |
+          ids_json=$(jq -cn --arg s "$IDS" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
+          groups_json=$(jq -cn --arg s "$GROUP" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
+          sel=$(jq -c --arg group "$GROUP" --argjson groups "$groups_json" --argjson ids "$ids_json" '
+            [ .regions[]
+              | select(
+                  if ($ids|length) > 0 then (.id as $rid | $ids | index($rid)) != null
+                  elif $group == "all-sub" then (.group | endswith("-sub"))
+                  else (.group as $g | $groups | index($g)) != null end
+                )
+              | select( .skip_obf != true )
+              | {id, name, pbf_url} ]
+          ' tools/routing-regions.json)
+          n=$(printf '%s' "$sel" | jq 'length')
+          echo "selected $n region(s):"; printf '%s' "$sel" | jq -r '.[].id' | paste -sd' ' -
+          if [ "$n" -eq 0 ]; then echo "::error::no regions matched"; exit 1; fi
+          if [ "$n" -gt 256 ]; then echo "::error::$n regions > 256 matrix cap"; exit 1; fi
+          echo "matrix={\"include\":$sel}" >> "$GITHUB_OUTPUT"
+      - name: Ensure the release exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view basemap-tiles --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create basemap-tiles --repo "$GITHUB_REPOSITORY" --prerelease \
+              --title "Offline basemap tiles" \
+              --notes "Data release: the offline basemap, OpenStreetMap data baked per region into vector tiles (OpenMapTiles schema, PMTiles) by planetiler. Not an app build. OpenStreetMap data is ODbL."
+
+  bake:
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Cache planetiler base data
+        uses: actions/cache@v4
+        with:
+          path: data/sources
+          key: planetiler-sources-v1
+      - name: Fetch planetiler + pmtiles
+        run: |
+          curl -sL -o tools/planetiler.jar https://github.com/onthegomap/planetiler/releases/latest/download/planetiler.jar
+          curl -sL https://github.com/protomaps/go-pmtiles/releases/latest/download/go-pmtiles_$(curl -sL https://api.github.com/repos/protomaps/go-pmtiles/releases/latest | jq -r .tag_name | sed 's/^v//')_Linux_x86_64.tar.gz | tar xz -C /usr/local/bin pmtiles || true
+      - name: Bake ${{ matrix.id }}
+        env:
+          PLANETILER_XMX: 10g
+        run: bash tools/build-basemap-region.sh "${{ matrix.id }}" "${{ matrix.pbf_url }}" "basemap-${{ matrix.id }}.pmtiles" "${{ inputs.maxzoom }}"
+      - name: Upload archive + emit manifest entry
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload basemap-tiles "basemap-${{ matrix.id }}.pmtiles" --clobber --repo "$GITHUB_REPOSITORY"
+          mkdir -p entries
+          SIZE=$(stat -c %s "basemap-${{ matrix.id }}.pmtiles")
+          # Bounds from the archive header (the routing catalog carries none): the pmtiles CLI prints
+          # "bounds: (long: W, lat: S) (long: E, lat: N)".
+          B=$(pmtiles show "basemap-${{ matrix.id }}.pmtiles" | grep -E '^bounds' | grep -oE '[-0-9.]+' | paste -sd' ' -)
+          set -- $B
+          jq -n --arg id "${{ matrix.id }}" --arg name "${{ matrix.name }}" \
+            --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/basemap-tiles/basemap-${{ matrix.id }}.pmtiles" \
+            --argjson sizeMb "$(echo "scale=2; $SIZE/1000000" | bc)" --argjson bbox "[$2, $1, $4, $3]" \
+            '{id:$id,name:$name,url:$url,sizeMb:$sizeMb,bbox:$bbox}' > "entries/${{ matrix.id }}.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: basemap-entry-${{ matrix.id }}
+          path: entries/
+
+  manifest:
+    needs: bake
+    if: always()
+    runs-on: ubuntu-latest
+    concurrency:
+      group: basemap-tiles-manifest-merge
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: basemap-entry-*
+          path: entries
+          merge-multiple: true
+      - name: Merge entries into basemap-manifest.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls entries/*.json >/dev/null 2>&1 || { echo "no entries"; exit 0; }
+          bash scripts/merge-basemap-manifest.sh entries

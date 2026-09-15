@@ -26,15 +26,47 @@ import javax.inject.Singleton
  */
 @Singleton
 class PlacesTileStore @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @ApplicationContext context: Context,
+    http: OkHttpClient,
+) : PmtilesRegionStore(context, http, "places")
+
+/**
+ * The offline basemap: the same OpenMapTiles-schema vector tiles OpenFreeMap serves online, baked
+ * per region by planetiler from the Geofabrik extract (`.github/workflows/basemap-tiles.yml`) and
+ * hosted on the `basemap-tiles` release. Never streamed (online, OpenFreeMap is the same data,
+ * fresher); an installed archive covering the view replaces the style's tile source, so a region
+ * download shows the map itself with no signal, not just routes and places.
+ */
+@Singleton
+class BasemapTileStore @Inject constructor(
+    @ApplicationContext context: Context,
+    http: OkHttpClient,
+) : PmtilesRegionStore(context, http, "basemap") {
+    /** The smallest installed archive covering [center] (by the index bbox; an unindexed archive
+     *  counts as covering everything), else null. */
+    fun installedFor(center: LatLng?): File? {
+        val c = center ?: return null
+        val index = readIndexPublic()
+        return installed().entries
+            .filter { (id, _) -> index[id]?.let { b -> c.lat in b[0]..b[2] && c.lng in b[1]..b[3] } ?: true }
+            .minByOrNull { (id, _) -> index[id]?.let { b -> (b[2] - b[0]) * (b[3] - b[1]) } ?: Double.MAX_VALUE }
+            ?.value
+    }
+}
+
+/** One folder of per-region PMTiles archives under `files/<folder>/` with an `index.json` of bboxes,
+ *  a hosted manifest of regions, downloads, deletes and the covering-archive lookups. */
+abstract class PmtilesRegionStore(
+    private val context: Context,
     private val http: OkHttpClient,
+    folder: String,
 ) {
     data class Region(val id: String, val name: String, val url: String, val sizeMb: Double, val s: Double, val w: Double, val n: Double, val e: Double) {
         fun covers(p: LatLng) = p.lat in s..n && p.lng in w..e
         fun area() = (n - s) * (e - w)
     }
 
-    private val root = File(context.filesDir, "places")
+    private val root = File(context.filesDir, folder)
     private val indexFile = File(root, "index.json")
     private val indexLock = Any()
     private val downloadMutex = Mutex()
@@ -143,6 +175,8 @@ class PlacesTileStore @Inject constructor(
      *  a region being removed. */
     fun idsInside(s: Double, w: Double, n: Double, e: Double): List<String> =
         readIndex().filter { (_, b) -> (b[0] + b[2]) / 2 in s..n && (b[1] + b[3]) / 2 in w..e }.keys.toList()
+
+    protected fun readIndexPublic(): Map<String, DoubleArray> = readIndex()
 
     private fun readIndex(): Map<String, DoubleArray> = runCatching {
         if (!indexFile.exists()) return emptyMap()

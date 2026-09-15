@@ -107,6 +107,15 @@ android {
             "\"${(project.findProperty("placesManifestUrl") as String?)
                 ?: "https://github.com/PimpinPumpkin/Vela/releases/download/places-overlays/places-overlay-manifest.json"}\"",
         )
+        // Offline BASEMAP tiles (planetiler bakes of the Geofabrik extracts in the OpenMapTiles schema,
+        // .github/workflows/basemap-tiles.yml) catalog, same override pattern (-PbasemapManifestUrl=...).
+        // An installed archive replaces the style's tile source where it covers the view.
+        buildConfigField(
+            "String",
+            "BASEMAP_MANIFEST_URL",
+            "\"${(project.findProperty("basemapManifestUrl") as String?)
+                ?: "https://github.com/PimpinPumpkin/Vela/releases/download/basemap-tiles/basemap-manifest.json"}\"",
+        )
         // Offline PLACE packs (whole-region POI/address SQLite, pulled with a routing-region download so a
         // state is searchable offline) — same override pattern (-PpoiPackManifestUrl=… via `adb reverse`).
         buildConfigField(

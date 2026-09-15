@@ -198,7 +198,7 @@ re-checks"); off-course re-routes remain, since turn-by-turn can't work without 
 | Turn-by-turn routes | Yes, full trip telemetry | Yes | Routing runs on open OSRM/GraphHopper; Google answers anonymous traffic checks - at planning, and during the drive for re-routes and the optional faster-route scanning |
 | Saved places, home, work | Stored on their servers | Stored on their servers | Stored only on your phone |
 | Ad profile building | Feeds your ads profile | Feeds your ads profile | Nothing to attach it to |
-| Works with no Google contact at all | No | No | Yes - downloaded regions search, route, and navigate fully offline |
+| Works with no Google contact at all | No | No | Yes - downloaded regions show the map, search, route, and navigate fully offline |
 
 Full per-request detail is in [PRIVACY.md](PRIVACY.md).
 
