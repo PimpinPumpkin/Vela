@@ -32,6 +32,9 @@ object MapPoiPrefs {
     val openPlaces: Boolean get() = placesSource.value != SOURCE_GOOGLE
     /** The open places layer alone owns the map's businesses where it covers the view. */
     val openPlacesOnly: Boolean get() = placesSource.value == SOURCE_OPEN
+    /** A region download also pulls the Vela places archive covering it (on by default), so the
+     *  map's businesses draw offline. Off keeps places streaming-only, which is free when online. */
+    val placesWithDownloads = mutableStateOf(true)
 
     fun init(context: Context) {
         val p = prefs(context)
@@ -40,6 +43,12 @@ object MapPoiPrefs {
         showCivic.value = p.getBoolean(KEY_CIVIC, true)
         iconScale.floatValue = p.getFloat(KEY_SCALE, 1.0f)
         placesSource.value = p.getString(KEY_PLACES_SOURCE, null) ?: SOURCE_OPEN
+        placesWithDownloads.value = p.getBoolean(KEY_PLACES_WITH_DOWNLOADS, true)
+    }
+
+    fun setPlacesWithDownloads(context: Context, value: Boolean) {
+        placesWithDownloads.value = value
+        prefs(context).edit().putBoolean(KEY_PLACES_WITH_DOWNLOADS, value).apply()
     }
 
     fun setPlacesSource(context: Context, value: String) {
@@ -73,6 +82,7 @@ object MapPoiPrefs {
     private const val KEY_CIVIC = "map_show_civic_pois"
     private const val KEY_SCALE = "map_poi_icon_scale"
     private const val KEY_PLACES_SOURCE = "map_places_source"
+    private const val KEY_PLACES_WITH_DOWNLOADS = "offline_places_with_downloads"
     const val SOURCE_OPEN = "open"
     const val SOURCE_GOOGLE = "google"
     const val SOURCE_BOTH = "both"
