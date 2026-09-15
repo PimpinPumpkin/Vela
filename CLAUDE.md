@@ -3152,6 +3152,22 @@ architecture note.
   and the tap resolution in `onPoiTap`: offline, an open place shows its tile data or the Google listing
   remembered from an earlier online tap (`openPlaceCache`), a basemap tap keeps its name, and no spinner
   waits on a host that cannot answer.
+- **NavController (2026-09-15, issue #417 refactor 3, step 1).** `app/ui/map/NavController.kt` holds
+  the nav side that used to live in MapViewModel: start/stop/demo drive/trip replay, the nav-state
+  observer that mirrors `NavSession` into `MapUiState` (trip route blocks, corridor fetches, warnings,
+  route bar, the resume heartbeat, arrival), tunnel dead reckoning, the per-route corridor fetches
+  (controls + speed cameras), the spoken speeding/camera warnings, the route bar, resume after a
+  process kill, and the mid-drive stop functions. State stays in the view model's `_state` flow
+  (passed in); what the nav code needs from the rest of the view model (live GPS pause/resume, the
+  stale timer, status cards, the speed-limit badge, route naming, the road-features cover check,
+  the shared `destination`/`controlsBox`/`autoStartOnRoute`) goes through `NavController.Host`, an
+  anonymous object in the view model (`navHost`), so the controller never reaches into the view
+  model. The view model keeps every public function as a one-line forwarder (`startNav() =
+  nav.startNav()`), so MapScreen and the settings pages are unchanged. Rules: `nav` and `navHost`
+  are declared ABOVE the view model's `init` (the observer's first pass runs inline, the #474
+  rule), `nav.bind()` is the last line of init, the location collector writes `nav.lastNavFedMs`,
+  and the viewport controls path asks `nav.corridorControlsActive`. Constants stay in the view
+  model's companion. Next: `NavCamera` in VelaMapView, then `SearchController`.
 - **HiddenWebView base (2026-09-15, issue #417 refactor 2, step 1).** `app/web/HiddenWebView.kt` owns
   the lifecycle every hidden-WebView fetcher used to copy: the view (JS, DOM storage, desktop UA, the
   `VelaBridge` result channel), a request id per page load (`request(timeoutMs) { id -> load(url, id) }`,
