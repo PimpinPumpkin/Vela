@@ -104,11 +104,16 @@ class WebDirectionsFetcher @Inject constructor(
         destination: LatLng,
         timeMode: Int = 0,
         timeEpochSec: Long? = null,
+        // Preferred vehicle kinds (issue #431), Google's own numbering: 0 bus, 1 subway, 2 train,
+        // 3 tram and light rail. Empty = no preference.
+        prefer: Set<Int> = emptySet(),
     ): List<TransitItinerary> = mutex.withLock {
         cancelReap()
         try {
-            transitLocked(origin, destination, timeMode, timeEpochSec)
+            withContext(Dispatchers.Main) { webView?.onResume() } // asleep between fetches
+            transitLocked(origin, destination, timeMode, timeEpochSec, prefer)
         } finally {
+            withContext(kotlinx.coroutines.NonCancellable + Dispatchers.Main) { runCatching { webView?.onPause() } }
             scheduleReap()
         }
     }
@@ -118,6 +123,7 @@ class WebDirectionsFetcher @Inject constructor(
         destination: LatLng,
         timeMode: Int,
         timeEpochSec: Long?,
+        prefer: Set<Int> = emptySet(),
     ): List<TransitItinerary> {
         // Google's transit data param. Now = the plain `!4m2!4m1!3e3`. For a scheduled time we insert
         // Google's time block `!2m3!6e{0=depart,1=arrive,2=last}!7e2!8j<unix-seconds>` before `!3e3`.
@@ -125,8 +131,18 @@ class WebDirectionsFetcher @Inject constructor(
         // and the outer 4m2 → 4m6. Verified against a real Google Maps transit-with-time URL (2026-07-08);
         // an earlier `!4m8!4m7` guess had the wrong counts, so Google silently fell back to "now".
         val timeRef = when (timeMode) { 2 -> 1; 3 -> 2; else -> 0 } // depart=0, arrive=1, last available=2
-        val data = if (timeMode == 0 || timeEpochSec == null) "!4m2!4m1!3e3"
-        else "!4m6!4m5!2m3!6e$timeRef!7e2!8j$timeEpochSec!3e3"
+        // `!8j` is NOT a unix timestamp: Google reads it as a LOCAL clock in seconds, i.e. the
+        // wall-clock time as if it were UTC. Sending the true epoch shifted every schedule by the
+        // zone offset (issue #433: BST users saw buses an hour early, a UTC+3 user three hours),
+        // and the western US only looked right because 7 hours of shift is a different day's
+        // worth of departures nobody noticed. The phone's zone stands in for the origin's.
+        val localSec = timeEpochSec?.let { it + java.util.TimeZone.getDefault().getOffset(it * 1000L) / 1000L }
+        // The `!2m` options group holds the preferred vehicle kinds (`!5e{k}`, issue #431) and
+        // the time block; the `!4m` wrappers count descendants, so they grow with the entries.
+        val entries = prefer.sorted().map { "5e$it" } +
+            (if (timeMode == 0 || localSec == null) emptyList() else listOf("6e$timeRef", "7e2", "8j$localSec"))
+        val data = if (entries.isEmpty()) "!4m2!4m1!3e3"
+        else "!4m${entries.size + 3}!4m${entries.size + 2}!2m${entries.size}!" + entries.joinToString("!") + "!3e3"
         val url = "https://www.google.com/maps/dir/" +
             "${origin.lat},${origin.lng}/${destination.lat},${destination.lng}" +
             "/data=$data?hl=en&gl=us"

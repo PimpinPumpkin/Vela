@@ -4,6 +4,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.foundation.layout.fillMaxWidth
+import app.vela.ui.settings.settingsAnchor
+import app.vela.ui.dpadHighlight
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -57,6 +61,42 @@ internal fun DataPrivacySettingsScreen(vm: app.vela.ui.map.MapViewModel, onBack:
             },
             hint = stringResource(R.string.settings_live_rechecks_hint),
         )
+        }
+        // Clear history (issue #425): one row for what used to be spread over three screens
+        // (Clear recents on the search page, Clear all under Parking history, trips one at a
+        // time under Diagnostics). Confirmed, since it cannot be undone.
+        Spacer(Modifier.height(8.dp))
+        var confirmClear by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+        SettingsGroup {
+        androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().settingsAnchor(stringResource(R.string.settings_clear_history)).padding(horizontal = 16.dp, vertical = 10.dp)) {
+            Text(stringResource(R.string.settings_clear_history), style = MaterialTheme.typography.bodyLarge)
+            Text(
+                stringResource(R.string.settings_clear_history_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+            FilledTonalButton(
+                modifier = Modifier.padding(top = 8.dp).dpadHighlight(androidx.compose.material3.ButtonDefaults.filledTonalShape),
+                onClick = { confirmClear = true },
+            ) { Text(stringResource(R.string.settings_clear_history_action)) }
+        }
+        }
+        if (confirmClear) {
+            app.vela.ui.VelaDialog(
+                onDismissRequest = { confirmClear = false },
+                title = stringResource(R.string.settings_clear_history_confirm_title),
+                confirmText = stringResource(R.string.settings_clear_history_action),
+                onConfirm = {
+                    vm.clearAllHistory()
+                    confirmClear = false
+                    android.widget.Toast.makeText(context, context.getString(R.string.settings_clear_history_done), android.widget.Toast.LENGTH_SHORT).show()
+                },
+                dismissText = stringResource(android.R.string.cancel),
+                onDismiss = { confirmClear = false },
+            ) {
+                Text(stringResource(R.string.settings_clear_history_confirm_body), style = MaterialTheme.typography.bodyMedium)
+            }
         }
         Spacer(Modifier.height(24.dp))
     }

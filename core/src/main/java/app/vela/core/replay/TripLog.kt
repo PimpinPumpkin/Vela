@@ -17,9 +17,13 @@ import app.vela.core.nav.NavReplay
  * Plain CSV, one record per line:
  * - `META,<label>,<startedAt>,<destLat>,<destLng>` — header (written first)
  * - `RP,<encoded-polyline>` — the navigated route's blue line (optional)
- * - `RD,<distanceM>,<durationS>,<durationInTrafficS?>` — route totals (optional)
+ * - `RD,<distanceM>,<durationS>,<durationInTrafficS?>,<reason>,<flags>` — route totals; reason
+ *   (start/reroute/faster/heal/stop-added) and flags (provisional;abbreviated;offline;traffic;
+ *   steps=N) are appended fields, absent on older trips
  * - `M,<type>,<lat>,<lng>,<distanceM>,<instruction>` — one per maneuver (instruction last; may hold commas)
- * - `<lat>,<lng>,<t>,<bearing>,<speed>` — one per recorded GPS fix
+ * - `<lat>,<lng>,<t>,<bearing>,<speed>,<offRoute>,<accuracy>,<provider>,<offRouteHits>` — one per
+ *   recorded GPS fix (the last four are appended fields, absent on older trips)
+ * - `K,<t>,<text>` — a nav decision (recheck offered / kept, reroute attempt, swap); no coordinates
  *
  * The line kind is told by the first field, so [parsePoints] naturally ignores the non-fix lines
  * (their first field never parses as a latitude).
@@ -31,18 +35,21 @@ object TripLog {
         val lat: Double, val lng: Double, val t: Long, val bearing: Float, val speed: Float,
         val offRoute: Boolean = false, // the engine's live off-route flag at this fix (2026-07-16+ recordings)
         val accuracyM: Float? = null,  // the fix's reported accuracy (drives the corridor scaling)
+        val provider: String? = null,  // "gps" / "network" / "fused" (2026-09-13+ recordings)
+        val offRouteHits: Int? = null, // the engine's off-route debounce count at this fix (2026-09-13+)
     ) {
         val latLng: LatLng get() = LatLng(lat, lng)
     }
 
     /** A flight-recorder event line: [tag] "S" (text = the spoken line), "J" (text =
-     *  "frames,janky,worstMs"), "B" (text = battery percent). */
+     *  "frames,janky,worstMs"), "B" (text = battery percent), "K" (text = a nav decision:
+     *  recheck offered / kept / reroute attempt / swap; never a coordinate). */
     data class Event(val tag: String, val t: Long, val text: String)
 
     /** A route block and the fix index it became ACTIVE at. A mid-trip block records the drive
      *  SWITCHING routes there (a reroute, an accepted faster route, or a restarted navigation) —
      *  replay/audit must swap to it at that fix, never mash all blocks into one route. */
-    data class RouteSegment(val route: Route, val fromPoint: Int, val reason: String? = null)
+    data class RouteSegment(val route: Route, val fromPoint: Int, val reason: String? = null, val flags: String? = null)
 
     data class Parsed(
         val label: String,
@@ -61,7 +68,18 @@ object TripLog {
         // reason LAST on RD (appended field, 2026-07-16): "start"/"reroute"/"faster"/"heal"/
         // "stop-added" - the file distinguishes a wrong turn from a chosen faster route. Old
         // parsers read RD by index and ignore extras.
-        append("RD,${route.distanceMeters},${route.durationSeconds},${route.durationInTrafficSeconds ?: ""},$reason\n")
+        // Provenance LAST on RD (appended field, 2026-09-13): which kind of route was driven. The
+        // faster-route swap that adopted one of Google's alternates raw was invisible in the file
+        // until the maneuver lines were read by hand; "provisional" here would have said it at
+        // once. Old parsers ignore extras.
+        val flags = buildList {
+            if (route.provisional) add("provisional")
+            if (route.abbreviatedSteps) add("abbreviated")
+            if (route.offline) add("offline")
+            if (route.hasLiveTraffic) add("traffic")
+            add("steps=${route.maneuvers.size}")
+        }.joinToString(";")
+        append("RD,${route.distanceMeters},${route.durationSeconds},${route.durationInTrafficSeconds ?: ""},$reason,$flags\n")
         for (m in route.maneuvers) {
             val instr = m.instruction.replace('\n', ' ').replace("\r", "")
             append("M,${m.type.name},${m.location.lat},${m.location.lng},${m.distanceMeters},$instr\n")
@@ -87,6 +105,8 @@ object TripLog {
             lat, lng, p[2].toLongOrNull() ?: 0L, p[3].toFloatOrNull() ?: 0f, p[4].toFloatOrNull() ?: 0f,
             offRoute = p.getOrNull(5) == "1",
             accuracyM = p.getOrNull(6)?.toFloatOrNull(),
+            provider = p.getOrNull(7)?.takeIf { it.isNotBlank() },
+            offRouteHits = p.getOrNull(8)?.toIntOrNull(),
         )
     }
 
@@ -126,10 +146,12 @@ object TripLog {
             val durS = rd.getOrNull(1)?.toDoubleOrNull() ?: 0.0
             val trafficS = rd.getOrNull(2)?.toDoubleOrNull()
             val reason = rd.getOrNull(3)?.takeIf { it.isNotBlank() }
+            val flags = rd.getOrNull(4)?.takeIf { it.isNotBlank() }
             segments += RouteSegment(
                 Route(poly, listOf(RouteLeg(distM, durS, trafficS, ms.toList())), distM, durS, trafficS),
                 from,
                 reason,
+                flags,
             )
         }
         for (line in lines) {
@@ -144,7 +166,7 @@ object TripLog {
                 }
                 line.startsWith("RD,") -> rd = line.substring(3).split(',')
                 line.startsWith("M,") -> parseManeuver(line)?.let { ms.add(it) }
-                line.startsWith("S,") || line.startsWith("J,") || line.startsWith("B,") -> {
+                line.startsWith("S,") || line.startsWith("J,") || line.startsWith("B,") || line.startsWith("K,") -> {
                     val e = line.split(',', limit = 3)
                     val t = e.getOrNull(1)?.toLongOrNull()
                     if (t != null) events.add(Event(e[0], t, e.getOrNull(2).orEmpty()))

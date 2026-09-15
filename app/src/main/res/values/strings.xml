@@ -6,6 +6,7 @@
     <string name="cat_restaurants">Restaurants</string>
     <string name="cat_coffee">Coffee</string>
     <string name="cat_gas">Gas</string>
+    <string name="cat_ev">EV charging</string>
     <string name="cat_food">Food</string>
     <string name="cat_groceries">Groceries</string>
     <string name="cat_hotels">Hotels</string>
@@ -131,6 +132,8 @@
     <string name="settings_offline_hint">Saving the area around you is usually all you need: the full map, addresses and places nearby, plus routing. Whole states and countries are for long trips with no signal, and they are large.</string>
     <string name="settings_offline_map_area">This area (full map)</string>
     <string name="settings_offline_download_viewport">Download the area you\'re viewing</string>
+    <string name="settings_offline_places_with_downloads">Include places with downloads</string>
+    <string name="settings_offline_places_with_downloads_hint">A region download also brings Vela\'s place data for it, so the businesses on the map show with no signal. Around half a gigabyte for a big state. Off = places only stream while online.</string>
     <string name="settings_offline_download_viewport_hint">Saves the whole map you\'re looking at, its streets, house numbers and buildings, plus turn-by-turn directions for the region around it. Everything here keeps working with no signal.</string>
     <string name="settings_offline_no_areas">No areas saved yet.</string>
     <string name="settings_offline_addresses_missing">Areas you saved before this update don\'t include address data. Update them to search and route to addresses offline.</string>
@@ -164,6 +167,12 @@
     <string name="settings_map_cache_cleared">Map cache cleared</string>
     <string name="settings_routing_remove">Remove offline routing</string>
     <string name="settings_download">Download</string>
+    <string name="settings_region_group_title">All of %1$s</string> <!-- format -->
+    <string name="settings_region_group_size">%1$d pieces, about %2$s once installed</string> <!-- format -->
+    <string name="settings_region_group_partial">%1$d of %2$d pieces installed, about %3$s for all</string> <!-- format -->
+    <string name="settings_region_group_installed">All %1$d pieces installed</string> <!-- format -->
+    <string name="settings_region_group_downloading">Downloading piece %1$d of %2$d</string> <!-- format -->
+    <string name="settings_region_group_download">Download all</string>
     <string name="settings_saved_places">Saved places</string>
     <string name="settings_saved_places_hint">Back up your starred places to a file, or restore them on another device. Import merges into what you already have. It never overwrites or removes anything, and it also reads GPX, KML and GeoJSON files exported from other map apps.</string>
     <string name="settings_import_nothing_new">Everything in that file is already saved.</string>
@@ -178,8 +187,26 @@
     <string name="settings_data_privacy_hint">Vela talks to Google\'s public endpoints straight from this device: no backend, no account, no API key. Google sees your IP, query and map area, not who you are.</string>
     <string name="nav_overview">Route overview</string>
     <string name="settings_map_places">Places on the map</string>
+    <string name="settings_house_numbers">House numbers</string>
+    <string name="settings_house_numbers_near">Only when zoomed right in</string>
+    <string name="settings_house_numbers_normal">Normal</string>
+    <string name="settings_house_numbers_far">Further out</string>
+    <string name="settings_house_numbers_hint">House numbers come from OpenStreetMap and, in the US, OpenAddresses. A building that has no number in either shows none, even though search still finds the address through Google.</string>
     <string name="settings_show_pois">Show places</string>
     <string name="settings_show_pois_hint">Business and place icons on the browse map. Off = a clean map; searched places still show.</string>
+    <string name="settings_places_source">Places come from</string>
+    <string name="settings_places_source_open">Vela data</string>
+    <string name="settings_places_source_google">Google</string>
+    <string name="settings_places_source_both">Both</string>
+    <string name="settings_places_source_open_hint">Vela\'s own place data draws the businesses on the map, so panning around never asks Google, and it works offline. Searching or tapping a place still goes to Google for hours, reviews and photos.</string>
+    <string name="settings_places_source_google_hint">Google is asked for the places in view every time you pan. Nothing draws offline, and every pan sends your map position to Google.</string>
+    <string name="settings_places_source_both_hint">Vela\'s data draws the map, and once you stop panning one Google request adds anything it lacks. The extras show online only.</string>
+    <string name="settings_places_source_more">Learn more</string>
+    <string name="settings_places_source_more_credit">Overture Maps</string>
+    <string name="settings_places_lookup">Look up tapped places on Google</string>
+    <string name="settings_places_lookup_hint">Tapping a place fetches its hours, reviews and photos from Google, and Vela remembers the match so the next tap is instant. Off = a tapped place shows only what Vela\'s data has (name, type, address, phone, website) and nothing about the tap reaches Google. Search and directions still use Google.</string>
+    <string name="settings_places_source_more_title">Where Vela\'s place data comes from</string>
+    <string name="settings_places_source_more_body">Vela\'s place data is Overture Maps, an open dataset of businesses maintained by Meta, Microsoft and others. Vela serves it from its own GitHub repository, so nothing about where you look goes to Meta or Google.\n\nIt streams in as you browse and downloads with a region for offline use. Where Vela has no data for an area yet, the map falls back to Google.\n\nSearch, place details, hours, reviews and photos always come from Google, whichever option you pick.</string>
     <string name="settings_show_civic">Parks, schools and civic places</string>
     <string name="settings_show_civic_hint">The non-business tier of place icons. Off shows businesses only.</string>
     <string name="settings_show_transit_stops">Transit stops</string>
@@ -191,6 +218,12 @@
     <string name="settings_poi_icon_size_hint">Small suits low-resolution screens like car head units, where the default icons render oversized.</string>
     <string name="settings_live_rechecks">Live traffic re-checks while navigating</string>
     <string name="settings_live_rechecks_hint">Every couple of minutes during a drive, Vela asks Google for fresh traffic from your current position. That powers faster-route offers and the live arrival time, but it also tells Google where along the route you are. Off: your route still recalculates when you leave it.</string>
+    <string name="settings_clear_history">Clear history</string>
+    <string name="settings_clear_history_hint">Recent searches, recent places, parking history and recorded trips. Saved places and lists stay.</string>
+    <string name="settings_clear_history_action">Clear</string>
+    <string name="settings_clear_history_confirm_title">Clear all history?</string>
+    <string name="settings_clear_history_confirm_body">Recent searches, recent places, parking history and every recorded trip will be deleted. This cannot be undone. Saved places and lists are not affected.</string>
+    <string name="settings_clear_history_done">History cleared</string>
     <string name="settings_privacy_button">What data Google receives</string>
     <string name="settings_diagnostics">Diagnostics</string>
     <string name="settings_diagnostics_hint">Off by default. When on, Vela keeps a short local log you can export and hand to a developer. Nothing is uploaded, and turning it off wipes the log.</string>
@@ -327,6 +360,7 @@
     <string name="place_delta_min">+%1$d min</string> <!-- format -->
     <string name="place_via">via %1$s</string> <!-- format -->
     <string name="place_live_traffic">live traffic</string>
+    <string name="place_route_offline">offline route, no live traffic</string>
     <string name="place_traffic_light">light traffic</string>
     <string name="place_traffic_moderate">moderate traffic</string>
     <string name="place_traffic_heavy">heavy traffic</string>
@@ -354,6 +388,7 @@
     <string name="place_reviews_progress">Reviews · %1$d of about %2$d</string> <!-- format -->
     <string name="place_reviews_so_far">Reviews · %1$d so far</string> <!-- format -->
     <string name="place_gathering_reviews">Gathering reviews…</string>
+    <string name="place_reviews_throttled">Google is not serving reviews for this session right now. Try again in a few minutes.</string>
     <string name="place_reviews_load_failed">Couldn\'t load reviews. Tap to retry.</string>
     <string name="place_no_reviews">No reviews available.</string>
     <string name="place_review_more">More</string>
@@ -373,6 +408,8 @@
     <string name="place_open_web">Open on the web</string>
     <string name="place_copy_link">Copy link</string>
     <string name="place_copy_name">Copy name</string>
+    <string name="update_notes_show">What\'s new</string>
+    <string name="update_notes_hide">Hide what\'s new</string>
     <string name="place_name_copied">Name copied</string>
     <string name="place_link_copied">Link copied</string>
     <string name="place_share_gmaps_link">Google Maps link</string>
@@ -419,6 +456,12 @@
     <string name="mapscreen_expand_list">Expand list</string>
     <string name="mapscreen_close_results">Close search results</string>
     <string name="mapscreen_filter_open_now">Open now</string>
+    <string name="mapscreen_more_results">More results</string>
+    <string name="intent_home_unset">Set Home first (search page, under the search bar)</string>
+    <string name="intent_work_unset">Set Work first (search page, under the search bar)</string>
+    <string name="intent_eta_reply">About %1$s to go</string>
+    <string name="intent_eta_not_navigating">Start a drive first, then ask again</string>
+    <string name="intent_place_not_found">Could not find \"%1$s\"</string>
     <string name="mapscreen_filter_rating">Rating</string>
     <string name="mapscreen_filter_any_rating">Any rating</string>
     <string name="mapscreen_filter_any_price">Any price</string>
@@ -442,6 +485,9 @@
     <string name="mapscreen_remove_from_history">Remove from history</string>
     <string name="mapscreen_suggestion_options">Suggestion options</string>
     <string name="mapscreen_saved_place_options">Saved place options</string>
+    <string name="mapscreen_menu_rename">Rename</string>
+    <string name="saved_rename_title">Rename saved place</string>
+    <string name="saved_rename_action">Rename</string>
     <string name="mapscreen_set_as_home">Set as Home</string>
     <string name="mapscreen_set_as_work">Set as Work</string>
     <string name="mapscreen_cancel">Cancel</string>
@@ -495,6 +541,11 @@
     <string name="welcome_feature_open_source_title">Free &amp; open source</string>
     <string name="welcome_feature_open_source_body">GPLv3, built for GrapheneOS and other de-Googled phones.</string>
     <string name="welcome_get_started">Get started</string>
+    <string name="whatsnew_title">What\'s new in %1$s</string> <!-- format -->
+    <string name="whatsnew_got_it">Got it</string>
+    <string name="whatsnew_full_notes">Full notes</string>
+    <string name="settings_whatsnew">What\'s new in this version</string>
+    <string name="settings_whatsnew_hint">The release notes for the build you are on. They also show once after each update.</string>
     <string name="welcome_donate_title">Enjoying Vela?</string>
     <string name="welcome_donate_body">Vela is free and ad-free, built on a shoestring. If it\'s become useful, a small one-off donation helps keep it going. Entirely optional, and this is the only time it\'ll ask. There\'s always a Support entry in Settings too.</string>
     <string name="welcome_donate_confirm">Support Vela</string>
@@ -552,6 +603,7 @@
     <string name="mapvm_offline_routing_failed">Offline routing download failed</string>
     <string name="mapvm_offline_routing_removed">Offline routing removed</string>
     <string name="mapvm_saved_places_offline">Saved %1$d places for offline search</string> <!-- format -->
+    <string name="mapvm_area_uses_pack">Places and addresses for this area come with the %1$s download</string> <!-- format -->
     <string name="mapvm_saved_addresses_offline">Saved %1$d addresses and %2$d streets for offline routing</string> <!-- format -->
 
     <!-- navservice: NavigationService.kt -->
@@ -613,6 +665,11 @@
     <string name="transit_nav_get_off">Get off at %1$s</string> <!-- format -->
     <string name="transit_nav_next">Next</string>
     <string name="place_last_available">Last available</string>
+    <string name="place_transit_prefer">Prefer</string>
+    <string name="place_transit_bus">Bus</string>
+    <string name="place_transit_subway">Subway</string>
+    <string name="place_transit_train">Train</string>
+    <string name="place_transit_tram">Tram</string>
     <!-- Android Auto -->
     <string name="car_search">Search</string>
     <string name="car_no_destinations">No saved or recent destinations yet</string>
@@ -642,9 +699,12 @@
     <string name="parking_history_restore">Restore</string>
     <string name="settings_parking_history">Parking history</string>
     <string name="settings_parking_history_hint">Recent parking spots. Tap Restore if you overwrote your spot by mistake.</string>
+    <string name="settings_parking_history_empty">No parking spots saved yet. Tap the P button on the map to save where you parked.</string>
     <string name="mapscreen_section_lists">Your lists</string>
     <string name="mapscreen_new_list">New</string>
     <string name="list_edit">Edit list</string>
+    <string name="list_move_up">Move list up</string>
+    <string name="list_move_down">Move list down</string>
     <string name="list_new_title">New list</string>
     <string name="list_edit_title">Edit list</string>
     <string name="list_name_label">List name</string>
@@ -672,7 +732,7 @@
     <string name="settings_voice_volume_louder">Louder</string>
     <string name="settings_voice_volume_loudest">Loudest</string>
     <string name="settings_voice_volume_hint">How loud spoken directions play over your media. Louder tiers apply to the Vela voice; system voices can only be made softer.</string>
-    <string name="place_avoid_not_honored">These routes may still use tolls and highways. Avoiding them works on downloaded areas only, so download this area in Settings, Offline maps.</string>
+    <string name="place_avoid_not_honored">These routes may still use tolls or highways. Vela can avoid them on a direct trip online, or offline in a downloaded area, but not yet on a trip with stops.</string>
     <string name="settings_lists_export_hint">Back up your lists to a file, or restore them on another device.</string>
     <string name="settings_lists_imported">Imported %1$d list(s)</string>
     <string name="settings_places_imported">Imported %1$d place(s)</string> <!-- format -->
@@ -715,6 +775,12 @@
     <string name="settings_voice_search_engine_system">Other voice app</string>
     <string name="map_asr_offer_title">Voice search</string>
     <string name="map_asr_offer_body">Download Vela Voice to speak your searches. It runs entirely on your phone and uploads nothing.</string>
+    <string name="voice_capture_examples_title">Things you can say</string>
+    <string name="voice_capture_example_home">\"Take me home\" or \"get me to work\"</string>
+    <string name="voice_capture_example_go">\"Go to 615 3rd Street, Davis\"</string>
+    <string name="voice_capture_example_route">\"Davis to San Francisco\"</string>
+    <string name="voice_capture_example_nearest">\"Nearest gas station\"</string>
+    <string name="voice_capture_example_eta">\"What is my ETA\" while driving</string>
     <string name="nav_precise_title">Precise location needed</string>
     <string name="nav_precise_body">Turn-by-turn follows you with GPS, which needs precise location. Right now Vela only knows your rough area.</string>
     <string name="nav_precise_allow">Allow precise</string>
@@ -742,6 +808,12 @@
     <string name="shortcut_work" translatable="false">Work</string>
     <string name="map_satellite_toggle">Satellite view</string>
     <string name="map_satellite_attribution" translatable="false">Esri, Maxar, Earthstar Geographics</string>
+    <string name="map_satellite_attribution_google" translatable="false">Google</string>
+    <string name="map_osm_attribution" translatable="false">© OpenStreetMap contributors</string>
+    <string name="settings_map_data">Map data</string>
+    <string name="settings_map_data_hint">The map, its streets, labels and house numbers are OpenStreetMap data, available under the Open Database License, served as vector tiles by OpenFreeMap. The businesses on the map in covered regions are places data from the Overture Maps Foundation (sourced from Meta and Microsoft), available under the Community Data License Agreement, Permissive 2.0. Place details, reviews, routing and traffic come from Google. Satellite imagery is from Esri and Google.</string>
+    <string name="settings_map_data_button">OpenStreetMap copyright</string>
+    <string name="settings_map_data_overture_button">Overture Maps license</string>
     <string name="map_layers">Layers</string>
     <string name="settings_layers_button">Show layers button</string>
     <string name="settings_layers_button_hint">The button on the map that flips satellite, traffic, transit and terrain.</string>
@@ -770,12 +842,21 @@
     <string name="settings_road_label_off">Off</string>
     <string name="settings_road_label_bar">Above the bottom bar</string>
     <string name="settings_road_label_puck">Under the arrow</string>
+    <string name="settings_puck_size">Arrow size</string>
+    <string name="settings_puck_size_normal">Normal</string>
+    <string name="settings_puck_size_large">Large</string>
+    <string name="settings_puck_size_xl">Extra large</string>
+    <string name="settings_puck_style">Arrow colours</string>
+    <string name="settings_puck_style_blue">Blue disc, white arrow</string>
+    <string name="settings_puck_style_white">White disc, blue arrow</string>
     <string name="settings_road_label_hint">Where the name of the road you are on is shown while driving. Above the bar keeps it centred and readable for long names; under the arrow follows the arrow around.</string>
     <string name="settings_prefer_buttons">Prefer buttons over swipes</string>
-    <string name="settings_prefer_buttons_hint">Keeps a button for things that also have a swipe, such as the step list on the navigation bar. Always on for phones without a touch screen.</string>
+    <string name="settings_prefer_buttons_hint">Keeps a button for things that also have a gesture: zoom in and out buttons on the map, and the step list button on the navigation bar. Always on for phones without a touch screen.</string>
     <string name="nav_steps_handle_cd">Show steps</string>
     <string name="settings_route_trail">Road behind you</string>
     <string name="settings_route_trail_hint">Keeps the part of the route you have already driven drawn in grey behind the arrow. Off hides it, so only the road ahead is drawn.</string>
+    <string name="settings_bike_safe">Bike routes prefer bike lanes and quiet streets</string>
+    <string name="settings_bike_safe_hint">Cycling routes favour signed cycle routes, bike lanes and residential streets over the fastest road, the way Google routes bikes. Uses the offline map where you have one downloaded, otherwise an open router online. Off gives the plain fastest bike route.</string>
     <string name="settings_route_bar">Road ahead bar</string>
     <string name="settings_route_bar_hint">A strip beside the map showing traffic and what is coming up on the rest of your route. Shows only what Vela actually knows: congestion, lights, stop signs, level crossings, speed bumps and surveillance cameras. Portrait only.</string>
     <string name="settings_font">Font</string>
@@ -786,6 +867,9 @@
     <string name="settings_font_custom">Custom font</string>
     <string name="settings_traffic_lights">Traffic-light guidance</string>
     <string name="settings_traffic_lights_hint">Spoken landmark cues: pass the light, then turn. English only, off by default.</string>
+    <string name="settings_speeding_alert">Speeding alert</string>
+    <string name="settings_speeding_alert_hint">Says \"You\'re over the speed limit\" once you have been over the posted limit for a few seconds, and again after you slow down and creep back over it. Only where a posted limit is known, the one the speed badge shows. Off unless you turn it on.</string>
+    <string name="nav_speeding_alert">You\'re over the speed limit</string>
     <string name="settings_softkeys" translatable="false">Hardware softkeys</string>
     <string name="settings_softkeys_hint" translatable="false">Zoom the map with the phone\'s two soft keys. Keypad phones only.</string>
     <string name="settings_softkeys_calibrate" translatable="false">Calibrate soft keys</string>

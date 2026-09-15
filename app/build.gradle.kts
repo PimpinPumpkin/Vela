@@ -99,6 +99,14 @@ android {
             "\"${(project.findProperty("addressManifestUrl") as String?)
                 ?: "https://github.com/PimpinPumpkin/Vela/releases/download/address-overlays/address-overlay-manifest.json"}\"",
         )
+        // Open-data PLACES layer (Overture Places baked to PMTiles, tools/build-places-region.sh) catalog,
+        // same override pattern (-PplacesManifestUrl=…). Drawn like the Google ambient dots; Google is asked on tap.
+        buildConfigField(
+            "String",
+            "PLACES_MANIFEST_URL",
+            "\"${(project.findProperty("placesManifestUrl") as String?)
+                ?: "https://github.com/PimpinPumpkin/Vela/releases/download/places-overlays/places-overlay-manifest.json"}\"",
+        )
         // Offline PLACE packs (whole-region POI/address SQLite, pulled with a routing-region download so a
         // state is searchable offline) — same override pattern (-PpoiPackManifestUrl=… via `adb reverse`).
         buildConfigField(
@@ -115,6 +123,16 @@ android {
             "FLOCK_MANIFEST_URL",
             "\"${(project.findProperty("flockManifestUrl") as String?)
                 ?: "https://github.com/PimpinPumpkin/Vela/releases/download/flock-cameras/flock-manifest.json"}\"",
+        )
+        // Per-region road features (lights, stop signs, crossings, humps, speed cameras) baked on CI
+        // from Geofabrik extracts and hosted on the `road-features` release; the app downloads the
+        // file for the region it is in instead of querying Overpass (issue #304). Same override
+        // pattern (-ProadFeaturesManifestUrl=… via `adb reverse`).
+        buildConfigField(
+            "String",
+            "ROAD_FEATURES_MANIFEST_URL",
+            "\"${(project.findProperty("roadFeaturesManifestUrl") as String?)
+                ?: "https://github.com/PimpinPumpkin/Vela/releases/download/road-features/road-features-manifest.json"}\"",
         )
         // Self-hosted map-font glyphs (Roboto composited over Noto; see ui/map/MapFonts) served
         // from the repo's GitHub Pages — same override pattern (-PmapFontsUrl=http://127.0.0.1:8099

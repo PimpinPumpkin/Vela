@@ -7,6 +7,7 @@ import app.vela.core.model.LatLng
 import app.vela.core.model.Maneuver
 import app.vela.core.model.ManeuverType
 import app.vela.core.model.Route
+import app.vela.core.model.TrafficSpan
 import app.vela.core.model.RoundaboutGeometry
 import app.vela.core.model.RouteLeg
 import app.vela.core.model.TravelMode
@@ -427,9 +428,16 @@ object RouteGeometry {
                 !app.vela.core.model.continueHasGenuineFork(m.lanes)
             if (redundant && out.isNotEmpty()) {
                 val prev = out.removeAt(out.lastIndex)
+                // The rename is silent on the banner and the voice, but the road you are ON did
+                // change its name at this point of the leg: keep that so the current-road pill
+                // and shield follow it (real drive 2026-09-13: the pill stuck on the old name for
+                // a mile because the leg only ever knew the road the turn entered).
+                val renamed = if (m.road.isNullOrBlank() && m.ref.isNullOrBlank()) prev.renames
+                    else prev.renames + app.vela.core.model.RoadRename(prev.distanceMeters, m.road, m.ref)
                 out += prev.copy(
                     distanceMeters = prev.distanceMeters + m.distanceMeters,
                     durationSeconds = prev.durationSeconds + m.durationSeconds,
+                    renames = renamed,
                 )
             } else {
                 out += m
@@ -586,6 +594,7 @@ object RouteGeometry {
         return Maneuver(
             type = osrmType(effType, mod),
             instruction = osrmPhrase(effType, mod, road, dest, exits, man["exit"]?.jsonPrimitive?.intOrNull),
+            roundaboutExit = man["exit"]?.jsonPrimitive?.intOrNull?.takeIf { it > 0 },
             side = if (type == "arrive" && mod != null) {
                 when {
                     mod.contains("left") -> "left"
@@ -678,6 +687,104 @@ object RouteGeometry {
             if (mod.contains("right")) return strings.destinationSide(left = false)
         }
         return strings.phrase(type, mod, road, dest, exitNo, rbExit)
+    }
+
+    /**
+     * Carry Google's congestion spans onto a route with DIFFERENT geometry (issue #403): every
+     * stretch where the two routes share the road gets the colour, the rest stays uncoloured.
+     * Before this, a route that diverged from Google's anywhere was painted entirely blue, and a
+     * trip with stops never got colours at all, because the spans could only be mapped by
+     * fraction along a same-course line.
+     *
+     * Each span's sub-polyline on [from] is sampled every ~[stepM]; each sample is projected onto
+     * [to] through a cell grid (long routes have tens of thousands of vertices), and samples that
+     * land within [tolM] of [to] mark that along-distance. Runs of marked distances with the same
+     * level become spans; a gap over [gapM] or a short run under [minM] is dropped.
+     */
+    fun transferSpans(
+        from: Route,
+        to: Route,
+        tolM: Double = 35.0,
+        stepM: Double = 25.0,
+        gapM: Double = 80.0,
+        minM: Double = 40.0,
+    ): List<TrafficSpan> {
+        if (from.trafficSpans.isEmpty() || from.polyline.size < 2 || to.polyline.size < 2) return emptyList()
+        val fromPoly = from.polyline
+        val toPoly = to.polyline
+        val cumFrom = app.vela.core.nav.RouteProjection.cumulative(fromPoly)
+        val cumTo = app.vela.core.nav.RouteProjection.cumulative(toPoly)
+        val proj = SegmentGrid(toPoly, cumTo)
+        val out = ArrayList<TrafficSpan>()
+        for (span in from.trafficSpans) {
+            val start = span.startMeters
+            val end = span.startMeters + span.lengthMeters
+            if (end <= start) continue
+            // Walk the span on [from] at stepM, projecting each sample onto [to].
+            val marks = ArrayList<Double>()
+            var d = start
+            var i = 0
+            while (d <= end) {
+                while (i < cumFrom.size - 2 && cumFrom[i + 1] < d) i++
+                val segLen = cumFrom[i + 1] - cumFrom[i]
+                val t = if (segLen <= 0.0) 0.0 else ((d - cumFrom[i]) / segLen).coerceIn(0.0, 1.0)
+                val a = fromPoly[i]; val b = fromPoly[i + 1]
+                val p = LatLng(a.lat + (b.lat - a.lat) * t, a.lng + (b.lng - a.lng) * t)
+                proj.along(p, tolM)?.let { marks += it }
+                d += stepM
+            }
+            if (marks.isEmpty()) continue
+            marks.sort()
+            var runStart = marks[0]
+            var runEnd = marks[0]
+            for (k in 1 until marks.size) {
+                val m = marks[k]
+                if (m - runEnd > gapM) {
+                    if (runEnd - runStart + stepM >= minM) out += TrafficSpan(span.level, runStart, runEnd - runStart + stepM)
+                    runStart = m
+                }
+                runEnd = m
+            }
+            if (runEnd - runStart + stepM >= minM) out += TrafficSpan(span.level, runStart, runEnd - runStart + stepM)
+        }
+        return out.sortedBy { it.startMeters }
+    }
+
+    /** Segments of a polyline bucketed into ~0.005 degree cells, so a point projects against a
+     *  handful of segments instead of every one (a ten-hour route has tens of thousands). */
+    internal class SegmentGrid(private val poly: List<LatLng>, private val cum: DoubleArray) {
+        private val cell = 0.005
+        private val map = HashMap<Long, MutableList<Int>>()
+        init {
+            for (i in 0 until poly.size - 1) {
+                val a = poly[i]; val b = poly[i + 1]
+                val x0 = Math.floor(minOf(a.lng, b.lng) / cell).toInt(); val x1 = Math.floor(maxOf(a.lng, b.lng) / cell).toInt()
+                val y0 = Math.floor(minOf(a.lat, b.lat) / cell).toInt(); val y1 = Math.floor(maxOf(a.lat, b.lat) / cell).toInt()
+                for (x in x0..x1) for (y in y0..y1) map.getOrPut(key(x, y)) { ArrayList() }.add(i)
+            }
+        }
+        private fun key(x: Int, y: Int): Long = (x.toLong() shl 32) xor (y.toLong() and 0xffffffffL)
+
+        /** Along-distance on the polyline of the nearest point to [p], or null if farther than [tolM]. */
+        fun along(p: LatLng, tolM: Double): Double? {
+            val cx = Math.floor(p.lng / cell).toInt(); val cy = Math.floor(p.lat / cell).toInt()
+            val latScale = Math.cos(Math.toRadians(p.lat))
+            var bestD = tolM
+            var bestAlong: Double? = null
+            for (x in cx - 1..cx + 1) for (y in cy - 1..cy + 1) {
+                val segs = map[key(x, y)] ?: continue
+                for (i in segs) {
+                    val a = poly[i]; val b = poly[i + 1]
+                    val bx = (b.lng - a.lng) * latScale; val by = b.lat - a.lat
+                    val px = (p.lng - a.lng) * latScale; val py = p.lat - a.lat
+                    val len2 = bx * bx + by * by
+                    val t = if (len2 <= 0.0) 0.0 else ((px * bx + py * by) / len2).coerceIn(0.0, 1.0)
+                    val dM = Math.hypot(px - bx * t, py - by * t) * 111_320.0
+                    if (dM < bestD) { bestD = dM; bestAlong = cum[i] + (cum[i + 1] - cum[i]) * t }
+                }
+            }
+            return bestAlong
+        }
     }
 
     // --- traffic-aware routing (option 3) -------------------------------------

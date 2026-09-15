@@ -97,6 +97,15 @@ not, work through these:
    This is not a guaranteed fix and it is not something the app can do for itself,
    but it costs nothing to try. A Shizuku- or root-based installer that sets the
    install source does the same thing.
+5. **Reported to work on an aftermarket head unit: King Installer.** One user
+   (September 2026, a motorcycle head unit, phone on Android 16) got Vela listed
+   by installing it through King Installer, which records an install source the
+   way step 4 does, then enabling Unknown sources in Android Auto's developer
+   settings, and connecting over adb. Aftermarket units often run their own
+   Android Auto receiver, which can be more lenient than the one built into
+   cars, so this may be why it worked there. It is a user report, not something
+   tested here: proceed with caution, and expect an in-app update to reset the
+   install source (step 4's caveat) until you reinstall the same way.
 
 ## Known rough edge: de-Googled and sandboxed-Play ROMs
 

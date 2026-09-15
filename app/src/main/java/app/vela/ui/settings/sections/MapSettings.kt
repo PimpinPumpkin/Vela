@@ -7,9 +7,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -20,6 +23,7 @@ import app.vela.ui.settings.GroupDivider
 import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.settings.Hint
+import app.vela.ui.settings.SelectableRow
 import app.vela.ui.settings.ToggleRow
 import app.vela.ui.dpadHighlight // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.dpadRowSibling
@@ -108,6 +112,26 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
             onCheckedChange = { app.vela.ui.BuildingOverlay.set(context, it) },
             hint = stringResource(R.string.settings_building_overlay_hint),
         )
+        // House numbers: how far out they appear (issue #329). Numbers come from OpenStreetMap
+        // and, in the US, OpenAddresses, so a missing number is usually missing data.
+        GroupDivider()
+        Text(
+            stringResource(R.string.settings_house_numbers),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
+        )
+        listOf(
+            app.vela.ui.HouseNumbers.NEAR to stringResource(R.string.settings_house_numbers_near),
+            app.vela.ui.HouseNumbers.NORMAL to stringResource(R.string.settings_house_numbers_normal),
+            app.vela.ui.HouseNumbers.FAR to stringResource(R.string.settings_house_numbers_far),
+        ).forEach { (id, label) ->
+            SelectableRow(
+                label = label,
+                selected = app.vela.ui.HouseNumbers.level.value == id,
+                onClick = { app.vela.ui.HouseNumbers.set(context, id) },
+            )
+        }
+        Hint(stringResource(R.string.settings_house_numbers_hint))
         }
 
         // Places on the map: POI visibility + sizing (user 2026-07-15).
@@ -120,6 +144,73 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
             hint = stringResource(R.string.settings_show_pois_hint),
         )
         if (app.vela.ui.MapPoiPrefs.showPois.value) {
+            GroupDivider()
+            // Where the map's businesses come from. Each option states its own cost so the choice
+            // is the user's: open data is offline and quiet, Google is complete and chatty, both
+            // is the open layer plus one Google fetch per settled view.
+            androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
+                Text(
+                    stringResource(R.string.settings_places_source),
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+            listOf(
+                app.vela.ui.MapPoiPrefs.SOURCE_OPEN to R.string.settings_places_source_open,
+                app.vela.ui.MapPoiPrefs.SOURCE_GOOGLE to R.string.settings_places_source_google,
+                app.vela.ui.MapPoiPrefs.SOURCE_BOTH to R.string.settings_places_source_both,
+            ).forEach { (id, label) ->
+                SelectableRow(
+                    label = stringResource(label),
+                    selected = app.vela.ui.MapPoiPrefs.placesSource.value == id,
+                    onClick = { app.vela.ui.MapPoiPrefs.setPlacesSource(context, id) },
+                )
+            }
+            Hint(
+                stringResource(
+                    when (app.vela.ui.MapPoiPrefs.placesSource.value) {
+                        app.vela.ui.MapPoiPrefs.SOURCE_GOOGLE -> R.string.settings_places_source_google_hint
+                        app.vela.ui.MapPoiPrefs.SOURCE_BOTH -> R.string.settings_places_source_both_hint
+                        else -> R.string.settings_places_source_open_hint
+                    },
+                ),
+            )
+            // The short hints carry what matters; the rest (who maintains the data, where Vela
+            // serves it from, what still touches Google) lives behind Learn more.
+            var placesInfo by remember { androidx.compose.runtime.mutableStateOf(false) }
+            androidx.compose.material3.TextButton(
+                onClick = { placesInfo = true },
+                modifier = Modifier.padding(start = 8.dp).dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+            ) { Text(stringResource(R.string.settings_places_source_more)) }
+            if (placesInfo) {
+                app.vela.ui.VelaDialog(
+                    onDismissRequest = { placesInfo = false },
+                    title = stringResource(R.string.settings_places_source_more_title),
+                    text = { Text(stringResource(R.string.settings_places_source_more_body)) },
+                    confirmText = stringResource(android.R.string.ok),
+                    onConfirm = { placesInfo = false },
+                    dismissText = stringResource(R.string.settings_places_source_more_credit),
+                    onDismiss = {
+                        placesInfo = false
+                        runCatching {
+                            context.startActivity(
+                                android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://overturemaps.org/")),
+                            )
+                        }
+                    },
+                    dismissLowEmphasis = true,
+                )
+            }
+            if (app.vela.ui.MapPoiPrefs.openPlaces) {
+                GroupDivider()
+                ToggleRow(
+                    label = stringResource(R.string.settings_places_lookup),
+                    checked = app.vela.ui.MapPoiPrefs.lookupTappedPlaces.value,
+                    onCheckedChange = { app.vela.ui.MapPoiPrefs.setLookupTappedPlaces(context, it) },
+                    hint = stringResource(R.string.settings_places_lookup_hint),
+                )
+            }
             GroupDivider()
             ToggleRow(
                 label = stringResource(R.string.settings_show_civic),

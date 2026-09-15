@@ -14,7 +14,13 @@ object Units {
     val imperial = mutableStateOf(false)
 
     fun init(context: Context) {
-        val default = Locale.getDefault().country in setOf("US", "GB", "LR", "MM")
+        // The DEVICE's locale, not the JVM default: AppLocale.wrap runs before this (in
+        // attachBaseContext) and sets the JVM default to the in-app language, which for the
+        // plain "English" choice has no country, so a US phone silently flipped to kilometres
+        // the moment its owner touched the language picker (seen on the P4a, 2026-09-12).
+        val country = android.content.res.Resources.getSystem().configuration.locales.get(0)?.country
+            ?: Locale.getDefault().country
+        val default = country in setOf("US", "GB", "LR", "MM")
         imperial.value = prefs(context).getBoolean(KEY, default)
     }
 
@@ -63,9 +69,33 @@ fun formatSpeedLimit(kmh: Double): Pair<Int, String> =
     if (Units.imperial.value) (kmh * 0.621371).roundToInt() to "mph"
     else kmh.roundToInt() to "km/h"
 
-/** Wall-clock arrival time for a trip [remainingSeconds] from now, e.g. "7:42 PM"
- *  (locale-aware 12/24-hour), the way Google shows ETA during navigation. */
+/** The device's 12/24-hour clock SETTING (Settings > System > Date & time), which is separate
+ *  from the locale: a US-English phone set to 24-hour shows "19:42" everywhere else and used to
+ *  show "7:42 PM" here (issue #357). Read at startup and on every resume; mirrored into :core's
+ *  [app.vela.core.data.ClockFormat] for the transit boards. */
+object Clock24 {
+    val on = mutableStateOf(false)
+
+    fun refresh(context: Context) {
+        val v = android.text.format.DateFormat.is24HourFormat(context)
+        on.value = v
+        app.vela.core.data.ClockFormat.use24h = v
+    }
+}
+
+/** Wall-clock arrival time for a trip [remainingSeconds] from now, e.g. "7:42 PM" or "19:42",
+ *  following the device's 12/24-hour setting, the way Google shows ETA during navigation. */
 fun formatArrivalClock(remainingSeconds: Double): String {
     val arrival = java.time.LocalTime.now().plusSeconds(remainingSeconds.toLong())
-    return arrival.format(java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT))
+    val fmt = if (Clock24.on.value) java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+        else java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
+    return arrival.format(fmt)
+}
+
+/** "Sep 7, 7:42 PM" / "7 Sep, 19:42": a saved trip's or log's timestamp in the device's own date
+ *  and time formats. */
+fun formatDateTime(context: Context, epochMs: Long): String {
+    val d = java.util.Date(epochMs)
+    return android.text.format.DateFormat.getMediumDateFormat(context).format(d) + ", " +
+        android.text.format.DateFormat.getTimeFormat(context).format(d)
 }

@@ -42,6 +42,8 @@ import javax.inject.Singleton
 @Singleton
 class WebReviewsFetcher @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val diag: app.vela.core.diag.DiagLog,
+    private val calibration: app.vela.core.config.CalibrationStore,
 ) {
     private val pending = ConcurrentHashMap<String, CompletableDeferred<String>>()
     private val progress = ConcurrentHashMap<String, (Int) -> Unit>()
@@ -100,6 +102,16 @@ class WebReviewsFetcher @Inject constructor(
         // The accumulated reviews SO FAR, sent whenever the count grows — the sheet streams them
         // into the list under the progress bar instead of making the user stare at a bar for 30 s.
         // Same JavaBridge thread; parse failures are dropped (the final onResult is authoritative).
+        // Scrape PROBE (diagnostics only): what the page looks like from inside the hidden
+        // WebView every few seconds - tabs found, whether the reviews tab opened, cards on
+        // screen, viewport size. This is how a "collecting reviews" that never lands gets
+        // diagnosed from a Diagnostics export instead of a guess (issue #359).
+        @JavascriptInterface
+        fun onInfo(id: String, text: String) {
+            android.util.Log.i("VelaReviews", text)
+            diag.record("reviews", "probe", text)
+        }
+
         @JavascriptInterface
         fun onPartial(id: String, payload: String) {
             val cb = partial[id] ?: return
@@ -120,8 +132,10 @@ class WebReviewsFetcher @Inject constructor(
         return mutex.withLock {
             cancelReap()
             try {
+                withContext(Dispatchers.Main) { webView?.onResume() } // asleep between fetches
                 fetchLocked(cid, onProgress, onPartial)
             } finally {
+                withContext(kotlinx.coroutines.NonCancellable + Dispatchers.Main) { runCatching { webView?.onPause() } }
                 scheduleReap()
             }
         }
@@ -143,6 +157,14 @@ class WebReviewsFetcher @Inject constructor(
                     withContext(Dispatchers.Main) {
                         val wv = ensureWebView()
                         val ready = CompletableDeferred<Unit>()
+                        wv.webChromeClient = object : android.webkit.WebChromeClient() {
+                            override fun onConsoleMessage(m: android.webkit.ConsoleMessage?): Boolean {
+                                if (m != null && m.messageLevel() == android.webkit.ConsoleMessage.MessageLevel.ERROR) {
+                                    android.util.Log.i("VelaReviews", "console: ${m.message().take(200)} @${m.lineNumber()}")
+                                }
+                                return true
+                            }
+                        }
                         wv.webViewClient = object : WebViewClient() {
                             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                                 // Only google.com pages — a stray click on an external link (e.g. the
@@ -154,6 +176,12 @@ class WebReviewsFetcher @Inject constructor(
                                 return !(host == "google.com" || host.endsWith(".google.com"))
                             }
                             override fun onPageFinished(view: WebView?, url: String?) {
+                                // Diagnostics: which page Google actually served, and in what
+                                // language (issue #359: a reader whose reviews stay English while
+                                // the app asks for zh-TW; the export says which side to blame).
+                                view?.evaluateJavascript(
+                                    "location.host+location.pathname.slice(0,40)+' lang='+document.documentElement.lang+' nav='+navigator.language",
+                                ) { v -> diag.record("reviews", "page loaded", v?.trim('"')) }
                                 main.postDelayed({ if (!ready.isCompleted) ready.complete(Unit) }, SETTLE_MS)
                             }
                         }
@@ -161,7 +189,9 @@ class WebReviewsFetcher @Inject constructor(
                         // let the MAX_LOAD fallback inject the scraper into the old page and return the
                         // previous place's reviews for THIS featureId (empty > wrong).
                         wv.evaluateJavascript("try{document.documentElement.innerHTML=''}catch(e){}", null)
-                        wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=${reviewsHl()}&gl=us")
+                        val hl = reviewsHl()
+                        diag.record("reviews", "load hl=$hl app=${app.vela.ui.AppLocale.language.value.ifBlank { "system" }}", "cid=$cid")
+                        wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=$hl&gl=us")
                         // Proceed even if the SPA's onPageFinished is slow.
                         main.postDelayed({ if (!ready.isCompleted) ready.complete(Unit) }, MAX_LOAD_MS)
                         ready.await()
@@ -174,7 +204,13 @@ class WebReviewsFetcher @Inject constructor(
                 progress.remove(id)
                 partial.remove(id)
             }
-            if (raw.isNullOrEmpty()) emptyList() else runCatching { ReviewsWebParser.parse(raw) }.getOrDefault(emptyList())
+            val parsed = if (raw.isNullOrEmpty()) emptyList() else runCatching { ReviewsWebParser.parse(raw) }.getOrDefault(emptyList())
+            diag.record(
+                "reviews",
+                if (raw == null) "timed out after ${TOTAL_TIMEOUT_MS / 1000} s with nothing" else "${parsed.size} review(s) parsed",
+                parsed.firstOrNull()?.text?.take(60)?.let { "first text: $it" },
+            )
+            parsed
         }
     }
 
@@ -193,17 +229,32 @@ class WebReviewsFetcher @Inject constructor(
         wv.settings.domStorageEnabled = true
         // Desktop UA so Google serves the desktop web Maps (a mobile UA deep-links to intent://).
         wv.settings.userAgentString = VelaConfig.USER_AGENT
+        // Desktop-WIDTH layout, not just a desktop UA: without the wide viewport the page lays
+        // out at the WebView's CSS width (1200 physical px is ~450 CSS px on a 2.75x phone), which
+        // is Google's narrow layout where the Reviews tab shows five cards and a button, and the
+        // scrape settled on those five (2026-09-13). With it the CSS viewport is the desktop 980
+        // px and the tab holds the full paged list the browser shows.
+        wv.settings.useWideViewPort = true
+        wv.settings.loadWithOverviewMode = true
         wv.addJavascriptInterface(Bridge(), "VelaBridge")
         // Give the hidden (never-attached) WebView a REAL offscreen viewport. Google's reviews list is
         // virtualized + lazy-loaded off the scroll viewport; a 0×0 headless WebView renders the chrome
         // (rating histogram, topic filters) but NEVER the review cards. A tall explicit layout makes the
         // scroll pane real so the list renders + pages. (The photo gallery's category grids need the
         // same treatment — see WebPhotoFetcher.)
+        // The size is in CSS px x density: Google's page carries a width=device-width viewport
+        // meta, which makes useWideViewPort a no-op, so the DESKTOP layout (the full paged review
+        // list in the tab) only comes from a physically wide view. 1200 physical px on a 2.75x phone
+        // was 436 CSS px, the narrow layout with five cards and a button, and the scrape settled
+        // on those five (2026-09-13).
+        val density = wv.resources.displayMetrics.density.coerceAtLeast(1f)
+        val wPx = (WV_WIDTH * density).toInt()
+        val hPx = (WV_HEIGHT * density).toInt()
         wv.measure(
-            android.view.View.MeasureSpec.makeMeasureSpec(WV_WIDTH, android.view.View.MeasureSpec.EXACTLY),
-            android.view.View.MeasureSpec.makeMeasureSpec(WV_HEIGHT, android.view.View.MeasureSpec.EXACTLY),
+            android.view.View.MeasureSpec.makeMeasureSpec(wPx, android.view.View.MeasureSpec.EXACTLY),
+            android.view.View.MeasureSpec.makeMeasureSpec(hPx, android.view.View.MeasureSpec.EXACTLY),
         )
-        wv.layout(0, 0, WV_WIDTH, WV_HEIGHT)
+        wv.layout(0, 0, wPx, hPx)
         // A never-attached WebView reads as a BACKGROUND page to Chromium: JS timers throttle
         // toward 1 Hz and rAF-driven rendering slows, which is why the visible Google Maps
         // WebView pages reviews near-instantly while this scrape crawled. Explicitly resume
@@ -220,8 +271,21 @@ class WebReviewsFetcher @Inject constructor(
      *  positions is the full list). Bridges the accumulated JSON array back once the list is exhausted
      *  or the cap is hit. */
     /** The :core review-word patterns, quoted for embedding in the scraper's JavaScript. */
-    private fun reviewPatternJs(): String = jsString(app.vela.core.data.ReviewWords.REVIEW_PATTERN)
-    private fun morePatternJs(): String = jsString(app.vela.core.data.ReviewWords.MORE_PATTERN)
+    // Words + selectors come from the signed calibration bundle when it carries them
+    // (`reviewWords`, `reviewSelectors`), else the compiled values - so a rotated class name or a
+    // language Google renames the tab in is a config edit (2026-09-13).
+    private fun reviewPatternJs(): String =
+        jsString(calibration.current().reviewWords?.get("review") ?: app.vela.core.data.ReviewWords.REVIEW_PATTERN)
+    private fun morePatternJs(): String =
+        jsString(calibration.current().reviewWords?.get("more") ?: app.vela.core.data.ReviewWords.MORE_PATTERN)
+    private fun selectorsJs(): String {
+        val r = calibration.current().reviewSelectors.orEmpty()
+        fun sel(k: String, def: String) = "\"$k\":" + jsString(r[k] ?: def)
+        return "{" + listOf(
+            sel("card", DEFAULT_CARD_SEL), sel("id", DEFAULT_ID_SEL), sel("moreToggle", DEFAULT_MORE_TOGGLE_SEL),
+            sel("author", DEFAULT_AUTHOR_SEL), sel("text", DEFAULT_TEXT_SEL), sel("date", DEFAULT_DATE_SEL),
+        ).joinToString(",") + "}"
+    }
 
     private fun jsString(v: String): String =
         "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
@@ -231,7 +295,9 @@ class WebReviewsFetcher @Inject constructor(
         return """
             (function(){
               var ID=$idj, tries=0, opened=false, acc={}, accN=0, lastN=0, noGrow=0, atBottom=0;
-              var openedAt=-1, lastRep=-1, openedBy='', sawEntry=false, everCards=false, btnReclicks=0;
+              try{ VelaBridge.onInfo(ID, JSON.stringify({start:1,title:(document.title||'').slice(0,40),url:location.pathname.slice(0,60),ready:document.readyState,w:window.innerWidth,h:window.innerHeight})); }catch(e){}
+              window.onerror=function(m,src,l){ try{ VelaBridge.onInfo(ID,'jserror '+m+' @'+l); }catch(e){} };
+              var openedAt=-1, lastRep=-1, openedBy='', sawEntry=false, everCards=false, btnReclicks=0, allClicked=false;
               var CAP=50;
               // The rating sits at the FRONT of the star widget's aria-label in every language
               // ("5 stars", "5 顆星", "5 étoiles"), so read the leading number rather than looking
@@ -245,16 +311,20 @@ class WebReviewsFetcher @Inject constructor(
               // "撰寫評論"), and clicking that opens the review composer instead of the list.
               // The word lists live in :core ReviewWords so they can be unit-tested; a list that
               // silently stops matching is invisible until someone reports missing reviews.
-              var REVIEW_WORD=new RegExp(${'$'}{reviewPatternJs()},'i');
-              var MORE_WORD=new RegExp(${'$'}{morePatternJs()},'i');
+              // Kotlin templates: `${'$'}{...}` here would emit the LITERAL text into the page
+              // (it did from 2026-09-06 to 2026-09-13: "missing ) after argument list" at this
+              // line, every scrape timed out with nothing, issue #359 for every language).
+              var REVIEW_WORD=new RegExp(${reviewPatternJs()},'i');
+              var MORE_WORD=new RegExp(${morePatternJs()},'i');
+              var SEL=${selectorsJs()};
               function t1(c,sel){ var e=c.querySelector(sel); return e?(e.textContent||'').trim():''; }
               function extract(){
                 // Review cards are `.jJc9Ad`, each with a unique `data-review-id` — far more robust than the
                 // old "div with one star + text" heuristic, which also matched the place header ("4.6 stars
                 // (57,969)") and affiliate ticket cards, and missed most real reviews.
-                var revs=[].slice.call(document.querySelectorAll('.jJc9Ad'));
+                var revs=[].slice.call(document.querySelectorAll(SEL.card));
                 return revs.map(function(c){
-                  var idEl=c.querySelector('[data-review-id]'); var rid=idEl?(idEl.getAttribute('data-review-id')||''):'';
+                  var idEl=c.querySelector(SEL.id); var rid=idEl?(idEl.getAttribute('data-review-id')||idEl.getAttribute('data-id')||''):'';
                   // Rating: the star widget's aria-label LEADS WITH THE NUMBER in every language
                   // ("5 stars", "5 顆星", "5 étoiles", "5 звёзд"), so key on that instead of the
                   // English word. The old `aria-label*="star"` selector matched nothing the moment
@@ -269,14 +339,14 @@ class WebReviewsFetcher @Inject constructor(
                   // author: Google's review name class, else pull the NAME out of a button aria — the
                   // name is always right before "'s review" (after a "Share "/"Photo N on " prefix) or
                   // after "Photo of ". (Class names rotate; the aria phrasing is stable + semantic.)
-                  var author=t1(c,'.d4r55')||t1(c,'.Vpc5Fe')||t1(c,'.TSUbDb');
+                  var author=t1(c,SEL.author);
                   if(!author){ var bs=[].slice.call(c.querySelectorAll('button[aria-label],a[aria-label]'));
                     var strip=/^(?:Share|Like|Response from|Photo of|Photo\s*\d*\s*on|\+?\s*\d*\s*(?:more\s*)?photos?\s*on|\d+\s*photos?\s*on)\s+/i;
                     for(var i=0;i<bs.length;i++){ var a=bs[i].getAttribute('aria-label')||'';
                       var m=a.match(/^(.+?)'s review\b/); var cand=m?m[1]:(a.match(/^Photo of (.+)${'$'}/)||[])[1];
                       if(cand){ var nm=cand.replace(strip,'').trim(); if(nm){ author=nm; break; } } } }
                   // review text: the wiI7pd body, else the longest leaf span that isn't chrome.
-                  var text=t1(c,'.wiI7pd');
+                  var text=t1(c,SEL.text);
                   if(!text){ var best=0; [].slice.call(c.querySelectorAll('span')).forEach(function(s){ if(s.childElementCount===0){ var tt=(s.textContent||'').trim(); if(tt.length>best && tt.length>12 && !/^(see more|more|like|share|response from|local guide)/i.test(tt) && !/\bstar/i.test(tt)){ best=tt.length; text=tt; } } }); }
                   // relative date. `.rsqaWe` is the date element when present; else scan leaf spans.
                   // The old fallback grabbed the FIRST span merely CONTAINING "ago" (tt<22, /\bago\b/) —
@@ -285,7 +355,7 @@ class WebReviewsFetcher @Inject constructor(
                   // date shape ("10 months ago", "a year ago", "Edited 2 weeks ago") or a lone year,
                   // skip owner "Response" lines, and skip spans whose text is part of the review body —
                   // so we pick the real date, not a phrase out of the prose.
-                  var date=t1(c,'.rsqaWe');
+                  var date=t1(c,SEL.date);
                   if(!date){ var body=(text||'').toLowerCase();
                     var reRel=/^(?:edited\s+)?(?:an?|\d+)\s+(?:second|minute|hour|day|week|month|year)s?\s+ago${'$'}/i;
                     [].slice.call(c.querySelectorAll('span')).forEach(function(s){ if(date||s.childElementCount>0) return;
@@ -313,7 +383,7 @@ class WebReviewsFetcher @Inject constructor(
               // works in EVERY UI language; the label regex stays as a fallback for older layouts
               // (it only knows English, which silently skipped expansion under any other hl).
               function expand(){
-                [].slice.call(document.querySelectorAll('button.w8nwRe')).forEach(function(b){ try{ b.click(); }catch(e){} });
+                [].slice.call(document.querySelectorAll(SEL.moreToggle)).forEach(function(b){ try{ b.click(); }catch(e){} });
                 [].slice.call(document.querySelectorAll('button')).forEach(function(b){ var l=((b.getAttribute('aria-label')||b.textContent)||'').trim(); if(/^(see more|more)${'$'}/i.test(l)){ try{ b.click(); }catch(e){} } });
               }
               // De-dupe across scroll windows by the review's stable id (falls back to author+date+text).
@@ -331,6 +401,10 @@ class WebReviewsFetcher @Inject constructor(
                     if(d.scrollTop>before+5) moved=true;
                   }
                 }); }catch(e){}
+                // Narrow layout (the hidden WebView is ~450 CSS px wide on a 2.75x phone): the
+                // review feed is not always an inner scroller, the DOCUMENT pages it. Scroll the
+                // window too, or the scrape settles on the first 5 cards (2026-09-13).
+                if(!moved){ try{ var y0=window.scrollY; window.scrollBy(0, Math.round(window.innerHeight*0.8)); if(window.scrollY>y0+5) moved=true; }catch(e){} }
                 return moved;
               }
               // Open the FULL reviews list. The canonical entry is the "Reviews" role=tab; fall back to a
@@ -387,12 +461,27 @@ class WebReviewsFetcher @Inject constructor(
                 // once-latched flag: the OVERVIEW's 3 preview cards render briefly before the tab click
                 // blanks the panel, and a latch set by those let the idle-bail fire during the blank
                 // window with exactly 3 accumulated (the "loaded 3 then stopped" bug).
-                var cardsNow = document.querySelectorAll('.jJc9Ad').length>0;
+                var cardsNow = document.querySelectorAll(SEL.card).length>0;
                 if(cardsNow) everCards=true;
+                if(tries===2 || tries%16===0){
+                  try{
+                    var tabLabels=[].slice.call(document.querySelectorAll('[role="tab"]')).map(function(t){ return ((t.getAttribute('aria-label')||t.textContent)||'').trim().slice(0,40); }).slice(0,4);
+                    VelaBridge.onInfo(ID, JSON.stringify({tries:tries,tabs:tabLabels,sawEntry:sawEntry,opened:opened,by:openedBy,cardsNow:document.querySelectorAll(SEL.card).length,acc:accN,w:window.innerWidth,h:window.innerHeight,main:!!document.querySelector('[role="main"]'),title:(document.title||'').slice(0,40),body:((document.body&&document.body.innerText)||'').length,url:location.pathname.slice(0,60)}));
+                  }catch(e){}
+                }
                 var moved=scrollStep();
                 atBottom = moved ? 0 : atBottom+1;
                 noGrow = (accN===lastN) ? noGrow+1 : 0;
                 lastN=accN;
+                // Desktop layout (2026-09-13): the Reviews TAB shows a handful of cards and an
+                // "All reviews" button opens the full paged list. The tab path latches `opened`,
+                // so that button was never pressed and the scrape settled on the handful. Press
+                // it once, after the tab has had its render window, if the list is still short.
+                if(opened && openedBy==='tab' && !allClicked && tries>=openedAt+10 && accN<=12){
+                  allClicked=true;
+                  var abs=[].slice.call(document.querySelectorAll('button'));
+                  for(var i=0;i<abs.length;i++){ var al=((abs[i].getAttribute('aria-label')||abs[i].textContent)||''); if(REVIEW_WORD.test(al)&&MORE_WORD.test(al)){ try{ abs[i].click(); }catch(e){} openedAt=tries; break; } }
+                }
                 // Button-path no-op retry: the click was fired blind (no aria-selected to confirm)
                 // and nothing has rendered since — re-arm openFull once. Tab clicks self-retry.
                 if(opened && openedBy==='btn' && !everCards && tries>=openedAt+18 && btnReclicks<1){ opened=false; openedAt=-1; btnReclicks++; }
@@ -423,17 +512,28 @@ class WebReviewsFetcher @Inject constructor(
         """.trimIndent()
     }
 
-    private companion object {
+    internal companion object {
         // Must outlast the script's own hard stop (130 ticks × 250 ms ≈ 33 s + page load) — if Kotlin
         // times out first we return EMPTY, which is worse than few. Lazy + best-effort as ever.
         const val TOTAL_TIMEOUT_MS = 45_000L
+        // Compiled selector defaults (the calibration bundle's `reviewSelectors` overrides per key).
+        const val DEFAULT_CARD_SEL = ".jJc9Ad"
+        const val DEFAULT_ID_SEL = "[data-review-id]"
+        const val DEFAULT_MORE_TOGGLE_SEL = "button.w8nwRe"
+        const val DEFAULT_AUTHOR_SEL = ".d4r55,.Vpc5Fe,.TSUbDb"
+        const val DEFAULT_TEXT_SEL = ".wiI7pd"
+        const val DEFAULT_DATE_SEL = ".rsqaWe"
         const val REAP_IDLE_MS = 120_000L // destroy the idle WebView after this quiet period (issue #182)
         const val SETTLE_MS = 150L
 
         /** Languages whose review-page wording the scraper's word lists cover (see `reviewsHl`).
          *  Outside this set the page stays English: a language the scraper cannot navigate would
          *  return FEWER reviews than English does. */
-        val SUPPORTED_HL = setOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "zh", "ja", "he")
+        // NB "iw" as well as "he": java.util.Locale.getLanguage() returns the OBSOLETE ISO code
+        // for Hebrew on Android (the app's own resource dir is values-iw), so a "he"-only set
+        // sends every Hebrew reader back to the English page - the one locale whose review words
+        // were added by hand. Indonesian ("in") and Yiddish ("ji") carry the same trap.
+        val SUPPORTED_HL = setOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "hu", "zh", "ja", "he", "iw")
 
         /** The page language for the hidden reviews WebView: the app's language when the scraper's
          *  word lists cover it (issue #278: the page language decides WHICH reviews Google serves,
@@ -444,6 +544,9 @@ class WebReviewsFetcher @Inject constructor(
             val loc = app.vela.ui.AppLocale.effective()
             val lang = loc.language.lowercase()
             if (lang !in SUPPORTED_HL) return "en"
+            // Google's own parameter for Hebrew is the legacy code, which is also what the
+            // locale reports - pass it through rather than "correcting" it.
+            if (lang == "he") return "iw"
             if (lang == "zh") {
                 val hant = loc.script.equals("Hant", ignoreCase = true) || loc.country.uppercase() in setOf("TW", "HK", "MO")
                 return if (hant) "zh-TW" else "zh-CN"
@@ -453,7 +556,7 @@ class WebReviewsFetcher @Inject constructor(
         const val MAX_LOAD_MS = 7_000L
         // Offscreen viewport for the headless WebView — tall so the virtualized review list renders a
         // healthy batch per scroll position.
-        const val WV_WIDTH = 1200
-        const val WV_HEIGHT = 6000
+        const val WV_WIDTH = 1200  // CSS px (scaled by density at layout): the desktop layout's width
+        const val WV_HEIGHT = 1000 // CSS px: SHORTER than the feed, so the pane scrolls and Google pages the next cards in (a 2400 px pane held the first 8 with nothing to scroll, 2026-09-13)
     }
 }

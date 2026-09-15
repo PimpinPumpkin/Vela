@@ -65,6 +65,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         // CategoryFilter.enabled). Gates the ambient POI fan-out in GoogleMapsDataSource.
         app.vela.core.data.LowRamMode.enabled = app.vela.ui.MemoryPressure.lowRam
         Units.init(this)
+        app.vela.ui.Clock24.refresh(this) // the 12/24-hour clock setting (issue #357); MainActivity refreshes it on resume
         AppTheme.init(this)
         DynamicColor.init(this)
         AppLocale.init(this) // resolve the app language (system default) → drives the nav-text locale
@@ -76,6 +77,8 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.Flock.init(this) // load the persisted surveillance-camera toggle (else it read false every launch)
         app.vela.ui.SpeedCams.init(this) // same init-or-it-reads-false trap as Flock
         app.vela.ui.SpeedCamWarn.init(this) // spoken camera warning (issue #229), off by default
+        app.vela.ui.SpeedingAlert.init(this) // spoken over-the-limit alert (issue #404), off by default
+        app.vela.ui.BikeSafe.init(this) // bike routes prefer lanes and quiet streets (issue #401), on by default
         app.vela.ui.FlockRouteAlert.init(this) // load the persisted "warn about cameras on route" toggle
         // Parse the bundled on-device ALPR/Flock camera dataset off the main thread (map layer draws
         // instantly, route counts are reliable), then refresh from the hosted manifest so the data updates
@@ -96,6 +99,8 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.Buildings3d.init(this)
         app.vela.ui.RouteTrail.init(this)
         app.vela.ui.RoadLabel.init(this)
+        app.vela.ui.PuckStyle.init(this)
+        app.vela.ui.HouseNumbers.init(this) // house-number zoom gate (issue #329)
         app.vela.ui.PreferButtons.init(this)
         app.vela.ui.BuildingOverlay.init(this)
         app.vela.ui.BuildingDebug.init(this)
@@ -105,6 +110,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.diag.NavTrace.init(this) // opt-in nav smoothness trace (issue #251)
         app.vela.ui.map.MapFonts.init(this) // Roboto basemap glyphs (cached patched style + async refresh)
         Onboarding.init(this)
+        app.vela.ui.WhatsNew.init(this)
         // Persist any fatal crash (stack trace + breadcrumbs) so it survives the
         // restart and can be exported from Settings → Diagnostics next launch.
         CrashCatcher.install(this) { diag.snapshot() }

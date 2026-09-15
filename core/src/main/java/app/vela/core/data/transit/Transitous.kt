@@ -317,10 +317,11 @@ object Transitous {
     /** ISO-8601 UTC ("2026-07-13T20:26:00Z") to epoch seconds. */
     internal fun parseIso(iso: String): Long? = runCatching { java.time.Instant.parse(iso).epochSecond }.getOrNull()
 
-    /** 12-hour clock text in the STOP's timezone (falls back to the device zone), matching the
-     *  Google-board format the row UI and its TIME-based logic already render. */
+    /** Clock text in the STOP's timezone (falls back to the device zone): 12-hour like the
+     *  Google boards, or 24-hour when the device's clock setting says so ([ClockFormat],
+     *  issue #357). */
     internal fun clockText(epochSec: Long, tz: String?): String {
-        val fmt = SimpleDateFormat("h:mm a", Locale.US)
+        val fmt = SimpleDateFormat(if (app.vela.core.data.ClockFormat.use24h) "HH:mm" else "h:mm a", Locale.US)
         fmt.timeZone = tz?.let { runCatching { TimeZone.getTimeZone(it) }.getOrNull() } ?: TimeZone.getDefault()
         return fmt.format(Date(epochSec * 1000))
     }

@@ -31,6 +31,12 @@ class MainActivity : ComponentActivity() {
         super.attachBaseContext(AppLocale.wrap(app.vela.ui.AdaptiveDensity.wrap(newBase)))
     }
 
+    override fun onResume() {
+        super.onResume()
+        // The 12/24-hour clock setting can change while Vela sits in the background (issue #357).
+        app.vela.ui.Clock24.refresh(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -83,6 +89,12 @@ class MainActivity : ComponentActivity() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
             b.setAutoEnterEnabled(autoEnter)
             b.setSeamlessResizeEnabled(false) // map surfaces cross-fade better than they stretch
+        }
+        // Android 13+: the PiP menu's expand toggle (and a double-tap on some launchers) grows
+        // the window to a taller shape, which for a map means more road ahead; without it the
+        // window has one size and the only other option is the full app (user 2026-09-13).
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            b.setExpandedAspectRatio(android.util.Rational(9, 16))
         }
         return b.build()
     }

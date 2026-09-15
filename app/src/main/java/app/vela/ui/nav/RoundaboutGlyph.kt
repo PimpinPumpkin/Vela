@@ -106,16 +106,15 @@ internal fun roundaboutGlyph(geom: RoundaboutGeometry?): ImageVector {
         return b.build()
     }
 
-    // The travelled arc. isPositiveArc is the SVG sweep flag: true draws clockwise on screen, which
-    // is left-hand-traffic circulation.
-    if (sweep > 1.0) {
-        b.path(
-            stroke = ink, strokeLineWidth = TRAVELLED_W,
-            strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round,
-        ) {
-            moveTo(entryX, entryY)
-            arcTo(R, R, 0f, sweep > 180.0, geom.clockwise, exitX, exitY)
-        }
+    // The travelled arc (sweep is > 1 here, the guard above took the degenerate cases).
+    // isPositiveArc is the SVG sweep flag: true draws clockwise on screen, which is
+    // left-hand-traffic circulation.
+    b.path(
+        stroke = ink, strokeLineWidth = TRAVELLED_W,
+        strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round,
+    ) {
+        moveTo(entryX, entryY)
+        arcTo(R, R, 0f, sweep > 180.0, geom.clockwise, exitX, exitY)
     }
     // ...and the rest of the ring, thinner, so the roundabout still reads as a full circle.
     val rest = 360.0 - sweep
@@ -144,7 +143,7 @@ private fun exitStub(b: ImageVector.Builder, ink: SolidColor, exitDeg: Double) {
         lineTo(outX, outY)
     }
     val tip = ring(exitDeg, R + STUB + 1.4f)
-    val base = ring(exitDeg, R + STUB * 0.55f)
+    val base = outX to outY
     val perp = Math.toRadians(exitDeg + 90.0)
     val hx = (2.0 * sin(perp)).toFloat()
     val hy = (-2.0 * cos(perp)).toFloat()

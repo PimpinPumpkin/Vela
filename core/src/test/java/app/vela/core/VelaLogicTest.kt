@@ -758,6 +758,110 @@ class NavReplayTest {
      *
      * Skipped (not failed) when `-DvelaTrip` is unset, so normal/CI runs ignore it.
      */
+    /**
+     * ON-DEMAND ROUTER PROBE for a shared trip's segment (2026-09-13, built for the faster-route
+     * swap that collapsed a 17.9 km route into one maneuver at the start): re-runs the open
+     * router from the segment's recorded start through vias sampled off its recorded polyline,
+     * exactly as the traffic snap does, and prints every maneuver with its type, text, distance
+     * and where it resolved. Compare with the trip's own M lines to see whether the routing or
+     * the engine mangled it.
+     *
+     *   ./gradlew :core:testDebugUnitTest --tests '*probeTripSegmentRoute' -DvelaTrip=/abs/trip.csv -DvelaSeg=1 --rerun-tasks
+     */
+    @Test
+    fun probeTripSegmentRoute() {
+        val path = System.getProperty("velaTrip")
+        org.junit.Assume.assumeTrue("set -DvelaTrip=<csv> and -DvelaSeg=<n>", !path.isNullOrBlank())
+        val seg = (System.getProperty("velaSeg") ?: "0").toInt()
+        val parsed = TripLog.parse(java.io.File(path!!).readText())
+        val route = parsed.segments.getOrNull(seg)?.route ?: run { println("[probe] no segment $seg"); return }
+        val poly = route.polyline
+        val http = okhttp3.OkHttpClient()
+        fun dump(tag: String, r: Route?) {
+            if (r == null) { println("[probe] $tag: null"); return }
+            println("[probe] $tag: ${r.distanceMeters.toInt()} m, ${r.maneuvers.size} maneuvers, abbreviated=${r.abbreviatedSteps}")
+            r.maneuvers.forEachIndexed { i, m ->
+                val d = m.location.distanceTo(poly.first()).toInt()
+                println("   [$i] ${m.type} \"${m.instruction}\" road=${m.road} ref=${m.ref} dist=${m.distanceMeters.toInt()} atStart=${d}m")
+            }
+        }
+        println("[probe] segment $seg: recorded ${route.distanceMeters.toInt()} m, ${route.maneuvers.size} maneuvers; start=${poly.first()} end=${poly.last()}")
+        route.maneuvers.forEachIndexed { i, m -> println("   rec[$i] ${m.type} \"${m.instruction}\" dist=${m.distanceMeters.toInt()} atStart=${m.location.distanceTo(poly.first()).toInt()}m") }
+        val p0 = poly.first(); val p1 = poly[minOf(3, poly.lastIndex)]
+        val b = (Math.toDegrees(Math.atan2(
+            Math.sin(Math.toRadians(p1.lng - p0.lng)) * Math.cos(Math.toRadians(p1.lat)),
+            Math.cos(Math.toRadians(p0.lat)) * Math.sin(Math.toRadians(p1.lat)) - Math.sin(Math.toRadians(p0.lat)) * Math.cos(Math.toRadians(p1.lat)) * Math.cos(Math.toRadians(p1.lng - p0.lng)),
+        )) + 360.0) % 360.0
+        dump("plain OSRM", app.vela.core.data.RouteGeometry.route(http, poly.first(), poly.last(), app.vela.core.model.TravelMode.DRIVE).firstOrNull())
+        dump("plain OSRM with depart bearing $b", app.vela.core.data.RouteGeometry.route(http, poly.first(), poly.last(), app.vela.core.model.TravelMode.DRIVE, departBearingDeg = b).firstOrNull())
+        val vias = app.vela.core.data.RouteGeometry.sampleVias(poly)
+        dump("via snap (${vias.size} vias, strict)", app.vela.core.data.RouteGeometry.routeVia(http, listOf(poly.first()) + vias + poly.last(), app.vela.core.model.TravelMode.DRIVE, strictVias = true).firstOrNull())
+        dump("via snap with depart bearing", app.vela.core.data.RouteGeometry.routeVia(http, listOf(poly.first()) + vias + poly.last(), app.vela.core.model.TravelMode.DRIVE, departBearingDeg = b, strictVias = true).firstOrNull())
+    }
+
+    @Test
+    fun `a folded rename is kept on the leg and roadAt follows it`() {
+        val turn = Maneuver(ManeuverType.TURN_RIGHT, "Turn right onto Oak Street", LatLng(38.5, -121.7), 400.0, 30.0, road = "Oak Street")
+        val rename = Maneuver(ManeuverType.CONTINUE, "Continue onto Elm Street", LatLng(38.51, -121.7), 600.0, 40.0, road = "Elm Street")
+        val next = Maneuver(ManeuverType.TURN_LEFT, "Turn left onto Pine Street", LatLng(38.52, -121.7), 100.0, 10.0, road = "Pine Street")
+        val folded = app.vela.core.data.RouteGeometry.foldRenames(listOf(turn, rename, next))
+        assertEquals(2, folded.size)
+        val leg = folded[0]
+        assertEquals(1000.0, leg.distanceMeters, 0.001)
+        assertEquals(listOf(app.vela.core.model.RoadRename(400.0, "Elm Street", null)), leg.renames)
+        assertEquals("Oak Street", leg.roadAt(0.0).first)
+        assertEquals("Oak Street", leg.roadAt(399.0).first)
+        assertEquals("Elm Street", leg.roadAt(400.0).first)
+        assertEquals("Elm Street", leg.roadAt(950.0).first)
+        // A leg with no rename answers its own road at any distance.
+        assertEquals("Pine Street", folded[1].roadAt(50.0).first)
+    }
+
+    /** On-demand: route A to B on the open router and print every maneuver's road / ref / text.
+     *  `-DvelaProbe=lat,lng;lat,lng` (forwarded like velaTrip). */
+    @Test
+    fun probeRouteFields() {
+        val spec = System.getProperty("velaProbe")
+        org.junit.Assume.assumeTrue("set -DvelaProbe=lat,lng;lat,lng", !spec.isNullOrBlank())
+        val (a, b) = spec!!.split(";").map { it.split(",").map(String::toDouble) }.map { LatLng(it[0], it[1]) }
+        val r = app.vela.core.data.RouteGeometry.route(okhttp3.OkHttpClient(), a, b, app.vela.core.model.TravelMode.DRIVE).firstOrNull()
+        println("[probe] ${r?.maneuvers?.size} maneuvers")
+        r?.maneuvers?.forEachIndexed { i, m -> println("   [$i] ${m.type} road=${m.road?.let { "\"$it\"" }} ref=${m.ref?.let { "\"$it\"" }} text=\"${m.instruction}\"") }
+    }
+
+    @Test
+    fun `provider, off-route hits and K lines ride the trip and survive the scrub`() {
+        val csv = "META,x,0,,,3217\n" +
+            "38.5,-121.7,1000,10,5,0,4.0,gps,0\n" +
+            "K,1500,recheck: kept current route (candidate saves 12 s)\n" +
+            "38.51,-121.71,2000,10,5,1,25.0,network,2\n"
+        val parsed = TripLog.parse(csv)
+        assertEquals("gps", parsed.points[0].provider)
+        assertEquals(0, parsed.points[0].offRouteHits)
+        assertEquals("network", parsed.points[1].provider)
+        assertEquals(2, parsed.points[1].offRouteHits)
+        assertEquals(listOf("K"), parsed.events.map { it.tag })
+        // Older recordings without the columns still parse.
+        assertEquals(null, TripLog.parse("META,x,0,,,3217\n38.5,-121.7,1000,10,5\n").points[0].provider)
+    }
+
+    @Test
+    fun `route provenance flags ride the RD line and parse back`() {
+        val route = Route(
+            listOf(LatLng(38.5, -121.7), LatLng(38.51, -121.71)),
+            listOf(app.vela.core.model.RouteLeg(1500.0, 120.0, null, listOf(
+                Maneuver(ManeuverType.DEPART, "Head out", LatLng(38.5, -121.7), 1500.0, 120.0),
+            ))),
+            1500.0, 120.0, null, provisional = true, abbreviatedSteps = true,
+        )
+        val block = TripLog.encodeRoute(route, "faster")
+        val rd = block.lines().first { it.startsWith("RD,") }
+        assertTrue(rd, rd.endsWith(",faster,provisional;abbreviated;steps=1"))
+        val parsed = TripLog.parse("META,x,0,,,3217\n" + block + "38.5,-121.7,0,0,0\n")
+        assertEquals("faster", parsed.segments.single().reason)
+        assertEquals("provisional;abbreviated;steps=1", parsed.segments.single().flags)
+    }
+
     @Test
     fun auditSharedTripLog() {
         val path = System.getProperty("velaTrip")
@@ -781,8 +885,15 @@ class NavReplayTest {
         if (parsed2.segments.size > 1) {
             println("[NavReplay] route swaps:")
             parsed2.segments.drop(1).forEach { seg ->
-                println("  @fix ${seg.fromPoint}: ${seg.reason ?: "(unrecorded reason)"}")
+                println("  @fix ${seg.fromPoint}: ${seg.reason ?: "(unrecorded reason)"}${seg.flags?.let { " [$it]" } ?: ""}")
             }
+        }
+        val byProvider = pts.groupingBy { it.provider ?: "(unrecorded)" }.eachCount()
+        println("[NavReplay] fixes by provider: " + byProvider.entries.joinToString { "${it.key}=${it.value}" })
+        val decisions = parsed2.events.filter { it.tag == "K" }
+        if (decisions.isNotEmpty()) {
+            println("[NavReplay] nav decisions (${decisions.size}):")
+            decisions.forEach { println("  @${it.t / 1000}s: ${it.text}") }
         }
         val spoken = parsed2.events.filter { it.tag == "S" }
         if (spoken.isNotEmpty()) {

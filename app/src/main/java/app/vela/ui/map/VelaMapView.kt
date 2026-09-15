@@ -225,14 +225,16 @@ private const val CAM_BRG_TURN_DEG = 25.0
  * carpet itself (17.5 did exactly that, user 2026-07-13) while being reachable by an ordinary
  * zoom-in, and [houseNumberFade] brings them in over the last stretch instead of popping them on.
  */
-private const val HOUSENUMBER_MIN_ZOOM = 18.3f
+/** The house-number zoom gate is a SETTING now (issue #329, `HouseNumbers`); read at style-apply
+ *  time, and the level rides `styleKey` so a change reloads the style like a theme flip. */
+private fun houseNumberMinZoom(): Float = app.vela.ui.HouseNumbers.minZoom()
 
-/** Numbers fade in across [HOUSENUMBER_MIN_ZOOM]..+0.6, so they arrive as you zoom rather than
+/** Numbers fade in across [houseNumberMinZoom()]..+0.6, so they arrive as you zoom rather than
  *  appearing all at once - the density change at street zoom is abrupt enough without a pop. */
 private fun houseNumberFade(): Expression = Expression.interpolate(
     Expression.linear(), Expression.zoom(),
-    Expression.stop(HOUSENUMBER_MIN_ZOOM, 0f),
-    Expression.stop(HOUSENUMBER_MIN_ZOOM + 0.6f, 1f),
+    Expression.stop(houseNumberMinZoom(), 0f),
+    Expression.stop(houseNumberMinZoom() + 0.6f, 1f),
 )
 
 private const val DEM_SRC = "vela-dem"
@@ -445,6 +447,8 @@ fun VelaMapView(
     buildingOverlays: List<String> = emptyList(), // full pmtiles:// source URIs (file:// downloaded / https:// streamed)
     addressOverlays: List<String> = emptyList(), // pmtiles:// URIs for house-number labels (streamed, OpenAddresses)
     maxspeedOverlays: List<String> = emptyList(), // pmtiles:// URIs for the posted-speed overlay (streamed); read under the puck
+    placesOverlays: List<String> = emptyList(),   // pmtiles:// URIs of the open-data places layer (Overture), file:// or streamed
+    onOpenPlaceTap: (app.vela.core.model.Place) -> Unit = {}, // a tapped open-places feature, seeded from its tile attributes
     onRoadLimitKmh: (Double?) -> Unit = {}, // reports the maxspeed (km/h) read from the overlay under the puck, or null
     speedOverlayOn: Boolean = false, // only query the overlay while it can matter (driving / navigating)
     trafficControls: List<app.vela.core.data.TrafficControl> = emptyList(), // OSM lights + stop signs drawn at high zoom
@@ -500,6 +504,7 @@ fun VelaMapView(
     }
     val compassRightPx = with(density) { 8.dp.roundToPx() }
     val poiTap = rememberUpdatedState(onPoiTap)
+    val openPlaceTap = rememberUpdatedState(onOpenPlaceTap)
     val mapTap = rememberUpdatedState(onMapTap)
     val svMapTap = rememberUpdatedState(onSvMapTap)
     val svActive = rememberUpdatedState(svPose != null)
@@ -597,8 +602,11 @@ fun VelaMapView(
     }
     // Re-center during nav also returns a pinch-zoomed/tilted camera to auto (issue #238: the
     // override kept following, so navCameraDetached stayed false and no Re-center path existed).
+    val overviewLive = remember { booleanArrayOf(false) }   // live overview refit loop running (issue #352)
+    val overviewTickSeen = remember { intArrayOf(0) }
     LaunchedEffect(navRecenterTick) {
         if (navRecenterTick > 0) {
+            overviewLive[0] = false
             navUserZoom[0] = Double.NaN
             navUserTilt[0] = Double.NaN
             zoomOverride.value(false)
@@ -1045,6 +1053,152 @@ fun VelaMapView(
     // plain browse was pure overhead AND rendered a BLACK stripe over every road: MapLibre's colour parser
     // rejected the 8-digit "#00000000" and fell back to its default OPAQUE BLACK. Fixed by the transparent
     // @ColorInt overload (no string parsing) and by not carrying the layer on the browse map at all.
+    // The open-data places layer (Overture PMTiles): one symbol layer plus one dot layer per source,
+    // dressed like the Google ambient layer (same icon images by group, the same prominence-driven
+    // size) so the switch is invisible. Density is decided by RANK, not by collision alone: the bake
+    // ranks every place against its neighbors inside a ~400 m cell (`rank`) and a ~1.6 km cell
+    // (`crank`), and at each zoom only the top few per cell get an icon and fewer still a label;
+    // the rest draw as small category-colored dots, the way Google thins a downtown to its
+    // landmarks at z15 and fills in the shops as you zoom. A strong prominence (a hospital, a
+    // supermarket, a branded chain) bypasses the rank so a lone landmark is never demoted by a
+    // busier neighbor. The tile minzoom (bake) already leaves the long tail out of the z13-z16
+    // tiles, so this is a cheap second cut on what the tile carries.
+    LaunchedEffect(placesOverlays, styleRef, darkTheme) {
+        val style = styleRef ?: return@LaunchedEffect
+        runCatching { style.layers.filter { it.id.startsWith("vela-places-") }.forEach { style.removeLayer(it) } }
+        runCatching { style.sources.filter { it.id.startsWith("vela-places-src-") }.forEach { style.removeSource(it) } }
+        placesOverlays.forEachIndexed { i, uri ->
+            runCatching {
+                val srcId = "vela-places-src-$i"
+                style.addSource(VectorSource(srcId, uri))
+                // "top `n` in the cell, or prominent enough on its own" -> the value, else nothing.
+                fun topOr(rankProp: String, n: Int, prom: Double, value: Expression) = Expression.switchCase(
+                    Expression.any(
+                        Expression.lte(Expression.get(rankProp), Expression.literal(n)),
+                        Expression.gte(Expression.get("prominence"), Expression.literal(prom)),
+                    ),
+                    value, Expression.literal(""),
+                )
+                val icon = Expression.get("icon") // "vela-poi-<group>", baked
+                val name = Expression.get("name")
+                // Dots come in by rank too, Google-style: none at z14 (icons only), the top six
+                // per 400 m cell at z15, the top fifteen at z16, everything from z17. Opacity, not
+                // a filter: a hidden dot still costs nothing, and MapLibre filters cannot read
+                // the zoom. Tap queries only see drawn dots either way.
+                fun dotsAbove(n: Int) = Expression.switchCase(
+                    Expression.lte(Expression.get("rank"), Expression.literal(n)),
+                    Expression.literal(0.92f), Expression.literal(0f),
+                )
+                val dots = CircleLayer("vela-places-dots-$i", srcId).apply {
+                    setSourceLayer("places")
+                    setMinZoom(15f)
+                    setProperties(
+                        PropertyFactory.circleColor(PoiIcons.groupColor()),
+                        PropertyFactory.circleRadius(
+                            Expression.interpolate(
+                                Expression.linear(), Expression.get("prominence"),
+                                Expression.stop(0.0, 2.2f), Expression.stop(8.0, 3.6f),
+                            ),
+                        ),
+                        PropertyFactory.circleStrokeWidth(1.2f),
+                        PropertyFactory.circleStrokeColor(if (darkTheme) "#162640" else "#f8f7f7"),
+                        PropertyFactory.circleOpacity(
+                            Expression.step(
+                                Expression.zoom(),
+                                dotsAbove(6),
+                                Expression.stop(16f, dotsAbove(15)),
+                                Expression.stop(17f, Expression.literal(0.92f)),
+                            ),
+                        ),
+                        PropertyFactory.circleStrokeOpacity(
+                            Expression.step(
+                                Expression.zoom(),
+                                dotsAbove(6),
+                                Expression.stop(16f, dotsAbove(15)),
+                                Expression.stop(17f, Expression.literal(0.92f)),
+                            ),
+                        ),
+                    )
+                }
+                val layer = SymbolLayer("vela-places-$i", srcId).apply {
+                    setSourceLayer("places") // tippecanoe layer name (tools/build-places-region.sh: -l places)
+                    // z11/z12 tiles carry only the landmarks (airports, hospitals, universities,
+                    // malls: `landmark` + `xrank` in the bake), the ones Google keeps drawing
+                    // zoomed out, so below z13 everything present gets an icon and a label.
+                    setMinZoom(11f)
+                    setProperties(
+                        PropertyFactory.iconImage(
+                            Expression.step(
+                                Expression.zoom(),
+                                icon,
+                                Expression.stop(13f, topOr("crank", 2, 6.0, icon)),
+                                Expression.stop(15f, topOr("rank", 1, 5.0, icon)),
+                                Expression.stop(16f, topOr("rank", 5, 4.0, icon)),
+                                Expression.stop(17f, topOr("rank", 12, 3.0, icon)),
+                                Expression.stop(17.5f, icon),
+                            ),
+                        ),
+                        PropertyFactory.iconSize(
+                            Expression.interpolate(
+                                Expression.linear(), Expression.get("prominence"),
+                                Expression.stop(0.0, 0.78f), Expression.stop(8.0, 1.3f),
+                            ),
+                        ),
+                        PropertyFactory.iconAllowOverlap(false),
+                        PropertyFactory.iconIgnorePlacement(false),
+                        PropertyFactory.iconPadding(1.5f),
+                        PropertyFactory.symbolSortKey(Expression.subtract(Expression.literal(10f), Expression.get("prominence"))),
+                        PropertyFactory.textField(
+                            Expression.step(
+                                Expression.zoom(),
+                                name,
+                                Expression.stop(13f, topOr("crank", 1, 6.0, name)),
+                                Expression.stop(15f, topOr("rank", 1, 5.0, name)),
+                                Expression.stop(16f, topOr("rank", 3, 4.5, name)),
+                                Expression.stop(16.5f, topOr("rank", 6, 4.0, name)),
+                                Expression.stop(17.5f, name),
+                            ),
+                        ),
+                        PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                        PropertyFactory.textSize(
+                            Expression.interpolate(
+                                Expression.linear(), Expression.get("prominence"),
+                                Expression.stop(0.0, 11f), Expression.stop(8.0, 14f),
+                            ),
+                        ),
+                        // Two anchors, not the ambient layer's four: this layer carries hundreds of
+                        // features per view where the ambient one carries dozens, and each anchor
+                        // is another placement attempt per label per frame.
+                        PropertyFactory.textVariableAnchor(arrayOf(Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_LEFT)),
+                        PropertyFactory.textRadialOffset(1.4f),
+                        PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
+                        PropertyFactory.textMaxWidth(7f),
+                        PropertyFactory.textOptional(true),
+                        PropertyFactory.textAllowOverlap(false),
+                        // The ambient layer's own label colours: per-group tints, pastel in dark.
+                        PropertyFactory.textColor(PoiIcons.ambientLabelColor(darkTheme)),
+                        PropertyFactory.textHaloColor(if (darkTheme) "#11161C" else "#FFFFFF"),
+                        PropertyFactory.textHaloWidth(0.9f),
+                    )
+                }
+                // Above the Google ambient layer, so in the "both" setting the open layer's icons
+                // win the collision slots and Google's extras fill the gaps, not the other way
+                // around. Dots under icons: an icon that renders simply covers its own dot.
+                if (style.getLayer(AMBIENT_LAYER) != null) style.addLayerAbove(layer, AMBIENT_LAYER) else style.addLayer(layer)
+                // Dots go UNDER every label (basemap street names included), so a label's halo
+                // covers its dot and no dot ever sits on text. See the ambient dot tier.
+                val under = firstSymbolLayerId(style)
+                if (under != null) style.addLayerBelow(dots, under) else style.addLayerBelow(dots, layer.id)
+            }
+        }
+        // The OSM basemap business POIs yield to the open layer right away (applyData keeps the
+        // rule from here on, see osmPoiVis); without this they stay up until the next
+        // recomposition, which on a still map can be a while.
+        val vis = if (placesOverlays.isNotEmpty()) Property.NONE else Property.VISIBLE
+        listOf("poi_r1", "poi_r7", "poi_r20").forEach { id -> style.getLayer(id)?.setProperties(PropertyFactory.visibility(vis)) }
+        lastOsmPoiVis = null
+    }
+
     LaunchedEffect(maxspeedOverlays, styleRef, speedOverlayOn) {
         val style = styleRef ?: return@LaunchedEffect
         runCatching { style.layers.filter { it.id.startsWith("vela-ms-") }.forEach { style.removeLayer(it) } }
@@ -1205,7 +1359,7 @@ fun VelaMapView(
                             PropertyFactory.textField(
                                 Expression.step(
                                     Expression.zoom(), Expression.literal(""),
-                                    Expression.stop(HOUSENUMBER_MIN_ZOOM, Expression.get("number")),
+                                    Expression.stop(houseNumberMinZoom(), Expression.get("number")),
                                 ),
                             ),
                             PropertyFactory.textOpacity(houseNumberFade()),
@@ -1521,32 +1675,57 @@ fun VelaMapView(
         }
     }
 
-    // The in-nav ROUTE OVERVIEW (Google's fly-over): fit the whole route while the drive keeps
+    // The in-nav ROUTE OVERVIEW (Google's fly-over): fit the road AHEAD while the drive keeps
     // navigating - the VM marked the camera detached, so the follow ticker has already stepped
     // aside and the existing Re-center button glides back into the puck-low follow. Camera only;
     // guidance, voice and the puck (which keeps moving along the overview) are untouched.
-    LaunchedEffect(navOverviewTick) {
+    // LIVE (issue #352): Google's overview keeps refitting to the road still ahead as you drive,
+    // so the frame tightens towards the destination and the last turns are readable. Ours was a
+    // one-shot fit of the whole route, origin to destination. After the first fit the effect
+    // keeps refitting arrow-to-destination every few seconds until a pan, a pinch or Re-center
+    // ends it (`overviewLive`, cleared by those handlers). Keyed on the polyline too, so a
+    // reroute refits the NEW route; a polyline change while the overview is not live is ignored
+    // (the tick is the user's request, the polyline key is not).
+    LaunchedEffect(navOverviewTick, routePolyline) {
+        val fresh = overviewTickSeen[0] != navOverviewTick
+        overviewTickSeen[0] = navOverviewTick
         if (navOverviewTick == 0 || !navMode || routePolyline.size < 2) return@LaunchedEffect
+        if (!fresh && !overviewLive[0]) return@LaunchedEffect
         val map = mapRef ?: return@LaunchedEffect
+        fun fitRemaining(animMs: Int) {
+            val cum = routeCum
+            if (cum.size != routePolyline.size || cum.isEmpty()) return
+            val fromM = navPuck.progressM.coerceIn(0.0, cum.last())
+            val b = MLLatLngBounds.Builder()
+            val (p0, _) = pointAtMeters(routePolyline, cum, fromM)
+            b.include(MLLatLng(p0.lat, p0.lng))
+            for (i in indexAtMeters(cum, fromM) until routePolyline.size) b.include(MLLatLng(routePolyline[i].lat, routePolyline[i].lng))
+            b.include(MLLatLng(routePolyline.last().lat, routePolyline.last().lng))
+            runCatching {
+                // Fit NORTH-UP and FLAT (the bearing/tilt overload): the plain bounds fit kept the
+                // follow's rotated 55-degree camera, and a tilted, rotated fit shows LESS than the
+                // whole route however correct the math (user 2026-07-15: "doesn't quite show the
+                // full route") - Google's overview levels out too.
+                flightDepth[0]++
+                map.animateCamera(
+                    CameraUpdateFactory.newLatLngBounds(
+                        b.build(), 0.0, 0.0,
+                        70, (map.height * 0.30).toInt(), 70, (map.height * 0.22).toInt(),
+                    ),
+                    animMs,
+                    flightCb(),
+                )
+            }
+        }
         // The puck-low top padding would skew a bounds fit; the follow re-applies it per frame
         // when Re-center re-attaches.
-        map.moveCamera(CameraUpdateFactory.paddingTo(0.0, 0.0, 0.0, 0.0))
-        val b = MLLatLngBounds.Builder()
-        routePolyline.forEach { b.include(MLLatLng(it.lat, it.lng)) }
-        runCatching {
-            // Fit NORTH-UP and FLAT (the bearing/tilt overload): the plain bounds fit kept the
-            // follow's rotated 55-degree camera, and a tilted, rotated fit shows LESS than the
-            // whole route however correct the math (user 2026-07-15: "doesn't quite show the
-            // full route") - Google's overview levels out too.
-            flightDepth[0]++
-            map.animateCamera(
-                CameraUpdateFactory.newLatLngBounds(
-                    b.build(), 0.0, 0.0,
-                    70, (map.height * 0.30).toInt(), 70, (map.height * 0.22).toInt(),
-                ),
-                700,
-                flightCb(),
-            )
+        if (fresh) map.moveCamera(CameraUpdateFactory.paddingTo(0.0, 0.0, 0.0, 0.0))
+        overviewLive[0] = true
+        fitRemaining(700)
+        while (overviewLive[0] && navModeHolder.value) {
+            kotlinx.coroutines.delay(4_000)
+            if (!overviewLive[0] || !navModeHolder.value) break
+            fitRemaining(600)
         }
     }
 
@@ -1875,8 +2054,12 @@ fun VelaMapView(
                                 // AHEAD owns the view instead of splitting it with what's behind
                                 // (user 2026-07-14). Eased in on (re)attach - see the seed above.
                                 // Padding is sticky camera state - the nav teardown below resets
-                                // it for the browse map.
-                                .padding(0.0, cam.height * navPadEase[0], 0.0, 0.0)
+                                // it for the browse map. The LEFT inset is the landscape nav
+                                // column (issue #297): this per-frame write replaces the whole
+                                // padding, so without it here the setPadding call in the inset
+                                // effect was undone on the first frame and the puck sat on the
+                                // column's seam (review 2026-09-12).
+                                .padding(cameraLeftInsetPx.toDouble(), cam.height * navPadEase[0], 0.0, 0.0)
                                 .build(),
                         ),
                     )
@@ -2207,6 +2390,23 @@ fun VelaMapView(
                         ambientTap.value(amb.getNumberProperty(AMBIENT_INDEX_PROP).toInt())
                         return@handleTap true
                     }
+                    if (hit != null && hit.hasProperty("src") && hit.getStringProperty("src") == "overture") {
+                        // An open-places feature: seed the sheet from the tile's own attributes so it
+                        // reads offline, then let the VM correlate it to Google's listing.
+                        val pt = hit.geometry() as Point
+                        fun prop(k: String) = if (hit.hasProperty(k)) hit.getStringProperty(k)?.takeIf { it.isNotBlank() && it != "null" } else null
+                        val place = app.vela.core.model.Place(
+                            id = "overture:" + (prop("id") ?: nameOf(hit)!!.hashCode().toString()),
+                            name = nameOf(hit)!!,
+                            location = LatLng(pt.latitude(), pt.longitude()),
+                            category = prop("class"),
+                            address = prop("addr"),
+                            phone = prop("phone"),
+                            website = prop("website"),
+                        )
+                        openPlaceTap.value(place)
+                        return@handleTap true
+                    }
                     if (hit != null) {
                         val pt = hit.geometry() as Point
                         // The POI's kind (OMT subclass, e.g. "bus_stop"/"station", else class) tells
@@ -2306,6 +2506,7 @@ fun VelaMapView(
                         // misread the scaling guard fixes for pinch) - it detached the camera the
                         // moment a two-finger tilt started.
                         if (navModeHolder.value && !scaling[0] && !shoving[0]) {
+                            overviewLive[0] = false
                             navPanned.value()
                             navUserZoom[0] = Double.NaN
                             zoomOverride.value(false)
@@ -2316,6 +2517,7 @@ fun VelaMapView(
                 map.addOnScaleListener(object : MapLibreMap.OnScaleListener {
                     override fun onScaleBegin(detector: StandardScaleGestureDetector) {
                         scaling[0] = true
+                        overviewLive[0] = false
                         browseZoomGoal[0] = Double.NaN // fingers beat a pending locate-tap zoom
                     }
                     // Capture the zoom CONTINUOUSLY (not only on end) so the override is set even
@@ -2621,6 +2823,13 @@ fun VelaMapView(
         val map = mapRef ?: return@AndroidView
         // Keep the compass clear of the status bar (insets are ready post-layout).
         map.uiSettings.setCompassMargins(0, compassTopPx, compassRightPx, 0)
+        // Picture-in-picture (2026-09-13): no compass in a mini map (it sat on the road in the
+        // window's corner), and NO GESTURES: the system's own tap/double-tap on the PiP window
+        // reached the map as a gesture, which dropped the follow camera, so the restored app
+        // came back detached and needed a Re-center every time (user report).
+        val pipNow = app.vela.ui.PipMode.active.value
+        map.uiSettings.isCompassEnabled = !pipNow
+        map.uiSettings.setAllGesturesEnabled(!pipNow)
         // Browse keeps Google's fade-when-north; NAV shows the compass the whole drive - a
         // stationary route start is often still north-up, which faded it out right when the
         // user looked for it (user 2026-07-14; Google pins it during nav too).
@@ -2660,11 +2869,18 @@ fun VelaMapView(
                 // window exactly when the resume fix needs it big, costing a disengage cycle.
                 val aheadSpeed = maxOf(navPuck.speed, navPuck.speedAtAccept)
                 val ahead = (aheadSpeed * 8.0).coerceIn(150.0, 600.0)
+                // Mode-aware tolerance (user 2026-09-12: "gets me unstuck slower than Google on
+                // foot"). A car sits a lane off the centreline at speed, so it keeps 22 m plus
+                // speed; a walker or cyclist is where the fix says, within its accuracy, so 8 m
+                // plus a share of the reported accuracy, capped at 16 m: cutting a corner over a
+                // crosswalk frees the arrow within a fix or two instead of dragging it along the
+                // route. The heading gate needs a real course: GPS bearing is noise at walking
+                // pace, so below 2.5 m/s off-road it is not consulted.
                 snapToRouteWindowed(
                     myLocation,
-                    if (navPuck.kalman.speed < 1.0) null else myBearing,
+                    if (navPuck.kalman.speed < (if (navDriveMode) 1.0 else 2.5)) null else myBearing,
                     routePolyline, routeCum, navPuck.targetM - 25.0, navPuck.targetM + ahead,
-                    maxM = 22.0 + aheadSpeed.coerceIn(0.0, 13.0),
+                    maxM = puckSnapTolerance(navDriveMode, aheadSpeed, myAccuracyM),
                 )
             } else {
                 // Not yet engaged (nav start, or the ticker just re-keyed on a reroute): one
@@ -2807,11 +3023,11 @@ fun VelaMapView(
             // drop to the raw fix on the 2nd such miss; a distance miss keeps the 3-miss
             // tolerance a canopy spike needs.
             val missSpeed = maxOf(navPuck.speed, navPuck.speedAtAccept)
-            val headingMiss = myLocation != null && myBearing != null && navPuck.kalman.speed >= 2.0 &&
+            val headingMiss = myLocation != null && myBearing != null && navPuck.kalman.speed >= (if (navDriveMode) 2.0 else 2.5) &&
                 snapToRouteWindowed(
                     myLocation, null, routePolyline, routeCum,
                     navPuck.targetM - 25.0, navPuck.targetM + (missSpeed * 8.0).coerceIn(150.0, 600.0),
-                    maxM = 22.0 + missSpeed.coerceIn(0.0, 13.0),
+                    maxM = puckSnapTolerance(navDriveMode, missSpeed, myAccuracyM),
                 ) != null
             if (headingMiss) {
                 navPuck.headingMisses += 1
@@ -2828,7 +3044,9 @@ fun VelaMapView(
             navPuck.rawBearing = myBearing
         }
         // Palette in the key so a Settings colour-set switch reloads the style, same as a theme flip.
-        val styleKey = "$styleUri|dark=$darkTheme|amoled=$amoled|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn"
+        // The puck style rides the key too: the symbol image is registered once per style load
+        // (issue #344), so a size/colour change reloads to re-register it.
+        val styleKey = "$styleUri|dark=$darkTheme|amoled=$amoled|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn|puck=${app.vela.ui.PuckStyle.key()}|hn=${app.vela.ui.HouseNumbers.level.value}"
         if (appliedStyleKey != styleKey) {
             appliedStyleKey = styleKey
             val builder = if (styleUri.startsWith("asset://")) {
@@ -3096,9 +3314,10 @@ fun VelaMapView(
                     // Reserve room at the bottom for the directions panel AND at the top for the
                     // endpoints card, so the route's start/end frame in the VISIBLE strip between
                     // them instead of hiding behind either (user 2026-07-14).
-                    val pad = 140
-                    val bottom = if (cameraBottomInsetPx > 0) cameraBottomInsetPx + pad else pad
-                    val top = if (cameraTopInsetPx > 0) cameraTopInsetPx + pad else pad
+                    val fp = fitPadding(map, cameraTopInsetPx, cameraBottomInsetPx, 140)
+                    val pad = fp.side
+                    val bottom = fp.bottom
+                    val top = fp.top
                     val bounds = builder.build()
                     // A continental trip fit zooms out until nothing has context; past ~12 degrees
                     // of span, frame the DESTINATION area instead - the end point is the part worth
@@ -3130,13 +3349,11 @@ fun VelaMapView(
                 lastFittedTransitKey = transitPrevCoords.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx
                 val builder = MLLatLngBounds.Builder()
                 transitPrevCoords.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
-                val pad = 140
-                val bottom = if (cameraBottomInsetPx > 0) cameraBottomInsetPx + pad else pad
-                val top = if (cameraTopInsetPx > 0) cameraTopInsetPx + pad else pad
+                val fp = fitPadding(map, cameraTopInsetPx, cameraBottomInsetPx, 140)
                 runCatching {
                     flightDepth[0]++
                     map.animateCamera(
-                        CameraUpdateFactory.newLatLngBounds(builder.build(), pad, top, pad, bottom), 800, flightCb(),
+                        CameraUpdateFactory.newLatLngBounds(builder.build(), fp.side, fp.top, fp.side, fp.bottom), 800, flightCb(),
                     )
                 }
             }
@@ -3172,10 +3389,10 @@ fun VelaMapView(
                     val builder = MLLatLngBounds.Builder()
                     cluster.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
                     // Keep the cluster above the results sheet (peek covers the bottom half).
-                    val bottom = if (cameraBottomInsetPx > 0) cameraBottomInsetPx + 160 else 160
+                    val fp = fitPadding(map, 0, cameraBottomInsetPx, 160)
                     runCatching {
                         flightDepth[0]++
-                        map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 160, 160, 160, bottom), 700, flightCb())
+                        map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), fp.side, fp.top, fp.side, fp.bottom), 700, flightCb())
                     }
                 }
             }
@@ -3224,7 +3441,8 @@ fun VelaMapView(
         }
     }
     if (puckOverlayOn.value) {
-        val puckImg = remember { navPuckBitmap().asImageBitmap() }
+        val puckKey = app.vela.ui.PuckStyle.key()
+        val puckImg = remember(puckKey) { navPuckBitmap().asImageBitmap() }
         val sizePx = puckImg.width
         androidx.compose.foundation.Image(
             bitmap = puckImg,
@@ -3376,7 +3594,7 @@ private fun ensureLayers(style: Style) {
                 // carpeted whole blocks in numbers (user 2026-07-13) and 16 carpeted the map
                 // (2026-07-06), but a hard 19 read as "this app has no house numbers" to people who
                 // zoomed in and gave up short of it (issue #257). Keep in lockstep with vela-addr.
-                setMinZoom(HOUSENUMBER_MIN_ZOOM)
+                setMinZoom(houseNumberMinZoom())
                 setProperties(
                     PropertyFactory.textField(Expression.get("housenumber")),
                     PropertyFactory.textOpacity(houseNumberFade()),
@@ -3547,7 +3765,10 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.iconImage(PARKING_IMG),
                 PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
                 PropertyFactory.iconAllowOverlap(true),
-                PropertyFactory.iconIgnorePlacement(true),
+                // Always drawn, and it CLAIMS its spot: a POI label or icon under the pin is
+                // dropped instead of drawn half-covered (ignorePlacement=true let everything
+                // pile up underneath; user 2026-09-14, "the pins shouldn't cover things").
+                PropertyFactory.iconIgnorePlacement(false),
             ),
         )
     }
@@ -3560,7 +3781,7 @@ private fun ensureLayers(style: Style) {
             SymbolLayer(SAVED_LAYER, SAVED_SRC).withProperties(
                 PropertyFactory.iconImage(Expression.get(SAVED_ICON_PROP)),
                 PropertyFactory.iconAllowOverlap(true),
-                PropertyFactory.iconIgnorePlacement(true),
+                PropertyFactory.iconIgnorePlacement(false), // claims its spot, see the parking pin
             ).apply { minZoom = 8f },
         )
     }
@@ -3694,6 +3915,10 @@ private fun ensureLayers(style: Style) {
         // collision engine entirely, so 140 of them cost ~nothing on a weak GPU (the
         // icon that renders on top simply covers its own dot - the coloured dot is the
         // marker bitmap's centre). Radius scales gently with prominence.
+        // Under the basemap's labels, not over them: circles skip collision, so a dot drawn
+        // above the symbol layers could sit on a street name or a POI label. Below the first
+        // symbol layer every label's halo covers its dot instead (user 2026-09-14, "small dots
+        // should never cover a large POI text or icon").
         style.addLayerBelow(
             CircleLayer(AMBIENT_DOT_LAYER, AMBIENT_SRC).withProperties(
                 PropertyFactory.circleColor(Expression.toColor(Expression.get("dotColor"))),
@@ -3707,7 +3932,7 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.circleStrokeColor("#FFFFFF"),
                 PropertyFactory.circleOpacity(0.92f),
             ),
-            AMBIENT_LAYER,
+            firstSymbolLayerId(style) ?: AMBIENT_LAYER,
         )
     }
     // Traffic controls (OSM `highway=traffic_signals`/`stop`): non-interactive icons drawn at high zoom
@@ -4429,7 +4654,7 @@ private const val SAT_DEEP_SRC = "vela-sat-deep-src" // suffixed with the provid
 // rather than 404s, so the fallback never paints holes; true 404s (open ocean) fall back to the
 // overzoomed parent tile like any failed raster fetch.
 private const val SAT_G_TILES = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
-private const val SAT_DEEP_MIN_ZOOM = 18.4f // engage just before the base z19 tiles start visibly stretching
+private const val SAT_DEEP_MIN_ZOOM = 18.6f // = the cross-fade's first stop; below it the layer was invisible yet loading tiles
 
 /** The deep-imagery layer for the current area: Esri at its probed native max level, or the Google
  *  fallback to z21. The source id carries provider+level, so moving between areas with different
@@ -4733,6 +4958,37 @@ private fun emphasizeShields(style: Style) {
  * (see styleKey), so each pass starts from Liberty's defaults — no need to undo.
  * No-ops on non-OpenMapTiles styles (e.g. the MapLibre demo basemap). Keyless.
  */
+/** The open places (Overture) features in the tiles MapLibre has loaded, as (name, location). Empty
+ *  when no open places source is on the style, which is the common case. */
+private fun openPlacesLoaded(style: Style): List<Pair<String, LatLng>> {
+    val out = ArrayList<Pair<String, LatLng>>()
+    style.sources.filter { it.id.startsWith("vela-places-src-") }.forEach { src ->
+        runCatching {
+            (src as? VectorSource)?.querySourceFeatures(arrayOf("places"), null)?.forEach { f ->
+                val pt = f.geometry() as? Point ?: return@forEach
+                val n = f.getStringProperty("name") ?: return@forEach
+                out += n to LatLng(pt.latitude(), pt.longitude())
+            }
+        }
+    }
+    return out
+}
+
+/** Two business names for the same place, allowing for the usual drift between sources
+ *  ("Panera Bread" vs "Panera", "Joe's Cafe" vs "Joes Cafe"): they share as many words as the
+ *  shorter name has, capped at two. Mirrors MapViewModel.nameAgrees. */
+private fun namesAgree(a: String, b: String): Boolean {
+    fun words(s: String) = s.lowercase().replace(Regex("[^\\p{L}\\p{N} ]"), " ").split(Regex("\\s+")).filter { it.length > 1 }.toSet()
+    val x = words(a); val y = words(b)
+    if (x.isEmpty() || y.isEmpty()) return false
+    return x.intersect(y).size >= minOf(x.size, y.size).coerceAtMost(2)
+}
+
+/** The bottom-most symbol layer on the style (the basemap's first label layer): anything added
+ *  below it draws under every label and icon. */
+private fun firstSymbolLayerId(style: Style): String? =
+    style.layers.firstOrNull { it is SymbolLayer }?.id
+
 private fun applyMapTheme(style: Style, dark: Boolean, amoled: Boolean = false) {
     if (style.getSource("openmaptiles") == null) return
     // Two compiled colour sets, picked in Settings -> Appearance (MapColors): "modern" is the
@@ -4752,6 +5008,15 @@ private fun applyMapTheme(style: Style, dark: Boolean, amoled: Boolean = false) 
         PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark || amoled)),
         PropertyFactory.textHaloColor(if (amoled) "#000000" else if (dark) "#11161C" else "#FFFFFF"),
     )
+    style.layers.filter { it.id.startsWith("vela-places-") }.forEach { l ->
+        (l as? SymbolLayer)?.setProperties(
+            PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark || amoled)),
+            PropertyFactory.textHaloColor(if (amoled) "#000000" else if (dark) "#11161C" else "#FFFFFF"),
+        )
+        (l as? CircleLayer)?.setProperties(
+            PropertyFactory.circleStrokeColor(if (amoled) "#000000" else if (dark) "#162640" else "#f8f7f7"),
+        )
+    }
     // Canonical GTFS stop names take the TRANSIT category colour per theme - blue in light,
     // its pastel tint in dark, the same grammar every POI label follows. The creation-time
     // colours in ensureLayers were hardcoded for dark (no theme there) and read as grey with
@@ -5418,6 +5683,14 @@ private fun snapToRouteWindowed(
     return Triple(pt, routeBearing, bestM)
 }
 
+/** How far off the route line a fix may sit and still be drawn ON it. Driving: 22 m plus up
+ *  to 13 m with speed (a lane offset plus fix lag on a wide road). On foot or by bike: 8 m plus
+ *  1.2x the fix's own accuracy, capped at 16 m, so a deliberate shortcut frees the arrow within
+ *  a fix or two (user 2026-09-12). */
+private fun puckSnapTolerance(drive: Boolean, speedMps: Double, accuracyM: Float?): Double =
+    if (drive) 22.0 + speedMps.coerceIn(0.0, 13.0)
+    else (8.0 + 1.2 * (accuracyM?.toDouble() ?: 8.0)).coerceIn(8.0, 16.0)
+
 /** Smallest absolute difference between two compass bearings (deg), 0..180. */
 private fun angleDelta(a: Float, b: Float): Float = kotlin.math.abs((a - b + 540f) % 360f - 180f)
 
@@ -5942,8 +6215,15 @@ private fun applyData(
     // Deferred while a camera flight is in the air (AUDIT FIX 6, see flightDepth) - the gate
     // stays stale so the first recomposition after landing uploads the full set.
     if (ambientPois != lastAppliedAmbient && flightDepth[0] == 0) {
+        // "Both" places setting: the open places layer already draws most of these. Drop the
+        // Google places that agree by name with an open place within 80 m of them, so the map
+        // gets Google's extras (a new business, one the open data missed) and not two icons
+        // for every restaurant. The index property stays the list index, so a tap still opens
+        // the right place.
+        val openInView = openPlacesLoaded(style)
         val ambientFc = FeatureCollection.fromFeatures(
-            ambientPois.mapIndexed { i, m ->
+            ambientPois.mapIndexedNotNull { i, m ->
+                if (openInView.isNotEmpty() && openInView.any { (n, ll) -> ll.distanceTo(m.location) < 80.0 && namesAgree(n, m.name) }) return@mapIndexedNotNull null
                 Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
                     val group = PoiIcons.groupFor(m.name, m.category)
                     addStringProperty("name", m.name)
@@ -5984,7 +6264,11 @@ private fun applyData(
     // refining 2026-07-16's "keep gas stations in nav": everything else is clutter over the
     // route); only the master switch hides them outright. The ambient-dots and many-results
     // suppressors apply to the browse map alone.
-    val osmPoiVis = if (!poisEnabled || (!navMode && (ambientCoversView || markers.size > 1))) Property.NONE else Property.VISIBLE
+    // The open places layer covering the view hides them the same way the Google dots do: the
+    // Overture data and the OSM basemap POIs are two drawings of the same businesses (a bank
+    // showed twice, once per source, before this), and the open layer is the richer one.
+    val openCovers = style.sources.any { it.id.startsWith("vela-places-src-") }
+    val osmPoiVis = if (!poisEnabled || (!navMode && (ambientCoversView || openCovers || markers.size > 1))) Property.NONE else Property.VISIBLE
     if (osmPoiVis != lastOsmPoiVis) {
         listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
             style.getLayer(id)?.setProperties(PropertyFactory.visibility(osmPoiVis))
@@ -6215,8 +6499,13 @@ private fun arrowBitmap(): Bitmap {
 /** Navigation puck: a WHITE chevron inside a filled BRIGHT-NAVY circle with a soft drop shadow
  *  and NO white ring (user 2026-07-11: bigger, drop the ring, brighter navy blue). Points up
  *  (north) so `iconRotate(bearing)` aims it down the heading. */
-private fun navPuckBitmap(): Bitmap {
-    val size = 202 // +15% per issue #251 (2026-08-10); the earlier chain was 96 -> 112 -> 136 -> 176
+private fun navPuckBitmap(
+    scale: Float = app.vela.ui.PuckStyle.scale(),
+    whiteDisc: Boolean = app.vela.ui.PuckStyle.whiteDisc(),
+): Bitmap {
+    // 202 = +15% per issue #251 (2026-08-10); the earlier chain was 96 -> 112 -> 136 -> 176.
+    // [scale] is the Settings "Arrow size" (issue #344): Large 1.25x, Extra large 1.5x.
+    val size = (202 * scale).toInt()
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bmp)
     // Drawn in the original 176-space and scaled whole, so the disc/arrow/shadow proportions the
@@ -6234,11 +6523,24 @@ private fun navPuckBitmap(): Bitmap {
         },
     )
     // The bright-navy disc - no white ring this time (user call). #1a46e5 = a vivid, deep blue.
+    // The "white disc" style (issue #344) inverts it: white disc, blue chevron, plus a hairline
+    // grey ring so the disc still has an edge over a light map.
+    val blue = android.graphics.Color.parseColor("#1a46e5")
     canvas.drawCircle(
         cx, cy, r,
-        Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.parseColor("#1a46e5") },
+        Paint(Paint.ANTI_ALIAS_FLAG).apply { color = if (whiteDisc) android.graphics.Color.WHITE else blue },
     )
-    // White chevron/arrow, centred, pointing up - scaled up with the bigger disc.
+    if (whiteDisc) {
+        canvas.drawCircle(
+            cx, cy, r - 1f,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = android.graphics.Color.parseColor("#B9BDC2")
+                style = Paint.Style.STROKE
+                strokeWidth = 2f
+            },
+        )
+    }
+    // Chevron/arrow, centred, pointing up - scaled up with the bigger disc.
     val arrow = Path().apply {
         moveTo(cx, cy - 32f)          // tip
         lineTo(cx + 27f, cy + 26f)    // bottom-right
@@ -6249,7 +6551,7 @@ private fun navPuckBitmap(): Bitmap {
     canvas.drawPath(
         arrow,
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.WHITE
+            color = if (whiteDisc) blue else android.graphics.Color.WHITE
             style = Paint.Style.FILL
         },
     )
@@ -6529,4 +6831,38 @@ private fun transitStopBitmap(): Bitmap {
     c.drawCircle(15.5f, 27.5f, 2.2f, white) // wheels
     c.drawCircle(24.5f, 27.5f, 2.2f, white)
     return bmp
+}
+
+/** Bounds-fit padding in px: sides, top and bottom, each already including the UI inset. */
+internal class FitPadding(val side: Int, val top: Int, val bottom: Int)
+
+/**
+ * Padding for a bounds fit that always leaves the map somewhere to draw. The route, transit
+ * and cluster fits used a FIXED margin (140 or 160 px) on every side plus the card/sheet
+ * insets. In raw pixels that margin is a quarter of a 240 px wide screen per side, so on a
+ * 240x320 phone (issue #400) the two side margins alone exceeded the viewport, MapLibre
+ * got a negative fit area and never zoomed out, and the route showed as a slice at whatever
+ * zoom it settled on. Now the margin is capped at a sixth of the strip that is actually
+ * visible between the top card and the bottom sheet, and when those two together leave
+ * less than a fifth of the map the insets themselves are trimmed so at least that much
+ * of the route is framed instead of nothing.
+ */
+internal fun fitPadding(map: MapLibreMap, topInsetPx: Int, bottomInsetPx: Int, wanted: Int): FitPadding {
+    val w = map.width.toInt().coerceAtLeast(1)
+    val h = map.height.toInt().coerceAtLeast(1)
+    var top = topInsetPx.coerceAtLeast(0)
+    var bottom = bottomInsetPx.coerceAtLeast(0)
+    val minStrip = h / 5
+    val strip = h - top - bottom
+    if (strip < minStrip) {
+        // Shrink both insets in proportion so the visible strip is a fifth of the map.
+        val excess = minStrip - strip
+        val total = (top + bottom).coerceAtLeast(1)
+        top -= excess * top / total
+        bottom -= excess * bottom / total
+        if (h - top - bottom < minStrip) bottom = (h - top - minStrip).coerceAtLeast(0)
+    }
+    val visibleH = (h - top - bottom).coerceAtLeast(1)
+    val side = minOf(wanted, w / 6, visibleH / 6).coerceAtLeast(4)
+    return FitPadding(side, top + side, bottom + side)
 }

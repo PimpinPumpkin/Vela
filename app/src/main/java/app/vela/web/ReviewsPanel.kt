@@ -64,7 +64,13 @@ class ReviewsPanelController {
     /** Apply a topic chip by its label ("All" clears). */
     fun chip(label: String) = js("try{window.velaClickChip(" + org.json.JSONObject.quote(label) + ")}catch(e){}")
     /** Sort order: "Most relevant" / "Newest" / "Highest rating" / "Lowest rating". */
-    fun sort(label: String) = js("try{window.velaSort(" + org.json.JSONObject.quote(label) + ")}catch(e){}")
+    fun sort(label: String) {
+        // The page is in the app's language now, so the English key cannot be matched against the
+        // menu text; Google's sort menu keeps one order in every language, so the INDEX is what
+        // the script clicks (the label stays as a fallback for an English page).
+        val index = listOf("Most relevant", "Newest", "Highest rating", "Lowest rating").indexOf(label)
+        js("try{window.velaSort(" + org.json.JSONObject.quote(label) + "," + index + ")}catch(e){}")
+    }
 }
 
 @Composable
@@ -304,7 +310,9 @@ private fun buildPanelWebView(
                         // Otherwise forward only clearly-vertical boundary drags (a horizontal
                         // chip swipe with a slight slope must not jiggle the sheet).
                         (kotlin.math.abs(dy) > kotlin.math.abs(dx) &&
-                            ((panelAtTop.get() && dy > 0f) ||
+                            // Full-screen: the WebView itself may be the scroller; a pull needs
+                            // its own scroll at the top as well as the page's verdict.
+                            ((panelAtTop.get() && (!fullScreen || v.scrollY <= 0) && dy > 0f) ||
                                 (!fullScreen && panelAtBottom.get() && dy < 0f)))
                     ) {
                         forwarded = true
@@ -339,6 +347,12 @@ private fun buildPanelWebView(
         false
     }
     var loaded = false
+    // Recovery for a page whose review feed Google withheld (issue #359): a plain reload first,
+    // then a reload on a FRESH anonymous session (all WebView cookies dropped, the consent
+    // cookies re-seeded), and only then the failure toast. The feed decision is per page load
+    // (five opens in a row on 2026-09-13 alternated between layouts), so a retry is not a long
+    // shot, and a new session gets a new allotment.
+    var stuckRetries = 0
     val bridge = object {
         @JavascriptInterface
         fun ready() { wv.post { onReady() } }
@@ -397,6 +411,30 @@ private fun buildPanelWebView(
         @JavascriptInterface
         fun fail() { wv.post { onFail() } }
 
+        /** The page sat on the Overview with the Reviews tab refusing to select: retry before failing. */
+        @JavascriptInterface
+        fun stuck() {
+            wv.post {
+                when (stuckRetries++) {
+                    0 -> { android.util.Log.w("VelaPanel", "feed withheld: reloading"); loaded = false; wv.reload() }
+                    1 -> {
+                        android.util.Log.w("VelaPanel", "feed withheld again: fresh session + reload")
+                        val cm = android.webkit.CookieManager.getInstance()
+                        cm.removeAllCookies { _ ->
+                            // Re-seed the EU consent cookies the anonymous session needs (else Google
+                            // bounces the page to consent.google.com), then load fresh.
+                            cm.setCookie("https://www.google.com", "SOCS=CAESHAgBEhIaAB; path=/; domain=.google.com")
+                            cm.setCookie("https://www.google.com", "CONSENT=YES+; path=/; domain=.google.com")
+                            cm.flush()
+                            loaded = false
+                            wv.post { wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=${WebReviewsFetcher.reviewsHl()}&gl=us") }
+                        }
+                    }
+                    else -> onFail()
+                }
+            }
+        }
+
         // A tapped review photo — a JSON blob {urls, index, author, date} for the tapped review.
         // Google's own photo route renders nothing inside the carve, so JS blocks it and hands the
         // data here to open Vela's native full-screen gallery, captioned "Author · date" (every
@@ -418,6 +456,9 @@ private fun buildPanelWebView(
     wv.addJavascriptInterface(bridge, "VelaPanel")
     wv.webViewClient = object : WebViewClient() {
         override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+            // The review feed is a batchexecute RPC (rpcids=qv9Egd, 2026-09-13); one line per call
+            // so a page that never fetches it (Google withholding the feed) shows in logcat.
+            request?.url?.toString()?.let { u -> if (u.contains("batchexecute") && u.contains("rpcids=")) android.util.Log.i("VelaPanelNet", u.substringAfter("rpcids=").take(12)) }
             if (request != null && blocked(request)) {
                 return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)))
             }
@@ -444,13 +485,23 @@ private fun buildPanelWebView(
             view?.evaluateJavascript(carveScript(dark, fullScreen), null)
         }
     }
-    // DELIBERATELY still English, unlike the inline review SCRAPER, which now follows the app's
-    // language (issue #278). This full-screen page is CARVED by matching English text: the relative
-    // date ("3 months ago"), the "N stars," histogram labels, the "reviews are automatically
-    // processed" disclaimer it strips, and the Sort button. Serving it in another language would
-    // break all four at once and trade one bug for several. Localising it means hardening those
-    // four selectors first; tracked as the follow-up on #278.
-    wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=en&gl=us")
+    // Follows the app's language like the inline scraper (issue #278; the full page caught up on
+    // 2026-09-13, issue #359): everything the carve keys on by TEXT (the reviews tab, the Sort
+    // button, the star labels, the relative dates, the Like/Share/actions buttons, the "All" chip,
+    // the disclaimer row) now reads the per-language word tables in `ReviewWords`, injected as
+    // `VW` at the top of the script, and the histogram rows are parsed by their leading digit.
+    // Console errors to logcat (tag VelaPanel): a script error in the carve is otherwise silent
+    // and reads as "the page never switched to reviews" (the inline scraper learned this the
+    // hard way, issue #359).
+    wv.webChromeClient = object : android.webkit.WebChromeClient() {
+        override fun onConsoleMessage(m: android.webkit.ConsoleMessage): Boolean {
+            if (m.messageLevel() == android.webkit.ConsoleMessage.MessageLevel.ERROR) {
+                android.util.Log.w("VelaPanel", "console: ${m.message()} (${m.sourceId()}:${m.lineNumber()})")
+            }
+            return true
+        }
+    }
+    wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=${WebReviewsFetcher.reviewsHl()}&gl=us")
     return wv
 }
 
@@ -488,7 +539,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
         [role="main"] [style*="background-image"]{filter:invert(1) hue-rotate(180deg) !important}
         /* Star glyphs invert to a muddy dark — re-invert them (a double-invert restores the amber).
            Scoped to the [role=img] star WIDGET so no text comes back dark with it. */
-        [role="main"] [role="img"][aria-label*="star" i]{filter:invert(1) hue-rotate(180deg) saturate(1.7) brightness(1.12) !important}
+        [role="main"] .vela-stars{filter:invert(1) hue-rotate(180deg) saturate(1.7) brightness(1.12) !important}
         /* Overlays (Sort menu, per-review menus, photo viewer) live OUTSIDE main so the filter never
            reaches them — they'd flash Google's white. Invert them to match; un-invert their images
            (a review photo in the viewer must stay true-colour). */
@@ -496,9 +547,21 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
         [role="menu"] img,[role="dialog"] img,[role="dialog"] video,[role="dialog"] [style*="background-image"]{filter:invert(1) hue-rotate(180deg) !important}
     """ else ""
     val fullJs = if (fullScreen) "true" else "false"
+    // The per-language words the carve keys on (ReviewWords, with any calibration override).
+    val wordsJs = org.json.JSONObject(
+        app.vela.core.data.ReviewWords.words(app.vela.core.config.CalibrationStore.latest.reviewWords),
+    ).toString()
     return """
         (function(){
           var tries=0, readySent=false, revAt=-1;
+          var VW=(function(){ var o={}; var src=$wordsJs; for(var k in src){ try{ o[k]=new RegExp(src[k],'i'); }catch(e){} } return o; })();
+          // A star widget in any language: its aria-label leads with the rating and names a star.
+          function velaIsStarLabel(t){ return /^\s*\d(?:[.,]\d)?\s*/.test(t||'') && VW.star.test(t||''); }
+          function velaTagStars(){
+            [].slice.call(document.querySelectorAll('[role="main"] [role="img"][aria-label]')).forEach(function(e){
+              if(!e.classList.contains('vela-stars') && velaIsStarLabel(e.getAttribute('aria-label'))) e.classList.add('vela-stars');
+            });
+          }
           // FULL = the full-screen "Read all" view: keep Google's OWN search/sort/histogram + its
           // native photo/VIDEO viewer (so videos play), and don't intercept photo taps. Inline
           // reviews are the native list now, so FULL is effectively always true in practice.
@@ -526,7 +589,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           }
           function velaDate(card){
             var d=card.querySelector('.rsqaWe'); if(d && d.textContent.trim()) return d.textContent.trim();
-            var all=card.querySelectorAll('span,div'); for(var i=0;i<all.length;i++){ var e=all[i]; if(e.children.length===0 && /^(a|an|\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago$/i.test((e.textContent||'').trim())) return e.textContent.trim(); }
+            var all=card.querySelectorAll('span,div'); for(var i=0;i<all.length;i++){ var e=all[i]; var tt=(e.textContent||'').trim(); if(e.children.length===0 && tt.length<40 && VW.ago.test(tt)) return tt; }
             return '';
           }
           // Rating histogram → native. The panel page renders the distribution as tr[aria-label]
@@ -542,15 +605,18 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
             // issuing the review-feed request (panel stuck at zero reviews; reproduced on two
             // places, cleared by the pre-polish build). Cards rendered == init done == safe.
             if(!document.querySelector('.jJc9Ad,[data-review-id]')) return;
+            // A row: a single leading digit (not a decimal, not a thousands group), then the count,
+            // and a star word somewhere ("5 stars, 1,189 reviews", "5 星級、908 則評論").
+            var HROW=/^\s*([1-5])(?!\d|[.,]\d)\D+?(\d[\d.,\s\u00a0\u202f]*)/;
             var rows=[].slice.call(document.querySelectorAll('tr[aria-label]')).filter(function(r){
-              return /^\s*\d\s+stars?,/i.test(r.getAttribute('aria-label')||'');
+              var t=r.getAttribute('aria-label')||''; return HROW.test(t); // no star word: Ukrainian rows have none
             });
             if(rows.length<5) return;
             if(!window.__velaHistSent){
               var counts={};
               rows.forEach(function(r){
-                var m=(r.getAttribute('aria-label')||'').match(/^\s*(\d)\s+stars?,\s*([\d,]+)/i);
-                if(m) counts[m[1]]=parseInt(m[2].replace(/,/g,''),10);
+                var m=(r.getAttribute('aria-label')||'').match(HROW);
+                if(m) counts[m[1]]=parseInt(m[2].replace(/\D/g,''),10);
               });
               if(counts['5']!==undefined && counts['1']!==undefined){
                 window.__velaHistSent=1;
@@ -574,7 +640,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
             }
             [].slice.call(document.querySelectorAll('[role="main"] div')).some(function(d){
               if(d.offsetHeight<=0 || d.offsetHeight>=80) return false;
-              if(!/reviews are automatically processed/i.test(d.textContent||'')) return false;
+              if(!VW.processed.test(d.textContent||'')) return false;
               if(d.parentElement && d.parentElement.offsetHeight<80) return false; // want the outermost small wrapper
               blocks.push({el:d,isSum:0}); return true;
             });
@@ -633,7 +699,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           // --- Native search / topic chips / sort (Vela UI drives Google's hidden controls) ---
           // The chips row is anchored by its "All" chip (position-based, no classes).
           function velaChipsRow(){
-            var all=[].slice.call(document.querySelectorAll('[role="main"] button')).filter(function(b){ return ((b.textContent||'').trim())==='All'; })[0];
+            var all=[].slice.call(document.querySelectorAll('[role="main"] button')).filter(function(b){ return VW.all.test((b.textContent||'').trim()); })[0];
             if(!all) return null;
             var row=all.parentElement;
             for(var i=0;i<4 && row;i++){ if(row.querySelectorAll('button').length>=2) break; row=row.parentElement; }
@@ -647,7 +713,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
             [].slice.call(row.querySelectorAll('button')).forEach(function(b){
               var t=(b.textContent||'').trim(); if(!t || t.length>32) return;
               var m=t.match(/^(.*?)\s*(\d+)$/);
-              if(t==='All') out.push({l:'All'});
+              if(VW.all.test(t)) out.push({l:'All'});
               else if(m && m[1]) out.push({l:m[1].trim(), n:parseInt(m[2],10)});
               else out.push({l:t});
             });
@@ -656,7 +722,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           window.velaClickChip=function(label){
             var row=velaChipsRow(); if(!row) return;
             var bs=[].slice.call(row.querySelectorAll('button'));
-            for(var i=0;i<bs.length;i++){ var t=(bs[i].textContent||'').trim(); if(t===label || t.replace(/\s*\d+$/,'')===label){ try{ bs[i].click(); }catch(e){} return; } }
+            for(var i=0;i<bs.length;i++){ var t=(bs[i].textContent||'').trim(); if(t===label || t.replace(/\s*\d+$/,'')===label || (label==='All' && VW.all.test(t))){ try{ bs[i].click(); }catch(e){} return; } }
           };
           window.velaSearch=function(q){
             var inp=document.querySelector('[role="main"] input'); if(!inp) return;
@@ -668,14 +734,26 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
               inp.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Enter',keyCode:13}));
             }catch(e){}
           };
-          window.velaSort=function(label){
-            var bs=[].slice.call(document.querySelectorAll('[role="main"] button')).filter(function(b){ return /sort/i.test((b.getAttribute('aria-label')||b.textContent||'')); });
+          window.velaSort=function(label,index){
+            var bs=[].slice.call(document.querySelectorAll('[role="main"] button')).filter(function(b){ return VW.sort.test((b.getAttribute('aria-label')||b.textContent||'')); });
+            if(!bs.length){
+              // Russian labels the sort button with the CURRENT choice ("Самые релевантные"), no
+              // sort word at all: fall back to the last popup-opening button before the first
+              // review card (the ⓘ info button also has aria-haspopup, but sits above the histogram).
+              var card=document.querySelector('.jJc9Ad,[data-review-id]');
+              var pops=[].slice.call(document.querySelectorAll('[role="main"] button[aria-haspopup="true"]'));
+              if(card) pops=pops.filter(function(b){ return b.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING; });
+              if(pops.length) bs=[pops[pops.length-1]];
+            }
             if(!bs.length) return;
             try{ bs[0].click(); }catch(e){}
             var attempts=0;
             var t=setInterval(function(){
               attempts++;
               var items=[].slice.call(document.querySelectorAll('[role="menuitem"],[role="menuitemradio"],[role="option"]'));
+              // The menu keeps one order in every language (relevant, newest, highest, lowest):
+              // click by position; the English label is the fallback for a four-item mismatch.
+              if(items.length===4 && index>=0 && index<4){ try{ items[index].click(); }catch(e){} clearInterval(t); return; }
               for(var i=0;i<items.length;i++){
                 if(((items[i].textContent||'').trim().toLowerCase())===label.toLowerCase()){ try{ items[i].click(); }catch(e){} clearInterval(t); return; }
               }
@@ -690,7 +768,8 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           function velaHasReviews(){
             if(document.querySelector('.jJc9Ad,[data-review-id]')) return true;
             return [].slice.call(document.querySelectorAll('span,div')).some(function(e){
-              return e.children.length===0 && /^(a|an|\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago/i.test((e.textContent||'').trim());
+              var tt=(e.textContent||'').trim();
+              return e.children.length===0 && tt.length<40 && /\d|^(a|an|un|une|ein|eine|una|um|uma|een|egy)\b/i.test(tt) && VW.ago.test(tt);
             });
           }
           // --- scroll-sync: tell the native side when the reviews scroller is at its top/bottom edge,
@@ -699,7 +778,10 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           var __velaTop=true, __velaBot=false;
           function velaReportEdge(){
             var sc=window.__velaSc; if(!sc) return;
-            var at=sc.scrollTop<=1;
+            // The document can scroll too (full-screen, or a page whose feed is not the inner
+            // div): "at top" needs BOTH at their top, or a drag down mid-page reads as a pull.
+            var docY=(window.scrollY||document.documentElement.scrollTop||0);
+            var at=sc.scrollTop<=1 && docY<=1;
             var ab=(sc.scrollTop+sc.clientHeight)>=(sc.scrollHeight-2);
             if(at) window.__velaEngaged=0; // back at the top: re-arm the sheet-takeover signal
             if(at!==__velaTop || ab!==__velaBot){ __velaTop=at; __velaBot=ab; try{ VelaPanel.onPanelEdge(at, ab); }catch(x){} }
@@ -799,10 +881,10 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
             [].slice.call(document.querySelectorAll('a,button')).forEach(function(b){
               var t=((b.getAttribute('aria-label')||b.textContent)||'').trim();
               if(t.length<=24 && /order online|get pickup/i.test(t)) stripBlockOf(b);
-              if(/write a review/i.test(t)) b.style.setProperty('display','none','important');
+              if(VW.write.test(t)) b.style.setProperty('display','none','important');
               // Per-review Like / Share / ⋮-actions: not useful embedded (Like/Share need sign-in,
               // ⋮ is report/etc) and they clutter each card. Hide the button itself (element-precise).
-              if(/^like$/i.test(t) || /^share\b/i.test(t) || /^actions for /i.test(t)) b.style.setProperty('display','none','important');
+              if(VW.like.test(t) || VW.share.test(t) || VW.actions.test(t)) b.style.setProperty('display','none','important');
             });
           }
           // Google's popups (Sort menu, per-review menus, the photo viewer) render into portals my
@@ -875,7 +957,12 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           // the real list (the "black panel" regression). Un-stretches a stale target when the
           // SPA swaps nodes.
           function stretch(){
-            if(FULL) return; // full-screen: Google's own inner scroller sizes itself natively
+            // Full-screen: Google's own inner scroller sizes itself natively, so no height
+            // styling - but the scroller is STILL adopted and its edge reporter hooked. The
+            // early return that used to sit here left __velaSc unset in full-screen, so the
+            // native side never heard an edge change and kept its initial "at top" verdict:
+            // every downward finger drag (scrolling UP to re-read an earlier review) was
+            // forwarded as a pull-to-close and past 120 dp the page shut (issue #359, item 2).
             var main=document.querySelector('[role="main"]');
             if(!main) return;
             var h=window.innerHeight;
@@ -884,15 +971,19 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
               if(d.scrollHeight>d.clientHeight+50 && d.clientHeight>100 && d.scrollHeight>best){ best=d.scrollHeight; sc=d; }
             });
             if(window.__velaSc && window.__velaSc!==sc){
-              window.__velaSc.style.removeProperty('height');
-              window.__velaSc.style.removeProperty('max-height');
+              if(!FULL){
+                window.__velaSc.style.removeProperty('height');
+                window.__velaSc.style.removeProperty('max-height');
+              }
               window.__velaSc=null;
             }
             if(sc){
               var top=Math.max(0, Math.round(sc.getBoundingClientRect().top));
-              if(h-top>=150){
-                sc.style.setProperty('height',(h-top)+'px','important');
-                sc.style.setProperty('max-height',(h-top)+'px','important');
+              if(FULL || h-top>=150){
+                if(!FULL){
+                  sc.style.setProperty('height',(h-top)+'px','important');
+                  sc.style.setProperty('max-height',(h-top)+'px','important');
+                }
                 window.__velaSc=sc;
                 // Attach the edge reporter once per scroller (the SPA can swap the node). The
                 // scroll listener also (a) tracks a low-passed scroll VELOCITY so an inertial
@@ -933,9 +1024,10 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           }
           function reviewsOpen(){
             var ts=[].slice.call(document.querySelectorAll('[role="tab"]'));
+            if(!window.__velaTabsLogged && ts.length){ window.__velaTabsLogged=1; try{ console.error('vela-probe tabs='+JSON.stringify(ts.map(function(t){ return ((t.getAttribute('aria-label')||t.textContent)||'').trim(); }))+' review='+String(VW.review)); }catch(e){} }
             for(var i=0;i<ts.length;i++){
               var tl=((ts[i].getAttribute('aria-label')||ts[i].textContent)||'').trim();
-              if(/^reviews\b/i.test(tl)){
+              if(VW.review.test(tl)){
                 if((ts[i].getAttribute('aria-selected')||'')==='true') return true;
                 try{ ts[i].click(); }catch(e){}
                 return false;
@@ -945,6 +1037,14 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           }
           function tick(){
             tries++;
+            // Stuck on the OVERVIEW (issue #359, the "see more reviews button is broken" report):
+            // when Google withholds the review feed for this session, clicking the Reviews tab
+            // does nothing, the page keeps showing the Overview with its "More reviews (N)"
+            // button, and that button fires the same withheld request. Nothing on our side can
+            // make it answer: after ~20 s of the tab refusing to select, hand the failure to the
+            // host so it can SAY so instead of leaving a page whose one button does nothing.
+            // (Verified 2026-09-13: in a healthy session that button loads the full feed.)
+            if(!readySent && tries>20 && revAt<0){ try{ console.error('vela-probe reviews tab never selected after '+tries+' ticks: feed withheld'); VelaPanel.stuck(); }catch(e){} return; }
             var iso=isolate();
             if(readySent){
               // Maintenance: keep the carve + scroller sizing fresh for the panel's LIFETIME
@@ -953,7 +1053,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
               // (each needing its Like/Share stripped via isolate()->strip()), and scroll-sync's
               // edge reporting rides stretch()'s scroller adoption, so a dead loop froze both
               // after a minute. NO tab re-click here — the user may browse Menu/About.
-              stretch(); revealOverlays(); velaHistogram(); velaChips(); velaFont();
+              stretch(); revealOverlays(); velaHistogram(); velaChips(); velaFont(); velaTagStars();
               // Feed watchdog: Google sometimes serves the page SHELL but silently withholds the
               // review feed (soft bot-throttle — tabs + histogram render, the feed request is
               // never issued; observed live under heavy testing). Ready-but-cardless for ~15 s
@@ -981,7 +1081,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
             // Fade Google's summary the MOMENT its rows render (opacity = zero layout risk even
             // pre-cards) — waiting for the ready tick left it visible for up to a second (the
             // "saw the google histogram for a second" flash).
-            if(rev){ velaHistogram(); velaChips(); }
+            if(rev){ velaHistogram(); velaChips(); velaTagStars(); }
             // Prefer readying once review CARDS have painted — then the panel never flashes the
             // overview (Order-online button) during the tab transition. BUT don't HANG on it: a
             // place with a rating and zero written reviews never renders a card, and the card class

@@ -89,6 +89,14 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             onCheckedChange = { app.vela.ui.RouteTrail.set(context, it) },
             hint = stringResource(R.string.settings_route_trail_hint),
         )
+        // Bike routing preference (issue #401): safety over speed, on by default.
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_bike_safe),
+            checked = app.vela.ui.BikeSafe.on.value,
+            onCheckedChange = { app.vela.ui.BikeSafe.set(context, it) },
+            hint = stringResource(R.string.settings_bike_safe_hint),
+        )
         GroupDivider()
         ToggleRow(
             label = stringResource(R.string.settings_prefer_buttons),
@@ -117,6 +125,42 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         }
         Hint(stringResource(R.string.settings_road_label_hint))
 
+        // Arrow size + colours (issue #344): bigger targets for ageing eyes, and a white disc so
+        // the puck does not blend into the blue route line.
+        GroupDivider()
+        Text(
+            stringResource(R.string.settings_puck_size),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
+        )
+        listOf(
+            app.vela.ui.PuckStyle.SIZE_NORMAL to stringResource(R.string.settings_puck_size_normal),
+            app.vela.ui.PuckStyle.SIZE_LARGE to stringResource(R.string.settings_puck_size_large),
+            app.vela.ui.PuckStyle.SIZE_XL to stringResource(R.string.settings_puck_size_xl),
+        ).forEach { (id, label) ->
+            SelectableRow(
+                label = label,
+                selected = app.vela.ui.PuckStyle.size.value == id,
+                onClick = { app.vela.ui.PuckStyle.setSize(context, id) },
+            )
+        }
+        GroupDivider()
+        Text(
+            stringResource(R.string.settings_puck_style),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
+        )
+        listOf(
+            app.vela.ui.PuckStyle.STYLE_BLUE to stringResource(R.string.settings_puck_style_blue),
+            app.vela.ui.PuckStyle.STYLE_WHITE to stringResource(R.string.settings_puck_style_white),
+        ).forEach { (id, label) ->
+            SelectableRow(
+                label = label,
+                selected = app.vela.ui.PuckStyle.style.value == id,
+                onClick = { app.vela.ui.PuckStyle.setStyle(context, id) },
+            )
+        }
+
         var trafficLights by remember { mutableStateOf(prefs.getBoolean("nav_traffic_lights", false)) }
         GroupDivider()
         ToggleRow(
@@ -127,6 +171,15 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 prefs.edit().putBoolean("nav_traffic_lights", it).apply()
             },
             hint = stringResource(R.string.settings_traffic_lights_hint),
+        )
+        // Over-the-limit voice alert (issue #404): its own opt-in, off by default. Sits with the
+        // other spoken extras; the timing is in :core SpeedingAlerts.
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_speeding_alert),
+            checked = app.vela.ui.SpeedingAlert.on.value,
+            onCheckedChange = { app.vela.ui.SpeedingAlert.set(context, it) },
+            hint = stringResource(R.string.settings_speeding_alert_hint),
         )
         }
 
@@ -210,13 +263,19 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
 
         // Parking history - recent "parked here" saves, so an accidental overwrite is
         // recoverable (also reachable by long-pressing the P button on the map).
+        // Always present (issue #426): the settings search lists "Parking history", and a group
+        // that only existed once you had parked led the match to nothing on a fresh install.
         val state by vm.state.collectAsStateWithLifecycle()
-        if (state.parkingHistory.isNotEmpty()) {
+        run {
             Spacer(Modifier.height(8.dp))
             SettingsGroup(title = stringResource(R.string.settings_parking_history)) {
+            if (state.parkingHistory.isEmpty()) {
+                Hint(stringResource(R.string.settings_parking_history_empty))
+            } else {
             Hint(stringResource(R.string.settings_parking_history_hint))
             Box(Modifier.padding(horizontal = 8.dp)) {
                 TextButton(onClick = { vm.clearParkingHistory() }) { Text(stringResource(R.string.parking_history_clear_all)) }
+            }
             }
             state.parkingHistory.forEachIndexed { pi, entry ->
                 if (pi > 0) GroupDivider()
@@ -233,8 +292,7 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault())
-                            .format(java.util.Date(entry.savedAtMillis)),
+                        app.vela.ui.formatDateTime(androidx.compose.ui.platform.LocalContext.current, entry.savedAtMillis),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = if (isCurrent) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal,
                         modifier = Modifier.weight(1f),

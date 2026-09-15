@@ -2,7 +2,6 @@ package app.vela.core.nav
 
 import app.vela.core.model.LatLng
 import app.vela.core.model.Route
-import app.vela.core.model.distanceTo
 
 /**
  * The model behind the route bar (issue #228) - a strip showing the road AHEAD of you at a glance:
@@ -21,7 +20,8 @@ object RouteBar {
 
     /** What a mark on the bar represents. The kinds are exactly the ones Vela already draws on the
      *  map, so the bar can never claim knowledge the map does not have. */
-    enum class Mark { SIGNAL, STOP, RAIL_CROSSING, SPEED_HUMP, CAMERA }
+    /** [priority]: which member of a merged cluster is drawn (higher wins); badges beat dots. */
+    enum class Mark(val priority: Int) { SIGNAL(0), STOP(1), SPEED_HUMP(2), RAIL_CROSSING(3), CAMERA(4) }
 
     /** A congestion band, as a fraction of the REMAINING trip: 0 = where you are, 1 = destination.
      *  [level] is Google's grade (1 moderate, 2 heavy, 3+ severe). */
@@ -85,8 +85,12 @@ object RouteBar {
         traveledM: Double,
         markMeters: List<Pair<Mark, Double>> = emptyList(),
         windowM: Double = WINDOW_M,
+        totalM: Double? = null,
     ): Model {
-        val total = route.distanceMeters
+        // The polyline's own length when the caller has it: traveledM and the marks are both
+        // measured along the polyline, while Route.distanceMeters is the router's figure, and a
+        // few percent between them shifted bands against pins and stood the bar down early.
+        val total = totalM?.takeIf { it > 0.0 } ?: route.distanceMeters
         val done = traveledM.coerceIn(0.0, total)
         val remaining = total - done
         if (remaining < MIN_REMAINING_M) return Model(emptyList(), emptyList(), remaining, true)
@@ -111,9 +115,13 @@ object RouteBar {
             .filter { (_, m) -> m > done && m <= end }
             .sortedBy { it.second }
             .fold(mutableListOf<Pair<Mark, Double>>()) { acc, item ->
-                // Collapse a cluster to its first member: the point is "something is coming up
-                // here", and two glyphs a pixel apart carry no more information than one.
+                // Collapse a cluster to ONE member: the point is "something is coming up here",
+                // and two glyphs a pixel apart carry no more information than one. The kept
+                // member is the one that says the most: a camera or a crossing (a badge) over a
+                // light or a stop sign (a dot). ALPR cameras are mounted at signalled junctions,
+                // so keeping the first member by distance hid the camera behind the light's dot.
                 if (acc.isEmpty() || item.second - acc.last().second >= PIN_MERGE_M) acc += item
+                else if (item.first.priority > acc.last().first.priority) acc[acc.lastIndex] = item
                 acc
             }
             .map { (kind, m) -> Pin(kind, frac(m)) }

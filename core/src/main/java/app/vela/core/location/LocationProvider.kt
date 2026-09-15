@@ -39,6 +39,7 @@ data class ReplayFix(val lat: Double, val lng: Double, val t: Long, val bearing:
 @Singleton
 class LocationProvider @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val diag: app.vela.core.diag.DiagLog,
 ) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("vela_location", Context.MODE_PRIVATE)
@@ -85,8 +86,21 @@ class LocationProvider @Inject constructor(
             // onProviderDisabled as soon as a registered provider is off (degoogled devices
             // often have the NETWORK provider present but disabled), so the lambda died with
             // AbstractMethodError on every launch (user report, Android 10).
+            // Diagnostics (issue #362, a phone that "never" gets a fix): which providers exist
+            // and are on, then how long the FIRST fix took and from which provider. No
+            // coordinates are recorded.
+            val startedAt = android.os.SystemClock.elapsedRealtime()
+            var firstLogged = false
             val listener = object : LocationListener {
                 override fun onLocationChanged(loc: Location) {
+                    if (!firstLogged) {
+                        firstLogged = true
+                        diag.record(
+                            "location",
+                            "first fix from ${loc.provider} after ${(android.os.SystemClock.elapsedRealtime() - startedAt) / 1000} s",
+                            "accuracy=${if (loc.hasAccuracy()) loc.accuracy.toInt().toString() + " m" else "none"} speed=${loc.hasSpeed()}",
+                        )
+                    }
                     cache(loc)
                     trySend(loc)
                 }
@@ -99,6 +113,14 @@ class LocationProvider @Inject constructor(
                 override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
             }
             val active = PROVIDERS.filter { mgr.allProviders.contains(it) }
+            diag.record(
+                "location",
+                "providers: " + PROVIDERS.joinToString(" ") { p ->
+                    if (!mgr.allProviders.contains(p)) "$p=absent"
+                    else "$p=" + (if (runCatching { mgr.isProviderEnabled(p) }.getOrDefault(false)) "on" else "off")
+                },
+                "all: ${mgr.allProviders.joinToString(",")}",
+            )
             active.forEach { p ->
                 runCatching {
                     mgr.requestLocationUpdates(p, minIntervalMs, minDistanceM, listener, Looper.getMainLooper())

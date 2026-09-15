@@ -45,6 +45,7 @@ import app.vela.ui.settings.PageIntro
 import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.settings.SubHead
+import app.vela.ui.settings.ToggleRow
 import app.vela.ui.dpadFieldEscape // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.dpadHighlight
 import app.vela.ui.rememberDpadFocusKeeper // focus handoff for swap-in controls (docs/dpad.md)
@@ -96,6 +97,13 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             enabled = vm.hasViewport(),
         ) { Text(stringResource(R.string.settings_offline_download_viewport)) }
         Hint(stringResource(R.string.settings_offline_download_viewport_hint))
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_offline_places_with_downloads),
+            checked = app.vela.ui.MapPoiPrefs.placesWithDownloads.value,
+            onCheckedChange = { app.vela.ui.MapPoiPrefs.setPlacesWithDownloads(context, it) },
+            hint = stringResource(R.string.settings_offline_places_with_downloads_hint),
+        )
         if (regions.isEmpty()) {
             Hint(stringResource(R.string.settings_offline_no_areas))
         } else {
@@ -192,6 +200,62 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                 else ordered.filter { it.name.contains(routeFilter.trim(), ignoreCase = true) }
             if (shown.isEmpty()) {
                 Hint(stringResource(R.string.settings_routing_no_match, routeFilter.trim()))
+            }
+            // Split countries ("Bayern (Germany)", "Alsace (France)") get one row per parent with a
+            // "Download all" that queues every piece, so a whole country is one tap even though the
+            // catalog is cut by state and region. The parent is the trailing parenthetical shared by
+            // two or more rows; "(state)" and the like are not parents.
+            val groups = remember(state.routingRegions) {
+                state.routingRegions
+                    .mapNotNull { r -> Regex("\\(([^()]+)\\)\\s*$").find(r.name)?.groupValues?.get(1)?.let { it to r } }
+                    .groupBy({ it.first }, { it.second })
+                    .filter { (parent, rs) -> rs.size >= 2 && !parent.equals("state", true) }
+            }
+            val shownGroups = groups.filter { (parent, _) ->
+                routeFilter.isBlank() || parent.contains(routeFilter.trim(), ignoreCase = true)
+            }
+            if (shownGroups.isNotEmpty()) {
+                SettingsGroup {
+                shownGroups.entries.sortedBy { it.key }.forEachIndexed { gi, (parent, pieces) ->
+                    if (gi > 0) GroupDivider()
+                    val missing = pieces.filter { it.id !in state.routingInstalledIds }
+                    val batchActive = state.regionQueueTotal > 0 && pieces.any { it.id == state.routingDownloadingId }
+                    val totalMb = pieces.sumOf { p -> regionInstalledMb(p, state.poiPackRegions.firstOrNull { it.id == p.id }) }
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.settings_region_group_title, parent), style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
+                            Text(
+                                when {
+                                    batchActive -> stringResource(R.string.settings_region_group_downloading, state.regionQueueTotal - state.regionQueueLeft, state.regionQueueTotal)
+                                    missing.isEmpty() -> stringResource(R.string.settings_region_group_installed, pieces.size)
+                                    missing.size < pieces.size -> stringResource(R.string.settings_region_group_partial, pieces.size - missing.size, pieces.size, fmtMb(totalMb))
+                                    else -> stringResource(R.string.settings_region_group_size, pieces.size, fmtMb(totalMb))
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        when {
+                            batchActive -> Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                                androidx.compose.material3.TextButton(
+                                    onClick = { vm.cancelRegionDownload() },
+                                    modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                                ) { Text(stringResource(R.string.settings_cancel)) }
+                            }
+                            missing.isNotEmpty() -> FilledTonalButton(
+                                onClick = { vm.downloadRoutingGraphs(pieces) },
+                                enabled = state.routingDownloadingId == null,
+                                modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                            ) { Text(stringResource(R.string.settings_region_group_download)) }
+                        }
+                    }
+                }
+                }
+                Spacer(Modifier.height(8.dp))
             }
             SettingsGroup {
             shown.forEachIndexed { regionIdx, region ->

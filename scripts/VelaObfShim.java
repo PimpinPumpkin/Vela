@@ -30,9 +30,13 @@ public class VelaObfShim {
         settings.indexPOI = sections.contains("poi");
         if (lean) {
             settings.indexMultipolygon = false;
-            settings.indexRouteRelations = false;
             settings.indexByProximity = false;
             settings.indexCountryRegions = false;
+            // Route relations stay ON even in the lean bake (2026-09-12): they carry the signed
+            // cycle-route membership OsmAnd's bicycle profile prefers, and with the roads-only
+            // pre-filter they cost 13% of the bake time and 0.4 MB on a US state (Washington:
+            // 300 s / 87.4 MB -> 339 s / 87.8 MB). VELA_OBF_ROUTE_RELATIONS=false turns them off.
+            settings.indexRouteRelations = !"false".equals(System.getenv("VELA_OBF_ROUTE_RELATIONS"));
         }
         System.out.println("vela obf: sections=" + sections + " lean=" + lean);
         List<String> a = new ArrayList<>();

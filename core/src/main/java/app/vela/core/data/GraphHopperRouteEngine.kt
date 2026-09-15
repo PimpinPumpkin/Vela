@@ -237,6 +237,7 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
             Maneuver(
                 type = type,
                 instruction = ghPhrase(type, road, rbExit, dest, exitNo),
+                roundaboutExit = rbExit,
                 location = at,
                 distanceMeters = ins.distance,
                 durationSeconds = ins.time / 1000.0,

@@ -41,8 +41,17 @@ object AppTheme {
 
     private var lat: Double? = null
     private var lng: Double? = null
+    private var at: Long = 0L // when the point was recorded (epoch ms); 0 = a pre-timestamp store
+    private var appContext: Context? = null
+
+    /** A stored point older than this is not trusted for the sun: with permission granted a fresh
+     *  fix replaces it within a minute of launch anyway, and without permission (revoked since)
+     *  the old point can be a continent away (review 2026-09-12: a revoked grant plus a flight
+     *  east gave a dark map at 3 pm for the whole trip). */
+    private const val POINT_MAX_AGE_MS = 24L * 60 * 60 * 1000
 
     fun init(context: Context) {
+        appContext = context.applicationContext
         mode.value = runCatching { ThemeMode.valueOf(prefs(context).getString(KEY, null) ?: "SYSTEM") }
             .getOrDefault(ThemeMode.SYSTEM)
         navDayNight.value = prefs(context).getBoolean(KEY_NAV_DAY_NIGHT, false)
@@ -50,6 +59,7 @@ object AppTheme {
         if (p.contains(KEY_LAT)) {
             lat = p.getFloat(KEY_LAT, 0f).toDouble()
             lng = p.getFloat(KEY_LNG, 0f).toDouble()
+            at = p.getLong(KEY_AT, 0L)
         }
         refreshNight()
     }
@@ -76,7 +86,8 @@ object AppTheme {
         if (rLat == lat && rLng == lng) return
         lat = rLat
         lng = rLng
-        prefs(context).edit().putFloat(KEY_LAT, rLat.toFloat()).putFloat(KEY_LNG, rLng.toFloat()).apply()
+        at = System.currentTimeMillis()
+        prefs(context).edit().putFloat(KEY_LAT, rLat.toFloat()).putFloat(KEY_LNG, rLng.toFloat()).putLong(KEY_AT, at).apply()
         refreshNight()
     }
 
@@ -85,12 +96,21 @@ object AppTheme {
     fun refreshNight() {
         val la = lat
         val ln = lng
-        night.value = if (la != null && ln != null) {
-            SunTimes.isNight(la, ln, System.currentTimeMillis())
+        val now = System.currentTimeMillis()
+        val usable = la != null && ln != null && now - at < POINT_MAX_AGE_MS && locationAllowed()
+        night.value = if (usable) {
+            SunTimes.isNight(la!!, ln!!, now)
         } else {
-            // No fix yet (cold launch, or location denied outright): fall back to the clock.
+            // No fix yet (cold launch), location denied or revoked, or the stored point is a day
+            // old: fall back to the clock rather than the sun somewhere the phone no longer is.
             SunTimes.isNightByClock(java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY))
         }
+    }
+
+    private fun locationAllowed(): Boolean {
+        val c = appContext ?: return true
+        return androidx.core.content.ContextCompat.checkSelfPermission(c, android.Manifest.permission.ACCESS_COARSE_LOCATION) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
@@ -98,6 +118,7 @@ object AppTheme {
     private const val KEY_NAV_DAY_NIGHT = "theme_nav_day_night"
     private const val KEY_LAT = "theme_sun_lat"
     private const val KEY_LNG = "theme_sun_lng"
+    private const val KEY_AT = "theme_sun_at"
 }
 
 /** The single source of truth for "is the app dark right now" - honours the user's

@@ -37,7 +37,7 @@
 | **OSM Nominatim** | long-pressing to drop a pin | your IP, that one lat/lng | nothing else |
 | **AWS (terrarium DEM)** | hillshade relief | your IP, tile coordinates | nothing else |
 | **FOSSGIS OSRM** | every route you plan | your IP, origin/destination (and waypoint) coordinates | the primary turn-by-turn router; Google is queried in parallel only for the traffic ETA |
-| **Overpass (OSM)** | "download this area", offline address indexing, and traffic-light/stop-sign icons at close zoom | your IP, the bounding box | nothing else |
+| **Overpass (OSM)** | only where no baked region file covers the spot: traffic-light/stop-sign icons, the opt-in speed-camera layer and "download this area" all read per-region files built from OpenStreetMap extracts first (the catalog covers every country Geofabrik publishes) | your IP, the bounding box | nothing else |
 | **raw.githubusercontent.com** | once at launch (config refresh) | your IP, a plain file fetch | no data *about you* is sent - it's a download |
 | **GitHub release assets** | downloading offline regions/voices, checking for app updates, and streaming the building/house-number overlays as you browse (small ranged tile reads) | your IP, which file or tile byte-range is fetched (implies your rough map area for the overlays) | no query text, no account |
 

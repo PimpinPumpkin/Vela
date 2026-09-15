@@ -201,6 +201,8 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -1355,6 +1357,7 @@ fun DirectionsPanel(
     flockOnRoute: List<Int> = emptyList(),
     transit: List<TransitItinerary>,
     transitLoading: Boolean,
+    modeEtas: Map<TravelMode, String> = emptyMap(),
     onModeSelected: (TravelMode) -> Unit,
     avoidTolls: Boolean = false,
     avoidHighways: Boolean = false,
@@ -1368,8 +1371,14 @@ fun DirectionsPanel(
     onStartTransit: (TransitItinerary) -> Unit = {},
     onTransitPreview: (TransitItinerary, Boolean) -> Unit = { _, _ -> },
     onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
+    transitPrefer: Set<Int> = emptySet(), // preferred vehicle kinds, transit only (issue #431)
+    onTransitPrefer: (Set<Int>) -> Unit = {},
     minimizeTick: Int = 0, // bumped when the user grabs the map — glide down, then flip collapsed
     onCollapsedChange: (Boolean) -> Unit = {}, // MapScreen shrinks the route-fit camera inset while minimized
+    // Tallest the BODY may open (dp), from the host: what the endpoints card leaves above a
+    // minimum map strip. Null = the old 58%-of-screen cap alone. On a 240x320 phone (issue #400)
+    // the 58% cap plus the card covered the whole map, so the route was chosen blind.
+    bodyMaxDp: Float? = null,
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
@@ -1383,7 +1392,7 @@ fun DirectionsPanel(
     // 1:1, release projects the throw's decay to the nearest end (0 = minimized, bodyMax = open)
     // and rides the coast there. The body and the minimized Start bar both fold WITH this height
     // (SheetFold), so the collapsed flip changes nothing visible.
-    val bodyMax = LocalConfiguration.current.screenHeightDp * 0.58f
+    val bodyMax = (LocalConfiguration.current.screenHeightDp * 0.58f).let { cap -> bodyMaxDp?.let { minOf(cap, it) } ?: cap }
     val dirH = remember(destinationName) { Animatable(if (collapsed.value) 0f else bodyMax) }
     val dirSettle = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f) }
     val dirDecay = remember { exponentialDecay<Float>(frictionMultiplier = 1.6f) }
@@ -1501,6 +1510,9 @@ fun DirectionsPanel(
                 derivedStateOf { !collapsed.value || dirH.value > 1f }
             }
             if (bodyComposed) {
+              // Start is a FOOTER under the scrolling list (2026-09-13, Google's layout): with
+              // four alternates it used to scroll off the bottom of the open chooser. The cap
+              // and fade wrap BOTH, so the footer folds away with the body when it collapses.
               Column(
                   Modifier
                       .graphicsLayer { alpha = (dirH.value / 160f).coerceIn(0f, 1f); clip = true }
@@ -1508,7 +1520,11 @@ fun DirectionsPanel(
                           val capPx = dirH.value.dp.roundToPx().coerceAtLeast(0)
                           val pl = measurable.measure(constraints.copy(maxHeight = minOf(constraints.maxHeight, capPx)))
                           layout(pl.width, pl.height) { pl.place(0, 0) }
-                      }
+                      },
+              ) {
+              Column(
+                  Modifier
+                      .weight(1f, fill = false)
                       .nestedScroll(dirConn)
                       .verticalScroll(dirBodyScroll),
               ) {
@@ -1530,13 +1546,17 @@ fun DirectionsPanel(
                     Triple(TravelMode.BICYCLE, stringResource(R.string.place_mode_bike), Icons.AutoMirrored.Filled.DirectionsBike),
                 ).forEach { (mode, label, icon) ->
                     // Google-style mode pills: stadium shape + a mode glyph, not bare squarish chips.
+                    // Once a mode's time is known the chip shows THAT ("25 min") and the glyph says
+                    // which mode, as Google's do; the mode name stays as the accessibility name.
+                    val eta = modeEtas[mode]
                     FilterChip(
                         selected = currentMode == mode,
                         onClick = { onModeSelected(mode) },
-                        label = { Text(label) },
+                        label = { Text(eta ?: label) },
                         leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
                         shape = androidx.compose.foundation.shape.CircleShape,
-                        modifier = if (mode == TravelMode.DRIVE) Modifier.focusRequester(dirAutoFocus) else Modifier,
+                        modifier = (if (mode == TravelMode.DRIVE) Modifier.focusRequester(dirAutoFocus) else Modifier)
+                            .semantics { contentDescription = if (eta != null) "$label, $eta" else label },
                     )
                 }
             }
@@ -1548,6 +1568,31 @@ fun DirectionsPanel(
                 isTransit = currentMode == TravelMode.TRANSIT,
                 onTimeSelected = onTimeSelected,
             )
+            // Transit only (issue #431): which vehicles to prefer. Google's own option, carried on
+            // the request, so a bus-only rider sees the all-bus itinerary instead of the train.
+            if (currentMode == TravelMode.TRANSIT) {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(stringResource(R.string.place_transit_prefer), style = MaterialTheme.typography.labelLarge, color = dim)
+                    listOf(
+                        0 to R.string.place_transit_bus,
+                        1 to R.string.place_transit_subway,
+                        2 to R.string.place_transit_train,
+                        3 to R.string.place_transit_tram,
+                    ).forEach { (kind, label) ->
+                        FilterChip(
+                            selected = kind in transitPrefer,
+                            onClick = { onTransitPrefer(if (kind in transitPrefer) transitPrefer - kind else transitPrefer + kind) },
+                            label = { Text(stringResource(label)) },
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                        )
+                    }
+                }
+            }
             // Route preferences, drive only (tolls/motorways mean nothing on foot or transit).
             // Honoured on-device where the region graph carries the avoid profiles; online the
             // route falls back to normal rather than failing (the public OSRM can't exclude).
@@ -1629,26 +1674,6 @@ fun DirectionsPanel(
                         }
                     }
                     Spacer(Modifier.height(14.dp))
-                    Row(Modifier.padding(end = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = onStartNav, modifier = Modifier.weight(1f)) {
-                            Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                            Text(stringResource(R.string.place_start))
-                        }
-                        onSteps?.let {
-                            FilledTonalButton(onClick = it) {
-                                // Soft glyph ink: the solid List glyph at the label's own colour
-                                // read darker than the word beside it (user 2026-07-11).
-                                Icon(
-                                    Icons.AutoMirrored.Filled.List,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(end = 8.dp),
-                                    tint = dim,
-                                )
-                                Text(stringResource(R.string.place_steps))
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(14.dp))
                     Text(stringResource(R.string.place_search_along_route), style = MaterialTheme.typography.labelMedium, color = dim)
                     Spacer(Modifier.height(6.dp))
                     Row(
@@ -1691,6 +1716,30 @@ fun DirectionsPanel(
                     }
                 }
             }
+              }
+                if (routes.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    Row(Modifier.padding(end = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(onClick = onStartNav, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                            Text(stringResource(R.string.place_start))
+                        }
+                        onSteps?.let {
+                            FilledTonalButton(onClick = it) {
+                                // Soft glyph ink: the solid List glyph at the label's own colour
+                                // read darker than the word beside it (user 2026-07-11).
+                                Icon(
+                                    Icons.AutoMirrored.Filled.List,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(end = 8.dp),
+                                    tint = dim,
+                                )
+                                Text(stringResource(R.string.place_steps))
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                }
               }
             }
             // Minimised: keep a Start button reachable without expanding. It FOLDS IN as the
@@ -1856,9 +1905,22 @@ private fun DepartTimeChooser(
 @Composable
 private fun PickerDialog(onConfirm: () -> Unit, onDismiss: () -> Unit, content: @Composable () -> Unit) {
     val dark = isAppInDarkTheme()
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = RoundedCornerShape(28.dp), color = if (dark) SheetDark else SheetLight) {
-            Column(Modifier.padding(horizontal = 14.dp, vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    // Own the width (issue #432): the platform dialog keeps side margins that on a 360 dp phone
+    // leave less than the Material date picker's fixed 360 dp, and the last weekday column was
+    // clipped off, so Sundays could not be picked. Edge to edge on narrow phones, capped wider.
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        androidx.compose.foundation.layout.BoxWithConstraints {
+        // Under 392 dp the Material date picker (a fixed 360 dp) only fits with NO side gap.
+        val tight = maxWidth < 392.dp
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = if (dark) SheetDark else SheetLight,
+            modifier = Modifier.widthIn(max = 400.dp).padding(horizontal = if (tight) 0.dp else 8.dp),
+        ) {
+            Column(Modifier.padding(vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 content()
                 Row(
                     Modifier.fillMaxWidth().padding(top = 6.dp, end = 6.dp),
@@ -1880,6 +1942,7 @@ private fun PickerDialog(onConfirm: () -> Unit, onDismiss: () -> Unit, content: 
                     ) { Text(stringResource(android.R.string.ok)) }
                 }
             }
+        }
         }
     }
 }
@@ -1939,7 +2002,9 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
             // The traffic word GRADES with the same thresholds that colour the ETA (trafficEtaColor),
             // so "heavy traffic" in words backs up the red time - colour alone isn't readable for
             // everyone. A live route whose typical time is unknown keeps the plain "live traffic".
-            val trafficWord = if (!r.hasLiveTraffic) null else when {
+            // An on-device route says so in the traffic slot (issue #350): the user asked to know
+            // which kind of route they are looking at, and "no traffic word" alone did not say.
+            val trafficWord = if (r.offline) stringResource(R.string.place_route_offline) else if (!r.hasLiveTraffic) null else when {
                 r.trafficRatio == null -> stringResource(R.string.place_live_traffic)
                 r.trafficRatio!! > 1.4 -> stringResource(R.string.place_traffic_heavy)
                 r.trafficRatio!! > 1.15 -> stringResource(R.string.place_traffic_moderate)
@@ -3369,12 +3434,19 @@ private fun FullScreenReviewsContent(featureId: String, place: Place, ink: Color
                         Text(stringResource(R.string.place_reviews_title), style = MaterialTheme.typography.bodySmall, color = dim)
                     }
                 }
+                val ctxForToast = androidx.compose.ui.platform.LocalContext.current
                 app.vela.web.GoogleReviewsPanel(
                     featureId = featureId,
                     dark = dark,
                     fullScreen = true,
                     modifier = Modifier.fillMaxSize(),
-                    onFailed = onClose, // can't carve (throttle / markup drift) → bounce back; the inline native list is still there
+                    // Can't carve (throttle / markup drift), or Google withheld the review feed
+                    // so the page never left the Overview: bounce back AND say why, or the close
+                    // reads as a crash (issue #359). The inline native list is still there.
+                    onFailed = {
+                        android.widget.Toast.makeText(ctxForToast, ctxForToast.getString(R.string.place_reviews_throttled), android.widget.Toast.LENGTH_LONG).show()
+                        onClose()
+                    },
                     // Tapping a review photo opens Vela's own gallery (Google's photo viewer is a
                     // page-nav the lockdown blocks + the carve can't host).
                     onPhotos = { urls, caps, start -> reviewPhotos = Triple(urls, caps, start) },
@@ -3804,18 +3876,25 @@ private fun ShareIconButton(place: Place, tint: Color) {
 
     // Open this exact place on the Google Maps website (in the browser), not share a link. Prefer the
     // place's own cid deep-link (opens the real place page); fall back to a name+coords query.
-    fun openWeb() {
+    // The place's own link: the cid deep link when the place has a feature id (opens THE STORE in
+    // Google Maps or Vela), else a name + coordinate search.
+    fun placeUrl(): String {
         val cid = place.featureId?.substringAfter(":", "")?.removePrefix("0x")?.takeIf { it.isNotBlank() }
             ?.let { runCatching { java.math.BigInteger(it, 16).toString() }.getOrNull() }
-        val url = if (cid != null) "https://www.google.com/maps?cid=$cid"
+        return if (cid != null) "https://www.google.com/maps?cid=$cid"
             else "https://www.google.com/maps/search/?api=1&query=${Uri.encode(place.name)}%20$lat%2C$lng"
-        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+    }
+
+    fun openWeb() {
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(placeUrl()))) }
         open = false
     }
 
-    // Copy the place's Google Maps link straight to the clipboard (a quiet toast confirms).
+    // Copy the place's Google Maps link straight to the clipboard (a quiet toast confirms). The
+    // same link Open-on-web uses: this used to copy a bare coordinate query, so the recipient got
+    // a pin instead of the place (issue #359).
     fun copyLink() {
-        val url = "https://www.google.com/maps/search/?api=1&query=$lat%2C$lng"
+        val url = placeUrl()
         runCatching {
             val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
             cm.setPrimaryClip(android.content.ClipData.newPlainText(place.name, url))

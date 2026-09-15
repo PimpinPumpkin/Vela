@@ -227,8 +227,7 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
                     Column(Modifier.weight(1f)) {
                         Text(t.label, style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium, maxLines = 1)
                         val recordedAt = if (t.startedAt > 0L)
-                            java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault())
-                                .format(java.util.Date(t.startedAt))
+                            app.vela.ui.formatDateTime(androidx.compose.ui.platform.LocalContext.current, t.startedAt)
                         else null
                         Hint(listOfNotNull(recordedAt, stringResource(R.string.settings_trip_points, t.fixCount)).joinToString(" · "))
                     }
@@ -408,7 +407,7 @@ private fun TripShareDialog(
         confirmText = stringResource(R.string.settings_trip_share_trimmed),
         onConfirm = {
             val r = report
-            val intent = r?.let { vm.shareScrubbedTripIntent(it) }
+            val intent = r?.let { vm.shareScrubbedTripIntent(it, meta.startedAt) }
             if (intent != null) runCatching { context.startActivity(intent) }
             else android.widget.Toast.makeText(
                 context, context.getString(R.string.settings_trip_read_error), android.widget.Toast.LENGTH_SHORT,
