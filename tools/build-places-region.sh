@@ -63,15 +63,24 @@ WHERE name IS NOT NULL AND name <> ''
   AND NOT (category IS NULL AND website IS NULL);
 -- Rank by prominence inside a fine (~400 m) and a coarse (~1.6 km) cell. Longitude cells are
 -- widened by 1/cos(lat) so the cells stay roughly square away from the equator.
+-- A third, ~6.5 km cell (`xrank`) picks the landmarks Google still draws zoomed out to z11/z12:
+-- airports, hospitals, universities, stadiums, malls, zoos. Only the landmark categories qualify
+-- there, so a branded gas station never becomes a town's z11 marker.
 CREATE TABLE ranked AS
 SELECT *,
   row_number() OVER (PARTITION BY floor(lat / 0.0036), floor(lng * cos(radians(lat)) / 0.0036) ORDER BY prominence DESC, id) AS rank,
-  row_number() OVER (PARTITION BY floor(lat / 0.0144), floor(lng * cos(radians(lat)) / 0.0144) ORDER BY prominence DESC, id) AS crank
-FROM scored;
+  row_number() OVER (PARTITION BY floor(lat / 0.0144), floor(lng * cos(radians(lat)) / 0.0144) ORDER BY prominence DESC, id) AS crank,
+  row_number() OVER (PARTITION BY floor(lat / 0.058), floor(lng * cos(radians(lat)) / 0.058) ORDER BY landmark DESC, prominence DESC, id) AS xrank
+FROM (
+  SELECT *, CASE WHEN category IN ('airport','hospital','university','college_university','stadium_arena','shopping_center','zoo','amusement_park','convention_center','casino','aquarium','museum') THEN 1 ELSE 0 END AS landmark
+  FROM scored
+);
 COPY (
   SELECT json_object(
     'type', 'Feature',
     'tippecanoe', json_object('minzoom', CASE
+      WHEN landmark = 1 AND xrank = 1 THEN 11
+      WHEN landmark = 1 AND xrank <= 3 THEN 12
       WHEN crank = 1 AND prominence >= 6 THEN 13
       WHEN crank <= 2 OR prominence >= 5 THEN 14
       WHEN rank <= 3 OR prominence >= 4.5 THEN 15
@@ -82,13 +91,13 @@ COPY (
       'id', id, 'name', name,
       'class', COALESCE(upper(substr(replace(category, '_', ' '), 1, 1)) || substr(replace(category, '_', ' '), 2), 'Place'),
       'group', grp, 'icon', 'vela-poi-' || grp, 'prominence', round(prominence, 2), 'confidence', round(COALESCE(confidence, 0.5), 2),
-      'rank', rank, 'crank', crank,
+      'rank', rank, 'crank', crank, 'xrank', xrank, 'landmark', landmark,
       'brand', brand, 'addr', addr, 'website', website, 'phone', phone, 'src', 'overture'
     )
   ) FROM ranked
 ) TO '$WORK/places.ndjson' (FORMAT CSV, HEADER false, QUOTE '', ESCAPE '', DELIMITER '\t');
-SELECT count(*) AS features, round(avg(prominence),2) AS prom_avg, sum(CASE WHEN crank <= 2 OR prominence >= 5 THEN 1 ELSE 0 END) AS z14, sum(CASE WHEN rank <= 3 OR prominence >= 4.5 THEN 1 ELSE 0 END) AS z15, sum(CASE WHEN rank <= 12 OR prominence >= 3.5 THEN 1 ELSE 0 END) AS z16 FROM ranked;
+SELECT count(*) AS features, round(avg(prominence),2) AS prom_avg, sum(CASE WHEN landmark = 1 AND xrank <= 3 THEN 1 ELSE 0 END) AS z12, sum(CASE WHEN crank <= 2 OR prominence >= 5 THEN 1 ELSE 0 END) AS z14, sum(CASE WHEN rank <= 3 OR prominence >= 4.5 THEN 1 ELSE 0 END) AS z15, sum(CASE WHEN rank <= 12 OR prominence >= 3.5 THEN 1 ELSE 0 END) AS z16 FROM ranked;
 SQL
-tippecanoe -o "$OUT" -l places -f -P -Z12 -z17 -B12 --no-feature-limit --no-tile-size-limit --extend-zooms-if-still-dropping "$WORK/places.ndjson" >/dev/null 2>&1
+tippecanoe -o "$OUT" -l places -f -P -Z11 -z17 -B12 --no-feature-limit --no-tile-size-limit --extend-zooms-if-still-dropping "$WORK/places.ndjson" >/dev/null 2>&1
 rm -rf "$WORK"
 echo "wrote $OUT ($(du -h "$OUT" | cut -f1)) region $ID bbox [$S,$W,$N,$E]"

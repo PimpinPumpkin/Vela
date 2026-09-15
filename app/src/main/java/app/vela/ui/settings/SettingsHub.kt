@@ -340,6 +340,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_voice_search_engine_title to SettingsSection.SEARCH,
     // Offline
     R.string.settings_offline to SettingsSection.OFFLINE,
+    R.string.settings_offline_places_with_downloads to SettingsSection.OFFLINE,
     // Saved places
     R.string.settings_export to SettingsSection.SAVED_PLACES,
     R.string.settings_import to SettingsSection.SAVED_PLACES,

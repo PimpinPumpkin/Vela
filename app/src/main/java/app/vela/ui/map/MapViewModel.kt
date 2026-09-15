@@ -5759,7 +5759,7 @@ class MapViewModel @Inject constructor(
             downloadRoutingGraph(region) // shows its own progress + status
         }
         downloadOverlayForArea(lat, lng) // also grab the open building-footprint overlay for this area
-        downloadPlacesForArea(lat, lng)  // and the open places layer, so the map's businesses show offline
+        if (app.vela.ui.MapPoiPrefs.placesWithDownloads.value) downloadPlacesForArea(lat, lng) // and the places archive, so the map's businesses show offline
     }
 
     /** Download the open building-footprint overlay (Microsoft, ODbL) covering ([lat],[lng]) alongside the
@@ -6605,8 +6605,13 @@ class MapViewModel @Inject constructor(
             // The names sidecar is a GraphHopper-era artifact - an obf carries multilingual names
             // itself, so only the legacy path refreshes the sidecar map. The place pack still rides
             // along in both worlds until search moves onto the obf too.
-            if (ok) { if (!obf) refreshOfflineRoadNames(); downloadPoiPack(region) }
-            else _state.update { it.copy(regionDownloadName = null) }
+            if (ok) {
+                if (!obf) refreshOfflineRoadNames()
+                downloadPoiPack(region)
+                // The Vela places archive for the region rides along (Settings > Offline maps toggle,
+                // on by default), so the map's businesses draw with no signal, not just search.
+                if (app.vela.ui.MapPoiPrefs.placesWithDownloads.value) downloadPlacesForArea((region.s + region.n) / 2, (region.w + region.e) / 2)
+            } else _state.update { it.copy(regionDownloadName = null) }
         }
     }
 

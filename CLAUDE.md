@@ -3141,8 +3141,10 @@ architecture note.
   `prominence` (OsmProminence-style: category prior + brand + website/phone/address + confidence, 0-9.5),
   `confidence`, `brand`, `addr`, `website`, `phone`, `src=overture`, `rank` (position by prominence
   inside a ~400 m cell) and `crank` (same inside a ~1.6 km cell), and a tippecanoe minzoom from the ranks
-  (crank 1 and prominence >=6 z13; crank <=2 or prominence >=5 z14; rank <=3 or >=4.5 z15; rank <=12 or
-  >=3.5 z16; else z17). Density on the map is the rank, not collision: VelaMapView steps `iconImage` by
+  (landmark category and xrank 1 in a ~6.5 km cell z11, landmark xrank <=3 z12; crank 1 and prominence
+  >=6 z13; crank <=2 or prominence >=5 z14; rank <=3 or >=4.5 z15; rank <=12 or >=3.5 z16; else z17;
+  `-Z11`). `landmark` = airport/hospital/university/stadium/mall/zoo/museum etc., the POIs Google keeps
+  drawing zoomed out; below z13 everything in the tile gets an icon and a label. Density on the map is the rank, not collision: VelaMapView steps `iconImage` by
   zoom (top 2 per coarse cell below z15, top 1 per fine cell at z15, top 5 at z16, top 12 at z17, all from
   z17.5, a high prominence always qualifies) and `textField` the same way (top 1 coarse below z15, top 1
   fine at z15, top 3 at z16, top 6 at z16.5, all from z17.5); everything else in the tile draws as a small
@@ -3152,8 +3154,12 @@ architecture note.
   installed archive covering the center, else the smallest manifest region; two nested archives drew
   the overlap twice). Baked so far: Davis (test box) and California (1.68 M places, 481 MB, streams
   by range request; the CI bake of one state took 15 min); `MapPoiPrefs.placesSource` (Settings > Map,
-  "Businesses on the map come from": `open` default / `google` / `both`, pref `map_places_source`,
-  each option's cost stated in its hint) gates it; `refreshPlacesOverlays` fills `placesOverlays` on
+  "Places come from": `open` ("Vela data", default) / `google` / `both`, pref `map_places_source`,
+  short user-facing hints plus a Learn more dialog naming Overture/Meta, Vela's own GitHub hosting,
+  and the Google hooks on search and tap) gates it; `MapPoiPrefs.placesWithDownloads` (Settings >
+  Offline maps, "Include places with downloads", default ON, pref `offline_places_with_downloads`)
+  makes a region download (`downloadRoutingGraph` and the viewport path) also pull the covering
+  places archive; `refreshPlacesOverlays` fills `placesOverlays` on
   camera idle; `maybeLoadAmbientPois` returns early (no Google fan-out) while the layer covers the
   view in `open`, and in `both` waits for a 1.5 s settle (cache paint included) and then runs one
   fan-out whose overlap the map drops (`openPlacesLoaded` + `namesAgree` in applyData: same name
