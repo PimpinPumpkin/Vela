@@ -167,6 +167,12 @@
     <string name="settings_map_cache_cleared">Map cache cleared</string>
     <string name="settings_routing_remove">Remove offline routing</string>
     <string name="settings_download">Download</string>
+    <string name="settings_region_group_title">All of %1$s</string> <!-- format -->
+    <string name="settings_region_group_size">%1$d pieces, about %2$s once installed</string> <!-- format -->
+    <string name="settings_region_group_partial">%1$d of %2$d pieces installed, about %3$s for all</string> <!-- format -->
+    <string name="settings_region_group_installed">All %1$d pieces installed</string> <!-- format -->
+    <string name="settings_region_group_downloading">Downloading piece %1$d of %2$d</string> <!-- format -->
+    <string name="settings_region_group_download">Download all</string>
     <string name="settings_saved_places">Saved places</string>
     <string name="settings_saved_places_hint">Back up your starred places to a file, or restore them on another device. Import merges into what you already have. It never overwrites or removes anything, and it also reads GPX, KML and GeoJSON files exported from other map apps.</string>
     <string name="settings_import_nothing_new">Everything in that file is already saved.</string>

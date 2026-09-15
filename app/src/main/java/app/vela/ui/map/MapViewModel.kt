@@ -318,6 +318,10 @@ data class MapUiState(
     val routingDownloadPct: Int = 0,
     val obfCatalog: Boolean = false,                   // region rows serve the obf catalog (successor format)
     val regionDownloadName: String? = null,            // display name for the heads-up download card
+    // "Download all of <country>": the pieces still waiting behind the one downloading, and the
+    // total the batch started with, so the group row can say "3 of 16".
+    val regionQueueLeft: Int = 0,
+    val regionQueueTotal: Int = 0,
     val areaDownloadPct: Int? = null,                  // non-null while a map-area tile download runs
     // Offline PLACE pack (whole-region POI/address db, pulled after the region's routing graph)
     val poiPackDownloadingId: String? = null,
@@ -1435,7 +1439,39 @@ class MapViewModel @Inject constructor(
 
     fun cancelVoiceDownload() = voiceCancel.set(true)
     fun cancelAsrDownload() = asrCancel.set(true)
-    fun cancelRegionDownload() = regionCancel.set(true) // covers the graph AND its chained place pack
+    fun cancelRegionDownload() {
+        regionQueue.clear()
+        _state.update { it.copy(regionQueueLeft = 0, regionQueueTotal = 0) }
+        regionCancel.set(true) // covers the graph AND its chained place pack
+    }
+
+    /** The pieces of a split country waiting their turn: [downloadRoutingGraphs] fills it, the end
+     *  of each region download pops the next. One download at a time keeps the progress card and
+     *  the cancel button honest. */
+    private val regionQueue = ArrayDeque<app.vela.offline.RoutingRegion>()
+
+    /** Download every region in [regions] that is not installed yet, one after another (a whole
+     *  country from its state or province pieces). */
+    fun downloadRoutingGraphs(regions: List<app.vela.offline.RoutingRegion>) {
+        if (_state.value.routingDownloadingId != null) return
+        val todo = regions.filter { it.id !in _state.value.routingInstalledIds }
+        if (todo.isEmpty()) return
+        regionQueue.clear()
+        regionQueue.addAll(todo.drop(1))
+        _state.update { it.copy(regionQueueLeft = regionQueue.size, regionQueueTotal = todo.size) }
+        downloadRoutingGraph(todo.first())
+    }
+
+    private fun startNextQueuedRegion() {
+        val next = if (regionCancel.get()) null else regionQueue.removeFirstOrNull()
+        if (next == null) {
+            regionQueue.clear()
+            _state.update { it.copy(regionQueueLeft = 0, regionQueueTotal = 0) }
+            return
+        }
+        _state.update { it.copy(regionQueueLeft = regionQueue.size) }
+        downloadRoutingGraph(next)
+    }
     fun cancelUpdateDownload() = updateCancel.set(true)
 
     // The map-area tile download is MapLibre's own machinery, so its cancel is region-based, not
@@ -6690,6 +6726,8 @@ class MapViewModel @Inject constructor(
                 // on by default), so the map's businesses draw with no signal, not just search.
                 if (app.vela.ui.MapPoiPrefs.placesWithDownloads.value) downloadPlacesForRegion(region)
             } else _state.update { it.copy(regionDownloadName = null) }
+            // A "download all" batch continues with the next piece (the queue is empty otherwise).
+            startNextQueuedRegion()
         }
     }
 
