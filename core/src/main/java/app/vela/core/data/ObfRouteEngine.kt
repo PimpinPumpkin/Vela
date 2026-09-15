@@ -8,7 +8,9 @@ import app.vela.core.model.RouteLeg
 import app.vela.core.model.TravelMode
 import net.osmand.binary.BinaryMapIndexReader
 import net.osmand.data.LatLon
+import net.osmand.binary.RouteDataObject
 import net.osmand.router.RoutePlannerFrontEnd
+import net.osmand.router.RoutingContext
 import net.osmand.router.RouteSegmentResult
 import net.osmand.router.RoutingConfiguration
 import net.osmand.router.TurnType
@@ -133,9 +135,76 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
         return emptyList()
     }
 
+    // Speed-limit lookup context: findRouteSegment wants a RoutingContext over the covering files.
+    // Built once per set of covering regions and kept (it holds the road tiles around the puck, so
+    // the next lookup 18 m on is a cache hit); a small memory limit so a long drive unloads behind
+    // itself. Dropped with the readers in shutdown().
+    private var limitCtx: RoutingContext? = null
+    private var limitCtxKey = ""
+
+    /** The posted limit (km/h) of the road nearest [lat],[lng] from the installed obf files, or
+     *  null when no file covers the point, no road lies within [LIMIT_SNAP_M], the way carries no
+     *  maxspeed, or it is derestricted (`maxspeed=none`, which OsmAnd stores as
+     *  [RouteDataObject.NONE_MAX_SPEED]; a wrong number on an autobahn is worse than a blank).
+     *  Forward direction, like the GraphHopper lookup: few ways tag a directional limit. */
+    override fun currentRoadLimit(lat: Double, lng: Double): Double? {
+        val p = LatLng(lat, lng)
+        val cands = regions().filter { it.id !in failed && it.covers(p) }.sortedBy { (it.n - it.s) * (it.e - it.w) }
+        if (cands.isEmpty()) return null
+        val readers = cands.mapNotNull { reader(it) }
+        if (readers.isEmpty()) return null
+        return runCatching {
+            synchronized(routeLock) {
+                val key = cands.joinToString(",") { it.id }
+                val ctx = limitCtx?.takeIf { limitCtxKey == key } ?: RoutePlannerFrontEnd().buildRoutingContext(
+                    builder().build(
+                        profileFor(TravelMode.DRIVE)!!,
+                        RoutingConfiguration.RoutingMemoryLimits(LIMIT_MEMORY_MB, NATIVE_MEMORY_MB),
+                        emptyMap(),
+                    ),
+                    null, readers.toTypedArray(), RoutePlannerFrontEnd.RouteCalculationMode.NORMAL,
+                ).also { limitCtx = it; limitCtxKey = key }
+                val seg = RoutePlannerFrontEnd().findRouteSegment(lat, lng, ctx, null) ?: return@synchronized null
+                // distToProj is the SQUARED distance in metres from the point to its projection.
+                if (seg.distToProj > LIMIT_SNAP_M * LIMIT_SNAP_M) return@synchronized null
+                val mps = seg.road.getMaximumSpeed(true)
+                if (mps <= 0f || mps >= RouteDataObject.NONE_MAX_SPEED - 0.5f) return@synchronized null
+                val kmh = mps * 3.6
+                if (kmh < 150.0) kmh else null
+            }
+        }.getOrNull()
+    }
+
+    /** What the speed-limit lookup sees at a point, for the on-demand harness: which files cover it,
+     *  the nearest road (name, highway class, distance) and its raw maxspeed, or the exception the
+     *  lookup swallowed. Never called by the app. */
+    internal fun probeRoadLimit(lat: Double, lng: Double): String {
+        val p = LatLng(lat, lng)
+        val cands = regions().filter { it.id !in failed && it.covers(p) }
+        val readers = cands.mapNotNull { reader(it) }
+        if (readers.isEmpty()) return "no readable file covers the point (regions=${regions().size}, covering=${cands.map { it.id }}, failed=$failed)"
+        return try {
+            synchronized(routeLock) {
+                val ctx = RoutePlannerFrontEnd().buildRoutingContext(
+                    builder().build(profileFor(TravelMode.DRIVE)!!, RoutingConfiguration.RoutingMemoryLimits(LIMIT_MEMORY_MB, NATIVE_MEMORY_MB), emptyMap()),
+                    null, readers.toTypedArray(), RoutePlannerFrontEnd.RouteCalculationMode.NORMAL,
+                )
+                val seg = RoutePlannerFrontEnd().findRouteSegment(lat, lng, ctx, null)
+                    ?: return@synchronized "no road segment found near the point"
+                val r = seg.road
+                "road=${r.getName()} highway=${r.getHighway()} distToProj=${"%.1f".format(seg.distToProj)} m^2 " +
+                    "maxspeed fwd=${r.getMaximumSpeed(true)} m/s back=${r.getMaximumSpeed(false)} m/s"
+            }
+        } catch (e: Throwable) {
+            "lookup threw ${e::class.java.name}: ${e.message}\n" + e.stackTrace.take(6).joinToString("\n") { "  at $it" }
+        }
+    }
+
     /** Drop cached readers (after an install/delete changes the set). */
     fun shutdown() {
         synchronized(routeLock) {
+            limitCtx = null
+            limitCtxKey = ""
             readers.values.forEach { runCatching { it.close() } }
             readers.clear()
             failed.clear()
@@ -266,6 +335,8 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
     }
 
     internal companion object {
+        const val LIMIT_SNAP_M = 25.0 // a fix farther than this from any road is off the network (a lot, a driveway)
+        const val LIMIT_MEMORY_MB = 32 // the lookup context only ever holds the tiles around the puck
         private const val TAG = "VelaObf"
         private const val JCL_LOG_PROP = "org.apache.commons.logging.Log"
 
