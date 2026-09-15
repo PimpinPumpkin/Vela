@@ -3171,8 +3171,13 @@ architecture note.
   whichever of the page-finish settle and the 7 s load cap fires first (`inject`, guarded by
   `isPending` + an injected set), `warm()` is a suspend session the VM launches, and a reaped view
   clears `warmed` so the next search boots it again. Verified on the 4a: two galleries in a row on
-  one view (31 and 23 photos, partials streaming, distinct walk keys). `WebReviewsFetcher` is the
-  last conversion, its own PR with a device check, since the scrapes are the product.
+  one view (31 and 23 photos, partials streaming, distinct walk keys). `WebReviewsFetcher` closed
+  the series (562 -> 476 lines, scrape script untouched): same inject-once shape as photos, its
+  desktop-width settings + density-scaled 1200x1000 CSS viewport + the one-time `resumeTimers()`
+  in `configure`, the page-loaded language probe in `onPageFinished`, google.com-only navigation.
+  Verified on the 4a: two places in a row, 8 cards each on the Reviews tab, rendered in the sheet.
+  All five hidden-WebView fetchers now ride the base; a new scrape is a subclass, never a copy of
+  the WebView plumbing.
 - **Route provenance is one field (2026-09-15, issue #417 refactor 1, step 1).** `Route.source:
   RouteSource` (OSRM, OSRM_VIA_SNAP, GOOGLE_NAMED, GOOGLE_ABBREVIATED, GOOGLE_PROVISIONAL, OBF, GRAPHHOPPER,
   VALHALLA, UNKNOWN) is stamped at every constructor (DirectionsParser, RouteGeometry.parseOsrmRoute,
