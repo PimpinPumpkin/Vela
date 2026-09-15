@@ -2849,6 +2849,11 @@ Gotchas:
   the route (it used to be 22 m for everyone). The heading gate is not consulted below 2.5 m/s
   off-road (GPS bearing is noise at walking pace), so a pedestrian's release is distance-driven.
   The engine's reroute corridor was already mode-aware (`offRouteCorridor`).
+  **Network breadcrumbs in the diagnostics ring (2026-09-15, issue #397):** the default-network
+  callback records a `net` event whenever its summary changes (`available: cellular validated
+  metered`, `lost: none`, `link: wifi not validated`), no pinging involved, so an export shows
+  whether the phone had a validated link when both routers came back empty. Read the `net` lines
+  beside the `directions` ones before blaming a router.
   **Diagnostics events for reviews + location (2026-09-12):** `WebReviewsFetcher` records
   `reviews` events (the hl it asked for and the app language, each page Google served with its
   `document.documentElement.lang` and `navigator.language`, and the parsed count or the 45 s
