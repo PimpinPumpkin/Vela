@@ -13,6 +13,8 @@ import app.vela.core.data.RouteEngine
 import app.vela.core.data.RouteGeometry
 import app.vela.core.data.RoutingPrefs
 import app.vela.core.data.ValhallaRouter
+import app.vela.core.data.google.BrowserHeaders.browserHeaders
+import app.vela.core.data.google.BrowserHeaders.browserXhrHeaders
 import app.vela.core.data.google.parse.DirectionsParser
 import app.vela.core.data.google.parse.EntityListParser
 import app.vela.core.data.google.parse.PhotosParser
@@ -81,6 +83,9 @@ fun ambientProminence(p: Place): Double =
  * landmarks (device-measured). The anchor-beats-tenant case still holds (Safeway's reviews ≫ its in-store
  * sushi counter's, so it wins their shared point).
  */
+/** Referer the keyless data endpoints expect — a real in-page RPC comes from the Maps document. */
+internal const val MAPS_REFERER = "https://www.google.com/maps/"
+
 internal fun rankAmbientPlaces(places: List<Place>): List<Place> =
     places.sortedWith(
         compareByDescending<Place> { ambientProminence(it) }
@@ -993,11 +998,10 @@ class GoogleMapsDataSource @Inject constructor(
     // --- plumbing -----------------------------------------------------------
 
     private fun get(url: String): String {
+        val cal = calibration.current()
         val req = Request.Builder()
             .url(url)
-            .header("User-Agent", VelaConfig.USER_AGENT)
-            .header("Accept-Language", "en-US,en;q=0.9")
-            .header("Referer", "https://www.google.com/maps/")
+            .browserXhrHeaders(cal.userAgent, cal.secChUa, MAPS_REFERER)
             .build()
         http.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) {
@@ -1008,13 +1012,12 @@ class GoogleMapsDataSource @Inject constructor(
     }
 
     private fun post(url: String, body: String): String {
+        val cal = calibration.current()
         val media = "application/x-www-form-urlencoded;charset=UTF-8".toMediaType()
         val req = Request.Builder()
             .url(url)
             .post(body.toRequestBody(media))
-            .header("User-Agent", VelaConfig.USER_AGENT)
-            .header("Accept-Language", "en-US,en;q=0.9")
-            .header("Referer", "https://www.google.com/maps/")
+            .browserXhrHeaders(cal.userAgent, cal.secChUa, MAPS_REFERER)
             .header("X-Same-Domain", "1") // batchexecute expects this from a same-origin caller
             .build()
         http.newCall(req).execute().use { resp ->
@@ -1025,12 +1028,21 @@ class GoogleMapsDataSource @Inject constructor(
         }
     }
 
-    /** GET raw bytes (Street View tiles) with the Google referer the tile host requires. */
+    /** GET raw bytes (Street View tiles) with the Google referer the tile host requires. An
+     *  image subresource, not a navigation — so the Sec-Fetch triple says so. */
     private fun getBytes(url: String): ByteArray? {
+        val cal = calibration.current()
         val req = Request.Builder()
             .url(url)
-            .header("User-Agent", VelaConfig.USER_AGENT)
-            .header("Referer", "https://www.google.com/")
+            .browserHeaders(
+                ua = cal.userAgent,
+                secChUa = cal.secChUa,
+                referer = "https://www.google.com/",
+                accept = "image/avif,image/webp,image/apng,*/*;q=0.8",
+                fetchDest = "image",
+                fetchMode = "no-cors",
+                fetchSite = "cross-site",
+            )
             .build()
         http.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) return null
@@ -1038,10 +1050,13 @@ class GoogleMapsDataSource @Inject constructor(
         }
     }
 
+    /** Nominatim is a COMMUNITY service: it gets the honest, contactable identifier its usage
+     *  policy asks for, never the browser UA. Was a hardcoded "VelaMaps/0.1" that drifted from
+     *  the app's real version; [VelaConfig.VELA_UA] is now the single source. */
     private fun getNominatim(url: String): String {
         val req = Request.Builder()
             .url(url)
-            .header("User-Agent", "VelaMaps/0.1 (+https://github.com/PimpinPumpkin/Vela)")
+            .header("User-Agent", VelaConfig.VELA_UA)
             .header("Accept-Language", "en")
             .build()
         http.newCall(req).execute().use { resp -> return resp.body?.string().orEmpty() }

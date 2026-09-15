@@ -36,7 +36,9 @@ import java.util.TimeZone
 object Transitous {
     // The community instance. A self-hosted MOTIS is a drop-in swap if Vela ever outgrows fair use.
     const val BASE = "https://api.transitous.org"
-    private const val UA = "VelaMaps/0.4 (+https://github.com/PimpinPumpkin/Vela)"
+    // Single-sourced: Transitous is community infrastructure under fair use, so its contact string
+    // must not drift from the app's real version the way the Overpass/Nominatim copies had.
+    private const val UA = app.vela.core.VelaConfig.VELA_UA
     private val json = Json { ignoreUnknownKeys = true }
 
     // --- wire DTOs (only the fields Vela reads) --------------------------------------------------

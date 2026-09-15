@@ -1,6 +1,8 @@
 package app.vela.core.config
 
 import android.content.Context
+import app.vela.core.VelaConfig
+import app.vela.core.data.google.BrowserHeaders
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -75,7 +77,8 @@ class CalibrationStore @Inject constructor(
     }
 
     private fun fetch(url: String): String? {
-        val req = Request.Builder().url(url).header("User-Agent", "VelaMaps").build()
+        // Vela's own repo — the honest, contactable identifier, not the scrape's browser UA.
+        val req = Request.Builder().url(url).header("User-Agent", VelaConfig.VELA_UA).build()
         return http.newCall(req).execute().use { resp ->
             if (resp.isSuccessful) resp.body?.string() else null
         }
@@ -157,6 +160,14 @@ class CalibrationStore @Inject constructor(
             reviewsEndpoint = str("reviewsEndpoint", d.reviewsEndpoint),
             reviewsPb = str("reviewsPb", d.reviewsPb),
             sessionWarmUrl = str("sessionWarmUrl", d.sessionWarmUrl),
+            // SANITIZED, not merely defaulted: an unsendable value (a control character, an absurd
+            // length) must fall back to the compiled UA rather than reach OkHttp, which throws at
+            // request-build time inside a runCatching that swallows it — one stray newline in a
+            // pushed bundle would otherwise kill every scrape with no crash and no log.
+            userAgent = BrowserHeaders.sanitize((o["userAgent"] as? JsonPrimitive)?.content)
+                ?: d.userAgent,
+            secChUa = BrowserHeaders.sanitize((o["secChUa"] as? JsonPrimitive)?.content)
+                ?: d.secChUa,
             photosEndpoint = str("photosEndpoint", d.photosEndpoint),
             photosProto = str("photosProto", d.photosProto),
             paths = Calibration.DEFAULT_PATHS + remotePaths,
