@@ -320,6 +320,9 @@ data class MapUiState(
     val regionDownloadName: String? = null,            // display name for the heads-up download card
     // "Download all of <country>": the pieces still waiting behind the one downloading, and the
     // total the batch started with, so the group row can say "3 of 16".
+    // The installed offline basemap archive covering the view (pmtiles://file://...), or null: the
+    // map swaps its tile source to it, so a downloaded region draws with no signal.
+    val basemapArchive: String? = null,
     val regionQueueLeft: Int = 0,
     val regionQueueTotal: Int = 0,
     val areaDownloadPct: Int? = null,                  // non-null while a map-area tile download runs
@@ -370,6 +373,7 @@ class MapViewModel @Inject constructor(
     private val overlayStore: app.vela.offline.OverlayTileStore,
     private val maxspeedStore: app.vela.offline.MaxspeedOverlayStore,
     private val placesStore: app.vela.offline.PlacesTileStore,
+    private val basemapStore: app.vela.offline.BasemapTileStore,
     private val routeEngine: app.vela.core.data.RouteEngine,
     private val http: okhttp3.OkHttpClient,
     private val selfUpdater: app.vela.update.SelfUpdater,
@@ -464,6 +468,12 @@ class MapViewModel @Inject constructor(
         // A simulated location (Settings → demo) wins the seed so the app opens "there".
         val seed = app.vela.ui.SimLocation.point.value ?: locationProvider.lastKnown()
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
+        // Decide the offline basemap BEFORE the first style load: a process that starts with no
+        // signal and loads the remote style first leaves the engine's glyph and sprite managers
+        // with requests that never answer, and a local style loaded afterwards never completes a
+        // labeled tile (device, 2026-09-14). Starting on the local style avoids that entirely.
+        refreshBasemapArchive(seed)
+        app.vela.offline.GlyphPackStore.ensureSprite(appContext)
         maybeOfferResume() // a drive that was cut off by a process-kill → offer to pick it back up
         // Warm the contacts-address cache (issue #243) so the first keystroke's synchronous local
         // match has data — the per-keystroke path must never hit the contacts provider itself.
@@ -5771,7 +5781,7 @@ class MapViewModel @Inject constructor(
             // MapLibre keeps saved areas AND the browsing cache in one database (.mapbox);
             // the downloaded building/address overlays are map data too.
             mapsMb = mbOf(java.io.File(files, ".mapbox")) + mbOf(java.io.File(files, "mbgl-offline.db")) +
-                mbOf(java.io.File(files, "overlays")),
+                mbOf(java.io.File(files, "overlays")) + mbOf(java.io.File(files, "basemap")),
             routingMb = mbOf(java.io.File(files, "graphs")),
             placesMb = mbOf(java.io.File(files, "poipacks")),
             voicesMb = mbOf(java.io.File(files, "piper")) + mbOf(java.io.File(files, "asr")),
@@ -5849,6 +5859,7 @@ class MapViewModel @Inject constructor(
         }
         downloadOverlayForArea(lat, lng) // also grab the open building-footprint overlay for this area
         if (app.vela.ui.MapPoiPrefs.placesWithDownloads.value) downloadPlacesForArea(lat, lng) // and the places archive, so the map's businesses show offline
+        downloadBasemapForArea(lat, lng) // and the region's basemap, so the map draws past the saved viewport
     }
 
     /** Download the open building-footprint overlay (Microsoft, ODbL) covering ([lat],[lng]) alongside the
@@ -5888,6 +5899,45 @@ class MapViewModel @Inject constructor(
                 if (placesStore.download(p) { }) any = true
             }
             if (any) refreshPlacesOverlays()
+        }
+    }
+
+    /** Every basemap archive inside [region] (same containment rule as the places archives): the
+     *  streets, land and labels, so the region draws offline. The routing obf is invisible data;
+     *  without this a downloaded region is a blank map with pins on it. */
+    private fun downloadBasemapForRegion(region: app.vela.offline.RoutingRegion) {
+        downloadLaunch(appContext.getString(R.string.download_label_map_data)) {
+            val regions = basemapStore.manifest(app.vela.BuildConfig.BASEMAP_MANIFEST_URL)
+            val inside = regions.filter { p ->
+                val cy = (p.s + p.n) / 2; val cx = (p.w + p.e) / 2
+                cy in region.s..region.n && cx in region.w..region.e
+            }
+            val picks = inside.ifEmpty {
+                listOfNotNull(regions.filter { (region.s + region.n) / 2 in it.s..it.n && (region.w + region.e) / 2 in it.w..it.e }.minByOrNull { it.area() })
+            }
+            var any = false
+            for (p in picks) {
+                if (p.id in basemapStore.installedIds()) continue
+                if (basemapStore.download(p) { }) any = true
+            }
+            if (any) {
+                app.vela.offline.GlyphPackStore.ensureInstalled(appContext, http)
+                refreshBasemapArchive()
+            }
+        }
+    }
+
+    /** The smallest basemap archive covering ([lat],[lng]), pulled with a viewport download. */
+    private fun downloadBasemapForArea(lat: Double, lng: Double) {
+        downloadLaunch(appContext.getString(R.string.download_label_map_data)) {
+            val region = basemapStore.manifest(app.vela.BuildConfig.BASEMAP_MANIFEST_URL)
+                .filter { lat in it.s..it.n && lng in it.w..it.e }
+                .minByOrNull { it.area() } ?: return@downloadLaunch
+            if (region.id in basemapStore.installedIds()) return@downloadLaunch
+            if (basemapStore.download(region) { }) {
+                app.vela.offline.GlyphPackStore.ensureInstalled(appContext, http)
+                refreshBasemapArchive()
+            }
         }
     }
 
@@ -5955,7 +6005,25 @@ class MapViewModel @Inject constructor(
      *  panning within one region doesn't churn the source. */
     /** The open-data places layer for [center] (beta setting): installed archives plus streamed
      *  manifest regions. Empty when the setting is off, which also hands the dots back to Google. */
+    /** The installed basemap archive for [center], if any. Cheap (a folder listing), runs with the
+     *  places refresh on camera idle and after every download or delete. */
+    private fun refreshBasemapArchive(center: LatLng? = mapCenter ?: _state.value.myLocation) {
+        val uri = basemapStore.installedFor(center)?.let { "pmtiles://file://${it.absolutePath}" }
+        if (uri != _state.value.basemapArchive) {
+            val fonts = app.vela.offline.GlyphPackStore.installed(appContext)
+            android.util.Log.i("VelaBasemap", "offline basemap for the view: ${uri?.substringAfterLast('/') ?: "none"} (glyph pack installed=$fonts)")
+            _state.update { it.copy(basemapArchive = uri) }
+            // An archive without the glyph pack (an interrupted first download) heals itself the
+            // next time there is a connection: labels need the pack, and without it the tiles
+            // with labels never complete offline.
+            if (uri != null && !fonts) {
+                viewModelScope.launch(Dispatchers.IO) { app.vela.offline.GlyphPackStore.ensureInstalled(appContext, http) }
+            }
+        }
+    }
+
     private fun refreshPlacesOverlays(center: LatLng? = mapCenter ?: _state.value.myLocation) {
+        refreshBasemapArchive(center)
         if (!app.vela.ui.MapPoiPrefs.openPlaces) {
             if (_state.value.placesOverlays.isNotEmpty()) _state.update { it.copy(placesOverlays = emptyList()) }
             return
@@ -6725,6 +6793,7 @@ class MapViewModel @Inject constructor(
                 // The Vela places archive for the region rides along (Settings > Offline maps toggle,
                 // on by default), so the map's businesses draw with no signal, not just search.
                 if (app.vela.ui.MapPoiPrefs.placesWithDownloads.value) downloadPlacesForRegion(region)
+                downloadBasemapForRegion(region) // the map itself: a region without it is blank offline
             } else _state.update { it.copy(regionDownloadName = null) }
             // A "download all" batch continues with the next piece (the queue is empty otherwise).
             startNextQueuedRegion()
@@ -6793,6 +6862,8 @@ class MapViewModel @Inject constructor(
             val box = routingRegionBox(id)
             (listOf(id) + (box?.let { placesStore.idsInside(it[0], it[1], it[2], it[3]) } ?: emptyList()))
                 .distinct().forEach { placesStore.delete(it) }
+            (listOf(id) + (box?.let { basemapStore.idsInside(it[0], it[1], it[2], it[3]) } ?: emptyList()))
+                .distinct().forEach { basemapStore.delete(it) }
         }
         refreshPlacesOverlays()
         (routeEngine as? app.vela.core.data.OfflineRouteEngine)?.shutdown() // drop cached readers for the removed region

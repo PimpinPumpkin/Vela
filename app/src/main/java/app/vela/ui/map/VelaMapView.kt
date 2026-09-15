@@ -152,6 +152,18 @@ private const val MARKER_INDEX_PROP = "vela-marker-index"
 // Ambient Google POIs — small category dots (reusing PoiIcons' `vela-poi-<group>` images), the
 // "Google for the businesses" layer that replaces the OSM business POIs on the bare browse map.
 private const val AMBIENT_SRC = "vela-ambient-src"
+private const val LOCAL_BASEMAP_SRC = "vela-basemap" // the installed offline basemap archive, see withLocalBasemap
+
+/** The id of the basemap vector source on [style]: OpenFreeMap's "openmaptiles" online, the local
+ *  archive's id when an installed region drives the map. Every helper that reads or extends the
+ *  basemap (theme, hillshade, house numbers, contrast layers, satellite roads, the road-name
+ *  dictionary) goes through this, so the offline map gets the same dressing as the online one. */
+private fun basemapSrc(style: Style): String? = when {
+    style.getSource("openmaptiles") != null -> "openmaptiles"
+    style.getSource(LOCAL_BASEMAP_SRC) != null -> LOCAL_BASEMAP_SRC
+    else -> null
+}
+private val localBasemapLayerIds = HashSet<String>() // the JSON layers re-pointed at it, re-attached after load
 private const val AMBIENT_LAYER = "vela-ambient"
 private const val AMBIENT_DOT_LAYER = "vela-ambient-dots"
 // Fraction of viewport grid-sample points that must sit on an OSM building for the (redundant) MS
@@ -446,6 +458,7 @@ fun VelaMapView(
     addressOverlays: List<String> = emptyList(), // pmtiles:// URIs for house-number labels (streamed, OpenAddresses)
     maxspeedOverlays: List<String> = emptyList(), // pmtiles:// URIs for the posted-speed overlay (streamed); read under the puck
     placesOverlays: List<String> = emptyList(),   // pmtiles:// URIs of the open-data places layer (Overture), file:// or streamed
+    basemapArchive: String? = null,               // pmtiles://file:// of an installed offline basemap covering the view; swaps the style's tile source
     onOpenPlaceTap: (app.vela.core.model.Place) -> Unit = {}, // a tapped open-places feature, seeded from its tile attributes
     onRoadLimitKmh: (Double?) -> Unit = {}, // reports the maxspeed (km/h) read from the overlay under the puck, or null
     speedOverlayOn: Boolean = false, // only query the overlay while it can matter (driving / navigating)
@@ -779,7 +792,7 @@ fun VelaMapView(
             val quantumChanged = quantum != lastQuantum || upcomingNow != lastUpcoming
             if (quantumChanged) dictStaleTicks = 0 // new area: re-warm the dict as its tiles land
             if (quantumChanged || dictStaleTicks < 3) {
-                val src = style.getSource("openmaptiles") as? VectorSource
+                val src = basemapSrc(style)?.let { style.getSource(it) } as? VectorSource
                 val feats = if (src != null) runCatching {
                     src.querySourceFeatures(arrayOf("transportation_name"), classFilter)
                 }.getOrNull().orEmpty() else emptyList()
@@ -3039,15 +3052,28 @@ fun VelaMapView(
         // Palette in the key so a Settings colour-set switch reloads the style, same as a theme flip.
         // The puck style rides the key too: the symbol image is registered once per style load
         // (issue #344), so a size/colour change reloads to re-register it.
-        val styleKey = "$styleUri|dark=$darkTheme|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn|puck=${app.vela.ui.PuckStyle.key()}|hn=${app.vela.ui.HouseNumbers.level.value}"
+        // The offline basemap rides the key: entering or leaving an installed region reloads the
+        // style with its tile source pointed at the local archive (or back at OpenFreeMap).
+        val styleKey = "$styleUri|dark=$darkTheme|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn|puck=${app.vela.ui.PuckStyle.key()}|hn=${app.vela.ui.HouseNumbers.level.value}|base=${basemapArchive ?: ""}"
         if (appliedStyleKey != styleKey) {
             appliedStyleKey = styleKey
-            val builder = if (styleUri.startsWith("asset://")) {
+            // An installed offline basemap wins over every style source: the remote Liberty URL
+            // cannot load with no signal, and the swap needs the JSON in hand anyway. The MapFonts
+            // patch (Roboto glyphs) is used when it exists, else the bundled Liberty asset.
+            val offlineJson = basemapArchive?.let {
+                val patched = MapFonts.effective(app.vela.core.data.tiles.MapStyle.LIBERTY.uri)
+                val fromPatch = if (patched.startsWith("file://")) runCatching { java.io.File(patched.removePrefix("file://")).readText() }.getOrNull() else null
+                fromPatch?.takeIf { j -> j.isNotBlank() }
+                    ?: runCatching { context.assets.open("styles/liberty-roboto.json").bufferedReader().use { r -> r.readText() } }.getOrNull()
+            }
+            val builder = if (offlineJson != null) {
+                Style.Builder().fromJson(withLocalBasemap(context, offlineJson, basemapArchive))
+            } else if (styleUri.startsWith("asset://")) {
                 // Bundled style JSON (Liberty re-pointed at Roboto glyphs). Its
                 // tile/sprite/glyph URLs are absolute, so it still loads keyless.
                 val json = context.assets.open(styleUri.removePrefix("asset://"))
                     .bufferedReader().use { it.readText() }
-                Style.Builder().fromJson(json)
+                Style.Builder().fromJson(withLocalBasemap(context, json, basemapArchive))
             } else if (styleUri.startsWith("file://")) {
                 // MapFonts' patched Liberty (live style re-pointed at the Roboto
                 // glyph host). Read + fromJson rather than trusting native file://
@@ -3055,7 +3081,7 @@ fun VelaMapView(
                 val f = java.io.File(styleUri.removePrefix("file://"))
                 val json = runCatching { f.readText() }.getOrNull()
                 if (json.isNullOrBlank()) Style.Builder().fromUri(app.vela.core.data.tiles.MapStyle.LIBERTY.uri)
-                else Style.Builder().fromJson(json)
+                else Style.Builder().fromJson(withLocalBasemap(context, json, basemapArchive))
             } else {
                 Style.Builder().fromUri(styleUri)
             }
@@ -3067,6 +3093,18 @@ fun VelaMapView(
             styleRef = null
             map.setStyle(builder) { style ->
                 styleRef = style
+                if (basemapArchive != null) {
+                    // The local source goes in AFTER the style has loaded and the layers using it
+                    // are re-attached, the order the places archives use; a source declared in the
+                    // JSON or handed to Style.Builder never got past the z0 tile (device 2026-09-14).
+                    runCatching { style.addSource(VectorSource(LOCAL_BASEMAP_SRC, basemapArchive)) }
+                        .onFailure { android.util.Log.w("VelaBasemap", "local source add failed", it) }
+                    runCatching {
+                        style.layers.forEachIndexed { i, l ->
+                            if (l.id in localBasemapLayerIds) { style.removeLayer(l); style.addLayerAt(l, i) }
+                        }
+                    }.onFailure { android.util.Log.w("VelaBasemap", "re-attach failed", it) }
+                }
                 ensureLayers(style)
                 lastAppliedMarkers = null // fresh style = empty sources; force applyData to repopulate
                 lastOsmPoiVis = null
@@ -3472,11 +3510,11 @@ private fun ensureLayers(style: Style) {
     style.getLayer("landcover_wetland")?.setProperties(PropertyFactory.visibility(Property.NONE))
     style.getLayer("road_area_pattern")?.setProperties(PropertyFactory.visibility(Property.NONE))
     if (style.getLayer("vela-wetland") == null && style.getLayer("landcover_wetland") != null) {
-        val wet = FillLayer("vela-wetland", "openmaptiles").withSourceLayer("landcover")
+        val wet = FillLayer("vela-wetland", basemapSrc(style) ?: "openmaptiles").withSourceLayer("landcover")
             .withFilter(Expression.eq(Expression.get("class"), "wetland"))
         wet.minZoom = 12f
         style.addLayerAbove(wet, "landcover_wetland")
-        val plaza = FillLayer("vela-plaza", "openmaptiles").withSourceLayer("transportation")
+        val plaza = FillLayer("vela-plaza", basemapSrc(style) ?: "openmaptiles").withSourceLayer("transportation")
             .withFilter(
                 Expression.match(
                     Expression.geometryType(), Expression.literal(false),
@@ -3492,7 +3530,7 @@ private fun ensureLayers(style: Style) {
     // app tints them a touch lighter than the surrounding park (dark #0d4956 vs #0d3847,
     // sampled on the P9 side-by-side 2026-07-11). Drawn above the vegetation fills.
     if (style.getLayer("vela-pitch") == null && style.getLayer("park") != null) {
-        val pitch = FillLayer("vela-pitch", "openmaptiles").withSourceLayer("landuse")
+        val pitch = FillLayer("vela-pitch", basemapSrc(style) ?: "openmaptiles").withSourceLayer("landuse")
             .withFilter(
                 Expression.match(
                     Expression.get("class"), Expression.literal(false),
@@ -3507,7 +3545,7 @@ private fun ensureLayers(style: Style) {
     // #fdf9ef on the P9, 2026-07-11) - Liberty ships no layer for those classes at all,
     // so this twin draws them; dark mode paints it the other-landuse navy (no change).
     if (style.getLayer("vela-commercial") == null && style.getLayer("park") != null) {
-        val comm = FillLayer("vela-commercial", "openmaptiles").withSourceLayer("landuse")
+        val comm = FillLayer("vela-commercial", basemapSrc(style) ?: "openmaptiles").withSourceLayer("landuse")
             .withFilter(
                 Expression.match(
                     Expression.get("class"), Expression.literal(false),
@@ -3527,7 +3565,7 @@ private fun ensureLayers(style: Style) {
             Expression.exponential(1.4f), Expression.zoom(),
             Expression.stop(14f, 0.7f), Expression.stop(16f, 1.6f), Expression.stop(19f, 4f),
         )
-        val trails = LineLayer("vela-trails", "openmaptiles").withSourceLayer("transportation")
+        val trails = LineLayer("vela-trails", basemapSrc(style) ?: "openmaptiles").withSourceLayer("transportation")
             .withFilter(
                 Expression.all(
                     Expression.match(
@@ -3549,7 +3587,7 @@ private fun ensureLayers(style: Style) {
         // Dedicated bike paths (OSM highway=cycleway) in Google's teal accent. NB the keyless
         // OMT tiles carry off-street cycleways only; ON-STREET painted lanes (cycleway=lane on
         // a road) aren't in the tile schema - those need an Overpass layer (see ROADMAP).
-        val bike = LineLayer("vela-bikeroutes", "openmaptiles").withSourceLayer("transportation")
+        val bike = LineLayer("vela-bikeroutes", basemapSrc(style) ?: "openmaptiles").withSourceLayer("transportation")
             .withFilter(
                 Expression.all(
                     Expression.match(
@@ -3572,14 +3610,14 @@ private fun ensureLayers(style: Style) {
     if (style.getImage(NAV_PUCK_IMG) == null) style.addImage(NAV_PUCK_IMG, navPuckBitmap())
 
     // Terrain relief — only over the OpenMapTiles basemap (the keyless path).
-    if (style.getSource("openmaptiles") != null) ensureHillshade(style)
+    if (basemapSrc(style) != null) ensureHillshade(style)
 
     // House numbers at high zoom. OpenFreeMap's tiles carry the OpenMapTiles
     // "housenumber" source-layer; the Liberty style just doesn't draw it.
     // Guarded to the openmaptiles vector source so other styles don't error.
-    if (style.getSource("openmaptiles") != null && style.getLayer("vela-housenumber") == null) {
+    if (basemapSrc(style) != null && style.getLayer("vela-housenumber") == null) {
         style.addLayer(
-            SymbolLayer("vela-housenumber", "openmaptiles").apply {
+            SymbolLayer("vela-housenumber", basemapSrc(style) ?: "openmaptiles").apply {
                 setSourceLayer("housenumber")
                 // OpenFreeMap DOES serve the OMT `housenumber` source-layer (verified against the
                 // live TileJSON + z14 tiles), so this renders where OSM has `addr:housenumber`.
@@ -4465,7 +4503,7 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
         ids.forEach { (style.getLayer(it) as? SymbolLayer)?.setProperties(PropertyFactory.visibility(Property.NONE)) }
         return
     }
-    if (style.getSource("openmaptiles") == null) return
+    val basemapSource = basemapSrc(style) ?: return
     // Stretch zones: the horizontal middle EXCLUDING the tail's span (two zones), the vertical
     // middle of the body only; content box = where text may sit (tail stays below it).
     val d = density
@@ -4487,7 +4525,7 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
         (style.getLayer(id) as? SymbolLayer)?.let { it.setFilter(filter); return }
         run {
             style.addLayer(
-                SymbolLayer(id, "openmaptiles").withSourceLayer("transportation_name")
+                SymbolLayer(id, basemapSource).withSourceLayer("transportation_name")
                     .withFilter(filter)
                     .withProperties(
                         PropertyFactory.textField(roadLabelTextField()),
@@ -4589,8 +4627,8 @@ private fun ensureTraffic(style: Style, on: Boolean) {
 private fun ensureTransit(style: Style, on: Boolean) {
     val present = style.getLayer(TRANSIT_LAYER) != null
     if (on && !present) {
-        if (style.getSource("openmaptiles") == null) return
-        val layer = LineLayer(TRANSIT_LAYER, "openmaptiles").apply {
+        val basemapSource = basemapSrc(style) ?: return
+        val layer = LineLayer(TRANSIT_LAYER, basemapSource).apply {
             setSourceLayer("transportation")
             // class = "rail" (heavy rail) or "transit" (subway / light_rail / tram / monorail).
             setFilter(
@@ -4856,8 +4894,8 @@ private fun ensureSatellite(style: Style, on: Boolean) {
         // them with the satellite-aware anchor.
         runCatching { style.removeLayer(TRANSIT_LAYER) }
         runCatching { style.removeLayer(TRAFFIC_LAYER) }
-        if (style.getLayer(SAT_ROADS_LAYER) == null && style.getSource("openmaptiles") != null) {
-            val roads = LineLayer(SAT_ROADS_LAYER, "openmaptiles").apply {
+        if (style.getLayer(SAT_ROADS_LAYER) == null && basemapSrc(style) != null) {
+            val roads = LineLayer(SAT_ROADS_LAYER, basemapSrc(style) ?: "openmaptiles").apply {
                 setSourceLayer("transportation")
                 setProperties(
                     // Freeways read YELLOW like the Google app's hybrid layer; everything else
@@ -4977,13 +5015,52 @@ private fun namesAgree(a: String, b: String): Boolean {
     return x.intersect(y).size >= minOf(x.size, y.size).coerceAtMost(2)
 }
 
+/** The style JSON with its `openmaptiles` vector source pointed at [archive] (a `pmtiles://file://`
+ *  URI of a planetiler bake in the same OpenMapTiles schema OpenFreeMap serves), so an installed
+ *  region draws from disk. Same layers, same look; only the source changes. Null = unchanged. */
+private fun withLocalBasemap(context: android.content.Context, json: String, archive: String?): String {
+    if (archive == null) return json
+    return runCatching {
+        val root = org.json.JSONObject(json)
+        // Drop the online source and point every layer at a NEW id the builder adds programmatically.
+        // Re-using the id "openmaptiles" for the local archive loaded nothing past the z0 tile while
+        // the identical URI under a fresh id loaded everything (device, 2026-09-14); the old id is
+        // referenced by the road-name dictionary and the hillshade guard, which stay online-only.
+        root.getJSONObject("sources").remove("openmaptiles")
+        val layers = root.getJSONArray("layers")
+        var moved = 0
+        localBasemapLayerIds.clear()
+        for (i in 0 until layers.length()) {
+            val l = layers.getJSONObject(i)
+            if (l.optString("source") == "openmaptiles") { l.put("source", LOCAL_BASEMAP_SRC); localBasemapLayerIds += l.getString("id"); moved++ }
+            // The glyph pack on disk carries the live style's stack names (Noto Sans Regular / Italic /
+            // Bold, Roboto composited over them); the bundled Liberty asset asks for Roboto stacks.
+            l.optJSONObject("layout")?.let { lay ->
+                val tf = lay.optJSONArray("text-font") ?: return@let
+                val out = org.json.JSONArray()
+                for (k in 0 until tf.length()) out.put(app.vela.offline.GlyphPackStore.stackName(tf.getString(k)))
+                lay.put("text-font", out)
+            }
+        }
+        // Text layout needs every glyph range it touches and the sprite to RESOLVE; with no signal a
+        // remote host never answers and every tile with a label stays incomplete (the whole map
+        // blank, 2026-09-14). The glyph pack and the sprite live in files/ (asset:// hung the same
+        // way), so both are served from disk here whenever the pack is installed.
+        val glyphs = app.vela.offline.GlyphPackStore.glyphUrl(context)
+        if (glyphs != null) root.put("glyphs", glyphs)
+        app.vela.offline.GlyphPackStore.spriteUrl(context)?.let { root.put("sprite", it) }
+        android.util.Log.i("VelaBasemap", "style tile source -> ${archive.substringAfterLast('/')} ($moved layers re-pointed)")
+        root.toString()
+    }.getOrElse { android.util.Log.w("VelaBasemap", "style rewrite failed", it); json }
+}
+
 /** The bottom-most symbol layer on the style (the basemap's first label layer): anything added
  *  below it draws under every label and icon. */
 private fun firstSymbolLayerId(style: Style): String? =
     style.layers.firstOrNull { it is SymbolLayer }?.id
 
 private fun applyMapTheme(style: Style, dark: Boolean) {
-    if (style.getSource("openmaptiles") == null) return
+    val basemapSource = basemapSrc(style) ?: return
     // Two compiled colour sets, picked in Settings -> Appearance (MapColors): "modern" is the
     // Google-app pixel-sampled palette, "classic" the archived pre-sample look (docs/MAP-STYLE.md).
     val classic = app.vela.ui.MapColors.classic()
@@ -5785,7 +5862,7 @@ private fun accuracyCircle(center: LatLng, radiusM: Double): org.maplibre.geojso
  *  it - point-to-SEGMENT distance, because a mid-block address on a straight road can sit half a
  *  block from the nearest VERTEX. Null when no named road is that close (or tiles aren't loaded). */
 private fun nearestStreetName(map: MapLibreMap, lat: Double, lng: Double): String? {
-    val src = map.style?.getSourceAs<org.maplibre.android.style.sources.VectorSource>("openmaptiles") ?: return null
+    val src = map.style?.let { st -> basemapSrc(st)?.let { st.getSourceAs<org.maplibre.android.style.sources.VectorSource>(it) } } ?: return null
     val feats = runCatching { src.querySourceFeatures(arrayOf("transportation_name"), null) }.getOrNull() ?: return null
     val mLat = 111_320.0
     val mLng = 111_320.0 * kotlin.math.cos(Math.toRadians(lat))
