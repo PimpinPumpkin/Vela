@@ -98,6 +98,13 @@ COPY (
 ) TO '$WORK/places.ndjson' (FORMAT CSV, HEADER false, QUOTE '', ESCAPE '', DELIMITER '\t');
 SELECT count(*) AS features, round(avg(prominence),2) AS prom_avg, sum(CASE WHEN landmark = 1 AND xrank <= 3 THEN 1 ELSE 0 END) AS z12, sum(CASE WHEN crank <= 2 OR prominence >= 5 THEN 1 ELSE 0 END) AS z14, sum(CASE WHEN rank <= 3 OR prominence >= 4.5 THEN 1 ELSE 0 END) AS z15, sum(CASE WHEN rank <= 12 OR prominence >= 3.5 THEN 1 ELSE 0 END) AS z16 FROM ranked;
 SQL
+# Uninhabited rows (Ashmore and Cartier, coral-sea specks) have no businesses at all; tippecanoe
+# refuses an empty input, so leave no archive and let the workflow skip the upload.
+if [ ! -s "$WORK/places.ndjson" ]; then
+  echo "no places in region $ID bbox [$S,$W,$N,$E]; nothing to bake"
+  rm -rf "$WORK"
+  exit 0
+fi
 tippecanoe -o "$OUT" -l places -f -P -Z11 -z17 -B12 --no-feature-limit --no-tile-size-limit --extend-zooms-if-still-dropping "$WORK/places.ndjson" >/dev/null 2>&1
 rm -rf "$WORK"
 echo "wrote $OUT ($(du -h "$OUT" | cut -f1)) region $ID bbox [$S,$W,$N,$E]"
