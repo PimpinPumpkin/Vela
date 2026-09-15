@@ -90,8 +90,10 @@ class WebStopDeparturesFetcher @Inject constructor(
     suspend fun fetch(featureId: String): StopDepartures? = mutex.withLock {
         cancelReap()
         try {
+            withContext(Dispatchers.Main) { webView?.onResume() } // asleep between fetches
             fetchLocked(featureId)
         } finally {
+            withContext(kotlinx.coroutines.NonCancellable + Dispatchers.Main) { runCatching { webView?.onPause() } }
             scheduleReap()
         }
     }

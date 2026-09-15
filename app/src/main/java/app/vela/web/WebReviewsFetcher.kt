@@ -132,8 +132,10 @@ class WebReviewsFetcher @Inject constructor(
         return mutex.withLock {
             cancelReap()
             try {
+                withContext(Dispatchers.Main) { webView?.onResume() } // asleep between fetches
                 fetchLocked(cid, onProgress, onPartial)
             } finally {
+                withContext(kotlinx.coroutines.NonCancellable + Dispatchers.Main) { runCatching { webView?.onPause() } }
                 scheduleReap()
             }
         }

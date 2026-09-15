@@ -3134,6 +3134,14 @@ architecture note.
   strip those, and don't let a `Set-Cookie` downgrade `CONSENT` to `PENDING`.
 - No GMS: no FCM/Firebase/Play Integrity/Fused. If push is needed later, use
   UnifiedPush; crash reporting via ACRA/self-hosted Sentry.
+- **Hidden WebViews sleep between fetches (2026-09-14).** Every hidden-WebView fetcher (`WebPhotoFetcher`,
+  `WebPopularTimesFetcher`, `WebReviewsFetcher`, `WebDirectionsFetcher`, `WebStopDeparturesFetcher`) calls
+  `onResume()` at the start of a fetch and `onPause()` when the last pending fetch is done, and the two
+  warm-ups pause once their page has landed. A loaded Google page kept its compositor and JS timers
+  running for good, which measured as ~27% of the app's CPU during a plain map pan (`VizWebView` +
+  `Chrome_IOThread` in a /proc per-thread sample); after the change those threads are gone from the
+  pan profile and the same gesture costs about half the CPU. Keep the pair balanced when adding a
+  fetch path; `pauseTimers()` is process-wide, so it is deliberately not used.
 - **Open places layer, beta (2026-09-14, issue #441, the Overture direction).** `tools/build-places-region.sh
   <id> S W N E out.pmtiles [release] [local.parquet]` bakes Overture Places (DuckDB over the public S3
   parquet, or a local extract) into PMTiles: business POIs only (parks/schools/civic/transit excluded, OSM

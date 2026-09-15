@@ -107,11 +107,12 @@ class WebPopularTimesFetcher @Inject constructor(
         val raw = try {
             withTimeoutOrNull(TOTAL_TIMEOUT_MS) {
                 ensureWarm()
-                withContext(Dispatchers.Main) { webView?.evaluateJavascript(script(id, url), null) }
+                withContext(Dispatchers.Main) { webView?.onResume(); webView?.evaluateJavascript(script(id, url), null) }
                 deferred.await()
             }
         } finally {
             pending.remove(id)
+            main.post { if (pending.isEmpty()) runCatching { webView?.onPause() } }
             scheduleReap()
         }
         return if (raw.isNullOrEmpty()) null
@@ -169,6 +170,8 @@ class WebPopularTimesFetcher @Inject constructor(
         wv.loadUrl("https://www.google.com/?hl=en&gl=us")
         main.postDelayed({ if (!w.isCompleted) w.complete(Unit) }, MAX_WARM_MS)
         w.await()
+        // Booted is enough; a running Google page burns CPU between fetches (see WebPhotoFetcher.warm).
+        if (pending.isEmpty()) runCatching { wv.onPause() }
     }
 
     private fun script(id: String, url: String): String {
