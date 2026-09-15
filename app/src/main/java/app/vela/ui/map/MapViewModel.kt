@@ -5777,7 +5777,32 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /** The open places archive covering ([lat],[lng]), pulled with a region download so the map's
+    /** Every places archive that belongs to [region]: the ones whose box center falls inside it. The
+     *  places catalog is cut finer than the older routing catalog (German states, French regions,
+     *  Brazil's five regions), so a whole-country download on that catalog pulls all its pieces, and
+     *  a state or province download on the finer catalog pulls just its own. Best-effort and silent. */
+    private fun downloadPlacesForRegion(region: app.vela.offline.RoutingRegion) {
+        downloadLaunch(appContext.getString(R.string.download_label_map_data)) {
+            val regions = placesStore.manifest(app.vela.BuildConfig.PLACES_MANIFEST_URL)
+            val inside = regions.filter { p ->
+                val cy = (p.s + p.n) / 2; val cx = (p.w + p.e) / 2
+                cy in region.s..region.n && cx in region.w..region.e
+            }
+            // A region with no piece of its own inside (a small country inside a bigger box) still gets
+            // the smallest archive covering its center.
+            val picks = inside.ifEmpty {
+                listOfNotNull(regions.filter { (region.s + region.n) / 2 in it.s..it.n && (region.w + region.e) / 2 in it.w..it.e }.minByOrNull { it.area() })
+            }
+            var any = false
+            for (p in picks) {
+                if (p.id in placesStore.installedIds()) continue
+                if (placesStore.download(p) { }) any = true
+            }
+            if (any) refreshPlacesOverlays()
+        }
+    }
+
+    /** The open places archive covering ([lat],[lng]), pulled with a viewport download so the map's
      *  businesses draw offline. Best-effort and silent, like the building overlay. */
     private fun downloadPlacesForArea(lat: Double, lng: Double) {
         downloadLaunch(appContext.getString(R.string.download_label_map_data)) {
@@ -6610,7 +6635,7 @@ class MapViewModel @Inject constructor(
                 downloadPoiPack(region)
                 // The Vela places archive for the region rides along (Settings > Offline maps toggle,
                 // on by default), so the map's businesses draw with no signal, not just search.
-                if (app.vela.ui.MapPoiPrefs.placesWithDownloads.value) downloadPlacesForArea((region.s + region.n) / 2, (region.w + region.e) / 2)
+                if (app.vela.ui.MapPoiPrefs.placesWithDownloads.value) downloadPlacesForRegion(region)
             } else _state.update { it.copy(regionDownloadName = null) }
         }
     }
