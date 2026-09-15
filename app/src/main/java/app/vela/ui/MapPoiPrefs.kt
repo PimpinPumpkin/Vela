@@ -35,6 +35,10 @@ object MapPoiPrefs {
     /** A region download also pulls the Vela places archive covering it (on by default), so the
      *  map's businesses draw offline. Off keeps places streaming-only, which is free when online. */
     val placesWithDownloads = mutableStateOf(true)
+    /** Tapping a place on the Vela data layer looks its listing up on Google (hours, reviews, photos).
+     *  Off: the sheet shows only what the tile carries and nothing about the tap reaches Google, for
+     *  people who want Google kept to search and directions. */
+    val lookupTappedPlaces = mutableStateOf(true)
 
     fun init(context: Context) {
         val p = prefs(context)
@@ -44,6 +48,12 @@ object MapPoiPrefs {
         iconScale.floatValue = p.getFloat(KEY_SCALE, 1.0f)
         placesSource.value = p.getString(KEY_PLACES_SOURCE, null) ?: SOURCE_OPEN
         placesWithDownloads.value = p.getBoolean(KEY_PLACES_WITH_DOWNLOADS, true)
+        lookupTappedPlaces.value = p.getBoolean(KEY_LOOKUP_TAPPED, true)
+    }
+
+    fun setLookupTappedPlaces(context: Context, value: Boolean) {
+        lookupTappedPlaces.value = value
+        prefs(context).edit().putBoolean(KEY_LOOKUP_TAPPED, value).apply()
     }
 
     fun setPlacesWithDownloads(context: Context, value: Boolean) {
@@ -83,6 +93,7 @@ object MapPoiPrefs {
     private const val KEY_SCALE = "map_poi_icon_scale"
     private const val KEY_PLACES_SOURCE = "map_places_source"
     private const val KEY_PLACES_WITH_DOWNLOADS = "offline_places_with_downloads"
+    private const val KEY_LOOKUP_TAPPED = "map_places_google_lookup"
     const val SOURCE_OPEN = "open"
     const val SOURCE_GOOGLE = "google"
     const val SOURCE_BOTH = "both"

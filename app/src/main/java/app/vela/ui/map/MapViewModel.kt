@@ -419,6 +419,7 @@ class MapViewModel @Inject constructor(
     init {
         loadAmbientCacheFromDisk() // ambient LRU survives restarts (paint-then-refine)
         warmWebViewsWhenQuiet() // boot the hidden WebViews at a quiet moment, not at the first place tap
+        loadOpenPlaceLinks() // Overture -> Google links remembered from earlier sessions
         // Privacy toggle (Settings -> Data & privacy): periodic in-drive traffic re-checks send
         // the CURRENT position to Google; the opt-out lives on the session so :core enforces it.
         // (Raw prefs read: the settingsPrefs property is declared below this init block.)
@@ -2993,9 +2994,54 @@ class MapViewModel @Inject constructor(
     fun onOpenPlaceTap(p: Place) = onPoiTap(p.name, p.location, p.category, seed = p)
 
     /** Open-places id -> the Google listing it resolved to, so a second tap on the same pin is
-     *  instant. Local to the device only (a published crosswalk would redistribute Google ids). */
+     *  instant. Local to the device only (a published crosswalk would redistribute Google ids).
+     *  Persisted to `open_place_links.json` so the link survives a restart: a place you tapped once
+     *  opens straight to its listing next week, and offline it opens to the last listing seen. */
     private val openPlaceCache = object : LinkedHashMap<String, Place>(64, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Place>?) = size > 200
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Place>?) = size > 500
+    }
+    private fun openLinksFile() = java.io.File(appContext.filesDir, "open_place_links.json")
+    private var openLinksPersistJob: Job? = null
+
+    private fun loadOpenPlaceLinks() {
+        // Launched on Main (dispatched, so it runs after the constructor has finished initializing
+        // every property below this one), with only the file work on IO: an IO launch straight from
+        // init raced the constructor and hit the cache before its initializer ran (crash, 2026-09-14).
+        viewModelScope.launch {
+            val loaded = withContext(Dispatchers.IO) {
+                val raw = runCatching { openLinksFile().readText() }.getOrNull() ?: return@withContext emptyList()
+                val arr = runCatching { org.json.JSONArray(raw) }.getOrNull() ?: return@withContext emptyList()
+                val out = ArrayList<Pair<String, Place>>()
+                for (i in 0 until arr.length()) {
+                    val o = arr.optJSONObject(i) ?: continue
+                    val id = o.optString("o").takeIf { it.isNotBlank() } ?: continue
+                    val p = app.vela.core.config.PlaceJson.decode(o.optString("p"))?.firstOrNull() ?: continue
+                    out += id to p
+                }
+                out
+            }
+            if (loaded.isEmpty()) return@launch
+            synchronized(openPlaceCache) { loaded.forEach { (id, p) -> if (id !in openPlaceCache) openPlaceCache[id] = p } }
+            android.util.Log.d("VelaPlaces", "open place links: loaded ${loaded.size}")
+        }
+    }
+
+    private fun rememberOpenPlaceLink(id: String, full: Place) {
+        synchronized(openPlaceCache) { openPlaceCache[id] = full }
+        openLinksPersistJob?.cancel()
+        openLinksPersistJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(2_000) // coalesce a burst of taps into one write
+            val snapshot = synchronized(openPlaceCache) { openPlaceCache.entries.map { it.key to it.value } }
+            val arr = org.json.JSONArray()
+            snapshot.forEach { (id, p) ->
+                arr.put(org.json.JSONObject().put("o", id).put("p", app.vela.core.config.PlaceJson.encode(listOf(p))))
+            }
+            runCatching {
+                val tmp = java.io.File(appContext.filesDir, "open_place_links.json.tmp")
+                tmp.writeText(arr.toString())
+                tmp.renameTo(openLinksFile())
+            }
+        }
     }
 
     fun onPoiTap(name: String, location: LatLng, poiKind: String? = null, seed: Place? = null) {
@@ -3060,6 +3106,13 @@ class MapViewModel @Inject constructor(
                 directionsOpen = false,
             )
         }
+        // "Look up tapped places on Google" off (Settings > Map): an open place stays on what the
+        // tile carries, nothing about the tap reaches Google. Basemap taps have no seed and still
+        // resolve (they have nothing else to show).
+        if (seed != null && !app.vela.ui.MapPoiPrefs.lookupTappedPlaces.value) {
+            rememberRecentPlace(SavedPlace.of(placeholder))
+            return
+        }
         viewModelScope.launch {
             val remembered = seed?.let { synchronized(openPlaceCache) { openPlaceCache[it.id] } }
             val resolved = if (remembered != null) (remembered to emptyList<Place>()) else runCatching {
@@ -3121,7 +3174,7 @@ class MapViewModel @Inject constructor(
             // slim flavor (no review count, no hours) and would pin a stripped listing for the
             // rest of the session. A later tap then resolves it again, fuller.
             if (full != null && seed != null && (full.reviewCount != null || full.hours.isNotEmpty())) {
-                synchronized(openPlaceCache) { openPlaceCache[seed.id] = full }
+                rememberOpenPlaceLink(seed.id, full)
             }
             if (full != null && _state.value.selected == placeholder) {
                 _state.update { it.copy(selected = withListNote(full), placesHere = othersAt(full, resolved.second)) }
