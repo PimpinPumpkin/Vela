@@ -16,6 +16,7 @@ plugins {
 // on API 34+, so there is no per-device build variance. (Fix contributed by ars18.)
 val bbPatched = Attribute.of("graphhopperByteBufferPatched", Boolean::class.javaObjectType)
 dependencies {
+    testImplementation(libs.junit) // SearchGatesTest: the search/results gates as a pure function
     attributesSchema { attribute(bbPatched) }
     artifactTypes.getByName("jar") { attributes.attribute(bbPatched, false) }
     registerTransform(GraphHopperByteBufferPatch::class.java) {
