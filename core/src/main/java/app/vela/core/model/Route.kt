@@ -206,6 +206,12 @@ data class Route(
     val offline: Boolean = false,
     // See [RouteSource]. Stamped by every constructor; UNKNOWN only for old trip files.
     val source: RouteSource = RouteSource.UNKNOWN,
+    /** Local road name -> its Latin alias (OSM `name:en`, else a Latin `name:latin`) for the roads this
+     *  route drives, from data the router had in hand (the obf carries the tags natively). Empty for
+     *  every online route: the tiles supply those names as they load. Merged into the drive's
+     *  romanized-name dictionary when the route is adopted, so offline guidance in a non-Latin
+     *  region says and shows real names instead of the ICU skeleton (issue #184). */
+    val roadNamesLatin: Map<String, String> = emptyMap(),
 ) {
     val hasLiveTraffic: Boolean get() = durationInTrafficSeconds != null
 

@@ -8,6 +8,11 @@ plugins {
 
 android {
     namespace = "app.vela.core"
+    testOptions {
+        // The on-demand obf harnesses (ObfSpeedLimitProbeTest, ObfRoadNamesProbeTest) run the real
+        // engine on the JVM, and its android.util.Log lines would otherwise throw "not mocked".
+        unitTests.isReturnDefaultValues = true
+    }
     compileSdk = 35
     defaultConfig {
         minSdk = 26
