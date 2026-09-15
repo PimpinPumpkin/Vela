@@ -24,17 +24,9 @@
 -dontwarn org.mozilla.javascript.**
 -dontwarn org.mozilla.classfile.**
 
-# GraphHopper (on-device routing/map-matching). Keep the whole engine + its runtime deps —
-# it resolves encoded values + weightings reflectively and R8 renaming breaks load/route. It
-# also references OSM-import-only deps we deliberately exclude (osmosis/protobuf/woodstox/AWT)
-# plus the Janino compiler we never invoke (we override the WeightingFactory) — silence those
-# dangling refs rather than fail the build.
--keep class com.graphhopper.** { *; }
--keep class com.carrotsearch.hppc.** { *; }
--keep class org.locationtech.jts.** { *; }
-# GraphHopper parses car.json + graph config via Jackson (reflective) — keep it so the release
-# runtime path is identical to the debug build the :ghprobe on-device test already proved.
--keep class com.fasterxml.jackson.** { *; }
+# Desktop-only references inside vendored JVM libraries (the OsmAnd router jars and what they
+# pull in): silence the dangling refs rather than fail the build. The GraphHopper keeps that
+# used to live here went with the engine (retired 2026-09-15).
 -dontwarn com.fasterxml.jackson.**
 -dontwarn com.graphhopper.**
 -dontwarn org.locationtech.jts.**

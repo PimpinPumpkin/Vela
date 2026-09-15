@@ -95,9 +95,10 @@ journeys below under Big bets / Known-hard:
 
 - **Open router (OSRM) is now PRIMARY** - complete street-named turn-by-turn incl. **highway `ref`s /
   exit numbers / sign destinations**; Google demoted to the live-traffic overlay + jam-reroute + fallback.
-- **Offline routing on-device (GraphHopper)** - a **135-region world catalog** (all US states, Canada,
-  Europe, +) built by a race-safe CI matrix, hosted on GitHub, downloaded per region; smallest-covering
-  region selection; combined map+routing area download; a location-aware, filterable picker.
+- **Offline routing on-device** - first on GraphHopper (2026-06-30), on the OsmAnd obf engine since
+  2026-09-15 (GraphHopper retired): a **414-piece world catalog** (every Geofabrik country plus the
+  sub-areas of the big ones) built by a race-safe CI matrix, hosted on GitHub, downloaded per region;
+  smallest-covering region selection; combined map+routing area download; a location-aware, filterable picker.
 - **Navigation** - a **real per-lane diagram** (OSRM lane data), highway/exit shields on the banner,
   OSRM retry (fewer nameless fallbacks), and the traversed-grey trail tightened under the arrow.
 - **Nav guidance de-noised (2026-07-01)** - the lane diagram now only shows within ~0.5 mi of the maneuver
@@ -459,6 +460,8 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   congestion spans keep covering "where's it slow". Static OSM road aids (railway level crossings,
   speed humps) remain buildable any time as a sibling of the lights/stop-signs layer.**
 - **On-device map-matching (GraphHopper) - the "Google routes, the engine names the turns" unlock.**
+  *(Historical record. GraphHopper was the offline router from 2026-06-30 to 2026-09-15, then retired for
+  the OsmAnd obf engine; the map-matching phase never shipped and would now be built on the obf side.)*
   > **✅ SHIPPED as the OFFLINE ROUTER (2026-06-30)** - Phase 1 is done end-to-end + on a 135-region world
   > catalog (see "Recently shipped" up top, `SPEC.md` §Offline routing, `FEATURES.md`). This long entry is
   > the **engineering record of how it was un-blocked**; kept for reference. Still OPEN = **Phase 2**: use the

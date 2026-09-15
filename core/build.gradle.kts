@@ -32,18 +32,6 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.okhttp)
     implementation(libs.rhino.runtime)
-    // On-device routing/map-matching engine (see RouteEngine + ROADMAP). The OSM-IMPORT-only
-    // transitive deps are Android-hostile (AWT/StAX) and unused at runtime — we ship prebuilt
-    // graphs and only LOAD + route + match on-device — so they're excluded (proven via :ghprobe).
-    implementation(libs.graphhopper.mapmatching) {
-        exclude(group = "org.openstreetmap.osmosis")
-        exclude(group = "com.google.protobuf")
-        exclude(group = "com.fasterxml.jackson.dataformat", module = "jackson-dataformat-xml")
-        exclude(group = "com.fasterxml.woodstox")
-        exclude(group = "org.codehaus.woodstox")
-        exclude(group = "org.apache.xmlgraphics")
-    }
-
     // OsmAnd obf routing engine (ObfRouteEngine): the router + binary obf reader as plain Java
     // jars, vendored from OsmAndMapCreator's lib (GPLv3, same license as Vela). Gitignored like
     // the sherpa AAR - CI fetches them from the `obf-runtime` infra release; locally copy them in

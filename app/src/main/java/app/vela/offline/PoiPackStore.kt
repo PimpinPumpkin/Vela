@@ -17,7 +17,7 @@ import javax.inject.Singleton
  * Offline PLACE packs — per-region SQLite databases of the whole region's OSM POIs, addresses and
  * street names (built by `scripts/build-poi-region.sh`, hosted like the routing graphs), so a state
  * download makes the entire state searchable offline (Organic-Maps-style), not just saved map areas.
- * Sibling of [RoutingGraphStore]; a pack is pulled automatically alongside its region's routing
+ * Sibling of [ObfStore]; a pack is pulled automatically alongside its region's routing
  * graph and deleted with it. Packs share the routing catalog's region ids, so the manifest rows
  * reuse [RoutingRegion]. Installed packs are registered in [OfflinePacks], where the core stores
  * (OfflinePoiStore / OfflineAddressStore) query them.
@@ -81,7 +81,7 @@ class PoiPackStore @Inject constructor(
     }.getOrDefault(JSONObject())
 
     // Guards the revs.json read-modify-write (parallel downloads / update + delete),
-    // same shape as the index guard in OverlayTileStore and RoutingGraphStore.
+    // same shape as the index guard in OverlayTileStore and ObfStore.
     private val revsLock = Any()
 
     private fun writeRev(id: String, rev: Int) = synchronized(revsLock) {

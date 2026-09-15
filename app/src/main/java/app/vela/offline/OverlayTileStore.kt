@@ -15,7 +15,7 @@ import javax.inject.Singleton
 
 /**
  * Open BUILDING-FOOTPRINT overlays (Microsoft US Building Footprints, ODbL) as **PMTiles** — the
- * gap-fill sibling of [RoutingGraphStore]. Each region is ONE `.pmtiles` archive (no unzip, unlike the
+ * gap-fill sibling of [ObfStore]. Each region is ONE `.pmtiles` archive (no unzip, unlike the
  * routing graph's folder) downloaded into `filesDir/overlays/<id>.pmtiles`, with an `index.json`
  * (`[{id, bbox:[S,W,N,E]}]`) the map view reads to add a `pmtiles://` source + a fill layer BENEATH the
  * OSM building layer, so footprints only fill where OSM is thin (a suburb the Microsoft→OSM import missed).

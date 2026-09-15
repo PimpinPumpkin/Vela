@@ -3,7 +3,7 @@ package app.vela.core.data
 /**
  * Parses an OSM `maxspeed` tag value into km/h - the "Speed B" online source reads these raw strings out
  * of the hosted speed-limit PMTiles overlay (built by `scripts/build-maxspeed-region.sh`), unlike the
- * offline GraphHopper path which reads a pre-decoded encoded value.
+ * offline obf path, which reads the way's own maxspeed off the route data.
  *
  * OSM maxspeed is messy: a bare number is km/h ("50"), an explicit unit may follow ("30 mph", "50 km/h"),
  * and a lot of non-numeric forms exist. We deliberately return **null** (unknown) rather than guess for:

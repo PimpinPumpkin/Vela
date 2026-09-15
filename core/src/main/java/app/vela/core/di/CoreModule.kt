@@ -2,9 +2,7 @@ package app.vela.core.di
 
 import android.content.Context
 import app.vela.core.VelaConfig
-import app.vela.core.data.GraphHopperRouteEngine
 import app.vela.core.data.ObfRouteEngine
-import app.vela.core.data.OfflineRouteEngine
 import app.vela.core.data.MapDataSource
 import app.vela.core.data.MockMapDataSource
 import app.vela.core.data.RouteEngine
@@ -59,22 +57,14 @@ object CoreModule {
     ): MapDataSource = if (VelaConfig.USE_GOOGLE_SOURCE) google else mock
 
     /**
-     * The on-device routing engine (offline fallback / future always-snap). Reads downloaded per-region
-     * CH graphs from **internal** storage (`filesDir/graphs/<id>/` + `index.json`) — fast MMAP; FUSE-mapped
-     * external storage was measured I/O-bound for routing's random access. [RoutingGraphStore] (`:app`)
-     * downloads graphs + maintains the index here. When no region covers a trip [GraphHopperRouteEngine]
-     * returns empty, so `directions()` keeps using OSRM.
+     * The on-device routing engine: OsmAnd obf region files from **internal** storage
+     * (`filesDir/obf/<id>.obf` + `index.json`, maintained by `ObfStore` in `:app`). When no
+     * installed file covers a trip it returns empty, so `directions()` keeps using OSRM.
      */
     @Provides
     @Singleton
     fun routeEngine(@ApplicationContext context: Context): RouteEngine =
-        OfflineRouteEngine(
-            // Obf regions first (filesDir/obf/<id>.obf, index by ObfStore) - the smaller format
-            // every new download uses; GraphHopper keeps answering for graphs installed before
-            // the cutover until their regions are re-downloaded.
-            ObfRouteEngine(File(context.filesDir, "obf")),
-            GraphHopperRouteEngine(File(context.filesDir, "graphs")),
-        )
+        ObfRouteEngine(File(context.filesDir, "obf"))
 }
 
 /**

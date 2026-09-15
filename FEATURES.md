@@ -1157,24 +1157,23 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   tool (map-matching) is capped to 10 coords on the public server and the dense-via fallback drops
   ~1-in-10 turns when a via lands on one - so we snap only when traffic actually made Google diverge.
   The unconditional "Google routes, OSRM names turns" version waits on on-device map-matching (see below).
-- ✅ **Offline routing - fully on-device + live, world catalog hosted (2026-06-30).**
-  When you're offline (or OSRM is down), `directions()` falls back to an **on-device GraphHopper engine**
-  (`core/data/GraphHopperRouteEngine`) that loads downloaded **per-region Contraction-Hierarchies graphs**
-  from internal storage and routes fully on the phone - complete street-named turn-by-turn, ~200 ms, no
-  signal. Pure JVM (GraphHopper runs on ART with three workarounds - MMAP / a Janino-free `SpeedWeighting`
-  factory / swallow-`close()`); graphs are built off-device by `tools/graphbuilder`. On-device end-to-end
-  verified (Pixel 5a): downloaded a region from the GitHub release → offline → 21.8 mi route via the crosstown arterial
-  with named steps + a correct 28-min ETA.
+- ✅ **Offline routing - fully on-device + live, world catalog hosted (2026-06-30; engine replaced
+  2026-09-15).** When you're offline (or OSRM is down), `directions()` falls back to the **on-device
+  obf engine** (`core/data/ObfRouteEngine`, OsmAnd's router over downloaded per-region `.obf` files)
+  and routes fully on the phone - complete street-named turn-by-turn, no signal. The first engine was
+  GraphHopper over Contraction-Hierarchies graphs (pure JVM on ART with three workarounds, graphs built
+  by `tools/graphbuilder`); it was retired on 2026-09-15 once the obf carried everything it did (the
+  speed-limit badge and the romanized road names included) at a quarter of the download size. The
+  old graphs are deleted on the first launch after the update with a one-time notice.
   - **Get a region two ways:** pick it under **Settings → Offline maps → Entire states & countries** (regions covering your current
     location sort to the top and are flagged "covers your location"; a **name filter** appears once the
     catalog is large, so a region you're *travelling* to - "Japan", "Texas" - is one type away instead of a
     long scroll), **or** just download offline map tiles for an area - "Download the area you're viewing" now
     **also grabs the routing graph for the region that contains it**, so one tap gives you map *and* navigation offline.
-  - **Hosting + world catalog:** graphs + `routing-manifest.json` are static assets on the `routing-graphs`
-    GitHub release; the catalog is **`tools/routing-regions.json`** (135 regions - all US states, Canadian
-    provinces, ~36 European countries, + starter Asia/Oceania/Americas/Africa) and a **parallel GitHub-Actions
-    matrix** builds a whole continent per dispatch (race-safe: per-region zips + entry artifacts, one manifest
-    merge). *(Online still wins on live traffic + POIs; this is the no-signal fallback and the foundation for
+  - **Hosting + world catalog:** region files + `obf-manifest.json` are static assets on the `obf-regions`
+    GitHub release; the catalog is **`tools/routing-regions.json`** (every Geofabrik country plus the
+    sub-areas of the big ones) and a **parallel GitHub-Actions matrix** builds a group per dispatch
+    (race-safe: per-region assets + entry artifacts, one manifest merge). *(Online still wins on live traffic + POIs; this is the no-signal fallback and the foundation for
     offline-first navigation.)*
 - ✅ **Turn instructions keep the road name** ("Turn right **onto the local street**", spoken + on the banner). Now **native from OSRM** - `RouteGeometry.osrmPhrase` synthesizes the instruction from the step's `type`+`modifier`+`name`+**`ref`/`destinations`/`exits`** (OSRM ships no instruction text but every step carries its road id), so there are **no bare turns** to fill. **Highways name by `ref`, not `name`** (fixed 2026-06-30): a highway step's `name` is empty and its identity is the `ref` ("I 80") + sign `destinations` - so `road = name ?: ref` and ramps read "**Take exit 72B toward Richards Blvd**" instead of a bare "take the exit"; `Maneuver.ref` also drives the banner shield even when the visible text is a name (Yolo Causeway / I 80). Validated against live OSRM. *(Offline GraphHopper reads the same fields since 2026-07-13: every graph already stored street_ref/street_destination/motorway_junction per edge, so offline steps now carry shields, "toward" sign text and exit numbers too - no graph rebuild was needed.)* *(The retired Google-keyless path used `DirectionsParser` to tag-strip `<step>` markup and a `fillTurnRoads` Nominatim reverse-geocode to patch the ≈3-of-11 turns Google omitted a `<road>` on - both **gone** now that OSRM supplies complete names; the Google markup parser only survives on the unreachable-OSRM fallback.)* **Regression tests:** `OsrmRouterTest` pins the `osrmType`/`osrmPhrase` mappings; `NavRoadNameTest` still drives captured markup through `NavEngine` for the fallback path.
 - ✅ **Walking / biking routes draw DASHED** (Google-style) - a second line layer on the route source (`vela-route-dash`, round-capped short on/off pattern) toggled by visibility, because MapLibre's `line-dasharray` disables `line-gradient` (so the solid traffic-gradient driving line and the dashed foot/bike line can't be one layer). Drive stays solid + traffic-coloured; Walk/Bike show the dashes. *Dot rendering rebuilt 2026-07-08 (twice):* dash patterns can never hold visual spacing across zoom (dash units are line-widths, the texture is quantised to integer zooms), and even MapLibre's line-placed symbol spacing stretches ~2x between integers. Final form: **Vela generates the dot POINTS itself** - one dot every ~17dp of screen distance along the route, recomputed as the zoom moves (0.2-zoom steps, live during the pinch via the camera-move listener; `regenRouteDots` in VelaMapView, capped at 3000 points) - chunky 26px SDF dots tinted like the old line, spacing EXACTLY constant at every zoom.
@@ -1220,7 +1219,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   ("the name of the road does change but it literally is the same road just going straight"). Fixed at the
   **router-mapping seam**, not by heuristics in the engine: `ManeuverType.CONTINUE` is now *minted only* for
   "same physical road, keep driving straight" - OSRM `continue`/`new name` with a straight/absent modifier
-  (`RouteGeometry.osrmType`) and GraphHopper `CONTINUE_ON_STREET` (`ghType`, whose old else-branch was also
+  (`RouteGeometry.osrmType`) and the offline engine's straight-on turn (`obfType`; the GraphHopper-era `ghType` else-branch was also
   purified: u-turns/ferries/PT no longer masquerade as CONTINUE - a u-turn keeps its road name and would
   have been silenced) - and `NavEngine` voice-silences every CONTINUE (prompts, turn-now cue, haptics)
   **unless OSRM attached lane guidance** ("use the left 2 lanes to continue onto I-80" still speaks - the
@@ -2042,16 +2041,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   "SPEED LIMIT" + number) in imperial, **EU/RoW** (white disc + red ring) in metric, and the number reddens
   when you exceed the limit + a tolerance (GPS speed is noisy). Source is **OSM `maxspeed`, keyless + offline**
  - not Google (Google gates posted limits behind the paid Roads API; they're absent from the keyless
-  payloads). Read from the **on-device GraphHopper graph Vela already ships**: `max_speed` was added to the
-  graph's encoded values (`GraphBuilder`/`GraphHopperRouteEngine`, byte-identical), and `currentRoadLimit(lat,lng)`
-  snaps the live fix to the nearest edge and reads it off the **base graph** - CH-safe (encoded values aren't
-  on the CH overlay), route-independent (tracks the road under the puck even off-route), off the main thread,
-  distance-gated + single-flighted per fix (`MapViewModel.updateSpeedLimit`); a sustained untagged stretch
-  clears a stale limit rather than showing it forever. **Crash-safe by construction** (every GraphHopper call
-  is `runCatching`-wrapped): a graph built before `max_speed` simply hides the badge - no crash, no routing
-  regression - so existing installs are unaffected. **Adversarially reviewed** (GH 11 decompiled: US mph
-  round-trips exactly; 150 km/h deliberately blanked since GraphHopper stores both a real 150 zone and a
-  derestricted road as 150). Verified: a Monaco graph rebuilds cleanly with `max_speed` + CH. **Coverage =
+  payloads). Read from the **on-device region file Vela already ships**: `currentRoadLimit(lat,lng)` snaps the
+  live fix to the nearest way of the downloaded obf (OsmAnd's `findRouteSegment`, 25 m) and reads the
+  way's `maxspeed` - route-independent (tracks the road under the puck even off-route), off the main
+  thread, distance-gated + single-flighted per fix (`MapViewModel.updateSpeedLimit`); a sustained untagged
+  stretch clears a stale limit rather than showing it forever. **Crash-safe by construction** (every engine
+  call is `runCatching`-wrapped): no file, no badge - no crash, no routing regression. US mph round-trips
+  exactly; 150 km/h and a derestricted `maxspeed=none` are deliberately blanked (a wrong number on an
+  autobahn is worse than none). Until 2026-09-15 this read the GraphHopper graph's `max_speed` encoded value. **Coverage =
   OSM `maxspeed` (partial)** - strong on highways/EU/urban, sparse on US residential. **Remaining to light it
   up for everyone: re-bake + re-host the region graphs with `max_speed` (CI), then a fresh region download
   shows it** (a version-discriminator so *existing* offline graphs auto-re-download is a small follow-up). **Now shown in FREE-DRIVE too (2026-07-12, user request):** the same `updateSpeedLimit` already ran on every live browse fix, it was only *rendered* during nav; the sign now also appears while you're simply driving with no route open (moving, on the clean map); it shares the unified speed box, which in free drive sits LOW in the corner, level with the locate button (2026-07-14) - only during nav does the box ride up to clear the ETA bar, and the scale bar yields the corner whenever the box is there. **Speed A** of the plan; **Speed B** (a keyless maxspeed PMTiles overlay) will remove the download-a-graph requirement so limits show anywhere, and the same badge lookup will fall back to it when no graph covers the road.
@@ -2124,7 +2121,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   the street address of an indexed OSM place finds it.
 - ✅ **True offline address routing - typed address → coordinate → route, no signal (2026-07-07).** Downloading
   a map area now also builds an on-device **forward geocoder** (`OfflineAddressStore`, SQLite), so an arbitrary
-  typed street address resolves to a coordinate offline and routes via the on-device GraphHopper engine - not
+  typed street address resolves to a coordinate offline and routes via the on-device engine - not
   just addresses that happen to be an indexed POI. Two OSM sources, fetched (keyless Overpass) over a **padded
   ~15 km box around the viewport** (not just the few blocks of tiles on screen, so a saved area covers the
   surrounding metro): **`addr:housenumber` points** for house-precise hits, and **named road centrelines**
@@ -2136,7 +2133,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   abbreviation-normalized ("Blvd"↔"boulevard", "W"↔"west"), so "W Covell Blvd" and "West Covell Boulevard" hit
   the same rows. **Device-verified (wifi fully off, in a residential suburb with thin OSM coverage):** the
   download saved **8591 addresses + 1466 streets**; a typed street address resolved to the right spot and
-  routed *5 min · 1.5 mi* from on-device GraphHopper; an arbitrary house number on another street resolved
+  routed *5 min · 1.5 mi* on the phone; an arbitrary house number on another street resolved
   through the fallback layers too. Names/streets themselves are never translated (data). Routing still works to
   anything else you can put on the map (offline search result, long-pressed pin, Choose-on-map).
   **Offline POIs now show an address (2026-07-07).** Most US chains have no `addr:*` in OSM (Applebee's came
@@ -2146,7 +2143,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   150 m. Device-verified: Applebee's offline now shows the street it sits on plus its
   OSM phone/website/hours.
   **No misleading "current traffic" offline (2026-07-07).** The directions ETA subtitle only says "current
-  traffic" when the route actually carries a live in-traffic ETA; an offline GraphHopper route (or any
+  traffic" when the route actually carries a live in-traffic ETA; an offline route (or any
   traffic-less route) shows the arrival time with no traffic note instead of a false "current traffic".
   **Upgrade nudge for older saved areas (2026-07-07).** Because the address index is built at download time,
   areas saved before this feature have tiles + POIs but no address data. Settings → Offline shows a one-tap
@@ -2240,7 +2237,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   footprints** - filling the exact gap where OSM has no `addr:housenumber`. WA hosted; a CI pipeline
   (`scripts/build-address-region.sh`, `tools/address-regions.json`) fans out the 42 US states with an
   OpenAddresses statewide source, same pattern as the building overlay.
-- ✅ Offline routing - on-device **GraphHopper** CH graphs (135-region world catalog), the heavy native lift, DONE 2026-06-30
+- ✅ Offline routing - on-device, DONE 2026-06-30 on GraphHopper CH graphs; since 2026-09-15 the OsmAnd obf engine over a 414-piece world catalog, GraphHopper retired
 - ⬜ Region downloads as portable PMTiles + historical traffic
 
 ## Platform & distribution
@@ -2360,7 +2357,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 
 ## Added 2026-07-17 (offline routing on pre-Android-14 devices)
 
-- ✅ **Downloaded routing graphs now load on Android below 14 (API 34).** Three pre-API-34 gaps in
+- ✅ **Downloaded routing graphs now load on Android below 14 (API 34).** *(Historical: the graphs and
+  this machinery were retired on 2026-09-15 with the move to the obf engine.)* Three pre-API-34 gaps in
   the GraphHopper offline engine meant a downloaded graph loaded on API 34+ only, and silently
   failed everywhere below (never caught because the `:ghprobe` test device was on Android 14):
   the custom model is now built programmatically instead of via the jar's Jackson record probe

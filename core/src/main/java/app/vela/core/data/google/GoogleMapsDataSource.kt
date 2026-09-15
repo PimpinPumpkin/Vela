@@ -645,7 +645,7 @@ class GoogleMapsDataSource @Inject constructor(
             }
             // OFFLINE fallback: OSRM (and Google) need the network. When OSRM came back empty — no
             // connectivity, or the FOSSGIS server is down — route fully ON-DEVICE from a downloaded
-            // GraphHopper graph, if one covers this area. No traffic offline, but complete named turns.
+            // obf region file, if one covers this area. No traffic offline, but complete named turns.
             val onDevice = if (open.isEmpty() && trafficRoute == null && routeEngine.isReady(mode))
                 routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways).map { it.copy(offline = true) } else emptyList()
             // Lead with Google's jam-avoiding path (option 3) only when it EARNS it: its live in-traffic
@@ -930,7 +930,7 @@ class GoogleMapsDataSource @Inject constructor(
     /** Name a provisional alternate the moment the user picks it to drive: snap its (Google) polyline
      *  through OSRM for real named turn-by-turn, guarded to reach the destination, and re-apply Google's
      *  live-traffic overlay. Failure keeps Google's own (abbreviated) steps so nav still works.
-     *  (On-device GraphHopper map-match for downloaded regions plugs in here next.) */
+     *  (An on-device map-match for downloaded regions could plug in here next.) */
     override suspend fun nameRoute(route: Route, origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean): Route = io {
         if (!route.provisional || route.polyline.size < 3) return@io route.copy(provisional = false)
         val vias = listOf(origin) + RouteGeometry.sampleVias(route.polyline) + destination
@@ -1128,7 +1128,7 @@ class GoogleMapsDataSource @Inject constructor(
     }
 
     private companion object {
-        // Cap on waiting for the on-device avoid route: GraphHopper answers in ~200 ms, but the
+        // Cap on waiting for the on-device avoid route: the obf engine answers in ~200 ms, but the
         // obf engine can take many seconds on a long route, and the route chooser must not hang.
         const val AVOID_ONDEVICE_TIMEOUT_MS = 4_000L
         /** A mid-drive reroute waits this long for Google's traffic once the open router has answered. */
