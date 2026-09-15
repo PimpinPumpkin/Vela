@@ -27,8 +27,10 @@ class OfflineRouteEngine(
 
     /** Only the GraphHopper side answers the speed-limit badge for now; the obf equivalent
      *  (nearest-road maxspeed off the routing section) is a follow-up. */
+    // obf first, like routing: the obf carries maxspeed on its road segments, so the badge no
+    // longer depends on a GraphHopper graph being installed (a step toward retiring those).
     override fun currentRoadLimit(lat: Double, lng: Double): Double? =
-        graphHopper.currentRoadLimit(lat, lng)
+        obf.currentRoadLimit(lat, lng) ?: graphHopper.currentRoadLimit(lat, lng)
 
     fun shutdown() {
         obf.shutdown()

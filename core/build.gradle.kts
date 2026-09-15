@@ -58,6 +58,9 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     testImplementation(libs.junit)
+    // The real org.json for the on-demand obf harness (ObfSpeedLimitProbeTest): the engine reads
+    // its region index with JSONArray, and Android's unit-test jar only stubs it.
+    testImplementation("org.json:json:20240303")
 }
 
 // Forward the trip-audit harness property into the TEST JVM (see NavReplayTest.auditSharedTripLog):
@@ -67,4 +70,5 @@ tasks.withType<Test>().configureEach {
     System.getProperty("velaTrip")?.let { systemProperty("velaTrip", it) }
     System.getProperty("velaSeg")?.let { systemProperty("velaSeg", it) }
     System.getProperty("velaProbe")?.let { systemProperty("velaProbe", it) }
+    System.getProperty("velaObf")?.let { systemProperty("velaObf", it) }
 }
