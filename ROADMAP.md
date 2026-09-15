@@ -651,6 +651,22 @@ project's core promise is that neither exists:
 
 ## Queued near-term
 
+- **Docs audit and cleanup (queued 2026-09-15).** README, FEATURES, ROADMAP, PRIVACY, CLAUDE and
+  docs/ have grown by accretion for three months: shipped items still listed as plans, plans
+  superseded by later decisions, features described three times in three tenses, and a FEATURES
+  file that reads as a changelog. One pass to state what the app does today in one place, move
+  the history into a changelog, prune the roadmap to what is actually still open, and make the
+  contributor notes in CLAUDE.md findable by topic instead of by date.
+- **Talk to the OpenStreetMap community about one-tap contributions (queued 2026-09-15).**
+  Vela already links an open (Overture) place to the same business elsewhere and can tell when a
+  listing is closed, moved, renamed or missing. The plan: a Vela-side service that, on a user's
+  tap ("this place is gone", "this place is missing", "wrong hours"), verifies the claim against
+  the business's own website or social page, never against Google, and files it into OSM as a
+  note or a reviewed edit under the OSM import and automated-edit guidelines, with the OSM
+  Foundation and the Data Working Group consulted BEFORE anything is pushed. Licensing is the
+  whole question: Overture places are CDLA-Permissive 2.0 and a business's own site is a primary
+  source, both fine for ODbL; anything traced from Google is not and never enters the pipe. Until
+  that conversation happens, Vela's in-app fixes stay local (the closed-listing hide list).
 - ~~Avoid tolls / avoid highways~~ - LIVE 2026-07-11: sticky chooser chips, honoured by the
   on-device graphs (all 135 regions rebaked with avoid CH profiles; the app reads the v2
   manifest). The public OSRM rejects exclude, so an online-only trip falls back to a normal
