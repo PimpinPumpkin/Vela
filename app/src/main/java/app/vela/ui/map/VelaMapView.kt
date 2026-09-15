@@ -336,6 +336,8 @@ private val lastEnsureKey = intArrayOf(-1)
 // recomposition after landing (a 1 Hz fix, a compass tick - always <=1 s away) uploads it at
 // camera-idle, where placement is invisible.
 private val flightDepth = intArrayOf(0)
+private val ambientRedoHandler = android.os.Handler(android.os.Looper.getMainLooper())
+private val ambientRedo = arrayOfNulls<Runnable>(1) // the pending Both-mode second dedupe pass
 
 private fun flightCb() = object : org.maplibre.android.maps.MapLibreMap.CancelableCallback {
     override fun onFinish() { if (flightDepth[0] > 0) flightDepth[0]-- }
@@ -463,6 +465,7 @@ fun VelaMapView(
     buildingOverlays: List<String> = emptyList(), // full pmtiles:// source URIs (file:// downloaded / https:// streamed)
     addressOverlays: List<String> = emptyList(), // pmtiles:// URIs for house-number labels (streamed, OpenAddresses)
     maxspeedOverlays: List<String> = emptyList(), // pmtiles:// URIs for the posted-speed overlay (streamed); read under the puck
+    hiddenOpenPlaceIds: Set<String> = emptySet(), // Overture ids whose Google listing said permanently closed: never drawn
     placesOverlays: List<String> = emptyList(),   // pmtiles:// URIs of the open-data places layer (Overture), file:// or streamed
     basemapArchive: String? = null,               // pmtiles://file:// of an installed offline basemap covering the view; swaps the style's tile source
     onOpenPlaceTap: (app.vela.core.model.Place) -> Unit = {}, // a tapped open-places feature, seeded from its tile attributes
@@ -1080,8 +1083,13 @@ fun VelaMapView(
     // supermarket, a branded chain) bypasses the rank so a lone landmark is never demoted by a
     // busier neighbor. The tile minzoom (bake) already leaves the long tail out of the z13-z16
     // tiles, so this is a cheap second cut on what the tile carries.
-    LaunchedEffect(placesOverlays, styleRef, darkTheme) {
+    LaunchedEffect(placesOverlays, styleRef, darkTheme, hiddenOpenPlaceIds) {
         val style = styleRef ?: return@LaunchedEffect
+        // A pin whose Google listing came back permanently closed (Overture lags Google by months)
+        // is filtered out of both tiers the moment the tap resolved, and stays out across restarts.
+        val hiddenFilter = if (hiddenOpenPlaceIds.isEmpty()) null else Expression.not(
+            Expression.`in`(Expression.get("id"), Expression.literal(hiddenOpenPlaceIds.toTypedArray<Any>())),
+        )
         runCatching { style.layers.filter { it.id.startsWith("vela-places-") }.forEach { style.removeLayer(it) } }
         runCatching { style.sources.filter { it.id.startsWith("vela-places-src-") }.forEach { style.removeSource(it) } }
         placesOverlays.forEachIndexed { i, uri ->
@@ -1220,6 +1228,7 @@ fun VelaMapView(
                 // Above the Google ambient layer, so in the "both" setting the open layer's icons
                 // win the collision slots and Google's extras fill the gaps, not the other way
                 // around. Dots under icons: an icon that renders simply covers its own dot.
+                if (hiddenFilter != null) { layer.setFilter(hiddenFilter); dots.setFilter(hiddenFilter) }
                 if (style.getLayer(AMBIENT_LAYER) != null) style.addLayerAbove(layer, AMBIENT_LAYER) else style.addLayer(layer)
                 // Dots go UNDER every label (basemap street names included), so a label's halo
                 // covers its dot and no dot ever sits on text. See the ambient dot tier.
@@ -3905,7 +3914,14 @@ private fun ensureLayers(style: Style) {
                 // stacking. allowOverlap+ignorePlacement were TRUE, so every ambient POI drew on top
                 // of its neighbours — a pile at tight zooms. Collision + padding spaces them; more
                 // appear as you zoom in. (Sorted by rank so the prominent ones win the slot.)
-                PropertyFactory.iconAllowOverlap(false),
+                // Collide below z17; from z17 (a strip of shops fills the screen) every Google pin
+                // draws. In Both mode the open layers sit above this one and claim placement
+                // first, so Google's extras for the shops the open layer thinned were losing the
+                // collision to the open icons and labels beside them and never appeared (device,
+                // 2026-09-15). Google's own map shows every pin at these zooms.
+                PropertyFactory.iconAllowOverlap(
+                    Expression.step(Expression.zoom(), Expression.literal(false), Expression.stop(17f, Expression.literal(true))),
+                ),
                 PropertyFactory.iconIgnorePlacement(false),
                 PropertyFactory.iconPadding(1.5f),
                 PropertyFactory.symbolSortKey(Expression.get("sort")),
@@ -5037,13 +5053,43 @@ private fun emphasizeShields(style: Style) {
  * (see styleKey), so each pass starts from Liberty's defaults — no need to undo.
  * No-ops on non-OpenMapTiles styles (e.g. the MapLibre demo basemap). Keyless.
  */
-/** The open places (Overture) features in the tiles MapLibre has loaded, as (name, location). Empty
- *  when no open places source is on the style, which is the common case. */
-private fun openPlacesLoaded(style: Style): List<Pair<String, LatLng>> {
+/** The open places (Overture) icons that are on screen for the Both-mode dedupe, as (name,
+ *  location): every icon ACTUALLY DRAWN right now (queryRenderedFeatures over the `vela-places-<i>`
+ *  icon layers) plus every loaded feature whose RANK qualifies it for an icon at this zoom (the
+ *  same steps the layer's `topOr` uses). Drawn alone was racy (2026-09-15): the ambient upload can
+ *  land a beat before the open icons render, and Google's copy then drew beside the open one;
+ *  loaded alone was wrong the other way (an open feature thinned by the rank steps or hidden under
+ *  a stacked point suppressed Google's copy and the user saw neither shop). The union is
+ *  deterministic for the thinning and only misses a stacked point, which the bake now spreads. */
+private fun openPlacesShown(map: MapLibreMap, style: Style, zoom: Double): List<Pair<String, LatLng>> {
+    val layers = style.layers.map { it.id }.filter { it.startsWith("vela-places-") && !it.startsWith("vela-places-dots-") }
+    if (layers.isEmpty()) return emptyList()
     val out = ArrayList<Pair<String, LatLng>>()
+    runCatching {
+        map.queryRenderedFeatures(RectF(0f, 0f, map.width, map.height), *layers.toTypedArray()).forEach { f ->
+            val pt = f.geometry() as? Point ?: return@forEach
+            val n = f.getStringProperty("name") ?: return@forEach
+            out += n to LatLng(pt.latitude(), pt.longitude())
+        }
+    }
+    fun num(f: org.maplibre.geojson.Feature, k: String): Double? = runCatching { f.getNumberProperty(k)?.toDouble() }.getOrNull()
+    fun qualifies(f: org.maplibre.geojson.Feature): Boolean {
+        val prom = num(f, "prominence") ?: 0.0
+        val rank = num(f, "rank") ?: 999.0
+        val crank = num(f, "crank") ?: 999.0
+        return when {
+            zoom < 13.0 -> true
+            zoom < 15.0 -> crank <= 2 || prom >= 6.0
+            zoom < 16.0 -> rank <= 1 || prom >= 5.0
+            zoom < 17.0 -> rank <= 5 || prom >= 4.0
+            zoom < 17.5 -> rank <= 12 || prom >= 3.0
+            else -> true
+        }
+    }
     style.sources.filter { it.id.startsWith("vela-places-src-") }.forEach { src ->
         runCatching {
             (src as? VectorSource)?.querySourceFeatures(arrayOf("places"), null)?.forEach { f ->
+                if (!qualifies(f)) return@forEach
                 val pt = f.geometry() as? Point ?: return@forEach
                 val n = f.getStringProperty("name") ?: return@forEach
                 out += n to LatLng(pt.latitude(), pt.longitude())
@@ -6333,36 +6379,54 @@ private fun applyData(
     // Deferred while a camera flight is in the air (AUDIT FIX 6, see flightDepth) - the gate
     // stays stale so the first recomposition after landing uploads the full set.
     if (ambientPois != lastAppliedAmbient && flightDepth[0] == 0) {
-        // "Both" places setting: the open places layer already draws most of these. Drop the
-        // Google places that agree by name with an open place within 80 m of them, so the map
-        // gets Google's extras (a new business, one the open data missed) and not two icons
-        // for every restaurant. The index property stays the list index, so a tap still opens
-        // the right place.
-        val openInView = openPlacesLoaded(style)
-        val ambientFc = FeatureCollection.fromFeatures(
-            ambientPois.mapIndexedNotNull { i, m ->
-                if (openInView.isNotEmpty() && openInView.any { (n, ll) -> ll.distanceTo(m.location) < 80.0 && namesAgree(n, m.name) }) return@mapIndexedNotNull null
-                Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
-                    val group = PoiIcons.groupFor(m.name, m.category)
-                    addStringProperty("name", m.name)
-                    addStringProperty("icon", "vela-poi-$group")
-                    addStringProperty("dotColor", PoiIcons.colorFor(group)) // mini-dot tier tint
-                    addNumberProperty(AMBIENT_INDEX_PROP, i)
-                    // Collision priority must be STABLE across the streamed partial paints: it used
-                    // to be the list index, and the pool RE-RANKS as search terms land, so the same
-                    // place's priority changed on every upload and the whole layer's placement
-                    // reshuffled - icons visibly consolidated and popped into each other on a cold
-                    // load (user 2026-07-14). Prominence is a property of the PLACE (identical in
-                    // every upload), so priorities hold still while the set grows; the index only
-                    // breaks ties between equally prominent places. Lower sort key places first.
-                    addNumberProperty("sort", (10.0 - m.prominence) * 1000.0 + i)
-                    // Prominence drives data-driven icon/text size on the layer (anchors read bigger).
-                    addNumberProperty("prominence", m.prominence)
-                }
-            },
-        )
-        style.getSourceAs<GeoJsonSource>(AMBIENT_SRC)?.setGeoJson(ambientFc)
+        fun uploadAmbient() {
+            // "Both" places setting: the open places layer already draws most of these. Drop the
+            // Google places that agree by name with an open place within 80 m of them, so the map
+            // gets Google's extras (a new business, one the open data missed) and not two icons
+            // for every restaurant. The index property stays the list index, so a tap still opens
+            // the right place.
+            val openInView = openPlacesShown(map, style, map.cameraPosition.zoom)
+            val ambientFc = FeatureCollection.fromFeatures(
+                ambientPois.mapIndexedNotNull { i, m ->
+                    if (openInView.isNotEmpty() && openInView.any { (n, ll) -> ll.distanceTo(m.location) < 80.0 && namesAgree(n, m.name) }) return@mapIndexedNotNull null
+                    Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
+                        val group = PoiIcons.groupFor(m.name, m.category)
+                        addStringProperty("name", m.name)
+                        addStringProperty("icon", "vela-poi-$group")
+                        addStringProperty("dotColor", PoiIcons.colorFor(group)) // mini-dot tier tint
+                        addNumberProperty(AMBIENT_INDEX_PROP, i)
+                        // Collision priority must be STABLE across the streamed partial paints: it used
+                        // to be the list index, and the pool RE-RANKS as search terms land, so the same
+                        // place's priority changed on every upload and the whole layer's placement
+                        // reshuffled - icons visibly consolidated and popped into each other on a cold
+                        // load (user 2026-07-14). Prominence is a property of the PLACE (identical in
+                        // every upload), so priorities hold still while the set grows; the index only
+                        // breaks ties between equally prominent places. Lower sort key places first.
+                        addNumberProperty("sort", (10.0 - m.prominence) * 1000.0 + i)
+                        // Prominence drives data-driven icon/text size on the layer (anchors read bigger).
+                        addNumberProperty("prominence", m.prominence)
+                    }
+                },
+            )
+            style.getSourceAs<GeoJsonSource>(AMBIENT_SRC)?.setGeoJson(ambientFc)
+        }
+        uploadAmbient()
         lastAppliedAmbient = ambientPois
+        // Both mode, second pass: Google's answer can land while the open places tiles for the
+        // new zoom are still loading (a search fly-in, a fast zoom), and then both the drawn and
+        // the loaded queries above come back empty, nothing is dropped, and every open pin gets
+        // a Google twin (the strip mall test, 2026-09-15). Re-run the same dedupe once the tiles
+        // have had two seconds, on the same list; a newer list cancels it. setGeoJson on an
+        // identical collection is cheap next to the fan-out that produced it.
+        ambientRedo[0]?.let { ambientRedoHandler.removeCallbacks(it) }
+        if (style.sources.any { it.id.startsWith("vela-places-src-") }) {
+            val redo = Runnable {
+                ambientRedo[0] = null
+                if (lastAppliedAmbient === ambientPois && style.isFullyLoaded && flightDepth[0] == 0) uploadAmbient()
+            }
+            ambientRedo[0] = redo
+            ambientRedoHandler.postDelayed(redo, 2000)
+        }
     }
 
     // Google-first: hide the OSM *business* POIs (poi_r1/r7/r20) while EITHER the ambient Google

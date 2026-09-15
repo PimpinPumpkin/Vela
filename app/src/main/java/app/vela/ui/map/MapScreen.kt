@@ -1164,6 +1164,7 @@ fun MapScreen(
             addressOverlays = state.addressOverlays,
             maxspeedOverlays = state.maxspeedOverlays,
             placesOverlays = state.placesOverlays,
+            hiddenOpenPlaceIds = state.hiddenOpenPlaceIds,
             basemapArchive = state.basemapArchive,
             onOpenPlaceTap = vm::onOpenPlaceTap,
             onRoadLimitKmh = vm::onOverlayRoadLimit,
