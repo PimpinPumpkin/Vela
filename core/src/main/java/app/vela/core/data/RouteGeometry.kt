@@ -92,7 +92,7 @@ object RouteGeometry {
             "?overview=full&geometries=polyline6" + if (alternatives) "&alternatives=3" else ""
         val req = Request.Builder()
             .url(url)
-            .header("User-Agent", VelaConfig.USER_AGENT)
+            .header("User-Agent", VelaConfig.VELA_UA)
             .build()
         http.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) return emptyList()
@@ -232,7 +232,7 @@ object RouteGeometry {
             (if (alternatives) "&alternatives=3" else "") +
             departBearingParam(departBearingDeg, points.size) +
             excludeParam(mode, avoidTolls, avoidHighways)
-        val req = Request.Builder().url(url).header("User-Agent", VelaConfig.USER_AGENT).build()
+        val req = Request.Builder().url(url).header("User-Agent", VelaConfig.VELA_UA).build()
         // The FOSSGIS community OSRM transiently 5xx/429/resets on mobile, and each miss otherwise drops
         // nav to Google's ABBREVIATED (nameless) steps — the "why aren't these street names?" bug. So retry
         // a couple times with a short backoff. A SUCCESSFUL response (even an empty route list = genuine
