@@ -253,6 +253,7 @@
     <string name="place_link_copied">הקישור הועתק</string>
     <string name="place_share_gmaps_link">קישור Google Maps</string>
     <string name="place_share_map_pin">סימון מפה (geo:)</string>
+    <string name="place_open_other_app">פתיחה באפליקציית מפות אחרת</string>
     <string name="place_share_coordinates">קואורדינטות</string>
     <string name="place_copy_coordinates">העתק קואורדינטות</string>
     <string name="place_coordinates_copied">הקואורדינטות הועתקו</string>

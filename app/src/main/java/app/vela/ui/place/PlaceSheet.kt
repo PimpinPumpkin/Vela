@@ -3913,10 +3913,30 @@ private fun ShareIconButton(place: Place, tint: Color) {
         open = false
     }
 
+    // Hand the place to another map app (OsmAnd, Organic Maps, whatever handles geo:) for the
+    // people who want Vela for looking things up and a different app for the drive, so their
+    // route never leaves the offline app they trust (GrapheneOS forum ask, 2026-09-15). A
+    // chooser over ACTION_VIEW geo: with Vela's own activity excluded, since Vela handles geo:
+    // too and would otherwise list itself.
+    fun openInOtherApp() {
+        runCatching {
+            val view = Intent(Intent.ACTION_VIEW, Uri.parse("geo:$lat,$lng?q=$lat,$lng(${Uri.encode(place.name)})"))
+            val chooser = Intent.createChooser(view, context.getString(R.string.place_open_other_app)).apply {
+                putExtra(
+                    Intent.EXTRA_EXCLUDE_COMPONENTS,
+                    arrayOf(android.content.ComponentName(context, app.vela.MainActivity::class.java)),
+                )
+            }
+            context.startActivity(chooser)
+        }
+        open = false
+    }
+
     Box {
         HeaderCircleButton(Icons.Default.Share, stringResource(R.string.place_share), tint, tint) { open = true }
         VelaMenu(expanded = open, onDismissRequest = { open = false }) {
             item(stringResource(R.string.place_open_web)) { openWeb() }
+            item(stringResource(R.string.place_open_other_app)) { openInOtherApp() }
             item(stringResource(R.string.place_copy_name)) { copyName() }
             item(stringResource(R.string.place_copy_link)) { copyLink() }
             // A geo: URI opens in ANY maps app (incl. Vela) — no google.com, the
