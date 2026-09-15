@@ -88,6 +88,8 @@ import kotlinx.coroutines.launch
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import app.vela.ui.theme.isAppInDarkTheme
+import app.vela.ui.theme.isAppInAmoled
+import androidx.compose.foundation.BorderStroke
 // D-pad-only operation (docs/dpad.md) — one import block so upstream merges stay clean.
 import androidx.compose.foundation.focusable
 import androidx.compose.ui.input.key.Key
@@ -206,8 +208,6 @@ fun ManeuverBanner(
             .then(
                 if (previewing) Modifier.clickable(onClick = onExitPreview) else Modifier.focusable(),
             ),
-        // Softer, more current shape than the stock card: big radius + a real shadow so the
-        // banner floats over the map instead of sitting on it like a toolbar.
         shape = RoundedCornerShape(24.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
@@ -624,12 +624,14 @@ fun NavSearchChips(
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
+    val amoled = isAppInAmoled()
     Card(
         modifier,
         shape = RoundedCornerShape(28.dp),
+        border = if (amoled) BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(
-            containerColor = SheetPalette.bg(dark),
+            containerColor = SheetPalette.bg(dark, amoled),
             contentColor = SheetPalette.ink(dark),
         ),
     ) {
@@ -686,7 +688,7 @@ fun NavSearchChips(
                     border = null,
                     shape = androidx.compose.foundation.shape.CircleShape,
                     colors = FilterChipDefaults.filterChipColors(
-                        containerColor = if (dark) Color(0xFF333539) else Color(0xFFF1F3F4),
+                        containerColor = SheetPalette.row(dark, amoled),
                         labelColor = SheetPalette.ink(dark),
                     ),
                     label = { Text(stringResource(labelRes)) },
@@ -724,6 +726,7 @@ fun NavControls(
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
+    val amoled = isAppInAmoled()
     // Google's gesture: the ETA bar is the handle for the step list. Drag it UP and the card GROWS
     // with the finger, its bottom edge anchored and its top rising like a sheet, the step rows
     // showing in the space that opens under the figures; past NAV_BAR_LIFT_COMMIT_DP (or an
@@ -771,9 +774,10 @@ fun NavControls(
             },
         // Match the banner's treatment: generous radius + shadow, a floating pill not a bar.
         shape = RoundedCornerShape(28.dp),
+        border = if (amoled) BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(
-            containerColor = SheetPalette.bg(dark),
+            containerColor = SheetPalette.bg(dark, amoled),
             contentColor = SheetPalette.ink(dark),
         ),
     ) {
