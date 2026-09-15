@@ -77,6 +77,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          if [ ! -f "places-${{ matrix.id }}.pmtiles" ]; then echo "no archive for ${{ matrix.id }} (no places); skipping"; mkdir -p entries; exit 0; fi
           gh release upload places-overlays "places-${{ matrix.id }}.pmtiles" --clobber --repo "$GITHUB_REPOSITORY"
           mkdir -p entries
           SIZE=$(stat -c %s "places-${{ matrix.id }}.pmtiles")
