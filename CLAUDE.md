@@ -3141,6 +3141,12 @@ architecture note.
   not installed (`regionQueue`, `regionQueueLeft/Total` in state) and `downloadRoutingGraph` pops the
   next at the end of each download (`startNextQueuedRegion`); cancel clears the queue. Built for the obf
   catalog's Laender/regions/zones split; on the live routing catalog it shows for Canada's provinces.
+- **Translation catch-up (2026-09-14).** Every locale (de es fr hu it iw ja nl pl pt ru sv uk zh zh-rTW)
+  had fallen ~205 keys behind English (everything since about August); all 15 are complete again
+  (one translation agent per locale, opus, native register matched to each existing file; placeholder
+  multisets, `\n` counts and XML validated per key). Weblate is still not live, so this is the flow:
+  when `values/strings.xml` grows, re-run the per-locale catch-up before a stable. Voice-command
+  examples are localized (a French address in fr, Ukrainian places in uk), not transliterated.
 - **Hidden WebViews sleep between fetches (2026-09-14).** Every hidden-WebView fetcher (`WebPhotoFetcher`,
   `WebPopularTimesFetcher`, `WebReviewsFetcher`, `WebDirectionsFetcher`, `WebStopDeparturesFetcher`) calls
   `onResume()` at the start of a fetch and `onPause()` when the last pending fetch is done, and the two
