@@ -521,8 +521,14 @@ class GoogleMapsDataSource @Inject constructor(
         if (waypoints.isNotEmpty()) {
             return@io coroutineScope {
                 val viaD = async { RouteGeometry.routeVia(http, listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways, departBearingDeg) }
-                val gD = async { googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways) }
+                // Same urgent grace as the single-destination path below (issue #397).
+                val gD = if (urgent) kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
+                    googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways)
+                } else async { googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways) }
                 val via = viaD.await().firstOrNull()
+                suspend fun googleOrGrace(): List<Route> =
+                    if (urgent && via != null) kotlinx.coroutines.withTimeoutOrNull(URGENT_GOOGLE_GRACE_MS) { gD.await() } ?: emptyList()
+                    else gD.await()
                 // OSRM unreachable → route the legs on-device (origin→w1→…→dest chained), like the
                 // single-destination path's offline fallback; only then fall to Google's DIRECT route
                 // (which reaches the destination but loses the stops).
@@ -536,9 +542,9 @@ class GoogleMapsDataSource @Inject constructor(
                     // answer is the DIRECT trip, so the bias is measured as a speed ratio (the
                     // distance difference cancels) and Google's congestion spans stay off a route
                     // that takes other roads.
-                    via != null -> gD.await().firstOrNull().let { g -> listOf(applyTraffic(via, g, freeFlowCal = speedCal(via, g))) }
+                    via != null -> googleOrGrace().firstOrNull().let { g -> listOf(applyTraffic(via, g, freeFlowCal = speedCal(via, g))) }
                     onDevice != null -> listOf(onDevice)
-                    else -> gD.await().take(1).map { it.copy(abbreviatedSteps = true, source = RouteSource.GOOGLE_ABBREVIATED) }
+                    else -> googleOrGrace().take(1).map { it.copy(abbreviatedSteps = true, source = RouteSource.GOOGLE_ABBREVIATED) }
                 }
                 // Google's direct route honours avoid (DirectionsPb.withAvoid); the open router's
                 // via route and its on-device fallback do not - only those get the note.
@@ -562,9 +568,24 @@ class GoogleMapsDataSource @Inject constructor(
             // (a 6-mi route came back with 2 of ~10 turns), so Google is only the FALLBACK + the
             // live-traffic source. Fetch both in parallel so the traffic round-trip is free.
             val openD = async { RouteGeometry.route(http, origin, destination, mode, avoidTolls, avoidHighways, tries, departBearingDeg) }
-            val googleD = async { googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways) }
+            // URGENT (a mid-drive reroute): Google runs on an unstructured scope so a dead or slow
+            // Google endpoint cannot hold the reroute. A diagnostics export (issue #397, 2026-09-15)
+            // showed reroutes taking 18 to 40 s while OSRM had answered in seconds, because the
+            // fetch waited for Google's empty replies and their backoff. Once the open router has
+            // a route, Google gets URGENT_GOOGLE_GRACE_MS more; past that the route goes out
+            // trafficless and the recheck's trafficUpgrade heals it minutes later. (A structured
+            // child would keep this scope open until the blocking HTTP call returned, which is the
+            // wait this exists to remove; the orphan finishes into the void, like the avoid compute.)
+            val googleD = if (urgent) kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
+                googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways)
+            } else async { googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways) }
             val open = openD.await()
-            val google = googleD.await()
+            val google = if (urgent && open.isNotEmpty()) {
+                kotlinx.coroutines.withTimeoutOrNull(URGENT_GOOGLE_GRACE_MS) { googleD.await() } ?: run {
+                    diag.record("directions", "urgent: google not back ${URGENT_GOOGLE_GRACE_MS} ms after OSRM, rerouting trafficless")
+                    emptyList()
+                }
+            } else googleD.await()
             val gTop = google.firstOrNull()
             // AVOID toggles: the public FOSSGIS OSRM rejects `exclude=` outright (probed
             // 2026-07-11 and again 2026-08-24: InvalidValue, its profiles were not built with
@@ -1110,6 +1131,8 @@ class GoogleMapsDataSource @Inject constructor(
         // Cap on waiting for the on-device avoid route: GraphHopper answers in ~200 ms, but the
         // obf engine can take many seconds on a long route, and the route chooser must not hang.
         const val AVOID_ONDEVICE_TIMEOUT_MS = 4_000L
+        /** A mid-drive reroute waits this long for Google's traffic once the open router has answered. */
+        const val URGENT_GOOGLE_GRACE_MS = 2_500L
         /** The bike-safe branch's on-device budgets (issue #401): a bike trip is short, so the obf
          *  engine usually answers well inside these; past them the online router takes over. */
         const val BIKE_ONDEVICE_TIMEOUT_MS = 6_000L
