@@ -1165,6 +1165,7 @@ fun MapScreen(
             addressOverlays = state.addressOverlays,
             maxspeedOverlays = state.maxspeedOverlays,
             placesOverlays = state.placesOverlays,
+            basemapArchive = state.basemapArchive,
             onOpenPlaceTap = vm::onOpenPlaceTap,
             onRoadLimitKmh = vm::onOverlayRoadLimit,
             speedOverlayOn = speedOverlayArmed, // motion-armed with hysteresis - NEVER on the parked browse map

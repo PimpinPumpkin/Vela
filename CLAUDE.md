@@ -3147,6 +3147,32 @@ architecture note.
   multisets, `\n` counts and XML validated per key). Weblate is still not live, so this is the flow:
   when `values/strings.xml` grows, re-run the per-locale catch-up before a stable. Voice-command
   examples are localized (a French address in fr, Ukrainian places in uk), not transliterated.
+- **Offline basemap (2026-09-14).** A region download is now routing (obf) + places (Overture) + the
+  MAP PICTURE: `tools/build-basemap-region.sh` (planetiler over the same Geofabrik extract the obf
+  bake uses, OpenMapTiles schema = what OpenFreeMap serves, so the same Liberty style draws it) ->
+  `basemap-<id>.pmtiles` on the `basemap-tiles` release with `basemap-manifest.json`
+  (`.github/workflows/basemap-tiles.yml`, matrix from `tools/routing-regions.json` group/ids, Java 21,
+  planetiler base data cached, bounds read from the archive header; `scripts/merge-basemap-manifest.sh`).
+  Saarland full z14 = 33 MB (a lite z13 no-buildings tier = 8 MB, not wired). App: `PmtilesRegionStore`
+  is the shared base of `PlacesTileStore` and `BasemapTileStore` (`files/basemap/`, never streamed,
+  `installedFor(center)` = smallest covering archive); `MapUiState.basemapArchive`; `refreshBasemapArchive`
+  runs with the places refresh AND at VM init from the seed location; `downloadBasemapForRegion` /
+  `downloadBasemapForArea` chain into every region and viewport download; deleted with the region;
+  counted under "Saved areas & map cache". **The engine rules found the hard way (a full evening):**
+  (1) the local archive must be added as a source AFTER the style loads and the layers using it
+  re-attached (`LOCAL_BASEMAP_SRC`, `localBasemapLayerIds`, `withLocalBasemap` re-points every
+  `openmaptiles` layer); declared in the JSON or via `Style.Builder.withSource` it never got past the z0
+  tile; (2) a labeled tile only completes once every glyph range and the sprite RESOLVE, so with no
+  signal the remote hosts hang and the map is blank; glyphs and the sprite are served from
+  `file://` (`GlyphPackStore`: the `map-fonts` release zip unzipped into `files/glyphs/`, ~200 MB on
+  disk, pulled with the first basemap download and self-healed at startup; the bundled sprite copied to
+  `files/sprites/`; `asset://` hung like the network); (3) a process that STARTS offline on the remote
+  style poisons the engine's shared glyph/sprite managers for every later style, so the local style is
+  chosen before the first load (`refreshBasemapArchive(seed)` in init); (4) every helper that read
+  `getSource("openmaptiles")` (theme, hillshade, house numbers, contrast layers, satellite roads,
+  road-name dictionary) now goes through `basemapSrc(style)`, else the offline map came up light and
+  bare. Verified on the 4a from a cold offline start: Saarlouis and Saarbruecken draw with streets,
+  names, buildings, shields, dark theme, plus the places layer and offline routing.
 - **Hidden WebViews sleep between fetches (2026-09-14).** Every hidden-WebView fetcher (`WebPhotoFetcher`,
   `WebPopularTimesFetcher`, `WebReviewsFetcher`, `WebDirectionsFetcher`, `WebStopDeparturesFetcher`) calls
   `onResume()` at the start of a fetch and `onPause()` when the last pending fetch is done, and the two
