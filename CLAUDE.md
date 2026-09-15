@@ -3401,7 +3401,18 @@ Gotchas:
   label while Google labels every pin; below z15 only the coarse-cell winners carry text, so the
   extra slots cost nothing at the wide views. NB in Both mode the Google top-up's low-prominence
   places stay unlabeled until z17.5 by the ambient layer's own tiers; open mode labels every icon
-  it draws), minzooms >=6 z13 / >=4.5 z14 / >=3.5 z15 / >=2.5 z16 / else z17.
+  it draws), **three bake rules + one layer rule from the strip-mall look (2026-09-15 evening):**
+  (1) STACKED POINTS: Overture puts a building's tenants on one parcel point (17% of Davis rows
+  shared their point: medical suites, strip-mall tenants) and coincident icons collide at EVERY
+  zoom, so the shop under a stack never drew; the bake spreads a stack on a small ring (8 to 20 m,
+  golden-angle steps, best row stays put) and the layer allows icon overlap from z18 (a step
+  expression) for archives baked before that. (2) TENANTS: a row at an anchor category's address
+  (supermarket, department store, mall, hospital, university, big-box) within ~200 m and not an
+  anchor itself loses 2 prominence points, so a Safeway pharmacy or the Western Union counter
+  named "SAFEWAY #1561" no longer outranks the store in its cell. (3) `sandwich_shop`, `deli`,
+  donut/bagel/dessert/smoothie shops, taqueria, diner map to the FOOD group (Subway wore a cart
+  icon). Validated on a local Davis bake before the world rebake; verify a region with
+  `scripts`-free tooling: the scratchpad venv holds `pmtiles` + `mapbox-vector-tile`.), minzooms >=6 z13 / >=4.5 z14 / >=3.5 z15 / >=2.5 z16 / else z17.
   `openPlaceCache` (VM, LRU 500, device-local, PERSISTED to `files/open_place_links.json` as
   `[{o: overtureId, p: PlaceJson}]`, loaded on a Main-dispatched launch after init so it never races the
   constructor, written 2 s after a new link, slim listings without a review count or hours never

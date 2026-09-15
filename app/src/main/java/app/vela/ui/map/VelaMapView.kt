@@ -1161,7 +1161,14 @@ fun VelaMapView(
                                 Expression.stop(0.0, 0.78f), Expression.stop(8.0, 1.3f),
                             ),
                         ),
-                        PropertyFactory.iconAllowOverlap(false),
+                        // Collide below z18; from z18 (about 40 ft) every icon draws even on top of a
+                        // neighbour. Overture stacks a building's tenants on one parcel point, so
+                        // with collision on, the shop under a stack never appeared at any zoom (user
+                        // 2026-09-15: a sandwich shop missing at 20 ft). The bake also spreads such
+                        // stacks a few metres; this is the belt for archives baked before that.
+                        PropertyFactory.iconAllowOverlap(
+                            Expression.step(Expression.zoom(), Expression.literal(false), Expression.stop(18f, Expression.literal(true))),
+                        ),
                         PropertyFactory.iconIgnorePlacement(false),
                         PropertyFactory.iconPadding(1.5f),
                         PropertyFactory.symbolSortKey(Expression.subtract(Expression.literal(10f), Expression.get("prominence"))),
