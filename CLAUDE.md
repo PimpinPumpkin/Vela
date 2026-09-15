@@ -3298,8 +3298,12 @@ architecture note.
   PMTiles magic check) rides along with a region download (`downloadPlacesForArea`, next to the building
   overlay), `deleteRoutingGraph` removes archives whose bbox centre sits in the region; manifest misses are
   memoised 10 min (the lookup runs on every camera idle). Labels use `PoiIcons.ambientLabelColor(dark)` off
-  the baked `icon` property (the fixed grey was the "text looks off" report), two label anchors not four
-  (hundreds of features per view), minzooms >=6 z13 / >=4.5 z14 / >=3.5 z15 / >=2.5 z16 / else z17.
+  the baked `icon` property (the fixed grey was the "text looks off" report), FOUR label anchors
+  (right/left/top/bottom, 2026-09-15: with two, a strip mall's row of icons dropped every second
+  label while Google labels every pin; below z15 only the coarse-cell winners carry text, so the
+  extra slots cost nothing at the wide views. NB in Both mode the Google top-up's low-prominence
+  places stay unlabeled until z17.5 by the ambient layer's own tiers; open mode labels every icon
+  it draws), minzooms >=6 z13 / >=4.5 z14 / >=3.5 z15 / >=2.5 z16 / else z17.
   `openPlaceCache` (VM, LRU 500, device-local, PERSISTED to `files/open_place_links.json` as
   `[{o: overtureId, p: PlaceJson}]`, loaded on a Main-dispatched launch after init so it never races the
   constructor, written 2 s after a new link, slim listings without a review count or hours never

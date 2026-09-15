@@ -1182,7 +1182,16 @@ fun VelaMapView(
                         // Two anchors, not the ambient layer's four: this layer carries hundreds of
                         // features per view where the ambient one carries dozens, and each anchor
                         // is another placement attempt per label per frame.
-                        PropertyFactory.textVariableAnchor(arrayOf(Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_LEFT)),
+                        // Four slots like the ambient layer: with only right/left, a strip mall's row of
+                        // icons dropped every second label (textOptional keeps the icon), and Google
+                        // labels every pin it draws. Below z15 only the coarse-cell winners carry text,
+                        // so the extra slots cost nothing where the view holds hundreds of features.
+                        PropertyFactory.textVariableAnchor(
+                            arrayOf(
+                                Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_LEFT,
+                                Property.TEXT_ANCHOR_TOP, Property.TEXT_ANCHOR_BOTTOM,
+                            ),
+                        ),
                         PropertyFactory.textRadialOffset(1.4f),
                         PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
                         PropertyFactory.textMaxWidth(7f),
