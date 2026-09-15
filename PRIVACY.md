@@ -76,7 +76,7 @@ Row by row, the same comparison the README summarizes:
 | Every pan and zoom of the map | Yes - their servers render the map | Yes | No - map tiles come from OpenFreeMap, so Google never sees you browse |
 | Your searches | Yes, saved to your account history | Yes | The query text reaches Google anonymously, only when you search |
 | Place pages you open | Yes | Yes | The place lookup reaches Google anonymously |
-| Turn-by-turn routes | Yes, full trip telemetry | Yes | Routing runs on open OSRM/GraphHopper; Google is asked anonymously for the traffic ETA, plus your current position during in-drive re-routes and re-checks. Your GPS trail as a whole never leaves the phone |
+| Turn-by-turn routes | Yes, full trip telemetry | Yes | Routing runs on open OSRM, or OsmAnd-format region files on the phone; Google is asked anonymously for the traffic ETA, plus your current position during in-drive re-routes and re-checks. Your GPS trail as a whole never leaves the phone |
 | Saved places, home, work | Stored on their servers | Stored on their servers | Stored only on your phone |
 | Ad profile building | Feeds your ads profile | Feeds your ads profile | Nothing to attach it to |
 | Works with no Google contact at all | No | No | Yes - downloaded regions search, route, and navigate fully offline |

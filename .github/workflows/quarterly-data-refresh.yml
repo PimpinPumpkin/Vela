@@ -26,13 +26,9 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
     steps:
-      - name: Routing graphs (all groups, current v2 generation)
-        run: |
-          for g in us canada europe oceania asia south-america central-america africa; do
-            gh workflow run routing-graphs.yml --repo "$REPO" -f group="$g" -f variant=v2
-            sleep 5 # dispatch-api niceness; the workflow's own concurrency group serializes the runs
-          done
-
+      # Routing: the obf bake (obf-regions.yml) stays a manual dispatch on purpose (runner memory
+      # limits and the staging -> live manifest copy are human steps); the GraphHopper graph
+      # refresh that used to run here went with the graphs (2026-09-15).
       - name: Building overlays (all catalog groups)
         run: |
           for g in us world chunk; do

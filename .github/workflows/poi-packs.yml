@@ -4,7 +4,7 @@
 # when its routing graph is downloaded.
 #
 # Run from the Actions tab → "Build offline place packs" → pick a `group` or pass explicit `ids`.
-# Race-safety is the routing-graphs pattern: each region builds in its own matrix job and uploads
+# Race-safety is the obf-regions pattern: each region builds in its own matrix job and uploads
 # ONLY its own <id>.zip + a manifest *entry* artifact; one final `merge` job folds every entry into
 # poi-pack-manifest.json in a single upload.
 name: Build offline place packs

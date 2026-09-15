@@ -35,7 +35,7 @@ Services** (GrapheneOS / no-GMS ROMs), distributed via F-Droid/Obtainium, GPLv3.
 - Account sync. (In-app Street View, turn-by-turn *offline* routing and photo
   author/date, once non-goals, are all DONE - the pano viewer renders Google's
   equirect tiles on its own GL sphere since 2026-07-15 (embedding Google's WebGL
-  page rendered black, which is what originally parked it), GraphHopper covers
+  page rendered black, which is what originally parked it), the obf engine covers
   offline routing, the reviews DOM scrape covers photo author/date.) See
   `FEATURES.md` "Known debts."
 - **Popular/busy times - DONE keyless (2026-06-19), not a non-goal.** Earlier I wrongly
@@ -81,8 +81,8 @@ Two Gradle modules, strict boundary:
         │   │   ├─ PolylineCodec          encoded-polyline decode (calibration-free)
         │   │   └─ parse/                 Search / Directions / Transit / Photos / Reviews
         │   ├─ RouteGeometry             OSRM turn-by-turn (open router) + parse of steps/lanes/refs
-        │   ├─ RouteEngine               offline-routing interface (connectivity/graph-presence picks it)
-        │   ├─ GraphHopperRouteEngine    on-device GraphHopper CH graphs, one per downloaded region
+        │   ├─ RouteEngine               offline-routing interface (connectivity/region-presence picks it)
+        │   ├─ ObfRouteEngine            on-device OsmAnd obf router over the downloaded region files
         │   ├─ RouteCorridor             "search along route" - filter results to the line
         │   ├─ OverpassPois              keyless OSM POI + addr + street fetch (offline-search/geocode source)
         │   ├─ OfflinePoiStore           on-device SQLite POI index (offline search)
@@ -106,7 +106,7 @@ Two Gradle modules, strict boundary:
         ├─ ui/theme/         AppTheme - in-app light/dark, decoupled from the OS
         ├─ ui/               SheetPalette (one shared sheet palette), Format, Units
         ├─ web/              WebPhotoFetcher, WebDirectionsFetcher - hidden-WebView scrapes
-        ├─ offline/          OfflineMaps (MapLibre tiles) + RoutingGraphStore (GraphHopper graphs) + PoiPackStore (place packs) + OverlayTileStore (building-footprint PMTiles)
+        ├─ offline/          OfflineMaps (MapLibre tiles) + ObfStore (obf region files) + RegionCatalog (manifests) + PoiPackStore (place packs) + OverlayTileStore (building-footprint PMTiles)
         └─ ui/settings/      SettingsScreen (appearance / style / voice / haptics / keep-screen-on / offline)
 ```
 
@@ -288,12 +288,13 @@ and the faster-route `maybeRecheck` now call `directions(loc, dest, mode, remain
 you haven't reached, instead of dropping them; the `reaches(dest)` guards are unchanged (the route still ends
 at the same final dest). The panel has up/down **reorder** arrows (`moveStop`).
 
-**Offline routing (on-device, DONE 2026-06-30).** When OSRM is unreachable, `directions()` routes fully
-on the phone via **GraphHopper** (`core/data/GraphHopperRouteEngine`, pure-JVM on ART - three workarounds:
-MMAP data-access, a Janino-free `SpeedWeighting` factory, swallowed `close()`; Contraction Hierarchies →
-~200 ms). Region **CH graphs are built off-device** (`tools/graphbuilder`, same weighting + CH) and **hosted
-as GitHub-release assets** - a **135-region world catalog** (`tools/routing-regions.json` → a race-safe
-GitHub-Actions build matrix → `routing-manifest.json`). The app downloads regions into `filesDir/graphs/<id>/`
+**Offline routing (on-device, DONE 2026-06-30; obf engine since 2026-09-15).** When OSRM is unreachable,
+`directions()` routes fully on the phone via **OsmAnd's router** (`core/data/ObfRouteEngine`, the vendored
+pure-Java router + binary reader over downloaded `.obf` region files; the speed-limit badge and the
+romanized road names read off the same files). Region files are **baked off-device** (`scripts/build-obf-region.sh`,
+MapCreator over a roads-only osmium pre-filter) and **hosted as GitHub-release assets** - a **414-piece world
+catalog** (`tools/routing-regions.json` -> a race-safe GitHub-Actions build matrix -> `obf-manifest.json`).
+The first engine, GraphHopper over CH graphs, was retired on 2026-09-15. The app downloads regions into `filesDir/obf/<id>.obf`
 (by picker, or bundled with an offline-tiles area download) and routes a trip on the **smallest installed
 region box covering both endpoints** (boxes overlap at borders; falls through to the next-smallest). A trip
 must fit one region's monolithic graph; cross-region falls online.
@@ -333,7 +334,7 @@ small (8 addresses in a dense suburb; the padded box → 8591 addresses + 1466 s
 housenumber` points (house-precise) and named-road centrelines thinned to ~1 pt/120 m (street-level fallback
 where OSM maps the road but no house numbers - the US-suburb reality). `geocode()` layers exact → interpolated
 between bracketing numbers → nearest house on street → nearest centreline point; street names are
-abbreviation-normalized both ways. The result Place routes through the same GraphHopper offline engine.
+abbreviation-normalized both ways. The result Place routes through the same offline engine.
 Device-verified wifi-off in a downloaded suburb. A **quiet offline indicator** (reactive `ConnectivityManager` →
 `MapUiState.offline`) replaced the old banner: a greyed globe-slash + "Offline" in the search bar and a
 globe-slash chip on the basemap.
@@ -707,9 +708,8 @@ enforces same-package/same-signature. Launch check throttled to ~daily behind th
 See **[`FEATURES.md`](FEATURES.md)** for the exhaustive, ticked list (search/places,
 reviews, photo gallery, directions + alternates + swap + depart-time +
 search-along-route, drive/walk/bike/transit, turn-by-turn with shields/lanes/voice/
-haptics/speedometer/**per-lane diagram**/**posted speed-limit sign** (OSM `maxspeed` via the on-device
-GraphHopper graph's `max_speed` encoded value - keyless, offline, base-graph snap so it's CH-safe;
-Google gates limits behind the paid Roads API), traffic overlay, **offline on-device routing** (GraphHopper,
-135-region world catalog), offline basemap + POI (the offline SQLite POI index keeps OSM
+haptics/speedometer/**per-lane diagram**/**posted speed-limit sign** (OSM `maxspeed` off the downloaded
+obf's way data - keyless, offline; Google gates limits behind the paid Roads API), traffic overlay,
+**offline on-device routing** (the obf engine, 414-piece world catalog), offline basemap + POI (the offline SQLite POI index keeps OSM
 address/phone/website/opening_hours, not just name+category), Home/Work shortcuts,
 saved/recent places, deep links, scale bar, in-app theme, the resilience layer above).

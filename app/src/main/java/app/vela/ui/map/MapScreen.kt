@@ -5052,7 +5052,7 @@ private fun ListEditorDialog(
  * The posted speed-limit sign shown by the speedometer during nav - US MUTCD style (white rounded
  * rectangle, "SPEED LIMIT" + number) in imperial units, EU/RoW style (white disc, red ring, number)
  * in metric. The number turns red when the current GPS speed exceeds the limit by a tolerance (GPS
- * speed is noisy, so a plain > would flap). [limitKmh] is the OSM/GraphHopper value in km/h.
+ * speed is noisy, so a plain > would flap). [limitKmh] is the OSM value in km/h.
  */
 @Composable
 private fun SpeedWidget(

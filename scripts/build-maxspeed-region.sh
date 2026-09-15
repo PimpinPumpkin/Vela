@@ -2,7 +2,7 @@
 # Build + publish ONE region's POSTED-SPEED-LIMIT overlay as a PMTiles archive to the `maxspeed-overlays`
 # GitHub release, merged into maxspeed-overlay-manifest.json. It carries OSM `maxspeed` on the road ways,
 # so the app can show a posted speed-limit sign WITHOUT the (much larger) offline routing graph downloaded
-# - the keyless "Speed B" source that GraphHopperRouteEngine.currentRoadLimit falls back to. Sibling of
+# - the keyless "Speed B" source the online speed badge reads when no obf covers the road. Sibling of
 # build-routing-region.sh (same Geofabrik OSM PBF source) and build-overlay-region.sh (same tippecanoe →
 # PMTiles → release + manifest publish). ADDITIVE + reversible: its own release tag + manifest, nothing
 # the routing/building/address artifacts touch; delete the tag to revert.

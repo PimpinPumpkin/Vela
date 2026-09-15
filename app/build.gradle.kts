@@ -9,25 +9,8 @@ plugins {
     alias(libs.plugins.baselineprofile)
 }
 
-// GraphHopper's MMapDataAccess uses JDK-13 absolute-bulk ByteBuffer methods (ART API 34+ only):
-// an artifact transform rewrites those call sites to app.vela.core.util.ByteBufferCompat so
-// offline region graphs load on the API 26-33 devices Vela's minSdk still supports. See
-// buildSrc/src/main/kotlin/GraphHopperByteBufferPatch.kt. The patched calls behave identically
-// on API 34+, so there is no per-device build variance. (Fix contributed by ars18.)
-val bbPatched = Attribute.of("graphhopperByteBufferPatched", Boolean::class.javaObjectType)
 dependencies {
-    testImplementation(libs.junit) // SearchGatesTest: the search/results gates as a pure function
-    attributesSchema { attribute(bbPatched) }
-    artifactTypes.getByName("jar") { attributes.attribute(bbPatched, false) }
-    registerTransform(GraphHopperByteBufferPatch::class.java) {
-        from.attribute(bbPatched, false)
-            .attribute(org.gradle.api.artifacts.type.ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, org.gradle.api.artifacts.type.ArtifactTypeDefinition.JAR_TYPE)
-        to.attribute(bbPatched, true)
-            .attribute(org.gradle.api.artifacts.type.ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, org.gradle.api.artifacts.type.ArtifactTypeDefinition.JAR_TYPE)
-    }
-}
-configurations.configureEach {
-    if (isCanBeResolved) attributes.attribute(bbPatched, true)
+    testImplementation(libs.junit) // app-module unit tests (SearchGatesTest, DiagScrubTest)
 }
 
 android {
@@ -55,20 +38,8 @@ android {
             "\"${(project.findProperty("maptilerKey") as String?) ?: ""}\"",
         )
 
-        // Offline-routing region manifest (lists the prebuilt per-region CH graphs to download).
-        // Default = the v2 generation (avoid-toll/avoid-motorway CH profiles baked in, all 135
-        // regions rebaked 2026-07-11); routing-manifest.json (v1) stays hosted beside it, so
-        // rolling back is reverting this one line. Override for local testing with
-        // -ProutingManifestUrl=http://127.0.0.1:8099/manifest.json (served via `adb reverse`).
-        buildConfigField(
-            "String",
-            "ROUTING_MANIFEST_URL",
-            "\"${(project.findProperty("routingManifestUrl") as String?)
-                ?: "https://github.com/PimpinPumpkin/Vela/releases/download/routing-graphs/routing-manifest-v2.json"}\"",
-        )
-        // Obf region catalog (the GraphHopper graphs' successor, issue #214). While this manifest
-        // is empty/absent the app serves the legacy routing-graph catalog; once regions are baked
-        // to the `obf-regions` release the same Settings rows download obf instead. Override for
+        // Obf region catalog (issue #214): the one offline-routing catalog since the GraphHopper
+        // graphs were retired (2026-09-15). Override for
         // local testing with -PobfManifestUrl=http://127.0.0.1:8099/obf-manifest.json (adb reverse).
         buildConfigField(
             "String",

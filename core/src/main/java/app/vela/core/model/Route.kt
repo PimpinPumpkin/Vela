@@ -161,7 +161,7 @@ enum class RouteSource {
     GOOGLE_PROVISIONAL,
     /** On-device OsmAnd obf routing (downloaded region). */
     OBF,
-    /** On-device GraphHopper graph (the legacy offline engine). */
+    /** On-device GraphHopper graph (the retired offline engine; kept so old trip files read back). */
     GRAPHHOPPER,
     /** The FOSSGIS Valhalla bicycle profile (the bike-safe setting). */
     VALHALLA,

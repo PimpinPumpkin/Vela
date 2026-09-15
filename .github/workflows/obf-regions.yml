@@ -4,7 +4,7 @@
 # this catalog automatically once obf-manifest.json has entries; while it is empty the legacy
 # graph catalog keeps serving, so this workflow IS the cutover switch.
 #
-# Same race-safe matrix shape as routing-graphs.yml: each region job uploads only its own
+# Race-safe matrix shape (the one the retired graph bake used): each region job uploads only its own
 # <id>.obf and emits a manifest-entry artifact; one merge job folds every entry into
 # obf-manifest.json in a single upload.
 name: Build obf regions

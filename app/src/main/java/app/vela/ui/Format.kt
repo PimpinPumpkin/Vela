@@ -62,8 +62,8 @@ fun formatSpeed(metersPerSecond: Float): Pair<Int, String> =
         (metersPerSecond * 3.6).roundToInt() to "km/h"
     }
 
-/** Posted speed limit (given in km/h from OSM/GraphHopper) as a (value, unit) pair in the display
- *  units. An mph-tagged US road round-trips exactly: 35 mph → GraphHopper's max_speed EV quantizes to
+/** Posted speed limit (given in km/h from OSM via the obf engine or the overlay) as a (value, unit) pair in the display
+ *  units. An mph-tagged US road round-trips exactly: 35 mph, which OSM stores as km/h, quantizes to
  *  56.0 km/h → ×0.621371 = 34.8 → rounds back to 35 mph (all 25–85 mph US limits round-trip). */
 fun formatSpeedLimit(kmh: Double): Pair<Int, String> =
     if (Units.imperial.value) (kmh * 0.621371).roundToInt() to "mph"
