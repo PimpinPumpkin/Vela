@@ -1158,14 +1158,17 @@ fun VelaMapView(
                         PropertyFactory.iconIgnorePlacement(false),
                         PropertyFactory.iconPadding(1.5f),
                         PropertyFactory.symbolSortKey(Expression.subtract(Expression.literal(10f), Expression.get("prominence"))),
+                        // Every icon carries its name, the way Google's do (an unlabeled pin reads as
+                        // clutter, user 2026-09-14): the label steps equal the icon steps, and
+                        // collision alone decides which labels survive a crowded block.
                         PropertyFactory.textField(
                             Expression.step(
                                 Expression.zoom(),
                                 name,
-                                Expression.stop(13f, topOr("crank", 1, 6.0, name)),
+                                Expression.stop(13f, topOr("crank", 2, 6.0, name)),
                                 Expression.stop(15f, topOr("rank", 1, 5.0, name)),
-                                Expression.stop(16f, topOr("rank", 3, 4.5, name)),
-                                Expression.stop(16.5f, topOr("rank", 6, 4.0, name)),
+                                Expression.stop(16f, topOr("rank", 5, 4.0, name)),
+                                Expression.stop(17f, topOr("rank", 12, 3.0, name)),
                                 Expression.stop(17.5f, name),
                             ),
                         ),
