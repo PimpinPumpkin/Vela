@@ -3134,6 +3134,13 @@ architecture note.
   strip those, and don't let a `Set-Cookie` downgrade `CONSENT` to `PENDING`.
 - No GMS: no FCM/Firebase/Play Integrity/Fused. If push is needed later, use
   UnifiedPush; crash reporting via ACRA/self-hosted Sentry.
+- **Whole-country downloads from a split catalog (2026-09-14).** Offline maps > "Entire states &
+  countries" shows one "All of <parent>" row per parent shared by two or more rows (the trailing
+  parenthetical of the region name: "Bayern (Germany)", "Nunavut (Canada)"; "(state)" is not a parent)
+  with "Download all", which calls `MapViewModel.downloadRoutingGraphs(pieces)`: it queues every piece
+  not installed (`regionQueue`, `regionQueueLeft/Total` in state) and `downloadRoutingGraph` pops the
+  next at the end of each download (`startNextQueuedRegion`); cancel clears the queue. Built for the obf
+  catalog's Laender/regions/zones split; on the live routing catalog it shows for Canada's provinces.
 - **Hidden WebViews sleep between fetches (2026-09-14).** Every hidden-WebView fetcher (`WebPhotoFetcher`,
   `WebPopularTimesFetcher`, `WebReviewsFetcher`, `WebDirectionsFetcher`, `WebStopDeparturesFetcher`) calls
   `onResume()` at the start of a fetch and `onPause()` when the last pending fetch is done, and the two
