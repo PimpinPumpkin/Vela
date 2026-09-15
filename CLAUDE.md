@@ -3163,8 +3163,16 @@ architecture note.
   board verified on the 4a); `WebPopularTimesFetcher` followed (203 -> 146 lines: `fetch` =
   `session { request { ensureWarm(); evaluate(script) } }`, the two-step warm keyed on page-finish
   counts, `onReaped` drops the warm so a reaped view re-warms, and it logs `popular: raw= parsed=`
-  under `VelaWeb`); `WebPhotoFetcher` and `WebReviewsFetcher` are the next conversions, one PR each
-  with a device check, since the scrapes are the product.
+  under `VelaWeb`); `WebPhotoFetcher` followed (454 -> 411 lines, the walk script untouched): the
+  base gained `bridge()` (a fetcher whose script reports several result kinds returns its own
+  `VelaBridge` object, its `onResult` calling `deliver`), `allowNavigation(uri)` (photos stay on
+  google.com so the overview's Menu action link cannot walk the scrape off the page), and the
+  offscreen 1200x3200 viewport moved into `configure`; the scraper is injected ONCE per request by
+  whichever of the page-finish settle and the 7 s load cap fires first (`inject`, guarded by
+  `isPending` + an injected set), `warm()` is a suspend session the VM launches, and a reaped view
+  clears `warmed` so the next search boots it again. Verified on the 4a: two galleries in a row on
+  one view (31 and 23 photos, partials streaming, distinct walk keys). `WebReviewsFetcher` is the
+  last conversion, its own PR with a device check, since the scrapes are the product.
 - **Route provenance is one field (2026-09-15, issue #417 refactor 1, step 1).** `Route.source:
   RouteSource` (OSRM, OSRM_VIA_SNAP, GOOGLE_NAMED, GOOGLE_ABBREVIATED, GOOGLE_PROVISIONAL, OBF, GRAPHHOPPER,
   VALHALLA, UNKNOWN) is stamped at every constructor (DirectionsParser, RouteGeometry.parseOsrmRoute,

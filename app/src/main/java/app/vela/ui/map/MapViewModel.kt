@@ -1915,7 +1915,7 @@ class MapViewModel @Inject constructor(
     private fun warmPlaceWebViews() {
         if (app.vela.ui.MemoryPressure.lowRam) return
         viewModelScope.launch { runCatching { webPopularTimes.prewarm() } }
-        runCatching { webPhotos.warm() }
+        viewModelScope.launch { runCatching { webPhotos.warm() } }
     }
 
     private fun runSearch(q: String, near: LatLng?) {
