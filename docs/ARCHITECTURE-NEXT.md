@@ -94,3 +94,15 @@ Size: infra, not code, plus one constant. Risk: a monthly bill.
 The scrape-first product thesis, the calibration channel, the replay and audit harnesses, the
 per-language word tables, the obf bake pipeline, Transitous for boards. These are where the
 project is ahead of the comparable apps.
+
+## Status (2026-09-15)
+
+1. Route provenance: done (#485). `Route.source` is stamped everywhere and recorded on the trip file;
+   the four booleans are still the source of truth until the next release, then step 2 derives them.
+2. One base fetcher: done (#487, #488, #489, #490). All five hidden-WebView fetchers ride
+   `HiddenWebView`; each conversion was checked on the phone.
+3. Carving the god files: step 1 done (#491, `NavController`). `NavCamera` and `SearchController`
+   are next; the camera piece waits for a real drive to judge it.
+4. Rules in prose to rules in code: not started.
+5. Infrastructure with an owner: not started. The GraphHopper engine was retired (#496) once the obf
+   carried the speed limit and the road names, so the on-device fallback is one engine now.
