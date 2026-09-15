@@ -88,6 +88,7 @@ class MockMapDataSource @Inject constructor() : MapDataSource {
         val dur = dist / speed
         return listOf(
             Route(
+                source = app.vela.core.model.RouteSource.OSRM,
                 polyline = poly,
                 legs = listOf(RouteLeg(dist, dur, dur * 1.22, maneuvers)),
                 distanceMeters = dist,

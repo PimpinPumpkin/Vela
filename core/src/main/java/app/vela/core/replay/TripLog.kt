@@ -77,6 +77,7 @@ object TripLog {
             if (route.abbreviatedSteps) add("abbreviated")
             if (route.offline) add("offline")
             if (route.hasLiveTraffic) add("traffic")
+            if (route.source != app.vela.core.model.RouteSource.UNKNOWN) add("source=" + route.source.name)
             add("steps=${route.maneuvers.size}")
         }.joinToString(";")
         append("RD,${route.distanceMeters},${route.durationSeconds},${route.durationInTrafficSeconds ?: ""},$reason,$flags\n")
@@ -147,8 +148,18 @@ object TripLog {
             val trafficS = rd.getOrNull(2)?.toDoubleOrNull()
             val reason = rd.getOrNull(3)?.takeIf { it.isNotBlank() }
             val flags = rd.getOrNull(4)?.takeIf { it.isNotBlank() }
+            // The flags ride back onto the route so a replay reads the same provenance the drive
+            // saw; files older than the source field come back UNKNOWN with the booleans intact.
+            val flagSet = flags?.split(';')?.toSet().orEmpty()
+            val source = flagSet.firstOrNull { it.startsWith("source=") }
+                ?.let { runCatching { app.vela.core.model.RouteSource.valueOf(it.substringAfter('=')) }.getOrNull() }
+                ?: app.vela.core.model.RouteSource.UNKNOWN
             segments += RouteSegment(
-                Route(poly, listOf(RouteLeg(distM, durS, trafficS, ms.toList())), distM, durS, trafficS),
+                Route(
+                    poly, listOf(RouteLeg(distM, durS, trafficS, ms.toList())), distM, durS, trafficS,
+                    provisional = "provisional" in flagSet, abbreviatedSteps = "abbreviated" in flagSet,
+                    offline = "offline" in flagSet, source = source,
+                ),
                 from,
                 reason,
                 flags,

@@ -138,6 +138,37 @@ data class TrafficSpan(
  * out of Google's directions response — i.e. the traffic is already baked in,
  * which is the entire reason for scraping directions rather than self-routing.
  */
+/**
+ * Where a route came from, as ONE fact instead of four booleans. Every consumer that used to ask
+ * "is it provisional, is it abbreviated, is it offline, does it have traffic" in some combination
+ * asks [Route.drivable] or [Route.hasRealSteps] instead, and the trip log records the name so a
+ * replay says which router produced the line. The booleans stay for one release as the source of
+ * truth for the derived properties; the source is stamped at every constructor and the next step
+ * computes the booleans from it.
+ */
+enum class RouteSource {
+    /** The open router's own route (FOSSGIS OSRM), full turn-by-turn. */
+    OSRM,
+    /** OSRM driven through vias sampled from a Google polyline: Google's path, OSRM's steps. */
+    OSRM_VIA_SNAP,
+    /** Google's keyless directions with their own steps; long trips can carry abbreviated ones. */
+    GOOGLE_NAMED,
+    /** Google's route adopted while the open router was down: the steps are abbreviated and the
+     *  nav recheck upgrades them once OSRM answers again. */
+    GOOGLE_ABBREVIATED,
+    /** A Google alternate in the picker: polyline and ETA are real, the steps are placeholders
+     *  until it is picked and named. Never driven as is. */
+    GOOGLE_PROVISIONAL,
+    /** On-device OsmAnd obf routing (downloaded region). */
+    OBF,
+    /** On-device GraphHopper graph (the legacy offline engine). */
+    GRAPHHOPPER,
+    /** The FOSSGIS Valhalla bicycle profile (the bike-safe setting). */
+    VALHALLA,
+    /** A route read back from a trip file that predates the source field. */
+    UNKNOWN,
+}
+
 data class Route(
     val polyline: List<LatLng>,
     val legs: List<RouteLeg>,
@@ -173,8 +204,21 @@ data class Route(
     // not honour). The picker says so instead of a traffic word: an offline route has no live
     // traffic and the user should know which kind they are looking at (issue #350).
     val offline: Boolean = false,
+    // See [RouteSource]. Stamped by every constructor; UNKNOWN only for old trip files.
+    val source: RouteSource = RouteSource.UNKNOWN,
 ) {
     val hasLiveTraffic: Boolean get() = durationInTrafficSeconds != null
+
+    /** Safe to hand to the nav session as is: not a provisional picker alternate whose steps are
+     *  placeholders. The one question NavSession asks before adopting a candidate. */
+    val drivable: Boolean get() = !provisional && source != RouteSource.GOOGLE_PROVISIONAL
+
+    /** Its maneuvers match its line turn for turn: not Google's abbreviated fallback steps. The
+     *  question the recheck asks before it lets a candidate replace the current route. */
+    val hasRealSteps: Boolean get() = !abbreviatedSteps && source != RouteSource.GOOGLE_ABBREVIATED
+
+    /** Computed on the phone, no live traffic possible. */
+    val isOffline: Boolean get() = offline || source == RouteSource.OBF || source == RouteSource.GRAPHHOPPER
     val maneuvers: List<Maneuver> get() = legs.flatMap { it.maneuvers }
 
     /** Google's typical low→high spread, when present (and actually a spread, not a
