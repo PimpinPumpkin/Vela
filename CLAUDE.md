@@ -3148,8 +3148,13 @@ architecture note.
   zoom (top 2 per coarse cell below z15, top 1 per fine cell at z15, top 5 at z16, top 12 at z17, all from
   z17.5, a high prominence always qualifies) and `textField` the same way (top 1 coarse below z15, top 1
   fine at z15, top 3 at z16, top 6 at z16.5, all from z17.5); everything else in the tile draws as a small
-  category-colored dot on a `vela-places-dots-<i>` CircleLayer (from z14, `PoiIcons.groupColor()` over the
-  baked `group`), so a downtown thins to its landmarks and fills in as you zoom, the way Google's does. `PlacesTileStore` = `files/places/*.pmtiles`
+  category-colored dot on a `vela-places-dots-<i>` CircleLayer (`PoiIcons.groupColor()` over the baked
+  `group`), so a downtown thins to its landmarks and fills in as you zoom, the way Google's does. Dots
+  are thinned by rank too (none below z15, rank <=6 at z15, <=15 at z16, all from z17, via opacity
+  steps since filters cannot read zoom) and BOTH dot tiers (open + ambient) sit below the basemap's
+  first symbol layer (`firstSymbolLayerId`), so a label's halo covers its dot and no dot ever sits on
+  text. Saved and parking pins keep `iconAllowOverlap=true` but now `iconIgnorePlacement=false`, so a
+  label under a pin is dropped instead of drawn half-covered. `PlacesTileStore` = `files/places/*.pmtiles`
   (offline) + `PLACES_MANIFEST_URL` regions streamed (`sourcesFor` returns ONE source: the smallest
   installed archive covering the center, else the smallest manifest region; two nested archives drew
   the overlap twice). Baked so far: Davis (test box) and California (1.68 M places, 481 MB, streams
