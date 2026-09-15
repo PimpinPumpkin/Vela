@@ -1,5 +1,5 @@
 {
-  "_comment": "Open places layer catalog (Overture Maps Places, CDLA-Permissive 2.0), baked per region by tools/build-places-region.sh on the places-overlays workflow. bbox=[S,W,N,E]. Mirrors the live routing catalog (routing-manifest-v2.json) so a region download finds its places archive by bbox; davis is the small test box.",
+  "_comment": "Open places layer catalog (Overture Maps Places, CDLA-Permissive 2.0), baked per region by tools/build-places-region.sh on the places-overlays workflow. bbox=[S,W,N,E]. Mirrors the obf region catalog (obf-manifest-staging.json, 414 rows: US states, Canadian provinces, German Laender, French/Spanish/Italian regions, countries) so a region download finds its places archives by bbox; a whole-country download on the older routing catalog pulls every archive whose center falls inside it. davis is the small test box. The workflow's matrix is capped at 256 jobs, so the full bake runs as two shards.",
   "regions": [
     {
       "id": "davis",
@@ -9,6 +9,16 @@
         -121.8,
         38.58,
         -121.7
+      ]
+    },
+    {
+      "id": "afghanistan",
+      "name": "Afghanistan",
+      "bbox": [
+        29.37,
+        60.49,
+        38.51,
+        74.9
       ]
     },
     {
@@ -52,6 +62,46 @@
       ]
     },
     {
+      "id": "algeria",
+      "name": "Algeria",
+      "bbox": [
+        18.93,
+        -8.7,
+        38.02,
+        12.04
+      ]
+    },
+    {
+      "id": "american-oceania",
+      "name": "American Oceania",
+      "bbox": [
+        -17.64,
+        -179.97,
+        25.49,
+        169.87
+      ]
+    },
+    {
+      "id": "andorra",
+      "name": "Andorra",
+      "bbox": [
+        42.43,
+        1.41,
+        42.66,
+        1.79
+      ]
+    },
+    {
+      "id": "angola",
+      "name": "Angola",
+      "bbox": [
+        -18.07,
+        10.54,
+        -4.33,
+        24.1
+      ]
+    },
+    {
       "id": "argentina",
       "name": "Argentina",
       "bbox": [
@@ -82,6 +132,16 @@
       ]
     },
     {
+      "id": "armenia",
+      "name": "Armenia",
+      "bbox": [
+        38.84,
+        43.44,
+        41.31,
+        46.64
+      ]
+    },
+    {
       "id": "australia",
       "name": "Australia",
       "bbox": [
@@ -92,6 +152,146 @@
       ]
     },
     {
+      "id": "australia-act",
+      "name": "Australian Capital Territory (Australia)",
+      "bbox": [
+        -35.93,
+        148.76,
+        -35.12,
+        149.4
+      ]
+    },
+    {
+      "id": "australia-ashmore-cartier",
+      "name": "Ashmore and Cartier Islands (Australia)",
+      "bbox": [
+        -12.85,
+        122.57,
+        -11.89,
+        124.04
+      ]
+    },
+    {
+      "id": "australia-christmas-island",
+      "name": "Christmas Island (Australia)",
+      "bbox": [
+        -10.83,
+        105.3,
+        -10.17,
+        105.99
+      ]
+    },
+    {
+      "id": "australia-cocos-islands",
+      "name": "Cocos (Keeling) Islands (Australia)",
+      "bbox": [
+        -12.55,
+        96.45,
+        -11.55,
+        97.25
+      ]
+    },
+    {
+      "id": "australia-coral-sea-islands",
+      "name": "Coral Sea Islands (Australia)",
+      "bbox": [
+        -30.58,
+        146.87,
+        -14.96,
+        160.42
+      ]
+    },
+    {
+      "id": "australia-heard-mcdonald",
+      "name": "Heard Island and McDonald Islands (Australia)",
+      "bbox": [
+        -53.55,
+        72.0,
+        -52.66,
+        74.45
+      ]
+    },
+    {
+      "id": "australia-new-south-wales",
+      "name": "New South Wales (Australia)",
+      "bbox": [
+        -37.76,
+        140.99,
+        -28.14,
+        160.07
+      ]
+    },
+    {
+      "id": "australia-norfolk-island",
+      "name": "Norfolk Island (Australia)",
+      "bbox": [
+        -29.46,
+        167.62,
+        -28.76,
+        168.35
+      ]
+    },
+    {
+      "id": "australia-northern-territory",
+      "name": "Northern Territory (Australia)",
+      "bbox": [
+        -26.0,
+        128.67,
+        -9.7,
+        140.42
+      ]
+    },
+    {
+      "id": "australia-queensland",
+      "name": "Queensland (Australia)",
+      "bbox": [
+        -29.18,
+        137.99,
+        -8.84,
+        154.2
+      ]
+    },
+    {
+      "id": "australia-south-australia",
+      "name": "South Australia (Australia)",
+      "bbox": [
+        -39.83,
+        129.0,
+        -25.99,
+        141.01
+      ]
+    },
+    {
+      "id": "australia-tasmania",
+      "name": "Tasmania (Australia)",
+      "bbox": [
+        -57.91,
+        143.47,
+        -39.2,
+        161.67
+      ]
+    },
+    {
+      "id": "australia-victoria",
+      "name": "Victoria (Australia)",
+      "bbox": [
+        -39.23,
+        140.96,
+        -33.98,
+        150.47
+      ]
+    },
+    {
+      "id": "australia-western-australia",
+      "name": "Western Australia (Australia)",
+      "bbox": [
+        -41.16,
+        109.93,
+        -12.83,
+        130.32
+      ]
+    },
+    {
       "id": "austria",
       "name": "Austria",
       "bbox": [
@@ -99,6 +299,46 @@
         9.53,
         49.02,
         17.16
+      ]
+    },
+    {
+      "id": "azerbaijan",
+      "name": "Azerbaijan",
+      "bbox": [
+        38.25,
+        44.75,
+        42.67,
+        51.72
+      ]
+    },
+    {
+      "id": "azores",
+      "name": "Azores",
+      "bbox": [
+        35.68,
+        -31.57,
+        40.08,
+        -23.72
+      ]
+    },
+    {
+      "id": "bahamas",
+      "name": "Bahamas",
+      "bbox": [
+        20.27,
+        -81.52,
+        28.26,
+        -71.87
+      ]
+    },
+    {
+      "id": "bangladesh",
+      "name": "Bangladesh",
+      "bbox": [
+        18.58,
+        88.0,
+        26.65,
+        92.7
       ]
     },
     {
@@ -132,6 +372,26 @@
       ]
     },
     {
+      "id": "benin",
+      "name": "Benin",
+      "bbox": [
+        5.98,
+        0.76,
+        12.44,
+        3.86
+      ]
+    },
+    {
+      "id": "bhutan",
+      "name": "Bhutan",
+      "bbox": [
+        26.69,
+        88.74,
+        28.25,
+        92.13
+      ]
+    },
+    {
       "id": "bolivia",
       "name": "Bolivia",
       "bbox": [
@@ -152,13 +412,63 @@
       ]
     },
     {
-      "id": "brazil",
-      "name": "Brazil",
+      "id": "botswana",
+      "name": "Botswana",
       "bbox": [
-        -35.47,
-        -74.02,
-        5.52,
-        -27.67
+        -26.92,
+        19.99,
+        -17.77,
+        29.39
+      ]
+    },
+    {
+      "id": "brazil-centro-oeste",
+      "name": "Centro-Oeste (Brazil)",
+      "bbox": [
+        -27.79,
+        -62.58,
+        -7.32,
+        -45.88
+      ]
+    },
+    {
+      "id": "brazil-nordeste",
+      "name": "Nordeste (Brazil)",
+      "bbox": [
+        -18.6,
+        -48.78,
+        3.72,
+        -25.52
+      ]
+    },
+    {
+      "id": "brazil-norte",
+      "name": "Norte (Brazil)",
+      "bbox": [
+        -19.69,
+        -78.45,
+        7.57,
+        -41.92
+      ]
+    },
+    {
+      "id": "brazil-sudeste",
+      "name": "Sudeste (Brazil)",
+      "bbox": [
+        -25.5,
+        -53.12,
+        -14.22,
+        -28.19
+      ]
+    },
+    {
+      "id": "brazil-sul",
+      "name": "Sul (Brazil)",
+      "bbox": [
+        -34.86,
+        -59.55,
+        -22.51,
+        -44.25
       ]
     },
     {
@@ -182,13 +492,113 @@
       ]
     },
     {
-      "id": "california",
-      "name": "California (state)",
+      "id": "burkina-faso",
+      "name": "Burkina Faso",
       "bbox": [
-        32.48,
-        -125.89,
-        42.02,
-        -114.13
+        9.38,
+        -5.53,
+        15.09,
+        2.41
+      ]
+    },
+    {
+      "id": "burundi",
+      "name": "Burundi",
+      "bbox": [
+        -4.48,
+        29.0,
+        -2.31,
+        30.85
+      ]
+    },
+    {
+      "id": "california-norcal",
+      "name": "Northern California (California)",
+      "bbox": [
+        35.79,
+        -126.43,
+        42.43,
+        -115.6
+      ]
+    },
+    {
+      "id": "california-socal",
+      "name": "Southern California (California)",
+      "bbox": [
+        32.34,
+        -121.44,
+        35.81,
+        -113.86
+      ]
+    },
+    {
+      "id": "cambodia",
+      "name": "Cambodia",
+      "bbox": [
+        8.86,
+        101.85,
+        14.72,
+        107.64
+      ]
+    },
+    {
+      "id": "cameroon",
+      "name": "Cameroon",
+      "bbox": [
+        1.65,
+        8.33,
+        13.09,
+        16.2
+      ]
+    },
+    {
+      "id": "canary-islands",
+      "name": "Canary Islands",
+      "bbox": [
+        26.36,
+        -18.92,
+        30.26,
+        -12.48
+      ]
+    },
+    {
+      "id": "cape-verde",
+      "name": "Cape Verde",
+      "bbox": [
+        14.0,
+        -26.32,
+        18.0,
+        -21.39
+      ]
+    },
+    {
+      "id": "central-african-republic",
+      "name": "Central African Republic",
+      "bbox": [
+        2.21,
+        14.41,
+        11.03,
+        27.48
+      ]
+    },
+    {
+      "id": "central-fed-district",
+      "name": "Central Federal District (Russia)",
+      "bbox": [
+        48.8,
+        29.27,
+        59.65,
+        47.67
+      ]
+    },
+    {
+      "id": "chad",
+      "name": "Chad",
+      "bbox": [
+        7.43,
+        13.4,
+        23.54,
+        24.03
       ]
     },
     {
@@ -222,6 +632,36 @@
       ]
     },
     {
+      "id": "comores",
+      "name": "Comores",
+      "bbox": [
+        -12.97,
+        42.75,
+        -10.74,
+        45.6
+      ]
+    },
+    {
+      "id": "congo-brazzaville",
+      "name": "Congo (Republic/Brazzaville)",
+      "bbox": [
+        -5.2,
+        10.94,
+        3.74,
+        18.67
+      ]
+    },
+    {
+      "id": "congo-democratic-republic",
+      "name": "Congo (Democratic Republic/Kinshasa)",
+      "bbox": [
+        -13.5,
+        11.88,
+        5.4,
+        31.34
+      ]
+    },
+    {
       "id": "connecticut",
       "name": "Connecticut (state)",
       "bbox": [
@@ -229,6 +669,16 @@
         -73.73,
         42.05,
         -71.79
+      ]
+    },
+    {
+      "id": "cook-islands",
+      "name": "Cook Islands",
+      "bbox": [
+        -25.29,
+        -168.47,
+        -5.8,
+        -154.81
       ]
     },
     {
@@ -242,6 +692,16 @@
       ]
     },
     {
+      "id": "crimean-fed-district",
+      "name": "Crimean Federal District (Russia)",
+      "bbox": [
+        43.85,
+        31.33,
+        46.58,
+        36.68
+      ]
+    },
+    {
       "id": "croatia",
       "name": "Croatia",
       "bbox": [
@@ -252,6 +712,26 @@
       ]
     },
     {
+      "id": "cuba",
+      "name": "Cuba",
+      "bbox": [
+        19.25,
+        -85.42,
+        23.6,
+        -73.71
+      ]
+    },
+    {
+      "id": "cyprus",
+      "name": "Cyprus",
+      "bbox": [
+        34.23,
+        31.95,
+        36.0,
+        34.96
+      ]
+    },
+    {
       "id": "czech-republic",
       "name": "Czech Republic",
       "bbox": [
@@ -259,6 +739,306 @@
         12.08,
         51.06,
         18.86
+      ]
+    },
+    {
+      "id": "czech-republic-jihocesky",
+      "name": "Jihočeský kraj (Czech Republic)",
+      "bbox": [
+        48.48,
+        13.53,
+        49.62,
+        15.61
+      ]
+    },
+    {
+      "id": "czech-republic-jihomoravsky",
+      "name": "Jihomoravský kraj (Czech Republic)",
+      "bbox": [
+        48.56,
+        15.54,
+        49.63,
+        17.65
+      ]
+    },
+    {
+      "id": "czech-republic-karlovarsky",
+      "name": "Karlovarský kraj (Czech Republic)",
+      "bbox": [
+        49.89,
+        11.99,
+        50.5,
+        13.3
+      ]
+    },
+    {
+      "id": "czech-republic-kralovehradecky",
+      "name": "Královéhradecký kraj (Czech Republic)",
+      "bbox": [
+        50.04,
+        15.1,
+        51.02,
+        16.9
+      ]
+    },
+    {
+      "id": "czech-republic-liberecky",
+      "name": "Liberecký kraj (Czech Republic)",
+      "bbox": [
+        50.47,
+        14.34,
+        51.13,
+        15.64
+      ]
+    },
+    {
+      "id": "czech-republic-moravskoslezky",
+      "name": "Moravskoslezský kraj (Czech Republic)",
+      "bbox": [
+        49.34,
+        17.14,
+        50.38,
+        18.9
+      ]
+    },
+    {
+      "id": "czech-republic-olomoucky",
+      "name": "Olomoucký kraj (Czech Republic)",
+      "bbox": [
+        49.27,
+        16.71,
+        50.51,
+        17.92
+      ]
+    },
+    {
+      "id": "czech-republic-pardubicky",
+      "name": "Pardubický kraj (Czech Republic)",
+      "bbox": [
+        49.57,
+        15.36,
+        50.21,
+        16.87
+      ]
+    },
+    {
+      "id": "czech-republic-plzensky",
+      "name": "Plzeňský kraj (Czech Republic)",
+      "bbox": [
+        48.91,
+        12.26,
+        50.11,
+        13.84
+      ]
+    },
+    {
+      "id": "czech-republic-praha",
+      "name": "Praha (Czech Republic)",
+      "bbox": [
+        49.94,
+        14.22,
+        50.18,
+        14.71
+      ]
+    },
+    {
+      "id": "czech-republic-stredocesky",
+      "name": "Středočeský kraj (Czech Republic)",
+      "bbox": [
+        49.5,
+        13.4,
+        50.62,
+        15.54
+      ]
+    },
+    {
+      "id": "czech-republic-ustecky",
+      "name": "Ústecký kraj (Czech Republic)",
+      "bbox": [
+        50.08,
+        12.94,
+        51.13,
+        15.64
+      ]
+    },
+    {
+      "id": "czech-republic-vysocina",
+      "name": "Kraj Vysočina (Czech Republic)",
+      "bbox": [
+        48.94,
+        14.89,
+        49.86,
+        16.42
+      ]
+    },
+    {
+      "id": "czech-republic-zlinsky",
+      "name": "Zlínský kraj (Czech Republic)",
+      "bbox": [
+        48.66,
+        17.11,
+        49.54,
+        18.68
+      ]
+    },
+    {
+      "id": "de-baden-wuerttemberg",
+      "name": "Baden-Württemberg (Germany)",
+      "bbox": [
+        47.19,
+        7.37,
+        49.79,
+        10.51
+      ]
+    },
+    {
+      "id": "de-bayern",
+      "name": "Bayern (Germany)",
+      "bbox": [
+        47.23,
+        8.98,
+        50.57,
+        14.09
+      ]
+    },
+    {
+      "id": "de-berlin",
+      "name": "Berlin (Germany)",
+      "bbox": [
+        52.33,
+        13.08,
+        52.68,
+        13.76
+      ]
+    },
+    {
+      "id": "de-brandenburg",
+      "name": "Brandenburg (Germany)",
+      "bbox": [
+        51.35,
+        11.22,
+        53.58,
+        14.78
+      ]
+    },
+    {
+      "id": "de-bremen",
+      "name": "Bremen (Germany)",
+      "bbox": [
+        53.01,
+        8.48,
+        53.61,
+        8.99
+      ]
+    },
+    {
+      "id": "de-hamburg",
+      "name": "Hamburg (Germany)",
+      "bbox": [
+        53.39,
+        7.97,
+        54.06,
+        10.33
+      ]
+    },
+    {
+      "id": "de-hessen",
+      "name": "Hessen (Germany)",
+      "bbox": [
+        49.39,
+        7.77,
+        51.66,
+        10.25
+      ]
+    },
+    {
+      "id": "de-mecklenburg-vorpommern",
+      "name": "Mecklenburg-Vorpommern (Germany)",
+      "bbox": [
+        53.11,
+        10.59,
+        55.0,
+        14.43
+      ]
+    },
+    {
+      "id": "de-niedersachsen",
+      "name": "Niedersachsen (Germany)",
+      "bbox": [
+        51.29,
+        6.3,
+        54.24,
+        11.61
+      ]
+    },
+    {
+      "id": "de-nordrhein-westfalen",
+      "name": "Nordrhein-Westfalen (Germany)",
+      "bbox": [
+        50.32,
+        5.51,
+        52.53,
+        9.47
+      ]
+    },
+    {
+      "id": "de-rheinland-pfalz",
+      "name": "Rheinland-Pfalz (Germany)",
+      "bbox": [
+        48.96,
+        6.11,
+        50.94,
+        8.51
+      ]
+    },
+    {
+      "id": "de-saarland",
+      "name": "Saarland (Germany)",
+      "bbox": [
+        49.04,
+        6.35,
+        49.64,
+        7.41
+      ]
+    },
+    {
+      "id": "de-sachsen",
+      "name": "Sachsen (Germany)",
+      "bbox": [
+        50.03,
+        11.87,
+        51.69,
+        15.16
+      ]
+    },
+    {
+      "id": "de-sachsen-anhalt",
+      "name": "Sachsen-Anhalt (Germany)",
+      "bbox": [
+        50.93,
+        10.55,
+        53.06,
+        13.21
+      ]
+    },
+    {
+      "id": "de-schleswig-holstein",
+      "name": "Schleswig-Holstein (Germany)",
+      "bbox": [
+        53.36,
+        7.46,
+        55.15,
+        11.8
+      ]
+    },
+    {
+      "id": "de-thueringen",
+      "name": "Thüringen (Germany)",
+      "bbox": [
+        50.2,
+        9.86,
+        51.65,
+        12.66
       ]
     },
     {
@@ -279,6 +1059,36 @@
         7.7,
         58.06,
         15.65
+      ]
+    },
+    {
+      "id": "district-of-columbia",
+      "name": "District Of Columbia (US)",
+      "bbox": [
+        38.79,
+        -77.12,
+        39.0,
+        -76.91
+      ]
+    },
+    {
+      "id": "djibouti",
+      "name": "Djibouti",
+      "bbox": [
+        10.89,
+        41.76,
+        12.83,
+        43.9
+      ]
+    },
+    {
+      "id": "east-timor",
+      "name": "East Timor",
+      "bbox": [
+        -9.69,
+        123.79,
+        -8.06,
+        127.59
       ]
     },
     {
@@ -312,6 +1122,26 @@
       ]
     },
     {
+      "id": "equatorial-guinea",
+      "name": "Equatorial Guinea",
+      "bbox": [
+        -1.79,
+        5.17,
+        4.15,
+        11.42
+      ]
+    },
+    {
+      "id": "eritrea",
+      "name": "Eritrea",
+      "bbox": [
+        12.34,
+        36.42,
+        18.33,
+        43.35
+      ]
+    },
+    {
       "id": "estonia",
       "name": "Estonia",
       "bbox": [
@@ -319,6 +1149,46 @@
         20.85,
         60.0,
         28.21
+      ]
+    },
+    {
+      "id": "ethiopia",
+      "name": "Ethiopia",
+      "bbox": [
+        3.39,
+        32.97,
+        14.92,
+        48.01
+      ]
+    },
+    {
+      "id": "far-eastern-fed-district",
+      "name": "Far Eastern Federal District (Russia)",
+      "bbox": [
+        37.35,
+        -180,
+        82.0,
+        180
+      ]
+    },
+    {
+      "id": "faroe-islands",
+      "name": "Faroe Islands",
+      "bbox": [
+        60.87,
+        -8.69,
+        62.91,
+        -5.52
+      ]
+    },
+    {
+      "id": "fiji",
+      "name": "Fiji",
+      "bbox": [
+        -25.08,
+        -180,
+        -9.78,
+        180
       ]
     },
     {
@@ -342,13 +1212,293 @@
       ]
     },
     {
-      "id": "france",
-      "name": "France",
+      "id": "france-alsace",
+      "name": "Alsace (France)",
       "bbox": [
-        41.24,
-        -6.94,
-        51.43,
-        10.02
+        47.38,
+        6.84,
+        49.21,
+        8.31
+      ]
+    },
+    {
+      "id": "france-aquitaine",
+      "name": "Aquitaine (France)",
+      "bbox": [
+        42.61,
+        -1.84,
+        45.72,
+        1.45
+      ]
+    },
+    {
+      "id": "france-auvergne",
+      "name": "Auvergne (France)",
+      "bbox": [
+        44.61,
+        2.06,
+        46.81,
+        4.49
+      ]
+    },
+    {
+      "id": "france-basse-normandie",
+      "name": "Basse-Normandie (France)",
+      "bbox": [
+        48.18,
+        -2.09,
+        49.89,
+        0.98
+      ]
+    },
+    {
+      "id": "france-bourgogne",
+      "name": "Bourgogne (France)",
+      "bbox": [
+        46.15,
+        2.84,
+        48.4,
+        5.52
+      ]
+    },
+    {
+      "id": "france-bretagne",
+      "name": "Bretagne (France)",
+      "bbox": [
+        47.08,
+        -5.88,
+        49.41,
+        -1.01
+      ]
+    },
+    {
+      "id": "france-centre",
+      "name": "Centre (France)",
+      "bbox": [
+        46.35,
+        0.05,
+        48.94,
+        3.13
+      ]
+    },
+    {
+      "id": "france-champagne-ardenne",
+      "name": "Champagne Ardenne (France)",
+      "bbox": [
+        47.58,
+        3.38,
+        50.22,
+        5.89
+      ]
+    },
+    {
+      "id": "france-corse",
+      "name": "Corse (France)",
+      "bbox": [
+        41.31,
+        8.32,
+        43.17,
+        9.75
+      ]
+    },
+    {
+      "id": "france-franche-comte",
+      "name": "Franche Comte (France)",
+      "bbox": [
+        46.26,
+        5.25,
+        48.03,
+        7.14
+      ]
+    },
+    {
+      "id": "france-guadeloupe",
+      "name": "Guadeloupe (France)",
+      "bbox": [
+        15.49,
+        -62.15,
+        16.82,
+        -60.6
+      ]
+    },
+    {
+      "id": "france-guyane",
+      "name": "Guyane (France)",
+      "bbox": [
+        2.09,
+        -54.62,
+        6.37,
+        -50.87
+      ]
+    },
+    {
+      "id": "france-haute-normandie",
+      "name": "Haute-Normandie (France)",
+      "bbox": [
+        48.67,
+        0.01,
+        50.09,
+        1.8
+      ]
+    },
+    {
+      "id": "france-ile-de-france",
+      "name": "Ile-de-France (France)",
+      "bbox": [
+        48.12,
+        1.45,
+        49.24,
+        3.56
+      ]
+    },
+    {
+      "id": "france-languedoc-roussillon",
+      "name": "Languedoc-Roussillon (France)",
+      "bbox": [
+        42.17,
+        1.69,
+        44.98,
+        4.85
+      ]
+    },
+    {
+      "id": "france-limousin",
+      "name": "Limousin (France)",
+      "bbox": [
+        44.92,
+        0.63,
+        46.46,
+        2.61
+      ]
+    },
+    {
+      "id": "france-lorraine",
+      "name": "Lorraine (France)",
+      "bbox": [
+        47.81,
+        4.89,
+        49.62,
+        7.69
+      ]
+    },
+    {
+      "id": "france-martinique",
+      "name": "Martinique (France)",
+      "bbox": [
+        14.13,
+        -61.63,
+        15.15,
+        -60.43
+      ]
+    },
+    {
+      "id": "france-mayotte",
+      "name": "Mayotte (France)",
+      "bbox": [
+        -13.47,
+        44.63,
+        -12.14,
+        45.68
+      ]
+    },
+    {
+      "id": "france-midi-pyrenees",
+      "name": "Midi-Pyrenees (France)",
+      "bbox": [
+        42.53,
+        -0.33,
+        45.05,
+        3.45
+      ]
+    },
+    {
+      "id": "france-nord-pas-de-calais",
+      "name": "Nord-Pas-de-Calais (France)",
+      "bbox": [
+        49.97,
+        1.28,
+        51.28,
+        4.27
+      ]
+    },
+    {
+      "id": "france-pays-de-la-loire",
+      "name": "Pays de la Loire (France)",
+      "bbox": [
+        46.22,
+        -2.67,
+        48.57,
+        0.92
+      ]
+    },
+    {
+      "id": "france-picardie",
+      "name": "Picardie (France)",
+      "bbox": [
+        48.84,
+        1.36,
+        50.37,
+        4.26
+      ]
+    },
+    {
+      "id": "france-poitou-charentes",
+      "name": "Poitou-Charentes (France)",
+      "bbox": [
+        45.09,
+        -1.9,
+        47.18,
+        1.21
+      ]
+    },
+    {
+      "id": "france-provence-alpes-cote-d-azur",
+      "name": "Provence Alpes-Cote-d'Azur (France)",
+      "bbox": [
+        42.32,
+        4.14,
+        45.13,
+        7.89
+      ]
+    },
+    {
+      "id": "france-reunion",
+      "name": "Reunion (France)",
+      "bbox": [
+        -21.73,
+        54.95,
+        -20.59,
+        56.12
+      ]
+    },
+    {
+      "id": "france-rhone-alpes",
+      "name": "Rhone-Alpes (France)",
+      "bbox": [
+        44.11,
+        3.69,
+        46.57,
+        7.28
+      ]
+    },
+    {
+      "id": "gabon",
+      "name": "Gabon",
+      "bbox": [
+        -6.0,
+        7.39,
+        2.33,
+        14.55
+      ]
+    },
+    {
+      "id": "gcc-states",
+      "name": "GCC States",
+      "bbox": [
+        15.25,
+        34.43,
+        32.2,
+        60.95
       ]
     },
     {
@@ -362,16 +1512,6 @@
       ]
     },
     {
-      "id": "germany",
-      "name": "Germany",
-      "bbox": [
-        47.27,
-        5.86,
-        55.15,
-        15.05
-      ]
-    },
-    {
       "id": "ghana",
       "name": "Ghana",
       "bbox": [
@@ -382,13 +1522,33 @@
       ]
     },
     {
-      "id": "great-britain",
-      "name": "Great Britain",
+      "id": "great-britain-england",
+      "name": "England (Great Britain)",
       "bbox": [
-        49.52,
-        -15.34,
-        61.93,
-        2.51
+        49.58,
+        -7.1,
+        56.07,
+        2.25
+      ]
+    },
+    {
+      "id": "great-britain-scotland",
+      "name": "Scotland (Great Britain)",
+      "bbox": [
+        54.54,
+        -14.86,
+        61.35,
+        0.73
+      ]
+    },
+    {
+      "id": "great-britain-wales",
+      "name": "Wales (Great Britain)",
+      "bbox": [
+        51.04,
+        -6.18,
+        53.77,
+        -2.65
       ]
     },
     {
@@ -402,6 +1562,16 @@
       ]
     },
     {
+      "id": "greenland",
+      "name": "Greenland",
+      "bbox": [
+        58.61,
+        -75.39,
+        84.44,
+        -9.45
+      ]
+    },
+    {
       "id": "guatemala",
       "name": "Guatemala",
       "bbox": [
@@ -409,6 +1579,56 @@
         -92.73,
         18.22,
         -87.95
+      ]
+    },
+    {
+      "id": "guernsey-jersey",
+      "name": "Guernsey and Jersey",
+      "bbox": [
+        48.81,
+        -3.57,
+        50.07,
+        -1.71
+      ]
+    },
+    {
+      "id": "guinea",
+      "name": "Guinea",
+      "bbox": [
+        7.18,
+        -16.86,
+        12.68,
+        -7.63
+      ]
+    },
+    {
+      "id": "guinea-bissau",
+      "name": "Guinea-Bissau",
+      "bbox": [
+        10.14,
+        -16.96,
+        12.69,
+        -13.63
+      ]
+    },
+    {
+      "id": "guyana",
+      "name": "Guyana",
+      "bbox": [
+        1.15,
+        -61.42,
+        9.18,
+        -56.42
+      ]
+    },
+    {
+      "id": "haiti-and-domrep",
+      "name": "Haiti and Dominican Republic",
+      "bbox": [
+        17.0,
+        -74.83,
+        21.45,
+        -68.05
       ]
     },
     {
@@ -462,6 +1682,16 @@
       ]
     },
     {
+      "id": "ile-de-clipperton",
+      "name": "Île de Clipperton",
+      "bbox": [
+        9.6,
+        -110.12,
+        11.16,
+        -108.37
+      ]
+    },
+    {
       "id": "illinois",
       "name": "Illinois (state)",
       "bbox": [
@@ -472,13 +1702,63 @@
       ]
     },
     {
-      "id": "india",
-      "name": "India",
+      "id": "india-central-zone",
+      "name": "Central Zone (India)",
       "bbox": [
-        5.9,
-        67.67,
-        35.73,
-        97.42
+        17.77,
+        74.01,
+        31.73,
+        84.65
+      ]
+    },
+    {
+      "id": "india-eastern-zone",
+      "name": "Eastern Zone (India)",
+      "bbox": [
+        17.78,
+        81.37,
+        27.99,
+        89.92
+      ]
+    },
+    {
+      "id": "india-north-eastern-zone",
+      "name": "North-Eastern Zone (India)",
+      "bbox": [
+        21.19,
+        87.7,
+        30.49,
+        100.27
+      ]
+    },
+    {
+      "id": "india-northern-zone",
+      "name": "Northern Zone (India)",
+      "bbox": [
+        23.05,
+        69.17,
+        36.14,
+        80.17
+      ]
+    },
+    {
+      "id": "india-southern-zone",
+      "name": "Southern Zone (India)",
+      "bbox": [
+        5.94,
+        70.0,
+        19.92,
+        95.56
+      ]
+    },
+    {
+      "id": "india-western-zone",
+      "name": "Western Zone (India)",
+      "bbox": [
+        14.37,
+        67.3,
+        25.45,
+        80.91
       ]
     },
     {
@@ -492,13 +1772,73 @@
       ]
     },
     {
-      "id": "indonesia",
-      "name": "Indonesia",
+      "id": "indonesia-java",
+      "name": "Java (Indonesia)",
       "bbox": [
-        -11.61,
-        92.76,
-        7.0,
-        141.02
+        -9.54,
+        104.14,
+        -3.95,
+        116.58
+      ]
+    },
+    {
+      "id": "indonesia-kalimantan",
+      "name": "Kalimantan (Indonesia)",
+      "bbox": [
+        -5.6,
+        104.96,
+        4.5,
+        119.93
+      ]
+    },
+    {
+      "id": "indonesia-maluku",
+      "name": "Maluku (Indonesia)",
+      "bbox": [
+        -9.52,
+        123.89,
+        3.73,
+        135.41
+      ]
+    },
+    {
+      "id": "indonesia-nusa-tenggara",
+      "name": "Nusa-Tenggara (Indonesia)",
+      "bbox": [
+        -11.66,
+        114.41,
+        -6.68,
+        128.49
+      ]
+    },
+    {
+      "id": "indonesia-papua",
+      "name": "Papua (Indonesia)",
+      "bbox": [
+        -9.5,
+        128.28,
+        2.08,
+        141.06
+      ]
+    },
+    {
+      "id": "indonesia-sulawesi",
+      "name": "Sulawesi (Indonesia)",
+      "bbox": [
+        -8.02,
+        116.25,
+        5.97,
+        127.95
+      ]
+    },
+    {
+      "id": "indonesia-sumatra",
+      "name": "Sumatra (Indonesia)",
+      "bbox": [
+        -7.18,
+        92.42,
+        7.08,
+        109.77
       ]
     },
     {
@@ -512,6 +1852,26 @@
       ]
     },
     {
+      "id": "iran",
+      "name": "Iran",
+      "bbox": [
+        24.04,
+        44.02,
+        39.79,
+        63.35
+      ]
+    },
+    {
+      "id": "iraq",
+      "name": "Iraq",
+      "bbox": [
+        29.02,
+        38.78,
+        37.39,
+        49.55
+      ]
+    },
+    {
       "id": "ireland-and-northern-ireland",
       "name": "Ireland",
       "bbox": [
@@ -519,6 +1879,16 @@
         -16.31,
         56.87,
         -5.06
+      ]
+    },
+    {
+      "id": "isle-of-man",
+      "name": "Isle of Man",
+      "bbox": [
+        53.73,
+        -5.43,
+        54.67,
+        -3.69
       ]
     },
     {
@@ -532,23 +1902,173 @@
       ]
     },
     {
-      "id": "italy",
-      "name": "Italy",
+      "id": "italy-centro",
+      "name": "Centro (Italy)",
       "bbox": [
-        35.08,
-        6.6,
-        47.1,
-        19.12
+        40.21,
+        8.61,
+        44.48,
+        14.98
       ]
     },
     {
-      "id": "japan",
-      "name": "Japan",
+      "id": "italy-isole",
+      "name": "Isole (Italy)",
       "bbox": [
-        20.08,
-        122.56,
-        45.82,
-        154.47
+        34.38,
+        7.42,
+        41.52,
+        15.71
+      ]
+    },
+    {
+      "id": "italy-nord-est",
+      "name": "Nord-Est (Italy)",
+      "bbox": [
+        43.73,
+        9.2,
+        47.31,
+        14.83
+      ]
+    },
+    {
+      "id": "italy-nord-ovest",
+      "name": "Nord-Ovest (Italy)",
+      "bbox": [
+        43.44,
+        5.53,
+        47.06,
+        11.43
+      ]
+    },
+    {
+      "id": "italy-sud",
+      "name": "Sud (Italy)",
+      "bbox": [
+        37.8,
+        13.0,
+        42.91,
+        20.0
+      ]
+    },
+    {
+      "id": "ivory-coast",
+      "name": "Ivory Coast",
+      "bbox": [
+        4.14,
+        -8.63,
+        10.75,
+        -2.48
+      ]
+    },
+    {
+      "id": "jamaica",
+      "name": "Jamaica",
+      "bbox": [
+        16.35,
+        -78.85,
+        19.16,
+        -75.51
+      ]
+    },
+    {
+      "id": "japan-chubu",
+      "name": "Chūbu region (Japan)",
+      "bbox": [
+        34.27,
+        135.44,
+        38.91,
+        139.91
+      ]
+    },
+    {
+      "id": "japan-chugoku",
+      "name": "Chūgoku region (Japan)",
+      "bbox": [
+        33.54,
+        129.89,
+        37.08,
+        134.52
+      ]
+    },
+    {
+      "id": "japan-hokkaido",
+      "name": "Hokkaidō (Japan)",
+      "bbox": [
+        41.15,
+        137.93,
+        46.04,
+        146.25
+      ]
+    },
+    {
+      "id": "japan-kansai",
+      "name": "Kansai region (Japan)",
+      "bbox": [
+        33.08,
+        133.96,
+        36.46,
+        137.66
+      ]
+    },
+    {
+      "id": "japan-kanto",
+      "name": "Kantō region (Japan)",
+      "bbox": [
+        18.63,
+        134.05,
+        37.16,
+        155.61
+      ]
+    },
+    {
+      "id": "japan-kyushu",
+      "name": "Kyūshū (Japan)",
+      "bbox": [
+        20.73,
+        122.23,
+        35.1,
+        132.8
+      ]
+    },
+    {
+      "id": "japan-shikoku",
+      "name": "Shikoku (Japan)",
+      "bbox": [
+        32.23,
+        131.77,
+        34.65,
+        135.18
+      ]
+    },
+    {
+      "id": "japan-tohoku",
+      "name": "Tōhoku region (Japan)",
+      "bbox": [
+        36.53,
+        138.93,
+        41.64,
+        142.88
+      ]
+    },
+    {
+      "id": "jordan",
+      "name": "Jordan",
+      "bbox": [
+        29.18,
+        34.87,
+        33.38,
+        39.31
+      ]
+    },
+    {
+      "id": "kaliningrad",
+      "name": "Kaliningrad (Russia)",
+      "bbox": [
+        54.32,
+        18.91,
+        55.65,
+        22.89
       ]
     },
     {
@@ -559,6 +2079,16 @@
         -107.3,
         40.01,
         -94.59
+      ]
+    },
+    {
+      "id": "kazakhstan",
+      "name": "Kazakhstan",
+      "bbox": [
+        40.55,
+        46.42,
+        55.51,
+        87.35
       ]
     },
     {
@@ -582,6 +2112,46 @@
       ]
     },
     {
+      "id": "kiribati",
+      "name": "Kiribati",
+      "bbox": [
+        -13.84,
+        -180,
+        7.88,
+        180
+      ]
+    },
+    {
+      "id": "kosovo",
+      "name": "Kosovo",
+      "bbox": [
+        41.85,
+        20.01,
+        43.28,
+        21.79
+      ]
+    },
+    {
+      "id": "kyrgyzstan",
+      "name": "Kyrgyzstan",
+      "bbox": [
+        39.15,
+        69.26,
+        43.28,
+        80.28
+      ]
+    },
+    {
+      "id": "laos",
+      "name": "Laos",
+      "bbox": [
+        13.9,
+        100.08,
+        22.53,
+        107.65
+      ]
+    },
+    {
       "id": "latvia",
       "name": "Latvia",
       "bbox": [
@@ -589,6 +2159,56 @@
         19.73,
         58.09,
         28.26
+      ]
+    },
+    {
+      "id": "lebanon",
+      "name": "Lebanon",
+      "bbox": [
+        33.05,
+        34.77,
+        34.8,
+        36.64
+      ]
+    },
+    {
+      "id": "lesotho",
+      "name": "Lesotho",
+      "bbox": [
+        -30.68,
+        27.01,
+        -28.57,
+        29.46
+      ]
+    },
+    {
+      "id": "liberia",
+      "name": "Liberia",
+      "bbox": [
+        -0.68,
+        -14.95,
+        8.57,
+        -7.25
+      ]
+    },
+    {
+      "id": "libya",
+      "name": "Libya",
+      "bbox": [
+        19.45,
+        9.37,
+        33.58,
+        25.41
+      ]
+    },
+    {
+      "id": "liechtenstein",
+      "name": "Liechtenstein",
+      "bbox": [
+        47.05,
+        9.47,
+        47.27,
+        9.64
       ]
     },
     {
@@ -622,6 +2242,26 @@
       ]
     },
     {
+      "id": "macedonia",
+      "name": "Macedonia",
+      "bbox": [
+        40.85,
+        20.45,
+        42.38,
+        23.04
+      ]
+    },
+    {
+      "id": "madagascar",
+      "name": "Madagascar",
+      "bbox": [
+        -26.58,
+        42.3,
+        -11.03,
+        51.15
+      ]
+    },
+    {
       "id": "maine",
       "name": "Maine (state)",
       "bbox": [
@@ -629,6 +2269,16 @@
         -71.45,
         48.16,
         -65.86
+      ]
+    },
+    {
+      "id": "malawi",
+      "name": "Malawi",
+      "bbox": [
+        -17.13,
+        32.66,
+        -9.36,
+        35.93
       ]
     },
     {
@@ -642,6 +2292,36 @@
       ]
     },
     {
+      "id": "maldives",
+      "name": "Maldives",
+      "bbox": [
+        -1.36,
+        71.7,
+        7.69,
+        74.5
+      ]
+    },
+    {
+      "id": "mali",
+      "name": "Mali",
+      "bbox": [
+        10.12,
+        -12.25,
+        25.09,
+        4.33
+      ]
+    },
+    {
+      "id": "malta",
+      "name": "Malta",
+      "bbox": [
+        35.52,
+        13.82,
+        36.33,
+        14.86
+      ]
+    },
+    {
       "id": "manitoba",
       "name": "Manitoba (Canada)",
       "bbox": [
@@ -649,6 +2329,16 @@
         -102.01,
         60.01,
         -88.12
+      ]
+    },
+    {
+      "id": "marshall-islands",
+      "name": "Marshall Islands",
+      "bbox": [
+        1.78,
+        156.85,
+        17.95,
+        175.51
       ]
     },
     {
@@ -672,6 +2362,26 @@
       ]
     },
     {
+      "id": "mauritania",
+      "name": "Mauritania",
+      "bbox": [
+        14.72,
+        -17.35,
+        27.34,
+        -4.82
+      ]
+    },
+    {
+      "id": "mauritius",
+      "name": "Mauritius",
+      "bbox": [
+        -22.24,
+        53.55,
+        -9.18,
+        65.64
+      ]
+    },
+    {
       "id": "mexico",
       "name": "Mexico",
       "bbox": [
@@ -689,6 +2399,16 @@
         -90.42,
         49.32,
         -79.05
+      ]
+    },
+    {
+      "id": "micronesia",
+      "name": "Micronesia",
+      "bbox": [
+        -1.15,
+        135.31,
+        13.22,
+        165.63
       ]
     },
     {
@@ -732,6 +2452,26 @@
       ]
     },
     {
+      "id": "monaco",
+      "name": "Monaco",
+      "bbox": [
+        43.48,
+        7.41,
+        43.75,
+        7.6
+      ]
+    },
+    {
+      "id": "mongolia",
+      "name": "Mongolia",
+      "bbox": [
+        41.5,
+        87.7,
+        52.2,
+        120.02
+      ]
+    },
+    {
       "id": "montana",
       "name": "Montana (state)",
       "bbox": [
@@ -762,6 +2502,46 @@
       ]
     },
     {
+      "id": "mozambique",
+      "name": "Mozambique",
+      "bbox": [
+        -26.94,
+        30.21,
+        -9.99,
+        42.53
+      ]
+    },
+    {
+      "id": "myanmar",
+      "name": "Myanmar (a.k.a. Burma)",
+      "bbox": [
+        9.51,
+        90.65,
+        28.57,
+        101.2
+      ]
+    },
+    {
+      "id": "namibia",
+      "name": "Namibia",
+      "bbox": [
+        -30.21,
+        9.78,
+        -16.92,
+        25.27
+      ]
+    },
+    {
+      "id": "nauru",
+      "name": "Nauru",
+      "bbox": [
+        -3.77,
+        163.71,
+        2.69,
+        168.56
+      ]
+    },
+    {
       "id": "nebraska",
       "name": "Nebraska (state)",
       "bbox": [
@@ -772,6 +2552,16 @@
       ]
     },
     {
+      "id": "nepal",
+      "name": "Nepal",
+      "bbox": [
+        26.34,
+        80.05,
+        30.48,
+        88.22
+      ]
+    },
+    {
       "id": "netherlands",
       "name": "Netherlands",
       "bbox": [
@@ -779,6 +2569,126 @@
         2.94,
         54.02,
         7.23
+      ]
+    },
+    {
+      "id": "netherlands-drenthe",
+      "name": "Drenthe (Netherlands)",
+      "bbox": [
+        52.58,
+        6.12,
+        53.21,
+        7.41
+      ]
+    },
+    {
+      "id": "netherlands-flevoland",
+      "name": "Flevoland (Netherlands)",
+      "bbox": [
+        52.25,
+        5.06,
+        52.85,
+        6.02
+      ]
+    },
+    {
+      "id": "netherlands-friesland",
+      "name": "Friesland (Netherlands)",
+      "bbox": [
+        52.76,
+        4.6,
+        53.68,
+        6.43
+      ]
+    },
+    {
+      "id": "netherlands-gelderland",
+      "name": "Gelderland (Netherlands)",
+      "bbox": [
+        51.73,
+        4.99,
+        52.52,
+        7.07
+      ]
+    },
+    {
+      "id": "netherlands-groningen",
+      "name": "Groningen (Netherlands)",
+      "bbox": [
+        52.84,
+        6.17,
+        53.66,
+        7.45
+      ]
+    },
+    {
+      "id": "netherlands-limburg",
+      "name": "Limburg (Netherlands)",
+      "bbox": [
+        50.6,
+        5.17,
+        51.78,
+        6.38
+      ]
+    },
+    {
+      "id": "netherlands-noord-brabant",
+      "name": "Noord-Brabant (Netherlands)",
+      "bbox": [
+        51.04,
+        4.19,
+        51.83,
+        6.05
+      ]
+    },
+    {
+      "id": "netherlands-noord-holland",
+      "name": "Noord-Holland (Netherlands)",
+      "bbox": [
+        52.16,
+        3.9,
+        53.29,
+        5.38
+      ]
+    },
+    {
+      "id": "netherlands-overijssel",
+      "name": "Overijssel (Netherlands)",
+      "bbox": [
+        52.07,
+        5.78,
+        52.86,
+        7.18
+      ]
+    },
+    {
+      "id": "netherlands-utrecht",
+      "name": "Utrecht (Netherlands)",
+      "bbox": [
+        51.86,
+        4.79,
+        52.3,
+        5.63
+      ]
+    },
+    {
+      "id": "netherlands-zeeland",
+      "name": "Zeeland (Netherlands)",
+      "bbox": [
+        51.12,
+        3.23,
+        51.87,
+        4.29
+      ]
+    },
+    {
+      "id": "netherlands-zuid-holland",
+      "name": "Zuid-Holland (Netherlands)",
+      "bbox": [
+        51.64,
+        3.35,
+        52.48,
+        5.03
       ]
     },
     {
@@ -799,6 +2709,16 @@
         -69.19,
         48.38,
         -62.89
+      ]
+    },
+    {
+      "id": "new-caledonia",
+      "name": "New Caledonia",
+      "bbox": [
+        -25,
+        157.9,
+        -16.9,
+        174.1
       ]
     },
     {
@@ -872,6 +2792,16 @@
       ]
     },
     {
+      "id": "niger",
+      "name": "Niger",
+      "bbox": [
+        11.69,
+        0.12,
+        23.57,
+        16.06
+      ]
+    },
+    {
       "id": "nigeria",
       "name": "Nigeria",
       "bbox": [
@@ -879,6 +2809,16 @@
         2.66,
         13.9,
         14.68
+      ]
+    },
+    {
+      "id": "niue",
+      "name": "Niue",
+      "bbox": [
+        -22.47,
+        -172.03,
+        -16.64,
+        -166.3
       ]
     },
     {
@@ -892,6 +2832,16 @@
       ]
     },
     {
+      "id": "north-caucasus-fed-district",
+      "name": "North Caucasus Federal District (Russia)",
+      "bbox": [
+        40.26,
+        40.67,
+        46.24,
+        50.8
+      ]
+    },
+    {
       "id": "north-dakota",
       "name": "North Dakota (state)",
       "bbox": [
@@ -899,6 +2849,16 @@
         -105.08,
         49.71,
         -96.55
+      ]
+    },
+    {
+      "id": "north-korea",
+      "name": "North Korea",
+      "bbox": [
+        37.61,
+        123.7,
+        43.02,
+        131.64
       ]
     },
     {
@@ -912,6 +2872,16 @@
       ]
     },
     {
+      "id": "northwestern-fed-district",
+      "name": "Northwestern Federal District (Russia)",
+      "bbox": [
+        51.46,
+        18.38,
+        82.55,
+        72.62
+      ]
+    },
+    {
       "id": "norway",
       "name": "Norway",
       "bbox": [
@@ -919,6 +2889,66 @@
         -11.37,
         81.05,
         35.53
+      ]
+    },
+    {
+      "id": "norway-nord-norge",
+      "name": "Nord-Norge (Norway)",
+      "bbox": [
+        64.94,
+        7.84,
+        72.41,
+        40.07
+      ]
+    },
+    {
+      "id": "norway-ostlandet",
+      "name": "Østlandet (Norway)",
+      "bbox": [
+        58.6,
+        7.1,
+        62.7,
+        14.4
+      ]
+    },
+    {
+      "id": "norway-sorlandet",
+      "name": "Sørlandet (Norway)",
+      "bbox": [
+        57.58,
+        5.7,
+        59.67,
+        10.59
+      ]
+    },
+    {
+      "id": "norway-svalbard-janmayen",
+      "name": "Svalbard and Jan Mayen (Norway)",
+      "bbox": [
+        70.15,
+        -11.37,
+        81.11,
+        35.35
+      ]
+    },
+    {
+      "id": "norway-trondelag",
+      "name": "Trøndelag (Norway)",
+      "bbox": [
+        62.26,
+        5.79,
+        65.95,
+        14.4
+      ]
+    },
+    {
+      "id": "norway-vestlandet",
+      "name": "Vestlandet (Norway)",
+      "bbox": [
+        56.39,
+        2.33,
+        65.12,
+        9.37
       ]
     },
     {
@@ -982,6 +3012,26 @@
       ]
     },
     {
+      "id": "pakistan",
+      "name": "Pakistan",
+      "bbox": [
+        23.38,
+        60.82,
+        37.11,
+        77.22
+      ]
+    },
+    {
+      "id": "palau",
+      "name": "Palau",
+      "bbox": [
+        1.62,
+        129.51,
+        11.49,
+        136.95
+      ]
+    },
+    {
       "id": "panama",
       "name": "Panama",
       "bbox": [
@@ -989,6 +3039,16 @@
         -83.46,
         11.21,
         -76.25
+      ]
+    },
+    {
+      "id": "papua-new-guinea",
+      "name": "Papua New Guinea",
+      "bbox": [
+        -14.75,
+        139.2,
+        2.59,
+        162.8
       ]
     },
     {
@@ -1032,6 +3092,16 @@
       ]
     },
     {
+      "id": "pitcairn-islands",
+      "name": "Pitcairn Islands",
+      "bbox": [
+        -27.66,
+        -133.07,
+        -21.6,
+        -118.34
+      ]
+    },
+    {
       "id": "poland",
       "name": "Poland",
       "bbox": [
@@ -1039,6 +3109,176 @@
         13.99,
         55.23,
         24.16
+      ]
+    },
+    {
+      "id": "poland-dolnoslaskie",
+      "name": "Województwo dolnośląskie (Poland)",
+      "bbox": [
+        50.02,
+        14.67,
+        51.81,
+        17.81
+      ]
+    },
+    {
+      "id": "poland-kujawsko-pomorskie",
+      "name": "Województwo kujawsko-pomorskie (Poland)",
+      "bbox": [
+        52.32,
+        17.24,
+        53.79,
+        19.77
+      ]
+    },
+    {
+      "id": "poland-lodzkie",
+      "name": "Województwo łódzkie (Poland)",
+      "bbox": [
+        50.83,
+        18.06,
+        52.41,
+        20.67
+      ]
+    },
+    {
+      "id": "poland-lubelskie",
+      "name": "Województwo lubelskie (Poland)",
+      "bbox": [
+        49.68,
+        21.6,
+        52.3,
+        24.73
+      ]
+    },
+    {
+      "id": "poland-lubuskie",
+      "name": "Województwo lubuskie (Poland)",
+      "bbox": [
+        51.35,
+        14.27,
+        53.13,
+        16.43
+      ]
+    },
+    {
+      "id": "poland-malopolskie",
+      "name": "Województwo małopolskie (Poland)",
+      "bbox": [
+        49.03,
+        18.88,
+        50.53,
+        21.43
+      ]
+    },
+    {
+      "id": "poland-mazowieckie",
+      "name": "Województwo mazowieckie (Poland)",
+      "bbox": [
+        50.98,
+        19.23,
+        53.51,
+        23.16
+      ]
+    },
+    {
+      "id": "poland-opolskie",
+      "name": "Województwo opolskie (Poland)",
+      "bbox": [
+        49.65,
+        16.9,
+        51.2,
+        18.7
+      ]
+    },
+    {
+      "id": "poland-podkarpackie",
+      "name": "Województwo podkarpackie (Poland)",
+      "bbox": [
+        48.84,
+        21.13,
+        50.83,
+        23.55
+      ]
+    },
+    {
+      "id": "poland-podlaskie",
+      "name": "Województwo podlaskie (Poland)",
+      "bbox": [
+        52.27,
+        21.58,
+        55.09,
+        24.31
+      ]
+    },
+    {
+      "id": "poland-pomorskie",
+      "name": "Województwo pomorskie (Poland)",
+      "bbox": [
+        53.48,
+        16.69,
+        55.09,
+        19.66
+      ]
+    },
+    {
+      "id": "poland-slaskie",
+      "name": "Województwo śląskie (Poland)",
+      "bbox": [
+        49.16,
+        18.02,
+        51.11,
+        19.99
+      ]
+    },
+    {
+      "id": "poland-swietokrzyskie",
+      "name": "Województwo świętokrzyskie (Poland)",
+      "bbox": [
+        50.18,
+        19.7,
+        51.35,
+        21.88
+      ]
+    },
+    {
+      "id": "poland-warminsko-mazurskie",
+      "name": "Województwo warmińsko-mazurskie (Poland)",
+      "bbox": [
+        53.13,
+        19.12,
+        55.07,
+        22.82
+      ]
+    },
+    {
+      "id": "poland-wielkopolskie",
+      "name": "Województwo wielkopolskie (Poland)",
+      "bbox": [
+        51.08,
+        15.76,
+        53.68,
+        19.13
+      ]
+    },
+    {
+      "id": "poland-zachodniopomorskie",
+      "name": "Województwo zachodniopomorskie (Poland)",
+      "bbox": [
+        52.62,
+        13.26,
+        55.1,
+        16.99
+      ]
+    },
+    {
+      "id": "polynesie-francaise",
+      "name": "Polynésie française (French Polynesia)",
+      "bbox": [
+        -31.54,
+        -158.55,
+        -4.92,
+        -132.54
       ]
     },
     {
@@ -1059,6 +3299,16 @@
         -64.6,
         47.69,
         -61.25
+      ]
+    },
+    {
+      "id": "puerto-rico",
+      "name": "Puerto Rico (US)",
+      "bbox": [
+        17.52,
+        -68.31,
+        18.81,
+        -65.09
       ]
     },
     {
@@ -1092,6 +3342,46 @@
       ]
     },
     {
+      "id": "rwanda",
+      "name": "Rwanda",
+      "bbox": [
+        -2.85,
+        28.86,
+        -1.04,
+        30.91
+      ]
+    },
+    {
+      "id": "saint-helena-ascension-and-tristan-da-cunha",
+      "name": "Saint Helena, Ascension, and Tristan da Cunha",
+      "bbox": [
+        -43.83,
+        -15.57,
+        -4.59,
+        -2.78
+      ]
+    },
+    {
+      "id": "samoa",
+      "name": "Samoa",
+      "bbox": [
+        -15.88,
+        -174.51,
+        -10.96,
+        -170.54
+      ]
+    },
+    {
+      "id": "sao-tome-and-principe",
+      "name": "Sao Tome and Principe",
+      "bbox": [
+        -0.53,
+        5.27,
+        2.44,
+        8.37
+      ]
+    },
+    {
       "id": "saskatchewan",
       "name": "Saskatchewan (Canada)",
       "bbox": [
@@ -1102,6 +3392,16 @@
       ]
     },
     {
+      "id": "senegal-and-gambia",
+      "name": "Senegal and Gambia",
+      "bbox": [
+        12.02,
+        -19.86,
+        16.7,
+        -11.34
+      ]
+    },
+    {
       "id": "serbia",
       "name": "Serbia",
       "bbox": [
@@ -1109,6 +3409,36 @@
         18.81,
         46.19,
         23.01
+      ]
+    },
+    {
+      "id": "seychelles",
+      "name": "Seychelles",
+      "bbox": [
+        -12.56,
+        45.68,
+        -3.17,
+        57.57
+      ]
+    },
+    {
+      "id": "siberian-fed-district",
+      "name": "Siberian Federal District (Russia)",
+      "bbox": [
+        36.83,
+        69.86,
+        81.89,
+        147.71
+      ]
+    },
+    {
+      "id": "sierra-leone",
+      "name": "Sierra Leone",
+      "bbox": [
+        5.39,
+        -14.76,
+        10.01,
+        -10.26
       ]
     },
     {
@@ -1132,6 +3462,26 @@
       ]
     },
     {
+      "id": "solomon-islands",
+      "name": "Solomon Islands",
+      "bbox": [
+        -16.13,
+        154.59,
+        -4.14,
+        173.59
+      ]
+    },
+    {
+      "id": "somalia",
+      "name": "Somalia",
+      "bbox": [
+        -1.82,
+        40.97,
+        12.71,
+        52.45
+      ]
+    },
+    {
       "id": "south-africa",
       "name": "South Africa",
       "bbox": [
@@ -1139,6 +3489,16 @@
         14.37,
         -21.78,
         40.27
+      ]
+    },
+    {
+      "id": "south-africa-and-lesotho",
+      "name": "South Africa (includes Lesotho)",
+      "bbox": [
+        -47.58,
+        16.0,
+        -22.12,
+        39.24
       ]
     },
     {
@@ -1162,6 +3522,16 @@
       ]
     },
     {
+      "id": "south-fed-district",
+      "name": "South Federal District (Russia)",
+      "bbox": [
+        42.62,
+        36.52,
+        51.26,
+        51.17
+      ]
+    },
+    {
       "id": "south-korea",
       "name": "South Korea",
       "bbox": [
@@ -1172,13 +3542,233 @@
       ]
     },
     {
-      "id": "spain",
-      "name": "Spain",
+      "id": "south-sudan",
+      "name": "South Sudan",
       "bbox": [
-        35.15,
-        -9.78,
-        44.15,
-        5.1
+        3.46,
+        23.42,
+        12.24,
+        35.96
+      ]
+    },
+    {
+      "id": "spain-andalucia",
+      "name": "Andalucía (Spain)",
+      "bbox": [
+        35.71,
+        -7.55,
+        38.73,
+        -1.33
+      ]
+    },
+    {
+      "id": "spain-aragon",
+      "name": "Aragón (Spain)",
+      "bbox": [
+        39.84,
+        -2.18,
+        42.93,
+        0.77
+      ]
+    },
+    {
+      "id": "spain-asturias",
+      "name": "Asturias (Spain)",
+      "bbox": [
+        42.88,
+        -7.2,
+        44.03,
+        -4.39
+      ]
+    },
+    {
+      "id": "spain-cantabria",
+      "name": "Cantabria (Spain)",
+      "bbox": [
+        42.75,
+        -4.86,
+        43.89,
+        -3.14
+      ]
+    },
+    {
+      "id": "spain-castilla-la-mancha",
+      "name": "Castilla-La Mancha (Spain)",
+      "bbox": [
+        38.02,
+        -5.41,
+        41.33,
+        -0.91
+      ]
+    },
+    {
+      "id": "spain-castilla-y-leon",
+      "name": "Castilla y León (Spain)",
+      "bbox": [
+        40.08,
+        -7.08,
+        43.24,
+        -1.77
+      ]
+    },
+    {
+      "id": "spain-cataluna",
+      "name": "Cataluña (Spain)",
+      "bbox": [
+        40.21,
+        0.16,
+        42.92,
+        4.17
+      ]
+    },
+    {
+      "id": "spain-ceuta",
+      "name": "Ceuta (Spain)",
+      "bbox": [
+        35.87,
+        -5.39,
+        35.96,
+        -5.26
+      ]
+    },
+    {
+      "id": "spain-extremadura",
+      "name": "Extremadura (Spain)",
+      "bbox": [
+        37.94,
+        -7.64,
+        40.49,
+        -4.64
+      ]
+    },
+    {
+      "id": "spain-galicia",
+      "name": "Galicia (Spain)",
+      "bbox": [
+        41.77,
+        -10.36,
+        44.31,
+        -6.73
+      ]
+    },
+    {
+      "id": "spain-islas-baleares",
+      "name": "Islas Baleares (Spain)",
+      "bbox": [
+        38.06,
+        0.62,
+        40.71,
+        4.94
+      ]
+    },
+    {
+      "id": "spain-la-rioja",
+      "name": "La Rioja (Spain)",
+      "bbox": [
+        41.91,
+        -3.14,
+        42.65,
+        -1.67
+      ]
+    },
+    {
+      "id": "spain-madrid",
+      "name": "Madrid (Spain)",
+      "bbox": [
+        39.88,
+        -4.59,
+        41.17,
+        -3.05
+      ]
+    },
+    {
+      "id": "spain-melilla",
+      "name": "Melilla (Spain)",
+      "bbox": [
+        35.26,
+        -2.98,
+        35.33,
+        -2.91
+      ]
+    },
+    {
+      "id": "spain-murcia",
+      "name": "Murcia (Spain)",
+      "bbox": [
+        37.11,
+        -2.35,
+        38.76,
+        -0.25
+      ]
+    },
+    {
+      "id": "spain-navarra",
+      "name": "Navarra (Spain)",
+      "bbox": [
+        41.91,
+        -2.5,
+        43.37,
+        -0.63
+      ]
+    },
+    {
+      "id": "spain-pais-vasco",
+      "name": "País Vasco (Spain)",
+      "bbox": [
+        42.47,
+        -3.45,
+        43.75,
+        -1.66
+      ]
+    },
+    {
+      "id": "spain-valencia",
+      "name": "Valencia (Spain)",
+      "bbox": [
+        37.84,
+        -1.53,
+        40.79,
+        1.69
+      ]
+    },
+    {
+      "id": "sri-lanka",
+      "name": "Sri Lanka",
+      "bbox": [
+        5.62,
+        79.16,
+        10.07,
+        82.65
+      ]
+    },
+    {
+      "id": "sudan",
+      "name": "Sudan",
+      "bbox": [
+        8.65,
+        21.78,
+        22.48,
+        39.63
+      ]
+    },
+    {
+      "id": "suriname",
+      "name": "Suriname",
+      "bbox": [
+        1.82,
+        -58.08,
+        7.76,
+        -53.33
+      ]
+    },
+    {
+      "id": "swaziland",
+      "name": "Swaziland",
+      "bbox": [
+        -27.32,
+        30.79,
+        -25.72,
+        32.14
       ]
     },
     {
@@ -1202,6 +3792,16 @@
       ]
     },
     {
+      "id": "syria",
+      "name": "Syria",
+      "bbox": [
+        32.31,
+        35.28,
+        37.32,
+        42.38
+      ]
+    },
+    {
       "id": "taiwan",
       "name": "Taiwan",
       "bbox": [
@@ -1209,6 +3809,16 @@
         118.1,
         26.6,
         122.93
+      ]
+    },
+    {
+      "id": "tajikistan",
+      "name": "Tajikistan",
+      "bbox": [
+        36.66,
+        67.32,
+        41.06,
+        75.17
       ]
     },
     {
@@ -1252,6 +3862,86 @@
       ]
     },
     {
+      "id": "togo",
+      "name": "Togo",
+      "bbox": [
+        5.89,
+        -0.15,
+        11.14,
+        1.81
+      ]
+    },
+    {
+      "id": "tokelau",
+      "name": "Tokelau",
+      "bbox": [
+        -11.08,
+        -176.86,
+        -6.66,
+        -167.41
+      ]
+    },
+    {
+      "id": "tonga",
+      "name": "Tonga",
+      "bbox": [
+        -25.68,
+        -178.65,
+        -14.15,
+        -171.31
+      ]
+    },
+    {
+      "id": "tunisia",
+      "name": "Tunisia",
+      "bbox": [
+        30.21,
+        7.51,
+        37.94,
+        12.13
+      ]
+    },
+    {
+      "id": "turkey",
+      "name": "Turkey",
+      "bbox": [
+        35.72,
+        25.52,
+        43.07,
+        44.86
+      ]
+    },
+    {
+      "id": "turkmenistan",
+      "name": "Turkmenistan",
+      "bbox": [
+        35.12,
+        51.83,
+        42.81,
+        66.72
+      ]
+    },
+    {
+      "id": "tuvalu",
+      "name": "Tuvalu",
+      "bbox": [
+        -13.24,
+        -180,
+        -4.06,
+        180
+      ]
+    },
+    {
+      "id": "uganda",
+      "name": "Uganda",
+      "bbox": [
+        -1.49,
+        29.57,
+        4.25,
+        35.01
+      ]
+    },
+    {
       "id": "ukraine",
       "name": "Ukraine",
       "bbox": [
@@ -1259,6 +3949,16 @@
         22.13,
         52.39,
         40.24
+      ]
+    },
+    {
+      "id": "ural-fed-district",
+      "name": "Ural Federal District (Russia)",
+      "bbox": [
+        51.3,
+        57.04,
+        75.01,
+        86.1
       ]
     },
     {
@@ -1272,6 +3972,16 @@
       ]
     },
     {
+      "id": "us-virgin-islands",
+      "name": "Us Virgin Islands (US)",
+      "bbox": [
+        17.28,
+        -65.18,
+        18.49,
+        -63.96
+      ]
+    },
+    {
       "id": "utah",
       "name": "Utah (state)",
       "bbox": [
@@ -1279,6 +3989,36 @@
         -114.06,
         42.0,
         -109.04
+      ]
+    },
+    {
+      "id": "uzbekistan",
+      "name": "Uzbekistan",
+      "bbox": [
+        37.17,
+        55.98,
+        45.62,
+        73.17
+      ]
+    },
+    {
+      "id": "vanuatu",
+      "name": "Vanuatu",
+      "bbox": [
+        -21.64,
+        163.31,
+        -12.3,
+        173.61
+      ]
+    },
+    {
+      "id": "venezuela",
+      "name": "Venezuela",
+      "bbox": [
+        0.62,
+        -73.38,
+        16.67,
+        -59.51
       ]
     },
     {
@@ -1309,6 +4049,26 @@
         -83.68,
         39.47,
         -74.3
+      ]
+    },
+    {
+      "id": "volga-fed-district",
+      "name": "Volga Federal District (Russia)",
+      "bbox": [
+        46.28,
+        41.72,
+        61.72,
+        64.31
+      ]
+    },
+    {
+      "id": "wallis-et-futuna",
+      "name": "Wallis et Futuna",
+      "bbox": [
+        -16.26,
+        -179.98,
+        -9.06,
+        -174.16
       ]
     },
     {
@@ -1352,6 +4112,16 @@
       ]
     },
     {
+      "id": "yemen",
+      "name": "Yemen",
+      "bbox": [
+        11.32,
+        41.07,
+        19.03,
+        55.51
+      ]
+    },
+    {
       "id": "yukon",
       "name": "Yukon (Canada)",
       "bbox": [
@@ -1359,6 +4129,26 @@
         -141.36,
         70.17,
         -123.8
+      ]
+    },
+    {
+      "id": "zambia",
+      "name": "Zambia",
+      "bbox": [
+        -18.09,
+        21.99,
+        -8.24,
+        33.72
+      ]
+    },
+    {
+      "id": "zimbabwe",
+      "name": "Zimbabwe",
+      "bbox": [
+        -22.45,
+        25.22,
+        -15.59,
+        33.09
       ]
     }
   ]
