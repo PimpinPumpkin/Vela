@@ -14,9 +14,103 @@
 # everything z17. The app then decides per zoom which of the features in a tile get an icon, a
 # label, or just a dot (VelaMapView), so a downtown thins to its landmarks the way Google's does
 # and a village keeps its one cafe at z15.
+#
+# ALLTHEPLACES (2026-09-15): Overture's places come mostly from Meta and Bing, so a chain store
+# with no Facebook page is simply absent. AllThePlaces (alltheplaces.xyz, CC0) scrapes every
+# chain's OWN store locator weekly and publishes the result as one world PMTiles; the region's
+# z15 tiles are pulled with `pmtiles extract` (a few range requests, seconds), decoded, filtered
+# to real businesses by their OSM-style tags, and merged into the Overture rows: a locator point
+# that has an Overture row of the same brand or the same leading name words within ~150 m is
+# dropped, the rest join with a lower confidence than Overture's own. Chain rows carry
+# `opening_hours`, which Overture never has. ATP_RUN=none skips it (also when the pmtiles or
+# tippecanoe-decode binaries are missing); ATP_LOCAL points at a local extract for dev runs.
 set -euo pipefail
 ID="$1"; S="$2"; W="$3"; N="$4"; E="$5"; OUT="$6"; RELEASE="${7:-2026-08-19.0}"; LOCAL="${8:-}"
+ATP_RUN="${ATP_RUN:-2026-09-05-13-32-25}"
 WORK="$(mktemp -d)"
+ATP_NDJSON=""
+if [ "$ATP_RUN" != "none" ] && command -v pmtiles >/dev/null 2>&1 && command -v tippecanoe-decode >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+  ATP_SRC="${ATP_LOCAL:-https://alltheplaces-data.openaddresses.io/runs/$ATP_RUN/output.pmtiles}"
+  if pmtiles extract "$ATP_SRC" "$WORK/atp.pmtiles" --bbox="$W,$S,$E,$N" --minzoom=15 --maxzoom=15 >/dev/null 2>&1; then
+    tippecanoe-decode -z15 -Z15 "$WORK/atp.pmtiles" 2>/dev/null \
+      | jq -c '.. | objects | select(.type == "Feature" and .geometry.type == "Point") | {props: .properties, lng: .geometry.coordinates[0], lat: .geometry.coordinates[1]}' \
+      > "$WORK/atp.ndjson" || true
+    if [ -s "$WORK/atp.ndjson" ]; then ATP_NDJSON="$WORK/atp.ndjson"; else echo "alltheplaces: no rows in the box"; fi
+  else
+    echo "alltheplaces: extract failed for $ID, baking Overture only"
+  fi
+fi
+ATP_SQL=""
+if [ -n "$ATP_NDJSON" ]; then
+read -r -d '' ATP_SQL <<ATPSQL || true
+CREATE TABLE atp_raw AS SELECT props, lng, lat FROM read_json('$ATP_NDJSON', format = 'newline_delimited', columns = {props: 'JSON', lng: 'DOUBLE', lat: 'DOUBLE'});
+CREATE TABLE atp AS
+SELECT 'atp:' || (json_extract_string(props, '@spider')) || ':' || COALESCE(json_extract_string(props, 'ref'), md5(CAST(lng AS VARCHAR) || ',' || CAST(lat AS VARCHAR))) AS id,
+  -- Some locators name a branch after its town ("Davis", "Davis, CA"); the brand is the name then.
+  CASE WHEN json_extract_string(props, 'brand') IS NOT NULL
+        AND (lower(json_extract_string(props, 'name')) = lower(COALESCE(json_extract_string(props, 'addr:city'), ''))
+             OR json_extract_string(props, 'name') ILIKE '%, ' || COALESCE(json_extract_string(props, 'addr:state'), '~'))
+       THEN json_extract_string(props, 'brand') ELSE json_extract_string(props, 'name') END AS name,
+  CASE
+    WHEN json_extract_string(props, 'amenity') = 'fast_food' THEN 'fast_food_restaurant'
+    WHEN json_extract_string(props, 'amenity') = 'cafe' THEN 'coffee_shop'
+    WHEN json_extract_string(props, 'amenity') = 'fuel' THEN 'gas_station'
+    WHEN json_extract_string(props, 'amenity') = 'cinema' THEN 'movie_theater'
+    WHEN json_extract_string(props, 'amenity') = 'ice_cream' THEN 'ice_cream_shop'
+    WHEN json_extract_string(props, 'amenity') IN ('doctors', 'clinic') THEN 'doctor'
+    WHEN json_extract_string(props, 'amenity') = 'veterinary' THEN 'veterinarian'
+    WHEN json_extract_string(props, 'amenity') = 'charging_station' THEN 'ev_charging_station'
+    WHEN json_extract_string(props, 'amenity') = 'car_repair' THEN 'automotive_repair'
+    WHEN json_extract_string(props, 'amenity') = 'theatre' THEN 'theater'
+    WHEN json_extract_string(props, 'amenity') IS NOT NULL THEN json_extract_string(props, 'amenity')
+    WHEN json_extract_string(props, 'shop') IS NOT NULL THEN CASE json_extract_string(props, 'shop')
+      WHEN 'supermarket' THEN 'supermarket' WHEN 'convenience' THEN 'convenience_store' WHEN 'department_store' THEN 'department_store'
+      WHEN 'hardware' THEN 'hardware_store' WHEN 'doityourself' THEN 'home_improvement_store' WHEN 'electronics' THEN 'electronics'
+      WHEN 'furniture' THEN 'furniture_store' WHEN 'florist' THEN 'florist' WHEN 'laundry' THEN 'laundromat' WHEN 'dry_cleaning' THEN 'dry_cleaner'
+      WHEN 'hairdresser' THEN 'hair_salon' WHEN 'beauty' THEN 'beauty_salon' WHEN 'jewelry' THEN 'jewelry_store' WHEN 'books' THEN 'bookstore'
+      WHEN 'pet' THEN 'pet_store' WHEN 'clothes' THEN 'clothing_store' WHEN 'shoes' THEN 'shoe_store' WHEN 'toys' THEN 'toy_store'
+      WHEN 'bicycle' THEN 'bicycle_shop' WHEN 'alcohol' THEN 'liquor_store' WHEN 'tobacco' THEN 'tobacco_shop' WHEN 'sports' THEN 'sporting_goods'
+      WHEN 'mall' THEN 'shopping_center' WHEN 'wholesale' THEN 'wholesale_store' WHEN 'variety_store' THEN 'discount_store' WHEN 'car' THEN 'car_dealer'
+      WHEN 'car_repair' THEN 'automotive_repair' WHEN 'car_parts' THEN 'auto_parts_store' WHEN 'chemist' THEN 'drugstore' WHEN 'optician' THEN 'optometrist'
+      ELSE (json_extract_string(props, 'shop')) || '_store' END
+    WHEN json_extract_string(props, 'tourism') IN ('hotel', 'motel', 'hostel') THEN json_extract_string(props, 'tourism')
+    WHEN json_extract_string(props, 'tourism') = 'guest_house' THEN 'bed_and_breakfast'
+    WHEN json_extract_string(props, 'tourism') = 'museum' THEN 'museum'
+    WHEN json_extract_string(props, 'leisure') = 'fitness_centre' THEN 'gym'
+    WHEN json_extract_string(props, 'healthcare') IS NOT NULL THEN 'medical_center'
+    WHEN json_extract_string(props, 'office') IS NOT NULL THEN (json_extract_string(props, 'office')) || '_office'
+    ELSE NULL END AS category,
+  0.85 AS confidence,
+  json_extract_string(props, 'brand') AS brand,
+  COALESCE(json_extract_string(props, 'addr:full'), json_extract_string(props, 'addr:street_address')) AS addr,
+  json_extract_string(props, 'website') AS website, json_extract_string(props, 'phone') AS phone, 'open' AS operating_status,
+  json_extract_string(props, 'opening_hours') AS hours, lng, lat
+FROM atp_raw
+WHERE json_extract_string(props, 'name') IS NOT NULL AND json_extract_string(props, 'name') <> ''
+  AND lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N
+  AND (json_extract_string(props, 'shop') IS NOT NULL
+    OR json_extract_string(props, 'tourism') IN ('hotel', 'motel', 'hostel', 'guest_house', 'museum')
+    OR json_extract_string(props, 'leisure') = 'fitness_centre'
+    OR json_extract_string(props, 'healthcare') IS NOT NULL
+    OR json_extract_string(props, 'office') IN ('insurance', 'financial_advisor', 'estate_agent', 'tax_advisor', 'lawyer', 'accountant', 'travel_agent')
+    OR json_extract_string(props, 'amenity') IN ('restaurant', 'fast_food', 'cafe', 'bar', 'pub', 'ice_cream', 'fuel', 'pharmacy', 'bank', 'dentist', 'doctors', 'clinic',
+      'veterinary', 'cinema', 'car_wash', 'car_rental', 'car_repair', 'post_office', 'charging_station', 'gym', 'hospital', 'childcare', 'kindergarten',
+      'coworking_space', 'theatre', 'nightclub', 'food_court', 'bureau_de_change', 'money_transfer', 'driving_school', 'language_school',
+      'music_school', 'dancing_school', 'library', 'marketplace', 'bicycle_rental'));
+-- The first two significant words of a name, the app's own namesAgree rule in SQL form.
+CREATE MACRO nkey(n) AS trim(regexp_extract(regexp_replace(lower(n), '[^a-z0-9 ]', ' ', 'g'), '\\b([a-z0-9]{2,})\\b', 1) || ' ' ||
+  regexp_extract(regexp_replace(lower(n), '[^a-z0-9 ]', ' ', 'g'), '\\b[a-z0-9]{2,}\\b(?: [a-z0-9] )* +\\b([a-z0-9]{2,})\\b', 1));
+INSERT INTO raw
+SELECT a.id, a.name, a.category, a.confidence, a.brand, a.addr, a.website, a.phone, a.operating_status, a.lng, a.lat, a.hours
+FROM atp a
+WHERE NOT EXISTS (
+  SELECT 1 FROM raw o
+  WHERE abs(o.lat - a.lat) < 0.0015 AND abs(o.lng - a.lng) < 0.002
+    AND (nkey(o.name) = nkey(a.name) OR (o.brand IS NOT NULL AND a.brand IS NOT NULL AND lower(o.brand) = lower(a.brand)))
+);
+SELECT (SELECT count(*) FROM atp) AS atp_in_box, (SELECT count(*) FROM raw WHERE id LIKE 'atp:%') AS atp_added;
+ATPSQL
+fi
 if [ -n "$LOCAL" ]; then
   SRC="read_parquet('$LOCAL')"
   SEL="id, name, category, confidence, brand, addr, website, phone, operating_status, lng, lat"
@@ -26,8 +120,9 @@ else
 fi
 duckdb <<SQL
 INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial; SET s3_region='us-west-2';
-CREATE TABLE raw AS SELECT $SEL FROM $SRC
+CREATE TABLE raw AS SELECT $SEL, CAST(NULL AS VARCHAR) AS hours FROM $SRC
   WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N;
+$ATP_SQL
 CREATE TABLE scored AS
 SELECT *,
   CASE
@@ -63,7 +158,7 @@ WHERE name IS NOT NULL AND name <> ''
   AND NOT (category IS NULL AND website IS NULL);
 -- Rank by prominence inside a fine (~400 m) and a coarse (~1.6 km) cell. Longitude cells are
 -- widened by 1/cos(lat) so the cells stay roughly square away from the equator.
--- A third, ~6.5 km cell (`xrank`) picks the landmarks Google still draws zoomed out to z11/z12:
+-- A third, ~6.5 km cell (xrank) picks the landmarks Google still draws zoomed out to z11/z12:
 -- airports, hospitals, universities, stadiums, malls, zoos. Only the landmark categories qualify
 -- there, so a branded gas station never becomes a town's z11 marker.
 -- TENANTS (2026-09-15): a supermarket's pharmacy, its money-transfer counter, the optician inside
@@ -118,7 +213,8 @@ COPY (
       'class', COALESCE(upper(substr(replace(category, '_', ' '), 1, 1)) || substr(replace(category, '_', ' '), 2), 'Place'),
       'group', grp, 'icon', 'vela-poi-' || grp, 'prominence', round(prominence, 2), 'confidence', round(COALESCE(confidence, 0.5), 2),
       'rank', rank, 'crank', crank, 'xrank', xrank, 'landmark', landmark,
-      'brand', brand, 'addr', addr, 'website', website, 'phone', phone, 'src', 'overture'
+      'brand', brand, 'addr', addr, 'website', website, 'phone', phone, 'hours', hours,
+      'src', 'overture', 'origin', CASE WHEN id LIKE 'atp:%' THEN 'atp' ELSE 'overture' END
     )
   ) FROM ranked
 ) TO '$WORK/places.ndjson' (FORMAT CSV, HEADER false, QUOTE '', ESCAPE '', DELIMITER '\t');
