@@ -63,6 +63,10 @@ import org.maplibre.android.geometry.LatLng as MLLatLng
 import org.maplibre.android.geometry.LatLngBounds as MLLatLngBounds
 
 private const val ROUTE_SRC = "vela-route-src"
+// A search from a view this tall (metres, north to south) keeps its camera when at least
+// HOLD_VIEW_MIN_HITS results land in the visible strip, instead of flying out to frame every hit.
+private const val HOLD_VIEW_SPAN_M = 2_500.0
+private const val HOLD_VIEW_MIN_HITS = 3
 private const val ROUTE_LAYER = "vela-route"
 
 // The active route stripe's zoom curve (and the alt routes a step thinner): 6 px was constant at
@@ -3409,6 +3413,23 @@ fun VelaMapView(
                 // user gestures) — one recomposition after this frame it yanked the camera back
                 // to wherever you were before the search (device-seen 2026-07-09).
                 lastCameraTarget = cameraTarget
+                // HOLD THE VIEW when the user searched from a close zoom and enough hits landed in
+                // it (user 2026-09-15: zoomed in to a few blocks, "food" flew the map out to frame
+                // every hit; Google keeps the view and lets the list carry the rest). The strip
+                // above the results sheet is the visible part, so hits under the sheet do not count.
+                val holdView = run {
+                    val vr = runCatching { map.projection.visibleRegion.latLngBounds }.getOrNull() ?: return@run false
+                    val spanM = app.vela.core.model.LatLng(vr.latitudeSouth, vr.longitudeWest)
+                        .distanceTo(app.vela.core.model.LatLng(vr.latitudeNorth, vr.longitudeWest))
+                    if (spanM > HOLD_VIEW_SPAN_M) return@run false
+                    val visibleBottom = map.height - cameraBottomInsetPx
+                    val inside = markers.count { m ->
+                        val pt = map.projection.toScreenLocation(MLLatLng(m.location.lat, m.location.lng))
+                        pt.x >= 0f && pt.x <= map.width && pt.y >= 0f && pt.y <= visibleBottom
+                    }
+                    inside >= minOf(HOLD_VIEW_MIN_HITS, markers.size)
+                }
+                if (!holdView) {
                 // Frame the result CLUSTER, not every last pin: a single stray hit hundreds of
                 // miles away (Google pads sparse local searches with far matches) used to zoom
                 // the camera out to a continental view. Median-center the pins and drop outliers
@@ -3437,6 +3458,7 @@ fun VelaMapView(
                         flightDepth[0]++
                         map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), fp.side, fp.top, fp.side, fp.bottom), 700, flightCb())
                     }
+                }
                 }
             }
 
