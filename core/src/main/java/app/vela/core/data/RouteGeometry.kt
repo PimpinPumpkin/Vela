@@ -327,6 +327,7 @@ object RouteGeometry {
         maneuvers.clear(); maneuvers.addAll(consolidated)
         if (maneuvers.size < 2) return null
         return Route(
+            source = app.vela.core.model.RouteSource.OSRM,
             polyline = poly,
             legs = listOf(RouteLeg(dist, dur, null, maneuvers)),
             distanceMeters = dist,
