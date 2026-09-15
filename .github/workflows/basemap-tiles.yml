@@ -93,10 +93,8 @@ jobs:
         with:
           path: data/sources
           key: planetiler-sources-v1
-      - name: Fetch planetiler + pmtiles
-        run: |
-          curl -sL -o tools/planetiler.jar https://github.com/onthegomap/planetiler/releases/latest/download/planetiler.jar
-          curl -sL https://github.com/protomaps/go-pmtiles/releases/latest/download/go-pmtiles_$(curl -sL https://api.github.com/repos/protomaps/go-pmtiles/releases/latest | jq -r .tag_name | sed 's/^v//')_Linux_x86_64.tar.gz | tar xz -C /usr/local/bin pmtiles || true
+      - name: Fetch planetiler
+        run: curl -sL -o tools/planetiler.jar https://github.com/onthegomap/planetiler/releases/latest/download/planetiler.jar
       - name: Bake ${{ matrix.id }}
         env:
           PLANETILER_XMX: 10g
@@ -108,13 +106,13 @@ jobs:
           gh release upload basemap-tiles "basemap-${{ matrix.id }}.pmtiles" --clobber --repo "$GITHUB_REPOSITORY"
           mkdir -p entries
           SIZE=$(stat -c %s "basemap-${{ matrix.id }}.pmtiles")
-          # Bounds from the archive header (the routing catalog carries none): the pmtiles CLI prints
-          # "bounds: (long: W, lat: S) (long: E, lat: N)".
-          B=$(pmtiles show "basemap-${{ matrix.id }}.pmtiles" | grep -E '^bounds' | grep -oE '[-0-9.]+' | paste -sd' ' -)
-          set -- $B
+          # Bounds from the archive header (the routing catalog carries none): the PMTiles v3 header
+          # stores them as int32 E7 at bytes 102..117 (min lon, min lat, max lon, max lat). No CLI
+          # needed; the pmtiles CLI download was rate-limited on shared runners and lost entries.
+          BBOX=$(python3 scripts/pmtiles-bbox.py "basemap-${{ matrix.id }}.pmtiles")
           jq -n --arg id "${{ matrix.id }}" --arg name "${{ matrix.name }}" \
             --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/basemap-tiles/basemap-${{ matrix.id }}.pmtiles" \
-            --argjson sizeMb "$(echo "scale=2; $SIZE/1000000" | bc)" --argjson bbox "[$2, $1, $4, $3]" --argjson rev "$(date -u +%Y%m%d)" \
+            --argjson sizeMb "$(echo "scale=2; $SIZE/1000000" | bc)" --argjson bbox "$BBOX" --argjson rev "$(date -u +%Y%m%d)" \
             '{id:$id,name:$name,url:$url,sizeMb:$sizeMb,bbox:$bbox,rev:$rev}' > "entries/${{ matrix.id }}.json"
       - uses: actions/upload-artifact@v4
         with:
