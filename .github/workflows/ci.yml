@@ -187,7 +187,9 @@ jobs:
           CODE="${{ steps.ver.outputs.code }}"
           cp app/build/outputs/apk/release/app-release.apk vela-maps-canary.apk
           SUBJ="$(git log -1 --no-merges --pretty=%s)"
-          NOTES="$(printf 'Rolling development build, replaced on every canary push. Expect breakage: use the stable or nightly channel unless you are testing something.\n\nversionName: %s\nversionCode: %s\n\nLatest change: %s\n' "$VER" "$CODE" "$SUBJ")"
+          # The in-app What's new dialog shows this body verbatim, so the first line is a label,
+          # not a warning paragraph (user 2026-09-15).
+          NOTES="$(printf 'Canary branch.\n\nversionName: %s\nversionCode: %s\n\nLatest change: %s\n' "$VER" "$CODE" "$SUBJ")"
           if gh release view canary >/dev/null 2>&1; then
             gh release upload canary vela-maps-canary.apk --clobber
             gh release edit canary --prerelease --title "Vela canary" --notes "$NOTES"
