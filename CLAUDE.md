@@ -3201,7 +3201,13 @@ architecture note.
   memoised 10 min (the lookup runs on every camera idle). Labels use `PoiIcons.ambientLabelColor(dark)` off
   the baked `icon` property (the fixed grey was the "text looks off" report), two label anchors not four
   (hundreds of features per view), minzooms >=6 z13 / >=4.5 z14 / >=3.5 z15 / >=2.5 z16 / else z17.
-  `openPlaceCache` (VM, LRU 200, device-local) makes a second tap on the same pin instant. Licence:
+  `openPlaceCache` (VM, LRU 500, device-local, PERSISTED to `files/open_place_links.json` as
+  `[{o: overtureId, p: PlaceJson}]`, loaded on a Main-dispatched launch after init so it never races the
+  constructor, written 2 s after a new link, slim listings without a review count or hours never
+  stored) makes a second tap on the same pin instant, across restarts. `MapPoiPrefs.lookupTappedPlaces`
+  ("Look up tapped places on Google", Settings > Map under the source picker, default ON, pref
+  `map_places_google_lookup`): off, a seeded open-place tap stays on the tile data, no search, no
+  reviews, nothing to Google; basemap taps still resolve. Licence:
   CDLA-Permissive 2.0, attribution still to add to About.
 - **The hidden WebViews are warmed AFTER results land, never before the fetch (2026-09-14).**
   `runSearch` used to call `webPopularTimes.prewarm()` + `webPhotos.warm()` before the search:
