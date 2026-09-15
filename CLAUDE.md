@@ -3152,6 +3152,12 @@ architecture note.
   and the tap resolution in `onPoiTap`: offline, an open place shows its tile data or the Google listing
   remembered from an earlier online tap (`openPlaceCache`), a basemap tap keeps its name, and no spinner
   waits on a host that cannot answer.
+- **MapViewModel init rule (2026-09-15, issue #474 boot crash).** `viewModelScope` is
+  `Dispatchers.Main.immediate`: a `launch { flow.collect { } }` inside `init` runs its FIRST pass inline,
+  before the properties declared below `init` exist. `speeding.reset()` in the nav-state collector hit a
+  null `SpeedingAlerts` (declared 6,000 lines down) and every launch crashed on an Android 10 handset and
+  a head unit, while Pixels never showed it. Anything an init-time collector touches is declared ABOVE
+  `init`; the open-place link loader had the same shape a day earlier (it now suspends on IO first).
 - **Data revisions + monthly bakes (2026-09-15).** Every data manifest row now carries `rev` (the bake
   date as an int, `YYYYMMDD`): obf (`scripts/build-obf-region.sh`), places (`places-overlays.yml`),
   basemap (`basemap-tiles.yml`); the place packs kept their counter. On the phone `ObfStore` and the

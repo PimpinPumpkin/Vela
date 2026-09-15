@@ -427,6 +427,14 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    // Declared ABOVE the init block that resets it. Kotlin initializes properties in textual
+    // order, and the nav-state collector below runs its first pass INLINE inside init on
+    // Dispatchers.Main.immediate, so a holder declared further down was still null when
+    // `speeding.reset()` ran: a boot crash on every launch for some phones (issue #474, an
+    // Android 10 handset and a head unit; the same shape bit the open-place link loader a day
+    // earlier). Anything an init-time collector touches has to live above `init`.
+    private val speeding = app.vela.core.nav.SpeedingAlerts()
+
     init {
         loadAmbientCacheFromDisk() // ambient LRU survives restarts (paint-then-refine)
         warmWebViewsWhenQuiet() // boot the hidden WebViews at a quiet moment, not at the first place tap
@@ -6334,7 +6342,6 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    private val speeding = app.vela.core.nav.SpeedingAlerts()
 
     /** Say so when you have been over the posted limit for a few seconds (issue #404, opt-in).
      *  The limit is the one the speed badge shows: the offline graph's maxspeed, else the online
