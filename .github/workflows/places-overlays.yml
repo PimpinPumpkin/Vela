@@ -5,6 +5,11 @@ name: Open places overlays
 # reversible: its own release + manifest; delete the release to revert. Manual only while the layer is beta.
 
 on:
+  schedule:
+    # Overture publishes monthly. The 6th bakes the first half of the catalog, the 7th the second
+    # (the matrix caps at 256 jobs), both against the newest release in the bucket.
+    - cron: "0 5 6 * *"
+    - cron: "0 5 7 * *"
   workflow_dispatch:
     inputs:
       only:
@@ -28,21 +33,37 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.m.outputs.matrix }}
+      release: ${{ steps.rel.outputs.release }}
     steps:
       - uses: actions/checkout@v4
       - id: m
         run: |
+          SHARD="${{ github.event.inputs.shard }}"
+          case "${{ github.event.schedule }}" in
+            "0 5 6 * *") SHARD=a ;;
+            "0 5 7 * *") SHARD=b ;;
+          esac
           if [ -n "${{ github.event.inputs.only }}" ]; then
             jq -c --arg id "${{ github.event.inputs.only }}" '{include: [.regions[] | select(.id == $id)]}' tools/places-regions.json > m.json
           else
             # Two shards by sorted id: GitHub caps a matrix at 256 jobs and the catalog is past that.
-            case "${{ github.event.inputs.shard }}" in
+            case "$SHARD" in
               a) jq -c '(.regions | sort_by(.id)) as $r | {include: $r[0:(($r | length) / 2 | ceil)]}' tools/places-regions.json > m.json ;;
               b) jq -c '(.regions | sort_by(.id)) as $r | {include: $r[(($r | length) / 2 | ceil):]}' tools/places-regions.json > m.json ;;
               *) jq -c '{include: .regions}' tools/places-regions.json > m.json ;;
             esac
           fi
           echo "matrix=$(cat m.json)" >> "$GITHUB_OUTPUT"
+      - id: rel
+        name: Pick the Overture release
+        run: |
+          # A dispatch may pin a release; a scheduled run takes the newest one in the public bucket.
+          REL="${{ github.event.inputs.release }}"
+          if [ -z "$REL" ]; then
+            REL=$(curl -sL "https://overturemaps-us-west-2.s3.amazonaws.com/?prefix=release/&delimiter=/" | grep -oE 'release/[0-9]{4}-[0-9]{2}-[0-9]{2}\.[0-9]+/' | sort | tail -1 | sed 's#release/##; s#/$##')
+          fi
+          echo "release=${REL:-2026-08-19.0}" >> "$GITHUB_OUTPUT"
+          echo "overture release: ${REL:-2026-08-19.0}"
       - name: Ensure the release exists
         env:
           GH_TOKEN: ${{ github.token }}
@@ -72,7 +93,7 @@ jobs:
         run: |
           B='${{ toJson(matrix.bbox) }}'
           S=$(echo "$B" | jq '.[0]'); W=$(echo "$B" | jq '.[1]'); N=$(echo "$B" | jq '.[2]'); E=$(echo "$B" | jq '.[3]')
-          bash tools/build-places-region.sh "${{ matrix.id }}" "$S" "$W" "$N" "$E" "places-${{ matrix.id }}.pmtiles" "${{ github.event.inputs.release }}"
+          bash tools/build-places-region.sh "${{ matrix.id }}" "$S" "$W" "$N" "$E" "places-${{ matrix.id }}.pmtiles" "${{ needs.plan.outputs.release }}"
       - name: Upload archive + emit manifest entry
         env:
           GH_TOKEN: ${{ github.token }}
@@ -83,8 +104,8 @@ jobs:
           SIZE=$(stat -c %s "places-${{ matrix.id }}.pmtiles")
           jq -n --arg id "${{ matrix.id }}" --arg name "${{ matrix.name }}" \
             --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/places-overlays/places-${{ matrix.id }}.pmtiles" \
-            --argjson sizeMb "$(echo "scale=2; $SIZE/1000000" | bc)" --argjson bbox '${{ toJson(matrix.bbox) }}' \
-            '{id:$id,name:$name,url:$url,sizeMb:$sizeMb,bbox:$bbox}' > "entries/${{ matrix.id }}.json"
+            --argjson sizeMb "$(echo "scale=2; $SIZE/1000000" | bc)" --argjson bbox '${{ toJson(matrix.bbox) }}' --argjson rev "$(date -u +%Y%m%d)" \
+            '{id:$id,name:$name,url:$url,sizeMb:$sizeMb,bbox:$bbox,rev:$rev}' > "entries/${{ matrix.id }}.json"
       - uses: actions/upload-artifact@v4
         with:
           name: places-entry-${{ matrix.id }}

@@ -3152,6 +3152,17 @@ architecture note.
   and the tap resolution in `onPoiTap`: offline, an open place shows its tile data or the Google listing
   remembered from an earlier online tap (`openPlaceCache`), a basemap tap keeps its name, and no spinner
   waits on a host that cannot answer.
+- **Data revisions + monthly bakes (2026-09-15).** Every data manifest row now carries `rev` (the bake
+  date as an int, `YYYYMMDD`): obf (`scripts/build-obf-region.sh`), places (`places-overlays.yml`),
+  basemap (`basemap-tiles.yml`); the place packs kept their counter. On the phone `ObfStore` and the
+  `PmtilesRegionStore` family record the installed rev (`revs.json` next to the files) and expose
+  `installedRev`/`updatable(manifest)`. `MapViewModel.refreshRegionUpdates` (runs with the catalog
+  refresh) fills `MapUiState.regionUpdates` (region id -> "routing"/"places"/"map") and the Offline maps
+  row shows the same "Update" it showed for a newer pack; `updateRegion` refreshes the pack (delta
+  when offered), every places and basemap archive inside the region, then the obf. Crons: places on the
+  6th (shard a) and 7th (shard b) against the newest Overture release found in the bucket listing;
+  basemap on the 9th and 10th (first/second half of the catalog by id). The obf bake stays manual (its
+  runner memory limits and the user's manifest flip).
 - **Offline basemap (2026-09-14).** A region download is now routing (obf) + places (Overture) + the
   MAP PICTURE: `tools/build-basemap-region.sh` (planetiler over the same Geofabrik extract the obf
   bake uses, OpenMapTiles schema = what OpenFreeMap serves, so the same Liberty style draws it) ->

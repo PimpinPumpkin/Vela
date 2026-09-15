@@ -173,6 +173,7 @@
     <string name="settings_region_group_installed">All %1$d pieces installed</string> <!-- format -->
     <string name="settings_region_group_downloading">Downloading piece %1$d of %2$d</string> <!-- format -->
     <string name="settings_region_group_download">Download all</string>
+    <string name="settings_update_region">Update</string>
     <string name="settings_saved_places">Saved places</string>
     <string name="settings_saved_places_hint">Back up your starred places to a file, or restore them on another device. Import merges into what you already have. It never overwrites or removes anything, and it also reads GPX, KML and GeoJSON files exported from other map apps.</string>
     <string name="settings_import_nothing_new">Everything in that file is already saved.</string>

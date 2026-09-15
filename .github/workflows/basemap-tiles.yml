@@ -6,6 +6,11 @@ name: Offline basemap tiles
 # download gets routing, places and the map picture as one set. ADDITIVE and reversible.
 
 on:
+  schedule:
+    # Monthly, from the current Geofabrik extracts: the 9th bakes the first half of the catalog by
+    # id, the 10th the second (the matrix caps at 256 jobs).
+    - cron: "0 5 9 * *"
+    - cron: "0 5 10 * *"
   workflow_dispatch:
     inputs:
       group:
@@ -38,15 +43,23 @@ jobs:
         run: |
           ids_json=$(jq -cn --arg s "$IDS" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
           groups_json=$(jq -cn --arg s "$GROUP" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
-          sel=$(jq -c --arg group "$GROUP" --argjson groups "$groups_json" --argjson ids "$ids_json" '
+          HALF=""
+          case "${{ github.event.schedule }}" in
+            "0 5 9 * *") HALF=a ;;
+            "0 5 10 * *") HALF=b ;;
+          esac
+          sel=$(jq -c --arg group "$GROUP" --argjson groups "$groups_json" --argjson ids "$ids_json" --arg half "$HALF" '
             [ .regions[]
               | select(
-                  if ($ids|length) > 0 then (.id as $rid | $ids | index($rid)) != null
+                  if $half != "" then true
+                  elif ($ids|length) > 0 then (.id as $rid | $ids | index($rid)) != null
                   elif $group == "all-sub" then (.group | endswith("-sub"))
                   else (.group as $g | $groups | index($g)) != null end
                 )
               | select( .skip_obf != true )
               | {id, name, pbf_url} ]
+            | sort_by(.id)
+            | if $half == "a" then .[0:((length / 2) | ceil)] elif $half == "b" then .[((length / 2) | ceil):] else . end
           ' tools/routing-regions.json)
           n=$(printf '%s' "$sel" | jq 'length')
           echo "selected $n region(s):"; printf '%s' "$sel" | jq -r '.[].id' | paste -sd' ' -
@@ -101,8 +114,8 @@ jobs:
           set -- $B
           jq -n --arg id "${{ matrix.id }}" --arg name "${{ matrix.name }}" \
             --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/basemap-tiles/basemap-${{ matrix.id }}.pmtiles" \
-            --argjson sizeMb "$(echo "scale=2; $SIZE/1000000" | bc)" --argjson bbox "[$2, $1, $4, $3]" \
-            '{id:$id,name:$name,url:$url,sizeMb:$sizeMb,bbox:$bbox}' > "entries/${{ matrix.id }}.json"
+            --argjson sizeMb "$(echo "scale=2; $SIZE/1000000" | bc)" --argjson bbox "[$2, $1, $4, $3]" --argjson rev "$(date -u +%Y%m%d)" \
+            '{id:$id,name:$name,url:$url,sizeMb:$sizeMb,bbox:$bbox,rev:$rev}' > "entries/${{ matrix.id }}.json"
       - uses: actions/upload-artifact@v4
         with:
           name: basemap-entry-${{ matrix.id }}
