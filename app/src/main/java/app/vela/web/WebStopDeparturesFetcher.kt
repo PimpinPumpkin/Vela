@@ -1,23 +1,10 @@
 package app.vela.web
 
-import android.annotation.SuppressLint
 import android.content.Context
-import android.os.Handler
-import android.os.Looper
-import android.webkit.JavascriptInterface
-import android.webkit.WebResourceRequest
 import android.webkit.WebView
-import android.webkit.WebViewClient
-import app.vela.core.VelaConfig
 import app.vela.core.data.google.parse.StopDeparturesParser
 import app.vela.core.model.StopDepartures
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import java.math.BigInteger
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -37,83 +24,19 @@ import javax.inject.Singleton
  */
 @Singleton
 class WebStopDeparturesFetcher @Inject constructor(
-    @ApplicationContext private val context: Context,
-) {
-    private val main = Handler(Looper.getMainLooper())
-    private val mutex = Mutex()
-    private val seq = java.util.concurrent.atomic.AtomicLong()
-    private val pending = java.util.concurrent.ConcurrentHashMap<String, CompletableDeferred<String>>()
-    @Volatile private var currentId: String = ""
-    @Volatile private var webView: WebView? = null
-    private var reap: Runnable? = null
-
-    /** Free the WebView after a quiet period. A warm fetcher otherwise pins a full
-     *  maps.google.com page (DOM + renderer) for the rest of the session, and several warm
-     *  fetchers at once is real memory pressure (issue #182). The next fetch after a reap
-     *  just re-creates it - a one-off warm-up, only after minutes of not using the feature. */
-    private fun scheduleReap() {
-        reap?.let(main::removeCallbacks)
-        val r = Runnable { reapNow() }
-        reap = r
-        main.postDelayed(r, REAP_IDLE_MS)
-    }
-
-    /** Destroy the WebView immediately. Must run on the main thread (WebView requirement). */
-    private fun reapNow() {
-        webView?.let { runCatching { it.loadUrl("about:blank"); it.destroy() } }
-        webView = null
-    }
-
-    init {
-        // Under real memory pressure the 120 s idle timer is far too slow - the OS is asking for
-        // memory NOW and a Chromium renderer is one of the largest things we hold (ported from
-        // vela-dpad, 2026-07-23). Reap on the main thread, since WebView.destroy() requires it.
-        app.vela.ui.MemoryPressure.register { level ->
-            if (app.vela.ui.MemoryPressure.isSevere(level)) main.post { cancelReap(); reapNow() }
-        }
-    }
-
-    private fun cancelReap() {
-        reap?.let(main::removeCallbacks)
-        reap = null
-    }
-
-    private inner class Bridge {
-        @JavascriptInterface
-        fun onResult(id: String, payload: String) {
-            pending.remove(id)?.complete(payload) // a stale page's id is already gone -> no-op
-        }
-    }
+    @ApplicationContext context: Context,
+) : HiddenWebView(context, "stops") {
 
     /** The departure board for the station with [featureId] (`0x..:0x..`), or null on any
      *  failure/timeout, or when the place isn't a transit stop (no board in its payload). */
-    suspend fun fetch(featureId: String): StopDepartures? = mutex.withLock {
-        cancelReap()
-        try {
-            withContext(Dispatchers.Main) { webView?.onResume() } // asleep between fetches
-            fetchLocked(featureId)
-        } finally {
-            withContext(kotlinx.coroutines.NonCancellable + Dispatchers.Main) { runCatching { webView?.onPause() } }
-            scheduleReap()
-        }
-    }
+    suspend fun fetch(featureId: String): StopDepartures? = session { fetchLocked(featureId) }
 
     private suspend fun fetchLocked(featureId: String): StopDepartures? {
         val cid = cidOf(featureId) ?: return null
         // hl=en to match the app's existing transit board (WebDirectionsFetcher also pins en); the
         // clock times/headway come back in 12-hour form the parser reads. gl=us keeps the schedule US-shaped.
         val url = "https://www.google.com/maps?cid=$cid&hl=en&gl=us"
-        val id = seq.incrementAndGet().toString()
-        val deferred = CompletableDeferred<String>()
-        pending[id] = deferred
-        val raw = try {
-            withTimeoutOrNull(TOTAL_TIMEOUT_MS) {
-                load(url, id)
-                deferred.await()
-            }
-        } finally {
-            pending.remove(id)
-        }
+        val raw = request(TOTAL_TIMEOUT_MS) { id -> load(url, id) }
         // Debug builds keep the last raw payload on disk (filesDir/depdump.txt): the board schema is
         // positional and agency-shaped, so a "this stop parses wrong" report is only diagnosable from the
         // actual blob. Release builds never write it.
@@ -124,40 +47,19 @@ class WebStopDeparturesFetcher @Inject constructor(
         else runCatching { StopDeparturesParser.parse(raw) }.getOrNull()
     }
 
+    override fun onPageFinished(view: WebView, url: String?, requestId: String) {
+        main.postDelayed({ view.evaluateJavascript(extract(requestId), null) }, SETTLE_MS)
+    }
+
     /** cid = LOW half of the `0xHIGH:0xLOW` feature id as unsigned decimal (the `?cid=` deep-link). */
     private fun cidOf(featureId: String): String? {
         val low = featureId.substringAfter(":", "").removePrefix("0x").ifBlank { return null }
         return runCatching { BigInteger(low, 16).toString() }.getOrNull()
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
-    private suspend fun load(url: String, id: String) = withContext(Dispatchers.Main) {
-        val wv = webView ?: WebView(context).also {
-            it.settings.javaScriptEnabled = true
-            it.settings.domStorageEnabled = true
-            it.settings.userAgentString = VelaConfig.USER_AGENT // desktop UA -> desktop web Maps
-            it.addJavascriptInterface(Bridge(), "VelaBridge")
-            it.webViewClient = object : WebViewClient() {
-                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                    val scheme = request?.url?.scheme
-                    return scheme != null && scheme != "https" && scheme != "http"
-                }
-                override fun onPageFinished(view: WebView?, u: String?) {
-                    val idNow = currentId
-                    main.postDelayed({ view?.evaluateJavascript(extract(idNow), null) }, SETTLE_MS)
-                }
-            }
-            webView = it
-        }
-        currentId = id
-        wv.loadUrl(url)
-    }
-
     private companion object {
         const val TOTAL_TIMEOUT_MS = 20_000L
-        const val REAP_IDLE_MS = 120_000L // destroy the idle WebView after this quiet period (issue #182)
         const val SETTLE_MS = 1_600L
-
         /** Pull the place-details string out of APP_INITIALIZATION_STATE — the longest
          *  `)]}'`-guarded array (the place blob carrying the transit schedule). The SPA fills
          *  it a beat after page-finish, so poll up to ~7 s. Same shape as WebDirectionsFetcher. */
