@@ -245,7 +245,9 @@ Defaults that make the safe path the easy one:
   migrated from the old `update_nightly` boolean via `SelfUpdater.channel()`); the canary
   check reads versionName/versionCode out of the canary release NOTES (the tag never changes)
   and falls back to the newest nightly when that is ahead, so a stale canary never strands
-  anyone. Obtainium CANNOT cleanly track canary (its version detection keys on tags and the
+  anyone. The canary notes body starts with the one line "Canary branch." (2026-09-15: the old
+  breakage warning was the first sentence of the in-app What's new dialog); the versionName /
+  versionCode lines and "Latest change:" follow it and the updater's regexes read them. Obtainium CANNOT cleanly track canary (its version detection keys on tags and the
   canary tag is constant) - canary rides the in-app updater or a manual grab from the release
   page; that containment is deliberate, so prerelease Obtainium users never get surprise
   canary builds. **Docs-only pushes don't run CI or cut a nightly (2026-07-09):**
