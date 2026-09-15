@@ -104,6 +104,8 @@
     <string name="settings_share_diagnostics">Udostępnij diagnostykę</string>
     <string name="settings_diag_nothing">Nic jeszcze nie zapisano, użyj aplikacji, a następnie wyeksportuj.</string>
     <string name="settings_diag_export">Eksportuj sesję debugowania</string>
+    <string name="settings_diag_redact">Ukrywaj miejsca w eksportach</string>
+    <string name="settings_diag_redact_hint">Ukrywa wyszukiwania, cele, linki i nazwy miejsc w eksporcie i zaokrągla współrzędne do około 10 km. Czasy, liczniki i błędy zostają.</string>
     <string name="settings_save_trips">Zapisuj moje podróże (do odtworzenia)</string>
     <string name="settings_save_trips_hint">Zapisuje ślad GPS każdej trasy na tym telefonie, do późniejszego odtworzenia. Nigdy nie opuszcza telefonu.</string>
     <string name="settings_recorded_trips_hint">Zapisane podróże: dotknij Odtwórz, aby odtworzyć jedną na mapie (3×):</string>

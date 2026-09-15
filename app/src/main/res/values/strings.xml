@@ -231,6 +231,8 @@
     <string name="settings_share_diagnostics">Share diagnostics</string>
     <string name="settings_diag_nothing">Nothing recorded yet. Use the app, then export.</string>
     <string name="settings_diag_export">Export debug session</string>
+    <string name="settings_diag_redact">Redact places in exports</string>
+    <string name="settings_diag_redact_hint">Hides searches, destinations, links and place names from the export and rounds coordinates to about 10 km. Timing, counts and errors stay.</string>
     <string name="settings_save_trips">Save my trips (for replay)</string>
     <string name="settings_save_trips_hint">Records each drive\'s GPS trace on this phone, so it can be replayed later. Never leaves the phone.</string>
     <string name="settings_recorded_trips_hint">Recorded trips. Tap Replay to play one back on the map (3×):</string>

@@ -104,6 +104,8 @@
     <string name="settings_share_diagnostics">שתף אבחון</string>
     <string name="settings_diag_nothing">עדיין לא נרשם דבר. השתמש באפליקציה, ואז ייצא.</string>
     <string name="settings_diag_export">ייצא הפעלת ניפוי</string>
+    <string name="settings_diag_redact">הסתרת מקומות בייצוא</string>
+    <string name="settings_diag_redact_hint">מסתיר חיפושים, יעדים, קישורים ושמות מקומות מהייצוא ומעגל קואורדינטות לכ־10 ק״מ. זמנים, ספירות ושגיאות נשארים.</string>
     <string name="settings_save_trips">שמור את הנסיעות שלי (לשידור חוזר)</string>
     <string name="settings_save_trips_hint">מקליט את מסלול ה-GPS של כל נסיעה בטלפון הזה, כך שאפשר לשדר אותה מחדש. לעולם לא עוזב את הטלפון.</string>
     <string name="settings_recorded_trips_hint">נסיעות מוקלטות. הקש \"שדר\" כדי לנגן אחת מחדש על המפה (3×):</string>

@@ -27,19 +27,22 @@ class DiagExporter @Inject constructor(
     fun buildShareIntent(): Intent? {
         val events = diag.snapshot()
         if (events.isEmpty()) return null
+        // Settings > Diagnostics > "Redact places in exports" (issue #507): the same file with
+        // the searches, destinations, links and names gone, for a report the user wants public.
+        val redact = context.getSharedPreferences("vela_settings", Context.MODE_PRIVATE).getBoolean(REDACT_PREF, false)
 
         val json = buildString {
             append("{\"app\":\"Vela\",\"schema\":1,\"exportedAt\":").append(System.currentTimeMillis())
             append(",\"version\":").append(quote("${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"))
             append(",\"android\":").append(quote("API ${Build.VERSION.SDK_INT} — ${Build.MANUFACTURER} ${Build.MODEL}"))
-            append(",\"note\":").append(quote("coordinates rounded to ~1 km for privacy"))
+            append(",\"note\":").append(quote(DiagScrub.note(redact)))
             append(",\"count\":").append(events.size).append(",\"events\":[")
             events.forEachIndexed { i, e ->
                 if (i > 0) append(',')
                 append("{\"t\":").append(e.epochMs)
                 append(",\"kind\":").append(quote(e.kind))
-                append(",\"summary\":").append(quote(scrub(e.summary)))
-                e.detail?.let { d -> append(",\"detail\":").append(quote(scrub(d))) }
+                append(",\"summary\":").append(quote(DiagScrub.summary(e.summary, redact)))
+                DiagScrub.detail(e.kind, e.detail, redact)?.let { d -> append(",\"detail\":").append(quote(d)) }
                 append('}')
             }
             append("]}")
@@ -58,14 +61,9 @@ class DiagExporter @Inject constructor(
         )
     }
 
-    /** Round coordinate-looking decimals to 2 places (~1 km) so the exported file is safe to post
-     *  publicly - breadcrumbs carry raw lat/lng (search bias, off-route fixes, viewport boxes), which
-     *  would otherwise pinpoint the reporter. ~1 km still tells a dev WHICH AREA a bug happened in
-     *  without saying which building. Epochs/counts have no decimal point and zoom levels have only
-     *  one decimal, so the 3+-decimals requirement can't touch them. */
-    private val coordLike = Regex("""-?\d{1,3}\.\d{3,}""")
-    private fun scrub(s: String): String = coordLike.replace(s) { m ->
-        m.value.toDoubleOrNull()?.let { String.format(java.util.Locale.US, "%.2f", it) } ?: m.value
+    companion object {
+        /** vela_settings boolean read at export time; the toggle lives in DiagnosticsSettings. */
+        const val REDACT_PREF = "diag_redact"
     }
 
     private fun quote(s: String): String {
