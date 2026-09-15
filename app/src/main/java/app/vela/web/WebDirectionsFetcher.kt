@@ -110,8 +110,10 @@ class WebDirectionsFetcher @Inject constructor(
     ): List<TransitItinerary> = mutex.withLock {
         cancelReap()
         try {
+            withContext(Dispatchers.Main) { webView?.onResume() } // asleep between fetches
             transitLocked(origin, destination, timeMode, timeEpochSec, prefer)
         } finally {
+            withContext(kotlinx.coroutines.NonCancellable + Dispatchers.Main) { runCatching { webView?.onPause() } }
             scheduleReap()
         }
     }
