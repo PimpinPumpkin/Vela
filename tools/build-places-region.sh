@@ -44,7 +44,7 @@ SELECT *,
   + (COALESCE(confidence, 0.5) - 0.5) * 1.6 AS prominence,
   CASE
     WHEN category LIKE '%gas_station%' OR category LIKE '%charging%' THEN 'fuel'
-    WHEN category LIKE '%restaurant%' OR category IN ('coffee_shop','cafe','bar','pub','bakery','ice_cream_shop','brewery','winery','food_court','deli','juice_bar','tea_room') OR category LIKE '%food%' THEN 'food'
+    WHEN category LIKE '%restaurant%' OR category IN ('coffee_shop','cafe','bar','pub','bakery','ice_cream_shop','brewery','winery','food_court','deli','juice_bar','tea_room','sandwich_shop','donut_shop','bagel_shop','dessert_shop','frozen_yogurt_shop','cupcake_shop','smoothie_shop','bubble_tea','taqueria','diner','steakhouse','cafeteria','buffet') OR category LIKE '%food%' THEN 'food'
     WHEN category IN ('hotel','accommodation','motel','bed_and_breakfast','hostel','resort') THEN 'lodging'
     WHEN category IN ('hospital','pharmacy','dentist','veterinarian','optometrist','urgent_care_clinic','doctor','health_and_medical','diagnostic_services','physical_therapy','chiropractor','medical_center') OR category LIKE '%clinic%' OR category LIKE '%medical%' THEN 'health'
     WHEN category LIKE '%parking%' THEN 'parking'
@@ -66,14 +66,40 @@ WHERE name IS NOT NULL AND name <> ''
 -- A third, ~6.5 km cell (`xrank`) picks the landmarks Google still draws zoomed out to z11/z12:
 -- airports, hospitals, universities, stadiums, malls, zoos. Only the landmark categories qualify
 -- there, so a branded gas station never becomes a town's z11 marker.
+-- TENANTS (2026-09-15): a supermarket's pharmacy, its money-transfer counter, the optician inside
+-- the department store all carry the anchor's address and often the anchor's brand, and their
+-- own category prior + brand bonus let them outrank the store in a 400 m cell (a Safeway pharmacy
+-- drawn where the Safeway should be). A row at an anchor category's address, within ~200 m of
+-- it and not an anchor itself, loses 2 points, so the store wins the cell and the tenant fills in
+-- as you zoom.
+CREATE TABLE anchored AS
+SELECT s.* REPLACE (CASE WHEN a.id IS NOT NULL THEN s.prominence - 2.0 ELSE s.prominence END AS prominence)
+FROM scored s
+LEFT JOIN (
+  SELECT id, addr, lat, lng FROM scored
+  WHERE addr IS NOT NULL AND category IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store')
+) a ON s.addr = a.addr AND s.id <> a.id AND abs(s.lat - a.lat) < 0.002 AND abs(s.lng - a.lng) < 0.003
+  AND s.category NOT IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store');
+-- STACKED POINTS (2026-09-15): Overture puts every tenant of a building on the same parcel point
+-- (17% of Davis rows share their point with another: medical suites, strip-mall tenants), and
+-- coincident icons collide at every zoom, so all but the top one never drew. Spread the stack on
+-- a small ring (about 8 to 20 m, golden-angle steps, best row stays put) so they separate at the
+-- zooms where a person is looking for one shop in a row of them.
+CREATE TABLE spread AS
+SELECT * REPLACE (
+  lat + CASE WHEN dup = 0 THEN 0 ELSE (8 + least(dup, 6) * 2) / 111320.0 * sin(dup * 2.399963) END AS lat,
+  lng + CASE WHEN dup = 0 THEN 0 ELSE (8 + least(dup, 6) * 2) / (111320.0 * cos(radians(lat))) * cos(dup * 2.399963) END AS lng
+) FROM (
+  SELECT *, row_number() OVER (PARTITION BY round(lat, 5), round(lng, 5) ORDER BY prominence DESC, id) - 1 AS dup FROM anchored
+);
 CREATE TABLE ranked AS
-SELECT *,
+SELECT * EXCLUDE (dup),
   row_number() OVER (PARTITION BY floor(lat / 0.0036), floor(lng * cos(radians(lat)) / 0.0036) ORDER BY prominence DESC, id) AS rank,
   row_number() OVER (PARTITION BY floor(lat / 0.0144), floor(lng * cos(radians(lat)) / 0.0144) ORDER BY prominence DESC, id) AS crank,
   row_number() OVER (PARTITION BY floor(lat / 0.058), floor(lng * cos(radians(lat)) / 0.058) ORDER BY landmark DESC, prominence DESC, id) AS xrank
 FROM (
   SELECT *, CASE WHEN category IN ('airport','hospital','university','college_university','stadium_arena','shopping_center','zoo','amusement_park','convention_center','casino','aquarium','museum') THEN 1 ELSE 0 END AS landmark
-  FROM scored
+  FROM spread
 );
 COPY (
   SELECT json_object(
