@@ -3152,6 +3152,16 @@ architecture note.
   and the tap resolution in `onPoiTap`: offline, an open place shows its tile data or the Google listing
   remembered from an earlier online tap (`openPlaceCache`), a basemap tap keeps its name, and no spinner
   waits on a host that cannot answer.
+- **HiddenWebView base (2026-09-15, issue #417 refactor 2, step 1).** `app/web/HiddenWebView.kt` owns
+  the lifecycle every hidden-WebView fetcher used to copy: the view (JS, DOM storage, desktop UA, the
+  `VelaBridge` result channel), a request id per page load (`request(timeoutMs) { id -> load(url, id) }`,
+  a late poller can only complete its own id), the idle reap + memory-pressure reap, the sleep between
+  fetches (`session { }` = mutex + onResume before + onPause after + reap timer), the non-http scheme
+  block, and console ERROR lines logged as `VelaWeb: <tag>: ...` for every fetcher. A fetcher is its
+  URL + extractor script + parser and overrides `onPageFinished(view, url, requestId)`.
+  `WebStopDeparturesFetcher` and `WebDirectionsFetcher` are converted (187+224 lines -> 89+120, transit
+  board verified on the 4a); `WebPhotoFetcher`, `WebPopularTimesFetcher`, `WebReviewsFetcher` are the
+  next conversions, one PR each with a device check, since the scrapes are the product.
 - **Route provenance is one field (2026-09-15, issue #417 refactor 1, step 1).** `Route.source:
   RouteSource` (OSRM, OSRM_VIA_SNAP, GOOGLE_NAMED, GOOGLE_ABBREVIATED, GOOGLE_PROVISIONAL, OBF, GRAPHHOPPER,
   VALHALLA, UNKNOWN) is stamped at every constructor (DirectionsParser, RouteGeometry.parseOsrmRoute,
