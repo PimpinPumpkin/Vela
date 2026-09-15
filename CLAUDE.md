@@ -1976,7 +1976,16 @@ architecture note.
   sprite once it finishes loading (the interstate kept the sprite's white shape while the
   sprite-less `us-state` showed Vela's), and `icon-text-fit` shrank the badge to the glyph box,
   so the badges are fixed-size per ref length, not stretchable. Sign colors, not theme colors:
-  dark mode keeps them, like Google.
+  dark mode keeps them, like Google. NON-US families (`RoadShields.FAMILY`, a raw-JSON match on
+  `network` then `class`): gb/ie motorway blue, gb trunk/primary + ie national + e-road +
+  ca-transcanada green, any other `class=motorway` blue, else the white `road` badge; the tile's
+  `network` is "road" or absent nearly everywhere outside the UK/Ireland/Canada, so most of
+  Europe and all of Asia get blue motorways + white badges (Japan's green expressways are not
+  knowable from the tile). EXIT NUMBERS: `RoadShields` also adds `vela-exit-shield` (a
+  `transportation_name` SymbolLayer, `subclass=junction` + has ref, `vela-exit_<len>` green
+  badges, z12.5+) above `road_shield_us`; it is NOT in the car-mode strip list on purpose, and
+  its id carries "shield" so the satellite white-text pass skips it. Junction NAMES (Europe,
+  Japan) have no ref and are filtered out.
 - **Map COLOUR SETS (2026-07-11): Settings -> Appearance -> "Map colors" picks Modern or
   Classic.** `ui/MapColors` holder (pref `map_palette`; init in VelaApp); `applyMapTheme`
   dispatches to `applyLight`/`applyDark` (Modern, the pixel-sampled palette) or

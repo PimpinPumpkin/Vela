@@ -5035,7 +5035,7 @@ private fun applySatelliteLabels(style: Style) {
 /** Route shields: Google-style bitmaps over the sprite's outline-only ones plus text-fit on the
  *  three shield layers, see [RoadShields]. Runs after the theme pass on every style (re)load. */
 private fun emphasizeShields(context: android.content.Context, style: Style) {
-    RoadShields.install(style, context.resources.displayMetrics.density)
+    RoadShields.install(style, context.resources.displayMetrics.density, basemapSrc(style))
 }
 
 /**

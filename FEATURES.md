@@ -597,7 +597,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   the map's route badges are now drawn by Vela over the sprite's outline-only ones: interstates
   are a blue shield with the red band and a white number, US routes a white shield, state routes
   and international refs a white rounded badge (state routes had no badge at all before), and
-  every badge stretches to fit its number instead of the number squeezing into a fixed badge.
+  every badge is sized for its number instead of the number squeezing into a fixed badge.
+  Outside the US the badge follows the sign color where the tile knows the network: UK and Irish
+  motorways blue, UK trunk and primary routes, Irish national routes, E-roads and the
+  Trans-Canada green, any other motorway blue, everything else white. **Exit numbers (same
+  day):** motorway junctions with a number draw a small green exit badge from z12.5, in browse
+  and in nav, so a freeway reads as its list of exits the way Google draws it.
 - ✅ **Wrong-way detection + a real "Rerouting" banner (2026-07-16).** Off-route used to be judged by
   distance from the route line alone, so a wrong turn onto a road running close alongside the planned
   one never registered: no reroute, the old blue line stayed, and guidance kept speaking the old
