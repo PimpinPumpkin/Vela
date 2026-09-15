@@ -323,8 +323,21 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
             )
         }
         val folded = RouteGeometry.foldRenames(maneuvers)
+        // Every road the route drives, local name -> Latin alias, from the file's own name:en /
+        // name:latin tags (the obf keeps them per way, so no sidecar download is needed).
+        val latin = LinkedHashMap<String, String>()
+        for (seg in segments) {
+            val obj = seg.`object`
+            val local = obj.getName()?.takeIf { it.isNotBlank() } ?: continue
+            if (local in latin) continue
+            val alias = latinAlias(local, runCatching { obj.getName("en") }.getOrNull())
+                ?: latinAlias(local, runCatching { obj.getName("latin") }.getOrNull())
+                ?: continue
+            latin[local] = alias
+        }
         return Route(
             source = app.vela.core.model.RouteSource.OBF,
+            roadNamesLatin = latin,
             polyline = poly,
             legs = listOf(RouteLeg(totalDist, totalTime, null, folded)),
             distanceMeters = totalDist,
@@ -335,6 +348,16 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
     }
 
     internal companion object {
+        /** [alias] as the Latin form of [local], or null when it is missing, the same string, or
+         *  carries a letter from another script (a non-Latin alias must never be stored as if it
+         *  were romanized). Same rule as the tile path's `latinAliasOf` and the sidecar bake. */
+        internal fun latinAlias(local: String, alias: String?): String? {
+            val v = alias?.trim()
+            if (v.isNullOrEmpty() || v == local) return null
+            val hasLatinLetter = v.any { it in 'a'..'z' || it in 'A'..'Z' }
+            val noForeignLetter = v.none { Character.isLetter(it) && Character.UnicodeScript.of(it.code) != Character.UnicodeScript.LATIN }
+            return if (hasLatinLetter && noForeignLetter) v else null
+        }
         const val LIMIT_SNAP_M = 25.0 // a fix farther than this from any road is off the network (a lot, a driveway)
         const val LIMIT_MEMORY_MB = 32 // the lookup context only ever holds the tiles around the puck
         private const val TAG = "VelaObf"

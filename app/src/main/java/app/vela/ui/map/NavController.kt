@@ -66,6 +66,7 @@ internal class NavController(
         suspend fun roadFeaturesCoverRoute(poly: List<LatLng>): MapViewModel.RoadCover
         fun sanePosition(here: LatLng, prev: LatLng?, lastSpeed: Float?, dt: Double, outlierStreak: IntArray): LatLng
         fun gateMeasuredSpeed(raw: Float, dt: Double): Float?
+        fun onNavRoadLatin(map: Map<String, String>)
     }
 
     private val settingsPrefs = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
@@ -117,6 +118,9 @@ internal class NavController(
                 if (ns.navigating && nsRoute != null && nsRoute !== lastRecordedRoute) {
                     if (lastRecordedRoute != null) tripStore.saveRoute(nsRoute, navSession.lastSwapReason)
                     lastRecordedRoute = nsRoute
+                    // An obf route brings its roads' Latin aliases along; the tile path adds more as
+                    // nav tiles load, and nav end resets the dictionary to the offline base.
+                    if (nsRoute.roadNamesLatin.isNotEmpty()) host.onNavRoadLatin(nsRoute.roadNamesLatin)
                     // Controls (lights/stop signs) for the WHOLE route in one corridor fetch (issue
                     // #248) - never during a recorded-trip replay (hermetic, no live fetches), but a
                     // DEMO drive keeps it: demoDriving ⟹ replaying under the hood, yet it's presented
