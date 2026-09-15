@@ -197,6 +197,8 @@
     <string name="settings_places_source_both_hint">Vela\'s data draws the map, and once you stop panning one Google request adds anything it lacks. The extras show online only.</string>
     <string name="settings_places_source_more">Learn more</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
+    <string name="settings_places_lookup">Look up tapped places on Google</string>
+    <string name="settings_places_lookup_hint">Tapping a place fetches its hours, reviews and photos from Google, and Vela remembers the match so the next tap is instant. Off = a tapped place shows only what Vela\'s data has (name, type, address, phone, website) and nothing about the tap reaches Google. Search and directions still use Google.</string>
     <string name="settings_places_source_more_title">Where Vela\'s place data comes from</string>
     <string name="settings_places_source_more_body">Vela\'s place data is Overture Maps, an open dataset of businesses maintained by Meta, Microsoft and others. Vela serves it from its own GitHub repository, so nothing about where you look goes to Meta or Google.\n\nIt streams in as you browse and downloads with a region for offline use. Where Vela has no data for an area yet, the map falls back to Google.\n\nSearch, place details, hours, reviews and photos always come from Google, whichever option you pick.</string>
     <string name="settings_show_civic">Parks, schools and civic places</string>

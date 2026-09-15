@@ -202,6 +202,15 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
                     dismissLowEmphasis = true,
                 )
             }
+            if (app.vela.ui.MapPoiPrefs.openPlaces) {
+                GroupDivider()
+                ToggleRow(
+                    label = stringResource(R.string.settings_places_lookup),
+                    checked = app.vela.ui.MapPoiPrefs.lookupTappedPlaces.value,
+                    onCheckedChange = { app.vela.ui.MapPoiPrefs.setLookupTappedPlaces(context, it) },
+                    hint = stringResource(R.string.settings_places_lookup_hint),
+                )
+            }
             GroupDivider()
             ToggleRow(
                 label = stringResource(R.string.settings_show_civic),
