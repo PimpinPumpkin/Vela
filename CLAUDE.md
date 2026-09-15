@@ -3218,6 +3218,17 @@ Gotchas:
   rule), `nav.bind()` is the last line of init, the location collector writes `nav.lastNavFedMs`,
   and the viewport controls path asks `nav.corridorControlsActive`. Constants stay in the view
   model's companion. Next: `NavCamera` in VelaMapView, then `SearchController`.
+- **SearchGates (2026-09-15, issue #417 refactor 3, step 3a).** The search / results / picker
+  presentation gates MapScreen used to compute inline (`searchOpen`, `pickingResults`,
+  `resultsShown`, `resultsMinimized`, `mapTargetHidden`, `fabChromeOk`, `bareMap`) are one pure
+  function now: `SearchGates.of(state, searchExpanded, searchFocused)` in `app/ui/map/SearchGates.kt`,
+  same expressions, and MapScreen reads `gates.x` where each `val` used to be. `SearchGatesTest`
+  (the app module's first unit tests; `testImplementation(libs.junit)` was added for it) pins the
+  documented traps: a focused field always opens the overlay, results hide behind an open search or
+  a selected place, a submitted search while picking a stop shows its results (#405), Street View
+  keeps the list off the mini map, a collapsed list is the bar, pick-on-map keeps the crosshair.
+  When a gate changes, change it there and add the case to the test; the full `SearchController`
+  (query/suggestions/results/pickers as one state machine in the view model) is the rest of step 3.
 - **HiddenWebView base (2026-09-15, issue #417 refactor 2, step 1).** `app/web/HiddenWebView.kt` owns
   the lifecycle every hidden-WebView fetcher used to copy: the view (JS, DOM storage, desktop UA, the
   `VelaBridge` result channel), a request id per page load (`request(timeoutMs) { id -> load(url, id) }`,
