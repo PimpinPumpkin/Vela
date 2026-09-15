@@ -267,8 +267,10 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                 // A fresher pack is published than the one installed → offer an in-place update
                 // (a small row-level delta when the manifest carries one, else a full re-download).
                 val packRegion = state.poiPackRegions.firstOrNull { it.id == region.id }
-                val updateAvailable = installed && packInstalled && packRegion != null &&
-                    packRegion.rev > (state.poiPackInstalledRevs[region.id] ?: 0)
+                // A newer bake of the pack, the places, the map or the routing file: one Update.
+                val updateAvailable = (installed && packInstalled && packRegion != null &&
+                    packRegion.rev > (state.poiPackInstalledRevs[region.id] ?: 0)) ||
+                    state.regionUpdates.containsKey(region.id)
                 val here = region.id == primary?.id
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
@@ -307,10 +309,10 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                         updateAvailable -> Row(verticalAlignment = Alignment.CenterVertically) {
                             DpadFocusHandoff(keeper)
                             FilledTonalButton(
-                                onClick = { vm.downloadPoiPackFor(region, update = true) },
+                                onClick = { vm.updateRegion(region) },
                                 enabled = state.routingDownloadingId == null && state.poiPackDownloadingId == null,
                                 modifier = Modifier.dpadFocusKept(keeper),
-                            ) { Text(stringResource(R.string.settings_update_places)) }
+                            ) { Text(stringResource(R.string.settings_update_region)) }
                             IconButton(onClick = { vm.deleteRoutingGraph(region.id) }) {
                                 Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
                             }

@@ -104,6 +104,7 @@ class RoutingGraphStore @Inject constructor(
                     o.getString("id"), o.getString("name"), o.getString("url"), o.optInt("sizeMb"),
                     b.getDouble(0), b.getDouble(1), b.getDouble(2), b.getDouble(3),
                     installedMb = o.optInt("installedMb"),
+                    rev = o.optInt("rev"),
                     namesUrl = o.optString("namesUrl").ifBlank { null },
                     namesSizeKb = o.optInt("namesSizeKb"),
                 )

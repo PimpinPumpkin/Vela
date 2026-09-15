@@ -105,8 +105,9 @@ gh release upload "$TAG" "$WORK/$ID.obf" --clobber --repo "$REPO"
 
 # Raw obf: the download size IS the installed size, so both fields carry the same number and the
 # Settings row needs no unpack estimate.
-ENTRY="$(jq -nc --arg id "$ID" --arg name "$NAME" --arg url "$ASSET_URL" --argjson size "$SIZE" --argjson bbox "$BBOX" \
-  '{id:$id,name:$name,url:$url,sizeMb:$size,installedMb:$size,bbox:$bbox}')"
+# rev = the bake date as an integer; the app re-downloads an installed region whose manifest rev is newer.
+ENTRY="$(jq -nc --arg id "$ID" --arg name "$NAME" --arg url "$ASSET_URL" --argjson size "$SIZE" --argjson bbox "$BBOX" --argjson rev "$(date -u +%Y%m%d)" \
+  '{id:$id,name:$name,url:$url,sizeMb:$size,installedMb:$size,bbox:$bbox,rev:$rev}')"
 
 if [ "${MANIFEST_MODE:-merge}" = "emit" ]; then
   printf '%s\n' "$ENTRY" > "${ENTRY_OUT:?ENTRY_OUT required in emit mode}"

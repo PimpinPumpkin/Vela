@@ -323,6 +323,9 @@ data class MapUiState(
     // The installed offline basemap archive covering the view (pmtiles://file://...), or null: the
     // map swaps its tile source to it, so a downloaded region draws with no signal.
     val basemapArchive: String? = null,
+    // Installed region data with a newer bake published: region id -> which pieces ("routing",
+    // "places", "map"). The place pack's own rev check stays as it was (poiPackRegions).
+    val regionUpdates: Map<String, List<String>> = emptyMap(),
     val regionQueueLeft: Int = 0,
     val regionQueueTotal: Int = 0,
     val areaDownloadPct: Int? = null,                  // non-null while a map-area tile download runs
@@ -6768,6 +6771,7 @@ class MapViewModel @Inject constructor(
             _state.update { it.copy(routingRegions = regions, obfCatalog = obf.isNotEmpty()) }
             // The pack catalog too (revs + deltas) — Settings compares it against the installed pack
             // revisions to offer "Update places" on stale regions.
+            refreshRegionUpdates()
             val packs = poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL)
             _state.update {
                 it.copy(
@@ -6795,6 +6799,7 @@ class MapViewModel @Inject constructor(
                     _state.update { it.copy(routingDownloadPct = pct) }
                 }
             }
+            if (ok && obf) obfStore.writeRev(region.id, region.rev)
             _state.update {
                 it.copy(routingDownloadingId = null, routingInstalledIds = routingGraphStore.installedIds() + obfStore.installedIds())
             }
@@ -6851,6 +6856,62 @@ class MapViewModel @Inject constructor(
     /** Settings "Get places" / "Update places" on an installed routing region — pulls or refreshes just
      *  the place pack. Says so when the region has no pack published yet (the catalog builds out region
      *  by region), instead of silently doing nothing. */
+    /** Which installed pieces of each region have a newer bake in their manifests: the routing obf
+     *  (rev on the catalog row), the places archives and the basemap archives whose box centers sit
+     *  inside the region. Runs with the catalog refresh (Offline maps open) and after an update. */
+    private suspend fun refreshRegionUpdates() {
+        val regions = _state.value.routingRegions
+        val places = runCatching { placesStore.updatable(placesStore.manifest(app.vela.BuildConfig.PLACES_MANIFEST_URL)) }.getOrDefault(emptyList())
+        val maps = runCatching { basemapStore.updatable(basemapStore.manifest(app.vela.BuildConfig.BASEMAP_MANIFEST_URL)) }.getOrDefault(emptyList())
+        val out = HashMap<String, MutableList<String>>()
+        for (r in regions) {
+            if (r.id !in _state.value.routingInstalledIds) continue
+            val kinds = ArrayList<String>()
+            if (_state.value.obfCatalog && r.rev > obfStore.installedRev(r.id) && obfStore.installedRev(r.id) > 0) kinds += "routing"
+            fun inside(s: Double, w: Double, n: Double, e: Double) = (s + n) / 2 in r.s..r.n && (w + e) / 2 in r.w..r.e
+            if (places.any { inside(it.s, it.w, it.n, it.e) }) kinds += "places"
+            if (maps.any { inside(it.s, it.w, it.n, it.e) }) kinds += "map"
+            if (kinds.isNotEmpty()) out[r.id] = kinds
+        }
+        _state.update { it.copy(regionUpdates = out) }
+    }
+
+    /** Refresh everything installed for [region] that has a newer bake: the place pack (delta when
+     *  offered), then every places and basemap archive inside the region, then the routing obf. One
+     *  tap on the row's Update button; the progress card shows the region's name throughout. */
+    fun updateRegion(region: app.vela.offline.RoutingRegion) {
+        if (_state.value.poiPackDownloadingId != null || _state.value.routingDownloadingId != null) return
+        regionCancel.set(false)
+        downloadLaunch(region.name) {
+            val kinds = _state.value.regionUpdates[region.id].orEmpty()
+            val packRegion = _state.value.poiPackRegions.firstOrNull { it.id == region.id }
+            if (packRegion != null && region.id in poiPackStore.installedIds() && packRegion.rev > poiPackStore.installedRev(region.id)) {
+                downloadPoiPack(region, update = true)
+            }
+            fun inside(s: Double, w: Double, n: Double, e: Double) = (s + n) / 2 in region.s..region.n && (w + e) / 2 in region.w..region.e
+            if ("places" in kinds) {
+                placesStore.updatable(placesStore.manifest(app.vela.BuildConfig.PLACES_MANIFEST_URL))
+                    .filter { inside(it.s, it.w, it.n, it.e) }
+                    .forEach { if (!regionCancel.get()) { placesStore.delete(it.id); placesStore.download(it) { } } }
+                refreshPlacesOverlays()
+            }
+            if ("map" in kinds) {
+                basemapStore.updatable(basemapStore.manifest(app.vela.BuildConfig.BASEMAP_MANIFEST_URL))
+                    .filter { inside(it.s, it.w, it.n, it.e) }
+                    .forEach { if (!regionCancel.get()) { basemapStore.delete(it.id); basemapStore.download(it) { } } }
+                refreshBasemapArchive()
+            }
+            if ("routing" in kinds && !regionCancel.get()) {
+                _state.update { it.copy(routingDownloadingId = region.id, routingDownloadPct = 0, regionDownloadName = region.name) }
+                val ok = obfStore.download(region, active = { !regionCancel.get() }) { pct -> _state.update { it.copy(routingDownloadPct = pct) } }
+                if (ok) obfStore.writeRev(region.id, region.rev)
+                _state.update { it.copy(routingDownloadingId = null, routingInstalledIds = routingGraphStore.installedIds() + obfStore.installedIds()) }
+            }
+            _state.update { it.copy(regionDownloadName = null) }
+            refreshRegionUpdates()
+        }
+    }
+
     fun downloadPoiPackFor(region: app.vela.offline.RoutingRegion, update: Boolean = false) {
         if (_state.value.poiPackDownloadingId != null || _state.value.routingDownloadingId != null) return
         regionCancel.set(false)
