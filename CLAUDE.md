@@ -3638,7 +3638,18 @@ architecture note.
   `-DvelaObf=<dir with delaware.obf + index.json>` (skipped otherwise; the Delaware fixture reads
   88 km/h on the Puncheon Run Connector, null on an untagged street and on open water);
   `probeRoadLimit` prints what the lookup saw. NB US roads are often untagged in OSM (US 13 at
-  Dover has no maxspeed), so a blank badge there is the data, not the lookup. COUNTRY + SUB-AREA both (2026-08-03, the #214 reporter's ask): the unsplit
+  Dover has no maxspeed), so a blank badge there is the data, not the lookup. **And the romanized
+  road names come with the obf route (same day):** `Route.roadNamesLatin` (local name -> Latin
+  alias, empty for every online route) is filled by `ObfRouteEngine.toRoute` from each driven
+  way's `name:en` / `name:latin` (`RouteDataObject.getName("en")`, validated by
+  `ObfRouteEngine.latinAlias`, the same Latin-only rule as the tile path and the sidecar bake),
+  and `NavController`'s observer merges it through `Host.onNavRoadLatin` the moment a route is
+  adopted, so an offline Hebrew drive speaks and shows real names without the routing-graphs
+  sidecar (the second and last GraphHopper-only feature). Harness `ObfRoadNamesProbeTest`
+  (`-DvelaObf=<dir with israel-and-palestine.obf>`): a Tel Aviv drive returns Hebrew -> Latin
+  pairs (Arlosoroff, Ibn Gabirol, Sderot Rothschild). Core unit tests run with
+  `unitTests.isReturnDefaultValues = true` since then, so the engine's `android.util.Log` lines
+  no-op on the JVM. COUNTRY + SUB-AREA both (2026-08-03, the #214 reporter's ask): the unsplit
   country stays the headline row, and big countries ALSO offer first-level sub-areas as smaller
   optional rows - tools/routing-regions.json carries sub-area rows beside the whole-country row
   (which stays group `europe`/`south-america`/... with big:true), so the obf bake produces both;

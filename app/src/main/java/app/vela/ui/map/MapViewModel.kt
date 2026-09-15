@@ -447,6 +447,7 @@ class MapViewModel @Inject constructor(
         override fun sanePosition(here: LatLng, prev: LatLng?, lastSpeed: Float?, dt: Double, outlierStreak: IntArray): LatLng =
             this@MapViewModel.sanePosition(here, prev, lastSpeed, dt, outlierStreak)
         override fun gateMeasuredSpeed(raw: Float, dt: Double): Float? = this@MapViewModel.gateMeasuredSpeed(raw, dt)
+        override fun onNavRoadLatin(map: Map<String, String>) = this@MapViewModel.onNavRoadLatin(map)
     }
     private val nav = NavController(appContext, viewModelScope, _state, navSession, locationProvider, dataSource, tripStore, voice, diag, http, navHost)
 
