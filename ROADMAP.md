@@ -651,6 +651,16 @@ project's core promise is that neither exists:
 
 ## Queued near-term
 
+- **More places sources for the open bake (queued 2026-09-15).** Overture's Davis rows come from
+  Meta 1,537 / BrightQuery 494 / Microsoft 366 / Foursquare 260 / AllThePlaces 30 / DAC 6 (of
+  2,693), so a business with no Facebook page and no Bing entry is simply absent, chains included.
+  Next: merge AllThePlaces directly at bake time (the open project that scrapes every chain's own
+  store locator weekly and publishes it as CC0 GeoJSON; Overture only takes a sliver), keyed by
+  name plus distance against the Overture rows so a locator point fills a gap and never doubles a
+  listing. After that, the long tail with no web presence at all: chamber-of-commerce member
+  lists and municipal business-license registers where a city publishes them as open data, one
+  scraper per source, in the same shape as an AllThePlaces spider. The goal is the small
+  independent places Overture misses, not another copy of what it has.
 - **Docs audit and cleanup (queued 2026-09-15).** README, FEATURES, ROADMAP, PRIVACY, CLAUDE and
   docs/ have grown by accretion for three months: shipped items still listed as plans, plans
   superseded by later decisions, features described three times in three tenses, and a FEATURES
