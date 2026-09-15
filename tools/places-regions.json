@@ -1,5 +1,5 @@
 {
-  "_comment": "Open places layer catalog (Overture Maps Places, CDLA-Permissive 2.0), baked per region by tools/build-places-region.sh on the places-overlays workflow. bbox=[S,W,N,E]. Start small: the test box and one state; add states as the layer proves out.",
+  "_comment": "Open places layer catalog (Overture Maps Places, CDLA-Permissive 2.0), baked per region by tools/build-places-region.sh on the places-overlays workflow. bbox=[S,W,N,E]. Mirrors the live routing catalog (routing-manifest-v2.json) so a region download finds its places archive by bbox; davis is the small test box.",
   "regions": [
     {
       "id": "davis",
@@ -12,13 +12,1353 @@
       ]
     },
     {
-      "id": "california",
-      "name": "California",
+      "id": "alabama",
+      "name": "Alabama (state)",
       "bbox": [
-        32.53,
-        -124.48,
-        42.01,
+        29.95,
+        -88.48,
+        35.01,
+        -84.88
+      ]
+    },
+    {
+      "id": "alaska",
+      "name": "Alaska (state)",
+      "bbox": [
+        49.81,
+        -180,
+        73.8,
+        180
+      ]
+    },
+    {
+      "id": "albania",
+      "name": "Albania",
+      "bbox": [
+        39.63,
+        18.9,
+        42.66,
+        21.06
+      ]
+    },
+    {
+      "id": "alberta",
+      "name": "Alberta (Canada)",
+      "bbox": [
+        48.31,
+        -120.0,
+        60.0,
+        -110.0
+      ]
+    },
+    {
+      "id": "argentina",
+      "name": "Argentina",
+      "bbox": [
+        -55.68,
+        -73.61,
+        -21.73,
+        -53.64
+      ]
+    },
+    {
+      "id": "arizona",
+      "name": "Arizona (state)",
+      "bbox": [
+        30.06,
+        -114.83,
+        37.01,
+        -109.04
+      ]
+    },
+    {
+      "id": "arkansas",
+      "name": "Arkansas (state)",
+      "bbox": [
+        33.0,
+        -94.62,
+        36.55,
+        -89.64
+      ]
+    },
+    {
+      "id": "australia",
+      "name": "Australia",
+      "bbox": [
+        -57.09,
+        68.13,
+        -8.81,
+        169.0
+      ]
+    },
+    {
+      "id": "austria",
+      "name": "Austria",
+      "bbox": [
+        46.37,
+        9.53,
+        49.02,
+        17.16
+      ]
+    },
+    {
+      "id": "belarus",
+      "name": "Belarus",
+      "bbox": [
+        51.23,
+        23.17,
+        56.17,
+        32.77
+      ]
+    },
+    {
+      "id": "belgium",
+      "name": "Belgium",
+      "bbox": [
+        49.49,
+        2.34,
+        51.6,
+        6.41
+      ]
+    },
+    {
+      "id": "belize",
+      "name": "Belize",
+      "bbox": [
+        15.88,
+        -89.23,
+        18.5,
+        -86.86
+      ]
+    },
+    {
+      "id": "bolivia",
+      "name": "Bolivia",
+      "bbox": [
+        -22.93,
+        -69.66,
+        -9.64,
+        -57.43
+      ]
+    },
+    {
+      "id": "bosnia-herzegovina",
+      "name": "Bosnia & Herzegovina",
+      "bbox": [
+        42.55,
+        15.72,
+        45.28,
+        19.63
+      ]
+    },
+    {
+      "id": "brazil",
+      "name": "Brazil",
+      "bbox": [
+        -35.47,
+        -74.02,
+        5.52,
+        -27.67
+      ]
+    },
+    {
+      "id": "british-columbia",
+      "name": "British Columbia (Canada)",
+      "bbox": [
+        45.38,
+        -142.87,
+        60.01,
+        -114.05
+      ]
+    },
+    {
+      "id": "bulgaria",
+      "name": "Bulgaria",
+      "bbox": [
+        41.23,
+        22.35,
+        44.22,
+        29.19
+      ]
+    },
+    {
+      "id": "california",
+      "name": "California (state)",
+      "bbox": [
+        32.48,
+        -125.89,
+        42.02,
         -114.13
+      ]
+    },
+    {
+      "id": "chile",
+      "name": "Chile",
+      "bbox": [
+        -58.45,
+        -113.22,
+        -17.46,
+        -65.51
+      ]
+    },
+    {
+      "id": "colombia",
+      "name": "Colombia",
+      "bbox": [
+        -4.26,
+        -83.23,
+        16.59,
+        -66.81
+      ]
+    },
+    {
+      "id": "colorado",
+      "name": "Colorado (state)",
+      "bbox": [
+        36.57,
+        -109.06,
+        41.0,
+        -100.46
+      ]
+    },
+    {
+      "id": "connecticut",
+      "name": "Connecticut (state)",
+      "bbox": [
+        40.96,
+        -73.73,
+        42.05,
+        -71.79
+      ]
+    },
+    {
+      "id": "costa-rica",
+      "name": "Costa Rica",
+      "bbox": [
+        4.94,
+        -87.82,
+        11.22,
+        -82.35
+      ]
+    },
+    {
+      "id": "croatia",
+      "name": "Croatia",
+      "bbox": [
+        42.16,
+        13.09,
+        46.56,
+        19.46
+      ]
+    },
+    {
+      "id": "czech-republic",
+      "name": "Czech Republic",
+      "bbox": [
+        48.54,
+        12.08,
+        51.06,
+        18.86
+      ]
+    },
+    {
+      "id": "delaware",
+      "name": "Delaware (state)",
+      "bbox": [
+        38.45,
+        -75.79,
+        40.03,
+        -74.96
+      ]
+    },
+    {
+      "id": "denmark",
+      "name": "Denmark",
+      "bbox": [
+        54.44,
+        7.7,
+        58.06,
+        15.65
+      ]
+    },
+    {
+      "id": "ecuador",
+      "name": "Ecuador",
+      "bbox": [
+        -5.02,
+        -93.56,
+        2.84,
+        -75.16
+      ]
+    },
+    {
+      "id": "egypt",
+      "name": "Egypt",
+      "bbox": [
+        21.98,
+        24.63,
+        32.53,
+        37.16
+      ]
+    },
+    {
+      "id": "el-salvador",
+      "name": "El Salvador",
+      "bbox": [
+        12.04,
+        -90.5,
+        14.46,
+        -87.58
+      ]
+    },
+    {
+      "id": "estonia",
+      "name": "Estonia",
+      "bbox": [
+        57.5,
+        20.85,
+        60.0,
+        28.21
+      ]
+    },
+    {
+      "id": "finland",
+      "name": "Finland",
+      "bbox": [
+        59.29,
+        19.02,
+        70.1,
+        31.62
+      ]
+    },
+    {
+      "id": "florida",
+      "name": "Florida (state)",
+      "bbox": [
+        23.68,
+        -88.7,
+        31.0,
+        -77.72
+      ]
+    },
+    {
+      "id": "france",
+      "name": "France",
+      "bbox": [
+        41.24,
+        -6.94,
+        51.43,
+        10.02
+      ]
+    },
+    {
+      "id": "georgia",
+      "name": "Georgia (state)",
+      "bbox": [
+        30.35,
+        -85.61,
+        35.0,
+        -80.74
+      ]
+    },
+    {
+      "id": "germany",
+      "name": "Germany",
+      "bbox": [
+        47.27,
+        5.86,
+        55.15,
+        15.05
+      ]
+    },
+    {
+      "id": "ghana",
+      "name": "Ghana",
+      "bbox": [
+        3.7,
+        -3.81,
+        11.18,
+        1.39
+      ]
+    },
+    {
+      "id": "great-britain",
+      "name": "Great Britain",
+      "bbox": [
+        49.52,
+        -15.34,
+        61.93,
+        2.51
+      ]
+    },
+    {
+      "id": "greece",
+      "name": "Greece",
+      "bbox": [
+        34.59,
+        18.97,
+        41.75,
+        29.66
+      ]
+    },
+    {
+      "id": "guatemala",
+      "name": "Guatemala",
+      "bbox": [
+        12.74,
+        -92.73,
+        18.22,
+        -87.95
+      ]
+    },
+    {
+      "id": "hawaii",
+      "name": "Hawaii (state)",
+      "bbox": [
+        10.84,
+        -179.85,
+        29.1,
+        -137.52
+      ]
+    },
+    {
+      "id": "honduras",
+      "name": "Honduras",
+      "bbox": [
+        12.97,
+        -89.36,
+        17.93,
+        -81.66
+      ]
+    },
+    {
+      "id": "hungary",
+      "name": "Hungary",
+      "bbox": [
+        45.73,
+        16.11,
+        48.59,
+        22.91
+      ]
+    },
+    {
+      "id": "iceland",
+      "name": "Iceland",
+      "bbox": [
+        62.85,
+        -25.74,
+        67.5,
+        -12.42
+      ]
+    },
+    {
+      "id": "idaho",
+      "name": "Idaho (state)",
+      "bbox": [
+        41.98,
+        -117.25,
+        49.13,
+        -111.04
+      ]
+    },
+    {
+      "id": "illinois",
+      "name": "Illinois (state)",
+      "bbox": [
+        36.97,
+        -91.52,
+        42.51,
+        -87.49
+      ]
+    },
+    {
+      "id": "india",
+      "name": "India",
+      "bbox": [
+        5.9,
+        67.67,
+        35.73,
+        97.42
+      ]
+    },
+    {
+      "id": "indiana",
+      "name": "Indiana (state)",
+      "bbox": [
+        37.63,
+        -88.1,
+        41.76,
+        -84.5
+      ]
+    },
+    {
+      "id": "indonesia",
+      "name": "Indonesia",
+      "bbox": [
+        -11.61,
+        92.76,
+        7.0,
+        141.02
+      ]
+    },
+    {
+      "id": "iowa",
+      "name": "Iowa (state)",
+      "bbox": [
+        40.37,
+        -96.64,
+        43.5,
+        -90.14
+      ]
+    },
+    {
+      "id": "ireland-and-northern-ireland",
+      "name": "Ireland",
+      "bbox": [
+        47.96,
+        -16.31,
+        56.87,
+        -5.06
+      ]
+    },
+    {
+      "id": "israel-and-palestine",
+      "name": "Israel & Palestine",
+      "bbox": [
+        29.44,
+        34.0,
+        33.45,
+        35.92
+      ]
+    },
+    {
+      "id": "italy",
+      "name": "Italy",
+      "bbox": [
+        35.08,
+        6.6,
+        47.1,
+        19.12
+      ]
+    },
+    {
+      "id": "japan",
+      "name": "Japan",
+      "bbox": [
+        20.08,
+        122.56,
+        45.82,
+        154.47
+      ]
+    },
+    {
+      "id": "kansas",
+      "name": "Kansas (state)",
+      "bbox": [
+        33.4,
+        -107.3,
+        40.01,
+        -94.59
+      ]
+    },
+    {
+      "id": "kentucky",
+      "name": "Kentucky (state)",
+      "bbox": [
+        36.49,
+        -89.62,
+        39.21,
+        -81.96
+      ]
+    },
+    {
+      "id": "kenya",
+      "name": "Kenya",
+      "bbox": [
+        -4.82,
+        33.87,
+        4.63,
+        41.98
+      ]
+    },
+    {
+      "id": "latvia",
+      "name": "Latvia",
+      "bbox": [
+        55.66,
+        19.73,
+        58.09,
+        28.26
+      ]
+    },
+    {
+      "id": "lithuania",
+      "name": "Lithuania",
+      "bbox": [
+        53.89,
+        20.62,
+        56.45,
+        26.84
+      ]
+    },
+    {
+      "id": "louisiana",
+      "name": "Louisiana (state)",
+      "bbox": [
+        28.14,
+        -94.04,
+        33.02,
+        -88.67
+      ]
+    },
+    {
+      "id": "luxembourg",
+      "name": "Luxembourg",
+      "bbox": [
+        49.45,
+        5.73,
+        50.18,
+        6.53
+      ]
+    },
+    {
+      "id": "maine",
+      "name": "Maine (state)",
+      "bbox": [
+        42.85,
+        -71.45,
+        48.16,
+        -65.86
+      ]
+    },
+    {
+      "id": "malaysia-singapore-brunei",
+      "name": "Malaysia, Singapore & Brunei",
+      "bbox": [
+        0.83,
+        99.26,
+        7.74,
+        119.67
+      ]
+    },
+    {
+      "id": "manitoba",
+      "name": "Manitoba (Canada)",
+      "bbox": [
+        48.99,
+        -102.01,
+        60.01,
+        -88.12
+      ]
+    },
+    {
+      "id": "maryland",
+      "name": "Maryland (state)",
+      "bbox": [
+        37.88,
+        -79.49,
+        40.17,
+        -74.95
+      ]
+    },
+    {
+      "id": "massachusetts",
+      "name": "Massachusetts (state)",
+      "bbox": [
+        40.83,
+        -73.51,
+        42.89,
+        -68.72
+      ]
+    },
+    {
+      "id": "mexico",
+      "name": "Mexico",
+      "bbox": [
+        9.08,
+        -132.5,
+        32.72,
+        -81.61
+      ]
+    },
+    {
+      "id": "michigan",
+      "name": "Michigan (state)",
+      "bbox": [
+        41.69,
+        -90.42,
+        49.32,
+        -79.05
+      ]
+    },
+    {
+      "id": "minnesota",
+      "name": "Minnesota (state)",
+      "bbox": [
+        43.5,
+        -97.27,
+        50.0,
+        -89.36
+      ]
+    },
+    {
+      "id": "mississippi",
+      "name": "Mississippi (state)",
+      "bbox": [
+        30.04,
+        -91.66,
+        35.0,
+        -88.09
+      ]
+    },
+    {
+      "id": "missouri",
+      "name": "Missouri (state)",
+      "bbox": [
+        35.99,
+        -95.78,
+        40.62,
+        -88.87
+      ]
+    },
+    {
+      "id": "moldova",
+      "name": "Moldova",
+      "bbox": [
+        45.46,
+        26.61,
+        48.49,
+        30.19
+      ]
+    },
+    {
+      "id": "montana",
+      "name": "Montana (state)",
+      "bbox": [
+        44.36,
+        -116.05,
+        49.69,
+        -102.69
+      ]
+    },
+    {
+      "id": "montenegro",
+      "name": "Montenegro",
+      "bbox": [
+        41.62,
+        18.17,
+        43.56,
+        20.36
+      ]
+    },
+    {
+      "id": "morocco",
+      "name": "Morocco",
+      "bbox": [
+        20.4,
+        -18.18,
+        36.16,
+        -0.99
+      ]
+    },
+    {
+      "id": "nebraska",
+      "name": "Nebraska (state)",
+      "bbox": [
+        40.0,
+        -104.73,
+        43.0,
+        -95.31
+      ]
+    },
+    {
+      "id": "netherlands",
+      "name": "Netherlands",
+      "bbox": [
+        50.75,
+        2.94,
+        54.02,
+        7.23
+      ]
+    },
+    {
+      "id": "nevada",
+      "name": "Nevada (state)",
+      "bbox": [
+        35.0,
+        -120.01,
+        42.0,
+        -114.04
+      ]
+    },
+    {
+      "id": "new-brunswick",
+      "name": "New Brunswick (Canada)",
+      "bbox": [
+        44.19,
+        -69.19,
+        48.38,
+        -62.89
+      ]
+    },
+    {
+      "id": "new-hampshire",
+      "name": "New Hampshire (state)",
+      "bbox": [
+        42.7,
+        -72.56,
+        45.45,
+        -70.49
+      ]
+    },
+    {
+      "id": "new-jersey",
+      "name": "New Jersey (state)",
+      "bbox": [
+        38.56,
+        -75.84,
+        41.36,
+        -73.68
+      ]
+    },
+    {
+      "id": "new-mexico",
+      "name": "New Mexico (state)",
+      "bbox": [
+        27.03,
+        -109.05,
+        37.0,
+        -96.12
+      ]
+    },
+    {
+      "id": "new-york",
+      "name": "New York (state)",
+      "bbox": [
+        40.44,
+        -79.82,
+        45.07,
+        -71.66
+      ]
+    },
+    {
+      "id": "new-zealand",
+      "name": "New Zealand",
+      "bbox": [
+        -56.75,
+        -179.99,
+        -28.49,
+        180.0
+      ]
+    },
+    {
+      "id": "newfoundland-and-labrador",
+      "name": "Newfoundland & Labrador (Canada)",
+      "bbox": [
+        44.06,
+        -67.87,
+        60.51,
+        -42.58
+      ]
+    },
+    {
+      "id": "nicaragua",
+      "name": "Nicaragua",
+      "bbox": [
+        10.7,
+        -87.98,
+        15.11,
+        -82.38
+      ]
+    },
+    {
+      "id": "nigeria",
+      "name": "Nigeria",
+      "bbox": [
+        2.67,
+        2.66,
+        13.9,
+        14.68
+      ]
+    },
+    {
+      "id": "north-carolina",
+      "name": "North Carolina (state)",
+      "bbox": [
+        32.56,
+        -84.32,
+        36.59,
+        -73.74
+      ]
+    },
+    {
+      "id": "north-dakota",
+      "name": "North Dakota (state)",
+      "bbox": [
+        45.93,
+        -105.08,
+        49.71,
+        -96.55
+      ]
+    },
+    {
+      "id": "northwest-territories",
+      "name": "Northwest Territories (Canada)",
+      "bbox": [
+        59.99,
+        -136.7,
+        81.65,
+        -101.98
+      ]
+    },
+    {
+      "id": "norway",
+      "name": "Norway",
+      "bbox": [
+        57.55,
+        -11.37,
+        81.05,
+        35.53
+      ]
+    },
+    {
+      "id": "nova-scotia",
+      "name": "Nova Scotia (Canada)",
+      "bbox": [
+        42.02,
+        -67.51,
+        47.9,
+        -58.23
+      ]
+    },
+    {
+      "id": "nunavut",
+      "name": "Nunavut (Canada)",
+      "bbox": [
+        51.13,
+        -120.74,
+        84.95,
+        -49.16
+      ]
+    },
+    {
+      "id": "ohio",
+      "name": "Ohio (state)",
+      "bbox": [
+        38.1,
+        -84.82,
+        43.48,
+        -79.9
+      ]
+    },
+    {
+      "id": "oklahoma",
+      "name": "Oklahoma (state)",
+      "bbox": [
+        33.61,
+        -103.01,
+        37.01,
+        -94.43
+      ]
+    },
+    {
+      "id": "ontario",
+      "name": "Ontario (Canada)",
+      "bbox": [
+        41.64,
+        -95.16,
+        57.51,
+        -74.31
+      ]
+    },
+    {
+      "id": "oregon",
+      "name": "Oregon (state)",
+      "bbox": [
+        41.96,
+        -126.39,
+        46.3,
+        -116.45
+      ]
+    },
+    {
+      "id": "panama",
+      "name": "Panama",
+      "bbox": [
+        6.64,
+        -83.46,
+        11.21,
+        -76.25
+      ]
+    },
+    {
+      "id": "paraguay",
+      "name": "Paraguay",
+      "bbox": [
+        -27.66,
+        -62.69,
+        -19.24,
+        -54.2
+      ]
+    },
+    {
+      "id": "pennsylvania",
+      "name": "Pennsylvania (state)",
+      "bbox": [
+        38.92,
+        -81.38,
+        42.52,
+        -74.69
+      ]
+    },
+    {
+      "id": "peru",
+      "name": "Peru",
+      "bbox": [
+        -20.31,
+        -86.03,
+        0.06,
+        -68.55
+      ]
+    },
+    {
+      "id": "philippines",
+      "name": "Philippines",
+      "bbox": [
+        4.38,
+        112.17,
+        21.53,
+        127.07
+      ]
+    },
+    {
+      "id": "poland",
+      "name": "Poland",
+      "bbox": [
+        48.99,
+        13.99,
+        55.23,
+        24.16
+      ]
+    },
+    {
+      "id": "portugal",
+      "name": "Portugal",
+      "bbox": [
+        29.25,
+        -33.62,
+        42.16,
+        -6.18
+      ]
+    },
+    {
+      "id": "prince-edward-island",
+      "name": "Prince Edward Island (Canada)",
+      "bbox": [
+        45.82,
+        -64.6,
+        47.69,
+        -61.25
+      ]
+    },
+    {
+      "id": "quebec",
+      "name": "Quebec (Canada)",
+      "bbox": [
+        44.96,
+        -79.84,
+        62.63,
+        -57.09
+      ]
+    },
+    {
+      "id": "rhode-island",
+      "name": "Rhode Island (state)",
+      "bbox": [
+        41.0,
+        -71.91,
+        42.02,
+        -71.06
+      ]
+    },
+    {
+      "id": "romania",
+      "name": "Romania",
+      "bbox": [
+        43.61,
+        20.24,
+        48.27,
+        30.28
+      ]
+    },
+    {
+      "id": "saskatchewan",
+      "name": "Saskatchewan (Canada)",
+      "bbox": [
+        48.33,
+        -110.01,
+        60.0,
+        -101.36
+      ]
+    },
+    {
+      "id": "serbia",
+      "name": "Serbia",
+      "bbox": [
+        42.23,
+        18.81,
+        46.19,
+        23.01
+      ]
+    },
+    {
+      "id": "slovakia",
+      "name": "Slovakia",
+      "bbox": [
+        47.73,
+        16.83,
+        49.62,
+        22.57
+      ]
+    },
+    {
+      "id": "slovenia",
+      "name": "Slovenia",
+      "bbox": [
+        45.42,
+        13.31,
+        46.88,
+        16.6
+      ]
+    },
+    {
+      "id": "south-africa",
+      "name": "South Africa",
+      "bbox": [
+        -48.46,
+        14.37,
+        -21.78,
+        40.27
+      ]
+    },
+    {
+      "id": "south-carolina",
+      "name": "South Carolina (state)",
+      "bbox": [
+        32.03,
+        -83.36,
+        35.22,
+        -78.52
+      ]
+    },
+    {
+      "id": "south-dakota",
+      "name": "South Dakota (state)",
+      "bbox": [
+        42.48,
+        -104.91,
+        45.95,
+        -96.44
+      ]
+    },
+    {
+      "id": "south-korea",
+      "name": "South Korea",
+      "bbox": [
+        32.36,
+        124.32,
+        38.65,
+        132.34
+      ]
+    },
+    {
+      "id": "spain",
+      "name": "Spain",
+      "bbox": [
+        35.15,
+        -9.78,
+        44.15,
+        5.1
+      ]
+    },
+    {
+      "id": "sweden",
+      "name": "Sweden",
+      "bbox": [
+        55.03,
+        10.54,
+        69.07,
+        24.22
+      ]
+    },
+    {
+      "id": "switzerland",
+      "name": "Switzerland",
+      "bbox": [
+        45.82,
+        5.95,
+        47.81,
+        10.5
+      ]
+    },
+    {
+      "id": "taiwan",
+      "name": "Taiwan",
+      "bbox": [
+        20.73,
+        118.1,
+        26.6,
+        122.93
+      ]
+    },
+    {
+      "id": "tanzania",
+      "name": "Tanzania",
+      "bbox": [
+        -11.78,
+        29.24,
+        -0.97,
+        40.69
+      ]
+    },
+    {
+      "id": "tennessee",
+      "name": "Tennessee (state)",
+      "bbox": [
+        34.98,
+        -90.31,
+        36.68,
+        -81.64
+      ]
+    },
+    {
+      "id": "texas",
+      "name": "Texas (state)",
+      "bbox": [
+        25.67,
+        -106.91,
+        36.53,
+        -93.02
+      ]
+    },
+    {
+      "id": "thailand",
+      "name": "Thailand",
+      "bbox": [
+        5.6,
+        97.14,
+        20.47,
+        105.64
+      ]
+    },
+    {
+      "id": "ukraine",
+      "name": "Ukraine",
+      "bbox": [
+        44.01,
+        22.13,
+        52.39,
+        40.24
+      ]
+    },
+    {
+      "id": "uruguay",
+      "name": "Uruguay",
+      "bbox": [
+        -36.25,
+        -58.53,
+        -30.07,
+        -52.77
+      ]
+    },
+    {
+      "id": "utah",
+      "name": "Utah (state)",
+      "bbox": [
+        37.0,
+        -114.06,
+        42.0,
+        -109.04
+      ]
+    },
+    {
+      "id": "vermont",
+      "name": "Vermont (state)",
+      "bbox": [
+        42.72,
+        -73.44,
+        45.18,
+        -71.46
+      ]
+    },
+    {
+      "id": "vietnam",
+      "name": "Vietnam",
+      "bbox": [
+        7.38,
+        102.1,
+        23.4,
+        114.64
+      ]
+    },
+    {
+      "id": "virginia",
+      "name": "Virginia (state)",
+      "bbox": [
+        36.54,
+        -83.68,
+        39.47,
+        -74.3
+      ]
+    },
+    {
+      "id": "washington",
+      "name": "Washington (state)",
+      "bbox": [
+        45.54,
+        -126.74,
+        49.01,
+        -116.91
+      ]
+    },
+    {
+      "id": "west-virginia",
+      "name": "West Virginia (state)",
+      "bbox": [
+        37.2,
+        -82.65,
+        40.92,
+        -77.71
+      ]
+    },
+    {
+      "id": "wisconsin",
+      "name": "Wisconsin (state)",
+      "bbox": [
+        42.49,
+        -92.89,
+        47.41,
+        -86.2
+      ]
+    },
+    {
+      "id": "wyoming",
+      "name": "Wyoming (state)",
+      "bbox": [
+        40.98,
+        -111.06,
+        45.02,
+        -103.94
+      ]
+    },
+    {
+      "id": "yukon",
+      "name": "Yukon (Canada)",
+      "bbox": [
+        60.0,
+        -141.36,
+        70.17,
+        -123.8
       ]
     }
   ]
