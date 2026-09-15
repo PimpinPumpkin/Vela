@@ -45,6 +45,7 @@ import app.vela.ui.settings.PageIntro
 import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.settings.SubHead
+import app.vela.ui.settings.ToggleRow
 import app.vela.ui.dpadFieldEscape // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.dpadHighlight
 import app.vela.ui.rememberDpadFocusKeeper // focus handoff for swap-in controls (docs/dpad.md)
@@ -96,6 +97,13 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             enabled = vm.hasViewport(),
         ) { Text(stringResource(R.string.settings_offline_download_viewport)) }
         Hint(stringResource(R.string.settings_offline_download_viewport_hint))
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_offline_places_with_downloads),
+            checked = app.vela.ui.MapPoiPrefs.placesWithDownloads.value,
+            onCheckedChange = { app.vela.ui.MapPoiPrefs.setPlacesWithDownloads(context, it) },
+            hint = stringResource(R.string.settings_offline_places_with_downloads_hint),
+        )
         if (regions.isEmpty()) {
             Hint(stringResource(R.string.settings_offline_no_areas))
         } else {

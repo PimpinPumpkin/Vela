@@ -10,7 +10,9 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -174,6 +176,32 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
                     },
                 ),
             )
+            // The short hints carry what matters; the rest (who maintains the data, where Vela
+            // serves it from, what still touches Google) lives behind Learn more.
+            var placesInfo by remember { androidx.compose.runtime.mutableStateOf(false) }
+            androidx.compose.material3.TextButton(
+                onClick = { placesInfo = true },
+                modifier = Modifier.padding(start = 8.dp).dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+            ) { Text(stringResource(R.string.settings_places_source_more)) }
+            if (placesInfo) {
+                app.vela.ui.VelaDialog(
+                    onDismissRequest = { placesInfo = false },
+                    title = stringResource(R.string.settings_places_source_more_title),
+                    text = { Text(stringResource(R.string.settings_places_source_more_body)) },
+                    confirmText = stringResource(android.R.string.ok),
+                    onConfirm = { placesInfo = false },
+                    dismissText = stringResource(R.string.settings_places_source_more_credit),
+                    onDismiss = {
+                        placesInfo = false
+                        runCatching {
+                            context.startActivity(
+                                android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://overturemaps.org/")),
+                            )
+                        }
+                    },
+                    dismissLowEmphasis = true,
+                )
+            }
             GroupDivider()
             ToggleRow(
                 label = stringResource(R.string.settings_show_civic),

@@ -1096,12 +1096,16 @@ fun VelaMapView(
                 }
                 val layer = SymbolLayer("vela-places-$i", srcId).apply {
                     setSourceLayer("places") // tippecanoe layer name (tools/build-places-region.sh: -l places)
-                    setMinZoom(13f)
+                    // z11/z12 tiles carry only the landmarks (airports, hospitals, universities,
+                    // malls: `landmark` + `xrank` in the bake), the ones Google keeps drawing
+                    // zoomed out, so below z13 everything present gets an icon and a label.
+                    setMinZoom(11f)
                     setProperties(
                         PropertyFactory.iconImage(
                             Expression.step(
                                 Expression.zoom(),
-                                topOr("crank", 2, 6.0, icon),
+                                icon,
+                                Expression.stop(13f, topOr("crank", 2, 6.0, icon)),
                                 Expression.stop(15f, topOr("rank", 1, 5.0, icon)),
                                 Expression.stop(16f, topOr("rank", 5, 4.0, icon)),
                                 Expression.stop(17f, topOr("rank", 12, 3.0, icon)),
@@ -1121,7 +1125,8 @@ fun VelaMapView(
                         PropertyFactory.textField(
                             Expression.step(
                                 Expression.zoom(),
-                                topOr("crank", 1, 6.0, name),
+                                name,
+                                Expression.stop(13f, topOr("crank", 1, 6.0, name)),
                                 Expression.stop(15f, topOr("rank", 1, 5.0, name)),
                                 Expression.stop(16f, topOr("rank", 3, 4.5, name)),
                                 Expression.stop(16.5f, topOr("rank", 6, 4.0, name)),
