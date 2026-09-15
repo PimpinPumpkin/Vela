@@ -157,7 +157,9 @@ and hand it to a developer** to debug. Specifics:
   bad route or *tuning the turn-by-turn*). No account, no contacts, no continuous
   location trail.
 - **Turning it off wipes the log.** Exports also scrub coordinates down to ~1 km before the
-  share sheet ever sees them, so a pasted report can't pinpoint you.
+  share sheet ever sees them, so a pasted report can't pinpoint you. **Redact places in exports**
+  (same screen) goes further for a report you mean to post publicly: coordinates round to ~10 km
+  and the searches, destinations, links and place names are replaced by `[redacted]`.
 
 ## Trip recording (separate opt-in, off by default)
 
