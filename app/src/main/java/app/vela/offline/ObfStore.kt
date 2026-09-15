@@ -29,6 +29,18 @@ class ObfStore @Inject constructor(
     http: OkHttpClient,
 ) {
     private val root = File(context.filesDir, "obf")
+    private val revsLock = Any()
+
+    /** The manifest rev the installed file came from (0 for files older than revs). */
+    fun installedRev(id: String): Int = synchronized(revsLock) { readRevs().optInt(id, 0) }
+
+    private fun readRevs(): org.json.JSONObject =
+        runCatching { org.json.JSONObject(File(root, "revs.json").readText()) }.getOrDefault(org.json.JSONObject())
+
+    fun writeRev(id: String, rev: Int) = synchronized(revsLock) {
+        root.mkdirs()
+        File(root, "revs.json").writeText(readRevs().put(id, rev).toString())
+    }
     private val indexFile = File(root, "index.json")
     private val indexLock = Any()
 

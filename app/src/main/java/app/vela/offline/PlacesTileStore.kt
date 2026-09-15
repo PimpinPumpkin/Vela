@@ -61,7 +61,7 @@ abstract class PmtilesRegionStore(
     private val http: OkHttpClient,
     folder: String,
 ) {
-    data class Region(val id: String, val name: String, val url: String, val sizeMb: Double, val s: Double, val w: Double, val n: Double, val e: Double) {
+    data class Region(val id: String, val name: String, val url: String, val sizeMb: Double, val s: Double, val w: Double, val n: Double, val e: Double, val rev: Int = 0) {
         fun covers(p: LatLng) = p.lat in s..n && p.lng in w..e
         fun area() = (n - s) * (e - w)
     }
@@ -104,7 +104,7 @@ abstract class PmtilesRegionStore(
                     val b = o.getJSONArray("bbox") // [S, W, N, E]
                     Region(
                         o.getString("id"), o.optString("name", o.getString("id")), o.getString("url"), o.optDouble("sizeMb", 0.0),
-                        b.getDouble(0), b.getDouble(1), b.getDouble(2), b.getDouble(3),
+                        b.getDouble(0), b.getDouble(1), b.getDouble(2), b.getDouble(3), o.optInt("rev"),
                     )
                 }
             }.getOrDefault(emptyList())
@@ -159,7 +159,10 @@ abstract class PmtilesRegionStore(
                 }
                 check(tmp.length() > 127 && tmp.inputStream().use { s -> ByteArray(7).let { s.read(it); String(it) } } == "PMTiles") { "not a PMTiles archive" }
                 check(tmp.renameTo(file)) { "rename failed" }
-                synchronized(indexLock) { writeIndex(readIndex() + (region.id to doubleArrayOf(region.s, region.w, region.n, region.e))) }
+                synchronized(indexLock) {
+                    writeIndex(readIndex() + (region.id to doubleArrayOf(region.s, region.w, region.n, region.e)))
+                    writeRev(region.id, region.rev)
+                }
                 onProgress(100)
                 true
             }.getOrElse { tmp.delete(); false }
@@ -168,7 +171,24 @@ abstract class PmtilesRegionStore(
 
     fun delete(id: String) {
         fileFor(id).delete()
-        synchronized(indexLock) { writeIndex(readIndex() - id) }
+        synchronized(indexLock) { writeIndex(readIndex() - id); writeRev(id, 0) }
+    }
+
+    /** The manifest rev the installed archive came from (0 for archives older than revs). */
+    fun installedRev(id: String): Int = synchronized(indexLock) { readRevs().optInt(id, 0) }
+
+    /** Installed archives whose manifest rev is newer than the installed one. */
+    fun updatable(manifest: List<Region>): List<Region> {
+        val ids = installedIds()
+        return manifest.filter { it.id in ids && it.rev > installedRev(it.id) }
+    }
+
+    private fun readRevs(): JSONObject =
+        runCatching { JSONObject(File(root, "revs.json").readText()) }.getOrDefault(JSONObject())
+
+    private fun writeRev(id: String, rev: Int) {
+        root.mkdirs()
+        File(root, "revs.json").writeText(readRevs().put(id, rev).toString())
     }
 
     /** Installed archives whose bbox centre falls inside [s],[w],[n],[e]: the ones that belong to
