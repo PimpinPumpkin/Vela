@@ -86,9 +86,19 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
         val cands = all.filter { it.id !in failed && it.s < bn && it.n > bs && it.w < be && it.e > bw }
         android.util.Log.d(TAG, "route $mode: ${all.size} installed, ${cands.size} intersecting trip box")
         // The UNION must cover both endpoints, else the trip genuinely leaves the installed data.
-        if (cands.none { it.covers(origin) } || cands.none { it.covers(destination) }) return emptyList()
+        // Both early outs log: a silent empty here read as "No drive route found" with nothing to
+        // go on (2026-09-14, a simulated origin outside the region looked like a broken file).
+        val originIn = cands.any { it.covers(origin) }
+        val destIn = cands.any { it.covers(destination) }
+        if (!originIn || !destIn) {
+            android.util.Log.d(TAG, "route $mode: endpoint outside installed data (origin in=$originIn, destination in=$destIn; origin ${"%.4f".format(origin.lat)},${"%.4f".format(origin.lng)})")
+            return emptyList()
+        }
         val readers = cands.mapNotNull { reader(it) }
-        if (readers.isEmpty()) return emptyList()
+        if (readers.isEmpty()) {
+            android.util.Log.w(TAG, "route $mode: no readable file among ${cands.map { it.id }} (failed=${failed})")
+            return emptyList()
+        }
         run {
             try {
                 val startMs = System.currentTimeMillis()
