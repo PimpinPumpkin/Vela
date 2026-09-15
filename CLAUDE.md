@@ -3160,8 +3160,11 @@ architecture note.
   block, and console ERROR lines logged as `VelaWeb: <tag>: ...` for every fetcher. A fetcher is its
   URL + extractor script + parser and overrides `onPageFinished(view, url, requestId)`.
   `WebStopDeparturesFetcher` and `WebDirectionsFetcher` are converted (187+224 lines -> 89+120, transit
-  board verified on the 4a); `WebPhotoFetcher`, `WebPopularTimesFetcher`, `WebReviewsFetcher` are the
-  next conversions, one PR each with a device check, since the scrapes are the product.
+  board verified on the 4a); `WebPopularTimesFetcher` followed (203 -> 146 lines: `fetch` =
+  `session { request { ensureWarm(); evaluate(script) } }`, the two-step warm keyed on page-finish
+  counts, `onReaped` drops the warm so a reaped view re-warms, and it logs `popular: raw= parsed=`
+  under `VelaWeb`); `WebPhotoFetcher` and `WebReviewsFetcher` are the next conversions, one PR each
+  with a device check, since the scrapes are the product.
 - **Route provenance is one field (2026-09-15, issue #417 refactor 1, step 1).** `Route.source:
   RouteSource` (OSRM, OSRM_VIA_SNAP, GOOGLE_NAMED, GOOGLE_ABBREVIATED, GOOGLE_PROVISIONAL, OBF, GRAPHHOPPER,
   VALHALLA, UNKNOWN) is stamped at every constructor (DirectionsParser, RouteGeometry.parseOsrmRoute,

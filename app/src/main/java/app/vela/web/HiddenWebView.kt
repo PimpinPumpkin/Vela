@@ -62,6 +62,13 @@ abstract class HiddenWebView(
     /** Extra setup for a freshly created view (an offscreen viewport for virtualized pages, say). */
     protected open fun configure(view: WebView) {}
 
+    /** The view was destroyed (idle reap or memory pressure): drop anything tied to it, such as a
+     *  warmed session, so the next fetch rebuilds it. */
+    protected open fun onReaped() {}
+
+    /** Run [js] in the current page on the main thread (no-op when there is no view). */
+    protected suspend fun evaluate(js: String) = withContext(Dispatchers.Main) { webView?.evaluateJavascript(js, null) }
+
     /** A page finished loading for the request [requestId]: evaluate the extractor for it. */
     protected abstract fun onPageFinished(view: WebView, url: String?, requestId: String)
 
@@ -157,5 +164,6 @@ abstract class HiddenWebView(
     protected fun reapNow() {
         webView?.let { runCatching { it.loadUrl("about:blank"); it.destroy() } }
         webView = null
+        onReaped()
     }
 }
