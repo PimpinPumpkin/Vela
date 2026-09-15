@@ -72,6 +72,15 @@ Check a downloaded file against it before installing:
 apksigner verify --print-certs vela-maps-*.apk
 ```
 
+On the phone, [App Verifier](https://github.com/soupslurpr/AppVerifier) checks
+the same thing. It wants the package name on the first line and the fingerprint
+on the second, so paste this block, not the line above:
+
+```
+app.vela
+29:93:8B:48:58:06:3E:42:E6:77:FF:95:C9:01:CD:48:24:8A:7F:03:2A:3A:E8:5F:9B:9E:56:17:56:8B:0D:36
+```
+
 Android enforces this for you after the first install: an update signed with a
 different key is refused, so a build that installs over your existing Vela came
 from the same place this one did.
