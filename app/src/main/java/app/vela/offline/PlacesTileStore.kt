@@ -81,18 +81,22 @@ class PlacesTileStore @Inject constructor(
         return fetched
     }
 
-    /** Source URIs for [center]: local archives first, then the smallest manifest regions covering
-     *  it that are not installed. */
+    /** The ONE source URI for [center]: the smallest installed archive covering it, else the smallest
+     *  manifest region covering it. One, not every match: regions nest (a city test box inside its
+     *  state), and two archives on the style drew every business in the overlap twice. An installed
+     *  archive with no index entry (a dropped-in test file) counts as covering everything. */
     suspend fun sourcesFor(center: LatLng?, manifestUrl: String): List<String> {
         val local = installed()
-        val uris = local.values.map { "pmtiles://file://${it.absolutePath}" }.toMutableList()
-        val c = center ?: return uris
-        runCatching { manifest(manifestUrl) }.getOrDefault(emptyList())
-            .filter { it.covers(c) && it.id !in local.keys }
-            .sortedBy { it.area() }
-            .take(2)
-            .forEach { uris.add("pmtiles://${it.url}") }
-        return uris.distinct()
+        val c = center ?: return local.values.take(1).map { "pmtiles://file://${it.absolutePath}" }
+        val index = readIndex()
+        val localPick = local.entries
+            .filter { (id, _) -> index[id]?.let { b -> c.lat in b[0]..b[2] && c.lng in b[1]..b[3] } ?: true }
+            .minByOrNull { (id, _) -> index[id]?.let { b -> (b[2] - b[0]) * (b[3] - b[1]) } ?: Double.MAX_VALUE }
+        if (localPick != null) return listOf("pmtiles://file://${localPick.value.absolutePath}")
+        val streamed = runCatching { manifest(manifestUrl) }.getOrDefault(emptyList())
+            .filter { it.covers(c) }
+            .minByOrNull { it.area() } ?: return emptyList()
+        return listOf("pmtiles://${streamed.url}")
     }
 
     /** Download [region]'s archive for offline use. True when installed (or already was). */

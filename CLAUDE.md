@@ -3148,7 +3148,10 @@ architecture note.
   fine at z15, top 3 at z16, top 6 at z16.5, all from z17.5); everything else in the tile draws as a small
   category-colored dot on a `vela-places-dots-<i>` CircleLayer (from z14, `PoiIcons.groupColor()` over the
   baked `group`), so a downtown thins to its landmarks and fills in as you zoom, the way Google's does. `PlacesTileStore` = `files/places/*.pmtiles`
-  (offline) + `PLACES_MANIFEST_URL` regions streamed; `MapPoiPrefs.placesSource` (Settings > Map,
+  (offline) + `PLACES_MANIFEST_URL` regions streamed (`sourcesFor` returns ONE source: the smallest
+  installed archive covering the center, else the smallest manifest region; two nested archives drew
+  the overlap twice). Baked so far: Davis (test box) and California (1.68 M places, 481 MB, streams
+  by range request; the CI bake of one state took 15 min); `MapPoiPrefs.placesSource` (Settings > Map,
   "Businesses on the map come from": `open` default / `google` / `both`, pref `map_places_source`,
   each option's cost stated in its hint) gates it; `refreshPlacesOverlays` fills `placesOverlays` on
   camera idle; `maybeLoadAmbientPois` returns early (no Google fan-out) while the layer covers the
