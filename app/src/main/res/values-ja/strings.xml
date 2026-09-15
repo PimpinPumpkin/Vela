@@ -267,6 +267,7 @@
     <string name="place_link_copied">リンクをコピーしました</string>
     <string name="place_share_gmaps_link">Google マップのリンク</string>
     <string name="place_share_map_pin">地図のピン（geo:）</string>
+    <string name="place_open_other_app">別の地図アプリで開く</string>
     <string name="place_share_coordinates">座標</string>
     <string name="place_copy_coordinates">座標をコピー</string>
     <string name="place_coordinates_copied">座標をコピーしました</string>

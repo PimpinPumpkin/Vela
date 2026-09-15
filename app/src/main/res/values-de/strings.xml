@@ -253,6 +253,7 @@
     <string name="place_link_copied">Link kopiert</string>
     <string name="place_share_gmaps_link">Google Maps-Link</string>
     <string name="place_share_map_pin">Kartenmarkierung (geo:)</string>
+    <string name="place_open_other_app">In anderer Karten-App öffnen</string>
     <string name="place_share_coordinates">Koordinaten</string>
     <string name="place_copy_coordinates">Koordinaten kopieren</string>
     <string name="place_coordinates_copied">Koordinaten kopiert</string>
