@@ -140,7 +140,7 @@
     <string name="settings_offline_addresses_update">Update saved areas</string>
     <string name="settings_offline_delete_area">Delete this offline area</string>
     <string name="settings_routing_regions">Entire states &amp; countries</string>
-    <string name="settings_routing_regions_hint">Directions and place search for an entire state, province or country, so you can navigate and look things up anywhere inside it offline. This does not include the detailed map picture, which would be huge for a whole country; that comes from the areas you save above, or from being online.</string>
+    <string name="settings_routing_regions_hint">Directions, place search and the map picture for an entire state, province or country, so you can navigate and look things up anywhere inside it offline. The map picture is the biggest part of a download; the smaller areas you save above cover just a city.</string>
     <string name="settings_routing_no_regions">No regions available yet.</string>
     <string name="settings_clear_filter">Clear filter</string>
     <string name="settings_routing_filter_placeholder">Search</string>
