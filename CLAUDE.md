@@ -764,7 +764,7 @@ Defaults that make the safe path the easy one:
   bearing relative to the road you approached on, and the DRIVING SIDE is the sign of the entry
   turn, because you always veer toward the circulating lane (live-captured: Paris entries turn +84,
   Milton Keynes entries turn -24 to -52; pinned in `RoundaboutGeometryTest` with those real numbers).
-  With no geometry (Google fallback, offline GraphHopper/obf, or an entry too straight for its sign
+  With no geometry (Google fallback, offline obf, or an entry too straight for its sign
   to mean anything) it draws its NEUTRAL form - ring plus entry stub, NO exit arrow - because an
   arrow pointing somewhere we did not measure is the whole bug. `maneuverIcon(type)` can only produce
   the neutral form; call `maneuverIconFor(maneuver)` wherever the Maneuver is in hand. **Android Auto reads the same geometry (review 2026-09-12):** `ManeuverMapper` picks CW/CCW from `roundabout.clockwise` (counter-clockwise only as the no-geometry default) and the exit number from `Maneuver.roundaboutExit`, set by all three routers (OSRM `maneuver.exit`, GraphHopper `exitNumber`, obf `exitOut`); it used to hard-code CCW and exit 1. GraphHopper and obf still give NO glyph geometry: both expose a turn angle whose sign convention is undocumented in the vendored jars, and a guessed arrow is the original bug. NB the
@@ -1596,7 +1596,7 @@ Defaults that make the safe path the easy one:
   holder shape as `AppTheme`).** `AppLocale.language` = "" (follow system) or a code; Settings → Language
   picks it. (1) **Spoken nav** - the GENERATED turn-by-turn text is a per-language `NavStrings` table in
   `:core` (`core/i18n`), switched by `NavStringsRegistry`; `AppLocale.apply()` drives it. **BOTH routers feed
-  it:** `RouteGeometry.osrmPhrase` (online OSRM) AND `GraphHopperRouteEngine.ghPhrase` (offline) map their
+  it:** `RouteGeometry.osrmPhrase` (online OSRM) AND `OfflinePhrases.phrase` (offline) map their
   maneuvers to the OSRM `(type, mod)` token pair and call `NavStringsRegistry.current().phrase(...)`, so
   offline routes localize through the same 11 tables (ghPhrase used to hardcode English - audit 2026-07-06).
   **The chosen neural
@@ -1654,21 +1654,10 @@ Defaults that make the safe path the easy one:
   Hebrew). Works ONLINE and in a downloaded map AREA (both carry name:latin tiles). Quality tracks OSM
   name:en coverage (Israel well-tagged -> real names; sparse areas keep local script on display / ICU by
   voice), same as Google.
-  **OFFLINE across a whole state = a ROMANIZED-NAME SIDECAR next to the routing graph (2026-07-19,
-  branch offline-roadnames; chosen over baking into the GraphHopper graph, which GraphHopper can't do
-  natively without version-locked internals + a full re-download):** `scripts/roadnames_build.py` extracts
-  `<local>\t<English>` for every road with name:en/name:latin from the region PBF (name:en wins; validated
-  Latin-script, != local); `scripts/build-routing-region.sh` gzips it to `<id>-names.tsv.gz`, uploads it
-  beside the graph on the `routing-graphs` release, and adds `namesUrl`/`namesSizeKb` to the manifest
-  entry (merge script carries extra fields as-is; old apps ignore them). App: `RoutingGraphStore.download`
-  pulls the sidecar into `graphs/<id>/names.tsv.gz` (best-effort, never fails the graph); `roadNames()`
-  merges all installed regions' sidecars; `MapViewModel.offlineRoadNames` loads it at init / after a
-  region download or delete and is the BASE for `roadNameLatin` (voice + state) that the online tiles
-  merge ON TOP of, reset to on nav-end. So the graph is UNCHANGED (additive, existing downloads keep
-  working, users grab a small extra file, not a new graph). Memory note: the merged map is held in
-  memory while installed - a whole COUNTRY download could be tens of MB; per-route region loading is a
-  future optimization. **The sidecars only exist after a `routing-graphs.yml` rebake is dispatched** (the
-  bake is user-triggered; until then offline nav keeps the local script / ICU).
+  **OFFLINE across a whole region: the obf route carries its roads' Latin names** (2026-09-15,
+  `Route.roadNamesLatin`, see the obf bullets; it replaced the 2026-07-19 `names.tsv.gz` sidecar that
+  rode beside the GraphHopper graph, retired with the graphs). `NavController` merges the map into
+  `roadNameLatin` when a route is adopted; the nav tiles add the rest as they load; nav end resets to empty.
   (2) **UI chrome** - 
   all ~330 user-facing `:app` strings live in `res/values/strings.xml` (English) + `res/values-<lang>/` for
   the 15 translated languages (fr de es it pt nl ru pl sv uk hu iw + zh zh-rTW ja; CJK added 2026-07-11, Hungarian contributed by Zsolt Laszlo Kaiser from the kaiser-app fork and ported 2026-09-13 with its NavStrings table, status words, review words, transit words and the Anna Piper voice, Hebrew 2026-07-13),
@@ -2550,21 +2539,13 @@ Gotchas:
   InvalidValue - its profiles lack excludable classes; routeOsrm bails on any 4xx instead
   of retrying, AND `OSRM_SUPPORTS_EXCLUDE=false` keeps the param OFF entirely - sending it
   400'd the whole request and lost the clean named-turn route while a chip was on, a worse
-  route than just not honouring avoid online; flip the const on a self-hosted OSRM), so the AUTHORITATIVE avoid router is the ON-DEVICE graph: `GraphBuilder` bakes
-  `car_avoid_toll`/`car_avoid_motorway` CH profiles (EV string grew `toll, road_class` - a
-  BREAKING graph change; the engine try-loads the v2 EV string then the old one so existing
-  graphs keep working, minus avoid) and `GraphHopperRouteEngine` mirrors the blocking
-  weightings (Toll.ALL / RoadClass.MOTORWAY -> infinite weight; tolls wins when both toggles
-  are on). directions() tries the on-device avoid route FIRST when a toggle is on; a graph
-  without the profiles returns EMPTY (never silently routes through a toll) and the online
-  chain falls back to a NORMAL route. **LIVE since 2026-07-11: all 135 regions are rebaked as the v2 generation**
-  (`<id>-v2.zip` + `routing-manifest-v2.json` beside the v1 assets (v1 was deleted 2026-07-13 after the cutover; v2 is the only live generation) on the
-  `routing-graphs` release - the workflow's `variant` input publishes parallel generations)
-  and the app's `ROUTING_MANIFEST_URL` default points at the v2 manifest; rollback = revert
-  that one build.gradle.kts line. Graphs installed before the cutover keep working (the
-  engine try-loads the v2 EV string then legacy) but lack the avoid profiles until
-  re-downloaded. Device-verified: Dover-Smyrna with Avoid tolls swung off the DE-1 toll road
-  onto the free route, single on-device route, no live-traffic tag.
+  route than just not honouring avoid online; flip the const on a self-hosted OSRM), so the AUTHORITATIVE avoid router
+  offline is the on-device obf engine: dynamic routing.xml params (`avoid_toll` / `avoid_highway`), no
+  baked profiles. directions() tries the on-device avoid route FIRST when a toggle is on; an engine that
+  cannot honor it returns EMPTY (never silently routes through a toll) and the online chain falls back to a
+  NORMAL route. (The GraphHopper CH avoid profiles and the v2 graph generation that did this from
+  2026-07-11 were retired on 2026-09-15.) Device-verified on the graphs then: Dover-Smyrna with Avoid tolls
+  swung off the DE-1 toll road onto the free route, single on-device route, no live-traffic tag.
 - Nav guidance discipline (2026-07-04 audit): prompt/turn-now distances SCALE WITH SPEED in
   `NavEngine` (max(fixed, v×T), T=35/10 s since 2026-07-17; `spoken` stores band SLOTS not metres), one prompt per update speaking
   the TRUE distance, REPEATS TRIMMED (2026-07-17: a step's non-first prompts speak
@@ -3055,7 +3036,7 @@ Gotchas:
   `RouteGeometry.foldRenames` (2026-07-06)** folds a pure-rename CONTINUE (OSRM `continue`/`new name` going
   straight, no genuine fork - "Olive Dr becomes Richards Blvd") into the PRECEDING maneuver so it's not its own
   banner card / step at all - NavEngine already SILENCED its voice, but it still showed a silly "Continue onto X"
-  card where Google shows nothing (user report). Applied on BOTH routers (OSRM `parseOsrmRoute` + GraphHopper
+  card where Google shows nothing (user report). Applied on BOTH routers (OSRM `parseOsrmRoute` + the obf engine
   `toRoute`); a genuine-fork CONTINUE (`continueHasGenuineFork`, spoken) and STRAIGHT (a junction straight-through)
   are left alone. Unit-tested. (3) **Feet steps**
  - `formatDistance` (banner) + every `NavStrings.spokenDistance` table (voice) round feet Google-style: 50 ft at/above
@@ -3287,7 +3268,7 @@ Gotchas:
 - **Route provenance is one field (2026-09-15, issue #417 refactor 1, step 1).** `Route.source:
   RouteSource` (OSRM, OSRM_VIA_SNAP, GOOGLE_NAMED, GOOGLE_ABBREVIATED, GOOGLE_PROVISIONAL, OBF, GRAPHHOPPER,
   VALHALLA, UNKNOWN) is stamped at every constructor (DirectionsParser, RouteGeometry.parseOsrmRoute,
-  ObfRouteEngine, GraphHopperRouteEngine, ValhallaRouter, Mock, the GoogleMapsDataSource fallback and
+  ObfRouteEngine, the since-retired GraphHopperRouteEngine, ValhallaRouter, Mock, the GoogleMapsDataSource fallback and
   provisional branches, nameRoute's snap) and recorded on the trip file's RD line as `source=NAME` (omitted
   for UNKNOWN, so old files and old tests read unchanged). Consumers ask `drivable` (not a provisional
   picker alternate) and `hasRealSteps` (not Google's abbreviated fallback) instead of reading the booleans;
@@ -3647,7 +3628,7 @@ Gotchas:
   alternate (`MapViewModel.selectRoute` → `MapDataSource.nameRoute`, also on `startNav` as a safety) NAMES
   it - currently by snapping its polyline through OSRM (`routeVia`, guarded to reach dest) + re-applying
   Google's traffic. So only the route you drive gets snapped, and the picker loads fast. **Next = swap
-  `nameRoute`'s snap for on-device GraphHopper MAP-MATCH where the region's downloaded** (wobble-free); the
+  `nameRoute`'s snap for an on-device MAP-MATCH where the region's downloaded** (wobble-free; it was going to be GraphHopper's matcher, retired 2026-09-15 before it shipped); the
   snap stays the fallback. (NB: MapLibre vector tiles only cover the on-screen area, so they can't name a
   whole long route - a universal-clean version would need fetching+decoding the route's MVT tiles.)
 - **Why not "always snap to Google's path"?** (measured 2026-06-28, the serverless question.) Google's
@@ -3669,8 +3650,8 @@ Gotchas:
   gnu-trove-osmand.jar / kxml2-vela.jar from that release). MEASURED WHY: Berlin from the same PBF = GraphHopper
   graph 105 MB vs obf routing section 26.9 MB (3.9x); a target-sections obf (routing+address+POI,
   NO map/transport - `scripts/VelaObfShim.java` sets the IndexCreatorSettings booleans the CLI
-  lacks) makes Germany ~2 GB where graph+pack was ~8. `OfflineRouteEngine` (CoreModule) tries obf
-  then GraphHopper, so pre-cutover graphs keep working; avoids (toll/motorway) are DYNAMIC
+  lacks) makes Germany ~2 GB where graph+pack was ~8. CoreModule binds `ObfRouteEngine`
+  directly since 2026-09-15 (GraphHopper retired); avoids (toll/motorway) are DYNAMIC
   routing.xml params (`avoid_toll`/`avoid_highway`) so they work offline with no baked profiles,
   and bicycle/pedestrian profiles come free. Turn mapping pinned by ObfRouteEngineTest (CONTINUE
   is voice-silent - a mis-mapped u-turn gets swallowed; instruction text reuses ghPhrase so all
@@ -3699,7 +3680,7 @@ Gotchas:
   NOT generate it. So HH is not the "follow-up if long routes measure slow" this file used to call
   it - it is a PREREQUISITE for offline feature parity, and it lands on top of a bake that already
   does not fit CI. Until HH exists, offline obf routing is a city/metro feature; anything intercity
-  must stay online or stay on GraphHopper.
+  must stay online (GraphHopper was retired 2026-09-15, so there is no CH fallback anymore).
   **THE BAKE DOES NOT FIT A GITHUB RUNNER AT COUNTRY SCALE (measured 2026-08-16, the first time
   obf-regions.yml was ever run).** Luxembourg and Delaware baked fine (39 MB and 20 MB obf); Czech
   Republic and `de-bayern` both died with `OutOfMemoryError: Java heap space` at `-Xmx12g` on a
@@ -3753,10 +3734,8 @@ Gotchas:
   per region set, 32 MB limit, dropped in `shutdown`), snaps the fix with OsmAnd's
   `RoutePlannerFrontEnd.findRouteSegment` (`distToProj` is the SQUARED distance in metres; farther
   than 25 m = off the network), and reads `RouteDataObject.getMaximumSpeed(true)` (m/s; 0 = untagged,
-  `NONE_MAX_SPEED` = derestricted, both blank; same forward-only and `< 150` rules as the
-  GraphHopper lookup). `OfflineRouteEngine` asks the obf first, GraphHopper only as the fallback,
-  so the badge no longer needs a graph installed: one GraphHopper-only feature down on the way to
-  retiring the graphs. Harness: `ObfSpeedLimitProbeTest` runs against a real file with
+  `NONE_MAX_SPEED` = derestricted, both blank; same forward-only and `< 150` rules the
+  retired GraphHopper lookup used). The badge reads the obf only since the graphs went (2026-09-15). Harness: `ObfSpeedLimitProbeTest` runs against a real file with
   `-DvelaObf=<dir with delaware.obf + index.json>` (skipped otherwise; the Delaware fixture reads
   88 km/h on the Puncheon Run Connector, null on an untagged street and on open water);
   `probeRoadLimit` prints what the lookup saw. NB US roads are often untagged in OSM (US 13 at
@@ -3767,7 +3746,7 @@ Gotchas:
   `ObfRouteEngine.latinAlias`, the same Latin-only rule as the tile path and the sidecar bake),
   and `NavController`'s observer merges it through `Host.onNavRoadLatin` the moment a route is
   adopted, so an offline Hebrew drive speaks and shows real names without the routing-graphs
-  sidecar (the second and last GraphHopper-only feature). Harness `ObfRoadNamesProbeTest`
+  sidecar (the second and last GraphHopper-only feature; the graphs were retired the same day). Harness `ObfRoadNamesProbeTest`
   (`-DvelaObf=<dir with israel-and-palestine.obf>`): a Tel Aviv drive returns Hebrew -> Latin
   pairs (Arlosoroff, Ibn Gabirol, Sderot Rothschild). Core unit tests run with
   `unitTests.isReturnDefaultValues = true` since then, so the engine's `android.util.Log` lines
@@ -3788,95 +3767,23 @@ Gotchas:
   17 remaining big rows (Texas, Ontario, Mexico, Sweden, Ukraine, Argentina, South Africa, ...)
   have NO Geofabrik sub-extracts, so they stay whole. **The workflow's `group` input takes a LIST
   now, plus the shorthand `all-sub`** - one dispatch bakes every sub-area group instead of 15.
-- **On-device routing engine = GraphHopper (`core/data/RouteEngine` + `GraphHopperRouteEngine`).**
-  Pure-JVM, runs on ART - **validated end-to-end on a Pixel 5a** (`:ghprobe`, a throwaway instrumented
-  probe - the routing shipped long ago; the module is safe to delete whenever). Chosen over Valhalla (no maintained Android map-matching binding) /
-  BRouter (no street names) / Mapbox (token-gated). It's wired as a `:core` dep
-  (`libs.graphhopper.mapmatching`, **OSM-import deps excluded** - osmosis/protobuf/woodstox/xmlgraphics
-  are Android-hostile + only needed to *build* graphs, which we do off-device). **Three ART workarounds,
-  all in `GraphHopperRouteEngine` - don't remove:** (1) **`graph.dataaccess=MMAP`** (default RAMDataAccess
-  static-inits a JDK-16 `VarHandle` method ART lacks); (2) **override `createWeightingFactory()`** to a
-  hand-rolled `SpeedWeighting`+access-block (v11 compiles custom models via **Janino** → JVM bytecode ART
-  can't load); (3) **swallow `close()`** (MMAP unmap uses `Unsafe.invokeCleaner`, absent on Android - keep
-  one engine for the process lifetime). **Three MORE ART gaps, all pre-API-34, all fixed so offline graphs
-  LOAD below Android 14 (contributed by ars18, ported 2026-07-17 - before this, a downloaded graph loaded on
-  API 34+ ONLY; the `:ghprobe` device was on 14 so it was never caught):** (4) the custom model is built
-  PROGRAMMATICALLY via `carModel()` instead of `GHUtility.loadCustomModelFromJar("car.json")` - the jar's
-  loader makes Jackson bean-introspect `Statement` (a Java 17 record), which needs `Class.getRecordComponents`
-  (ART API 34+); record CONSTRUCTORS work everywhere, only the reflection probe is missing. `carModel()` MUST
-  mirror the jar's `car.json` exactly (the CH profile version hashes are keyed on the model) - `GraphHopperRouterTest.carModelMatchesJar` asserts it and fails on any GraphHopper-upgrade drift; (5) profiles are
-  set AFTER `init()` via `hopper.setProfiles`/`chPreparationHandler.setCHProfiles`, never inside the cfg -
-  `init()` force-round-trips every profile's model through Jackson (same record probe); (6) `MMapDataAccess`
-  reads graph segments with the JDK-13 absolute-bulk `ByteBuffer.get/put(int,byte[],int,int)` (ART API 34+),
-  so a **buildSrc artifact transform** (`GraphHopperByteBufferPatch`, ASM) rewrites exactly those 6 call
-  sites in `graphhopper-core-*.jar` to `app.vela.core.util.ByteBufferCompat` (`duplicate()+position()`,
-  API 1, byte-identical). `buildSrc` carries NO AGP dep (AGP there splits the plugin classloaders). **R8:** `consumer-rules.pro` keeps `com.graphhopper.**` + hppc/jts/
-  jackson wholesale (GraphHopper resolves a lot reflectively) and `-dontwarn`s the excluded/absent refs - 
-  release build is clean (**but +~10 MB APK; tighter keeps / on-demand delivery is a later optimisation**).
-  Graphs are built off-device, one per region, and (Phase 1b) downloaded alongside the offline tiles;
-  `RouteEngine` is selected by connectivity + graph-presence. **Speed needs Contraction Hierarchies:**
-  plain flexible A* with the interpreted `SpeedWeighting` was **7.6 s** for a 24-mi trip on a Pixel 5a;
-  **CH prepared on the SAME `SpeedWeighting`** (the engine declares `setCHProfiles`, `tools/graphbuilder`
-  builds it) → **188 ms**. Graphs MUST be built with CH on that weighting (CH bakes the build-time
-  weighting), to **internal** storage (FUSE external was I/O-bound). **`SpeedWeighting` ETA gotcha:** it
-  reports time as `distance_m/speed` as if `car_average_speed` (km/h) were m/s - 3.6× too fast - so the
-  engine AND `graphbuilder` override `calcEdgeMillis` to `distance_m·3600/kmh`; keep them identical.
-  **Encoded values = `car_access, car_average_speed, road_access, max_speed`** - the string is byte-identical
-  in `GraphBuilder.java` and `GraphHopperRouteEngine.kt` (a mismatch fails graph load); keep it so.
-  **Highway refs/destinations are NOT encoded values (learned 2026-07-13, saved a world rebake):** GraphHopper
-  stores `street_ref`/`street_destination`/`street_destination_ref`/`motorway_junction` as per-edge KEY-VALUES
-  whenever `parseWayNames` is on - and it defaults ON and GraphBuilder never disabled it, so every graph ever
-  shipped already carries them (same storage that makes `Instruction.getName()` work offline).
-  `InstructionsFromEdges` copies them onto each instruction's `extraInfoJSON`; `toRoute` reads them so offline
-  steps get shields (`Maneuver.ref`), "toward" sign text and "Take exit N" phrasing like the OSRM path
-  (`road = name ?: ref`; a fork/ramp carrying `motorway_junction` uses the off-ramp phrase). NB GraphHopper
-  joins a multi-ref with ", " where OSRM keeps ";" - the shield pick splits on both. Verified against a fresh
-  unchanged-config bake: refs/destinations present on a 47 mi toll-road route's instructions. `max_speed`
-  (added 2026-07-04) is the OSM `maxspeed` posted limit (km/h), a **passive stored column** (`OSMMaxSpeedParser`
-  auto-registers; NOT in the weighting/CH, so it doesn't change routes) read by the speed-limit badge via
-  `GraphHopperRouteEngine.currentRoadLimit(lat,lng)` - a `LocationIndex` snap + `EdgeIteratorState.get` off the
-  **base graph** (CH-safe). **Adding/removing an encoded value is a BREAKING graph-format change**: old graphs
-  lack the EV and `getDecimalEncodedValue` THROWS - `currentRoadLimit` swallows it (badge hidden, no crash),
-  but to actually light the badge up you must **re-bake + re-host every region graph** via `routing-graphs.yml`
-  (verified: a Monaco rebuild carries `max_speed` + CH cleanly). Existing installs keep their old graphs until
-  re-downloaded (no version-discriminator yet - a manifest `schema` bump so they auto-update is a follow-up).
-  **Status: DONE end-to-end, on-device verified, graphs HOSTED + multi-region.** `RoutingGraphStore` (`:app`)
-  downloads region CH graphs from a manifest (`BuildConfig.ROUTING_MANIFEST_URL`, override `-ProutingManifestUrl=`
-  for local testing) into `filesDir/graphs/<id>/`, merging each into `filesDir/graphs/index.json`
-  (`[{id,bbox:[S,W,N,E]}]`); `GraphHopperRouteEngine` lazy-loads a `GraphHopper` per region and routes a trip on
-  the **smallest region whose bbox covers BOTH endpoints**, falling through to the next-smallest if that
-  graph can't make the trip (`inBox`, unit-tested). Smallest-first because Geofabrik extract boxes carry a
-  buffer that spills across borders (British Columbia's box dips into the metro) - the same rule drives the
-  picker's "covers your location" label + the tiles→routing combine, so all three agree. Settings → **Offline** (one
-  section: a **Map area** subhead = viewport tile download, and a **Routing regions** subhead = the picker) is
-  a location-aware picker (regions covering the GPS fix sort first + flag "covers your location"; a name
-  filter appears once the catalog is large); downloading
-  offline map *tiles* for an area ALSO pulls that area's routing region (`MapViewModel.downloadRoutingForArea`).
-  `directions()` uses the engine when OSRM is empty. A trip must fit ONE region's monolithic graph (cross-region
-  → online).
-  **Sub-country regions (2026-07-23, issue #214):** big countries split into Geofabrik
-  first-level extracts in the catalog - Germany is 16 `de-*` Bundesland rows (group
-  `germany-sub` in both workflow dispatch choices) beside the kept whole-country row, so the
-  smallest-covering-box rule serves a Berlin user the Berlin graph+pack instead of ~8 GB of
-  Germany. No app change needed (the picker + Local-area auto-pull already prefer the smallest
-  covering region). Every country Geofabrik sub-divides has its `<country>-sub` rows now (issue
-  #254, 2026-08-15); all three region workflows take a list of groups or `all-sub`. \
-  **Hosting + world catalog (DONE 2026-06-30):** graphs + `routing-manifest.json` are assets on the
-  **`routing-graphs` GitHub release** (fixed-tag prerelease, never the "Latest" the APK tracks). The catalog is
-  **`tools/routing-regions.json`** (135 regions, grouped by continent; `big:true` = country-sized). CI
-  **`.github/workflows/routing-graphs.yml`** is a **race-safe matrix**: `prep` (group/ids → matrix) → parallel
-  `build` (each region: `graphbuilder` CH graph → upload its own `<id>.zip` + emit a manifest *entry* artifact,
-  via `scripts/build-routing-region.sh MANIFEST_MODE=emit`) → one `merge` (`scripts/merge-routing-manifest.sh`
-  folds all entries into the manifest in a single replace-by-id upload - parallel jobs never clobber it; a
-  `concurrency: routing-graphs-manifest` guard also serializes whole runs so back-to-back dispatches queue
-  instead of racing two merge jobs). Public
-  -repo Actions minutes are free, so a continent builds per dispatch. **bbox MUST come from `osmium -g
-  header.boxes`** (declared extract region) - `data.bbox` (node extent) is polluted by outlier nodes and made
-  Oregon falsely cover WA. Build one region locally: `scripts/build-routing-region.sh <id> "<name>" <pbf-url>`
-  (all-in-one), or the graph alone: `./gradlew :tools:graphbuilder:run --args="region.osm.pbf out-dir"`. Local
-  manifest test: serve a manifest+graph, `adb reverse tcp:8099 tcp:8099`, build with
-  `-ProutingManifestUrl=http://127.0.0.1:8099/manifest.json` (localhost cleartext allowed by
-  `res/xml/network_security_config.xml`; all other traffic stays HTTPS).
+- **GraphHopper is RETIRED (2026-09-15).** The first offline engine (GraphHopper 11 over per-region
+  Contraction-Hierarchies graphs, 2026-06-30 to 2026-09-15) is gone from the tree: `GraphHopperRouteEngine`,
+  `OfflineRouteEngine` (CoreModule binds `ObfRouteEngine` directly), `RoutingGraphStore` (its manifest
+  parser survives as `app/offline/RegionCatalog`, the `RoutingRegion` row shape stays for every catalog),
+  the `names.tsv.gz` sidecar and `scripts/roadnames_build.py`, `tools/graphbuilder`, `buildSrc` (the ASM
+  ByteBuffer patch), `core/util/ByteBufferCompat`, the `graphhopper-map-matching` dependency and its R8 keeps
+  (about 10 MB of APK), `routing-graphs.yml` with `scripts/build-routing-region.sh` /
+  `merge-routing-manifest.sh`, and `ROUTING_MANIFEST_URL` (`OBF_MANIFEST_URL` is the one routing catalog).
+  What the obf does instead: routes (`ObfRouteEngine`), the speed-limit badge (`currentRoadLimit` off the
+  way's maxspeed) and the romanized road names (`Route.roadNamesLatin`), all covered above. On the first
+  launch after the update `LegacyGraphs.purge` deletes `filesDir/graphs` (nothing reads it) and
+  `mapvm_graphs_retired` says to download the regions again; `RouteSource.GRAPHHOPPER` stays in the enum so
+  old trip files still read back. The `routing-graphs` RELEASE stays on GitHub as an infra release (older
+  app versions still fetch its manifest); the prune rules that protect it are unchanged. The three ART
+  workarounds, the CH weighting rules and the pre-API-34 fixes that used to be documented here are
+  history now; `git log -- core/src/main/java/app/vela/core/data/GraphHopperRouteEngine.kt` has them.
+  Offline phrasing moved to `core/data/OfflinePhrases` (`phrase` + `inBox`, `OfflinePhrasesTest`).
 - **Offline PLACE packs - whole-region POI/address search, Organic-Maps-style (`app/offline/PoiPackStore` +
   `core/data/OfflinePacks`, DONE 2026-07-07, device-verified: a misspelled offline search ("pel meni") from the
   downloaded test suburb → the intended dumpling restaurant in a city across the state, with address).** Downloading a state (routing region) also pulls its place pack - a
@@ -3976,7 +3883,7 @@ Gotchas:
   `OfflineAddressStore.looksLikeAddress` so "coffee" doesn't hit it) AND the network-error fallback; `haveArea`
   counts `count()`+`streetCount()` so a street-only suburb isn't misreported "no data". Big Overpass bodies → the
   no-call-timeout `offlineDownloadHttp` (same rule as the graph/overlay downloads). The result Place routes
-  through the normal GraphHopper offline engine. Device-verified wifi-off: a typed nearby street address → *5 min
+  through the on-device engine. Device-verified wifi-off: a typed nearby street address → *5 min
   · 1.5 mi* through the offline engine. **Reverse-geocode backfill for offline POIs:** most US chains have no OSM
   `addr:*` (Applebee's came back as bare "WA"), so `MapViewModel.backfillOfflineAddress` - on selecting a place
   while offline, when its address has no house number (`.none { isDigit() }`) - calls

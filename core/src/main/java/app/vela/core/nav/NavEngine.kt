@@ -330,7 +330,7 @@ object NavEngine {
         // lanes to take exit 172 toward Sacramento"), so the lanes come BEFORE the maneuver.
         val lane = app.vela.core.model.laneGuidance(target.lanes)
         // ManeuverType.CONTINUE is minted ONLY for "same physical road, keep driving straight" —
-        // OSRM continue/new-name+straight (RouteGeometry.osrmType) and GraphHopper
+        // OSRM continue/new-name+straight (RouteGeometry.osrmType) and the obf engine
         // CONTINUE_ON_STREET (ghType) — so it can never carry a turn, fork, ramp, merge or u-turn.
         // Saying it is pure noise ("Continue onto X" when you do nothing, even when the NAME
         // changes under you — Google stays silent there too), so drop the voice + haptics; the

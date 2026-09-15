@@ -1,6 +1,6 @@
 # Build open building-footprint OVERLAYS (Microsoft, ODbL) as PMTiles for many regions in parallel and
 # publish them to the `building-overlays` release — the app renders them BENEATH the OSM building layer to
-# fill gaps where OSM lacks footprints. Sibling of routing-graphs.yml. Two data sources, per catalog row's
+# fill gaps where OSM lacks footprints. Sibling of obf-regions.yml. Two data sources, per catalog row's
 # `source`: us-legacy (a US state's .geojson.zip) or ms-global (a world country's quadkey GeoJSONL).
 #
 # Run from Actions → "Build building overlays" → pass `ids` (e.g. "washington andorra") or tick `all`.

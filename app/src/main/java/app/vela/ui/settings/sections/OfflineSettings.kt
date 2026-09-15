@@ -397,11 +397,11 @@ private fun StorageRow(label: String, mb: Int) {
     }
 }
 
-/** The size a region really lands at: manifest installedMb when the bake published it, else an
- *  estimate from the zip (graphs unpack ~1.8x, packs ~2.35x - the WA pack measured 143 -> 335 MB).
- *  The graph and its place pack install together, so the shown number is their SUM. */
+/** The size a region really lands at: manifest installedMb when the bake published it, else the
+ *  download size for an obf (it installs as-is) and ~2.35x the zip for a pack (the WA pack measured
+ *  143 -> 335 MB). The obf and its place pack install together, so the shown number is their SUM. */
 internal fun regionInstalledMb(graph: app.vela.offline.RoutingRegion, pack: app.vela.offline.RoutingRegion?): Int {
-    val g = if (graph.installedMb > 0) graph.installedMb else (graph.sizeMb * 1.8).toInt()
+    val g = if (graph.installedMb > 0) graph.installedMb else graph.sizeMb
     val p = pack?.let { if (it.installedMb > 0) it.installedMb else (it.sizeMb * 2.35).toInt() } ?: 0
     return g + p
 }

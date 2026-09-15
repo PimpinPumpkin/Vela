@@ -13,14 +13,14 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Offline `.obf` region files - the successor download to [RoutingGraphStore]'s GraphHopper graphs
+ * Offline `.obf` region files - the successor download to the retired GraphHopper graphs
  * (issue #214; see ObfRouteEngine). One raw `.obf` per region in `filesDir/obf/<id>.obf` plus the
  * same `index.json` bbox registry the graph store keeps, which [app.vela.core.data.ObfRouteEngine]
  * reads to pick a region per trip. No unzip: an obf's blocks are already deflate-compressed, so the
  * asset is served raw and the download IS the install (the manifest's sizeMb and installedMb are
  * the same number, a property the GraphHopper zips never had).
  *
- * The catalog manifest is the same row shape as the routing manifest, so [RoutingGraphStore.manifest]
+ * The catalog manifest is the same row shape as the routing manifest, so [RegionCatalog.manifest]
  * parses it - this store only owns the bytes on disk.
  */
 @Singleton
@@ -56,7 +56,7 @@ class ObfStore @Inject constructor(
 
     /** Download [region]'s obf to `obf/<id>.obf` and register it. 0..100 progress. [active]
      *  false mid-stream aborts quietly (the cancel button's hook, same contract as
-     *  RoutingGraphStore.download). */
+     *  the old graph download). */
     suspend fun download(region: RoutingRegion, active: () -> Boolean = { true }, onProgress: (Int) -> Unit): Boolean = withContext(Dispatchers.IO) {
         root.mkdirs()
         val dest = File(root, "${region.id}.obf")

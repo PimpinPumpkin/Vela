@@ -52,7 +52,6 @@ internal class NavController(
         var destination: LatLng?
         var controlsBox: DoubleArray?
         var autoStartOnRoute: Boolean
-        val offlineRoadNames: Map<String, String>
         fun startLocation()
         fun pauseLiveLocation()
         fun restartStaleTimer()
@@ -426,12 +425,12 @@ internal class NavController(
                 // drive used to leave the blue line drawn on the bare map (user 2026-07-14).
                 activeRoute = null, routes = emptyList(), directionsOpen = false,
                 directionsWaypoints = emptyList(), flockOnRoute = emptyList(),
-                // Reset to the OFFLINE base (not empty): the next drive re-resolves from its own tiles ON
-                // TOP of the downloaded regions' names, so an offline drive still speaks real names (issue #184).
-                roadNameLatin = host.offlineRoadNames,
+                // The next drive starts a fresh dictionary: an obf route brings its roads' Latin
+                // aliases with it and the nav tiles add the rest as they load (issue #184).
+                roadNameLatin = emptyMap(),
             )
         }
-        voice.roadNameLatin = host.offlineRoadNames
+        voice.roadNameLatin = emptyMap()
     }
 
     /** User panned the map during navigation → detach the follow-camera so they

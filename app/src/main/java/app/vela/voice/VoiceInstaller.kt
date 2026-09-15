@@ -28,7 +28,7 @@ class VoiceInstaller @Inject constructor(
     // A body-tolerant client for the APK download (an engine APK can be tens of MB): the shared `http`
     // carries a callTimeout(12s) that scrape-bounds requests but ABORTS a large body mid-stream, which
     // runCatching silently ate → the one-tap install fell back to the web page for no reason. Mirrors
-    // the KokoroInstaller/RoutingGraphStore/OverlayTileStore rule (audit 2026-07-06). Manifest fetch
+    // the KokoroInstaller/ObfStore/OverlayTileStore rule (audit 2026-07-06). Manifest fetch
     // stays on `http` (tiny).
     private val downloadHttp by lazy {
         http.newBuilder()

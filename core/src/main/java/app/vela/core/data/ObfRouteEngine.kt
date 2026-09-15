@@ -43,7 +43,7 @@ import java.util.concurrent.ConcurrentHashMap
 class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
 
     private data class Region(val id: String, val s: Double, val w: Double, val n: Double, val e: Double) {
-        fun covers(p: LatLng) = GraphHopperRouteEngine.inBox(s, w, n, e, p.lat, p.lng)
+        fun covers(p: LatLng) = OfflinePhrases.inBox(s, w, n, e, p.lat, p.lng)
     }
 
     private val readers = ConcurrentHashMap<String, BinaryMapIndexReader>()
@@ -243,7 +243,7 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
 
     /** Segment list -> Vela [Route]: polyline from the 31-bit tile coords, one [Maneuver] per turn
      *  (plus depart/arrive), phrased through the SAME localized token tables the OSRM and
-     *  GraphHopper paths use ([GraphHopperRouteEngine.ghPhrase]). */
+     *  the online path uses ([OfflinePhrases.phrase]). */
     private fun toRoute(segments: List<RouteSegmentResult>): Route {
         val poly = ArrayList<LatLng>(segments.size * 4)
         for (seg in segments) {
@@ -290,7 +290,7 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
                 maneuvers.add(
                     Maneuver(
                         type = type,
-                        instruction = GraphHopperRouteEngine.ghPhrase(type, road, rbExit, dest, null),
+                        instruction = OfflinePhrases.phrase(type, road, rbExit, dest, null),
                         roundaboutExit = rbExit,
                         location = at,
                         distanceMeters = 0.0,
@@ -313,7 +313,7 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
             maneuvers.add(
                 Maneuver(
                     type = ManeuverType.ARRIVE,
-                    instruction = GraphHopperRouteEngine.ghPhrase(ManeuverType.ARRIVE, null),
+                    instruction = OfflinePhrases.phrase(ManeuverType.ARRIVE, null),
                     location = end,
                     distanceMeters = 0.0,
                     durationSeconds = 0.0,
