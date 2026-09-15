@@ -3453,6 +3453,23 @@ Gotchas:
   `map_places_google_lookup`): off, a seeded open-place tap stays on the tile data, no search, no
   reviews, nothing to Google; basemap taps still resolve. Licence:
   CDLA-Permissive 2.0, attribution still to add to About.
+- **ALLTHEPLACES in the bake (2026-09-15 night):** `tools/build-places-region.sh` pulls the region's
+  z15 tiles from the AllThePlaces world PMTiles (`pmtiles extract --bbox`, seconds, run pinned by
+  `ATP_RUN`, `ATP_LOCAL` for a local extract, `ATP_RUN=none` to skip), decodes them
+  (tippecanoe-decode + jq), keeps rows whose OSM-style tags mean a business (shop=*, an amenity
+  allowlist, hotels, gyms, healthcare, a few office types; NOT little free libraries, ATMs,
+  lockers, historic places, airports), maps the tags onto Overture's category names for the
+  prominence/group CASEs, names a branch after its brand when the locator named it after the
+  town, and INSERTs into `raw` the rows with no Overture row of the same brand or the same two
+  leading name words (`nkey`, the SQL twin of namesAgree) within ~150 m; confidence 0.85 so a
+  matched Overture row wins ties. Davis: 112 in the box, 14 added. New tile properties: `hours`
+  (OSM opening_hours syntax, chains only; Overture has none) and `origin` (overture|atp). `src`
+  stays "overture" for every row because the tap gate in VelaMapView reads `src == "overture"`;
+  do not key anything on src beyond "this is an open-data feature". The workflow installs
+  go-pmtiles for it. Overture's Davis source mix (why this exists): meta 1,537 / BrightQuery 494
+  / Microsoft 366 / Foursquare 260 / AllThePlaces 30 / DAC 6 of 2,693 rows; a business with no
+  Facebook page and no Bing entry is absent, chains included. The main duckdb heredoc is
+  UNQUOTED: a backtick in a SQL comment runs as a command (the "xrank: command not found" noise).
 - **The hidden WebViews are warmed AFTER results land, never before the fetch (2026-09-14).**
   `runSearch` used to call `webPopularTimes.prewarm()` + `webPhotos.warm()` before the search:
   two Chromium instances created on the main thread and loading google.com while the search ran.
