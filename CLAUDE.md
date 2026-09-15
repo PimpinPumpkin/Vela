@@ -3229,6 +3229,10 @@ architecture note.
   102..117, int32 E7; the pmtiles CLI download was rate-limited on shared runners and lost entries on
   the first world run); `scripts/merge-basemap-manifest.sh`; `scripts/repair-basemap-manifest.sh`
   rebuilds the manifest from whatever archives sit on the release, one 127-byte range request each).
+  Two world-bake lessons (2026-09-15): planetiler is fetched PINNED (v0.10.2), retried and
+  `unzip -t`-checked, because five jobs died on "Invalid or corrupt jarfile" when the unverified
+  `latest` download came back as not-a-jar on a busy runner; and a bake over GitHub's 2 GiB asset
+  limit (Nunavut at z14) is rebaked one zoom shallower in the same job before it fails.
   Saarland full z14 = 33 MB (a lite z13 no-buildings tier = 8 MB, not wired). App: `PmtilesRegionStore`
   is the shared base of `PlacesTileStore` and `BasemapTileStore` (`files/basemap/`, never streamed,
   `installedFor(center)` = smallest covering archive); `MapUiState.basemapArchive`; `refreshBasemapArchive`

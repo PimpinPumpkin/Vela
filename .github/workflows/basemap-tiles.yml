@@ -94,11 +94,40 @@ jobs:
           path: data/sources
           key: planetiler-sources-v1
       - name: Fetch planetiler
-        run: curl -sL -o tools/planetiler.jar https://github.com/onthegomap/planetiler/releases/latest/download/planetiler.jar
+        # Pinned, retried and checked: on the world bake five jobs died with "Invalid or corrupt
+        # jarfile" because the unverified download of the moving `latest` asset came back as
+        # something other than the jar on a busy runner.
+        run: |
+          for i in 1 2 3 4 5; do
+            curl -fsSL --retry 5 --retry-delay 10 -o tools/planetiler.jar \
+              https://github.com/onthegomap/planetiler/releases/download/v0.10.2/planetiler.jar \
+              && unzip -tq tools/planetiler.jar >/dev/null 2>&1 && exit 0
+            echo "planetiler.jar download attempt $i failed or was not a jar; retrying"
+            rm -f tools/planetiler.jar
+            sleep 20
+          done
+          echo "could not fetch a valid planetiler.jar" >&2
+          exit 1
       - name: Bake ${{ matrix.id }}
         env:
           PLANETILER_XMX: 10g
-        run: bash tools/build-basemap-region.sh "${{ matrix.id }}" "${{ matrix.pbf_url }}" "basemap-${{ matrix.id }}.pmtiles" "${{ inputs.maxzoom }}"
+        run: |
+          OUT="basemap-${{ matrix.id }}.pmtiles"
+          MAXZOOM="${{ inputs.maxzoom }}"
+          bash tools/build-basemap-region.sh "${{ matrix.id }}" "${{ matrix.pbf_url }}" "$OUT" "$MAXZOOM"
+          # A GitHub release asset must stay under 2 GiB (Nunavut's z14 bake did not). Rebake one
+          # zoom level shallower rather than lose the region; fail loudly if that still overflows.
+          LIMIT=2147483648
+          if [ "$(stat -c %s "$OUT")" -ge "$LIMIT" ]; then
+            Z=$(( ${MAXZOOM:-14} - 1 ))
+            echo "$OUT is over the 2 GiB asset limit at maxzoom ${MAXZOOM:-14}; rebaking at maxzoom $Z"
+            rm -f "$OUT"
+            bash tools/build-basemap-region.sh "${{ matrix.id }}" "${{ matrix.pbf_url }}" "$OUT" "$Z"
+            if [ "$(stat -c %s "$OUT")" -ge "$LIMIT" ]; then
+              echo "$OUT still exceeds 2 GiB at maxzoom $Z; this region needs splitting" >&2
+              exit 1
+            fi
+          fi
       - name: Upload archive + emit manifest entry
         env:
           GH_TOKEN: ${{ github.token }}
