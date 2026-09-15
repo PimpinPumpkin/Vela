@@ -1964,6 +1964,19 @@ architecture note.
   `applyMapTheme` now narrows `boundary_3`'s filter to admin 3-4 (minzoom 4, dashed) and themes
   all three: the style's own dark grey vanished on the dark map. Never put the boundary ids back
   in the hide list; if a region shows dashed junk, check its admin levels before touching the filter.
+- **Route shields are Vela's own bitmaps (2026-09-15, `ui/map/RoadShields`).** The OpenFreeMap
+  sprite's `us-interstate_N` / `us-highway_N` / `road_N` are white outline shapes sized for 10 pt
+  text and there is NO `us-state_N`, so state routes drew as bare numbers and "80" squeezed into
+  the badge. `RoadShields.install` (from `emphasizeShields` on every style load) registers
+  `vela-shield-<family>_<ref_length>` images for four families x 1..6 (interstate = blue + red
+  band + white number, US = white shield, state + international = white rounded badge), each
+  sized for 11 pt bold digits, and repoints the three shield layers' `icon-image` at them with
+  11 pt Noto Sans Bold, halo 0, and a small downward text offset on the interstate so the number
+  sits in the blue. Two traps from the first attempt: a SAME-NAMED `addImage` loses to the
+  sprite once it finishes loading (the interstate kept the sprite's white shape while the
+  sprite-less `us-state` showed Vela's), and `icon-text-fit` shrank the badge to the glyph box,
+  so the badges are fixed-size per ref length, not stretchable. Sign colors, not theme colors:
+  dark mode keeps them, like Google.
 - **Map COLOUR SETS (2026-07-11): Settings -> Appearance -> "Map colors" picks Modern or
   Classic.** `ui/MapColors` holder (pref `map_palette`; init in VelaApp); `applyMapTheme`
   dispatches to `applyLight`/`applyDark` (Modern, the pixel-sampled palette) or
