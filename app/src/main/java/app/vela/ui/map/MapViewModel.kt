@@ -1873,6 +1873,12 @@ class MapViewModel @Inject constructor(
     /** Is there a usable internet connection right now? Used to skip the Google scrape when offline (it
      *  would only hang to the socket timeout). Fails OPEN - if the check itself errors, assume online so a
      *  quirk can never block search. */
+    /** No usable connection right now: the latched offline flag, or the system saying so. Every
+     *  Google-side fetch for a place (listing, reviews, photos, details, boards) checks this first,
+     *  so an offline tap shows what is on the phone and never a spinner waiting on a host that
+     *  cannot answer (user 2026-09-14). */
+    private fun offlineNow(): Boolean = _state.value.offline || !isOnline()
+
     private fun isOnline(): Boolean = runCatching {
         val cm = appContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
         val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
@@ -2338,6 +2344,7 @@ class MapViewModel @Inject constructor(
     }
 
     private fun fetchStopDepartures(p: Place) {
+        if (offlineNow()) return
         val fid = p.featureId
         if (fid.isNullOrBlank() || !fid.contains(":")) return
         val cat = p.category ?: ""
@@ -2706,7 +2713,7 @@ class MapViewModel @Inject constructor(
      *  browser engine isn't — see [WebPopularTimesFetcher]). Best-effort, applied
      *  only to fields we don't already have and only if it's still selected. */
     private fun fetchPlaceDetails(p: Place) {
-        if (p.name.isBlank()) return
+        if (p.name.isBlank() || offlineNow()) return
         // Fetch unless the place already looks complete. Beyond the three rich fields, a
         // missing review count / full weekly hours / address means this is a sparse summary
         // node (a suite/multi-tenant address snap) worth enriching from the focused re-fetch.
@@ -2750,7 +2757,7 @@ class MapViewModel @Inject constructor(
     private fun fetchPhotos(p: Place) {
         // "Load photos" off: never start the gallery scrape (it's the heaviest per-place
         // request); the sheet also hides the photo strip, so no loading flag either.
-        if (!app.vela.ui.LoadPhotos.on.value) return
+        if (!app.vela.ui.LoadPhotos.on.value || offlineNow()) return
         // Satellite / bandwidth-constrained link (issue #235): the gallery walk is the single
         // heaviest per-place transfer, so it is the first thing to go. Everything else on the
         // sheet still loads - the place is still usable, just without photos.
@@ -2850,7 +2857,7 @@ class MapViewModel @Inject constructor(
 
     private fun fetchReviews(p: Place, force: Boolean = false) {
         // "Show reviews" off: no review section is rendered, so don't scrape either.
-        if (!app.vela.ui.ShowReviews.on.value) return
+        if (!app.vela.ui.ShowReviews.on.value || offlineNow()) return
         // BARE transit stops: never scrape reviews. A bus stop's content is its departure board, not
         // reviews (the WebView grind competed with the board load and rendered awkwardly). But gate on
         // "transit-category AND UNRATED", not category alone - a rated transit CENTER (a real building
@@ -3157,6 +3164,16 @@ class MapViewModel @Inject constructor(
         // resolve (they have nothing else to show).
         if (seed != null && !app.vela.ui.MapPoiPrefs.lookupTappedPlaces.value) {
             rememberRecentPlace(SavedPlace.of(placeholder))
+            return
+        }
+        // Offline: no search, no reviews, no photos. An open place shows its tile data, or the
+        // Google listing remembered from an earlier online tap; a basemap tap keeps its name.
+        if (offlineNow()) {
+            val remembered = seed?.let { synchronized(openPlaceCache) { openPlaceCache[it.id] } }
+            if (remembered != null && _state.value.selected == placeholder) {
+                _state.update { it.copy(selected = withListNote(remembered)) }
+            }
+            rememberRecentPlace(SavedPlace.of(remembered ?: placeholder))
             return
         }
         viewModelScope.launch {
