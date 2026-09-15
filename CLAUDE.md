@@ -3626,7 +3626,19 @@ architecture note.
   skip the load - the getOsmandRegions call sits before the flag check). STILL GH-ONLY: the speed-limit badge
   (currentRoadLimit) and the romanized-names sidecar (obf carries multilingual names natively,
   wired later). Place packs still download alongside obf regions until POI/address search moves
-  onto the obf (phase 2). COUNTRY + SUB-AREA both (2026-08-03, the #214 reporter's ask): the unsplit
+  onto the obf (phase 2). **The speed-limit badge reads the obf now (2026-09-15):**
+  `ObfRouteEngine.currentRoadLimit` builds one small `RoutingContext` over the covering files (kept
+  per region set, 32 MB limit, dropped in `shutdown`), snaps the fix with OsmAnd's
+  `RoutePlannerFrontEnd.findRouteSegment` (`distToProj` is the SQUARED distance in metres; farther
+  than 25 m = off the network), and reads `RouteDataObject.getMaximumSpeed(true)` (m/s; 0 = untagged,
+  `NONE_MAX_SPEED` = derestricted, both blank; same forward-only and `< 150` rules as the
+  GraphHopper lookup). `OfflineRouteEngine` asks the obf first, GraphHopper only as the fallback,
+  so the badge no longer needs a graph installed: one GraphHopper-only feature down on the way to
+  retiring the graphs. Harness: `ObfSpeedLimitProbeTest` runs against a real file with
+  `-DvelaObf=<dir with delaware.obf + index.json>` (skipped otherwise; the Delaware fixture reads
+  88 km/h on the Puncheon Run Connector, null on an untagged street and on open water);
+  `probeRoadLimit` prints what the lookup saw. NB US roads are often untagged in OSM (US 13 at
+  Dover has no maxspeed), so a blank badge there is the data, not the lookup. COUNTRY + SUB-AREA both (2026-08-03, the #214 reporter's ask): the unsplit
   country stays the headline row, and big countries ALSO offer first-level sub-areas as smaller
   optional rows - tools/routing-regions.json carries sub-area rows beside the whole-country row
   (which stays group `europe`/`south-america`/... with big:true), so the obf bake produces both;
