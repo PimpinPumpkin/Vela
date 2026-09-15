@@ -422,7 +422,8 @@ fun MapScreen(
     // means a focused field always shows its overlay, which both prevents and self-heals that.
     // Under D-pad the field blurs when focus walks the rows, so `searchExpanded` still carries the
     // overlay there (blur must not close it); BACK clears both and closes as before.
-    val searchOpen = searchExpanded || searchFocused || state.pickingOrigin || state.pickingDest || state.pickingStop
+    val gates = SearchGates.of(state, searchExpanded, searchFocused)
+    val searchOpen = gates.searchOpen
     // The results panel is open (not collapsed to the "N results" pill) → hide the bottom map
     // chrome (scale bar / locate FAB / Search this area) so it never draws on top of the list at
     // ANY size, not just full screen. The panel and the chrome are siblings in the same Box and the
@@ -449,10 +450,8 @@ fun MapScreen(
     // the results sheet's two gates both held and a search for "Coffee" from Add stop showed
     // nothing at all. The sheet shows for a pick once the field is blurred and results exist;
     // a tap on a row goes through selectPlace, which already adds it as the stop / endpoint.
-    val pickingResults = (state.pickingOrigin || state.pickingDest || state.pickingStop) &&
-        state.results.isNotEmpty() && !searchFocused && state.query.isNotBlank()
-    val resultsShown = state.results.isNotEmpty() && (state.selected == null || pickingResults) && (!searchOpen || pickingResults) && !state.resultsCollapsed &&
-        state.streetView == null && !state.streetViewLoading
+    val pickingResults = gates.pickingResults
+    val resultsShown = gates.resultsShown
     // Free-drive follow (Google's "the map tracks you as you drive, no route needed"). On by
     // default so an open, unobstructed map glides to your fix; a user pan drops it and the locate
     // tap raises it again. Suppressed whenever a focus surface owns the camera (search, a place,
@@ -519,7 +518,7 @@ fun MapScreen(
     LaunchedEffect(state.results) { if (state.results.isEmpty()) resultsExpanded = false }
     // The results sheet minimized to its short bottom bar — the chrome shows again then, but
     // lifted above the bar so the FAB / scale bar / Search this area never sit on top of it.
-    val resultsMinimized = state.results.isNotEmpty() && (state.selected == null || pickingResults) && (!searchOpen || pickingResults) && state.resultsCollapsed
+    val resultsMinimized = gates.resultsMinimized
     val chromeLift = if (resultsMinimized) 76.dp else 0.dp
     val metersPerPixelState = remember { mutableStateOf(0.0) }
     // Building-overlay debug badge: the last state VelaMapView's idle gate reported
@@ -617,11 +616,7 @@ fun MapScreen(
     // pannable (arrows) so the user can position the pin, so the map target stays active even
     // though directionsOpen is still true underneath (measured: without this, arrows only
     // moved focus to the cancel X and the pin couldn't be moved). OK then confirms the pick.
-    val mapTargetHidden = state.pickOnMap == null && (
-        searchOpen || state.selected != null || state.directionsOpen ||
-            state.showSteps || state.arrived ||
-            (state.results.isNotEmpty() && !state.resultsCollapsed && state.selected == null)
-        )
+    val mapTargetHidden = gates.mapTargetHidden
     // Reset engagement the moment a panel takes over (the target unmounts under it).
     LaunchedEffect(mapTargetHidden) { if (mapTargetHidden) mapEngaged = false }
     // D-pad-first, the bare map (docs/dpad.md): the map does NOT auto-focus or auto-engage on open.
@@ -2238,9 +2233,7 @@ fun MapScreen(
         // bottom-right corner is free and both buttons stay up beside an open list or place
         // (user 2026-07-20: stop hiding buttons that nothing is covering). Street View keeps
         // them hidden - its bottom half is the pose mini-map.
-        val fabChromeOk = !state.navigating && !searchOpen && state.resumeNavLabel == null &&
-            !state.directionsOpen && !state.showSteps && state.transitNav == null &&
-            state.streetView == null && !state.streetViewLoading
+        val fabChromeOk = gates.fabChromeOk
         // True while the landscape left panel (place sheet or results, any detent) is on screen -
         // bottom-LEFT chrome (scale bar) yields to it and the attribution centers in the strip.
         val sidePanelUp = landscapeChrome &&
@@ -2589,7 +2582,7 @@ fun MapScreen(
         // edge, the same navBannerBottomPx the compass uses, and slides with it.
         val downloadingVoiceId = state.voiceDownloadingId
         val downloadingRegion = state.routingDownloadingId != null || state.poiPackDownloadingId != null
-        val bareMap = state.selected == null && !searchOpen
+        val bareMap = gates.bareMap
         val fasterOffer = state.navigating && state.fasterRoute != null
         if (state.status != null || fasterOffer ||
             (bareMap && (state.notices.isNotEmpty() || downloadingVoiceId != null || downloadingRegion || state.updateInfo != null))
