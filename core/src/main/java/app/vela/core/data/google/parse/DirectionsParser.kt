@@ -87,6 +87,7 @@ object DirectionsParser {
         val maneuvers = placeManeuvers(collectSteps(route), polyline)
 
         return Route(
+            source = app.vela.core.model.RouteSource.GOOGLE_NAMED,
             polyline = polyline.ifEmpty { listOfNotNull(start, end) },
             legs = listOf(RouteLeg(distance, typicalDur, trafficDur, maneuvers)),
             distanceMeters = distance,

@@ -22,6 +22,7 @@ import app.vela.core.model.LatLng
 import app.vela.core.model.Place
 import app.vela.core.model.Review
 import app.vela.core.model.Route
+import app.vela.core.model.RouteSource
 import app.vela.core.model.SearchResult
 import app.vela.core.model.TravelMode
 import app.vela.core.model.destinationPoint
@@ -532,7 +533,7 @@ class GoogleMapsDataSource @Inject constructor(
                     // that takes other roads.
                     via != null -> gD.await().firstOrNull().let { g -> listOf(applyTraffic(via, g, freeFlowCal = speedCal(via, g))) }
                     onDevice != null -> listOf(onDevice)
-                    else -> gD.await().take(1).map { it.copy(abbreviatedSteps = true) }
+                    else -> gD.await().take(1).map { it.copy(abbreviatedSteps = true, source = RouteSource.GOOGLE_ABBREVIATED) }
                 }
                 // Google's direct route honours avoid (DirectionsPb.withAvoid); the open router's
                 // via route and its on-device fallback do not - only those get the note.
@@ -684,9 +685,9 @@ class GoogleMapsDataSource @Inject constructor(
                 // OSRM unreachable → the on-device offline route, or Google's abbreviated one, whichever
                 // we have. The Google routes are TAGGED abbreviated so an adopted one can be silently
                 // upgraded to full steps by the nav recheck once the open router recovers.
-                if (onDevice.isNotEmpty()) onDevice else google.map { it.copy(abbreviatedSteps = true) }
+                if (onDevice.isNotEmpty()) onDevice else google.map { it.copy(abbreviatedSteps = true, source = RouteSource.GOOGLE_ABBREVIATED) }
             } else {
-                if (avoidFallbackToGoogle) return@coroutineScope google.map { it.copy(abbreviatedSteps = true) }
+                if (avoidFallbackToGoogle) return@coroutineScope google.map { it.copy(abbreviatedSteps = true, source = RouteSource.GOOGLE_ABBREVIATED) }
                 // With avoid on, the open router's unrestricted routes are not offered as alternates.
                 val primary = if (snapWorthIt) (listOf(trafficRoute!!) + (if (avoidWanted) emptyList() else open)).map { applyTraffic(it, gTop, freeFlowCal) }
                     else open.map { applyTraffic(it, gTop, freeFlowCal) }
@@ -694,7 +695,7 @@ class GoogleMapsDataSource @Inject constructor(
                 // miss). Kept PROVISIONAL: their polyline + live ETA are shown now, but turn-by-turn is named
                 // only when you PICK one to drive ([nameRoute]) — so the picker loads fast and we never snap a
                 // route you don't take. Google's routes already carry duration_in_traffic + congestion spans.
-                val googleAlts = google.drop(1).filter { it.polyline.size >= 5 }.map { it.copy(provisional = true) }
+                val googleAlts = google.drop(1).filter { it.polyline.size >= 5 }.map { it.copy(provisional = true, source = RouteSource.GOOGLE_PROVISIONAL) }
                 // Rank by live in-traffic ETA so the FASTEST-right-now route leads (Google-style), sorting by
                 // the EXACT value the picker shows (`durationInTrafficSeconds ?: durationSeconds`, RouteOption)
                 // so the top/selected route is always the one the picker tags "Fastest" — otherwise the sort
@@ -882,6 +883,7 @@ class GoogleMapsDataSource @Inject constructor(
             durationInTrafficSeconds = null, // offline — no live traffic
             summary = legs.firstOrNull()?.summary,
             offline = true,
+            source = legs.firstOrNull()?.source ?: RouteSource.UNKNOWN,
         )
     }
 
@@ -917,12 +919,13 @@ class GoogleMapsDataSource @Inject constructor(
         // turn-by-turn (and the congestion spans remapped onto that geometry), not a new ETA.
         if (named != null) applyTraffic(named, route).copy(
             provisional = false,
+            source = RouteSource.OSRM_VIA_SNAP,
             durationSeconds = route.durationSeconds,
             durationInTrafficSeconds = route.durationInTrafficSeconds,
         )
         // Naming failed: nav runs on Google's abbreviated steps. Tagged so the in-drive recheck
         // can silently upgrade to full steps once the open router answers again.
-        else route.copy(provisional = false, abbreviatedSteps = true)
+        else route.copy(provisional = false, abbreviatedSteps = true, source = RouteSource.GOOGLE_ABBREVIATED)
     }
 
     /** [googleDirections] with the same transient-blip retry the OSRM path has (routeOsrm goes

@@ -3152,6 +3152,15 @@ architecture note.
   and the tap resolution in `onPoiTap`: offline, an open place shows its tile data or the Google listing
   remembered from an earlier online tap (`openPlaceCache`), a basemap tap keeps its name, and no spinner
   waits on a host that cannot answer.
+- **Route provenance is one field (2026-09-15, issue #417 refactor 1, step 1).** `Route.source:
+  RouteSource` (OSRM, OSRM_VIA_SNAP, GOOGLE_NAMED, GOOGLE_ABBREVIATED, GOOGLE_PROVISIONAL, OBF, GRAPHHOPPER,
+  VALHALLA, UNKNOWN) is stamped at every constructor (DirectionsParser, RouteGeometry.parseOsrmRoute,
+  ObfRouteEngine, GraphHopperRouteEngine, ValhallaRouter, Mock, the GoogleMapsDataSource fallback and
+  provisional branches, nameRoute's snap) and recorded on the trip file's RD line as `source=NAME` (omitted
+  for UNKNOWN, so old files and old tests read unchanged). Consumers ask `drivable` (not a provisional
+  picker alternate) and `hasRealSteps` (not Google's abbreviated fallback) instead of reading the booleans;
+  NavSession does. The four booleans remain the source of truth for those properties this release; step 2
+  computes them from the source and deletes them. Never add a fifth boolean; add a RouteSource value.
 - **MapViewModel init rule (2026-09-15, issue #474 boot crash).** `viewModelScope` is
   `Dispatchers.Main.immediate`: a `launch { flow.collect { } }` inside `init` runs its FIRST pass inline,
   before the properties declared below `init` exist. `speeding.reset()` in the nav-state collector hit a

@@ -470,7 +470,7 @@ class NavSession @Inject constructor(
             degradedRouteRef = currentRoute
             degradedFastRechecks = 0
         }
-        val degraded = currentRoute != null && (currentRoute.abbreviatedSteps || !currentRoute.hasLiveTraffic)
+        val degraded = currentRoute != null && (!currentRoute.hasRealSteps || !currentRoute.hasLiveTraffic)
         val fastHeal = degraded && degradedFastRechecks < DEGRADED_FAST_TRIES
         val interval = if (fastHeal) DEGRADED_RECHECK_INTERVAL_MS else RECHECK_INTERVAL_MS
         if (now - lastRecheckMs < interval) return
@@ -532,11 +532,11 @@ class NavSession @Inject constructor(
             // real-drive 2026-07-15): once a same-course candidate carries live traffic again,
             // adopt it so the ETA turns traffic-coloured and honest instead of staying white for
             // the rest of the drive. Either upgrade qualifies; neither quality may downgrade.
-            val stepsUpgrade = current!!.abbreviatedSteps && !candidate.abbreviatedSteps
+            val stepsUpgrade = !current!!.hasRealSteps && candidate.hasRealSteps
             val trafficUpgrade = !current.hasLiveTraffic && candidate.hasLiveTraffic
-            val noDowngrade = (current.abbreviatedSteps || !candidate.abbreviatedSteps) &&
+            val noDowngrade = (!current.hasRealSteps || candidate.hasRealSteps) &&
                 (!current.hasLiveTraffic || candidate.hasLiveTraffic)
-            if (sameCourse && !candidate.provisional && (stepsUpgrade || trafficUpgrade) && noDowngrade) {
+            if (sameCourse && candidate.drivable && (stepsUpgrade || trafficUpgrade) && noDowngrade) {
                 lastSwapReason = "heal"
                 val marks = NavEngine.stopMarks(candidate, remainingStops.map { it.location })
                 synchronized(stopLock) {
@@ -577,7 +577,7 @@ class NavSession @Inject constructor(
             // when its ETA is traffic-aware and its steps are real (never trade a healthy route for an
             // abbreviated one on the strength of an incomparable ETA).
             val plausible = candidateEta in (remaining * MIN_PLAUSIBLE_ETA_FRACTION)..(remaining * 0.9)
-            if (trafficAware && !candidate.abbreviatedSteps && saving > FASTER_THRESHOLD_S && plausible) {
+            if (trafficAware && candidate.hasRealSteps && saving > FASTER_THRESHOLD_S && plausible) {
                 note("recheck: offering faster route, saves ${saving.toInt()} s (${candidate.maneuvers.size} steps)")
                 _state.update { it.copy(fasterRoute = candidate, fasterSavingSeconds = saving) }
                 voice.speak(
@@ -795,16 +795,16 @@ class NavSession @Inject constructor(
      */
     private suspend fun driveable(routes: List<Route>, from: LatLng, dest: LatLng): Route? {
         val top = routes.firstOrNull() ?: return null
-        if (!top.provisional) return top
+        if (top.drivable) return top
         val named = runCatching { dataSource.nameRoute(top, from, dest, mode) }.getOrNull()
         diag.record(
             "nav",
             "named a provisional route: ${top.maneuvers.size} -> ${named?.maneuvers?.size} steps, " +
                 "abbreviated=${named?.abbreviatedSteps}, provisional=${named?.provisional}",
         )
-        if (named != null && !named.provisional && !named.abbreviatedSteps) return named
-        return routes.firstOrNull { !it.provisional && !it.abbreviatedSteps } ?: named?.takeIf { !it.provisional }
-            ?: routes.firstOrNull { !it.provisional }
+        if (named != null && named.drivable && named.hasRealSteps) return named
+        return routes.firstOrNull { it.drivable && it.hasRealSteps } ?: named?.takeIf { it.drivable }
+            ?: routes.firstOrNull { it.drivable }
     }
 
     /** Does this route actually END near [dest]? A route whose last point is far from the destination is

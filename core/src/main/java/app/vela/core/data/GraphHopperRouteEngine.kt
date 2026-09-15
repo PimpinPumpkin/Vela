@@ -248,6 +248,7 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
         // Fold pure-rename CONTINUE steps out of the card/step list too (same as the OSRM path).
         val maneuvers = RouteGeometry.foldRenames(rawManeuvers)
         return Route(
+            source = app.vela.core.model.RouteSource.GRAPHHOPPER,
             polyline = poly,
             legs = listOf(RouteLeg(path.distance, path.time / 1000.0, null, maneuvers)),
             distanceMeters = path.distance,

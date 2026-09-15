@@ -174,6 +174,7 @@ object ValhallaRouter {
         val dist = maneuvers.sumOf { it.distanceMeters }
         val dur = maneuvers.sumOf { it.durationSeconds }
         return Route(
+            source = app.vela.core.model.RouteSource.VALHALLA,
             polyline = polyline,
             legs = listOf(RouteLeg(dist, dur, null, maneuvers)),
             distanceMeters = dist,

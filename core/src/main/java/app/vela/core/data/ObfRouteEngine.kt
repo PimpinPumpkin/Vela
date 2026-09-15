@@ -255,6 +255,7 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
         }
         val folded = RouteGeometry.foldRenames(maneuvers)
         return Route(
+            source = app.vela.core.model.RouteSource.OBF,
             polyline = poly,
             legs = listOf(RouteLeg(totalDist, totalTime, null, folded)),
             distanceMeters = totalDist,
