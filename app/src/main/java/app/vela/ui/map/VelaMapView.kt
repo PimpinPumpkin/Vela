@@ -1078,9 +1078,17 @@ fun VelaMapView(
                 )
                 val icon = Expression.get("icon") // "vela-poi-<group>", baked
                 val name = Expression.get("name")
+                // Dots come in by rank too, Google-style: none at z14 (icons only), the top six
+                // per 400 m cell at z15, the top fifteen at z16, everything from z17. Opacity, not
+                // a filter: a hidden dot still costs nothing, and MapLibre filters cannot read
+                // the zoom. Tap queries only see drawn dots either way.
+                fun dotsAbove(n: Int) = Expression.switchCase(
+                    Expression.lte(Expression.get("rank"), Expression.literal(n)),
+                    Expression.literal(0.92f), Expression.literal(0f),
+                )
                 val dots = CircleLayer("vela-places-dots-$i", srcId).apply {
                     setSourceLayer("places")
-                    setMinZoom(14f)
+                    setMinZoom(15f)
                     setProperties(
                         PropertyFactory.circleColor(PoiIcons.groupColor()),
                         PropertyFactory.circleRadius(
@@ -1091,7 +1099,22 @@ fun VelaMapView(
                         ),
                         PropertyFactory.circleStrokeWidth(1.2f),
                         PropertyFactory.circleStrokeColor(if (darkTheme) "#162640" else "#f8f7f7"),
-                        PropertyFactory.circleOpacity(0.92f),
+                        PropertyFactory.circleOpacity(
+                            Expression.step(
+                                Expression.zoom(),
+                                dotsAbove(6),
+                                Expression.stop(16f, dotsAbove(15)),
+                                Expression.stop(17f, Expression.literal(0.92f)),
+                            ),
+                        ),
+                        PropertyFactory.circleStrokeOpacity(
+                            Expression.step(
+                                Expression.zoom(),
+                                dotsAbove(6),
+                                Expression.stop(16f, dotsAbove(15)),
+                                Expression.stop(17f, Expression.literal(0.92f)),
+                            ),
+                        ),
                     )
                 }
                 val layer = SymbolLayer("vela-places-$i", srcId).apply {
@@ -1159,7 +1182,10 @@ fun VelaMapView(
                 // win the collision slots and Google's extras fill the gaps, not the other way
                 // around. Dots under icons: an icon that renders simply covers its own dot.
                 if (style.getLayer(AMBIENT_LAYER) != null) style.addLayerAbove(layer, AMBIENT_LAYER) else style.addLayer(layer)
-                style.addLayerBelow(dots, layer.id)
+                // Dots go UNDER every label (basemap street names included), so a label's halo
+                // covers its dot and no dot ever sits on text. See the ambient dot tier.
+                val under = firstSymbolLayerId(style)
+                if (under != null) style.addLayerBelow(dots, under) else style.addLayerBelow(dots, layer.id)
             }
         }
         // The OSM basemap business POIs yield to the open layer right away (applyData keeps the
@@ -3732,7 +3758,10 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.iconImage(PARKING_IMG),
                 PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
                 PropertyFactory.iconAllowOverlap(true),
-                PropertyFactory.iconIgnorePlacement(true),
+                // Always drawn, and it CLAIMS its spot: a POI label or icon under the pin is
+                // dropped instead of drawn half-covered (ignorePlacement=true let everything
+                // pile up underneath; user 2026-09-14, "the pins shouldn't cover things").
+                PropertyFactory.iconIgnorePlacement(false),
             ),
         )
     }
@@ -3745,7 +3774,7 @@ private fun ensureLayers(style: Style) {
             SymbolLayer(SAVED_LAYER, SAVED_SRC).withProperties(
                 PropertyFactory.iconImage(Expression.get(SAVED_ICON_PROP)),
                 PropertyFactory.iconAllowOverlap(true),
-                PropertyFactory.iconIgnorePlacement(true),
+                PropertyFactory.iconIgnorePlacement(false), // claims its spot, see the parking pin
             ).apply { minZoom = 8f },
         )
     }
@@ -3879,6 +3908,10 @@ private fun ensureLayers(style: Style) {
         // collision engine entirely, so 140 of them cost ~nothing on a weak GPU (the
         // icon that renders on top simply covers its own dot - the coloured dot is the
         // marker bitmap's centre). Radius scales gently with prominence.
+        // Under the basemap's labels, not over them: circles skip collision, so a dot drawn
+        // above the symbol layers could sit on a street name or a POI label. Below the first
+        // symbol layer every label's halo covers its dot instead (user 2026-09-14, "small dots
+        // should never cover a large POI text or icon").
         style.addLayerBelow(
             CircleLayer(AMBIENT_DOT_LAYER, AMBIENT_SRC).withProperties(
                 PropertyFactory.circleColor(Expression.toColor(Expression.get("dotColor"))),
@@ -3892,7 +3925,7 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.circleStrokeColor("#FFFFFF"),
                 PropertyFactory.circleOpacity(0.92f),
             ),
-            AMBIENT_LAYER,
+            firstSymbolLayerId(style) ?: AMBIENT_LAYER,
         )
     }
     // Traffic controls (OSM `highway=traffic_signals`/`stop`): non-interactive icons drawn at high zoom
@@ -4943,6 +4976,11 @@ private fun namesAgree(a: String, b: String): Boolean {
     if (x.isEmpty() || y.isEmpty()) return false
     return x.intersect(y).size >= minOf(x.size, y.size).coerceAtMost(2)
 }
+
+/** The bottom-most symbol layer on the style (the basemap's first label layer): anything added
+ *  below it draws under every label and icon. */
+private fun firstSymbolLayerId(style: Style): String? =
+    style.layers.firstOrNull { it is SymbolLayer }?.id
 
 private fun applyMapTheme(style: Style, dark: Boolean) {
     if (style.getSource("openmaptiles") == null) return
