@@ -3147,6 +3147,11 @@ architecture note.
   multisets, `\n` counts and XML validated per key). Weblate is still not live, so this is the flow:
   when `values/strings.xml` grows, re-run the per-locale catch-up before a stable. Voice-command
   examples are localized (a French address in fr, Ukrainian places in uk), not transliterated.
+- **Offline taps stay on the phone (2026-09-14).** `MapViewModel.offlineNow()` (latched `offline` or the
+  system says no internet) gates `fetchReviews`, `fetchPhotos`, `fetchPlaceDetails`, `fetchStopDepartures`
+  and the tap resolution in `onPoiTap`: offline, an open place shows its tile data or the Google listing
+  remembered from an earlier online tap (`openPlaceCache`), a basemap tap keeps its name, and no spinner
+  waits on a host that cannot answer.
 - **Offline basemap (2026-09-14).** A region download is now routing (obf) + places (Overture) + the
   MAP PICTURE: `tools/build-basemap-region.sh` (planetiler over the same Geofabrik extract the obf
   bake uses, OpenMapTiles schema = what OpenFreeMap serves, so the same Liberty style draws it) ->
