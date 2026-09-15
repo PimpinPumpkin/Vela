@@ -3198,8 +3198,8 @@ architecture note.
   `-Z11`). `landmark` = airport/hospital/university/stadium/mall/zoo/museum etc., the POIs Google keeps
   drawing zoomed out; below z13 everything in the tile gets an icon and a label. Density on the map is the rank, not collision: VelaMapView steps `iconImage` by
   zoom (top 2 per coarse cell below z15, top 1 per fine cell at z15, top 5 at z16, top 12 at z17, all from
-  z17.5, a high prominence always qualifies) and `textField` the same way (top 1 coarse below z15, top 1
-  fine at z15, top 3 at z16, top 6 at z16.5, all from z17.5); everything else in the tile draws as a small
+  z17.5, a high prominence always qualifies) and `textField` with the SAME steps as the icons (every icon carries its
+  name like Google's; collision alone drops labels on a crowded block, user 2026-09-14); everything else in the tile draws as a small
   category-colored dot on a `vela-places-dots-<i>` CircleLayer (`PoiIcons.groupColor()` over the baked
   `group`), so a downtown thins to its landmarks and fills in as you zoom, the way Google's does. Dots
   are thinned by rank too (none below z15, rank <=6 at z15, <=15 at z16, all from z17, via opacity
