@@ -643,8 +643,13 @@ Defaults that make the safe path the easy one:
   circle; the swap glyph deliberately stays bare. Save is a BOOKMARK icon, not a star (a star
   reads "rate it"; matches the saved-places map button). Search span: `SearchPb.build` takes
   the caller's real viewport height and stretches the template's baked ~25 km `!1d` window
-  (floor 3 km, cap 500 km) - zoomed-out searches used to keep a city-sized net; the VM threads
-  its live viewport span into the main + category-chip searches. **Search is three pages plus a
+  (floor `SearchPb.MIN_SPAN_M` = 1 km since 2026-09-15, was 3 km; cap 500 km) - zoomed-out
+  searches used to keep a city-sized net; the VM threads its live viewport span into the main +
+  category-chip searches. **A search from a close zoom HOLDS its view (2026-09-15):** the results
+  fit in VelaMapView (`holdView` in the marker-fit branch) skips the fly-out when the view is under
+  `HOLD_VIEW_SPAN_M` (2.5 km north to south) and at least `HOLD_VIEW_MIN_HITS` (3) results land in
+  the strip above the results sheet; zoomed in to a few blocks, "food" used to fly the map out to
+  frame every hit (user 2026-09-15). Wider views still frame the cluster as before. **Search is three pages plus a
   NEARBY pass plus "More results" (2026-09-13):** `GoogleMapsDataSource.search` fetches pages
   0-2 (20 each) over the viewport window, and when the user's location is INSIDE that window and
   the window is wider than ~2.5 km it also fetches one page over a 2.5 km window around the user
