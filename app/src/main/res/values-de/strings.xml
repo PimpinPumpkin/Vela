@@ -104,6 +104,8 @@
     <string name="settings_share_diagnostics">Diagnose teilen</string>
     <string name="settings_diag_nothing">Noch nichts aufgezeichnet, nutzen Sie die App und exportieren Sie dann.</string>
     <string name="settings_diag_export">Debug-Sitzung exportieren</string>
+    <string name="settings_diag_redact">Orte in Exporten schwärzen</string>
+    <string name="settings_diag_redact_hint">Blendet Suchen, Ziele, Links und Ortsnamen im Export aus und rundet Koordinaten auf etwa 10 km. Zeiten, Zähler und Fehler bleiben.</string>
     <string name="settings_save_trips">Meine Fahrten speichern (zur Wiedergabe)</string>
     <string name="settings_save_trips_hint">Zeichnet die GPS-Spur jeder Fahrt auf diesem Gerät auf, um sie später abzuspielen. Verlässt das Gerät nie.</string>
     <string name="settings_recorded_trips_hint">Aufgezeichnete Fahrten: tippen Sie auf „Wiedergabe“, um eine auf der Karte abzuspielen (3×):</string>

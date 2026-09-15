@@ -4343,6 +4343,12 @@ Gotchas:
   process restart, the export was empty essentially every time. `DiagExporter` SCRUBS the export:
   coordinate-looking decimals (3+ places) round to 2 (~1 km) so the JSON is safe to post publicly,
   with a header note saying so. Still no backend, still user-routed via the share sheet.
+  **Redact places in exports (2026-09-15, #507):** `DiagScrub` holds both levels; the toggle (pref
+  `diag_redact`, Settings > Diagnostics, shown while diagnostics is on) makes the export round to
+  ONE decimal (~10 km), replace quoted search terms and intents with `[redacted]`, drop a nav
+  start's destination label, keep only the host of any URL, blank `cid=` values and drop the
+  reviews probes' detail (page text). Counts, zoom levels and error text stay. `DiagScrubTest`
+  pins each rule; add a case when a new breadcrumb carries a name or an address.
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so

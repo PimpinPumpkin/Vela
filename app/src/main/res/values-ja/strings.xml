@@ -128,6 +128,8 @@
     <string name="settings_share_diagnostics">診断データを共有</string>
     <string name="settings_diag_nothing">まだ何も記録されていません。アプリを使ってからエクスポートしてください。</string>
     <string name="settings_diag_export">デバッグセッションをエクスポート</string>
+    <string name="settings_diag_redact">エクスポートで場所を伏せる</string>
+    <string name="settings_diag_redact_hint">検索、目的地、リンク、場所の名前をエクスポートから隠し、座標を約10 kmに丸めます。時刻、件数、エラーは残ります。</string>
     <string name="settings_save_trips">移動記録を保存（リプレイ用）</string>
     <string name="settings_save_trips_hint">各走行の GPS 軌跡をこの端末に記録し、後からリプレイできるようにします。記録が端末の外に出ることはありません。</string>
     <string name="settings_recorded_trips_hint">記録済みの移動です。「リプレイ」をタップすると地図上で再生します（3 倍速）：</string>

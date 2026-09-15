@@ -104,6 +104,8 @@
     <string name="settings_share_diagnostics">Compartir diagnóstico</string>
     <string name="settings_diag_nothing">Aún no hay nada registrado: usa la app y luego exporta.</string>
     <string name="settings_diag_export">Exportar sesión de depuración</string>
+    <string name="settings_diag_redact">Ocultar lugares en las exportaciones</string>
+    <string name="settings_diag_redact_hint">Oculta búsquedas, destinos, enlaces y nombres de lugares en la exportación y redondea las coordenadas a unos 10 km. Los tiempos, recuentos y errores se conservan.</string>
     <string name="settings_save_trips">Guardar mis trayectos (para reproducir)</string>
     <string name="settings_save_trips_hint">Graba el rastro GPS de cada viaje en este teléfono, para reproducirlo después. Nunca sale del teléfono.</string>
     <string name="settings_recorded_trips_hint">Trayectos grabados: toca Reproducir para volver a verlo en el mapa (3×):</string>

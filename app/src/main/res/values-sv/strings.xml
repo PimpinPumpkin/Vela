@@ -104,6 +104,8 @@
     <string name="settings_share_diagnostics">Dela diagnostik</string>
     <string name="settings_diag_nothing">Inget inspelat ännu, använd appen och exportera sedan.</string>
     <string name="settings_diag_export">Exportera felsökningssession</string>
+    <string name="settings_diag_redact">Dölj platser i exporter</string>
+    <string name="settings_diag_redact_hint">Döljer sökningar, destinationer, länkar och platsnamn i exporten och avrundar koordinater till cirka 10 km. Tider, antal och fel finns kvar.</string>
     <string name="settings_save_trips">Spara mina resor (för uppspelning)</string>
     <string name="settings_save_trips_hint">Sparar varje resas GPS-spår på den här telefonen, för uppspelning senare. Lämnar aldrig telefonen.</string>
     <string name="settings_recorded_trips_hint">Inspelade resor: tryck på Spela upp för att spela upp en på kartan (3×):</string>

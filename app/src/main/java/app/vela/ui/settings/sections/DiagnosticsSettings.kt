@@ -68,6 +68,19 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         )
         if (state.diagnosticsEnabled) {
             GroupDivider()
+            // Issue #507: the export with the searches, destinations, links and place names gone
+            // and coordinates at ~10 km, for a report the user means to post publicly.
+            var redact by remember { mutableStateOf(prefs.getBoolean(app.vela.diag.DiagExporter.REDACT_PREF, false)) }
+            ToggleRow(
+                label = stringResource(R.string.settings_diag_redact),
+                checked = redact,
+                onCheckedChange = { on ->
+                    redact = on
+                    prefs.edit().putBoolean(app.vela.diag.DiagExporter.REDACT_PREF, on).apply()
+                },
+                hint = stringResource(R.string.settings_diag_redact_hint),
+            )
+            GroupDivider()
             Spacer(Modifier.height(6.dp))
             DpadRingBox(androidx.compose.material3.ButtonDefaults.filledTonalShape, Modifier.padding(horizontal = 16.dp)) {
                 FilledTonalButton(onClick = {
