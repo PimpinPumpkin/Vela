@@ -3391,8 +3391,25 @@ Gotchas:
   places archive; `refreshPlacesOverlays` fills `placesOverlays` on
   camera idle; `maybeLoadAmbientPois` returns early (no Google fan-out) while the layer covers the
   view in `open`, and in `both` waits for a 1.5 s settle (cache paint included) and then runs one
-  fan-out whose overlap the map drops (`openPlacesLoaded` + `namesAgree` in applyData: same name
-  within 80 m of a loaded open feature). The open layers sit ABOVE the ambient layer so open icons
+  fan-out whose overlap the map drops (`openPlacesShown` + `namesAgree` in applyData: same name
+  within 80 m of an open icon that is either ACTUALLY RENDERED (queryRenderedFeatures over the
+  `vela-places-<i>` icon layers) or RANK-QUALIFIED for this zoom (querySourceFeatures + the same
+  rank/crank/prominence steps the layer's `topOr` uses)). The union, since 2026-09-15: loaded-only
+  suppressed Google's copy of an open feature the rank steps had thinned or a stacked point hid,
+  so the user saw neither shop; rendered-only was racy, the ambient upload can land a beat before
+  the open icons paint and Google's copy then drew beside the open one. Two more layer rules from
+  the same test: the open layer allows icon overlap from z18 and the AMBIENT layer from z17
+  (`iconAllowOverlap` steps on both), because below those the Google extras that survived the
+  dedupe still lost collision to the open icons in a strip mall and "Both" looked identical to
+  "Vela data" at 500 ft. And a SECOND PASS: Google's answer can land while the places tiles for
+  the new zoom are still loading (drawn=0 and loaded=0 in the log after a search fly-in), so
+  nothing is dropped and every open pin gets a twin; `applyData` re-runs the same dedupe on the
+  same list two seconds later (`ambientRedo`, cancelled by a newer list or a style reload).
+  **Closed listings (same day):** when a tapped open pin resolves to a
+  Google listing with `permanentlyClosed`, `hideClosedOpenPlace` adds its Overture id to
+  `MapUiState.hiddenOpenPlaceIds` (persisted in `open_place_closed.json`, loaded with the links)
+  and VelaMapView filters both places tiers with `!in(id, ...)`, so the pin is gone the moment
+  anyone taps it and stays gone until a rebake drops it for real. The open layers sit ABOVE the ambient layer so open icons
   win collision and Google's extras fill gaps. Outside any region file all three behave like Google.
   About > Map data credits Overture (CDLA-Permissive 2.0) with a license button. The OSM basemap
   business POIs (`poi_r1/r7/r20`) hide while an open places source is on the style (`openCovers` in

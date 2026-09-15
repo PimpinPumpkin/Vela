@@ -127,6 +127,7 @@ data class MapUiState(
     // ([speedLimitKmh] null) - so a limit shows anywhere online without a downloaded region.
     val maxspeedOverlays: List<String> = emptyList(), // pmtiles://https:// source URIs covering the view
     val placesOverlays: List<String> = emptyList(),   // open-data places layer (Overture PMTiles), file:// or streamed
+    val hiddenOpenPlaceIds: Set<String> = emptySet(), // open places whose Google listing is permanently closed (persisted)
     val speedLimitOverlayKmh: Double? = null,
     val speedLimitKmh: Double? = null, // posted limit of the current road (OSM maxspeed via GraphHopper),
                                        // km/h; null = unknown/untagged/no offline graph → badge hidden.
@@ -2951,9 +2952,34 @@ class MapViewModel @Inject constructor(
                 }
                 out
             }
+            val closed = withContext(Dispatchers.IO) {
+                runCatching { org.json.JSONArray(closedOpenPlacesFile().readText()) }.getOrNull()
+                    ?.let { a -> (0 until a.length()).mapNotNull { i -> a.optString(i).takeIf { it.isNotBlank() } }.toSet() }
+                    .orEmpty()
+            }
+            if (closed.isNotEmpty()) _state.update { it.copy(hiddenOpenPlaceIds = closed) }
             if (loaded.isEmpty()) return@launch
             synchronized(openPlaceCache) { loaded.forEach { (id, p) -> if (id !in openPlaceCache) openPlaceCache[id] = p } }
-            android.util.Log.d("VelaPlaces", "open place links: loaded ${loaded.size}")
+            android.util.Log.d("VelaPlaces", "open place links: loaded ${loaded.size}, closed ${closed.size}")
+        }
+    }
+
+    private fun closedOpenPlacesFile() = java.io.File(appContext.filesDir, "open_place_closed.json")
+
+    /** The tapped open place resolved to a Google listing that is permanently closed: Overture lags
+     *  Google by months, so hide the pin now and remember it (the closed shops still on the map,
+     *  user 2026-09-15). [seedId] is the seeded Place id ("overture:<id>"). */
+    private fun hideClosedOpenPlace(seedId: String) {
+        val raw = seedId.removePrefix("overture:")
+        if (raw.isBlank() || raw in _state.value.hiddenOpenPlaceIds) return
+        val next = _state.value.hiddenOpenPlaceIds + raw
+        _state.update { it.copy(hiddenOpenPlaceIds = next) }
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val tmp = java.io.File(appContext.filesDir, "open_place_closed.json.tmp")
+                tmp.writeText(org.json.JSONArray(next.toList()).toString())
+                tmp.renameTo(closedOpenPlacesFile())
+            }
         }
     }
 
@@ -3117,6 +3143,7 @@ class MapViewModel @Inject constructor(
             if (full != null && seed != null && (full.reviewCount != null || full.hours.isNotEmpty())) {
                 rememberOpenPlaceLink(seed.id, full)
             }
+            if (full != null && seed != null && full.permanentlyClosed) hideClosedOpenPlace(seed.id)
             if (full != null && _state.value.selected == placeholder) {
                 _state.update { it.copy(selected = withListNote(full), placesHere = othersAt(full, resolved.second)) }
                 fetchReviews(full)
