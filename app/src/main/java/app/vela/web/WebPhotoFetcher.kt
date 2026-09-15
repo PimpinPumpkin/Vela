@@ -155,7 +155,15 @@ class WebPhotoFetcher @Inject constructor(
                 // 2026-07-06). All WebView creation/mutation is on the main thread, so this check is race-free.
                 if (webView != null) return@runCatching
                 val wv = ensureWebView()
-                wv.webViewClient = WebViewClient()
+                wv.webViewClient = object : WebViewClient() {
+                    // Warm means booted, not running: once the page has landed, put the view to
+                    // sleep. A live Google Maps page keeps its compositor and timers going
+                    // forever, which showed up as a quarter of the app's CPU while panning
+                    // the map (VizWebView + Chrome_IOThread, 2026-09-14). A fetch resumes it.
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        main.postDelayed({ if (view != null && view === webView && pending.isEmpty()) runCatching { view.onPause() } }, 2_000)
+                    }
+                }
                 wv.loadUrl("https://www.google.com/maps?hl=en")
             }
         }
@@ -213,6 +221,7 @@ class WebPhotoFetcher @Inject constructor(
                         // fallback can inject the scraper before the new page commits — against an empty
                         // DOM that yields an empty result (safe) instead of the previous place's photos
                         // being returned for THIS featureId (cross-place data).
+                        wv.onResume() // asleep between fetches, see warm()
                         wv.evaluateJavascript("try{document.documentElement.innerHTML=''}catch(e){}", null)
                         wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=en&gl=us")
                         main.postDelayed({ if (!ready.isCompleted) ready.complete(Unit) }, MAX_LOAD_MS)
@@ -226,6 +235,7 @@ class WebPhotoFetcher @Inject constructor(
                 partials.remove(id)
                 hists.remove(id)
                 dateCbs.remove(id)
+                main.post { if (pending.isEmpty()) runCatching { webView?.onPause() } }
             }
             val out = raw?.let { parseLines(it) } ?: emptyList()
             if (out.isNotEmpty()) synchronized(cache) { cache[featureId] = out } // cache only real results
