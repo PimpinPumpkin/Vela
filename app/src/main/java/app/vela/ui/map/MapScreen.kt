@@ -216,6 +216,8 @@ import androidx.compose.ui.input.key.type
 import app.vela.ui.toggleItem
 import app.vela.ui.dpadHighlight
 import app.vela.ui.rememberDpadMode
+import app.vela.ui.theme.isAppInDarkTheme
+import app.vela.ui.theme.isAppInAmoled
 import app.vela.ui.rememberDpadFirstDevice
 import app.vela.ui.VelaMenu // D-pad-first menu (docs/dpad.md)
 import app.vela.ui.item
@@ -265,6 +267,7 @@ fun MapScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val darkTheme = isAppInDarkTheme()
+    val amoled = isAppInAmoled()
     val hasMapTiler = USE_MAPTILER && BuildConfig.MAPTILER_KEY.isNotBlank()
     // When the place sheet is the active bottom UI it covers ~the bottom 56% of the
     // screen, so push the map's optical centre up by that much to keep the focused
@@ -1124,6 +1127,7 @@ fun MapScreen(
             onScaleChanged = { metersPerPixelState.value = it },
             onOverlayState = { overlayDebugState = it },
             darkTheme = darkTheme,
+            amoled = amoled,
             applyKeylessTheme = !hasMapTiler,
             // Off-nav: the whole-map raster when the user toggles it on. During nav we
             // DON'T wash the whole map — the user asked for traffic on "just the road
@@ -1362,7 +1366,8 @@ fun MapScreen(
                 val abovePill = roadLabelMode == app.vela.ui.RoadLabel.BAR
                 Surface(
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surface,
+                    border = if (amoled) BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
+                    color = if (amoled) SheetPalette.Amoled else MaterialTheme.colorScheme.surface,
                     shadowElevation = 3.dp,
                     modifier = if (abovePill) Modifier
                         .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
@@ -5056,6 +5061,7 @@ private fun SpeedWidget(
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
+    val amoled = isAppInAmoled()
     // Smooth the DISPLAYED speed (Google shows the fused estimate, not each raw doppler sample - the
     // raw 1 Hz readout flickered 59/60/61 at a steady cruise), with a small deadband so a stop reads
     // a clean 0 instead of 1 mph jitter.
@@ -5077,7 +5083,8 @@ private fun SpeedWidget(
     // sign joins it - the same surface growing, never a second widget or a shape change.
     Surface(
         shape = RoundedCornerShape(14.dp),
-        color = SheetPalette.bg(dark),
+        border = if (amoled) BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
+        color = SheetPalette.bg(dark, amoled),
         contentColor = SheetPalette.ink(dark),
         shadowElevation = 4.dp,
         modifier = modifier,

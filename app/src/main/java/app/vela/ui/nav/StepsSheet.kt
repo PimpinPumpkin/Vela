@@ -91,6 +91,8 @@ import app.vela.ui.SheetPalette
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import app.vela.ui.theme.isAppInDarkTheme
+import app.vela.ui.theme.isAppInAmoled
+import androidx.compose.foundation.BorderStroke
 import app.vela.ui.dpadHighlight // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.rememberDpadAutoFocus
 import androidx.compose.ui.focus.focusRequester
@@ -147,6 +149,7 @@ fun StepsSheet(
         if (s.isEmpty() || roadLatin.isEmpty()) s
         else app.vela.core.voice.SpokenScript.forDisplay(s, uiLang, roadLatin)
     val dark = isAppInDarkTheme()
+    val amoled = isAppInAmoled()
     val ink = SheetPalette.ink(dark)
     val dim = SheetPalette.dim(dark)
     // Swipe-down to dismiss (user 2026-07-15): the card rides the finger (down only) and a
@@ -252,8 +255,9 @@ fun StepsSheet(
                 )
             },
         shape = if (header != null) RoundedCornerShape(28.dp) else RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        border = if (amoled) BorderStroke(1.dp, SheetPalette.BorderAmoled) else null,
         elevation = if (header != null) CardDefaults.cardElevation(defaultElevation = 6.dp) else CardDefaults.cardElevation(),
-        colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark), contentColor = ink),
+        colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark, amoled), contentColor = ink),
     ) {
         // Fill the card to the screen bottom; pad content off the nav bar (the floating nav form
         // gets its margins from the host, so only the list padding applies there).

@@ -17,6 +17,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **AMOLED true-black map & navigation theme (2026-09-14).** The AMOLED theme now extends from
+  Settings to the map canvas and navigation overlays. `applyAmoled` layers a pure-black (`#000000`)
+  land, water, dark-grey road network, black building footprints and black text halos on top of
+  `applyDark` (ensuring boundaries, rail, aeroways, and untouched layers keep dark styling). The map
+  `styleKey` includes `|amoled=` so changing theme modes reloads the style immediately. Navigation
+  overlays (`NavControls`, `NavSearchChips`, `StepsSheet`, `SpeedWidget`, and the current road label
+  pill) use `SheetPalette.bg(dark, amoled)` with subtle dark borders (`SheetPalette.BorderAmoled`),
+  while the maneuver banner preserves its teal container accent for instructional clarity and the
+  route line remains standard traffic-coded blue.
 - 🟡 **Offline regions are moving to the obf format (issue #214, in progress).** The routing
   engine, download store, bake pipeline and catalog cutover are built and device-verified end to
   end (a phone in airplane mode downloaded a Berlin obf, routed a 21 km drive with named steps
