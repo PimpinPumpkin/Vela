@@ -15,6 +15,10 @@ on:
         description: Overture release
         required: false
         default: "2026-08-19.0"
+      shard:
+        description: "Which half of the catalog to bake when `only` is blank: a = first half by id, b = second half, blank = all (fails past 256 regions, the matrix cap)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -31,7 +35,12 @@ jobs:
           if [ -n "${{ github.event.inputs.only }}" ]; then
             jq -c --arg id "${{ github.event.inputs.only }}" '{include: [.regions[] | select(.id == $id)]}' tools/places-regions.json > m.json
           else
-            jq -c '{include: .regions}' tools/places-regions.json > m.json
+            # Two shards by sorted id: GitHub caps a matrix at 256 jobs and the catalog is past that.
+            case "${{ github.event.inputs.shard }}" in
+              a) jq -c '(.regions | sort_by(.id)) as $r | {include: $r[0:(($r | length) / 2 | ceil)]}' tools/places-regions.json > m.json ;;
+              b) jq -c '(.regions | sort_by(.id)) as $r | {include: $r[(($r | length) / 2 | ceil):]}' tools/places-regions.json > m.json ;;
+              *) jq -c '{include: .regions}' tools/places-regions.json > m.json ;;
+            esac
           fi
           echo "matrix=$(cat m.json)" >> "$GITHUB_OUTPUT"
       - name: Ensure the release exists

@@ -3166,10 +3166,14 @@ architecture note.
   (offline) + `PLACES_MANIFEST_URL` regions streamed (`sourcesFor` returns ONE source: the smallest
   installed archive covering the center, else the smallest manifest region; two nested archives drew
   the overlap twice). Baked so far: Davis (test box) and California (1.68 M places, 481 MB, streams
-  by range request; the CI bake of one state took 15 min); `tools/places-regions.json` now mirrors the
-  live routing catalog (`routing-manifest-v2.json`, 135 regions: US states, Canadian provinces,
-  countries) plus davis, so a region download finds its places archive by bbox; the full bake is a
-  manual `places-overlays.yml` dispatch with `only` blank (max-parallel 4, hours); `MapPoiPrefs.placesSource` (Settings > Map,
+  by range request; the CI bake of one state took 15 min); `tools/places-regions.json` mirrors the obf
+  STAGING catalog (`obf-manifest-staging.json` on the `obf-regions` release, 414 rows: US states incl.
+  california-norcal/socal, Canadian provinces, German Laender `de-*`, French/Spanish/Italian regions,
+  Brazil/India/Japan/Indonesia zones, countries) plus davis: finer pieces than the live routing catalog's
+  whole countries, so `downloadPlacesForRegion` pulls EVERY archive whose box center falls inside the
+  downloaded region (a whole-country download today gets all its pieces, a Land download later gets one),
+  and `sourcesFor` streams the smallest covering piece. The full bake is two manual `places-overlays.yml`
+  dispatches, `shard=a` and `shard=b` (the matrix caps at 256 jobs), max-parallel 4, hours each; `MapPoiPrefs.placesSource` (Settings > Map,
   "Places come from": `open` ("Vela data", default) / `google` / `both`, pref `map_places_source`,
   short user-facing hints plus a Learn more dialog naming Overture/Meta, Vela's own GitHub hosting,
   and the Google hooks on search and tap) gates it; `MapPoiPrefs.placesWithDownloads` (Settings >
