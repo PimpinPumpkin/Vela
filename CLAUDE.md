@@ -3174,7 +3174,10 @@ architecture note.
   bake uses, OpenMapTiles schema = what OpenFreeMap serves, so the same Liberty style draws it) ->
   `basemap-<id>.pmtiles` on the `basemap-tiles` release with `basemap-manifest.json`
   (`.github/workflows/basemap-tiles.yml`, matrix from `tools/routing-regions.json` group/ids, Java 21,
-  planetiler base data cached, bounds read from the archive header; `scripts/merge-basemap-manifest.sh`).
+  planetiler base data cached, bounds read from the archive header by `scripts/pmtiles-bbox.py` (bytes
+  102..117, int32 E7; the pmtiles CLI download was rate-limited on shared runners and lost entries on
+  the first world run); `scripts/merge-basemap-manifest.sh`; `scripts/repair-basemap-manifest.sh`
+  rebuilds the manifest from whatever archives sit on the release, one 127-byte range request each).
   Saarland full z14 = 33 MB (a lite z13 no-buildings tier = 8 MB, not wired). App: `PmtilesRegionStore`
   is the shared base of `PlacesTileStore` and `BasemapTileStore` (`files/basemap/`, never streamed,
   `installedFor(center)` = smallest covering archive); `MapUiState.basemapArchive`; `refreshBasemapArchive`
