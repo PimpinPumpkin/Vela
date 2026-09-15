@@ -1721,11 +1721,29 @@ class MapViewModel @Inject constructor(
             }
         }
         refresh()
+        // Diagnostics breadcrumbs for the link itself (issue #397, 2026-09-15: an export showed
+        // both routers empty for four minutes and nothing said whether the phone had a network).
+        // No pinging: the system's own default-network callback already says which transport is
+        // up and whether it VALIDATED (reached the internet). Recorded only when the summary
+        // changes, so a moving car logs handoffs and dropouts, not signal-strength ticks.
+        var lastNet = ""
+        fun note(event: String, caps: android.net.NetworkCapabilities?) {
+            val summary = if (caps == null) "none" else buildString {
+                if (caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)) append("wifi ")
+                if (caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR)) append("cellular ")
+                if (caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET)) append("ethernet ")
+                if (caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN)) append("vpn ")
+                append(if (caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)) "validated" else "not validated")
+                if (!caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)) append(" metered")
+            }
+            val line = "$event: $summary"
+            if (line != lastNet) { lastNet = line; diag.record("net", line) }
+        }
         runCatching {
             cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: android.net.Network) = refresh()
-                override fun onLost(network: android.net.Network) = refresh()
-                override fun onCapabilitiesChanged(network: android.net.Network, caps: android.net.NetworkCapabilities) = refresh()
+                override fun onAvailable(network: android.net.Network) { note("available", runCatching { cm.getNetworkCapabilities(network) }.getOrNull()); refresh() }
+                override fun onLost(network: android.net.Network) { note("lost", null); refresh() }
+                override fun onCapabilitiesChanged(network: android.net.Network, caps: android.net.NetworkCapabilities) { note("link", caps); refresh() }
             })
         }
     }
