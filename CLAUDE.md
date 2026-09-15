@@ -2664,6 +2664,13 @@ Gotchas:
   is not an error: OSRM ignores it and routes as before, so the fix would silently do nothing.
   Note the related gate this does NOT change: off-route detection needs `movingFloorMps` = 2.0, so
   inching away from a junction is not counted as deviating until the 90 m far-off rule fires.
+  **An urgent fetch waits at most `URGENT_GOOGLE_GRACE_MS` (2.5 s) for Google once OSRM has answered
+  (issue #397, 2026-09-15):** a diagnostics export showed reroutes taking 18 to 40 s during a
+  data dropout because the fetch waited out Google's empty replies and their backoff while OSRM
+  had a route in seconds; Google now runs on an unstructured scope for urgent fetches (a
+  structured child would hold the scope until its blocking HTTP call returned) and past the grace
+  the route goes out trafficless, which the recheck's trafficUpgrade heals. Both the
+  single-destination and the multi-stop branch do this. And
   since 2026-08-04 the reroute fetch is URGENT (`directions(urgent = true)`, issues #185/#236):
   single-shot OSRM + Google (no 3x ladders), no divergence snap - the full planning ladder
   regularly outlived the deadline on a weak link, so the timeout cancelled fetches that were
