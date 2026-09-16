@@ -118,6 +118,7 @@ data class MapUiState(
     val myLocation: LatLng? = null,
     val myBearing: Float? = null,
     val mySpeed: Float? = null, // metres/second, from GPS (spike-filtered, held briefly on speedless fixes)
+    val myFixRaw: LatLng? = null, // the last ACCEPTED fix before the parked-hold low-pass; the free-drive follow integrates from this while moving
     val mySpeedRaw: Float? = null, // THIS fix's own measured speed (doppler or derived) — null when the
                                    // fix carried none. The puck's Kalman measures ONLY from this: feeding
                                    // it the held mySpeed re-injected a stale braking speed at high gain
@@ -772,6 +773,7 @@ class MapViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         myLocation = here, myBearing = bearing, mySpeed = speed,
+                        myFixRaw = if (here === prev) it.myFixRaw else rawHere, // an outlier hold keeps the old raw too
                         // The fix's OWN accepted measurement, null when it had none (or the gate
                         // rejected it) — the puck Kalman's measurement stream must never see a
                         // held display value or a rejected glitch.
