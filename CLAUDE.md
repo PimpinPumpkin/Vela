@@ -3447,7 +3447,13 @@ Gotchas:
   first two significant words, OSM candidates by name / name:latin / name_en), so OSM fills what
   Overture lacks (the OSM-only museum) and nothing draws twice. The Both-mode dedupe
   (`openPlacesShown`) also counts the drawn poi tiers, so Google does not double an OSM fill-in
-  either. The ambient (Google) coverage still hides the tiers as before. VelaMapView draws `vela-places-<i>`
+  either. The ambient (Google) coverage still hides the tiers as before. ANR LESSON (2026-09-16,
+  hotfix): the first cut built two `Regex` objects per key call, i.e. Pattern.compile for every
+  basemap POI in the loaded tiles x 3 name variants, on the main thread; a San Francisco view has
+  thousands and the map hung ("Vela isn't responding", trace = PatternNative.compileImpl under
+  the idle Runnable). `NAME_PUNCT` / `NAME_SPACES` are module-level now (namesAgree uses them
+  too) and the pass skips views with more than 6,000 loaded POIs. Never build a Regex inside a
+  per-feature loop; the ANR trace is readable at /data/anr/anr_* without root. VelaMapView draws `vela-places-<i>`
   SymbolLayers dressed identically to the ambient layer; a tap on a `src=overture` feature builds a seeded
   `Place` (category/address/phone/website from the tile) and `onOpenPlaceTap` -> `onPoiTap(seed=...)`, so
   the sheet reads offline and the existing Google correlation upgrades it online. Davis is the test bake
