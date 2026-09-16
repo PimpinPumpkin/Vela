@@ -303,17 +303,17 @@ private var origPoiTransitFilter: Expression? = null // basemap filter to restor
 private var lastOsmPoiVis: String? = null // identity-gate the basemap-POI visibility flips
 private var lastPoiFuelOnly: Boolean? = null // identity-gate the nav gas-stations-only filter flips
 // Open-place ids filtered out of the layer. `openHiddenIds` is the persisted closed-listing set
-// (from MapUiState); `openDisplacedIds` is transient, written by the Both-mode dedupe for a place
-// whose Google listing sits more than DEDUPE_SAME_M from the open feature of the same name.
-// Overture stacks every tenant of a building on ONE parcel point and the bake spreads the stack
-// onto a small ring, so a strip-mall shop's open coordinate is invented and can be tens of metres
-// from its door while Google's is the storefront. When the two disagree that far, Google's pin is
-// the right one to keep (before this, the correctly placed Google pin vanished a beat after it
-// drew, because the dedupe dropped it against the displaced open twin; user 2026-09-16).
+// (from MapUiState); `openDisplacedIds` is transient, written by the Both-mode dedupe for every
+// open feature Google also returned. In BOTH mode Google's copy WINS outright (user 2026-09-16):
+// its coordinate is the storefront where Overture stacks a building's tenants on one parcel point
+// (the bake then spreads the stack onto an invented 8-20 m ring), and its ranking is drawn from
+// review counts rather than a category prior, which is the same reason a store outranks its own
+// pharmacy there. So the open twin steps aside and Google's pin is the one drawn; the open layer
+// keeps the places Google did not return, which is what Both is for. Offline nothing is hidden,
+// because there are no ambient places to hide against.
 private var openHiddenIds: Set<String> = emptySet()
 private var openDisplacedIds: Set<String> = emptySet()
-private const val DEDUPE_SAME_M = 25.0 // the two sources agree on the spot: the open icon stands
-private const val DEDUPE_NAME_M = 80.0 // same name, farther than SAME: one of the two is misplaced
+private const val DEDUPE_NAME_M = 80.0 // same name within this range = the same business, twice
 
 /** Re-apply the id exclusions to the open places layers (icons + dots) without rebuilding them. */
 private fun applyOpenPlacesHidden(style: Style) {
@@ -6487,23 +6487,17 @@ private fun applyData(
     // stays stale so the first recomposition after landing uploads the full set.
     if (ambientPois != lastAppliedAmbient && flightDepth[0] == 0) {
         fun uploadAmbient() {
-            // "Both" places setting: the open places layer already draws most of these, so a
-            // Google place that agrees BY NAME with an open one nearby is a twin, not an extra.
-            // WHICH of the two is drawn depends on how far apart they are: within DEDUPE_SAME_M
-            // the sources agree on the spot and the open icon stands (Google's copy is dropped);
-            // farther out one of them is misplaced, and Google's storefront coordinate is the
-            // one to trust, so its pin stays and the open twin is filtered out of the layer
-            // (see openDisplacedIds). The index property stays the list index, so a tap still
-            // opens the right place.
+            // "Both" places setting: a Google place that agrees BY NAME with an open one within
+            // DEDUPE_NAME_M is the same business twice. Google's copy is the one drawn (see
+            // openDisplacedIds for why) and the open twin is filtered out of the layer, so the
+            // open data keeps exactly the places Google did not return. The index property stays
+            // the list index, so a tap still opens the right place.
             val openInView = openPlacesShown(map, style, map.cameraPosition.zoom)
             val displaced = HashSet<String>()
             val ambientFc = FeatureCollection.fromFeatures(
                 ambientPois.mapIndexedNotNull { i, m ->
-                    val twin = openInView.firstOrNull { (_, n, ll) -> ll.distanceTo(m.location) < DEDUPE_NAME_M && namesAgree(n, m.name) }
-                    if (twin != null) {
-                        if (twin.third.distanceTo(m.location) < DEDUPE_SAME_M) return@mapIndexedNotNull null
-                        if (twin.first.isNotEmpty()) displaced += twin.first
-                    }
+                    openInView.firstOrNull { (_, n, ll) -> ll.distanceTo(m.location) < DEDUPE_NAME_M && namesAgree(n, m.name) }
+                        ?.let { twin -> if (twin.first.isNotEmpty()) displaced += twin.first }
                     Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
                         val group = PoiIcons.groupFor(m.name, m.category)
                         addStringProperty("name", m.name)

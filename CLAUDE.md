@@ -1976,15 +1976,16 @@ architecture note.
   again and again, until you panned (which drops follow). `browseEngaged` gates the flight to the
   first engagement and clears when follow ends. User report 2026-09-16 ("keeps trying to zoom the
   camera in there until I pan away").
-- **Both-mode dedupe picks by DISTANCE, not just name (2026-09-16).** Within `DEDUPE_SAME_M` (25 m)
-  the sources agree and Google's copy is dropped, as before. Between that and `DEDUPE_NAME_M`
-  (80 m) one of the two is misplaced and GOOGLE's pin wins: its copy stays and the open twin's id
-  goes into `openDisplacedIds`, which `applyOpenPlacesHidden` filters out of the icon and dot
-  layers (same mechanism as the closed-listing set, unioned with it). Why: Overture stacks a
-  building's tenants on one parcel point and the bake spreads the stack onto an 8-20 m ring, so a
-  strip-mall shop's open coordinate is INVENTED; Google's is the storefront. Before this the
-  correctly placed Google pin drew and then vanished a beat later (the 2 s second dedupe pass),
-  which is what the user saw for a Subway.
+- **In BOTH mode Google WINS a twin outright (2026-09-16, user's call).** Any open feature whose
+  name agrees with a Google place within `DEDUPE_NAME_M` (80 m) has its id put in
+  `openDisplacedIds`, and `applyOpenPlacesHidden` filters it out of the icon and dot layers (same
+  mechanism as the closed-listing set, unioned with it); Google's pin is drawn instead. Two reasons
+  Google's copy is better wherever it exists: its coordinate is the storefront, where Overture
+  stacks a building's tenants on ONE parcel point and the bake spreads the stack onto an invented
+  8-20 m ring; and its ranking comes from review counts rather than a category prior. The open
+  layer then holds exactly what Google did not return, which is the point of Both. Offline nothing
+  is hidden (no ambient places to match against). The first cut kept the open icon when the two
+  agreed within 25 m; the user asked for Google to win either way.
 - **Open-layer labels stay thinned at max zoom (2026-09-16).** Icons come in for everything from
   z17.5 but only the top `openLabelCap` (calibration dial, default 20) per 400 m cell get a name:
   each label is glyph layout plus a collision pass over four anchors, and a mall puts dozens in one
