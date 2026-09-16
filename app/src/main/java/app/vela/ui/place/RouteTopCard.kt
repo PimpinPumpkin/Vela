@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.Card
@@ -29,6 +30,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import app.vela.ui.item
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,6 +76,9 @@ fun RouteTopCard(
     onAddStop: (() -> Unit)? = null,
     onSwap: () -> Unit,
     onClose: () -> Unit,
+    // The Google-style chooser experiment: no visible Add stop row; a menu on the top right holds
+    // Edit stops and Add stop instead, with the swap under it, as Google lays the card out.
+    googleStyle: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val ink = MaterialTheme.colorScheme.onSurface
@@ -161,7 +168,7 @@ fun RouteTopCard(
                 }
                 // Add stop keeps its own quiet row (gmaps buries it in an overflow menu; a
                 // visible row is the discoverable version and the card has the room).
-                if (showStopControls && onAddStop != null && stops.isEmpty()) {
+                if (!googleStyle && showStopControls && onAddStop != null && stops.isEmpty()) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -179,6 +186,22 @@ fun RouteTopCard(
                 }
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (googleStyle && showStopControls) {
+                    var menu by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { menu = true }, modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
+                            Icon(
+                                androidx.compose.material.icons.Icons.Default.MoreVert,
+                                contentDescription = stringResource(R.string.exp_chooser_more),
+                                tint = dim,
+                            )
+                        }
+                        app.vela.ui.VelaMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            item(stringResource(R.string.stops_edit)) { menu = false; onEditStops() }
+                            if (onAddStop != null) item(stringResource(R.string.place_add_stop)) { menu = false; onAddStop() }
+                        }
+                    }
+                }
                 IconButton(onClick = onSwap, modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
                     Icon(
                         Icons.Default.SwapVert,
@@ -188,7 +211,7 @@ fun RouteTopCard(
                 }
                 // With stops in play the labeled Add-stop row is gone (the stops summary row took
                 // its slot), so adding ANOTHER stop gets this compact + under the swap.
-                if (showStopControls && onAddStop != null && stops.isNotEmpty()) {
+                if (!googleStyle && showStopControls && onAddStop != null && stops.isNotEmpty()) {
                     IconButton(onClick = onAddStop, modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
                         Icon(
                             Icons.Default.Add,

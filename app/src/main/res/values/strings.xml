@@ -97,6 +97,16 @@
     <string name="settings_speed_cam_warn_hint">Says \"Speed camera ahead\" as you approach one while navigating, timed to give about twelve seconds\' notice. Follows your spoken-directions setting. Warning about cameras while driving is restricted in some countries, so this is off unless you turn it on.</string>
     <string name="nav_speed_camera_ahead">Speed camera ahead</string>
     <string name="settings_speed_cams_hint">Shows fixed radar and speed cameras mapped in OpenStreetMap. Fixed installations only; coverage follows the map, strongest in Europe. Off by default.</string>
+    <string name="exp_google_chooser" translatable="false">Google-style route chooser (experiment)</string>
+    <string name="exp_google_chooser_hint" translatable="false">Lays the route chooser out like Google Maps: one route summary, the other routes picked from time bubbles on the map, the turn list inline, and Start, Add stops and Share along the bottom.</string>
+    <string name="exp_chooser_fastest" translatable="false">Fastest route now</string>
+    <string name="exp_chooser_slower" translatable="false">%1$s slower than the fastest route</string>
+    <string name="exp_chooser_via" translatable="false">via %1$s</string>
+    <string name="exp_chooser_options" translatable="false">Route options</string>
+    <string name="exp_chooser_more" translatable="false">More options</string>
+    <string name="exp_chooser_add_stops" translatable="false">Add stops</string>
+    <string name="exp_chooser_along" translatable="false">Add a stop along the way</string>
+    <string name="exp_chooser_share_text" translatable="false">Directions to %1$s: %2$s, %3$s</string>
     <string name="settings_flock_route_alert" translatable="false">Avoid surveillance cameras</string>
     <string name="settings_flock_route_alert_hint" translatable="false">Counts the license-plate reader (Flock) cameras on each route and auto-picks a lower-camera one when it costs only a little longer. It never sends you far out of the way, so where cameras are unavoidable it just shows the counts and leaves the choice to you. Long-press the map to route through a point yourself. Off by default.</string>
     <string name="dir_cameras_on_route" translatable="false">%1$d cameras on this route</string> <!-- format -->
