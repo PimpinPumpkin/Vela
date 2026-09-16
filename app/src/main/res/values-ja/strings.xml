@@ -208,6 +208,8 @@
     <string name="place_add_stop">経由地を追加</string>
     <string name="stops_editor_title">経由地</string>
     <string name="stops_edit">経由地を編集</string>
+    <string name="steps_stop_at">経由地: %1$s</string>
+    <string name="steps_stop">経由地</string>
     <string name="stops_drag_reorder">ドラッグして並べ替え</string>
     <string name="place_change_destination">目的地を変更</string>
     <string name="place_swap_start_destination">出発地と目的地を入れ替え</string>

@@ -467,6 +467,7 @@ internal class NavController(
 
     /** The labels of the stops still ahead, for the nav sheet's Stops row. */
     fun navRemainingStopLabels(): List<String> = navSession.remainingStops().map { it.label }
+    fun navRemainingStops(): List<app.vela.core.nav.NavSession.NavStop> = navSession.remainingStops()
 
     /** In-nav stop insert: hand the pick to the session (it replans the drive through it) and
      *  clear the search chrome so the nav view is what's on screen again. The chooser's waypoint
