@@ -2202,6 +2202,18 @@ architecture note.
   next launch retries), and Settings > About > "What's new in this version" reopens it on demand.
   The notes are the commit subjects CI writes into every release, run through `plainReleaseNotes`;
   nothing is bundled.
+- **REVIEW LABELS ARE TESTED WITH THE PLACE NAME CUT OUT (issue #535, 2026-09-16).** Google's
+  tab and button labels embed the place name ("Overview of Davis Food Co-op", 「X」總覽), and the
+  review pattern carries the word in every language, so "D-avis" matched the French "avis": the
+  full page took Overview for Reviews, reported ready on it, and its More reviews button reloaded
+  to the Overview (reproduced on the Davis fixture). `STRIP_PLACE_NAME_JS` (web/ReviewTabJs.kt,
+  `velaNoName`, name = the page h1, else the longest run two tab labels share) runs before every
+  review-word test on a tab or button in BOTH scripts; any new label test goes through it. The
+  full page also records `panel` events in the Diagnostics export through `DiagLog.shared`
+  (open, page loaded, feed requests, the More reviews tap with card counts before and 5 s after,
+  feed-withheld retries, failure, our probe lines and Uncaught errors; Google's CORS noise is
+  skipped). Google now shows signed-out sessions "a limited view of Google Maps", which caps
+  every review feed; that is not a parser bug.
 - **THE REVIEW SCRAPE WAS DEAD FROM 2026-09-06 TO 2026-09-13 (issue #359, every language).** The
   review-pass commit that moved the tab/button words into `ReviewWords` wrote the two regex lines
   of the scrape script as `${'$'}{reviewPatternJs()}` inside the Kotlin raw string, which emits
