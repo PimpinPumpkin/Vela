@@ -181,6 +181,11 @@ private fun blocked(req: WebResourceRequest): Boolean {
 }
 
 @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
+/** Full review page events for the Diagnostics export (issue #535): the page writes nothing there
+ *  otherwise, so a "See more reviews does nothing" report arrived with no trace of the page. */
+private fun panelDiag(summary: String, detail: String? = null) =
+    app.vela.core.diag.DiagLog.shared?.record("panel", summary, detail)
+
 private fun buildPanelWebView(
     ctx: android.content.Context,
     cid: String,
@@ -196,6 +201,8 @@ private fun buildPanelWebView(
     onChipsParsed: (List<PanelChip>) -> Unit,
 ): WebView {
     val wv = WebView(ctx)
+    val feedCalls = java.util.concurrent.atomic.AtomicInteger()
+    var consoleErrors = 0
     wv.settings.javaScriptEnabled = true
     wv.settings.domStorageEnabled = true
     // Desktop UA: the desktop place panel is ~408 px wide — phone-width, and it's the layout the
@@ -409,16 +416,21 @@ private fun buildPanelWebView(
         }
 
         @JavascriptInterface
-        fun fail() { wv.post { onFail() } }
+        fun fail() { panelDiag("failed: page never showed the reviews"); wv.post { onFail() } }
+
+        /** A breadcrumb from the carve script (the See more reviews tap and what it loaded). */
+        @JavascriptInterface
+        fun note(summary: String, detail: String?) { panelDiag(summary.take(120), detail?.take(300)) }
 
         /** The page sat on the Overview with the Reviews tab refusing to select: retry before failing. */
         @JavascriptInterface
         fun stuck() {
             wv.post {
                 when (stuckRetries++) {
-                    0 -> { android.util.Log.w("VelaPanel", "feed withheld: reloading"); loaded = false; wv.reload() }
+                    0 -> { android.util.Log.w("VelaPanel", "feed withheld: reloading"); panelDiag("feed withheld: reloading"); loaded = false; wv.reload() }
                     1 -> {
                         android.util.Log.w("VelaPanel", "feed withheld again: fresh session + reload")
+                        panelDiag("feed withheld again: fresh session")
                         val cm = android.webkit.CookieManager.getInstance()
                         cm.removeAllCookies { _ ->
                             // Re-seed the EU consent cookies the anonymous session needs (else Google
@@ -430,7 +442,7 @@ private fun buildPanelWebView(
                             wv.post { wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=${WebReviewsFetcher.reviewsHl()}&gl=us") }
                         }
                     }
-                    else -> onFail()
+                    else -> { panelDiag("feed withheld three times: giving up"); onFail() }
                 }
             }
         }
@@ -458,7 +470,15 @@ private fun buildPanelWebView(
         override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
             // The review feed is a batchexecute RPC (rpcids=qv9Egd, 2026-09-13); one line per call
             // so a page that never fetches it (Google withholding the feed) shows in logcat.
-            request?.url?.toString()?.let { u -> if (u.contains("batchexecute") && u.contains("rpcids=")) android.util.Log.i("VelaPanelNet", u.substringAfter("rpcids=").take(12)) }
+            request?.url?.toString()?.let { u ->
+                if (u.contains("batchexecute") && u.contains("rpcids=")) {
+                    val rpc = u.substringAfter("rpcids=").take(12)
+                    android.util.Log.i("VelaPanelNet", rpc)
+                    // Runs on a WebView worker thread; the counter only feeds the export.
+                    val n = feedCalls.incrementAndGet()
+                    if (n <= 3 || n % 10 == 0) panelDiag("page request #$n", rpc)
+                }
+            }
             if (request != null && blocked(request)) {
                 return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)))
             }
@@ -478,6 +498,7 @@ private fun buildPanelWebView(
 
         override fun onPageFinished(view: WebView?, url: String?) {
             loaded = true
+            panelDiag("page loaded", url?.let { u -> android.net.Uri.parse(u).let { "${it.host}/${it.pathSegments.firstOrNull().orEmpty()}" } })
             // D-pad: give the full-screen reviews WebView focus so the UP/DOWN page-scroll key
             // listener above receives events (harmless under touch — it's the only interactive
             // thing in the full-screen dialog besides the back arrow, which BACK still reaches).
@@ -497,10 +518,17 @@ private fun buildPanelWebView(
         override fun onConsoleMessage(m: android.webkit.ConsoleMessage): Boolean {
             if (m.messageLevel() == android.webkit.ConsoleMessage.MessageLevel.ERROR) {
                 android.util.Log.w("VelaPanel", "console: ${m.message()} (${m.sourceId()}:${m.lineNumber()})")
+                // Our own probe lines and real script errors only; Google's page logs CORS noise.
+                val msg = m.message()
+                when {
+                    msg.startsWith("vela-probe") -> panelDiag("probe", msg.removePrefix("vela-probe ").substringBefore(" review=/"))
+                    msg.contains("Uncaught") && consoleErrors++ < 5 -> panelDiag("script error", "$msg (line ${m.lineNumber()})")
+                }
             }
             return true
         }
     }
+    panelDiag("open hl=${WebReviewsFetcher.reviewsHl()} full=$fullScreen", "cid=$cid")
     wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=${WebReviewsFetcher.reviewsHl()}&gl=us")
     return wv
 }
@@ -555,6 +583,20 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
         (function(){
           var tries=0, readySent=false, revAt=-1;
           var VW=(function(){ var o={}; var src=$wordsJs; for(var k in src){ try{ o[k]=new RegExp(src[k],'i'); }catch(e){} } return o; })();
+          $STRIP_PLACE_NAME_JS
+          // See more reviews: log the tap and how many cards the page held before and 5 s after,
+          // so a "the button does nothing" report carries its own evidence (issue #535).
+          function velaCardCount(){ var ids={}, n=0; document.querySelectorAll('[data-review-id]').forEach(function(e){ var k=e.getAttribute('data-review-id'); if(!ids[k]){ ids[k]=1; n++; } }); return Math.max(n, document.querySelectorAll('.jJc9Ad').length); }
+          if(!window.__velaMoreHook){ window.__velaMoreHook=1; document.addEventListener('click', function(ev){
+            try{
+              var b=ev.target && ev.target.closest && ev.target.closest('button,[role="button"]'); if(!b) return;
+              var l=velaNoName(((b.getAttribute('aria-label')||'')+' '+(b.textContent||'')).trim());
+              if(!(VW.more && VW.more.test(l) && VW.review && VW.review.test(l))) return;
+              var before=velaCardCount();
+              VelaPanel.note('more reviews tapped', 'cards '+before);
+              setTimeout(function(){ try{ VelaPanel.note('more reviews after 5 s', 'cards '+before+' -> '+velaCardCount()); }catch(e){} }, 5000);
+            }catch(e){}
+          }, true); }
           // A star widget in any language: its aria-label leads with the rating and names a star.
           function velaIsStarLabel(t){ return /^\s*\d(?:[.,]\d)?\s*/.test(t||'') && VW.star.test(t||''); }
           function velaTagStars(){
@@ -1026,7 +1068,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
             var ts=[].slice.call(document.querySelectorAll('[role="tab"]'));
             if(!window.__velaTabsLogged && ts.length){ window.__velaTabsLogged=1; try{ console.error('vela-probe tabs='+JSON.stringify(ts.map(function(t){ return ((t.getAttribute('aria-label')||t.textContent)||'').trim(); }))+' review='+String(VW.review)); }catch(e){} }
             for(var i=0;i<ts.length;i++){
-              var tl=((ts[i].getAttribute('aria-label')||ts[i].textContent)||'').trim();
+              var tl=velaNoName(((ts[i].getAttribute('aria-label')||ts[i].textContent)||'').trim());
               if(VW.review.test(tl)){
                 if((ts[i].getAttribute('aria-selected')||'')==='true') return true;
                 try{ ts[i].click(); }catch(e){}
@@ -1094,7 +1136,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
             var grace10 = (revAt>=0 && tries-revAt>=10);
             var sumOk = (!window.__velaHistSent || window.__velaSumFaded || grace10) &&
                         (!window.__velaChipsSent || window.__velaCtlFaded || grace10);
-            if(iso && rev && sumOk && (haveCards || (revAt>=0 && tries-revAt>=8))){ readySent=true; window.__velaBootDone=1; setupOnce(); stretch(); velaHistogram(); velaFont(); try{ VelaPanel.ready(); }catch(e){} }
+            if(iso && rev && sumOk && (haveCards || (revAt>=0 && tries-revAt>=8))){ readySent=true; window.__velaBootDone=1; setupOnce(); stretch(); velaHistogram(); velaFont(); try{ VelaPanel.note('ready', 'cards '+velaCardCount()+' after '+tries+' ticks'); VelaPanel.ready(); }catch(e){} }
             if(!readySent && tries>60){ try{ VelaPanel.fail(); }catch(e){} return; }
             setTimeout(tick, readySent?1000:250);
           }

@@ -230,6 +230,7 @@ class WebReviewsFetcher @Inject constructor(
               // (it did from 2026-09-06 to 2026-09-13: "missing ) after argument list" at this
               // line, every scrape timed out with nothing, issue #359 for every language).
               var REVIEW_WORD=new RegExp(${reviewPatternJs()},'i');
+              $STRIP_PLACE_NAME_JS
               var MORE_WORD=new RegExp(${morePatternJs()},'i');
               var SEL=${selectorsJs()};
               function t1(c,sel){ var e=c.querySelector(sel); return e?(e.textContent||'').trim():''; }
@@ -333,7 +334,7 @@ class WebReviewsFetcher @Inject constructor(
                 // still-loading list restarts its ~8 s render (that regression turned busy pages back to 3).
                 var ts=[].slice.call(document.querySelectorAll('[role="tab"]'));
                 for(var i=0;i<ts.length;i++){
-                  var tl=((ts[i].getAttribute('aria-label')||ts[i].textContent)||'').trim();
+                  var tl=velaNoName(((ts[i].getAttribute('aria-label')||ts[i].textContent)||'').trim());
                   if(REVIEW_WORD.test(tl)){
                     sawEntry=true;
                     if((ts[i].getAttribute('aria-selected')||'')==='true'){ if(!opened){ opened=true; openedAt=tries; openedBy='tab'; } return; }
@@ -347,7 +348,7 @@ class WebReviewsFetcher @Inject constructor(
                 // button silently no-ops, same as the tab).
                 if(opened) return;
                 var bs=[].slice.call(document.querySelectorAll('button'));
-                for(var i=0;i<bs.length;i++){ var l=((bs[i].getAttribute('aria-label')||bs[i].textContent)||''); if(REVIEW_WORD.test(l)&&MORE_WORD.test(l)){ sawEntry=true; try{ bs[i].click(); }catch(e){} opened=true; openedAt=tries; openedBy='btn'; return; } }
+                for(var i=0;i<bs.length;i++){ var l=velaNoName((bs[i].getAttribute('aria-label')||bs[i].textContent)||''); if(REVIEW_WORD.test(l)&&MORE_WORD.test(l)){ sawEntry=true; try{ bs[i].click(); }catch(e){} opened=true; openedAt=tries; openedBy='btn'; return; } }
               }
               function tick(){
                 tries++;

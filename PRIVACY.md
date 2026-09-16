@@ -154,7 +154,8 @@ and hand it to a developer** to debug. Specifics:
   start/end coordinates of routes you asked for, and **navigation breadcrumbs** (a
   start/arrival line with the destination name and the drive's distance + time, plus
   "GPS gap" markers noting where the signal dropped and for how long - for debugging a
-  bad route or *tuning the turn-by-turn*). No account, no contacts, no continuous
+  bad route or *tuning the turn-by-turn*), and for the full review page, Google's id for
+  the place and how the page loaded (tabs seen, review counts, retries). No account, no contacts, no continuous
   location trail.
 - **Turning it off wipes the log.** Exports also scrub coordinates down to ~1 km before the
   share sheet ever sees them, so a pasted report can't pinpoint you. **Redact places in exports**

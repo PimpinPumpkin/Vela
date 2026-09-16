@@ -40,6 +40,7 @@ class DiagLog @Inject constructor(
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY, false)
 
     init {
+        shared = this
         if (enabled) runCatching {
             if (file.exists()) file.readLines().takeLast(CAP).forEach { line ->
                 decode(line)?.let { ring.addLast(it) }
@@ -97,10 +98,15 @@ class DiagLog @Inject constructor(
     private fun esc(s: String) = s.replace("\\", "\\\\").replace("\t", "\\t").replace("\n", "\\n").replace("\r", "")
     private fun unesc(s: String) = s.replace("\\n", "\n").replace("\\t", "\t").replace("\\\\", "\\")
 
-    private companion object {
-        const val PREFS = "vela_settings"
-        const val KEY = "diag_enabled"
-        const val CAP = 300
-        const val DETAIL_CAP = 2000
+    companion object {
+        /** The app's one instance, for code outside injection (the full-screen review page is a
+         *  plain composable). Null only before Hilt builds the singleton. */
+        @Volatile
+        var shared: DiagLog? = null
+            private set
+        private const val PREFS = "vela_settings"
+        private const val KEY = "diag_enabled"
+        private const val CAP = 300
+        private const val DETAIL_CAP = 2000
     }
 }
