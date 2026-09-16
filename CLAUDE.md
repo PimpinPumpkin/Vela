@@ -1987,6 +1987,37 @@ architecture note.
   layer then holds exactly what Google did not return, which is the point of Both. Offline nothing
   is hidden (no ambient places to match against). The first cut kept the open icon when the two
   agreed within 25 m; the user asked for Google to win either way.
+- **The sheet's fold FADE was the expand/minimize stutter (2026-09-16, measured).** `SheetFold`
+  wrapped the folding content in a `graphicsLayer { alpha = fraction() }`, and an alpha below 1
+  renders the children into an OFFSCREEN buffer and blends it - 20 ms of GPU per frame on a 4a,
+  half the budget. Framestats over four detent toggles: offscreen alpha total p50 32.1 ms / gpu
+  20.3; the same build with the fade forced opaque 16.7 / 12.3; with
+  `CompositingStrategy.ModulateAlpha` (alpha applied per draw op, no buffer) 32.0 / 13.6. So
+  ModulateAlpha is a third off the GPU and ships, but the tail (gpu p90 23.7) still holds the
+  animation near 30 fps: dropping the cross-fade entirely is the only thing that reached 60, and
+  that is a design call. MEASURE+LAYOUT IS NOT THE PROBLEM (p50 0.1 ms) - the animated-height
+  layout modifier was the wrong suspect, do not "fix" it. The map is its own SurfaceView, so none
+  of this is the map compositing. Read the phases with `dumpsys gfxinfo app.vela framestats`
+  (DrawStart - PerformTraversalsStart = measure+layout, FrameCompleted - IssueDrawCommandsStart =
+  gpu); plain gfxinfo percentiles cannot tell CPU from GPU.
+- **UNIT-LEVEL SNAP for stacked tenants (2026-09-16, `build-places-region.sh`).** A stacked row has
+  no coordinate of its own (Overture puts a building's tenants on one parcel point, usually the
+  lot's address out front), so the ring spread invents one. Overture's ADDRESSES theme carries a
+  point per unit, so a tenant whose own address names a unit ("STE B", "APT 112") is snapped to
+  that point first and only what is still stacked gets the ring. Matched on house NUMBER + UNIT
+  within ~200 m, street name IGNORED on purpose: a number plus a unit is unique that close, and
+  the two themes abbreviate streets differently ("Blvd" vs "Boulevard"). Davis: 444 stacked rows,
+  218 name a unit, 97 snapped. `$ADDR_SQL` is empty on the local-parquet dev path. Only STACKED
+  rows are snapped - an unstacked place already has a real coordinate (measured: Overture and
+  AllThePlaces agree to a median 7.4 m over 124 Davis chains, so neither source is systematically
+  better and snapping everything would move good points for nothing).
+- **The high-zoom icon budget is `frank` (2026-09-16).** A ~100 m cell rank baked alongside
+  rank/crank/xrank. `rank`'s 400 m cell is about the whole screen at z17.5, so a cap on it never
+  opens up as you zoom; `frank` is a per-block budget: `openIconCapNear` (8) get an icon at z17.5,
+  `openIconCapClose` (16) at z18.5, everything from z19.5, both calibration dials. A place below
+  the cut still draws as a DOT (the dots tier is unfiltered from z17), which is the user's ask:
+  "minimizing to little circle dots is an alternative if we are too crowded ... we can see more
+  later when we zoom into an area", not places disappearing.
 - **Open-layer labels stay thinned at max zoom (2026-09-16).** Icons come in for everything from
   z17.5 but only the top `openLabelCap` (calibration dial, default 20) per 400 m cell get a name:
   each label is glyph layout plus a collision pass over four anchors, and a mall puts dozens in one
@@ -1996,6 +2027,15 @@ architecture note.
   never the bare not-planned close - the label is how the tracker shows why, and `wontfix` is for
   a request that was understood and declined. The rules themselves are in CONTRIBUTING.md under
   "Bug reports and feature requests"; both issue forms carry the matching checklist.
+- **Bake joins must be HASH joins (2026-09-16).** Two correlated lookups that were free on the
+  Davis box went effectively quadratic over a whole state: the tenant check (one EXISTS with three
+  OR-ed tests) and the unit snap (a LATERAL lookup per stacked row). A world bake did 19 regions in
+  2.5 hours on them, and four west-coast state bakes were still running after an hour. Both are
+  now equi-joins with the ~200 m box as a residual: `tenants` is three joins (normalized address,
+  lower(brand), `nhead` first word) UNIONed and DISTINCT, and the snap joins on (number, unit)
+  and keeps the nearest by row_number. Output on the Davis fixture is identical. Any new rule in
+  `build-places-region.sh` that relates rows to rows needs an equality to hash on - an OR of tests
+  or a correlated subquery will not survive a state.
 - **Tenant demotion is a SEMI-JOIN (2026-09-16).** `tools/build-places-region.sh` used a LEFT JOIN
   onto the anchor rows, so a tenant matching two anchors (a mall AND the supermarket inside it)
   was emitted TWICE - 136 duplicate rows in the Davis fixture, each landing in its own slot of the
