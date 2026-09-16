@@ -1987,6 +1987,19 @@ architecture note.
   layer then holds exactly what Google did not return, which is the point of Both. Offline nothing
   is hidden (no ambient places to match against). The first cut kept the open icon when the two
   agreed within 25 m; the user asked for Google to win either way.
+- **The sheet's fold FADE was the expand/minimize stutter (2026-09-16, measured).** `SheetFold`
+  wrapped the folding content in a `graphicsLayer { alpha = fraction() }`, and an alpha below 1
+  renders the children into an OFFSCREEN buffer and blends it - 20 ms of GPU per frame on a 4a,
+  half the budget. Framestats over four detent toggles: offscreen alpha total p50 32.1 ms / gpu
+  20.3; the same build with the fade forced opaque 16.7 / 12.3; with
+  `CompositingStrategy.ModulateAlpha` (alpha applied per draw op, no buffer) 32.0 / 13.6. So
+  ModulateAlpha is a third off the GPU and ships, but the tail (gpu p90 23.7) still holds the
+  animation near 30 fps: dropping the cross-fade entirely is the only thing that reached 60, and
+  that is a design call. MEASURE+LAYOUT IS NOT THE PROBLEM (p50 0.1 ms) - the animated-height
+  layout modifier was the wrong suspect, do not "fix" it. The map is its own SurfaceView, so none
+  of this is the map compositing. Read the phases with `dumpsys gfxinfo app.vela framestats`
+  (DrawStart - PerformTraversalsStart = measure+layout, FrameCompleted - IssueDrawCommandsStart =
+  gpu); plain gfxinfo percentiles cannot tell CPU from GPU.
 - **UNIT-LEVEL SNAP for stacked tenants (2026-09-16, `build-places-region.sh`).** A stacked row has
   no coordinate of its own (Overture puts a building's tenants on one parcel point, usually the
   lot's address out front), so the ring spread invents one. Overture's ADDRESSES theme carries a
