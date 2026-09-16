@@ -3742,6 +3742,42 @@ class MapViewModel @Inject constructor(
         if (changed) route(_state.value.travelMode)
     }
 
+    /** The planning trip as the full-trip editor's rows (issue #516): start, stops, destination in
+     *  travel order, with null meaning "your location". */
+    fun tripPointsForEditor(): List<app.vela.ui.place.TripPoint> {
+        val s = _state.value
+        val place = s.selected
+        val start = if (s.directionsReversed) place else s.directionsOrigin
+        val end = if (s.directionsReversed) s.directionsOrigin else place
+        return listOf(app.vela.ui.place.TripPoint(start)) +
+            s.directionsWaypoints.map { app.vela.ui.place.TripPoint(it) } +
+            app.vela.ui.place.TripPoint(end)
+    }
+
+    /** Apply a full-trip edit (issue #516): the first point becomes the start and the last the
+     *  destination, whatever they were before; "your location" in the middle becomes a stop at the
+     *  current fix. Maps back onto the chooser's model (selected / directionsOrigin / reversed, with
+     *  stops always in travel order) and reroutes once. */
+    fun applyTrip(points: List<app.vela.ui.place.TripPoint>) {
+        if (points.size < 2) return
+        val s = _state.value
+        val start = points.first().place
+        val end = points.last().place
+        if (start == null && end == null) return // both ends "you": nothing to route
+        val me = s.myLocation
+        val mids = points.subList(1, points.size - 1).mapNotNull { p ->
+            p.place ?: me?.let { Place(id = "me", name = appContext.getString(R.string.mapscreen_your_location), location = it) }
+        }
+        _state.update {
+            if (end == null) {
+                it.copy(selected = start, directionsOrigin = null, directionsReversed = true, directionsWaypoints = mids, editingStops = false)
+            } else {
+                it.copy(selected = end, directionsOrigin = start, directionsReversed = false, directionsWaypoints = mids, editingStops = false)
+            }
+        }
+        route(_state.value.travelMode)
+    }
+
     fun cancelPickStop() = _state.update { it.copy(pickingStop = false) }
 
     fun addStopDuringNav(p: Place) = nav.addStopDuringNav(p)

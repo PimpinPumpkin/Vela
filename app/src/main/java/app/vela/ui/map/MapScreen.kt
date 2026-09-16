@@ -1071,6 +1071,13 @@ fun MapScreen(
             },
             altColor = if (darkTheme) "#C8CDD4" else "#9AA0A6",
             onSelectAlternate = vm::selectRoute,
+            // Google-style chooser experiment: every route wears its time on the map, placed where
+            // it runs apart from the others; tapping a bubble picks that route.
+            routeBubbles = if (app.vela.ui.Experiments.googleChooser.value && state.directionsOpen && !state.navigating &&
+                state.travelMode != app.vela.core.model.TravelMode.TRANSIT
+            ) {
+                remember(state.routes, state.activeRoute) { routeBubblesFor(state.routes, state.routes.indexOf(state.activeRoute).coerceAtLeast(0)) }
+            } else emptyList(),
             markers = markersOf(state, filteredResultIds),
             frameMarkers = state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed,
             holdMarkerFit = state.selected != null || state.streetView != null || state.streetViewLoading,
@@ -1483,6 +1490,7 @@ fun MapScreen(
                             onAddStop = vm::openStopsEditor,
                             onSwap = vm::swapDirections,
                             onClose = vm::clearRoute,
+                            googleStyle = app.vela.ui.Experiments.googleChooser.value,
                         )
                     }
                     // The bar hides while an expanded place sheet covers it: the visible sliver
@@ -1920,6 +1928,16 @@ fun MapScreen(
 
             // The dedicated stops editor covers the directions panel while open (drag to
             // reorder, remove, add; one reroute on Done).
+            state.editingStops && state.directionsOpen && !searchOpen && state.pickOnMap == null &&
+                app.vela.ui.Experiments.googleChooser.value -> app.vela.ui.place.TripEditorSheet(
+                points = remember(state.selected, state.directionsOrigin, state.directionsReversed, state.directionsWaypoints) { vm.tripPointsForEditor() },
+                meLabel = stringResource(R.string.mapscreen_your_location),
+                onApply = vm::applyTrip,
+                onAddStop = vm::beginPickStop,
+                onDismiss = vm::closeStopsEditor,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+
             state.editingStops && state.directionsOpen && !searchOpen && state.pickOnMap == null -> app.vela.ui.place.StopsEditorSheet(
                 originName = if (state.directionsReversed) (state.selected?.name ?: stringResource(R.string.mapscreen_place))
                 else (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location)),
@@ -1938,6 +1956,66 @@ fun MapScreen(
             // instead of burying it at the bottom of the place sheet.
             // Hidden while the search overlay is up (e.g. picking a custom origin) so
             // the panel doesn't render over it.
+            state.directionsOpen && !searchOpen && state.pickOnMap == null &&
+                app.vela.ui.Experiments.googleChooser.value && state.travelMode != app.vela.core.model.TravelMode.TRANSIT -> {
+                val shareCtx = LocalContext.current
+                val destLabel = if (state.directionsReversed) (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location))
+                else (state.selected?.name ?: stringResource(R.string.mapscreen_destination))
+                val shareText = state.activeRoute?.let { r ->
+                    stringResource(R.string.exp_chooser_share_text, destLabel,
+                        app.vela.ui.formatDuration(r.durationInTrafficSeconds ?: r.durationSeconds), app.vela.ui.formatDistance(r.distanceMeters))
+                }
+                app.vela.ui.place.GoogleStyleDirectionsPanel(
+                    currentMode = state.travelMode,
+                    routes = state.routes,
+                    activeRoute = state.activeRoute,
+                    flockOnRoute = state.flockOnRoute,
+                    modeEtas = state.modeEtas,
+                    onModeSelected = vm::setTravelMode,
+                    avoidTolls = state.avoidTolls,
+                    avoidHighways = state.avoidHighways,
+                    onAvoidTolls = vm::setAvoidTolls,
+                    onAvoidHighways = vm::setAvoidHighways,
+                    onStartNav = onStartNav,
+                    onSearchAlongRoute = vm::searchAlongRoute,
+                    onTimeSelected = vm::setDirectionsTime,
+                    onEditStops = vm::openStopsEditor,
+                    onShare = {
+                        val dest = state.selected
+                        val body = listOfNotNull(
+                            shareText,
+                            dest?.let { "geo:${it.location.lat},${it.location.lng}?q=${it.location.lat},${it.location.lng}(${android.net.Uri.encode(it.name)})" },
+                        ).joinToString("\n")
+                        runCatching {
+                            shareCtx.startActivity(
+                                android.content.Intent.createChooser(
+                                    android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, body),
+                                    null,
+                                ),
+                            )
+                        }
+                    },
+                    onClose = vm::clearRoute,
+                    onStep = vm::previewStep,
+                    destName = destLabel,
+                    destAddress = state.selected?.address,
+                    legStarts = remember(state.activeRoute, state.directionsWaypoints) {
+                        val r = state.activeRoute
+                        if (r == null || state.directionsWaypoints.isEmpty()) emptyList()
+                        else app.vela.core.nav.RouteStops.legStarts(r, state.directionsWaypoints.map { it.location to it.name })
+                    },
+                    minimizeTick = dirPanTick,
+                    onCollapsedChange = { dirMinimized = it },
+                    bodyMaxDp = if (landscapeChrome) null else with(LocalDensity.current) {
+                        (screenHeightPx.toDp().value - topCardBottomPx.toDp().value - CHOOSER_MAP_STRIP_DP - CHOOSER_HEADER_DP)
+                            .coerceAtLeast(CHOOSER_BODY_MIN_DP)
+                    },
+                    modifier = Modifier
+                        .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
+                        .landscapeColumn(landscapeChrome, sidePanelWidthDp),
+                )
+            }
+
             state.directionsOpen && !searchOpen && state.pickOnMap == null -> DirectionsPanel(
                 destinationName = if (state.directionsReversed) (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location))
                 else (state.selected?.name ?: stringResource(R.string.mapscreen_destination)),
@@ -5151,3 +5229,31 @@ private fun ScaleBarReader(
 private fun Modifier.landscapeColumn(landscape: Boolean, widthDp: androidx.compose.ui.unit.Dp): Modifier =
     if (!landscape) this
     else this.widthIn(max = widthDp).windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Start))
+
+/** Where each route's time bubble goes (the Google-style chooser experiment): on the part of the
+ *  route that runs farthest from the other routes, so the bubbles sit where the choices differ
+ *  instead of stacking on the shared stretch. Sampled (routes can be thousands of points long). */
+private fun routeBubblesFor(routes: List<app.vela.core.model.Route>, activeIdx: Int): List<app.vela.ui.map.RouteBubble> {
+    if (routes.isEmpty()) return emptyList()
+    fun sample(p: List<app.vela.core.model.LatLng>, n: Int): List<app.vela.core.model.LatLng> =
+        if (p.size <= n) p else List(n) { p[(it.toLong() * (p.size - 1) / (n - 1)).toInt()] }
+    fun distM(a: app.vela.core.model.LatLng, b: app.vela.core.model.LatLng): Double {
+        val dy = (a.lat - b.lat) * 111_320.0
+        val dx = (a.lng - b.lng) * 111_320.0 * kotlin.math.cos(Math.toRadians(a.lat))
+        return kotlin.math.sqrt(dx * dx + dy * dy)
+    }
+    val coarse = routes.map { sample(it.polyline, 240) }
+    return routes.mapIndexedNotNull { i, r ->
+        if (r.polyline.size < 2) return@mapIndexedNotNull null
+        val cand = sample(r.polyline, 60).let { c -> if (c.size > 10) c.subList(c.size / 10, c.size - c.size / 10) else c }
+        val others = coarse.filterIndexed { j, _ -> j != i }.flatten()
+        val at = if (others.isEmpty()) r.polyline[r.polyline.size / 2]
+        else cand.maxByOrNull { p -> others.minOf { distM(p, it) } } ?: r.polyline[r.polyline.size / 2]
+        app.vela.ui.map.RouteBubble(
+            index = i,
+            at = at,
+            label = app.vela.ui.formatDuration(r.durationInTrafficSeconds ?: r.durationSeconds),
+            selected = i == activeIdx,
+        )
+    }
+}

@@ -245,3 +245,172 @@ fun StopsEditorSheet(
         }
     }
 }
+
+/** One point of a trip in [TripEditorSheet]: a place, or null for "your location". */
+data class TripPoint(val place: Place?)
+
+/**
+ * The trip editor as Google Maps lays it out (issue #516, the Google-style chooser experiment):
+ * EVERY row - start, stops and destination - has a drag handle and a remove button, so the start
+ * can be moved down the list or dropped and the destination moved up, not just the stops between
+ * them. The first row wears the start ring, the last the destination flag, the ones between are
+ * numbered; removing is disabled once only two points are left. Edits stay local until Done.
+ */
+@Composable
+fun TripEditorSheet(
+    points: List<TripPoint>,
+    meLabel: String,
+    onApply: (List<TripPoint>) -> Unit,
+    onAddStop: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val dark = isAppInDarkTheme()
+    val ink = SheetPalette.ink(dark)
+    val dim = SheetPalette.dim(dark)
+    val dpadMode = rememberDpadMode()
+    // Rows need stable keys even when the same place appears twice or two are "you".
+    data class Row0(val key: Int, val point: TripPoint)
+    var order by remember(points) { mutableStateOf(points.mapIndexed { i, p -> Row0(i, p) }) }
+    var dragIdx by remember { mutableStateOf(-1) }
+    var dragDy by remember { mutableStateOf(0f) }
+    val rowHeightPx = with(LocalDensity.current) { ROW_HEIGHT.toPx() }
+    fun swap(a: Int, b: Int) {
+        val list = order.toMutableList()
+        val t = list[a]; list[a] = list[b]; list[b] = t
+        order = list
+    }
+    Card(
+        modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark), contentColor = ink),
+    ) {
+        Column(Modifier.navigationBarsPadding().padding(horizontal = 20.dp, vertical = 14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.stops_editor_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = ink,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.mapscreen_cancel), tint = dim)
+                }
+            }
+            order.forEachIndexed { i, row ->
+                key(row.key) {
+                    val idx by rememberUpdatedState(i)
+                    val first = i == 0
+                    val last = i == order.lastIndex
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(ROW_HEIGHT)
+                            // One modifier chain for every row, drag or not: swapping the chain
+                            // when the drag starts cut the gesture off after its first move.
+                            .zIndex(if (i == dragIdx) 1f else 0f)
+                            .graphicsLayer { translationY = if (idx == dragIdx) dragDy else 0f }
+                            .background(
+                                if (i == dragIdx) SheetPalette.row(dark) else androidx.compose.ui.graphics.Color.Transparent,
+                                RoundedCornerShape(8.dp),
+                            ),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        // Glyph by POSITION, not by what the point is: the top row is the start,
+                        // the bottom row the destination, whatever was dragged there.
+                        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                            when {
+                                first -> Box(
+                                    Modifier.size(12.dp).clip(CircleShape)
+                                        .background(if (row.point.place == null) MaterialTheme.colorScheme.primary else dim),
+                                )
+                                last -> Icon(Icons.Default.Place, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFFEA4335), modifier = Modifier.size(20.dp))
+                                else -> Box(
+                                    Modifier.size(20.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text("$i", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            row.point.place?.name ?: meLabel,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (last) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (row.point.place == null) MaterialTheme.colorScheme.primary else ink,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (dpadMode) {
+                            if (i > 0) IconButton(onClick = { swap(i, i - 1) }, modifier = Modifier.size(36.dp).dpadHighlight(RoundedCornerShape(6.dp))) {
+                                Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.place_move_stop_up), tint = dim, modifier = Modifier.size(20.dp))
+                            }
+                            if (i < order.lastIndex) IconButton(onClick = { swap(i, i + 1) }, modifier = Modifier.size(36.dp).dpadHighlight(RoundedCornerShape(6.dp))) {
+                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.place_move_stop_down), tint = dim, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                        Icon(
+                            Icons.Default.DragHandle,
+                            contentDescription = stringResource(R.string.stops_drag_reorder),
+                            tint = dim,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .padding(8.dp)
+                                .pointerInput(Unit) {
+                                    detectDragGestures(
+                                        onDragStart = { dragIdx = idx; dragDy = 0f },
+                                        onDrag = { change, delta ->
+                                            change.consume()
+                                            dragDy += delta.y
+                                            while (dragDy > rowHeightPx / 2 && dragIdx < order.lastIndex) {
+                                                swap(dragIdx, dragIdx + 1); dragIdx += 1; dragDy -= rowHeightPx
+                                            }
+                                            while (dragDy < -rowHeightPx / 2 && dragIdx > 0) {
+                                                swap(dragIdx, dragIdx - 1); dragIdx -= 1; dragDy += rowHeightPx
+                                            }
+                                        },
+                                        onDragEnd = { dragIdx = -1; dragDy = 0f },
+                                        onDragCancel = { dragIdx = -1; dragDy = 0f },
+                                    )
+                                },
+                        )
+                        IconButton(
+                            onClick = { order = order.filterIndexed { j, _ -> j != i } },
+                            enabled = order.size > 2,
+                            modifier = Modifier.size(36.dp).dpadHighlight(RoundedCornerShape(6.dp)),
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = stringResource(R.string.place_remove_stop),
+                                tint = if (order.size > 2) dim else dim.copy(alpha = 0.3f),
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
+                }
+            }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .dpadHighlight(RoundedCornerShape(8.dp))
+                    .clickable { onApply(order.map { it.point }); onAddStop() }
+                    .padding(vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(14.dp))
+                Text(stringResource(R.string.place_add_stop), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Button(onClick = { onApply(order.map { it.point }) }) {
+                    Text(stringResource(R.string.nav_done))
+                }
+            }
+        }
+    }
+}

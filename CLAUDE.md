@@ -1975,6 +1975,14 @@ architecture note.
   (Restaurants, Coffee, Gas, EV charging, Groceries, Hotels, Pharmacy, ATMs, Parks, in that
   order); they had drifted to three different sets. Add or reorder a chip there, never inline.
   Every query must be one `OfflinePoiStore` expands, or the chip is dead offline.
+- **Google-style chooser EXPERIMENT (2026-09-16, `ui/Experiments`, pref `exp_google_chooser`).**
+  Off by default, Settings > Diagnostics. `GoogleStyleDirectionsPanel` (ui/place/GoogleChooser.kt)
+  replaces DirectionsPanel for non-transit modes; `routeBubblesFor` (MapScreen) picks each route's
+  bubble point as the sample farthest from the other routes, and VelaMapView draws them on
+  `ROUTE_BUBBLE_LAYER` (tappable like the alternate lines, `ALT_INDEX_PROP`). Edit stops opens
+  `TripEditorSheet` (StopsEditor.kt): the whole trip as one list, `MapViewModel.tripPointsForEditor`
+  / `applyTrip` map it back onto directionsOrigin / selected / waypoints / reversed (a null point
+  is "your location"). The experiment strings are `translatable="false"` until it is kept.
 - **Stop dividers in the step list (2026-09-16, #519):** `StepsSheet(legStarts = [(maneuver index
   where leg k>0 starts, stop name)])` draws `StopDividerRow` before that step; MapScreen computes
   the indices from `activeRoute.legs` (cumulative maneuver counts) and names them from
