@@ -3453,6 +3453,15 @@ Gotchas:
   `map_places_google_lookup`): off, a seeded open-place tap stays on the tile data, no search, no
   reviews, nothing to Google; basemap taps still resolve. Licence:
   CDLA-Permissive 2.0, attribution still to add to About.
+- **Sheet titles follow the app language's SCRIPT (2026-09-15, `core/util/NameScript`).** Google
+  answers a tap's correlation with the local-script name even under hl=en (a Hebrew title over an
+  English app's Latin pin in Tel Aviv). `onPoiTap`'s resolve now runs `NameScript.prefer(uiLang,
+  google, placeholder.name)`: when Google's name is not in the app language's script and the map's
+  own label (open tile name or basemap name) is, the label stays as the title; otherwise Google's
+  name wins as before (so "Mikuni Japanese Restaurant" still becomes "Mikuni"). Script per
+  language is a table in `scriptOf`; Japanese counts kana and kanji; unknown languages keep
+  Google's name. Unit-tested (`NameScriptTest`). The label can be bilingual ("X - <hebrew>") when
+  the data names it that way; that is the map's own label, not a bug.
 - **ALLTHEPLACES in the bake (2026-09-15 night):** `tools/build-places-region.sh` pulls the region's
   z15 tiles from the AllThePlaces world PMTiles (`pmtiles extract --bbox`, seconds, run pinned by
   `ATP_RUN`, `ATP_LOCAL` for a local extract, `ATP_RUN=none` to skip), decodes them

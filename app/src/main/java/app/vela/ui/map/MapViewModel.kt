@@ -3122,7 +3122,11 @@ class MapViewModel @Inject constructor(
                 }
                 pick?.takeIf { it.location.distanceTo(location) <= maxM } to results
             }.getOrNull()
-            val full = resolved?.first
+            // Google answers with the local-script name even under hl=en (a Hebrew title over an
+            // English app's Latin pin, user 2026-09-15): keep the map's own label when it is in
+            // the app language's script and Google's is not (core NameScript, unit-tested).
+            val uiLang = app.vela.ui.AppLocale.language.value.ifBlank { java.util.Locale.getDefault().language }
+            val full = resolved?.first?.let { f -> f.copy(name = app.vela.core.util.NameScript.prefer(uiLang, f.name, placeholder.name)) }
             // Remember the listing for an instant second tap, unless the session was still on the
             // slim flavor (no review count, no hours) and would pin a stripped listing for the
             // rest of the session. A later tap then resolves it again, fuller.
