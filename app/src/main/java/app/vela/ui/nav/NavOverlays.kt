@@ -675,13 +675,7 @@ fun NavSearchChips(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // (localized label, STABLE English query, icon) — query is the logic key, label localizes.
-            listOf(
-                Triple(R.string.cat_gas, app.vela.ui.CategoryQuery.fuel(), Icons.Default.LocalGasStation),
-                Triple(R.string.cat_ev, "EV charging station", Icons.Default.EvStation),
-                Triple(R.string.cat_food, "Food", Icons.Default.Restaurant),
-                Triple(R.string.cat_coffee, "Coffee", Icons.Default.LocalCafe),
-                Triple(R.string.cat_groceries, "Groceries", Icons.Default.LocalGroceryStore),
-            ).forEach { (labelRes, query, icon) ->
+            app.vela.ui.QuickCategories.all().map { Triple(it.label, it.query, it.icon) }.forEach { (labelRes, query, icon) ->
                 FilterChip(
                     selected = false,
                     onClick = { onPick(query) },
