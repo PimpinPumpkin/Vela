@@ -4418,7 +4418,7 @@ private fun osmFillIn(map: MapLibreMap, style: Style) {
         if (osmPoiExclude.isNotEmpty() && openSrcs.isEmpty()) { osmPoiExclude = emptyList(); applyPoiTierFilters(style, lastPoiFuelOnly ?: false) }
         return
     }
-    fun key(n: String): String = n.lowercase().replace(Regex("[^\\p{L}\\p{N} ]"), " ").split(Regex("\\s+")).filter { it.length > 1 }.take(2).joinToString(" ")
+    fun key(n: String): String = n.lowercase().replace(NAME_PUNCT, " ").split(NAME_SPACES).filter { it.length > 1 }.take(2).joinToString(" ")
     val open = HashMap<String, ArrayList<LatLng>>()
     openSrcs.forEach { src ->
         runCatching {
@@ -4432,7 +4432,9 @@ private fun osmFillIn(map: MapLibreMap, style: Style) {
     if (open.isEmpty()) return // tiles not in yet; keep the last list, the next idle recomputes
     val hide = LinkedHashSet<String>()
     runCatching {
-        (style.getSource(base) as? VectorSource)?.querySourceFeatures(arrayOf("poi"), null)?.forEach { f ->
+        val pois = (style.getSource(base) as? VectorSource)?.querySourceFeatures(arrayOf("poi"), null) ?: return
+        if (pois.size > 6000) return // a whole metro's worth of loaded tiles; not worth a main-thread pass, the next idle at a closer zoom does it
+        pois.forEach { f ->
             val pt = f.geometry() as? Point ?: return@forEach
             val n = f.getStringProperty("name") ?: return@forEach
             val ll = LatLng(pt.latitude(), pt.longitude())
@@ -5153,8 +5155,14 @@ private fun openPlacesShown(map: MapLibreMap, style: Style, zoom: Double): List<
 /** Two business names for the same place, allowing for the usual drift between sources
  *  ("Panera Bread" vs "Panera", "Joe's Cafe" vs "Joes Cafe"): they share as many words as the
  *  shorter name has, capped at two. Mirrors MapViewModel.nameAgrees. */
+// Compiled ONCE. Building a Regex per call put Pattern.compile on the main thread for every
+// basemap POI in the loaded tiles (thousands in a dense city), and the OSM fill-in's idle pass
+// hung the map for seconds on a San Francisco view (ANR, 2026-09-16).
+private val NAME_PUNCT = Regex("[^\\p{L}\\p{N} ]")
+private val NAME_SPACES = Regex("\\s+")
+
 private fun namesAgree(a: String, b: String): Boolean {
-    fun words(s: String) = s.lowercase().replace(Regex("[^\\p{L}\\p{N} ]"), " ").split(Regex("\\s+")).filter { it.length > 1 }.toSet()
+    fun words(s: String) = s.lowercase().replace(NAME_PUNCT, " ").split(NAME_SPACES).filter { it.length > 1 }.toSet()
     val x = words(a); val y = words(b)
     if (x.isEmpty() || y.isEmpty()) return false
     return x.intersect(y).size >= minOf(x.size, y.size).coerceAtMost(2)
