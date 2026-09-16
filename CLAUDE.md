@@ -3385,8 +3385,9 @@ Gotchas:
   whole countries, so `downloadPlacesForRegion` pulls EVERY archive whose box center falls inside the
   downloaded region (a whole-country download today gets all its pieces, a Land download later gets one),
   and `sourcesFor` streams the smallest covering piece. The full bake is two manual `places-overlays.yml`
-  dispatches, `shard=a` and `shard=b` (the matrix caps at 256 jobs), max-parallel 4, hours each; `MapPoiPrefs.placesSource` (Settings > Map,
-  "Places come from": `open` ("Vela data", default) / `google` / `both`, pref `map_places_source`,
+  dispatches, `shard=a` and `shard=b` (the matrix caps at 256 jobs), max-parallel 4, hours each; `MapPoiPrefs.placesSource` (Settings > Data & privacy since
+  2026-09-16, was Map; "Places come from": `open` ("Vela data") / `google` / `both` (DEFAULT since
+  2026-09-16, was `open`: the user did not want to miss the places Overture lacks), pref `map_places_source`,
   short user-facing hints plus a Learn more dialog naming Overture/Meta, Vela's own GitHub hosting,
   and the Google hooks on search and tap) gates it; `MapPoiPrefs.placesWithDownloads` (Settings >
   Offline maps, "Include places with downloads", default ON, pref `offline_places_with_downloads`)

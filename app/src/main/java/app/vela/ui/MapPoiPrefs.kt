@@ -27,7 +27,7 @@ object MapPoiPrefs {
      *  (the ambient fan-out on every pan, nothing offline) or [SOURCE_BOTH] (the open layer draws the
      *  map and one Google fetch per settled view fills in what it lacks). Outside any region file all
      *  three behave like Google. The user picks; each option's costs are stated in Settings. */
-    val placesSource = mutableStateOf(SOURCE_OPEN)
+    val placesSource = mutableStateOf(SOURCE_BOTH)
     /** The open places layer is on the map (open data or both). */
     val openPlaces: Boolean get() = placesSource.value != SOURCE_GOOGLE
     /** The open places layer alone owns the map's businesses where it covers the view. */
@@ -46,7 +46,7 @@ object MapPoiPrefs {
         showTransit.value = p.getBoolean(KEY_TRANSIT, true)
         showCivic.value = p.getBoolean(KEY_CIVIC, true)
         iconScale.floatValue = p.getFloat(KEY_SCALE, 1.0f)
-        placesSource.value = p.getString(KEY_PLACES_SOURCE, null) ?: SOURCE_OPEN
+        placesSource.value = p.getString(KEY_PLACES_SOURCE, null) ?: SOURCE_BOTH
         placesWithDownloads.value = p.getBoolean(KEY_PLACES_WITH_DOWNLOADS, true)
         lookupTappedPlaces.value = p.getBoolean(KEY_LOOKUP_TAPPED, true)
     }
