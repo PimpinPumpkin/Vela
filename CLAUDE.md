@@ -2027,6 +2027,15 @@ architecture note.
   never the bare not-planned close - the label is how the tracker shows why, and `wontfix` is for
   a request that was understood and declined. The rules themselves are in CONTRIBUTING.md under
   "Bug reports and feature requests"; both issue forms carry the matching checklist.
+- **Bake joins must be HASH joins (2026-09-16).** Two correlated lookups that were free on the
+  Davis box went effectively quadratic over a whole state: the tenant check (one EXISTS with three
+  OR-ed tests) and the unit snap (a LATERAL lookup per stacked row). A world bake did 19 regions in
+  2.5 hours on them, and four west-coast state bakes were still running after an hour. Both are
+  now equi-joins with the ~200 m box as a residual: `tenants` is three joins (normalized address,
+  lower(brand), `nhead` first word) UNIONed and DISTINCT, and the snap joins on (number, unit)
+  and keeps the nearest by row_number. Output on the Davis fixture is identical. Any new rule in
+  `build-places-region.sh` that relates rows to rows needs an equality to hash on - an OR of tests
+  or a correlated subquery will not survive a state.
 - **Tenant demotion is a SEMI-JOIN (2026-09-16).** `tools/build-places-region.sh` used a LEFT JOIN
   onto the anchor rows, so a tenant matching two anchors (a mall AND the supermarket inside it)
   was emitted TWICE - 136 duplicate rows in the Davis fixture, each landing in its own slot of the

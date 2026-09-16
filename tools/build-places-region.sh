@@ -193,22 +193,31 @@ CREATE MACRO nhead(n) AS nullif(lower(regexp_extract(coalesce(n, ''), '^[A-Za-z]
 CREATE TABLE anchors AS
 SELECT id, name, brand, addr, lat, lng FROM scored
 WHERE category IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store');
--- EXISTS, not a join: a tenant can sit at more than one anchor (a mall inside a shopping centre),
--- and a LEFT JOIN duplicated the row once per match (caught 2026-09-16, +22 rows in Davis).
+-- Which non-anchor rows are DEPARTMENTS of a nearby anchor. Three HASH JOINS, one per way a
+-- department shows itself (same normalized address, same brand, or a name that is the anchor's
+-- first word plus more), each with the ~200 m box as a residual, then DISTINCT ids. The first cut
+-- was one correlated EXISTS with the three tests OR-ed together, which cannot be hashed: it ran
+-- every row against every anchor, fine for Davis and effectively quadratic over a state (a world
+-- bake did 19 regions in 2.5 hours, 2026-09-16). DISTINCT, never a plain join onto the rows: a
+-- tenant can sit at more than one anchor, and a join duplicated the row once per match.
+CREATE TABLE tenants AS
+SELECT DISTINCT id FROM (
+  SELECT s.id FROM scored s JOIN anchors a ON anorm(s.addr) = anorm(a.addr)
+  WHERE s.id <> a.id AND abs(s.lat - a.lat) < 0.002 AND abs(s.lng - a.lng) < 0.003
+    AND (s.category IS NULL OR s.category NOT IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store'))
+  UNION ALL
+  SELECT s.id FROM scored s JOIN anchors a ON lower(s.brand) = lower(a.brand)
+  WHERE s.id <> a.id AND abs(s.lat - a.lat) < 0.002 AND abs(s.lng - a.lng) < 0.003
+    AND (s.category IS NULL OR s.category NOT IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store'))
+  UNION ALL
+  SELECT s.id FROM scored s JOIN anchors a ON nhead(s.name) = nhead(a.name)
+  WHERE s.id <> a.id AND abs(s.lat - a.lat) < 0.002 AND abs(s.lng - a.lng) < 0.003
+    AND length(nhead(a.name)) >= 4 AND lower(s.name) LIKE nhead(a.name) || ' %'
+    AND (s.category IS NULL OR s.category NOT IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store'))
+);
 CREATE TABLE anchored AS
-SELECT s.* REPLACE (
-  CASE WHEN EXISTS (
-    SELECT 1 FROM anchors a
-    WHERE a.id <> s.id AND abs(s.lat - a.lat) < 0.002 AND abs(s.lng - a.lng) < 0.003
-      AND (anorm(s.addr) = anorm(a.addr)
-           OR (s.brand IS NOT NULL AND a.brand IS NOT NULL AND lower(s.brand) = lower(a.brand))
-           OR (nhead(a.name) IS NOT NULL AND length(nhead(a.name)) >= 4 AND lower(s.name) LIKE nhead(a.name) || ' %'))
-  ) THEN s.prominence - 2.0 ELSE s.prominence END AS prominence)
-FROM scored s
-WHERE s.category IS NULL OR s.category NOT IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store')
-UNION ALL
-SELECT s.* FROM scored s
-WHERE s.category IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store');
+SELECT s.* REPLACE (CASE WHEN t.id IS NOT NULL THEN s.prominence - 2.0 ELSE s.prominence END AS prominence)
+FROM scored s LEFT JOIN tenants t ON t.id = s.id;
 -- STACKED POINTS (2026-09-15): Overture puts every tenant of a building on the same parcel point
 -- (17% of Davis rows share their point with another: medical suites, strip-mall tenants), and
 -- coincident icons collide at every zoom, so all but the top one never drew. Spread the stack on
@@ -228,16 +237,19 @@ CREATE MACRO numkey(a) AS nullif(regexp_extract(coalesce(a, ''), '^[0-9]+'), '')
 $ADDR_SQL
 CREATE TABLE stacked AS
 SELECT *, count(*) OVER (PARTITION BY round(lat, 5), round(lng, 5)) > 1 AS in_stack FROM anchored;
+-- A HASH JOIN on (number, unit) with the distance as a residual and the nearest candidate per
+-- place by row_number - not a correlated LATERAL lookup per row, which is quadratic at state scale.
+CREATE TABLE snapkeys AS
+SELECT id, lat, lng, numkey(addr) AS knum, unitkey(addr) AS kunit FROM stacked
+WHERE in_stack AND numkey(addr) IS NOT NULL AND unitkey(addr) IS NOT NULL;
+CREATE TABLE snapcand AS
+SELECT k.id, a.alat, a.alng,
+  row_number() OVER (PARTITION BY k.id ORDER BY abs(a.alat - k.lat) + abs(a.alng - k.lng)) AS rn
+FROM snapkeys k JOIN addrpts a ON a.anum = k.knum AND a.aunit = k.kunit
+WHERE abs(a.alat - k.lat) < 0.002 AND abs(a.alng - k.lng) < 0.003;
 CREATE TABLE snapped AS
-SELECT s.* REPLACE (COALESCE(p.alat, s.lat) AS lat, COALESCE(p.alng, s.lng) AS lng)
-FROM stacked s
-LEFT JOIN LATERAL (
-  SELECT a.alat, a.alng FROM addrpts a
-  WHERE s.in_stack AND numkey(s.addr) IS NOT NULL AND unitkey(s.addr) IS NOT NULL
-    AND a.anum = numkey(s.addr) AND a.aunit = unitkey(s.addr)
-    AND abs(a.alat - s.lat) < 0.002 AND abs(a.alng - s.lng) < 0.003
-  ORDER BY abs(a.alat - s.lat) + abs(a.alng - s.lng) LIMIT 1
-) p ON true;
+SELECT s.* REPLACE (COALESCE(c.alat, s.lat) AS lat, COALESCE(c.alng, s.lng) AS lng)
+FROM stacked s LEFT JOIN (SELECT id, alat, alng FROM snapcand WHERE rn = 1) c ON c.id = s.id;
 SELECT count(*) FILTER (WHERE in_stack) AS stacked_rows,
        count(*) FILTER (WHERE in_stack AND unitkey(addr) IS NOT NULL) AS stacked_with_unit,
        (SELECT count(*) FROM snapped s JOIN stacked t USING (id) WHERE s.lat <> t.lat OR s.lng <> t.lng) AS snapped_to_unit
