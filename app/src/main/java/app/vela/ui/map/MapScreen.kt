@@ -3569,17 +3569,7 @@ private fun CategoryChips(onPick: (String) -> Unit, modifier: Modifier = Modifie
     // (localized label, STABLE English search query, icon) — the query is the logic key sent to Google
     // search (works in any locale), the label is what the user sees, so the chips localize without
     // changing what's searched.
-    val categories = listOf(
-        Triple(R.string.cat_restaurants, "Restaurants", Icons.Default.Restaurant),
-        Triple(R.string.cat_coffee, "Coffee", Icons.Default.LocalCafe),
-        Triple(R.string.cat_gas, app.vela.ui.CategoryQuery.fuel(), Icons.Default.LocalGasStation),
-        Triple(R.string.cat_ev, "EV charging station", Icons.Default.EvStation),
-        Triple(R.string.cat_groceries, "Groceries", Icons.Default.LocalGroceryStore),
-        Triple(R.string.cat_hotels, "Hotels", Icons.Default.Hotel),
-        Triple(R.string.cat_pharmacy, "Pharmacy", Icons.Default.LocalPharmacy),
-        Triple(R.string.cat_atms, "ATMs", Icons.Default.LocalAtm),
-        Triple(R.string.cat_parks, "Parks", Icons.Default.Park),
-    )
+    val categories = app.vela.ui.QuickCategories.all().map { Triple(it.label, it.query, it.icon) }
     Row(
         modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),

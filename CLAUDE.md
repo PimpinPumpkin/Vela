@@ -1970,6 +1970,11 @@ architecture note.
   move, with no end or cancel callback: the row lifted and froze, so reordering never worked (the
   planning editor and the mid-drive one). Every row now carries the same zIndex / graphicsLayer /
   background and only the values change. Any new drag list: vary values, never the chain.
+- **ONE quick-category list (2026-09-16, `ui/QuickCategories`).** The map's chip row, the route
+  chooser's "Search along route" and the in-nav search all render `QuickCategories.all()`
+  (Restaurants, Coffee, Gas, EV charging, Groceries, Hotels, Pharmacy, ATMs, Parks, in that
+  order); they had drifted to three different sets. Add or reorder a chip there, never inline.
+  Every query must be one `OfflinePoiStore` expands, or the chip is dead offline.
 - **Stop dividers in the step list (2026-09-16, #519):** `StepsSheet(legStarts = [(maneuver index
   where leg k>0 starts, stop name)])` draws `StopDividerRow` before that step; MapScreen computes
   the indices from `activeRoute.legs` (cumulative maneuver counts) and names them from
