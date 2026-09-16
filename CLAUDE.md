@@ -3415,9 +3415,14 @@ Gotchas:
   anyone taps it and stays gone until a rebake drops it for real. The open layers sit ABOVE the ambient layer so open icons
   win collision and Google's extras fill gaps. Outside any region file all three behave like Google.
   About > Map data credits Overture (CDLA-Permissive 2.0) with a license button. The OSM basemap
-  business POIs (`poi_r1/r7/r20`) hide while an open places source is on the style (`openCovers` in
-  applyData's `osmPoiVis`, plus a direct flip in the overlay effect), the same yield the Google dots
-  get, so a business is never drawn by both OSM and Overture. VelaMapView draws `vela-places-<i>`
+  business POIs (`poi_r1/r7/r20`) used to hide outright while an open places source was on the
+  style; since 2026-09-15 they STAY UP and `osmFillIn` (camera idle, 500 ms debounce, from the
+  OnDidBecomeIdle listener) filters out by name the OSM points an open feature within 80 m
+  already draws (`osmPoiExclude`, folded into `applyPoiTierFilters`; open features keyed by their
+  first two significant words, OSM candidates by name / name:latin / name_en), so OSM fills what
+  Overture lacks (the OSM-only museum) and nothing draws twice. The Both-mode dedupe
+  (`openPlacesShown`) also counts the drawn poi tiers, so Google does not double an OSM fill-in
+  either. The ambient (Google) coverage still hides the tiers as before. VelaMapView draws `vela-places-<i>`
   SymbolLayers dressed identically to the ambient layer; a tap on a `src=overture` feature builds a seeded
   `Place` (category/address/phone/website from the tile) and `onOpenPlaceTap` -> `onPoiTap(seed=...)`, so
   the sheet reads offline and the existing Google correlation upgrades it online. Davis is the test bake

@@ -302,6 +302,12 @@ private var lastTransitBusHidden: Boolean? = null // gate the poi_transit filter
 private var origPoiTransitFilter: Expression? = null // basemap filter to restore when coverage goes
 private var lastOsmPoiVis: String? = null // identity-gate the basemap-POI visibility flips
 private var lastPoiFuelOnly: Boolean? = null // identity-gate the nav gas-stations-only filter flips
+// OSM basemap POIs the open places layer already draws (by name, within 80 m): filtered out of
+// the poi tiers so OSM FILLS IN what Overture lacks instead of doubling what it has. Recomputed
+// on camera idle by osmFillIn; applyPoiTierFilters folds it into the tier filters.
+private var osmPoiExclude: List<String> = emptyList()
+private val osmFillHandler = android.os.Handler(android.os.Looper.getMainLooper())
+private val osmFillPending = arrayOfNulls<Runnable>(1)
 private var lastControlsVis: String? = null // identity-gate the traffic-control visibility flips
 private var lastAppliedRouteLine: List<LatLng>? = null // identity-gate the route upload — applyData runs
                                                        // every recomposition and re-tessellating a
@@ -1236,11 +1242,11 @@ fun VelaMapView(
                 if (under != null) style.addLayerBelow(dots, under) else style.addLayerBelow(dots, layer.id)
             }
         }
-        // The OSM basemap business POIs yield to the open layer right away (applyData keeps the
-        // rule from here on, see osmPoiVis); without this they stay up until the next
-        // recomposition, which on a still map can be a while.
-        val vis = if (placesOverlays.isNotEmpty()) Property.NONE else Property.VISIBLE
-        listOf("poi_r1", "poi_r7", "poi_r20").forEach { id -> style.getLayer(id)?.setProperties(PropertyFactory.visibility(vis)) }
+        // The OSM basemap business POIs stay up under the open layer; osmFillIn (camera idle)
+        // filters out the ones the open features already draw. A source change resets the list
+        // so the next idle recomputes it against the new tiles.
+        osmPoiExclude = emptyList()
+        lastPoiFuelOnly = null
         lastOsmPoiVis = null
     }
 
@@ -2776,6 +2782,10 @@ fun VelaMapView(
                     ovlRenderSettled[0] = true
                     ovlDirty[0] = true
                     runOvlGate()
+                    osmFillPending[0]?.let { osmFillHandler.removeCallbacks(it) }
+                    val fill = Runnable { osmFillPending[0] = null; map.getStyle()?.let { st -> if (st.isFullyLoaded) osmFillIn(map, st) } }
+                    osmFillPending[0] = fill
+                    osmFillHandler.postDelayed(fill, 500)
                 }
                 map.addOnCameraMoveListener {
                     ovlRenderSettled[0] = false
@@ -4386,11 +4396,56 @@ private fun applyPoiTierFilters(style: Style, fuelOnly: Boolean) {
     fun tier(id: String, lo: Int, hi: Int?) {
         val parts = mutableListOf(isPoint, Expression.gte(Expression.get("rank"), Expression.literal(lo)), Expression.not(veg))
         if (hi != null) parts += Expression.lt(Expression.get("rank"), Expression.literal(hi))
+        if (osmPoiExclude.isNotEmpty()) parts += Expression.not(Expression.`in`(Expression.get("name"), Expression.literal(osmPoiExclude.toTypedArray<Any>())))
         (style.getLayer(id) as? SymbolLayer)?.setFilter(Expression.all(*parts.toTypedArray()))
     }
     tier("poi_r1", 1, 7)
     tier("poi_r7", 7, 20)
     tier("poi_r20", 20, null)
+}
+
+/** OSM fills in what the open places layer lacks (2026-09-15). The poi tiers used to hide
+ *  outright while an open source covered the view, which also hid every business Overture does
+ *  not have (an OSM-only museum vanished in Vela-data mode). Now they stay up and this drops, by
+ *  name, the OSM points that an open feature within 80 m already draws: the open features in the
+ *  loaded tiles keyed by their first two significant words, then every basemap `poi` point whose
+ *  name (or its name:latin / name_en) keys to one of them nearby goes on [osmPoiExclude] and the
+ *  tier filters re-apply. Runs on camera idle, debounced; cheap next to a fan-out, and a no-op
+ *  when nothing changed. Without open sources the list clears so the tiers draw as before. */
+private fun osmFillIn(map: MapLibreMap, style: Style) {
+    val openSrcs = style.sources.filter { it.id.startsWith("vela-places-src-") }
+    val base = basemapSrc(style)
+    if (openSrcs.isEmpty() || base == null || map.cameraPosition.zoom < 12.0) {
+        if (osmPoiExclude.isNotEmpty() && openSrcs.isEmpty()) { osmPoiExclude = emptyList(); applyPoiTierFilters(style, lastPoiFuelOnly ?: false) }
+        return
+    }
+    fun key(n: String): String = n.lowercase().replace(Regex("[^\\p{L}\\p{N} ]"), " ").split(Regex("\\s+")).filter { it.length > 1 }.take(2).joinToString(" ")
+    val open = HashMap<String, ArrayList<LatLng>>()
+    openSrcs.forEach { src ->
+        runCatching {
+            (src as? VectorSource)?.querySourceFeatures(arrayOf("places"), null)?.forEach { f ->
+                val pt = f.geometry() as? Point ?: return@forEach
+                val n = f.getStringProperty("name") ?: return@forEach
+                open.getOrPut(key(n)) { ArrayList() } += LatLng(pt.latitude(), pt.longitude())
+            }
+        }
+    }
+    if (open.isEmpty()) return // tiles not in yet; keep the last list, the next idle recomputes
+    val hide = LinkedHashSet<String>()
+    runCatching {
+        (style.getSource(base) as? VectorSource)?.querySourceFeatures(arrayOf("poi"), null)?.forEach { f ->
+            val pt = f.geometry() as? Point ?: return@forEach
+            val n = f.getStringProperty("name") ?: return@forEach
+            val ll = LatLng(pt.latitude(), pt.longitude())
+            val keys = sequenceOf(n, f.getStringProperty("name:latin"), f.getStringProperty("name_en")).filterNotNull().map(::key).distinct()
+            if (keys.any { k -> open[k]?.any { it.distanceTo(ll) < 80.0 } == true }) hide += n
+        }
+    }
+    val list = hide.toList()
+    if (list != osmPoiExclude) {
+        osmPoiExclude = list
+        applyPoiTierFilters(style, lastPoiFuelOnly ?: false)
+    }
 }
 
 /** The Google-style nav road-name BUBBLE: a rounded chip with a pointer tail at the bottom,
@@ -5053,8 +5108,9 @@ private fun emphasizeShields(context: android.content.Context, style: Style) {
  *  a stacked point suppressed Google's copy and the user saw neither shop). The union is
  *  deterministic for the thinning and only misses a stacked point, which the bake now spreads. */
 private fun openPlacesShown(map: MapLibreMap, style: Style, zoom: Double): List<Pair<String, LatLng>> {
-    val layers = style.layers.map { it.id }.filter { it.startsWith("vela-places-") && !it.startsWith("vela-places-dots-") }
-    if (layers.isEmpty()) return emptyList()
+    val layers = style.layers.map { it.id }.filter { it.startsWith("vela-places-") && !it.startsWith("vela-places-dots-") } +
+        listOf("poi_r1", "poi_r7", "poi_r20").filter { style.getLayer(it) != null } // the OSM fill-in draws too
+    if (layers.none { it.startsWith("vela-places-") }) return emptyList()
     val out = ArrayList<Pair<String, LatLng>>()
     runCatching {
         map.queryRenderedFeatures(RectF(0f, 0f, map.width, map.height), *layers.toTypedArray()).forEach { f ->
@@ -6437,11 +6493,10 @@ private fun applyData(
     // refining 2026-07-16's "keep gas stations in nav": everything else is clutter over the
     // route); only the master switch hides them outright. The ambient-dots and many-results
     // suppressors apply to the browse map alone.
-    // The open places layer covering the view hides them the same way the Google dots do: the
-    // Overture data and the OSM basemap POIs are two drawings of the same businesses (a bank
-    // showed twice, once per source, before this), and the open layer is the richer one.
-    val openCovers = style.sources.any { it.id.startsWith("vela-places-src-") }
-    val osmPoiVis = if (!poisEnabled || (!navMode && (ambientCoversView || openCovers || markers.size > 1))) Property.NONE else Property.VISIBLE
+    // The open places layer covering the view does NOT hide them any more (2026-09-15): the two
+    // sources draw the same businesses (a bank showed twice before), but blanket-hiding also lost
+    // every business Overture lacks. osmFillIn drops the doubles by name on camera idle instead.
+    val osmPoiVis = if (!poisEnabled || (!navMode && (ambientCoversView || markers.size > 1))) Property.NONE else Property.VISIBLE
     if (osmPoiVis != lastOsmPoiVis) {
         listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
             style.getLayer(id)?.setProperties(PropertyFactory.visibility(osmPoiVis))
