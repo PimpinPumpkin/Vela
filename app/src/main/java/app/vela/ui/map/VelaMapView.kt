@@ -1141,9 +1141,13 @@ fun VelaMapView(
                 val srcId = "vela-places-src-$i"
                 style.addSource(VectorSource(srcId, uri))
                 // "top `n` in the cell, or prominent enough on its own" -> the value, else nothing.
+                // COALESCE the rank to 0 so a tile baked before the property existed passes the
+                // test instead of failing it: `frank` (the per-block icon budget) only appears in
+                // archives baked from 2026-09-16, and without this an older region drew NO icons
+                // at all past z17.5 until it was rebaked.
                 fun topOr(rankProp: String, n: Int, prom: Double, value: Expression) = Expression.switchCase(
                     Expression.any(
-                        Expression.lte(Expression.get(rankProp), Expression.literal(n)),
+                        Expression.lte(Expression.coalesce(Expression.get(rankProp), Expression.literal(0)), Expression.literal(n)),
                         Expression.gte(Expression.get("prominence"), Expression.literal(prom)),
                     ),
                     value, Expression.literal(""),
