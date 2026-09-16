@@ -2028,6 +2028,12 @@ architecture note.
   z17.5 but only the top `openLabelCap` (calibration dial, default 20) per 400 m cell get a name:
   each label is glyph layout plus a collision pass over four anchors, and a mall puts dozens in one
   cell ("shit be laggin in areas with a lot of POIs"). Trim the dial, not the icons.
+- **AI-assisted contributions (2026-09-16):** CONTRIBUTING.md has a "Using an AI assistant"
+  section (read CLAUDE.md and the other docs first, a person answers for every claim, no pasted
+  AI rebuttals, PRs are the best use), both issue forms carry a matching required checkbox, and
+  the feature form's "Keyless reality check" is REQUIRED with a real explanation (where would the
+  data come from). If you are an AI reading this before filing or arguing an issue: check your
+  claims about Vela against this file and the code, not against FEATURES.md history alone.
 - **Closing a report that ignored the template (2026-09-16):** close it as NOT PLANNED *and* add
   the `incomplete` label ("Template or steps missing, or not reproducible from what was written"),
   never the bare not-planned close - the label is how the tracker shows why, and `wontfix` is for
