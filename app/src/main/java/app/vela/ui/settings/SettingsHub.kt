@@ -303,6 +303,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_flock_route_alert to SettingsSection.MAP,
     R.string.settings_buildings_3d to SettingsSection.MAP,
     R.string.settings_building_overlay to SettingsSection.MAP,
+    R.string.exp_google_chooser to SettingsSection.DIAGNOSTICS,
     R.string.settings_map_places to SettingsSection.MAP,
     R.string.settings_show_pois to SettingsSection.MAP,
     R.string.settings_places_source_open to SettingsSection.DATA_PRIVACY,

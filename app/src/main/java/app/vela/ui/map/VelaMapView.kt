@@ -133,6 +133,15 @@ private const val TRANSIT_PREV_STOPS_LAYER = "vela-transit-prev-stops"
 private const val TRANSIT_PREV_FALLBACK_COLOR = "#4285F4" // rides whose agency sends no line colour
 private const val TRANSIT_PREV_WALK_COLOR = "#7C8A99" // dotted walk links, legible on both themes
 private const val ALT_INDEX_PROP = "vela-alt-index"
+private const val ROUTE_BUBBLE_SRC = "vela-route-bubble-src"
+private const val ROUTE_BUBBLE_LAYER = "vela-route-bubbles"
+private const val ROUTE_BUBBLE_SEL_IMG = "vela-rb-sel"
+private const val ROUTE_BUBBLE_ALT_IMG = "vela-rb-alt"
+
+/** A route's travel-time bubble on the map (the Google-style chooser experiment): [index] is the
+ *  route's position in the chooser list, [at] a point on that route where it runs apart from the
+ *  others, [selected] draws it filled in the route colour. Tapping one selects that route. */
+data class RouteBubble(val index: Int, val at: LatLng, val label: String, val selected: Boolean)
 private const val MARKERS_SRC = "vela-markers-src"
 private const val MARKERS_LAYER = "vela-markers"
 // Collapsed search results: the same source drawn as small red dots UNDER the pins. The pin layer
@@ -475,6 +484,7 @@ fun VelaMapView(
     alternates: List<Pair<Int, List<LatLng>>> = emptyList(),
     altColor: String = "#9AA0A6",
     onSelectAlternate: (Int) -> Unit = {},
+    routeBubbles: List<RouteBubble> = emptyList(), // Google-style chooser experiment: time bubbles on the routes
     markers: List<MapMarker>,
     // Intermediate trip stops in VISIT ORDER - drawn as numbered teal pins (1, 2, ...) while a
     // trip is planned or driven; reordering the stops re-numbers the pins (list identity keys it).
@@ -1172,6 +1182,56 @@ fun VelaMapView(
     // supermarket, a branded chain) bypasses the rank so a lone landmark is never demoted by a
     // busier neighbor. The tile minzoom (bake) already leaves the long tail out of the z13-z16
     // tiles, so this is a cheap second cut on what the tile carries.
+    // Route time bubbles (chooser experiment). Their own effect rather than applyData: they change
+    // only when the route set or the selection does, never per recomposition.
+    LaunchedEffect(routeBubbles, styleRef, darkTheme) {
+        val style = styleRef ?: return@LaunchedEffect
+        // Experiment off (or no chooser open) on a fresh style: add nothing, so the default map is unchanged.
+        if (routeBubbles.isEmpty() && style.getSource(ROUTE_BUBBLE_SRC) == null) return@LaunchedEffect
+        runCatching {
+            val d = context.resources.displayMetrics.density
+            val sel = android.graphics.Color.parseColor("#1A73E8")
+            // Google keeps the other routes' bubbles WHITE with dark text in both themes.
+            val surf = 0xFFFFFFFF.toInt()
+            val edge = 0xFFDADCE0.toInt()
+            addRouteBubbleImage(style, ROUTE_BUBBLE_SEL_IMG, sel, sel, d)
+            addRouteBubbleImage(style, ROUTE_BUBBLE_ALT_IMG, surf, edge, d)
+            if (style.getSource(ROUTE_BUBBLE_SRC) == null) {
+                style.addSource(GeoJsonSource(ROUTE_BUBBLE_SRC))
+                val layer = SymbolLayer(ROUTE_BUBBLE_LAYER, ROUTE_BUBBLE_SRC).withProperties(
+                    PropertyFactory.textField(Expression.get("label")),
+                    PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
+                    PropertyFactory.textSize(13f),
+                    PropertyFactory.textColor(
+                        Expression.switchCase(Expression.get("sel"), Expression.color(android.graphics.Color.WHITE),
+                            Expression.color(0xFF202124.toInt())),
+                    ),
+                    PropertyFactory.iconImage(
+                        Expression.switchCase(Expression.get("sel"), Expression.literal(ROUTE_BUBBLE_SEL_IMG), Expression.literal(ROUTE_BUBBLE_ALT_IMG)),
+                    ),
+                    PropertyFactory.iconTextFit(Property.ICON_TEXT_FIT_BOTH),
+                    PropertyFactory.textAnchor(Property.TEXT_ANCHOR_BOTTOM),
+                    PropertyFactory.textOffset(arrayOf(0f, -0.9f)), // the tail hangs below onto the route
+                    PropertyFactory.iconAllowOverlap(true),
+                    PropertyFactory.textAllowOverlap(true),
+                    PropertyFactory.symbolSortKey(Expression.switchCase(Expression.get("sel"), Expression.literal(0), Expression.literal(1))),
+                    PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_VIEWPORT),
+                    PropertyFactory.textRotationAlignment(Property.TEXT_ROTATION_ALIGNMENT_VIEWPORT),
+                )
+                style.addLayer(layer) // on top: a bubble must never hide under a place icon
+            }
+            val fc = FeatureCollection.fromFeatures(
+                routeBubbles.map { b ->
+                    Feature.fromGeometry(Point.fromLngLat(b.at.lng, b.at.lat)).apply {
+                        addStringProperty("label", b.label)
+                        addBooleanProperty("sel", b.selected)
+                        addNumberProperty(ALT_INDEX_PROP, b.index)
+                    }
+                },
+            )
+            style.getSourceAs<GeoJsonSource>(ROUTE_BUBBLE_SRC)?.setGeoJson(fc)
+        }
+    }
     LaunchedEffect(placesOverlays, styleRef, darkTheme, hiddenOpenPlaceIds) {
         val style = styleRef ?: return@LaunchedEffect
         // A pin whose Google listing came back permanently closed (Overture lags Google by months)
@@ -2527,7 +2587,7 @@ fun VelaMapView(
                     val amb = feats.filter { it.hasProperty(AMBIENT_INDEX_PROP) }.minByOrNull(::screenDist2)
                     // Tap a greyed alternate route line to switch to it (Google-style).
                     val altHit = map.queryRenderedFeatures(
-                        RectF(p.x - r, p.y - r, p.x + r, p.y + r), ALT_ROUTE_LAYER,
+                        RectF(p.x - r, p.y - r, p.x + r, p.y + r), ROUTE_BUBBLE_LAYER, ALT_ROUTE_LAYER,
                     ).firstOrNull { it.hasProperty(ALT_INDEX_PROP) }
                     if (altHit != null) {
                         selectAlt.value(altHit.getNumberProperty(ALT_INDEX_PROP).toInt())
@@ -4617,6 +4677,30 @@ private fun fillKey(n: String): String =
  *  registered as a STRETCHABLE style image (stretch zones skip the corners AND the tail so
  *  icon-text-fit can widen the body around any street name without smearing either). One
  *  bitmap per theme; addImage with the same id replaces, so a theme flip just re-registers. */
+/** A route time bubble: the nav callout's chip-with-tail in a given fill, registered stretchable
+ *  with the same zones so icon-text-fit widens it around any label. */
+private fun addRouteBubbleImage(st: Style, id: String, fill: Int, edge: Int, d: Float) {
+    val w = (46 * d).toInt(); val bodyH = 26 * d; val h = (bodyH + 7 * d).toInt(); val r = 8 * d
+    val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val inset = 0.8f * d
+    val cx = w / 2f
+    val p = android.graphics.Path().apply { addRoundRect(android.graphics.RectF(inset, inset, w - inset, bodyH), r, r, android.graphics.Path.Direction.CW) }
+    val tail = android.graphics.Path().apply { moveTo(cx - 5.5f * d, bodyH - 2 * d); lineTo(cx + 5.5f * d, bodyH - 2 * d); lineTo(cx, h - inset); close() }
+    p.op(tail, android.graphics.Path.Op.UNION)
+    c.drawPath(p, Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL; color = fill })
+    c.drawPath(p, Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 1.1f * d; color = edge })
+    st.addImage(
+        id, bmp,
+        listOf(
+            org.maplibre.android.maps.ImageStretches(r + d, cx - 7 * d),
+            org.maplibre.android.maps.ImageStretches(cx + 7 * d, w - r - d),
+        ),
+        listOf(org.maplibre.android.maps.ImageStretches(r + d, bodyH - r - d)),
+        org.maplibre.android.maps.ImageContent(8 * d, 4 * d, w - 8 * d, bodyH - 4 * d),
+    )
+}
+
 private fun navBubbleBitmap(dark: Boolean, d: Float): android.graphics.Bitmap {
     val w = (46 * d).toInt()
     val body = 26 * d

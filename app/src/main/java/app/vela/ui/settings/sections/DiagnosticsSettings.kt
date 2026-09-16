@@ -124,6 +124,13 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         GroupDivider()
         // Building-overlay debug badge + fps readout on the map (the runOvlGate probe tooling).
         ToggleRow(
+            label = stringResource(R.string.exp_google_chooser),
+            checked = app.vela.ui.Experiments.googleChooser.value,
+            onCheckedChange = { app.vela.ui.Experiments.setGoogleChooser(context, it) },
+            hint = stringResource(R.string.exp_google_chooser_hint),
+        )
+        GroupDivider()
+        ToggleRow(
             label = stringResource(R.string.settings_building_debug),
             checked = app.vela.ui.BuildingDebug.on.value,
             onCheckedChange = { app.vela.ui.BuildingDebug.set(context, it) },

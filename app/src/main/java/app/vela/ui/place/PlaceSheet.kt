@@ -1772,7 +1772,7 @@ fun DirectionsPanel(
 @android.annotation.SuppressLint("NewApi")
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-private fun DepartTimeChooser(
+internal fun DepartTimeChooser(
     route: Route?,
     dim: Color,
     isTransit: Boolean = false,
@@ -2035,7 +2035,7 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
 
 /** ETA colour by congestion when live traffic is known: green free-flowing →
  *  amber → red. Null when there's no live-traffic signal (use the ink colour). */
-private fun trafficEtaColor(r: Route): Color? = r.trafficRatio?.let {
+internal fun trafficEtaColor(r: Route): Color? = r.trafficRatio?.let {
     when {
         it > 1.4 -> SheetPalette.TrafficRed
         it > 1.15 -> SheetPalette.TrafficAmber
