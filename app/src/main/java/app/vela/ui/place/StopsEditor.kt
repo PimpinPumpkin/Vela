@@ -133,13 +133,14 @@ fun StopsEditorSheet(
                         Modifier
                             .fillMaxWidth()
                             .height(ROW_HEIGHT)
-                            .then(
-                                if (i == dragIdx) {
-                                    Modifier
-                                        .zIndex(1f)
-                                        .graphicsLayer { translationY = dragDy }
-                                        .background(SheetPalette.row(dark), RoundedCornerShape(8.dp))
-                                } else Modifier,
+                            // One modifier chain for every row, dragged or not. Swapping the
+                            // chain when the drag started cut the handle's gesture off after its
+                            // first move: the row lifted and froze, and nothing could be reordered.
+                            .zIndex(if (i == dragIdx) 1f else 0f)
+                            .graphicsLayer { translationY = if (idx == dragIdx) dragDy else 0f }
+                            .background(
+                                if (i == dragIdx) SheetPalette.row(dark) else androidx.compose.ui.graphics.Color.Transparent,
+                                RoundedCornerShape(8.dp),
                             ),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

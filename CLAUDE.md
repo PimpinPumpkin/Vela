@@ -1964,6 +1964,12 @@ architecture note.
   `applyMapTheme` now narrows `boundary_3`'s filter to admin 3-4 (minzoom 4, dashed) and themes
   all three: the style's own dark grey vanished on the dark map. Never put the boundary ids back
   in the hide list; if a region shows dashed junk, check its admin levels before touching the filter.
+- **Drag-to-reorder lists keep ONE modifier chain (2026-09-16).** The stops editor's rows wrapped
+  the dragged row in `.then(if (dragging) Modifier.zIndex().graphicsLayer {} else Modifier)`, and
+  changing the chain when the drag started killed the handle's `detectDragGestures` after its first
+  move, with no end or cancel callback: the row lifted and froze, so reordering never worked (the
+  planning editor and the mid-drive one). Every row now carries the same zIndex / graphicsLayer /
+  background and only the values change. Any new drag list: vary values, never the chain.
 - **Stop dividers in the step list (2026-09-16, #519):** `StepsSheet(legStarts = [(maneuver index
   where leg k>0 starts, stop name)])` draws `StopDividerRow` before that step; MapScreen computes
   the indices from `activeRoute.legs` (cumulative maneuver counts) and names them from
