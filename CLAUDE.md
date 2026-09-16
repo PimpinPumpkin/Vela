@@ -1989,6 +1989,18 @@ architecture note.
   z17.5 but only the top `openLabelCap` (calibration dial, default 20) per 400 m cell get a name:
   each label is glyph layout plus a collision pass over four anchors, and a mall puts dozens in one
   cell ("shit be laggin in areas with a lot of POIs"). Trim the dial, not the icons.
+- **- **Closing a report that ignored the template (2026-09-16):** close it as NOT PLANNED *and* add
+  the `incomplete` label ("Template or steps missing, or not reproducible from what was written"),
+  never the bare not-planned close - the label is how the tracker shows why, and `wontfix` is for
+  a request that was understood and declined. The rules themselves are in CONTRIBUTING.md under
+  "Bug reports and feature requests"; both issue forms carry the matching checklist.
+- **Tenant demotion is a SEMI-JOIN (2026-09-16).** `tools/build-places-region.sh` used a LEFT JOIN
+  onto the anchor rows, so a tenant matching two anchors (a mall AND the supermarket inside it)
+  was emitted TWICE - 136 duplicate rows in the Davis fixture, each landing in its own slot of the
+  stacked-point ring, which is a large part of why a strip mall looked like a scatter of dots. It
+  is an `EXISTS` test now, and the anchors are UNION ALLed back unchanged. The match is also wider:
+  addresses compare through `anorm` (lowercased, unit/suite dropped) and a row whose name is an
+  anchor's name plus more words ("Safeway Pharmacy") counts as a department wherever it sits.
 - **Traffic raster anchoring (2026-09-16, #521):** `ensureTraffic` inserts `vela-traffic` ABOVE
   `building-3d`/`building` (fallback: below the first symbol layer, which in Liberty is the one-way
   arrow at index 61, BEFORE the buildings at 83-84, which is how the footprints ended up painting

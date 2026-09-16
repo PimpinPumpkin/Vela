@@ -2,6 +2,23 @@ name: Feature request
 description: Something Vela should do
 labels: ["enhancement"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Requests are read, not voted on. The maintainer decides what gets built; a request that does not fit is closed as not planned, without a debate, and stays closed. One request per issue, with the situation where you missed it. Requests that skip the checklist or the required fields are closed without further explanation.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you ask
+      options:
+        - label: I searched open and closed issues, including the ones closed as not planned, and this has not been asked.
+          required: true
+        - label: This issue contains one feature request.
+          required: true
+        - label: I have read CONTRIBUTING.md, including the ground rules (no backend, no API keys) and how requests are handled.
+          required: true
+        - label: I have filled in every required field. I understand the request is closed otherwise.
+          required: true
   - type: textarea
     id: what
     attributes:
@@ -13,9 +30,9 @@ body:
     id: why
     attributes:
       label: Why it matters
-      description: The situation where you missed it.
+      description: The situation where you missed it, concretely. A request without one is closed.
     validations:
-      required: false
+      required: true
   - type: textarea
     id: keyless
     attributes:

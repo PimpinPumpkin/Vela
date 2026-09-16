@@ -37,6 +37,10 @@ body:
           required: true
         - label: I searched open and closed issues and did not find a duplicate
           required: true
+        - label: This report is about one problem. A second problem gets its own report.
+          required: true
+        - label: I have read how reports are handled in CONTRIBUTING.md and filled in the steps below. A report that cannot be reproduced from what is written here is closed.
+          required: true
   - type: input
     id: device
     attributes:
@@ -64,13 +68,13 @@ body:
     id: steps
     attributes:
       label: Steps to reproduce
-      description: What you did right before it broke. If you are not sure, say so.
+      description: What you did, in order, so a maintainer can do the same thing and see it. For anything about routes, places or the map, name the start, the destination or the place, or use the built-in location simulator (Settings, Navigation) with the Davis, CA test area and say so. "It happens sometimes" is not reproducible.
       placeholder: |
-        1.
-        2.
-        3.
+        1. Search "Mikuni Davis", open the result
+        2. Tap Directions, pick the second route
+        3. Tap Start; the line drawn is the first route
     validations:
-      required: false
+      required: true
   - type: textarea
     id: diagnostics
     attributes:
