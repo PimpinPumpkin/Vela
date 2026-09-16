@@ -315,6 +315,46 @@ private var openHiddenIds: Set<String> = emptySet()
 private var openDisplacedIds: Set<String> = emptySet()
 private const val DEDUPE_NAME_M = 80.0 // same name within this range = the same business, twice
 
+/** Both mode: filter out every open feature ON SCREEN whose name agrees with a Google place within
+ *  DEDUPE_NAME_M (Google's copy wins, see openDisplacedIds). Rendered icons only: an open place too
+ *  low-ranked to have an icon is a dot, and a dot beside Google's icon reads as the same place
+ *  anyway. Runs debounced after an ambient upload, never inline. */
+private fun hideOpenTwins(map: MapLibreMap, style: Style, pois: List<MapMarker>) {
+    if (pois.isEmpty()) { if (openDisplacedIds.isNotEmpty()) { openDisplacedIds = emptySet(); applyOpenPlacesHidden(style) }; return }
+    val iconLayers = style.layers.map { it.id }.filter { it.startsWith("vela-places-") && !it.startsWith("vela-places-dots-") }
+    if (iconLayers.isEmpty()) return
+    val rendered = runCatching { map.queryRenderedFeatures(RectF(0f, 0f, map.width, map.height), *iconLayers.toTypedArray()) }.getOrNull() ?: return
+    val displaced = HashSet<String>()
+    rendered.forEach { f ->
+        val id = f.getStringProperty("id") ?: return@forEach
+        val n = f.getStringProperty("name") ?: return@forEach
+        val pt = f.geometry() as? Point ?: return@forEach
+        val ll = LatLng(pt.latitude(), pt.longitude())
+        if (pois.any { m -> m.location.distanceTo(ll) < DEDUPE_NAME_M && namesAgree(n, m.name) }) displaced += id
+    }
+    // A twin already hidden is no longer RENDERED, so the query above cannot see it, and dropping
+    // it from the set would flip it back on until the next pass. So re-check the hidden ones
+    // directly: fetch just those ids from the source (the filter runs natively, so only a handful
+    // of features cross JNI) and keep each one whose Google partner is still in the set. One whose
+    // partner has gone - a new fetch elsewhere - is released, so an open place is never left
+    // hidden with nothing drawn in its place.
+    val prev = openDisplacedIds - displaced
+    if (prev.isNotEmpty()) {
+        val byId = Expression.`in`(Expression.get("id"), Expression.literal(prev.toTypedArray<Any>()))
+        style.sources.filter { it.id.startsWith("vela-places-src-") }.forEach { src ->
+            runCatching { (src as? VectorSource)?.querySourceFeatures(arrayOf("places"), byId) }.getOrNull()?.forEach { f ->
+                val id = f.getStringProperty("id") ?: return@forEach
+                val n = f.getStringProperty("name") ?: return@forEach
+                val pt = f.geometry() as? Point ?: return@forEach
+                val ll = LatLng(pt.latitude(), pt.longitude())
+                if (pois.any { m -> m.location.distanceTo(ll) < DEDUPE_NAME_M && namesAgree(n, m.name) }) displaced += id
+            }
+        }
+    }
+    val next: Set<String> = displaced
+    if (next != openDisplacedIds) { openDisplacedIds = next; applyOpenPlacesHidden(style) }
+}
+
 /** Re-apply the id exclusions to the open places layers (icons + dots) without rebuilding them. */
 private fun applyOpenPlacesHidden(style: Style) {
     val ids = openHiddenIds + openDisplacedIds
@@ -371,7 +411,8 @@ private val lastEnsureKey = intArrayOf(-1)
 // camera-idle, where placement is invisible.
 private val flightDepth = intArrayOf(0)
 private val ambientRedoHandler = android.os.Handler(android.os.Looper.getMainLooper())
-private val ambientRedo = arrayOfNulls<Runnable>(1) // the pending Both-mode second dedupe pass
+private val ambientRedo = arrayOfNulls<Runnable>(1) // the pending Both-mode twin pass (early)
+private val ambientRedo2 = arrayOfNulls<Runnable>(1) // ... and the late one
 
 private fun flightCb() = object : org.maplibre.android.maps.MapLibreMap.CancelableCallback {
     override fun onFinish() { if (flightDepth[0] > 0) flightDepth[0]-- }
@@ -1298,7 +1339,9 @@ fun VelaMapView(
         // filters out the ones the open features already draw. A source change resets the list
         // so the next idle recomputes it against the new tiles.
         osmPoiExclude = emptyList()
-        lastPoiFuelOnly = null
+        fillLast[0] = Double.NaN // new sources: the next idle runs the pass regardless of movement
+        osmHideBusiness = placesOverlays.isNotEmpty()
+        lastPoiFuelOnly = null // forces applyData to re-apply the tier filters with the new flag
         lastOsmPoiVis = null
     }
 
@@ -4447,6 +4490,7 @@ private fun applyPoiTierFilters(style: Style, fuelOnly: Boolean) {
     fun tier(id: String, lo: Int, hi: Int?) {
         val parts = mutableListOf(isPoint, Expression.gte(Expression.get("rank"), Expression.literal(lo)), Expression.not(veg))
         if (hi != null) parts += Expression.lt(Expression.get("rank"), Expression.literal(hi))
+        if (osmHideBusiness) parts += Expression.not(Expression.`in`(Expression.get("class"), Expression.literal(OSM_BUSINESS_CLASSES)))
         if (osmPoiExclude.isNotEmpty()) parts += Expression.not(Expression.`in`(Expression.get("name"), Expression.literal(osmPoiExclude.toTypedArray<Any>())))
         (style.getLayer(id) as? SymbolLayer)?.setFilter(Expression.all(*parts.toTypedArray()))
     }
@@ -4464,42 +4508,90 @@ private fun applyPoiTierFilters(style: Style, fuelOnly: Boolean) {
  *  tier filters re-apply. Runs on camera idle, debounced; cheap next to a fan-out, and a no-op
  *  when nothing changed. Without open sources the list clears so the tiers draw as before. */
 private fun osmFillIn(map: MapLibreMap, style: Style) {
-    val openSrcs = style.sources.filter { it.id.startsWith("vela-places-src-") }
-    val base = basemapSrc(style)
-    if (openSrcs.isEmpty() || base == null || map.cameraPosition.zoom < 12.0) {
-        if (osmPoiExclude.isNotEmpty() && openSrcs.isEmpty()) { osmPoiExclude = emptyList(); applyPoiTierFilters(style, lastPoiFuelOnly ?: false) }
+    // A rendered-feature query costs tens of milliseconds on the main thread in a dense view even
+    // when it returns nothing (measured 37-55 ms with the layers hidden), so skip it when there is
+    // nothing to test and THROTTLE it otherwise: once per 2.5 s at most, and only after the camera
+    // has moved a fifth of the screen or changed zoom by 0.4. Idle fires after every tile load too.
+    if ((style.getLayer("poi_r1") as? SymbolLayer)?.visibility?.value == Property.NONE) return
+    val cam = map.cameraPosition
+    val now = android.os.SystemClock.elapsedRealtime()
+    val tgt = cam.target
+    if (tgt != null && !fillLast[0].isNaN()) {
+        val movedPx = kotlin.math.hypot(
+            (tgt.latitude - fillLast[0]) * 111_320.0,
+            (tgt.longitude - fillLast[1]) * 111_320.0 * kotlin.math.cos(Math.toRadians(tgt.latitude)),
+        ) / map.projection.getMetersPerPixelAtLatitude(tgt.latitude)
+        val dz = kotlin.math.abs(cam.zoom - fillLast[2])
+        if (now - fillLastAt[0] < 2_500L || (movedPx < map.width / 5f && dz < 0.4)) return
+    }
+    if (tgt != null) { fillLast[0] = tgt.latitude; fillLast[1] = tgt.longitude; fillLast[2] = cam.zoom; fillLastAt[0] = now }
+    val openLayers = style.layers.map { it.id }.filter { it.startsWith("vela-places-") && !it.startsWith("vela-places-dots-") } // icons
+    if (openLayers.isEmpty() || map.cameraPosition.zoom < 12.0) {
+        if (osmPoiExclude.isNotEmpty() && style.sources.none { it.id.startsWith("vela-places-src-") }) {
+            osmPoiExclude = emptyList(); applyPoiTierFilters(style, lastPoiFuelOnly ?: false)
+        }
         return
     }
-    fun key(n: String): String = n.lowercase().replace(NAME_PUNCT, " ").split(NAME_SPACES).filter { it.length > 1 }.take(2).joinToString(" ")
+    val poiLayers = OSM_POI_LAYERS.filter { style.getLayer(it) != null }
+    if (poiLayers.isEmpty()) return
+    val box = RectF(0f, 0f, map.width, map.height)
+    // VIEWPORT ONLY, and only what is DRAWN (2026-09-16). The first cut asked querySourceFeatures
+    // for every feature in every loaded tile on both sources, which marshals thousands of features
+    // across JNI and stalled the main thread up to 169 ms per settle in downtown Davis (measured:
+    // 47 map frames over 33 ms in a pan-and-zoom sequence there, 8 over farmland). Rendered queries
+    // return what is on screen, and an OSM point already excluded is no longer drawn, so it is
+    // never tested again.
+    val osm = runCatching { map.queryRenderedFeatures(box, *poiLayers.toTypedArray()) }.getOrNull().orEmpty()
+    if (osm.isEmpty()) return
     val open = HashMap<String, ArrayList<LatLng>>()
-    openSrcs.forEach { src ->
-        runCatching {
-            (src as? VectorSource)?.querySourceFeatures(arrayOf("places"), null)?.forEach { f ->
-                val pt = f.geometry() as? Point ?: return@forEach
-                val n = f.getStringProperty("name") ?: return@forEach
-                open.getOrPut(key(n)) { ArrayList() } += LatLng(pt.latitude(), pt.longitude())
-            }
-        }
+    val nonBusiness = Expression.`in`(Expression.get("group"), Expression.literal(OPEN_NONBUSINESS_GROUPS))
+    runCatching { map.queryRenderedFeatures(box, nonBusiness, *openLayers.toTypedArray()) }.getOrNull()?.forEach { f ->
+        val pt = f.geometry() as? Point ?: return@forEach
+        val n = f.getStringProperty("name") ?: return@forEach
+        open.getOrPut(fillKey(n)) { ArrayList() } += LatLng(pt.latitude(), pt.longitude())
     }
-    if (open.isEmpty()) return // tiles not in yet; keep the last list, the next idle recomputes
-    val hide = LinkedHashSet<String>()
-    runCatching {
-        val pois = (style.getSource(base) as? VectorSource)?.querySourceFeatures(arrayOf("poi"), null) ?: return
-        if (pois.size > 6000) return // a whole metro's worth of loaded tiles; not worth a main-thread pass, the next idle at a closer zoom does it
-        pois.forEach { f ->
-            val pt = f.geometry() as? Point ?: return@forEach
-            val n = f.getStringProperty("name") ?: return@forEach
-            val ll = LatLng(pt.latitude(), pt.longitude())
-            val keys = sequenceOf(n, f.getStringProperty("name:latin"), f.getStringProperty("name_en")).filterNotNull().map(::key).distinct()
-            if (keys.any { k -> open[k]?.any { it.distanceTo(ll) < 80.0 } == true }) hide += n
-        }
+    if (open.isEmpty()) return
+    val already = osmPoiExclude.toHashSet()
+    val add = LinkedHashSet<String>()
+    osm.forEach { f ->
+        val pt = f.geometry() as? Point ?: return@forEach
+        val n = f.getStringProperty("name") ?: return@forEach
+        if (n in already) return@forEach
+        val ll = LatLng(pt.latitude(), pt.longitude())
+        val keys = sequenceOf(n, f.getStringProperty("name:latin"), f.getStringProperty("name_en")).filterNotNull().map(::fillKey).distinct()
+        if (keys.any { k -> open[k]?.any { it.distanceTo(ll) < 80.0 } == true }) add += n
     }
-    val list = hide.toList()
-    if (list != osmPoiExclude) {
-        osmPoiExclude = list
-        applyPoiTierFilters(style, lastPoiFuelOnly ?: false)
-    }
+    // GROW-ONLY within a source set (the overlay effect resets it). Every setFilter makes MapLibre
+    // re-lay the whole poi source, so the filter changes only when something new turns up, never
+    // just because the camera moved and a different set of names is in view.
+    if (add.isEmpty()) return
+    osmPoiExclude = (osmPoiExclude + add).takeLast(OSM_EXCLUDE_MAX)
+    applyPoiTierFilters(style, lastPoiFuelOnly ?: false)
 }
+
+private val OSM_POI_LAYERS = listOf("poi_r1", "poi_r7", "poi_r20")
+// OSM classes that are BUSINESSES (the style's food/shop/lodging/fuel groups plus the commercial
+// health and money classes). Under the open places layer these stay hidden outright, the way all
+// OSM places did before 2026-09-15: Overture, AllThePlaces and (in Both) Google cover businesses
+// far better than OSM, and deduping them by name at runtime was the settle-time stall. What OSM
+// keeps drawing is everything else - museums, attractions, parks, schools, civic buildings,
+// places of worship, transit - which is where OSM is the better, sometimes the only, source.
+private val OSM_BUSINESS_CLASSES = arrayOf(
+    "restaurant", "fast_food", "cafe", "bar", "pub", "food_court", "ice_cream", "bakery", "food", "beer", "deli", "confectionery",
+    "shop", "grocery", "supermarket", "convenience", "clothing_store", "mall", "department_store", "jewelry", "gift", "books",
+    "furniture", "hardware", "florist", "mobile_phone", "optician", "hairdresser", "laundry", "butcher", "greengrocer",
+    "marketplace", "car", "bicycle", "outdoor", "chemist", "shoes", "toys", "alcohol_shop", "car_repair", "beauty",
+    "lodging", "fuel", "pharmacy", "doctors", "dentist", "veterinary", "clinic", "bank", "atm", "fitness_centre",
+)
+// Icon groups of the open places that CAN twin an OSM non-business point (the open side of the
+// small runtime dedupe that remains).
+private val OPEN_NONBUSINESS_GROUPS = arrayOf("culture", "civic", "edu", "sport", "health", "park", "default")
+private var osmHideBusiness = false
+private val fillLast = doubleArrayOf(Double.NaN, Double.NaN, Double.NaN) // lat, lng, zoom of the last fill-in pass
+private val fillLastAt = longArrayOf(0L)
+private const val OSM_EXCLUDE_MAX = 1500
+private fun fillKey(n: String): String =
+    n.lowercase().replace(NAME_PUNCT, " ").split(NAME_SPACES).filter { it.length > 1 }.take(2).joinToString(" ")
 
 /** The Google-style nav road-name BUBBLE: a rounded chip with a pointer tail at the bottom,
  *  registered as a STRETCHABLE style image (stretch zones skip the corners AND the tail so
@@ -5157,52 +5249,6 @@ private fun emphasizeShields(context: android.content.Context, style: Style) {
  * (see styleKey), so each pass starts from Liberty's defaults — no need to undo.
  * No-ops on non-OpenMapTiles styles (e.g. the MapLibre demo basemap). Keyless.
  */
-/** The open places (Overture) icons that are on screen for the Both-mode dedupe, as (name,
- *  location): every icon ACTUALLY DRAWN right now (queryRenderedFeatures over the `vela-places-<i>`
- *  icon layers) plus every loaded feature whose RANK qualifies it for an icon at this zoom (the
- *  same steps the layer's `topOr` uses). Drawn alone was racy (2026-09-15): the ambient upload can
- *  land a beat before the open icons render, and Google's copy then drew beside the open one;
- *  loaded alone was wrong the other way (an open feature thinned by the rank steps or hidden under
- *  a stacked point suppressed Google's copy and the user saw neither shop). The union is
- *  deterministic for the thinning and only misses a stacked point, which the bake now spreads. */
-private fun openPlacesShown(map: MapLibreMap, style: Style, zoom: Double): List<Triple<String, String, LatLng>> {
-    val layers = style.layers.map { it.id }.filter { it.startsWith("vela-places-") && !it.startsWith("vela-places-dots-") } +
-        listOf("poi_r1", "poi_r7", "poi_r20").filter { style.getLayer(it) != null } // the OSM fill-in draws too
-    if (layers.none { it.startsWith("vela-places-") }) return emptyList()
-    val out = ArrayList<Triple<String, String, LatLng>>()
-    runCatching {
-        map.queryRenderedFeatures(RectF(0f, 0f, map.width, map.height), *layers.toTypedArray()).forEach { f ->
-            val pt = f.geometry() as? Point ?: return@forEach
-            val n = f.getStringProperty("name") ?: return@forEach
-            out += Triple(f.getStringProperty("id") ?: "", n, LatLng(pt.latitude(), pt.longitude()))
-        }
-    }
-    fun num(f: org.maplibre.geojson.Feature, k: String): Double? = runCatching { f.getNumberProperty(k)?.toDouble() }.getOrNull()
-    fun qualifies(f: org.maplibre.geojson.Feature): Boolean {
-        val prom = num(f, "prominence") ?: 0.0
-        val rank = num(f, "rank") ?: 999.0
-        val crank = num(f, "crank") ?: 999.0
-        return when {
-            zoom < 13.0 -> true
-            zoom < 15.0 -> crank <= 2 || prom >= 6.0
-            zoom < 16.0 -> rank <= 1 || prom >= 5.0
-            zoom < 17.0 -> rank <= 5 || prom >= 4.0
-            zoom < 17.5 -> rank <= 12 || prom >= 3.0
-            else -> true
-        }
-    }
-    style.sources.filter { it.id.startsWith("vela-places-src-") }.forEach { src ->
-        runCatching {
-            (src as? VectorSource)?.querySourceFeatures(arrayOf("places"), null)?.forEach { f ->
-                if (!qualifies(f)) return@forEach
-                val pt = f.geometry() as? Point ?: return@forEach
-                val n = f.getStringProperty("name") ?: return@forEach
-                out += Triple(f.getStringProperty("id") ?: "", n, LatLng(pt.latitude(), pt.longitude()))
-            }
-        }
-    }
-    return out
-}
 
 /** Two business names for the same place, allowing for the usual drift between sources
  *  ("Panera Bread" vs "Panera", "Joe's Cafe" vs "Joes Cafe"): they share as many words as the
@@ -6491,17 +6537,14 @@ private fun applyData(
     // stays stale so the first recomposition after landing uploads the full set.
     if (ambientPois != lastAppliedAmbient && flightDepth[0] == 0) {
         fun uploadAmbient() {
-            // "Both" places setting: a Google place that agrees BY NAME with an open one within
-            // DEDUPE_NAME_M is the same business twice. Google's copy is the one drawn (see
-            // openDisplacedIds for why) and the open twin is filtered out of the layer, so the
-            // open data keeps exactly the places Google did not return. The index property stays
-            // the list index, so a tap still opens the right place.
-            val openInView = openPlacesShown(map, style, map.cameraPosition.zoom)
-            val displaced = HashSet<String>()
+            // Every Google place goes up as-is: in Both mode Google's copy wins a twin, so there is
+            // nothing to drop here. Hiding the OPEN twins is a separate, debounced pass
+            // (hideOpenTwins below) - running the map queries inline made every streamed partial
+            // result pay for them on the main thread (up to 119 ms, a dozen times per settle in
+            // downtown Davis, 2026-09-16). The index property stays the list index, so a tap
+            // still opens the right place.
             val ambientFc = FeatureCollection.fromFeatures(
                 ambientPois.mapIndexedNotNull { i, m ->
-                    openInView.firstOrNull { (_, n, ll) -> ll.distanceTo(m.location) < DEDUPE_NAME_M && namesAgree(n, m.name) }
-                        ?.let { twin -> if (twin.first.isNotEmpty()) displaced += twin.first }
                     Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
                         val group = PoiIcons.groupFor(m.name, m.category)
                         addStringProperty("name", m.name)
@@ -6522,10 +6565,6 @@ private fun applyData(
                 },
             )
             style.getSourceAs<GeoJsonSource>(AMBIENT_SRC)?.setGeoJson(ambientFc)
-            if (displaced != openDisplacedIds) {
-                openDisplacedIds = displaced
-                applyOpenPlacesHidden(style)
-            }
         }
         uploadAmbient()
         lastAppliedAmbient = ambientPois
@@ -6536,13 +6575,15 @@ private fun applyData(
         // have had two seconds, on the same list; a newer list cancels it. setGeoJson on an
         // identical collection is cheap next to the fan-out that produced it.
         ambientRedo[0]?.let { ambientRedoHandler.removeCallbacks(it) }
+        ambientRedo2[0]?.let { ambientRedoHandler.removeCallbacks(it) }
         if (style.sources.any { it.id.startsWith("vela-places-src-") }) {
-            val redo = Runnable {
-                ambientRedo[0] = null
-                if (lastAppliedAmbient === ambientPois && style.isFullyLoaded && flightDepth[0] == 0) uploadAmbient()
-            }
-            ambientRedo[0] = redo
-            ambientRedoHandler.postDelayed(redo, 2000)
+            val pois = ambientPois
+            fun pass() { if (lastAppliedAmbient === pois && style.isFullyLoaded && flightDepth[0] == 0) hideOpenTwins(map, style, pois) }
+            val early = Runnable { ambientRedo[0] = null; pass() }
+            val late = Runnable { ambientRedo2[0] = null; pass() }
+            ambientRedo[0] = early; ambientRedo2[0] = late
+            ambientRedoHandler.postDelayed(early, 400)  // after the streamed partials settle
+            ambientRedoHandler.postDelayed(late, 2000)  // open icons that rendered late
         }
     }
 
