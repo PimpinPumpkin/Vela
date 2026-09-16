@@ -77,13 +77,11 @@ every open issue is something that can actually be acted on.
 - **Feature requests are read, not voted on.** The maintainer decides. A request that
   does not fit the project is closed as not planned, without a debate, and stays
   closed; reopening it or filing it again under another title is not a discussion.
-- **Vela's own behavior is not a bug because Google Maps does it differently.** Some
-  differences are deliberate (no POI taps while driving, no routing through arbitrary
-  points). The reply will say which.
 - **Reports arrive one at a time.** Wait for a reply on an open report before filing
   the next one. Bursts of reports get the tracker's interaction limits switched on.
 - **Incomplete issues are closed without further explanation**, the same way NewPipe
-  and most small projects handle them. Fill in the template and it will be read.
+  and most small projects handle them, and they are labelled `incomplete` so the reason
+  is on the record. Fill in the template and it will be read.
 
 ## Pull requests
 
