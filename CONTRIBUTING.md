@@ -77,8 +77,6 @@ every open issue is something that can actually be acted on.
 - **Feature requests are read, not voted on.** The maintainer decides. A request that
   does not fit the project is closed as not planned, without a debate, and stays
   closed; reopening it or filing it again under another title is not a discussion.
-- **Reports arrive one at a time.** Wait for a reply on an open report before filing
-  the next one. Bursts of reports get the tracker's interaction limits switched on.
 - **Incomplete issues are closed without further explanation**, the same way NewPipe
   and most small projects handle them, and they are labelled `incomplete` so the reason
   is on the record. Fill in the template and it will be read.
