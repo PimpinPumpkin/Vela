@@ -1987,6 +1987,15 @@ architecture note.
   again and again, until you panned (which drops follow). `browseEngaged` gates the flight to the
   first engagement and clears when follow ends. User report 2026-09-16 ("keeps trying to zoom the
   camera in there until I pan away").
+- **The Both-mode twin pass waits for a still map (2026-09-16).** Measured in Manhattan on the 4a
+  (scrub at z17, warm): Both 28 fps with ~10 main-thread stalls per run up to 190 ms (the twin
+  pass: full-screen rendered query + a filter change on every places layer), Vela data 34 fps and
+  Google 37 fps with none. The pass now reschedules itself until the camera has been still for
+  `TWIN_PASS_STILL_MS` (700 ms, `lastCameraMoveMs` from the move listener): stalls 2-3 per run
+  (~140 ms total). The remaining fps gap is render cost (two places layers plus filter changes).
+  Dense cities are ~34 fps even in Vela data mode; Davis is ~60. Benchmark: scratchpad-style
+  scrub via `cmd input motionevent` + the `VelaFps` frame probe, run each mode twice alternating
+  (single runs swing 22-31 fps; the first runs after an install are slow).
 - **In BOTH mode Google WINS a twin outright (2026-09-16, user's call).** Any open feature whose
   name agrees with a Google place within `DEDUPE_NAME_M` (80 m) has its id put in
   `openDisplacedIds` by the debounced `hideOpenTwins` pass, and `applyOpenPlacesHidden` filters it

@@ -413,6 +413,12 @@ private val flightDepth = intArrayOf(0)
 private val ambientRedoHandler = android.os.Handler(android.os.Looper.getMainLooper())
 private val ambientRedo = arrayOfNulls<Runnable>(1) // the pending Both-mode twin pass (early)
 private val ambientRedo2 = arrayOfNulls<Runnable>(1) // ... and the late one
+// Uptime of the last camera-move frame. The Both-mode twin pass is a full-screen rendered query
+// plus a filter change on every places layer, 80 to 190 ms on a 4a in Manhattan; run mid-pan it
+// was the hitch (measured 2026-09-16: ten stalls per scrub in Both, none in either single mode).
+// It now waits until the map has been still for TWIN_PASS_STILL_MS.
+private val lastCameraMoveMs = longArrayOf(0L)
+private const val TWIN_PASS_STILL_MS = 700L
 
 private fun flightCb() = object : org.maplibre.android.maps.MapLibreMap.CancelableCallback {
     override fun onFinish() { if (flightDepth[0] > 0) flightDepth[0]-- }
@@ -2895,6 +2901,7 @@ fun VelaMapView(
                     osmFillHandler.postDelayed(fill, 500)
                 }
                 map.addOnCameraMoveListener {
+                    lastCameraMoveMs[0] = android.os.SystemClock.uptimeMillis()
                     ovlRenderSettled[0] = false
                     warmPending[0]?.let { warmHandler.removeCallbacks(it); warmPending[0] = null }
                     warmSnapshotter[0]?.cancel(); warmSnapshotter[0] = null
@@ -6592,8 +6599,18 @@ private fun applyData(
         if (style.sources.any { it.id.startsWith("vela-places-src-") }) {
             val pois = ambientPois
             fun pass() { if (lastAppliedAmbient === pois && style.isFullyLoaded && flightDepth[0] == 0) hideOpenTwins(map, style, pois) }
-            val early = Runnable { ambientRedo[0] = null; pass() }
-            val late = Runnable { ambientRedo2[0] = null; pass() }
+            // Still moving: try again once the map has settled (a newer list cancels this).
+            fun stillOrLater(slot: Array<Runnable?>, self: Runnable): Boolean {
+                val sinceMove = android.os.SystemClock.uptimeMillis() - lastCameraMoveMs[0]
+                if (sinceMove >= TWIN_PASS_STILL_MS) return true
+                slot[0] = self
+                ambientRedoHandler.postDelayed(self, TWIN_PASS_STILL_MS - sinceMove)
+                return false
+            }
+            lateinit var early: Runnable
+            lateinit var late: Runnable
+            early = Runnable { ambientRedo[0] = null; if (stillOrLater(ambientRedo, early)) pass() }
+            late = Runnable { ambientRedo2[0] = null; if (stillOrLater(ambientRedo2, late)) pass() }
             ambientRedo[0] = early; ambientRedo2[0] = late
             ambientRedoHandler.postDelayed(early, 400)  // after the streamed partials settle
             ambientRedoHandler.postDelayed(late, 2000)  // open icons that rendered late
