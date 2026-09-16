@@ -3386,8 +3386,12 @@ Gotchas:
   downloaded region (a whole-country download today gets all its pieces, a Land download later gets one),
   and `sourcesFor` streams the smallest covering piece. The full bake is two manual `places-overlays.yml`
   dispatches, `shard=a` and `shard=b` (the matrix caps at 256 jobs), max-parallel 4, hours each; `MapPoiPrefs.placesSource` (Settings > Data & privacy since
-  2026-09-16, was Map; "Places come from": `open` ("Vela data") / `google` / `both` (DEFAULT since
-  2026-09-16, was `open`: the user did not want to miss the places Overture lacks), pref `map_places_source`,
+  2026-09-16, was Map; "Places come from": `open` ("Vela data", compiled default) / `google` / `both`; the FLEET DEFAULT
+  is remote since 2026-09-16 (`calibration.json` `defaultPlacesSource`, v20 -> `Calibration.defaultPlacesSource`
+  -> the VM pushes it into `MapPoiPrefs.setRemoteDefault` at init + after refresh, same channel as
+  defaultMapPalette; only people who never touched the picker follow it, an explicit pick wins).
+  The user did not want Both hard-coded as the default (2026-09-16) but wants the flip available
+  without a release: edit the field, bump version, re-sign, commit. Pref `map_places_source`,
   short user-facing hints plus a Learn more dialog naming Overture/Meta, Vela's own GitHub hosting,
   and the Google hooks on search and tap) gates it; `MapPoiPrefs.placesWithDownloads` (Settings >
   Offline maps, "Include places with downloads", default ON, pref `offline_places_with_downloads`)
