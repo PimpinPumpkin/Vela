@@ -153,6 +153,34 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             }
         }
 
+        // What offline data actually costs on this phone, ABOVE the catalog since 2026-09-16 (issue
+        // #518: see what you have and clear the cache before scrolling a world of downloads). (Issue #214: 8 GB arrived unannounced,
+        // and 533 MB of "empty" app is mostly the browsing cache with no way to clear it).
+        SubHead(stringResource(R.string.settings_storage_title))
+        var storageTick by remember { mutableStateOf(0) }
+        val storage by produceState<MapViewModel.OfflineStorage?>(null, storageTick, state.routingInstalledIds, state.poiPackInstalledIds) {
+            value = vm.offlineStorageBreakdown()
+        }
+        val storageScope = rememberCoroutineScope()
+        SettingsGroup {
+            storage?.let { st ->
+                StorageRow(stringResource(R.string.settings_storage_maps), st.mapsMb)
+                GroupDivider()
+                StorageRow(stringResource(R.string.settings_storage_routing), st.routingMb)
+                GroupDivider()
+                StorageRow(stringResource(R.string.settings_storage_places), st.placesMb)
+                GroupDivider()
+                StorageRow(stringResource(R.string.settings_storage_voices), st.voicesMb)
+            } ?: Hint(stringResource(R.string.settings_storage_measuring))
+            androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 8.dp)) {
+                androidx.compose.material3.TextButton(
+                    onClick = { storageScope.launch { vm.clearMapCache(); storageTick++ } },
+                    modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                ) { Text(stringResource(R.string.settings_clear_map_cache)) }
+            }
+            Hint(stringResource(R.string.settings_clear_map_cache_hint))
+        }
+        Spacer(Modifier.height(8.dp))
         SubHead(stringResource(R.string.settings_routing_regions))
         LaunchedEffect(Unit) { vm.refreshRoutingRegions() }
         Hint(stringResource(R.string.settings_routing_regions_hint))
@@ -354,32 +382,6 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                 }
             }
             }
-        }
-        // What offline data actually costs on this phone (issue #214: 8 GB arrived unannounced,
-        // and 533 MB of "empty" app is mostly the browsing cache with no way to clear it).
-        SubHead(stringResource(R.string.settings_storage_title))
-        var storageTick by remember { mutableStateOf(0) }
-        val storage by produceState<MapViewModel.OfflineStorage?>(null, storageTick, state.routingInstalledIds, state.poiPackInstalledIds) {
-            value = vm.offlineStorageBreakdown()
-        }
-        val storageScope = rememberCoroutineScope()
-        SettingsGroup {
-            storage?.let { st ->
-                StorageRow(stringResource(R.string.settings_storage_maps), st.mapsMb)
-                GroupDivider()
-                StorageRow(stringResource(R.string.settings_storage_routing), st.routingMb)
-                GroupDivider()
-                StorageRow(stringResource(R.string.settings_storage_places), st.placesMb)
-                GroupDivider()
-                StorageRow(stringResource(R.string.settings_storage_voices), st.voicesMb)
-            } ?: Hint(stringResource(R.string.settings_storage_measuring))
-            androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 8.dp)) {
-                androidx.compose.material3.TextButton(
-                    onClick = { storageScope.launch { vm.clearMapCache(); storageTick++ } },
-                    modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
-                ) { Text(stringResource(R.string.settings_clear_map_cache)) }
-            }
-            Hint(stringResource(R.string.settings_clear_map_cache_hint))
         }
         Spacer(Modifier.height(24.dp))
     }

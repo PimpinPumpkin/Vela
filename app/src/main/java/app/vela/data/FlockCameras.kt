@@ -191,8 +191,12 @@ object FlockCameras {
         return out
     }
 
-    /** Cameras within [meters] of any SEGMENT of [polyline], for the route count. Empty if not loaded. */
-    fun along(polyline: List<LatLng>, meters: Double = 120.0): List<AlprCamera> {
+    /** Cameras within [meters] of any SEGMENT of [polyline], for the route count. Empty if not loaded.
+     *  45 m, not the old 120 (issue #527): a camera on a parallel alternate a block over, or on
+     *  the frontage road, counted against a route that never passes it, so a camera-free route
+     *  badged "1 camera". A roadside ALPR sits within a lane or two of the way it watches, and a
+     *  divided highway's far carriageway is mostly past 45 m, so this counts what you drive past. */
+    fun along(polyline: List<LatLng>, meters: Double = 45.0): List<AlprCamera> {
         if (!loaded || polyline.size < 2) return emptyList()
         val pad = 0.01
         val r0 = rowOf(polyline.minOf { it.lat } - pad); val r1 = rowOf(polyline.maxOf { it.lat } + pad)
