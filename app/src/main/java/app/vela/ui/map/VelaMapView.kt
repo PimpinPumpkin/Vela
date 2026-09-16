@@ -1196,6 +1196,8 @@ fun VelaMapView(
                 val icon = Expression.get("icon") // "vela-poi-<group>", baked
                 val name = Expression.get("name")
                 val labelCap = app.vela.core.config.CalibrationStore.latest.tune("openLabelCap", 20.0).toInt()
+                val iconCapNear = app.vela.core.config.CalibrationStore.latest.tune("openIconCapNear", 8.0).toInt()
+                val iconCapClose = app.vela.core.config.CalibrationStore.latest.tune("openIconCapClose", 16.0).toInt()
                 // Dots come in by rank too, Google-style: none at z14 (icons only), the top six
                 // per 400 m cell at z15, the top fifteen at z16, everything from z17. Opacity, not
                 // a filter: a hidden dot still costs nothing, and MapLibre filters cannot read
@@ -1250,7 +1252,18 @@ fun VelaMapView(
                                 Expression.stop(15f, topOr("rank", 1, 5.0, icon)),
                                 Expression.stop(16f, topOr("rank", 5, 4.0, icon)),
                                 Expression.stop(17f, topOr("rank", 12, 3.0, icon)),
-                                Expression.stop(17.5f, icon),
+                                // FULL-FAT ICON BUDGET at street zoom (user 2026-09-16: "have a
+                                // limit to the full fat POIs period if too many are on screen...
+                                // minimizing to little circle dots is an alternative if we are too
+                                // crowded"). `frank` is the place's rank inside a ~100 m cell, so
+                                // these are per-block budgets that OPEN UP as you zoom: the best
+                                // eight per block get an icon at 17.5, sixteen at 18.5, everything
+                                // from 19.5. A place below the cut still draws as a dot (the dots
+                                // tier is unfiltered from z17), which is the "see more later when
+                                // we zoom in" behaviour rather than a place disappearing.
+                                Expression.stop(17.5f, topOr("frank", iconCapNear, 6.0, icon)),
+                                Expression.stop(18.5f, topOr("frank", iconCapClose, 5.0, icon)),
+                                Expression.stop(19.5f, icon),
                             ),
                         ),
                         PropertyFactory.iconSize(

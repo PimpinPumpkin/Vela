@@ -1987,6 +1987,24 @@ architecture note.
   layer then holds exactly what Google did not return, which is the point of Both. Offline nothing
   is hidden (no ambient places to match against). The first cut kept the open icon when the two
   agreed within 25 m; the user asked for Google to win either way.
+- **UNIT-LEVEL SNAP for stacked tenants (2026-09-16, `build-places-region.sh`).** A stacked row has
+  no coordinate of its own (Overture puts a building's tenants on one parcel point, usually the
+  lot's address out front), so the ring spread invents one. Overture's ADDRESSES theme carries a
+  point per unit, so a tenant whose own address names a unit ("STE B", "APT 112") is snapped to
+  that point first and only what is still stacked gets the ring. Matched on house NUMBER + UNIT
+  within ~200 m, street name IGNORED on purpose: a number plus a unit is unique that close, and
+  the two themes abbreviate streets differently ("Blvd" vs "Boulevard"). Davis: 444 stacked rows,
+  218 name a unit, 97 snapped. `$ADDR_SQL` is empty on the local-parquet dev path. Only STACKED
+  rows are snapped - an unstacked place already has a real coordinate (measured: Overture and
+  AllThePlaces agree to a median 7.4 m over 124 Davis chains, so neither source is systematically
+  better and snapping everything would move good points for nothing).
+- **The high-zoom icon budget is `frank` (2026-09-16).** A ~100 m cell rank baked alongside
+  rank/crank/xrank. `rank`'s 400 m cell is about the whole screen at z17.5, so a cap on it never
+  opens up as you zoom; `frank` is a per-block budget: `openIconCapNear` (8) get an icon at z17.5,
+  `openIconCapClose` (16) at z18.5, everything from z19.5, both calibration dials. A place below
+  the cut still draws as a DOT (the dots tier is unfiltered from z17), which is the user's ask:
+  "minimizing to little circle dots is an alternative if we are too crowded ... we can see more
+  later when we zoom into an area", not places disappearing.
 - **Open-layer labels stay thinned at max zoom (2026-09-16).** Icons come in for everything from
   z17.5 but only the top `openLabelCap` (calibration dial, default 20) per 400 m cell get a name:
   each label is glyph layout plus a collision pass over four anchors, and a mall puts dozens in one
