@@ -177,6 +177,7 @@ class CalibrationStore @Inject constructor(
             defaultVoiceSpeed = (o["defaultVoiceSpeed"] as? JsonPrimitive)?.content?.toFloatOrNull() ?: d.defaultVoiceSpeed,
             defaultVoiceId = (o["defaultVoiceId"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } ?: d.defaultVoiceId,
             defaultMapPalette = (o["defaultMapPalette"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } ?: d.defaultMapPalette,
+            defaultPlacesSource = (o["defaultPlacesSource"] as? JsonPrimitive)?.content?.takeIf { it == "open" || it == "both" || it == "google" } ?: d.defaultPlacesSource,
             // Numbers only, leniently: a non-numeric value is skipped rather than failing the
             // bundle, so one bad dial can never take down the whole calibration.
             tuning = (o["tuning"] as? JsonObject)?.mapNotNull { (k, v) ->
