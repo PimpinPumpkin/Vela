@@ -67,6 +67,12 @@ data class Calibration(
     // archived pre-sample look; the app ships both compiled). Remote-pushable so the default can
     // flip without an app release; a user's explicit pick (map_palette pref) always wins.
     val defaultMapPalette: String = "modern",
+    // The fleet default for Settings > Data source & privacy > "Places come from": "open" (Vela
+    // data alone, nothing about browsing reaches Google), "both" (the open layer plus one Google
+    // request per settled view for what it lacks) or "google". Remote-pushable so the default can
+    // flip without an app release (the user wanted the call kept on the signed channel,
+    // 2026-09-16); a user's explicit pick (map_places_source pref) always wins.
+    val defaultPlacesSource: String = "open",
     // Fleet-tunable NUMBERS: a flat name -> value map so a new dial is a config edit, never a
     // schema change. Read through [tune]; a missing key means the compiled default passed at the
     // call site, so an old bundle can never break a new app (and vice versa). Current dials:

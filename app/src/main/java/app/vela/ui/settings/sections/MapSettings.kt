@@ -144,64 +144,6 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
             hint = stringResource(R.string.settings_show_pois_hint),
         )
         if (app.vela.ui.MapPoiPrefs.showPois.value) {
-            GroupDivider()
-            // Where the map's businesses come from. Each option states its own cost so the choice
-            // is the user's: open data is offline and quiet, Google is complete and chatty, both
-            // is the open layer plus one Google fetch per settled view.
-            androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
-                Text(
-                    stringResource(R.string.settings_places_source),
-                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
-            listOf(
-                app.vela.ui.MapPoiPrefs.SOURCE_OPEN to R.string.settings_places_source_open,
-                app.vela.ui.MapPoiPrefs.SOURCE_GOOGLE to R.string.settings_places_source_google,
-                app.vela.ui.MapPoiPrefs.SOURCE_BOTH to R.string.settings_places_source_both,
-            ).forEach { (id, label) ->
-                SelectableRow(
-                    label = stringResource(label),
-                    selected = app.vela.ui.MapPoiPrefs.placesSource.value == id,
-                    onClick = { app.vela.ui.MapPoiPrefs.setPlacesSource(context, id) },
-                )
-            }
-            Hint(
-                stringResource(
-                    when (app.vela.ui.MapPoiPrefs.placesSource.value) {
-                        app.vela.ui.MapPoiPrefs.SOURCE_GOOGLE -> R.string.settings_places_source_google_hint
-                        app.vela.ui.MapPoiPrefs.SOURCE_BOTH -> R.string.settings_places_source_both_hint
-                        else -> R.string.settings_places_source_open_hint
-                    },
-                ),
-            )
-            // The short hints carry what matters; the rest (who maintains the data, where Vela
-            // serves it from, what still touches Google) lives behind Learn more.
-            var placesInfo by remember { androidx.compose.runtime.mutableStateOf(false) }
-            androidx.compose.material3.TextButton(
-                onClick = { placesInfo = true },
-                modifier = Modifier.padding(start = 8.dp).dpadHighlight(androidx.compose.foundation.shape.CircleShape),
-            ) { Text(stringResource(R.string.settings_places_source_more)) }
-            if (placesInfo) {
-                app.vela.ui.VelaDialog(
-                    onDismissRequest = { placesInfo = false },
-                    title = stringResource(R.string.settings_places_source_more_title),
-                    text = { Text(stringResource(R.string.settings_places_source_more_body)) },
-                    confirmText = stringResource(android.R.string.ok),
-                    onConfirm = { placesInfo = false },
-                    dismissText = stringResource(R.string.settings_places_source_more_credit),
-                    onDismiss = {
-                        placesInfo = false
-                        runCatching {
-                            context.startActivity(
-                                android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://overturemaps.org/")),
-                            )
-                        }
-                    },
-                    dismissLowEmphasis = true,
-                )
-            }
             if (app.vela.ui.MapPoiPrefs.openPlaces) {
                 GroupDivider()
                 ToggleRow(

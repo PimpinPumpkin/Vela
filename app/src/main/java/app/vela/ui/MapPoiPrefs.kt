@@ -28,6 +28,10 @@ object MapPoiPrefs {
      *  map and one Google fetch per settled view fills in what it lacks). Outside any region file all
      *  three behave like Google. The user picks; each option's costs are stated in Settings. */
     val placesSource = mutableStateOf(SOURCE_OPEN)
+    /** The user's own pick, or null while they have never touched the picker (the fleet default,
+     *  `Calibration.defaultPlacesSource`, applies then and can be flipped remotely). */
+    private var explicitSource: String? = null
+    private var remoteDefault: String = SOURCE_OPEN
     /** The open places layer is on the map (open data or both). */
     val openPlaces: Boolean get() = placesSource.value != SOURCE_GOOGLE
     /** The open places layer alone owns the map's businesses where it covers the view. */
@@ -46,7 +50,8 @@ object MapPoiPrefs {
         showTransit.value = p.getBoolean(KEY_TRANSIT, true)
         showCivic.value = p.getBoolean(KEY_CIVIC, true)
         iconScale.floatValue = p.getFloat(KEY_SCALE, 1.0f)
-        placesSource.value = p.getString(KEY_PLACES_SOURCE, null) ?: SOURCE_OPEN
+        explicitSource = p.getString(KEY_PLACES_SOURCE, null)
+        placesSource.value = explicitSource ?: remoteDefault
         placesWithDownloads.value = p.getBoolean(KEY_PLACES_WITH_DOWNLOADS, true)
         lookupTappedPlaces.value = p.getBoolean(KEY_LOOKUP_TAPPED, true)
     }
@@ -62,8 +67,16 @@ object MapPoiPrefs {
     }
 
     fun setPlacesSource(context: Context, value: String) {
+        explicitSource = value
         placesSource.value = value
         prefs(context).edit().putString(KEY_PLACES_SOURCE, value).apply()
+    }
+
+    /** The signed bundle's fleet default (MapViewModel pushes it at init and after each refresh);
+     *  takes effect only for people who never made their own pick. */
+    fun setRemoteDefault(value: String) {
+        remoteDefault = value
+        if (explicitSource == null) placesSource.value = value
     }
 
     fun setShowPois(context: Context, value: Boolean) {
