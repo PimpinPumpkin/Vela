@@ -118,6 +118,10 @@ fun StepsSheet(
     // routing can have only a street, an address, or nothing but the tapped coordinates).
     destName: String? = null,
     destAddress: String? = null,
+    // Where each leg after the first begins in [maneuvers], with the stop's name (issue #519): a
+    // divider row is drawn before that step so a stop stands out in a long list instead of
+    // vanishing between two ordinary turns. Empty for a single-leg trip.
+    legStarts: List<Pair<Int, String>> = emptyList(),
     // Real romanized road names (local -> basemap Latin) + the UI language, so foreign street names
     // in the step list show in Latin where we have a real romanization (issue #184). Empty = unchanged.
     roadLatin: Map<String, String> = emptyMap(),
@@ -316,6 +320,7 @@ fun StepsSheet(
             ) {
                 if (stopsRow != null) item { stopsRow() }
                 itemsIndexed(maneuvers) { i, m ->
+                    legStarts.firstOrNull { it.first == i }?.let { (_, name) -> StopDividerRow(name) }
                     StepRow(
                         m = m,
                         active = i == currentStep,
@@ -380,6 +385,40 @@ fun NavStopsRow(stops: List<String>, onEdit: () -> Unit, modifier: Modifier = Mo
             )
         }
         HorizontalDivider(color = dim.copy(alpha = 0.25f))
+    }
+}
+
+/** The stop that begins a leg (issue #519): a primary-tinted pin and "Stop: <name>" on its own
+ *  band between the ARRIVE of the previous leg and the first turn of the next, so a long list
+ *  reads leg by leg. Same left gutter as [StepRow]. */
+@Composable
+fun StopDividerRow(name: String, modifier: Modifier = Modifier) {
+    val dark = isAppInDarkTheme()
+    val ink = SheetPalette.ink(dark)
+    Column(modifier.fillMaxWidth()) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f), RoundedCornerShape(12.dp))
+                .padding(top = 10.dp, bottom = 10.dp, start = 4.dp, end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Default.Place,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp),
+            )
+            Spacer(Modifier.width(14.dp))
+            Text(
+                if (name.isBlank()) stringResource(R.string.steps_stop) else stringResource(R.string.steps_stop_at, name),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = ink,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

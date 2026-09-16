@@ -3721,6 +3721,7 @@ class MapViewModel @Inject constructor(
      *  session's stop came from one (same coordinates), else a bare Place carrying the label. */
     fun navStopsForEditor(): List<Place> = nav.navStopsForEditor()
     fun navRemainingStopLabels(): List<String> = nav.navRemainingStopLabels()
+    fun navRemainingStops(): List<app.vela.core.nav.NavSession.NavStop> = nav.navRemainingStops()
 
 
     /** Apply the editor's final ordering in ONE shot — a single reroute per visit, not one per

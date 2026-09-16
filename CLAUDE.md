@@ -1964,6 +1964,12 @@ architecture note.
   `applyMapTheme` now narrows `boundary_3`'s filter to admin 3-4 (minzoom 4, dashed) and themes
   all three: the style's own dark grey vanished on the dark map. Never put the boundary ids back
   in the hide list; if a region shows dashed junk, check its admin levels before touching the filter.
+- **Stop dividers in the step list (2026-09-16, #519):** `StepsSheet(legStarts = [(maneuver index
+  where leg k>0 starts, stop name)])` draws `StopDividerRow` before that step; MapScreen computes
+  the indices from `activeRoute.legs` (cumulative maneuver counts) and names them from
+  `navRemainingStopLabels()` while driving or `directionsWaypoints` in the chooser. Via boundaries
+  carry no DEPART/ARRIVE maneuvers (routeVia and chainOnDevice both drop them), so without this
+  row a stop was invisible in the list.
 - **Traffic raster anchoring (2026-09-16, #521):** `ensureTraffic` inserts `vela-traffic` ABOVE
   `building-3d`/`building` (fallback: below the first symbol layer, which in Liberty is the one-way
   arrow at index 61, BEFORE the buildings at 83-84, which is how the footprints ended up painting

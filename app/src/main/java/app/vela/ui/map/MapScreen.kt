@@ -1822,6 +1822,13 @@ fun MapScreen(
                     )
                 } else null,
                 maneuvers = state.activeRoute?.maneuvers ?: emptyList(),
+                // Issue #519: the maneuver index where each leg after the first starts, named after
+                // its stop (remaining stops while driving, the planned list otherwise).
+                legStarts = remember(state.activeRoute, state.navigating, state.directionsWaypoints, state.nav.stepIndex) {
+                    val r = state.activeRoute
+                    val stops = if (state.navigating) vm.navRemainingStops().map { it.location to it.label } else state.directionsWaypoints.map { it.location to it.name }
+                    if (r == null || stops.isEmpty()) emptyList() else app.vela.core.nav.RouteStops.legStarts(r, stops)
+                },
                 etaSeconds = state.activeRoute?.let { it.durationInTrafficSeconds ?: it.durationSeconds } ?: 0.0,
                 distanceMeters = state.activeRoute?.distanceMeters ?: 0.0,
                 hasLiveTraffic = state.activeRoute?.hasLiveTraffic ?: false,

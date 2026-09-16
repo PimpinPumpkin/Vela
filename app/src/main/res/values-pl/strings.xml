@@ -193,6 +193,8 @@
     <string name="place_add_stop">Dodaj przystanek</string>
     <string name="stops_editor_title">Przystanki</string>
     <string name="stops_edit">Edytuj przystanki</string>
+    <string name="steps_stop_at">Przystanek: %1$s</string>
+    <string name="steps_stop">Przystanek</string>
     <string name="stops_drag_reorder">Przeciągnij, aby zmienić kolejność</string>
     <string name="place_change_destination">Zmień cel</string>
     <string name="place_swap_start_destination">Zamień punkt początkowy i cel</string>

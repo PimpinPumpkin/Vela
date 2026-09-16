@@ -193,6 +193,8 @@
     <string name="place_add_stop">Halt hinzufügen</string>
     <string name="stops_editor_title">Zwischenstopps</string>
     <string name="stops_edit">Zwischenstopps bearbeiten</string>
+    <string name="steps_stop_at">Zwischenstopp: %1$s</string>
+    <string name="steps_stop">Zwischenstopp</string>
     <string name="stops_drag_reorder">Zum Neuordnen ziehen</string>
     <string name="place_change_destination">Ziel ändern</string>
     <string name="place_swap_start_destination">Start und Ziel tauschen</string>

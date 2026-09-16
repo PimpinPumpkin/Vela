@@ -338,6 +338,8 @@
     <string name="place_add_stop">Add stop</string>
     <string name="stops_editor_title">Stops</string>
     <string name="stops_edit">Edit stops</string>
+    <string name="steps_stop_at">Stop: %1$s</string>
+    <string name="steps_stop">Stop</string>
     <string name="stops_drag_reorder">Drag to reorder</string>
     <string name="place_change_destination">Change destination</string>
     <string name="place_swap_start_destination">Swap start and destination</string>
