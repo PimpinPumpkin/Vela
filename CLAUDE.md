@@ -2033,7 +2033,12 @@ architecture note.
   2.5 hours on them, and four west-coast state bakes were still running after an hour. Both are
   now equi-joins with the ~200 m box as a residual: `tenants` is three joins (normalized address,
   lower(brand), `nhead` first word) UNIONed and DISTINCT, and the snap joins on (number, unit)
-  and keeps the nearest by row_number. Output on the Davis fixture is identical. Any new rule in
+  and keeps the nearest by row_number. The AllThePlaces dedupe (#515) had the same shape - a
+  correlated NOT EXISTS with the name key OR the brand - and is two hash joins with the keys
+  computed once per row now. With all three fixed, a whole state bakes in minutes: Oregon from a
+  laptop, 244,954 places, 2,960 chain rows added, 2,749 tenants snapped, 524 s end to end. The
+  duckdb heredoc runs with `.timer on`, so every CI log shows per-statement times. Output on the
+  Davis fixture is identical. Any new rule in
   `build-places-region.sh` that relates rows to rows needs an equality to hash on - an OR of tests
   or a correlated subquery will not survive a state.
 - **Tenant demotion is a SEMI-JOIN (2026-09-16).** `tools/build-places-region.sh` used a LEFT JOIN
