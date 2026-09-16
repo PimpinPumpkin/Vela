@@ -1027,6 +1027,7 @@ fun MapScreen(
                 ) != PackageManager.PERMISSION_GRANTED
             ) 2000f else null,
             mySpeed = state.mySpeed,
+            myFixRaw = state.myFixRaw,
             mySpeedRaw = state.mySpeedRaw,
             // A recorded-trip REPLAY emits its fixes at REPLAY_SPEEDUP x real time, so the map
             // view scales the puck's clocks to match. A DEMO drive does NOT: startDemoDrive feeds
