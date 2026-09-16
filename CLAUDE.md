@@ -3113,6 +3113,17 @@ Gotchas:
   the camera chases a target moving like the car - the nav glide, no route needed. The next fix
   re-anchors and the ease absorbs the correction. This CLOSES the "fuller dead-reckon is the next
   step" note above; tuning (the 2.5 s cap, the 1.5 m/s gate) still wants a real drive.
+  **Re-anchoring was itself the staccato (2026-09-16, `ui/map/FollowEstimator`):** the user's
+  "moves, stops for a sec, then moves" on surface streets. Two causes: the fix the reckon anchored
+  to is `myLocation`, the VM's parked-hold LOW-PASSED position (k = speed/10, so a fix lags up to a
+  whole fix at 5 m/s), and every re-anchor stepped the target BACK; and even a raw fix is noisy, so
+  every re-anchor was a jump the 0.22 s ease rendered as surge-and-stall. Now one continuously
+  integrated estimate: `onFix` queues HALF the residual as a correction spread over 0.9 s, `step`
+  integrates speed along the course every frame (stale past 2.5 s), and while moving the ticker
+  feeds it `myFixRaw` (new MapUiState field, the accepted fix BEFORE the low-pass; an outlier hold
+  keeps the previous raw) instead of `myLocation`. Slow or stopped it snaps to the smoothed fix as
+  before. `FollowEstimatorTest` pins: no backward frame with fixes lagging 0.8 s at 5 m/s, no
+  frame under 60% of true speed between fixes, stale fix stops integration.
   **Drive-verified follow-ups (2026-07-14 evening):** (1) the DOT still jolted 1 Hz after the
   camera went smooth - applyData's recomposition paint used the RAW fix while the ticker drew the
   eased point, the exact bug the meBearing guard fixed for the ANGLE; `mePaint` (the eased point

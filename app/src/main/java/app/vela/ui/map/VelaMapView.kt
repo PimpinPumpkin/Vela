@@ -364,6 +364,7 @@ fun VelaMapView(
     myBearing: Float?,
     myAccuracyM: Float? = null,
     mySpeed: Float? = null,
+    myFixRaw: LatLng? = null, // last accepted raw fix (pre low-pass), for the free-drive follow estimator
     mySpeedRaw: Float? = null, // THIS fix's own measurement (null = fix had none) — Kalman feed
     // Trip-replay time scale (1 = live). The recorded fixes arrive speedup× faster than real time
     // but carry REAL speeds, so all the puck's wall-clock physics (dead-reckon integration, blind
@@ -577,6 +578,8 @@ fun VelaMapView(
     val myBearingHolder = rememberUpdatedState(myBearing) // vehicle course for the accel projection
     val myLocationHolder = rememberUpdatedState(myLocation)     // live fix, for the free-drive follow ticker
     val mySpeedHolder = rememberUpdatedState(mySpeed)           // live speed, for the free-drive dead reckon
+    val myFixRawHolder = rememberUpdatedState(myFixRaw)         // raw fix, for the free-drive follow estimator
+    val browseEst = remember { FollowEstimator() }              // the continuously integrated follow position
     val compassHeadingHolder = rememberUpdatedState(compassHeading) // device facing, for the beam
     val driveFollowingHolder = rememberUpdatedState(driveFollowing)
     val browseCam = remember { doubleArrayOf(Double.NaN, Double.NaN) } // eased free-drive camera [lat,lng]; NaN = re-seed
@@ -1543,6 +1546,7 @@ fun VelaMapView(
             lastBrowse[0] = Double.NaN
             browseDrive[1] = 0.0; browseDrive[2] = Double.NaN; browseDrive[3] = 0.0
             browseZoomGoal[0] = Double.NaN
+            browseEst.reset()
             browseFlying[0] = false // whatever cancelled the follow also cancelled the flight (onCancel), but never leak
             return@LaunchedEffect
         }
@@ -1561,36 +1565,27 @@ fun VelaMapView(
             else compassHeadingHolder.value ?: myBearingHolder.value
             if (tgt != null) browseBeam[0] = if (browseBeam[0].isNaN()) tgt else smoothBearing(browseBeam[0], tgt, dt, 0.15f)
             val beam = if (browseBeam[0].isNaN()) 0f else browseBeam[0]
-            // DEAD-RECKON the follow target between fixes (user 2026-07-14: "not a smooth inertial
-            // glide like navigation"). Easing toward the RAW fix chases a target that jumps once a
-            // second and then sits still - the camera surges after each fix and stalls before the
-            // next, the visible jitter. Nav glides because its puck integrates speed every frame;
-            // the browse equivalent is a constant-velocity projection of the last fix along its
-            // own course, so the ease chases a target that MOVES like the car. Gated to a real
-            // driving speed with a known course; capped at 2.5 s so a dropped signal can't run the
-            // camera away (the next fix re-anchors and the ease absorbs the correction smoothly).
+            // The follow target is a continuously integrated ESTIMATE (FollowEstimator): a new fix
+            // is a partial correction, not a new anchor, and the speed keeps integrating along the
+            // course every frame. The old dead-reckon re-anchored on each fix, and since the fix it
+            // anchored to is the VM's parked-hold low-passed position (lagging at city speed), every
+            // re-anchor stepped the target back: the camera surged and stalled once a second (user
+            // 2026-09-16). While moving the estimator eats the RAW accepted fix, which has no lag;
+            // slow or stopped it follows the smoothed one so a parked car's noise stays held.
             if (browseFixRef[0] !== loc) {
                 browseFixRef[0] = loc
-                browseFix[0] = loc.lat; browseFix[1] = loc.lng
-                browseFix[2] = android.os.SystemClock.elapsedRealtime().toDouble()
-                browseFix[3] = (mySpeedHolder.value ?: 0f).toDouble()
-                browseFix[4] = myBearingHolder.value?.toDouble() ?: Double.NaN
+                val nowMs = android.os.SystemClock.elapsedRealtime()
+                val spd = (mySpeedHolder.value ?: 0f).toDouble()
+                val crs = myBearingHolder.value?.toDouble()
+                val raw = myFixRawHolder.value
+                val fx = if (spd > 1.5 && raw != null) raw else loc
+                browseEst.onFix(fx.lat, fx.lng, spd, crs, nowMs)
+                browseFix[3] = spd
+                browseFix[4] = crs ?: Double.NaN
             }
-            val sinceFix = (android.os.SystemClock.elapsedRealtime() - browseFix[2]) / 1000.0
-            val drM = if (browseFix[3] > 1.5 && !browseFix[4].isNaN()) {
-                browseFix[3] * sinceFix.coerceAtMost(2.5)
-            } else 0.0
-            val tgtLat: Double
-            val tgtLng: Double
-            if (drM > 0.0) {
-                val br = Math.toRadians(browseFix[4])
-                tgtLat = browseFix[0] + drM * kotlin.math.cos(br) / 111_320.0
-                tgtLng = browseFix[1] + drM * kotlin.math.sin(br) /
-                    (111_320.0 * kotlin.math.cos(Math.toRadians(browseFix[0])).coerceAtLeast(0.1))
-            } else {
-                tgtLat = loc.lat
-                tgtLng = loc.lng
-            }
+            browseEst.step(dt.toDouble(), android.os.SystemClock.elapsedRealtime())
+            val tgtLat = if (browseEst.lat.isNaN()) loc.lat else browseEst.lat
+            val tgtLng = if (browseEst.lng.isNaN()) loc.lng else browseEst.lng
             // Ease the camera toward the (reckoned) target (skipped while pinching - the fingers win).
             val cam = mapRef
             var camLat = tgtLat; var camLng = tgtLng
