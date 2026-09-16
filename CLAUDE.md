@@ -1970,6 +1970,25 @@ architecture note.
   `navRemainingStopLabels()` while driving or `directionsWaypoints` in the chooser. Via boundaries
   carry no DEPART/ARRIVE maneuvers (routeVia and chainOnDevice both drop them), so without this
   row a stop was invisible in the list.
+- **Free-drive follow engages ONCE per session (2026-09-16).** The cold-engage branch flies to the
+  fix at z15.5 when the camera sits below z14. A pinch releases the camera (`browseCam` -> NaN) and
+  the next frame re-seeds, so pinching out past z14 while still following flew you straight back in,
+  again and again, until you panned (which drops follow). `browseEngaged` gates the flight to the
+  first engagement and clears when follow ends. User report 2026-09-16 ("keeps trying to zoom the
+  camera in there until I pan away").
+- **Both-mode dedupe picks by DISTANCE, not just name (2026-09-16).** Within `DEDUPE_SAME_M` (25 m)
+  the sources agree and Google's copy is dropped, as before. Between that and `DEDUPE_NAME_M`
+  (80 m) one of the two is misplaced and GOOGLE's pin wins: its copy stays and the open twin's id
+  goes into `openDisplacedIds`, which `applyOpenPlacesHidden` filters out of the icon and dot
+  layers (same mechanism as the closed-listing set, unioned with it). Why: Overture stacks a
+  building's tenants on one parcel point and the bake spreads the stack onto an 8-20 m ring, so a
+  strip-mall shop's open coordinate is INVENTED; Google's is the storefront. Before this the
+  correctly placed Google pin drew and then vanished a beat later (the 2 s second dedupe pass),
+  which is what the user saw for a Subway.
+- **Open-layer labels stay thinned at max zoom (2026-09-16).** Icons come in for everything from
+  z17.5 but only the top `openLabelCap` (calibration dial, default 20) per 400 m cell get a name:
+  each label is glyph layout plus a collision pass over four anchors, and a mall puts dozens in one
+  cell ("shit be laggin in areas with a lot of POIs"). Trim the dial, not the icons.
 - **Traffic raster anchoring (2026-09-16, #521):** `ensureTraffic` inserts `vela-traffic` ABOVE
   `building-3d`/`building` (fallback: below the first symbol layer, which in Liberty is the one-way
   arrow at index 61, BEFORE the buildings at 83-84, which is how the footprints ended up painting
