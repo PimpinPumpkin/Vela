@@ -41,6 +41,8 @@ body:
           required: true
         - label: I have read how reports are handled in CONTRIBUTING.md and filled in the steps below. A report that cannot be reproduced from what is written here is closed.
           required: true
+        - label: If an AI assistant helped write this, it read CONTRIBUTING.md and CLAUDE.md first, and I checked every claim it makes about Vela.
+          required: true
   - type: input
     id: device
     attributes:

@@ -77,17 +77,46 @@ every open issue is something that can actually be acted on.
 - **Feature requests are read, not voted on.** The maintainer decides. A request that
   does not fit the project is closed as not planned, without a debate, and stays
   closed; reopening it or filing it again under another title is not a discussion.
+- **Feature requests need a keyless reality check.** Vela has no server and no API keys,
+  and it never signs in to Google. Every phone asks Google for exactly what a logged-out
+  browser would see, from its own connection, and everything else comes from open data
+  (OpenStreetMap, Overture, AllThePlaces, Transitous and similar). So before you file,
+  answer one question in the request: where would the data come from? Things that need a
+  Google account (your saved lists, Timeline, live busyness), a paid API (flight search,
+  most live traffic incident feeds) or a server of our own (sharing your live location)
+  cannot be built. If you do not know the source, say that and name what you checked. The
+  list of things that will not be built is in [ROADMAP.md](ROADMAP.md) under "Not going
+  to happen".
 - **Incomplete issues are closed without further explanation**, the same way NewPipe
   and most small projects handle them, and they are labelled `incomplete` so the reason
   is on the record. Fill in the template and it will be read.
+
+## Using an AI assistant
+
+AI help is welcome, for code and for reports, as long as a person stands behind every word.
+
+- **Have it read the project first.** Before it writes a patch, a bug report or a feature
+  request, point it at [CLAUDE.md](CLAUDE.md), [CONTRIBUTING.md](CONTRIBUTING.md),
+  [FEATURES.md](FEATURES.md), [SPEC.md](SPEC.md) and [ROADMAP.md](ROADMAP.md). CLAUDE.md
+  in particular records how Vela actually works today and which ideas were already tried
+  and dropped. An assistant that has not read it will confidently describe a different app.
+- **You are responsible for every claim.** If the text says the code does something, check
+  the code. If it cites a source, open the source. Invented citations and claims about
+  features Vela does not have get the issue closed.
+- **Do not paste AI output as a reply or an argument.** A decision on an issue is not
+  reopened by a generated essay about why it should be. If you disagree, say why in your
+  own words, briefly, or better, open a pull request that builds it.
+- **The best use is a pull request.** An assistant that has read the docs can write a
+  focused, tested change. That moves the project; a long comment does not.
 
 ## Pull requests
 
 - Keep them small and focused; one change per PR.
 - Say what changed and why in the description. If it touches UI or navigation, note
   what device you verified on.
-- CI builds, tests and publishes a signed release from every push to `main`, so
-  anything merged ships to real phones within minutes. Treat merges accordingly.
+- CI builds and tests every push to `main`. A nightly release is cut from `main` once a
+  day and promoted to stable weekly, so anything merged reaches real phones within a day.
+  Treat merges accordingly.
 
 ## Conduct
 

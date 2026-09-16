@@ -19,6 +19,8 @@ body:
           required: true
         - label: I have filled in every required field. I understand the request is closed otherwise.
           required: true
+        - label: If an AI assistant helped write this, it read CONTRIBUTING.md and CLAUDE.md first, and I checked every claim it makes about Vela.
+          required: true
   - type: textarea
     id: what
     attributes:
@@ -38,6 +40,7 @@ body:
     attributes:
       label: Keyless reality check
       description: |
-        Vela has no backend and no API keys, so features that need Google account data or a paid API usually cannot happen. If you already know the open data source that would power this, mention it.
+        Where would the data come from? Vela has no server, no API keys and no Google sign-in. It can use what Google shows a logged-out browser, and open data such as OpenStreetMap, Overture or Transitous. Anything that needs a Google account, a paid API or a server of our own cannot be built. Name the source you have in mind, or say you do not know and what you checked. See "Feature requests need a keyless reality check" in CONTRIBUTING.md.
+      placeholder: "Google shows this on the public place page without signing in."
     validations:
-      required: false
+      required: true
