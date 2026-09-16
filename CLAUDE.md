@@ -1964,6 +1964,15 @@ architecture note.
   `applyMapTheme` now narrows `boundary_3`'s filter to admin 3-4 (minzoom 4, dashed) and themes
   all three: the style's own dark grey vanished on the dark map. Never put the boundary ids back
   in the hide list; if a region shows dashed junk, check its admin levels before touching the filter.
+- **Traffic raster anchoring (2026-09-16, #521):** `ensureTraffic` inserts `vela-traffic` ABOVE
+  `building-3d`/`building` (fallback: below the first symbol layer, which in Liberty is the one-way
+  arrow at index 61, BEFORE the buildings at 83-84, which is how the footprints ended up painting
+  over the congestion colors). Satellite still anchors above the imagery. Keep it under the labels.
+- **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
+  caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
+  fallback) still uses its own width; the bundled set is what counts in practice.
+- **Offline maps page order (2026-09-16, #518):** storage breakdown + Clear map cache sit ABOVE the
+  "Entire states & countries" catalog now.
 - **Route shields are Vela's own bitmaps (2026-09-15, `ui/map/RoadShields`).** The OpenFreeMap
   sprite's `us-interstate_N` / `us-highway_N` / `road_N` are white outline shapes sized for 10 pt
   text and there is NO `us-state_N`, so state routes drew as bare numbers and "80" squeezed into
