@@ -1180,6 +1180,8 @@ fun VelaMapView(
     // only when the route set or the selection does, never per recomposition.
     LaunchedEffect(routeBubbles, styleRef, darkTheme) {
         val style = styleRef ?: return@LaunchedEffect
+        // Experiment off (or no chooser open) on a fresh style: add nothing, so the default map is unchanged.
+        if (routeBubbles.isEmpty() && style.getSource(ROUTE_BUBBLE_SRC) == null) return@LaunchedEffect
         runCatching {
             val d = context.resources.displayMetrics.density
             val sel = android.graphics.Color.parseColor("#1A73E8")
