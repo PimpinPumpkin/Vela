@@ -100,14 +100,20 @@ WHERE json_extract_string(props, 'name') IS NOT NULL AND json_extract_string(pro
 -- The first two significant words of a name, the app's own namesAgree rule in SQL form.
 CREATE MACRO nkey(n) AS trim(regexp_extract(regexp_replace(lower(n), '[^a-z0-9 ]', ' ', 'g'), '\\b([a-z0-9]{2,})\\b', 1) || ' ' ||
   regexp_extract(regexp_replace(lower(n), '[^a-z0-9 ]', ' ', 'g'), '\\b[a-z0-9]{2,}\\b(?: [a-z0-9] )* +\\b([a-z0-9]{2,})\\b', 1));
+-- Which locator rows Overture already has: two HASH JOINS (the name key, the brand) with the box as
+-- a residual, keys computed ONCE per row. A correlated NOT EXISTS with the two tests OR-ed together
+-- ran every locator row against every Overture row, which a state cannot afford (2026-09-16).
+CREATE TABLE rawkeys AS SELECT id, lat, lng, nkey(name) AS nk, lower(brand) AS bk FROM raw;
+CREATE TABLE atpkeys AS SELECT id, lat, lng, nkey(name) AS nk, lower(brand) AS bk FROM atp;
+CREATE TABLE atpdupes AS
+SELECT DISTINCT a.id FROM atpkeys a JOIN rawkeys o ON o.nk = a.nk
+WHERE a.nk IS NOT NULL AND a.nk <> '' AND abs(o.lat - a.lat) < 0.0015 AND abs(o.lng - a.lng) < 0.002
+UNION
+SELECT DISTINCT a.id FROM atpkeys a JOIN rawkeys o ON o.bk = a.bk
+WHERE a.bk IS NOT NULL AND abs(o.lat - a.lat) < 0.0015 AND abs(o.lng - a.lng) < 0.002;
 INSERT INTO raw
 SELECT a.id, a.name, a.category, a.confidence, a.brand, a.addr, a.website, a.phone, a.operating_status, a.lng, a.lat, a.hours
-FROM atp a
-WHERE NOT EXISTS (
-  SELECT 1 FROM raw o
-  WHERE abs(o.lat - a.lat) < 0.0015 AND abs(o.lng - a.lng) < 0.002
-    AND (nkey(o.name) = nkey(a.name) OR (o.brand IS NOT NULL AND a.brand IS NOT NULL AND lower(o.brand) = lower(a.brand)))
-);
+FROM atp a WHERE a.id NOT IN (SELECT id FROM atpdupes);
 SELECT (SELECT count(*) FROM atp) AS atp_in_box, (SELECT count(*) FROM raw WHERE id LIKE 'atp:%') AS atp_added;
 ATPSQL
 fi
@@ -132,6 +138,7 @@ WHERE unit IS NOT NULL AND number IS NOT NULL
   AND bbox.xmin BETWEEN $W AND $E AND bbox.ymin BETWEEN $S AND $N;"
 fi
 duckdb <<SQL
+.timer on
 INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial; SET s3_region='us-west-2';
 CREATE TABLE raw AS SELECT $SEL, CAST(NULL AS VARCHAR) AS hours FROM $SRC
   WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N;
