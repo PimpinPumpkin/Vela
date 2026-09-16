@@ -581,6 +581,7 @@ class MapViewModel @Inject constructor(
         // Fleet default map colour set (a user's own Settings pick always wins - see MapColors).
         app.vela.ui.MapColors.remoteDefault.value = calibration.current().defaultMapPalette
         app.vela.ui.MapPoiPrefs.setRemoteDefault(calibration.current().defaultPlacesSource)
+        app.vela.ui.Experiments.setRemoteDefault(calibration.current().experimentGoogleChooser)
         adoptKeywordTables()
         // Pull the latest scraper calibration from the repo (non-blocking, once),
         // then surface any freshly-pushed notices.
@@ -589,6 +590,7 @@ class MapViewModel @Inject constructor(
             refreshNotices()
             app.vela.ui.MapColors.remoteDefault.value = calibration.current().defaultMapPalette
             app.vela.ui.MapPoiPrefs.setRemoteDefault(calibration.current().defaultPlacesSource)
+            app.vela.ui.Experiments.setRemoteDefault(calibration.current().experimentGoogleChooser)
             adoptKeywordTables()
         }
         maybeCheckForUpdate()

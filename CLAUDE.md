@@ -1983,6 +1983,11 @@ architecture note.
   `TripEditorSheet` (StopsEditor.kt): the whole trip as one list, `MapViewModel.tripPointsForEditor`
   / `applyTrip` map it back onto directionsOrigin / selected / waypoints / reversed (a null point
   is "your location"). The experiment strings are `translatable="false"` until it is kept.
+  **Remote switch:** `Calibration.experimentGoogleChooser` (boolean, default false, parsed from
+  `calibration.json` `experimentGoogleChooser`) is pushed into `Experiments.setRemoteDefault` at VM
+  init and after each refresh; it only applies to people who never touched the Diagnostics toggle
+  (the pref key's presence is the "explicit" marker). Turning it on for the fleet = add the field,
+  bump version, re-sign, commit. The bundle does not carry the field today, so it is off.
 - **Stop dividers in the step list (2026-09-16, #519):** `StepsSheet(legStarts = [(maneuver index
   where leg k>0 starts, stop name)])` draws `StopDividerRow` before that step; MapScreen computes
   the indices from `activeRoute.legs` (cumulative maneuver counts) and names them from

@@ -73,6 +73,10 @@ data class Calibration(
     // flip without an app release (the user wanted the call kept on the signed channel,
     // 2026-09-16); a user's explicit pick (map_places_source pref) always wins.
     val defaultPlacesSource: String = "open",
+    // Fleet switch for the Google-style route chooser experiment (Settings > Diagnostics). Off by
+    // default; flipping it true in the signed bundle turns the experiment on for everyone who never
+    // touched the toggle themselves (their own choice, exp_google_chooser, always wins).
+    val experimentGoogleChooser: Boolean = false,
     // Fleet-tunable NUMBERS: a flat name -> value map so a new dial is a config edit, never a
     // schema change. Read through [tune]; a missing key means the compiled default passed at the
     // call site, so an old bundle can never break a new app (and vice versa). Current dials:
