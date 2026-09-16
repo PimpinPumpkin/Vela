@@ -3479,7 +3479,11 @@ Gotchas:
   matched Overture row wins ties. Davis: 112 in the box, 14 added. New tile properties: `hours`
   (OSM opening_hours syntax, chains only; Overture has none) and `origin` (overture|atp). `src`
   stays "overture" for every row because the tap gate in VelaMapView reads `src == "overture"`;
-  do not key anything on src beyond "this is an open-data feature". The workflow installs
+  do not key anything on src beyond "this is an open-data feature". The seeded Place converts
+  `hours` with `core/util/OsmHours.toDayLines` (the common opening_hours subset -> "Monday: 8 AM–5
+  PM" lines that `OpeningHours.statusAt` and the sheet's hours section already read; null on
+  months/PH/sunrise -> the raw string is shown), and OverpassPois does the same for the place
+  packs' OSM opening_hours. The workflow installs
   go-pmtiles for it. Overture's Davis source mix (why this exists): meta 1,537 / BrightQuery 494
   / Microsoft 366 / Foursquare 260 / AllThePlaces 30 / DAC 6 of 2,693 rows; a business with no
   Facebook page and no Bing entry is absent, chains included. The main duckdb heredoc is
