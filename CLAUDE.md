@@ -1989,7 +1989,7 @@ architecture note.
   z17.5 but only the top `openLabelCap` (calibration dial, default 20) per 400 m cell get a name:
   each label is glyph layout plus a collision pass over four anchors, and a mall puts dozens in one
   cell ("shit be laggin in areas with a lot of POIs"). Trim the dial, not the icons.
-- **- **Closing a report that ignored the template (2026-09-16):** close it as NOT PLANNED *and* add
+- **Closing a report that ignored the template (2026-09-16):** close it as NOT PLANNED *and* add
   the `incomplete` label ("Template or steps missing, or not reproducible from what was written"),
   never the bare not-planned close - the label is how the tracker shows why, and `wontfix` is for
   a request that was understood and declined. The rules themselves are in CONTRIBUTING.md under
