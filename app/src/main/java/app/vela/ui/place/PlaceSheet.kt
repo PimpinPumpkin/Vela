@@ -1515,7 +1515,12 @@ fun DirectionsPanel(
               // and fade wrap BOTH, so the footer folds away with the body when it collapses.
               Column(
                   Modifier
-                      .graphicsLayer { alpha = (dirH.value / 160f).coerceIn(0f, 1f); clip = true }
+                      .graphicsLayer {
+                          alpha = (dirH.value / 160f).coerceIn(0f, 1f)
+                          clip = true
+                          // No offscreen buffer for the fade (see SheetFold for the measurement).
+                          compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.ModulateAlpha
+                      }
                       .layout { measurable, constraints ->
                           val capPx = dirH.value.dp.roundToPx().coerceAtLeast(0)
                           val pl = measurable.measure(constraints.copy(maxHeight = minOf(constraints.maxHeight, capPx)))

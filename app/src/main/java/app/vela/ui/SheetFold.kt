@@ -28,7 +28,18 @@ fun SheetFold(composed: Boolean, fraction: () -> Float, content: @Composable () 
     if (!composed) return
     Column(
         Modifier
-            .graphicsLayer { clip = true; alpha = fraction() }
+            // MODULATE the alpha, do not composite it. A graphicsLayer with alpha < 1 renders its
+            // children into an OFFSCREEN buffer and blends that, which on a 4a cost 20 ms of GPU
+            // per frame - half the frame budget - and was the "stuttery expand/minimize" report
+            // (measured 2026-09-16: total frame p50 32.1 ms with the offscreen, 16.7 ms without).
+            // ModulateAlpha applies the alpha to each draw op instead, no buffer. Safe here
+            // because the folded content is a column of rows that do not overlap each other;
+            // overlapping children would show through one another under this strategy.
+            .graphicsLayer {
+                clip = true
+                alpha = fraction()
+                compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.ModulateAlpha
+            }
             .layout { measurable, constraints ->
                 val placeable = measurable.measure(constraints)
                 val h = (placeable.height * fraction()).roundToInt()

@@ -118,6 +118,19 @@ else
   SRC="read_parquet('s3://overturemaps-us-west-2/release/$RELEASE/theme=places/type=place/*', hive_partitioning=1)"
   SEL="id, names.primary AS name, categories.primary AS category, confidence, brand.names.primary AS brand, addresses[1].freeform AS addr, websites[1] AS website, phones[1] AS phone, operating_status, ST_X(geometry) AS lng, ST_Y(geometry) AS lat"
 fi
+# Overture ADDRESSES for the unit-level snap above. Skipped on the local-parquet dev path (the
+# extract has places only), which leaves the table empty and every stacked row on the ring.
+if [ -n "$LOCAL" ]; then
+  ADDR_SQL="CREATE TABLE addrpts (anum VARCHAR, aunit VARCHAR, alat DOUBLE, alng DOUBLE);"
+else
+  ADDR_SQL="CREATE TABLE addrpts AS
+SELECT number AS anum,
+       regexp_replace(upper(regexp_replace(coalesce(unit, ''), '(?i)^(ste|suite|unit|apt|apartment|rm|room|no|#)[ .]*', '')), '[^A-Za-z0-9]', '') AS aunit,
+       ST_Y(geometry) AS alat, ST_X(geometry) AS alng
+FROM read_parquet('s3://overturemaps-us-west-2/release/$RELEASE/theme=addresses/type=*/*', hive_partitioning=1)
+WHERE unit IS NOT NULL AND number IS NOT NULL
+  AND bbox.xmin BETWEEN $W AND $E AND bbox.ymin BETWEEN $S AND $N;"
+fi
 duckdb <<SQL
 INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial; SET s3_region='us-west-2';
 CREATE TABLE raw AS SELECT $SEL, CAST(NULL AS VARCHAR) AS hours FROM $SRC
@@ -173,38 +186,87 @@ WHERE name IS NOT NULL AND name <> ''
 -- kept outranking its own Safeway (user 2026-09-16).
 CREATE MACRO anorm(a) AS nullif(trim(regexp_replace(regexp_replace(lower(coalesce(a, '')), '[,#].*$', ''), '[ ]+(ste|suite|unit|apt|bldg|rm|room|no|fl|floor)[ .]*[a-z0-9-]*$', '')), '');
 -- The first word of a name, for the department test below.
-CREATE MACRO nhead(n) AS lower(regexp_extract(coalesce(n, ''), '^[^,(]{1,40}'));
+-- The anchor's first WORD, store number dropped: "Safeway", "SAFEWAY #1561" and "Safeway Store
+-- 1561" all key to "safeway", so a "Safeway Pharmacy" next door reads as its department however
+-- either row happens to be named (user 2026-09-16).
+CREATE MACRO nhead(n) AS nullif(lower(regexp_extract(coalesce(n, ''), '^[A-Za-z][A-Za-z.-]{2,}')), '');
 CREATE TABLE anchors AS
-SELECT id, name, addr, lat, lng FROM scored
+SELECT id, name, brand, addr, lat, lng FROM scored
 WHERE category IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store');
--- EXISTS, not a join: a tenant can sit at more than one anchor (a mall inside a shopping centre),
--- and a LEFT JOIN duplicated the row once per match (caught 2026-09-16, +22 rows in Davis).
+-- Which non-anchor rows are DEPARTMENTS of a nearby anchor. Three HASH JOINS, one per way a
+-- department shows itself (same normalized address, same brand, or a name that is the anchor's
+-- first word plus more), each with the ~200 m box as a residual, then DISTINCT ids. The first cut
+-- was one correlated EXISTS with the three tests OR-ed together, which cannot be hashed: it ran
+-- every row against every anchor, fine for Davis and effectively quadratic over a state (a world
+-- bake did 19 regions in 2.5 hours, 2026-09-16). DISTINCT, never a plain join onto the rows: a
+-- tenant can sit at more than one anchor, and a join duplicated the row once per match.
+CREATE TABLE tenants AS
+SELECT DISTINCT id FROM (
+  SELECT s.id FROM scored s JOIN anchors a ON anorm(s.addr) = anorm(a.addr)
+  WHERE s.id <> a.id AND abs(s.lat - a.lat) < 0.002 AND abs(s.lng - a.lng) < 0.003
+    AND (s.category IS NULL OR s.category NOT IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store'))
+  UNION ALL
+  SELECT s.id FROM scored s JOIN anchors a ON lower(s.brand) = lower(a.brand)
+  WHERE s.id <> a.id AND abs(s.lat - a.lat) < 0.002 AND abs(s.lng - a.lng) < 0.003
+    AND (s.category IS NULL OR s.category NOT IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store'))
+  UNION ALL
+  SELECT s.id FROM scored s JOIN anchors a ON nhead(s.name) = nhead(a.name)
+  WHERE s.id <> a.id AND abs(s.lat - a.lat) < 0.002 AND abs(s.lng - a.lng) < 0.003
+    AND length(nhead(a.name)) >= 4 AND lower(s.name) LIKE nhead(a.name) || ' %'
+    AND (s.category IS NULL OR s.category NOT IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store'))
+);
 CREATE TABLE anchored AS
-SELECT s.* REPLACE (
-  CASE WHEN EXISTS (
-    SELECT 1 FROM anchors a
-    WHERE a.id <> s.id AND abs(s.lat - a.lat) < 0.002 AND abs(s.lng - a.lng) < 0.003
-      AND (anorm(s.addr) = anorm(a.addr) OR (length(nhead(a.name)) >= 4 AND lower(s.name) LIKE nhead(a.name) || ' %'))
-  ) THEN s.prominence - 2.0 ELSE s.prominence END AS prominence)
-FROM scored s
-WHERE s.category IS NULL OR s.category NOT IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store')
-UNION ALL
-SELECT s.* FROM scored s
-WHERE s.category IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store');
+SELECT s.* REPLACE (CASE WHEN t.id IS NOT NULL THEN s.prominence - 2.0 ELSE s.prominence END AS prominence)
+FROM scored s LEFT JOIN tenants t ON t.id = s.id;
 -- STACKED POINTS (2026-09-15): Overture puts every tenant of a building on the same parcel point
 -- (17% of Davis rows share their point with another: medical suites, strip-mall tenants), and
 -- coincident icons collide at every zoom, so all but the top one never drew. Spread the stack on
 -- a small ring (about 8 to 20 m, golden-angle steps, best row stays put) so they separate at the
 -- zooms where a person is looking for one shop in a row of them.
+-- UNIT-LEVEL SNAP (2026-09-16). A stacked row has no coordinate of its own: Overture puts every
+-- tenant of a building on one parcel point, which usually sits at the lot's address out front.
+-- Overture's ADDRESSES theme does carry a point per unit ("APT 112", "STE B"), so a tenant whose
+-- own address names a unit can be put on its own door instead of an invented ring slot. Match on
+-- house NUMBER + UNIT within ~200 m and ignore the street name: a number plus a unit is
+-- effectively unique that close, and street abbreviations ("Blvd" vs "Boulevard") differ between
+-- the two themes. Rows that do not match keep the parcel point and fall through to the ring.
+-- Only STACKED rows are snapped; an unstacked place already has a real coordinate (measured
+-- 2026-09-16: Overture and AllThePlaces agree to a median 7.4 m on Davis chains).
+CREATE MACRO unitkey(a) AS nullif(upper(regexp_replace(regexp_extract(coalesce(a, ''), '(?i)(ste|suite|unit|apt|apartment|rm|room|no|#)[ .]*([a-z0-9-]+)[ ]*$', 2), '[^A-Za-z0-9]', '')), '');
+CREATE MACRO numkey(a) AS nullif(regexp_extract(coalesce(a, ''), '^[0-9]+'), '');
+$ADDR_SQL
+CREATE TABLE stacked AS
+SELECT *, count(*) OVER (PARTITION BY round(lat, 5), round(lng, 5)) > 1 AS in_stack FROM anchored;
+-- A HASH JOIN on (number, unit) with the distance as a residual and the nearest candidate per
+-- place by row_number - not a correlated LATERAL lookup per row, which is quadratic at state scale.
+CREATE TABLE snapkeys AS
+SELECT id, lat, lng, numkey(addr) AS knum, unitkey(addr) AS kunit FROM stacked
+WHERE in_stack AND numkey(addr) IS NOT NULL AND unitkey(addr) IS NOT NULL;
+CREATE TABLE snapcand AS
+SELECT k.id, a.alat, a.alng,
+  row_number() OVER (PARTITION BY k.id ORDER BY abs(a.alat - k.lat) + abs(a.alng - k.lng)) AS rn
+FROM snapkeys k JOIN addrpts a ON a.anum = k.knum AND a.aunit = k.kunit
+WHERE abs(a.alat - k.lat) < 0.002 AND abs(a.alng - k.lng) < 0.003;
+CREATE TABLE snapped AS
+SELECT s.* REPLACE (COALESCE(c.alat, s.lat) AS lat, COALESCE(c.alng, s.lng) AS lng)
+FROM stacked s LEFT JOIN (SELECT id, alat, alng FROM snapcand WHERE rn = 1) c ON c.id = s.id;
+SELECT count(*) FILTER (WHERE in_stack) AS stacked_rows,
+       count(*) FILTER (WHERE in_stack AND unitkey(addr) IS NOT NULL) AS stacked_with_unit,
+       (SELECT count(*) FROM snapped s JOIN stacked t USING (id) WHERE s.lat <> t.lat OR s.lng <> t.lng) AS snapped_to_unit
+FROM stacked;
+-- Whatever still shares a point after the snap gets the ring, as before.
 CREATE TABLE spread AS
-SELECT * REPLACE (
+SELECT * EXCLUDE (in_stack) REPLACE (
   lat + CASE WHEN dup = 0 THEN 0 ELSE (8 + least(dup, 6) * 2) / 111320.0 * sin(dup * 2.399963) END AS lat,
   lng + CASE WHEN dup = 0 THEN 0 ELSE (8 + least(dup, 6) * 2) / (111320.0 * cos(radians(lat))) * cos(dup * 2.399963) END AS lng
 ) FROM (
-  SELECT *, row_number() OVER (PARTITION BY round(lat, 5), round(lng, 5) ORDER BY prominence DESC, id) - 1 AS dup FROM anchored
+  SELECT *, row_number() OVER (PARTITION BY round(lat, 5), round(lng, 5) ORDER BY prominence DESC, id) - 1 AS dup FROM snapped
 );
 CREATE TABLE ranked AS
 SELECT * EXCLUDE (dup),
+  -- ~100 m cell: the high-zoom icon budget. rank's 400 m cell is the whole screen at z17.5, so a
+  -- cap on it never opens up as you zoom in; a finer cell lets more icons in the closer you get.
+  row_number() OVER (PARTITION BY floor(lat / 0.0009), floor(lng * cos(radians(lat)) / 0.0009) ORDER BY prominence DESC, id) AS frank,
   row_number() OVER (PARTITION BY floor(lat / 0.0036), floor(lng * cos(radians(lat)) / 0.0036) ORDER BY prominence DESC, id) AS rank,
   row_number() OVER (PARTITION BY floor(lat / 0.0144), floor(lng * cos(radians(lat)) / 0.0144) ORDER BY prominence DESC, id) AS crank,
   row_number() OVER (PARTITION BY floor(lat / 0.058), floor(lng * cos(radians(lat)) / 0.058) ORDER BY landmark DESC, prominence DESC, id) AS xrank
@@ -228,7 +290,7 @@ COPY (
       'id', id, 'name', name,
       'class', COALESCE(upper(substr(replace(category, '_', ' '), 1, 1)) || substr(replace(category, '_', ' '), 2), 'Place'),
       'group', grp, 'icon', 'vela-poi-' || grp, 'prominence', round(prominence, 2), 'confidence', round(COALESCE(confidence, 0.5), 2),
-      'rank', rank, 'crank', crank, 'xrank', xrank, 'landmark', landmark,
+      'rank', rank, 'crank', crank, 'xrank', xrank, 'frank', frank, 'landmark', landmark,
       'brand', brand, 'addr', addr, 'website', website, 'phone', phone, 'hours', hours,
       'src', 'overture', 'origin', CASE WHEN id LIKE 'atp:%' THEN 'atp' ELSE 'overture' END
     )
