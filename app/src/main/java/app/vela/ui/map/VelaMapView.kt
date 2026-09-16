@@ -4720,14 +4720,19 @@ private fun ensureTraffic(style: Style, on: Boolean) {
             // red/amber congestion legible while the green recedes.
             PropertyFactory.rasterOpacity(0.6f),
         )
-        // ALWAYS below the first symbol layer, so POI icons + labels stay on top and
-        // the traffic tiles never render over them (the earlier "above the route line"
-        // placement pushed it over POIs). With satellite on, anchor above the imagery
-        // instead - the raster otherwise buries the traffic tiles entirely.
+        // Below the labels, ABOVE the buildings. "Below the first symbol layer" used to put it
+        // under Liberty's building fills: the first symbol is the one-way arrow, which sits
+        // before `building` / `building-3d` in the style, so at street zoom the grey footprints
+        // (and the 3D extrusions) painted over the congestion colors (issue #521). Anchoring on
+        // the topmost building layer keeps POI icons and labels on top and the buildings under.
+        // With satellite on, anchor above the imagery instead - the raster otherwise buries the
+        // traffic tiles entirely.
         val satTop = style.getLayer(SAT_ROADS_LAYER) ?: style.getLayer(SAT_LAYER)
+        val buildingTop = style.getLayer("building-3d") ?: style.getLayer("building")
         val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
         when {
             satTop != null -> style.addLayerAbove(layer, satTop.id)
+            buildingTop != null -> style.addLayerAbove(layer, buildingTop.id)
             firstSymbol != null -> style.addLayerBelow(layer, firstSymbol)
             else -> style.addLayer(layer)
         }
