@@ -178,7 +178,9 @@ object OverpassPois {
             website = tag("website") ?: tag("contact:website"),
             // OSM's compact opening_hours syntax ("Mo-Fr 08:00-20:00; Sa 09:00-17:00")
             // as a single line — better than nothing offline.
-            hours = (tag("opening_hours"))?.let { listOf(it) } ?: emptyList(),
+            // Converted to Google-style day lines when the syntax is the common kind, so the sheet's
+            // open/closed status works on offline places too; the raw string otherwise.
+            hours = (tag("opening_hours"))?.let { app.vela.core.util.OsmHours.toDayLines(it) ?: listOf(it) } ?: emptyList(),
         )
     }
 }
