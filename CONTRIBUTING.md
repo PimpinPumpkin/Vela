@@ -59,6 +59,32 @@ too).
   subjects since the last tag as release notes. Write plain-language subjects a user
   can read, not terse internals.
 
+## Bug reports and feature requests
+
+The tracker is a work queue for one maintainer, not a forum. The rules exist so that
+every open issue is something that can actually be acted on.
+
+- **One problem or one request per issue.** A report that bundles several things is
+  closed and you are asked to split it.
+- **A bug report must be reproducible from what is written in it.** Steps in order,
+  the version, and for anything about routes, places or the map, the start, the
+  destination or the place. If you would rather not name where you were, use the
+  built-in location simulator (Settings, Navigation) with the project's Davis, CA
+  test area and say so. A report the maintainer cannot reproduce from the text is
+  closed, not investigated.
+- **Diagnostics beat descriptions.** Settings, Diagnostics, Export debug session.
+  Turn on "Redact places in exports" if the file must be safe to post.
+- **Feature requests are read, not voted on.** The maintainer decides. A request that
+  does not fit the project is closed as not planned, without a debate, and stays
+  closed; reopening it or filing it again under another title is not a discussion.
+- **Vela's own behavior is not a bug because Google Maps does it differently.** Some
+  differences are deliberate (no POI taps while driving, no routing through arbitrary
+  points). The reply will say which.
+- **Reports arrive one at a time.** Wait for a reply on an open report before filing
+  the next one. Bursts of reports get the tracker's interaction limits switched on.
+- **Incomplete issues are closed without further explanation**, the same way NewPipe
+  and most small projects handle them. Fill in the template and it will be read.
+
 ## Pull requests
 
 - Keep them small and focused; one change per PR.
