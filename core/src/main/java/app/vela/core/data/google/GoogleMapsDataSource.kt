@@ -698,7 +698,7 @@ class GoogleMapsDataSource @Inject constructor(
             diag.record(
                 "directions",
                 "$mode → OSRM ${open.size} routes / ${open.firstOrNull()?.maneuvers?.size ?: 0} steps; " +
-                    "google ${google.size} (typ=${gTop?.durationSeconds?.toInt()}s traf=${gTop?.durationInTrafficSeconds?.toInt()}s " +
+                    "google ${google.size} (typ=${gTop?.durationSeconds?.toInt()}s traf=${gTop?.durationInTrafficSeconds?.toInt()}s spans=${gTop?.trafficSpans?.size} " +
                     "ratio=${gTop?.durationInTrafficSeconds?.let { t -> gTop?.durationSeconds?.takeIf { it > 0 }?.let { String.format(java.util.Locale.US, "%.2f", t / it) } }}); " +
                     "rerouted=${trafficRoute != null} snapKept=$snapWorthIt snapReaches=$snapReaches " +
                     "(gEta=${googleEtaS?.toInt()}s osrmFF=${open.firstOrNull()?.durationSeconds?.toInt()}s " +
