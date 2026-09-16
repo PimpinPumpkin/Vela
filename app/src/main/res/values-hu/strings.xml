@@ -241,6 +241,8 @@
     <string name="place_add_stop">Megálló hozzáadása</string>
     <string name="stops_editor_title">Megállók</string>
     <string name="stops_edit">Megállók szerkesztése</string>
+    <string name="steps_stop_at">Megálló: %1$s</string>
+    <string name="steps_stop">Megálló</string>
     <string name="stops_drag_reorder">Húzd az átrendezéshez</string>
     <string name="place_change_destination">Célpont módosítása</string>
     <string name="place_swap_start_destination">Kiindulópont és cél felcserélése</string>

@@ -192,6 +192,8 @@
     <string name="place_add_stop">הוסף עצירה</string>
     <string name="stops_editor_title">עצירות</string>
     <string name="stops_edit">ערוך עצירות</string>
+    <string name="steps_stop_at">עצירה: %1$s</string>
+    <string name="steps_stop">עצירה</string>
     <string name="stops_drag_reorder">גרור לסידור מחדש</string>
     <string name="place_change_destination">שנה יעד</string>
     <string name="place_swap_start_destination">החלף בין התחלה ליעד</string>

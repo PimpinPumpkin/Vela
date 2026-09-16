@@ -193,6 +193,8 @@
     <string name="place_add_stop">Añadir parada</string>
     <string name="stops_editor_title">Paradas</string>
     <string name="stops_edit">Editar paradas</string>
+    <string name="steps_stop_at">Parada: %1$s</string>
+    <string name="steps_stop">Parada</string>
     <string name="stops_drag_reorder">Arrastra para reordenar</string>
     <string name="place_change_destination">Cambiar destino</string>
     <string name="place_swap_start_destination">Intercambiar origen y destino</string>

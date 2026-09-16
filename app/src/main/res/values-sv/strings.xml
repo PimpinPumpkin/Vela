@@ -193,6 +193,8 @@
     <string name="place_add_stop">Lägg till stopp</string>
     <string name="stops_editor_title">Stopp</string>
     <string name="stops_edit">Redigera stopp</string>
+    <string name="steps_stop_at">Stopp: %1$s</string>
+    <string name="steps_stop">Stopp</string>
     <string name="stops_drag_reorder">Dra för att ändra ordning</string>
     <string name="place_change_destination">Ändra mål</string>
     <string name="place_swap_start_destination">Byt start och mål</string>
