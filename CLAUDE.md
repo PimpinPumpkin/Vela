@@ -1978,8 +1978,9 @@ architecture note.
   camera in there until I pan away").
 - **In BOTH mode Google WINS a twin outright (2026-09-16, user's call).** Any open feature whose
   name agrees with a Google place within `DEDUPE_NAME_M` (80 m) has its id put in
-  `openDisplacedIds`, and `applyOpenPlacesHidden` filters it out of the icon and dot layers (same
-  mechanism as the closed-listing set, unioned with it); Google's pin is drawn instead. Two reasons
+  `openDisplacedIds` by the debounced `hideOpenTwins` pass, and `applyOpenPlacesHidden` filters it
+  out of the icon and dot layers (same mechanism as the closed-listing set, unioned with it);
+  Google's pin is drawn instead. Two reasons
   Google's copy is better wherever it exists: its coordinate is the storefront, where Overture
   stacks a building's tenants on ONE parcel point and the bake spreads the stack onto an invented
   8-20 m ring; and its ranking comes from review counts rather than a category prior. The open
@@ -3457,20 +3458,18 @@ Gotchas:
   places archive; `refreshPlacesOverlays` fills `placesOverlays` on
   camera idle; `maybeLoadAmbientPois` returns early (no Google fan-out) while the layer covers the
   view in `open`, and in `both` waits for a 1.5 s settle (cache paint included) and then runs one
-  fan-out whose overlap the map drops (`openPlacesShown` + `namesAgree` in applyData: same name
-  within 80 m of an open icon that is either ACTUALLY RENDERED (queryRenderedFeatures over the
-  `vela-places-<i>` icon layers) or RANK-QUALIFIED for this zoom (querySourceFeatures + the same
-  rank/crank/prominence steps the layer's `topOr` uses)). The union, since 2026-09-15: loaded-only
-  suppressed Google's copy of an open feature the rank steps had thinned or a stacked point hid,
-  so the user saw neither shop; rendered-only was racy, the ambient upload can land a beat before
-  the open icons paint and Google's copy then drew beside the open one. Two more layer rules from
-  the same test: the open layer allows icon overlap from z18 and the AMBIENT layer from z17
-  (`iconAllowOverlap` steps on both), because below those the Google extras that survived the
-  dedupe still lost collision to the open icons in a strip mall and "Both" looked identical to
-  "Vela data" at 500 ft. And a SECOND PASS: Google's answer can land while the places tiles for
-  the new zoom are still loading (drawn=0 and loaded=0 in the log after a search fly-in), so
-  nothing is dropped and every open pin gets a twin; `applyData` re-runs the same dedupe on the
-  same list two seconds later (`ambientRedo`, cancelled by a newer list or a style reload).
+  fan-out whose places are uploaded AS-IS (Google's copy wins a twin, see the "Google WINS" note).
+  The open twins are hidden by `hideOpenTwins`, a DEBOUNCED pass (`ambientRedo` at 400 ms and
+  `ambientRedo2` at 2 s after the last upload, cancelled by a newer list or a style reload): it
+  queries only the RENDERED open icons on screen, and re-checks the ids it already hid with a
+  filtered `querySourceFeatures` (id IN the hidden set, so only a handful cross JNI), releasing
+  any whose Google partner has left the set, so an open place is never left hidden with nothing in
+  its place. Running the queries inline on every streamed partial upload was the settle-time
+  stall in downtown Davis (up to 119 ms per upload, a dozen per settle; 2-5 ms now). The earlier
+  inline `openPlacesShown` helper (rendered + rank-qualified union) is gone. Two layer rules from
+  the strip-mall test still hold: the open layer allows icon overlap from z18 and the AMBIENT layer
+  from z17 (`iconAllowOverlap` steps on both), because below those the Google extras lost collision
+  to the open icons in a strip mall and "Both" looked identical to "Vela data" at 500 ft.
   **Closed listings (same day):** when a tapped open pin resolves to a
   Google listing with `permanentlyClosed`, `hideClosedOpenPlace` adds its Overture id to
   `MapUiState.hiddenOpenPlaceIds` (persisted in `open_place_closed.json`, loaded with the links)
@@ -3478,20 +3477,28 @@ Gotchas:
   anyone taps it and stays gone until a rebake drops it for real. The open layers sit ABOVE the ambient layer so open icons
   win collision and Google's extras fill gaps. Outside any region file all three behave like Google.
   About > Map data credits Overture (CDLA-Permissive 2.0) with a license button. The OSM basemap
-  business POIs (`poi_r1/r7/r20`) used to hide outright while an open places source was on the
-  style; since 2026-09-15 they STAY UP and `osmFillIn` (camera idle, 500 ms debounce, from the
-  OnDidBecomeIdle listener) filters out by name the OSM points an open feature within 80 m
-  already draws (`osmPoiExclude`, folded into `applyPoiTierFilters`; open features keyed by their
-  first two significant words, OSM candidates by name / name:latin / name_en), so OSM fills what
-  Overture lacks (the OSM-only museum) and nothing draws twice. The Both-mode dedupe
-  (`openPlacesShown`) also counts the drawn poi tiers, so Google does not double an OSM fill-in
-  either. The ambient (Google) coverage still hides the tiers as before. ANR LESSON (2026-09-16,
-  hotfix): the first cut built two `Regex` objects per key call, i.e. Pattern.compile for every
-  basemap POI in the loaded tiles x 3 name variants, on the main thread; a San Francisco view has
-  thousands and the map hung ("Vela isn't responding", trace = PatternNative.compileImpl under
-  the idle Runnable). `NAME_PUNCT` / `NAME_SPACES` are module-level now (namesAgree uses them
-  too) and the pass skips views with more than 6,000 loaded POIs. Never build a Regex inside a
-  per-feature loop; the ANR trace is readable at /data/anr/anr_* without root. VelaMapView draws `vela-places-<i>`
+  business POIs (`poi_r1/r7/r20`) under an open places source (2026-09-16, final shape): OSM
+  BUSINESS classes (`OSM_BUSINESS_CLASSES`: the style's food/shop/lodging/fuel groups plus the
+  commercial health and money classes) are hidden outright by a static term in
+  `applyPoiTierFilters` (`osmHideBusiness`, set by the overlay effect), because Overture,
+  AllThePlaces and Google cover businesses far better. Everything else OSM draws - museums,
+  attractions, parks, schools, civic buildings, places of worship, transit - stays up, and
+  `osmFillIn` (camera idle, 500 ms debounce) drops by name only the non-business OSM points that an
+  open icon of a non-business group (`OPEN_NONBUSINESS_GROUPS`) within 80 m already draws.
+  The pass is VIEWPORT ONLY and rendered only (queryRenderedFeatures on both sides; an excluded OSM
+  point is no longer drawn, so it is never re-tested), GROW-ONLY within a source set
+  (`osmPoiExclude`, capped at 1,500 names; every setFilter re-lays the whole poi source, so it
+  changes only when something new turns up), SKIPPED when the tiers are hidden (Both mode with
+  Google covering the view, or places off), and THROTTLED to once per 2.5 s after a fifth of a
+  screen or 0.4 zoom of movement. PERF HISTORY, measured on the 4a in downtown Davis with a
+  pan-pause-zoom sequence: the first cut queried every loaded feature on both sources and stalled
+  the main thread up to 169 ms per settle; a rendered query costs 37-55 ms in a dense view even
+  when it returns nothing, which is why the skip and the throttle exist. ANR LESSON (same day,
+  hotfix #532): the first cut also built two `Regex` objects per key, i.e. Pattern.compile for
+  every POI on the main thread, and a San Francisco view hung the app ("Vela isn't responding",
+  trace = PatternNative.compileImpl under the idle Runnable). `NAME_PUNCT` / `NAME_SPACES` are
+  module-level; never build a Regex inside a per-feature loop. The ANR trace is readable at
+  /data/anr/anr_* without root. VelaMapView draws `vela-places-<i>`
   SymbolLayers dressed identically to the ambient layer; a tap on a `src=overture` feature builds a seeded
   `Place` (category/address/phone/website from the tile) and `onOpenPlaceTap` -> `onPoiTap(seed=...)`, so
   the sheet reads offline and the existing Google correlation upgrades it online. Davis is the test bake
