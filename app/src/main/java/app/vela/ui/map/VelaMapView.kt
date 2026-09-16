@@ -302,6 +302,34 @@ private var lastTransitBusHidden: Boolean? = null // gate the poi_transit filter
 private var origPoiTransitFilter: Expression? = null // basemap filter to restore when coverage goes
 private var lastOsmPoiVis: String? = null // identity-gate the basemap-POI visibility flips
 private var lastPoiFuelOnly: Boolean? = null // identity-gate the nav gas-stations-only filter flips
+// Open-place ids filtered out of the layer. `openHiddenIds` is the persisted closed-listing set
+// (from MapUiState); `openDisplacedIds` is transient, written by the Both-mode dedupe for a place
+// whose Google listing sits more than DEDUPE_SAME_M from the open feature of the same name.
+// Overture stacks every tenant of a building on ONE parcel point and the bake spreads the stack
+// onto a small ring, so a strip-mall shop's open coordinate is invented and can be tens of metres
+// from its door while Google's is the storefront. When the two disagree that far, Google's pin is
+// the right one to keep (before this, the correctly placed Google pin vanished a beat after it
+// drew, because the dedupe dropped it against the displaced open twin; user 2026-09-16).
+private var openHiddenIds: Set<String> = emptySet()
+private var openDisplacedIds: Set<String> = emptySet()
+private const val DEDUPE_SAME_M = 25.0 // the two sources agree on the spot: the open icon stands
+private const val DEDUPE_NAME_M = 80.0 // same name, farther than SAME: one of the two is misplaced
+
+/** Re-apply the id exclusions to the open places layers (icons + dots) without rebuilding them. */
+private fun applyOpenPlacesHidden(style: Style) {
+    val ids = openHiddenIds + openDisplacedIds
+    val filter = if (ids.isEmpty()) Expression.literal(true)
+    else Expression.not(Expression.`in`(Expression.get("id"), Expression.literal(ids.toTypedArray<Any>())))
+    runCatching {
+        style.layers.filter { it.id.startsWith("vela-places-") }.forEach { l ->
+            when (l) {
+                is SymbolLayer -> l.setFilter(filter)
+                is CircleLayer -> l.setFilter(filter)
+                else -> Unit
+            }
+        }
+    }
+}
 // OSM basemap POIs the open places layer already draws (by name, within 80 m): filtered out of
 // the poi tiers so OSM FILLS IN what Overture lacks instead of doubling what it has. Recomputed
 // on camera idle by osmFillIn; applyPoiTierFilters folds it into the tier filters.
@@ -575,6 +603,11 @@ fun VelaMapView(
     val navUserTilt = remember { doubleArrayOf(Double.NaN) } // shove-set tilt override (like navUserZoom)
     val browseZoomGoal = remember { doubleArrayOf(Double.NaN) } // locate-tap standard zoom, eased by the browse ticker
     val browseFlying = remember { booleanArrayOf(false) } // cold-engage flight in progress - ticker parks until it lands
+    // Has this follow SESSION already engaged? The cold-engage fly-to-street-zoom below must run
+    // once per session, not on every re-seed: a pinch releases the camera (browseCam -> NaN) and
+    // the next frame re-seeds, so pinching out past z14 while still following flew you straight
+    // back in, over and over, until you panned (which drops follow). User report 2026-09-16.
+    val browseEngaged = remember { booleanArrayOf(false) }
     val myBearingHolder = rememberUpdatedState(myBearing) // vehicle course for the accel projection
     val myLocationHolder = rememberUpdatedState(myLocation)     // live fix, for the free-drive follow ticker
     val mySpeedHolder = rememberUpdatedState(mySpeed)           // live speed, for the free-drive dead reckon
@@ -1096,6 +1129,8 @@ fun VelaMapView(
         val style = styleRef ?: return@LaunchedEffect
         // A pin whose Google listing came back permanently closed (Overture lags Google by months)
         // is filtered out of both tiers the moment the tap resolved, and stays out across restarts.
+        openHiddenIds = hiddenOpenPlaceIds
+        openDisplacedIds = emptySet() // fresh sources/style: the dedupe recomputes on its next pass
         val hiddenFilter = if (hiddenOpenPlaceIds.isEmpty()) null else Expression.not(
             Expression.`in`(Expression.get("id"), Expression.literal(hiddenOpenPlaceIds.toTypedArray<Any>())),
         )
@@ -1115,6 +1150,7 @@ fun VelaMapView(
                 )
                 val icon = Expression.get("icon") // "vela-poi-<group>", baked
                 val name = Expression.get("name")
+                val labelCap = app.vela.core.config.CalibrationStore.latest.tune("openLabelCap", 20.0).toInt()
                 // Dots come in by rank too, Google-style: none at z14 (icons only), the top six
                 // per 400 m cell at z15, the top fifteen at z16, everything from z17. Opacity, not
                 // a filter: a hidden dot still costs nothing, and MapLibre filters cannot read
@@ -1200,7 +1236,16 @@ fun VelaMapView(
                                 Expression.stop(15f, topOr("rank", 1, 5.0, name)),
                                 Expression.stop(16f, topOr("rank", 5, 4.0, name)),
                                 Expression.stop(17f, topOr("rank", 12, 3.0, name)),
-                                Expression.stop(17.5f, name),
+                                // Labels stay THINNED at max zoom (2026-09-16). Icons come in for
+                                // everything from 17.5 (the stop below), but labelling every one of
+                                // them is what costs: each label is glyph layout plus a collision
+                                // pass over four anchors, and a mall or a downtown block puts
+                                // dozens in one cell ("shit be laggin in areas with a lot of POIs").
+                                // The top `labelCap` per 400 m cell keep their name, the rest read
+                                // as icons until you zoom past them - which is what Google does in
+                                // a dense block. Remote-tunable so the number can be trimmed on
+                                // real devices without a release.
+                                Expression.stop(17.5f, topOr("rank", labelCap, 3.0, name)),
                             ),
                         ),
                         PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
@@ -1547,6 +1592,7 @@ fun VelaMapView(
             browseDrive[1] = 0.0; browseDrive[2] = Double.NaN; browseDrive[3] = 0.0
             browseZoomGoal[0] = Double.NaN
             browseEst.reset()
+            browseEngaged[0] = false
             browseFlying[0] = false // whatever cancelled the follow also cancelled the flight (onCancel), but never leak
             return@LaunchedEffect
         }
@@ -1604,7 +1650,8 @@ fun VelaMapView(
                     // snap was added for. browseCam stays NaN through the flight, so the next frame
                     // reseeds from the LANDED camera - if the fix moved mid-flight, the ease just
                     // glides the difference. A normal street camera is still preserved (else branch).
-                    if (cp.zoom < 14.0) {
+                    if (cp.zoom < 14.0 && !browseEngaged[0]) {
+                        browseEngaged[0] = true
                         browseFlying[0] = true
                         flightDepth[0]++
                         cam.animateCamera(
@@ -1617,6 +1664,7 @@ fun VelaMapView(
                         )
                         continue
                     } else {
+                        browseEngaged[0] = true
                         browseCam[0] = cp.target?.latitude ?: loc.lat
                         browseCam[1] = cp.target?.longitude ?: loc.lng
                     }
@@ -5113,16 +5161,16 @@ private fun emphasizeShields(context: android.content.Context, style: Style) {
  *  loaded alone was wrong the other way (an open feature thinned by the rank steps or hidden under
  *  a stacked point suppressed Google's copy and the user saw neither shop). The union is
  *  deterministic for the thinning and only misses a stacked point, which the bake now spreads. */
-private fun openPlacesShown(map: MapLibreMap, style: Style, zoom: Double): List<Pair<String, LatLng>> {
+private fun openPlacesShown(map: MapLibreMap, style: Style, zoom: Double): List<Triple<String, String, LatLng>> {
     val layers = style.layers.map { it.id }.filter { it.startsWith("vela-places-") && !it.startsWith("vela-places-dots-") } +
         listOf("poi_r1", "poi_r7", "poi_r20").filter { style.getLayer(it) != null } // the OSM fill-in draws too
     if (layers.none { it.startsWith("vela-places-") }) return emptyList()
-    val out = ArrayList<Pair<String, LatLng>>()
+    val out = ArrayList<Triple<String, String, LatLng>>()
     runCatching {
         map.queryRenderedFeatures(RectF(0f, 0f, map.width, map.height), *layers.toTypedArray()).forEach { f ->
             val pt = f.geometry() as? Point ?: return@forEach
             val n = f.getStringProperty("name") ?: return@forEach
-            out += n to LatLng(pt.latitude(), pt.longitude())
+            out += Triple(f.getStringProperty("id") ?: "", n, LatLng(pt.latitude(), pt.longitude()))
         }
     }
     fun num(f: org.maplibre.geojson.Feature, k: String): Double? = runCatching { f.getNumberProperty(k)?.toDouble() }.getOrNull()
@@ -5145,7 +5193,7 @@ private fun openPlacesShown(map: MapLibreMap, style: Style, zoom: Double): List<
                 if (!qualifies(f)) return@forEach
                 val pt = f.geometry() as? Point ?: return@forEach
                 val n = f.getStringProperty("name") ?: return@forEach
-                out += n to LatLng(pt.latitude(), pt.longitude())
+                out += Triple(f.getStringProperty("id") ?: "", n, LatLng(pt.latitude(), pt.longitude()))
             }
         }
     }
@@ -6439,15 +6487,23 @@ private fun applyData(
     // stays stale so the first recomposition after landing uploads the full set.
     if (ambientPois != lastAppliedAmbient && flightDepth[0] == 0) {
         fun uploadAmbient() {
-            // "Both" places setting: the open places layer already draws most of these. Drop the
-            // Google places that agree by name with an open place within 80 m of them, so the map
-            // gets Google's extras (a new business, one the open data missed) and not two icons
-            // for every restaurant. The index property stays the list index, so a tap still opens
-            // the right place.
+            // "Both" places setting: the open places layer already draws most of these, so a
+            // Google place that agrees BY NAME with an open one nearby is a twin, not an extra.
+            // WHICH of the two is drawn depends on how far apart they are: within DEDUPE_SAME_M
+            // the sources agree on the spot and the open icon stands (Google's copy is dropped);
+            // farther out one of them is misplaced, and Google's storefront coordinate is the
+            // one to trust, so its pin stays and the open twin is filtered out of the layer
+            // (see openDisplacedIds). The index property stays the list index, so a tap still
+            // opens the right place.
             val openInView = openPlacesShown(map, style, map.cameraPosition.zoom)
+            val displaced = HashSet<String>()
             val ambientFc = FeatureCollection.fromFeatures(
                 ambientPois.mapIndexedNotNull { i, m ->
-                    if (openInView.isNotEmpty() && openInView.any { (n, ll) -> ll.distanceTo(m.location) < 80.0 && namesAgree(n, m.name) }) return@mapIndexedNotNull null
+                    val twin = openInView.firstOrNull { (_, n, ll) -> ll.distanceTo(m.location) < DEDUPE_NAME_M && namesAgree(n, m.name) }
+                    if (twin != null) {
+                        if (twin.third.distanceTo(m.location) < DEDUPE_SAME_M) return@mapIndexedNotNull null
+                        if (twin.first.isNotEmpty()) displaced += twin.first
+                    }
                     Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
                         val group = PoiIcons.groupFor(m.name, m.category)
                         addStringProperty("name", m.name)
@@ -6468,6 +6524,10 @@ private fun applyData(
                 },
             )
             style.getSourceAs<GeoJsonSource>(AMBIENT_SRC)?.setGeoJson(ambientFc)
+            if (displaced != openDisplacedIds) {
+                openDisplacedIds = displaced
+                applyOpenPlacesHidden(style)
+            }
         }
         uploadAmbient()
         lastAppliedAmbient = ambientPois

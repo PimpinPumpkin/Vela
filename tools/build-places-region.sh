@@ -167,14 +167,30 @@ WHERE name IS NOT NULL AND name <> ''
 -- drawn where the Safeway should be). A row at an anchor category's address, within ~200 m of
 -- it and not an anchor itself, loses 2 points, so the store wins the cell and the tenant fills in
 -- as you zoom.
+-- Address as a JOIN KEY: lowercased, with the unit part dropped ("2121 Cowell Blvd Ste B" and
+-- "2121 Cowell Blvd, Suite B" both become "2121 cowell blvd"). Exact string equality missed a
+-- department whose row carried the suite and the store's did not, which is how a Safeway Pharmacy
+-- kept outranking its own Safeway (user 2026-09-16).
+CREATE MACRO anorm(a) AS nullif(trim(regexp_replace(regexp_replace(lower(coalesce(a, '')), '[,#].*$', ''), '[ ]+(ste|suite|unit|apt|bldg|rm|room|no|fl|floor)[ .]*[a-z0-9-]*$', '')), '');
+-- The first word of a name, for the department test below.
+CREATE MACRO nhead(n) AS lower(regexp_extract(coalesce(n, ''), '^[^,(]{1,40}'));
+CREATE TABLE anchors AS
+SELECT id, name, addr, lat, lng FROM scored
+WHERE category IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store');
+-- EXISTS, not a join: a tenant can sit at more than one anchor (a mall inside a shopping centre),
+-- and a LEFT JOIN duplicated the row once per match (caught 2026-09-16, +22 rows in Davis).
 CREATE TABLE anchored AS
-SELECT s.* REPLACE (CASE WHEN a.id IS NOT NULL THEN s.prominence - 2.0 ELSE s.prominence END AS prominence)
+SELECT s.* REPLACE (
+  CASE WHEN EXISTS (
+    SELECT 1 FROM anchors a
+    WHERE a.id <> s.id AND abs(s.lat - a.lat) < 0.002 AND abs(s.lng - a.lng) < 0.003
+      AND (anorm(s.addr) = anorm(a.addr) OR (length(nhead(a.name)) >= 4 AND lower(s.name) LIKE nhead(a.name) || ' %'))
+  ) THEN s.prominence - 2.0 ELSE s.prominence END AS prominence)
 FROM scored s
-LEFT JOIN (
-  SELECT id, addr, lat, lng FROM scored
-  WHERE addr IS NOT NULL AND category IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store')
-) a ON s.addr = a.addr AND s.id <> a.id AND abs(s.lat - a.lat) < 0.002 AND abs(s.lng - a.lng) < 0.003
-  AND s.category NOT IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store');
+WHERE s.category IS NULL OR s.category NOT IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store')
+UNION ALL
+SELECT s.* FROM scored s
+WHERE s.category IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store');
 -- STACKED POINTS (2026-09-15): Overture puts every tenant of a building on the same parcel point
 -- (17% of Davis rows share their point with another: medical suites, strip-mall tenants), and
 -- coincident icons collide at every zoom, so all but the top one never drew. Spread the stack on
