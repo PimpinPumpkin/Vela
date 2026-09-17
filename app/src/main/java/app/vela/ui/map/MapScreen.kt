@@ -1370,7 +1370,6 @@ fun MapScreen(
             if (state.navigating && !landscapeChrome && !pipUi && !bar.isEmpty) {
                 app.vela.ui.nav.RouteBarStrip(
                     model = bar,
-                    remainingMeters = state.nav.remainingDistance,
                     modifier = Modifier
                         .align(Alignment.CenterStart)
                         .padding(start = 8.dp)

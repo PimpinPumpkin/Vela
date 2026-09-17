@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,7 +26,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.vela.core.nav.RouteBar
 import app.vela.ui.formatDistance
@@ -43,7 +41,7 @@ import app.vela.ui.formatDistance
  * unreadable in practice (user 2026-09-04).
  */
 @Composable
-fun RouteBarStrip(model: RouteBar.Model, remainingMeters: Double, modifier: Modifier = Modifier) {
+fun RouteBarStrip(model: RouteBar.Model, modifier: Modifier = Modifier) {
     if (model.isEmpty) return
     val track = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
     val chip = MaterialTheme.colorScheme.surface
@@ -56,7 +54,7 @@ fun RouteBarStrip(model: RouteBar.Model, remainingMeters: Double, modifier: Modi
             maxLines = 1,
             softWrap = false,
             textAlign = TextAlign.Center,
-            modifier = Modifier.requiredWidth(LABEL_W.dp).padding(bottom = 2.dp),
+            modifier = Modifier.width(STRIP_W.dp).padding(bottom = 2.dp),
         )
         Box(Modifier.fillMaxWidth().weight(1f)) {
             Layout(content = {
@@ -141,9 +139,14 @@ fun RouteBarStrip(model: RouteBar.Model, remainingMeters: Double, modifier: Modi
                     }
                     Triple(p, d, d.kind)
                 }
+                val trackCx = TRACK_COL.dp.roundToPx() / 2
+                val badgeCx = TRACK_COL.dp.roundToPx() + 2.dp.roundToPx() + BADGE.dp.roundToPx() / 2
                 layout(w, h) {
                     for ((p, d, kind) in placed) {
-                        val x = (w - p.width) / 2
+                        // Badges ride in their own lane to the right; the track, its congestion
+                        // bands, the dots and the arrow stay in the track column.
+                        val cx = if (kind == ROLE_BADGE) badgeCx else trackCx
+                        val x = (cx - p.width / 2).coerceAtLeast(0)
                         val y = when (kind) {
                             ROLE_TRACK -> inset
                             ROLE_BAND -> yAt(d.to)
@@ -154,21 +157,11 @@ fun RouteBarStrip(model: RouteBar.Model, remainingMeters: Double, modifier: Modi
                 }
             }
         }
-        Text(
-            formatDistance(remainingMeters),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = ink,
-            maxLines = 1,
-            softWrap = false,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.requiredWidth(LABEL_W.dp).padding(top = 2.dp),
-        )
     }
 }
 
-private const val STRIP_W = 34
-private const val LABEL_W = 64 // the distance labels may be wider than the strip ("768.8 mi")
+private const val STRIP_W = 52 // the track column plus a badge lane beside it
+private const val TRACK_COL = 26 // the track/dots/arrow column (a badge-wide column, so the arrow fits)
 private const val TRACK_W = 8
 private const val BADGE = 26
 private const val DOT = 9

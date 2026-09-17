@@ -798,13 +798,15 @@ internal class NavController(
         // Keyed on the route's endpoints + length and on the IDENTITY of the two mark lists (a
         // replaced set with the same count used to keep stale marks; review 2026-09-12).
         val key = "${route.polyline.first()}|${route.polyline.last()}|${route.distanceMeters.toInt()}|" +
-            "${System.identityHashCode(_state.value.trafficControls)}|${System.identityHashCode(_state.value.flockCameras)}"
+            "${System.identityHashCode(_state.value.trafficControls)}|${System.identityHashCode(_state.value.flockCameras)}|" +
+            "${System.identityHashCode(_state.value.speedCameras)}"
         if (key != routeBarKey) {
             routeBarKey = key
             val poly = route.polyline
             val cum = app.vela.core.nav.RouteBar.cumulative(poly)
             val controls = _state.value.trafficControls
             val cams = _state.value.flockCameras
+            val speedCams = _state.value.speedCameras
             scope.launch(Dispatchers.Default) {
                 val marks = buildList {
                     for (c in controls) {
@@ -817,6 +819,12 @@ internal class NavController(
                                 app.vela.core.data.TrafficControl.Kind.SPEED_HUMP -> app.vela.core.nav.RouteBar.Mark.SPEED_HUMP
                             } to m,
                         )
+                    }
+                    // Fixed speed cameras get a badge too (they were only ever on the map, never
+                    // on the bar). No direction in the data, so distance to the route is the test.
+                    for (c in speedCams) {
+                        val m = app.vela.core.nav.RouteBar.alongMeters(poly, cum, c.loc) ?: continue
+                        add(app.vela.core.nav.RouteBar.Mark.CAMERA to m)
                     }
                     for (c in cams) {
                         // Direction-aware like the route counts: a camera aimed across the road

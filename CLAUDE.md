@@ -1875,6 +1875,14 @@ architecture note.
   "Everything since" commit list: one line per feature, plain words, the reason for an early
   cut first if there is one (0.4.1217 is the model). The promote workflow cannot write this
   part; it is the release's own job, the same day. Nightlies keep the commit list alone.
+- **ROUTE BAR + CROSS LABELS (2026-09-17):** `RouteBarStrip` lays badges in their OWN lane right of
+  the track (`TRACK_COL` / `badgeCx`), so a 26 dp badge no longer covers the congestion band under
+  it, and the remaining-distance label is gone (the bottom bar has it; "768.8 mi" overflowed the
+  strip). `NavController.refreshRouteBar` adds `speedCameras` as CAMERA marks (flock marks already
+  pass `CameraFacing.onRoute`; fixed speed cams carry no direction, so distance only).
+  `crossLabelPoint` now tries `NAV_XLABEL_OFFSETS` (1x/1.8x/3x of 35 m) on BOTH sides and keeps the
+  first with `NAV_XLABEL_CLEAR_M` clearance, and the label pass only marks its quantum done once it
+  placed something (`emptyPassTicks`), so labels no longer wait 400 m when tiles land late.
 - **ROUTING OFFER + REGION SIZES (2026-09-17):** `MapViewModel.maybeOfferRouting()` (camera idle, once
   per session until answered; pref `routing_offer_done`) offers the smallest obf region covering
   Home or the fix, after onboarding, on the bare map; `answerRoutingOffer`. `archivesFor(region, list)`

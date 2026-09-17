@@ -953,11 +953,12 @@ fun VelaMapView(
         // road would otherwise speak the ICU skeleton (issue #184). The expensive crossing geometry
         // stays per-quantum, so this never puts a heavy pass on the every-frame path.
         var dictStaleTicks = 0
+        var emptyPassTicks = 0 // consecutive quantum passes that placed no label (tiles still loading)
         while (true) {
             val quantum = (navPuck.progressM / 400.0).toLong()
             val upcomingNow = upcomingRoadsHolder.value
             val quantumChanged = quantum != lastQuantum || upcomingNow != lastUpcoming
-            if (quantumChanged) dictStaleTicks = 0 // new area: re-warm the dict as its tiles land
+            if (quantumChanged) { dictStaleTicks = 0; emptyPassTicks = 0 } // new area: re-warm the dict as its tiles land
             if (quantumChanged || dictStaleTicks < 3) {
                 val src = basemapSrc(style)?.let { style.getSource(it) } as? VectorSource
                 val feats = if (src != null) runCatching {
@@ -1036,9 +1037,18 @@ fun VelaMapView(
                                 }
                             }
                             // Mark the quantum done only after a usable pass, so an early empty
-                            // query (tiles still loading) retries on the next tick.
-                            lastQuantum = quantum
-                            lastUpcoming = upcomingNow
+                            // query (tiles still loading) retries on the next tick. A pass that
+                            // found the roads but placed NO label is not usable either: the cross
+                            // streets' tiles often land a beat later, and the quantum being marked
+                            // done held the map label-less until the next 400 m (user 2026-09-17,
+                            // "they don't show up until I pan a little").
+                            if (points.isNotEmpty() || emptyPassTicks >= 4) {
+                                emptyPassTicks = 0
+                                lastQuantum = quantum
+                                lastUpcoming = upcomingNow
+                            } else {
+                                emptyPassTicks++
+                            }
                         }
                     }
                 }
@@ -4718,6 +4728,8 @@ private const val NAV_ROADLABEL_MINOR_LAYER = "vela-nav-roadlabels-minor"
 // more from the route ("I want them near our actual path", user drive 2026-09-16).
 private const val NAV_XLABEL_SRC = "vela-nav-xlabels-src"
 private const val NAV_XLABEL_OFFSET_M = 35.0
+private val NAV_XLABEL_OFFSETS = doubleArrayOf(1.0, 1.8, 3.0) // tried in turn until the bubble clears the route
+private const val NAV_XLABEL_CLEAR_M = 30.0
 
 /** Google-style floating road labels during NAV: horizontal, viewport-aligned name chips over the
  *  roads you're crossing or driving beside - far more legible than the line-following basemap
@@ -4983,9 +4995,20 @@ private fun crossLabelPoint(line: List<Pair<Double, Double>>, window: List<LatLn
         val f = if (seg == 0.0) 0.0 else (p - cum[i - 1]) / seg
         return (px[i - 1] + f * (px[i] - px[i - 1])) to (py[i - 1] + f * (py[i] - py[i - 1]))
     }
-    val back = at(hitAt - NAV_XLABEL_OFFSET_M)
-    val fwd = at(hitAt + NAV_XLABEL_OFFSET_M)
-    val pick = if (distToWindow(back.first, back.second) >= distToWindow(fwd.first, fwd.second)) back else fwd
+    // Either side of the route, whichever clears it best, and farther out when the near offset
+    // still leaves the bubble over the road (user 2026-09-17: callouts clipped the driven road).
+    // The first candidate with real clearance wins; otherwise the farthest one does.
+    var best: Pair<Double, Double>? = null
+    var bestClear = -1.0
+    for (mult in NAV_XLABEL_OFFSETS) {
+        for (side in intArrayOf(-1, 1)) {
+            val p = at(hitAt + side * NAV_XLABEL_OFFSET_M * mult)
+            val clear = distToWindow(p.first, p.second)
+            if (clear > bestClear) { bestClear = clear; best = p }
+        }
+        if (bestClear >= NAV_XLABEL_CLEAR_M) break
+    }
+    val pick = best ?: return null
     return (pick.first / k) to (pick.second / m)
 }
 
