@@ -654,6 +654,23 @@ project's core promise is that neither exists:
 
 ## Queued near-term
 
+- **Reroute on the phone first (deferred 2026-09-16).** When a downloaded region covers the drive,
+  compute the reroute with the on-device engine at once (no network), then swap in the
+  traffic-aware online route when it arrives through the existing heal path. Evidence: a shared
+  diagnostics export (issue #557) shows two urgent reroutes timing out at 20 s while the open router
+  hung and the escalated ladder taking another 105 s, and issue #258 reports the same pattern in
+  cities. Held back because every latch back onto the online route is new bug surface.
+- **Use Vela without Google (deferred 2026-09-16).** One master switch plus individual toggles,
+  including "no Google routing or live traffic" for people who want Google places but not Google
+  directions. Places from Vela data, taps not looked up, search from place packs plus an open OSM
+  geocoder online, directions from the open router online and the on-device engine offline, no
+  reviews, photos, Street View or popular times. The open question is transit directions (a
+  Transitous plan route) and free-flow ETAs without traffic.
+- **Close-zoom slowness in Midtown (found 2026-09-16).** At about z18.5 over Midtown Manhattan the
+  4a renders at single-digit fps in every places mode; the pins are not the cause (hiding the icon
+  and dot layers changed nothing). Candidates: the house-number overlay at z19, building fills,
+  label placement of the basemap. Measure on a cool phone with the sheet closed.
+
 - **More places sources for the open bake (queued 2026-09-15).** Overture's Davis rows come from
   Meta 1,537 / BrightQuery 494 / Microsoft 366 / Foursquare 260 / AllThePlaces 30 / DAC 6 (of
   2,693), so a business with no Facebook page and no Bing entry is simply absent, chains included.

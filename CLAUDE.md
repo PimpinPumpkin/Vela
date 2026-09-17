@@ -2088,6 +2088,25 @@ architecture note.
   the cut still draws as a DOT (the dots tier is unfiltered from z17), which is the user's ask:
   "minimizing to little circle dots is an alternative if we are too crowded ... we can see more
   later when we zoom into an area", not places disappearing.
+- **Dense-city pin budget, second pass (2026-09-16, measured in Midtown on the 4a).** Three rules in
+  the places layer expressions: (1) `blockBudget` replaces the frank-only `topOr` at z17.5 / 18.5 /
+  19.5 and FALLS BACK to the 400 m `rank` with a 4x cut when a tile has no `frank` (archives baked
+  before it passed every place, so pre-frank New York drew every tenant from z17.5); z19.5 is capped
+  at `openIconCapMax` (40) per block instead of unlimited. (2) `unlessCrowdedGeneric`: default- and
+  health-group places (office tenants, small practices) need to be in the top `openGenericBlockTop`
+  (3) of their block or reach `openGenericMinProminence` (4.0), else they stay dots. (3) The z16/z17
+  prominence escapes went 4.0 -> 5.0 and 3.0 -> 4.5 (a Manhattan 400 m cell holds 3,000+ places and
+  any shop with a website scores ~4), and labels at z17.5+ are wrapped in the same icon rules so a
+  name never floats without its icon. Midtown scrub, same build family: ~z16.5 29 -> 46 fps; ~z18.5
+  about 1 s per frame -> 150 ms (the phone was warming up, so treat the second as direction, not a
+  number). CLOSE ZOOM IN MIDTOWN IS STILL SLOW IN EVERY PLACES MODE (Google-only too, once measured
+  with the sheet closed): the cost is not the pins; not yet isolated (ROADMAP). Benchmark traps:
+  the geo: intent ignores `z`, the reverse-geocode sheet it opens must be closed or the scrub drags
+  the sheet, and the 4a throttles after about an hour of scrubbing (`dumpsys thermalservice`).
+- **Route preview shows landmarks only (2026-09-16).** While the chooser is open (a route drawn, not
+  navigating) the OSM business tiers hide and the open places layer filters to prominence >=
+  `PREVIEW_LANDMARK_PROMINENCE` (5.5) with no dots (`placesPreviewLandmarks`, folded into
+  `applyOpenPlacesHidden` with the drive-nav fuel rule), like Google's route overview.
 - **Open-layer labels stay thinned at max zoom (2026-09-16).** Icons come in for everything from
   z17.5 but only the top `openLabelCap` (calibration dial, default 20) per 400 m cell get a name:
   each label is glyph layout plus a collision pass over four anchors, and a mall puts dozens in one
