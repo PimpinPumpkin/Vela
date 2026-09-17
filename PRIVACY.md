@@ -159,8 +159,10 @@ and hand it to a developer** to debug. Specifics:
   location trail.
 - **Turning it off wipes the log.** Exports also scrub coordinates down to ~1 km before the
   share sheet ever sees them, so a pasted report can't pinpoint you. **Redact places in exports**
-  (same screen) goes further for a report you mean to post publicly: coordinates round to ~10 km
-  and the searches, destinations, links and place names are replaced by `[redacted]`.
+  (same screen, shown whether or not diagnostics is on) goes further for a report you mean to post
+  publicly: coordinates round to ~10 km and the searches, destinations, links and place names are
+  replaced by `[redacted]`. The same switch makes every trip share start on the largest trim
+  distance (see below).
 
 ## Trip recording (separate opt-in, off by default)
 
@@ -189,7 +191,11 @@ prompt asks for it on its own line.
   what it removed, and the first surviving coordinate, before anything leaves the device. The
   untrimmed file is still available behind **Share full trace**, and the copy on your phone is
   never modified.
-- Manage it in Settings → recorded trips have **Replay**, **Share**, and **Delete**;
+- **Sharing several trips at once** (Select trips → Share) sends them as **one zip file**, every
+  trip in it trimmed at one distance you pick for the batch. The dialog adds up what comes off
+  before the zip is made; a trip too short to keep anything after trimming is left out, never
+  sent untrimmed. The zip holds no untrimmed trace.
+- Manage it in Settings → recorded trips have **Replay**, **Share**, **Rename** and **Delete**;
   turning the switch off stops new recording. Off by default; you choose to enable it.
 
 A future, **separately-announced** opt-in may aggregate anonymized speed traces to build

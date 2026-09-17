@@ -130,7 +130,6 @@
     <string name="settings_save_trips">儲存我的行程（供重播）</string>
     <string name="settings_save_trips_hint">在這支手機上記錄每次行駛的 GPS 軌跡，之後可以重播。資料絕不會離開手機。</string>
     <string name="settings_recorded_trips_hint">已記錄的行程。點按「重播」即可在地圖上以 3 倍速回放：</string>
-    <string name="settings_trip_points">%1$d 個定位點</string> <!-- format -->
     <string name="settings_trip_replay">重播</string>
     <string name="settings_trip_read_error">無法讀取這筆行程</string>
     <string name="settings_trip_share">分享</string>

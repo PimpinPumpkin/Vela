@@ -44,6 +44,16 @@ object TripScrub {
     /** Metres trimmed around each private place by default. */
     const val DEFAULT_RADIUS_M = 400.0
 
+    /** The trim distances the share dialogs offer, smallest first. */
+    val RADIUS_OPTIONS_M = listOf(200.0, DEFAULT_RADIUS_M, 800.0)
+
+    /**
+     * The radius a share dialog starts on. With Settings > Diagnostics > "Redact places in
+     * exports" on, that is the LARGEST option: the user has said they mean to post what they
+     * export, so the ends are cut widest. The geometry in the middle is still never rounded.
+     */
+    fun defaultRadius(redact: Boolean): Double = if (redact) RADIUS_OPTIONS_M.max() else DEFAULT_RADIUS_M
+
     /** An event survives only if a fix this close in time survived (fixes arrive at about 1 Hz). */
     const val EVENT_NEAR_MS = 3_000L
 

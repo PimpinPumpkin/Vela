@@ -161,11 +161,9 @@
     <string name="settings_diag_nothing">Még nincs rögzítve semmi. Használd az appot, majd exportálj.</string>
     <string name="settings_diag_export">Hibakeresési munkamenet exportálása</string>
     <string name="settings_diag_redact">Helyek kitakarása az exportban</string>
-    <string name="settings_diag_redact_hint">Elrejti a kereséseket, úti célokat, linkeket és helyneveket az exportból, a koordinátákat kb. 10 km-re kerekíti. Az idők, számlálók és hibák megmaradnak.</string>
     <string name="settings_save_trips">Utazásaim mentése (visszajátszáshoz)</string>
     <string name="settings_save_trips_hint">Rögzíti minden út GPS-nyomvonalát ezen a telefonon, hogy később visszajátszható legyen. Soha nem hagyja el a telefont.</string>
     <string name="settings_recorded_trips_hint">Rögzített utak. Koppints a Visszajátszásra, hogy lejátszd a térképen (3×):</string>
-    <string name="settings_trip_points">%1$d pont</string>
     <string name="settings_trip_replay">Visszajátszás</string>
     <string name="settings_trip_read_error">Nem sikerült beolvasni azt az utat</string>
     <string name="settings_trip_share">Megosztás</string>
