@@ -130,6 +130,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import kotlin.math.roundToInt
 import androidx.compose.ui.geometry.Offset
+import kotlinx.coroutines.flow.debounce
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -303,6 +307,20 @@ fun MapScreen(
     // screen the route fit gets nearly the whole map back, so it re-frames closer instead
     // of staying at the zoomed-out framing the full-height panel needed (user 2026-07-14).
     var dirMinimized by remember { mutableStateOf(false) }
+    // The chooser's MEASURED top edge, sampled once it settles: the route fit used a fraction of the
+    // screen height for the panel, and the real panel is taller than that fraction, so the trip's
+    // start sat behind it in the overview (user 2026-09-17). Debounced, because the panel animates
+    // its height and every intermediate value would re-run the fit.
+    var dirPanelTopRaw by remember { mutableStateOf(0) }
+    var dirPanelTopPx by remember { mutableStateOf(0) }
+    // The map fills the whole window (behind the status and nav bars), so the panel's top must be
+    // read in WINDOW coordinates and measured against the window height, not the configuration's
+    // screen height, which leaves the bars out and understated the panel by about 130 px.
+    val windowHeightPx = LocalView.current.height.takeIf { it > 0 } ?: screenHeightPx.toInt()
+    LaunchedEffect(Unit) {
+        snapshotFlow { dirPanelTopRaw }.debounce(140).collect { dirPanelTopPx = it }
+    }
+    LaunchedEffect(state.directionsOpen) { if (!state.directionsOpen) { dirPanelTopRaw = 0; dirPanelTopPx = 0 } }
     // Google-style chooser: "Compare routes" swaps in the classic route list (length, main roads,
     // cameras per route) until BACK or the directions close.
     var classicRoutes by remember { mutableStateOf(false) }
@@ -331,8 +349,13 @@ fun MapScreen(
         placeSheetUp -> if (landscapeChrome) 0 else (screenHeightPx * 0.56f).toInt()
         // Landscape: the chooser is a LEFT side panel (see its modifier), so it costs no bottom
         // inset - the route frames beside it instead of being squeezed into a sliver above it.
-        state.directionsOpen && !state.navigating ->
-            if (landscapeChrome) 0 else (screenHeightPx * (if (dirMinimized) 0.14f else 0.58f)).toInt()
+        state.directionsOpen && !state.navigating -> when {
+            landscapeChrome -> 0
+            // The measured panel, when it has reported and settled; the fractions are the fallback
+            // for the frame before that.
+            dirPanelTopPx > 0 -> (windowHeightPx - dirPanelTopPx).coerceIn(0, (windowHeightPx * 0.72f).toInt())
+            else -> (screenHeightPx * (if (dirMinimized) 0.14f else 0.58f)).toInt()
+        }
         // Results bottom sheet at peek covers ~the bottom half: frame the result pins
         // in the visible top half, not behind the sheet.
         state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed &&
@@ -2047,6 +2070,7 @@ fun MapScreen(
                     },
                     modifier = Modifier
                         .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
+                        .onGloballyPositioned { dirPanelTopRaw = it.boundsInWindow().top.roundToInt() }
                         .landscapeColumn(landscapeChrome, sidePanelWidthDp),
                 )
             }
@@ -2094,6 +2118,7 @@ fun MapScreen(
                 // gone, which is a poor way to ask someone to choose between routes drawn on it.
                 modifier = Modifier
                     .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
+                    .onGloballyPositioned { dirPanelTopRaw = it.boundsInWindow().top.roundToInt() }
                     .landscapeColumn(landscapeChrome, sidePanelWidthDp),
             )
 
