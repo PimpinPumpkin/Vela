@@ -1875,6 +1875,16 @@ architecture note.
   "Everything since" commit list: one line per feature, plain words, the reason for an early
   cut first if there is one (0.4.1217 is the model). The promote workflow cannot write this
   part; it is the release's own job, the same day. Nightlies keep the commit list alone.
+- **TENANTS AND STOREFRONTS IN THE BAKE (2026-09-17):** `tools/build-places-region.sh` now flags a
+  row as `tenant` when it is a department of a nearby anchor (address, brand or name-head match, the
+  existing hash joins), when its category or name is a KIOSK (`iskiosk`: Redbox, Coinstar, ecoATM,
+  Western Union, a key machine, an ATM), or when it is the anchor brand's fuel station or its
+  convenience shop within ~275 m. A tenant keeps its -2 prominence AND is baked at minzoom 17
+  (except `grp = 'fuel'`, which stays visible for driving); VelaMapView's `unlessTenant` keeps
+  tenants as DOTS until z18.5 so the store owns the block. `atp_snap` moves a chain row onto the
+  AllThePlaces locator coordinate when they disagree by 30-120 m, keyed on `snapkey` (the whole
+  normalized name, trailing store number dropped) - NOT the loose two-word dedupe key, which
+  dragged a campus onto its own outreach office and swapped a Safeway with its pharmacy.
 - **ROUTE BAR + CROSS LABELS (2026-09-17):** `RouteBarStrip` lays badges in their OWN lane right of
   the track (`TRACK_COL` / `badgeCx`), so a 26 dp badge no longer covers the congestion band under
   it, and the remaining-distance label is gone (the bottom bar has it; "768.8 mi" overflowed the

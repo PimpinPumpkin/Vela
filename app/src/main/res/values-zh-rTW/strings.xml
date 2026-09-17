@@ -743,7 +743,7 @@
     <string name="settings_show_pois">顯示地點</string>
     <string name="settings_show_pois_hint">在瀏覽地圖上顯示商家與地點圖示。關閉可讓地圖更清爽；搜尋到的地點仍會顯示。</string>
     <string name="settings_osm_businesses">同時顯示 OpenStreetMap 商家</string>
-    <string name="settings_osm_businesses_hint">同時顯示 Vela 資料中缺少、但已在 OpenStreetMap 標註的商店、餐廳等商家。OpenStreetMap 的編輯會在地圖圖磚重建後出現,通常在一週內。預設關閉。</string>
+    <string name="settings_osm_businesses_hint">同時顯示 Vela 資料中缺少、但已在 OpenStreetMap 標註的商店、餐廳等商家。OpenStreetMap 的編輯會在地圖圖磚重建後出現,通常在一週內。預設開啟。</string>
     <string name="settings_places_lookup">點按地點時向 Google 查詢</string>
     <string name="settings_places_lookup_hint">點按地點時會向 Google 取得營業時間、評論和相片，Vela 會記住配對結果，下次點按就能立即顯示。關閉時，點按的地點只會顯示 Vela 資料中既有的內容（名稱、類型、地址、電話、網站），點按的任何資訊都不會傳給 Google。搜尋和路線規劃仍會使用 Google。</string>
     <string name="settings_places_source">地點來源</string>

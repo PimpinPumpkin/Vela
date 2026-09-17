@@ -45,8 +45,10 @@ object MapPoiPrefs {
     val lookupTappedPlaces = mutableStateOf(true)
     /** Vela data mode: also draw the shops, restaurants and other businesses mapped in
      *  OpenStreetMap (they are already in the streamed basemap tiles, hidden by default because
-     *  the baked places cover businesses better). Doubles of a Vela place are dropped by name. */
-    val osmBusinesses = mutableStateOf(false)
+     *  the baked places cover businesses better). Doubles of a Vela place are dropped by name.
+     *  ON by default since 2026-09-17: what OSM adds is what nothing else has, and a double is
+     *  dropped anyway, so the only cost is OSM's own stale rows. */
+    val osmBusinesses = mutableStateOf(true)
 
     fun init(context: Context) {
         val p = prefs(context)
@@ -58,7 +60,7 @@ object MapPoiPrefs {
         placesSource.value = explicitSource ?: remoteDefault
         placesWithDownloads.value = p.getBoolean(KEY_PLACES_WITH_DOWNLOADS, true)
         lookupTappedPlaces.value = p.getBoolean(KEY_LOOKUP_TAPPED, true)
-        osmBusinesses.value = p.getBoolean(KEY_OSM_BUSINESSES, false)
+        osmBusinesses.value = p.getBoolean(KEY_OSM_BUSINESSES, true)
     }
 
     fun setLookupTappedPlaces(context: Context, value: Boolean) {

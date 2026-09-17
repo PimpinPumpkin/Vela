@@ -735,7 +735,7 @@
     <string name="settings_places_source_more">Más información</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_osm_businesses">También comercios de OpenStreetMap</string>
-    <string name="settings_osm_businesses_hint">Muestra también las tiendas, restaurantes y otros negocios de OpenStreetMap que faltan en los datos de Vela. Las ediciones de OpenStreetMap aparecen cuando se regeneran los mosaicos del mapa, normalmente en una semana. Desactivado por defecto.</string>
+    <string name="settings_osm_businesses_hint">Muestra también las tiendas, restaurantes y otros negocios de OpenStreetMap que faltan en los datos de Vela. Las ediciones de OpenStreetMap aparecen cuando se regeneran los mosaicos del mapa, normalmente en una semana. Activado por defecto.</string>
     <string name="settings_places_lookup">Buscar en Google los lugares que tocas</string>
     <string name="settings_places_lookup_hint">Al tocar un lugar se obtienen su horario, sus reseñas y sus fotos de Google, y Vela recuerda la coincidencia para que el siguiente toque sea instantáneo. Desactivado = un lugar que toques muestra solo lo que tienen los datos de Vela (nombre, tipo, dirección, teléfono, sitio web) y nada de ese toque llega a Google. La búsqueda y las indicaciones siguen usando Google.</string>
     <string name="settings_places_source_more_title">De dónde vienen los datos de lugares de Vela</string>

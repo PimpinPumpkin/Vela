@@ -881,7 +881,7 @@
     <string name="settings_speeding_alert_hint">Dice \"Stai superando il limite di velocità\" quando hai superato per qualche secondo il limite indicato, e di nuovo se rallenti e poi lo risuperi. Solo dove il limite indicato è noto, quello mostrato dal riquadro della velocità. Disattivo finché non lo attivi.</string>
     <string name="nav_speeding_alert">Stai superando il limite di velocità</string>
     <string name="settings_osm_businesses">Anche i negozi di OpenStreetMap</string>
-    <string name="settings_osm_businesses_hint">Mostra anche negozi, ristoranti e altre attività mappati in OpenStreetMap che mancano nei dati di Vela. Le modifiche a OpenStreetMap compaiono quando le tessere della mappa vengono rigenerate, di solito entro una settimana. Disattivato di default.</string>
+    <string name="settings_osm_businesses_hint">Mostra anche negozi, ristoranti e altre attività mappati in OpenStreetMap che mancano nei dati di Vela. Le modifiche a OpenStreetMap compaiono quando le tessere della mappa vengono rigenerate, di solito entro una settimana. Attivo di default.</string>
     <string name="settings_places_lookup">Cerca su Google i luoghi toccati</string>
     <string name="settings_places_lookup_hint">Toccando un luogo, Vela recupera orari, recensioni e foto da Google e ricorda la corrispondenza, così il tocco successivo è immediato. Disattivato = un luogo toccato mostra solo ciò che contengono i dati di Vela (nome, tipo, indirizzo, telefono, sito web) e nulla del tocco arriva a Google. La ricerca e le indicazioni usano comunque Google.</string>
     <string name="routing_offer_title">Percorsi offline per %1$s?</string>
