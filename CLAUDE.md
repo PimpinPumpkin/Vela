@@ -1592,7 +1592,7 @@ Defaults that make the safe path the easy one:
   first keypress is the bug. Compose doesn't give this for free (focus recovery is
   nondeterministic - the place sheet landed on a photo / the search bar / nowhere), so every
   screen attaches `rememberDpadAutoFocus()` to a primary element (Settings→back, Welcome→Get
-  started, place sheet→handle, directions→Drive tab, steps→first row, reviews→back arrow);
+  started, place sheet→handle, directions→Drive tab, steps→first row (current step while navigating), reviews→back arrow);
   the map + photo gallery already self-focus. When adding a screen, give it an auto-focus
   target. **Menus & dialogs (the hard one): a Compose `DropdownMenu` Popup / `AlertDialog` can
   NOT be pre-focused (~10 approaches proven to fail - requestFocus/moveFocus/synthetic KeyEvent);
@@ -2897,6 +2897,19 @@ Gotchas:
   by the bar's drag cap (`NavControls.maxLift`) and the sheet (`StepsSheet.maxListHeight`); the
   FAB stack and the speed widget hide while the list is open, since they key off the bar's
   measured height and would ride up onto the banner.
+  **The nav list LANDS ON THE CURRENT STEP (2026-09-16).** `StepsSheet(currentStep = nav.stepIndex)`
+  orders the items as passed steps, then `NavStopsRow` (it lists the stops AHEAD, so it sits at the
+  boundary), then the current step onward, and opens with `initialFirstVisibleItemIndex` on that
+  boundary. Passed steps (and a `StopDividerRow` in front of one) render with `passed = true`: dim
+  ink, sign chips / lanes faded. A LazyList clamps its scroll when the rows below the landing item
+  are shorter than the viewport, which would open on passed steps near the end of every trip, so
+  the nav form ends in a `tail` spacer sized in the well's layout pass to viewport minus the rows
+  ahead (both read from `layoutInfo`); the well's natural height subtracts that blank, so the card
+  still hugs the rows ahead and the list cannot scroll into it. The bar's drag well draws the same
+  rows through `NavStepsPreview` (stops row, current step onward, dividers included) so the handover
+  still moves nothing. A body swipe-down now scrolls back through passed steps first; the header
+  closes from anywhere. The preview form (no `currentStep`) is unchanged. D-pad focus goes to the
+  current step's row.
   **Trail OFF is drawn by the cut piece over a CLEARED ahead line (2026-09-07).** An overlay line
   cannot erase what is under it, so the first trail-off cut (2026-09-06) rode the AHEAD line's own
   gradient - and that line's 256 texels span the 3 km window, 12 m each: on a real drive the blue

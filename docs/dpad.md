@@ -199,7 +199,7 @@ helpers) attached to each surface's primary element:
 | **Welcome** | Get-started button | fixed |
 | **Place sheet** | drag handle | focus leaked to the search bar behind it - fixed |
 | **Directions panel** | first travel-mode tab (Drive) | fixed |
-| **Route steps sheet** | first step row | fixed |
+| **Route steps sheet** | first step row (preview); the current step row while navigating | fixed |
 | **Reviews WebView** (full-screen) | back arrow (until the WebView loads + grabs focus) | fixed |
 | Photo gallery | (pre-existing `galleryFocus`) | already OK |
 | Search overlay | armed search field | already OK (arming focuses it) |
