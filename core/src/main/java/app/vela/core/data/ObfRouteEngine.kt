@@ -69,7 +69,7 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
     override fun isReady(mode: TravelMode): Boolean =
         profileFor(mode) != null && regions().any { it.id !in failed && hasObf(it.id) }
 
-    override fun route(origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean): List<Route> {
+    override fun route(origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean, departBearingDeg: Double?): List<Route> {
         val profile = profileFor(mode) ?: return emptyList()
         val all = regions()
         // MULTI-FILE routing (2026-08-03): OsmAnd's router reads across obf files natively - the
@@ -119,6 +119,11 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
                         RoutingConfiguration.RoutingMemoryLimits(MEMORY_MB, NATIVE_MEMORY_MB),
                         params,
                     )
+                    // A reroute starts the way the car is pointing (issue #557 fallback). OsmAnd's
+                    // own app sets this from Location.getBearing() / 180 * PI: compass radians,
+                    // clockwise from north, which is what RouteDataObject.directionRoute returns
+                    // (checked in the vendored bytecode). A soft preference, not a hard filter.
+                    if (departBearingDeg != null) config.initialDirection = departBearingDeg / 180.0 * Math.PI
                     val fe = RoutePlannerFrontEnd()
                     val ctx = fe.buildRoutingContext(
                         config, null, readers.toTypedArray(),

@@ -2898,7 +2898,48 @@ Gotchas:
   had a route in seconds; Google now runs on an unstructured scope for urgent fetches (a
   structured child would hold the scope until its blocking HTTP call returned) and past the grace
   the route goes out trafficless, which the recheck's trafficUpgrade heals. Both the
-  single-destination and the multi-stop branch do this. And
+  single-destination and the multi-stop branch do this.
+  **A REROUTE CARRIES ITS DEADLINE INTO THE FETCH (issues #557 / #258, 2026-09-17).** A shared
+  diagnostics export (drive, cellular, validated link) had two urgent attempts end in
+  "reroute FAILED" at exactly 20 s each with no DRIVE line and no "google not back" line (so the
+  car open router never answered, while a WALK fetch to the same host answered in the same
+  window), then the escalated attempt, and the next DRIVE line 105 s later. What the code did:
+  the urgent OSRM call ran on the shared client (12 s call, 15 s connect, 20 s read), and only
+  AFTER it came back empty did the fetch wait, unbounded, on Google and then run the obf engine
+  unbounded; the escalated attempt's three OSRM tries alone could take 36.6 s of its 40 s. What
+  the 105 s was: the export has no "FAILED (streak 3)" line, so the escalated attempt never
+  reached its deadline; `stop()`/`start()` cancel the job SILENTLY, and the 105 s DRIVE line has
+  the same 18 steps as the `nav start` 25 s after it and is followed by the chooser's WALK and
+  BICYCLE prefetch, i.e. the driver ended nav inside those 40 s and the 105 s is the manual
+  replan running the full planning ladder against the stalled router. Two further silent-cancel
+  facts from reading the export: a cancelled orphan dies at its next suspension point without its
+  DRIVE line, and `stop()` logged nothing. Now: `MapDataSource.directions(budgetMs=)` (null =
+  planning, unchanged) and `core/data/RouteBudget` carry the deadline; NavSession passes
+  `RerouteAttempt.budgetMs` (deadline minus `REROUTE_FINISH_RESERVE_MS` 4 s). Urgent: one OSRM
+  call with `URGENT_OSRM_TIMEOUT_MS` (6 s, connect+read+call). Escalated: 3 tries at
+  `LADDER_OSRM_TRY_MS` (8 s) inside `LADDER_OSRM_SHARE` (55%) of the budget, never starting a try
+  with under `RouteBudget.MIN_TRY_MS` left; Google waited up to the budget minus
+  `LADDER_SNAP_RESERVE_MS`, the snap inside the budget. Google is UNSTRUCTURED for every bounded
+  fetch. When the open router gives nothing, `RerouteFallback.pick` (unit-tested) returns (a)
+  Google's route from the same fetch if it is already back, else races Google against (b) the obf
+  engine (unstructured, same trap as `AVOID_ONDEVICE_TIMEOUT_MS`) inside what is left, first
+  non-empty wins, (c) nothing. Google fallbacks go out tagged `GOOGLE_ABBREVIATED` (the recheck
+  heal upgrades them); the avoid flags ride every path; the heading reaches OSRM and now the obf
+  engine too (`RouteEngine.route(departBearingDeg=)` -> OsmAnd `RoutingConfiguration.initialDirection`
+  in compass radians, the convention checked in the vendored bytecode; Google has no heading
+  parameter). Naming a provisional top runs inside the attempt's remaining time and falls back to
+  the reply's own open-router route. Logged: `directions` "urgent|ladder: ... open router gave
+  nothing after N ms (why); fallback google_ready|google|on_device|none K route(s) after M ms
+  more", `nav` "reroute adopted: <source> in N ms", "reroute FAILED (streak s, deadline|nothing
+  usable after N ms)", "nav ended [with a reroute in flight for N ms]". **Several reroutes close
+  together:** RerouteNeeded is edge-triggered, and a request the COOLDOWN turned away used to
+  leave the latch set, so a driver already off a route adopted seconds earlier (typically one
+  computed from where the car was when the fetch started) was never rerouted until back on the
+  line. `NavSession.rerouteSkipRetries` now clears the latch on a cooldown skip, and a failed
+  user-ordered stops replan clears it too; `RerouteGateTest` simulates the drive fix by fix
+  (cooldown retry, a router hung forever, late adoptions) and pins that the gap between attempts
+  never exceeds a deadline plus a few fixes. Unverified: the obf heading convention on a device.
+  And
   since 2026-08-04 the reroute fetch is URGENT (`directions(urgent = true)`, issues #185/#236):
   single-shot OSRM + Google (no 3x ladders), no divergence snap - the full planning ladder
   regularly outlived the deadline on a weak link, so the timeout cancelled fetches that were

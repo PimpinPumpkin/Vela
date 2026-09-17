@@ -65,6 +65,7 @@ class MockMapDataSource @Inject constructor() : MapDataSource {
         avoidFerries: Boolean,
         urgent: Boolean,
         departBearingDeg: Double?,
+        budgetMs: Long?,
     ): List<Route> {
         delay(220)
         // A simple L-shaped path: straight, one turn, arrive. Enough geometry

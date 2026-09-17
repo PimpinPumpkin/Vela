@@ -165,8 +165,16 @@ object RouteGeometry {
         avoidFerries: Boolean = false,
         tries: Int = OSRM_TRIES,
         departBearingDeg: Double? = null,
+        // Bounded fetches (a mid-drive reroute, issue #557): the per-try call timeout and the
+        // stage's overall budget. The defaults keep a planning fetch exactly as it was.
+        callTimeoutMs: Long? = null,
+        budget: RouteBudget = RouteBudget.NONE,
+        onFailure: ((String) -> Unit)? = null,
     ): List<Route> =
-        routeOsrm(http, listOf(origin, dest), mode, alternatives = true, avoidTolls, avoidHighways, avoidFerries, tries, departBearingDeg)
+        routeOsrm(
+            http, listOf(origin, dest), mode, alternatives = true, avoidTolls, avoidHighways, avoidFerries, tries, departBearingDeg,
+            callTimeoutMs = callTimeoutMs, budget = budget, onFailure = onFailure,
+        )
 
     /** OSRM forced THROUGH [waypoints] (origin, vias…, dest) — used to follow Google's
      *  traffic-smart path with OSRM's full street-named steps (option 3: traffic-aware routing).
@@ -183,9 +191,17 @@ object RouteGeometry {
         // road): a via that snapped far away is refused. A user's STOP is routinely set back
         // from the road (a mall lot, a driveway), so the multi-stop router must not use this.
         strictVias: Boolean = false,
+        tries: Int = OSRM_TRIES,
+        callTimeoutMs: Long? = null,
+        budget: RouteBudget = RouteBudget.NONE,
+        onFailure: ((String) -> Unit)? = null,
     ): List<Route> =
         if (waypoints.size < 2) emptyList()
-        else routeOsrm(http, waypoints, mode, alternatives = false, avoidTolls, avoidHighways, avoidFerries, departBearingDeg = departBearingDeg, strictVias = strictVias)
+        else routeOsrm(
+            http, waypoints, mode, alternatives = false, avoidTolls, avoidHighways, avoidFerries, tries = tries,
+            departBearingDeg = departBearingDeg, strictVias = strictVias,
+            callTimeoutMs = callTimeoutMs, budget = budget, onFailure = onFailure,
+        )
 
     /**
      * OSRM `bearings=`, constraining only the FIRST waypoint to the direction the car is actually
@@ -227,6 +243,9 @@ object RouteGeometry {
         tries: Int = OSRM_TRIES,
         departBearingDeg: Double? = null,
         strictVias: Boolean = false,
+        callTimeoutMs: Long? = null,
+        budget: RouteBudget = RouteBudget.NONE,
+        onFailure: ((String) -> Unit)? = null,
     ): List<Route> {
         val backend = backend(mode) ?: return emptyList()
         val coords = points.joinToString(";") { "${it.lng},${it.lat}" }
@@ -240,9 +259,19 @@ object RouteGeometry {
         // nav to Google's ABBREVIATED (nameless) steps — the "why aren't these street names?" bug. So retry
         // a couple times with a short backoff. A SUCCESSFUL response (even an empty route list = genuine
         // "no route") returns immediately; only transport/5xx failures retry.
+        var lastFailure = "no attempt"
         repeat(tries) { attempt ->
+            // A bounded fetch (issue #557) never starts an attempt it cannot finish, and each
+            // attempt gets only what is left: a hung FOSSGIS used to hold a reroute for the shared
+            // client's 12 s per try, three times over, before any fallback was asked.
+            val left = budget.remainingMs()
+            if (!RouteBudget.canTry(left)) {
+                onFailure?.invoke("$lastFailure; budget spent after ${budget.elapsedMs()} ms")
+                return emptyList()
+            }
+            val client = RouteBudget.tryTimeoutMs(callTimeoutMs, left)?.let { RouteBudget.bounded(http, it) } ?: http
             try {
-                http.newCall(req).execute().use { resp ->
+                client.newCall(req).execute().use { resp ->
                     if (resp.isSuccessful) {
                         val body = json.parseToJsonElement(resp.body?.string().orEmpty()).jsonObject
                         // A via that OSRM had to snap far from where it was asked for is the
@@ -260,18 +289,33 @@ object RouteGeometry {
                         }
                         val routes = body["routes"]?.jsonArray
                         if (routes != null) return routes.mapNotNull { parseOsrmRoute(it.jsonObject) }
+                        lastFailure = "reply without routes"
                     }
                     // A 4xx is deterministic (e.g. FOSSGIS answers InvalidValue for exclude=
                     // classes its profile wasn't built with - probed 2026-07-11): retrying can't
                     // help, bail to the fallback chain immediately.
-                    if (resp.code in 400..499) return emptyList()
+                    if (resp.code in 400..499) {
+                        onFailure?.invoke("HTTP ${resp.code}")
+                        return emptyList()
+                    }
                     // unsuccessful (5xx / 429 rate-limit) — fall through to retry
+                    if (!resp.isSuccessful) lastFailure = "HTTP ${resp.code}"
                 }
             } catch (e: Exception) {
                 // network blip / timeout — fall through to retry
+                lastFailure = if (e is java.io.InterruptedIOException) "timeout" else e.javaClass.simpleName
             }
-            if (attempt < tries - 1) runCatching { Thread.sleep(200L * (attempt + 1)) }
+            if (attempt < tries - 1) {
+                val backoff = 200L * (attempt + 1)
+                val after = budget.remainingMs()
+                if (after != null && after - backoff < RouteBudget.MIN_TRY_MS) {
+                    onFailure?.invoke("$lastFailure x${attempt + 1}; budget spent after ${budget.elapsedMs()} ms")
+                    return emptyList()
+                }
+                runCatching { Thread.sleep(backoff) }
+            }
         }
+        onFailure?.invoke("$lastFailure x$tries after ${budget.elapsedMs()} ms")
         return emptyList()
     }
 
