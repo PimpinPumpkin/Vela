@@ -96,7 +96,6 @@
     <string name="settings_no_saved_places">Ainda sem locais guardados</string>
     <string name="settings_export">Exportar</string>
     <string name="settings_import">Importar</string>
-    <string name="settings_data_privacy">Fonte de dados e privacidade</string>
     <string name="settings_data_privacy_hint">A Vela fala com os endpoints públicos do Google diretamente deste aparelho: sem backend, sem conta, sem chave de API. O Google vê o teu IP, a pesquisa e a área do mapa, não quem és.</string>
     <string name="settings_privacy_button">Que dados a Google recebe</string>
     <string name="settings_diagnostics">Diagnóstico</string>
@@ -576,16 +575,20 @@
         <item quantity="one">mais %d parada</item>
         <item quantity="other">mais %d paradas</item>
     </plurals>
+    <string name="settings_places">Locais</string>
+    <string name="settings_privacy">Privacidade</string>
+    <string name="settings_cameras_group">Câmaras</string>
+    <string name="settings_experiments">Experiências</string>
+    <string name="settings_hub_places_sub">Origem dos locais, o que mostrar, páginas</string>
     <string name="settings_hub_appearance_sub">Tema, estilo do mapa, unidades, idioma</string>
-    <string name="settings_hub_map_sub">Trânsito, transporte, camadas, edifícios 3D</string>
-    <string name="settings_hub_place_pages_sub">Avaliações, fotos, filtros de conteúdo</string>
-    <string name="settings_hub_navigation_sub">Orientação, alertas, modo demo</string>
+    <string name="settings_hub_map_sub">Trânsito, transportes, camadas, edifícios 3D</string>
+    <string name="settings_hub_navigation_sub">Orientação, câmaras, verificações ao vivo</string>
     <string name="settings_hub_voice_sub">Instruções faladas e vozes</string>
     <string name="settings_hub_search_sub">Pesquisa por voz e modelos de fala</string>
     <string name="settings_hub_offline_sub">Mapas offline, rotas, lugares</string>
-    <string name="settings_hub_saved_sub">Exportar e importar os seus lugares</string>
-    <string name="settings_hub_privacy_sub">Como o Vela trata os seus dados</string>
-    <string name="settings_hub_diagnostics_sub">Relatórios de falhas, viagens, compatibilidade</string>
+    <string name="settings_hub_saved_sub">As suas listas, exportar, histórico de estacionamento</string>
+    <string name="settings_hub_privacy_sub">O que a Google recebe, limpar histórico</string>
+    <string name="settings_hub_diagnostics_sub">Relatórios de falhas, viagens, modo demo, experiências</string>
     <string name="settings_hub_about_sub">Versão, atualizações, apoio</string>
     <string name="settings_theme_amoled">Preto AMOLED</string>
     <string name="place_review_more">Mais</string>

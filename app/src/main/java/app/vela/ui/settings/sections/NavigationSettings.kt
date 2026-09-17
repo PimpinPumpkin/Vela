@@ -1,21 +1,13 @@
 package app.vela.ui.settings.sections
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.LocalParking
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,7 +15,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -35,7 +26,6 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vela.R
 import app.vela.core.feedback.Haptics
 import app.vela.core.model.TravelMode
@@ -46,11 +36,11 @@ import app.vela.ui.settings.SelectableRow
 import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.settings.ToggleRow
-import app.vela.ui.dpadRowSibling // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.dpadHighlight
 import androidx.compose.foundation.shape.RoundedCornerShape as DpadShape
 
-/** Navigation sub-screen: guidance toggles, vibrate chips, parking history, demo modes. */
+/** Navigation sub-screen: guidance toggles, vibrate chips, cameras, live re-checks. Parking
+ *  history moved to Saved places and the demo modes to Diagnostics (2026-09-17). */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
@@ -239,80 +229,10 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         }
         }
 
-        var demoDrive by remember { mutableStateOf(prefs.getBoolean("demo_drive", false)) }
-        SettingsGroup {
-        ToggleRow(
-            label = stringResource(R.string.settings_demo_drive),
-            checked = demoDrive,
-            onCheckedChange = {
-                demoDrive = it
-                prefs.edit().putBoolean("demo_drive", it).apply()
-            },
-            hint = stringResource(R.string.settings_demo_drive_hint),
-        )
-
-        // Simulated location - pretend to be at the current map centre (for demos / screenshots
-        // without leaking where you actually are). Reactive holder so the switch reflects state.
-        GroupDivider()
-        ToggleRow(
-            label = stringResource(R.string.settings_sim_location),
-            checked = app.vela.ui.SimLocation.on,
-            onCheckedChange = { on -> if (on) vm.simulateLocationHere() else vm.stopSimulateLocation() },
-            hint = stringResource(R.string.settings_sim_location_hint),
-        )
-        }
-
-        // Parking history - recent "parked here" saves, so an accidental overwrite is
-        // recoverable (also reachable by long-pressing the P button on the map).
-        // Always present (issue #426): the settings search lists "Parking history", and a group
-        // that only existed once you had parked led the match to nothing on a fresh install.
-        val state by vm.state.collectAsStateWithLifecycle()
-        run {
-            Spacer(Modifier.height(8.dp))
-            SettingsGroup(title = stringResource(R.string.settings_parking_history)) {
-            if (state.parkingHistory.isEmpty()) {
-                Hint(stringResource(R.string.settings_parking_history_empty))
-            } else {
-            Hint(stringResource(R.string.settings_parking_history_hint))
-            Box(Modifier.padding(horizontal = 8.dp)) {
-                TextButton(onClick = { vm.clearParkingHistory() }) { Text(stringResource(R.string.parking_history_clear_all)) }
-            }
-            }
-            state.parkingHistory.forEachIndexed { pi, entry ->
-                if (pi > 0) GroupDivider()
-                val isCurrent = entry.savedAtMillis == state.parkedAtMillis
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        Icons.Default.LocalParking,
-                        contentDescription = null,
-                        tint = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        app.vela.ui.formatDateTime(androidx.compose.ui.platform.LocalContext.current, entry.savedAtMillis),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = if (isCurrent) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal,
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (isCurrent) {
-                        Text(stringResource(R.string.parking_history_current), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                    } else {
-                        // D-pad: Restore/Delete sit side by side inside the L/R-swallowing Column,
-                        // so the pair drives its own LEFT/RIGHT (issue #24 pattern).
-                        val rowFocus = remember(entry.savedAtMillis) { List(2) { FocusRequester() } }
-                        TextButton(modifier = Modifier.dpadRowSibling(rowFocus, 0), onClick = { vm.restoreParkingFromHistory(entry) }) { Text(stringResource(R.string.parking_history_restore)) }
-                        IconButton(modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape).dpadRowSibling(rowFocus, 1), onClick = { vm.deleteParkingHistoryEntry(entry) }) {
-                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.parking_history_delete), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-            }
-            }
-        }
+        Spacer(Modifier.height(8.dp))
+        CameraSettingsGroup()
+        Spacer(Modifier.height(8.dp))
+        LiveRechecksGroup(vm)
         Spacer(Modifier.height(24.dp))
     }
 }

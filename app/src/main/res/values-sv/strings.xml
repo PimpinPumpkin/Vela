@@ -96,7 +96,6 @@
     <string name="settings_no_saved_places">Inga sparade platser ännu</string>
     <string name="settings_export">Exportera</string>
     <string name="settings_import">Importera</string>
-    <string name="settings_data_privacy">Datakälla &amp;amp; integritet</string>
     <string name="settings_data_privacy_hint">Vela pratar med Googles publika endpoints direkt från den här enheten: ingen backend, inget konto, ingen API-nyckel. Google ser din IP, sökning och kartområde, inte vem du är.</string>
     <string name="settings_privacy_button">Vilka data Google får</string>
     <string name="settings_diagnostics">Diagnostik</string>
@@ -576,16 +575,20 @@
         <item quantity="one">+%d stopp till</item>
         <item quantity="other">+%d stopp till</item>
     </plurals>
+    <string name="settings_places">Platser</string>
+    <string name="settings_privacy">Integritet</string>
+    <string name="settings_cameras_group">Kameror</string>
+    <string name="settings_experiments">Experiment</string>
+    <string name="settings_hub_places_sub">Varifrån platser kommer, vad som visas, platssidor</string>
     <string name="settings_hub_appearance_sub">Tema, kartstil, enheter, språk</string>
     <string name="settings_hub_map_sub">Trafik, kollektivtrafik, lager, 3D-byggnader</string>
-    <string name="settings_hub_place_pages_sub">Recensioner, foton, innehållsfilter</string>
-    <string name="settings_hub_navigation_sub">Vägledning, aviseringar, demoläge</string>
+    <string name="settings_hub_navigation_sub">Vägledning, kameror, livekontroller</string>
     <string name="settings_hub_voice_sub">Talade anvisningar och röster</string>
     <string name="settings_hub_search_sub">Röstsökning och talmodeller</string>
     <string name="settings_hub_offline_sub">Offlinekartor, rutter, platser</string>
-    <string name="settings_hub_saved_sub">Exportera och importera dina platser</string>
-    <string name="settings_hub_privacy_sub">Hur Vela hanterar dina data</string>
-    <string name="settings_hub_diagnostics_sub">Kraschrapporter, resor, kompatibilitet</string>
+    <string name="settings_hub_saved_sub">Dina listor, export, parkeringshistorik</string>
+    <string name="settings_hub_privacy_sub">Vad Google får, rensa historik</string>
+    <string name="settings_hub_diagnostics_sub">Kraschrapporter, resor, demoläge, experiment</string>
     <string name="settings_hub_about_sub">Version, uppdateringar, stöd</string>
     <string name="settings_theme_amoled">AMOLED-svart</string>
     <string name="place_review_more">Mer</string>

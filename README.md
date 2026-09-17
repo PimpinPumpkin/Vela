@@ -116,7 +116,7 @@ There's also a one-page tour at
   you navigate. The full breakdown is in the [Privacy](#privacy) section below.
 - **Flock cameras, on the map.** Mapped ALPR surveillance cameras (the
   community DeFlock project's OpenStreetMap data) draw out of the box, and the
-  optional **Settings → Map → Avoid surveillance cameras** counts the cameras on
+  optional **Settings → Navigation → Avoid surveillance cameras** counts the cameras on
   each route (only the ones pointed along your road) and quietly picks a
   lower-camera option when the detour is small. Two more opt-ins in the same
   place give you a heads-up card or a spoken "License plate camera ahead" as you
@@ -196,7 +196,7 @@ The short version: Google shrinks from *knowing who you are and everywhere you g
 at all, and your GPS trace is never uploaded anywhere. While you're actively navigating,
 Vela does ask Google for fresh traffic from your current position every couple of
 minutes - that's what powers the faster-route offers and the live arrival time - and
-that re-check can be turned off in **Settings → Data & privacy** ("Live traffic
+that re-check can be turned off in **Settings → Navigation** ("Live traffic
 re-checks"); off-course re-routes remain, since turn-by-turn can't work without them.
 
 | What Google gets | Google Maps app | Google Maps web | Vela |

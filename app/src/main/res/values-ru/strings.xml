@@ -96,7 +96,6 @@
     <string name="settings_no_saved_places">Сохранённых мест пока нет</string>
     <string name="settings_export">Экспорт</string>
     <string name="settings_import">Импорт</string>
-    <string name="settings_data_privacy">Источник данных и конфиденциальность</string>
     <string name="settings_data_privacy_hint">Vela обращается к публичным точкам Google прямо с этого устройства: без сервера, аккаунта и ключа API. Google видит IP, запрос и область карты, но не вас.</string>
     <string name="settings_privacy_button">Какие данные получает Google</string>
     <string name="settings_diagnostics">Диагностика</string>
@@ -580,16 +579,20 @@
         <item quantity="many">ещё %d остановок</item>
         <item quantity="other">ещё %d остановки</item>
     </plurals>
+    <string name="settings_places">Места</string>
+    <string name="settings_privacy">Конфиденциальность</string>
+    <string name="settings_cameras_group">Камеры</string>
+    <string name="settings_experiments">Эксперименты</string>
+    <string name="settings_hub_places_sub">Источник мест, что показывать, карточки</string>
     <string name="settings_hub_appearance_sub">Тема, стиль карты, единицы, язык</string>
-    <string name="settings_hub_map_sub">Трафик, транспорт, слои, 3D-здания</string>
-    <string name="settings_hub_place_pages_sub">Отзывы, фото, фильтры контента</string>
-    <string name="settings_hub_navigation_sub">Подсказки, оповещения, демо-режим</string>
+    <string name="settings_hub_map_sub">Пробки, транспорт, слои, 3D-здания</string>
+    <string name="settings_hub_navigation_sub">Ведение, камеры, живые проверки</string>
     <string name="settings_hub_voice_sub">Голосовые подсказки и голоса</string>
     <string name="settings_hub_search_sub">Голосовой поиск и модели речи</string>
     <string name="settings_hub_offline_sub">Офлайн-карты, маршруты, места</string>
-    <string name="settings_hub_saved_sub">Экспорт и импорт ваших мест</string>
-    <string name="settings_hub_privacy_sub">Как Vela обращается с вашими данными</string>
-    <string name="settings_hub_diagnostics_sub">Отчёты о сбоях, поездки, совместимость</string>
+    <string name="settings_hub_saved_sub">Ваши списки, экспорт, история парковок</string>
+    <string name="settings_hub_privacy_sub">Что получает Google, очистка истории</string>
+    <string name="settings_hub_diagnostics_sub">Отчёты о сбоях, поездки, демо-режим, эксперименты</string>
     <string name="settings_hub_about_sub">Версия, обновления, поддержка</string>
     <string name="settings_theme_amoled">AMOLED-чёрный</string>
     <string name="place_review_more">Ещё</string>
