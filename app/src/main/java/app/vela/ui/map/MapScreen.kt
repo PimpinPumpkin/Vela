@@ -289,7 +289,12 @@ fun MapScreen(
     // under the follow camera, and whatever that did to it, the driver expects to land back on
     // the arrow (user 2026-09-13).
     val pipActiveNow = app.vela.ui.PipMode.active.value
-    LaunchedEffect(pipActiveNow) { if (!pipActiveNow && state.navigating) navRecenterTick++ }
+    // ...and ENTERING it re-centres too (user drive 2026-09-16): the home swipe that sends the app
+    // to PiP starts as a touch on the map, which reads as a pan and detaches the camera just before
+    // the window shrinks, so the mini map came up off the arrow.
+    // The tick alone only clears pinch overrides; re-attaching the follow camera is the VM call the
+    // Re-center button makes, which this effect was missing.
+    LaunchedEffect(pipActiveNow) { if (state.navigating) { vm.recenterNav(); navRecenterTick++ } }
     // A pinch/shove during nav sets a zoom/tilt override WITHOUT detaching the camera, so
     // navCameraDetached never flips and no Re-center showed (issue #238); the map reports the
     // override up so the button appears for that case too.
