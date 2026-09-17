@@ -844,6 +844,13 @@
     <string name="voice_capture_example_route">«Из Москвы в Санкт-Петербург»</string>
     <string name="voice_capture_example_nearest">«Ближайшая заправка»</string>
     <string name="voice_capture_example_eta">«Когда я приеду» во время поездки</string>
+    <string name="voice_cmd_home">Домой</string>
+    <string name="voice_cmd_work">На работу</string>
+    <string name="voice_cmd_go">Куда-нибудь</string>
+    <string name="voice_cmd_route">Между двумя местами</string>
+    <string name="voice_cmd_nearby">Поиск рядом</string>
+    <string name="voice_cmd_eta">Время прибытия, в пути</string>
+    <string name="voice_cmd_hint">Команды работают голосом или текстом в строке поиска, на языке приложения или по-английски. Всё остальное ищется как обычно.</string>
     <string name="settings_map_data">Данные карты</string>
     <string name="settings_map_data_hint">Карта, её улицы, подписи и номера домов это данные OpenStreetMap, доступные по лицензии Open Database License и раздаваемые в виде векторных тайлов сервисом OpenFreeMap. Организации на карте в покрытых регионах это данные о местах от Overture Maps Foundation (из источников Meta и Microsoft), доступные по лицензии Community Data License Agreement, Permissive 2.0. Сведения о местах, отзывы, маршруты и пробки приходят из Google. Спутниковые снимки предоставляют Esri и Google.</string>
     <string name="settings_map_data_button">Авторские права OpenStreetMap</string>

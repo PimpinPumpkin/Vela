@@ -842,6 +842,13 @@
     <string name="voice_capture_example_route">«Від Києва до Львова»</string>
     <string name="voice_capture_example_nearest">«Найближча заправка»</string>
     <string name="voice_capture_example_eta">«Коли я приїду» під час руху</string>
+    <string name="voice_cmd_home">Додому</string>
+    <string name="voice_cmd_work">На роботу</string>
+    <string name="voice_cmd_go">Кудись</string>
+    <string name="voice_cmd_route">Між двома місцями</string>
+    <string name="voice_cmd_nearby">Пошук поруч</string>
+    <string name="voice_cmd_eta">Час прибуття, у дорозі</string>
+    <string name="voice_cmd_hint">Команди працюють голосом або текстом у рядку пошуку, мовою застосунку чи англійською. Усе інше шукається як звичайно.</string>
     <string name="settings_map_data">Дані карти</string>
     <string name="settings_map_data_hint">Карта, її вулиці, підписи та номери будинків, це дані OpenStreetMap, доступні за ліцензією Open Database License й подані у вигляді векторних плиток від OpenFreeMap. Заклади на карті в охоплених регіонах, це дані про місця від Overture Maps Foundation (з джерел Meta та Microsoft), доступні за Community Data License Agreement, Permissive 2.0. Деталі місць, відгуки, маршрути та затори надходять від Google. Супутникові знімки, від Esri та Google.</string>
     <string name="settings_map_data_button">Авторські права OpenStreetMap</string>

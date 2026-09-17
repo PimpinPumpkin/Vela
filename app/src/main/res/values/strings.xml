@@ -816,6 +816,13 @@
     <string name="voice_capture_example_route">\"Davis to San Francisco\"</string>
     <string name="voice_capture_example_nearest">\"Nearest gas station\"</string>
     <string name="voice_capture_example_eta">\"What is my ETA\" while driving</string>
+    <string name="voice_cmd_home">Go home</string>
+    <string name="voice_cmd_work">Go to work</string>
+    <string name="voice_cmd_go">Go somewhere</string>
+    <string name="voice_cmd_route">Between two places</string>
+    <string name="voice_cmd_nearby">Find nearby</string>
+    <string name="voice_cmd_eta">Arrival time, while driving</string>
+    <string name="voice_cmd_hint">These work spoken or typed into the search bar, in the app language or English. Anything else runs as a normal search.</string>
     <string name="nav_precise_title">Precise location needed</string>
     <string name="nav_precise_body">Turn-by-turn follows you with GPS, which needs precise location. Right now Vela only knows your rough area.</string>
     <string name="nav_precise_allow">Allow precise</string>

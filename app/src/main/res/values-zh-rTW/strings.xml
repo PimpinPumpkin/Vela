@@ -857,6 +857,13 @@
     <string name="voice_capture_example_route">「Davis 到 San Francisco」</string>
     <string name="voice_capture_example_nearest">「最近的加油站」</string>
     <string name="voice_capture_example_eta">開車時說「我的預計抵達時間是什麼時候」</string>
+    <string name="voice_cmd_home">回家</string>
+    <string name="voice_cmd_work">去公司</string>
+    <string name="voice_cmd_go">去某個地方</string>
+    <string name="voice_cmd_route">兩地之間</string>
+    <string name="voice_cmd_nearby">搜尋附近</string>
+    <string name="voice_cmd_eta">抵達時間(駕駛時)</string>
+    <string name="voice_cmd_hint">說出或在搜尋列輸入都可以,使用應用程式語言或英文。其他內容會以一般搜尋處理。</string>
     <string name="settings_map_data">地圖資料</string>
     <string name="settings_map_data_hint">地圖、街道、標籤和門牌號碼皆為 OpenStreetMap 資料，依 Open Database License 提供，並由 OpenFreeMap 以向量圖磚形式供應。涵蓋地區的地圖商家資料來自 Overture Maps Foundation（來源為 Meta 和 Microsoft），依 Community Data License Agreement, Permissive 2.0 提供。地點詳情、評論、路線規劃和路況來自 Google。衛星影像來自 Esri 和 Google。</string>
     <string name="settings_map_data_button">OpenStreetMap 版權</string>
