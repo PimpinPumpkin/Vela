@@ -229,6 +229,13 @@ class NavSession @Inject constructor(
     }
 
     fun stop() {
+        // A reroute cancelled here ends without its own FAILED/adopted line, which made an export
+        // read as one attempt hanging for minutes (issue #557). Say so.
+        if (rerouteJob?.isActive == true) {
+            diag.record("nav", "nav ended with a reroute in flight for ${SystemClock.elapsedRealtime() - rerouteStartedMs} ms")
+        } else if (_state.value.navigating) {
+            diag.record("nav", "nav ended")
+        }
         sessionGen += 1 // orphan in-flight reroute/recheck — a late completion must not resurrect this session
         recheckJob?.cancel()
         rerouteJob?.cancel()
@@ -277,6 +284,9 @@ class NavSession @Inject constructor(
             if (gen != sessionGen) return@launch
             if (r == null) {
                 note("stops reroute FAILED, list kept, next reroute/recheck retries")
+                // This job replaced any deviation reroute that was in flight, so if the driver is
+                // off the line, only a cleared latch lets the next fix ask again.
+                pendingLatchClear.set(true)
                 return@launch
             }
             val marks = NavEngine.stopMarks(r, newRemaining.map { it.location })
@@ -648,7 +658,17 @@ class NavSession @Inject constructor(
         // too, 4 s later another "Rerouting…" — forever). The engine keeps emitting RerouteNeeded
         // while deviated (the latch clears on failure below), so a skipped request here is simply
         // retried by the next qualifying fix after the cooldown.
-        when (rerouteGate(rerouteJob?.isActive == true, rerouteStartedMs, lastRerouteAdoptMs, now, rerouteDeadlineMs)) {
+        val gate = rerouteGate(rerouteJob?.isActive == true, rerouteStartedMs, lastRerouteAdoptMs, now, rerouteDeadlineMs)
+        // A skipped request must leave a way back in (issue #258, several reroutes close together):
+        // RerouteNeeded fires on the RISING EDGE of the off-route latch, so a request dropped by the
+        // cooldown - a route adopted seconds ago that the driver is already off, often because it
+        // was computed from where the car was when the fetch started - left the latch set and
+        // nothing ever asked again until the driver happened back onto the line. Clear it on the
+        // location thread like a failure does, so a few more deviated fixes ask again and the
+        // first one past the cooldown starts. An in-flight job needs no help: it adopts (fresh
+        // state), fails (clears the latch itself) or is abandoned past its deadline.
+        if (rerouteSkipRetries(gate)) pendingLatchClear.set(true)
+        when (gate) {
             RerouteGate.SKIP_IN_FLIGHT, RerouteGate.SKIP_COOLDOWN -> return
             RerouteGate.ABANDON_STUCK_AND_START -> {
                 note("previous reroute wedged past its deadline - abandoning it and retrying")
@@ -714,12 +734,20 @@ class NavSession @Inject constructor(
                         // Pin the departure to where the car is pointing, so the answer is "given
                         // that you are going this way, what now" instead of "turn around".
                         departBearingDeg = headingDeg,
+                        // The fetch's own share of the deadline (issue #557): the open router, Google
+                        // and the downloaded region each get a slice instead of the first eating it all.
+                        budgetMs = attempt.budgetMs,
                     )
                 }
-                    .getOrNull()?.let { driveable(it, loc, dest) }?.takeIf { it.reaches(dest) }
+                    .getOrNull()?.let { routes ->
+                        val left = attempt.timeoutMs - (SystemClock.elapsedRealtime() - now) - REROUTE_NAME_SLACK_MS
+                        driveable(routes, loc, dest, nameWithinMs = left.coerceAtLeast(0L))
+                    }?.takeIf { it.reaches(dest) }
             }
             val r = kotlinx.coroutines.withTimeoutOrNull(attempt.timeoutMs) { fetch.await() }
+            val timedOut = r == null && !fetch.isCompleted
             if (r == null) fetch.cancel() // best effort; a wedged blocking read ignores this and is orphaned
+            val tookMs = SystemClock.elapsedRealtime() - now
             if (gen != sessionGen) return@launch // session ended / restarted while fetching — drop it
             // BACK ON COURSE: while we were fetching (~1-3 s), did the driver return to the ORIGINAL route?
             // A U-turn (or any wobble) fires RerouteNeeded, but by the time the fetch lands the driver has
@@ -744,7 +772,8 @@ class NavSession @Inject constructor(
                 // state from here raced the in-flight onLocation frame) — 4 more deviated fixes
                 // then request again (~4 s natural backoff, OsmAnd-style retry-while-deviated).
                 rerouteFailStreak++
-                note("reroute FAILED (streak $rerouteFailStreak) — will retry while off-route")
+                val why = if (timedOut) "deadline ${attempt.timeoutMs / 1000} s" else "nothing usable"
+                note("reroute FAILED (streak $rerouteFailStreak, $why after $tookMs ms), will retry while off-route")
                 pendingLatchClear.set(true)
                 return@launch
             }
@@ -763,6 +792,13 @@ class NavSession @Inject constructor(
                 voice.speak(app.vela.core.i18n.NavStringsRegistry.current().stopsNotIncluded())
                 note("reroute missing ${marks.count { it == null }}/${remainingStops.size} stops")
             }
+            note(
+                "reroute adopted: ${r.source.name.lowercase()} in $tookMs ms" +
+                    (if (attempt.urgent) "" else " (full ladder)") +
+                    (if (r.offline) ", offline" else "") +
+                    (if (r.abbreviatedSteps) ", abbreviated steps" else "") +
+                    (if (r.hasLiveTraffic) "" else ", no traffic"),
+            )
             rerouteFailStreak = 0 // a route landed: back to lean, fast attempts
             lastSwapReason = "reroute"
             lastRecheckMs = SystemClock.elapsedRealtime()
@@ -797,10 +833,22 @@ class NavSession @Inject constructor(
      * faster-route fence rejects; when the reply also carries a full-stepped open-router route,
      * that one is better guidance than Google's guessed steps, even a little slower.
      */
-    private suspend fun driveable(routes: List<Route>, from: LatLng, dest: LatLng): Route? {
+    private suspend fun driveable(routes: List<Route>, from: LatLng, dest: LatLng, nameWithinMs: Long? = null): Route? {
         val top = routes.firstOrNull() ?: return null
         if (top.drivable) return top
-        val named = runCatching { dataSource.nameRoute(top, from, dest, mode, RoutingPrefs.avoidTolls, RoutingPrefs.avoidHighways, RoutingPrefs.avoidFerries) }.getOrNull()
+        suspend fun name(): Route? = runCatching { dataSource.nameRoute(top, from, dest, mode, RoutingPrefs.avoidTolls, RoutingPrefs.avoidHighways, RoutingPrefs.avoidFerries) }.getOrNull()
+        // A reroute names inside what is left of its deadline (issue #557): naming is an open-router
+        // snap, the very call that may be hanging. Past the budget the full-stepped open-router
+        // route from the same reply below is used instead. Unstructured for the usual reason: a
+        // blocking HTTP read ignores cancellation.
+        val named = if (nameWithinMs == null) name() else {
+            val d = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async { name() }
+            kotlinx.coroutines.withTimeoutOrNull(nameWithinMs) { d.await() } ?: run {
+                d.cancel()
+                diag.record("nav", "naming a provisional reroute ran past ${nameWithinMs} ms, using the reply's own route")
+                null
+            }
+        }
         diag.record(
             "nav",
             "named a provisional route: ${top.maneuvers.size} -> ${named?.maneuvers?.size} steps, " +
@@ -866,8 +914,23 @@ class NavSession @Inject constructor(
             now - lastAdoptMs < REROUTE_COOLDOWN_MS -> RerouteGate.SKIP_COOLDOWN
             else -> RerouteGate.START
         }
-        /** How the next reroute attempt should be made, given how many have just failed. */
-        data class RerouteAttempt(val urgent: Boolean, val timeoutMs: Long)
+        /** Does a request the gate turned away need the off-route latch cleared so a later fix can
+         *  ask again? Only the cooldown: an in-flight job ends by adopting (fresh state), failing
+         *  (clears the latch itself) or being abandoned past its deadline. */
+        fun rerouteSkipRetries(gate: RerouteGate): Boolean = gate == RerouteGate.SKIP_COOLDOWN
+
+        // Time an attempt keeps for itself after the directions fetch: naming a provisional top
+        // and the bookkeeping. The fetch's budget is the deadline minus this.
+        const val REROUTE_FINISH_RESERVE_MS = 4_000L
+        // Naming gives up this long before the attempt's deadline, so a slow snap cannot turn a
+        // good reply into a timeout.
+        const val REROUTE_NAME_SLACK_MS = 500L
+
+        /** How the next reroute attempt should be made, given how many have just failed. [budgetMs]
+         *  is what the directions fetch itself may spend (issue #557). */
+        data class RerouteAttempt(val urgent: Boolean, val timeoutMs: Long) {
+            val budgetMs: Long get() = timeoutMs - REROUTE_FINISH_RESERVE_MS
+        }
 
         /**
          * Reroute attempts start LEAN and ESCALATE (issue #258, second cause).

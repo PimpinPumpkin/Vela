@@ -9,6 +9,8 @@ import app.vela.core.data.CategoryFilter
 import app.vela.core.data.LowDataMode
 import app.vela.core.data.LowRamMode
 import app.vela.core.data.MapDataSource
+import app.vela.core.data.RerouteFallback
+import app.vela.core.data.RouteBudget
 import app.vela.core.data.RouteEngine
 import app.vela.core.data.RouteGeometry
 import app.vela.core.data.RoutingPrefs
@@ -503,6 +505,7 @@ class GoogleMapsDataSource @Inject constructor(
         avoidFerries: Boolean,
         urgent: Boolean,
         departBearingDeg: Double?,
+        budgetMs: Long?,
     ): List<Route> = io {
         // Mid-drive reroutes are URGENT: one shot per source, no divergence snap, no alternates
         // polish. The retry ladders below (3x OSRM + 3x Google with backoff) are right for a
@@ -510,6 +513,28 @@ class GoogleMapsDataSource @Inject constructor(
         // link, so the fetch gets cancelled mid-flight and the driver waits on the next attempt
         // (issues #185/#236). The recheck loop upgrades the lean result minutes later anyway.
         val tries = if (urgent) 1 else 3
+        // BOUNDED fetches (issue #557): a reroute carries its deadline in. A diagnostics export
+        // showed FOSSGIS's car router hanging while its foot router answered: each urgent attempt
+        // sat 20 s on the open router (the shared client's timeouts) and never consulted Google or
+        // the downloaded region, and the escalated attempt could not even finish its three OSRM
+        // tries inside its own deadline. Now the open router gets a short call timeout and only a
+        // share of the budget, and the fallbacks get the rest. A planning fetch (no budget, not
+        // urgent) takes none of these branches.
+        val budget = RouteBudget.of(budgetMs ?: if (urgent) URGENT_DEFAULT_BUDGET_MS else null)
+        val bounded = budget.bounded
+        val osrmTryMs: Long? = when {
+            urgent -> URGENT_OSRM_TIMEOUT_MS
+            bounded -> LADDER_OSRM_TRY_MS
+            else -> null
+        }
+        val osrmBudget = when {
+            !bounded -> RouteBudget.NONE
+            urgent -> budget.slice(URGENT_OSRM_TIMEOUT_MS)
+            else -> budget.slice(((budget.remainingMs() ?: 0L) * LADDER_OSRM_SHARE).toLong())
+        }
+        val osrmWhy = java.util.concurrent.atomic.AtomicReference("empty reply")
+        val onOsrmFail: (String) -> Unit = { osrmWhy.set(it) }
+        val stage = if (urgent) "urgent" else "ladder"
         // Bike mode routes for safety over speed (issue #401, default on): the offline engine's
         // bicycle profile where a region is downloaded, else the open Valhalla router told to stay
         // off busy roads. Null = neither answered, so the fastest-route chain below takes over.
@@ -521,14 +546,44 @@ class GoogleMapsDataSource @Inject constructor(
         // whole origin→dest so the time is traffic-aware. A waypointed trip is a single path — no alternates.
         if (waypoints.isNotEmpty()) {
             return@io coroutineScope {
-                val viaD = async { RouteGeometry.routeVia(http, listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg) }
+                val viaD = async {
+                    RouteGeometry.routeVia(
+                        http, listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg,
+                        tries = tries, callTimeoutMs = osrmTryMs, budget = osrmBudget, onFailure = onOsrmFail,
+                    )
+                }
                 // Same urgent grace as the single-destination path below (issue #397).
-                val gD = if (urgent) kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
+                val gD = if (bounded) kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
                     googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways, avoidFerries)
                 } else async { googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways, avoidFerries) }
                 val via = viaD.await().firstOrNull()
+                if (bounded && via == null) {
+                    // Bounded + open router empty (issue #557): Google's direct route if it is back,
+                    // else the on-device legs, else nothing; never past the budget.
+                    val osrmMs = budget.elapsedMs()
+                    val fb = RerouteFallback.pick(
+                        gD,
+                        onDevice = if (routeEngine.isReady(mode)) {
+                            { listOfNotNull(chainOnDevice(listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg)) }
+                        } else null,
+                        budgetMs = budget.remainingMs() ?: 0L,
+                    )
+                    diag.record(
+                        "directions",
+                        "$stage: $mode multi-stop ×${waypoints.size} open router gave nothing after $osrmMs ms (${osrmWhy.get()}); " +
+                            "fallback ${fb.source.name.lowercase()} ${fb.routes.size} route(s) after ${fb.waitedMs} ms more (on-device tried=${fb.onDeviceTried})",
+                        "",
+                    )
+                    return@coroutineScope when (fb.source) {
+                        RerouteFallback.Source.GOOGLE_READY, RerouteFallback.Source.GOOGLE ->
+                            fb.routes.take(1).map { it.copy(abbreviatedSteps = true, source = RouteSource.GOOGLE_ABBREVIATED) }
+                        RerouteFallback.Source.ON_DEVICE -> fb.routes
+                        RerouteFallback.Source.NONE -> emptyList()
+                    }
+                }
                 suspend fun googleOrGrace(): List<Route> =
                     if (urgent && via != null) kotlinx.coroutines.withTimeoutOrNull(URGENT_GOOGLE_GRACE_MS) { gD.await() } ?: emptyList()
+                    else if (bounded) kotlinx.coroutines.withTimeoutOrNull(budget.remainingMs() ?: 0L) { gD.await() } ?: emptyList()
                     else gD.await()
                 // OSRM unreachable → route the legs on-device (origin→w1→…→dest chained), like the
                 // single-destination path's offline fallback; only then fall to Google's DIRECT route
@@ -568,7 +623,12 @@ class GoogleMapsDataSource @Inject constructor(
             // Google's keyless directions endpoint hands back ABBREVIATED steps for longer routes
             // (a 6-mi route came back with 2 of ~10 turns), so Google is only the FALLBACK + the
             // live-traffic source. Fetch both in parallel so the traffic round-trip is free.
-            val openD = async { RouteGeometry.route(http, origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, tries, departBearingDeg) }
+            val openD = async {
+                RouteGeometry.route(
+                    http, origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, tries, departBearingDeg,
+                    callTimeoutMs = osrmTryMs, budget = osrmBudget, onFailure = onOsrmFail,
+                )
+            }
             // URGENT (a mid-drive reroute): Google runs on an unstructured scope so a dead or slow
             // Google endpoint cannot hold the reroute. A diagnostics export (issue #397, 2026-09-15)
             // showed reroutes taking 18 to 40 s while OSRM had answered in seconds, because the
@@ -577,16 +637,64 @@ class GoogleMapsDataSource @Inject constructor(
             // trafficless and the recheck's trafficUpgrade heals it minutes later. (A structured
             // child would keep this scope open until the blocking HTTP call returned, which is the
             // wait this exists to remove; the orphan finishes into the void, like the avoid compute.)
-            val googleD = if (urgent) kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
+            val googleD = if (bounded) kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
                 googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways, avoidFerries)
             } else async { googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways, avoidFerries) }
             val open = openD.await()
-            val google = if (urgent && open.isNotEmpty()) {
-                kotlinx.coroutines.withTimeoutOrNull(URGENT_GOOGLE_GRACE_MS) { googleD.await() } ?: run {
-                    diag.record("directions", "urgent: google not back ${URGENT_GOOGLE_GRACE_MS} ms after OSRM, rerouting trafficless")
-                    emptyList()
+            val avoidWanted = (avoidTolls || avoidHighways || avoidFerries) && mode == TravelMode.DRIVE
+            if (bounded && open.isEmpty()) {
+                // Bounded + open router empty or hung (issue #557): (a) Google's route from this
+                // same fetch if it is already back, (b) the downloaded region, (c) nothing. Google
+                // routes go out tagged abbreviated, so the recheck heal upgrades them to full
+                // steps once the open router answers again. Every decision is logged so an
+                // export shows which source answered and how long each stage took.
+                val osrmMs = budget.elapsedMs()
+                val fb = RerouteFallback.pick(
+                    googleD,
+                    onDevice = if (routeEngine.isReady(mode)) {
+                        {
+                            routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg)
+                                .map { it.copy(offline = true) }
+                        }
+                    } else null,
+                    budgetMs = budget.remainingMs() ?: 0L,
+                )
+                diag.record(
+                    "directions",
+                    "$stage: $mode open router gave nothing after $osrmMs ms (${osrmWhy.get()}); " +
+                        "fallback ${fb.source.name.lowercase()} ${fb.routes.size} route(s) after ${fb.waitedMs} ms more " +
+                        "(on-device tried=${fb.onDeviceTried}, heading=${departBearingDeg?.toInt()})",
+                    "",
+                )
+                return@coroutineScope when (fb.source) {
+                    RerouteFallback.Source.GOOGLE_READY, RerouteFallback.Source.GOOGLE -> {
+                        if (avoidWanted && DirectionsPb.avoidSupported(calibration.current().directionsPb)) avoidHonored = true
+                        fb.routes.map { it.copy(abbreviatedSteps = true, source = RouteSource.GOOGLE_ABBREVIATED) }
+                    }
+                    RerouteFallback.Source.ON_DEVICE -> {
+                        avoidHonored = true // the obf engine applies the avoid parameters itself
+                        fb.routes
+                    }
+                    RerouteFallback.Source.NONE -> emptyList()
                 }
-            } else googleD.await()
+            }
+            val google = when {
+                urgent && open.isNotEmpty() ->
+                    kotlinx.coroutines.withTimeoutOrNull(URGENT_GOOGLE_GRACE_MS) { googleD.await() } ?: run {
+                        diag.record("directions", "urgent: google not back ${URGENT_GOOGLE_GRACE_MS} ms after OSRM, rerouting trafficless")
+                        emptyList()
+                    }
+                // The escalated reroute: the open router answered, Google gets what is left
+                // minus room for the traffic snap, then the route goes out trafficless.
+                bounded -> {
+                    val wait = ((budget.remainingMs() ?: 0L) - LADDER_SNAP_RESERVE_MS).coerceAtLeast(0L)
+                    kotlinx.coroutines.withTimeoutOrNull(wait) { googleD.await() } ?: run {
+                        diag.record("directions", "ladder: google not back after ${budget.elapsedMs()} ms, rerouting trafficless")
+                        emptyList()
+                    }
+                }
+                else -> googleD.await()
+            }
             val gTop = google.firstOrNull()
             // AVOID toggles: the public FOSSGIS OSRM rejects `exclude=` outright (probed
             // 2026-07-11 and again 2026-08-24: InvalidValue, its profiles were not built with
@@ -596,7 +704,6 @@ class GoogleMapsDataSource @Inject constructor(
             // own in-traffic time is the ETA. The on-device engine is the avoid router only when
             // Google is unreachable. (Until today avoid was on-device-or-nothing, with the plain
             // route and a note otherwise; #325's broken ETA came from that branch.)
-            val avoidWanted = (avoidTolls || avoidHighways || avoidFerries) && mode == TravelMode.DRIVE
             // Honoured only when the request could actually carry the flags: a recalibrated pb
             // template without the feature block makes withAvoid a no-op (review 2026-09-06).
             if (avoidWanted && gTop != null && DirectionsPb.avoidSupported(calibration.current().directionsPb)) avoidHonored = true
@@ -609,9 +716,10 @@ class GoogleMapsDataSource @Inject constructor(
                 // defeat the timeout entirely. Past the deadline the online chain answers (tagged
                 // not-honored below) and the orphaned compute finishes and is discarded.
                 val avoidD = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
-                    runCatching { routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries).map { it.copy(offline = true) } }.getOrDefault(emptyList())
+                    runCatching { routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg).map { it.copy(offline = true) } }.getOrDefault(emptyList())
                 }
-                val avoidRoutes = kotlinx.coroutines.withTimeoutOrNull(AVOID_ONDEVICE_TIMEOUT_MS) { avoidD.await() } ?: emptyList()
+                val avoidWait = budget.remainingMs()?.let { minOf(it, AVOID_ONDEVICE_TIMEOUT_MS) } ?: AVOID_ONDEVICE_TIMEOUT_MS
+                val avoidRoutes = kotlinx.coroutines.withTimeoutOrNull(avoidWait) { avoidD.await() } ?: emptyList()
                 if (avoidRoutes.isNotEmpty()) {
                     avoidHonored = true
                     // Offline (no Google answer): the engine's own time is all there is. Online,
@@ -629,6 +737,7 @@ class GoogleMapsDataSource @Inject constructor(
                 RouteGeometry.routeVia(
                     http, listOf(origin) + RouteGeometry.sampleVias(gTop!!.polyline) + destination, mode,
                     avoidTolls, avoidHighways, avoidFerries, departBearingDeg, strictVias = true,
+                    tries = tries, callTimeoutMs = osrmTryMs, budget = budget,
                 ).firstOrNull()
             } else null
             // Cheap checks first, the shape test last (it walks the whole route): the via route
@@ -647,8 +756,9 @@ class GoogleMapsDataSource @Inject constructor(
             // OFFLINE fallback: OSRM (and Google) need the network. When OSRM came back empty — no
             // connectivity, or the FOSSGIS server is down — route fully ON-DEVICE from a downloaded
             // obf region file, if one covers this area. No traffic offline, but complete named turns.
+            // (Planning only: a bounded fetch with an empty open router returned above.)
             val onDevice = if (open.isEmpty() && trafficRoute == null && routeEngine.isReady(mode))
-                routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries).map { it.copy(offline = true) } else emptyList()
+                routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg).map { it.copy(offline = true) } else emptyList()
             // Lead with Google's jam-avoiding path (option 3) only when it EARNS it: its live in-traffic
             // ETA is within a small margin of OSRM's FREE-FLOW best, so even Google's detour is time-
             // competitive → the jam is real. The old code led with the snap on ANY >700 m divergence, so a
@@ -879,9 +989,18 @@ class GoogleMapsDataSource @Inject constructor(
      *  point), each non-final leg's ARRIVE and non-first leg's DEPART dropped (mirroring what routeVia's
      *  parser does for via boundaries), distances/durations summed. Null if any leg can't be routed
      *  (cross-region or off-graph), so the caller can fall through. */
-    private fun chainOnDevice(points: List<LatLng>, mode: TravelMode, avoidTolls: Boolean = false, avoidHighways: Boolean = false, avoidFerries: Boolean = false): Route? {
-        val legs = points.zipWithNext().map { (a, b) ->
-            runCatching { routeEngine.route(a, b, mode, avoidTolls, avoidHighways, avoidFerries).firstOrNull()?.copy(offline = true) }.getOrNull() ?: return null
+    private fun chainOnDevice(
+        points: List<LatLng>,
+        mode: TravelMode,
+        avoidTolls: Boolean = false,
+        avoidHighways: Boolean = false,
+        avoidFerries: Boolean = false,
+        departBearingDeg: Double? = null,
+    ): Route? {
+        val legs = points.zipWithNext().mapIndexed { i, (a, b) ->
+            // Only the first leg starts where the car is pointing; a stop is just a place.
+            val bearing = if (i == 0) departBearingDeg else null
+            runCatching { routeEngine.route(a, b, mode, avoidTolls, avoidHighways, avoidFerries, bearing).firstOrNull()?.copy(offline = true) }.getOrNull() ?: return null
         }
         val polyline = legs.flatMapIndexed { i, leg -> if (i == 0) leg.polyline else leg.polyline.drop(1) }
         // Boundary DEPART/ARRIVE steps are dropped, but their step distance is FOLDED into the
@@ -1135,6 +1254,18 @@ class GoogleMapsDataSource @Inject constructor(
         const val AVOID_ONDEVICE_TIMEOUT_MS = 4_000L
         /** A mid-drive reroute waits this long for Google's traffic once the open router has answered. */
         const val URGENT_GOOGLE_GRACE_MS = 2_500L
+        /** Issue #557: the urgent reroute's one open-router call, connect + read included. FOSSGIS
+         *  answers a healthy reroute in 1-3 s; a hung call used to hold the attempt for the shared
+         *  client's 12 s call timeout (and 15 s connect, 20 s read) before any fallback was asked. */
+        const val URGENT_OSRM_TIMEOUT_MS = 6_000L
+        /** An urgent fetch with no budget from the caller gets this much in total. */
+        const val URGENT_DEFAULT_BUDGET_MS = 16_000L
+        /** The escalated reroute's per-try open-router timeout, and the share of its budget the
+         *  open router may use before the fallbacks get the rest. */
+        const val LADDER_OSRM_TRY_MS = 8_000L
+        const val LADDER_OSRM_SHARE = 0.55
+        /** Room the escalated reroute keeps for the traffic snap after waiting on Google. */
+        const val LADDER_SNAP_RESERVE_MS = 6_000L
         /** The bike-safe branch's on-device budgets (issue #401): a bike trip is short, so the obf
          *  engine usually answers well inside these; past them the online router takes over. */
         const val BIKE_ONDEVICE_TIMEOUT_MS = 6_000L
