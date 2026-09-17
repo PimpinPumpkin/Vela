@@ -1905,23 +1905,24 @@ fun MapScreen(
                     maxLift = stepsListMax,
                     // The rows that show under the figures while the bar is pulled up: the same
                     // StepRow the sheet draws, at the same padding, so nothing moves at the swap.
+                    // It starts at the current step (the sheet opens scrolled there), dividers included.
                     preview = {
-                        val ms = state.activeRoute?.maneuvers ?: emptyList()
                         val lat = state.roadNameLatin
                         val lang = app.vela.ui.AppLocale.effective().language
                         val stopLabels = vm.navRemainingStopLabels()
-                        if (stopLabels.isNotEmpty()) app.vela.ui.nav.NavStopsRow(stopLabels, onEdit = vm::openStopsEditor)
-                        ms.take(14).forEachIndexed { i, m ->
-                            app.vela.ui.nav.StepRow(
-                                m = m,
-                                active = i == state.nav.stepIndex,
-                                highlighted = false,
-                                romanize = { s -> if (s.isEmpty() || lat.isEmpty()) s else app.vela.core.voice.SpokenScript.forDisplay(s, lang, lat) },
-                                destName = state.arrivedLabel,
-                                destAddress = state.navDestAddress,
-                                onClick = null,
-                            )
-                        }
+                        app.vela.ui.nav.NavStepsPreview(
+                            maneuvers = state.activeRoute?.maneuvers ?: emptyList(),
+                            currentStep = state.nav.stepIndex,
+                            romanize = { s -> if (s.isEmpty() || lat.isEmpty()) s else app.vela.core.voice.SpokenScript.forDisplay(s, lang, lat) },
+                            destName = state.arrivedLabel,
+                            destAddress = state.navDestAddress,
+                            legStarts = remember(state.activeRoute, state.nav.stepIndex) {
+                                val r = state.activeRoute
+                                val stops = vm.navRemainingStops().map { it.location to it.label }
+                                if (r == null || stops.isEmpty()) emptyList() else app.vela.core.nav.RouteStops.legStarts(r, stops)
+                            },
+                            stopsRow = if (stopLabels.isEmpty()) null else ({ app.vela.ui.nav.NavStopsRow(stopLabels, onEdit = vm::openStopsEditor) }),
+                        )
                     },
                     trafficRatio = state.activeRoute?.trafficRatio,
                     showListButton = app.vela.ui.PreferButtons.on.value || dpadFirst,
