@@ -1,13 +1,20 @@
 package app.vela.ui
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.Attractions
+import androidx.compose.material.icons.filled.Cabin
 import androidx.compose.material.icons.filled.EvStation
 import androidx.compose.material.icons.filled.Hotel
 import androidx.compose.material.icons.filled.LocalAtm
+import androidx.compose.material.icons.filled.LocalBar
 import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.LocalGroceryStore
+import androidx.compose.material.icons.filled.LocalHospital
+import androidx.compose.material.icons.filled.LocalParking
 import androidx.compose.material.icons.filled.LocalPharmacy
+import androidx.compose.material.icons.filled.LocalPostOffice
 import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -23,15 +30,25 @@ import app.vela.R
 object QuickCategories {
     data class Chip(val label: Int, val query: String, val icon: ImageVector)
 
-    fun all(): List<Chip> = listOf(
+    /** Most-used first, long tail at the end (the rows scroll). Bars is left out while "Hide adult
+     *  categories" is on: that filter drops every bar result, so the chip could only come back
+     *  empty. Reading [HideAdult.on] here keeps the rows in step when the setting flips. */
+    fun all(): List<Chip> = listOfNotNull(
         Chip(R.string.cat_restaurants, "Restaurants", Icons.Default.Restaurant),
         Chip(R.string.cat_coffee, "Coffee", Icons.Default.LocalCafe),
         Chip(R.string.cat_gas, CategoryQuery.fuel(), Icons.Default.LocalGasStation),
-        Chip(R.string.cat_ev, "EV charging station", Icons.Default.EvStation),
         Chip(R.string.cat_groceries, "Groceries", Icons.Default.LocalGroceryStore),
+        Chip(R.string.cat_things_to_do, "Things to do", Icons.Default.Attractions),
         Chip(R.string.cat_hotels, "Hotels", Icons.Default.Hotel),
+        if (HideAdult.on.value) null else Chip(R.string.cat_bars, "Bars", Icons.Default.LocalBar),
+        Chip(R.string.cat_ev, "EV charging station", Icons.Default.EvStation),
+        Chip(R.string.cat_parking, "Parking", Icons.Default.LocalParking),
         Chip(R.string.cat_pharmacy, "Pharmacy", Icons.Default.LocalPharmacy),
         Chip(R.string.cat_atms, "ATMs", Icons.Default.LocalAtm),
         Chip(R.string.cat_parks, "Parks", Icons.Default.Park),
+        Chip(R.string.cat_hospitals, "Hospitals", Icons.Default.LocalHospital),
+        Chip(R.string.cat_banks, "Banks", Icons.Default.AccountBalance),
+        Chip(R.string.cat_post_offices, "Post office", Icons.Default.LocalPostOffice),
+        Chip(R.string.cat_campgrounds, "Campgrounds", Icons.Default.Cabin),
     )
 }

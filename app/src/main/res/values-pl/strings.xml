@@ -667,6 +667,13 @@
     <string name="place_route_offline">trasa offline, bez ruchu na żywo</string>
 
     <string name="cat_ev">Ładowarki EV</string>
+    <string name="cat_things_to_do">Atrakcje</string>
+    <string name="cat_bars">Bary</string>
+    <string name="cat_parking">Parkingi</string>
+    <string name="cat_hospitals">Szpitale</string>
+    <string name="cat_banks">Banki</string>
+    <string name="cat_post_offices">Poczta</string>
+    <string name="cat_campgrounds">Kempingi</string>
     <string name="settings_search_hint">Szukaj w ustawieniach</string>
     <string name="settings_search_none">Brak wyników</string>
     <string name="settings_app_name_title">Nazwa aplikacji</string>

@@ -12,6 +12,13 @@
     <string name="cat_pharmacy">Pharmacy</string>
     <string name="cat_atms">ATMs</string>
     <string name="cat_parks">Parks</string>
+    <string name="cat_things_to_do">Things to do</string>
+    <string name="cat_bars">Bars</string>
+    <string name="cat_parking">Parking</string>
+    <string name="cat_hospitals">Hospitals</string>
+    <string name="cat_banks">Banks</string>
+    <string name="cat_post_offices">Post offices</string>
+    <string name="cat_campgrounds">Campgrounds</string>
 
     <!-- settings: SettingsScreen.kt -->
     <string name="settings_title">Settings</string>

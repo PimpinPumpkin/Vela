@@ -658,6 +658,13 @@
     <string name="list_move_down">Flytta listan ner</string>
     <string name="place_route_offline">offline-rutt, ingen livetrafik</string>
     <string name="cat_ev">Laddstationer</string>
+    <string name="cat_things_to_do">Sevärdheter</string>
+    <string name="cat_bars">Barer</string>
+    <string name="cat_parking">Parkering</string>
+    <string name="cat_hospitals">Sjukhus</string>
+    <string name="cat_banks">Banker</string>
+    <string name="cat_post_offices">Postombud</string>
+    <string name="cat_campgrounds">Campingplatser</string>
     <string name="settings_search_hint">Sök i inställningarna</string>
     <string name="settings_search_none">Inga träffar</string>
     <string name="settings_app_name_title">Appnamn</string>

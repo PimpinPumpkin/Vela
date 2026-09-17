@@ -675,6 +675,13 @@
     <string name="place_route_offline">離線路線，無即時路況</string>
     <!-- added: zh-rTW translations -->
     <string name="cat_ev">電動車充電</string>
+    <string name="cat_things_to_do">景點</string>
+    <string name="cat_bars">酒吧</string>
+    <string name="cat_parking">停車場</string>
+    <string name="cat_hospitals">醫院</string>
+    <string name="cat_banks">銀行</string>
+    <string name="cat_post_offices">郵局</string>
+    <string name="cat_campgrounds">露營區</string>
     <string name="settings_search_hint">搜尋設定</string>
     <string name="settings_search_none">沒有符合項目</string>
     <string name="settings_app_name_title">應用程式名稱</string>

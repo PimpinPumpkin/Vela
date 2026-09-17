@@ -659,6 +659,13 @@
     <string name="list_move_down">העברת הרשימה למטה</string>
     <string name="place_route_offline">מסלול לא מקוון, ללא תנועה בזמן אמת</string>
     <string name="cat_ev">טעינת רכב חשמלי</string>
+    <string name="cat_things_to_do">אטרקציות</string>
+    <string name="cat_bars">ברים</string>
+    <string name="cat_parking">חניה</string>
+    <string name="cat_hospitals">בתי חולים</string>
+    <string name="cat_banks">בנקים</string>
+    <string name="cat_post_offices">סניפי דואר</string>
+    <string name="cat_campgrounds">חניוני לילה</string>
     <string name="settings_search_hint">חיפוש בהגדרות</string>
     <string name="settings_search_none">אין תוצאות</string>
     <string name="settings_app_name_title">שם האפליקציה</string>

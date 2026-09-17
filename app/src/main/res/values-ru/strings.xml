@@ -662,6 +662,13 @@
     <string name="list_move_down">Опустить список</string>
     <string name="place_route_offline">офлайн-маршрут, без пробок</string>
     <string name="cat_ev">Электрозаправки</string>
+    <string name="cat_things_to_do">Развлечения</string>
+    <string name="cat_bars">Бары</string>
+    <string name="cat_parking">Парковки</string>
+    <string name="cat_hospitals">Больницы</string>
+    <string name="cat_banks">Банки</string>
+    <string name="cat_post_offices">Почта</string>
+    <string name="cat_campgrounds">Кемпинги</string>
     <string name="settings_search_hint">Поиск по настройкам</string>
     <string name="settings_search_none">Ничего не найдено</string>
     <string name="settings_app_name_title">Название приложения</string>
