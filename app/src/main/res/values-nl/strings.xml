@@ -558,6 +558,7 @@
     <string name="settings_map_colors_hint">Modern volgt het huidige palet van Google Maps. Klassiek is de eerdere look van Vela: witte wegen, gele snelwegen, echte groentinten.</string>
     <string name="place_avoid_tolls">Tolwegen vermijden</string>
     <string name="place_avoid_highways">Snelwegen vermijden</string>
+    <string name="place_avoid_ferries">Veerboten vermijden</string>
     <string name="map_parking_find">Mijn auto zoeken</string>
     <string name="map_parking_move_here">Parkeerplek hierheen verplaatsen</string>
     <string name="map_parking_earlier">Eerdere parkeerplekken</string>
@@ -831,7 +832,7 @@
     <string name="settings_voice_volume_louder">Luider</string>
     <string name="settings_voice_volume_loudest">Luidst</string>
     <string name="settings_voice_volume_hint">Hoe luid gesproken aanwijzingen over je media klinken. De luidere standen gelden voor de Vela-stem; systeemstemmen kunnen alleen zachter.</string>
-    <string name="place_avoid_not_honored">Deze routes kunnen nog steeds tol of snelwegen gebruiken. Vela kan die vermijden op een directe rit online, of offline in een gedownload gebied, maar nog niet op een rit met tussenstops.</string>
+    <string name="place_avoid_not_honored">Deze routes kunnen nog steeds tol, snelwegen of veerboten gebruiken. Vela kan die vermijden op een directe rit online, of offline in een gedownload gebied, maar nog niet op een rit met tussenstops.</string>
     <string name="settings_asr_engines_title">Spraakherkenning op het toestel</string>
     <string name="voice_capture_examples_title">Dingen die je kunt zeggen</string>
     <string name="voice_capture_example_home">\"Breng me naar huis\" of \"breng me naar mijn werk\"</string>

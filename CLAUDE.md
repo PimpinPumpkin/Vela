@@ -2992,6 +2992,21 @@ Gotchas:
   as alternates, and if the snap fails Google's abbreviated steps win over a plain route. The FOSSGIS
   server still has no `exclude=` (`OSRM_SUPPORTS_EXCLUDE = false`); the on-device engine is the avoid
   router ONLY when Google is unreachable, and the "may still use tolls" note shows only then.
+  **AVOID FERRIES rides the same block (issue #546, 2026-09-16):** it is `!7b`, a DIRECT child of
+  that outer `!6m` (not of `!2m`), sent `!7b1` ticked and `!7b0` unticked by Google's web client
+  (captured `...!6m31!32i1...!302i300!303i100!7b1!10b1!12b1...`). Replayed Galveston -> Crystal
+  Beach, TX: `!7b0` = the 16.7 mi ferry route, `!7b1` = a 116 mi road route. The shipped template
+  has no `!7b`, so `withAvoid` walks the outer block's direct children (counting `m` descendants)
+  and inserts `!7b1` before the first child numbered above 7 (`!10b1`), outer count +1; an existing
+  `!7b` is rewritten in place to the wanted value, and a `!7b` nested deeper is never touched
+  (`DirectionsPbFerryTest`, every tolls/highways/ferries combination with and without a `!7b`).
+  Plumbing is a third flag beside the other two everywhere (pref `avoid_ferries`, `avoidFerries` in
+  `directions`/`nameRoute`/`RouteEngine.route`, `avoidWanted`, the mode-ETA key, the note, the
+  third chip in both choosers), and offline the obf car profile takes `avoid_ferries` (the id in the
+  vendored `net/osmand/router/routing.xml`, DRIVE only). FOSSGIS OSRM cannot exclude ferries, so
+  as with tolls the Google route leads and the plain OSRM routes are not offered while it is on.
+  NB the obf highway param Vela sends is `avoid_highway`, but that routing.xml declares only
+  `avoid_motorway`; offline avoid-highways looks like a no-op until that is checked on a device.
   Device-checked on a downtown-to-suburb drive: the interstate route gave way to a state-highway
   one, ~14 min longer, with a live-traffic ETA on both.
   **THE CATALOG COVERS EVERY GEOFABRIK COUNTRY (2026-09-12, 425 rows):** 131 rows added in one
@@ -3957,8 +3972,8 @@ Gotchas:
   graph 105 MB vs obf routing section 26.9 MB (3.9x); a target-sections obf (routing+address+POI,
   NO map/transport - `scripts/VelaObfShim.java` sets the IndexCreatorSettings booleans the CLI
   lacks) makes Germany ~2 GB where graph+pack was ~8. CoreModule binds `ObfRouteEngine`
-  directly since 2026-09-15 (GraphHopper retired); avoids (toll/motorway) are DYNAMIC
-  routing.xml params (`avoid_toll`/`avoid_highway`) so they work offline with no baked profiles,
+  directly since 2026-09-15 (GraphHopper retired); avoids (toll/motorway/ferry) are DYNAMIC
+  routing.xml params (`avoid_toll`/`avoid_highway`/`avoid_ferries`) so they work offline with no baked profiles,
   and bicycle/pedestrian profiles come free. Turn mapping pinned by ObfRouteEngineTest (CONTINUE
   is voice-silent - a mis-mapped u-turn gets swallowed; instruction text reuses ghPhrase so all
   languages come along). Bake: `scripts/build-obf-region.sh` + `merge-obf-manifest.sh` +

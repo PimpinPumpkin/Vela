@@ -558,6 +558,7 @@
     <string name="settings_map_colors_hint">Moderne reprend la palette actuelle de Google Maps. Classique est l\'ancien style de Vela : routes blanches, autoroutes jaunes, verts francs.</string>
     <string name="place_avoid_tolls">Éviter les péages</string>
     <string name="place_avoid_highways">Éviter les autoroutes</string>
+    <string name="place_avoid_ferries">Éviter les ferries</string>
     <string name="map_parking_find">Trouver ma voiture</string>
     <string name="map_parking_move_here">Déplacer le parking ici</string>
     <string name="map_parking_earlier">Emplacements précédents</string>
@@ -829,7 +830,7 @@
     <string name="settings_voice_volume_louder">Plus fort</string>
     <string name="settings_voice_volume_loudest">Maximum</string>
     <string name="settings_voice_volume_hint">Volume des instructions vocales par-dessus votre musique. Les niveaux les plus forts s\'appliquent à la voix Vela ; les voix du système ne peuvent qu\'être baissées.</string>
-    <string name="place_avoid_not_honored">Ces itinéraires peuvent quand même emprunter des péages ou des autoroutes. Vela peut les éviter sur un trajet direct en ligne, ou hors ligne dans une zone téléchargée, mais pas encore sur un trajet avec des arrêts.</string>
+    <string name="place_avoid_not_honored">Ces itinéraires peuvent quand même emprunter des péages, des autoroutes ou des ferries. Vela peut les éviter sur un trajet direct en ligne, ou hors ligne dans une zone téléchargée, mais pas encore sur un trajet avec des arrêts.</string>
     <string name="settings_asr_engines_title">Moteur de reconnaissance sur l\'appareil</string>
     <string name="voice_capture_examples_title">Ce que vous pouvez dire</string>
     <string name="voice_capture_example_home">\"Emmène-moi à la maison\" ou \"emmène-moi au travail\"</string>

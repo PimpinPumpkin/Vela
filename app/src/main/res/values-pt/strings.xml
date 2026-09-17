@@ -558,6 +558,7 @@
     <string name="settings_map_colors_hint">Moderno segue a paleta atual do Google Maps. Clássico é o visual anterior do Vela: estradas brancas, autoestradas amarelas, verdes fortes.</string>
     <string name="place_avoid_tolls">Evitar pedágios</string>
     <string name="place_avoid_highways">Evitar rodovias</string>
+    <string name="place_avoid_ferries">Evitar balsas</string>
     <string name="map_parking_find">Encontrar o meu carro</string>
     <string name="map_parking_move_here">Mover estacionamento para aqui</string>
     <string name="map_parking_earlier">Locais anteriores</string>
@@ -831,7 +832,7 @@
     <string name="settings_voice_volume_louder">Mais alto</string>
     <string name="settings_voice_volume_loudest">Máximo</string>
     <string name="settings_voice_volume_hint">Com que volume as indicações faladas tocam por cima do que está a ouvir. Os níveis mais altos aplicam-se à voz Vela; as vozes do sistema só podem ficar mais baixas.</string>
-    <string name="place_avoid_not_honored">Estas rotas podem continuar a usar pedágios ou rodovias. A Vela consegue evitá-los num trajeto direto online, ou offline numa área transferida, mas ainda não num trajeto com paragens.</string>
+    <string name="place_avoid_not_honored">Estas rotas podem continuar a usar pedágios, rodovias ou balsas. A Vela consegue evitá-los num trajeto direto online, ou offline numa área transferida, mas ainda não num trajeto com paragens.</string>
     <string name="settings_asr_engines_title">Motor de reconhecimento no dispositivo</string>
     <string name="voice_capture_examples_title">Coisas que pode dizer</string>
     <string name="voice_capture_example_home">“Leva-me a casa” ou “leva-me para o trabalho”</string>
