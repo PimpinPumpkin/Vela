@@ -368,6 +368,10 @@ private fun hideOpenTwins(map: MapLibreMap, style: Style, pois: List<MapMarker>)
  *  poi tiers follow (user drive 2026-09-16: every business along the route drew, labels sat on
  *  the road, and the frame rate fell apart on an off-ramp). Set by the nav declutter effect. */
 private var placesNavFuelOnly = false
+/** ROUTE PREVIEW (the chooser is open, not navigating): only landmark-grade places draw, no dots,
+ *  like Google's route overview, so the route reads before Start (user 2026-09-16). */
+private var placesPreviewLandmarks = false
+private const val PREVIEW_LANDMARK_PROMINENCE = 5.5
 
 /** Re-apply the id exclusions (and the drive-nav fuel-only rule) to the open places layers
  *  (icons + dots) without rebuilding them. */
@@ -376,7 +380,13 @@ private fun applyOpenPlacesHidden(style: Style) {
     val idFilter: Expression? = if (ids.isEmpty()) null
     else Expression.not(Expression.`in`(Expression.get("id"), Expression.literal(ids.toTypedArray<Any>())))
     val fuel = Expression.eq(Expression.get("group"), Expression.literal("fuel"))
-    val iconFilter = listOfNotNull(idFilter, if (placesNavFuelOnly) fuel else null)
+    val landmark = Expression.gte(Expression.get("prominence"), Expression.literal(PREVIEW_LANDMARK_PROMINENCE))
+    val modeFilter = when {
+        placesNavFuelOnly -> fuel
+        placesPreviewLandmarks -> landmark
+        else -> null
+    }
+    val iconFilter = listOfNotNull(idFilter, modeFilter)
         .let { if (it.isEmpty()) Expression.literal(true) else if (it.size == 1) it[0] else Expression.all(*it.toTypedArray()) }
     runCatching {
         style.layers.filter { it.id.startsWith("vela-places-") }.forEach { l ->
@@ -384,7 +394,7 @@ private fun applyOpenPlacesHidden(style: Style) {
                 is SymbolLayer -> l.setFilter(iconFilter)
                 is CircleLayer -> {
                     l.setFilter(idFilter ?: Expression.literal(true))
-                    l.setProperties(PropertyFactory.visibility(if (placesNavFuelOnly) Property.NONE else Property.VISIBLE))
+                    l.setProperties(PropertyFactory.visibility(if (placesNavFuelOnly || placesPreviewLandmarks) Property.NONE else Property.VISIBLE))
                 }
                 else -> Unit
             }
@@ -1288,6 +1298,47 @@ fun VelaMapView(
                 )
                 val icon = Expression.get("icon") // "vela-poi-<group>", baked
                 val name = Expression.get("name")
+                // The per-block icon budget. `frank` is the ~100 m rank; an archive baked before it
+                // existed falls back to the 400 m `rank` with a 4x looser cut (it used to pass every
+                // place, so a pre-frank city drew every tenant from z17.5, measured in Midtown).
+                // From z19.5 the budget is `openIconCapMax` per block, not unlimited: a diamond-
+                // district block holds hundreds of jewellers.
+                val iconCapMax = app.vela.core.config.CalibrationStore.latest.tune("openIconCapMax", 40.0).toInt()
+                fun blockBudget(n: Int, prom: Double, value: Expression) = Expression.switchCase(
+                    Expression.any(
+                        Expression.switchCase(
+                            Expression.has("frank"),
+                            Expression.lte(Expression.get("frank"), Expression.literal(n)),
+                            Expression.lte(Expression.coalesce(Expression.get("rank"), Expression.literal(0)), Expression.literal(n * 4)),
+                        ),
+                        Expression.gte(Expression.get("prominence"), Expression.literal(prom)),
+                    ),
+                    value, Expression.literal(""),
+                )
+                // GENERIC tenants stay dots in dense blocks (2026-09-16, measured in Midtown: dozens
+                // of grey office pins and small-practice health pins per block, one per tenant of a
+                // tower, which both crowded taps and cost frames). A place in the default or health
+                // group gets an icon or label only if it is among the top `openGenericBlockTop` of its
+                // ~100 m block (`frank`, or the 400 m `rank` with a 4x cut on older archives) or
+                // prominent on its own; the rest draw as dots. A suburban office or clinic is usually
+                // the top of its block, so it keeps its icon.
+                val genericCap = app.vela.core.config.CalibrationStore.latest.tune("openGenericBlockTop", 3.0)
+                val genericMinProm = app.vela.core.config.CalibrationStore.latest.tune("openGenericMinProminence", 4.0)
+                fun unlessCrowdedGeneric(value: Expression) = Expression.switchCase(
+                    Expression.all(
+                        Expression.match(
+                            Expression.get("group"), Expression.literal(false),
+                            Expression.stop("default", true), Expression.stop("health", true),
+                        ),
+                        Expression.lt(Expression.get("prominence"), Expression.literal(genericMinProm)),
+                        Expression.switchCase(
+                            Expression.has("frank"),
+                            Expression.gt(Expression.get("frank"), Expression.literal(genericCap)),
+                            Expression.gt(Expression.coalesce(Expression.get("rank"), Expression.literal(0)), Expression.literal(genericCap * 4)),
+                        ),
+                    ),
+                    Expression.literal(""), value,
+                )
                 val labelCap = app.vela.core.config.CalibrationStore.latest.tune("openLabelCap", 20.0).toInt()
                 val iconCapNear = app.vela.core.config.CalibrationStore.latest.tune("openIconCapNear", 8.0).toInt()
                 val iconCapClose = app.vela.core.config.CalibrationStore.latest.tune("openIconCapClose", 16.0).toInt()
@@ -1343,8 +1394,11 @@ fun VelaMapView(
                                 icon,
                                 Expression.stop(13f, topOr("crank", 2, 6.0, icon)),
                                 Expression.stop(15f, topOr("rank", 1, 5.0, icon)),
-                                Expression.stop(16f, topOr("rank", 5, 4.0, icon)),
-                                Expression.stop(17f, topOr("rank", 12, 3.0, icon)),
+                                // Prominence escapes tightened 2026-09-16 (4.0 -> 5.0 at z16, 3.0 -> 4.5 at
+                                // z17): a Manhattan 400 m cell holds 3,000+ places and any shop with a
+                                // website scores about 4, so the old escape drew hundreds per block.
+                                Expression.stop(16f, topOr("rank", 5, 5.0, icon)),
+                                Expression.stop(17f, topOr("rank", 12, 4.5, icon)),
                                 // FULL-FAT ICON BUDGET at street zoom (user 2026-09-16: "have a
                                 // limit to the full fat POIs period if too many are on screen...
                                 // minimizing to little circle dots is an alternative if we are too
@@ -1354,9 +1408,9 @@ fun VelaMapView(
                                 // from 19.5. A place below the cut still draws as a dot (the dots
                                 // tier is unfiltered from z17), which is the "see more later when
                                 // we zoom in" behaviour rather than a place disappearing.
-                                Expression.stop(17.5f, topOr("frank", iconCapNear, 6.0, icon)),
-                                Expression.stop(18.5f, topOr("frank", iconCapClose, 5.0, icon)),
-                                Expression.stop(19.5f, icon),
+                                Expression.stop(17.5f, unlessCrowdedGeneric(blockBudget(iconCapNear, 6.0, icon))),
+                                Expression.stop(18.5f, unlessCrowdedGeneric(blockBudget(iconCapClose, 5.0, icon))),
+                                Expression.stop(19.5f, unlessCrowdedGeneric(blockBudget(iconCapMax, 4.5, icon))),
                             ),
                         ),
                         PropertyFactory.iconSize(
@@ -1385,8 +1439,8 @@ fun VelaMapView(
                                 name,
                                 Expression.stop(13f, topOr("crank", 2, 6.0, name)),
                                 Expression.stop(15f, topOr("rank", 1, 5.0, name)),
-                                Expression.stop(16f, topOr("rank", 5, 4.0, name)),
-                                Expression.stop(17f, topOr("rank", 12, 3.0, name)),
+                                Expression.stop(16f, topOr("rank", 5, 5.0, name)),
+                                Expression.stop(17f, topOr("rank", 12, 4.5, name)),
                                 // Labels stay THINNED at max zoom (2026-09-16). Icons come in for
                                 // everything from 17.5 (the stop below), but labelling every one of
                                 // them is what costs: each label is glyph layout plus a collision
@@ -1396,7 +1450,12 @@ fun VelaMapView(
                                 // as icons until you zoom past them - which is what Google does in
                                 // a dense block. Remote-tunable so the number can be trimmed on
                                 // real devices without a release.
-                                Expression.stop(17.5f, topOr("rank", labelCap, 3.0, name)),
+                                // A label only where its ICON draws (the same budget and generic
+                                // rule), then the label cap on top: a name floating with no icon
+                                // read as broken (Midtown, 2026-09-16).
+                                Expression.stop(17.5f, unlessCrowdedGeneric(blockBudget(iconCapNear, 6.0, topOr("rank", labelCap, 3.0, name)))),
+                                Expression.stop(18.5f, unlessCrowdedGeneric(blockBudget(iconCapClose, 5.0, topOr("rank", labelCap, 3.0, name)))),
+                                Expression.stop(19.5f, unlessCrowdedGeneric(blockBudget(iconCapMax, 4.5, topOr("rank", labelCap, 3.0, name)))),
                             ),
                         ),
                         PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
@@ -1450,7 +1509,7 @@ fun VelaMapView(
         lastPoiFuelOnly = null // forces applyData to re-apply the tier filters with the new flag
         lastOsmPoiVis = null
         // Rebuilt mid-drive (a new region in view): keep the drive-nav fuel-only rule on the new layers.
-        if (placesNavFuelOnly) applyOpenPlacesHidden(style)
+        if (placesNavFuelOnly || placesPreviewLandmarks) applyOpenPlacesHidden(style)
     }
 
     LaunchedEffect(maxspeedOverlays, styleRef, speedOverlayOn) {
@@ -6763,7 +6822,14 @@ private fun applyData(
     // The open places layer covering the view does NOT hide them any more (2026-09-15): the two
     // sources draw the same businesses (a bank showed twice before), but blanket-hiding also lost
     // every business Overture lacks. osmFillIn drops the doubles by name on camera idle instead.
-    val osmPoiVis = if (!poisEnabled || (!navMode && (ambientCoversView || markers.size > 1))) Property.NONE else Property.VISIBLE
+    // Route preview (chooser open, not navigating): the route is the subject, so the OSM business
+    // tiers step aside and the open places layer keeps landmarks only (Google's route overview).
+    val previewing = !navMode && route.size >= 2
+    if (previewing != placesPreviewLandmarks) {
+        placesPreviewLandmarks = previewing
+        applyOpenPlacesHidden(style)
+    }
+    val osmPoiVis = if (!poisEnabled || previewing || (!navMode && (ambientCoversView || markers.size > 1))) Property.NONE else Property.VISIBLE
     if (osmPoiVis != lastOsmPoiVis) {
         listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
             style.getLayer(id)?.setProperties(PropertyFactory.visibility(osmPoiVis))
