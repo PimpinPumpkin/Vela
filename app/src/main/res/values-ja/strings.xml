@@ -863,6 +863,13 @@
     <string name="voice_capture_example_route">「Davis から San Francisco まで」</string>
     <string name="voice_capture_example_nearest">「一番近いガソリンスタンド」</string>
     <string name="voice_capture_example_eta">運転中に「到着時刻は？」</string>
+    <string name="voice_cmd_home">家に帰る</string>
+    <string name="voice_cmd_work">職場へ</string>
+    <string name="voice_cmd_go">目的地へ</string>
+    <string name="voice_cmd_route">2 地点間</string>
+    <string name="voice_cmd_nearby">近くを探す</string>
+    <string name="voice_cmd_eta">到着時刻(運転中)</string>
+    <string name="voice_cmd_hint">音声でも検索バーへの入力でも使えます。アプリの言語か英語で話してください。それ以外は通常の検索になります。</string>
     <string name="settings_map_data">地図データ</string>
     <string name="settings_map_data_hint">地図とその道路、ラベル、番地は OpenStreetMap のデータで、Open Database License のもとで提供され、OpenFreeMap がベクタータイルとして配信しています。対応地域の地図上の店舗は Overture Maps Foundation の場所データ（Meta と Microsoft 由来）で、Community Data License Agreement, Permissive 2.0 のもとで提供されています。場所の詳細、クチコミ、経路、交通状況は Google から取得しています。衛星画像は Esri と Google のものです。</string>
     <string name="settings_map_data_button">OpenStreetMap の著作権表示</string>

@@ -840,6 +840,13 @@
     <string name="voice_capture_example_route">\"Uppsala till Stockholm\"</string>
     <string name="voice_capture_example_nearest">\"Närmaste bensinstation\"</string>
     <string name="voice_capture_example_eta">\"Vad är min ankomsttid\" under körning</string>
+    <string name="voice_cmd_home">Hem</string>
+    <string name="voice_cmd_work">Till jobbet</string>
+    <string name="voice_cmd_go">Någonstans</string>
+    <string name="voice_cmd_route">Mellan två platser</string>
+    <string name="voice_cmd_nearby">Sök i närheten</string>
+    <string name="voice_cmd_eta">Ankomsttid, under körning</string>
+    <string name="voice_cmd_hint">De fungerar sagda eller skrivna i sökfältet, på appens språk eller på engelska. Allt annat blir en vanlig sökning.</string>
     <string name="settings_map_data">Kartdata</string>
     <string name="settings_map_data_hint">Kartan, dess gator, etiketter och husnummer är data från OpenStreetMap, tillgängliga under Open Database License och levererade som vektorrutor av OpenFreeMap. Företagen på kartan i täckta regioner är platsdata från Overture Maps Foundation (från Meta och Microsoft), tillgängliga under Community Data License Agreement, Permissive 2.0. Platsdetaljer, recensioner, ruttning och trafik kommer från Google. Satellitbilder kommer från Esri och Google.</string>
     <string name="settings_map_data_button">OpenStreetMap-upphovsrätt</string>

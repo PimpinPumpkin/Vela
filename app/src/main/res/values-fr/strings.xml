@@ -838,6 +838,13 @@
     <string name="voice_capture_example_route">\"Paris à Lyon\"</string>
     <string name="voice_capture_example_nearest">\"Station-service la plus proche\"</string>
     <string name="voice_capture_example_eta">\"Quelle est mon heure d\'arrivée\" en conduisant</string>
+    <string name="voice_cmd_home">Rentrer</string>
+    <string name="voice_cmd_work">Aller au travail</string>
+    <string name="voice_cmd_go">Aller quelque part</string>
+    <string name="voice_cmd_route">Entre deux lieux</string>
+    <string name="voice_cmd_nearby">Chercher à proximité</string>
+    <string name="voice_cmd_eta">Heure d\'arrivée, en conduisant</string>
+    <string name="voice_cmd_hint">Ces commandes marchent à la voix ou tapées dans la barre de recherche, dans la langue de l\'app ou en anglais. Le reste lance une recherche normale.</string>
     <string name="settings_map_data">Données cartographiques</string>
     <string name="settings_map_data_hint">La carte, ses rues, ses libellés et ses numéros de rue sont des données OpenStreetMap, disponibles sous licence Open Database License, servies en tuiles vectorielles par OpenFreeMap. Les commerces affichés sur la carte dans les régions couvertes sont des données de lieux de la Overture Maps Foundation (issues de Meta et Microsoft), disponibles sous la Community Data License Agreement, Permissive 2.0. Les fiches de lieux, les avis, le calcul d\'itinéraire et le trafic viennent de Google. L\'imagerie satellite provient d\'Esri et de Google.</string>
     <string name="settings_map_data_button">Droits d\'auteur OpenStreetMap</string>

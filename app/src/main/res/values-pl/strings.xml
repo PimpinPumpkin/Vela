@@ -849,6 +849,13 @@
     <string name="voice_capture_example_route">„Z Davis do San Francisco”</string>
     <string name="voice_capture_example_nearest">„Najbliższa stacja paliw”</string>
     <string name="voice_capture_example_eta">„Jaki mam czas przyjazdu” podczas jazdy</string>
+    <string name="voice_cmd_home">Do domu</string>
+    <string name="voice_cmd_work">Do pracy</string>
+    <string name="voice_cmd_go">Dokądś</string>
+    <string name="voice_cmd_route">Między dwoma miejscami</string>
+    <string name="voice_cmd_nearby">Szukaj w pobliżu</string>
+    <string name="voice_cmd_eta">Czas przyjazdu, w trakcie jazdy</string>
+    <string name="voice_cmd_hint">Działają głosowo lub wpisane w pasek wyszukiwania, w języku aplikacji albo po angielsku. Wszystko inne to zwykłe wyszukiwanie.</string>
     <string name="settings_map_data">Dane mapy</string>
     <string name="settings_map_data_hint">Mapa, jej ulice, etykiety i numery domów to dane OpenStreetMap, dostępne na licencji Open Database License, udostępniane jako kafelki wektorowe przez OpenFreeMap. Firmy na mapie w objętych regionach to dane miejsc z Overture Maps Foundation (ze źródeł Meta i Microsoft), dostępne na licencji Community Data License Agreement, Permissive 2.0. Szczegóły miejsc, opinie, wyznaczanie tras i ruch pochodzą z Google. Zdjęcia satelitarne pochodzą z Esri i Google.</string>
     <string name="settings_map_data_button">Prawa autorskie OpenStreetMap</string>

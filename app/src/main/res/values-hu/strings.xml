@@ -835,6 +835,13 @@
     <string name="voice_capture_example_route">„Szegedtől Budapestig”</string>
     <string name="voice_capture_example_nearest">„Legközelebbi benzinkút”</string>
     <string name="voice_capture_example_eta">„Mikor érek oda” vezetés közben</string>
+    <string name="voice_cmd_home">Haza</string>
+    <string name="voice_cmd_work">Munkába</string>
+    <string name="voice_cmd_go">Valahova</string>
+    <string name="voice_cmd_route">Két hely között</string>
+    <string name="voice_cmd_nearby">Keresés a közelben</string>
+    <string name="voice_cmd_eta">Érkezési idő, vezetés közben</string>
+    <string name="voice_cmd_hint">Kimondva vagy a keresősávba írva is működnek, az alkalmazás nyelvén vagy angolul. Minden más sima keresés lesz.</string>
     <string name="settings_map_data">Térképadatok</string>
     <string name="settings_map_data_hint">A térkép, az utcái, feliratai és házszámai OpenStreetMap-adatok, amelyek az Open Database License alatt érhetők el, vektorcsempeként az OpenFreeMap szolgálja ki. A lefedett régiókban a térképen látható üzletek az Overture Maps Foundation helyadatai (a Meta és a Microsoft forrásaiból), amelyek a Community Data License Agreement, Permissive 2.0 alatt érhetők el. A helyek részletei, a vélemények, az útvonaltervezés és a forgalom a Google-től származnak. A műholdképek az Esritől és a Google-től valók.</string>
     <string name="settings_map_data_button">OpenStreetMap szerzői jog</string>

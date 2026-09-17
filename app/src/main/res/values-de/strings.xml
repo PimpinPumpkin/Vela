@@ -840,6 +840,13 @@
     <string name="voice_capture_example_route">\"Von Berlin nach Hamburg\"</string>
     <string name="voice_capture_example_nearest">\"Nächste Tankstelle\"</string>
     <string name="voice_capture_example_eta">\"Wann komme ich an\" während der Fahrt</string>
+    <string name="voice_cmd_home">Nach Hause</string>
+    <string name="voice_cmd_work">Zur Arbeit</string>
+    <string name="voice_cmd_go">Irgendwohin</string>
+    <string name="voice_cmd_route">Zwischen zwei Orten</string>
+    <string name="voice_cmd_nearby">In der Nähe suchen</string>
+    <string name="voice_cmd_eta">Ankunftszeit, während der Fahrt</string>
+    <string name="voice_cmd_hint">Das klappt gesprochen oder in die Suchleiste getippt, in der App-Sprache oder auf Englisch. Alles andere wird normal gesucht.</string>
     <string name="settings_map_data">Kartendaten</string>
     <string name="settings_map_data_hint">Die Karte, ihre Straßen, Beschriftungen und Hausnummern sind OpenStreetMap-Daten, verfügbar unter der Open Database License und als Vektorkacheln bereitgestellt von OpenFreeMap. Die Geschäfte auf der Karte stammen in den abgedeckten Regionen aus den Ortsdaten der Overture Maps Foundation (mit Quellen von Meta und Microsoft), verfügbar unter der Community Data License Agreement, Permissive 2.0. Ortsdetails, Rezensionen, Routing und Verkehr kommen von Google. Satellitenbilder stammen von Esri und Google.</string>
     <string name="settings_map_data_button">OpenStreetMap-Urheberrecht</string>

@@ -840,6 +840,13 @@
     <string name="voice_capture_example_route">«De Davis a San Francisco»</string>
     <string name="voice_capture_example_nearest">«Gasolinera más cercana»</string>
     <string name="voice_capture_example_eta">«¿Cuál es mi hora de llegada?» mientras conduces</string>
+    <string name="voice_cmd_home">Ir a casa</string>
+    <string name="voice_cmd_work">Ir al trabajo</string>
+    <string name="voice_cmd_go">Ir a un lugar</string>
+    <string name="voice_cmd_route">Entre dos lugares</string>
+    <string name="voice_cmd_nearby">Buscar cerca</string>
+    <string name="voice_cmd_eta">Hora de llegada, al conducir</string>
+    <string name="voice_cmd_hint">Funcionan dichos o escritos en la barra de búsqueda, en el idioma de la app o en inglés. Todo lo demás es una búsqueda normal.</string>
     <string name="settings_map_data">Datos del mapa</string>
     <string name="settings_map_data_hint">El mapa, sus calles, etiquetas y números de casa son datos de OpenStreetMap, disponibles bajo la Open Database License y servidos como mosaicos vectoriales por OpenFreeMap. Los negocios que aparecen en el mapa en las regiones cubiertas son datos de lugares de la Overture Maps Foundation (procedentes de Meta y Microsoft), disponibles bajo la Community Data License Agreement, Permissive 2.0. Los detalles de los lugares, las reseñas, las rutas y el tráfico vienen de Google. Las imágenes de satélite son de Esri y Google.</string>
     <string name="settings_map_data_button">Derechos de autor de OpenStreetMap</string>

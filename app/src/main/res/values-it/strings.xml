@@ -838,6 +838,13 @@
     <string name="voice_capture_example_route">\"Da Milano a Torino\"</string>
     <string name="voice_capture_example_nearest">\"Distributore più vicino\"</string>
     <string name="voice_capture_example_eta">\"Tra quanto arrivo\" mentre guidi</string>
+    <string name="voice_cmd_home">Tornare a casa</string>
+    <string name="voice_cmd_work">Andare al lavoro</string>
+    <string name="voice_cmd_go">Andare in un posto</string>
+    <string name="voice_cmd_route">Tra due luoghi</string>
+    <string name="voice_cmd_nearby">Cercare vicino</string>
+    <string name="voice_cmd_eta">Orario di arrivo, alla guida</string>
+    <string name="voice_cmd_hint">Funzionano a voce o scritti nella barra di ricerca, nella lingua dell\'app o in inglese. Il resto diventa una ricerca normale.</string>
     <string name="settings_map_data">Dati della mappa</string>
     <string name="settings_map_data_hint">La mappa, le sue strade, le etichette e i numeri civici sono dati OpenStreetMap, disponibili con licenza Open Database, serviti come riquadri vettoriali da OpenFreeMap. Le attività sulla mappa nelle regioni coperte sono dati sui luoghi della Overture Maps Foundation (provenienti da Meta e Microsoft), disponibili con licenza Community Data License Agreement, Permissive 2.0. Dettagli dei luoghi, recensioni, percorsi e traffico arrivano da Google. Le immagini satellitari sono di Esri e Google.</string>
     <string name="settings_map_data_button">Copyright OpenStreetMap</string>
