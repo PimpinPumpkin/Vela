@@ -117,8 +117,10 @@ fun GoogleStyleDirectionsPanel(
     onModeSelected: (TravelMode) -> Unit,
     avoidTolls: Boolean = false,
     avoidHighways: Boolean = false,
+    avoidFerries: Boolean = false,
     onAvoidTolls: (Boolean) -> Unit = {},
     onAvoidHighways: (Boolean) -> Unit = {},
+    onAvoidFerries: (Boolean) -> Unit = {},
     onStartNav: () -> Unit,
     onSearchAlongRoute: (String) -> Unit,
     onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
@@ -333,13 +335,23 @@ fun GoogleStyleDirectionsPanel(
                                 FilterChip(
                                     selected = avoidTolls, onClick = { onAvoidTolls(!avoidTolls) },
                                     label = { Text(stringResource(R.string.place_avoid_tolls)) },
+                                    shape = CircleShape,
+                                    modifier = Modifier.dpadHighlight(CircleShape),
                                 )
                                 FilterChip(
                                     selected = avoidHighways, onClick = { onAvoidHighways(!avoidHighways) },
                                     label = { Text(stringResource(R.string.place_avoid_highways)) },
+                                    shape = CircleShape,
+                                    modifier = Modifier.dpadHighlight(CircleShape),
+                                )
+                                FilterChip(
+                                    selected = avoidFerries, onClick = { onAvoidFerries(!avoidFerries) },
+                                    label = { Text(stringResource(R.string.place_avoid_ferries)) },
+                                    shape = CircleShape,
+                                    modifier = Modifier.dpadHighlight(CircleShape),
                                 )
                             }
-                            if ((avoidTolls || avoidHighways) && routes.isNotEmpty() && routes.all { it.avoidNotHonored }) {
+                            if ((avoidTolls || avoidHighways || avoidFerries) && routes.isNotEmpty() && routes.all { it.avoidNotHonored }) {
                                 Row(Modifier.padding(start = 20.dp, end = 16.dp, top = 8.dp), verticalAlignment = Alignment.Top) {
                                     Icon(Icons.Outlined.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                                     Spacer(Modifier.width(8.dp))

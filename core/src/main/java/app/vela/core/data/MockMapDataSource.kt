@@ -62,6 +62,7 @@ class MockMapDataSource @Inject constructor() : MapDataSource {
         waypoints: List<LatLng>,
         avoidTolls: Boolean,
         avoidHighways: Boolean,
+        avoidFerries: Boolean,
         urgent: Boolean,
         departBearingDeg: Double?,
     ): List<Route> {

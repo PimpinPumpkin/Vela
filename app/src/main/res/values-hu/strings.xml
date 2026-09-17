@@ -576,7 +576,7 @@
     <string name="settings_voice_volume_louder">Hangosabb</string>
     <string name="settings_voice_volume_loudest">Leghangosabb</string>
     <string name="settings_voice_volume_hint">Milyen hangosan szól a hangos útvonalvezetés a médialejátszás felett. A hangosabb szintek csak a Vela hangra vonatkoznak; a rendszerhangok csak halkíthatók.</string>
-    <string name="place_avoid_not_honored">A díjköteles utak és autópályák elkerüléséhez offline régió szükséges ehhez az úthoz. Ezek az útvonalak még használhatják őket.</string>
+    <string name="place_avoid_not_honored">A díjköteles utak, autópályák és kompok elkerüléséhez offline régió szükséges ehhez az úthoz. Ezek az útvonalak még használhatják őket.</string>
     <string name="settings_lists_export_hint">Mentsd el a listáidat egy fájlba, vagy állítsd vissza egy másik eszközön.</string>
     <string name="settings_lists_imported">%1$d lista importálva</string>
     <string name="settings_places_imported">%1$d hely importálva</string>
@@ -671,6 +671,7 @@
     <string name="settings_map_colors_hint">A Modern a Google app jelenlegi palettáját követi. A Klasszikus a Vela korábbi kinézete: fehér utak, sárga autópályák, valódi zöldek. A kettő sötét módban különbözik leginkább jelenleg.</string>
     <string name="place_avoid_tolls">Díjköteles utak elkerülése</string>
     <string name="place_avoid_highways">Autópályák elkerülése</string>
+    <string name="place_avoid_ferries">Kompok elkerülése</string>
     <string name="map_satellite_toggle">Műholdas nézet</string>
     <string name="map_layers">Rétegek</string>
     <string name="settings_layers_button">Rétegek gomb megjelenítése</string>

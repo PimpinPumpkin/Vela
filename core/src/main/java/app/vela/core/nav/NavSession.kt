@@ -2,6 +2,7 @@ package app.vela.core.nav
 
 import android.os.SystemClock
 import app.vela.core.data.MapDataSource
+import app.vela.core.data.RoutingPrefs
 import app.vela.core.feedback.Haptics
 import app.vela.core.model.LatLng
 import app.vela.core.model.Route
@@ -271,7 +272,7 @@ class NavSession @Inject constructor(
         val gen = sessionGen
         rerouteJob?.cancel()
         rerouteJob = scope.launch {
-            val r = runCatching { dataSource.directions(loc, dest, mode, newRemaining.map { it.location }) }
+            val r = runCatching { dataSource.directions(loc, dest, mode, newRemaining.map { it.location }, avoidTolls = RoutingPrefs.avoidTolls, avoidHighways = RoutingPrefs.avoidHighways, avoidFerries = RoutingPrefs.avoidFerries) }
                 .getOrNull()?.let { driveable(it, loc, dest) }?.takeIf { it.reaches(dest) }
             if (gen != sessionGen) return@launch
             if (r == null) {
@@ -486,7 +487,7 @@ class NavSession @Inject constructor(
         val remainingStops = synchronized(stopLock) { stops.drop(passedStops) }
         val gen = sessionGen
         recheckJob = scope.launch {
-            val candidate = runCatching { dataSource.directions(loc, dest, mode, remainingStops.map { it.location }) }.getOrNull()
+            val candidate = runCatching { dataSource.directions(loc, dest, mode, remainingStops.map { it.location }, avoidTolls = RoutingPrefs.avoidTolls, avoidHighways = RoutingPrefs.avoidHighways, avoidFerries = RoutingPrefs.avoidFerries) }.getOrNull()
                 ?.let { driveable(it, loc, dest) }?.takeIf { it.reaches(dest) }
                 ?: run { note("recheck: no usable candidate"); return@launch }
             if (gen != sessionGen) return@launch // session ended/restarted while fetching
@@ -706,6 +707,9 @@ class NavSession @Inject constructor(
                 runCatching {
                     dataSource.directions(
                         loc, dest, mode, remainingStops.map { it.location },
+                        avoidTolls = RoutingPrefs.avoidTolls,
+                        avoidHighways = RoutingPrefs.avoidHighways,
+                        avoidFerries = RoutingPrefs.avoidFerries,
                         urgent = attempt.urgent,
                         // Pin the departure to where the car is pointing, so the answer is "given
                         // that you are going this way, what now" instead of "turn around".
@@ -796,7 +800,7 @@ class NavSession @Inject constructor(
     private suspend fun driveable(routes: List<Route>, from: LatLng, dest: LatLng): Route? {
         val top = routes.firstOrNull() ?: return null
         if (top.drivable) return top
-        val named = runCatching { dataSource.nameRoute(top, from, dest, mode) }.getOrNull()
+        val named = runCatching { dataSource.nameRoute(top, from, dest, mode, RoutingPrefs.avoidTolls, RoutingPrefs.avoidHighways, RoutingPrefs.avoidFerries) }.getOrNull()
         diag.record(
             "nav",
             "named a provisional route: ${top.maneuvers.size} -> ${named?.maneuvers?.size} steps, " +

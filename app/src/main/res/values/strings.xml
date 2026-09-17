@@ -767,7 +767,7 @@
     <string name="settings_voice_volume_louder">Louder</string>
     <string name="settings_voice_volume_loudest">Loudest</string>
     <string name="settings_voice_volume_hint">How loud spoken directions play over your media. Louder tiers apply to the Vela voice; system voices can only be made softer.</string>
-    <string name="place_avoid_not_honored">These routes may still use tolls or highways. Vela can avoid them on a direct trip online, or offline in a downloaded area, but not yet on a trip with stops.</string>
+    <string name="place_avoid_not_honored">These routes may still use tolls, highways, or ferries. Vela can avoid them on a direct trip online, or offline in a downloaded area, but not yet on a trip with stops.</string>
     <string name="settings_lists_export_hint">Back up your lists to a file, or restore them on another device.</string>
     <string name="settings_lists_imported">Imported %1$d list(s)</string>
     <string name="settings_places_imported">Imported %1$d place(s)</string> <!-- format -->
@@ -839,6 +839,7 @@
     <string name="settings_map_colors_hint">Modern matches the Google app\'s current palette. Classic is Vela\'s earlier look: white roads, yellow motorways, true greens. The two differ most in dark mode right now.</string>
     <string name="place_avoid_tolls">Avoid tolls</string>
     <string name="place_avoid_highways">Avoid highways</string>
+    <string name="place_avoid_ferries">Avoid ferries</string>
     <string name="shortcut_home" translatable="false">Home</string>
     <string name="shortcut_work" translatable="false">Work</string>
     <string name="map_satellite_toggle">Satellite view</string>

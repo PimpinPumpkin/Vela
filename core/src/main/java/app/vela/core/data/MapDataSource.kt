@@ -95,6 +95,7 @@ interface MapDataSource {
         // honour them (the fallback still routes rather than failing).
         avoidTolls: Boolean = false,
         avoidHighways: Boolean = false,
+        avoidFerries: Boolean = false,
         // Mid-drive reroute: single-shot fetches, no divergence snap — a fast usable route now
         // beats a polished one after the reroute deadline (the recheck loop upgrades it later).
         urgent: Boolean = false,
@@ -117,6 +118,7 @@ interface MapDataSource {
         mode: TravelMode = TravelMode.DRIVE,
         avoidTolls: Boolean = false,
         avoidHighways: Boolean = false,
+        avoidFerries: Boolean = false,
     ): Route = route
 }
 

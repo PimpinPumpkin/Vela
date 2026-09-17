@@ -1361,8 +1361,10 @@ fun DirectionsPanel(
     onModeSelected: (TravelMode) -> Unit,
     avoidTolls: Boolean = false,
     avoidHighways: Boolean = false,
+    avoidFerries: Boolean = false,
     onAvoidTolls: (Boolean) -> Unit = {},
     onAvoidHighways: (Boolean) -> Unit = {},
+    onAvoidFerries: (Boolean) -> Unit = {},
     onSelectRoute: (Int) -> Unit,
     onStartNav: () -> Unit,
     onSteps: (() -> Unit)?,
@@ -1598,7 +1600,7 @@ fun DirectionsPanel(
                     }
                 }
             }
-            // Route preferences, drive only (tolls/motorways mean nothing on foot or transit).
+            // Route preferences, drive only (tolls/motorways/ferries mean nothing on foot or transit).
             // Honoured on-device where the region graph carries the avoid profiles; online the
             // route falls back to normal rather than failing (the public OSRM can't exclude).
             if (currentMode == TravelMode.DRIVE) {
@@ -1621,20 +1623,27 @@ fun DirectionsPanel(
                         shape = androidx.compose.foundation.shape.CircleShape,
                         modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
                     )
+                    FilterChip(
+                        selected = avoidFerries,
+                        onClick = { onAvoidFerries(!avoidFerries) },
+                        label = { Text(stringResource(R.string.place_avoid_ferries)) },
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                    )
                 }
                 // Honesty note: with a toggle on but no offline region covering the trip, the online
                 // routers cannot honour it and used to just quietly route through tolls/highways
                 // anyway - say so instead of pretending (the "still routed me through the motorway"
                 // report). Keyed on the routes' own tag so it never shows when avoid worked.
-                if ((avoidTolls || avoidHighways) && routes.isNotEmpty() && routes.all { it.avoidNotHonored }) {
+                if ((avoidTolls || avoidHighways || avoidFerries) && routes.isNotEmpty() && routes.all { it.avoidNotHonored }) {
                     // Treatment upgraded (issue #286): this is the EXPLANATION for a control that
                     // otherwise looks broken - a new user flips Avoid tolls, gets routed down the
                     // toll road, and concludes the button does nothing. As dim bodySmall under the
                     // chips it read as decoration. It is the same weight as any other advisory now,
                     // with a glyph so the eye lands on it, and the text says what to DO rather than
-                    // only what went wrong. (Online avoid is not a missing feature to add later:
-                    // re-probed 2026-08-24, the public OSRM still rejects `exclude=` for every
-                    // value, and Google's keyless endpoint has no avoid parameter at all.)
+                    // only what went wrong. (The public OSRM still rejects `exclude=` for every
+                    // value; Google's keyless request honours tolls/highways/ferries since
+                    // 2026-09-06 / 2026-09-16, so today this mostly shows on trips with stops.)
                     Row(
                         Modifier.fillMaxWidth().padding(top = 8.dp),
                         verticalAlignment = Alignment.Top,

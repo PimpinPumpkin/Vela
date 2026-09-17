@@ -20,9 +20,9 @@ interface RouteEngine {
 
     /** Best-first routes for origin to destination, or empty if unavailable/failed. Never throws.
      *  The avoid flags are dynamic routing parameters on the obf engine (avoid_toll /
-     *  avoid_highway); an engine that cannot honor them returns empty for an avoid request so
+     *  avoid_highway / avoid_ferries); an engine that cannot honor them returns empty for an avoid request so
      *  the caller can fall through, never a silent route-through-the-toll. */
-    fun route(origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean = false, avoidHighways: Boolean = false): List<Route>
+    fun route(origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean = false, avoidHighways: Boolean = false, avoidFerries: Boolean = false): List<Route>
 
     /** The posted speed limit (km/h) of the road nearest ([lat],[lng]), or null if unknown. Only the
      *  on-device engine can answer (from the OSM `maxspeed` in the graph); online engines have no offline

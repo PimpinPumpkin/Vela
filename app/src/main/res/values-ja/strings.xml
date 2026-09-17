@@ -573,6 +573,7 @@
     <string name="settings_ui_scale">表示サイズ</string>
     <string name="place_avoid_tolls">有料道路を回避</string>
     <string name="place_avoid_highways">高速道路を回避</string>
+    <string name="place_avoid_ferries">フェリーを回避</string>
     <string name="settings_map_colors">地図の色</string>
     <string name="settings_map_colors_modern">モダン</string>
     <string name="settings_map_colors_classic">クラシック</string>
@@ -854,7 +855,7 @@
     <string name="settings_voice_volume_louder">大きめ</string>
     <string name="settings_voice_volume_loudest">最大</string>
     <string name="settings_voice_volume_hint">メディア音声に重ねて再生される音声案内の大きさです。「大きめ」以上は Vela 音声にのみ適用され、システムの音声は小さくすることしかできません。</string>
-    <string name="place_avoid_not_honored">これらのルートでは、有料道路や高速道路が使われることがあります。Vela は経由地のない経路ならオンラインで、ダウンロード済みエリアならオフラインで回避できますが、経由地のある経路にはまだ対応していません。</string>
+    <string name="place_avoid_not_honored">これらのルートでは、有料道路、高速道路、フェリーが使われることがあります。Vela は経由地のない経路ならオンラインで、ダウンロード済みエリアならオフラインで回避できますが、経由地のある経路にはまだ対応していません。</string>
     <string name="settings_asr_engines_title">端末内の音声認識エンジン</string>
     <string name="voice_capture_examples_title">話しかけられる例</string>
     <string name="voice_capture_example_home">「自宅に帰る」「職場まで」</string>

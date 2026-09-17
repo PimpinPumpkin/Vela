@@ -564,6 +564,7 @@
     <string name="settings_map_colors_hint">Nowoczesne odpowiadają obecnej palecie Google Maps. Klasyczne to wcześniejszy wygląd Vela: białe drogi, żółte autostrady, wyraziste zielenie.</string>
     <string name="place_avoid_tolls">Unikaj opłat drogowych</string>
     <string name="place_avoid_highways">Unikaj autostrad</string>
+    <string name="place_avoid_ferries">Unikaj promów</string>
     <string name="map_parking_find">Znajdź mój samochód</string>
     <string name="map_parking_move_here">Przenieś parking tutaj</string>
     <string name="map_parking_earlier">Wcześniejsze miejsca</string>
@@ -840,7 +841,7 @@
     <string name="settings_voice_volume_louder">Głośniej</string>
     <string name="settings_voice_volume_loudest">Najgłośniej</string>
     <string name="settings_voice_volume_hint">Jak głośno wskazówki głosowe odtwarzają się na tle twoich multimediów. Głośniejsze poziomy dotyczą głosu Vela; głosy systemowe można tylko ściszyć.</string>
-    <string name="place_avoid_not_honored">Te trasy mogą nadal prowadzić przez płatne drogi lub autostrady. Vela potrafi ich unikać na trasie bezpośredniej online albo offline w pobranym obszarze, ale jeszcze nie na trasie z przystankami.</string>
+    <string name="place_avoid_not_honored">Te trasy mogą nadal prowadzić przez płatne drogi, autostrady lub promy. Vela potrafi ich unikać na trasie bezpośredniej online albo offline w pobranym obszarze, ale jeszcze nie na trasie z przystankami.</string>
     <string name="settings_asr_engines_title">Silnik rozpoznawania mowy na urządzeniu</string>
     <string name="voice_capture_examples_title">Co możesz powiedzieć</string>
     <string name="voice_capture_example_home">„Zawieź mnie do domu” lub „zawieź mnie do pracy”</string>

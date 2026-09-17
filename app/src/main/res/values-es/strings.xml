@@ -558,6 +558,7 @@
     <string name="settings_map_colors_hint">Moderno sigue la paleta actual de Google Maps. Clásico es el aspecto anterior de Vela: carreteras blancas, autopistas amarillas, verdes intensos.</string>
     <string name="place_avoid_tolls">Evitar peajes</string>
     <string name="place_avoid_highways">Evitar autopistas</string>
+    <string name="place_avoid_ferries">Evitar ferris</string>
     <string name="map_parking_find">Encontrar mi coche</string>
     <string name="map_parking_move_here">Mover aparcamiento aquí</string>
     <string name="map_parking_earlier">Sitios anteriores</string>
@@ -831,7 +832,7 @@
     <string name="settings_voice_volume_louder">Más alto</string>
     <string name="settings_voice_volume_loudest">Máximo</string>
     <string name="settings_voice_volume_hint">Con qué volumen suenan las indicaciones habladas por encima de tu música. Los niveles más altos se aplican a la voz de Vela; las voces del sistema solo se pueden bajar.</string>
-    <string name="place_avoid_not_honored">Estas rutas pueden seguir usando peajes o autopistas. Vela puede evitarlos en un trayecto directo con conexión, o sin conexión en una zona descargada, pero todavía no en un trayecto con paradas.</string>
+    <string name="place_avoid_not_honored">Estas rutas pueden seguir usando peajes, autopistas o ferris. Vela puede evitarlos en un trayecto directo con conexión, o sin conexión en una zona descargada, pero todavía no en un trayecto con paradas.</string>
     <string name="settings_asr_engines_title">Motor de reconocimiento en el dispositivo</string>
     <string name="voice_capture_examples_title">Cosas que puedes decir</string>
     <string name="voice_capture_example_home">«Llévame a casa» o «llévame al trabajo»</string>

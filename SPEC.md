@@ -239,8 +239,9 @@ A running "port these into our own code" list, derived purely from the response 
   colouring the ETA chip / a "heavy traffic" badge on a route without walking every span.
 - **Lane guidance inside Google's `<step>` markup** - Google's own per-step lane data (we currently take
   lanes only from OSRM); worth capturing so the *Google-path* alternates get lane diagrams too.
-- **Route-preference request flags** (avoid tolls / highways / ferries) - `pb` REQUEST fields in
-  `DirectionsPb`, not response; a known-hard TODO, needs one captured toggle to pin the field.
+- **Route-preference request flags** (avoid tolls / highways / ferries) - PINNED: `pb` REQUEST fields
+  in the directions `!6m` feature block, `!2m{!1b1 highways, !2b1 tolls}` (2026-09-06) and a direct
+  `!7b1` ferries child (2026-09-16); `DirectionsPb.withAvoid` places them by pattern.
 - **Not-yet-parsed response nodes:** route warnings/advisories, toll cost, per-step road-name/ref (would
   give named turns without OSRM), and the rest of the `[10]` node beyond `[0]/[2]/[4]`.
 - **The nav "polish" is NOT in this protocol** - GPS-jitter attenuation, accelerometer-fused dead
