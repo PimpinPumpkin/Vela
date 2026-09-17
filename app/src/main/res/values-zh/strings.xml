@@ -901,4 +901,7 @@
     <string name="settings_osm_businesses_hint">同时显示 Vela 数据中缺少、但已在 OpenStreetMap 中标注的商店、餐馆等商户。OpenStreetMap 的编辑会在地图瓦片重建后出现,通常在一周内。默认关闭。</string>
     <string name="settings_places_lookup">在 Google 上查询点按的地点</string>
     <string name="settings_places_lookup_hint">点按某个地点会从 Google 获取它的营业时间、评价和照片，Vela 会记住匹配结果，下次点按即可立即显示。关闭后：点按的地点只显示 Vela 数据中已有的信息（名称、类型、地址、电话、网站），点按的内容不会发送给 Google。搜索和路线仍使用 Google。</string>
+    <string name="routing_offer_title">为%1$s下载离线导航?</string>
+    <string name="routing_offer_download">下载</string>
+    <string name="routing_offer_body">下载该地区的道路、地点和地图,约 %1$s。重新规划更快,没有信号也能继续导航。下载内容可在设置的离线地图中管理。</string>
 </resources>

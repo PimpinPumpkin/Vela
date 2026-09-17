@@ -884,4 +884,7 @@
     <string name="settings_speeding_alert">Snelheidswaarschuwing</string>
     <string name="settings_speeding_alert_hint">Zegt \"Je rijdt te hard\" zodra je een paar seconden boven de aangegeven limiet zit, en opnieuw nadat je bent afgeremd en er weer overheen kruipt. Alleen waar een aangegeven limiet bekend is, dezelfde die het snelheidsbord toont. Staat uit tenzij je het aanzet.</string>
     <string name="nav_speeding_alert">Je rijdt te hard</string>
+    <string name="routing_offer_title">Offline routes voor %1$s?</string>
+    <string name="routing_offer_download">Downloaden</string>
+    <string name="routing_offer_body">Haalt de wegen, plaatsen en kaart van deze regio op, ongeveer %1$s. Omleidingen gaan sneller en de routebegeleiding werkt zonder bereik. Downloads staan onder Instellingen, Offline kaarten.</string>
 </resources>

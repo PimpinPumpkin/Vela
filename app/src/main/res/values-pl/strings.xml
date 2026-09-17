@@ -893,4 +893,7 @@
     <string name="settings_speeding_alert">Alert o przekroczeniu prędkości</string>
     <string name="settings_speeding_alert_hint">Mówi „Przekraczasz dozwoloną prędkość”, gdy od kilku sekund jedziesz powyżej oznakowanego limitu, i ponownie, gdy zwolnisz i znów go przekroczysz. Tylko tam, gdzie znany jest oznakowany limit, ten sam, który pokazuje plakietka prędkości. Wyłączone, dopóki tego nie włączysz.</string>
     <string name="nav_speeding_alert">Przekraczasz dozwoloną prędkość</string>
+    <string name="routing_offer_title">Trasy offline dla regionu %1$s?</string>
+    <string name="routing_offer_download">Pobierz</string>
+    <string name="routing_offer_body">Pobiera drogi, miejsca i mapę tego regionu, około %1$s. Przeliczanie trasy jest szybsze, a nawigacja działa bez zasięgu. Pobrane dane są w Ustawieniach, w mapach offline.</string>
 </resources>

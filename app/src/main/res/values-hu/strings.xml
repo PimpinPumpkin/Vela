@@ -886,4 +886,7 @@
     <string name="settings_speeding_alert">Gyorshajtás-figyelmeztetés</string>
     <string name="settings_speeding_alert_hint">Bemondja, hogy „Túlléped a sebességhatárt”, ha néhány másodperce a kitáblázott határ fölött haladsz, és újra, miután lelassítasz, majd ismét fölé kúszol. Csak ott, ahol ismert a kitáblázott sebességhatár, amit a sebességjelvény mutat. Alapból ki van kapcsolva, amíg be nem kapcsolod.</string>
     <string name="nav_speeding_alert">Túlléped a sebességhatárt</string>
+    <string name="routing_offer_title">Offline útvonaltervezés ehhez: %1$s?</string>
+    <string name="routing_offer_download">Letöltés</string>
+    <string name="routing_offer_body">Letölti a régió útjait, helyeit és térképét, kb. %1$s. Gyorsabb az újratervezés, és a navigáció térerő nélkül is működik. A letöltések a Beállítások, Offline térképek alatt vannak.</string>
 </resources>

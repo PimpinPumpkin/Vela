@@ -884,4 +884,7 @@
     <string name="settings_speeding_alert">Aviso de exceso de velocidad</string>
     <string name="settings_speeding_alert_hint">Dice «Vas por encima del límite de velocidad» cuando llevas unos segundos por encima del límite señalizado, y de nuevo si reduces y vuelves a superarlo. Solo donde se conoce el límite señalizado, el que muestra la insignia de velocidad. Desactivado salvo que lo actives.</string>
     <string name="nav_speeding_alert">Vas por encima del límite de velocidad</string>
+    <string name="routing_offer_title">¿Rutas sin conexión para %1$s?</string>
+    <string name="routing_offer_download">Descargar</string>
+    <string name="routing_offer_body">Descarga las carreteras, los lugares y el mapa de esta región, unos %1$s. Los recálculos son más rápidos y las indicaciones funcionan sin señal. Las descargas están en Ajustes, Mapas sin conexión.</string>
 </resources>

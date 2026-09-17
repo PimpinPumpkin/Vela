@@ -902,4 +902,7 @@
     <string name="settings_speeding_alert_hint">當你超過速限數秒後，會唸出「你已超過速限」；減速後又再次超速時會再提醒一次。僅在已知速限（速限標誌顯示的那個）的路段有效。預設關閉，需自行開啟。</string>
     <string name="nav_speeding_alert">你已超過速限</string>
 
+    <string name="routing_offer_title">為%1$s下載離線導航?</string>
+    <string name="routing_offer_download">下載</string>
+    <string name="routing_offer_body">下載該地區的道路、地點和地圖,約 %1$s。重新規劃更快,沒有訊號也能繼續導航。下載內容可在設定的離線地圖中管理。</string>
 </resources>

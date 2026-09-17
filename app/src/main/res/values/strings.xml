@@ -118,6 +118,7 @@
     <string name="exp_chooser_options" translatable="false">Route options</string>
     <string name="exp_chooser_more" translatable="false">More options</string>
     <string name="exp_chooser_add_stops" translatable="false">Add stops</string>
+    <string name="exp_chooser_compare" translatable="false">Compare routes</string>
     <string name="exp_chooser_along" translatable="false">Add a stop along the way</string>
     <string name="exp_chooser_share_text" translatable="false">Directions to %1$s: %2$s, %3$s</string>
     <string name="settings_flock_route_alert" translatable="false">Avoid surveillance cameras</string>
@@ -965,4 +966,7 @@
     <string name="voice_error_audio">This phone wouldn\'t open its microphone for Vela. Close anything else that records audio and try again.</string>
     <string name="voice_error_recording">Recording stopped unexpectedly. Try again.</string>
     <string name="no_browser_installed">Your device does not have a browser</string>
+    <string name="routing_offer_title">Offline routing for %1$s?</string>
+    <string name="routing_offer_download">Download</string>
+    <string name="routing_offer_body">Gets the roads, places and map for this region, about %1$s. Reroutes come faster and directions keep working with no signal. Downloads are in Settings, Offline maps.</string>
 </resources>

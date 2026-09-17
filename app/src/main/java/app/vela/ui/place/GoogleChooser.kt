@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.AddLocationAlt
+import androidx.compose.material.icons.filled.AltRoute
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.DirectionsCar
@@ -125,6 +126,7 @@ fun GoogleStyleDirectionsPanel(
     onSearchAlongRoute: (String) -> Unit,
     onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
     onEditStops: () -> Unit,
+    onCompareRoutes: () -> Unit = {},
     onShare: () -> Unit,
     onClose: () -> Unit,
     onStep: (Int) -> Unit = {},
@@ -410,6 +412,14 @@ fun GoogleStyleDirectionsPanel(
                         Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.place_start))
+                    }
+                    // The classic list: each route's length, main roads and cameras side by side.
+                    if (routes.size > 1) {
+                        FilledTonalButton(onClick = onCompareRoutes) {
+                            Icon(Icons.Default.AltRoute, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.exp_chooser_compare))
+                        }
                     }
                     FilledTonalButton(onClick = onEditStops) {
                         Icon(Icons.Default.AddLocationAlt, contentDescription = null, modifier = Modifier.size(18.dp))

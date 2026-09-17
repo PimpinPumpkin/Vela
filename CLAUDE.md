@@ -1875,6 +1875,16 @@ architecture note.
   "Everything since" commit list: one line per feature, plain words, the reason for an early
   cut first if there is one (0.4.1217 is the model). The promote workflow cannot write this
   part; it is the release's own job, the same day. Nightlies keep the commit list alone.
+- **ROUTING OFFER + REGION SIZES (2026-09-17):** `MapViewModel.maybeOfferRouting()` (camera idle, once
+  per session until answered; pref `routing_offer_done`) offers the smallest obf region covering
+  Home or the fix, after onboarding, on the bare map; `answerRoutingOffer`. `archivesFor(region, list)`
+  picks the places/basemap archives a region download pulls: the SAME-ID archive first (the centre
+  rule alone pulled parent and neighbour archives), and `regionExtrasMb` feeds
+  `MapUiState.regionExtrasMb` into `regionInstalledMb(..., extraMb)` so every size shown is the
+  real total. Route bubbles (`routeBubblesFor`) show in BOTH choosers and keep `minGap` (25% of
+  the routes' diagonal) apart; the Google-style chooser's "Compare routes" sets MapScreen
+  `classicRoutes` (BACK clears it). VelaMapView no longer nulls `lastCameraTarget` on inset growth
+  while a route is up: the next frame used to fly to the selected place and cancel the route fit.
 - **QUERY INTENTS (discussion #365, 2026-09-13): `core/search/QueryIntents.parse(text, lang)`.**
   The phrase list shown in Settings > Search is `core/search/VoiceCommandExamples` (hand-written per
   language, since gluing a table verb to a table place word breaks grammar); `QueryIntentExamplesTest`

@@ -907,4 +907,7 @@
     <string name="settings_speeding_alert">速度超過の警告</string>
     <string name="settings_speeding_alert_hint">制限速度を数秒超えた状態が続くと「制限速度を超えています」と読み上げ、減速したあとにまた超えたときにも再度お知らせします。速度バッジに表示される制限速度が分かっている場所でのみ動作します。オンにしない限り無効です。</string>
     <string name="nav_speeding_alert">制限速度を超えています</string>
+    <string name="routing_offer_title">%1$s のオフライン経路を追加しますか?</string>
+    <string name="routing_offer_download">ダウンロード</string>
+    <string name="routing_offer_body">この地域の道路、スポット、地図(約 %1$s)を取得します。再検索が速くなり、電波がなくても案内が続きます。ダウンロードは設定のオフラインマップにあります。</string>
 </resources>
