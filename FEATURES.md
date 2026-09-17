@@ -50,6 +50,20 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   speed limit", once; it speaks again only after you have slowed back under the limit for a
   while and crept over it again. Uses the same posted limit and the same tolerance as the speed
   badge, so it fires exactly when the badge turns red, and only where a limit is known.
+- ✅ **Plate camera alerts while navigating (2026-09-16).** Settings, Map: "Plate camera
+  heads-up" shows a card and "Say when a plate camera is ahead" says "License plate camera ahead"
+  as you approach a Flock / ALPR camera on your route. Both are off by default and separate from
+  each other and from the map layer. Same timing as the speed-camera warning (about twelve
+  seconds of notice, never for a camera already behind you, quiet when you are stopped), once per
+  camera per route; cameras within 40 m of each other along the route are one alert ("License
+  plate cameras ahead"). Uses the bundled camera data, so no network. The voice follows the
+  spoken-directions mute.
+- ✅ **Plate cameras are counted by the way they face (2026-09-16).** A plate reader sees traffic
+  moving along its road, not across it, so a camera with a known facing only counts for a route
+  when it points within 50 degrees of that route's direction (either way) at the nearest stretch.
+  Cameras with no facing still count. This applies to the per-route camera counts, the "Avoid
+  surveillance cameras" pick, the route bar marks and the new alerts; the map layer still draws
+  every camera.
 - ✅ **Vela gives memory back when the system asks, and adapts to small phones (2026-07-23,
   adopted from the vela-dpad fork).** The speech model (about a quarter gigabyte while loaded) now
   unloads after two minutes unused and reloads in about a second on the next mic tap; map caches,

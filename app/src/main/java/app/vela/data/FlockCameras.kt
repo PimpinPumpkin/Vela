@@ -191,11 +191,16 @@ object FlockCameras {
         return out
     }
 
-    /** Cameras within [meters] of any SEGMENT of [polyline], for the route count. Empty if not loaded.
+    /** Cameras within [meters] of any SEGMENT of [polyline] that can see traffic on it, for the
+     *  route count and the nav alerts. Empty if not loaded.
      *  45 m, not the old 120 (issue #527): a camera on a parallel alternate a block over, or on
      *  the frontage road, counted against a route that never passes it, so a camera-free route
      *  badged "1 camera". A roadside ALPR sits within a lane or two of the way it watches, and a
-     *  divided highway's far carriageway is mostly past 45 m, so this counts what you drive past. */
+     *  divided highway's far carriageway is mostly past 45 m, so this counts what you drive past.
+     *  DIRECTION-AWARE (2026-09-16): a camera with a known facing counts only when that facing is
+     *  within 50 degrees of the nearest route segment's axis, either way along it; a plate reader
+     *  aimed across the road reads cross traffic. Untagged cameras count. Rule in :core
+     *  [app.vela.core.nav.CameraFacing]. */
     fun along(polyline: List<LatLng>, meters: Double = 45.0): List<AlprCamera> {
         if (!loaded || polyline.size < 2) return emptyList()
         val pad = 0.01
@@ -209,7 +214,11 @@ object FlockCameras {
                 grid[key(r, c)]?.let { bucket ->
                     for (i in bucket) {
                         val p = LatLng(lat[i], lng[i])
-                        if (nearPolyline(p, polyline, meters)) out.add(AlprCamera(p, op[i], dirStr(i)))
+                        val d = dir.getOrElse(i) { Float.NaN }
+                        val facing = if (d.isNaN()) null else d.toDouble()
+                        if (app.vela.core.nav.CameraFacing.onRoute(polyline, p, facing, meters)) {
+                            out.add(AlprCamera(p, op[i], dirStr(i)))
+                        }
                     }
                 }
                 c++
@@ -217,22 +226,5 @@ object FlockCameras {
             r++
         }
         return out
-    }
-
-    // Point-to-segment nearness, mirrors OverpassAlprCameras (kept local so :app doesn't reach :core internals).
-    private fun nearPolyline(p: LatLng, poly: List<LatLng>, meters: Double): Boolean {
-        for (i in 0 until poly.size - 1) if (segDistMeters(p, poly[i], poly[i + 1]) <= meters) return true
-        return false
-    }
-
-    private fun segDistMeters(p: LatLng, a: LatLng, b: LatLng): Double {
-        val mPerLat = 111_320.0
-        val mPerLng = 111_320.0 * Math.cos(Math.toRadians((a.lat + b.lat) / 2.0))
-        val bx = (b.lng - a.lng) * mPerLng; val by = (b.lat - a.lat) * mPerLat
-        val px = (p.lng - a.lng) * mPerLng; val py = (p.lat - a.lat) * mPerLat
-        val len2 = bx * bx + by * by
-        val t = if (len2 <= 0.0) 0.0 else ((px * bx + py * by) / len2).coerceIn(0.0, 1.0)
-        val ex = px - t * bx; val ey = py - t * by
-        return Math.sqrt(ex * ex + ey * ey)
     }
 }

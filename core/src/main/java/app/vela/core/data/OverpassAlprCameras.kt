@@ -112,7 +112,8 @@ object OverpassAlprCameras {
      *  failed tile just drops that stretch instead of zeroing the whole count. Cameras are then kept
      *  only if they're within [nearMeters] of an actual line SEGMENT (not just a vertex - decoded
      *  polylines are sparse on freeway straights, so a gantry sitting on the line but far from both
-     *  bracketing shape points used to be missed). Empty when every tile fails or nothing is near. */
+     *  bracketing shape points used to be missed), and only if a known facing looks along the nearest
+     *  segment ([app.vela.core.nav.CameraFacing]). Empty when every tile fails or nothing is near. */
     fun fetchAlong(
         http: OkHttpClient,
         polyline: List<LatLng>,
@@ -130,7 +131,13 @@ object OverpassAlprCameras {
                 if (seen.add(key)) all.add(cam)
             }
         }
-        return all.filter { nearPolyline(it.loc, polyline, nearMeters) }
+        // Direction-aware: a camera aimed across the road reads cross traffic, not this route
+        // (untagged cameras still count). See nav/CameraFacing.
+        return all.filter {
+            app.vela.core.nav.CameraFacing.onRoute(
+                polyline, it.loc, app.vela.core.nav.CameraFacing.parse(it.direction), nearMeters,
+            )
+        }
     }
 
     /** Split a route's coverage into local tiles (each at most [maxSpanDeg] on a side, padded by

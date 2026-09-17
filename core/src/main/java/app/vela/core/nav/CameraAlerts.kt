@@ -29,6 +29,34 @@ object CameraAlerts {
     fun leadDistanceM(speedMps: Double): Double =
         (speedMps * LEAD_SECONDS).coerceIn(MIN_LEAD_M, MAX_LEAD_M)
 
+    /** A run of cameras close together along the route, announced as one: where the first one
+     *  sits and how many there are. */
+    data class Group(val atM: Double, val count: Int)
+
+    /**
+     * Merge cameras that sit within [joinM] of the previous one along the route into one [Group],
+     * so a corner with three heads is one announcement rather than three back to back.
+     * [sortedMeters] must be ascending. Chained: each camera is compared with the one before it.
+     */
+    fun group(sortedMeters: List<Double>, joinM: Double = 40.0): List<Group> {
+        val out = ArrayList<Group>()
+        var start = 0.0
+        var last = 0.0
+        var count = 0
+        for (m in sortedMeters) {
+            if (count > 0 && m - last <= joinM) {
+                count++
+            } else {
+                if (count > 0) out.add(Group(start, count))
+                start = m
+                count = 1
+            }
+            last = m
+        }
+        if (count > 0) out.add(Group(start, count))
+        return out
+    }
+
     /**
      * The index of the camera to announce now, or null.
      *

@@ -59,4 +59,15 @@ class CameraAlertsTest {
     @Test fun `no cameras means nothing to say`() {
         assertNull(CameraAlerts.due(emptyList(), traveledM = 100.0, speedMps = 25.0, spoken = emptySet()))
     }
+
+    // A corner with several plate readers is one announcement, not three back to back.
+    @Test fun `cameras close together are grouped`() {
+        val groups = CameraAlerts.group(listOf(1_000.0, 1_020.0, 1_055.0, 2_000.0, 2_041.0))
+        assertEquals(
+            listOf(CameraAlerts.Group(1_000.0, 3), CameraAlerts.Group(2_000.0, 1), CameraAlerts.Group(2_041.0, 1)),
+            groups,
+        )
+        assertTrue(CameraAlerts.group(emptyList()).isEmpty())
+        assertEquals(listOf(CameraAlerts.Group(500.0, 1)), CameraAlerts.group(listOf(500.0)))
+    }
 }

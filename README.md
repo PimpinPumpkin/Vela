@@ -117,7 +117,10 @@ There's also a one-page tour at
 - **Flock cameras, on the map.** Mapped ALPR surveillance cameras (the
   community DeFlock project's OpenStreetMap data) draw out of the box, and the
   optional **Settings → Map → Avoid surveillance cameras** counts the cameras on
-  each route and quietly picks a lower-camera option when the detour is small.
+  each route (only the ones pointed along your road) and quietly picks a
+  lower-camera option when the detour is small. Two more opt-ins in the same
+  place give you a heads-up card or a spoken "License plate camera ahead" as you
+  approach one while navigating.
   The dataset lives on your phone and refreshes itself weekly.
 - **Vela Voice.** Spoken turn-by-turn from a neural voice that runs entirely on
   your phone, and a mic that transcribes your search on-device too. Nothing you
