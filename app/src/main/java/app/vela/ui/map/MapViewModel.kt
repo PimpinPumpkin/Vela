@@ -3432,6 +3432,7 @@ class MapViewModel @Inject constructor(
         // Otherwise every session opens on the STICKY last-used mode (user 2026-07-11).
         val (avTolls, avHighways, avFerries) = stickyAvoid()
         _state.update { it.copy(avoidTolls = avTolls, avoidHighways = avHighways, avoidFerries = avFerries) }
+        syncRoutingAvoid()
         val mode = if (sel.id.startsWith("parking:")) TravelMode.WALK else stickyTravelMode()
         if (mode != _state.value.travelMode) setTravelMode(mode) else route(mode)
     }
@@ -3840,11 +3841,21 @@ class MapViewModel @Inject constructor(
         route(mode)
     }
 
+    /** Mirror the chooser's avoid toggles into [app.vela.core.data.RoutingPrefs] so the nav
+     *  session's own fetches (reroutes, rechecks) honour them too. */
+    private fun syncRoutingAvoid() {
+        val st = _state.value
+        app.vela.core.data.RoutingPrefs.avoidTolls = st.avoidTolls
+        app.vela.core.data.RoutingPrefs.avoidHighways = st.avoidHighways
+        app.vela.core.data.RoutingPrefs.avoidFerries = st.avoidFerries
+    }
+
     fun setAvoidTolls(on: Boolean) {
         if (_state.value.avoidTolls == on) return
         appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
             .edit().putBoolean("avoid_tolls", on).apply()
         _state.update { it.copy(avoidTolls = on) }
+        syncRoutingAvoid()
         route(_state.value.travelMode) // re-route with the new preference
     }
 
@@ -3853,6 +3864,7 @@ class MapViewModel @Inject constructor(
         appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
             .edit().putBoolean("avoid_highways", on).apply()
         _state.update { it.copy(avoidHighways = on) }
+        syncRoutingAvoid()
         route(_state.value.travelMode)
     }
 
@@ -3861,6 +3873,7 @@ class MapViewModel @Inject constructor(
         appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
             .edit().putBoolean("avoid_ferries", on).apply()
         _state.update { it.copy(avoidFerries = on) }
+        syncRoutingAvoid()
         route(_state.value.travelMode)
     }
 

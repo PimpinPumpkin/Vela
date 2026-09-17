@@ -2738,6 +2738,13 @@ Gotchas:
   frozen-speedo/creeping-puck bug). Measured speeds pass a SYMMETRIC accel-bounded gate against the
   last ACCEPTED value (`gateMeasuredSpeed`, 2-fix persistence escape, shared with replay) - one-sided
   spike filters self-latch (a down-glitch to 0 then rejects every real speed as an up-spike forever).
+- **Avoids reach the nav session (2026-09-16).** `RoutingPrefs.avoidTolls/Highways/Ferries` mirror
+  the chooser's sticky toggles (seeded in VelaApp, kept in step by `MapViewModel.syncRoutingAvoid`),
+  and NavSession passes them on every fetch it makes itself (reroute, recheck, added stop,
+  `nameRoute`). Before this those calls used the defaults, so a reroute on a drive planned with an
+  avoid could route straight back through it. The offline car profile's highway flag is
+  `avoid_motorway` (confirmed in the vendored routing.xml: `avoid_highway` is the horse-riding
+  profile's), so offline "Avoid highways" never worked until the same fix.
 - **Avoid tolls / avoid highways (2026-07-11):** two sticky FilterChips in the route
   chooser (DRIVE only; prefs `avoid_tolls`/`avoid_highways`, seeded in routeToSelected like
   the sticky mode). **2026-08-08 (Reddit reports "just sat there" / "still routed through the

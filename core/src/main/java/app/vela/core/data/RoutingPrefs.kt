@@ -10,4 +10,12 @@ object RoutingPrefs {
      *  where a region is downloaded, else the open Valhalla router told to stay off busy roads.
      *  Off = the plain fastest bike route from OSRM. Default on, like Google's bike routing. */
     @Volatile var bikeSafe: Boolean = true
+
+    /** The route chooser's sticky avoid toggles (drive only). The NAV SESSION reads these for its
+     *  own fetches (reroutes, rechecks, added stops, route naming): they used to call directions()
+     *  with the defaults, so a reroute on a drive planned with Avoid tolls could put the tolls
+     *  straight back (found 2026-09-16). MapViewModel keeps them in step with the prefs. */
+    @Volatile var avoidTolls: Boolean = false
+    @Volatile var avoidHighways: Boolean = false
+    @Volatile var avoidFerries: Boolean = false
 }
