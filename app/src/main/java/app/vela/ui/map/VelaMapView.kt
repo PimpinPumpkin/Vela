@@ -215,6 +215,7 @@ private const val FLOCK_IMG = "vela-flock-cam"
 private const val FLOCK_DIR_LAYER = "vela-flock-dir" // facing cone under the badge (dir-tagged nodes)
 private const val FLOCK_DIR_IMG = "vela-flock-cone"
 private const val FLOCK_DIR_PROP = "dir"
+private const val FLOCK_COUNT_PROP = "cams" // heads on one corner; the badge shows "xN" past 1
 private const val TRANSIT_STOPS_SRC = "vela-transit-stops-src" // canonical GTFS stops (Transitous)
 private const val TRANSIT_STOPS_LAYER = "vela-transit-stops"
 private const val TRANSIT_STOP_IMG = "vela-transit-stop"
@@ -616,6 +617,7 @@ fun VelaMapView(
     onOpenPlaceClosed: (id: String) -> Unit = {}, // an open place matched one of [ambientClosed]: hide it for good
     placesPending: Boolean = false, // the open places source is on but its lookup has not answered yet
     osmBusinesses: Boolean = false, // draw OSM's businesses under the open places layer too (deduped by name)
+    navExitCallout: Pair<LatLng, String>? = null, // the exit you are taking: green bubble with its number
     placesOverlays: List<String> = emptyList(),   // pmtiles:// URIs of the open-data places layer (Overture), file:// or streamed
     basemapArchive: String? = null,               // pmtiles://file:// of an installed offline basemap covering the view; swaps the style's tile source
     onOpenPlaceTap: (app.vela.core.model.Place) -> Unit = {}, // a tapped open-places feature, seeded from its tile attributes
@@ -1317,6 +1319,23 @@ fun VelaMapView(
     // keep OSM's business icons down meanwhile, or they flash up and vanish again when the source
     // lands (user 2026-09-17). A lookup that answers with nothing hands them back.
     osmBusinessesOn = osmBusinesses
+    // The exit callout's one feature (or none). Cheap enough to push on every change of the
+    // maneuver; the layer itself is built with the rest of the nav labels.
+    LaunchedEffect(navExitCallout, styleRef, navMode) {
+        val style = styleRef ?: return@LaunchedEffect
+        val src = style.getSourceAs<GeoJsonSource>(NAV_EXIT_SRC) ?: return@LaunchedEffect
+        val c = navExitCallout.takeIf { navMode }
+        src.setGeoJson(
+            if (c == null) FeatureCollection.fromFeatures(emptyList())
+            else FeatureCollection.fromFeatures(
+                listOf(
+                    Feature.fromGeometry(Point.fromLngLat(c.first.lng, c.first.lat)).apply {
+                        addStringProperty("name", c.second)
+                    },
+                ),
+            ),
+        )
+    }
     LaunchedEffect(placesPending, styleRef, osmBusinesses) {
         val style = styleRef ?: return@LaunchedEffect
         val hide = (placesOverlays.isNotEmpty() || placesPending) && !osmBusinesses
@@ -4493,15 +4512,35 @@ private fun ensureLayers(style: Style) {
         )
         val flockLayer =
             SymbolLayer(FLOCK_LAYER, FLOCK_SRC).apply {
-                // Per-camera detail (with the facing cones below) owns street zoom only; the
-                // clustered twin covers everything wider, one badge per install.
+                // One badge per install (the cone features in the same source are drawn by the
+                // cone layer below, so this one takes only the badge features); the clustered twin
+                // covers the zooms below street level.
                 setMinZoom(FLOCK_DETAIL_ZOOM)
+                setFilter(Expression.has(FLOCK_COUNT_PROP))
                 setProperties(
                     PropertyFactory.iconImage(FLOCK_IMG),
                     PropertyFactory.iconSize(flockSize),
                     PropertyFactory.iconAllowOverlap(true), // never yields itself...
                     PropertyFactory.iconIgnorePlacement(false), // ...and later symbols (street names) dodge it
                     PropertyFactory.iconPadding(2f),
+                    // "x4" beside the badge when a corner carries several heads. Quiet by design:
+                    // the badge says there is enforcement here, the number only says how much.
+                    PropertyFactory.textField(
+                        Expression.switchCase(
+                            Expression.gt(Expression.get(FLOCK_COUNT_PROP), Expression.literal(1)),
+                            Expression.concat(Expression.literal("x"), Expression.toString(Expression.get(FLOCK_COUNT_PROP))),
+                            Expression.literal(""),
+                        ),
+                    ),
+                    PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                    PropertyFactory.textSize(10.5f),
+                    PropertyFactory.textOffset(arrayOf(0.95f, -0.75f)),
+                    PropertyFactory.textAnchor(Property.TEXT_ANCHOR_LEFT),
+                    PropertyFactory.textColor("#FFFFFF"),
+                    PropertyFactory.textHaloColor("#000000"),
+                    PropertyFactory.textHaloWidth(1.2f),
+                    PropertyFactory.textAllowOverlap(true),
+                    PropertyFactory.textIgnorePlacement(true),
                 )
             }
         when {
@@ -4743,6 +4782,7 @@ private const val NAV_XLABEL_SRC = "vela-nav-xlabels-src"
 private const val NAV_XLABEL_OFFSET_M = 35.0
 private val NAV_XLABEL_OFFSETS = doubleArrayOf(1.0, 1.8, 3.0) // tried in turn until the bubble clears the route
 private const val NAV_XLABEL_CLEAR_M = 30.0
+private const val NAV_XLABEL_MIN_CLEAR_M = 18.0 // below this the bubble would sit on the driven road
 
 /** Google-style floating road labels during NAV: horizontal, viewport-aligned name chips over the
  *  roads you're crossing or driving beside - far more legible than the line-following basemap
@@ -4916,7 +4956,7 @@ private fun addRouteBubbleImage(st: Style, id: String, fill: Int, edge: Int, d: 
     )
 }
 
-private fun navBubbleBitmap(dark: Boolean, d: Float): android.graphics.Bitmap {
+private fun navBubbleBitmap(dark: Boolean, d: Float, green: Boolean = false): android.graphics.Bitmap {
     val w = (46 * d).toInt()
     val body = 26 * d
     val h = (body + 7 * d).toInt() // + tail
@@ -4935,12 +4975,21 @@ private fun navBubbleBitmap(dark: Boolean, d: Float): android.graphics.Bitmap {
     p.op(tail, android.graphics.Path.Op.UNION)
     val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = if (dark) 0xFF3D4B63.toInt() else 0xFFFFFFFF.toInt()
+        color = when {
+            // The exit callout wears the green of the signs on the road.
+            green -> 0xFF14713C.toInt()
+            dark -> 0xFF3D4B63.toInt()
+            else -> 0xFFFFFFFF.toInt()
+        }
     }
     val edge = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 1.1f * d
-        color = if (dark) 0xFF6B7C96.toInt() else 0xFFAEB7C2.toInt()
+        color = when {
+            green -> 0xFFE8F5EC.toInt()
+            dark -> 0xFF6B7C96.toInt()
+            else -> 0xFFAEB7C2.toInt()
+        }
     }
     c.drawPath(p, fill)
     c.drawPath(p, edge)
@@ -4948,6 +4997,9 @@ private fun navBubbleBitmap(dark: Boolean, d: Float): android.graphics.Bitmap {
 }
 
 private const val NAV_BUBBLE_IMG = "vela-nav-bubble"
+private const val NAV_EXIT_BUBBLE_IMG = "vela-nav-exit-bubble"
+private const val NAV_EXIT_SRC = "vela-nav-exit-src"
+private const val NAV_EXIT_LAYER = "vela-nav-exit"
 
 private var lastNavLabelKey: Any? = null // self-gate: (on, dark, exclude) - nulled on style reload
 
@@ -5021,6 +5073,9 @@ private fun crossLabelPoint(line: List<Pair<Double, Double>>, window: List<LatLn
         }
         if (bestClear >= NAV_XLABEL_CLEAR_M) break
     }
+    // No room on either side: no callout. A bubble that clips the road you are driving is worse
+    // than a missing street name (user 2026-09-17).
+    if (bestClear < NAV_XLABEL_MIN_CLEAR_M) return null
     val pick = best ?: return null
     return (pick.first / k) to (pick.second / m)
 }
@@ -5097,6 +5152,43 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
         listOf(org.maplibre.android.maps.ImageStretches(r + d, body - r - d)),
         org.maplibre.android.maps.ImageContent(6 * d, 3 * d, w - 6 * d, body - 3 * d),
     )
+    // The green twin, for the exit you are taking (same geometry, so the same stretch zones).
+    style.addImage(
+        NAV_EXIT_BUBBLE_IMG, navBubbleBitmap(dark, d, green = true),
+        listOf(
+            org.maplibre.android.maps.ImageStretches(r + d, cx - 7 * d),
+            org.maplibre.android.maps.ImageStretches(cx + 7 * d, w - r - d),
+        ),
+        listOf(org.maplibre.android.maps.ImageStretches(r + d, body - r - d)),
+        org.maplibre.android.maps.ImageContent(6 * d, 3 * d, w - 6 * d, body - 3 * d),
+    )
+    // The exit you are taking gets its own green callout (user 2026-09-17): the exits you drive
+    // past keep the basemap's shields, and this one says which is yours. Its own source so it
+    // updates per maneuver without touching the cross-street set.
+    if (style.getSource(NAV_EXIT_SRC) == null) style.addSource(GeoJsonSource(NAV_EXIT_SRC))
+    if (style.getLayer(NAV_EXIT_LAYER) == null) {
+        style.addLayer(
+            SymbolLayer(NAV_EXIT_LAYER, NAV_EXIT_SRC).withProperties(
+                PropertyFactory.textField(Expression.get("name")),
+                PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                PropertyFactory.textSize(13.5f),
+                PropertyFactory.textColor("#FFFFFF"),
+                PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_POINT),
+                PropertyFactory.textRotationAlignment(Property.TEXT_ROTATION_ALIGNMENT_VIEWPORT),
+                PropertyFactory.textPitchAlignment(Property.TEXT_PITCH_ALIGNMENT_VIEWPORT),
+                PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_VIEWPORT),
+                PropertyFactory.iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_VIEWPORT),
+                PropertyFactory.iconImage(NAV_EXIT_BUBBLE_IMG),
+                PropertyFactory.iconTextFit(Property.ICON_TEXT_FIT_BOTH),
+                PropertyFactory.textAnchor(Property.TEXT_ANCHOR_BOTTOM),
+                PropertyFactory.textOffset(arrayOf(0f, -0.9f)),
+                // Yours is the one callout that never yields: it is the next thing you must do.
+                PropertyFactory.iconAllowOverlap(true),
+                PropertyFactory.textAllowOverlap(true),
+                PropertyFactory.iconIgnorePlacement(false),
+            ),
+        )
+    }
     fun layer(id: String, tier: String, minZ: Float, fade: Pair<Float, Float>? = null) {
         // Google only calls out OTHER streets - never the road you're driving. The crossing pass
         // in VelaMapView only emits points for streets that meet the route ahead and are not on
@@ -7000,19 +7092,27 @@ private fun applyData(
     // zoom - a Flock corner mounts several single-direction heads). The route "passes N cameras"
     // count stays on raw nodes on purpose; only the DRAWN badges merge.
     if (flockCameras != lastAppliedFlock) {
-        val flockFc = FeatureCollection.fromFeatures(
-            flockCameras.map { cam ->
-                Feature.fromGeometry(Point.fromLngLat(cam.loc.lng, cam.loc.lat)).apply {
-                    // Facing cone: only dir-tagged nodes get the property, and the cone layer
-                    // filters on its presence - untagged cameras draw the bare badge as before.
-                    cam.direction.toFloatOrNull()?.let { addNumberProperty(FLOCK_DIR_PROP, it) }
+        // ONE badge per install, at every zoom (user 2026-09-17: a junction with a head on each
+        // approach drew four overlapping badges). The heads' facing cones all fan from that one
+        // point, so the beams still say which ways it watches, and a small "x4" says how many
+        // heads are there. The route "passes N cameras" count still runs on the raw nodes.
+        val clusters = app.vela.core.data.MapDeclutter.cluster(flockCameras, FLOCK_CLUSTER_M) { it.loc }
+        val feats = ArrayList<Feature>(clusters.size * 2)
+        for (c in clusters) {
+            feats += Feature.fromGeometry(Point.fromLngLat(c.centroid.lng, c.centroid.lat)).apply {
+                addNumberProperty(FLOCK_COUNT_PROP, c.members.size)
+            }
+            // One cone per head that carries a direction, all anchored on the badge's point.
+            for (cam in c.members) {
+                val dir = cam.direction.toFloatOrNull() ?: continue
+                feats += Feature.fromGeometry(Point.fromLngLat(c.centroid.lng, c.centroid.lat)).apply {
+                    addNumberProperty(FLOCK_DIR_PROP, dir)
                 }
-            },
-        )
-        style.getSourceAs<GeoJsonSource>(FLOCK_SRC)?.setGeoJson(flockFc)
+            }
+        }
+        style.getSourceAs<GeoJsonSource>(FLOCK_SRC)?.setGeoJson(FeatureCollection.fromFeatures(feats))
         val clusteredFc = FeatureCollection.fromFeatures(
-            app.vela.core.data.MapDeclutter.cluster(flockCameras, FLOCK_CLUSTER_M) { it.loc }
-                .map { c -> Feature.fromGeometry(Point.fromLngLat(c.centroid.lng, c.centroid.lat)) },
+            clusters.map { c -> Feature.fromGeometry(Point.fromLngLat(c.centroid.lng, c.centroid.lat)) },
         )
         style.getSourceAs<GeoJsonSource>(FLOCK_CLUSTER_SRC)?.setGeoJson(clusteredFc)
         lastAppliedFlock = flockCameras

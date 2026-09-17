@@ -1875,6 +1875,15 @@ architecture note.
   "Everything since" commit list: one line per feature, plain words, the reason for an early
   cut first if there is one (0.4.1217 is the model). The promote workflow cannot write this
   part; it is the release's own job, the same day. Nightlies keep the commit list alone.
+- **EXIT CALLOUT + CAMERA CLUSTER (2026-09-17):** `core/nav/ExitLabel.of(instruction)` pulls the exit
+  NUMBER out of a maneuver (word table per language, plus the CJK number-before-word form; a bare
+  number never counts, it is usually a road ref) and MapScreen passes it as `navExitCallout` for
+  ramp/fork/keep maneuvers only; VelaMapView draws it from `NAV_EXIT_SRC` with the green twin of the
+  callout sprite (`navBubbleBitmap(green = true)`), overlap allowed - it is the next thing you must
+  do. Flock badges are now ONE per `FLOCK_CLUSTER_M` cluster at EVERY zoom: `FLOCK_SRC` carries a
+  badge feature per cluster (`FLOCK_COUNT_PROP`, drawn with an "xN" label past one) plus one cone
+  feature per head at the same point, so the beams fan from a single badge. `crossLabelPoint`
+  returns null below `NAV_XLABEL_MIN_CLEAR_M`: no room on either side, no bubble.
 - **CHOOSER INSET IS MEASURED (2026-09-17):** `cameraBottomInset` for the route chooser comes from
   the panel's own `onGloballyPositioned` top edge in WINDOW coordinates (`dirPanelTopRaw`, sampled
   through a 140 ms `snapshotFlow` debounce so the panel's height animation does not re-fit every

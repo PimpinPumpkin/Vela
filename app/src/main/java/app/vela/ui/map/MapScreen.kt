@@ -1226,6 +1226,18 @@ fun MapScreen(
             onOpenPlaceClosed = vm::onOpenPlaceClosed,
             placesPending = state.placesPending,
             osmBusinesses = app.vela.ui.MapPoiPrefs.osmBusinesses.value,
+            // The exit you are taking, for the green callout on the map: only a numbered exit off
+            // a ramp or a fork, and only while its own step is the one being guided.
+            navExitCallout = if (!state.navigating) null else remember(state.activeRoute, state.nav.stepIndex) {
+                val m = state.activeRoute?.maneuvers?.getOrNull(state.nav.stepIndex)
+                val ramp = m?.type in setOf(
+                    app.vela.core.model.ManeuverType.RAMP_LEFT, app.vela.core.model.ManeuverType.RAMP_RIGHT,
+                    app.vela.core.model.ManeuverType.FORK_LEFT, app.vela.core.model.ManeuverType.FORK_RIGHT,
+                    app.vela.core.model.ManeuverType.KEEP_LEFT, app.vela.core.model.ManeuverType.KEEP_RIGHT,
+                )
+                val label = if (m != null && ramp) app.vela.core.nav.ExitLabel.of(m.instruction) else null
+                if (m != null && label != null) m.location to label else null
+            },
             basemapArchive = state.basemapArchive,
             onOpenPlaceTap = vm::onOpenPlaceTap,
             onRoadLimitKmh = vm::onOverlayRoadLimit,
