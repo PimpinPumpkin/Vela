@@ -885,7 +885,7 @@
     <string name="settings_speeding_alert_hint">Промовляє «Ви перевищуєте швидкість», коли ви кілька секунд їдете понад дозволену швидкість, і ще раз, якщо після сповільнення знову її перевищите. Лише там, де відома дозволена швидкість, та сама, що показує значок швидкості. Вимкнено, доки ви не ввімкнете.</string>
     <string name="nav_speeding_alert">Ви перевищуєте швидкість</string>
     <string name="settings_osm_businesses">Заклади з OpenStreetMap</string>
-    <string name="settings_osm_businesses_hint">Показує також магазини, ресторани та інші заклади з OpenStreetMap, яких немає в даних Vela. Зміни в OpenStreetMap з\'являються після перебудови тайлів карти, зазвичай протягом тижня. Типово вимкнено.</string>
+    <string name="settings_osm_businesses_hint">Показує також магазини, ресторани та інші заклади з OpenStreetMap, яких немає в даних Vela. Зміни в OpenStreetMap з\'являються після перебудови тайлів карти, зазвичай протягом тижня. Типово увімкнено.</string>
     <string name="settings_places_lookup">Шукати в Google місця, яких ви торкаєтеся</string>
     <string name="settings_places_lookup_hint">Дотик до місця завантажує з Google його години роботи, відгуки та фото, і Vela запам\'ятовує збіг, тож наступний дотик буде миттєвим. Вимк. = місце показує лише те, що є в даних Vela (назва, тип, адреса, телефон, сайт), і жодних відомостей про дотик Google не отримує. Пошук і маршрути все одно працюють через Google.</string>
     <string name="routing_offer_title">Офлайн-маршрути для регіону %1$s?</string>
