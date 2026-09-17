@@ -96,7 +96,6 @@
     <string name="settings_no_saved_places">Ancora nessun luogo salvato</string>
     <string name="settings_export">Esporta</string>
     <string name="settings_import">Importa</string>
-    <string name="settings_data_privacy">Fonte dati e privacy</string>
     <string name="settings_data_privacy_hint">Vela parla con gli endpoint pubblici di Google direttamente da questo dispositivo: niente backend, niente account, niente chiave API. Google vede IP, ricerca e area della mappa, non chi sei.</string>
     <string name="settings_privacy_button">Quali dati riceve Google</string>
     <string name="settings_diagnostics">Diagnostica</string>
@@ -576,16 +575,20 @@
         <item quantity="one">+%d altra fermata</item>
         <item quantity="other">+%d altre fermate</item>
     </plurals>
+    <string name="settings_places">Luoghi</string>
+    <string name="settings_privacy">Privacy</string>
+    <string name="settings_cameras_group">Telecamere</string>
+    <string name="settings_experiments">Esperimenti</string>
+    <string name="settings_hub_places_sub">Fonte dei luoghi, cosa mostrare, schede</string>
     <string name="settings_hub_appearance_sub">Tema, stile mappa, unità, lingua</string>
     <string name="settings_hub_map_sub">Traffico, trasporti, livelli, edifici 3D</string>
-    <string name="settings_hub_place_pages_sub">Recensioni, foto, filtri dei contenuti</string>
-    <string name="settings_hub_navigation_sub">Guida, avvisi, modalità demo</string>
+    <string name="settings_hub_navigation_sub">Guida, telecamere, controlli dal vivo</string>
     <string name="settings_hub_voice_sub">Indicazioni vocali e voci</string>
     <string name="settings_hub_search_sub">Ricerca vocale e modelli vocali</string>
     <string name="settings_hub_offline_sub">Mappe offline, percorsi, luoghi</string>
-    <string name="settings_hub_saved_sub">Esporta e importa i tuoi luoghi</string>
-    <string name="settings_hub_privacy_sub">Come Vela gestisce i tuoi dati</string>
-    <string name="settings_hub_diagnostics_sub">Report di arresto, viaggi, compatibilità</string>
+    <string name="settings_hub_saved_sub">Le tue liste, esporta, cronologia parcheggi</string>
+    <string name="settings_hub_privacy_sub">Cosa riceve Google, cancella cronologia</string>
+    <string name="settings_hub_diagnostics_sub">Segnalazioni di crash, viaggi, modalità demo, esperimenti</string>
     <string name="settings_hub_about_sub">Versione, aggiornamenti, supporto</string>
     <string name="settings_theme_amoled">Nero AMOLED</string>
     <string name="place_review_more">Altro</string>

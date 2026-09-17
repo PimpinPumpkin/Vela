@@ -119,7 +119,6 @@
     <string name="settings_no_saved_places">暂无已保存的地点</string>
     <string name="settings_export">导出</string>
     <string name="settings_import">导入</string>
-    <string name="settings_data_privacy">数据来源与隐私</string>
     <string name="settings_data_privacy_hint">Vela 直接从本设备访问 Google 的公开接口：无后端、无账号、无 API 密钥。Google 能看到您的 IP、搜索词和地图区域，但不知道您是谁。</string>
     <string name="settings_privacy_button">Google 会收到哪些数据</string>
     <string name="settings_diagnostics">诊断</string>
@@ -591,16 +590,20 @@
     <plurals name="topcard_more_stops">
         <item quantity="other">+%d个途经点</item>
     </plurals>
+    <string name="settings_places">地点</string>
+    <string name="settings_privacy">隐私</string>
+    <string name="settings_cameras_group">摄像头</string>
+    <string name="settings_experiments">实验功能</string>
+    <string name="settings_hub_places_sub">地点来源、显示内容、地点页面</string>
     <string name="settings_hub_appearance_sub">主题、地图样式、单位、语言</string>
-    <string name="settings_hub_map_sub">交通、公交、图层、3D建筑</string>
-    <string name="settings_hub_place_pages_sub">评论、照片、内容过滤</string>
-    <string name="settings_hub_navigation_sub">导航提示、提醒、演示模式</string>
+    <string name="settings_hub_map_sub">路况、公交、图层、3D 建筑</string>
+    <string name="settings_hub_navigation_sub">导航指引、摄像头、实时复查</string>
     <string name="settings_hub_voice_sub">语音播报与语音</string>
     <string name="settings_hub_search_sub">语音搜索与语音模型</string>
     <string name="settings_hub_offline_sub">离线地图、路线、地点</string>
-    <string name="settings_hub_saved_sub">导出和导入你的地点</string>
-    <string name="settings_hub_privacy_sub">Vela 如何处理你的数据</string>
-    <string name="settings_hub_diagnostics_sub">崩溃报告、行程、兼容性</string>
+    <string name="settings_hub_saved_sub">你的列表、导出、停车记录</string>
+    <string name="settings_hub_privacy_sub">Google 收到的信息、清除历史记录</string>
+    <string name="settings_hub_diagnostics_sub">崩溃报告、行程、演示模式、实验功能</string>
     <string name="settings_hub_about_sub">版本、更新、支持</string>
     <string name="settings_theme_amoled">AMOLED纯黑</string>
     <string name="settings_traffic_lights">红绿灯提示</string>

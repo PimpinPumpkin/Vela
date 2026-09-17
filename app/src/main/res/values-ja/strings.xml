@@ -119,7 +119,6 @@
     <string name="settings_no_saved_places">保存済みの場所はまだありません</string>
     <string name="settings_export">エクスポート</string>
     <string name="settings_import">インポート</string>
-    <string name="settings_data_privacy">データソースとプライバシー</string>
     <string name="settings_data_privacy_hint">Vela はこの端末から直接 Google の公開エンドポイントと通信します。バックエンドなし、アカウント不要、API キーも不要です。Google に見えるのは IP アドレス、検索内容、地図の表示範囲だけで、あなたが誰かは分かりません。</string>
     <string name="settings_privacy_button">Google に送信されるデータ</string>
     <string name="settings_diagnostics">診断</string>
@@ -595,16 +594,20 @@
     <plurals name="topcard_more_stops">
         <item quantity="other">+%d件の経由地</item>
     </plurals>
+    <string name="settings_places">スポット</string>
+    <string name="settings_privacy">プライバシー</string>
+    <string name="settings_cameras_group">カメラ</string>
+    <string name="settings_experiments">試験機能</string>
+    <string name="settings_hub_places_sub">スポットの取得元、表示、スポットのページ</string>
     <string name="settings_hub_appearance_sub">テーマ、地図スタイル、単位、言語</string>
-    <string name="settings_hub_map_sub">交通、乗換、レイヤー、3D建物</string>
-    <string name="settings_hub_place_pages_sub">レビュー、写真、コンテンツフィルター</string>
-    <string name="settings_hub_navigation_sub">案内、通知、デモモード</string>
+    <string name="settings_hub_map_sub">交通状況、公共交通、レイヤー、3D 建物</string>
+    <string name="settings_hub_navigation_sub">案内、カメラ、ライブ再確認</string>
     <string name="settings_hub_voice_sub">音声案内と音声</string>
     <string name="settings_hub_search_sub">音声検索と音声モデル</string>
     <string name="settings_hub_offline_sub">オフライン地図、ルート、場所</string>
-    <string name="settings_hub_saved_sub">場所のエクスポートとインポート</string>
-    <string name="settings_hub_privacy_sub">Velaのデータの扱いについて</string>
-    <string name="settings_hub_diagnostics_sub">クラッシュレポート、走行記録、互換性</string>
+    <string name="settings_hub_saved_sub">リスト、エクスポート、駐車履歴</string>
+    <string name="settings_hub_privacy_sub">Google に送られる情報、履歴の消去</string>
+    <string name="settings_hub_diagnostics_sub">クラッシュレポート、走行記録、デモモード、試験機能</string>
     <string name="settings_hub_about_sub">バージョン、更新、サポート</string>
     <string name="settings_theme_amoled">AMOLEDブラック</string>
     <string name="settings_traffic_lights">信号を使った案内</string>

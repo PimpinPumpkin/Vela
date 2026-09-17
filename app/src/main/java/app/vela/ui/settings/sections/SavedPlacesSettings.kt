@@ -27,7 +27,8 @@ import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.dpadRowSibling // D-pad-only operation (docs/dpad.md)
 
-/** Saved places sub-screen: export/import the saved places and the local lists. */
+/** Saved places sub-screen: export/import the saved places and the local lists, and the
+ *  parking history. */
 @Composable
 internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
@@ -96,6 +97,8 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             ) { Text(stringResource(R.string.settings_import)) }
         }
         }
+        Spacer(Modifier.height(8.dp))
+        ParkingHistoryGroup(vm)
         Spacer(Modifier.height(24.dp))
     }
 }

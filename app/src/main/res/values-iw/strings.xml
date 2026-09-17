@@ -96,7 +96,6 @@
     <string name="settings_no_saved_places">עדיין אין מקומות שמורים</string>
     <string name="settings_export">ייצוא</string>
     <string name="settings_import">ייבוא</string>
-    <string name="settings_data_privacy">מקור נתונים &amp; פרטיות</string>
     <string name="settings_data_privacy_hint">Vela פונה לנקודות הקצה הציבוריות של Google ישירות מהמכשיר הזה: ללא שרת, ללא חשבון, ללא מפתח API. Google רואה את כתובת ה-IP, השאילתה ואזור המפה שלך, לא מי אתה.</string>
     <string name="settings_privacy_button">אילו נתונים Google מקבל</string>
     <string name="settings_diagnostics">אבחון</string>
@@ -580,16 +579,20 @@
         <item quantity="many">+%d עצירות נוספות</item>
         <item quantity="other">+%d עצירות נוספות</item>
     </plurals>
+    <string name="settings_places">מקומות</string>
+    <string name="settings_privacy">פרטיות</string>
+    <string name="settings_cameras_group">מצלמות</string>
+    <string name="settings_experiments">ניסויים</string>
+    <string name="settings_hub_places_sub">מקור המקומות, מה מוצג, דפי מקום</string>
     <string name="settings_hub_appearance_sub">ערכת נושא, סגנון מפה, יחידות, שפה</string>
-    <string name="settings_hub_map_sub">תנועה, תחבורה ציבורית, שכבות, בניינים תלת-ממדיים</string>
-    <string name="settings_hub_place_pages_sub">ביקורות, תמונות, סינון תוכן</string>
-    <string name="settings_hub_navigation_sub">הנחיה, התראות, מצב הדגמה</string>
+    <string name="settings_hub_map_sub">תנועה, תחבורה ציבורית, שכבות, מבנים בתלת-ממד</string>
+    <string name="settings_hub_navigation_sub">הנחיה, מצלמות, בדיקות חיות</string>
     <string name="settings_hub_voice_sub">הוראות מדוברות וקולות</string>
     <string name="settings_hub_search_sub">חיפוש קולי ומודלים של דיבור</string>
     <string name="settings_hub_offline_sub">מפות לא מקוונות, ניווט, מקומות</string>
-    <string name="settings_hub_saved_sub">ייצוא וייבוא של המקומות שלך</string>
-    <string name="settings_hub_privacy_sub">איך Vela מטפלת בנתונים שלך</string>
-    <string name="settings_hub_diagnostics_sub">דוחות קריסה, נסיעות, תאימות</string>
+    <string name="settings_hub_saved_sub">הרשימות שלך, ייצוא, היסטוריית חניה</string>
+    <string name="settings_hub_privacy_sub">מה Google מקבלת, ניקוי היסטוריה</string>
+    <string name="settings_hub_diagnostics_sub">דוחות קריסה, נסיעות, מצב הדגמה, ניסויים</string>
     <string name="settings_hub_about_sub">גרסה, עדכונים, תמיכה</string>
     <string name="settings_theme_amoled">שחור AMOLED</string>
     <string name="place_review_more">עוד</string>
