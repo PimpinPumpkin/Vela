@@ -69,7 +69,7 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
     override fun isReady(mode: TravelMode): Boolean =
         profileFor(mode) != null && regions().any { it.id !in failed && hasObf(it.id) }
 
-    override fun route(origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean): List<Route> {
+    override fun route(origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean): List<Route> {
         val profile = profileFor(mode) ?: return emptyList()
         val all = regions()
         // MULTI-FILE routing (2026-08-03): OsmAnd's router reads across obf files natively - the
@@ -109,7 +109,10 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
                         // routing.xml parameter ids - the router excludes matching roads at
                         // calc time, no baked profiles needed (unlike the GraphHopper CH pair).
                         if (avoidTolls) put("avoid_toll", "true")
-                        if (avoidHighways) put("avoid_highway", "true")
+                        if (avoidHighways) put("avoid_motorway", "true") // the car profile's id (avoid_highway is horse riding only)
+                        // `avoid_ferries` is the car profile parameter id in the vendored
+                        // routing.xml. DRIVE only, like the chip.
+                        if (avoidFerries && mode == TravelMode.DRIVE) put("avoid_ferries", "true")
                     }
                     val config = builder().build(
                         profile,

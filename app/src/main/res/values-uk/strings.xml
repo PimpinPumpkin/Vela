@@ -560,6 +560,7 @@
     <string name="settings_map_colors_hint">Сучасні повторюють поточну палітру Google Maps. Класичні повертають попередній вигляд Vela: білі дороги, жовті магістралі, насичена зелень.</string>
     <string name="place_avoid_tolls">Уникати платних доріг</string>
     <string name="place_avoid_highways">Уникати шосе</string>
+    <string name="place_avoid_ferries">Уникати поромів</string>
     <string name="map_parking_find">Знайти моє авто</string>
     <string name="map_parking_move_here">Перемістити парковку сюди</string>
     <string name="map_parking_earlier">Попередні місця</string>
@@ -833,7 +834,7 @@
     <string name="settings_voice_volume_louder">Гучніше</string>
     <string name="settings_voice_volume_loudest">Найгучніше</string>
     <string name="settings_voice_volume_hint">Наскільки гучно голосові вказівки звучать поверх вашої музики. Гучніші рівні працюють для голосу Vela; системні голоси можна лише приглушити.</string>
-    <string name="place_avoid_not_honored">Ці маршрути все одно можуть проходити платними дорогами чи автомагістралями. Vela може уникати їх на прямій поїздці онлайн або офлайн у завантаженій області, але поки що не на поїздці із зупинками.</string>
+    <string name="place_avoid_not_honored">Ці маршрути все одно можуть проходити платними дорогами, автомагістралями чи поромними переправами. Vela може уникати їх на прямій поїздці онлайн або офлайн у завантаженій області, але поки що не на поїздці із зупинками.</string>
     <string name="settings_asr_engines_title">Рушій розпізнавання на пристрої</string>
     <string name="voice_capture_examples_title">Що можна сказати</string>
     <string name="voice_capture_example_home">«Відвези мене додому» або «мені на роботу»</string>

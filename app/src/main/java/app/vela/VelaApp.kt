@@ -79,6 +79,13 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.SpeedCamWarn.init(this) // spoken camera warning (issue #229), off by default
         app.vela.ui.SpeedingAlert.init(this) // spoken over-the-limit alert (issue #404), off by default
         app.vela.ui.BikeSafe.init(this) // bike routes prefer lanes and quiet streets (issue #401), on by default
+        // The chooser's sticky avoid toggles, for the nav session's own fetches from the first
+        // drive on (a resumed drive or an Android Auto start never opens the phone's chooser).
+        getSharedPreferences("vela_settings", MODE_PRIVATE).let { p ->
+            app.vela.core.data.RoutingPrefs.avoidTolls = p.getBoolean("avoid_tolls", false)
+            app.vela.core.data.RoutingPrefs.avoidHighways = p.getBoolean("avoid_highways", false)
+            app.vela.core.data.RoutingPrefs.avoidFerries = p.getBoolean("avoid_ferries", false)
+        }
         app.vela.ui.FlockRouteAlert.init(this) // load the persisted "warn about cameras on route" toggle
         app.vela.ui.FlockNavAlert.init(this) // plate-camera card + spoken alert while navigating, off by default
         // Parse the bundled on-device ALPR/Flock camera dataset off the main thread (map layer draws

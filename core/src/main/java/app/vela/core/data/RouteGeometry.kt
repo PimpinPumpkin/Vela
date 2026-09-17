@@ -162,10 +162,11 @@ object RouteGeometry {
         mode: TravelMode,
         avoidTolls: Boolean = false,
         avoidHighways: Boolean = false,
+        avoidFerries: Boolean = false,
         tries: Int = OSRM_TRIES,
         departBearingDeg: Double? = null,
     ): List<Route> =
-        routeOsrm(http, listOf(origin, dest), mode, alternatives = true, avoidTolls, avoidHighways, tries, departBearingDeg)
+        routeOsrm(http, listOf(origin, dest), mode, alternatives = true, avoidTolls, avoidHighways, avoidFerries, tries, departBearingDeg)
 
     /** OSRM forced THROUGH [waypoints] (origin, vias…, dest) — used to follow Google's
      *  traffic-smart path with OSRM's full street-named steps (option 3: traffic-aware routing).
@@ -176,6 +177,7 @@ object RouteGeometry {
         mode: TravelMode,
         avoidTolls: Boolean = false,
         avoidHighways: Boolean = false,
+        avoidFerries: Boolean = false,
         departBearingDeg: Double? = null,
         // True only for the traffic SNAP (vias sampled off Google's line, which must sit on the
         // road): a via that snapped far away is refused. A user's STOP is routinely set back
@@ -183,7 +185,7 @@ object RouteGeometry {
         strictVias: Boolean = false,
     ): List<Route> =
         if (waypoints.size < 2) emptyList()
-        else routeOsrm(http, waypoints, mode, alternatives = false, avoidTolls, avoidHighways, departBearingDeg = departBearingDeg, strictVias = strictVias)
+        else routeOsrm(http, waypoints, mode, alternatives = false, avoidTolls, avoidHighways, avoidFerries, departBearingDeg = departBearingDeg, strictVias = strictVias)
 
     /**
      * OSRM `bearings=`, constraining only the FIRST waypoint to the direction the car is actually
@@ -221,6 +223,7 @@ object RouteGeometry {
         alternatives: Boolean,
         avoidTolls: Boolean = false,
         avoidHighways: Boolean = false,
+        avoidFerries: Boolean = false,
         tries: Int = OSRM_TRIES,
         departBearingDeg: Double? = null,
         strictVias: Boolean = false,
@@ -231,7 +234,7 @@ object RouteGeometry {
             "?overview=full&geometries=polyline6&steps=true" +
             (if (alternatives) "&alternatives=3" else "") +
             departBearingParam(departBearingDeg, points.size) +
-            excludeParam(mode, avoidTolls, avoidHighways)
+            excludeParam(mode, avoidTolls, avoidHighways, avoidFerries)
         val req = Request.Builder().url(url).header("User-Agent", VelaConfig.VELA_UA).build()
         // The FOSSGIS community OSRM transiently 5xx/429/resets on mobile, and each miss otherwise drops
         // nav to Google's ABBREVIATED (nameless) steps — the "why aren't these street names?" bug. So retry
@@ -281,11 +284,12 @@ object RouteGeometry {
     /** OSRM `exclude=` classes for the avoid toggles (drive only; an unknown class makes
      *  OSRM 400 the whole request). Empty while [OSRM_SUPPORTS_EXCLUDE] is off - the
      *  on-device avoid profiles are the real avoid router until then. */
-    private fun excludeParam(mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean): String {
+    private fun excludeParam(mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean): String {
         if (!OSRM_SUPPORTS_EXCLUDE || mode != TravelMode.DRIVE) return ""
         val classes = buildList {
             if (avoidTolls) add("toll")
             if (avoidHighways) add("motorway")
+            if (avoidFerries) add("ferry")
         }
         return if (classes.isEmpty()) "" else "&exclude=" + classes.joinToString(",")
     }

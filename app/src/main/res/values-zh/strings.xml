@@ -569,6 +569,7 @@
     <string name="settings_ui_scale">界面大小</string>
     <string name="place_avoid_tolls">避开收费站</string>
     <string name="place_avoid_highways">避开高速</string>
+    <string name="place_avoid_ferries">避开轮渡</string>
     <string name="settings_map_colors">地图颜色</string>
     <string name="settings_map_colors_modern">现代</string>
     <string name="settings_map_colors_classic">经典</string>
@@ -846,7 +847,7 @@
     <string name="settings_voice_volume_louder">更响</string>
     <string name="settings_voice_volume_loudest">最响</string>
     <string name="settings_voice_volume_hint">语音播报盖过媒体声音的音量。更响的档位仅适用于 Vela 语音；系统语音只能调低。</string>
-    <string name="place_avoid_not_honored">这些路线可能仍会经过收费路段或高速公路。Vela 可以在联网的直达行程中避开它们，在已下载区域内离线时也可以，但暂不支持带经停点的行程。</string>
+    <string name="place_avoid_not_honored">这些路线可能仍会经过收费路段、高速公路或轮渡。Vela 可以在联网的直达行程中避开它们，在已下载区域内离线时也可以，但暂不支持带经停点的行程。</string>
     <string name="settings_asr_engines_title">设备端识别引擎</string>
     <string name="voice_capture_examples_title">您可以这样说</string>
     <string name="voice_capture_example_home">“带我回家”或“去公司”</string>

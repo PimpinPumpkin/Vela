@@ -300,6 +300,7 @@ data class MapUiState(
     // avoid profiles; online falls back to a normal route (the public OSRM can't exclude).
     val avoidTolls: Boolean = false,
     val avoidHighways: Boolean = false,
+    val avoidFerries: Boolean = false,
     val styleName: String = MapStyle.DEFAULT.label,
     val selectedEngine: VoiceEngine? = null,
     val searching: Boolean = false,
@@ -3429,8 +3430,9 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(directionsOpen = true, directionsReversed = false, directionsOrigin = null, pickingOrigin = false, pickingDest = false, directionsWaypoints = emptyList(), pickingStop = false) }
         // Walking back to the car is the parking spot's whole point — default to WALK there.
         // Otherwise every session opens on the STICKY last-used mode (user 2026-07-11).
-        val (avTolls, avHighways) = stickyAvoid()
-        _state.update { it.copy(avoidTolls = avTolls, avoidHighways = avHighways) }
+        val (avTolls, avHighways, avFerries) = stickyAvoid()
+        _state.update { it.copy(avoidTolls = avTolls, avoidHighways = avHighways, avoidFerries = avFerries) }
+        syncRoutingAvoid()
         val mode = if (sel.id.startsWith("parking:")) TravelMode.WALK else stickyTravelMode()
         if (mode != _state.value.travelMode) setTravelMode(mode) else route(mode)
     }
@@ -3824,7 +3826,7 @@ class MapViewModel @Inject constructor(
         if (!route.provisional) return route
         val o = route.polyline.firstOrNull() ?: return route.copy(provisional = false)
         val d = route.polyline.lastOrNull() ?: return route.copy(provisional = false)
-        return runCatching { dataSource.nameRoute(route, o, d, _state.value.travelMode, _state.value.avoidTolls, _state.value.avoidHighways) }
+        return runCatching { dataSource.nameRoute(route, o, d, _state.value.travelMode, _state.value.avoidTolls, _state.value.avoidHighways, _state.value.avoidFerries) }
             .getOrNull() ?: route.copy(provisional = false)
     }
 
@@ -3839,11 +3841,21 @@ class MapViewModel @Inject constructor(
         route(mode)
     }
 
+    /** Mirror the chooser's avoid toggles into [app.vela.core.data.RoutingPrefs] so the nav
+     *  session's own fetches (reroutes, rechecks) honour them too. */
+    private fun syncRoutingAvoid() {
+        val st = _state.value
+        app.vela.core.data.RoutingPrefs.avoidTolls = st.avoidTolls
+        app.vela.core.data.RoutingPrefs.avoidHighways = st.avoidHighways
+        app.vela.core.data.RoutingPrefs.avoidFerries = st.avoidFerries
+    }
+
     fun setAvoidTolls(on: Boolean) {
         if (_state.value.avoidTolls == on) return
         appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
             .edit().putBoolean("avoid_tolls", on).apply()
         _state.update { it.copy(avoidTolls = on) }
+        syncRoutingAvoid()
         route(_state.value.travelMode) // re-route with the new preference
     }
 
@@ -3852,14 +3864,25 @@ class MapViewModel @Inject constructor(
         appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
             .edit().putBoolean("avoid_highways", on).apply()
         _state.update { it.copy(avoidHighways = on) }
+        syncRoutingAvoid()
         route(_state.value.travelMode)
     }
 
-    /** The persisted avoid toggles (sticky like the travel mode - the habit is the setting). */
-    private fun stickyAvoid(): Pair<Boolean, Boolean> = runCatching {
+    fun setAvoidFerries(on: Boolean) {
+        if (_state.value.avoidFerries == on) return
+        appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+            .edit().putBoolean("avoid_ferries", on).apply()
+        _state.update { it.copy(avoidFerries = on) }
+        syncRoutingAvoid()
+        route(_state.value.travelMode)
+    }
+
+    /** The persisted avoid toggles (sticky like the travel mode - the habit is the setting):
+     *  tolls, highways, ferries. */
+    private fun stickyAvoid(): Triple<Boolean, Boolean, Boolean> = runCatching {
         val p = appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
-        p.getBoolean("avoid_tolls", false) to p.getBoolean("avoid_highways", false)
-    }.getOrDefault(false to false)
+        Triple(p.getBoolean("avoid_tolls", false), p.getBoolean("avoid_highways", false), p.getBoolean("avoid_ferries", false))
+    }.getOrDefault(Triple(false, false, false))
 
     /** The remembered last-used travel mode (see [setTravelMode]); DRIVE until first changed. */
     private fun stickyTravelMode(): TravelMode = runCatching {
@@ -3895,7 +3918,7 @@ class MapViewModel @Inject constructor(
         // Stops are ALWAYS stored in travel order (swapDirections physically reverses the list), so no
         // per-call reversal here — display, reorder arrows and routing all agree on one order.
         val stops = s.directionsWaypoints.map { it.location }
-        val etaKey = modeEtaKeyOf(origin, dest, stops, s.avoidTolls, s.avoidHighways, s.directionsTimeMode, s.directionsTimeEpochSec)
+        val etaKey = modeEtaKeyOf(origin, dest, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries, s.directionsTimeMode, s.directionsTimeEpochSec)
         beginModeEtas(etaKey)
         if (mode == TravelMode.TRANSIT) { routeTransit(origin, dest, s.directionsTimeMode, s.directionsTimeEpochSec, etaKey); return }
         // Guard: this reply is only applied if directions is still open for the SAME mode (the user hasn't
@@ -3904,7 +3927,7 @@ class MapViewModel @Inject constructor(
         routeJob?.cancel()
         routeJob = viewModelScope.launch {
             try {
-                val routes = dataSource.directions(origin, dest, mode, stops, s.avoidTolls, s.avoidHighways)
+                val routes = dataSource.directions(origin, dest, mode, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries)
                 if (!stillWanted()) return@launch // backed out / switched mode mid-fetch — don't resurrect it
                 _state.update {
                     it.copy(
@@ -3919,7 +3942,7 @@ class MapViewModel @Inject constructor(
                 // the next, unrelated Directions request.
                 if (routes.isEmpty()) autoStartOnRoute = false
                 shownDuration(routes)?.let { publishModeEta(etaKey, mode, formatDuration(it)) }
-                prefetchModeEtas(etaKey, origin, dest, stops, s.avoidTolls, s.avoidHighways, s.directionsTimeMode, s.directionsTimeEpochSec, except = mode)
+                prefetchModeEtas(etaKey, origin, dest, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries, s.directionsTimeMode, s.directionsTimeEpochSec, except = mode)
                 val flockEpoch = ++routesEpoch // stamp THIS route set; a newer route() bumps it and stales the flock job
                 if (routes.isNotEmpty()) refreshFlockOnRoute(routes, flockEpoch)
                 // The default active route can be a PROVISIONAL Google alternate (it sorts to the
@@ -4047,7 +4070,7 @@ class MapViewModel @Inject constructor(
             if (etaKey != null) {
                 trips.firstOrNull()?.durationText?.let { publishModeEta(etaKey, TravelMode.TRANSIT, transitChipText(it)) }
                 val s = _state.value
-                prefetchModeEtas(etaKey, origin, dest, s.directionsWaypoints.map { it.location }, s.avoidTolls, s.avoidHighways, timeMode, timeEpochSec, except = TravelMode.TRANSIT)
+                prefetchModeEtas(etaKey, origin, dest, s.directionsWaypoints.map { it.location }, s.avoidTolls, s.avoidHighways, s.avoidFerries, timeMode, timeEpochSec, except = TravelMode.TRANSIT)
             }
         }
     }
@@ -4061,9 +4084,9 @@ class MapViewModel @Inject constructor(
     // signalled arterial, see the #227 calibration). Cached per trip in 5-minute buckets so
     // flipping between modes refetches nothing.
 
-    private fun modeEtaKeyOf(origin: LatLng, dest: LatLng, stops: List<LatLng>, avoidTolls: Boolean, avoidHighways: Boolean, timeMode: Int, timeEpochSec: Long?): String {
+    private fun modeEtaKeyOf(origin: LatLng, dest: LatLng, stops: List<LatLng>, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean, timeMode: Int, timeEpochSec: Long?): String {
         val pts = (listOf(origin) + stops + dest).joinToString(";") { "%.5f,%.5f".format(java.util.Locale.US, it.lat, it.lng) }
-        return "$pts|$avoidTolls|$avoidHighways|$timeMode|$timeEpochSec|${System.currentTimeMillis() / 300_000L}"
+        return "$pts|$avoidTolls|$avoidHighways|$avoidFerries|$timeMode|$timeEpochSec|${System.currentTimeMillis() / 300_000L}"
     }
 
     /** Google's transit summary says "21 hr 6 min" where formatDuration says "21 h 6 min"; the chips
@@ -4087,7 +4110,7 @@ class MapViewModel @Inject constructor(
 
     private fun prefetchModeEtas(
         key: String, origin: LatLng, dest: LatLng, stops: List<LatLng>,
-        avoidTolls: Boolean, avoidHighways: Boolean, timeMode: Int, timeEpochSec: Long?, except: TravelMode,
+        avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean, timeMode: Int, timeEpochSec: Long?, except: TravelMode,
     ) {
         modeEtaJob?.cancel()
         val known = modeEtaCache[key].orEmpty()
@@ -4101,7 +4124,7 @@ class MapViewModel @Inject constructor(
                 if (_state.value.travelMode == m) continue // the user tapped it; route() is on it
                 val eta = runCatching {
                     if (m == TravelMode.TRANSIT) webDirections.transit(origin, dest, timeMode, timeEpochSec).firstOrNull()?.durationText?.let(::transitChipText)
-                    else shownDuration(dataSource.directions(origin, dest, m, stops, avoidTolls, avoidHighways))?.let { formatDuration(it) }
+                    else shownDuration(dataSource.directions(origin, dest, m, stops, avoidTolls, avoidHighways, avoidFerries))?.let { formatDuration(it) }
                 }.getOrNull() ?: continue
                 publishModeEta(key, m, eta)
             }
