@@ -2026,10 +2026,15 @@ fun VelaMapView(
                 // whole route however correct the math (user 2026-07-15: "doesn't quite show the
                 // full route") - Google's overview levels out too.
                 flightDepth[0]++
+                // The RIGHT margin clears the nav FAB column (overview / mute / search, ~88 dp
+                // wide with its margin): at a flat 70 px a destination to the south-east could sit
+                // under the buttons, which Google never lets happen (issue #352 follow-up). The
+                // left keeps room for the route bar strip.
+                val dens = context.resources.displayMetrics.density
                 map.animateCamera(
                     CameraUpdateFactory.newLatLngBounds(
                         b.build(), 0.0, 0.0,
-                        70, (map.height * 0.30).toInt(), 70, (map.height * 0.22).toInt(),
+                        (40 * dens).toInt(), (map.height * 0.30).toInt(), (104 * dens).toInt(), (map.height * 0.22).toInt(),
                     ),
                     animMs,
                     flightCb(),

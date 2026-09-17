@@ -1975,7 +1975,7 @@ architecture note.
   `ofLocalizedTime(SHORT)` alone for a clock the user sees. (#352) The nav Overview is a LIVE
   refit loop in VelaMapView (`overviewLive`, arrow-to-destination every 4 s, keyed on the
   polyline so a reroute refits), ended by pan/pinch/Re-center; the tick is the user's request,
-  the polyline key is not. (#330) `UpdateCard` shows `UpdateInfo.notes` through
+  the polyline key is not. The fit leaves 104 dp on the right for the FAB column and 40 dp on the left for the route bar (2026-09-16: a destination to the south-east sat under the buttons). (#330) `UpdateCard` shows `UpdateInfo.notes` through
   `plainReleaseNotes` (markdown stripped, CI's versionName/versionCode lines dropped, 24 lines).
   (#359) `PlaceSheet` share menu: Copy link = `placeUrl()` = the cid deep link, same as Open on
   web. Reviews-language on #359 was NOT reproducible: the device sends `hl=zh-TW`, Google serves
