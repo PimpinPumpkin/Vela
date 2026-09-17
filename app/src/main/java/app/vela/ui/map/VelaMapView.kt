@@ -1304,6 +1304,14 @@ fun VelaMapView(
                 // From z19.5 the budget is `openIconCapMax` per block, not unlimited: a diamond-
                 // district block holds hundreds of jewellers.
                 val iconCapMax = app.vela.core.config.CalibrationStore.latest.tune("openIconCapMax", 40.0).toInt()
+                // Street-zoom budget per 400 m cell (2026-09-17, against Google Maps on the same
+                // Midtown blocks: Google drew ~15 icons where Vela drew ~25, and this layer was the
+                // largest remaining frame cost there, 45 -> 58 fps when hidden). Google holds a dense
+                // block back until you are close; these are the dials.
+                val rankZ16 = app.vela.core.config.CalibrationStore.latest.tune("openRankZ16", 3.0).toInt()
+                val promZ16 = app.vela.core.config.CalibrationStore.latest.tune("openPromZ16", 5.5)
+                val rankZ17 = app.vela.core.config.CalibrationStore.latest.tune("openRankZ17", 8.0).toInt()
+                val promZ17 = app.vela.core.config.CalibrationStore.latest.tune("openPromZ17", 5.0)
                 fun blockBudget(n: Int, prom: Double, value: Expression) = Expression.switchCase(
                     Expression.any(
                         Expression.switchCase(
@@ -1397,8 +1405,8 @@ fun VelaMapView(
                                 // Prominence escapes tightened 2026-09-16 (4.0 -> 5.0 at z16, 3.0 -> 4.5 at
                                 // z17): a Manhattan 400 m cell holds 3,000+ places and any shop with a
                                 // website scores about 4, so the old escape drew hundreds per block.
-                                Expression.stop(16f, topOr("rank", 5, 5.0, icon)),
-                                Expression.stop(17f, topOr("rank", 12, 4.5, icon)),
+                                Expression.stop(16f, topOr("rank", rankZ16, promZ16, icon)),
+                                Expression.stop(17f, topOr("rank", rankZ17, promZ17, icon)),
                                 // FULL-FAT ICON BUDGET at street zoom (user 2026-09-16: "have a
                                 // limit to the full fat POIs period if too many are on screen...
                                 // minimizing to little circle dots is an alternative if we are too
@@ -1439,8 +1447,8 @@ fun VelaMapView(
                                 name,
                                 Expression.stop(13f, topOr("crank", 2, 6.0, name)),
                                 Expression.stop(15f, topOr("rank", 1, 5.0, name)),
-                                Expression.stop(16f, topOr("rank", 5, 5.0, name)),
-                                Expression.stop(17f, topOr("rank", 12, 4.5, name)),
+                                Expression.stop(16f, topOr("rank", rankZ16, promZ16, name)),
+                                Expression.stop(17f, topOr("rank", rankZ17, promZ17, name)),
                                 // Labels stay THINNED at max zoom (2026-09-16). Icons come in for
                                 // everything from 17.5 (the stop below), but labelling every one of
                                 // them is what costs: each label is glyph layout plus a collision

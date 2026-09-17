@@ -2096,6 +2096,14 @@ architecture note.
   the cut still draws as a DOT (the dots tier is unfiltered from z17), which is the user's ask:
   "minimizing to little circle dots is an alternative if we are too crowded ... we can see more
   later when we zoom into an area", not places disappearing.
+- **Street-zoom place budget is remote (2026-09-17).** The z16/z17 steps of the open places layer read
+  `openRankZ16` (3) / `openPromZ16` (5.5) and `openRankZ17` (8) / `openPromZ17` (5.0) from calibration
+  `tuning` (were hard 5 / 5.0 and 12 / 4.5). Measured against Google Maps on the same Midtown blocks
+  (screen recording, distinct frames): Google ~50 fps with ~15 icons, Vela ~41 with ~25; with the
+  ambient fix in, hiding the open places layer took one-step-in from 45 to 58 fps, and these caps
+  took it to 49. Davis downtown at the same zoom still shows every block's main places. NB a screen
+  recording costs the 4a enough GPU that a map rendering right at 16 ms halves to 30 fps while
+  Google's lighter frames do not; the in-app `VelaFps` probe is the fair per-frame number.
 - **The Google places (ambient) source is maxzoom 18, not 12 (2026-09-16).** Bisected in Midtown on the
   4a with a probe-only adb hook that hides layers by type or id prefix: fills, lines, circles and 3D
   changed nothing; hiding ALL symbol layers took one-zoom-in from 22 to 60 fps, and `vela-ambient` alone
