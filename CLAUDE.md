@@ -1875,6 +1875,12 @@ architecture note.
   "Everything since" commit list: one line per feature, plain words, the reason for an early
   cut first if there is one (0.4.1217 is the model). The promote workflow cannot write this
   part; it is the release's own job, the same day. Nightlies keep the commit list alone.
+- **CHOOSER INSET IS MEASURED (2026-09-17):** `cameraBottomInset` for the route chooser comes from
+  the panel's own `onGloballyPositioned` top edge in WINDOW coordinates (`dirPanelTopRaw`, sampled
+  through a 140 ms `snapshotFlow` debounce so the panel's height animation does not re-fit every
+  frame) against `LocalView.current.height`, not a fraction of `screenHeightDp`: the fraction
+  understated the panel by ~130 px (the bars the map draws behind) and the trip's START framed
+  behind it. The fractions remain as the first-frame fallback.
 - **TENANTS AND STOREFRONTS IN THE BAKE (2026-09-17):** `tools/build-places-region.sh` now flags a
   row as `tenant` when it is a department of a nearby anchor (address, brand or name-head match, the
   existing hash joins), when its category or name is a KIOSK (`iskiosk`: Redbox, Coinstar, ecoATM,
