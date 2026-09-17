@@ -59,7 +59,7 @@ Defaults that make the safe path the easy one:
 - **Commit messages**: name a place when it is the subject ("hours mis-paired
   at stores with in-store pharmacies"); don't name places that are only the
   scenery of your test drive.
-- **Screenshots**: default to the demo tools (Settings → Navigation → Simulate
+- **Screenshots**: default to the demo tools (Settings → Diagnostics → Simulate
   my location / Simulate driving). A real view is fine when it deliberately
   shows somewhere that says nothing about you; check the corners either way -
   search recents, POI labels and street names all talk.
@@ -532,16 +532,23 @@ Defaults that make the safe path the easy one:
   entry never leads to nothing), `SettingsScaffold` (the one place all the Settings D-pad focus
   plumbing lives - every page builds on it, see docs/dpad.md) and `SettingsComponents`
   (SettingsGroup/ToggleRow/SelectableRow/GroupDivider/PageIntro/Hint), with one file per spoke in
-  `ui/settings/sections/`. Spoke contents: Appearance (theme incl. the new AMOLED true-black
-  ThemeMode, interface size, map colors, Material You, units, follow-system language toggle),
-  Map (layer toggles + 3D + missing-building fill + the Places-on-the-map group), Offline maps
-  (moved up between Map and Place pages 2026-07-23 - people reach it often, same reasoning as the
-  old single-page order), Place pages,
-  Navigation (keep-screen-on, traffic lights, vibrate chips, demo drive, sim location, parking
-  history), Voice (spoken-directions master switch, engine list, inline collapsible Voice library
-  - the separate VoiceBrowseScreen route is gone, `openVoiceLibrary` deep-links to the VOICE spoke
-  with the library expanded), Search (ASR engines + provider picker), Saved places
-  (saved + lists export/import), Data & privacy (privacy link, live rechecks, **Clear history** since 2026-09-14 for issue #425: `MapViewModel.clearAllHistory()` = recent queries + recent places + parking history + every recorded trip behind a `VelaDialog` confirm, saved places and lists untouched, indexed for the settings search), Diagnostics
+  `ui/settings/sections/`. Spoke contents (hub order since the 2026-09-17 reshuffle, which grouped
+  rows by topic; shared groups live in `sections/MovedGroups.kt`): Appearance (theme incl. the new
+  AMOLED true-black ThemeMode, interface size, map colors, Material You, units, follow-system
+  language toggle), Map (how the map looks only: layer toggles, 3D, missing-building fill, house
+  numbers), Places (`PlacesSettings`, was Place pages: `PlacesSourceGroup` "Places come from",
+  `PlacesOnMapGroup` show places / tapped-place lookup / civic / transit stops / icon size, then the
+  place-page toggles), Navigation (keep-screen-on, traffic lights, vibrate chips,
+  `CameraSettingsGroup` with every surveillance/speed camera row, `LiveRechecksGroup`), Voice
+  (spoken-directions master switch, engine list, inline collapsible Voice library - the separate
+  VoiceBrowseScreen route is gone, `openVoiceLibrary` deep-links to the VOICE spoke with the
+  library expanded), Search (the voice command list, ASR engines + provider picker), Saved places
+  (saved + lists export/import, `ParkingHistoryGroup`), Offline maps ("Include places with
+  downloads" stays here: it decides what a download holds), Privacy (`PrivacySettings`, was Data
+  source & privacy: privacy link and **Clear history** since 2026-09-14 for issue #425:
+  `MapViewModel.clearAllHistory()` = recent queries + recent places + parking history + every
+  recorded trip behind a `VelaDialog` confirm, saved places and lists untouched, indexed for the
+  settings search), Diagnostics (`DemoModesGroup` and an Experiments group now sit here too;
   (share-diagnostics, texture render, building debug, trip recording, crash card; NB the update
   card's notes are CUMULATIVE since 2026-09-14, issue #330: `SelfUpdater.check` pulls
   `/releases?per_page=40`, keeps the channel's releases with a code in (installed, offered],
@@ -4442,7 +4449,7 @@ Gotchas:
   key unset so the viewport path stays the fallback, and nav-end (`clearNavRouteControls`) nulls
   `controlsBox` so the next browse settle repaints. Needs a real-drive glance to confirm density/size feel.
 - **Speed cameras + SPOKEN approach warning (issue #229).** The LAYER (`OverpassSpeedCameras`,
-  `SpeedCams` holder, Settings > Map "Speed cameras", OFF by default) already shipped: OSM
+  `SpeedCams` holder, Settings > Navigation > Cameras "Speed cameras", OFF by default) already shipped: OSM
   `highway=speed_camera`, keyless, viewport-box + area-cached, `out body` (never `out tags` - the
   ALPR empty-layer trap). The 2026-08-28 addition is the WARNING the reporter actually asked for
   ("informed about an incoming radar control" - a dot does nothing while driving):
@@ -4472,7 +4479,7 @@ Gotchas:
   NB `nav/RouteProjection` duplicates the projection in `nav/RouteBar` (issue #228, open in
   parallel); whichever merges second should delegate rather than keep two copies.
 - **Plate (Flock / ALPR) camera alerts + DIRECTION-AWARE "on route" (2026-09-16).** Two opt-ins
-  in Settings > Map next to "Avoid surveillance cameras" (`app.vela.ui.FlockNavAlert`, prefs
+  in Settings > Navigation > Cameras next to "Avoid surveillance cameras" (`app.vela.ui.FlockNavAlert`, prefs
   `flock_nav_alert_card` / `flock_nav_alert_voice`, both OFF, independent of the `Flock` layer
   toggle because the bundled set is loaded either way): a heads-up card (`host.flashStatus`, the
   same card the closing-soon warning uses) and a spoken "License plate camera ahead" through
@@ -4493,7 +4500,7 @@ Gotchas:
   (the pre-load fallback) and the route bar's CAMERA marks. The map layer and cones still draw
   every camera.
 - **Surveillance-camera (Flock / ALPR) layer (`OverpassAlprCameras` + `refreshFlock` + `FLOCK_LAYER`, device-verified
-  2026-07-12).** Settings > Map > "Surveillance cameras" (`app.vela.ui.Flock` holder, **ON by default since 2026-07-13** -
+  2026-07-12).** Settings > Navigation > Cameras > "Surveillance cameras" (`app.vela.ui.Flock` holder, **ON by default since 2026-07-13** -
   it's a headline feature and the bundled dataset makes it free to draw; `FlockRouteAlert` route-avoid stays
   OFF by default since it changes route choice) draws the
   community DeFlock project's `node["surveillance:type"="ALPR"]` OSM nodes as a purple camera badge, keyless via

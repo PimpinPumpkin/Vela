@@ -96,7 +96,6 @@
     <string name="settings_no_saved_places">Nog geen opgeslagen plaatsen</string>
     <string name="settings_export">Exporteren</string>
     <string name="settings_import">Importeren</string>
-    <string name="settings_data_privacy">Gegevensbron en privacy</string>
     <string name="settings_data_privacy_hint">Vela praat rechtstreeks vanaf dit apparaat met Googles publieke endpoints: geen backend, geen account, geen API-sleutel. Google ziet je IP, zoekopdracht en kaartgebied, niet wie je bent.</string>
     <string name="settings_privacy_button">Welke gegevens Google ontvangt</string>
     <string name="settings_diagnostics">Diagnostiek</string>
@@ -576,16 +575,20 @@
         <item quantity="one">+%d extra stop</item>
         <item quantity="other">+%d extra stops</item>
     </plurals>
+    <string name="settings_places">Plaatsen</string>
+    <string name="settings_privacy">Privacy</string>
+    <string name="settings_cameras_group">Camera\'s</string>
+    <string name="settings_experiments">Experimenten</string>
+    <string name="settings_hub_places_sub">Bron van plaatsen, wat je ziet, plaatspagina\'s</string>
     <string name="settings_hub_appearance_sub">Thema, kaartstijl, eenheden, taal</string>
-    <string name="settings_hub_map_sub">Verkeer, OV, lagen, 3D-gebouwen</string>
-    <string name="settings_hub_place_pages_sub">Reviews, foto\'s, inhoudsfilters</string>
-    <string name="settings_hub_navigation_sub">Begeleiding, meldingen, demomodus</string>
+    <string name="settings_hub_map_sub">Verkeer, ov, lagen, 3D-gebouwen</string>
+    <string name="settings_hub_navigation_sub">Begeleiding, camera\'s, live controles</string>
     <string name="settings_hub_voice_sub">Gesproken aanwijzingen en stemmen</string>
     <string name="settings_hub_search_sub">Spraakzoeken en spraakmodellen</string>
     <string name="settings_hub_offline_sub">Offline kaarten, routes, plaatsen</string>
-    <string name="settings_hub_saved_sub">Je plaatsen exporteren en importeren</string>
-    <string name="settings_hub_privacy_sub">Hoe Vela met je gegevens omgaat</string>
-    <string name="settings_hub_diagnostics_sub">Crashrapporten, ritten, compatibiliteit</string>
+    <string name="settings_hub_saved_sub">Je lijsten, exporteren, parkeergeschiedenis</string>
+    <string name="settings_hub_privacy_sub">Wat Google ontvangt, geschiedenis wissen</string>
+    <string name="settings_hub_diagnostics_sub">Crashrapporten, ritten, demomodus, experimenten</string>
     <string name="settings_hub_about_sub">Versie, updates, steun</string>
     <string name="settings_theme_amoled">AMOLED-zwart</string>
     <string name="place_review_more">Meer</string>

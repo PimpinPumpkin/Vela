@@ -14,22 +14,24 @@ import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.settings.ToggleRow
 
 /**
- * Place pages sub-screen: the five place-content toggles. The whole screen is unreachable in the
- * restricted flavor (the hub hides its row; the toggles are hard-locked in their holders anyway).
+ * Places sub-screen (was Place pages; 2026-09-17 settings reshuffle): where the map's places come
+ * from, what the map draws for them, and the five place-page content toggles.
  */
 @Composable
-internal fun PlacePagesSettingsScreen(onBack: () -> Unit) {
+internal fun PlacesSettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    SettingsScaffold(stringResource(R.string.settings_place_pages), onBack) { topRow ->
+    SettingsScaffold(stringResource(R.string.settings_places), onBack) { topRow ->
         Spacer(Modifier.height(4.dp))
-        SettingsGroup {
+        PlacesSourceGroup(topRow)
+        Spacer(Modifier.height(8.dp))
+        PlacesOnMapGroup()
+        Spacer(Modifier.height(8.dp))
+        SettingsGroup(title = stringResource(R.string.settings_place_pages)) {
         ToggleRow(
             label = stringResource(R.string.settings_show_reviews),
             checked = app.vela.ui.ShowReviews.on.value,
             onCheckedChange = { app.vela.ui.ShowReviews.set(context, it) },
             hint = stringResource(R.string.settings_show_reviews_hint),
-            // The top focusable control: Back routes its DOWN here, UP from here goes back to Back.
-            switchModifier = topRow,
         )
         GroupDivider()
         ToggleRow(

@@ -96,7 +96,6 @@
     <string name="settings_no_saved_places">Aucun lieu enregistré pour l\'instant</string>
     <string name="settings_export">Exporter</string>
     <string name="settings_import">Importer</string>
-    <string name="settings_data_privacy">Source des données et confidentialité</string>
     <string name="settings_data_privacy_hint">Vela interroge les points publics de Google directement depuis cet appareil : pas de serveur, pas de compte, pas de clé d\'API. Google voit votre IP, la requête et la zone de carte, pas qui vous êtes.</string>
     <string name="settings_privacy_button">Données reçues par Google</string>
     <string name="settings_diagnostics">Diagnostics</string>
@@ -576,16 +575,20 @@
         <item quantity="one">+%d arrêt de plus</item>
         <item quantity="other">+%d arrêts de plus</item>
     </plurals>
+    <string name="settings_places">Lieux</string>
+    <string name="settings_privacy">Confidentialité</string>
+    <string name="settings_cameras_group">Caméras</string>
+    <string name="settings_experiments">Expériences</string>
+    <string name="settings_hub_places_sub">Source des lieux, affichage, fiches</string>
     <string name="settings_hub_appearance_sub">Thème, style de carte, unités, langue</string>
-    <string name="settings_hub_map_sub">Trafic, transports, couches, bâtiments 3D</string>
-    <string name="settings_hub_place_pages_sub">Avis, photos, filtres de contenu</string>
-    <string name="settings_hub_navigation_sub">Guidage, alertes, mode démo</string>
+    <string name="settings_hub_map_sub">Trafic, transports, calques, bâtiments 3D</string>
+    <string name="settings_hub_navigation_sub">Guidage, caméras, vérifications en direct</string>
     <string name="settings_hub_voice_sub">Instructions vocales et voix</string>
     <string name="settings_hub_search_sub">Recherche vocale et modèles vocaux</string>
     <string name="settings_hub_offline_sub">Cartes hors ligne, itinéraires, lieux</string>
-    <string name="settings_hub_saved_sub">Exporter et importer vos lieux</string>
-    <string name="settings_hub_privacy_sub">Comment Vela traite vos données</string>
-    <string name="settings_hub_diagnostics_sub">Rapports de plantage, trajets, compatibilité</string>
+    <string name="settings_hub_saved_sub">Vos listes, export, historique de stationnement</string>
+    <string name="settings_hub_privacy_sub">Ce que Google reçoit, effacer l\'historique</string>
+    <string name="settings_hub_diagnostics_sub">Rapports de plantage, trajets, mode démo, expériences</string>
     <string name="settings_hub_about_sub">Version, mises à jour, soutien</string>
     <string name="settings_theme_amoled">Noir AMOLED</string>
     <string name="place_review_more">Plus</string>

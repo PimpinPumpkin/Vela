@@ -206,7 +206,6 @@
     <string name="settings_no_saved_places">No saved places yet</string>
     <string name="settings_export">Export</string>
     <string name="settings_import">Import</string>
-    <string name="settings_data_privacy">Data source &amp; privacy</string>
     <string name="settings_data_privacy_hint">Vela talks to Google\'s public endpoints straight from this device: no backend, no account, no API key. Google sees your IP, query and map area, not who you are.</string>
     <string name="nav_overview">Route overview</string>
     <string name="settings_map_places">Places on the map</string>
@@ -864,16 +863,20 @@
         <item quantity="one">+%d more stop</item>
         <item quantity="other">+%d more stops</item>
     </plurals>
+    <string name="settings_places">Places</string>
+    <string name="settings_privacy">Privacy</string>
+    <string name="settings_cameras_group">Cameras</string>
+    <string name="settings_experiments">Experiments</string>
+    <string name="settings_hub_places_sub">Source, map icons, place pages</string>
     <string name="settings_hub_appearance_sub">Theme, map style, units, language</string>
     <string name="settings_hub_map_sub">Traffic, transit, layers, 3D buildings</string>
-    <string name="settings_hub_place_pages_sub">Reviews, photos, content filters</string>
-    <string name="settings_hub_navigation_sub">Guidance, alerts, demo mode</string>
+    <string name="settings_hub_navigation_sub">Guidance, cameras, live rechecks</string>
     <string name="settings_hub_voice_sub">Spoken directions and voices</string>
     <string name="settings_hub_search_sub">Voice search and speech models</string>
     <string name="settings_hub_offline_sub">Offline maps, routing, places</string>
-    <string name="settings_hub_saved_sub">Export and import your places</string>
-    <string name="settings_hub_privacy_sub">How Vela handles your data</string>
-    <string name="settings_hub_diagnostics_sub">Crash reports, trips, compatibility</string>
+    <string name="settings_hub_saved_sub">Your lists, export, parking history</string>
+    <string name="settings_hub_privacy_sub">What Google receives, clearing history</string>
+    <string name="settings_hub_diagnostics_sub">Crash reports, trips, demo mode, experiments</string>
     <string name="settings_hub_about_sub">Version, updates, support</string>
     <string name="settings_theme_amoled">AMOLED black</string>
     <string name="settings_theme_auto">Day and night</string>

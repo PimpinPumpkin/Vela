@@ -21,7 +21,7 @@ A jitter report gets **measured before anything is touched**, in this order:
    the over-budget ones evenly spaced (a periodic culprit) or random (the device's floor)?
 4. Settings > Diagnostics: is Compatibility rendering on? It should not be on a healthy phone.
 
-A demo drive (Settings > Navigation > demo mode) has zero GPS noise. If it jitters, the
+A demo drive (Settings > Diagnostics > demo mode) has zero GPS noise. If it jitters, the
 cause is not GPS and no filter will fix it.
 
 ## The eight causes

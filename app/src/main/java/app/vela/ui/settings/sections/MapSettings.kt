@@ -1,20 +1,12 @@
 package app.vela.ui.settings.sections
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -25,12 +17,10 @@ import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.settings.Hint
 import app.vela.ui.settings.SelectableRow
 import app.vela.ui.settings.ToggleRow
-import app.vela.ui.dpadHighlight // D-pad-only operation (docs/dpad.md)
-import app.vela.ui.dpadRowSibling
 
-/** Map sub-screen: map-layer toggles (traffic, transit, topography, layers button, flock, 3D,
- * missing-building fill) plus the Places-on-the-map visibility + sizing group. */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+/** Map sub-screen: how the map looks (traffic, transit, topography, layers button, 3D,
+ * missing-building fill, house numbers). Cameras live under Navigation, places under Places
+ * (settings reshuffle, 2026-09-17). */
 @Composable
 internal fun MapSettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
@@ -68,54 +58,6 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
         )
         GroupDivider()
         ToggleRow(
-            label = stringResource(R.string.settings_flock),
-            checked = app.vela.ui.Flock.on.value,
-            onCheckedChange = { app.vela.ui.Flock.set(context, it) },
-            hint = stringResource(R.string.settings_flock_hint),
-        )
-        GroupDivider()
-        ToggleRow(
-            label = stringResource(R.string.settings_speed_cams),
-            checked = app.vela.ui.SpeedCams.on.value,
-            onCheckedChange = { app.vela.ui.SpeedCams.set(context, it) },
-            hint = stringResource(R.string.settings_speed_cams_hint),
-        )
-        // The spoken warning is nested: it only means anything once the cameras are being tracked,
-        // and it is its own opt-in because being spoken to is a different ask from seeing a marker
-        // (and is restricted in some countries).
-        if (app.vela.ui.SpeedCams.on.value) {
-            ToggleRow(
-                label = stringResource(R.string.settings_speed_cam_warn),
-                checked = app.vela.ui.SpeedCamWarn.on.value,
-                onCheckedChange = { app.vela.ui.SpeedCamWarn.set(context, it) },
-                hint = stringResource(R.string.settings_speed_cam_warn_hint),
-            )
-        }
-        GroupDivider()
-        ToggleRow(
-            label = stringResource(R.string.settings_flock_route_alert),
-            checked = app.vela.ui.FlockRouteAlert.on.value,
-            onCheckedChange = { app.vela.ui.FlockRouteAlert.set(context, it) },
-            hint = stringResource(R.string.settings_flock_route_alert_hint),
-        )
-        // Plate cameras coming up while navigating: a heads-up card and a spoken line, each its
-        // own opt-in. Not nested under the layer toggle: the bundled dataset is loaded either way.
-        GroupDivider()
-        ToggleRow(
-            label = stringResource(R.string.settings_flock_nav_card),
-            checked = app.vela.ui.FlockNavAlert.card.value,
-            onCheckedChange = { app.vela.ui.FlockNavAlert.setCard(context, it) },
-            hint = stringResource(R.string.settings_flock_nav_card_hint),
-        )
-        GroupDivider()
-        ToggleRow(
-            label = stringResource(R.string.settings_flock_nav_voice),
-            checked = app.vela.ui.FlockNavAlert.voice.value,
-            onCheckedChange = { app.vela.ui.FlockNavAlert.setVoice(context, it) },
-            hint = stringResource(R.string.settings_flock_nav_voice_hint),
-        )
-        GroupDivider()
-        ToggleRow(
             label = stringResource(R.string.settings_buildings_3d),
             checked = app.vela.ui.Buildings3d.on.value,
             onCheckedChange = { app.vela.ui.Buildings3d.set(context, it) },
@@ -150,69 +92,6 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
         Hint(stringResource(R.string.settings_house_numbers_hint))
         }
 
-        // Places on the map: POI visibility + sizing (user 2026-07-15).
-        Spacer(Modifier.height(8.dp))
-        SettingsGroup(title = stringResource(R.string.settings_map_places)) {
-        ToggleRow(
-            label = stringResource(R.string.settings_show_pois),
-            checked = app.vela.ui.MapPoiPrefs.showPois.value,
-            onCheckedChange = { app.vela.ui.MapPoiPrefs.setShowPois(context, it) },
-            hint = stringResource(R.string.settings_show_pois_hint),
-        )
-        if (app.vela.ui.MapPoiPrefs.showPois.value) {
-            if (app.vela.ui.MapPoiPrefs.openPlaces) {
-                GroupDivider()
-                ToggleRow(
-                    label = stringResource(R.string.settings_places_lookup),
-                    checked = app.vela.ui.MapPoiPrefs.lookupTappedPlaces.value,
-                    onCheckedChange = { app.vela.ui.MapPoiPrefs.setLookupTappedPlaces(context, it) },
-                    hint = stringResource(R.string.settings_places_lookup_hint),
-                )
-            }
-            GroupDivider()
-            ToggleRow(
-                label = stringResource(R.string.settings_show_civic),
-                checked = app.vela.ui.MapPoiPrefs.showCivic.value,
-                onCheckedChange = { app.vela.ui.MapPoiPrefs.setShowCivic(context, it) },
-                hint = stringResource(R.string.settings_show_civic_hint),
-            )
-        }
-        GroupDivider()
-        ToggleRow(
-            label = stringResource(R.string.settings_show_transit_stops),
-            checked = app.vela.ui.MapPoiPrefs.showTransit.value,
-            onCheckedChange = { app.vela.ui.MapPoiPrefs.setShowTransit(context, it) },
-            hint = stringResource(R.string.settings_show_transit_stops_hint),
-        )
-        GroupDivider()
-        androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp)) {
-            Text(
-                stringResource(R.string.settings_poi_icon_size),
-                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                val sizeFocus = remember { List(3) { FocusRequester() } }
-                listOf(
-                    R.string.settings_poi_size_small to 0.7f,
-                    R.string.settings_poi_size_default to 1.0f,
-                    R.string.settings_poi_size_large to 1.25f,
-                ).forEachIndexed { i, (label, value) ->
-                    FilterChip(
-                        selected = kotlin.math.abs(app.vela.ui.MapPoiPrefs.iconScale.floatValue - value) < 0.01f,
-                        onClick = { app.vela.ui.MapPoiPrefs.setIconScale(context, value) },
-                        label = { Text(stringResource(label)) },
-                        shape = androidx.compose.foundation.shape.CircleShape,
-                        modifier = Modifier
-                            .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
-                            .dpadRowSibling(sizeFocus, i),
-                    )
-                }
-            }
-            Hint(stringResource(R.string.settings_poi_icon_size_hint))
-        }
-        }
         Spacer(Modifier.height(24.dp))
     }
 }

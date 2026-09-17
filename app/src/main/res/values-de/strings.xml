@@ -96,7 +96,6 @@
     <string name="settings_no_saved_places">Noch keine gespeicherten Orte</string>
     <string name="settings_export">Exportieren</string>
     <string name="settings_import">Importieren</string>
-    <string name="settings_data_privacy">Datenquelle &amp; Datenschutz</string>
     <string name="settings_data_privacy_hint">Vela spricht Googles öffentliche Endpunkte direkt von diesem Gerät an: kein Backend, kein Konto, kein API-Schlüssel. Google sieht IP, Anfrage und Kartenausschnitt, nicht wer du bist.</string>
     <string name="settings_privacy_button">Welche Daten Google erhält</string>
     <string name="settings_diagnostics">Diagnose</string>
@@ -576,16 +575,20 @@
         <item quantity="one">+%d weiterer Stopp</item>
         <item quantity="other">+%d weitere Stopps</item>
     </plurals>
+    <string name="settings_places">Orte</string>
+    <string name="settings_privacy">Datenschutz</string>
+    <string name="settings_cameras_group">Kameras</string>
+    <string name="settings_experiments">Experimente</string>
+    <string name="settings_hub_places_sub">Ortsquelle, Anzeige, Ortsseiten</string>
     <string name="settings_hub_appearance_sub">Design, Kartenstil, Einheiten, Sprache</string>
     <string name="settings_hub_map_sub">Verkehr, Nahverkehr, Ebenen, 3D-Gebäude</string>
-    <string name="settings_hub_place_pages_sub">Bewertungen, Fotos, Inhaltsfilter</string>
-    <string name="settings_hub_navigation_sub">Führung, Hinweise, Demomodus</string>
+    <string name="settings_hub_navigation_sub">Führung, Kameras, Live-Prüfungen</string>
     <string name="settings_hub_voice_sub">Gesprochene Anweisungen und Stimmen</string>
     <string name="settings_hub_search_sub">Sprachsuche und Sprachmodelle</string>
     <string name="settings_hub_offline_sub">Offline-Karten, Routing, Orte</string>
-    <string name="settings_hub_saved_sub">Orte exportieren und importieren</string>
-    <string name="settings_hub_privacy_sub">Wie Vela mit Ihren Daten umgeht</string>
-    <string name="settings_hub_diagnostics_sub">Absturzberichte, Fahrten, Kompatibilität</string>
+    <string name="settings_hub_saved_sub">Deine Listen, Export, Parkverlauf</string>
+    <string name="settings_hub_privacy_sub">Was Google erhält, Verlauf löschen</string>
+    <string name="settings_hub_diagnostics_sub">Absturzberichte, Fahrten, Demomodus, Experimente</string>
     <string name="settings_hub_about_sub">Version, Updates, Unterstützung</string>
     <string name="settings_theme_amoled">AMOLED-Schwarz</string>
     <string name="place_review_more">Mehr</string>

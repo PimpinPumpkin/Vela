@@ -11,20 +11,20 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vela.ui.map.MapViewModel
 import app.vela.ui.settings.sections.AboutSettingsScreen
 import app.vela.ui.settings.sections.AppearanceSettingsScreen
-import app.vela.ui.settings.sections.DataPrivacySettingsScreen
+import app.vela.ui.settings.sections.PrivacySettingsScreen
 import app.vela.ui.settings.sections.DiagnosticsSettingsScreen
 import app.vela.ui.settings.sections.MapSettingsScreen
 import app.vela.ui.settings.sections.NavigationSettingsScreen
 import app.vela.ui.settings.sections.OfflineSettingsScreen
-import app.vela.ui.settings.sections.PlacePagesSettingsScreen
+import app.vela.ui.settings.sections.PlacesSettingsScreen
 import app.vela.ui.settings.sections.SavedPlacesSettingsScreen
 import app.vela.ui.settings.sections.SearchSettingsScreen
 import app.vela.ui.settings.sections.VoiceSettingsScreen
 
 /** The Settings pages. HUB is the category list; everything else is one sub-screen (spoke). */
 internal enum class SettingsSection {
-    HUB, APPEARANCE, MAP, PLACE_PAGES, NAVIGATION, VOICE, SEARCH, OFFLINE, SAVED_PLACES,
-    DATA_PRIVACY, DIAGNOSTICS, ABOUT,
+    HUB, APPEARANCE, MAP, PLACES, NAVIGATION, VOICE, SEARCH, OFFLINE, SAVED_PLACES,
+    PRIVACY, DIAGNOSTICS, ABOUT,
 }
 
 /**
@@ -68,13 +68,13 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
         )
         SettingsSection.APPEARANCE -> AppearanceSettingsScreen(vm, onBack = toHub)
         SettingsSection.MAP -> MapSettingsScreen(onBack = toHub)
-        SettingsSection.PLACE_PAGES -> PlacePagesSettingsScreen(onBack = toHub)
+        SettingsSection.PLACES -> PlacesSettingsScreen(onBack = toHub)
         SettingsSection.NAVIGATION -> NavigationSettingsScreen(vm, onBack = toHub)
         SettingsSection.VOICE -> VoiceSettingsScreen(vm, onBack = toHub, openLibrary = openVoiceLibrary)
         SettingsSection.SEARCH -> SearchSettingsScreen(vm, onBack = toHub)
         SettingsSection.OFFLINE -> OfflineSettingsScreen(vm, onBack = toHub, onCloseSettings = onBack)
         SettingsSection.SAVED_PLACES -> SavedPlacesSettingsScreen(vm, onBack = toHub)
-        SettingsSection.DATA_PRIVACY -> DataPrivacySettingsScreen(vm, onBack = toHub)
+        SettingsSection.PRIVACY -> PrivacySettingsScreen(vm, onBack = toHub)
         SettingsSection.DIAGNOSTICS -> DiagnosticsSettingsScreen(vm, onBack = toHub, onCloseSettings = onBack)
         SettingsSection.ABOUT -> AboutSettingsScreen(vm, onBack = toHub)
     }

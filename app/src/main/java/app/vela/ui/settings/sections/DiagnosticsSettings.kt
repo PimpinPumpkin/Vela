@@ -56,8 +56,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Diagnostics sub-screen: breadcrumb sharing, compatibility rendering, trip recording + the
- * recorded-trip list, crash reports. [onCloseSettings] closes all of Settings back to the map
+ * Diagnostics sub-screen: breadcrumb sharing, compatibility rendering, demo modes, experiments,
+ * trip recording + the recorded-trip list, crash reports. [onCloseSettings] closes all of Settings back to the map
  * (trip replay plays on the map).
  */
 @Composable
@@ -137,13 +137,6 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         GroupDivider()
         // Building-overlay debug badge + fps readout on the map (the runOvlGate probe tooling).
         ToggleRow(
-            label = stringResource(R.string.exp_google_chooser),
-            checked = app.vela.ui.Experiments.googleChooser.value,
-            onCheckedChange = { app.vela.ui.Experiments.setGoogleChooser(context, it) },
-            hint = stringResource(R.string.exp_google_chooser_hint),
-        )
-        GroupDivider()
-        ToggleRow(
             label = stringResource(R.string.settings_building_debug),
             checked = app.vela.ui.BuildingDebug.on.value,
             onCheckedChange = { app.vela.ui.BuildingDebug.set(context, it) },
@@ -174,6 +167,20 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
             }
             Spacer(Modifier.height(4.dp))
         }
+        }
+
+        // Demo modes and experiments (moved here 2026-09-17): test tools, kept apart from the
+        // settings people use every day.
+        Spacer(Modifier.height(4.dp))
+        DemoModesGroup(vm)
+        Spacer(Modifier.height(4.dp))
+        SettingsGroup(title = stringResource(R.string.settings_experiments)) {
+        ToggleRow(
+            label = stringResource(R.string.exp_google_chooser),
+            checked = app.vela.ui.Experiments.googleChooser.value,
+            onCheckedChange = { app.vela.ui.Experiments.setGoogleChooser(context, it) },
+            hint = stringResource(R.string.exp_google_chooser_hint),
+        )
         }
 
         // Trip recording - more invasive than diagnostics (it's your exact routes),
