@@ -22,7 +22,18 @@ interface RouteEngine {
      *  The avoid flags are dynamic routing parameters on the obf engine (avoid_toll /
      *  avoid_highway / avoid_ferries); an engine that cannot honor them returns empty for an avoid request so
      *  the caller can fall through, never a silent route-through-the-toll. */
-    fun route(origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean = false, avoidHighways: Boolean = false, avoidFerries: Boolean = false): List<Route>
+    fun route(
+        origin: LatLng,
+        destination: LatLng,
+        mode: TravelMode,
+        avoidTolls: Boolean = false,
+        avoidHighways: Boolean = false,
+        avoidFerries: Boolean = false,
+        // The heading the car is actually travelling, for a mid-drive reroute (same rule as the
+        // open router's `bearings=`): the route should start the way the car is pointing instead
+        // of answering "turn around". Null for planning.
+        departBearingDeg: Double? = null,
+    ): List<Route>
 
     /** The posted speed limit (km/h) of the road nearest ([lat],[lng]), or null if unknown. Only the
      *  on-device engine can answer (from the OSM `maxspeed` in the graph); online engines have no offline

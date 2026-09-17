@@ -660,6 +660,9 @@ project's core promise is that neither exists:
   diagnostics export (issue #557) shows two urgent reroutes timing out at 20 s while the open router
   hung and the escalated ladder taking another 105 s, and issue #258 reports the same pattern in
   cities. Held back because every latch back onto the online route is new bug surface.
+  Since 2026-09-17 the on-device engine is a bounded FALLBACK inside a reroute (after the open
+  router fails fast, raced against Google's answer), which covers the stalled-router case; the
+  "phone first, heal later" order is still open.
 - **Use Vela without Google (deferred 2026-09-16).** One master switch plus individual toggles,
   including "no Google routing or live traffic" for people who want Google places but not Google
   directions. Places from Vela data, taps not looked up, search from place packs plus an open OSM
