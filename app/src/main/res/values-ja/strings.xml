@@ -757,6 +757,8 @@
     <string name="settings_places_source_both_hint">Vela のデータで地図を描画し、地図を動かし終えたときに 1 回だけ Google に問い合わせて足りない場所を補います。補われた場所はオンライン時のみ表示されます。</string>
     <string name="settings_places_source_more">詳細</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
+    <string name="settings_osm_businesses">OpenStreetMap の店舗も表示</string>
+    <string name="settings_osm_businesses_hint">Vela のデータにない、OpenStreetMap に登録された店舗や飲食店なども表示します。OpenStreetMap での編集は地図タイルの再構築後、通常 1 週間以内に反映されます。初期設定はオフです。</string>
     <string name="settings_places_lookup">タップした場所を Google で調べる</string>
     <string name="settings_places_lookup_hint">場所をタップすると、営業時間・クチコミ・写真を Google から取得します。照合した結果は Vela が記憶するため、次に同じ場所をタップしたときはすぐに表示されます。オフの場合、タップした場所には Vela のデータにある情報（名称、種類、住所、電話番号、ウェブサイト）だけが表示され、タップの内容が Google に伝わることはありません。検索と経路には引き続き Google を使用します。</string>
     <string name="settings_places_source_more_title">Vela の場所データについて</string>
