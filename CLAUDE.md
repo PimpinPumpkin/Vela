@@ -2096,6 +2096,16 @@ architecture note.
   the cut still draws as a DOT (the dots tier is unfiltered from z17), which is the user's ask:
   "minimizing to little circle dots is an alternative if we are too crowded ... we can see more
   later when we zoom into an area", not places disappearing.
+- **The Google places (ambient) source is maxzoom 18, not 12 (2026-09-16).** Bisected in Midtown on the
+  4a with a probe-only adb hook that hides layers by type or id prefix: fills, lines, circles and 3D
+  changed nothing; hiding ALL symbol layers took one-zoom-in from 22 to 60 fps, and `vela-ambient` alone
+  from 22 to 51. The cause was `GeoJsonOptions().withMaxZoom(12)` on AMBIENT_SRC: past a GeoJSON
+  source's maxzoom every visible overscaled tile lays out all of its parent tile's features, so a few
+  hundred labelled places were placed many times per frame. maxzoom 18: 43 fps one step in, 51 at the
+  browse zoom (was 30). The other point sources are sparse and keep 12. ALSO LEARNED: the 4a hits
+  thermal status 1 after ~5 minutes of scrubbing and every number drops to single digits, which is what
+  the earlier "150 ms per frame at close zoom in every mode" was; benchmark with cool-downs
+  (`dumpsys thermalservice`, wait for status 0) and alternate A/B runs.
 - **Dense-city pin budget, second pass (2026-09-16, measured in Midtown on the 4a).** Three rules in
   the places layer expressions: (1) `blockBudget` replaces the frank-only `topOr` at z17.5 / 18.5 /
   19.5 and FALLS BACK to the 400 m `rank` with a 4x cut when a tile has no `frank` (archives baked
