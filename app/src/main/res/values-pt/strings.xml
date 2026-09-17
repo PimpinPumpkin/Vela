@@ -660,6 +660,13 @@
 
     <!-- added 2026-09 -->
     <string name="cat_ev">Carregamento elétrico</string>
+    <string name="cat_things_to_do">O que fazer</string>
+    <string name="cat_bars">Bares</string>
+    <string name="cat_parking">Estacionamento</string>
+    <string name="cat_hospitals">Hospitais</string>
+    <string name="cat_banks">Bancos</string>
+    <string name="cat_post_offices">Correios</string>
+    <string name="cat_campgrounds">Campismo</string>
     <string name="settings_search_hint">Pesquisar nas definições</string>
     <string name="settings_search_none">Sem correspondências</string>
     <string name="settings_app_name_title">Nome da app</string>
