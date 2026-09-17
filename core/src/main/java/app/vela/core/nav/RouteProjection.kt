@@ -15,6 +15,20 @@ import app.vela.core.model.distanceTo
  */
 object RouteProjection {
 
+    /** The point [m] metres along [poly] (clamped to its ends). */
+    fun pointAt(poly: List<LatLng>, cum: DoubleArray, m: Double): LatLng {
+        if (poly.isEmpty()) return LatLng(0.0, 0.0)
+        if (poly.size == 1 || m <= 0.0) return poly.first()
+        val total = cum.last()
+        if (m >= total) return poly.last()
+        var i = 1
+        while (i < cum.size - 1 && cum[i] < m) i++
+        val seg = cum[i] - cum[i - 1]
+        val f = if (seg <= 0.0) 0.0 else (m - cum[i - 1]) / seg
+        val a = poly[i - 1]; val b = poly[i]
+        return LatLng(a.lat + (b.lat - a.lat) * f, a.lng + (b.lng - a.lng) * f)
+    }
+
     /** Cumulative distance to each vertex, computed once per route so a lookup never re-walks it. */
     fun cumulative(poly: List<LatLng>): DoubleArray {
         val cum = DoubleArray(poly.size)

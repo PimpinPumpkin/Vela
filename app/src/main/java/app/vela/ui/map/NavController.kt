@@ -810,7 +810,9 @@ internal class NavController(
             scope.launch(Dispatchers.Default) {
                 val marks = buildList {
                     for (c in controls) {
-                        val m = app.vela.core.nav.RouteBar.alongMeters(poly, cum, c.loc) ?: continue
+                        // Same rule as the map's: a stop sign counts only when it is on your road.
+                        val reach = if (c.kind == app.vela.core.data.TrafficControl.Kind.STOP) STOP_ON_ROUTE_M else 40.0
+                        val m = app.vela.core.nav.RouteBar.alongMeters(poly, cum, c.loc, reach) ?: continue
                         add(
                             when (c.kind) {
                                 app.vela.core.data.TrafficControl.Kind.SIGNAL -> app.vela.core.nav.RouteBar.Mark.SIGNAL
@@ -1038,7 +1040,16 @@ internal class NavController(
                 }
             }
             val merged = withContext(Dispatchers.Default) {
-                res.groupBy { it.kind }.flatMap { (kind, group) ->
+                // A STOP SIGN only counts when it is on YOUR road: OSM maps one per approach, and the
+                // corridor fetch reaches 120 m, so the stop that holds the side street entering your
+                // road came along too and drew as if it were yours (user 2026-09-17). Lights stay as
+                // they are - a signal at a junction governs every approach, yours included.
+                val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+                val onRoute = res.filter { c ->
+                    c.kind != app.vela.core.data.TrafficControl.Kind.STOP ||
+                        app.vela.core.nav.RouteProjection.alongMeters(poly, cum, c.loc, STOP_ON_ROUTE_M) != null
+                }
+                onRoute.groupBy { it.kind }.flatMap { (kind, group) ->
                     app.vela.core.data.MapDeclutter.cluster(group, MapViewModel.CONTROLS_CLUSTER_M) { it.loc }
                         .map { c -> app.vela.core.data.TrafficControl(c.centroid, kind) }
                 }
@@ -1066,3 +1077,9 @@ internal class NavController(
     }
 
 }
+
+/** How far off the driven line a STOP node may sit and still be yours: past this it belongs to the
+ *  road entering yours. Wide enough for a lane offset and OSM's own placement slop, tight enough
+ *  that the side street's sign does not come along. */
+private const val STOP_ON_ROUTE_M = 11.0
+
