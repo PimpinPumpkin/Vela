@@ -880,6 +880,8 @@
     <string name="settings_speeding_alert">Alerte d\'excès de vitesse</string>
     <string name="settings_speeding_alert_hint">Annonce \"Vous dépassez la limitation de vitesse\" après quelques secondes au-dessus de la limite affichée, puis de nouveau si vous ralentissez et repassez au-dessus. Uniquement là où une limite est connue, celle qu\'indique le badge de vitesse. Désactivé tant que vous ne l\'activez pas.</string>
     <string name="nav_speeding_alert">Vous dépassez la limitation de vitesse</string>
+    <string name="settings_osm_businesses">Commerces OpenStreetMap aussi</string>
+    <string name="settings_osm_businesses_hint">Affiche aussi les commerces, restaurants et autres entreprises cartographiés dans OpenStreetMap qui manquent aux données de Vela. Les modifications OpenStreetMap apparaissent après la reconstruction des tuiles, en général sous une semaine. Désactivé par défaut.</string>
     <string name="settings_places_lookup">Rechercher les lieux touchés sur Google</string>
     <string name="settings_places_lookup_hint">Toucher un lieu récupère ses horaires, avis et photos sur Google, et Vela mémorise la correspondance pour que le prochain appui soit instantané. Désactivé = un lieu touché n\'affiche que ce que les données de Vela contiennent (nom, type, adresse, téléphone, site web) et rien de l\'appui ne parvient à Google. La recherche et les itinéraires utilisent toujours Google.</string>
 </resources>

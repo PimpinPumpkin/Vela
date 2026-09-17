@@ -48,6 +48,8 @@ import app.vela.ui.settings.SubHead
 import app.vela.ui.settings.ToggleRow
 import app.vela.ui.dpadFieldEscape // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.dpadHighlight
+import app.vela.ui.dpadClickable
+import androidx.compose.material.icons.filled.ChevronRight
 import app.vela.ui.rememberDpadFocusKeeper // focus handoff for swap-in controls (docs/dpad.md)
 import app.vela.ui.DpadFocusHandoff
 import app.vela.ui.dpadFocusKept
@@ -62,7 +64,7 @@ import org.maplibre.android.offline.OfflineRegion
  * buttons use it so the user sees the on-map progress card.
  */
 @Composable
-internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onCloseSettings: () -> Unit) {
+internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onCloseSettings: () -> Unit, onOpenVoice: () -> Unit = {}) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var confirmRegion by remember { mutableStateOf<app.vela.offline.RoutingRegion?>(null) }
@@ -170,7 +172,9 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                 GroupDivider()
                 StorageRow(stringResource(R.string.settings_storage_places), st.placesMb)
                 GroupDivider()
-                StorageRow(stringResource(R.string.settings_storage_voices), st.voicesMb)
+                // Tappable: the voices and the speech models are managed on the Voice and Search
+                // pages, so the row takes you to the bigger of the two (Voice).
+                StorageRow(stringResource(R.string.settings_storage_voices), st.voicesMb, onClick = onOpenVoice)
             } ?: Hint(stringResource(R.string.settings_storage_measuring))
             androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 8.dp)) {
                 androidx.compose.material3.TextButton(
@@ -389,13 +393,22 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
 
 /** One "label ..... size" line in the storage group. */
 @Composable
-private fun StorageRow(label: String, mb: Int) {
+private fun StorageRow(label: String, mb: Int, onClick: (() -> Unit)? = null) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth()
+            .then(if (onClick != null) Modifier.dpadHighlight(androidx.compose.foundation.shape.RoundedCornerShape(10.dp)).dpadClickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
         Text(fmtMb(mb), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (onClick != null) {
+            androidx.compose.material3.Icon(
+                androidx.compose.material.icons.Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

@@ -1181,6 +1181,7 @@ fun MapScreen(
             ambientClosed = if (state.navigating) emptyList() else state.ambientClosed.map { MapMarker(it.name, it.location, it.category) },
             onOpenPlaceClosed = vm::onOpenPlaceClosed,
             placesPending = state.placesPending,
+            osmBusinesses = app.vela.ui.MapPoiPrefs.osmBusinesses.value,
             basemapArchive = state.basemapArchive,
             onOpenPlaceTap = vm::onOpenPlaceTap,
             onRoadLimitKmh = vm::onOverlayRoadLimit,

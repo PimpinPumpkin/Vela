@@ -43,6 +43,10 @@ object MapPoiPrefs {
      *  Off: the sheet shows only what the tile carries and nothing about the tap reaches Google, for
      *  people who want Google kept to search and directions. */
     val lookupTappedPlaces = mutableStateOf(true)
+    /** Vela data mode: also draw the shops, restaurants and other businesses mapped in
+     *  OpenStreetMap (they are already in the streamed basemap tiles, hidden by default because
+     *  the baked places cover businesses better). Doubles of a Vela place are dropped by name. */
+    val osmBusinesses = mutableStateOf(false)
 
     fun init(context: Context) {
         val p = prefs(context)
@@ -54,11 +58,17 @@ object MapPoiPrefs {
         placesSource.value = explicitSource ?: remoteDefault
         placesWithDownloads.value = p.getBoolean(KEY_PLACES_WITH_DOWNLOADS, true)
         lookupTappedPlaces.value = p.getBoolean(KEY_LOOKUP_TAPPED, true)
+        osmBusinesses.value = p.getBoolean(KEY_OSM_BUSINESSES, false)
     }
 
     fun setLookupTappedPlaces(context: Context, value: Boolean) {
         lookupTappedPlaces.value = value
         prefs(context).edit().putBoolean(KEY_LOOKUP_TAPPED, value).apply()
+    }
+
+    fun setOsmBusinesses(context: Context, value: Boolean) {
+        osmBusinesses.value = value
+        prefs(context).edit().putBoolean(KEY_OSM_BUSINESSES, value).apply()
     }
 
     fun setPlacesWithDownloads(context: Context, value: Boolean) {
@@ -107,6 +117,7 @@ object MapPoiPrefs {
     private const val KEY_PLACES_SOURCE = "map_places_source"
     private const val KEY_PLACES_WITH_DOWNLOADS = "offline_places_with_downloads"
     private const val KEY_LOOKUP_TAPPED = "map_places_google_lookup"
+    private const val KEY_OSM_BUSINESSES = "map_places_osm_businesses"
     const val SOURCE_OPEN = "open"
     const val SOURCE_GOOGLE = "google"
     const val SOURCE_BOTH = "both"

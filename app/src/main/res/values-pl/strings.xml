@@ -743,6 +743,8 @@
     <string name="settings_places_source_both_hint">Dane Veli rysują mapę, a gdy przestaniesz przesuwać, jedno zapytanie do Google dodaje to, czego w nich brakuje. Dodatki widać tylko online.</string>
     <string name="settings_places_source_more">Dowiedz się więcej</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
+    <string name="settings_osm_businesses">Także sklepy z OpenStreetMap</string>
+    <string name="settings_osm_businesses_hint">Pokazuje też sklepy, restauracje i inne firmy z OpenStreetMap, których brakuje w danych Vela. Zmiany w OpenStreetMap pojawiają się po przebudowie kafelków mapy, zwykle w ciągu tygodnia. Domyślnie wyłączone.</string>
     <string name="settings_places_lookup">Sprawdzaj dotknięte miejsca w Google</string>
     <string name="settings_places_lookup_hint">Dotknięcie miejsca pobiera jego godziny, opinie i zdjęcia z Google, a Vela zapamiętuje dopasowanie, więc kolejne dotknięcie jest natychmiastowe. Wył. = dotknięte miejsce pokazuje tylko to, co mają dane Veli (nazwa, typ, adres, telefon, strona), a nic o dotknięciu nie trafia do Google. Wyszukiwanie i trasy nadal korzystają z Google.</string>
     <string name="settings_places_source_more_title">Skąd pochodzą dane miejsc Veli</string>
