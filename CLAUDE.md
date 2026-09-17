@@ -789,6 +789,17 @@ Defaults that make the safe path the easy one:
   Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
   name, FilledTonalIconButton for mute/steps. Keep new nav chrome on this treatment (no flat
   default-radius cards, no OutlinedIconButton circles - that was the "dated" look).
+  **2026-09-16: the bubbles are POINTS placed at the crossing.** The labels used to be the basemap
+  `transportation_name` lines with `line-center` placement and an include-list filter, which put a
+  bubble at the middle of the street's piece in the tile, often a block or more from the route
+  (user drive: "near our actual path rather than away"). The same quantized pass now computes, per
+  crossing street, where it meets the route window (first proper crossing in route order, else a
+  T-junction end within 25 m, 60 m for a next-turn target) with `crossLabelPoint`, moves 35 m
+  (`NAV_XLABEL_OFFSET_M`) up that street to the side that ends farther from the route, and uploads
+  the points to `NAV_XLABEL_SRC`; the two label layers read it with POINT placement and filter on a
+  `tier` property (major / minor) that carries the old class split and zoom gates. The name:en /
+  name:latin props are copied so `roadLabelTextField` still romanizes. `navLabelFilter`,
+  `crossesWindow` and `touchesWindow` are gone.
 - **A SUBMITTED search while picking an origin / destination / stop shows its results (issue
   #405, 2026-09-13).** The pickers keep the overlay open (`searchOpen` includes the three
   picking flags) and keep the chosen place selected, and the results sheet's two gates
@@ -2000,6 +2011,17 @@ architecture note.
   again and again, until you panned (which drops follow). `browseEngaged` gates the flight to the
   first engagement and clears when follow ends. User report 2026-09-16 ("keeps trying to zoom the
   camera in there until I pan away").
+- **Drive-nav map fixes (2026-09-16, from a real drive).** (1) The open places layer follows the
+  OSM tiers' drive rule: fuel icons only, no dots (`placesNavFuelOnly`, folded into
+  `applyOpenPlacesHidden`, re-applied when the places layers are rebuilt mid-drive); every business
+  along the route drew and its labels sat on the road. (2) The visible traffic-controls layer is
+  anchored above `ROUTE_CUT_LAYER` (the 400 m piece around the arrow), not the ahead line, which
+  had left the lights nearest the driver under the blue line. (3) Picture-in-picture entry AND exit
+  call `vm.recenterNav()` (the tick alone only cleared pinch overrides, so the exit "re-center"
+  never re-attached; and the home swipe reads as a map pan before PiP starts). (4) The free-drive
+  heading-up camera eases its bearing with the nav camera's adaptive constants and its speed-scaled
+  look-ahead with `FREE_LOOKAHEAD_TAU_S` (2.5 s): both used the 0.22 s position constant, so each
+  1 Hz fix's course/speed noise became a quick move and a pause.
 - **The Both-mode twin pass waits for a still map (2026-09-16).** Measured in Manhattan on the 4a
   (scrub at z17, warm): Both 28 fps with ~10 main-thread stalls per run up to 190 ms (the twin
   pass: full-screen rendered query + a filter change on every places layer), Vela data 34 fps and
