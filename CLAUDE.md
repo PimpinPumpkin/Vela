@@ -4564,6 +4564,11 @@ Gotchas:
   SharedPreferences and every launch died with an NPE before the map drew. It now lives in its own
   `init { }` placed immediately AFTER the `settingsPrefs` property. Any future pref read that must
   happen at construction goes there too, not in the main init block.
+- **Road name inside the nav bar (issue #553, 2026-09-16).** A fourth `RoadLabel` placement,
+  `IN_BAR` ("Inside the bottom bar"): the floating pill is not drawn and `NavBarTop` shows the road in
+  its handle row (small chevron + name, ellipsized) on both the bar and the open step sheet's header;
+  `barRoadName` in MapScreen computes it with the pill's rules (leg road or passed rename, ref first,
+  romanized for Latin UIs). The chevron row stays the tap / D-pad button. Not the default.
 - **Current-road pill under the puck (issue #288, 2026-09-03).** Google's treatment: a rounded
   label directly beneath the nav puck naming the road you are ON. The road is the one entered by
   the LAST MANEUVER PASSED (`maneuvers[stepIndex - 1]`) - the same source the banner's shield
