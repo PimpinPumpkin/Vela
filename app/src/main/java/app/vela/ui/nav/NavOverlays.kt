@@ -717,6 +717,8 @@ fun NavControls(
     // How far the drag may open the well: the same cap the sheet's list gets (null = half the
     // screen), so the bar never stands taller than the sheet that replaces it.
     maxLift: androidx.compose.ui.unit.Dp? = null,
+    // The road you are on, shown in the handle row instead of the floating pill (issue #553).
+    roadName: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
@@ -789,6 +791,7 @@ fun NavControls(
             trafficRatio = trafficRatio,
             showListButton = showListButton,
             handleUp = true,
+            roadName = roadName,
         )
         // The well the drag opens under the figures: exactly the lift tall, clipped, holding the
         // step rows at the sheet's own list padding so they do not move at the handover. Read in
@@ -823,6 +826,7 @@ fun NavBarTop(
     trafficRatio: Double?,
     showListButton: Boolean,
     handleUp: Boolean,
+    roadName: String? = null,
 ) {
     val dark = isAppInDarkTheme()
     val etaColor = when {
@@ -844,12 +848,34 @@ fun NavBarTop(
                 .clickable(onClick = onSteps),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                if (handleUp) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                contentDescription = stringResource(if (handleUp) R.string.nav_steps_handle_cd else R.string.steps_close_cd),
-                tint = SheetPalette.dim(dark),
-                modifier = Modifier.size(22.dp),
-            )
+            if (roadName.isNullOrBlank()) {
+                Icon(
+                    if (handleUp) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = stringResource(if (handleUp) R.string.nav_steps_handle_cd else R.string.steps_close_cd),
+                    tint = SheetPalette.dim(dark),
+                    modifier = Modifier.size(22.dp),
+                )
+            } else {
+                // The road you are on takes the handle row (issue #553); a small chevron stays
+                // beside it so the row still reads as "this lifts".
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 56.dp)) {
+                    Icon(
+                        if (handleUp) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = stringResource(if (handleUp) R.string.nav_steps_handle_cd else R.string.steps_close_cd),
+                        tint = SheetPalette.dim(dark),
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        roadName,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = SheetPalette.ink(dark),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
         Row(
             Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 2.dp, bottom = 14.dp),
