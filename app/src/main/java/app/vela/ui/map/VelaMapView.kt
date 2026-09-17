@@ -1391,6 +1391,19 @@ fun VelaMapView(
                 // the top of its block, so it keeps its icon.
                 val genericCap = app.vela.core.config.CalibrationStore.latest.tune("openGenericBlockTop", 3.0)
                 val genericMinProm = app.vela.core.config.CalibrationStore.latest.tune("openGenericMinProminence", 4.0)
+                // A shop's own counters (its pharmacy, its coffee bar, a Redbox, a Coinstar, the
+                // brand's fuel kiosk out in the lot) are baked with `tenant` = 1 and only reach the
+                // z17 tiles. They stay DOTS until 18.5, so the store keeps the block's icon and its
+                // insides fill in when you are right on top of them (user 2026-09-17: a Safeway
+                // showing as a pharmacy, a sushi counter and a Coinstar).
+                fun unlessTenant(value: Expression) = Expression.switchCase(
+                    Expression.all(
+                        Expression.eq(Expression.coalesce(Expression.get("tenant"), Expression.literal(0)), Expression.literal(1)),
+                        // A store's own fuel station is still a place you drive to, so it keeps its pin.
+                        Expression.neq(Expression.get("group"), Expression.literal("fuel")),
+                    ),
+                    Expression.literal(""), value,
+                )
                 fun unlessCrowdedGeneric(value: Expression) = Expression.switchCase(
                     Expression.all(
                         Expression.match(
@@ -1475,7 +1488,7 @@ fun VelaMapView(
                                 // from 19.5. A place below the cut still draws as a dot (the dots
                                 // tier is unfiltered from z17), which is the "see more later when
                                 // we zoom in" behaviour rather than a place disappearing.
-                                Expression.stop(17.5f, unlessCrowdedGeneric(blockBudget(iconCapNear, 6.0, icon))),
+                                Expression.stop(17.5f, unlessTenant(unlessCrowdedGeneric(blockBudget(iconCapNear, 6.0, icon)))),
                                 Expression.stop(18.5f, unlessCrowdedGeneric(blockBudget(iconCapClose, 5.0, icon))),
                                 Expression.stop(19.5f, unlessCrowdedGeneric(blockBudget(iconCapMax, 4.5, icon))),
                             ),
@@ -1520,7 +1533,7 @@ fun VelaMapView(
                                 // A label only where its ICON draws (the same budget and generic
                                 // rule), then the label cap on top: a name floating with no icon
                                 // read as broken (Midtown, 2026-09-16).
-                                Expression.stop(17.5f, unlessCrowdedGeneric(blockBudget(iconCapNear, 6.0, topOr("rank", labelCap, 3.0, name)))),
+                                Expression.stop(17.5f, unlessTenant(unlessCrowdedGeneric(blockBudget(iconCapNear, 6.0, topOr("rank", labelCap, 3.0, name))))),
                                 Expression.stop(18.5f, unlessCrowdedGeneric(blockBudget(iconCapClose, 5.0, topOr("rank", labelCap, 3.0, name)))),
                                 Expression.stop(19.5f, unlessCrowdedGeneric(blockBudget(iconCapMax, 4.5, topOr("rank", labelCap, 3.0, name)))),
                             ),

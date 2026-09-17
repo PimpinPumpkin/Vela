@@ -103,8 +103,18 @@ CREATE MACRO nkey(n) AS trim(regexp_extract(regexp_replace(lower(n), '[^a-z0-9 ]
 -- Which locator rows Overture already has: two HASH JOINS (the name key, the brand) with the box as
 -- a residual, keys computed ONCE per row. A correlated NOT EXISTS with the two tests OR-ed together
 -- ran every locator row against every Overture row, which a state cannot afford (2026-09-16).
-CREATE TABLE rawkeys AS SELECT id, lat, lng, nkey(name) AS nk, lower(brand) AS bk FROM raw;
-CREATE TABLE atpkeys AS SELECT id, lat, lng, nkey(name) AS nk, lower(brand) AS bk FROM atp;
+-- The snap key is the WHOLE name, normalized, with a trailing store number dropped ("Safeway
+-- #1561" -> "safeway"): the two-word dedupe key is deliberately loose, and moving a point needs a
+-- tighter test than dropping a duplicate does (it dragged a campus onto its own outreach office,
+-- 2026-09-17).
+CREATE MACRO snapkey(n) AS nullif(trim(regexp_replace(regexp_replace(lower(coalesce(n, '')), '[^a-z0-9]+', ' ', 'g'), '[ ]+(no|num|store|#)?[ ]*[0-9]{2,6}$', '')), '');
+CREATE TABLE rawkeys AS SELECT id, lat, lng, nkey(name) AS nk, lower(brand) AS bk, snapkey(name) AS sk FROM raw;
+CREATE TABLE atpkeys AS SELECT id, lat, lng, nkey(name) AS nk, lower(brand) AS bk, snapkey(name) AS sk FROM atp;
+-- The Overture row a locator point matches keeps the locator's COORDINATE (atp_snap below):
+-- Overture puts a tenant on its parcel point, which in a strip mall is out in the parking lot,
+-- while a chain's own store locator gives the storefront (user 2026-09-17, a Subway pinned in the
+-- lot in front of the mall). Only when they disagree by more than ~30 m; below that the two
+-- sources agree to a median 7.4 m and moving the row would be noise.
 CREATE TABLE atpdupes AS
 SELECT DISTINCT a.id FROM atpkeys a JOIN rawkeys o ON o.nk = a.nk
 WHERE a.nk IS NOT NULL AND a.nk <> '' AND abs(o.lat - a.lat) < 0.0015 AND abs(o.lng - a.lng) < 0.002
@@ -114,7 +124,18 @@ WHERE a.bk IS NOT NULL AND abs(o.lat - a.lat) < 0.0015 AND abs(o.lng - a.lng) < 
 INSERT INTO raw
 SELECT a.id, a.name, a.category, a.confidence, a.brand, a.addr, a.website, a.phone, a.operating_status, a.lng, a.lat, a.hours
 FROM atp a WHERE a.id NOT IN (SELECT id FROM atpdupes);
-SELECT (SELECT count(*) FROM atp) AS atp_in_box, (SELECT count(*) FROM raw WHERE id LIKE 'atp:%') AS atp_added;
+CREATE TABLE atp_snap AS
+SELECT id, alat, alng FROM (
+  SELECT o.id, a.lat AS alat, a.lng AS alng,
+    row_number() OVER (PARTITION BY o.id ORDER BY abs(a.lat - o.lat) + abs(a.lng - o.lng)) AS rn
+  -- NAME key only, never brand alone: a brand match moved "Safeway Pharmacy" onto the Safeway
+  -- and the store onto the pharmacy's locator point (Sacramento test box, 2026-09-17). And a
+  -- storefront correction is tens of metres; anything past ~120 m is a different branch.
+  FROM rawkeys o JOIN atpkeys a ON o.sk = a.sk
+  WHERE abs(a.lat - o.lat) < 0.0015 AND abs(a.lng - o.lng) < 0.002
+    AND 111320 * sqrt(pow(a.lat - o.lat, 2) + pow((a.lng - o.lng) * cos(radians(o.lat)), 2)) BETWEEN 30 AND 120
+) WHERE rn = 1;
+SELECT (SELECT count(*) FROM atp) AS atp_in_box, (SELECT count(*) FROM raw WHERE id LIKE 'atp:%') AS atp_added, (SELECT count(*) FROM atp_snap) AS storefront_snaps;
 ATPSQL
 fi
 if [ -n "$LOCAL" ]; then
@@ -217,13 +238,34 @@ SELECT DISTINCT id FROM (
   WHERE s.id <> a.id AND abs(s.lat - a.lat) < 0.002 AND abs(s.lng - a.lng) < 0.003
     AND (s.category IS NULL OR s.category NOT IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store'))
   UNION ALL
+  -- The store's OWN fuel station and its little shop, which carry the store's brand out in the
+  -- lot: they must not take the brand's icon off the store itself (user 2026-09-17, a Safeway
+  -- fuel kiosk drew as "Safeway" while the store showed only its counters). They keep their fuel
+  -- group, so the pumps still draw as fuel when you are close.
+  SELECT s.id FROM scored s JOIN anchors a ON lower(s.brand) = lower(a.brand)
+  WHERE s.id <> a.id AND abs(s.lat - a.lat) < 0.0025 AND abs(s.lng - a.lng) < 0.0035
+    AND s.category IN ('gas_station','convenience_store','ev_charging_station')
+  UNION ALL
+  SELECT s.id FROM scored s JOIN anchors a ON nhead(s.name) = nhead(a.name)
+  WHERE s.id <> a.id AND abs(s.lat - a.lat) < 0.0025 AND abs(s.lng - a.lng) < 0.0035
+    AND length(nhead(a.name)) >= 4 AND s.category IN ('gas_station','convenience_store','ev_charging_station')
+  UNION ALL
   SELECT s.id FROM scored s JOIN anchors a ON nhead(s.name) = nhead(a.name)
   WHERE s.id <> a.id AND abs(s.lat - a.lat) < 0.002 AND abs(s.lng - a.lng) < 0.003
     AND length(nhead(a.name)) >= 4 AND lower(s.name) LIKE nhead(a.name) || ' %'
     AND (s.category IS NULL OR s.category NOT IN ('supermarket','grocery_store','department_store','shopping_center','hospital','university','college_university','hardware_store','home_improvement_store','wholesale_store','warehouse_club','sporting_goods','electronics','furniture_store'))
 );
+-- KIOSKS AND COUNTERS (2026-09-17): a Redbox, a Coinstar, an ecoATM, a Western Union window or a
+-- key-cutting machine is a fixture INSIDE a shop, never a destination you navigate to, and at a
+-- Sacramento Safeway nine of them sat within 42 m of the store. They stay in the data (searchable,
+-- tappable) but never earn a browse-zoom icon.
+CREATE MACRO iskiosk(c, n) AS (
+  c IN ('rental_kiosks','bank_equipment_service','money_transfer_services','atms','key_and_locksmith','vending_machine','photo_booth')
+  OR lower(coalesce(n, '')) IN ('redbox','coinstar','ecoatm','western union','keyme locksmiths','keyme')
+);
 CREATE TABLE anchored AS
-SELECT s.* REPLACE (CASE WHEN t.id IS NOT NULL THEN s.prominence - 2.0 ELSE s.prominence END AS prominence)
+SELECT s.* REPLACE (CASE WHEN t.id IS NOT NULL THEN s.prominence - 2.0 ELSE s.prominence END AS prominence),
+  CASE WHEN t.id IS NOT NULL OR iskiosk(s.category, s.name) THEN 1 ELSE 0 END AS tenant
 FROM scored s LEFT JOIN tenants t ON t.id = s.id;
 -- STACKED POINTS (2026-09-15): Overture puts every tenant of a building on the same parcel point
 -- (17% of Davis rows share their point with another: medical suites, strip-mall tenants), and
@@ -242,8 +284,16 @@ FROM scored s LEFT JOIN tenants t ON t.id = s.id;
 CREATE MACRO unitkey(a) AS nullif(upper(regexp_replace(regexp_extract(coalesce(a, ''), '(?i)(ste|suite|unit|apt|apartment|rm|room|no|#)[ .]*([a-z0-9-]+)[ ]*$', 2), '[^A-Za-z0-9]', '')), '');
 CREATE MACRO numkey(a) AS nullif(regexp_extract(coalesce(a, ''), '^[0-9]+'), '');
 $ADDR_SQL
+-- The chain-locator coordinate wins over Overture's parcel point (atp_snap), before the stack
+-- test: moving a row off the shared parcel point is exactly what takes it out of the stack.
+CREATE TABLE IF NOT EXISTS atp_snap (id VARCHAR, alat DOUBLE, alng DOUBLE);
+CREATE TABLE located AS
+SELECT a.* REPLACE (
+  CASE WHEN a.tenant = 1 THEN a.lat ELSE COALESCE(p.alat, a.lat) END AS lat,
+  CASE WHEN a.tenant = 1 THEN a.lng ELSE COALESCE(p.alng, a.lng) END AS lng
+) FROM anchored a LEFT JOIN atp_snap p ON p.id = a.id;
 CREATE TABLE stacked AS
-SELECT *, count(*) OVER (PARTITION BY round(lat, 5), round(lng, 5)) > 1 AS in_stack FROM anchored;
+SELECT *, count(*) OVER (PARTITION BY round(lat, 5), round(lng, 5)) > 1 AS in_stack FROM located;
 -- A HASH JOIN on (number, unit) with the distance as a residual and the nearest candidate per
 -- place by row_number - not a correlated LATERAL lookup per row, which is quadratic at state scale.
 CREATE TABLE snapkeys AS
@@ -285,6 +335,10 @@ COPY (
   SELECT json_object(
     'type', 'Feature',
     'tippecanoe', json_object('minzoom', CASE
+      -- A counter or a department inside a shop belongs to that shop until you are right on top
+      -- of it; it never competes with its own store for the block's icon.
+      -- ...except a fuel station, which is a destination of its own while driving.
+      WHEN tenant = 1 AND grp <> 'fuel' THEN 17
       WHEN landmark = 1 AND xrank = 1 THEN 11
       WHEN landmark = 1 AND xrank <= 3 THEN 12
       WHEN crank = 1 AND prominence >= 6 THEN 13
@@ -297,13 +351,13 @@ COPY (
       'id', id, 'name', name,
       'class', COALESCE(upper(substr(replace(category, '_', ' '), 1, 1)) || substr(replace(category, '_', ' '), 2), 'Place'),
       'group', grp, 'icon', 'vela-poi-' || grp, 'prominence', round(prominence, 2), 'confidence', round(COALESCE(confidence, 0.5), 2),
-      'rank', rank, 'crank', crank, 'xrank', xrank, 'frank', frank, 'landmark', landmark,
+      'rank', rank, 'crank', crank, 'xrank', xrank, 'frank', frank, 'landmark', landmark, 'tenant', tenant,
       'brand', brand, 'addr', addr, 'website', website, 'phone', phone, 'hours', hours,
       'src', 'overture', 'origin', CASE WHEN id LIKE 'atp:%' THEN 'atp' ELSE 'overture' END
     )
   ) FROM ranked
 ) TO '$WORK/places.ndjson' (FORMAT CSV, HEADER false, QUOTE '', ESCAPE '', DELIMITER '\t');
-SELECT count(*) AS features, round(avg(prominence),2) AS prom_avg, sum(CASE WHEN landmark = 1 AND xrank <= 3 THEN 1 ELSE 0 END) AS z12, sum(CASE WHEN crank <= 2 OR prominence >= 5 THEN 1 ELSE 0 END) AS z14, sum(CASE WHEN rank <= 3 OR prominence >= 4.5 THEN 1 ELSE 0 END) AS z15, sum(CASE WHEN rank <= 12 OR prominence >= 3.5 THEN 1 ELSE 0 END) AS z16 FROM ranked;
+SELECT count(*) AS features, sum(tenant) AS tenants, round(avg(prominence),2) AS prom_avg, sum(CASE WHEN landmark = 1 AND xrank <= 3 THEN 1 ELSE 0 END) AS z12, sum(CASE WHEN crank <= 2 OR prominence >= 5 THEN 1 ELSE 0 END) AS z14, sum(CASE WHEN rank <= 3 OR prominence >= 4.5 THEN 1 ELSE 0 END) AS z15, sum(CASE WHEN rank <= 12 OR prominence >= 3.5 THEN 1 ELSE 0 END) AS z16 FROM ranked;
 SQL
 # Uninhabited rows (Ashmore and Cartier, coral-sea specks) have no businesses at all; tippecanoe
 # refuses an empty input, so leave no archive and let the workflow skip the upload.

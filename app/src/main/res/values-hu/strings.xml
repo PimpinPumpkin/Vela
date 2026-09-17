@@ -771,7 +771,7 @@
     <string name="settings_places_source_more">Tudj meg többet</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_osm_businesses">OpenStreetMap üzletek is</string>
-    <string name="settings_osm_businesses_hint">Megjeleníti az OpenStreetMapben szereplő üzleteket, éttermeket és más vállalkozásokat is, amelyek hiányoznak a Vela adataiból. Az OpenStreetMap-szerkesztések a térképcsempék újraépítése után jelennek meg, általában egy héten belül. Alapból ki van kapcsolva.</string>
+    <string name="settings_osm_businesses_hint">Megjeleníti az OpenStreetMapben szereplő üzleteket, éttermeket és más vállalkozásokat is, amelyek hiányoznak a Vela adataiból. Az OpenStreetMap-szerkesztések a térképcsempék újraépítése után jelennek meg, általában egy héten belül. Alapból be van kapcsolva.</string>
     <string name="settings_places_lookup">Megkoppintott helyek keresése a Google-ben</string>
     <string name="settings_places_lookup_hint">Egy helyre koppintva a Vela lekéri a nyitvatartását, véleményeit és fotóit a Google-től, és megjegyzi a találatot, így a következő koppintás azonnali. Ki = a megkoppintott hely csak azt mutatja, ami a Vela adatában szerepel (név, típus, cím, telefonszám, weboldal), és semmi nem jut el a koppintásról a Google-höz. A keresés és az útvonaltervezés továbbra is a Google-t használja.</string>
     <string name="settings_places_source_more_title">Honnan származik a Vela helyadata</string>

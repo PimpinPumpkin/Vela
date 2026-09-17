@@ -898,7 +898,7 @@
     <string name="settings_speeding_alert_hint">当您超过限速持续几秒后播报“您已超速”，减速后再次超速时会再播报一次。仅在已知限速（速度标记所显示的限速）的路段生效。默认关闭，需手动开启。</string>
     <string name="nav_speeding_alert">您已超速</string>
     <string name="settings_osm_businesses">同时显示 OpenStreetMap 商户</string>
-    <string name="settings_osm_businesses_hint">同时显示 Vela 数据中缺少、但已在 OpenStreetMap 中标注的商店、餐馆等商户。OpenStreetMap 的编辑会在地图瓦片重建后出现,通常在一周内。默认关闭。</string>
+    <string name="settings_osm_businesses_hint">同时显示 Vela 数据中缺少、但已在 OpenStreetMap 中标注的商店、餐馆等商户。OpenStreetMap 的编辑会在地图瓦片重建后出现,通常在一周内。默认开启。</string>
     <string name="settings_places_lookup">在 Google 上查询点按的地点</string>
     <string name="settings_places_lookup_hint">点按某个地点会从 Google 获取它的营业时间、评价和照片，Vela 会记住匹配结果，下次点按即可立即显示。关闭后：点按的地点只显示 Vela 数据中已有的信息（名称、类型、地址、电话、网站），点按的内容不会发送给 Google。搜索和路线仍使用 Google。</string>
     <string name="routing_offer_title">为%1$s下载离线导航?</string>

@@ -1589,13 +1589,23 @@ class MapViewModel @Inject constructor(
             // name contains the word (on-device test: "Davis" picked "Davis Built Homes" next to
             // the phone). Prefer an exact name match, then a result with no rating (a locality or
             // an address), then whatever ranked first.
-            fun endpoint(q: String, places: List<Place>): Place? =
-                places.firstOrNull { it.name.equals(q, ignoreCase = true) }
-                    ?: places.firstOrNull { it.rating == null && it.category == null }
-                    ?: places.firstOrNull()
-            val dest = runCatching { endpoint(to, dataSource.search(to, near, rankFrom = bias).places) }.getOrNull()
+            // ...and among equally exact matches, the NEAREST to the other end of the trip. A
+            // province and its capital share a name ("Montréal à Québec" drove to the label point
+            // of the province, hundreds of km past the city, discussion #365), and the label point
+            // of a region is not a place anyone drives to.
+            fun endpoint(q: String, places: List<Place>, anchor: LatLng?): Place? {
+                val exact = places.filter { it.name.equals(q, ignoreCase = true) }
+                if (exact.isNotEmpty()) {
+                    return if (anchor == null) exact.first() else exact.minByOrNull { anchor.distanceTo(it.location) }
+                }
+                return places.firstOrNull { it.rating == null && it.category == null } ?: places.firstOrNull()
+            }
+            // The ORIGIN is resolved first so it can anchor the destination: with the start known,
+            // Google ranks the destination around it too, which is what a person means by "A to B".
+            val origin = runCatching { endpoint(from, dataSource.search(from, near, rankFrom = bias).places, bias ?: near) }.getOrNull()
+            val destNear = origin?.location ?: near
+            val dest = runCatching { endpoint(to, dataSource.search(to, destNear, rankFrom = origin?.location ?: bias).places, origin?.location) }.getOrNull()
             if (dest == null) { _state.update { it.copy(searching = false) }; showStatus(appContext.getString(R.string.intent_place_not_found, to)); return@launch }
-            val origin = runCatching { endpoint(from, dataSource.search(from, near, rankFrom = bias).places) }.getOrNull()
             _state.update { it.copy(searching = false) }
             selectPlace(dest)
             routeToSelected()
