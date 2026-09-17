@@ -20,6 +20,9 @@ data class TripMeta(
     val startedAt: Long,
     val fixCount: Int,
     val dest: LatLng?,
+    /** Metres covered by the recorded fixes, and the time between the first and last one. */
+    val distanceM: Double = 0.0,
+    val durationMs: Long = 0L,
 )
 
 /**
@@ -193,7 +196,9 @@ class TripStore @Inject constructor(
         val label = p.getOrNull(0)?.ifBlank { "Trip" } ?: "Trip"
         val startedAt = p.getOrNull(1)?.toLongOrNull() ?: 0L
         val dest = p.getOrNull(2)?.toDoubleOrNull()?.let { la -> p.getOrNull(3)?.toDoubleOrNull()?.let { lo -> LatLng(la, lo) } }
-        TripMeta(f.nameWithoutExtension, label, startedAt, countFixes(f), dest)
+        // One pass for the list row's figures (fix count, distance, duration).
+        val stats = f.useLines { TripLog.stats(it) }
+        TripMeta(f.nameWithoutExtension, label, startedAt, stats.fixes, dest, stats.distanceM, stats.durationMs)
     }.getOrNull()
 
     // Count only the `lat,...` fix lines. A trip with a saved route also holds RP/RD/M

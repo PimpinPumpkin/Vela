@@ -6,6 +6,7 @@ import app.vela.core.model.Maneuver
 import app.vela.core.model.ManeuverType
 import app.vela.core.model.Route
 import app.vela.core.model.RouteLeg
+import app.vela.core.model.distanceTo
 import app.vela.core.nav.NavReplay
 
 /**
@@ -96,6 +97,38 @@ object TripLog {
 
     /** The GPS fixes (every `lat,lng,t,bearing,speed` line; route/META lines are skipped). */
     fun parsePoints(lines: List<String>): List<Point> = lines.mapNotNull { parseFix(it) }
+
+    /** What the saved-trip list shows beside a trip's name: how many fixes, how far, how long. */
+    data class Stats(val fixes: Int, val distanceM: Double, val durationMs: Long)
+
+    /**
+     * One pass over a trip's lines for the list row. [lines] is a Sequence so a long drive is
+     * read without holding the file in memory. Distance is the sum of fix-to-fix steps; duration
+     * runs from the first to the last fix that carries a timestamp.
+     */
+    fun stats(lines: Sequence<String>): Stats {
+        var fixes = 0
+        var dist = 0.0
+        var prevLat = 0.0
+        var prevLng = 0.0
+        var firstT = 0L
+        var lastT = 0L
+        for (line in lines) {
+            val lat = line.substringBefore(',').toDoubleOrNull() ?: continue
+            val p = line.split(',', limit = 4)
+            val lng = p.getOrNull(1)?.toDoubleOrNull() ?: continue
+            val t = p.getOrNull(2)?.toLongOrNull() ?: 0L
+            if (fixes > 0) dist += LatLng(prevLat, prevLng).distanceTo(LatLng(lat, lng))
+            prevLat = lat
+            prevLng = lng
+            if (t > 0L) {
+                if (firstT == 0L) firstT = t
+                lastT = t
+            }
+            fixes++
+        }
+        return Stats(fixes, dist, (lastT - firstT).coerceAtLeast(0L))
+    }
 
     private fun parseFix(line: String): Point? {
         val p = line.split(',')

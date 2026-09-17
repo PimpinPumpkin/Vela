@@ -241,11 +241,10 @@
     <string name="settings_diag_nothing">Nothing recorded yet. Use the app, then export.</string>
     <string name="settings_diag_export">Export debug session</string>
     <string name="settings_diag_redact">Redact places in exports</string>
-    <string name="settings_diag_redact_hint">Hides searches, destinations, links and place names from the export and rounds coordinates to about 10 km. Timing, counts and errors stay.</string>
+    <string name="settings_diag_redact_trips_hint">Hides searches, destinations, links and place names from the diagnostics export and rounds its coordinates to about 10 km. Timing, counts and errors stay. Shared trips start on the largest trim distance.</string>
     <string name="settings_save_trips">Save my trips (for replay)</string>
     <string name="settings_save_trips_hint">Records each drive\'s GPS trace on this phone, so it can be replayed later. Never leaves the phone.</string>
     <string name="settings_recorded_trips_hint">Recorded trips. Tap Replay to play one back on the map (3×):</string>
-    <string name="settings_trip_points">%1$d points</string> <!-- format -->
     <string name="settings_trip_replay">Replay</string>
     <string name="settings_trip_read_error">Couldn\'t read that trip</string>
     <string name="settings_trip_share">Share</string>
@@ -270,6 +269,13 @@
     <string name="settings_trip_select_done">Done</string>
     <string name="settings_trip_share_selected">Share %1$d</string> <!-- format -->
     <string name="settings_trip_select_all">Select all</string>
+    <string name="settings_trip_more">More for this trip</string>
+    <string name="settings_trip_batch_title">Share selected trips</string>
+    <string name="settings_trip_batch_explain">The trips go out together as one zip file. Each one is trimmed at the same distance: every point near its start, its end, its destination and your Home and Work is deleted, and the middle is kept at full precision.</string>
+    <string name="settings_trip_batch_summary">Trips in the zip: %1$d of %2$d. Points removed: %3$d. Points kept: %4$d.</string> <!-- format -->
+    <string name="settings_trip_batch_left_out">Left out because they are shorter than the trim distance: %1$d. A smaller distance may keep them.</string> <!-- format -->
+    <string name="settings_trip_batch_none">Every selected trip is shorter than the trim distance, so there is nothing left to share. Try a smaller one.</string>
+    <string name="settings_trip_batch_confirm">Share zip</string>
     <string name="settings_name_trips">Name each trip when it is saved</string>
     <string name="settings_name_trips_hint">After a recorded drive ends, Vela asks what to call it. Off by default; you can always rename a trip later in the list below.</string>
     <string name="trip_name_prompt_title">Name this drive</string>

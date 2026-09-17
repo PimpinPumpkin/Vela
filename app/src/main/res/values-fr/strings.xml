@@ -105,11 +105,9 @@
     <string name="settings_diag_nothing">Rien d\'enregistré pour l\'instant, utilisez l\'application, puis exportez.</string>
     <string name="settings_diag_export">Exporter la session de débogage</string>
     <string name="settings_diag_redact">Masquer les lieux dans les exports</string>
-    <string name="settings_diag_redact_hint">Masque les recherches, destinations, liens et noms de lieux dans l\'export et arrondit les coordonnées à environ 10 km. Les horaires, compteurs et erreurs restent.</string>
     <string name="settings_save_trips">Enregistrer mes trajets (pour rejouer)</string>
     <string name="settings_save_trips_hint">Enregistre la trace GPS de chaque trajet sur ce téléphone, pour la rejouer plus tard. Ne quitte jamais le téléphone.</string>
     <string name="settings_recorded_trips_hint">Trajets enregistrés: appuyez sur Rejouer pour en revoir un sur la carte (3×) :</string>
-    <string name="settings_trip_points">%1$d points</string>
     <string name="settings_trip_replay">Rejouer</string>
     <string name="settings_trip_read_error">Impossible de lire ce trajet</string>
     <string name="settings_trip_share">Partager</string>

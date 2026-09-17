@@ -105,11 +105,9 @@
     <string name="settings_diag_nothing">Ainda nada registado, use a aplicação e depois exporte.</string>
     <string name="settings_diag_export">Exportar sessão de depuração</string>
     <string name="settings_diag_redact">Ocultar locais nas exportações</string>
-    <string name="settings_diag_redact_hint">Oculta pesquisas, destinos, links e nomes de locais na exportação e arredonda as coordenadas para cerca de 10 km. Horários, contagens e erros permanecem.</string>
     <string name="settings_save_trips">Guardar as minhas viagens (para reprodução)</string>
     <string name="settings_save_trips_hint">Grava o rasto GPS de cada viagem neste telemóvel, para reproduzir depois. Nunca sai do telemóvel.</string>
     <string name="settings_recorded_trips_hint">Viagens gravadas: toque em Reproduzir para reproduzir uma no mapa (3×):</string>
-    <string name="settings_trip_points">%1$d pontos</string>
     <string name="settings_trip_replay">Reproduzir</string>
     <string name="settings_trip_read_error">Não foi possível ler essa viagem</string>
     <string name="settings_trip_share">Partilhar</string>

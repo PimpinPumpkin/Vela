@@ -1,5 +1,6 @@
 package app.vela.ui.settings.sections
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,7 +9,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -23,12 +28,14 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vela.R
@@ -42,6 +49,11 @@ import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.settings.ToggleRow
 import app.vela.ui.dpadHighlight
 import app.vela.ui.dpadRowSibling
+import app.vela.ui.VelaMenu
+import app.vela.ui.item
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Diagnostics sub-screen: breadcrumb sharing, compatibility rendering, trip recording + the
@@ -66,20 +78,21 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
             // The top focusable control: Back routes its DOWN here, UP from here goes back to Back.
             switchModifier = topRow,
         )
+        GroupDivider()
+        // Issue #507: the export with the searches, destinations, links and place names gone
+        // and coordinates at ~10 km, for a report the user means to post publicly. Always shown
+        // (it also widens the trim on trip shares, which do not need diagnostics on).
+        var redact by remember { mutableStateOf(prefs.getBoolean(app.vela.diag.DiagExporter.REDACT_PREF, false)) }
+        ToggleRow(
+            label = stringResource(R.string.settings_diag_redact),
+            checked = redact,
+            onCheckedChange = { on ->
+                redact = on
+                prefs.edit().putBoolean(app.vela.diag.DiagExporter.REDACT_PREF, on).apply()
+            },
+            hint = stringResource(R.string.settings_diag_redact_trips_hint),
+        )
         if (state.diagnosticsEnabled) {
-            GroupDivider()
-            // Issue #507: the export with the searches, destinations, links and place names gone
-            // and coordinates at ~10 km, for a report the user means to post publicly.
-            var redact by remember { mutableStateOf(prefs.getBoolean(app.vela.diag.DiagExporter.REDACT_PREF, false)) }
-            ToggleRow(
-                label = stringResource(R.string.settings_diag_redact),
-                checked = redact,
-                onCheckedChange = { on ->
-                    redact = on
-                    prefs.edit().putBoolean(app.vela.diag.DiagExporter.REDACT_PREF, on).apply()
-                },
-                hint = stringResource(R.string.settings_diag_redact_hint),
-            )
             GroupDivider()
             Spacer(Modifier.height(6.dp))
             DpadRingBox(androidx.compose.material3.ButtonDefaults.filledTonalShape, Modifier.padding(horizontal = 16.dp)) {
@@ -168,15 +181,27 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         LaunchedEffect(Unit) { vm.refreshTripRecording() }
         var showTripConsent by remember { mutableStateOf(false) }
         var shareTrip by remember { mutableStateOf<app.vela.replay.TripMeta?>(null) }
-        var trips by remember { mutableStateOf(vm.recordedTrips()) }
+        // Reading the list opens every trip file (for the row's distance and duration), so it
+        // never runs in composition or on the main thread.
+        val scope = rememberCoroutineScope()
+        var trips by remember { mutableStateOf<List<app.vela.replay.TripMeta>>(emptyList()) }
+        var tripsLoaded by remember { mutableStateOf(false) }
+        val reloadTrips: () -> Unit = {
+            scope.launch {
+                trips = withContext(Dispatchers.IO) { vm.recordedTrips() }
+                tripsLoaded = true
+            }
+        }
         // Multi-select for export. Off until asked for: the common case is one trip, and a
         // checkbox on every row all the time would be clutter for it.
         var selecting by remember { mutableStateOf(false) }
         var selected by remember { mutableStateOf(setOf<String>()) }
         var renaming by remember { mutableStateOf<app.vela.replay.TripMeta?>(null) }
+        var batchShare by remember { mutableStateOf<List<app.vela.replay.TripMeta>?>(null) }
+        var menuFor by remember { mutableStateOf<String?>(null) }
         // Re-read on entry so a trip recorded since the app launched shows up without
         // a restart (the list was otherwise only refreshed after a delete).
-        LaunchedEffect(Unit) { trips = vm.recordedTrips() }
+        LaunchedEffect(Unit) { reloadTrips() }
         Spacer(Modifier.height(4.dp))
         SettingsGroup {
         ToggleRow(
@@ -221,16 +246,9 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
                     TextButton(
                         modifier = Modifier.dpadHighlight(),
                         enabled = selected.isNotEmpty(),
-                        onClick = {
-                            val picked = trips.filter { it.id in selected }
-                            val intent = vm.exportTripsIntent(picked)
-                            if (intent != null) runCatching { context.startActivity(intent) }
-                            else android.widget.Toast.makeText(
-                                context,
-                                context.getString(R.string.settings_trip_read_error),
-                                android.widget.Toast.LENGTH_SHORT,
-                            ).show()
-                        },
+                        // One trim distance for the whole set, chosen in a dialog that says what
+                        // comes off before the zip is built.
+                        onClick = { batchShare = trips.filter { it.id in selected } },
                     ) { Text(stringResource(R.string.settings_trip_share_selected, selected.size)) }
                     TextButton(
                         modifier = Modifier.dpadHighlight(),
@@ -241,15 +259,26 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
             trips.forEachIndexed { ti, t ->
                 if (ti > 0) GroupDivider()
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                    Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(t.label, style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium, maxLines = 1)
-                        val recordedAt = if (t.startedAt > 0L)
-                            app.vela.ui.formatDateTime(androidx.compose.ui.platform.LocalContext.current, t.startedAt)
-                        else null
-                        Hint(listOfNotNull(recordedAt, stringResource(R.string.settings_trip_points, t.fixCount)).joinToString(" · "))
+                    // Two single lines: when (the thing people scan by) on top, then the figures
+                    // and the name. The name goes last so a long street address is what gets cut.
+                    Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
+                        Text(
+                            if (t.startedAt > 0L) tripWhen(context, t.startedAt) else t.label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            tripFigures(t),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                     // NB an early `return@forEachIndexed` here crashes the Compose compiler
                     // ("No mapping for symbol" during IR lowering) - a composable lambda cannot
@@ -258,37 +287,55 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
                         // In selection mode the row IS the checkbox - tapping it toggles, which is
                         // how every list of this shape behaves.
                         Checkbox(
-                            modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                            modifier = Modifier.dpadHighlight(CircleShape),
                             checked = t.id in selected,
                             onCheckedChange = { on ->
                                 selected = if (on) selected + t.id else selected - t.id
                             },
                         )
                     } else {
-                    // D-pad: Replay/Rename/Share/Delete sit side by side inside the L/R-swallowing
+                    // D-pad: Replay/Share/More sit side by side inside the L/R-swallowing
                     // Column, so the group drives its own LEFT/RIGHT (issue #24 pattern).
-                    val tripFocus = remember(t.id) { List(4) { FocusRequester() } }
-                    TextButton(modifier = Modifier.dpadRowSibling(tripFocus, 0), onClick = { vm.replayTrip(t); onCloseSettings() }) { Text(stringResource(R.string.settings_trip_replay)) }
+                    val tripFocus = remember(t.id) { List(3) { FocusRequester() } }
                     IconButton(
-                        modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape).dpadRowSibling(tripFocus, 1),
-                        onClick = { renaming = t },
+                        modifier = Modifier.dpadHighlight(CircleShape).dpadRowSibling(tripFocus, 0),
+                        onClick = { vm.replayTrip(t); onCloseSettings() },
                     ) {
-                        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.settings_trip_rename))
+                        Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.settings_trip_replay))
                     }
                     // Share the trace off-device - works on release builds, so a drive can be
                     // handed over for replay/debug without a dev build. Opens the trim dialog
                     // rather than sharing outright: a raw trip starts and ends at its owner's
                     // front door, and that decision should be made deliberately every time.
-                    TextButton(modifier = Modifier.dpadRowSibling(tripFocus, 2), onClick = {
-                        shareTrip = t
-                    }) { Text(stringResource(R.string.settings_trip_share)) }
-                    IconButton(modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape).dpadRowSibling(tripFocus, 3), onClick = { vm.deleteTrip(t.id); trips = vm.recordedTrips() }) {
-                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_trip_delete))
+                    IconButton(
+                        modifier = Modifier.dpadHighlight(CircleShape).dpadRowSibling(tripFocus, 1),
+                        onClick = { shareTrip = t },
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = stringResource(R.string.settings_trip_share))
+                    }
+                    Box {
+                        IconButton(
+                            modifier = Modifier.dpadHighlight(CircleShape).dpadRowSibling(tripFocus, 2),
+                            onClick = { menuFor = t.id },
+                        ) {
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.settings_trip_more))
+                        }
+                        VelaMenu(expanded = menuFor == t.id, onDismissRequest = { menuFor = null }) {
+                            item(stringResource(R.string.settings_trip_rename), Icons.Default.Edit) {
+                                menuFor = null
+                                renaming = t
+                            }
+                            item(stringResource(R.string.settings_trip_delete), Icons.Default.Delete) {
+                                menuFor = null
+                                vm.deleteTrip(t.id)
+                                reloadTrips()
+                            }
+                        }
                     }
                     }
                 }
             }
-        } else if (state.tripRecordingEnabled) {
+        } else if (state.tripRecordingEnabled && tripsLoaded) {
             Hint(stringResource(R.string.settings_no_trips_hint))
         }
         }
@@ -311,7 +358,7 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
                             context.getString(R.string.settings_trip_rename_failed),
                             android.widget.Toast.LENGTH_SHORT,
                         ).show()
-                        trips = vm.recordedTrips()
+                        reloadTrips()
                     }
                     renaming = null
                 },
@@ -329,6 +376,7 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         }
 
         shareTrip?.let { meta -> TripShareDialog(meta, vm, context) { shareTrip = null } }
+        batchShare?.let { metas -> TripBatchShareDialog(metas, vm, context, scope) { batchShare = null } }
         if (showTripConsent) {
             app.vela.ui.VelaDialog(
                 onDismissRequest = { showTripConsent = false },
@@ -412,7 +460,8 @@ private fun TripShareDialog(
     context: android.content.Context,
     onClose: () -> Unit,
 ) {
-    var radius by remember { mutableStateOf(app.vela.core.replay.TripScrub.DEFAULT_RADIUS_M) }
+    // "Redact places in exports" starts the dialog on the widest trim.
+    var radius by remember { mutableStateOf(app.vela.core.replay.TripScrub.defaultRadius(vm.redactExports())) }
     // The scrub reads and rewrites the whole CSV, so it runs off the main thread and re-runs
     // when the radius changes, instead of inside composition.
     var report by remember(meta.id) { mutableStateOf<app.vela.core.replay.TripScrub.Report?>(null) }
@@ -447,19 +496,7 @@ private fun TripShareDialog(
                 stringResource(R.string.settings_trip_share_radius),
                 style = MaterialTheme.typography.labelLarge,
             )
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                for (m in listOf(200.0, 400.0, 800.0)) {
-                    if (m == radius) {
-                        FilledTonalButton(onClick = { radius = m }) {
-                            Text(stringResource(R.string.settings_trip_share_radius_m, m.toInt()))
-                        }
-                    } else {
-                        TextButton(onClick = { radius = m }) {
-                            Text(stringResource(R.string.settings_trip_share_radius_m, m.toInt()))
-                        }
-                    }
-                }
-            }
+            TrimRadiusPicker(radius) { radius = it }
             Spacer(Modifier.height(8.dp))
             val shown = report
             if (!scrubbed) {
@@ -502,6 +539,132 @@ private fun TripShareDialog(
                 ).show()
                 onClose()
             }) { Text(stringResource(R.string.settings_trip_share_full)) }
+        }
+    }
+}
+
+/** The trim-distance choice both share dialogs offer; the picked one is the filled pill. */
+@Composable
+private fun TrimRadiusPicker(radius: Double, onPick: (Double) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        for (m in app.vela.core.replay.TripScrub.RADIUS_OPTIONS_M) {
+            if (m == radius) {
+                FilledTonalButton(modifier = Modifier.dpadHighlight(CircleShape), onClick = { onPick(m) }) {
+                    Text(stringResource(R.string.settings_trip_share_radius_m, m.toInt()))
+                }
+            } else {
+                TextButton(modifier = Modifier.dpadHighlight(CircleShape), onClick = { onPick(m) }) {
+                    Text(stringResource(R.string.settings_trip_share_radius_m, m.toInt()))
+                }
+            }
+        }
+    }
+}
+
+/** "Sep 7, 7:42 PM": when a drive started, short enough for one list line. The year shows only
+ *  when it is not this year, and the clock follows the device's 12/24-hour setting. */
+private fun tripWhen(context: android.content.Context, epochMs: Long): String =
+    android.text.format.DateUtils.formatDateTime(
+        context, epochMs,
+        android.text.format.DateUtils.FORMAT_SHOW_DATE or
+            android.text.format.DateUtils.FORMAT_SHOW_TIME or
+            android.text.format.DateUtils.FORMAT_ABBREV_MONTH,
+    )
+
+/** "12.3 mi · 24 min · Trip name": the row's second line. Figures a trip does not have (an old or
+ *  very short recording) are left out rather than shown as zero. */
+private fun tripFigures(t: app.vela.replay.TripMeta): String = listOfNotNull(
+    t.distanceM.takeIf { it >= 1.0 }?.let { app.vela.ui.formatDistance(it) },
+    t.durationMs.takeIf { it > 0L }?.let { app.vela.ui.formatDuration(it / 1000.0) },
+    t.label.takeIf { t.startedAt > 0L },
+).joinToString(" · ")
+
+/**
+ * The trim-before-you-share dialog for SEVERAL trips, sent as one zip.
+ *
+ * One trim distance applies to every trip in the set, and the summary adds up what comes off
+ * across all of them before anything is built. A trip too short to keep anything is left out and
+ * counted as such; it is never sent raw. [scope] belongs to the Settings page, so the zip is still
+ * built and handed to the share sheet after this dialog has closed.
+ */
+@Composable
+private fun TripBatchShareDialog(
+    metas: List<app.vela.replay.TripMeta>,
+    vm: MapViewModel,
+    context: android.content.Context,
+    scope: kotlinx.coroutines.CoroutineScope,
+    onClose: () -> Unit,
+) {
+    var radius by remember { mutableStateOf(app.vela.core.replay.TripScrub.defaultRadius(vm.redactExports())) }
+    var reports by remember { mutableStateOf<List<app.vela.core.replay.TripScrub.Report?>?>(null) }
+    LaunchedEffect(radius) {
+        reports = null
+        reports = withContext(Dispatchers.IO) { vm.scrubTripsForSharing(metas, radius) }
+    }
+    val summary = reports?.let { app.vela.core.replay.TripShareBatch.summarize(it) }
+    app.vela.ui.VelaDialog(
+        onDismissRequest = onClose,
+        title = stringResource(R.string.settings_trip_batch_title),
+        confirmText = stringResource(R.string.settings_trip_batch_confirm),
+        onConfirm = confirm@{
+            val r = reports ?: return@confirm // still trimming; the summary is not up yet
+            if (summary == null || summary.kept == 0) {
+                android.widget.Toast.makeText(
+                    context, context.getString(R.string.settings_trip_batch_none), android.widget.Toast.LENGTH_SHORT,
+                ).show()
+                return@confirm
+            }
+            onClose()
+            scope.launch {
+                val intent = withContext(Dispatchers.IO) { vm.shareTripsZipIntent(metas, r) }
+                if (intent != null) runCatching { context.startActivity(intent) }
+                else android.widget.Toast.makeText(
+                    context, context.getString(R.string.settings_trip_read_error), android.widget.Toast.LENGTH_SHORT,
+                ).show()
+            }
+        },
+        dismissText = stringResource(R.string.settings_cancel),
+        onDismiss = onClose,
+    ) {
+        Column(Modifier.fillMaxWidth()) {
+            Text(
+                stringResource(R.string.settings_trip_batch_explain),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                stringResource(R.string.settings_trip_share_radius),
+                style = MaterialTheme.typography.labelLarge,
+            )
+            TrimRadiusPicker(radius) { radius = it }
+            Spacer(Modifier.height(8.dp))
+            if (summary == null) {
+                // The summary arrives a moment after the dialog opens.
+            } else if (summary.kept == 0) {
+                Text(
+                    stringResource(R.string.settings_trip_batch_none),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            } else {
+                Text(
+                    stringResource(
+                        R.string.settings_trip_batch_summary,
+                        summary.kept, summary.picked, summary.fixesRemoved, summary.fixesKept,
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                if (summary.leftOut > 0) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        stringResource(R.string.settings_trip_batch_left_out, summary.leftOut),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                Hint(stringResource(R.string.settings_trip_share_also))
+            }
         }
     }
 }

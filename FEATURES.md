@@ -263,6 +263,17 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   device; **Share full trace** is still there, and the on-device copy is never modified.
   Sharing several trips at once trims every one of them the same way. `core/replay/TripScrub`,
   15 tests.
+- ✅ **Several trips share as one zip, with one trim for the lot (2026-09-16).** Select trips →
+  Share now sends a single `vela-trips-<date-time>.zip` instead of separate attachments, which
+  did not arrive in every messenger (Signal dropped them). A dialog picks one trim distance for
+  the whole batch and says, before anything is built, how many trips made it in, how many points
+  came off and how many are left out for being shorter than the trim. Each trip in the zip is
+  trimmed exactly like a single share; one that trims to nothing is left out, never sent raw.
+  The saved-trip list is easier to scan too: each row is the drive's date and time over its
+  distance, duration and name, with Replay and Share buttons and Rename and Delete in a menu.
+  **Redact places in exports** is now always shown in Settings > Diagnostics and also starts
+  every trip share on the largest trim distance (the middle of a drive is still never rounded).
+  `core/replay/TripShareBatch`, `TripShareBatchTest`.
 - ✅ **The route picker says when a route was computed offline (2026-09-12, issue #350).** A route from a downloaded region shows "offline route, no live traffic" where an online route shows its traffic word, so you always know which kind you are looking at. Downloaded regions remain the fallback: with signal, routes still come with Google's live traffic.
 - ✅ **On foot or by bike the arrow lets go of the route sooner (2026-09-12).** The arrow used to stay glued to the planned line until you were 22 m off it, the car setting. Walking and cycling now use 8 m plus a share of the GPS accuracy, so cutting a corner across a crosswalk shows you where you are within a fix or two.
 - ✅ **Custom list order (2026-09-12, issue #343).** Your lists can be put in any order: up and down arrows on each row in the Your lists dialog (keypad reachable), and the order sticks everywhere lists appear, on the search page and as pins on the map.
