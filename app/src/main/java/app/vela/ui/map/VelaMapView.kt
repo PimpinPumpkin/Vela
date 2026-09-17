@@ -322,31 +322,62 @@ private var lastPoiFuelOnly: Boolean? = null // identity-gate the nav gas-statio
 // because there are no ambient places to hide against.
 private var openHiddenIds: Set<String> = emptySet()
 private var openDisplacedIds: Set<String> = emptySet()
-private const val DEDUPE_NAME_M = 80.0 // same name within this range = the same business, twice
+private const val DEDUPE_NAME_M = 80.0 // agreeing names within this range = the same business, twice
+// The SAME name (after normalizing) reaches farther: Overture often pins a store at its parcel's
+// centroid, out in the parking lot, which put a chain's second copy past 80 m (user 2026-09-17).
+private const val DEDUPE_SAME_NAME_M = 150.0
+private fun normName(s: String) = s.lowercase().replace(NAME_PUNCT, " ").split(NAME_SPACES).filter { it.isNotEmpty() }.joinToString(" ")
+private class Twin(val name: String, val norm: String, val at: LatLng)
+private fun twinOf(n: String, ll: LatLng, set: List<Twin>): Boolean {
+    val norm = normName(n)
+    return set.any { m ->
+        val d = m.at.distanceTo(ll)
+        (d < DEDUPE_SAME_NAME_M && norm.isNotEmpty() && norm == m.norm) || (d < DEDUPE_NAME_M && namesAgree(n, m.name))
+    }
+}
 
-/** Both mode: filter out every open feature ON SCREEN whose name agrees with a Google place within
- *  DEDUPE_NAME_M (Google's copy wins, see openDisplacedIds). Rendered icons only: an open place too
- *  low-ranked to have an icon is a dot, and a dot beside Google's icon reads as the same place
- *  anyway. Runs debounced after an ambient upload, never inline. */
-private fun hideOpenTwins(map: MapLibreMap, style: Style, pois: List<MapMarker>) {
-    if (pois.isEmpty()) { if (openDisplacedIds.isNotEmpty()) { openDisplacedIds = emptySet(); applyOpenPlacesHidden(style) }; return }
+/** Both mode: filter out every open feature ON SCREEN whose name agrees with a Google place that
+ *  is itself DRAWN on screen (Google's copy wins, see openDisplacedIds). Drawn, not merely in the
+ *  pool: a Google copy that lost its collision or sat past the zoom cap used to hide its open twin
+ *  anyway, and the business flashed and vanished (user 2026-09-17). Rendered icons only on the open
+ *  side: an open place too low-ranked to have an icon is a dot, and a dot beside Google's icon reads
+ *  as the same place anyway. Runs debounced after an ambient upload, never inline.
+ *
+ *  The same pass purges what Google says is gone: an open place matching a [closed] place from the
+ *  same response (and no open Google copy of that name nearby, so a store that moved down the block
+ *  keeps its pin) is reported through [onClosed], which hides it for good. */
+private fun hideOpenTwins(map: MapLibreMap, style: Style, pois: List<MapMarker>, closed: List<MapMarker>, onClosed: (String) -> Unit) {
+    if (pois.isEmpty() && closed.isEmpty()) { if (openDisplacedIds.isNotEmpty()) { openDisplacedIds = emptySet(); applyOpenPlacesHidden(style) }; return }
     val iconLayers = style.layers.map { it.id }.filter { it.startsWith("vela-places-") && !it.startsWith("vela-places-dots-") }
     if (iconLayers.isEmpty()) return
-    val rendered = runCatching { map.queryRenderedFeatures(RectF(0f, 0f, map.width, map.height), *iconLayers.toTypedArray()) }.getOrNull() ?: return
+    val screen = RectF(0f, 0f, map.width, map.height)
+    val rendered = runCatching { map.queryRenderedFeatures(screen, *iconLayers.toTypedArray()) }.getOrNull() ?: return
+    val shown = runCatching { map.queryRenderedFeatures(screen, AMBIENT_LAYER, AMBIENT_DOT_LAYER) }.getOrNull().orEmpty().mapNotNull { f ->
+        val n = f.getStringProperty("name") ?: return@mapNotNull null
+        val pt = f.geometry() as? Point ?: return@mapNotNull null
+        Twin(n, normName(n), LatLng(pt.latitude(), pt.longitude()))
+    }
+    val gone = closed.mapNotNull { c ->
+        val norm = normName(c.name)
+        // An OPEN Google listing of the same name close by: the business moved, not closed.
+        if (pois.any { o -> normName(o.name) == norm && o.location.distanceTo(c.location) < DEDUPE_SAME_NAME_M }) null
+        else Twin(c.name, norm, c.location)
+    }
     val displaced = HashSet<String>()
     rendered.forEach { f ->
         val id = f.getStringProperty("id") ?: return@forEach
         val n = f.getStringProperty("name") ?: return@forEach
         val pt = f.geometry() as? Point ?: return@forEach
         val ll = LatLng(pt.latitude(), pt.longitude())
-        if (pois.any { m -> m.location.distanceTo(ll) < DEDUPE_NAME_M && namesAgree(n, m.name) }) displaced += id
+        if (gone.isNotEmpty() && gone.any { m -> m.at.distanceTo(ll) < DEDUPE_NAME_M && namesAgree(n, m.name) }) onClosed(id)
+        else if (twinOf(n, ll, shown)) displaced += id
     }
     // A twin already hidden is no longer RENDERED, so the query above cannot see it, and dropping
     // it from the set would flip it back on until the next pass. So re-check the hidden ones
     // directly: fetch just those ids from the source (the filter runs natively, so only a handful
-    // of features cross JNI) and keep each one whose Google partner is still in the set. One whose
-    // partner has gone - a new fetch elsewhere - is released, so an open place is never left
-    // hidden with nothing drawn in its place.
+    // of features cross JNI) and keep each one whose Google partner is still drawn. One whose
+    // partner has gone - a new fetch elsewhere, or it lost its spot - is released, so an open
+    // place is never left hidden with nothing drawn in its place.
     val prev = openDisplacedIds - displaced
     if (prev.isNotEmpty()) {
         val byId = Expression.`in`(Expression.get("id"), Expression.literal(prev.toTypedArray<Any>()))
@@ -355,8 +386,7 @@ private fun hideOpenTwins(map: MapLibreMap, style: Style, pois: List<MapMarker>)
                 val id = f.getStringProperty("id") ?: return@forEach
                 val n = f.getStringProperty("name") ?: return@forEach
                 val pt = f.geometry() as? Point ?: return@forEach
-                val ll = LatLng(pt.latitude(), pt.longitude())
-                if (pois.any { m -> m.location.distanceTo(ll) < DEDUPE_NAME_M && namesAgree(n, m.name) }) displaced += id
+                if (twinOf(n, LatLng(pt.latitude(), pt.longitude()), shown)) displaced += id
             }
         }
     }
@@ -582,6 +612,9 @@ fun VelaMapView(
     addressOverlays: List<String> = emptyList(), // pmtiles:// URIs for house-number labels (streamed, OpenAddresses)
     maxspeedOverlays: List<String> = emptyList(), // pmtiles:// URIs for the posted-speed overlay (streamed); read under the puck
     hiddenOpenPlaceIds: Set<String> = emptySet(), // Overture ids whose Google listing said permanently closed: never drawn
+    ambientClosed: List<MapMarker> = emptyList(), // permanently closed places in Google's last nearby answer (Both mode purge)
+    onOpenPlaceClosed: (id: String) -> Unit = {}, // an open place matched one of [ambientClosed]: hide it for good
+    placesPending: Boolean = false, // the open places source is on but its lookup has not answered yet
     placesOverlays: List<String> = emptyList(),   // pmtiles:// URIs of the open-data places layer (Overture), file:// or streamed
     basemapArchive: String? = null,               // pmtiles://file:// of an installed offline basemap covering the view; swaps the style's tile source
     onOpenPlaceTap: (app.vela.core.model.Place) -> Unit = {}, // a tapped open-places feature, seeded from its tile attributes
@@ -1269,6 +1302,16 @@ fun VelaMapView(
             style.getSourceAs<GeoJsonSource>(ROUTE_BUBBLE_SRC)?.setGeoJson(fc)
         }
     }
+    // The open places source is on but its lookup (the manifest, on a cold start) has not answered:
+    // keep OSM's business icons down meanwhile, or they flash up and vanish again when the source
+    // lands (user 2026-09-17). A lookup that answers with nothing hands them back.
+    LaunchedEffect(placesPending, styleRef) {
+        val style = styleRef ?: return@LaunchedEffect
+        val hide = placesOverlays.isNotEmpty() || placesPending
+        if (hide != osmHideBusiness) { osmHideBusiness = hide; applyPoiTierFilters(style, lastPoiFuelOnly ?: false) }
+    }
+    ambientClosedNow = ambientClosed
+    openPlaceClosedCb = onOpenPlaceClosed
     LaunchedEffect(placesOverlays, styleRef, darkTheme, hiddenOpenPlaceIds) {
         val style = styleRef ?: return@LaunchedEffect
         // A pin whose Google listing came back permanently closed (Overture lags Google by months)
@@ -1513,7 +1556,7 @@ fun VelaMapView(
         // so the next idle recomputes it against the new tiles.
         osmPoiExclude = emptyList()
         fillLast[0] = Double.NaN // new sources: the next idle runs the pass regardless of movement
-        osmHideBusiness = placesOverlays.isNotEmpty()
+        osmHideBusiness = placesOverlays.isNotEmpty() || placesPending
         lastPoiFuelOnly = null // forces applyData to re-apply the tier filters with the new flag
         lastOsmPoiVis = null
         // Rebuilt mid-drive (a new region in view): keep the drive-nav fuel-only rule on the new layers.
@@ -4795,6 +4838,8 @@ private val OSM_BUSINESS_CLASSES = arrayOf(
 // small runtime dedupe that remains).
 private val OPEN_NONBUSINESS_GROUPS = arrayOf("culture", "civic", "edu", "sport", "health", "park", "default")
 private var osmHideBusiness = false
+private var ambientClosedNow: List<MapMarker> = emptyList() // latest composition's ambientClosed, read by the twin pass
+private var openPlaceClosedCb: (String) -> Unit = {}
 private val fillLast = doubleArrayOf(Double.NaN, Double.NaN, Double.NaN) // lat, lng, zoom of the last fill-in pass
 private val fillLastAt = longArrayOf(0L)
 private const val OSM_EXCLUDE_MAX = 1500
@@ -6802,7 +6847,7 @@ private fun applyData(
         ambientRedo2[0]?.let { ambientRedoHandler.removeCallbacks(it) }
         if (style.sources.any { it.id.startsWith("vela-places-src-") }) {
             val pois = ambientPois
-            fun pass() { if (lastAppliedAmbient === pois && style.isFullyLoaded && flightDepth[0] == 0) hideOpenTwins(map, style, pois) }
+            fun pass() { if (lastAppliedAmbient === pois && style.isFullyLoaded && flightDepth[0] == 0) hideOpenTwins(map, style, pois, ambientClosedNow) { id -> openPlaceClosedCb(id) } }
             // Still moving: try again once the map has settled (a newer list cancels this).
             fun stillOrLater(slot: Array<Runnable?>, self: Runnable): Boolean {
                 val sinceMove = android.os.SystemClock.uptimeMillis() - lastCameraMoveMs[0]
