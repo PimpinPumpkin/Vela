@@ -319,6 +319,8 @@ data class MapUiState(
     // Offline routing (downloadable per-region CH graphs — Settings → Offline routing)
     val routingRegions: List<app.vela.offline.RoutingRegion> = emptyList(),
     val routingInstalledIds: Set<String> = emptySet(), // region ids whose graphs are on disk
+    val routingOffer: app.vela.offline.RoutingRegion? = null, // one-time "download routing for your area" prompt
+    val regionExtrasMb: Map<String, Int> = emptyMap(), // places + offline map MB a region download adds, by routing region id
     val routingDownloadingId: String? = null,          // region id currently downloading, else null
     val routingDownloadPct: Int = 0,
     val regionDownloadName: String? = null,            // display name for the heads-up download card
@@ -1649,6 +1651,7 @@ class MapViewModel @Inject constructor(
     /** Map settled after a user pan: offer "Search this area" while results show. */
     fun onCameraIdle(center: LatLng) {
         mapCenter = center
+        maybeOfferRouting()
         if (_state.value.results.isNotEmpty() && _state.value.selected == null) {
             _state.update { it.copy(showSearchThisArea = true) }
         }
@@ -5428,18 +5431,43 @@ class MapViewModel @Inject constructor(
      *  places catalog is cut finer than the older routing catalog (German states, French regions,
      *  Brazil's five regions), so a whole-country download on that catalog pulls all its pieces, and
      *  a state or province download on the finer catalog pulls just its own. Best-effort and silent. */
+    /** The places or basemap archives a region download pulls: the archive with the region's own id,
+     *  else every piece whose centre lies inside [region] (a country baked in pieces); a region with
+     *  no piece of its own inside (a small country inside a bigger box)
+     *  still gets the smallest archive covering its centre. */
+    private fun archivesFor(region: app.vela.offline.RoutingRegion, regions: List<app.vela.offline.PmtilesRegionStore.Region>): List<app.vela.offline.PmtilesRegionStore.Region> {
+        // The bakes share region ids, so the matching archive is the answer. The centre rule alone
+        // also pulled every archive whose centre fell in the region's buffered box: a Northern
+        // California download took the whole-state places file, a city test bake and Nevada's
+        // places and map (1.5 GB for an 800 MB region, 2026-09-17).
+        regions.firstOrNull { it.id == region.id }?.let { return listOf(it) }
+        val inside = regions.filter { p ->
+            val cy = (p.s + p.n) / 2; val cx = (p.w + p.e) / 2
+            cy in region.s..region.n && cx in region.w..region.e
+        }
+        return inside.ifEmpty {
+            listOfNotNull(regions.filter { (region.s + region.n) / 2 in it.s..it.n && (region.w + region.e) / 2 in it.w..it.e }.minByOrNull { it.area() })
+        }
+    }
+
+    /** What a region download adds on top of the routing file and place pack: the places archive
+     *  (when that setting is on) and the offline map, in MB, per routing region id. The Offline
+     *  page and the routing offer add it to their size, which used to show routing and search only
+     *  (a Northern California download read 126 MB and installed about 800). */
+    private suspend fun regionExtrasMb(routing: List<app.vela.offline.RoutingRegion>): Map<String, Int> {
+        val places = if (app.vela.ui.MapPoiPrefs.placesWithDownloads.value) {
+            runCatching { placesStore.manifest(app.vela.BuildConfig.PLACES_MANIFEST_URL) }.getOrDefault(emptyList())
+        } else emptyList()
+        val maps = runCatching { basemapStore.manifest(app.vela.BuildConfig.BASEMAP_MANIFEST_URL) }.getOrDefault(emptyList())
+        return routing.associate { r ->
+            r.id to ((archivesFor(r, places) + archivesFor(r, maps)).sumOf { it.sizeMb }).toInt()
+        }
+    }
+
     private fun downloadPlacesForRegion(region: app.vela.offline.RoutingRegion) {
         downloadLaunch(appContext.getString(R.string.download_label_map_data)) {
             val regions = placesStore.manifest(app.vela.BuildConfig.PLACES_MANIFEST_URL)
-            val inside = regions.filter { p ->
-                val cy = (p.s + p.n) / 2; val cx = (p.w + p.e) / 2
-                cy in region.s..region.n && cx in region.w..region.e
-            }
-            // A region with no piece of its own inside (a small country inside a bigger box) still gets
-            // the smallest archive covering its center.
-            val picks = inside.ifEmpty {
-                listOfNotNull(regions.filter { (region.s + region.n) / 2 in it.s..it.n && (region.w + region.e) / 2 in it.w..it.e }.minByOrNull { it.area() })
-            }
+            val picks = archivesFor(region, regions)
             var any = false
             for (p in picks) {
                 if (p.id in placesStore.installedIds()) continue
@@ -5455,13 +5483,7 @@ class MapViewModel @Inject constructor(
     private fun downloadBasemapForRegion(region: app.vela.offline.RoutingRegion) {
         downloadLaunch(appContext.getString(R.string.download_label_map_data)) {
             val regions = basemapStore.manifest(app.vela.BuildConfig.BASEMAP_MANIFEST_URL)
-            val inside = regions.filter { p ->
-                val cy = (p.s + p.n) / 2; val cx = (p.w + p.e) / 2
-                cy in region.s..region.n && cx in region.w..region.e
-            }
-            val picks = inside.ifEmpty {
-                listOfNotNull(regions.filter { (region.s + region.n) / 2 in it.s..it.n && (region.w + region.e) / 2 in it.w..it.e }.minByOrNull { it.area() })
-            }
+            val picks = archivesFor(region, regions)
             var any = false
             for (p in picks) {
                 if (p.id in basemapStore.installedIds()) continue
@@ -6063,12 +6085,58 @@ class MapViewModel @Inject constructor(
 
     // --- Offline ROUTING graphs (Settings → Offline routing) ---------------------------------
 
+    private var routingOfferChecked = false
+
+    /** Offer, once ever, the routing download for the region around Home (or around you when no
+     *  Home is saved): with it installed, a mid-drive reroute can race the on-device engine
+     *  against the network instead of waiting on it, and directions work with no signal. Asked
+     *  after setup, on the bare map, online, and never again once answered or already installed. */
+    private fun maybeOfferRouting() {
+        if (routingOfferChecked) return
+        val prefs = appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+        if (prefs.getBoolean(ROUTING_OFFER_DONE, false)) { routingOfferChecked = true; return }
+        val ob = app.vela.ui.Onboarding
+        if (!ob.welcomeDone.value || ob.showLocationPrompt.value || ob.showNotifPrompt.value || ob.showVoicePrompt.value || ob.showDonatePrompt.value) return
+        val s = _state.value
+        if (s.navigating || s.directionsOpen || s.selected != null || s.results.isNotEmpty() || s.offline) return
+        if (s.routingDownloadingId != null) return
+        val anchor = s.home?.let { LatLng(it.lat, it.lng) } ?: s.myLocation ?: return
+        routingOfferChecked = true
+        viewModelScope.launch {
+            val regions = runCatching { regionCatalog.manifest(app.vela.BuildConfig.OBF_MANIFEST_URL) }.getOrDefault(emptyList())
+            if (regions.isEmpty()) { routingOfferChecked = false; return@launch } // try again on a later idle
+            val region = regions.filter { anchor.lat in it.s..it.n && anchor.lng in it.w..it.e }
+                .minByOrNull { (it.n - it.s) * (it.e - it.w) } ?: run { markRoutingOfferDone(); return@launch }
+            if (region.id in obfStore.installedIds()) { markRoutingOfferDone(); return@launch }
+            if (_state.value.poiPackRegions.isEmpty()) {
+                val packs = runCatching { poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL) }.getOrDefault(emptyList())
+                _state.update { it.copy(poiPackRegions = packs) }
+            }
+            val extras = regionExtrasMb(listOf(region))
+            _state.update { it.copy(regionExtrasMb = it.regionExtrasMb + extras, routingOffer = region) }
+        }
+    }
+
+    private fun markRoutingOfferDone() {
+        appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+            .edit().putBoolean(ROUTING_OFFER_DONE, true).apply()
+    }
+
+    fun answerRoutingOffer(download: Boolean) {
+        val region = _state.value.routingOffer ?: return
+        markRoutingOfferDone()
+        _state.update { it.copy(routingOffer = null) }
+        if (download) downloadRoutingGraph(region)
+    }
+
     /** Reflect what's installed + fetch the obf region catalog. */
     fun refreshRoutingRegions() {
         _state.update { it.copy(routingInstalledIds = obfStore.installedIds()) }
         viewModelScope.launch {
             val regions = regionCatalog.manifest(app.vela.BuildConfig.OBF_MANIFEST_URL)
             _state.update { it.copy(routingRegions = regions) }
+            val extras = regionExtrasMb(regions)
+            _state.update { it.copy(regionExtrasMb = extras) }
             // The pack catalog too (revs + deltas) — Settings compares it against the installed pack
             // revisions to offer "Update places" on stale regions.
             refreshRegionUpdates()
@@ -6336,6 +6404,7 @@ class MapViewModel @Inject constructor(
     }
 
     companion object {
+        private const val ROUTING_OFFER_DONE = "routing_offer_done"
         const val KEY_DISMISSED = "dismissed"
         const val CONTROLS_MIN_ZOOM = 16.0 // draw traffic lights/stop signs only when zoomed in this close
         const val SAT_DEEP_PROBE_ZOOM = 17.0 // probe deep-imagery availability once this close (tiles ready before the blur)

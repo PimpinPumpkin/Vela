@@ -886,4 +886,7 @@
     <string name="settings_osm_businesses_hint">Mostra também as lojas, restaurantes e outros negócios mapeados no OpenStreetMap que faltam nos dados do Vela. As edições no OpenStreetMap aparecem quando os mosaicos do mapa são reconstruídos, normalmente numa semana. Desligado por predefinição.</string>
     <string name="settings_places_lookup">Procurar no Google os locais tocados</string>
     <string name="settings_places_lookup_hint">Ao tocar num local, o Vela obtém do Google os horários, as avaliações e as fotos, e memoriza a correspondência para que o toque seguinte seja imediato. Desligado = um local tocado mostra apenas o que os dados do Vela têm (nome, tipo, morada, telefone, site) e nada sobre o toque chega ao Google. A pesquisa e as direções continuam a usar o Google.</string>
+    <string name="routing_offer_title">Rotas offline para %1$s?</string>
+    <string name="routing_offer_download">Transferir</string>
+    <string name="routing_offer_body">Obtém as estradas, os locais e o mapa desta região, cerca de %1$s. Os recálculos ficam mais rápidos e as indicações funcionam sem rede. As transferências estão em Definições, Mapas offline.</string>
 </resources>

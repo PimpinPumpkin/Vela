@@ -884,4 +884,7 @@
     <string name="settings_speeding_alert">Hastighetsvarning</string>
     <string name="settings_speeding_alert_hint">Säger \"Du kör för fort\" när du legat över skyltad hastighet några sekunder, och igen efter att du saktat ner och krupit över den på nytt. Bara där en skyltad gräns är känd, den som hastighetsmärket visar. Av tills du slår på det.</string>
     <string name="nav_speeding_alert">Du kör för fort</string>
+    <string name="routing_offer_title">Offlinevägvisning för %1$s?</string>
+    <string name="routing_offer_download">Ladda ner</string>
+    <string name="routing_offer_body">Hämtar vägar, platser och karta för regionen, cirka %1$s. Omräkningar går snabbare och vägvisningen fungerar utan täckning. Nedladdningar finns under Inställningar, Offlinekartor.</string>
 </resources>

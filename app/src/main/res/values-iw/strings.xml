@@ -885,4 +885,7 @@
     <string name="settings_speeding_alert">התראת חריגה ממהירות</string>
     <string name="settings_speeding_alert_hint">אומר \"אתה חורג ממגבלת המהירות\" אחרי כמה שניות של נסיעה מעל המהירות המותרת, ושוב אחרי שתאט ותחזור לחרוג. רק היכן שידועה מהירות מותרת, זו שמוצגת בתג המהירות. כבוי אלא אם תפעיל.</string>
     <string name="nav_speeding_alert">אתה חורג ממגבלת המהירות</string>
+    <string name="routing_offer_title">ניווט לא מקוון עבור %1$s?</string>
+    <string name="routing_offer_download">הורדה</string>
+    <string name="routing_offer_body">מוריד את הכבישים, המקומות והמפה של האזור, כ-%1$s. חישוב מסלול מחדש מהיר יותר והניווט עובד גם בלי קליטה. ההורדות נמצאות בהגדרות, מפות לא מקוונות.</string>
 </resources>
