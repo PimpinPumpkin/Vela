@@ -249,6 +249,8 @@ private const val PUCK_LABEL_GAP_PX = 62
 // chips) above the body, and the least the body may shrink to.
 private const val CHOOSER_MAP_STRIP_DP = 96f
 private const val CHOOSER_HEADER_DP = 84f
+// How far down the ramp the exit callout sits, past the maneuver point where the ramp leaves.
+private const val EXIT_CALLOUT_AHEAD_M = 70.0
 private const val CHOOSER_BODY_MIN_DP = 120f
 
 /** Density-aware default for the POI icon size: 1 at hdpi and above (every phone), scaling down
@@ -1236,7 +1238,19 @@ fun MapScreen(
                     app.vela.core.model.ManeuverType.KEEP_LEFT, app.vela.core.model.ManeuverType.KEEP_RIGHT,
                 )
                 val label = if (m != null && ramp) app.vela.core.nav.ExitLabel.of(m.instruction) else null
-                if (m != null && label != null) m.location to label else null
+                val poly = state.activeRoute?.polyline.orEmpty()
+                when {
+                    m == null || label == null -> null
+                    poly.size < 2 -> m.location to label
+                    else -> {
+                        // ON THE RAMP, not on the freeway beside it (user 2026-09-17): the maneuver
+                        // point is where the ramp leaves, so walk a little way down the route past it.
+                        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+                        val at = app.vela.core.nav.RouteProjection.alongMeters(poly, cum, m.location, 120.0)
+                        val p = if (at == null) m.location else app.vela.core.nav.RouteProjection.pointAt(poly, cum, at + EXIT_CALLOUT_AHEAD_M)
+                        p to label
+                    }
+                }
             },
             basemapArchive = state.basemapArchive,
             onOpenPlaceTap = vm::onOpenPlaceTap,

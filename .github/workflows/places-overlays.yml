@@ -53,7 +53,13 @@ jobs:
               *) jq -c '{include: .regions}' tools/places-regions.json > m.json ;;
             esac
           fi
-          echo "matrix=$(cat m.json)" >> "$GITHUB_OUTPUT"
+          # Each region's OSM extract comes along (matched by id against the routing catalog, which
+          # carries the Geofabrik URLs): the bake prefers OpenStreetMap's own coordinate for a shop,
+          # since that is the one anybody can correct.
+          jq -c --slurpfile r tools/routing-regions.json '
+            (($r[0].regions // $r[0]) | map({key: .id, value: .pbf_url}) | from_entries) as $pbf
+            | {include: [ .include[] | . + {pbf_url: ($pbf[.id] // "")} ]}' m.json > m2.json
+          echo "matrix=$(cat m2.json)" >> "$GITHUB_OUTPUT"
       - id: rel
         name: Pick the Overture release
         run: |
@@ -89,14 +95,14 @@ jobs:
           # go-pmtiles: `pmtiles extract` pulls a region's AllThePlaces tiles by range request.
           curl -sL https://github.com/protomaps/go-pmtiles/releases/download/v1.31.2/go-pmtiles_1.31.2_Linux_x86_64.tar.gz | tar -xz pmtiles
           sudo mv pmtiles /usr/local/bin/pmtiles
-          sudo apt-get update -qq && sudo apt-get install -y -qq build-essential libsqlite3-dev zlib1g-dev jq
+          sudo apt-get update -qq && sudo apt-get install -y -qq build-essential libsqlite3-dev zlib1g-dev jq osmium-tool
           git clone --depth 1 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
           make -C /tmp/tippecanoe -j"$(nproc)" >/dev/null && sudo make -C /tmp/tippecanoe install >/dev/null
       - name: Bake ${{ matrix.id }}
         run: |
           B='${{ toJson(matrix.bbox) }}'
           S=$(echo "$B" | jq '.[0]'); W=$(echo "$B" | jq '.[1]'); N=$(echo "$B" | jq '.[2]'); E=$(echo "$B" | jq '.[3]')
-          bash tools/build-places-region.sh "${{ matrix.id }}" "$S" "$W" "$N" "$E" "places-${{ matrix.id }}.pmtiles" "${{ needs.plan.outputs.release }}"
+          OSM_PBF="${{ matrix.pbf_url }}" bash tools/build-places-region.sh "${{ matrix.id }}" "$S" "$W" "$N" "$E" "places-${{ matrix.id }}.pmtiles" "${{ needs.plan.outputs.release }}"
       - name: Upload archive + emit manifest entry
         env:
           GH_TOKEN: ${{ github.token }}
