@@ -225,6 +225,8 @@
     <string name="settings_places_source_both_hint">Vela\'s data draws the map, and once you stop panning one Google request adds anything it lacks. The extras show online only.</string>
     <string name="settings_places_source_more">Learn more</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
+    <string name="settings_osm_businesses">OpenStreetMap shops too</string>
+    <string name="settings_osm_businesses_hint">Also shows the shops, restaurants and other businesses mapped in OpenStreetMap that Vela\'s data lacks. OpenStreetMap edits appear here after the map tiles are rebuilt, usually within a week. Off by default.</string>
     <string name="settings_places_lookup">Look up tapped places on Google</string>
     <string name="settings_places_lookup_hint">Tapping a place fetches its hours, reviews and photos from Google, and Vela remembers the match so the next tap is instant. Off = a tapped place shows only what Vela\'s data has (name, type, address, phone, website) and nothing about the tap reaches Google. Search and directions still use Google.</string>
     <string name="settings_places_source_more_title">Where Vela\'s place data comes from</string>

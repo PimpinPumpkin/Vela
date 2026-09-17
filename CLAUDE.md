@@ -3751,7 +3751,9 @@ Gotchas:
   business POIs (`poi_r1/r7/r20`) under an open places source (2026-09-16, final shape): OSM
   BUSINESS classes (`OSM_BUSINESS_CLASSES`: the style's food/shop/lodging/fuel groups plus the
   commercial health and money classes) are hidden outright by a static term in
-  `applyPoiTierFilters` (`osmHideBusiness`, set by the overlay effect, and also while
+  `applyPoiTierFilters` (`osmHideBusiness`, false when `MapPoiPrefs.osmBusinesses` "OpenStreetMap
+  shops too" is on (2026-09-17, off by default); then `osmFillIn` queries EVERY open icon group, not
+  just the non-business ones, so OSM businesses twinning an open place drop by name; set by the overlay effect, and also while
   `placesPending` says the first places lookup has not answered, so a cold start does not flash
   OSM's shops and then drop them), because Overture,
   AllThePlaces and Google cover businesses far better. Everything else OSM draws - museums,

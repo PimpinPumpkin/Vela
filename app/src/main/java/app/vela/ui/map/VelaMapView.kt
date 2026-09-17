@@ -615,6 +615,7 @@ fun VelaMapView(
     ambientClosed: List<MapMarker> = emptyList(), // permanently closed places in Google's last nearby answer (Both mode purge)
     onOpenPlaceClosed: (id: String) -> Unit = {}, // an open place matched one of [ambientClosed]: hide it for good
     placesPending: Boolean = false, // the open places source is on but its lookup has not answered yet
+    osmBusinesses: Boolean = false, // draw OSM's businesses under the open places layer too (deduped by name)
     placesOverlays: List<String> = emptyList(),   // pmtiles:// URIs of the open-data places layer (Overture), file:// or streamed
     basemapArchive: String? = null,               // pmtiles://file:// of an installed offline basemap covering the view; swaps the style's tile source
     onOpenPlaceTap: (app.vela.core.model.Place) -> Unit = {}, // a tapped open-places feature, seeded from its tile attributes
@@ -1305,10 +1306,15 @@ fun VelaMapView(
     // The open places source is on but its lookup (the manifest, on a cold start) has not answered:
     // keep OSM's business icons down meanwhile, or they flash up and vanish again when the source
     // lands (user 2026-09-17). A lookup that answers with nothing hands them back.
-    LaunchedEffect(placesPending, styleRef) {
+    osmBusinessesOn = osmBusinesses
+    LaunchedEffect(placesPending, styleRef, osmBusinesses) {
         val style = styleRef ?: return@LaunchedEffect
-        val hide = placesOverlays.isNotEmpty() || placesPending
-        if (hide != osmHideBusiness) { osmHideBusiness = hide; applyPoiTierFilters(style, lastPoiFuelOnly ?: false) }
+        val hide = (placesOverlays.isNotEmpty() || placesPending) && !osmBusinesses
+        if (hide != osmHideBusiness) {
+            osmHideBusiness = hide
+            fillLast[0] = Double.NaN // the fill-in pass now has businesses to dedupe: run it on the next idle
+            applyPoiTierFilters(style, lastPoiFuelOnly ?: false)
+        }
     }
     ambientClosedNow = ambientClosed
     openPlaceClosedCb = onOpenPlaceClosed
@@ -1556,7 +1562,7 @@ fun VelaMapView(
         // so the next idle recomputes it against the new tiles.
         osmPoiExclude = emptyList()
         fillLast[0] = Double.NaN // new sources: the next idle runs the pass regardless of movement
-        osmHideBusiness = placesOverlays.isNotEmpty() || placesPending
+        osmHideBusiness = (placesOverlays.isNotEmpty() || placesPending) && !osmBusinesses
         lastPoiFuelOnly = null // forces applyData to re-apply the tier filters with the new flag
         lastOsmPoiVis = null
         // Rebuilt mid-drive (a new region in view): keep the drive-nav fuel-only rule on the new layers.
@@ -4795,8 +4801,15 @@ private fun osmFillIn(map: MapLibreMap, style: Style) {
     val osm = runCatching { map.queryRenderedFeatures(box, *poiLayers.toTypedArray()) }.getOrNull().orEmpty()
     if (osm.isEmpty()) return
     val open = HashMap<String, ArrayList<LatLng>>()
+    // With OSM's businesses shown (osmBusinessesOn), every open icon can twin one, so the open side
+    // is the whole icon set; otherwise only the groups an OSM non-business point can match.
     val nonBusiness = Expression.`in`(Expression.get("group"), Expression.literal(OPEN_NONBUSINESS_GROUPS))
-    runCatching { map.queryRenderedFeatures(box, nonBusiness, *openLayers.toTypedArray()) }.getOrNull()?.forEach { f ->
+    val openRendered = if (osmBusinessesOn && !osmHideBusiness) {
+        runCatching { map.queryRenderedFeatures(box, *openLayers.toTypedArray()) }.getOrNull()
+    } else {
+        runCatching { map.queryRenderedFeatures(box, nonBusiness, *openLayers.toTypedArray()) }.getOrNull()
+    }
+    openRendered?.forEach { f ->
         val pt = f.geometry() as? Point ?: return@forEach
         val n = f.getStringProperty("name") ?: return@forEach
         open.getOrPut(fillKey(n)) { ArrayList() } += LatLng(pt.latitude(), pt.longitude())
@@ -4838,6 +4851,7 @@ private val OSM_BUSINESS_CLASSES = arrayOf(
 // small runtime dedupe that remains).
 private val OPEN_NONBUSINESS_GROUPS = arrayOf("culture", "civic", "edu", "sport", "health", "park", "default")
 private var osmHideBusiness = false
+private var osmBusinessesOn = false // the "OpenStreetMap shops too" setting, read by osmFillIn
 private var ambientClosedNow: List<MapMarker> = emptyList() // latest composition's ambientClosed, read by the twin pass
 private var openPlaceClosedCb: (String) -> Unit = {}
 private val fillLast = doubleArrayOf(Double.NaN, Double.NaN, Double.NaN) // lat, lng, zoom of the last fill-in pass
@@ -4911,12 +4925,6 @@ private var lastNavLabelKey: Any? = null // self-gate: (on, dark, exclude) - nul
 
 private val NAV_LABEL_MAJOR_CLASSES = arrayOf("motorway", "trunk", "primary", "secondary")
 private val NAV_LABEL_SLOW_CLASSES = arrayOf("tertiary", "minor")
-
-/** The nav label layers' filter: named + class-matched, minus the route's own roads ([exclude],
- *  name AND ref props - the basemap names bridge segments independently of the ref), and - when
- *  the cross-street loop has computed one - restricted to [include], the names whose geometry
- *  actually CROSSES the route ahead (Google's rule: only streets you meet get callouts). */
-
 
 /** Where [line] meets the route [window] (the first proper crossing in route order, else a
  *  T-junction endpoint within [touchM]), moved [NAV_XLABEL_OFFSET_M] along the street to the side

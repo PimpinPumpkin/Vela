@@ -882,6 +882,8 @@
     <string name="settings_speeding_alert">Alerta de excesso de velocidade</string>
     <string name="settings_speeding_alert_hint">Diz “Está acima do limite de velocidade” quando passa alguns segundos acima do limite indicado, e outra vez depois de abrandar e voltar a ultrapassá-lo. Só onde o limite indicado é conhecido, o mesmo que o emblema de velocidade mostra. Desligado até o ligar.</string>
     <string name="nav_speeding_alert">Está acima do limite de velocidade</string>
+    <string name="settings_osm_businesses">Também lojas do OpenStreetMap</string>
+    <string name="settings_osm_businesses_hint">Mostra também as lojas, restaurantes e outros negócios mapeados no OpenStreetMap que faltam nos dados do Vela. As edições no OpenStreetMap aparecem quando os mosaicos do mapa são reconstruídos, normalmente numa semana. Desligado por predefinição.</string>
     <string name="settings_places_lookup">Procurar no Google os locais tocados</string>
     <string name="settings_places_lookup_hint">Ao tocar num local, o Vela obtém do Google os horários, as avaliações e as fotos, e memoriza a correspondência para que o toque seguinte seja imediato. Desligado = um local tocado mostra apenas o que os dados do Vela têm (nome, tipo, morada, telefone, site) e nada sobre o toque chega ao Google. A pesquisa e as direções continuam a usar o Google.</string>
 </resources>
