@@ -4366,37 +4366,51 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * Share SEVERAL trips at once as separate attachments.
-     *
-     * Same files the single-trip share writes, through ACTION_SEND_MULTIPLE. Trips whose CSV
-     * cannot be read are skipped rather than failing the whole share - one unreadable file
-     * should not cost the user the other nine. Returns null only when NOTHING could be read.
+     * Trim every trip in a multi-select share at ONE radius, in the order given. A null entry is
+     * a trip that could not be read or trimmed to nothing; it is left out of the share, never
+     * sent raw. Reads and rewrites whole files, so call it off the main thread.
      */
-    fun exportTripsIntent(metas: List<app.vela.replay.TripMeta>): android.content.Intent? {
+    fun scrubTripsForSharing(
+        metas: List<app.vela.replay.TripMeta>,
+        radiusM: Double,
+    ): List<app.vela.core.replay.TripScrub.Report?> = metas.map { scrubTripForSharing(it, radiusM) }
+
+    /** Whether Settings > Diagnostics > "Redact places in exports" is on. Trip shares then start on
+     *  the widest trim ([app.vela.core.replay.TripScrub.defaultRadius]). */
+    fun redactExports(): Boolean = settingsPrefs.getBoolean(app.vela.diag.DiagExporter.REDACT_PREF, false)
+
+    /**
+     * Share SEVERAL trips at once as ONE zip file.
+     *
+     * [reports] are the already-trimmed trips from [scrubTripsForSharing], index-aligned with
+     * [metas]; nulls are skipped. One file instead of ACTION_SEND_MULTIPLE because several
+     * attachments did not arrive in every messenger (Signal, user report). The zip is named by the
+     * export's local date and time, each entry by its drive's, never by a label or destination.
+     * Returns null when nothing is left to send. Writes a file, so call it off the main thread.
+     */
+    fun shareTripsZipIntent(
+        metas: List<app.vela.replay.TripMeta>,
+        reports: List<app.vela.core.replay.TripScrub.Report?>,
+    ): android.content.Intent? {
+        val kept = metas.zip(reports).mapNotNull { (m, r) -> r?.let { m to it } }
+        if (kept.isEmpty()) return null
         return runCatching {
+            val names = app.vela.core.replay.TripShareBatch.entryNames(kept.map { tripStamp(it.first.startedAt) })
             val dir = java.io.File(appContext.cacheDir, "export").apply { mkdirs() }
-            val uris = java.util.ArrayList<android.net.Uri>()
-            var points = 0
-            for (meta in metas) {
-                // Every trip goes out TRIMMED at the default radius around Home and Work, the
-                // same treatment the single-trip Share dialog enforces. This path used to ship the
-                // raw traces, and with one box ticked it even skipped the dialog. A trip too
-                // short to keep anything after trimming is left out, not sent raw.
-                val report = scrubTripForSharing(meta) ?: continue
-                val file = java.io.File(dir, "vela-trip-${tripStamp(meta.startedAt)}.csv")
-                file.writeText(report.csv)
-                uris += androidx.core.content.FileProvider.getUriForFile(
-                    appContext, "${appContext.packageName}.fileprovider", file,
-                )
-                points += report.fixesAfter
-            }
-            if (uris.isEmpty()) return null
-            val send = android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE).apply {
-                type = "text/csv"
-                putParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, uris)
+            val file = java.io.File(dir, "vela-trips-${tripStamp(System.currentTimeMillis())}.zip")
+            app.vela.core.replay.TripShareBatch.writeZip(
+                names.zip(kept.map { it.second.csv }),
+                file.outputStream(),
+            )
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                appContext, "${appContext.packageName}.fileprovider", file,
+            )
+            val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = app.vela.core.replay.TripShareBatch.MIME
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
                 putExtra(
                     android.content.Intent.EXTRA_SUBJECT,
-                    appContext.getString(R.string.mapvm_export_trips_subject, uris.size, points),
+                    appContext.getString(R.string.mapvm_export_trips_subject, kept.size, kept.sumOf { it.second.fixesAfter }),
                 )
                 addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }

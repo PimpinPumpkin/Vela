@@ -105,11 +105,9 @@
     <string name="settings_diag_nothing">Nog niets vastgelegd, gebruik de app en exporteer daarna.</string>
     <string name="settings_diag_export">Debugsessie exporteren</string>
     <string name="settings_diag_redact">Plaatsen verbergen in exports</string>
-    <string name="settings_diag_redact_hint">Verbergt zoekopdrachten, bestemmingen, links en plaatsnamen in de export en rondt coördinaten af op ongeveer 10 km. Tijden, aantallen en fouten blijven.</string>
     <string name="settings_save_trips">Mijn ritten opslaan (voor herhaling)</string>
     <string name="settings_save_trips_hint">Slaat het gps-spoor van elke rit op deze telefoon op, om later af te spelen. Verlaat de telefoon nooit.</string>
     <string name="settings_recorded_trips_hint">Opgenomen ritten: tik op Herhalen om er een op de kaart af te spelen (3×):</string>
-    <string name="settings_trip_points">%1$d punten</string>
     <string name="settings_trip_replay">Herhalen</string>
     <string name="settings_trip_read_error">Kon die rit niet lezen</string>
     <string name="settings_trip_share">Delen</string>

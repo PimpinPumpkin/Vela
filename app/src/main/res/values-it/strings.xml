@@ -105,11 +105,9 @@
     <string name="settings_diag_nothing">Ancora niente registrato: usa l\'app, poi esporta.</string>
     <string name="settings_diag_export">Esporta sessione di debug</string>
     <string name="settings_diag_redact">Oscura i luoghi nelle esportazioni</string>
-    <string name="settings_diag_redact_hint">Nasconde ricerche, destinazioni, link e nomi di luoghi dall\'esportazione e arrotonda le coordinate a circa 10 km. Tempi, conteggi ed errori restano.</string>
     <string name="settings_save_trips">Salva i miei viaggi (per la riproduzione)</string>
     <string name="settings_save_trips_hint">Registra la traccia GPS di ogni viaggio su questo telefono, per riprodurla in seguito. Non lascia mai il telefono.</string>
     <string name="settings_recorded_trips_hint">Viaggi registrati: tocca Riproduci per riprodurne uno sulla mappa (3×):</string>
-    <string name="settings_trip_points">%1$d punti</string>
     <string name="settings_trip_replay">Riproduci</string>
     <string name="settings_trip_read_error">Impossibile leggere quel viaggio</string>
     <string name="settings_trip_share">Condividi</string>

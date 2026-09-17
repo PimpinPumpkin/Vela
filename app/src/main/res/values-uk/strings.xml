@@ -107,7 +107,6 @@
     <string name="settings_save_trips">Зберігати мої поїздки (для відтворення)</string>
     <string name="settings_save_trips_hint">Записує GPS-слід кожної поїздки на цьому телефоні для відтворення пізніше. Ніколи не залишає телефон.</string>
     <string name="settings_recorded_trips_hint">Записані поїздки: натисніть «Відтворити», щоб програти одну на карті (3×):</string>
-    <string name="settings_trip_points">%1$d точок</string>
     <string name="settings_trip_replay">Відтворити</string>
     <string name="settings_trip_read_error">Не вдалося прочитати цю поїздку</string>
     <string name="settings_trip_share">Поділитися</string>

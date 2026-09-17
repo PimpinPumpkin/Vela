@@ -113,17 +113,32 @@ Defaults that make the safe path the easy one:
   - `audit_dynamic.sh` - EXHAUSTIVE on-device tour: every surface opens focused, focus is never lost
     across a full traversal, BACK exits. "Nothing escapes the auditor."
 - **Managing saved trips (2026-08-26).** Settings > Diagnostics: every recorded trip can be
-  RENAMED (pencil on the row -> `TripStore.rename`, file IO only; the header surgery itself is
+  RENAMED (the row's overflow menu -> `TripStore.rename`, file IO only; the header surgery itself is
   **`TripLog.renameHeader` in :core**, beside the format so writer and reader cannot drift, and
   unit-tested by `TripRenameTest` - a comma or newline in a name would shift/split the header
   fields and make the whole recording unparseable, and a drive cannot be recorded twice. The
   write goes to a temp file and is renamed over the original, so it can never be half-written), and "Select trips"
-  turns the list into a multi-select whose Share hands the whole set to ACTION_SEND_MULTIPLE
-  (`MapViewModel.exportTripsIntent`; one unreadable CSV is skipped, not fatal). **Every trip in
-  that set goes out TRIMMED** through `scrubTripForSharing` at the default radius (review
-  2026-09-06: it used to ship the raw traces, and with one box ticked it even skipped the trim
-  dialog); a trip that trims to nothing is left out, never sent raw. The raw file is reachable
-  only from the single-trip dialog's "Share full trace". Optional pref `trip_name_on_save` (Settings
+  turns the list into a multi-select whose Share opens `TripBatchShareDialog` and sends the set as
+  **ONE zip** (2026-09-16, user report: ACTION_SEND_MULTIPLE attachments did not arrive in
+  Signal). ONE trim radius applies to the whole batch (`MapViewModel.scrubTripsForSharing`, off
+  the main thread, re-run when the radius changes), and the dialog adds up what comes off across
+  the set (`TripShareBatch.summarize`: trips kept of picked, points removed/kept, trips left out)
+  before `shareTripsZipIntent` builds `cache/export/vela-trips-<now stamp>.zip` (ACTION_SEND,
+  `application/zip`, same FileProvider path) with one `vela-trip-<drive stamp>.csv` entry per
+  trip (`TripShareBatch.entryNames` suffixes "-2" when two drives share a minute). **Every entry is
+  TRIMMED** through `scrubTripForSharing` (review 2026-09-06: this path once shipped the raw
+  traces); a trip that trims to nothing is left out and counted, never sent raw, and a selection
+  of one still goes out as a zip. The raw file is reachable
+  only from the single-trip dialog's "Share full trace". **Row layout (2026-09-16, "too many
+  lines"):** line 1 = the drive's start (`DateUtils`, year only when not this year), line 2 =
+  distance · duration · name (name last so a long address is what gets cut), then Replay and
+  Share icons and a VelaMenu overflow (Rename, Delete). Distance and duration come from
+  `TripLog.stats` (one pass per file, also the fix count) via `TripMeta.distanceM`/`durationMs`;
+  the list therefore opens every file and is loaded on `Dispatchers.IO`, never in composition.
+  Both share dialogs take their radius options from `TripScrub.RADIUS_OPTIONS_M` and start on
+  `TripScrub.defaultRadius(redact)`: the LARGEST option when "Redact places in exports" is on.
+  Trip geometry is never rounded for that toggle (trimming beats rounding, see below). Optional
+  pref `trip_name_on_save` (Settings
   toggle, shown only while trip recording is on, default OFF) makes `finishTrip` - which now
   RETURNS the kept `TripMeta` instead of Unit - arm `MapUiState.tripToName`, and MapScreen prompts
   for a name on the map right after the drive. TRAP: an early `return@forEachIndexed` inside the
@@ -147,8 +162,8 @@ Defaults that make the safe path the easy one:
   audit/replay a multi-block trip against a single mashed route - that was the "arrow on another
   street / arrived mid-replay" corruption. NB replays of OLD trips faithfully play back the dirty
   fixes the old pipeline recorded (BeaconDB teleports) - judge the engine on fresh recordings.
-- **Sharing a trip trims its ends** (`core/replay/TripScrub`, 13 tests; Settings → Diagnostics →
-  a trip's Share). A trip leaks its owner's endpoints in SIX places, not one, and all six are
+- **Sharing a trip trims its ends** (`core/replay/TripScrub`, 15 tests, plus `TripShareBatchTest`
+  for the multi-trip zip; Settings → Diagnostics → a trip's Share, or Select trips → Share). A trip leaks its owner's endpoints in SIX places, not one, and all six are
   handled: the fixes, the `META` destination, the `META` **label** (trips are named after where
   they went, so it is usually a street address), the maneuvers, the route polyline's start, and
   the `S` spoken lines ("Arrive at ..."). It TRIMS rather than blurs: every fix within the chosen
@@ -4515,7 +4530,8 @@ Gotchas:
   coordinate-looking decimals (3+ places) round to 2 (~1 km) so the JSON is safe to post publicly,
   with a header note saying so. Still no backend, still user-routed via the share sheet.
   **Redact places in exports (2026-09-15, #507):** `DiagScrub` holds both levels; the toggle (pref
-  `diag_redact`, Settings > Diagnostics, shown while diagnostics is on) makes the export round to
+  `diag_redact`, Settings > Diagnostics, always shown since 2026-09-16 because it also starts trip
+  shares on the widest trim) makes the diagnostics export round to
   ONE decimal (~10 km), replace quoted search terms and intents with `[redacted]`, drop a nav
   start's destination label, keep only the host of any URL, blank `cid=` values and drop the
   reviews probes' detail (page text). Counts, zoom levels and error text stay. `DiagScrubTest`
