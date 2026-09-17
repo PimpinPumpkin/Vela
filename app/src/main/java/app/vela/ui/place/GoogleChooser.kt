@@ -201,7 +201,7 @@ fun GoogleStyleDirectionsPanel(
                 .padding(top = 6.dp, bottom = 12.dp),
         ) {
             Box(
-                Modifier.fillMaxWidth().clickable { collapsed.value = !collapsed.value }.padding(vertical = 6.dp),
+                Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(8.dp)).clickable { collapsed.value = !collapsed.value }.padding(vertical = 6.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Box(Modifier.width(36.dp).height(4.dp).clip(CircleShape).background(dim.copy(alpha = 0.4f)))

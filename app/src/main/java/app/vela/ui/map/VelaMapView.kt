@@ -364,16 +364,28 @@ private fun hideOpenTwins(map: MapLibreMap, style: Style, pois: List<MapMarker>)
     if (next != openDisplacedIds) { openDisplacedIds = next; applyOpenPlacesHidden(style) }
 }
 
-/** Re-apply the id exclusions to the open places layers (icons + dots) without rebuilding them. */
+/** DRIVE navigation: the open places layer shows fuel only and no dots, the same rule the OSM
+ *  poi tiers follow (user drive 2026-09-16: every business along the route drew, labels sat on
+ *  the road, and the frame rate fell apart on an off-ramp). Set by the nav declutter effect. */
+private var placesNavFuelOnly = false
+
+/** Re-apply the id exclusions (and the drive-nav fuel-only rule) to the open places layers
+ *  (icons + dots) without rebuilding them. */
 private fun applyOpenPlacesHidden(style: Style) {
     val ids = openHiddenIds + openDisplacedIds
-    val filter = if (ids.isEmpty()) Expression.literal(true)
+    val idFilter: Expression? = if (ids.isEmpty()) null
     else Expression.not(Expression.`in`(Expression.get("id"), Expression.literal(ids.toTypedArray<Any>())))
+    val fuel = Expression.eq(Expression.get("group"), Expression.literal("fuel"))
+    val iconFilter = listOfNotNull(idFilter, if (placesNavFuelOnly) fuel else null)
+        .let { if (it.isEmpty()) Expression.literal(true) else if (it.size == 1) it[0] else Expression.all(*it.toTypedArray()) }
     runCatching {
         style.layers.filter { it.id.startsWith("vela-places-") }.forEach { l ->
             when (l) {
-                is SymbolLayer -> l.setFilter(filter)
-                is CircleLayer -> l.setFilter(filter)
+                is SymbolLayer -> l.setFilter(iconFilter)
+                is CircleLayer -> {
+                    l.setFilter(idFilter ?: Expression.literal(true))
+                    l.setProperties(PropertyFactory.visibility(if (placesNavFuelOnly) Property.NONE else Property.VISIBLE))
+                }
                 else -> Unit
             }
         }
@@ -428,6 +440,8 @@ private val ambientRedo2 = arrayOfNulls<Runnable>(1) // ... and the late one
 // It now waits until the map has been still for TWIN_PASS_STILL_MS.
 private val lastCameraMoveMs = longArrayOf(0L)
 private const val TWIN_PASS_STILL_MS = 700L
+/** Free-drive look-ahead (speed x 5 m) time constant: slow on purpose, see the free-drive ticker. */
+private const val FREE_LOOKAHEAD_TAU_S = 2.5f
 
 private fun flightCb() = object : org.maplibre.android.maps.MapLibreMap.CancelableCallback {
     override fun onFinish() { if (flightDepth[0] > 0) flightDepth[0]-- }
@@ -933,39 +947,48 @@ fun VelaMapView(
                         if (window.size >= 2) {
                             val exclude = labelExcludeHolder.value
                             val upcoming = upcomingRoadsHolder.value
-                            val crossers = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                                val out = LinkedHashSet<String>()
+                            val points = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                                val out = LinkedHashMap<String, Feature>()
                                 for (f in feats) {
                                     val name = runCatching { f.getStringProperty("name") }.getOrNull() ?: continue
                                     if (name.isBlank() || name in out || name in exclude) continue
+                                    val ref = runCatching { f.getStringProperty("ref") }.getOrNull()
+                                    if (ref != null && ref in exclude) continue
+                                    val cls = runCatching { f.getStringProperty("class") }.getOrNull() ?: continue
+                                    val tier = when (cls) {
+                                        in NAV_LABEL_MAJOR_CLASSES -> "major"
+                                        in NAV_LABEL_SLOW_CLASSES -> "minor"
+                                        else -> continue
+                                    }
                                     val geom = f.geometry() ?: continue
                                     val lines: List<List<org.maplibre.geojson.Point>> = when (geom) {
                                         is org.maplibre.geojson.LineString -> listOf(geom.coordinates())
                                         is org.maplibre.geojson.MultiLineString -> geom.coordinates()
                                         else -> emptyList()
                                     }
-                                    val hit = lines.any { pts ->
-                                        val pairs = pts.map { it.longitude() to it.latitude() }
-                                        // Proper crossings OR a T-junction endpoint on the route -
-                                        // arterials are T-heavy and the strict crossing test alone
-                                        // muted the whole layer there (see touchesWindow).
-                                        crossesWindow(pairs, window) || touchesWindow(pairs, window)
+                                    // Proper crossings OR a T-junction endpoint on the route (arterials
+                                    // are T-heavy); a next-turn target gets a wider touch radius because
+                                    // it meets the route at a shared vertex the crossing test can miss.
+                                    val touch = if (name in upcoming) 60.0 else 25.0
+                                    val at = lines.firstNotNullOfOrNull { pts ->
+                                        crossLabelPoint(pts.map { it.longitude() to it.latitude() }, window, touch)
+                                    } ?: continue
+                                    out[name] = Feature.fromGeometry(Point.fromLngLat(at.first, at.second)).apply {
+                                        addStringProperty("name", name)
+                                        addStringProperty("tier", tier)
+                                        runCatching { f.getStringProperty("name:en") }.getOrNull()?.let { addStringProperty("name:en", it) }
+                                        runCatching { f.getStringProperty("name:latin") }.getOrNull()?.let { addStringProperty("name:latin", it) }
                                     }
-                                    if (hit) { out.add(name); if (out.size >= 60) break }
+                                    if (out.size >= 60) break
                                 }
-                                out.toList()
+                                out
                             }
-                            // The next turns' target roads always get their bubble: a turn target
-                            // meets the route at a shared vertex, which the proper-crossing test
-                            // can miss (T-junctions especially).
-                            val names = (upcoming + crossers).filter { it !in exclude }.distinct()
+                            val names = points.keys.toList()
                             if (names != lastApplied) {
                                 lastApplied = names
                                 runCatching {
-                                    (style.getLayer(NAV_ROADLABEL_LAYER) as? SymbolLayer)
-                                        ?.setFilter(navLabelFilter(NAV_LABEL_MAJOR_CLASSES, exclude, names))
-                                    (style.getLayer(NAV_ROADLABEL_MINOR_LAYER) as? SymbolLayer)
-                                        ?.setFilter(navLabelFilter(NAV_LABEL_SLOW_CLASSES, exclude, names))
+                                    style.getSourceAs<GeoJsonSource>(NAV_XLABEL_SRC)
+                                        ?.setGeoJson(FeatureCollection.fromFeatures(points.values.toList()))
                                 }
                             }
                             // Mark the quantum done only after a usable pass, so an early empty
@@ -1053,6 +1076,10 @@ fun VelaMapView(
         val dvis = if (navMode && navDriveMode) Property.NONE else Property.VISIBLE
         runCatching {
             ensureTopography(style, topographyOn && !(navMode && navDriveMode))
+        }
+        if (placesNavFuelOnly != (navMode && navDriveMode)) {
+            placesNavFuelOnly = navMode && navDriveMode
+            applyOpenPlacesHidden(style)
         }
         runCatching {
             (
@@ -1422,6 +1449,8 @@ fun VelaMapView(
         osmHideBusiness = placesOverlays.isNotEmpty()
         lastPoiFuelOnly = null // forces applyData to re-apply the tier filters with the new flag
         lastOsmPoiVis = null
+        // Rebuilt mid-drive (a new region in view): keep the drive-nav fuel-only rule on the new layers.
+        if (placesNavFuelOnly) applyOpenPlacesHidden(style)
     }
 
     LaunchedEffect(maxspeedOverlays, styleRef, speedOverlayOn) {
@@ -1821,9 +1850,20 @@ fun VelaMapView(
                     if (browseFix[3] > 2.0 && !browseFix[4].isNaN()) browseDrive[2] = browseFix[4]
                     val crs = if (browseDrive[2].isNaN()) cp.bearing else browseDrive[2]
                     val db = ((crs - cp.bearing + 540.0) % 360.0) - 180.0
-                    browseAtt[0] = (cp.bearing + db * k + 360.0) % 360.0
+                    // The course and the speed only change once per ~1 Hz fix. Eased at the 0.22 s
+                    // position constant, each fix's small course and speed noise became a quick
+                    // rotate / quick aim shift followed by a pause: the "jump, pause, jump, pause"
+                    // the user still saw on free drives (2026-09-16). Same cure as the nav camera:
+                    // the bearing's time constant follows the SIZE of its error (slow for noise,
+                    // quick for a real turn), and the speed-scaled look-ahead eases slowly, since it
+                    // only needs to track town versus highway.
+                    val brgTau = (CAM_BRG_TAU_STILL + (CAM_BRG_TAU_TURN - CAM_BRG_TAU_STILL) *
+                        (kotlin.math.abs(db) / CAM_BRG_TURN_DEG).coerceAtMost(1.0)).toFloat()
+                    val kBrg = (1f - kotlin.math.exp(-dt / brgTau)).toDouble()
+                    browseAtt[0] = (cp.bearing + db * kBrg + 360.0) % 360.0
                     browseAtt[1] = cp.tilt + (55.0 - cp.tilt) * k
-                    browseDrive[3] += ((browseDrive[0] * 5.0).coerceAtMost(250.0) - browseDrive[3]) * k
+                    val kLook = (1f - kotlin.math.exp(-dt / FREE_LOOKAHEAD_TAU_S)).toDouble()
+                    browseDrive[3] += ((browseDrive[0] * 5.0).coerceAtMost(250.0) - browseDrive[3]) * kLook
                     val lr = Math.toRadians(crs)
                     lookLat = camLat + browseDrive[3] * kotlin.math.cos(lr) / 111_320.0
                     lookLng = camLng + browseDrive[3] * kotlin.math.sin(lr) /
@@ -4251,7 +4291,11 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.iconPadding(2f),
             )
         }
+        // Above the CUT piece too (the 400 m of route around the arrow, drawn over the ahead line):
+        // anchored on the ahead line alone, the lights and stops nearest the driver were exactly
+        // the ones painted over (user drive 2026-09-16).
         when {
+            style.getLayer(ROUTE_CUT_LAYER) != null -> style.addLayerAbove(visible, ROUTE_CUT_LAYER)
             style.getLayer(ROUTE_AHEAD_LAYER) != null -> style.addLayerAbove(visible, ROUTE_AHEAD_LAYER)
             firstSymbol != null -> style.addLayerBelow(visible, firstSymbol)
             else -> style.addLayerBelow(visible, AMBIENT_LAYER)
@@ -4538,6 +4582,12 @@ private fun ensureTopography(style: Style, on: Boolean) {
  *  labels so they stay on top; keyless public tiles, removed cleanly when off. */
 private const val NAV_ROADLABEL_LAYER = "vela-nav-roadlabels"
 private const val NAV_ROADLABEL_MINOR_LAYER = "vela-nav-roadlabels-minor"
+// The cross-street bubbles are POINTS we compute (2026-09-16): one per crossing street, placed a
+// short way up that street from where it meets the route. Line-centre placement on the basemap's
+// road-name lines put a bubble at the middle of the street's piece in the tile, often a block or
+// more from the route ("I want them near our actual path", user drive 2026-09-16).
+private const val NAV_XLABEL_SRC = "vela-nav-xlabels-src"
+private const val NAV_XLABEL_OFFSET_M = 35.0
 
 /** Google-style floating road labels during NAV: horizontal, viewport-aligned name chips over the
  *  roads you're crossing or driving beside - far more legible than the line-following basemap
@@ -4743,77 +4793,68 @@ private val NAV_LABEL_SLOW_CLASSES = arrayOf("tertiary", "minor")
  *  name AND ref props - the basemap names bridge segments independently of the ref), and - when
  *  the cross-street loop has computed one - restricted to [include], the names whose geometry
  *  actually CROSSES the route ahead (Google's rule: only streets you meet get callouts). */
-private fun navLabelFilter(classes: Array<String>, exclude: List<String>, include: List<String>?): Expression {
-    val parts = mutableListOf(
-        Expression.has("name"),
-        Expression.match(
-            Expression.get("class"), Expression.literal(false),
-            *classes.map { Expression.stop(it, true) }.toTypedArray(),
-        ),
-    )
-    if (exclude.isNotEmpty()) {
-        val stops = exclude.map { Expression.stop(it, true) }.toTypedArray()
-        parts += Expression.not(Expression.match(Expression.get("name"), Expression.literal(false), *stops))
-        parts += Expression.not(Expression.match(Expression.get("ref"), Expression.literal(false), *stops))
-    }
-    if (include != null) {
-        parts += if (include.isEmpty()) Expression.literal(false)
-        else Expression.match(
-            Expression.get("name"), Expression.literal(false),
-            *include.map { Expression.stop(it, true) }.toTypedArray(),
-        )
-    }
-    return Expression.all(*parts.toTypedArray())
-}
 
-/** True when any segment of [line] properly crosses any segment of [window] (plain orientation
- *  tests; the sign of a cross product survives the lat/lng axis scaling, so no projection needed
- *  for a boolean answer). */
-private fun crossesWindow(line: List<Pair<Double, Double>>, window: List<LatLng>): Boolean {
-    fun orient(ax: Double, ay: Double, bx: Double, by: Double, cx: Double, cy: Double) =
-        (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
-    for (i in 1 until line.size) {
-        val (x1, y1) = line[i - 1]
-        val (x2, y2) = line[i]
-        for (j in 1 until window.size) {
-            val x3 = window[j - 1].lng; val y3 = window[j - 1].lat
-            val x4 = window[j].lng; val y4 = window[j].lat
-            val d1 = orient(x3, y3, x4, y4, x1, y1)
-            val d2 = orient(x3, y3, x4, y4, x2, y2)
-            val d3 = orient(x1, y1, x2, y2, x3, y3)
-            val d4 = orient(x1, y1, x2, y2, x4, y4)
-            if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true
+
+/** Where [line] meets the route [window] (the first proper crossing in route order, else a
+ *  T-junction endpoint within [touchM]), moved [NAV_XLABEL_OFFSET_M] along the street to the side
+ *  that ends farther from the route, as (lng, lat). Null when the street does not meet the window.
+ *  Planar maths at the window's latitude: at a few hundred metres the error is centimetres. */
+private fun crossLabelPoint(line: List<Pair<Double, Double>>, window: List<LatLng>, touchM: Double = 25.0): Pair<Double, Double>? {
+    if (line.size < 2 || window.size < 2) return null
+    val k = Math.cos(Math.toRadians(window[0].lat)) * 111_320.0 // metres per degree of longitude
+    val m = 111_320.0 // per degree of latitude
+    fun x(lng: Double) = lng * k
+    fun y(lat: Double) = lat * m
+    // Street as metres, with cumulative length.
+    val px = DoubleArray(line.size) { x(line[it].first) }
+    val py = DoubleArray(line.size) { y(line[it].second) }
+    val cum = DoubleArray(line.size)
+    for (i in 1 until line.size) cum[i] = cum[i - 1] + Math.hypot(px[i] - px[i - 1], py[i] - py[i - 1])
+    var hitAt = -1.0 // position along the street, metres
+    loop@ for (j in 1 until window.size) {
+        val ax = x(window[j - 1].lng); val ay = y(window[j - 1].lat)
+        val bx = x(window[j].lng); val by = y(window[j].lat)
+        for (i in 1 until line.size) {
+            val cx = px[i - 1]; val cy = py[i - 1]; val dx = px[i]; val dy = py[i]
+            val den = (bx - ax) * (dy - cy) - (by - ay) * (dx - cx)
+            if (den == 0.0) continue
+            val t = ((cx - ax) * (dy - cy) - (cy - ay) * (dx - cx)) / den
+            val u = ((cx - ax) * (by - ay) - (cy - ay) * (bx - ax)) / den
+            if (t in 0.0..1.0 && u in 0.0..1.0) { hitAt = cum[i - 1] + u * (cum[i] - cum[i - 1]); break@loop }
         }
     }
-    return false
+    fun distToWindow(qx: Double, qy: Double): Double {
+        var best = Double.MAX_VALUE
+        for (j in 1 until window.size) {
+            val ax = x(window[j - 1].lng); val ay = y(window[j - 1].lat)
+            val bx = x(window[j].lng); val by = y(window[j].lat)
+            val ddx = bx - ax; val ddy = by - ay
+            val len2 = ddx * ddx + ddy * ddy
+            val t = if (len2 == 0.0) 0.0 else (((qx - ax) * ddx + (qy - ay) * ddy) / len2).coerceIn(0.0, 1.0)
+            best = minOf(best, Math.hypot(ax + t * ddx - qx, ay + t * ddy - qy))
+        }
+        return best
+    }
+    if (hitAt < 0) {
+        // T-junction: the end that touches the route.
+        if (distToWindow(px[0], py[0]) <= touchM) hitAt = 0.0
+        else if (distToWindow(px.last(), py.last()) <= touchM) hitAt = cum.last()
+        else return null
+    }
+    fun at(pos: Double): Pair<Double, Double> {
+        val p = pos.coerceIn(0.0, cum.last())
+        var i = 1
+        while (i < cum.size - 1 && cum[i] < p) i++
+        val seg = cum[i] - cum[i - 1]
+        val f = if (seg == 0.0) 0.0 else (p - cum[i - 1]) / seg
+        return (px[i - 1] + f * (px[i] - px[i - 1])) to (py[i - 1] + f * (py[i] - py[i - 1]))
+    }
+    val back = at(hitAt - NAV_XLABEL_OFFSET_M)
+    val fwd = at(hitAt + NAV_XLABEL_OFFSET_M)
+    val pick = if (distToWindow(back.first, back.second) >= distToWindow(fwd.first, fwd.second)) back else fwd
+    return (pick.first / k) to (pick.second / m)
 }
 
-/** True when either END of [line] lands within ~[maxM] of the route [window] - the T-JUNCTION
- *  case (real-drive 2026-07-21): on an arterial most side streets END at your road instead of
- *  crossing it, their shared endpoint makes the strict-inequality crossing test read exactly
- *  zero, and the tightened bubble filter came back EMPTY - the whole bubble layer went mute on
- *  T-heavy roads, even stopped at a light (grid downtowns, where streets cross through, were
- *  where the layer was originally verified). Endpoints only, not every vertex: a parallel road
- *  running near the route must not label itself, and a side street's junction IS its endpoint. */
-private fun touchesWindow(line: List<Pair<Double, Double>>, window: List<LatLng>, maxM: Double = 25.0): Boolean {
-    if (line.isEmpty() || window.size < 2) return false
-    val latScale = Math.cos(Math.toRadians(window[0].lat))
-    val maxDeg = maxM / 111_320.0
-    val max2 = maxDeg * maxDeg
-    for (p in arrayOf(line.first(), line.last())) {
-        val px = p.first * latScale; val py = p.second
-        for (j in 1 until window.size) {
-            val ax = window[j - 1].lng * latScale; val ay = window[j - 1].lat
-            val bx = window[j].lng * latScale; val by = window[j].lat
-            val dx = bx - ax; val dy = by - ay
-            val len2 = dx * dx + dy * dy
-            val t = if (len2 == 0.0) 0.0 else (((px - ax) * dx + (py - ay) * dy) / len2).coerceIn(0.0, 1.0)
-            val ex = ax + t * dx - px; val ey = ay + t * dy - py
-            if (ex * ex + ey * ey <= max2) return true
-        }
-    }
-    return false
-}
 
 /** The basemap's romanized alias for a road [name] (issue #184): its name:en (a real English name),
  *  else name:latin (which OpenMapTiles fills from name:en where OSM has one, otherwise a
@@ -4869,9 +4910,10 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
     }
     if (!on) {
         ids.forEach { (style.getLayer(it) as? SymbolLayer)?.setProperties(PropertyFactory.visibility(Property.NONE)) }
+        style.getSourceAs<GeoJsonSource>(NAV_XLABEL_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
         return
     }
-    val basemapSource = basemapSrc(style) ?: return
+    if (style.getSource(NAV_XLABEL_SRC) == null) style.addSource(GeoJsonSource(NAV_XLABEL_SRC))
     // Stretch zones: the horizontal middle EXCLUDING the tail's span (two zones), the vertical
     // middle of the body only; content box = where text may sit (tail stays below it).
     val d = density
@@ -4885,21 +4927,21 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
         listOf(org.maplibre.android.maps.ImageStretches(r + d, body - r - d)),
         org.maplibre.android.maps.ImageContent(6 * d, 3 * d, w - 6 * d, body - 3 * d),
     )
-    fun layer(id: String, classes: Array<String>, minZ: Float, fade: Pair<Float, Float>? = null) {
-        // Google only calls out OTHER streets - never the road you're driving. The base filter
-        // excludes the route's own names/refs; the cross-street loop below TIGHTENS it further
-        // to streets whose geometry actually crosses the route ahead.
-        val filter = navLabelFilter(classes, exclude, include = null)
+    fun layer(id: String, tier: String, minZ: Float, fade: Pair<Float, Float>? = null) {
+        // Google only calls out OTHER streets - never the road you're driving. The crossing pass
+        // in VelaMapView only emits points for streets that meet the route ahead and are not on
+        // the route's own names/refs; the tier splits them by road class for the zoom gates.
+        val filter = Expression.eq(Expression.get("tier"), Expression.literal(tier))
         (style.getLayer(id) as? SymbolLayer)?.let { it.setFilter(filter); return }
         run {
             style.addLayer(
-                SymbolLayer(id, basemapSource).withSourceLayer("transportation_name")
+                SymbolLayer(id, NAV_XLABEL_SRC)
                     .withFilter(filter)
                     .withProperties(
                         PropertyFactory.textField(roadLabelTextField()),
                         PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                         PropertyFactory.textSize(12.5f),
-                        PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_LINE_CENTER),
+                        PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_POINT),
                         // Horizontal + upright regardless of the road's angle or the camera tilt -
                         // the whole point vs the line-following basemap labels. The ICON pins to
                         // the viewport too, else the bubble would rotate with the road.
@@ -4943,12 +4985,12 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
     // TERTIARY rides the slow tier with the minors (2026-07-16): at highway zoom collector roads
     // are noise, and every placed symbol is per-frame collision work - highway speed shows only
     // motorway..secondary crossings, town speed fades the rest in.
-    layer(NAV_ROADLABEL_LAYER, NAV_LABEL_MAJOR_CLASSES, 14f)
+    layer(NAV_ROADLABEL_LAYER, "major", 14f)
     // Minor tier from z15 (2026-07-21, user: cross-street bubbles should show at highway speed
     // too) - the nav camera's speed-scaled zoom bottoms out at ~15.8, so the old z16.2-16.8 fade
     // kept minors invisible above ~town speed. The include-list filter (<= 60 crossing names) and
     // the fat textPadding keep placement bounded, so the per-frame collision cost stays tame.
-    layer(NAV_ROADLABEL_MINOR_LAYER, NAV_LABEL_SLOW_CLASSES, 15f, fade = 15.2f to 15.7f)
+    layer(NAV_ROADLABEL_MINOR_LAYER, "minor", 15f, fade = 15.2f to 15.7f)
     ids.forEach {
         (style.getLayer(it) as? SymbolLayer)?.setProperties(
             PropertyFactory.visibility(Property.VISIBLE),
