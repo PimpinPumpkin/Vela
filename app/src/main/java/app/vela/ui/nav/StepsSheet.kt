@@ -21,7 +21,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -210,7 +212,36 @@ fun StepsSheet(
             (drag.value > span / 3f && velocityPxS > -flick)
         if (committed) dismiss() else scope.launch { drag.animateTo(0f) }
     }
-    val listState = rememberLazyListState()
+    // Nav form lands on the step the driver is heading to (the banner's step): the steps already
+    // passed sit above it, greyed, one scroll up. The preview (no currentStep) starts at the top.
+    val cur = currentStep?.coerceIn(0, (maneuvers.size - 1).coerceAtLeast(0))
+    val landIndex = cur ?: 0
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = landIndex)
+    // A trailing spacer (nav form only) sized so the landing row can sit at the top even when the
+    // rows still ahead are shorter than the list cap; without it the list clamps its scroll and
+    // opens showing passed steps. The well hides the spacer (it is sized out of the natural height),
+    // so the card still hugs the rows ahead. Starts at the full cap (no clamp on the first measure),
+    // then is set to exactly viewport - rowsAhead from that measure, so the list cannot scroll down
+    // into blank space.
+    val capPx = with(LocalDensity.current) { (maxListHeight ?: (LocalConfiguration.current.screenHeightDp * 0.5f).dp).toPx() }.roundToInt()
+    var tailPx by remember { mutableIntStateOf(-1) }
+    // Last known blank below the rows ahead (px), kept while the landing row is scrolled out of view.
+    val hiddenPx = remember { intArrayOf(0) }
+    // The driver passes a turn with the sheet open: if the list was resting on the old current step,
+    // follow to the new one (one frame later, once the tail spacer has grown to allow it). A list the
+    // user scrolled elsewhere is left alone. With a stops row this is a no-op: the row keeps its key
+    // and stays the first visible item as the passed step slides in above it.
+    val prevLand = remember { intArrayOf(landIndex) }
+    LaunchedEffect(landIndex) {
+        val was = prevLand[0]
+        prevLand[0] = landIndex
+        if (navForm && was != landIndex &&
+            listState.firstVisibleItemIndex == was && listState.firstVisibleItemScrollOffset == 0
+        ) {
+            androidx.compose.runtime.withFrameNanos { }
+            listState.animateScrollToItem(landIndex)
+        }
+    }
     val dismissConn = remember(listState) {
         object : NestedScrollConnection {
             // True once this gesture moved the sheet - its release then settles the sheet and
@@ -293,8 +324,9 @@ fun StepsSheet(
                     IconButton(onClick = dismiss) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.steps_close_cd), tint = dim) }
                 }
             }
-            // D-pad-first (docs/dpad.md): land focus on the first step row when the sheet
-            // opens, so it's the active surface (OK previews that step). No-op under touch.
+            // D-pad-first (docs/dpad.md): land focus on the landing step row when the sheet opens
+            // (the current step while navigating, the first step in the preview), so it's the
+            // active surface (OK previews that step). No-op under touch.
             val stepsAutoFocus = rememberDpadAutoFocus()
             // The nav form's list WELL: the list at its natural height minus whatever is still
             // closed (entering) or being pulled shut (drag / exit), clipped; read in the layout
@@ -307,8 +339,27 @@ fun StepsSheet(
                             .clipToBounds()
                             .layout { measurable, constraints ->
                                 val p = measurable.measure(constraints)
-                                if (p.height != listNaturalPx) listNaturalPx = p.height
-                                val h = (p.height - drag.value - enterPx.value).roundToInt().coerceIn(0, p.height)
+                                // How much of the list is the hidden tail spacer: the viewport past
+                                // the last real row, measured with the landing row at the top.
+                                val info = listState.layoutInfo
+                                val vis = info.visibleItemsInfo
+                                val lastReal = info.totalItemsCount - 2
+                                val landItem = vis.firstOrNull { it.index == landIndex }
+                                val lastItem = vis.firstOrNull { it.index == lastReal }
+                                val viewport = info.viewportEndOffset - info.viewportStartOffset
+                                val rowsAhead: Int? = when {
+                                    landItem != null && lastItem != null -> lastItem.offset + lastItem.size - landItem.offset
+                                    landItem != null && landItem.offset <= 0 -> Int.MAX_VALUE
+                                    else -> null
+                                }
+                                if (rowsAhead != null) {
+                                    val t = (viewport - rowsAhead).coerceAtLeast(0)
+                                    if (t != tailPx) tailPx = t
+                                    hiddenPx[0] = t
+                                }
+                                val natural = p.height - hiddenPx[0].coerceIn(0, viewport)
+                                if (natural != listNaturalPx) listNaturalPx = natural
+                                val h = (natural - drag.value - enterPx.value).roundToInt().coerceIn(0, natural)
                                 layout(p.width, h) { p.place(0, 0) }
                             }
                             .padding(start = 20.dp, end = 8.dp, bottom = 8.dp)
@@ -318,22 +369,67 @@ fun StepsSheet(
                     .nestedScroll(dismissConn),
                 state = listState,
             ) {
-                if (stopsRow != null) item { stopsRow() }
-                itemsIndexed(maneuvers) { i, m ->
-                    legStarts.firstOrNull { it.first == i }?.let { (_, name) -> StopDividerRow(name) }
+                // Preview: stops row (if any), then every step from the top. Nav: the passed steps,
+                // then the stops row (it lists the stops still AHEAD, so it belongs at the boundary),
+                // then the current step and the rest; the landing index is the first item after the
+                // passed steps, so the list opens on the stops row / current step.
+                val firstAhead = cur ?: 0
+                fun LazyListScope.steps(range: IntRange) = items((range.last - range.first + 1).coerceAtLeast(0), key = { "s" + (range.first + it) }) { k ->
+                    val i = range.first + k
+                    val m = maneuvers[i]
+                    val passed = cur != null && i < cur
+                    legStarts.firstOrNull { it.first == i }?.let { (_, name) -> StopDividerRow(name, passed = passed) }
                     StepRow(
                         m = m,
                         active = i == currentStep,
                         highlighted = i == previewIndex,
+                        passed = passed,
                         romanize = ::romanize,
                         destName = destName,
                         destAddress = destAddress,
                         onClick = { onStep(i) },
-                        modifier = if (i == 0) Modifier.focusRequester(stepsAutoFocus) else Modifier,
+                        modifier = if (i == firstAhead) Modifier.focusRequester(stepsAutoFocus) else Modifier,
                     )
+                }
+                if (cur != null) steps(0 until cur)
+                if (stopsRow != null) item(key = "stops") { stopsRow() }
+                steps((cur ?: 0) until maneuvers.size)
+                if (navForm) item(key = "tail") {
+                    Spacer(Modifier.height(with(LocalDensity.current) { (if (tailPx < 0) capPx else tailPx).toDp() }))
                 }
             }
         }
+    }
+}
+
+/** The rows the nav bar's drag well shows under the figures: exactly what [StepsSheet] opens on in
+ *  the nav form (stops row, then the current step and those after it, dividers included), so the
+ *  handover from the bar to the sheet moves nothing. Passed steps are left out: the well does not
+ *  scroll, and the sheet opens with them scrolled out of view above. */
+@Composable
+fun NavStepsPreview(
+    maneuvers: List<Maneuver>,
+    currentStep: Int,
+    romanize: (String) -> String,
+    destName: String?,
+    destAddress: String?,
+    legStarts: List<Pair<Int, String>> = emptyList(),
+    stopsRow: (@Composable () -> Unit)? = null,
+    maxRows: Int = 14,
+) {
+    stopsRow?.invoke()
+    val from = currentStep.coerceIn(0, (maneuvers.size - 1).coerceAtLeast(0))
+    for (i in from until minOf(maneuvers.size, from + maxRows)) {
+        legStarts.firstOrNull { it.first == i }?.let { (_, name) -> StopDividerRow(name) }
+        StepRow(
+            m = maneuvers[i],
+            active = i == currentStep,
+            highlighted = false,
+            romanize = romanize,
+            destName = destName,
+            destAddress = destAddress,
+            onClick = null,
+        )
     }
 }
 
@@ -390,23 +486,25 @@ fun NavStopsRow(stops: List<String>, onEdit: () -> Unit, modifier: Modifier = Mo
 
 /** The stop that begins a leg (issue #519): a primary-tinted pin and "Stop: <name>" on its own
  *  band between the ARRIVE of the previous leg and the first turn of the next, so a long list
- *  reads leg by leg. Same left gutter as [StepRow]. */
+ *  reads leg by leg. Same left gutter as [StepRow]. [passed] greys it with the passed step below it. */
 @Composable
-fun StopDividerRow(name: String, modifier: Modifier = Modifier) {
+fun StopDividerRow(name: String, modifier: Modifier = Modifier, passed: Boolean = false) {
     val dark = isAppInDarkTheme()
-    val ink = SheetPalette.ink(dark)
+    val dim = SheetPalette.dim(dark)
+    val ink = if (passed) dim else SheetPalette.ink(dark)
+    val accent = if (passed) dim else MaterialTheme.colorScheme.primary
     Column(modifier.fillMaxWidth()) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f), RoundedCornerShape(12.dp))
+                .background(accent.copy(alpha = 0.10f), RoundedCornerShape(12.dp))
                 .padding(top = 10.dp, bottom = 10.dp, start = 4.dp, end = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 Icons.Default.Place,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = accent,
                 modifier = Modifier.size(28.dp),
             )
             Spacer(Modifier.width(14.dp))
@@ -424,7 +522,8 @@ fun StopDividerRow(name: String, modifier: Modifier = Modifier) {
 
 /** One step of the list: glyph, instruction, signs, road, lanes, distance, then a divider. Shared
  *  by the sheet's lazy list and the nav bar's drag PREVIEW (the rows that show under the ETA row
- *  while the bar is being pulled up), so both render pixel-identical. */
+ *  while the bar is being pulled up), so both render pixel-identical. [passed] (nav only) greys a
+ *  step the driver has already driven: glyph and text in the dim ink, signs and lanes faded. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun StepRow(
@@ -436,10 +535,14 @@ fun StepRow(
     destAddress: String?,
     onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    passed: Boolean = false,
 ) {
     val dark = isAppInDarkTheme()
-    val ink = SheetPalette.ink(dark)
     val dim = SheetPalette.dim(dark)
+    // A passed step reads in the secondary ink everywhere the row would use the primary one.
+    val ink = if (passed) dim else SheetPalette.ink(dark)
+    // Signs, lanes and the lane hint carry their own colours; fade them instead.
+    val fade = if (passed) Modifier.alpha(PASSED_ALPHA) else Modifier
     Column(modifier) {
                     Row(
                         Modifier
@@ -455,7 +558,7 @@ fun StepRow(
                         Icon(
                             maneuverIconFor(m),
                             contentDescription = null,
-                            tint = if (active) MaterialTheme.colorScheme.primary else ink,
+                            tint = if (active && !passed) MaterialTheme.colorScheme.primary else ink,
                             // size + gap must be SEPARATE modifiers: `.size(24).padding(end=16)`
                             // insets the icon INSIDE the 24 dp box, shrinking the actual glyph to
                             // ~8 dp (why the step icons looked tiny). Spacer carries the gap.
@@ -475,7 +578,7 @@ fun StepRow(
                                 FlowRow(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     verticalArrangement = Arrangement.spacedBy(4.dp),
-                                    modifier = Modifier.padding(top = 3.dp),
+                                    modifier = Modifier.padding(top = 3.dp).then(fade),
                                 ) { signs.forEach { SignChip(it) } }
                             }
                             // The arrive row names WHERE the trip ends (business + address), same
@@ -499,13 +602,14 @@ fun StepRow(
                                 }
                             }
                             if (m.lanes.isNotEmpty()) {
-                                LaneDiagram(m.lanes, m.type, on = ink, modifier = Modifier.padding(top = 3.dp))
+                                LaneDiagram(m.lanes, m.type, on = ink, modifier = Modifier.padding(top = 3.dp).then(fade))
                             } else m.laneHint?.let {
                                 Text(
                                     it,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Medium,
+                                    modifier = fade,
                                 )
                             }
                         }
@@ -521,6 +625,9 @@ fun StepRow(
                     HorizontalDivider()
     }
 }
+
+/** How much a passed step's own-coloured parts (sign chips, lane diagram, lane hint) are faded. */
+private const val PASSED_ALPHA = 0.5f
 
 /**
  * A turn-arrow glyph for each maneuver type (Material "turn_*" symbols).
