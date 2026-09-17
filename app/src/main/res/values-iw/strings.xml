@@ -841,6 +841,13 @@
     <string name="voice_capture_example_route">\"מתל אביב לחיפה\"</string>
     <string name="voice_capture_example_nearest">\"תחנת הדלק הקרובה ביותר\"</string>
     <string name="voice_capture_example_eta">\"מה זמן ההגעה שלי\" בזמן נהיגה</string>
+    <string name="voice_cmd_home">הביתה</string>
+    <string name="voice_cmd_work">לעבודה</string>
+    <string name="voice_cmd_go">למקום כלשהו</string>
+    <string name="voice_cmd_route">בין שני מקומות</string>
+    <string name="voice_cmd_nearby">חיפוש בסביבה</string>
+    <string name="voice_cmd_eta">זמן הגעה, בזמן נסיעה</string>
+    <string name="voice_cmd_hint">הפקודות עובדות בדיבור או בהקלדה בשורת החיפוש, בשפת האפליקציה או באנגלית. כל דבר אחר מופעל כחיפוש רגיל.</string>
     <string name="settings_map_data">נתוני מפה</string>
     <string name="settings_map_data_hint">המפה, הרחובות, התוויות ומספרי הבתים שלה הם נתוני OpenStreetMap, הזמינים תחת Open Database License, ומוגשים כאריחים וקטוריים על ידי OpenFreeMap. העסקים על המפה באזורים המכוסים הם נתוני מקומות של Overture Maps Foundation (ממקורות Meta ו-Microsoft), הזמינים תחת Community Data License Agreement, Permissive 2.0. פרטי מקומות, ביקורות, ניתוב ותנועה מגיעים מ-Google. תצלומי לוויין הם מ-Esri ומ-Google.</string>
     <string name="settings_map_data_button">זכויות היוצרים של OpenStreetMap</string>

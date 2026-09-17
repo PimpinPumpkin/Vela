@@ -855,6 +855,13 @@
     <string name="voice_capture_example_route">“从戴维斯到旧金山”</string>
     <string name="voice_capture_example_nearest">“最近的加油站”</string>
     <string name="voice_capture_example_eta">驾驶中说“我的预计到达时间是多少”</string>
+    <string name="voice_cmd_home">回家</string>
+    <string name="voice_cmd_work">去公司</string>
+    <string name="voice_cmd_go">去某个地方</string>
+    <string name="voice_cmd_route">两地之间</string>
+    <string name="voice_cmd_nearby">搜索附近</string>
+    <string name="voice_cmd_eta">到达时间(驾驶时)</string>
+    <string name="voice_cmd_hint">说出或在搜索栏输入都可以,使用应用语言或英语。其他内容按普通搜索处理。</string>
     <string name="settings_map_data">地图数据</string>
     <string name="settings_map_data_hint">地图及其街道、标注和门牌号为 OpenStreetMap 数据，依据 Open Database License 提供，并由 OpenFreeMap 以矢量图块形式提供服务。已覆盖地区地图上的商家为 Overture Maps Foundation 的地点数据（来源于 Meta 和 Microsoft），依据 Community Data License Agreement, Permissive 2.0 提供。地点详情、评价、路线和路况来自 Google。卫星影像来自 Esri 和 Google。</string>
     <string name="settings_map_data_button">OpenStreetMap 版权</string>

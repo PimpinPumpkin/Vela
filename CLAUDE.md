@@ -1869,6 +1869,9 @@ architecture note.
   cut first if there is one (0.4.1217 is the model). The promote workflow cannot write this
   part; it is the release's own job, the same day. Nightlies keep the commit list alone.
 - **QUERY INTENTS (discussion #365, 2026-09-13): `core/search/QueryIntents.parse(text, lang)`.**
+  The phrase list shown in Settings > Search is `core/search/VoiceCommandExamples` (hand-written per
+  language, since gluing a table verb to a table place word breaks grammar); `QueryIntentExamplesTest`
+  parses every line and checks its kind, so add a language there when you add one here.
   Voice search was dictation into the search box, so "take me home" searched for a place called
   that. Every submitted query (typed `search()` and the two voice paths through
   `applyVoiceQuery`) first goes through the parser: Home / Work (the saved shortcuts, with a

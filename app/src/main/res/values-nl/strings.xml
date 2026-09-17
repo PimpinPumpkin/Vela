@@ -840,6 +840,13 @@
     <string name="voice_capture_example_route">\"Utrecht naar Amsterdam\"</string>
     <string name="voice_capture_example_nearest">\"Dichtstbijzijnde tankstation\"</string>
     <string name="voice_capture_example_eta">\"Wanneer kom ik aan\" tijdens het rijden</string>
+    <string name="voice_cmd_home">Naar huis</string>
+    <string name="voice_cmd_work">Naar het werk</string>
+    <string name="voice_cmd_go">Ergens heen</string>
+    <string name="voice_cmd_route">Tussen twee plaatsen</string>
+    <string name="voice_cmd_nearby">In de buurt zoeken</string>
+    <string name="voice_cmd_eta">Aankomsttijd, tijdens het rijden</string>
+    <string name="voice_cmd_hint">Dit werkt gesproken of getypt in de zoekbalk, in de apptaal of in het Engels. Al het andere wordt een gewone zoekopdracht.</string>
     <string name="settings_map_data">Kaartgegevens</string>
     <string name="settings_map_data_hint">De kaart, de straten, labels en huisnummers zijn OpenStreetMap-gegevens, beschikbaar onder de Open Database License, geleverd als vectortegels door OpenFreeMap. De bedrijven op de kaart zijn in gedekte regio\'s plaatsgegevens van de Overture Maps Foundation (afkomstig van Meta en Microsoft), beschikbaar onder de Community Data License Agreement, Permissive 2.0. Plaatsdetails, recensies, routering en verkeer komen van Google. Satellietbeelden komen van Esri en Google.</string>
     <string name="settings_map_data_button">OpenStreetMap-copyright</string>
