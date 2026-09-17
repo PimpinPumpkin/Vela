@@ -98,6 +98,22 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
             onCheckedChange = { app.vela.ui.FlockRouteAlert.set(context, it) },
             hint = stringResource(R.string.settings_flock_route_alert_hint),
         )
+        // Plate cameras coming up while navigating: a heads-up card and a spoken line, each its
+        // own opt-in. Not nested under the layer toggle: the bundled dataset is loaded either way.
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_flock_nav_card),
+            checked = app.vela.ui.FlockNavAlert.card.value,
+            onCheckedChange = { app.vela.ui.FlockNavAlert.setCard(context, it) },
+            hint = stringResource(R.string.settings_flock_nav_card_hint),
+        )
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_flock_nav_voice),
+            checked = app.vela.ui.FlockNavAlert.voice.value,
+            onCheckedChange = { app.vela.ui.FlockNavAlert.setVoice(context, it) },
+            hint = stringResource(R.string.settings_flock_nav_voice_hint),
+        )
         GroupDivider()
         ToggleRow(
             label = stringResource(R.string.settings_buildings_3d),

@@ -8,7 +8,7 @@ import androidx.compose.runtime.mutableStateOf
  * (the map layer) on purpose - you might want the cameras drawn but not the routing alert, or the
  * alert without the clutter of the layer. **OFF by default**; flipped from Settings > Map and
  * persisted. When on, [app.vela.ui.map.MapViewModel] counts the cameras near each computed route
- * (keyless, via `OverpassAlprCameras.fetchAlong`) and the directions panel badges the count.
+ * (bundled dataset, `FlockCameras.along`, direction-aware) and the directions panel badges the count.
  */
 object FlockRouteAlert {
     val on = mutableStateOf(false)
