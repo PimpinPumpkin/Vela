@@ -4186,7 +4186,13 @@ private fun ensureLayers(style: Style) {
         // integer zoom crossed during a flight, and points gain nothing past z12. Strictly
         // less re-cut + placement invalidation per zoom change; line sources keep full
         // depth for vertex precision.
-        style.addSource(GeoJsonSource(AMBIENT_SRC, GeoJsonOptions().withMaxZoom(12)))
+        // EXCEPT the ambient source (2026-09-16, measured): it holds up to a few hundred named
+        // places, and past its maxzoom every visible overscaled tile lays out the WHOLE parent
+        // tile's features again, so at street zoom a dense city paid for the pool many times over.
+        // In Midtown on the 4a (Both mode, same scrub): maxzoom 12 -> 22 fps one zoom step in and
+        // 30 fps at the browse zoom; 18 -> 43 and 51. Hiding the layer entirely gave 51 and 60, so
+        // this layer was the single biggest cost there. Sparse point sources keep 12.
+        style.addSource(GeoJsonSource(AMBIENT_SRC, GeoJsonOptions().withMaxZoom(18)))
         style.addLayerBelow(
             SymbolLayer(AMBIENT_LAYER, AMBIENT_SRC).withProperties(
                 PropertyFactory.iconImage(Expression.get("icon")),

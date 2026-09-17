@@ -666,10 +666,10 @@ project's core promise is that neither exists:
   geocoder online, directions from the open router online and the on-device engine offline, no
   reviews, photos, Street View or popular times. The open question is transit directions (a
   Transitous plan route) and free-flow ETAs without traffic.
-- **Close-zoom slowness in Midtown (found 2026-09-16).** At about z18.5 over Midtown Manhattan the
-  4a renders at single-digit fps in every places mode; the pins are not the cause (hiding the icon
-  and dot layers changed nothing). Candidates: the house-number overlay at z19, building fills,
-  label placement of the basemap. Measure on a cool phone with the sheet closed.
+- **Dense-city frame rate (2026-09-16).** The close-zoom "slowness in every mode" was the phone
+  throttling. Cool, the biggest single cost in Midtown was the Google places layer (fixed with a
+  higher GeoJSON maxzoom). What remains at one zoom step in is label placement (43 fps; 60 with every
+  symbol layer hidden). Next levers: fewer Google labels at street zoom, fewer basemap labels.
 
 - **More places sources for the open bake (queued 2026-09-15).** Overture's Davis rows come from
   Meta 1,537 / BrightQuery 494 / Microsoft 366 / Foursquare 260 / AllThePlaces 30 / DAC 6 (of
