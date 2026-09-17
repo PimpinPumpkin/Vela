@@ -40,6 +40,37 @@ if [ "$ATP_RUN" != "none" ] && command -v pmtiles >/dev/null 2>&1 && command -v 
     echo "alltheplaces: extract failed for $ID, baking Overture only"
   fi
 fi
+# OSM SHOPS (2026-09-17): the region's OpenStreetMap extract, filtered to named business nodes, is
+# the FIRST choice for a place's coordinate. OSM maps the shop where the shop is, and when it is
+# wrong anyone can fix it in a minute and every map benefits, which is not true of a parcel
+# centroid in a bulk dataset. Needs osmium; OSM_PBF is a Geofabrik URL or a local file, and with it
+# unset the bake behaves exactly as before.
+OSM_NDJSON=""
+if [ -n "${OSM_PBF:-}" ] && command -v osmium >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+  OSM_SRC="$OSM_PBF"
+  if [ "${OSM_PBF#http}" != "$OSM_PBF" ]; then
+    echo "osm: fetching $OSM_PBF"
+    if curl -sSL --retry 3 -o "$WORK/region.osm.pbf" "$OSM_PBF"; then OSM_SRC="$WORK/region.osm.pbf"; else OSM_SRC=""; echo "osm: download failed, baking without it"; fi
+  fi
+  if [ -n "$OSM_SRC" ]; then
+    # Named NODES that are businesses. Ways/relations are the building, whose centroid is the same
+    # kind of guess the parcel point already is, so only nodes qualify.
+    osmium tags-filter --overwrite -R -o "$WORK/shops.osm.pbf" "$OSM_SRC"       n/shop n/amenity=restaurant,fast_food,cafe,bar,pub,pharmacy,bank,fuel,car_wash,car_rental,veterinary,dentist,doctors,clinic,cinema,post_office,atm       n/tourism=hotel,motel,guest_house,hostel n/leisure=fitness_centre >/dev/null 2>&1 || true
+    if [ -s "$WORK/shops.osm.pbf" ]; then
+      osmium export -f geojsonseq --overwrite -o "$WORK/shops.geojsonseq" "$WORK/shops.osm.pbf" >/dev/null 2>&1 || true
+      if [ -s "$WORK/shops.geojsonseq" ]; then
+        # tr: geojsonseq writes an ASCII record separator (0x1e) before every line and jq will not
+        # parse it; the option that turns it off is not in every osmium build.
+        tr -d '\036' < "$WORK/shops.geojsonseq" \
+          | jq -c 'select(.geometry.type == "Point" and (.properties.name // "") != "") | {name: .properties.name, lng: .geometry.coordinates[0], lat: .geometry.coordinates[1]}' \
+          > "$WORK/osm.ndjson" 2>/dev/null || true
+        [ -s "$WORK/osm.ndjson" ] && OSM_NDJSON="$WORK/osm.ndjson"
+      fi
+    fi
+    [ -n "$OSM_NDJSON" ] && echo "osm: $(wc -l < "$OSM_NDJSON") named business nodes" || echo "osm: no usable nodes"
+  fi
+fi
+
 ATP_SQL=""
 if [ -n "$ATP_NDJSON" ]; then
 read -r -d '' ATP_SQL <<ATPSQL || true
@@ -100,14 +131,6 @@ WHERE json_extract_string(props, 'name') IS NOT NULL AND json_extract_string(pro
 -- The first two significant words of a name, the app's own namesAgree rule in SQL form.
 CREATE MACRO nkey(n) AS trim(regexp_extract(regexp_replace(lower(n), '[^a-z0-9 ]', ' ', 'g'), '\\b([a-z0-9]{2,})\\b', 1) || ' ' ||
   regexp_extract(regexp_replace(lower(n), '[^a-z0-9 ]', ' ', 'g'), '\\b[a-z0-9]{2,}\\b(?: [a-z0-9] )* +\\b([a-z0-9]{2,})\\b', 1));
--- Which locator rows Overture already has: two HASH JOINS (the name key, the brand) with the box as
--- a residual, keys computed ONCE per row. A correlated NOT EXISTS with the two tests OR-ed together
--- ran every locator row against every Overture row, which a state cannot afford (2026-09-16).
--- The snap key is the WHOLE name, normalized, with a trailing store number dropped ("Safeway
--- #1561" -> "safeway"): the two-word dedupe key is deliberately loose, and moving a point needs a
--- tighter test than dropping a duplicate does (it dragged a campus onto its own outreach office,
--- 2026-09-17).
-CREATE MACRO snapkey(n) AS nullif(trim(regexp_replace(regexp_replace(lower(coalesce(n, '')), '[^a-z0-9]+', ' ', 'g'), '[ ]+(no|num|store|#)?[ ]*[0-9]{2,6}$', '')), '');
 CREATE TABLE rawkeys AS SELECT id, lat, lng, nkey(name) AS nk, lower(brand) AS bk, snapkey(name) AS sk FROM raw;
 CREATE TABLE atpkeys AS SELECT id, lat, lng, nkey(name) AS nk, lower(brand) AS bk, snapkey(name) AS sk FROM atp;
 -- The Overture row a locator point matches keeps the locator's COORDINATE (atp_snap below):
@@ -158,11 +181,36 @@ FROM read_parquet('s3://overturemaps-us-west-2/release/$RELEASE/theme=addresses/
 WHERE unit IS NOT NULL AND number IS NOT NULL
   AND bbox.xmin BETWEEN $W AND $E AND bbox.ymin BETWEEN $S AND $N;"
 fi
+OSM_SQL=""
+if [ -n "$OSM_NDJSON" ]; then
+read -r -d '' OSM_SQL <<OSMSQL || true
+CREATE TABLE osm_raw AS SELECT name, lng, lat FROM read_json('$OSM_NDJSON', format = 'newline_delimited', columns = {name: 'VARCHAR', lng: 'DOUBLE', lat: 'DOUBLE'})
+  WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N;
+CREATE TABLE osmkeys AS SELECT snapkey(name) AS sk, lat, lng FROM osm_raw WHERE snapkey(name) IS NOT NULL;
+-- Same shape as the chain-locator snap: whole-name key, 30-120 m, nearest candidate, one per row.
+CREATE TABLE osm_snap AS
+SELECT id, olat, olng FROM (
+  SELECT k.id, o.lat AS olat, o.lng AS olng,
+    row_number() OVER (PARTITION BY k.id ORDER BY abs(o.lat - k.lat) + abs(o.lng - k.lng)) AS rn
+  FROM (SELECT id, lat, lng, snapkey(name) AS sk FROM scored) k
+  JOIN osmkeys o ON o.sk = k.sk
+  WHERE k.sk IS NOT NULL AND abs(o.lat - k.lat) < 0.0015 AND abs(o.lng - k.lng) < 0.002
+    AND 111320 * sqrt(pow(o.lat - k.lat, 2) + pow((o.lng - k.lng) * cos(radians(k.lat)), 2)) BETWEEN 30 AND 120
+) WHERE rn = 1;
+SELECT (SELECT count(*) FROM osm_raw) AS osm_nodes, (SELECT count(*) FROM osm_snap) AS osm_snaps;
+OSMSQL
+fi
+
 duckdb <<SQL
 .timer on
 INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial; SET s3_region='us-west-2';
 CREATE TABLE raw AS SELECT $SEL, CAST(NULL AS VARCHAR) AS hours FROM $SRC
   WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N;
+-- The snap key is the WHOLE name, normalized, with a trailing store number dropped ("Safeway
+-- #1561" -> "safeway"): the two-word dedupe key is deliberately loose, and moving a point needs a
+-- tighter test than dropping a duplicate does (it dragged a campus onto its own outreach office,
+-- 2026-09-17).
+CREATE MACRO snapkey(n) AS nullif(trim(regexp_replace(regexp_replace(lower(coalesce(n, '')), '[^a-z0-9]+', ' ', 'g'), '[ ]+(no|num|store|#)?[ ]*[0-9]{2,6}$', '')), '');
 $ATP_SQL
 CREATE TABLE scored AS
 SELECT *,
@@ -287,11 +335,14 @@ $ADDR_SQL
 -- The chain-locator coordinate wins over Overture's parcel point (atp_snap), before the stack
 -- test: moving a row off the shared parcel point is exactly what takes it out of the stack.
 CREATE TABLE IF NOT EXISTS atp_snap (id VARCHAR, alat DOUBLE, alng DOUBLE);
+$OSM_SQL
+CREATE TABLE IF NOT EXISTS osm_snap (id VARCHAR, olat DOUBLE, olng DOUBLE);
+-- OSM first, then the chain locator, then Overture's own point.
 CREATE TABLE located AS
 SELECT a.* REPLACE (
-  CASE WHEN a.tenant = 1 THEN a.lat ELSE COALESCE(p.alat, a.lat) END AS lat,
-  CASE WHEN a.tenant = 1 THEN a.lng ELSE COALESCE(p.alng, a.lng) END AS lng
-) FROM anchored a LEFT JOIN atp_snap p ON p.id = a.id;
+  CASE WHEN a.tenant = 1 THEN a.lat ELSE COALESCE(o.olat, p.alat, a.lat) END AS lat,
+  CASE WHEN a.tenant = 1 THEN a.lng ELSE COALESCE(o.olng, p.alng, a.lng) END AS lng
+) FROM anchored a LEFT JOIN atp_snap p ON p.id = a.id LEFT JOIN osm_snap o ON o.id = a.id;
 CREATE TABLE stacked AS
 SELECT *, count(*) OVER (PARTITION BY round(lat, 5), round(lng, 5)) > 1 AS in_stack FROM located;
 -- A HASH JOIN on (number, unit) with the distance as a residual and the nearest candidate per

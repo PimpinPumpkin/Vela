@@ -1875,6 +1875,19 @@ architecture note.
   "Everything since" commit list: one line per feature, plain words, the reason for an early
   cut first if there is one (0.4.1217 is the model). The promote workflow cannot write this
   part; it is the release's own job, the same day. Nightlies keep the commit list alone.
+- **OSM POSITIONS IN THE PLACES BAKE (2026-09-17):** `OSM_PBF` (the region's Geofabrik extract, joined
+  into the matrix from `tools/routing-regions.json` by id) is filtered with `osmium tags-filter` to
+  NAMED business NODES, exported to geojsonseq (strip the 0x1e record separator before jq; the
+  option to turn it off is not in every osmium build), and `osm_snap` moves a baked row onto OSM's
+  coordinate on a whole-name match at 30-120 m. Order of preference: OSM, then the AllThePlaces
+  locator, then Overture's parcel point; tenants never move. Unset `OSM_PBF` and the bake behaves
+  exactly as before.
+- **STOP SIGNS ARE DIRECTIONAL (2026-09-17):** the corridor fetch reaches 120 m, so the sign holding
+  the side street came along; `NavController` now keeps a STOP only when `RouteProjection.alongMeters`
+  puts it within `STOP_ON_ROUTE_M` (11 m) of the driven line, before the cluster pass (clustering
+  first would average a side sign onto your road), and the route bar applies the same reach. Lights
+  are untouched. Nav callouts carry `atM` and `applyNavLabelProgress` filters out the ones the puck
+  has passed (25 m steps, so it is a filter swap and not frame work).
 - **EXIT CALLOUT + CAMERA CLUSTER (2026-09-17):** `core/nav/ExitLabel.of(instruction)` pulls the exit
   NUMBER out of a maneuver (word table per language, plus the CJK number-before-word form; a bare
   number never counts, it is usually a road ref) and MapScreen passes it as `navExitCallout` for

@@ -958,6 +958,8 @@ fun VelaMapView(
         var emptyPassTicks = 0 // consecutive quantum passes that placed no label (tiles still loading)
         while (true) {
             val quantum = (navPuck.progressM / 400.0).toLong()
+            // Drop the callouts the puck is past, every tick (cheap: a filter swap, gated on a 25 m step).
+            runCatching { applyNavLabelProgress(style, navPuck.progressM) }
             val upcomingNow = upcomingRoadsHolder.value
             val quantumChanged = quantum != lastQuantum || upcomingNow != lastUpcoming
             if (quantumChanged) { dictStaleTicks = 0; emptyPassTicks = 0 } // new area: re-warm the dict as its tiles land
@@ -1020,9 +1022,16 @@ fun VelaMapView(
                                     val at = lines.firstNotNullOfOrNull { pts ->
                                         crossLabelPoint(pts.map { it.longitude() to it.latitude() }, window, touch)
                                     } ?: continue
+                                    val atM = app.vela.core.nav.RouteProjection.alongMeters(
+                                        routePolyline, routeCum, LatLng(at.second, at.first), 400.0,
+                                    ) ?: 0.0
                                     out[name] = Feature.fromGeometry(Point.fromLngLat(at.first, at.second)).apply {
                                         addStringProperty("name", name)
                                         addStringProperty("tier", tier)
+                                        // Where this callout sits along the route, so the layer can drop it
+                                        // the moment the puck is past it (user 2026-09-17: bubbles hung
+                                        // behind the car and ran into the bottom bar).
+                                        addNumberProperty(NAV_XLABEL_AT_PROP, atM)
                                         runCatching { f.getStringProperty("name:en") }.getOrNull()?.let { addStringProperty("name:en", it) }
                                         runCatching { f.getStringProperty("name:latin") }.getOrNull()?.let { addStringProperty("name:latin", it) }
                                     }
@@ -4779,6 +4788,9 @@ private const val NAV_ROADLABEL_MINOR_LAYER = "vela-nav-roadlabels-minor"
 // road-name lines put a bubble at the middle of the street's piece in the tile, often a block or
 // more from the route ("I want them near our actual path", user drive 2026-09-16).
 private const val NAV_XLABEL_SRC = "vela-nav-xlabels-src"
+private const val NAV_XLABEL_AT_PROP = "atM" // the callout's distance along the route; passed ones are filtered out
+private var lastPassedFilterM = -1.0
+private const val NAV_XLABEL_DROP_BEHIND_M = 12.0 // a callout is gone once the puck is this far past it
 private const val NAV_XLABEL_OFFSET_M = 35.0
 private val NAV_XLABEL_OFFSETS = doubleArrayOf(1.0, 1.8, 3.0) // tried in turn until the bubble clears the route
 private const val NAV_XLABEL_CLEAR_M = 30.0
@@ -5118,6 +5130,29 @@ private fun roadLabelTextField(): Expression =
         Expression.get("name")
     }
 
+/** The tier filter plus "not behind the puck": every callout carries its own distance along the
+ *  route, and [navLabelPassed] is how far the puck has come. Callouts used to hang behind the car
+ *  and slide under the ETA bar (user 2026-09-17). */
+private var navLabelPassed = 0.0
+private fun navLabelPassedFilter(tier: Expression): Expression = Expression.all(
+    tier,
+    Expression.gt(
+        Expression.coalesce(Expression.get(NAV_XLABEL_AT_PROP), Expression.literal(Double.MAX_VALUE)),
+        Expression.literal(navLabelPassed + NAV_XLABEL_DROP_BEHIND_M),
+    ),
+)
+
+/** Re-apply the passed-callout filter as the puck moves; a 25 m step keeps it off the frame path. */
+private fun applyNavLabelProgress(style: Style, progressM: Double) {
+    if (kotlin.math.abs(progressM - lastPassedFilterM) < 25.0) return
+    lastPassedFilterM = progressM
+    navLabelPassed = progressM
+    (style.getLayer(NAV_ROADLABEL_LAYER) as? SymbolLayer)
+        ?.setFilter(navLabelPassedFilter(Expression.eq(Expression.get("tier"), Expression.literal("major"))))
+    (style.getLayer(NAV_ROADLABEL_MINOR_LAYER) as? SymbolLayer)
+        ?.setFilter(navLabelPassedFilter(Expression.eq(Expression.get("tier"), Expression.literal("minor"))))
+}
+
 private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, density: Float, exclude: List<String>) {
     // Cheap self-gate so callers can invoke per recomposition (audit-3e rule: no per-frame JNI
     // probes) - a change in theme, nav state or the route's own road list re-runs it.
@@ -5194,11 +5229,11 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
         // in VelaMapView only emits points for streets that meet the route ahead and are not on
         // the route's own names/refs; the tier splits them by road class for the zoom gates.
         val filter = Expression.eq(Expression.get("tier"), Expression.literal(tier))
-        (style.getLayer(id) as? SymbolLayer)?.let { it.setFilter(filter); return }
+        (style.getLayer(id) as? SymbolLayer)?.let { it.setFilter(navLabelPassedFilter(filter)); return }
         run {
             style.addLayer(
                 SymbolLayer(id, NAV_XLABEL_SRC)
-                    .withFilter(filter)
+                    .withFilter(navLabelPassedFilter(filter))
                     .withProperties(
                         PropertyFactory.textField(roadLabelTextField()),
                         PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
