@@ -102,7 +102,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [ ! -f "places-${{ matrix.id }}.pmtiles" ]; then echo "no archive for ${{ matrix.id }} (no places); skipping"; mkdir -p entries; exit 0; fi
-          gh release upload places-overlays "places-${{ matrix.id }}.pmtiles" --clobber --repo "$GITHUB_REPOSITORY"
+          # GitHub's asset upload answers 500 on the big archives often enough to fail a run on its
+          # own (Southern California, 300 MB, twice on 2026-09-17). Retry with a backoff; the bake
+          # itself is the expensive part and it has already run by here.
+          for try in 1 2 3 4; do
+            if gh release upload places-overlays "places-${{ matrix.id }}.pmtiles" --clobber --repo "$GITHUB_REPOSITORY"; then break; fi
+            if [ "$try" = 4 ]; then echo "upload failed after $try tries"; exit 1; fi
+            echo "upload attempt $try failed; retrying in $((try * 30))s"
+            sleep $((try * 30))
+          done
           mkdir -p entries
           SIZE=$(stat -c %s "places-${{ matrix.id }}.pmtiles")
           jq -n --arg id "${{ matrix.id }}" --arg name "${{ matrix.name }}" \
