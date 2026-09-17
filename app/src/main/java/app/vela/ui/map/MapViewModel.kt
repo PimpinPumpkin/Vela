@@ -3955,6 +3955,8 @@ class MapViewModel @Inject constructor(
                     // Bundled dataset: instant + reliable, so the auto-avoid re-rank always has real counts to
                     // work with (the live Overpass fan-out per tile was slow and often returned 0 = nothing to
                     // avoid). Fall back to Overpass only until the bundled set finishes loading.
+                    // Both paths are direction-aware (nav/CameraFacing): a camera aimed across
+                    // the road is not counted against a route it cannot read.
                     if (local) app.vela.data.FlockCameras.along(r.polyline).size
                     else runCatching { app.vela.core.data.OverpassAlprCameras.fetchAlong(http, r.polyline).size }.getOrDefault(0)
                 }

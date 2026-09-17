@@ -129,12 +129,14 @@ internal class NavController(
                     if (!vs.replaying || vs.demoDriving) {
                         refreshNavRouteControls(nsRoute)
                         refreshRouteSpeedCams(nsRoute) // spoken camera warnings (issue #229)
+                        refreshRouteFlock(nsRoute) // plate-camera card / voice alerts
                     }
                 }
                 if (!ns.navigating) {
                     lastRecordedRoute = null
                     clearNavRouteControls()
                     routeCamMeters = emptyList(); routeCamKey = null; spokenCams = emptySet()
+                    clearRouteFlock()
                     speeding.reset()
                 }
                 // Mirror the drive into the theme holder: the "day and night while navigating"
@@ -142,7 +144,7 @@ internal class NavController(
                 app.vela.ui.theme.AppTheme.navigating.value = ns.navigating
                 // Speak an approach warning for a camera coming up (issue #229). Cheap per tick:
                 // a scan of a short list; the projection was done once when the route landed.
-                if (ns.navigating) { maybeWarnCamera(ns); maybeWarnSpeeding() }
+                if (ns.navigating) { maybeWarnCamera(ns); maybeWarnFlock(ns); maybeWarnSpeeding() }
                 _state.update {
                     it.copy(
                         navigating = ns.navigating,
@@ -211,6 +213,19 @@ internal class NavController(
                     val r = navSession.state.value.route ?: return@collect
                     if (on) routeCamKey = null // force the fetch even for the same route
                     refreshRouteSpeedCams(r)
+                }
+        }
+        // Same for the plate-camera alerts: turning either one on mid-drive projects the current
+        // route's cameras now; turning both off clears them.
+        scope.launch {
+            androidx.compose.runtime.snapshotFlow { app.vela.ui.FlockNavAlert.card.value || app.vela.ui.FlockNavAlert.voice.value }
+                .collect { on ->
+                    val r = navSession.state.value.route ?: return@collect
+                    if (!navSession.state.value.navigating) return@collect
+                    val vs = _state.value
+                    if (vs.replaying && !vs.demoDriving) return@collect
+                    if (on) routeFlockKey = null // force the projection even for the same route
+                    refreshRouteFlock(r)
                 }
         }
     }
@@ -804,6 +819,10 @@ internal class NavController(
                         )
                     }
                     for (c in cams) {
+                        // Direction-aware like the route counts: a camera aimed across the road
+                        // does not read this route's plates, so it is not a mark on it.
+                        val facing = app.vela.core.nav.CameraFacing.parse(c.direction)
+                        if (!app.vela.core.nav.CameraFacing.onRoute(poly, c.loc, facing, 40.0)) continue
                         val m = app.vela.core.nav.RouteBar.alongMeters(poly, cum, c.loc) ?: continue
                         add(app.vela.core.nav.RouteBar.Mark.CAMERA to m)
                     }
@@ -886,6 +905,74 @@ internal class NavController(
                 diag.record("speedcam", "${meters.size} camera(s) on route", "corridor")
             }
         }
+    }
+
+    // Plate (Flock / ALPR) camera groups on the CURRENT route, ascending along-route metres, and
+    // the groups already announced. Keyed exactly like the speed-camera corridor so a same-course
+    // heal neither re-projects nor re-arms an alert the driver already had.
+    private var routeFlockKey: String? = null
+    private var routeFlockGroups: List<app.vela.core.nav.CameraAlerts.Group> = emptyList()
+    private var routeFlockMeters: List<Double> = emptyList()
+    private var alertedFlock: Set<Int> = emptySet()
+    private var routeFlockJob: kotlinx.coroutines.Job? = null
+
+    private fun clearRouteFlock() {
+        routeFlockJob?.cancel()
+        routeFlockKey = null; routeFlockGroups = emptyList(); routeFlockMeters = emptyList(); alertedFlock = emptySet()
+    }
+
+    /** Project the plate cameras that can see this route onto it, once per driven route. The
+     *  bundled dataset is in memory, so this is local work, no network. Only cameras that face
+     *  along the route count ([app.vela.data.FlockCameras.along]); ones within 40 m of each other
+     *  along the route become one announcement. No-op unless either alert is on. */
+    private fun refreshRouteFlock(route: app.vela.core.model.Route) {
+        if (!app.vela.ui.FlockNavAlert.any) { clearRouteFlock(); return }
+        val poly = route.polyline
+        if (poly.size < 2) return
+        val f = poly.first(); val l = poly.last()
+        val key = String.format(
+            java.util.Locale.US, "%.4f,%.4f|%.4f,%.4f|%d",
+            f.lat, f.lng, l.lat, l.lng, (route.distanceMeters / 500).toInt(),
+        )
+        if (key == routeFlockKey) return
+        routeFlockJob?.cancel()
+        routeFlockKey = key
+        // A genuinely new route: nothing announced on it, and nothing known on it yet (a reroute
+        // resets traveledM, so the old route's distances would point at cameras left behind).
+        alertedFlock = emptySet(); routeFlockGroups = emptyList(); routeFlockMeters = emptyList()
+        routeFlockJob = scope.launch {
+            // The dataset parses off the main thread at launch; a drive started in the first
+            // seconds waits for it rather than silently getting no alerts for the whole route.
+            var waited = 0
+            while (!app.vela.data.FlockCameras.isLoaded && waited < 60) { kotlinx.coroutines.delay(1000); waited++ }
+            if (!app.vela.data.FlockCameras.isLoaded) return@launch
+            val groups = withContext(Dispatchers.Default) {
+                val cams = app.vela.data.FlockCameras.along(poly)
+                val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+                val meters = cams.mapNotNull { app.vela.core.nav.RouteProjection.alongMeters(poly, cum, it.loc, 45.0) }.sorted()
+                app.vela.core.nav.CameraAlerts.group(meters)
+            }
+            if (routeFlockKey == key) {
+                routeFlockGroups = groups
+                routeFlockMeters = groups.map { it.atM }
+                diag.record("flock", "${groups.sumOf { it.count }} plate camera(s) on route in ${groups.size} group(s)", "bundled")
+            }
+        }
+    }
+
+    /** Announce the plate-camera group coming up, once each: a heads-up card, a spoken line, or
+     *  both, per the two settings. Timing is the speed-camera warning's ([CameraAlerts.due]). */
+    private fun maybeWarnFlock(ns: app.vela.core.nav.NavSession.State) {
+        if (routeFlockMeters.isEmpty() || !app.vela.ui.FlockNavAlert.any) return
+        val i = app.vela.core.nav.CameraAlerts.due(
+            routeFlockMeters, ns.nav.traveledM, (_state.value.mySpeed ?: 0f).toDouble(), alertedFlock,
+        ) ?: return
+        alertedFlock = alertedFlock + i
+        val msg = appContext.getString(
+            if (routeFlockGroups[i].count > 1) R.string.nav_flock_cameras_ahead else R.string.nav_flock_camera_ahead,
+        )
+        if (app.vela.ui.FlockNavAlert.card.value) host.flashStatus(msg, 6000L)
+        if (app.vela.ui.FlockNavAlert.voice.value) voice.speak(msg)
     }
 
     /** Say so when you have been over the posted limit for a few seconds (issue #404, opt-in).

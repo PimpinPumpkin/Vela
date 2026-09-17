@@ -4370,6 +4370,27 @@ Gotchas:
   nav tick, logs a `K` trip note, and `speeding.reset()` on nav end.
   NB `nav/RouteProjection` duplicates the projection in `nav/RouteBar` (issue #228, open in
   parallel); whichever merges second should delegate rather than keep two copies.
+- **Plate (Flock / ALPR) camera alerts + DIRECTION-AWARE "on route" (2026-09-16).** Two opt-ins
+  in Settings > Map next to "Avoid surveillance cameras" (`app.vela.ui.FlockNavAlert`, prefs
+  `flock_nav_alert_card` / `flock_nav_alert_voice`, both OFF, independent of the `Flock` layer
+  toggle because the bundled set is loaded either way): a heads-up card (`host.flashStatus`, the
+  same card the closing-soon warning uses) and a spoken "License plate camera ahead" through
+  `voice.speak` (so the global mute applies). `NavController.refreshRouteFlock` runs once per
+  driven route, keyed EXACTLY like `refreshRouteSpeedCams` (a same-course heal never re-arms),
+  called from the same `!replaying || demoDriving` block; it waits up to 60 s for
+  `FlockCameras.isLoaded`, takes `FlockCameras.along(poly)`, projects with
+  `RouteProjection.alongMeters(.., 45.0)`, and merges cameras within 40 m along the route with
+  `:core nav/CameraAlerts.group` (one alert, plural wording when count > 1).
+  `maybeWarnFlock` reuses `CameraAlerts.due` (12 s lead, 150-600 m, 2 m/s floor, never behind).
+  Nav end calls `clearRouteFlock`; a `snapshotFlow` on the two toggles projects mid-drive.
+  No trip `K` note, matching the speed-camera warning (only the speeding alert writes one).
+  **Direction rule (`:core nav/CameraFacing`, `CameraFacingTest`):** for a camera within the
+  distance gate, find the NEAREST non-degenerate route segment, take its bearing, and compare with
+  the camera's facing as lines: `d = |facing - bearing| mod 180`, `min(d, 180 - d) <= 50` counts.
+  No facing (empty 4th TSV column / unparseable OSM `direction`) counts. Applied in
+  `FlockCameras.along` (route counts, avoid re-rank, alerts), `OverpassAlprCameras.fetchAlong`
+  (the pre-load fallback) and the route bar's CAMERA marks. The map layer and cones still draw
+  every camera.
 - **Surveillance-camera (Flock / ALPR) layer (`OverpassAlprCameras` + `refreshFlock` + `FLOCK_LAYER`, device-verified
   2026-07-12).** Settings > Map > "Surveillance cameras" (`app.vela.ui.Flock` holder, **ON by default since 2026-07-13** -
   it's a headline feature and the bundled dataset makes it free to draw; `FlockRouteAlert` route-avoid stays
