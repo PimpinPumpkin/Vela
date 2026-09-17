@@ -3590,7 +3590,10 @@ fun VelaMapView(
             // While Street View owns the camera padding (top inset), don't clobber it here -
             // the SV close path restores the sheet padding itself.
             if (svPose == null) map.setPadding(cameraLeftInsetPx, 0, 0, cameraBottomInsetPx)
-            if (grew) lastCameraTarget = null // re-frame the current target against the new inset
+            // Not while a route is up: the route fit re-frames for the new inset itself, and a
+            // nulled target made the NEXT frame fly to the selected place, cancelling that fit
+            // (the chooser's "Compare routes" swap landed zoomed in on the destination, 2026-09-17).
+            if (grew && !(routePolyline.size >= 2 && !navMode)) lastCameraTarget = null // re-frame the current target against the new inset
         }
         // While the results sheet is closed forget the last marker fit, so pulling the list back
         // up frames the cluster again even after a manual pan away - EXCEPT while a place sheet

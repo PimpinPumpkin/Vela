@@ -884,4 +884,7 @@
     <string name="settings_speeding_alert">Geschwindigkeitswarnung</string>
     <string name="settings_speeding_alert_hint">Sagt „Sie fahren zu schnell“, sobald Sie ein paar Sekunden über dem ausgeschilderten Tempolimit waren, und erneut, wenn Sie langsamer werden und wieder darüber geraten. Nur dort, wo ein Tempolimit bekannt ist, dasselbe, das die Tempoanzeige zeigt. Aus, bis Sie es einschalten.</string>
     <string name="nav_speeding_alert">Sie fahren zu schnell</string>
+    <string name="routing_offer_title">Offline-Navigation für %1$s?</string>
+    <string name="routing_offer_download">Herunterladen</string>
+    <string name="routing_offer_body">Lädt Straßen, Orte und Karte dieser Region, etwa %1$s. Neuberechnungen gehen schneller und die Führung funktioniert ohne Empfang. Downloads findest du unter Einstellungen, Offlinekarten.</string>
 </resources>

@@ -73,7 +73,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
         app.vela.ui.VelaDialog(
             onDismissRequest = { confirmRegion = null },
             title = stringResource(R.string.settings_region_confirm_title, region.name),
-            text = { Text(stringResource(R.string.settings_region_confirm_body, region.name, fmtMb(regionInstalledMb(region, packRegion)))) },
+            text = { Text(stringResource(R.string.settings_region_confirm_body, region.name, fmtMb(regionInstalledMb(region, packRegion, state.regionExtrasMb[region.id] ?: 0)))) },
             confirmText = stringResource(R.string.settings_download),
             onConfirm = { confirmRegion = null; vm.downloadRoutingGraph(region) },
             dismissText = stringResource(R.string.settings_cancel),
@@ -252,7 +252,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                     if (gi > 0) GroupDivider()
                     val missing = pieces.filter { it.id !in state.routingInstalledIds }
                     val batchActive = state.regionQueueTotal > 0 && pieces.any { it.id == state.routingDownloadingId }
-                    val totalMb = pieces.sumOf { p -> regionInstalledMb(p, state.poiPackRegions.firstOrNull { it.id == p.id }) }
+                    val totalMb = pieces.sumOf { p -> regionInstalledMb(p, state.poiPackRegions.firstOrNull { it.id == p.id }, state.regionExtrasMb[p.id] ?: 0) }
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -317,8 +317,8 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                                 updateAvailable -> stringResource(R.string.settings_routing_update_available)
                                 installed && packInstalled -> stringResource(R.string.settings_routing_installed_places)
                                 installed -> stringResource(R.string.settings_routing_installed)
-                                here -> stringResource(R.string.settings_routing_size_installed_here, fmtMb(regionInstalledMb(region, packRegion)))
-                                else -> stringResource(R.string.settings_routing_size_installed, fmtMb(regionInstalledMb(region, packRegion)))
+                                here -> stringResource(R.string.settings_routing_size_installed_here, fmtMb(regionInstalledMb(region, packRegion, state.regionExtrasMb[region.id] ?: 0)))
+                                else -> stringResource(R.string.settings_routing_size_installed, fmtMb(regionInstalledMb(region, packRegion, state.regionExtrasMb[region.id] ?: 0)))
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = if ((here && !installed && !downloading) || updateAvailable) MaterialTheme.colorScheme.primary
@@ -374,7 +374,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                                 // Big regions confirm first with the real installed size (issue #214:
                                 // Germany reads 1.6 GB on the row but lands at ~8 GB on disk).
                                 onClick = {
-                                    if (regionInstalledMb(region, packRegion) > CONFIRM_MB) confirmRegion = region
+                                    if (regionInstalledMb(region, packRegion, state.regionExtrasMb[region.id] ?: 0) > CONFIRM_MB) confirmRegion = region
                                     else vm.downloadRoutingGraph(region)
                                 },
                                 enabled = state.routingDownloadingId == null,
@@ -414,11 +414,12 @@ private fun StorageRow(label: String, mb: Int, onClick: (() -> Unit)? = null) {
 
 /** The size a region really lands at: manifest installedMb when the bake published it, else the
  *  download size for an obf (it installs as-is) and ~2.35x the zip for a pack (the WA pack measured
- *  143 -> 335 MB). The obf and its place pack install together, so the shown number is their SUM. */
-internal fun regionInstalledMb(graph: app.vela.offline.RoutingRegion, pack: app.vela.offline.RoutingRegion?): Int {
+ *  143 -> 335 MB). The obf, its place pack and [extraMb] (the places archive and offline map the
+ *  same download pulls, MapUiState.regionExtrasMb) install together, so the shown number is their SUM. */
+internal fun regionInstalledMb(graph: app.vela.offline.RoutingRegion, pack: app.vela.offline.RoutingRegion?, extraMb: Int = 0): Int {
     val g = if (graph.installedMb > 0) graph.installedMb else graph.sizeMb
     val p = pack?.let { if (it.installedMb > 0) it.installedMb else (it.sizeMb * 2.35).toInt() } ?: 0
-    return g + p
+    return g + p + extraMb
 }
 
 internal fun fmtMb(mb: Int): String =

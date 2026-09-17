@@ -303,6 +303,10 @@ fun MapScreen(
     // screen the route fit gets nearly the whole map back, so it re-frames closer instead
     // of staying at the zoomed-out framing the full-height panel needed (user 2026-07-14).
     var dirMinimized by remember { mutableStateOf(false) }
+    // Google-style chooser: "Compare routes" swaps in the classic route list (length, main roads,
+    // cameras per route) until BACK or the directions close.
+    var classicRoutes by remember { mutableStateOf(false) }
+    LaunchedEffect(state.directionsOpen) { if (!state.directionsOpen) classicRoutes = false }
     // Landscape (width > height): the browse top chrome collapses to ONE line (half-width search
     // bar + the chips beside it, Google's landscape layout) and the top-right corner stack
     // (layers button, compass) rises a row - on a phone's ~390dp landscape height the stacked
@@ -593,6 +597,7 @@ fun MapScreen(
         when {
             state.transitNav != null -> vm.endTransitNav()
             state.pickOnMap != null -> vm.cancelChooseOnMap()
+            classicRoutes && state.directionsOpen && !searchOpen && !state.navigating && !state.showSteps && !state.editingStops -> classicRoutes = false
             // Disengage map control only when nothing more prominent is open (a sheet /
             // search / route sitting on top should peel first).
             mapEngaged && !searchOpen && !state.showSteps && !state.navigating &&
@@ -820,6 +825,22 @@ fun MapScreen(
         }
     } else {
         null
+    }
+    // One-time routing offer for the home area (MapViewModel.maybeOfferRouting).
+    state.routingOffer?.let { region ->
+        val pack = state.poiPackRegions.firstOrNull { it.id == region.id }
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { vm.answerRoutingOffer(false) },
+            title = stringResource(R.string.routing_offer_title, region.name),
+            confirmText = stringResource(R.string.routing_offer_download),
+            onConfirm = { vm.answerRoutingOffer(true) },
+            dismissText = stringResource(R.string.root_not_now),
+            onDismiss = { vm.answerRoutingOffer(false) },
+            dismissLowEmphasis = true,
+            text = {
+                Text(stringResource(R.string.routing_offer_body, app.vela.ui.settings.sections.fmtMb(app.vela.ui.settings.sections.regionInstalledMb(region, pack, state.regionExtrasMb[region.id] ?: 0))))
+            },
+        )
     }
     if (showAsrOffer) {
         app.vela.ui.VelaDialog(
@@ -1076,9 +1097,9 @@ fun MapScreen(
             },
             altColor = if (darkTheme) "#C8CDD4" else "#9AA0A6",
             onSelectAlternate = vm::selectRoute,
-            // Google-style chooser experiment: every route wears its time on the map, placed where
-            // it runs apart from the others; tapping a bubble picks that route.
-            routeBubbles = if (app.vela.ui.Experiments.googleChooser.value && state.directionsOpen && !state.navigating &&
+            // Every route wears its time on the map, placed where it runs apart from the others;
+            // tapping a bubble picks that route. Both choosers (the classic one since 2026-09-17).
+            routeBubbles = if (state.directionsOpen && !state.navigating && state.routes.size > 1 &&
                 state.travelMode != app.vela.core.model.TravelMode.TRANSIT
             ) {
                 remember(state.routes, state.activeRoute) { routeBubblesFor(state.routes, state.routes.indexOf(state.activeRoute).coerceAtLeast(0)) }
@@ -1969,7 +1990,7 @@ fun MapScreen(
             // Hidden while the search overlay is up (e.g. picking a custom origin) so
             // the panel doesn't render over it.
             state.directionsOpen && !searchOpen && state.pickOnMap == null &&
-                app.vela.ui.Experiments.googleChooser.value && state.travelMode != app.vela.core.model.TravelMode.TRANSIT -> {
+                app.vela.ui.Experiments.googleChooser.value && !classicRoutes && state.travelMode != app.vela.core.model.TravelMode.TRANSIT -> {
                 val shareCtx = LocalContext.current
                 val destLabel = if (state.directionsReversed) (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location))
                 else (state.selected?.name ?: stringResource(R.string.mapscreen_destination))
@@ -1994,6 +2015,7 @@ fun MapScreen(
                     onSearchAlongRoute = vm::searchAlongRoute,
                     onTimeSelected = vm::setDirectionsTime,
                     onEditStops = vm::openStopsEditor,
+                    onCompareRoutes = { classicRoutes = true },
                     onShare = {
                         val dest = state.selected
                         val body = listOfNotNull(
@@ -5259,12 +5281,23 @@ private fun routeBubblesFor(routes: List<app.vela.core.model.Route>, activeIdx: 
         return kotlin.math.sqrt(dx * dx + dy * dy)
     }
     val coarse = routes.map { sample(it.polyline, 240) }
+    // Bubbles keep a minimum gap: two alternates that split off together otherwise both picked the
+    // same stretch and their bubbles sat on top of each other (Davis to the airport, 2026-09-17).
+    val all = coarse.flatten()
+    val diag = if (all.isEmpty()) 0.0 else distM(
+        app.vela.core.model.LatLng(all.minOf { it.lat }, all.minOf { it.lng }),
+        app.vela.core.model.LatLng(all.maxOf { it.lat }, all.maxOf { it.lng }),
+    )
+    val minGap = maxOf(300.0, diag * 0.25) // a bubble is about an eighth of the fitted route wide
+    val placed = ArrayList<app.vela.core.model.LatLng>()
     return routes.mapIndexedNotNull { i, r ->
         if (r.polyline.size < 2) return@mapIndexedNotNull null
         val cand = sample(r.polyline, 60).let { c -> if (c.size > 10) c.subList(c.size / 10, c.size - c.size / 10) else c }
         val others = coarse.filterIndexed { j, _ -> j != i }.flatten()
-        val at = if (others.isEmpty()) r.polyline[r.polyline.size / 2]
-        else cand.maxByOrNull { p -> others.minOf { distM(p, it) } } ?: r.polyline[r.polyline.size / 2]
+        val ranked = if (others.isEmpty()) listOf(r.polyline[r.polyline.size / 2])
+        else cand.sortedByDescending { p -> others.minOf { distM(p, it) } }
+        val at = ranked.firstOrNull { p -> placed.none { distM(p, it) < minGap } } ?: ranked.first()
+        placed += at
         app.vela.ui.map.RouteBubble(
             index = i,
             at = at,
