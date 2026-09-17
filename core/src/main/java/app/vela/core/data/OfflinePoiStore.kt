@@ -154,27 +154,51 @@ class OfflinePoiStore @Inject constructor(
             "pharmacy" to listOf("pharmacy", "chemist"),
             "drug store" to listOf("pharmacy", "chemist"),
             "hotel" to listOf("hotel", "motel", "guest house"),
+            "hotels" to listOf("hotel", "motel", "guest house"),
             "motel" to listOf("motel"),
             "lodging" to listOf("hotel", "motel", "guest house", "hostel"),
             "parking" to listOf("parking"),
+            "parking lot" to listOf("parking"),
             "atm" to listOf("atm", "bank"),
+            "atms" to listOf("atm", "bank"),
             "bank" to listOf("bank", "atm"),
+            "banks" to listOf("bank", "atm"),
             "hospital" to listOf("hospital"),
+            "hospitals" to listOf("hospital"),
             "clinic" to listOf("clinic", "doctors"),
             "doctor" to listOf("doctors", "clinic"),
             "urgent care" to listOf("clinic", "hospital"),
             "bar" to listOf("bar", "pub", "biergarten"),
+            "bars" to listOf("bar", "pub", "biergarten"),
             "pub" to listOf("pub", "bar"),
             "bakery" to listOf("bakery"),
             "park" to listOf("park"),
+            "parks" to listOf("park"),
             "school" to listOf("school"),
             "gym" to listOf("fitness centre", "sports centre"),
             "car wash" to listOf("car wash"),
             "post office" to listOf("post office"),
+            "post offices" to listOf("post office"),
+            // tourism=camp_site / caravan_site ("Camp site", "Caravan site" once formatted).
+            "campground" to listOf("camp site", "caravan site"),
+            "campgrounds" to listOf("camp site", "caravan site"),
+            "camping" to listOf("camp site", "caravan site"),
+            // The "Things to do" chip. Mostly tourism=* values plus a few amenity/leisure ones that
+            // win the category slot first (amenity is read before tourism).
+            "things to do" to listOf(
+                "attraction", "museum", "viewpoint", "theme park", "zoo", "aquarium", "gallery",
+                "theatre", "cinema", "arts centre", "water park",
+            ),
             "hardware" to listOf("hardware", "doityourself"),
         )
 
-        internal fun categoryKeywords(query: String): List<String> =
-            CATEGORY_KEYWORDS[query.trim().lowercase()] ?: emptyList()
+        /** Exact key first, then the word minus a trailing "s", so typed plurals ("cafes", "gyms")
+         *  reach the singular entry. Irregular plurals need their own key ("groceries"). */
+        internal fun categoryKeywords(query: String): List<String> {
+            val key = query.trim().lowercase()
+            return CATEGORY_KEYWORDS[key]
+                ?: key.takeIf { it.length > 3 && it.endsWith("s") }?.let { CATEGORY_KEYWORDS[it.dropLast(1)] }
+                ?: emptyList()
+        }
     }
 }

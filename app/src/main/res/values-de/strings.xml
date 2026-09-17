@@ -658,6 +658,13 @@
     <string name="list_move_down">Liste nach unten</string>
     <string name="place_route_offline">Offline-Route, kein Live-Verkehr</string>
     <string name="cat_ev">Ladestationen</string>
+    <string name="cat_things_to_do">Aktivitäten</string>
+    <string name="cat_bars">Bars</string>
+    <string name="cat_parking">Parkplätze</string>
+    <string name="cat_hospitals">Krankenhäuser</string>
+    <string name="cat_banks">Banken</string>
+    <string name="cat_post_offices">Postfilialen</string>
+    <string name="cat_campgrounds">Campingplätze</string>
     <string name="settings_search_hint">Einstellungen durchsuchen</string>
     <string name="settings_search_none">Keine Treffer</string>
     <string name="settings_app_name_title">App-Name</string>

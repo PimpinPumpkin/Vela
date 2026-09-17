@@ -658,6 +658,13 @@
     <string name="list_move_down">Lijst omlaag</string>
     <string name="place_route_offline">offline route, geen live verkeer</string>
     <string name="cat_ev">Laadpalen</string>
+    <string name="cat_things_to_do">Activiteiten</string>
+    <string name="cat_bars">Bars</string>
+    <string name="cat_parking">Parkeren</string>
+    <string name="cat_hospitals">Ziekenhuizen</string>
+    <string name="cat_banks">Banken</string>
+    <string name="cat_post_offices">Postkantoren</string>
+    <string name="cat_campgrounds">Campings</string>
     <string name="settings_search_hint">Instellingen doorzoeken</string>
     <string name="settings_search_none">Geen resultaten</string>
     <string name="settings_app_name_title">Appnaam</string>

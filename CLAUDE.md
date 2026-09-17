@@ -1998,9 +1998,17 @@ architecture note.
   background and only the values change. Any new drag list: vary values, never the chain.
 - **ONE quick-category list (2026-09-16, `ui/QuickCategories`).** The map's chip row, the route
   chooser's "Search along route" and the in-nav search all render `QuickCategories.all()`
-  (Restaurants, Coffee, Gas, EV charging, Groceries, Hotels, Pharmacy, ATMs, Parks, in that
-  order); they had drifted to three different sets. Add or reorder a chip there, never inline.
-  Every query must be one `OfflinePoiStore` expands, or the chip is dead offline.
+  (Restaurants, Coffee, Gas, Groceries, Things to do, Hotels, Bars, EV charging, Parking,
+  Pharmacy, ATMs, Parks, Hospitals, Banks, Post offices, Campgrounds, in that order; the last
+  seven were added for #554 on the same day); they had drifted to three different sets. Add or
+  reorder a chip there, never inline. Every query must be one `OfflinePoiStore` expands, or the
+  chip is dead offline: `categoryKeywords` matches the whole lowercased query exactly, then the
+  query minus a trailing "s" (Hotels/ATMs/Parks were dead offline before that fallback), and the
+  values are OSM tag values as the packs store them (`poipack_build.py category()`: first of
+  amenity/shop/tourism/leisure, "_" -> " ", matched with LIKE, so "camp site" not "camp_site").
+  `OfflineCategoryKeywordsTest` lists every chip query; add yours there. Bars is dropped from
+  `all()` while `HideAdult` is on (the filter would empty it), and reading `HideAdult.on` there
+  keeps the rows reactive.
 - **Google-style chooser EXPERIMENT (2026-09-16, `ui/Experiments`, pref `exp_google_chooser`).**
   Off by default, Settings > Diagnostics. `GoogleStyleDirectionsPanel` (ui/place/GoogleChooser.kt)
   replaces DirectionsPanel for non-transit modes; `routeBubblesFor` (MapScreen) picks each route's

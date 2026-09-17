@@ -681,6 +681,13 @@
 
     <!-- added: Japanese translations for previously untranslated keys -->
     <string name="cat_ev">EV充電</string>
+    <string name="cat_things_to_do">観光スポット</string>
+    <string name="cat_bars">バー</string>
+    <string name="cat_parking">駐車場</string>
+    <string name="cat_hospitals">病院</string>
+    <string name="cat_banks">銀行</string>
+    <string name="cat_post_offices">郵便局</string>
+    <string name="cat_campgrounds">キャンプ場</string>
     <string name="settings_search_hint">設定を検索</string>
     <string name="settings_search_none">一致する項目はありません</string>
     <string name="settings_app_name_title">アプリ名</string>

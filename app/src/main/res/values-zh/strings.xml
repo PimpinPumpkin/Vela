@@ -675,6 +675,13 @@
     <string name="place_route_offline">离线路线，无实时路况</string>
 
     <string name="cat_ev">充电站</string>
+    <string name="cat_things_to_do">景点</string>
+    <string name="cat_bars">酒吧</string>
+    <string name="cat_parking">停车场</string>
+    <string name="cat_hospitals">医院</string>
+    <string name="cat_banks">银行</string>
+    <string name="cat_post_offices">邮局</string>
+    <string name="cat_campgrounds">露营地</string>
     <string name="settings_search_hint">搜索设置</string>
     <string name="settings_search_none">无匹配结果</string>
     <string name="settings_app_name_title">应用名称</string>

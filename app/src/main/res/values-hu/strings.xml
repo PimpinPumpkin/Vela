@@ -720,6 +720,13 @@
         <item quantity="other">+%d további megálló</item>
     </plurals>
     <string name="cat_ev">Elektromos töltő</string>
+    <string name="cat_things_to_do">Látnivalók</string>
+    <string name="cat_bars">Bárok</string>
+    <string name="cat_parking">Parkolók</string>
+    <string name="cat_hospitals">Kórházak</string>
+    <string name="cat_banks">Bankok</string>
+    <string name="cat_post_offices">Postahivatalok</string>
+    <string name="cat_campgrounds">Kempingek</string>
     <string name="suggestion_contact_badge">Névjegy</string>
     <string name="settings_speed_cam_warn">Hangos figyelmeztetés</string>
     <string name="settings_speed_cam_warn_hint">Navigáció közben bemondja, hogy „Traffipax következik”, amikor közelítesz egyhez, nagyjából tizenkét másodperccel előtte. A hangos útvonalvezetés beállítását követi. A traffipaxokra való vezetés közbeni figyelmeztetés néhány országban korlátozott, ezért alapból ki van kapcsolva, amíg be nem kapcsolod.</string>
