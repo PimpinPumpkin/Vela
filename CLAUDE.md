@@ -2055,7 +2055,11 @@ architecture note.
   scrub via `cmd input motionevent` + the `VelaFps` frame probe, run each mode twice alternating
   (single runs swing 22-31 fps; the first runs after an install are slow).
 - **In BOTH mode Google WINS a twin outright (2026-09-16, user's call).** Any open feature whose
-  name agrees with a Google place within `DEDUPE_NAME_M` (80 m) has its id put in
+  name agrees with a Google place DRAWN on screen (a rendered-features query on `vela-ambient` +
+  its dot layer, not the whole pool: a Google copy that lost its collision used to hide the open
+  twin too and the business vanished, 2026-09-17) within `DEDUPE_NAME_M` (80 m), or with the SAME
+  normalized name within `DEDUPE_SAME_NAME_M` (150 m, Overture parks chains at parcel centroids
+  in the lot), has its id put in
   `openDisplacedIds` by the debounced `hideOpenTwins` pass, and `applyOpenPlacesHidden` filters it
   out of the icon and dot layers (same mechanism as the closed-listing set, unioned with it);
   Google's pin is drawn instead. Two reasons
@@ -2063,7 +2067,10 @@ architecture note.
   stacks a building's tenants on ONE parcel point and the bake spreads the stack onto an invented
   8-20 m ring; and its ranking comes from review counts rather than a category prior. The open
   layer then holds exactly what Google did not return, which is the point of Both. Offline nothing
-  is hidden (no ambient places to match against). The first cut kept the open icon when the two
+  is hidden (no ambient places to match against). The same pass purges closures: Google's nearby
+  answer keeps its permanently closed places in `ambientClosed` (never painted), and an open icon
+  matching one within 80 m, with no OPEN Google listing of that name within 150 m (a move, not a
+  closure), goes to `onOpenPlaceClosed` -> `hideClosedOpenPlace`, the persisted closed set. The first cut kept the open icon when the two
   agreed within 25 m; the user asked for Google to win either way.
 - **The sheet's fold FADE was the expand/minimize stutter (2026-09-16, measured).** `SheetFold`
   wrapped the folding content in a `graphicsLayer { alpha = fraction() }`, and an alpha below 1
@@ -3734,7 +3741,9 @@ Gotchas:
   business POIs (`poi_r1/r7/r20`) under an open places source (2026-09-16, final shape): OSM
   BUSINESS classes (`OSM_BUSINESS_CLASSES`: the style's food/shop/lodging/fuel groups plus the
   commercial health and money classes) are hidden outright by a static term in
-  `applyPoiTierFilters` (`osmHideBusiness`, set by the overlay effect), because Overture,
+  `applyPoiTierFilters` (`osmHideBusiness`, set by the overlay effect, and also while
+  `placesPending` says the first places lookup has not answered, so a cold start does not flash
+  OSM's shops and then drop them), because Overture,
   AllThePlaces and Google cover businesses far better. Everything else OSM draws - museums,
   attractions, parks, schools, civic buildings, places of worship, transit - stays up, and
   `osmFillIn` (camera idle, 500 ms debounce) drops by name only the non-business OSM points that an

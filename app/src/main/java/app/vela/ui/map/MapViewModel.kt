@@ -129,6 +129,8 @@ data class MapUiState(
     val maxspeedOverlays: List<String> = emptyList(), // pmtiles://https:// source URIs covering the view
     val placesOverlays: List<String> = emptyList(),   // open-data places layer (Overture PMTiles), file:// or streamed
     val hiddenOpenPlaceIds: Set<String> = emptySet(), // open places whose Google listing is permanently closed (persisted)
+    val ambientClosed: List<Place> = emptyList(), // permanently closed places in the last nearby answer; Both mode hides their open twins
+    val placesPending: Boolean = false, // the open places source is on and its first lookup has not answered
     val speedLimitOverlayKmh: Double? = null,
     val speedLimitKmh: Double? = null, // posted limit of the current road (OSM maxspeed via the obf engine),
                                        // km/h; null = unknown/untagged/no offline graph → badge hidden.
@@ -2962,6 +2964,9 @@ class MapViewModel @Inject constructor(
     /** The tapped open place resolved to a Google listing that is permanently closed: Overture lags
      *  Google by months, so hide the pin now and remember it (the closed shops still on the map,
      *  user 2026-09-15). [seedId] is the seeded Place id ("overture:<id>"). */
+    /** The map matched an open place to a permanently closed place in Google's nearby answer. */
+    fun onOpenPlaceClosed(id: String) = hideClosedOpenPlace(id)
+
     private fun hideClosedOpenPlace(seedId: String) {
         val raw = seedId.removePrefix("overture:")
         if (raw.isBlank() || raw in _state.value.hiddenOpenPlaceIds) return
@@ -5161,7 +5166,7 @@ class MapViewModel @Inject constructor(
         // the best-known data for THIS centre; the fetch below still refines it.
         cachedAmbientNear(center)?.let { entry ->
             val cached = entry.places.map { it.copy(distanceMeters = center.distanceTo(it.location)) }
-            _state.update { it.copy(ambientPois = withRecentlyViewed(civicFiltered(keepAmbientForView(cached, viewRadiusMeters, zoom)))) }
+            _state.update { it.copy(ambientPois = withRecentlyViewed(civicFiltered(keepAmbientForView(cached, viewRadiusMeters, zoom))), ambientClosed = cached.filter { p -> p.permanentlyClosed }) }
             // A FRESH fetch that still COVERS this view is served as-is, no network refetch
             // (user 2026-07-15): tapping a POI shifts the camera enough to trip the moved-gate,
             // so closing the sheet re-fetched the SAME area seconds later - and Google's ranking
@@ -5245,7 +5250,7 @@ class MapViewModel @Inject constructor(
             if (!bareMap()) return@launch
             // A completed live fan-out is definitive proof of connectivity - heal a stale offline
             // flag here too (same rule the search path applies).
-            _state.update { it.copy(ambientPois = withRecentlyViewed(civicFiltered(keepAmbientForView(res, viewRadiusMeters, zoom))), ambientCoversView = true, offline = false) }
+            _state.update { it.copy(ambientPois = withRecentlyViewed(civicFiltered(keepAmbientForView(res, viewRadiusMeters, zoom))), ambientClosed = res.filter { p -> p.permanentlyClosed }, ambientCoversView = true, offline = false) }
             // Idle now: quietly warm the four NEIGHBOUR areas into the LRU so panning one screen
             // over paints instantly (unmetered connections only - it's ~4 extra fan-outs).
             prefetchAmbientNeighbours(center, span, zoom)
@@ -5564,15 +5569,21 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    private var placesLookedUp = false
+
     private fun refreshPlacesOverlays(center: LatLng? = mapCenter ?: _state.value.myLocation) {
         refreshBasemapArchive(center)
         if (!app.vela.ui.MapPoiPrefs.openPlaces) {
-            if (_state.value.placesOverlays.isNotEmpty()) _state.update { it.copy(placesOverlays = emptyList()) }
+            if (_state.value.placesOverlays.isNotEmpty() || _state.value.placesPending) _state.update { it.copy(placesOverlays = emptyList(), placesPending = false) }
             return
         }
+        // Only the very first lookup is "pending": the manifest is memoized after it, so later
+        // lookups answer at once and a pan never flips the OSM business icons back and forth.
+        if (!placesLookedUp) _state.update { it.copy(placesPending = true) }
         viewModelScope.launch {
             val uris = runCatching { placesStore.sourcesFor(center, app.vela.BuildConfig.PLACES_MANIFEST_URL) }.getOrDefault(emptyList())
-            if (uris != _state.value.placesOverlays) _state.update { it.copy(placesOverlays = uris) }
+            placesLookedUp = true
+            if (uris != _state.value.placesOverlays || _state.value.placesPending) _state.update { it.copy(placesOverlays = uris, placesPending = false) }
         }
     }
 
