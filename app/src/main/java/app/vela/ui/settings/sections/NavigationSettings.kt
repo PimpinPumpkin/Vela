@@ -114,6 +114,7 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         )
         listOf(
             app.vela.ui.RoadLabel.BAR to stringResource(R.string.settings_road_label_bar),
+            app.vela.ui.RoadLabel.IN_BAR to stringResource(R.string.settings_road_label_inbar),
             app.vela.ui.RoadLabel.PUCK to stringResource(R.string.settings_road_label_puck),
             app.vela.ui.RoadLabel.OFF to stringResource(R.string.settings_road_label_off),
         ).forEach { (id, label) ->

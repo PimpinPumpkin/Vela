@@ -10,6 +10,8 @@ object RoadLabel {
     const val OFF = "off"
     const val BAR = "bar"
     const val PUCK = "puck"
+    /** Inside the nav bar, where the lift chevron sits (issue #553). */
+    const val IN_BAR = "inbar"
     val mode = mutableStateOf(BAR)
 
     fun init(context: Context) {

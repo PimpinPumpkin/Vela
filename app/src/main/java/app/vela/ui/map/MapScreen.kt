@@ -1359,7 +1359,7 @@ fun MapScreen(
         // Hidden while previewing a step (previewing must not change where you "are"), in PiP,
         // and until the ticker has reported a puck position.
         val roadLabelMode = app.vela.ui.RoadLabel.mode.value
-        if (state.navigating && !pipUi && state.previewStepIndex == null && roadLabelMode != app.vela.ui.RoadLabel.OFF) {
+        if (state.navigating && !pipUi && state.previewStepIndex == null && roadLabelMode != app.vela.ui.RoadLabel.OFF && roadLabelMode != app.vela.ui.RoadLabel.IN_BAR) {
             val liveIdx = state.nav.stepIndex
             // The road you are ON right now: the leg's road, or the last silent rename already
             // passed on it (travelled = leg length minus what is left to the next turn).
@@ -1832,6 +1832,7 @@ fun MapScreen(
                         trafficRatio = state.activeRoute?.trafficRatio,
                         showListButton = false,
                         handleUp = false,
+                        roadName = barRoadName(state),
                     )
                 } else null,
                 maneuvers = state.activeRoute?.maneuvers ?: emptyList(),
@@ -1903,6 +1904,7 @@ fun MapScreen(
                         vm.openSteps()
                     },
                     maxLift = stepsListMax,
+                    roadName = barRoadName(state),
                     // The rows that show under the figures while the bar is pulled up: the same
                     // StepRow the sheet draws, at the same padding, so nothing moves at the swap.
                     // It starts at the current step (the sheet opens scrolled there), dividers included.
@@ -5266,4 +5268,17 @@ private fun routeBubblesFor(routes: List<app.vela.core.model.Route>, activeIdx: 
             selected = i == activeIdx,
         )
     }
+}
+
+/** The road you are on, for the "Inside the bottom bar" road-name placement (issue #553), or null
+ *  when that placement is not chosen or there is nothing to show. Same source as the floating
+ *  pill: the leg's road, or the last silent rename already passed on it, ref first. */
+private fun barRoadName(state: MapUiState): String? {
+    if (app.vela.ui.RoadLabel.mode.value != app.vela.ui.RoadLabel.IN_BAR) return null
+    if (!state.navigating || state.previewStepIndex != null) return null
+    val m = state.activeRoute?.maneuvers?.getOrNull(state.nav.stepIndex - 1) ?: return null
+    val (name, ref) = m.roadAt(m.distanceMeters - state.nav.distanceToNextManeuver)
+    val road = ref?.takeIf { it.isNotBlank() } ?: name?.takeIf { it.isNotBlank() } ?: return null
+    if (state.roadNameLatin.isEmpty()) return road
+    return app.vela.core.voice.SpokenScript.forDisplay(road, app.vela.ui.AppLocale.effective().language, state.roadNameLatin)
 }

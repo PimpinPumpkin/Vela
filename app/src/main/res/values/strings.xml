@@ -878,6 +878,7 @@
     <string name="settings_road_label_off">Off</string>
     <string name="settings_road_label_bar">Above the bottom bar</string>
     <string name="settings_road_label_puck">Under the arrow</string>
+    <string name="settings_road_label_inbar">Inside the bottom bar</string>
     <string name="settings_puck_size">Arrow size</string>
     <string name="settings_puck_size_normal">Normal</string>
     <string name="settings_puck_size_large">Large</string>
