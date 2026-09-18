@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -1758,32 +1759,51 @@ fun MapScreen(
                     },
                     modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
                 ) { Icon(Icons.Default.ZoomOutMap, contentDescription = stringResource(R.string.nav_overview)) }
-                FloatingActionButton(
-                    onClick = vm::toggleVoice,
-                    modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
+                // MUTE + PAUSE share ONE pill (user 2026-09-18). They are the two "hold something"
+                // controls of a drive, they are both state (and both show that state in their
+                // glyph), and five stacked FABs down the right edge was most of a small phone's
+                // height - worse in landscape. Same dress as the zoom pair: one Surface, two
+                // square targets, a hairline between. PAUSE sits on top, nearer the thumb, because
+                // pulling in is the decision made at speed; paused, its half fills with the accent,
+                // since a drive that is quietly not navigating must never look like one that is.
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    shadowElevation = 6.dp,
                 ) {
-                    Icon(
-                        if (state.voiceMuted) Icons.Default.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                        contentDescription = if (state.voiceMuted) stringResource(R.string.nav_unmute_voice) else stringResource(R.string.nav_mute_voice),
-                    )
-                }
-                // PAUSE (user 2026-09-18): pulling into a fuel station you just spotted should not
-                // start an argument with the app - reroutes, "make a U-turn", the voice talking over
-                // your music. Paused keeps the route and the figures and lets the puck wander; the
-                // button wears the accent while held, because a drive that is quietly not navigating
-                // must never look like one that is.
-                FloatingActionButton(
-                    onClick = vm::toggleNavPause,
-                    containerColor = if (state.navPaused) MaterialTheme.colorScheme.primary
-                    else androidx.compose.material3.FloatingActionButtonDefaults.containerColor,
-                    contentColor = if (state.navPaused) MaterialTheme.colorScheme.onPrimary
-                    else MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
-                ) {
-                    Icon(
-                        if (state.navPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                        contentDescription = stringResource(if (state.navPaused) R.string.nav_resume else R.string.nav_pause),
-                    )
+                    Column(Modifier.width(56.dp)) {
+                        Box(
+                            Modifier
+                                .size(56.dp)
+                                .background(if (state.navPaused) MaterialTheme.colorScheme.primary else Color.Transparent)
+                                .dpadHighlight(RoundedCornerShape(16.dp))
+                                .clickable(onClick = vm::toggleNavPause),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                if (state.navPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                contentDescription = stringResource(if (state.navPaused) R.string.nav_resume else R.string.nav_pause),
+                                tint = if (state.navPaused) MaterialTheme.colorScheme.onPrimary else LocalContentColor.current,
+                            )
+                        }
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 10.dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.25f),
+                        )
+                        Box(
+                            Modifier
+                                .size(56.dp)
+                                .dpadHighlight(RoundedCornerShape(16.dp))
+                                .clickable(onClick = vm::toggleVoice),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                if (state.voiceMuted) Icons.Default.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = if (state.voiceMuted) stringResource(R.string.nav_unmute_voice) else stringResource(R.string.nav_mute_voice),
+                            )
+                        }
+                    }
                 }
                 FloatingActionButton(
                     onClick = {

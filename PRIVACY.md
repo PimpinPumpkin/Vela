@@ -12,11 +12,21 @@
   design, a libre front end to Google's data, not a claim of zero Google contact.
 - **There is no Vela server.** Vela has no backend, no account, no analytics, no crash
   reporting, no ad SDK. Nothing you do is sent to *us* - there is no "us" to send it to.
+- **Browsing the map does not touch Google at all, by default.** The businesses you pan
+  past are **Vela data**: an open-data build of Overture Maps and AllThePlaces, positioned
+  with OpenStreetMap, baked in Vela's own repository and streamed from its releases (and
+  carried offline with a downloaded region). Panning, zooming and looking around send
+  Google nothing. Settings > Places > "Places come from" is where that lives, set to
+  **Vela data** out of the box; **Both** adds one Google request per settled view, and
+  **Google** asks on every pan. This is the part people most often assume works the other
+  way round.
 - **Vela talks to Google directly from your phone**, the same way `maps.google.com`
-  in a browser does, for search / places / routing / traffic. Google therefore sees
-  your **IP address**, your **search text**, and the **map area** of each request - 
-  but **not a Google account** (you're never signed in) and **no app/API key** that
-  labels the traffic as "Vela."
+  in a browser does, for **searching**, **opening a place** (hours, reviews, photos, busy
+  times), **routing** and **traffic**. Google therefore sees your **IP address**, your
+  **search text**, and the **map area** of those requests - but **not a Google account**
+  (you're never signed in) and **no app/API key** that labels the traffic as "Vela."
+  Tapping a place is what asks about that place; Settings > Places > "Look up tapped
+  places on Google" turns even that off, leaving what the open data carries.
 - A few **non-Google open services** get small, specific requests (map tiles, reverse
   geocoding, terrain, fallback routing) - see the table.
 - **Your places, history, and settings stay on the device.** Saved/Home/Work/recent
@@ -27,7 +37,8 @@
 
 | Service | When | What it gets | What it does **not** get |
 |---|---|---|---|
-| **google.com** (search/place) | every search, place open | your IP, the query text, the map viewport (lat/lng), a logged-out session cookie | your Google account, name, device ID, contacts |
+| **Vela's own place data** (GitHub releases) | browsing the map, in the default "Vela data" mode | your IP, and which archive byte-ranges you read (implies your rough map area); nothing goes to Google | the query text, your account, anything about what you tapped |
+| **google.com** (search/place) | every search, and opening a place (not browsing) | your IP, the query text, the map viewport (lat/lng), a logged-out session cookie | your Google account, name, device ID, contacts |
 | **google.com** (directions) | planning a route | your IP, origin + destination coordinates, viewport | account; your live position isn't sent unless you navigate |
 | **google.com** (directions, in-drive) | while NAVIGATING: on every off-course reroute, and every ~2 min for the live traffic re-check | your IP, your **current position** + the destination | account. The periodic re-check is what powers faster-route offers, the live arrival time and step recovery; it can be turned off in Settings → Navigation ("Live traffic re-checks"), leaving only the off-course reroutes, which navigation can't work without |
 | **google.com** (reviews/photos) | opening reviews / the photo gallery | your IP, the place's feature id | account (photos load via an **anonymous** hidden WebView - see below) |

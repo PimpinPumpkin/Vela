@@ -3724,6 +3724,12 @@ Gotchas:
   on-device A/B - Kokoro was ~0.4× realtime even on a Pixel 9. `MapViewModel` reclaims their old model
   dirs and sanitizes stale `vela.kokoro`/`vela.matcha` prefs to Piper. `project_vela_kokoro_tts` memory
   is that historical record, not the current design.)**
+- **MUTE AND PAUSE ARE ONE PILL (user 2026-09-18).** The nav FAB stack was overview, voice, search,
+  pause, plus recenter when detached: five controls down the right edge, most of a small phone's
+  height and worse in landscape. Mute and pause are the two STATE controls of a drive, so they
+  share one `Surface` in the zoom pair's dress (one pill, two 56dp targets, a hairline between),
+  pause on top because pulling in is the decision made at speed. Paused, the top half fills with
+  the accent. Adding a sixth nav control means merging, not stacking.
 - **PAUSE THE DRIVE (`NavSession.paused`, user 2026-09-18).** A nav FAB and a notification action
   hold the drive: `onLocation` records the fix and returns before the engine, so there is no engine
   update, no off-route detection, no reroute, no arrival, no stop cue, no voice, no live-traffic
