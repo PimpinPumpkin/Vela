@@ -1112,14 +1112,15 @@ fun NavStopOffer(
  * The drive's two "hold something" controls behind ONE button (user 2026-09-18).
  *
  * Pause and mute used to sit as a two-target pill in the nav stack, which is 112 dp of a small
- * phone's right edge for two things you touch rarely. Now there is one 56 dp button: a tap opens a
- * little row beside it with both choices, and a LONG PRESS mutes straight away, so the pop-out is
- * for people who need to look and skippable for people who know. The button carries both states -
- * the glyph is pause or resume, the accent fill says the drive is held, and a muted drive wears a
- * small crossed speaker - because one control standing for two states has to show both.
+ * phone's right edge for two things you touch rarely. Now there is one 56 dp button and the tap
+ * PAUSES - the control you reach for at speed costs one touch and never opens a menu first - while
+ * the other one slides out beside it for [OPEN_MS] so it is there if you want it. A LONG PRESS
+ * mutes outright, for people who know where it is. The button carries both states - the glyph is
+ * pause or resume, the accent fill says the drive is held, and a muted drive wears a small crossed
+ * speaker - because one control standing for two states has to show both.
  *
- * The row closes itself after [OPEN_MS] and after either choice, so it can never sit over the map.
- * Long press is touch-only by nature; the row is the key path, which is what keeps this D-pad legal.
+ * Long press is touch-only by nature; the slide-out is the key path to mute, which is what keeps
+ * this D-pad legal.
  */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -1131,8 +1132,9 @@ fun NavHoldControls(
     modifier: Modifier = Modifier,
 ) {
     var open by remember { mutableStateOf(false) }
+    var openedAt by remember { mutableStateOf(0L) }
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
-    LaunchedEffect(open) {
+    LaunchedEffect(open, openedAt) {
         if (open) {
             kotlinx.coroutines.delay(OPEN_MS)
             open = false
@@ -1153,22 +1155,11 @@ fun NavHoldControls(
                 shadowElevation = 6.dp,
                 modifier = Modifier.padding(end = 8.dp),
             ) {
-                Row(Modifier.height(56.dp), verticalAlignment = Alignment.CenterVertically) {
-                    HoldChoice(
-                        icon = if (paused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                        label = stringResource(if (paused) R.string.nav_resume else R.string.nav_pause),
-                        filled = paused,
-                    ) { onPause(); open = false }
-                    androidx.compose.material3.VerticalDivider(
-                        modifier = Modifier.padding(vertical = 10.dp),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.25f),
-                    )
-                    HoldChoice(
-                        icon = if (muted) Icons.Default.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                        label = stringResource(if (muted) R.string.nav_unmute_voice else R.string.nav_mute_voice),
-                        filled = false,
-                    ) { onMute(); open = false }
-                }
+                HoldChoice(
+                    icon = if (muted) Icons.Default.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                    label = stringResource(if (muted) R.string.nav_unmute_voice else R.string.nav_mute_voice),
+                    filled = false,
+                ) { onMute(); open = false }
             }
         }
         Surface(
@@ -1182,13 +1173,17 @@ fun NavHoldControls(
                     .size(56.dp)
                     .dpadHighlight(RoundedCornerShape(16.dp))
                     .combinedClickable(
-                        onClick = { open = !open },
+                        onClick = {
+                            onPause()
+                            open = true
+                            openedAt = System.currentTimeMillis()
+                        },
                         onLongClick = {
                             haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                             onMute()
                             open = false
                         },
-                        onClickLabel = stringResource(R.string.nav_hold_controls),
+                        onClickLabel = stringResource(if (paused) R.string.nav_resume else R.string.nav_pause),
                     ),
                 contentAlignment = Alignment.Center,
             ) {

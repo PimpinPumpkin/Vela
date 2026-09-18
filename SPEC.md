@@ -1692,8 +1692,9 @@ ports it rather than inventing a fourth:
   route: scaled to a long trip every nearby mark collapses into one pixel.
 - **Pause and mute are one button** (`NavHoldControls`). They are the drive's two "hold something"
   controls and both are touched rarely, so they get one 56 dp target rather than 112 dp of the right
-  edge: a tap opens a row beside it with both choices, a long press mutes without opening anything,
-  and the row closes itself after 4 s and after either choice. The button carries both states,
+  edge. **The tap pauses**: the control reached for at speed costs one touch and never opens a menu
+  first. Mute slides out beside it for `OPEN_MS` (6 s) so it is there when wanted, and a long press
+  mutes outright. The button carries both states,
   because one control standing for two has to: the glyph is pause or resume, the accent fill says
   the drive is held, and a small crossed speaker says it is silent. The long press is touch-only by
   nature and the row is its key path, which is what keeps it D-pad legal.
