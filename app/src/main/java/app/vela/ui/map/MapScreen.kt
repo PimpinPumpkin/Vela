@@ -1152,6 +1152,7 @@ fun MapScreen(
             cameraTopInsetPx = if (state.directionsOpen && !state.navigating) topCardBottomPx else 0,
             // Numbered stop pins while the trip UI is active (chooser, editor or the drive itself).
             stopPins = if (state.directionsOpen || state.navigating) state.directionsWaypoints.map { it.location } else emptyList(),
+            candidatePin = state.navTapCandidate?.location?.takeIf { state.navigating },
             destinationPin = if (state.directionsOpen && !state.navigating) {
                 if (state.directionsReversed) state.directionsOrigin?.location ?: state.myLocation else state.selected?.location
             } else null,
@@ -2021,9 +2022,18 @@ fun MapScreen(
                     meta = listOfNotNull(
                         cand.category,
                         ahead?.let { stringResource(R.string.nav_stop_offer_ahead, formatDistance(it)) },
+                        // What the stop costs, once the check lands. Absent means the check is
+                        // still out, or the two figures were too close to claim a detour.
+                        state.navTapDetourMin?.let {
+                            stringResource(R.string.nav_stop_offer_detour, formatDuration(it * 60.0))
+                        },
                     ).joinToString(" · "),
                     onAdd = vm::confirmNavTapStop,
                     onDismiss = vm::dismissNavTapStop,
+                    // Reaching the button takes more presses on a key-driven phone than a thumb
+                    // needs, so the offer waits longer there.
+                    autoDismissMs = if (dpadMode) 25_000L else 10_000L,
+                    offerKey = state.navTapOfferTick,
                     modifier = Modifier
                         .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
                         .landscapeColumn(landscapeChrome, sidePanelWidthDp)

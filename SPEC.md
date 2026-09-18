@@ -891,6 +891,30 @@ renderer then sat at 89 percent of a core. The Developer row states the date it 
   replay path. It is presented as real navigation: the stop-replay pill is hidden and End
   cancels the demo job, whose `finally` resumes live GPS.
 
+### 4.11 Tap-to-stop during a drive
+
+`MapPoiPrefs.navTapPlaces` (off by default; its setter also turns places on and remembers whether
+it had to, so turning it off restores what was there). While it is on, the drive-nav places filter
+widens from fuel-only to `NAV_DRIVE_GROUPS`, and a tap on a place does not select it: it becomes
+`navTapCandidate`, which MapScreen renders as `NavStopOffer` above the nav bar.
+
+- **The first tap only offers.** The card's button is the second tap, and it is the only thing
+  that changes the drive. One stray touch at speed must not re-route anyone.
+- **The card prices the stop.** One route through the candidate is fetched, bounded at
+  `NAV_DETOUR_TIMEOUT_MS` (8 s), and `DetourEstimate.minutesAdded` compares it with the drive's own
+  live remaining time. The candidate is first in the waypoint list, because that is where
+  `NavSession.addStop` puts it; pricing any other order prices a drive the button will not build.
+  A difference under `MIN_SHOW_S` (20 s) or over `MAX_PLAUSIBLE_S` (3 h) shows nothing at all
+  rather than "+0 min" or a failed fetch's figure. The fetch touches nothing: the session keeps
+  routing on what it already has.
+- **The card takes itself away.** A countdown ring around the close button runs for 10 s, or 25 s
+  under `dpadMode` where reaching the button takes more presses, and dismisses at zero. It is
+  keyed on `navTapOfferTick`, which every offer bumps, because a second tap on the same place
+  leaves the state equal and would otherwise leave the first clock running.
+- **The offer is drawn on the map**, as a red "+" teardrop (`PoiIcons.CANDIDATE_PIN`) through the
+  same effect that draws numbered stops and the destination flag, so the driver can see where the
+  offer is before accepting it.
+
 ---
 
 ## 5. Places

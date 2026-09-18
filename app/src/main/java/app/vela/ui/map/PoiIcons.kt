@@ -158,8 +158,18 @@ object PoiIcons {
     /** Sentinel [n] for [ensureStopNumberIcon]: draw the flag glyph rather than a digit. */
     const val DESTINATION_PIN = -1
 
+    /** Sentinel [n] for [ensureStopNumberIcon]: the place a tap has OFFERED as a stop mid-drive.
+     *  Same teardrop as a real stop so it reads as the same kind of thing, in the result red with
+     *  a plus rather than the stops' teal and a number - it is not on the trip until the card's
+     *  button says so. */
+    const val CANDIDATE_PIN = -2
+
     fun ensureStopNumberIcon(style: Style, n: Int, context: Context? = null): String {
-        val key = if (n == DESTINATION_PIN) "vela-stop-dest" else "vela-stopnum-$n"
+        val key = when (n) {
+            DESTINATION_PIN -> "vela-stop-dest"
+            CANDIDATE_PIN -> "vela-stop-candidate"
+            else -> "vela-stopnum-$n"
+        }
         if (style.getImage(key) != null) return key
         val w = 84
         val h = 100
@@ -197,14 +207,22 @@ object PoiIcons {
             setStyle(Paint.Style.STROKE) // explicit setter - `style` resolves to the fn param
             strokeWidth = w * 0.06f
         })
-        canvas.drawPath(teardrop, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#14857A") })
+        canvas.drawPath(
+            teardrop,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor(if (n == CANDIDATE_PIN) RESULT_RED else "#14857A")
+            },
+        )
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = Typeface.DEFAULT_BOLD // plain sans - the class typeface() is the ICON font
             color = Color.WHITE
             textSize = w * 0.40f
             textAlign = Paint.Align.CENTER
         }
-        if (n == DESTINATION_PIN) {
+        if (n == CANDIDATE_PIN) {
+            val fm = text.fontMetrics
+            canvas.drawText("+", cx, bodyCy - (fm.ascent + fm.descent) / 2f, text)
+        } else if (n == DESTINATION_PIN) {
             // The icon font's flag glyph, same white-on-teal as the numbers.
             val glyph = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 typeface = context?.let { typeface(it) }

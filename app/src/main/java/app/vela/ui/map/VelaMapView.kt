@@ -567,6 +567,9 @@ fun VelaMapView(
     // trip is planned or driven; reordering the stops re-numbers the pins (list identity keys it).
     stopPins: List<LatLng> = emptyList(),
     destinationPin: LatLng? = null, // the trip's END, drawn as a flag beside the numbered stops
+    // Drive nav, tap-to-stop: the place the card is offering, drawn as a red "+" teardrop so the
+    // driver can see WHERE the offer is before the button changes the drive.
+    candidatePin: LatLng? = null,
     frameMarkers: Boolean,
     // True while a PLACE SHEET owns the camera (a result is open): the marker-cluster fit is
     // remembered, not forgotten, so closing the sheet returns to the results WITHOUT re-framing
@@ -1744,10 +1747,10 @@ fun VelaMapView(
     // Numbered stop pins: one teal pin per intermediate stop, numbered in visit order. The
     // whole feature set re-uploads whenever the list (or its order) changes, so a reorder in
     // the stops editor re-numbers the map immediately. Icons register on demand per number.
-    LaunchedEffect(stopPins, destinationPin, styleRef) {
+    LaunchedEffect(stopPins, destinationPin, candidatePin, styleRef) {
         val style = styleRef ?: return@LaunchedEffect
         runCatching {
-            if (stopPins.isEmpty() && destinationPin == null) {
+            if (stopPins.isEmpty() && destinationPin == null && candidatePin == null) {
                 style.getLayer(STOPNUM_LAYER)?.let { style.removeLayer(it) }
                 style.getSource(STOPNUM_SRC)?.let { style.removeSource(it) }
                 return@LaunchedEffect
@@ -1761,6 +1764,10 @@ fun VelaMapView(
                 destinationPin?.let { d ->
                     val key = PoiIcons.ensureDestinationPin(style, context)
                     Feature.fromGeometry(Point.fromLngLat(d.lng, d.lat)).apply { addStringProperty("icon", key) }
+                },
+                candidatePin?.let { c ->
+                    val key = PoiIcons.ensureStopNumberIcon(style, PoiIcons.CANDIDATE_PIN, context)
+                    Feature.fromGeometry(Point.fromLngLat(c.lng, c.lat)).apply { addStringProperty("icon", key) }
                 },
             )
             val existing = style.getSource(STOPNUM_SRC) as? GeoJsonSource
