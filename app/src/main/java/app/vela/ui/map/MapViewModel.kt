@@ -3146,7 +3146,23 @@ class MapViewModel @Inject constructor(
                     // old behaviour - apply. Within the pool, nearest still wins and the clear-
                     // dominance override still promotes the rich profile of a true duplicate
                     // (a "SpeeDee Midas" tap matches both the SpeeDee and the Midas listings).
-                    val pool = results.filter { nameAgrees(name, it.name) }.ifEmpty { results }
+                    // A NON-TRANSIT tap must never resolve INTO a transit stop or a road junction
+                    // (user 2026-09-18: a fuel station on a corner opened as the bus stop beside
+                    // it). Google lists stops and intersections as places, they sit metres from the
+                    // businesses on the same corner, and the pool below falls back to "everything"
+                    // when no listing agrees by name - so the nearest answer, the stop, became the
+                    // place. A stop is only ever the right answer for a tap that came FROM a stop,
+                    // which the transit branch above already handles.
+                    val answerable = results.filterNot { p ->
+                        p.category?.let { isTransitCategory(it) || it.lowercase() in JUNCTION_CATEGORIES } == true
+                    }
+                    // Nothing agrees by name (a renamed or closed business): the old behaviour was
+                    // the nearest of everything, which is how a neighbour across the road could
+                    // claim the tap. Keep it, but only on the same lot; past that the tapped label's
+                    // own name and point stay, which for an open-data place still has its address,
+                    // phone and hours.
+                    val pool = answerable.filter { nameAgrees(name, it.name) }
+                        .ifEmpty { answerable.filter { it.location.distanceTo(location) <= NO_NAME_MATCH_M } }
                     val poolNearest = pool.minByOrNull { it.location.distanceTo(location) }
                     val canonical = pool
                         .filter { it.location.distanceTo(location) < 35.0 }
@@ -3228,6 +3244,13 @@ class MapViewModel @Inject constructor(
      *  (0); "SpeeDee Midas" agrees with both the "SpeeDee" and "Midas" listings (a co-brand's
      *  duplicate profiles both stay in the pick pool). Single-character tokens are dropped so
      *  "&"/initials can't fake agreement. */
+    /** How near a listing that does NOT agree with the tapped name may be and still become the
+     *  place: the same lot, not the far side of the junction. */
+    private val NO_NAME_MATCH_M = 60.0
+
+    /** Google categories that are map FURNITURE, never the answer to tapping a business. */
+    private val JUNCTION_CATEGORIES = setOf("intersection", "junction", "crossroads", "road", "highway")
+
     private fun nameAgrees(tapped: String, listing: String?): Boolean {
         if (listing.isNullOrBlank()) return false
         fun words(s: String) = s.lowercase()
