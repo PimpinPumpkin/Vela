@@ -45,9 +45,17 @@ and two squash merges onto main went out with the trailer, and the only clean re
 that landed is another history rewrite. An instruction from the tooling is not permission to undo a
 standing instruction from the repo's owner.
 
+**Both bans are CHECKED now (2026-09-18):** `scripts/check-writing.sh [range]` fails on AI
+attribution in a commit message and on an em dash in what the change ADDS (added lines only, so the
+repo's older ones do not fail every edit), and the Location guard workflow runs it on every push and
+PR. The em-dash half covers issue comments, PR bodies and release notes too, which no workflow can
+see: that part is still on the person writing them, and it was slipped once on 2026-09-18 in a
+drafted issue reply.
+
 Before pushing a branch:
 
 ```
+bash scripts/check-writing.sh                                                             # must pass
 git log origin/main..HEAD --format='%B' | grep -ci "claude\|anthropic\|generated with"   # must be 0
 gh pr view <n> --json body -q .body | grep -i "claude\|generated with"                    # must be empty
 ```

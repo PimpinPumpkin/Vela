@@ -705,6 +705,16 @@ project's core promise is that neither exists:
   local pair it was given. Either way the applier is ours: it runs on a phone, in Kotlin, and no
   Android library patches PMTiles.
 
+  **Acceptance criterion (user 2026-09-18): a delta-updated archive must be indistinguishable from
+  a fresh download.** The failure mode to design out is drift, where an archive that has taken
+  twenty patches is subtly not what a fresh bake would give you and nobody can tell. Two parts:
+  the manifest publishes a content fingerprint (a hash over the sorted tile ids and tile hashes,
+  which `archive-churn.py` already computes on both sides), the app recomputes it after applying
+  and falls back to a full download when it does not match, so an archive can never quietly
+  diverge; and dead space from replaced tiles is tracked, with a compaction (or a plain
+  re-download, which is the same bytes) once it passes a threshold. Without both, deltas are not
+  worth shipping: the point is saving bandwidth, not accumulating a slightly wrong map.
+
   **Validate before building:** appending leaves the archive UNCLUSTERED, and the app's local
   archives are read by MapLibre's own PMTiles implementation, not by ours. Unclustered archives are
   legal (go-pmtiles ships a `cluster` command to re-optimize them) and Vela's `PmtilesReader` already
