@@ -3890,6 +3890,12 @@ class MapViewModel @Inject constructor(
             }
             val via = route?.let { it.durationInTrafficSeconds ?: it.durationSeconds }
             val minutes = via?.let { app.vela.core.nav.DetourEstimate.minutesAdded(baseline, it) }
+            // Visible on a device when the card shows no figure: whether the check answered at all,
+            // and whether the rule dropped the answer. No place name, no coordinates.
+            android.util.Log.d(
+                "VelaStopOffer",
+                "detour check: baseline=${baseline.toInt()}s via=${via?.toInt() ?: -1}s -> ${minutes?.let { "+$it min" } ?: "nothing"}",
+            )
             // A newer tap (or a dismissal) owns the card by now; this answer is stale.
             if (_state.value.navTapCandidate?.id != p.id) return@launch
             _state.update { it.copy(navTapDetourMin = minutes) }
