@@ -3180,8 +3180,7 @@ class MapViewModel @Inject constructor(
                     // then whichever happened to sit nearest the tapped point. A listing whose name
                     // IS the tapped name is what the tap asked for; only when none exists does the
                     // looser pool decide. Store numbers are dropped so "SHOP #1561" still counts.
-                    val wanted = normalizedPlaceName(name)
-                    val exact = pool.filter { normalizedPlaceName(it.name) == wanted }
+                    val exact = pool.filter { app.vela.core.util.PlaceNames.same(name, it.name) }
                     val ranked = exact.ifEmpty { pool }
                     val poolNearest = ranked.minByOrNull { it.location.distanceTo(location) }
                     val canonical = ranked
@@ -3267,17 +3266,6 @@ class MapViewModel @Inject constructor(
     /** How near a listing that does NOT agree with the tapped name may be and still become the
      *  place: the same lot, not the far side of the junction. */
     private val NO_NAME_MATCH_M = 60.0
-
-    /** A place name reduced to what identifies the business: lowercase, no punctuation, no trailing
-     *  store number (the bake's own snap key uses the same rule, so the two agree about what counts
-     *  as the same name). */
-    private fun normalizedPlaceName(n: String?): String =
-        (n ?: "").lowercase()
-            .replace(Regex("[^a-z0-9 ]"), " ")
-            .replace(Regex("\\s+"), " ")
-            .trim()
-            .replace(Regex(" (no|num|store|unit)? ?\\d{1,6}$"), "")
-            .trim()
 
     /** Google categories that are map FURNITURE, never the answer to tapping a business. */
     private val JUNCTION_CATEGORIES = setOf("intersection", "junction", "crossroads", "road", "highway")
