@@ -1896,12 +1896,15 @@ architecture note.
   coordinate on a whole-name match at 30-120 m. Order of preference: OSM, then the AllThePlaces
   locator, then Overture's parcel point; tenants never move. Unset `OSM_PBF` and the bake behaves
   exactly as before.
-- **STOP SIGNS ARE DIRECTIONAL (2026-09-17):** the corridor fetch reaches 120 m, so the sign holding
-  the side street came along; `NavController` now keeps a STOP only when `RouteProjection.alongMeters`
-  puts it within `STOP_ON_ROUTE_M` (11 m) of the driven line, before the cluster pass (clustering
-  first would average a side sign onto your road), and the route bar applies the same reach. Lights
-  are untouched. Nav callouts carry `atM` and `applyNavLabelProgress` filters out the ones the puck
-  has passed (25 m steps, so it is a filter swap and not frame work).
+- **STOP SIGNS: DISTANCE GATING WAS WRONG (2026-09-17, reverted same day):** filtering a STOP by its
+  distance to the driven line (11 m) removed nearly every sign on a real drive, because a clustered
+  control sits at the junction's centroid, not on your lane. Any future attempt must gate by the
+  node's INTENT (its `direction`/`traffic_signals:direction` tag, or the way it belongs to), which
+  means carrying that through `TrafficControl` from both the Overpass parse and the road-features
+  bake. Nav callouts carry `atM` and `applyNavLabelProgress` filters out the ones the puck has
+  passed, re-filtering only when the NEXT callout is actually passed (a setFilter re-runs the
+  layer's placement: every-25 m cost a 126 ms main-thread message on a 4a).
+
 - **EXIT CALLOUT + CAMERA CLUSTER (2026-09-17):** `core/nav/ExitLabel.of(instruction)` pulls the exit
   NUMBER out of a maneuver (word table per language, plus the CJK number-before-word form; a bare
   number never counts, it is usually a road ref) and MapScreen passes it as `navExitCallout` for
