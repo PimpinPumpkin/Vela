@@ -68,7 +68,11 @@ Three deliberate exceptions, all data rather than prose:
 - Strings that must match a foreign source's own spelling: OSM tag values (`fitness_centre`,
   `arts_centre`, the `neighbourhood` place class) and the MOTIS wire field `cancelled`. Where
   a keyword list matches user-facing text, keep **both** spellings.
-- Platform API names (`isCancelled`, `CancellationException`).
+- Platform API names (`isCancelled`, `CancellationException`) and **GitHub Actions built-ins**:
+  `cancelled()` is a function, not a word. The sweep renamed it to `canceled()` in six data
+  workflows on 2026-09-18; GitHub cannot parse the expression, so the push failed all six with zero
+  jobs and mailed a failure for each. After any sweep that touches `.github/workflows`, grep for
+  `always()`, `success()`, `failure()` and `cancelled()` before pushing.
 
 Before pushing: `grep -rniE "\b(colour|centre|behaviour|neighbour|metres?|labelled|travelled|licence|defence|grey|organis|recognis|utilis)\b" --include="*.kt" --include="*.md" .` must return only the exceptions above.
 

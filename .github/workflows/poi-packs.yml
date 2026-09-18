@@ -10,7 +10,7 @@
 name: Build offline place packs
 
 on:
-  # Monthly refresh: rebuild EVERY catalogd region from current OSM and publish row-level deltas
+  # Monthly refresh: rebuild EVERY cataloged region from current OSM and publish row-level deltas
   # alongside the full zips, so installed packs can update without a full re-download.
   schedule:
     - cron: "15 7 3 * *"
@@ -110,7 +110,7 @@ jobs:
 
   merge:
     needs: build
-    if: ${{ !canceled() }} # merge whatever succeeded, even if some regions failed
+    if: ${{ !cancelled() }} # merge whatever succeeded, even if some regions failed
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

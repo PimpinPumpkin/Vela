@@ -91,7 +91,7 @@ jobs:
 
   merge:
     needs: build
-    if: ${{ !canceled() }}
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     concurrency:
       group: maxspeed-overlays-manifest-merge
