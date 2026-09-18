@@ -3879,7 +3879,15 @@ Gotchas:
   `installedFor(center)` = smallest covering archive); `MapUiState.basemapArchive`; `refreshBasemapArchive`
   runs with the places refresh AND at VM init from the seed location; `downloadBasemapForRegion` /
   `downloadBasemapForArea` chain into every region and viewport download; deleted with the region;
-  counted under "Saved areas & map cache". **The engine rules found the hard way (a full evening):**
+  counted under "Saved areas & map cache". **Fourth engine rule (2026-09-18, device loop): a region
+  download pulls the region's OWN basemap archive, never every archive whose bbox centre falls in
+  its box** - boxes are rectangles, so a neighbour's centre routinely sits inside (new-mexico's sat
+  inside texas' box), and the old companion pull silently imported a whole extra state's map on
+  every region download - with the broken new-mexico manifest row (see the `--bounds` lesson in the
+  bake bullet) that resurrected the blank-basemap state after every data wipe: download texas ->
+  NM re-imported -> NM's fake 129 sq-deg box out-bid texas' real 140 for DFW views -> vector map
+  blank. Wiping app data cannot break that loop; only honest manifest data or this pick rule can.
+  **The engine rules found the hard way (a full evening):**
   (1) the local archive must be added as a source AFTER the style loads and the layers using it
   re-attached (`LOCAL_BASEMAP_SRC`, `localBasemapLayerIds`, `withLocalBasemap` re-points every
   `openmaptiles` layer); declared in the JSON or via `Style.Builder.withSource` it never got past the z0
