@@ -2396,6 +2396,16 @@ architecture note.
   never the bare not-planned close - the label is how the tracker shows why, and `wontfix` is for
   a request that was understood and declined. The rules themselves are in CONTRIBUTING.md under
   "Bug reports and feature requests"; both issue forms carry the matching checklist.
+- **PRUNE THE OVERTURE READ ON `bbox`, NOT ON THE GEOMETRY (2026-09-18).** `build-places-region.sh`
+  filtered `raw` with `WHERE lng BETWEEN ... AND lat BETWEEN ...` where lng/lat are
+  `ST_X(geometry)`/`ST_Y(geometry)`: a computed column, so DuckDB could prune nothing and read every
+  place on earth for every region. Measured on the Kentucky job: 504 s of the 570 s bake was that
+  ONE statement (everything else - ATP join, OSM snap, tenant/kiosk/forecourt rules, unit snap, ring
+  spread - is ~40 s combined, and tippecanoe is 29 s). Overture's `bbox` struct is a real column with
+  row-group statistics, so `AND bbox.xmin BETWEEN $W AND $E AND bbox.ymin BETWEEN $S AND $N`
+  (`BBOXPRED`, S3 path only) returns the identical 400,608 Kentucky rows in 3.7 s. The addresses
+  query in the same script always did this. KEEP the geometry test as the exact filter; bbox is the
+  hint. Any new read of a cloud parquet gets the same treatment before anyone optimizes the rules.
 - **Bake joins must be HASH joins (2026-09-16).** Two correlated lookups that were free on the
   Davis box went effectively quadratic over a whole state: the tenant check (one EXISTS with three
   OR-ed tests) and the unit snap (a LATERAL lookup per stacked row). A world bake did 19 regions in

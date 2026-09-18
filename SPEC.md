@@ -992,6 +992,13 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   store" is a coin toss. A row whose name is EXACTLY its anchor's gets " Fuel", " Charging" or
   " Market" appended; a row that already names itself is left alone. Names are rewritten nowhere
   else in the bake.
+- **Every S3 read prunes on `bbox`, never on the geometry.** Overture's parquet carries a plain
+  `bbox` struct with row-group statistics, so a region filter written against it skips the row
+  groups outside the region; the same filter written against `ST_X(geometry)` / `ST_Y(geometry)`
+  has to decode every place on earth, once per region. That one statement was 504 s of a 570 s
+  state bake, 414 times over; against `bbox` the identical rows come back in under 4 s. The
+  geometry test stays as the exact filter and `bbox` is the pruning hint beside it (for a point
+  xmin = xmax = lng, so the two select the same set).
 - **Every row-to-row rule must be a hash join.** A correlated subquery or an OR of tests goes
   effectively quadratic over a state: with the joins fixed, a whole state bakes in minutes
   (one measured state: 244,954 places, 2,960 chain rows added, 2,749 tenants snapped, 524 s end

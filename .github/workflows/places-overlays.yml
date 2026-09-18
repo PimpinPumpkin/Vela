@@ -84,7 +84,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      max-parallel: 4
+      # 8 per shard, 16 across the two. It was 4 because each job spent eight minutes scanning
+      # Overture from S3; with the read pruned on bbox that scan is seconds and the job is mostly
+      # tippecanoe, which is per-runner work. More than this just queues against the account's own
+      # job limit, which costs nothing but buys nothing either.
+      max-parallel: 8
       matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
