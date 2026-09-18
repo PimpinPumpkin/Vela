@@ -214,6 +214,11 @@ fi
 duckdb <<SQL
 .timer on
 INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial; SET s3_region='us-west-2';
+-- SPILL RATHER THAN DIE. A continent-sized box materializes millions of rows, and a runner that
+-- runs out of memory reports it as "the runner has received a shutdown signal" with no output at
+-- all, which reads like flaky infrastructure (Australia and its states, twice, 2026-09-18). A
+-- limit under the runner's 16 GB with somewhere to spill turns that into a slower bake.
+SET memory_limit = '11GB'; SET temp_directory = '/tmp/duckdb-spill';
 CREATE TABLE raw AS SELECT $SEL, CAST(NULL AS VARCHAR) AS hours FROM $SRC
   WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N $BBOXPRED;
 -- The snap key is the WHOLE name, normalized, with a trailing store number dropped ("Safeway
