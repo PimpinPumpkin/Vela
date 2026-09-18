@@ -6,7 +6,7 @@
 name: Build road features
 
 on:
-  # Monthly refresh: rebuild EVERY catalogd region from current OSM (files are small; the app
+  # Monthly refresh: rebuild EVERY cataloged region from current OSM (files are small; the app
   # re-downloads a region whenever the manifest carries a newer updatedAt).
   schedule:
     - cron: "45 7 4 * *"
@@ -106,7 +106,7 @@ jobs:
 
   merge:
     needs: build
-    if: ${{ !canceled() }} # merge whatever succeeded, even if some regions failed
+    if: ${{ !cancelled() }} # merge whatever succeeded, even if some regions failed
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -104,7 +104,7 @@ jobs:
 
   merge:
     needs: build
-    if: ${{ !canceled() }}
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     # Serialize ONLY the manifest merge across concurrent group runs (us/world/chunk) — each folds its own
     # entries into the shared manifest by replace-by-id, so they accumulate instead of clobbering.
