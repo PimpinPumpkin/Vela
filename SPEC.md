@@ -992,6 +992,10 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   store" is a coin toss. A row whose name is EXACTLY its anchor's gets " Fuel", " Charging" or
   " Market" appended; a row that already names itself is left alone. Names are rewritten nowhere
   else in the bake.
+- **The toolchain is cached and pinned.** tippecanoe was built from source in every job, which was
+  69 s of a job that is now about two minutes, 414 times a wave, for a binary that is identical
+  across them. The binaries live in a keyed cache; the key names the pinned tippecanoe and pmtiles
+  versions, so a bump invalidates it.
 - **Every S3 read prunes on `bbox`, never on the geometry.** Overture's parquet carries a plain
   `bbox` struct with row-group statistics, so a region filter written against it skips the row
   groups outside the region; the same filter written against `ST_X(geometry)` / `ST_Y(geometry)`
@@ -1720,11 +1724,12 @@ ports it rather than inventing a fourth:
 - **Pause sits in the nav bar's right slot** (`PauseInBar`, default on). That slot is an empty
   spacer on a touch phone, there only to keep the trip figures centered against End, and the drive's
   two hold controls then sit where each is reached for: pause beside the figures, mute as a plain
-  button in the right-edge stack, neither behind a pop-out. The step-list button wins the slot
-  whenever it was asked for (`PreferButtons`, or a keypad-first device), and pause falls back to the
-  stack: those people asked for a discrete target and the chevron handle opens the step list on its
-  own in both layouts, so nothing is unreachable either way. The setting turns the slot back into a
-  spacer and restores the combined button.
+  button in the right-edge stack, neither behind a pop-out. The step-list button also wants that slot
+  when it was asked for (`PreferButtons`, or a keypad-first device), and then the bar carries BOTH,
+  with the figures column shrinking to fit: somebody who asked for buttons should not get a silent
+  choice between two of them. The chevron handle opens the step list on its own in every layout, so
+  nothing is unreachable either way. The setting turns the slot back into a spacer and restores the
+  combined button in the stack.
 - **The combined button** (`NavHoldControls`, the layout the setting restores) is one 56 dp target
   for both. The first tap on a running drive only slides mute out beside it, for `OPEN_MS` (6 s); a
   second tap on the same target, which has not moved, pauses. Pausing on the first tap made holding
