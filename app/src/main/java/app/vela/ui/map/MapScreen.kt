@@ -386,18 +386,6 @@ fun MapScreen(
             !state.navigating -> sidePanelWidthPx
         else -> 0
     }
-    // MapTiler (when a key is built in) gives the Google-like look + its own
-    // light/dark styles; otherwise fall back to the keyless OpenFreeMap basemap
-    // with our own dark/light recolor.
-    val mapStyleUri = if (hasMapTiler) {
-        val variant = if (darkTheme) "streets-v2-dark" else "streets-v2"
-        "https://api.maptiler.com/maps/$variant/style.json?key=${BuildConfig.MAPTILER_KEY}"
-    } else {
-        // Liberty is swapped for the cached Roboto-glyph patch when MapFonts has it
-        // ready (reactive - flips once the first refresh lands). Offline REGION
-        // DEFINITIONS deliberately keep state.styleUri (see MapFonts).
-        MapFonts.effective(state.styleUri)
-    }
     val context = LocalContext.current
 
     // Keep the display awake during turn-by-turn so a driver glancing at the next
@@ -504,27 +492,6 @@ fun MapScreen(
     // tap raises it again. Suppressed whenever a focus surface owns the camera (search, a place,
     // directions, the results list) so it never fights that framing. Nav has its own follow.
     var followMe by remember { mutableStateOf(true) }
-    // Roads already DRIVEN (entered by maneuvers up to the current step) + ref variants: the nav
-    // label bubbles must never call out the road being driven (Google labels only streets you
-    // cross), but the exclusion is per-step ON PURPOSE - the first cut excluded the WHOLE route,
-    // which hid exactly the label that matters most: the road you are about to turn onto ("the
-    // name of it needs to be right there", user 2026-07-16). Ref variants cover the basemap's
-    // bare-number `ref` prop ("5") and the OSRM spelling ("I 5").
-    val navLabelExclude = remember(state.activeRoute, state.navigating, state.nav.stepIndex) {
-        if (!state.navigating) emptyList() else state.activeRoute?.maneuvers
-            ?.take(state.nav.stepIndex.coerceAtLeast(0))
-            ?.flatMap { m ->
-                val refDigits = m.ref?.filter { it.isDigit() }
-                listOfNotNull(m.road, m.ref, refDigits)
-            }?.filter { it.isNotBlank() }?.distinct().orEmpty()
-    }
-    // The next two maneuvers' target roads are force-INCLUDED in the label pass: a turn target
-    // often meets the route at a shared junction vertex, which a proper-crossing test can miss.
-    val navUpcomingRoads = remember(state.activeRoute, state.navigating, state.nav.stepIndex) {
-        if (!state.navigating) emptyList() else state.activeRoute?.maneuvers
-            ?.drop(state.nav.stepIndex)?.take(2)
-            ?.mapNotNull { m -> m.road?.takeIf { it.isNotBlank() } }.orEmpty()
-    }
     var layersOpen by remember { mutableStateOf(false) } // the top-right layers panel
     // A programmatic camera jump far from the fix (a recents pick, a search hit, a pasted
     // coordinate, a deep link) means the user went to look somewhere else - drop follow exactly
@@ -1052,135 +1019,29 @@ fun MapScreen(
     // cameras wouldn't appear until the next pan). Clears the layer when turned off.
     LaunchedEffect(app.vela.ui.Flock.on.value) { vm.refreshFlockNow() }
     LaunchedEffect(app.vela.ui.SpeedCams.on.value) { vm.refreshSpeedCamsNow() }
-    // Saved-place pins for the browse map (issue #171): each list place carries its list's
-    // icon+color, quick-saves ride the default bookmark blue; deduped by place id (a place in
-    // several lists draws once, newest list wins). Empty while a result set / nav / replay /
-    // Street View owns the map.
-    val savedPinData = remember(state.lists, state.saved, state.results, state.navigating, state.replaying, svPose) {
-        if (state.navigating || state.replaying || svPose != null || state.results.isNotEmpty()) emptyList()
-        else buildList {
-            val seen = HashSet<String>()
-            state.lists.forEach { l ->
-                l.places.forEach { lp ->
-                    if (seen.add(lp.id)) add(SavedPin(lp.lat, lp.lng, l.icon, l.color) to lp.toPlace())
-                }
-            }
-            state.saved.forEach { sp ->
-                if (seen.add(sp.id)) {
-                    add(
-                        SavedPin(sp.lat, sp.lng, "bookmark", 0xFF1A73E8) to
-                            app.vela.core.model.Place(id = sp.id, name = sp.name, location = sp.location, address = sp.address),
-                    )
-                }
-            }
-        }
-    }
     Box(Modifier.fillMaxSize()) {
-        VelaMapView(
-            styleUri = mapStyleUri,
-            myLocation = state.myLocation,
-            myBearing = state.myBearing,
-            // Coarse-only permission always means a vague position, even before a fresh fix
-            // reports its accuracy (Android hands coarse apps a fix only every few minutes): fall
-            // back to the ~2 km grid Android fuzzes coarse locations to, so the halo shows at once.
-            myAccuracyM = state.myAccuracyM ?: if (hasLocation() && androidx.core.content.ContextCompat.checkSelfPermission(
-                    context, android.Manifest.permission.ACCESS_FINE_LOCATION,
-                ) != PackageManager.PERMISSION_GRANTED
-            ) 2000f else null,
-            mySpeed = state.mySpeed,
-            myFixRaw = state.myFixRaw,
-            mySpeedRaw = state.mySpeedRaw,
-            // A recorded-trip REPLAY emits its fixes at REPLAY_SPEEDUP x real time, so the map
-            // view scales the puck's clocks to match. A DEMO drive does NOT: startDemoDrive feeds
-            // `locationProvider.replay(fixes, speedup = 1f)` - real-time fixes - yet it also sets
-            // `replaying`, so it inherited the 3x clock scaling. The puck then dead-reckoned 3x too
-            // far between fixes, got stalled by the monotonic clamp until the next fix caught up,
-            // and its route bearing jumped with every surge - measured on-device as progress steps
-            // of 0 m (stalled) punctuated by 2.4 m lurches, chord-bearing wiggle 1.7 deg, and a
-            // camera yaw wiggle that the 55 deg tilt smears into the "record needle" swim across
-            // the top of the screen (issue #251, 2026-08-10). Demo drives run at 1x like real ones.
-            replaySpeedup = if (state.replaying && !state.demoDriving) MapViewModel.REPLAY_SPEEDUP else 1f,
-            replaying = state.replaying,
-            compassHeading = state.compassHeading,
-            locationStale = state.myLocationStale,
-            cameraTarget = state.center,
-            cameraTargetZoom = state.centerZoom,
-            recenterTick = state.recenterTick,
-            cameraBottomInsetPx = cameraBottomInset,
-            cameraLeftInsetPx = cameraLeftInset,
-            routePolyline = state.activeRoute?.polyline ?: emptyList(),
-            routeColor = routeTrafficColor(state.activeRoute),
-            routeDashed = state.travelMode == app.vela.core.model.TravelMode.WALK ||
-                state.travelMode == app.vela.core.model.TravelMode.BICYCLE,
-            routeTrafficSpans = routeTrafficSpans(state.activeRoute),
-            // The expanded transit row's legs (issue #233) while the chooser owns the map, and the
-            // WHOLE guided itinerary during step-by-step transit nav (issue #232) — there the camera
-            // frames the CURRENT leg and re-frames as Next/auto-advance moves through the trip.
-            transitPreview = when {
-                state.transitNav != null -> state.transitNav!!.itinerary
-                state.directionsOpen && !state.navigating && !state.replaying &&
-                    state.travelMode == app.vela.core.model.TravelMode.TRANSIT -> state.transitPreview
-                else -> null
-            },
-            transitNavLeg = state.transitNav?.stepIndex,
-            // Grayed, tappable alternates (Google-style) — only off-nav, with a chooser up.
-            alternates = if (state.navigating) emptyList() else run {
-                val activeIdx = state.routes.indexOf(state.activeRoute)
-                state.routes.mapIndexedNotNull { i, r ->
-                    if (i != activeIdx && r.polyline.size >= 2) i to r.polyline else null
-                }
-            },
-            altColor = if (darkTheme) "#C8CDD4" else "#9AA0A6",
-            onSelectAlternate = vm::selectRoute,
-            // Every route wears its time on the map, placed where it runs apart from the others;
-            // tapping a bubble picks that route. Both choosers (the classic one since 2026-09-17).
-            routeBubbles = if (state.directionsOpen && !state.navigating && state.routes.size > 1 &&
-                state.travelMode != app.vela.core.model.TravelMode.TRANSIT
-            ) {
-                remember(state.routes, state.activeRoute, altsOpen) {
-                    routeBubblesFor(state.routes, state.routes.indexOf(state.activeRoute).coerceAtLeast(0), detailed = altsOpen)
-                }
-            } else emptyList(),
-            // ROUTE CHOOSER: only the trip's own points draw. The rest of the search results are
-            // noise once you are choosing a route, and they crowd the very pins that matter
-            // (user 2026-09-17). The destination gets its flag pin below, so it drops out here too.
-            markers = if (state.directionsOpen && !state.navigating) emptyList() else markersOf(state, filteredResultIds),
-            frameMarkers = state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed,
-            holdMarkerFit = state.selected != null || state.streetView != null || state.streetViewLoading,
-            // The endpoints card's measured bottom edge: the route fit frames start/end in the
-            // strip between the card and the chooser instead of hiding either behind chrome.
-            cameraTopInsetPx = if (state.directionsOpen && !state.navigating) topCardBottomPx else 0,
-            // Numbered stop pins while the trip UI is active (chooser, editor or the drive itself).
-            stopPins = if (state.directionsOpen || state.navigating) state.directionsWaypoints.map { it.location } else emptyList(),
-            candidatePin = state.navTapCandidate?.location?.takeIf { state.navigating },
-            destinationPin = if (state.directionsOpen && !state.navigating) {
-                if (state.directionsReversed) state.directionsOrigin?.location ?: state.myLocation else state.selected?.location
-            } else null,
-            navMode = state.navigating,
-            navDriveMode = state.travelMode == app.vela.core.model.TravelMode.DRIVE,
-            navLabelExclude = navLabelExclude,
-            navUpcomingRoads = navUpcomingRoads,
-            onNavRoadLatin = { vm.onNavRoadLatin(it) },
-            // Follow yields to a manual pan AND to step preview: the per-frame follow ticker used
-            // to keep re-pointing the camera at the puck while a banner swipe was trying to fly to
-            // the previewed turn - the two fought at 60 fps (user 2026-07-14). The puck itself
-            // keeps updating either way; only the camera steps aside.
-            navFollowing = !state.navCameraDetached && state.previewStepIndex == null,
-            navNorthUp = state.navNorthUp,
-            // The compass below the nav card is the heading-up/north-up toggle during a drive
-            // (a reorient-to-north tap would be overridden by the follow a frame later anyway).
-            onCompassTap = { if (state.navigating) { vm.toggleNavNorthUp(); true } else false },
-            poisEnabled = app.vela.ui.MapPoiPrefs.showPois.value,
-            // The POI bitmaps are fixed pixels, so below hdpi they render physically huge (a 240x320
-            // phone at 120 dpi, issue #400, showed pins a fifth of the screen wide). Below 1.75x the
-            // default shrinks with the density; the Settings multiplier still applies on top.
-            poiIconScale = app.vela.ui.MapPoiPrefs.iconScale.floatValue * lowDensityIconScale(LocalDensity.current.density),
-            onNavPanned = vm::onNavPanned,
-            ambientCoversView = state.ambientCoversView,
-            // Grabbing the map with a sheet up drops it down out of the way so the map is yours
-            // to look at (Google does the same): the results sheet to its bar, the place sheet to
-            // its minimized card. The bar / a drag brings them back.
+        MapSurface(
+            state = state,
+            vm = vm,
+            hasMapTiler = hasMapTiler,
+            darkTheme = darkTheme,
+            amoled = amoled,
+            hasLocation = { hasLocation() },
+            altsOpen = altsOpen,
             driveFollowing = driveFollowing,
+            speedOverlayArmed = speedOverlayArmed,
+            filteredResultIds = filteredResultIds,
+            cameraBottomInset = cameraBottomInset,
+            cameraLeftInset = cameraLeftInset,
+            topCardBottomPx = topCardBottomPx,
+            navBannerBottomPx = navBannerBottomPx,
+            navOverviewTick = navOverviewTick,
+            navRecenterTick = navRecenterTick,
+            screenHeightPx = screenHeightPx,
+            svPose = svPose,
+            metersPerPixelState = metersPerPixelState,
+            puckScreen = puckScreen,
+            mapDpad = mapDpad,
             onMapTap = {
                 // Tapping the map with the along-route panel up dismisses it, same as a pan
                 // ("tap off of it should close it", user 2026-07-14).
@@ -1191,7 +1052,7 @@ fun MapScreen(
                 // locate tap re-arms it (Google drops follow the moment you pan). Not in
                 // picture-in-picture: nothing the user does to a PiP window is a pan, and the
                 // system's taps on it arrived here as one (2026-09-13).
-                if (app.vela.ui.PipMode.active.value) return@VelaMapView
+                if (app.vela.ui.PipMode.active.value) return@MapSurface
                 followMe = false
                 vm.onUserPanned() // and the first fix, if it has not landed yet, must not fly the camera
                 // Bump ticks, don't flip state here: each sheet GLIDES down first and only then
@@ -1202,100 +1063,8 @@ fun MapScreen(
                 if (state.selected != null && !searchOpen) sheetPanTick++
                 if (state.directionsOpen && !searchOpen) dirPanTick++
             },
-            onScaleChanged = { metersPerPixelState.value = it },
             onOverlayState = { overlayDebugState = it },
-            darkTheme = darkTheme,
-            amoled = amoled,
-            applyKeylessTheme = !hasMapTiler,
-            // Off-nav: the whole-map raster when the user toggles it on. During nav we
-            // DON'T wash the whole map — the user asked for traffic on "just the road
-            // we're on, not all of it", so the route line itself is colored per-segment
-            // from the directions traffic spans (VelaMapView.routeGradientStops /
-            // DirectionsParser.parseTrafficSpans); the whole-map overlay stays off unless
-            // the user explicitly enables it in Settings → Map.
-            trafficOn = Traffic.on.value,
-            transitOn = app.vela.ui.TransitLayer.on.value,
-            satelliteOn = app.vela.ui.SatelliteLayer.on.value,
-            satDeep = state.satDeep,
-            topographyOn = app.vela.ui.Topography.on.value,
-            previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
-            navOverviewTick = navOverviewTick,
-            navRecenterTick = navRecenterTick,
             onNavZoomOverride = { navZoomOverride = it },
-            onPuckScreen = { x, y -> puckScreen.value = Offset(x, y) },
-            onPoiTap = vm::onPoiTap,
-            onMarkerTap = { i -> displayedPlaces(state).getOrNull(i)?.let(vm::selectPlace) },
-            parkingSpot = state.parkingSpot,
-            onParkingTap = { vm.showParkedCar(context.getString(R.string.map_parked_car)) },
-            // Saved places stick out while browsing (issue #171): every list place + quick-save
-            // draws its list's icon/emoji in the list's color. Hidden while a result set owns the
-            // map (a list's own results would double-draw) and during nav/replay (declutter).
-            savedPins = savedPinData.map { it.first },
-            onSavedPinTap = { i -> savedPinData.getOrNull(i)?.second?.let(vm::selectPlace) },
-            svPose = svPose,
-            svTopInsetPx = (screenHeightPx * 0.55f).toInt(),
-            onSvMapTap = vm::moveStreetViewTo,
-            // No stale ambient dots mid-drive: the fetch pauses during nav, and the basemap POIs
-            // (kept visible in nav now) cover the gas-station-on-the-way case without duplicates.
-            ambientPois = if (state.navigating) emptyList() else ambientMarkersOf(state),
-            buildingOverlays = state.buildingOverlays,
-            addressOverlays = state.addressOverlays,
-            maxspeedOverlays = state.maxspeedOverlays,
-            placesOverlays = state.placesOverlays,
-            hiddenOpenPlaceIds = state.hiddenOpenPlaceIds,
-            ambientClosed = if (state.navigating) emptyList() else state.ambientClosed.map { MapMarker(it.name, it.location, it.category) },
-            onOpenPlaceClosed = vm::onOpenPlaceClosed,
-            placesPending = state.placesPending,
-            osmBusinesses = app.vela.ui.MapPoiPrefs.osmBusinesses.value,
-            // The exit you are taking, for the green callout on the map: only a numbered exit off
-            // a ramp or a fork, and only while its own step is the one being guided.
-            navTapPlaces = app.vela.ui.MapPoiPrefs.navTapPlaces.value,
-            navExitCallout = if (!state.navigating) null else remember(state.activeRoute, state.nav.stepIndex) {
-                val m = state.activeRoute?.maneuvers?.getOrNull(state.nav.stepIndex)
-                val ramp = m?.type in setOf(
-                    app.vela.core.model.ManeuverType.RAMP_LEFT, app.vela.core.model.ManeuverType.RAMP_RIGHT,
-                    app.vela.core.model.ManeuverType.FORK_LEFT, app.vela.core.model.ManeuverType.FORK_RIGHT,
-                    app.vela.core.model.ManeuverType.KEEP_LEFT, app.vela.core.model.ManeuverType.KEEP_RIGHT,
-                )
-                val label = if (m != null && ramp) app.vela.core.nav.ExitLabel.of(m.instruction) else null
-                val poly = state.activeRoute?.polyline.orEmpty()
-                when {
-                    m == null || label == null -> null
-                    poly.size < 2 -> m.location to label
-                    else -> {
-                        // ON THE RAMP, not on the freeway beside it (user 2026-09-17): the maneuver
-                        // point is where the ramp leaves, so walk a little way down the route past it.
-                        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
-                        val at = app.vela.core.nav.RouteProjection.alongMeters(poly, cum, m.location, 120.0)
-                        val p = if (at == null) m.location else app.vela.core.nav.RouteProjection.pointAt(poly, cum, at + EXIT_CALLOUT_AHEAD_M)
-                        p to label
-                    }
-                }
-            },
-            basemapArchive = state.basemapArchive,
-            onOpenPlaceTap = vm::onOpenPlaceTap,
-            onRoadLimitKmh = vm::onOverlayRoadLimit,
-            speedOverlayOn = speedOverlayArmed, // motion-armed with hysteresis - NEVER on the parked browse map
-
-            trafficControls = state.trafficControls,
-            flockCameras = state.flockCameras,
-            speedCameras = state.speedCameras,
-            // Hide the tapped stop's own badge while it is selected - the red selected-place pin
-            // drops at the same coordinate and the two bus glyphs stacked read as a glitch
-            // (user 2026-07-13). Structural list equality keeps the identity gate quiet.
-            transitStops = state.transitStops.filterNot { st -> state.selected?.id == "gtfs:${st.stopId}" },
-            onTransitStopTap = vm::onTransitStopTap,
-            navBannerBottomPx = if (state.navigating) navBannerBottomPx else 0,
-            // Index into the SHOWN list (the same one ambientMarkersOf uploads), not the raw
-            // pool - while a place is open the shown list drops the selected place's copy, so
-            // raw-pool indices would be off by one past it.
-            onAmbientTap = { i -> ambientShownOf(state).getOrNull(i)?.let(vm::selectPlace) },
-            onCameraIdle = vm::onCameraIdle,
-            onMapLongPress = vm::onMapLongPress,
-            onAddressLabelTap = vm::onAddressLabelTap,
-            onViewport = vm::onViewport,
-            dpadController = mapDpad,
-            modifier = Modifier.fillMaxSize(),
         )
         // Picture-in-picture strips the UI to the bare map + the turn strip below: the whole
         // chrome tree composes only when the window is a real screen (MainActivity flips the
@@ -3651,6 +3420,301 @@ private fun SearchResults(
             } // if (!collapsed) — list
         }
     }
+}
+
+/** The map itself. Split out of MapScreen on 2026-09-18 for the same reason as the blocks
+ *  below it: the VelaMapView call ran ~220 lines of named arguments, several of them inline
+ *  `when` / `run` / `remember` expressions, and all of that bytecode counted toward MapScreen's
+ *  own method size (argument lists do; content lambdas do not). The four callbacks that write
+ *  MapScreen's local state are hoisted as parameters; everything the map alone reads is built
+ *  here. */
+@Composable
+private fun MapSurface(
+    state: MapUiState,
+    vm: MapViewModel,
+    hasMapTiler: Boolean,
+    darkTheme: Boolean,
+    amoled: Boolean,
+    hasLocation: () -> Boolean,
+    altsOpen: Boolean,
+    driveFollowing: Boolean,
+    speedOverlayArmed: Boolean,
+    filteredResultIds: Set<String>?,
+    cameraBottomInset: Int,
+    cameraLeftInset: Int,
+    topCardBottomPx: Int,
+    navBannerBottomPx: Int,
+    navOverviewTick: Int,
+    navRecenterTick: Int,
+    screenHeightPx: Float,
+    svPose: DoubleArray?,
+    metersPerPixelState: MutableState<Double>,
+    puckScreen: MutableState<Offset?>,
+    mapDpad: MapDpadController,
+    onMapTap: () -> Unit,
+    onUserPan: () -> Unit,
+    onOverlayState: (String) -> Unit,
+    onNavZoomOverride: (Boolean) -> Unit,
+) {
+    val context = LocalContext.current
+    // MapTiler (when a key is built in) gives the Google-like look + its own
+    // light/dark styles; otherwise fall back to the keyless OpenFreeMap basemap
+    // with our own dark/light recolor.
+    val mapStyleUri = if (hasMapTiler) {
+        val variant = if (darkTheme) "streets-v2-dark" else "streets-v2"
+        "https://api.maptiler.com/maps/$variant/style.json?key=${BuildConfig.MAPTILER_KEY}"
+    } else {
+        // Liberty is swapped for the cached Roboto-glyph patch when MapFonts has it
+        // ready (reactive - flips once the first refresh lands). Offline REGION
+        // DEFINITIONS deliberately keep state.styleUri (see MapFonts).
+        MapFonts.effective(state.styleUri)
+    }
+    // Roads already DRIVEN (entered by maneuvers up to the current step) + ref variants: the nav
+    // label bubbles must never call out the road being driven (Google labels only streets you
+    // cross), but the exclusion is per-step ON PURPOSE - the first cut excluded the WHOLE route,
+    // which hid exactly the label that matters most: the road you are about to turn onto ("the
+    // name of it needs to be right there", user 2026-07-16). Ref variants cover the basemap's
+    // bare-number `ref` prop ("5") and the OSRM spelling ("I 5").
+    val navLabelExclude = remember(state.activeRoute, state.navigating, state.nav.stepIndex) {
+        if (!state.navigating) emptyList() else state.activeRoute?.maneuvers
+            ?.take(state.nav.stepIndex.coerceAtLeast(0))
+            ?.flatMap { m ->
+                val refDigits = m.ref?.filter { it.isDigit() }
+                listOfNotNull(m.road, m.ref, refDigits)
+            }?.filter { it.isNotBlank() }?.distinct().orEmpty()
+    }
+    // The next two maneuvers' target roads are force-INCLUDED in the label pass: a turn target
+    // often meets the route at a shared junction vertex, which a proper-crossing test can miss.
+    val navUpcomingRoads = remember(state.activeRoute, state.navigating, state.nav.stepIndex) {
+        if (!state.navigating) emptyList() else state.activeRoute?.maneuvers
+            ?.drop(state.nav.stepIndex)?.take(2)
+            ?.mapNotNull { m -> m.road?.takeIf { it.isNotBlank() } }.orEmpty()
+    }
+    // Saved-place pins for the browse map (issue #171): each list place carries its list's
+    // icon+color, quick-saves ride the default bookmark blue; deduped by place id (a place in
+    // several lists draws once, newest list wins). Empty while a result set / nav / replay /
+    // Street View owns the map.
+    val savedPinData = remember(state.lists, state.saved, state.results, state.navigating, state.replaying, svPose) {
+        if (state.navigating || state.replaying || svPose != null || state.results.isNotEmpty()) emptyList()
+        else buildList {
+            val seen = HashSet<String>()
+            state.lists.forEach { l ->
+                l.places.forEach { lp ->
+                    if (seen.add(lp.id)) add(SavedPin(lp.lat, lp.lng, l.icon, l.color) to lp.toPlace())
+                }
+            }
+            state.saved.forEach { sp ->
+                if (seen.add(sp.id)) {
+                    add(
+                        SavedPin(sp.lat, sp.lng, "bookmark", 0xFF1A73E8) to
+                            app.vela.core.model.Place(id = sp.id, name = sp.name, location = sp.location, address = sp.address),
+                    )
+                }
+            }
+        }
+    }
+    VelaMapView(
+        styleUri = mapStyleUri,
+        myLocation = state.myLocation,
+        myBearing = state.myBearing,
+        // Coarse-only permission always means a vague position, even before a fresh fix
+        // reports its accuracy (Android hands coarse apps a fix only every few minutes): fall
+        // back to the ~2 km grid Android fuzzes coarse locations to, so the halo shows at once.
+        myAccuracyM = state.myAccuracyM ?: if (hasLocation() && androidx.core.content.ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.ACCESS_FINE_LOCATION,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) 2000f else null,
+        mySpeed = state.mySpeed,
+        myFixRaw = state.myFixRaw,
+        mySpeedRaw = state.mySpeedRaw,
+        // A recorded-trip REPLAY emits its fixes at REPLAY_SPEEDUP x real time, so the map
+        // view scales the puck's clocks to match. A DEMO drive does NOT: startDemoDrive feeds
+        // `locationProvider.replay(fixes, speedup = 1f)` - real-time fixes - yet it also sets
+        // `replaying`, so it inherited the 3x clock scaling. The puck then dead-reckoned 3x too
+        // far between fixes, got stalled by the monotonic clamp until the next fix caught up,
+        // and its route bearing jumped with every surge - measured on-device as progress steps
+        // of 0 m (stalled) punctuated by 2.4 m lurches, chord-bearing wiggle 1.7 deg, and a
+        // camera yaw wiggle that the 55 deg tilt smears into the "record needle" swim across
+        // the top of the screen (issue #251, 2026-08-10). Demo drives run at 1x like real ones.
+        replaySpeedup = if (state.replaying && !state.demoDriving) MapViewModel.REPLAY_SPEEDUP else 1f,
+        replaying = state.replaying,
+        compassHeading = state.compassHeading,
+        locationStale = state.myLocationStale,
+        cameraTarget = state.center,
+        cameraTargetZoom = state.centerZoom,
+        recenterTick = state.recenterTick,
+        cameraBottomInsetPx = cameraBottomInset,
+        cameraLeftInsetPx = cameraLeftInset,
+        routePolyline = state.activeRoute?.polyline ?: emptyList(),
+        routeColor = routeTrafficColor(state.activeRoute),
+        routeDashed = state.travelMode == app.vela.core.model.TravelMode.WALK ||
+            state.travelMode == app.vela.core.model.TravelMode.BICYCLE,
+        routeTrafficSpans = routeTrafficSpans(state.activeRoute),
+        // The expanded transit row's legs (issue #233) while the chooser owns the map, and the
+        // WHOLE guided itinerary during step-by-step transit nav (issue #232) — there the camera
+        // frames the CURRENT leg and re-frames as Next/auto-advance moves through the trip.
+        transitPreview = when {
+            state.transitNav != null -> state.transitNav!!.itinerary
+            state.directionsOpen && !state.navigating && !state.replaying &&
+                state.travelMode == app.vela.core.model.TravelMode.TRANSIT -> state.transitPreview
+            else -> null
+        },
+        transitNavLeg = state.transitNav?.stepIndex,
+        // Grayed, tappable alternates (Google-style) — only off-nav, with a chooser up.
+        alternates = if (state.navigating) emptyList() else run {
+            val activeIdx = state.routes.indexOf(state.activeRoute)
+            state.routes.mapIndexedNotNull { i, r ->
+                if (i != activeIdx && r.polyline.size >= 2) i to r.polyline else null
+            }
+        },
+        altColor = if (darkTheme) "#C8CDD4" else "#9AA0A6",
+        onSelectAlternate = vm::selectRoute,
+        // Every route wears its time on the map, placed where it runs apart from the others;
+        // tapping a bubble picks that route. Both choosers (the classic one since 2026-09-17).
+        routeBubbles = if (state.directionsOpen && !state.navigating && state.routes.size > 1 &&
+            state.travelMode != app.vela.core.model.TravelMode.TRANSIT
+        ) {
+            remember(state.routes, state.activeRoute, altsOpen) {
+                routeBubblesFor(state.routes, state.routes.indexOf(state.activeRoute).coerceAtLeast(0), detailed = altsOpen)
+            }
+        } else emptyList(),
+        // ROUTE CHOOSER: only the trip's own points draw. The rest of the search results are
+        // noise once you are choosing a route, and they crowd the very pins that matter
+        // (user 2026-09-17). The destination gets its flag pin below, so it drops out here too.
+        markers = if (state.directionsOpen && !state.navigating) emptyList() else markersOf(state, filteredResultIds),
+        frameMarkers = state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed,
+        holdMarkerFit = state.selected != null || state.streetView != null || state.streetViewLoading,
+        // The endpoints card's measured bottom edge: the route fit frames start/end in the
+        // strip between the card and the chooser instead of hiding either behind chrome.
+        cameraTopInsetPx = if (state.directionsOpen && !state.navigating) topCardBottomPx else 0,
+        // Numbered stop pins while the trip UI is active (chooser, editor or the drive itself).
+        stopPins = if (state.directionsOpen || state.navigating) state.directionsWaypoints.map { it.location } else emptyList(),
+        candidatePin = state.navTapCandidate?.location?.takeIf { state.navigating },
+        destinationPin = if (state.directionsOpen && !state.navigating) {
+            if (state.directionsReversed) state.directionsOrigin?.location ?: state.myLocation else state.selected?.location
+        } else null,
+        navMode = state.navigating,
+        navDriveMode = state.travelMode == app.vela.core.model.TravelMode.DRIVE,
+        navLabelExclude = navLabelExclude,
+        navUpcomingRoads = navUpcomingRoads,
+        onNavRoadLatin = { vm.onNavRoadLatin(it) },
+        // Follow yields to a manual pan AND to step preview: the per-frame follow ticker used
+        // to keep re-pointing the camera at the puck while a banner swipe was trying to fly to
+        // the previewed turn - the two fought at 60 fps (user 2026-07-14). The puck itself
+        // keeps updating either way; only the camera steps aside.
+        navFollowing = !state.navCameraDetached && state.previewStepIndex == null,
+        navNorthUp = state.navNorthUp,
+        // The compass below the nav card is the heading-up/north-up toggle during a drive
+        // (a reorient-to-north tap would be overridden by the follow a frame later anyway).
+        onCompassTap = { if (state.navigating) { vm.toggleNavNorthUp(); true } else false },
+        poisEnabled = app.vela.ui.MapPoiPrefs.showPois.value,
+        // The POI bitmaps are fixed pixels, so below hdpi they render physically huge (a 240x320
+        // phone at 120 dpi, issue #400, showed pins a fifth of the screen wide). Below 1.75x the
+        // default shrinks with the density; the Settings multiplier still applies on top.
+        poiIconScale = app.vela.ui.MapPoiPrefs.iconScale.floatValue * lowDensityIconScale(LocalDensity.current.density),
+        onNavPanned = vm::onNavPanned,
+        ambientCoversView = state.ambientCoversView,
+        // Grabbing the map with a sheet up drops it down out of the way so the map is yours
+        // to look at (Google does the same): the results sheet to its bar, the place sheet to
+        // its minimized card. The bar / a drag brings them back.
+        driveFollowing = driveFollowing,
+        onMapTap = onMapTap,
+        onUserPan = onUserPan,
+        onScaleChanged = { metersPerPixelState.value = it },
+        onOverlayState = onOverlayState,
+        darkTheme = darkTheme,
+        amoled = amoled,
+        applyKeylessTheme = !hasMapTiler,
+        // Off-nav: the whole-map raster when the user toggles it on. During nav we
+        // DON'T wash the whole map — the user asked for traffic on "just the road
+        // we're on, not all of it", so the route line itself is colored per-segment
+        // from the directions traffic spans (VelaMapView.routeGradientStops /
+        // DirectionsParser.parseTrafficSpans); the whole-map overlay stays off unless
+        // the user explicitly enables it in Settings → Map.
+        trafficOn = Traffic.on.value,
+        transitOn = app.vela.ui.TransitLayer.on.value,
+        satelliteOn = app.vela.ui.SatelliteLayer.on.value,
+        satDeep = state.satDeep,
+        topographyOn = app.vela.ui.Topography.on.value,
+        previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
+        navOverviewTick = navOverviewTick,
+        navRecenterTick = navRecenterTick,
+        onNavZoomOverride = onNavZoomOverride,
+        onPuckScreen = { x, y -> puckScreen.value = Offset(x, y) },
+        onPoiTap = vm::onPoiTap,
+        onMarkerTap = { i -> displayedPlaces(state).getOrNull(i)?.let(vm::selectPlace) },
+        parkingSpot = state.parkingSpot,
+        onParkingTap = { vm.showParkedCar(context.getString(R.string.map_parked_car)) },
+        // Saved places stick out while browsing (issue #171): every list place + quick-save
+        // draws its list's icon/emoji in the list's color. Hidden while a result set owns the
+        // map (a list's own results would double-draw) and during nav/replay (declutter).
+        savedPins = savedPinData.map { it.first },
+        onSavedPinTap = { i -> savedPinData.getOrNull(i)?.second?.let(vm::selectPlace) },
+        svPose = svPose,
+        svTopInsetPx = (screenHeightPx * 0.55f).toInt(),
+        onSvMapTap = vm::moveStreetViewTo,
+        // No stale ambient dots mid-drive: the fetch pauses during nav, and the basemap POIs
+        // (kept visible in nav now) cover the gas-station-on-the-way case without duplicates.
+        ambientPois = if (state.navigating) emptyList() else ambientMarkersOf(state),
+        buildingOverlays = state.buildingOverlays,
+        addressOverlays = state.addressOverlays,
+        maxspeedOverlays = state.maxspeedOverlays,
+        placesOverlays = state.placesOverlays,
+        hiddenOpenPlaceIds = state.hiddenOpenPlaceIds,
+        ambientClosed = if (state.navigating) emptyList() else state.ambientClosed.map { MapMarker(it.name, it.location, it.category) },
+        onOpenPlaceClosed = vm::onOpenPlaceClosed,
+        placesPending = state.placesPending,
+        osmBusinesses = app.vela.ui.MapPoiPrefs.osmBusinesses.value,
+        // The exit you are taking, for the green callout on the map: only a numbered exit off
+        // a ramp or a fork, and only while its own step is the one being guided.
+        navTapPlaces = app.vela.ui.MapPoiPrefs.navTapPlaces.value,
+        navExitCallout = if (!state.navigating) null else remember(state.activeRoute, state.nav.stepIndex) {
+            val m = state.activeRoute?.maneuvers?.getOrNull(state.nav.stepIndex)
+            val ramp = m?.type in setOf(
+                app.vela.core.model.ManeuverType.RAMP_LEFT, app.vela.core.model.ManeuverType.RAMP_RIGHT,
+                app.vela.core.model.ManeuverType.FORK_LEFT, app.vela.core.model.ManeuverType.FORK_RIGHT,
+                app.vela.core.model.ManeuverType.KEEP_LEFT, app.vela.core.model.ManeuverType.KEEP_RIGHT,
+            )
+            val label = if (m != null && ramp) app.vela.core.nav.ExitLabel.of(m.instruction) else null
+            val poly = state.activeRoute?.polyline.orEmpty()
+            when {
+                m == null || label == null -> null
+                poly.size < 2 -> m.location to label
+                else -> {
+                    // ON THE RAMP, not on the freeway beside it (user 2026-09-17): the maneuver
+                    // point is where the ramp leaves, so walk a little way down the route past it.
+                    val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+                    val at = app.vela.core.nav.RouteProjection.alongMeters(poly, cum, m.location, 120.0)
+                    val p = if (at == null) m.location else app.vela.core.nav.RouteProjection.pointAt(poly, cum, at + EXIT_CALLOUT_AHEAD_M)
+                    p to label
+                }
+            }
+        },
+        basemapArchive = state.basemapArchive,
+        onOpenPlaceTap = vm::onOpenPlaceTap,
+        onRoadLimitKmh = vm::onOverlayRoadLimit,
+        speedOverlayOn = speedOverlayArmed, // motion-armed with hysteresis - NEVER on the parked browse map
+
+        trafficControls = state.trafficControls,
+        flockCameras = state.flockCameras,
+        speedCameras = state.speedCameras,
+        // Hide the tapped stop's own badge while it is selected - the red selected-place pin
+        // drops at the same coordinate and the two bus glyphs stacked read as a glitch
+        // (user 2026-07-13). Structural list equality keeps the identity gate quiet.
+        transitStops = state.transitStops.filterNot { st -> state.selected?.id == "gtfs:${st.stopId}" },
+        onTransitStopTap = vm::onTransitStopTap,
+        navBannerBottomPx = if (state.navigating) navBannerBottomPx else 0,
+        // Index into the SHOWN list (the same one ambientMarkersOf uploads), not the raw
+        // pool - while a place is open the shown list drops the selected place's copy, so
+        // raw-pool indices would be off by one past it.
+        onAmbientTap = { i -> ambientShownOf(state).getOrNull(i)?.let(vm::selectPlace) },
+        onCameraIdle = vm::onCameraIdle,
+        onMapLongPress = vm::onMapLongPress,
+        onAddressLabelTap = vm::onAddressLabelTap,
+        onViewport = vm::onViewport,
+        dpadController = mapDpad,
+        modifier = Modifier.fillMaxSize(),
+    )
 }
 
 /** Building-overlay debug badge + UI-thread FPS readout (Settings -> Developer). Split out of
