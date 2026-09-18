@@ -3181,7 +3181,16 @@ class MapViewModel @Inject constructor(
                     // then whichever happened to sit nearest the tapped point. A listing whose name
                     // IS the tapped name is what the tap asked for; only when none exists does the
                     // looser pool decide. Store numbers are dropped so "SHOP #1561" still counts.
-                    val exact = pool.filter { app.vela.core.util.PlaceNames.same(name, it.name) }
+                    // ...but ONLY AMONG CANDIDATES ON THE SAME LOT (device 2026-09-18). The rule
+                    // exists to separate a store from its own forecourt, which are metres apart;
+                    // applied to the whole result set it instead preferred a listing with the
+                    // exactly-matching name ANYWHERE over the business under the finger, because a
+                    // brand's listing is often its name plus a word ("Starbucks Coffee Company" is
+                    // not "Starbucks" once normalized). A tap on one landed on a branch 4 km away,
+                    // which the distance cap then threw out, so the tap opened NOTHING while the
+                    // right listing sat 6 m from it.
+                    val local = pool.filter { it.location.distanceTo(location) <= SAME_LOT_M }
+                    val exact = local.filter { app.vela.core.util.PlaceNames.same(name, it.name) }
                     // AND THE SAME KIND BEATS THE SAME NAME (user 2026-09-18, second report: the
                     // store still opened as the fuel station). Some brands name their forecourt
                     // listing exactly what they name the store, so the exact-name filter keeps both
@@ -3201,7 +3210,7 @@ class MapViewModel @Inject constructor(
                     tapWhy = "agree=" + answerable.count { nameAgrees(name, it.name) } +
                         " near60=" + answerable.count { it.location.distanceTo(location) <= NO_NAME_MATCH_M } +
                         " pool=" + pool.size + " exact=" + exact.size +
-                        " group=" + tappedGroup + " sameKind=" + sameKind.size +
+                        " local=" + local.size + " group=" + tappedGroup + " sameKind=" + sameKind.size +
                         " nearest=[" + answerable.sortedBy { it.location.distanceTo(location) }.take(3)
                             .joinToString("; ") { it.name + " " + "%.0f".format(it.location.distanceTo(location)) + "m/" + (it.category ?: "-") } + "]"
                     val canonical = ranked
@@ -3307,6 +3316,12 @@ class MapViewModel @Inject constructor(
     /** How near a listing that does NOT agree with the tapped name may be and still become the
      *  place: the same lot, not the far side of the junction. */
     private val NO_NAME_MATCH_M = 60.0
+
+    /** How far the "a listing named exactly what I tapped wins" rule may reach. It separates a
+     *  store from its own forecourt, which share a lot, so it must not be able to prefer a branch
+     *  across town over the business under the finger. Wider than [NO_NAME_MATCH_M] because a big
+     *  store and its pumps can sit that far apart. */
+    private val SAME_LOT_M = 120.0
 
     /** Google categories that are map FURNITURE, never the answer to tapping a business. */
     private val JUNCTION_CATEGORIES = setOf("intersection", "junction", "crossroads", "road", "highway")
