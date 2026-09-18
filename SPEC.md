@@ -698,6 +698,15 @@ FASTER_THRESHOLD_S                90   minimum saving before an alternate is off
 SAME_COURSE_M                    250   within this of the current line is the SAME route
 ```
 
+**The offer always resolves itself** (issue #594). It used to wait for an answer, which is a card
+over part of the map asking a driver to decide with their hands on the wheel. A bar across the
+bottom of the card drains over 10 s (25 s in key-driven mode, where reaching either button is
+several presses) and then acts: by default it TAKES the route, which is what the offer exists for
+and what Google does, and `FasterRouteAuto` off dismisses it instead. Leaving it on screen is not
+one of the choices. The countdown is keyed on the offer itself, so the ETA moving or the speed
+ticking cannot hand the driver their ten seconds back, and it is read in the draw phase so it never
+recomposes the card.
+
 A same-course candidate recalibrates the shown arrival time (`etaScale`, multiplicative,
 clamped 0.5-2.5, applied at the publish site only, reset to 1.0 on every route swap) instead of
 being offered. A candidate that is a genuinely different course and saves more than the
