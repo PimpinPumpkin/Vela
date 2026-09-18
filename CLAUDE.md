@@ -3864,12 +3864,30 @@ Gotchas:
   `unzip -t`-checked, because five jobs died on "Invalid or corrupt jarfile" when the unverified
   `latest` download came back as not-a-jar on a busy runner; and a bake over GitHub's 2 GiB asset
   limit (Nunavut at z14) is rebaked one zoom shallower in the same job before it fails.
+  **Third lesson (2026-09-17): planetiler MUST get explicit `--bounds`.** Geofabrik's PBF HEADER
+  bbox can be far looser than the extract polygon (new-mexico's header reaches ~7 degrees into
+  Texas), planetiler inherits it into the PMTiles header, `pmtiles-bbox.py` + the manifest copy
+  it faithfully, and `BasemapTileStore.installedFor` then mounts the archive for views it has no
+  tiles for - the vector basemap silently draws NOTHING there (a phone in north Texas with the
+  new-mexico archive showed traffic colors + Google dots but no OSM streets). The bake now pulls
+  the true polygon bbox from Geofabrik's index-v1.json (URL-path suffix-matched - index ids drop
+  the continent component) and passes `--bounds` in **W,S,E,N order** (planetiler's
+  `Arguments.bounds` constructs `Envelope(v0,v2,v1,v3)`; javap-pinned - do not "fix" it to
+  S,W,N,E). 37 of 413 published archives are >1 degree loose the same way and want a re-bake.
   Saarland full z14 = 33 MB (a lite z13 no-buildings tier = 8 MB, not wired). App: `PmtilesRegionStore`
   is the shared base of `PlacesTileStore` and `BasemapTileStore` (`files/basemap/`, never streamed,
   `installedFor(center)` = smallest covering archive); `MapUiState.basemapArchive`; `refreshBasemapArchive`
   runs with the places refresh AND at VM init from the seed location; `downloadBasemapForRegion` /
   `downloadBasemapForArea` chain into every region and viewport download; deleted with the region;
-  counted under "Saved areas & map cache". **The engine rules found the hard way (a full evening):**
+  counted under "Saved areas & map cache". **Fourth engine rule (2026-09-18, device loop): a region
+  download pulls the region's OWN basemap archive, never every archive whose bbox centre falls in
+  its box** - boxes are rectangles, so a neighbour's centre routinely sits inside (new-mexico's sat
+  inside texas' box), and the old companion pull silently imported a whole extra state's map on
+  every region download - with the broken new-mexico manifest row (see the `--bounds` lesson in the
+  bake bullet) that resurrected the blank-basemap state after every data wipe: download texas ->
+  NM re-imported -> NM's fake 129 sq-deg box out-bid texas' real 140 for DFW views -> vector map
+  blank. Wiping app data cannot break that loop; only honest manifest data or this pick rule can.
+  **The engine rules found the hard way (a full evening):**
   (1) the local archive must be added as a source AFTER the style loads and the layers using it
   re-attached (`LOCAL_BASEMAP_SRC`, `localBasemapLayerIds`, `withLocalBasemap` re-points every
   `openmaptiles` layer); declared in the JSON or via `Style.Builder.withSource` it never got past the z0
