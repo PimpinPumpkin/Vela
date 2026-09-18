@@ -1038,7 +1038,22 @@ internal class NavController(
                 }
             }
             val merged = withContext(Dispatchers.Default) {
-                res.groupBy { it.kind }.flatMap { (kind, group) ->
+                // A STOP SIGN counts when it sits on a road running the way you are going. OSM maps
+                // one sign per approach, so the corridor picks up the sign holding the street that
+                // ENTERS your road, which you never stop for. The baked road bearing is the test
+                // (2026-09-17, after a distance test binned nearly everything: a clustered control
+                // sits at the junction's centre, not in your lane). No bearing, no filtering - an
+                // older bake or the live Overpass path keeps every sign, as before.
+                val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+                val onRoute = res.filter { c ->
+                    val road = c.roadBearingDeg
+                    if (c.kind != app.vela.core.data.TrafficControl.Kind.STOP || road == null) return@filter true
+                    val at = app.vela.core.nav.RouteProjection.alongMeters(poly, cum, c.loc, 120.0) ?: return@filter true
+                    app.vela.core.nav.RouteProjection.alignedWithRoad(
+                        app.vela.core.nav.RouteProjection.bearingAt(poly, cum, at), road,
+                    )
+                }
+                onRoute.groupBy { it.kind }.flatMap { (kind, group) ->
                     app.vela.core.data.MapDeclutter.cluster(group, MapViewModel.CONTROLS_CLUSTER_M) { it.loc }
                         .map { c -> app.vela.core.data.TrafficControl(c.centroid, kind) }
                 }

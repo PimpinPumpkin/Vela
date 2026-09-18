@@ -889,6 +889,6 @@
     <string name="routing_offer_body">Haalt de wegen, plaatsen en kaart van deze regio op, ongeveer %1$s. Omleidingen gaan sneller en de routebegeleiding werkt zonder bereik. Downloads staan onder Instellingen, Offline kaarten.</string>
     <string name="nav_stop_offer_add">Toevoegen</string>
     <string name="nav_stop_offer_ahead">over %1$s</string>
-    <string name="settings_nav_tap_places">Plaatsen aantikken tijdens het rijden</string>
+    <string name="settings_nav_tap_places">Plaatsen aantikken tijdens het rijden (experimenteel)</string>
     <string name="settings_nav_tap_places_hint">Tijdens navigatie blijven tankstations, eten en laadpunten op de kaart staan; tikken biedt de plaats als tussenstop aan, een tweede tik voegt hem toe. Standaard uit, omdat navigatie plaatsen verbergt om de kaart leesbaar te houden. Dit aanzetten zet ook Plaatsen tonen aan.</string>
 </resources>

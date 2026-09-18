@@ -1896,6 +1896,12 @@ architecture note.
   coordinate on a whole-name match at 30-120 m. Order of preference: OSM, then the AllThePlaces
   locator, then Overture's parcel point; tenants never move. Unset `OSM_PBF` and the bake behaves
   exactly as before.
+- **STOP SIGNS ARE GATED BY THE ROAD'S BEARING (2026-09-17):** `scripts/road_features_tsv.py` takes a
+  second geojsonseq of the region's HIGHWAY ways (`--ways`) and writes a 4th TSV column: the
+  orientation of the road at each control node, 0-179 undirected (99% coverage on a Delaware test).
+  `TrafficControl.roadBearingDeg` carries it; `RouteProjection.bearingAt` / `alignedWithRoad` (40 deg)
+  decide whether a STOP is yours, in `NavController.refreshNavRouteControls` only. Null bearing =
+  keep, so an un-rebaked region and the live Overpass path behave exactly as before.
 - **STOP SIGNS: DISTANCE GATING WAS WRONG (2026-09-17, reverted same day):** filtering a STOP by its
   distance to the driven line (11 m) removed nearly every sign on a real drive, because a clustered
   control sits at the junction's centroid, not on your lane. Any future attempt must gate by the

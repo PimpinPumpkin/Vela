@@ -889,6 +889,6 @@
     <string name="routing_offer_body">Récupère les routes, les lieux et la carte de cette région, environ %1$s. Les recalculs sont plus rapides et le guidage marche sans réseau. Les téléchargements sont dans Paramètres, Cartes hors ligne.</string>
     <string name="nav_stop_offer_add">Ajouter</string>
     <string name="nav_stop_offer_ahead">%1$s plus loin</string>
-    <string name="settings_nav_tap_places">Toucher les lieux en conduisant</string>
+    <string name="settings_nav_tap_places">Toucher les lieux en conduisant (expérimental)</string>
     <string name="settings_nav_tap_places_hint">Pendant le guidage, les stations, restaurants et bornes de recharge restent sur la carte et un appui propose le lieu comme étape ; un second appui l\'ajoute. Désactivé par défaut, car le guidage masque les lieux pour garder la carte lisible. Activer ceci active aussi Afficher les lieux.</string>
 </resources>

@@ -18,7 +18,10 @@ import okhttp3.OkHttpClient
 /** A drawn road control/aid at [loc]. Started as lights + stop signs; the static OSM AIDS
  *  (railway level crossings, speed humps - 2026-08-08, the buildable subset of "aids on the road"
  *  after every live-incident source proved dead, see ROADMAP) ride the same pipeline. */
-data class TrafficControl(val loc: LatLng, val kind: Kind) {
+/** [roadBearingDeg] is the orientation of the road the node sits on, 0-179 (undirected), from the
+ *  baked road-features file; null when unknown (the live Overpass path, or an older bake). It is
+ *  what separates the sign that holds YOU from the one that holds the street entering your road. */
+data class TrafficControl(val loc: LatLng, val kind: Kind, val roadBearingDeg: Int? = null) {
     enum class Kind { SIGNAL, STOP, RAIL_CROSSING, SPEED_HUMP }
 }
 

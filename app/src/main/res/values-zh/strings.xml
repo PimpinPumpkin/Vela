@@ -906,6 +906,6 @@
     <string name="routing_offer_body">下载该地区的道路、地点和地图,约 %1$s。重新规划更快,没有信号也能继续导航。下载内容可在设置的离线地图中管理。</string>
     <string name="nav_stop_offer_add">添加途经点</string>
     <string name="nav_stop_offer_ahead">%1$s后</string>
-    <string name="settings_nav_tap_places">驾驶时点按地点</string>
+    <string name="settings_nav_tap_places">驾驶时点按地点 (实验功能)</string>
     <string name="settings_nav_tap_places_hint">导航时仍在地图上显示加油、餐饮和充电地点,点按会将其作为途经点提示,再点一次即可添加。默认关闭,因为导航会隐藏地点以保持地图清晰。开启此项也会开启“显示地点”。</string>
 </resources>
