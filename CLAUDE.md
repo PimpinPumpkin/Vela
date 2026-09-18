@@ -2663,7 +2663,10 @@ architecture note.
 - **Flat vegetation (2026-07-11):** fill-pattern CANNOT be cleared once a style layer ships
   with one (empty-literal unset no-ops on device) - `ensureLayers` hides `landcover_wetland` +
   `road_area_pattern` and adds flat twins `vela-wetland`/`vela-plaza` that applyLight/applyDark
-  color; the OSM poi tiers' filters exclude vegetation classes (park/garden/wood/tree/...) so
+  color; the OSM poi tiers' filters exclude vegetation classes (wood/forest/tree/grass/wetland - NOT
+  park or garden since 2026-09-18: excluding those deleted parks from the map, because the places
+  bake drops the park CATEGORY on the grounds that OSM has parks and this filter then dropped OSM's;
+  a named park is a destination, a wood is scenery) so
   forests read as flat green like Google, not icon confetti. Nav mute/steps/End are 54dp.
   The search bar hides while an expanded place sheet covers it (its sliver still took taps).
 

@@ -4920,10 +4920,15 @@ private fun applyPoiTierFilters(style: Style, fuelOnly: Boolean) {
         }
         return
     }
+    // VEGETATION, not DESTINATIONS (user 2026-09-18: a named park drew no icon and no label at
+    // all). This list exists so a forest does not become icon confetti, and it used to hold `park`
+    // and `garden` as well - which deleted parks from the map outright, because the open places
+    // bake EXCLUDES the park category on the grounds that OSM has parks, and this filter then threw
+    // away OSM's. Two reasonable decisions that between them left a hole. A named park is a place
+    // people go and Google labels it; a wood, a tree or a patch of grass is scenery.
     val veg = Expression.match(
         Expression.get("class"), Expression.literal(false),
-        Expression.stop("park", true), Expression.stop("garden", true),
-        Expression.stop("picnic_site", true), Expression.stop("wood", true),
+        Expression.stop("wood", true),
         Expression.stop("forest", true), Expression.stop("tree", true),
         Expression.stop("grass", true), Expression.stop("wetland", true),
     )

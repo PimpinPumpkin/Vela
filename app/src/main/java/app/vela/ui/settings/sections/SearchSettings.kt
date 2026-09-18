@@ -139,8 +139,7 @@ internal fun SearchSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                         )
                         Spacer(Modifier.height(6.dp))
                         // Indeterminate while queued/installing (nothing to count): a frozen bar reads as stuck.
-                        if (queued || state.asrInstalling) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        else LinearProgressIndicator(progress = { pct }, modifier = Modifier.fillMaxWidth())
+                        app.vela.ui.VelaProgressBar(if (queued || state.asrInstalling) null else pct)
                         // No cancel during the unpack - the bytes are already down.
                         if (!state.asrInstalling) {
                             androidx.compose.material3.TextButton(

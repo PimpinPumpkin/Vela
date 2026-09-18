@@ -80,11 +80,11 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
                 // sites did not, so they read as a hang.
                 Text(stringResource(R.string.settings_voice_search_installing), style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(6.dp))
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                app.vela.ui.VelaProgressBar(null)
             } else {
                 Text(stringResource(R.string.settings_voice_downloading, nm, (pct * 100).toInt()), style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(6.dp))
-                LinearProgressIndicator(progress = { pct }, modifier = Modifier.fillMaxWidth())
+                app.vela.ui.VelaProgressBar(pct)
                 androidx.compose.material3.TextButton(
                     onClick = { vm.cancelVoiceDownload() },
                     modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),

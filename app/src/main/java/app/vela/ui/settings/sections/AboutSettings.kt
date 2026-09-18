@@ -187,7 +187,8 @@ Onboarding.openDonate(context)
             state.updateDownloadPct?.let { pct ->
                 Text(stringResource(R.string.update_downloading, pct), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = 16.dp))
                 Spacer(Modifier.height(6.dp))
-                LinearProgressIndicator(progress = { pct / 100f }, modifier = Modifier.fillMaxWidth())
+                // 16 dp like every row in this group: the bar used to run past them (user 2026-09-18).
+                app.vela.ui.VelaProgressBar(pct / 100f, Modifier.padding(horizontal = 16.dp))
                 TextButton(
                     onClick = { vm.cancelUpdateDownload() },
                     modifier = Modifier.padding(horizontal = 8.dp).dpadHighlight(androidx.compose.foundation.shape.CircleShape),

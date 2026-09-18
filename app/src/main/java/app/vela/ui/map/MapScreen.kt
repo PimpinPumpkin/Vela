@@ -4827,14 +4827,7 @@ private fun VoiceDownloadCard(installing: Boolean, pct: Float, onCancel: (() -> 
             Spacer(Modifier.height(8.dp))
             // Determinate while downloading; the unpack step can't report a meaningful %, so it goes
             // indeterminate under the "Installing…" label rather than crawling a frozen-looking bar.
-            if (installing) {
-                androidx.compose.material3.LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            } else {
-                androidx.compose.material3.LinearProgressIndicator(
-                    progress = { pct.coerceIn(0f, 1f) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
+            app.vela.ui.VelaProgressBar(if (installing) null else pct)
         }
     }
 }
@@ -4869,10 +4862,7 @@ private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, area: Bo
                 }
             }
             Spacer(Modifier.height(8.dp))
-            androidx.compose.material3.LinearProgressIndicator(
-                progress = { (pct / 100f).coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            app.vela.ui.VelaProgressBar(pct / 100f)
         }
     }
 }
@@ -4926,10 +4916,7 @@ private fun UpdateCard(
                         }
                     }
                 }
-                androidx.compose.material3.LinearProgressIndicator(
-                    progress = { downloadPct / 100f },
-                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp),
-                )
+                app.vela.ui.VelaProgressBar(downloadPct / 100f, Modifier.padding(top = 6.dp, bottom = 8.dp))
             } else {
                 Row(
                     Modifier.fillMaxWidth().padding(bottom = 6.dp),

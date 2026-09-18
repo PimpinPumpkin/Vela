@@ -986,6 +986,10 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   jq); `osm_snap` moves a baked row onto OSM's coordinate on a whole-name match at 30-120 m.
   Order of preference: OSM, then the AllThePlaces locator, then Overture's parcel point.
   Tenants never move.
+- **Parks come from OpenStreetMap, so nothing else may filter them out.** The bake drops the park
+  category (OSM has parks, mapped as areas with names), which means the basemap POI tiers are their
+  only source: their vegetation exclusion covers wood, forest, tree, grass and wetland and must not
+  cover park or garden, or a named park draws neither icon nor label in any mode.
 - **Stacked points.** Overture puts a building's tenants on one parcel point. A tenant whose own
   address names a unit is snapped to the matching Overture address point (house number plus
   unit within about 200 m, street name ignored: a number plus a unit is unique that close and
