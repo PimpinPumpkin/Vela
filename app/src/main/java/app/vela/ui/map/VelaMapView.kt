@@ -1064,6 +1064,10 @@ fun VelaMapView(
                                 out
                             }
                             val names = points.keys.toList()
+                            navLabelAts = points.values.mapNotNull { f ->
+                                if (f.hasProperty(NAV_XLABEL_AT_PROP)) f.getNumberProperty(NAV_XLABEL_AT_PROP).toDouble() else null
+                            }.sorted()
+                            navLabelNextAt = navLabelAts.firstOrNull { it > navPuck.progressM + NAV_XLABEL_DROP_BEHIND_M } ?: Double.MAX_VALUE
                             if (names != lastApplied) {
                                 lastApplied = names
                                 runCatching {
@@ -2746,6 +2750,7 @@ fun VelaMapView(
 
     androidx.compose.foundation.layout.Box(modifier) {
     AndroidView(factory = { mapView }, modifier = Modifier.matchParentSize()) { mv ->
+        probeOnce(mv) // PROBE
         // Re-assert non-focusability each pass — MapLibre re-enables it on surface
         // (re)creation, which would let it eat D-pad keys again (docs/dpad.md).
         if (mv.isFocusable) {
@@ -4828,6 +4833,7 @@ private const val NAV_ROADLABEL_MINOR_LAYER = "vela-nav-roadlabels-minor"
 private const val NAV_XLABEL_SRC = "vela-nav-xlabels-src"
 private const val NAV_XLABEL_AT_PROP = "atM" // the callout's distance along the route; passed ones are filtered out
 private var lastPassedFilterM = -1.0
+private var navLabelAts: List<Double> = emptyList() // the uploaded callouts' distances along the route, ascending
 private const val NAV_XLABEL_DROP_BEHIND_M = 12.0 // a callout is gone once the puck is this far past it
 private const val NAV_XLABEL_OFFSET_M = 35.0
 private val NAV_XLABEL_OFFSETS = doubleArrayOf(1.0, 1.8, 3.0) // tried in turn until the bubble clears the route
@@ -5006,6 +5012,24 @@ private fun addRouteBubbleImage(st: Style, id: String, fill: Int, edge: Int, d: 
     )
 }
 
+private val probeArmed = booleanArrayOf(false)
+private fun probeOnce(mv: org.maplibre.android.maps.MapView) { // PROBE
+    if (probeArmed[0]) return
+    probeArmed[0] = true
+    mv.addOnDidFinishRenderingFrameListener { fully, enc, ren ->
+        android.util.Log.i("VelaFps", "f ${android.os.SystemClock.elapsedRealtimeNanos()} $enc $ren $fully")
+    }
+    val startNs = longArrayOf(0L); val what = arrayOfNulls<String>(1)
+    android.os.Looper.getMainLooper().setMessageLogging { line ->
+        if (line.startsWith(">>>>> Dispatching")) { startNs[0] = System.nanoTime(); what[0] = line }
+        else if (line.startsWith("<<<<< Finished") && startNs[0] != 0L) {
+            val ms = (System.nanoTime() - startNs[0]) / 1_000_000.0
+            if (ms > 12.0) android.util.Log.i("VelaFps", "slow ${"%.1f".format(ms)} ${what[0]?.substringAfter("} ")?.take(120)}")
+            startNs[0] = 0L
+        }
+    }
+}
+
 private fun navBubbleBitmap(dark: Boolean, d: Float, green: Boolean = false): android.graphics.Bitmap {
     val w = (46 * d).toInt()
     val body = 26 * d
@@ -5180,11 +5204,17 @@ private fun navLabelPassedFilter(tier: Expression): Expression = Expression.all(
     ),
 )
 
-/** Re-apply the passed-callout filter as the puck moves; a 25 m step keeps it off the frame path. */
+/** Re-apply the passed-callout filter, but only when the puck has actually passed the NEXT callout:
+ *  a setFilter re-runs that layer's placement, and doing it every 25 m cost measurable main-thread
+ *  time on a 4a (126 ms worst message vs 37 ms without it, 2026-09-17). [navLabelNextAt] is the
+ *  nearest callout ahead, recorded when the set is uploaded. */
+private var navLabelNextAt = Double.MAX_VALUE
 private fun applyNavLabelProgress(style: Style, progressM: Double) {
+    if (progressM + NAV_XLABEL_DROP_BEHIND_M < navLabelNextAt) return
     if (kotlin.math.abs(progressM - lastPassedFilterM) < 25.0) return
     lastPassedFilterM = progressM
     navLabelPassed = progressM
+    navLabelNextAt = navLabelAts.firstOrNull { it > progressM + NAV_XLABEL_DROP_BEHIND_M } ?: Double.MAX_VALUE
     (style.getLayer(NAV_ROADLABEL_LAYER) as? SymbolLayer)
         ?.setFilter(navLabelPassedFilter(Expression.eq(Expression.get("tier"), Expression.literal("major"))))
     (style.getLayer(NAV_ROADLABEL_MINOR_LAYER) as? SymbolLayer)
@@ -5201,6 +5231,8 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
     // the first callouts of the new one were treated as already passed.
     navLabelPassed = 0.0
     lastPassedFilterM = -1.0
+    navLabelAts = emptyList()
+    navLabelNextAt = Double.MAX_VALUE
     val ids = listOf(NAV_ROADLABEL_LAYER, NAV_ROADLABEL_MINOR_LAYER)
     // The bubbles REPLACE the basemap's line-following road names during nav - both drawing is a
     // doubled label ("2nd Street" along the road right under its own bubble, device-caught
