@@ -74,7 +74,7 @@ Three deliberate exceptions, all data rather than prose:
   jobs and mailed a failure for each. After any sweep that touches `.github/workflows`, grep for
   `always()`, `success()`, `failure()` and `cancelled()` before pushing.
 
-Before pushing: `grep -rniE "\b(colour|centre|behaviour|neighbour|meters?|labeled|travelled|licence|defence|grey|organis|recognis|utilis)\b" --include="*.kt" --include="*.md" .` must return only the exceptions above.
+Before pushing: `grep -rniE "\b(colour|centre|behaviour|neighbour|meters?|labeled|travelled|licence|defence|gray|organis|recognis|utilis)\b" --include="*.kt" --include="*.md" .` must return only the exceptions above.
 
 ## ⚠️ Location hygiene (read first, human or AI)
 
@@ -3790,7 +3790,16 @@ Gotchas:
   on-device A/B - Kokoro was ~0.4× realtime even on a Pixel 9. `MapViewModel` reclaims their old model
   dirs and sanitizes stale `vela.kokoro`/`vela.matcha` prefs to Piper. `project_vela_kokoro_tts` memory
   is that historical record, not the current design.)**
-- **MUTE AND PAUSE ARE ONE BUTTON (user 2026-09-18, third pass).** `NavHoldControls` in
+- **PAUSE LIVES IN THE NAV BAR'S RIGHT SLOT (user 2026-09-18, `ui/PauseInBar`, pref
+  `nav_pause_in_bar`, DEFAULT ON, Settings > Navigation).** On a touch phone that slot is an empty
+  54 dp spacer (it only keeps the figures centered against End), so pause takes it and the FAB stack
+  keeps a PLAIN mute button; `NavBarTop(onPause=)` draws it, filled with `primary` while paused.
+  **The step-list button still wins the slot** whenever `PreferButtons.on || dpadFirst`
+  (`navListButton` / `navPauseInBar` in MapScreen), and pause stays in the stack for those people:
+  they asked for a discrete target, and the chevron handle is itself a focusable clickable that
+  opens the step sheet, so the list is never unreachable in either layout. Turning the setting off
+  restores `NavHoldControls` in the stack.
+- **MUTE AND PAUSE ARE ONE BUTTON (user 2026-09-18, third pass; the layout the setting restores).** `NavHoldControls` in
   `ui/nav/NavOverlays.kt`: one 56 dp target. The FIRST tap on a running drive only slides MUTE out
   beside it for `OPEN_MS` (6 s) and the SECOND tap on the same target pauses - pausing on the first
   tap made holding the drive the only way to reach mute ("pressing on the pause button to get to the
@@ -4951,6 +4960,11 @@ Gotchas:
   its handle row (small chevron + name, ellipsized) on both the bar and the open step sheet's header;
   `barRoadName` in MapScreen computes it with the pill's rules (leg road or passed rename, ref first,
   romanized for Latin UIs). The chevron row stays the tap / D-pad button. Not the default.
+- **"Searching for GPS" is pinned ABOVE the puck (user 2026-09-18),** measured through the same
+  `puckScreen` offset the road pill uses (the pill goes below, this goes above), with the old
+  bottom-center placement as the fallback while no puck position exists. The dot is what has gone
+  gray, and the bottom band already holds the speed widget and whatever the right-edge stack slides
+  out.
 - **Current-road pill under the puck (issue #288, 2026-09-03).** Google's treatment: a rounded
   label directly beneath the nav puck naming the road you are ON. The road is the one entered by
   the LAST MANEUVER PASSED (`maneuvers[stepIndex - 1]`) - the same source the banner's shield

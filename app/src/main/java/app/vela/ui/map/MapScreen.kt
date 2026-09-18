@@ -422,6 +422,12 @@ fun MapScreen(
     // on-screen zoom buttons. mapDpad is the key→camera seam into VelaMapView.
     val dpadMode = rememberDpadMode()
     val dpadFirst = rememberDpadFirstDevice()
+    // Which control the nav bar's right slot carries. The step-list button wins it whenever it was
+    // asked for (Prefer buttons, or a keypad-first phone): those people asked for a discrete target
+    // and pause has one in the right-edge stack either way. Otherwise the slot, which is an empty
+    // spacer on a touch phone, takes PAUSE and the stack keeps a plain mute button.
+    val navListButton = app.vela.ui.PreferButtons.on.value || dpadFirst
+    val navPauseInBar = app.vela.ui.PauseInBar.on.value && !navListButton
     val mapDpad = remember { MapDpadController() }
     var mapFocused by remember { mutableStateOf(false) }
     var mapEngaged by remember { mutableStateOf(false) } // arrows pan only while engaged (docs/dpad.md)
@@ -1535,17 +1541,29 @@ fun MapScreen(
                     },
                     modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
                 ) { Icon(Icons.Default.ZoomOutMap, contentDescription = stringResource(R.string.nav_overview)) }
-                // MUTE + PAUSE are ONE button (user 2026-09-18). They are the two "hold
-                // something" controls of a drive and both are touched rarely, so they no longer
-                // spend 112 dp of the right edge: one 56 dp button opens a little row with both
-                // choices, a long press mutes without the row, and the button itself carries both
-                // states (glyph and accent fill for the hold, a small crossed speaker for silence).
-                app.vela.ui.nav.NavHoldControls(
-                    paused = state.navPaused,
-                    muted = state.voiceMuted,
-                    onPause = vm::toggleNavPause,
-                    onMute = vm::toggleVoice,
-                )
+                // With pause in the bar, this slot is plain mute: one button, one meaning, no
+                // pop-out to reach past. Otherwise the two hold controls share one button here
+                // (tap opens, second tap pauses, long press mutes).
+                if (navPauseInBar) {
+                    FloatingActionButton(
+                        onClick = vm::toggleVoice,
+                        modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
+                    ) {
+                        Icon(
+                            if (state.voiceMuted) Icons.Default.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = stringResource(
+                                if (state.voiceMuted) R.string.nav_unmute_voice else R.string.nav_mute_voice
+                            ),
+                        )
+                    }
+                } else {
+                    app.vela.ui.nav.NavHoldControls(
+                        paused = state.navPaused,
+                        muted = state.voiceMuted,
+                        onPause = vm::toggleNavPause,
+                        onMute = vm::toggleVoice,
+                    )
+                }
                 FloatingActionButton(
                     onClick = {
                         navSearchOpen = !navSearchOpen
@@ -1566,9 +1584,29 @@ fun MapScreen(
                 color = MaterialTheme.colorScheme.errorContainer,
                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
                 shadowElevation = 4.dp,
-                // Clears the speedo/FAB band above the MEASURED bar; width-capped +
-                // single-line so long translations can't collide with either.
-                modifier = Modifier
+                // Pinned ABOVE the arrow (user 2026-09-18). The dot is the thing that has gone
+                // gray, so the message belongs on it rather than in a band at the bottom of the
+                // screen, where the mute pop-out and the speed widget were already sitting. The
+                // road-name pill takes the space under the arrow, so this one goes over it.
+                // Bottom center stays the fallback for the frames before a puck position exists
+                // (a detached camera, the first fix of a drive).
+                modifier = if (puckScreen.value != null) Modifier
+                    .widthIn(max = 260.dp)
+                    .layout { measurable, constraints ->
+                        val placeable = measurable.measure(constraints)
+                        layout(placeable.width, placeable.height) {
+                            val at = puckScreen.value ?: Offset(constraints.maxWidth / 2f, 0f)
+                            val margin = 8.dp.roundToPx()
+                            val maxX = (constraints.maxWidth - placeable.width - margin)
+                                .coerceAtLeast(margin)
+                            placeable.place(
+                                (at.x - placeable.width / 2f).roundToInt().coerceIn(margin, maxX),
+                                (at.y - PUCK_LABEL_GAP_PX - placeable.height).roundToInt()
+                                    .coerceAtLeast(margin),
+                            )
+                        }
+                    }
+                else Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
                     .padding(bottom = navBarClearance + 68.dp, start = 90.dp, end = 90.dp),
@@ -1697,12 +1735,16 @@ fun MapScreen(
                         remainingDistanceMeters = state.nav.remainingDistance,
                         remainingSeconds = state.nav.remainingDuration,
                         offRoute = state.nav.offRoute,
+                        paused = state.navPaused,
                         onStop = vm::stopNav,
                         onSteps = close,
                         trafficRatio = state.activeRoute?.trafficRatio,
                         showListButton = false,
                         handleUp = false,
                         roadName = barRoadName(state),
+                        // The sheet wears the bar's own top, so the control has to stay in the
+                        // same place when the list is open.
+                        onPause = if (navPauseInBar) vm::toggleNavPause else null,
                     )
                 } else null,
                 maneuvers = state.activeRoute?.maneuvers ?: emptyList(),
@@ -1835,7 +1877,8 @@ fun MapScreen(
                         )
                     },
                     trafficRatio = state.activeRoute?.trafficRatio,
-                    showListButton = app.vela.ui.PreferButtons.on.value || dpadFirst,
+                    showListButton = navListButton,
+                    onPause = if (navPauseInBar) vm::toggleNavPause else null,
                     // Measured AFTER the padding → the bar surface itself; navBarClearance adds the
                     // padding + gap back. Everything stacked above the bar keys off this.
                     modifier = Modifier.onGloballyPositioned { navBarHeightPx = it.size.height },

@@ -728,6 +728,8 @@ fun NavControls(
     maxLift: androidx.compose.ui.unit.Dp? = null,
     // The road you are on, shown in the handle row instead of the floating pill (issue #553).
     roadName: String? = null,
+    // Pause in the bar's right slot; null leaves the slot as it was.
+    onPause: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
@@ -802,6 +804,7 @@ fun NavControls(
             showListButton = showListButton,
             handleUp = true,
             roadName = roadName,
+            onPause = onPause,
         )
         // The well the drag opens under the figures: exactly the lift tall, clipped, holding the
         // step rows at the sheet's own list padding so they do not move at the handover. Read in
@@ -838,6 +841,10 @@ fun NavBarTop(
     showListButton: Boolean,
     handleUp: Boolean,
     roadName: String? = null,
+    // Pause in the bar's right slot (user 2026-09-18). Null keeps the slot empty, which is what a
+    // touch phone had there: a 54 dp spacer holding the figures centered against End. The list
+    // button still wins the slot when it is asked for.
+    onPause: (() -> Unit)? = null,
 ) {
     val dark = isAppInDarkTheme()
     val etaColor = when {
@@ -942,6 +949,25 @@ fun NavBarTop(
             if (showListButton) {
                 FilledTonalIconButton(onClick = onSteps, modifier = Modifier.size(54.dp)) {
                     Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.nav_steps), modifier = Modifier.size(26.dp))
+                }
+            } else if (onPause != null) {
+                // Paused, it fills like End does: the bar already says "Paused" beside the figures,
+                // and the control that put the drive on hold should look held.
+                FilledTonalIconButton(
+                    onClick = onPause,
+                    modifier = Modifier.size(54.dp),
+                    colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = if (paused) MaterialTheme.colorScheme.primary
+                        else androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors().containerColor,
+                        contentColor = if (paused) MaterialTheme.colorScheme.onPrimary
+                        else androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors().contentColor,
+                    ),
+                ) {
+                    Icon(
+                        if (paused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                        contentDescription = stringResource(if (paused) R.string.nav_resume else R.string.nav_pause),
+                        modifier = Modifier.size(26.dp),
+                    )
                 }
             } else {
                 Spacer(Modifier.size(54.dp)) // keeps the figures centered against the End button

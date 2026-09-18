@@ -1710,9 +1710,16 @@ ports it rather than inventing a fourth:
   map as gestures and detach the follow camera.
 - The route bar is portrait-only and never in PiP, and shows a 5 km window rather than the whole
   route: scaled to a long trip every nearby mark collapses into one pixel.
-- **Pause and mute are one button** (`NavHoldControls`). They are the drive's two "hold something"
-  controls and both are touched rarely, so they get one 56 dp target rather than 112 dp of the right
-  edge. The first tap on a running drive only slides mute out beside it, for `OPEN_MS` (6 s); a
+- **Pause sits in the nav bar's right slot** (`PauseInBar`, default on). That slot is an empty
+  spacer on a touch phone, there only to keep the trip figures centered against End, and the drive's
+  two hold controls then sit where each is reached for: pause beside the figures, mute as a plain
+  button in the right-edge stack, neither behind a pop-out. The step-list button wins the slot
+  whenever it was asked for (`PreferButtons`, or a keypad-first device), and pause falls back to the
+  stack: those people asked for a discrete target and the chevron handle opens the step list on its
+  own in both layouts, so nothing is unreachable either way. The setting turns the slot back into a
+  spacer and restores the combined button.
+- **The combined button** (`NavHoldControls`, the layout the setting restores) is one 56 dp target
+  for both. The first tap on a running drive only slides mute out beside it, for `OPEN_MS` (6 s); a
   second tap on the same target, which has not moved, pauses. Pausing on the first tap made holding
   the drive the only way to reach mute, which is not what that reach was for. A long press mutes
   outright, so anyone who knows it never sees the pop-out; and while the drive is paused a single
@@ -1720,6 +1727,10 @@ ports it rather than inventing a fourth:
   because one control standing for two has to: the glyph is pause or resume, the accent fill says
   the drive is held, and a small crossed speaker says it is silent. The long press is touch-only by
   nature and the row is its key path, which is what keeps it D-pad legal.
+- **"Searching for GPS" is pinned to the arrow**, above it, with bottom center as the fallback for
+  the frames before a puck position exists. The gray dot is what the message is about, and the
+  bottom band it used to sit in is where the speed widget and the mute pop-out already are. The
+  road-name pill takes the space under the arrow, so the two never meet.
 
 ### 10.3 D-pad operation
 

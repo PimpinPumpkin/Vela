@@ -104,6 +104,18 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             onCheckedChange = { app.vela.ui.PreferButtons.set(context, it) },
             hint = stringResource(R.string.settings_prefer_buttons_hint),
         )
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_pause_in_bar),
+            checked = app.vela.ui.PauseInBar.on.value,
+            onCheckedChange = { app.vela.ui.PauseInBar.set(context, it) },
+            // Reads as unavailable rather than absent when the step-list button owns the slot,
+            // which is the honest thing to say: the setting is fine, the slot is taken.
+            hint = stringResource(
+                if (app.vela.ui.PreferButtons.on.value) R.string.settings_pause_in_bar_hint_buttons
+                else R.string.settings_pause_in_bar_hint
+            ),
+        )
         }
         Spacer(Modifier.height(12.dp))
         SettingsGroup {
