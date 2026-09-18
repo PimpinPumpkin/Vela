@@ -891,4 +891,5 @@
     <string name="nav_stop_offer_ahead">a %1$s</string>
     <string name="settings_nav_tap_places">Tocar lugares al conducir (experimental)</string>
     <string name="settings_nav_tap_places_hint">Durante la navegación, gasolineras, comida y puntos de carga siguen en el mapa y al tocar uno se ofrece como parada; un segundo toque la añade. Desactivado por defecto, ya que la navegación oculta los lugares para que el mapa se lea bien. Activarlo también activa Mostrar lugares.</string>
+    <string name="mapvm_start_from_here">Empezando desde tu ubicación</string>
 </resources>

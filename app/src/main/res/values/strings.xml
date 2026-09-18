@@ -981,4 +981,5 @@
     <string name="nav_stop_offer_ahead">%1$s ahead</string>
     <string name="settings_nav_tap_places">Tap places while driving (experiment)</string>
     <string name="settings_nav_tap_places_hint">While navigating, fuel, food and charging places stay on the map and tapping one offers it as a stop; a second tap adds it. Off by default, since nav hides places to keep the map readable. Turning this on also turns on Show places.</string>
+    <string name="mapvm_start_from_here">Starting from where you are</string>
 </resources>

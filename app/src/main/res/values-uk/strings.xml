@@ -895,4 +895,5 @@
     <string name="nav_stop_offer_ahead">через %1$s</string>
     <string name="settings_nav_tap_places">Натискання на місця за кермом (експеримент)</string>
     <string name="settings_nav_tap_places_hint">Під час навігації на карті лишаються заправки, їжа та зарядки: дотик пропонує місце як заїзд, другий дотик додає його. Типово вимкнено: навігація ховає місця, щоб карта читалася. Увімкнення також вмикає показ місць.</string>
+    <string name="mapvm_start_from_here">Починаємо з вашого місця</string>
 </resources>
