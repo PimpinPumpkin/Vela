@@ -987,3 +987,62 @@ fun ArrivalSummary(
         }
     }
 }
+
+/**
+ * The in-drive "add this as a stop?" card (Settings > Navigation, off by default). A tap on a place
+ * while driving only OFFERS it; this card's button is the second tap that changes the drive, which
+ * is the whole point: one stray touch at speed must not re-route you.
+ */
+@Composable
+fun NavStopOffer(
+    name: String,
+    meta: String,
+    onAdd: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 3.dp,
+        shadowElevation = 6.dp,
+    ) {
+        Row(
+            Modifier.padding(start = 18.dp, end = 10.dp, top = 12.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    name,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                if (meta.isNotBlank()) {
+                    Text(
+                        meta,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Spacer(Modifier.width(10.dp))
+            androidx.compose.material3.Button(
+                onClick = onAdd,
+                modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp)),
+            ) { Text(stringResource(R.string.nav_stop_offer_add)) }
+            androidx.compose.material3.IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+            ) {
+                Icon(
+                    androidx.compose.material.icons.Icons.Default.Close,
+                    contentDescription = stringResource(R.string.place_close_directions),
+                )
+            }
+        }
+    }
+}

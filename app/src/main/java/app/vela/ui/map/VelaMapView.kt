@@ -407,6 +407,10 @@ private fun hideOpenTwins(map: MapLibreMap, style: Style, pois: List<MapMarker>,
  *  poi tiers follow (user drive 2026-09-16: every business along the route drew, labels sat on
  *  the road, and the frame rate fell apart on an off-ramp). Set by the nav declutter effect. */
 private var placesNavFuelOnly = false
+/** Drive nav with "tap places while driving" on: the layer widens from fuel-only to the groups you
+ *  would actually divert for, so there is something to tap. Still no dots and still the icon budget. */
+private var placesNavDriveSet = false
+private val NAV_DRIVE_GROUPS = arrayOf<Any>("fuel", "food")
 /** ROUTE PREVIEW (the chooser is open, not navigating): only landmark-grade places draw, no dots,
  *  like Google's route overview, so the route reads before Start (user 2026-09-16). */
 private var placesPreviewLandmarks = false
@@ -421,6 +425,7 @@ private fun applyOpenPlacesHidden(style: Style) {
     val fuel = Expression.eq(Expression.get("group"), Expression.literal("fuel"))
     val landmark = Expression.gte(Expression.get("prominence"), Expression.literal(PREVIEW_LANDMARK_PROMINENCE))
     val modeFilter = when {
+        placesNavDriveSet -> Expression.`in`(Expression.get("group"), Expression.literal(NAV_DRIVE_GROUPS))
         placesNavFuelOnly -> fuel
         placesPreviewLandmarks -> landmark
         else -> null
@@ -433,7 +438,7 @@ private fun applyOpenPlacesHidden(style: Style) {
                 is SymbolLayer -> l.setFilter(iconFilter)
                 is CircleLayer -> {
                     l.setFilter(idFilter ?: Expression.literal(true))
-                    l.setProperties(PropertyFactory.visibility(if (placesNavFuelOnly || placesPreviewLandmarks) Property.NONE else Property.VISIBLE))
+                    l.setProperties(PropertyFactory.visibility(if (placesNavFuelOnly || placesNavDriveSet || placesPreviewLandmarks) Property.NONE else Property.VISIBLE))
                 }
                 else -> Unit
             }
@@ -626,6 +631,7 @@ fun VelaMapView(
     placesPending: Boolean = false, // the open places source is on but its lookup has not answered yet
     osmBusinesses: Boolean = false, // draw OSM's businesses under the open places layer too (deduped by name)
     navExitCallout: Pair<LatLng, String>? = null, // the exit you are taking: green bubble with its number
+    navTapPlaces: Boolean = false, // drive nav: show the divert-worthy places and let a tap offer one as a stop
     placesOverlays: List<String> = emptyList(),   // pmtiles:// URIs of the open-data places layer (Overture), file:// or streamed
     basemapArchive: String? = null,               // pmtiles://file:// of an installed offline basemap covering the view; swaps the style's tile source
     onOpenPlaceTap: (app.vela.core.model.Place) -> Unit = {}, // a tapped open-places feature, seeded from its tile attributes
@@ -1150,8 +1156,13 @@ fun VelaMapView(
         runCatching {
             ensureTopography(style, topographyOn && !(navMode && navDriveMode))
         }
-        if (placesNavFuelOnly != (navMode && navDriveMode)) {
-            placesNavFuelOnly = navMode && navDriveMode
+        val driveSet = navMode && navDriveMode && navTapPlaces
+        if (driveSet != placesNavDriveSet) {
+            placesNavDriveSet = driveSet
+            applyOpenPlacesHidden(style)
+        }
+        if (placesNavFuelOnly != (navMode && navDriveMode && !navTapPlaces)) {
+            placesNavFuelOnly = navMode && navDriveMode && !navTapPlaces
             applyOpenPlacesHidden(style)
         }
         runCatching {
@@ -1634,7 +1645,7 @@ fun VelaMapView(
         lastPoiFuelOnly = null // forces applyData to re-apply the tier filters with the new flag
         lastOsmPoiVis = null
         // Rebuilt mid-drive (a new region in view): keep the drive-nav fuel-only rule on the new layers.
-        if (placesNavFuelOnly || placesPreviewLandmarks) applyOpenPlacesHidden(style)
+        if (placesNavFuelOnly || placesNavDriveSet || placesPreviewLandmarks) applyOpenPlacesHidden(style)
     }
 
     LaunchedEffect(maxspeedOverlays, styleRef, speedOverlayOn) {
