@@ -3830,6 +3830,12 @@ Gotchas:
   on-device A/B - Kokoro was ~0.4× realtime even on a Pixel 9. `MapViewModel` reclaims their old model
   dirs and sanitizes stale `vela.kokoro`/`vela.matcha` prefs to Piper. `project_vela_kokoro_tts` memory
   is that historical record, not the current design.)**
+- **A FASTER-ROUTE OFFER AUTO-RESOLVES (issue #594, 2026-09-18, benwiley4000):** it used to sit
+  until answered, so a driver had to answer a prompt covering the map. `FasterRouteCard` drains a
+  bar along its bottom edge over 10 s (25 s under `dpadMode`) and then acts: ACCEPT by default
+  (`ui/FasterRouteAuto`, pref `faster_route_auto`, Settings > Navigation "Take faster routes
+  automatically"), dismiss when off. Never indefinite. The countdown keys on
+  `state.fasterRoute` so a recomposition cannot restart it, and is read in the draw phase.
 - **PAUSE LIVES IN THE NAV BAR'S RIGHT SLOT (user 2026-09-18, `ui/PauseInBar`, pref
   `nav_pause_in_bar`, DEFAULT ON, Settings > Navigation).** On a touch phone that slot is an empty
   54 dp spacer (it only keeps the figures centered against End), so pause takes it and the FAB stack

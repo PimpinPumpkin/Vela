@@ -107,6 +107,15 @@ prefers it. The step list is reachable in both layouts, because the bar's chevro
 as well as a handle. And while paused, one tap resumes wherever the control lives: the glyph
 already says what the tap will do.
 
+### The faster-route offer
+
+Every couple of minutes the drive re-asks whether a better route exists, and an alternate that
+saves more than a minute and a half is offered. The offer does not wait for you. A bar drains
+across the bottom of the card for ten seconds, longer on a phone driven by keys, and then it acts
+on its own: by default it takes the route, which is what Google does and what the offer is for.
+Turn "Take faster routes automatically" off and an unanswered offer is dismissed instead. What it
+never does is sit on the map waiting for a driver to deal with it.
+
 ## Limits
 
 - **Distance left does not account for your detour.** It stays the route's remaining distance
