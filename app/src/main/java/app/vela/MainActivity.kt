@@ -31,6 +31,19 @@ class MainActivity : ComponentActivity() {
         super.attachBaseContext(AppLocale.wrap(app.vela.ui.AdaptiveDensity.wrap(newBase)))
     }
 
+    /** The LIVE configuration, kept for the Compose tree. The manifest declares `configChanges`
+     *  for orientation/screenSize, so Android hands the change to this Activity and never notifies
+     *  the application-level callbacks Compose's own `LocalConfiguration` listens to - so rotating
+     *  the phone left every `LocalConfiguration.current` read stuck on the PREVIOUS orientation
+     *  (the landscape side panels stayed portrait-shaped until the app was restarted, user
+     *  2026-09-17). Providing this state below keeps every screen-size read honest. */
+    private val liveConfig = androidx.compose.runtime.mutableStateOf<android.content.res.Configuration?>(null)
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        liveConfig.value = android.content.res.Configuration(newConfig)
+    }
+
     override fun onResume() {
         super.onResume()
         // The 12/24-hour clock setting can change while Vela sits in the background (issue #357).
@@ -76,8 +89,13 @@ class MainActivity : ComponentActivity() {
                 controller.isAppearanceLightStatusBars = !dark
                 controller.isAppearanceLightNavigationBars = !dark
             }
-            VelaTheme(darkTheme = dark) {
-                VelaRoot(vm = vm)
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalConfiguration provides
+                    (liveConfig.value ?: androidx.compose.ui.platform.LocalConfiguration.current),
+            ) {
+                VelaTheme(darkTheme = dark) {
+                    VelaRoot(vm = vm)
+                }
             }
         }
     }

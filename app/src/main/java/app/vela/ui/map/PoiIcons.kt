@@ -151,8 +151,15 @@ object PoiIcons {
     /** Register a NUMBERED STOP pin ("vela-stopnum-<n>"): brand-teal circle, white ring and
      *  number, a short tail so the tip marks the spot - the trip's intermediate stops drawn in
      *  visit order (theme-independent; the teal is VelaTeal, bitmaps can't read the theme). */
-    fun ensureStopNumberIcon(style: Style, n: Int): String {
-        val key = "vela-stopnum-$n"
+    /** The DESTINATION pin: the same teardrop as a numbered stop, wearing a flag instead of a
+     *  number, so the end of a trip reads as the end and not as "one more stop" (user 2026-09-17). */
+    fun ensureDestinationPin(style: Style, context: Context): String = ensureStopNumberIcon(style, DESTINATION_PIN, context)
+
+    /** Sentinel [n] for [ensureStopNumberIcon]: draw the flag glyph rather than a digit. */
+    const val DESTINATION_PIN = -1
+
+    fun ensureStopNumberIcon(style: Style, n: Int, context: Context? = null): String {
+        val key = if (n == DESTINATION_PIN) "vela-stop-dest" else "vela-stopnum-$n"
         if (style.getImage(key) != null) return key
         val w = 84
         val h = 100
@@ -197,8 +204,20 @@ object PoiIcons {
             textSize = w * 0.40f
             textAlign = Paint.Align.CENTER
         }
-        val fm = text.fontMetrics
-        canvas.drawText("$n", cx, bodyCy - (fm.ascent + fm.descent) / 2f, text)
+        if (n == DESTINATION_PIN) {
+            // The icon font's flag glyph, same white-on-teal as the numbers.
+            val glyph = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                typeface = context?.let { typeface(it) }
+                color = Color.WHITE
+                textSize = w * 0.46f
+                textAlign = Paint.Align.CENTER
+            }
+            val gfm = glyph.fontMetrics
+            canvas.drawText(String(Character.toChars(0xe153)), cx, bodyCy - (gfm.ascent + gfm.descent) / 2f, glyph)
+        } else {
+            val fm = text.fontMetrics
+            canvas.drawText("$n", cx, bodyCy - (fm.ascent + fm.descent) / 2f, text)
+        }
         style.addImage(key, bmp)
         return key
     }

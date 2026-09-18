@@ -249,6 +249,13 @@ private const val PUCK_LABEL_GAP_PX = 62
 // chips) above the body, and the least the body may shrink to.
 private const val CHOOSER_MAP_STRIP_DP = 96f
 private const val CHOOSER_HEADER_DP = 84f
+// Landscape leaves a thinner strip of map: the column is short, and the endpoints card above it is
+// what the panel must not reach.
+private const val CHOOSER_MAP_STRIP_LAND_DP = 16f
+// Landscape floors: the expandable body may shrink to one row, and the card itself never gets
+// squeezed below a usable height even if the endpoints card is unusually tall.
+private const val CHOOSER_BODY_MIN_LAND_DP = 64f
+private val CHOOSER_CARD_MIN_LAND_DP = 170.dp
 // How far down the ramp the exit callout sits, past the maneuver point where the ramp leaves.
 private const val EXIT_CALLOUT_AHEAD_M = 70.0
 private const val CHOOSER_BODY_MIN_DP = 120f
@@ -1131,7 +1138,10 @@ fun MapScreen(
                     routeBubblesFor(state.routes, state.routes.indexOf(state.activeRoute).coerceAtLeast(0), detailed = altsOpen)
                 }
             } else emptyList(),
-            markers = markersOf(state, filteredResultIds),
+            // ROUTE CHOOSER: only the trip's own points draw. The rest of the search results are
+            // noise once you are choosing a route, and they crowd the very pins that matter
+            // (user 2026-09-17). The destination gets its flag pin below, so it drops out here too.
+            markers = if (state.directionsOpen && !state.navigating) emptyList() else markersOf(state, filteredResultIds),
             frameMarkers = state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed,
             holdMarkerFit = state.selected != null || state.streetView != null || state.streetViewLoading,
             // The endpoints card's measured bottom edge: the route fit frames start/end in the
@@ -1139,6 +1149,9 @@ fun MapScreen(
             cameraTopInsetPx = if (state.directionsOpen && !state.navigating) topCardBottomPx else 0,
             // Numbered stop pins while the trip UI is active (chooser, editor or the drive itself).
             stopPins = if (state.directionsOpen || state.navigating) state.directionsWaypoints.map { it.location } else emptyList(),
+            destinationPin = if (state.directionsOpen && !state.navigating) {
+                if (state.directionsReversed) state.directionsOrigin?.location ?: state.myLocation else state.selected?.location
+            } else null,
             navMode = state.navigating,
             navDriveMode = state.travelMode == app.vela.core.model.TravelMode.DRIVE,
             navLabelExclude = navLabelExclude,
@@ -2113,13 +2126,27 @@ fun MapScreen(
                     },
                     minimizeTick = dirPanTick,
                     onCollapsedChange = { dirMinimized = it },
-                    bodyMaxDp = if (landscapeChrome) null else with(LocalDensity.current) {
-                        (screenHeightPx.toDp().value - topCardBottomPx.toDp().value - CHOOSER_MAP_STRIP_DP - CHOOSER_HEADER_DP)
-                            .coerceAtLeast(CHOOSER_BODY_MIN_DP)
+                    // LANDSCAPE gets the cap too (user 2026-09-17: the panel grew over the
+                    // endpoints card). The column is short there, so the panel must stop under the
+                    // card rather than assume it can take 58% of the screen.
+                    bodyMaxDp = with(LocalDensity.current) {
+                        val strip = if (landscapeChrome) CHOOSER_MAP_STRIP_LAND_DP else CHOOSER_MAP_STRIP_DP
+                        (screenHeightPx.toDp().value - topCardBottomPx.toDp().value - strip - CHOOSER_HEADER_DP)
+                            .coerceAtLeast(if (landscapeChrome) CHOOSER_BODY_MIN_LAND_DP else CHOOSER_BODY_MIN_DP)
                     },
+                    compact = landscapeChrome,
                     modifier = Modifier
                         .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
                         .onGloballyPositioned { dirPanelTopRaw = it.boundsInWindow().top.roundToInt() }
+                        // The WHOLE card is capped in landscape, header and buttons included: the
+                        // body cap alone still let the fixed chrome grow over the endpoints card.
+                        .then(
+                            if (!landscapeChrome) Modifier else Modifier.heightIn(
+                                max = with(LocalDensity.current) {
+                                    (screenHeightPx - topCardBottomPx).toDp() - CHOOSER_MAP_STRIP_LAND_DP.dp
+                                }.coerceAtLeast(CHOOSER_CARD_MIN_LAND_DP),
+                            ),
+                        )
                         .landscapeColumn(landscapeChrome, sidePanelWidthDp),
                 )
             }
