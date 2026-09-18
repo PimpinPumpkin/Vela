@@ -323,10 +323,10 @@ fun MapScreen(
         snapshotFlow { dirPanelTopRaw }.debounce(140).collect { dirPanelTopPx = it }
     }
     LaunchedEffect(state.directionsOpen) { if (!state.directionsOpen) { dirPanelTopRaw = 0; dirPanelTopPx = 0 } }
-    // Google-style chooser: "Compare routes" swaps in the classic route list (length, main roads,
-    // cameras per route) until BACK or the directions close.
-    var classicRoutes by remember { mutableStateOf(false) }
-    LaunchedEffect(state.directionsOpen) { if (!state.directionsOpen) classicRoutes = false }
+    // The Google-style chooser's alternates pane: the list slides in over the panel's body and BACK
+    // brings the Google view back. While it is open the map's bubbles carry the same detail.
+    var altsOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(state.directionsOpen) { if (!state.directionsOpen) altsOpen = false }
     // Landscape (width > height): the browse top chrome collapses to ONE line (half-width search
     // bar + the chips beside it, Google's landscape layout) and the top-right corner stack
     // (layers button, compass) rises a row - on a phone's ~390dp landscape height the stacked
@@ -622,7 +622,7 @@ fun MapScreen(
         when {
             state.transitNav != null -> vm.endTransitNav()
             state.pickOnMap != null -> vm.cancelChooseOnMap()
-            classicRoutes && state.directionsOpen && !searchOpen && !state.navigating && !state.showSteps && !state.editingStops -> classicRoutes = false
+            altsOpen && state.directionsOpen && !searchOpen && !state.navigating && !state.showSteps && !state.editingStops -> altsOpen = false
             // Disengage map control only when nothing more prominent is open (a sheet /
             // search / route sitting on top should peel first).
             mapEngaged && !searchOpen && !state.showSteps && !state.navigating &&
@@ -1127,7 +1127,9 @@ fun MapScreen(
             routeBubbles = if (state.directionsOpen && !state.navigating && state.routes.size > 1 &&
                 state.travelMode != app.vela.core.model.TravelMode.TRANSIT
             ) {
-                remember(state.routes, state.activeRoute) { routeBubblesFor(state.routes, state.routes.indexOf(state.activeRoute).coerceAtLeast(0)) }
+                remember(state.routes, state.activeRoute, altsOpen) {
+                    routeBubblesFor(state.routes, state.routes.indexOf(state.activeRoute).coerceAtLeast(0), detailed = altsOpen)
+                }
             } else emptyList(),
             markers = markersOf(state, filteredResultIds),
             frameMarkers = state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed,
@@ -2038,7 +2040,7 @@ fun MapScreen(
             // Hidden while the search overlay is up (e.g. picking a custom origin) so
             // the panel doesn't render over it.
             state.directionsOpen && !searchOpen && state.pickOnMap == null &&
-                app.vela.ui.Experiments.googleChooser.value && !classicRoutes && state.travelMode != app.vela.core.model.TravelMode.TRANSIT -> {
+                app.vela.ui.Experiments.googleChooser.value && state.travelMode != app.vela.core.model.TravelMode.TRANSIT -> {
                 val shareCtx = LocalContext.current
                 val destLabel = if (state.directionsReversed) (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location))
                 else (state.selected?.name ?: stringResource(R.string.mapscreen_destination))
@@ -2063,7 +2065,9 @@ fun MapScreen(
                     onSearchAlongRoute = vm::searchAlongRoute,
                     onTimeSelected = vm::setDirectionsTime,
                     onEditStops = vm::openStopsEditor,
-                    onCompareRoutes = { classicRoutes = true },
+                    altsOpen = altsOpen,
+                    onAltsOpenChange = { altsOpen = it },
+                    onSelectRoute = vm::selectRoute,
                     onShare = {
                         val dest = state.selected
                         val body = listOfNotNull(
@@ -5321,7 +5325,11 @@ private fun Modifier.landscapeColumn(landscape: Boolean, widthDp: androidx.compo
 /** Where each route's time bubble goes (the Google-style chooser experiment): on the part of the
  *  route that runs farthest from the other routes, so the bubbles sit where the choices differ
  *  instead of stacking on the shared stretch. Sampled (routes can be thousands of points long). */
-private fun routeBubblesFor(routes: List<app.vela.core.model.Route>, activeIdx: Int): List<app.vela.ui.map.RouteBubble> {
+private fun routeBubblesFor(
+    routes: List<app.vela.core.model.Route>,
+    activeIdx: Int,
+    detailed: Boolean = false,
+): List<app.vela.ui.map.RouteBubble> {
     if (routes.isEmpty()) return emptyList()
     fun sample(p: List<app.vela.core.model.LatLng>, n: Int): List<app.vela.core.model.LatLng> =
         if (p.size <= n) p else List(n) { p[(it.toLong() * (p.size - 1) / (n - 1)).toInt()] }
@@ -5348,11 +5356,21 @@ private fun routeBubblesFor(routes: List<app.vela.core.model.Route>, activeIdx: 
         else cand.sortedByDescending { p -> others.minOf { distM(p, it) } }
         val at = ranked.firstOrNull { p -> placed.none { distM(p, it) < minGap } } ?: ranked.first()
         placed += at
+        // With the list open the bubble says what the row says: the distance, and for a slower
+        // route how much longer it is than the fastest (user 2026-09-17).
+        val fastest = routes.minOf { it.durationInTrafficSeconds ?: it.durationSeconds }
+        val eta = r.durationInTrafficSeconds ?: r.durationSeconds
+        val delta = (eta - fastest).toInt()
+        val sub = if (!detailed) null else buildString {
+            append(app.vela.ui.formatDistance(r.distanceMeters))
+            if (delta >= 60) append("  +").append(app.vela.ui.formatDuration(delta.toDouble()))
+        }
         app.vela.ui.map.RouteBubble(
             index = i,
             at = at,
-            label = app.vela.ui.formatDuration(r.durationInTrafficSeconds ?: r.durationSeconds),
+            label = app.vela.ui.formatDuration(eta),
             selected = i == activeIdx,
+            sub = sub,
         )
     }
 }
