@@ -35,6 +35,24 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The other two bans that are about how the repo reads, checked rather than remembered: no AI
+      # attribution in a commit message (the assistant's own harness can be told to add one, and
+      # that has slipped through) and no em dash in what a change ADDS. Runs before the location
+      # scan because it needs no secret, so a fork PR still gets it.
+      - name: Writing rules (no AI attribution, no em dashes)
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"; HEAD="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE="${{ github.event.before }}"; HEAD="${{ github.sha }}"
+            if [ "$BASE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+              BASE="$HEAD~1"
+            fi
+          fi
+          git cat-file -e "$BASE^{commit}" 2>/dev/null || { echo "::notice::no comparable base; skipping"; exit 0; }
+          bash scripts/check-writing.sh "$BASE..$HEAD"
+
       - name: Scan the diff for location terms
         env:
           TERMS: ${{ secrets.LOCATION_TERMS }}

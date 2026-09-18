@@ -5030,10 +5030,12 @@ private fun FasterRouteCard(
     Card(
         modifier
             .fillMaxWidth()
-            // OVER the content, not behind it: a Card paints its own opaque container, so a
-            // drawBehind bar is hidden under it and shows only through the rounded corners (caught
-            // on the device, 2026-09-18). Read in the DRAW phase either way, so the countdown
-            // never recomposes the card.
+            // Clipped to the card's own shape, or a square-cornered bar hangs off the rounded
+            // bottom corners (user, on the device). OVER the content, not behind it: a Card paints
+            // an opaque container, so a drawBehind bar is hidden under it and shows only where the
+            // corners expose it. Read in the DRAW phase either way, so the countdown never
+            // recomposes the card.
+            .clip(CardDefaults.shape)
             .drawWithContent {
                 drawContent()
                 val h = 4.dp.toPx()
