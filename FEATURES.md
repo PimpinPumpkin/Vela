@@ -720,6 +720,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Map rotation/tilt + heading-up mode during nav (tilted follow-camera, speed-adaptive zoom)
 
 ## Search & POIs (live Google data)
+- ✅ **Tapping a place opens that place (2026-09-18).** In a plaza, tapping a supermarket could open
+  a coin machine, a coffee counter inside it, or the brand's fuel station. Two reasons, both fixed.
+  The map ranked everything in the touch area by distance to each feature's own point, but a place
+  icon hangs above its point like a pin while a small dot sits on its point, so a dot a few metres
+  away measured closer to the finger than the icon being aimed at; now the map asks what is actually
+  drawn at the pixel under the finger first, and only falls back to the wider area when nothing is
+  there, so small dots stay tappable. And when Vela looks the tapped place up, a listing whose name
+  IS the tapped name now beats a nearer one with extra words, so the store wins over the store's
+  fuel station.
 - ✅ **Tapped house numbers keep their own street (issue #231, 2026-08-03).** The address built
   for a tapped house-number label used the number from the label but the street from Google's
   reverse geocode, which snaps to the nearest addressable point and around corners routinely

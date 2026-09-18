@@ -2853,7 +2853,34 @@ fun VelaMapView(
                     // nearest candidate across both wins; ambient still carries its richer data when
                     // it IS the nearest. (Handled below, after the alternate-route check, so a route
                     // pick keeps its priority.)
-                    val amb = feats.filter { it.hasProperty(AMBIENT_INDEX_PROP) }.minByOrNull(::screenDist2)
+                    // WHAT YOU TOUCHED WINS (user 2026-09-18: tapping a supermarket kept opening a
+                    // coin machine, a coffee counter inside it, or the brand's fuel station). Two
+                    // things were wrong with ranking the box's contents by distance to the feature's
+                    // POINT. A place icon is a teardrop anchored at its TIP, so the blob you aim at
+                    // sits ~40 px above the point the distance is measured to, while a tenant DOT is
+                    // drawn on its own point - so a dot metres away routinely measured nearer to the
+                    // finger than the icon under it. And a 4 px dot had the same claim as a 60 px
+                    // labelled pin. A rendered query at the finger's own pixel asks MapLibre what is
+                    // actually DRAWN there, icons only; when something is, nothing else can win.
+                    val tapStyle = map.style
+                    val bizIconLayers = if (tapStyle == null) emptyList() else (
+                        listOf(AMBIENT_LAYER) +
+                            tapStyle.layers.map { l -> l.id }.filter { id -> id.startsWith("vela-places-") && !id.startsWith("vela-places-dots-") } +
+                            OSM_POI_LAYERS
+                        ).filter { id -> tapStyle.getLayer(id) != null }
+                    val underFinger = if (bizIconLayers.isEmpty()) emptyList() else
+                        runCatching { map.queryRenderedFeatures(p, *bizIconLayers.toTypedArray()) }.getOrNull().orEmpty()
+                    // Dots stay tappable, and so does a tap a hair off an icon: the pixel answer is
+                    // used only when it actually holds a named place, otherwise the old box rules run.
+                    val bizPool = underFinger.takeIf { u ->
+                        u.any { f ->
+                            f.geometry() is Point &&
+                                sequenceOf("name", "name:latin", "name:en").any { k ->
+                                    f.hasProperty(k) && !f.getStringProperty(k).isNullOrBlank()
+                                }
+                        }
+                    } ?: feats
+                    val amb = bizPool.filter { it.hasProperty(AMBIENT_INDEX_PROP) }.minByOrNull(::screenDist2)
                     // Tap a grayed alternate route line to switch to it (Google-style).
                     val altHit = map.queryRenderedFeatures(
                         RectF(p.x - r, p.y - r, p.x + r, p.y + r), ROUTE_BUBBLE_LAYER, ALT_ROUTE_LAYER,
@@ -2867,7 +2894,7 @@ fun VelaMapView(
                     fun nameOf(f: Feature): String? = sequenceOf("name", "name:latin", "name:en")
                         .firstOrNull { f.hasProperty(it) && !f.getStringProperty(it).isNullOrBlank() }
                         ?.let { f.getStringProperty(it) }
-                    val hit = feats
+                    val hit = bizPool
                         .filter {
                             it.geometry() is Point && nameOf(it) != null &&
                                 !it.hasProperty(AMBIENT_INDEX_PROP) && !it.hasProperty(MARKER_INDEX_PROP) &&

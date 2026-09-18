@@ -1176,7 +1176,15 @@ Defaults that make the safe path the easy one:
   deliberate flows (Add stop -> choose on map, the origin picker) are ungated. The STEPS SHEET also
   dismisses by a swipe down anywhere on the body once its list is at the top - a nested-scroll
   connection feeding the card's existing drag offset (the place-sheet dismissConn grammar); mid-list
-  swipes still scroll. **The named-POI resolve is
+  swipes still scroll. **TAP WHAT IS DRAWN (user 2026-09-18, "if we tap on something, it needs to open that shit").**
+  Before any ranking, `handleTap` asks `queryRenderedFeatures(p, *bizIconLayers)` - the ambient
+  layer, the open-places ICON layers (never `vela-places-dots-*`) and the OSM poi tiers - what is
+  rendered at the finger's own pixel; a non-empty answer becomes the whole pool for the business
+  pick. Ranking the 24 dp box by distance to each feature's POINT put two thumbs on the scale: a
+  place icon is bottom-anchored, so the blob the user aims at is ~40 px above the point being
+  measured, while a tenant DOT is drawn on its own point - so a coin machine or a counter inside
+  the store measured NEARER than the store whose icon was under the finger. Empty answer = the old
+  box rules, so dots stay tappable. **The named-POI resolve is
   NAME-AGREEING first (2026-07-14):** onPoiTap searches the tapped name, but the pick used to
   ignore it - bare `nearest` plus the 35 m most-reviewed override let a strip mall's popular
   NEIGHBOR steal the tap (Google's per-listing pins in a shared building are loose; a sushi
@@ -1190,6 +1198,12 @@ Defaults that make the safe path the easy one:
   name has to be within `NO_NAME_MATCH_M` (60 m, the same lot) rather than anywhere inside the
   1.5 km cap. Nothing left to adopt = the tapped label keeps its own name and point, which for an
   open-places tap still carries the tile's address, phone and hours. The
+  EXACT NAME WINS (2026-09-18): `nameAgrees` must stay loose enough for a co-branded pair, so a
+  brand's fuel station, pharmacy and in-store counter all qualify and the pick was then whoever sat
+  nearest the tapped point - the "tapped the store, got the fuel station" report. The pool is
+  narrowed to listings whose NORMALIZED name equals the tapped one (lowercase, punctuation out,
+  trailing store number dropped - `normalizedPlaceName`, the bake's snap-key rule) whenever any
+  exist. The
   clear-dominance duplicate override still runs WITHIN the pool (a co-brand's two profiles both
   agree with the tapped label, and the rich one should win). **And the pick must be NEAR THE
   TAP (issue #429, 2026-09-14):** a town label for Salem, Arkansas searched "Salem" and Google's
