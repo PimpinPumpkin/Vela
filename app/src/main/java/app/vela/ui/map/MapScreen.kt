@@ -131,7 +131,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import kotlin.math.roundToInt
 import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.flow.debounce
@@ -5030,9 +5030,13 @@ private fun FasterRouteCard(
     Card(
         modifier
             .fillMaxWidth()
-            // Read in the DRAW phase, so the countdown never recomposes the card.
-            .drawBehind {
-                val h = 3.dp.toPx()
+            // OVER the content, not behind it: a Card paints its own opaque container, so a
+            // drawBehind bar is hidden under it and shows only through the rounded corners (caught
+            // on the device, 2026-09-18). Read in the DRAW phase either way, so the countdown
+            // never recomposes the card.
+            .drawWithContent {
+                drawContent()
+                val h = 4.dp.toPx()
                 drawRect(
                     color = barColor,
                     topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - h),
