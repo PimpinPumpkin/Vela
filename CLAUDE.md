@@ -3700,6 +3700,19 @@ Gotchas:
   on-device A/B - Kokoro was ~0.4× realtime even on a Pixel 9. `MapViewModel` reclaims their old model
   dirs and sanitizes stale `vela.kokoro`/`vela.matcha` prefs to Piper. `project_vela_kokoro_tts` memory
   is that historical record, not the current design.)**
+- **PAUSE THE DRIVE (`NavSession.paused`, user 2026-09-18).** A nav FAB and a notification action
+  hold the drive: `onLocation` records the fix and returns before the engine, so there is no engine
+  update, no off-route detection, no reroute, no arrival, no stop cue, no voice, no live-traffic
+  recheck and no faster-route offer - everything is downstream of that one call. The puck keeps
+  moving (it is drawn from the raw fix) and the arrival clock keeps sliding on a 30 s tick in the
+  bar, because what the stop is costing you is the one figure that should move while you stand
+  still. Resume reroutes once from where you are when the stop took you off the route
+  (perpendicular distance vs `NavEngine.offRouteCorridor`), else speaks the current instruction and
+  carries on. **Auto-resume is ARMED by the stop, not by the pause:** a fix that is stationary or
+  off the route sets `autoResumeArmed`, and only then do `AUTO_RESUME_HITS` (3) consecutive moving,
+  on-route fixes resume it. Without the arming step, pausing while still rolling down the route
+  resumed itself three fixes later - a pause button that does not pause (device, the day it was
+  built). Android Auto has no pause control yet.
 - Nav feedback: spoken guidance (`VoiceGuide`) + **direction-coded haptic turn cues**
   (`core/feedback/Haptics`, `NavEvent.Haptic`); toggle in Settings → Navigation. **Reroute buzzes
   too (2026-07-10):** `Haptics.reroute(mode)` (three ticks + a long buzz, distinct from every turn

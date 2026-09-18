@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.runtime.getValue
@@ -703,6 +704,7 @@ fun NavControls(
     remainingDistanceMeters: Double,
     remainingSeconds: Double,
     offRoute: Boolean,
+    paused: Boolean = false,
     onStop: () -> Unit,
     onSteps: () -> Unit,
     trafficRatio: Double? = null,
@@ -786,6 +788,7 @@ fun NavControls(
             remainingDistanceMeters = remainingDistanceMeters,
             remainingSeconds = remainingSeconds,
             offRoute = offRoute,
+            paused = paused,
             onStop = onStop,
             onSteps = onSteps,
             trafficRatio = trafficRatio,
@@ -821,6 +824,7 @@ fun NavBarTop(
     remainingDistanceMeters: Double,
     remainingSeconds: Double,
     offRoute: Boolean,
+    paused: Boolean = false,
     onStop: () -> Unit,
     onSteps: () -> Unit,
     trafficRatio: Double?,
@@ -908,12 +912,22 @@ fun NavBarTop(
                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                     color = etaColor,
                 )
+                // While PAUSED nothing updates the nav state, so nothing would recompose this and
+                // the arrival clock would sit frozen at whatever minute the stop began - the one
+                // figure that should keep moving while you stand still, because it is what the stop
+                // is costing you. A half-minute tick keeps it honest.
+                var pausedTick by remember { mutableStateOf(0) }
+                LaunchedEffect(paused) { while (paused) { kotlinx.coroutines.delay(30_000); pausedTick++ } }
                 FitText(
                     formatDistance(remainingDistanceMeters) +
-                        " · " + formatArrivalClock(remainingSeconds) +
-                        if (offRoute) " · " + stringResource(R.string.nav_rerouting) else "",
+                        " · " + formatArrivalClock(remainingSeconds).also { pausedTick } +
+                        when {
+                            paused -> " · " + stringResource(R.string.nav_paused)
+                            offRoute -> " · " + stringResource(R.string.nav_rerouting)
+                            else -> ""
+                        },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = SheetPalette.dim(dark),
+                    color = if (paused) MaterialTheme.colorScheme.primary else SheetPalette.dim(dark),
                 )
             }
             Spacer(Modifier.width(8.dp))

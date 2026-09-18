@@ -72,6 +72,14 @@ class NavigationService : Service() {
             teardown()
             return START_NOT_STICKY
         }
+        // Pause/resume from the notification: the phone is usually in a cradle and the stop you
+        // are pulling into is decided from behind the wheel, so the hold has to be reachable
+        // without unlocking and finding the map (user 2026-09-18). It toggles the same session
+        // state the map's Pause button does, and the card re-renders on the next state tick.
+        if (intent?.action == ACTION_PAUSE) {
+            navSession.setPaused(!navSession.state.value.paused)
+            return START_STICKY
+        }
 
         // Foreground promotion can throw on Android 14+ (e.g. ForegroundServiceStart-
         // NotAllowed, or a SecurityException when the location grant isn't in the state
@@ -175,6 +183,11 @@ class NavigationService : Service() {
             this, 1, Intent(this, NavigationService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+        val pause = PendingIntent.getService(
+            this, 2, Intent(this, NavigationService::class.java).setAction(ACTION_PAUSE),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val paused = navSession.state.value.paused
         // The big left-hand arrow: the CURRENT maneuver's glyph (white on Vela teal), so the
         // notification shows WHAT to do, not just how far. Cached per type - state ticks every
         // second and re-rasterizing an identical bitmap each tick is waste.
@@ -207,6 +220,11 @@ class NavigationService : Service() {
             .setOnlyAlertOnce(true)
             .setShowWhen(false) // the post time is noise on a continuously-updating nav card
             .setContentIntent(open)
+            .addAction(
+                0,
+                getString(if (paused) R.string.navservice_notif_action_resume else R.string.navservice_notif_action_pause),
+                pause,
+            )
             .addAction(0, getString(R.string.navservice_notif_action_end), stop)
             .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -296,6 +314,7 @@ class NavigationService : Service() {
     companion object {
         private const val TAG = "VelaNavService"
         private const val ACTION_STOP = "app.vela.service.NAV_STOP"
+        private const val ACTION_PAUSE = "app.vela.service.NAV_PAUSE"
         private const val CHANNEL_ID = "vela_nav"
         private const val TURN_CHANNEL_ID = "vela_nav_turns"
         private const val NOTIF_ID = 42

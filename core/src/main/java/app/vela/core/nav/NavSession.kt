@@ -46,6 +46,14 @@ class NavSession @Inject constructor(
 ) {
     data class State(
         val navigating: Boolean = false,
+        /**
+         * The drive is HELD: the route, the stops and the remaining figures stay exactly as they
+         * are, and every per-fix behaviour stops - no engine update, no off-route detection, no
+         * reroute, no voice, no stop cues, no live-traffic recheck or faster-route offer. The puck
+         * still follows you (the map draws it from the raw fix), so pulling into a fuel station
+         * does not make the app argue with you about it (user 2026-09-18).
+         */
+        val paused: Boolean = false,
         val arrived: Boolean = false,
         val route: Route? = null,
         val nav: NavState = NavState(),
@@ -80,6 +88,17 @@ class NavSession @Inject constructor(
     // is biased toward a parallel road), the voice line rate-limited separately (a silent retry
     // shouldn't re-announce), and a GENERATION stamp so a fetch that completes after stop()/a new
     // start() can't resurrect the previous destination's route into the fresh session.
+    /** The last fix we saw, paused or not: resume decides from it whether we are still on the
+     *  route, and auto-resume needs somewhere to measure from. */
+    @Volatile private var lastLoc: LatLng? = null
+    @Volatile private var lastBearing: Double? = null
+    /** Consecutive paused fixes that are moving AND back on the route (see [maybeAutoResume]). */
+    private var backOnRouteHits = 0
+    /** Auto-resume is ARMED only once the stop has actually happened - a fix that is stationary or
+     *  off the route. Without it, pausing while still rolling along the route resumed itself three
+     *  fixes later, which is a pause button that does not pause (device, 2026-09-18). */
+    private var autoResumeArmed = false
+
     private var rerouteJob: Job? = null
     private var rerouteStartedMs = 0L
     /** Deadline the in-flight reroute is running under (see [rerouteAttempt]). */
@@ -321,6 +340,15 @@ class NavSession @Inject constructor(
         val s = _state.value
         val route = s.route ?: return
         if (!s.navigating || s.arrived) return
+        // PAUSED: remember where we are (resume needs it) and do nothing else. Returning before
+        // the engine is what makes the hold total - events are what speak, reroute, count stops
+        // and arrive, and they are all downstream of this call.
+        lastLoc = loc
+        lastBearing = bearingDeg
+        if (s.paused) {
+            maybeAutoResume(loc, route, speedMps, accuracyM)
+            return
+        }
 
         // Consume a failed-reroute latch clear HERE, on the location thread, so the engine
         // computes FROM the cleared state (4 more deviated fixes → natural retry) — clearing it
@@ -418,6 +446,69 @@ class NavSession @Inject constructor(
      *  maneuver lines were read by hand. Never pass a coordinate through here. */
     var onNote: ((String) -> Unit)? = null
     private fun note(msg: String) { diag.record("nav", msg); onNote?.invoke(msg) }
+
+    /**
+     * Hold the drive, or let it go again.
+     *
+     * Pausing keeps the plan and freezes the figures. Resuming does the one thing a driver
+     * actually wants after a stop: if we have wandered off the route (a fuel station across the
+     * junction, a car park round the back), reroute once from where we are; if we are still on
+     * it, just carry on, and say the current instruction so the drive picks back up out loud.
+     */
+    fun setPaused(on: Boolean) {
+        val s = _state.value
+        if (!s.navigating || s.paused == on) return
+        backOnRouteHits = 0
+        autoResumeArmed = false
+        _state.update { it.copy(paused = on) }
+        note(if (on) "paused" else "resumed")
+        if (on) return
+        val route = s.route ?: return
+        val loc = lastLoc ?: return
+        val off = perpendicularToRouteM(route, loc) > NavEngine.offRouteCorridor(mode, null)
+        if (off) {
+            note("resumed off the route -> rerouting")
+            reroute(loc, lastBearing)
+        } else {
+            voice.speak(_state.value.maneuverText, interrupt = false)
+        }
+    }
+
+    /**
+     * Rolling away from the stop resumes by itself, because forgetting to un-pause is the obvious
+     * way this feature bites: driving on with a frozen banner is worse than never having paused.
+     * It takes [AUTO_RESUME_HITS] consecutive fixes that are both moving and inside the route
+     * corridor, so creeping across a forecourt that happens to touch the route does not count.
+     */
+    private fun maybeAutoResume(loc: LatLng, route: Route, speedMps: Double?, accuracyM: Double?) {
+        val movingFloor = when (mode) {
+            TravelMode.WALK -> 0.6
+            TravelMode.BICYCLE -> 1.0
+            else -> 2.0
+        }
+        val moving = (speedMps ?: 0.0) >= movingFloor
+        val onRoute = perpendicularToRouteM(route, loc) <= NavEngine.offRouteCorridor(mode, accuracyM)
+        // The stop itself arms it: standing still, or leaving the route. Until one of those
+        // happens, a pause holds no matter how long you keep driving down the same road.
+        if (!moving || !onRoute) autoResumeArmed = true
+        if (!autoResumeArmed) return
+        backOnRouteHits = if (moving && onRoute) backOnRouteHits + 1 else 0
+        if (backOnRouteHits >= AUTO_RESUME_HITS) {
+            backOnRouteHits = 0
+            note("auto-resumed: moving and back on the route")
+            _state.update { it.copy(paused = false) }
+            voice.speak(_state.value.maneuverText, interrupt = false)
+        }
+    }
+
+    /** How far [loc] sits off the route line, in metres, measured the way the engine measures it
+     *  (the anchor is our current progress, so an out-and-back route does not match the wrong leg). */
+    private fun perpendicularToRouteM(route: Route, loc: LatLng): Double {
+        val path = route.polyline
+        if (path.size < 2) return Double.MAX_VALUE
+        val cum = RouteProjection.cumulative(path)
+        return NavEngine.projectNearAnchor(path, cum, loc, _state.value.nav.traveledM).second
+    }
 
     fun acceptFasterRoute() {
         val faster = _state.value.fasterRoute ?: return
@@ -867,6 +958,9 @@ class NavSession @Inject constructor(
     // Public for destinationDisplay (callers build the arrive-step lines before start());
     // the tuning constants stay implementation detail by convention.
     companion object {
+        /** Consecutive moving, on-route fixes before a paused drive resumes itself. Three fixes is
+         *  a few seconds of actually driving, not a crawl across a forecourt that clips the route. */
+        const val AUTO_RESUME_HITS = 3
         const val RECHECK_INTERVAL_MS = 120_000L   // re-check traffic every ~2 min
         const val DEGRADED_RECHECK_INTERVAL_MS = 20_000L // fast heal cadence while the route is degraded
         const val DEGRADED_FAST_TRIES = 6          // ~2 min of fast heal attempts per degraded route
