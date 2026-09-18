@@ -2407,9 +2407,10 @@ architecture note.
   directory itself, same layout as the app's `PmtilesReader`) and builds a real `zstd --patch-from`
   delta, which is the number the decision turns on. `.github/workflows/places-churn.yml <region>
   <days>` bakes a region twice, against a dated Geofabrik extract and today's, and writes the table
-  to the job summary; it publishes nothing. Andorra over 6 days: 11% of tiles, 25% of bytes, delta
-  22% of a full download. Run it on a STATE before building a delta pipeline - a small archive
-  exaggerates what one edit touches.
+  to the job summary; it publishes nothing. Kentucky over 7 days: 1.3% of tiles, 3.2% of bytes, delta 4.4 MB
+  vs a 183 MB archive; Andorra over 6 days reads 11% / 25% / 22%, so ALWAYS measure a region the
+  size of the ones people download - a small archive exaggerates what one edit touches. Verdict:
+  deltas are worth building (ROADMAP has the shape and the two open decisions).
 - **OSM BUSINESSES ARE A SOURCE IN THE PLACES BAKE (2026-09-18, user ask):** named business NODES
   from the region's Geofabrik extract are inserted into `raw` beside Overture and AllThePlaces,
   through the SHARED `osmcat(props)` / `isbiz(props)` macros (lifted out of the ATP block so both

@@ -1005,8 +1005,9 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   both archives' PMTiles directories, hashes every tile, and reports per zoom what is identical,
   changed, added and dropped plus a real `zstd --patch-from` delta; `places-churn.yml` bakes a region
   twice, against an OSM extract from N days ago and today's, so the difference is exactly what a
-  scheduled rebake picks up. Andorra over six days: 11% of tiles, 25% of bytes, delta 22% of a full
-  download.
+  scheduled rebake picks up. Kentucky over seven days: 1.3% of tiles, 3.2% of bytes, delta 4.4 MB against a 183 MB
+  archive. Andorra over six days reads 11% / 25% / 22%, which is a small archive exaggerating what
+  one edit touches, so measure a region the size of the ones people download.
 - **A seventh of the catalog rebakes nightly**, so an OSM edit reaches the map on its own within a
   week, and `only=<region>` ships one region in about two minutes. Not the whole catalog nightly:
   every archive would be re-published every night, and anyone who downloaded a region would be

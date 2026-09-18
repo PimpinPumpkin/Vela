@@ -666,21 +666,39 @@ project's core promise is that neither exists:
 
 ## Queued near-term
 
-- **Delta updates for downloaded archives (measurement in hand 2026-09-18, decision open).** Place
-  packs already update through row-level deltas; the places and basemap PMTiles archives do not, so
-  a rebaked region offers a full few-hundred-MB download. Now that a seventh of the catalog rebakes
-  nightly, that offer comes round weekly, which is the wrong trade for someone on a metered
-  connection. `scripts/archive-churn.py` reports, per zoom, how much of an archive a rebake actually
-  changes and builds a real `zstd --patch-from` delta so the saving is measured rather than guessed;
-  `.github/workflows/places-churn.yml` bakes any region twice, against an OSM extract from N days ago
-  and today's, and prints the table. FIRST NUMBER (Andorra, six days of edits): 11% of tiles changed,
-  25% of bytes, delta 22% of a full download. **Run it on a US state before building anything** - a
-  small archive exaggerates the share a single edit touches. Three options, cheapest first: offer
-  updates only on unmetered (or a data-updates setting), which fixes the annoyance and none of the
-  bytes; `zstd --patch-from`, one command each side, costing the bake a download of the previous
-  archive and the phone roughly 2x the region in transient disk while applying; or a tile-level patch
-  with an on-device directory rebuild, best on bytes and a real project. Gate: if a state also lands
-  near 20%, the saving is ~80% of the transfer and option 2 is worth it for big regions.
+- **Delta updates for downloaded archives (measured 2026-09-18, WORTH BUILDING).** Place packs
+  already update through row-level deltas; the places and basemap PMTiles archives do not, so a
+  rebaked region offers a full few-hundred-MB download, and with a seventh of the catalog rebaking
+  nightly that offer now comes round weekly. Measured with `scripts/archive-churn.py` +
+  `.github/workflows/places-churn.yml` (bake a region twice, one OSM extract a week apart, compare
+  every tile and build a real zstd patch):
+
+  | region | tiles changed | bytes changed | zstd delta vs full |
+  | --- | --- | --- | --- |
+  | Kentucky, 7 days | 1.3% (3,352 of 261,686) | 3.2% | **4.4 MB of 183 MB (2.4%)** |
+  | Andorra, 6 days | 11% | 25% | 0.4 MB of 1.7 MB (22%) |
+
+  A week of edits leaves 98.7% of a state's tiles byte-identical; Andorra's 22% was a small archive
+  exaggerating what one edit touches, which is why the state number was worth waiting for. So a
+  weekly refresh costs 4 MB instead of 183.
+
+  Shape, following the place packs: the bake fetches the previously published archive, writes
+  `places-<id>.<fromRev>.zpatch` beside the new one, and the manifest row gains
+  `delta: {fromRev, url, sizeMb}`; the app takes the patch only when `installedRev == fromRev` and
+  falls back to a full download otherwise, exactly as `PoiPackStore.applyDelta` already does.
+
+  Two open decisions, both real:
+  - **What applies it on the phone.** `zstd --patch-from` is one command on the bake side, but
+    Android has no zstd; it means a native dependency (zstd-jni ships an AAR, and we already carry
+    sherpa-onnx, so the precedent exists). The alternative is our own tile-level patch: only 1.3% of
+    tiles change, so a "changed tiles + rebuilt directory" file is about the same size (5.9 MB raw
+    here) and needs no new library, but it needs a PMTiles writer and a careful directory rebuild.
+  - **Transient disk.** Either route rewrites the archive, so applying needs roughly 2x the region
+    free (about 370 MB for this state, ~1.2 GB for California). Check free space before offering the
+    delta and fall back to the full download, which is what the phone would have done anyway.
+
+  Bake cost: downloading the previous archive plus `zstd -19 --long=31` roughly doubles a two-minute
+  job; a lower level trades a slightly bigger patch for most of that back.
 
 - **Reroute on the phone first (deferred 2026-09-16).** When a downloaded region covers the drive,
   compute the reroute with the on-device engine at once (no network), then swap in the
