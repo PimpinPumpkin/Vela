@@ -221,9 +221,9 @@
     <string name="settings_places_source_open">Vela data</string>
     <string name="settings_places_source_google">Google</string>
     <string name="settings_places_source_both">Both</string>
-    <string name="settings_places_source_open_hint">Vela\'s own place data draws the businesses on the map, so panning around never asks Google, and it works offline. Searching or tapping a place still goes to Google for hours, reviews and photos.</string>
-    <string name="settings_places_source_google_hint">Google is asked for the places in view every time you pan. Nothing draws offline, and every pan sends your map position to Google.</string>
-    <string name="settings_places_source_both_hint">Vela\'s data draws the map, and once you stop panning one Google request adds anything it lacks. The extras show online only.</string>
+    <string name="settings_places_source_open_hint">Vela\'s own place data draws the businesses on the map, so panning around never asks Google, and it works offline. Which places lead is decided by what kind of place they are (hospitals, supermarkets, malls and campuses first), then brand and detail. Searching or tapping a place still goes to Google for hours, reviews and photos.</string>
+    <string name="settings_places_source_google_hint">Google is asked for the places in view every time you pan. Nothing draws offline, and every pan sends your map position to Google. Google\'s places are ranked by how many reviews they have, so the busiest name in a plaza takes the label even when it is not the anchor store.</string>
+    <string name="settings_places_source_both_hint">Vela\'s data draws the map, and once you stop panning one Google request adds anything it lacks. The extras show online only, and they arrive a beat after the map, so a few icons appear late and can take a label off a neighbour as they land.</string>
     <string name="settings_places_source_more">Learn more</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
     <string name="settings_osm_businesses">OpenStreetMap shops too</string>
