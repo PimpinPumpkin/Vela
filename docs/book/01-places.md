@@ -127,15 +127,25 @@ would pin the flatness the refetch exists to fix.
 
 ### What happens when you tap
 
-A tap resolves to the nearest candidate under your finger, not to whichever layer is "more
-important": a search pin, then a saved pin, then the nearest of (transit stop icon, Google
-ambient POI, basemap or open-places POI). A stop icon competes by distance like everything else.
+A tap resolves to what is drawn under your finger, not to whichever layer is "more important":
+a search pin, then a saved pin, then the nearest of (transit stop icon, Google ambient POI,
+basemap or open-places POI). A stop icon competes by distance like everything else.
+
+"Under your finger" is literal. The map first asks what is rendered at that exact pixel on the
+icon layers, and when something is, only those compete. This is what stops a plaza's small dots
+from stealing a tap aimed at the shop they belong to: an icon hangs above its point like a pin,
+so measuring from each candidate's own point put the shop 40 px "away" while a coin machine's
+dot a few metres off sat right under the thumb. With nothing rendered at that pixel the wider
+touch area decides as before, so a dot on its own is still tappable.
 
 For an open-data place the sheet is seeded from the tile itself (name, category, address, phone,
 website, and hours when AllThePlaces supplied them), so it reads with no signal. Then, unless
 **"Look up tapped places on Google"** is off, it is matched to a Google listing for hours,
 reviews, photos and busy times. The match is name-first: the pool is listings whose name shares
 words with the tapped label, and only if none agrees does it fall back, to listings within 60 m.
+Within that pool, a listing whose name IS the tapped name wins over a nearer one with extra words,
+which is what keeps a tap on a shop from opening the same brand's fuel station or its pharmacy;
+a store number does not count as a different name.
 A tap on a business never resolves into a transit stop or an intersection, both of which Google
 lists as places and both of which sit meters away on the same corner.
 
