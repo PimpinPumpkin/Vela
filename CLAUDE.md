@@ -16,6 +16,10 @@ features, or structure, update - in the *same* commit:
   resilience / constraints); update when a load-bearing decision or path changes
 - `ROADMAP.md` - planned work + big bets (opt-in telemetry, Vela's own traffic layer,
   popular times, …); add new ideas here as they come up
+- `docs/book/` - the subsystem handbook (how places rank, when data is rebaked, what the
+  camera rules are). A behavior change updates its chapter, with the real numbers, in the same
+  commit; a constant in the book that no longer matches the code is a bug. No chapter yet for
+  what you changed? Write one, or add it to the planned list in `docs/book/README.md`.
 - `CLAUDE.md` - this file (build rules, layout, gotchas)
 - the `project-vela` memory note if a load-bearing fact changed
 
@@ -2625,6 +2629,11 @@ architecture note.
   label placement entirely (textOpacity 0 would still place + collide invisibly), so this is
   also a placement-cost win. NOTE our MapLibre zoom reads ~1 lower than Google's for the same
   view extent (512px tiles) - A/B against gmaps by matching the VISIBLE AREA, not the z number.
+  **That offset is why the bundled style shows minor street names from z14, not z15 (user
+  2026-09-18), and why residential streets widened through the mid zooms (`road_minor` 3.2 at z14
+  / 7 at z16, casing 5 / 9.5): next to Google at the same visible area ours read thin and a zoom
+  late. The style is ONE MINIFIED LINE (`assets/styles/liberty-roboto.json`) - edit it with a
+  script that re-dumps `separators=(',',':')`, or a pretty-print turns a one-line diff into 6000.**
   **SLIM-FLAVOR HEAL (2026-07-14, GoogleMapsDataSource.nearbyPlaces):** Google's first ~3 s of
   a fresh session serve a stripped per-place block (rating yes, reviewCount NO; same query+pb
   is rich seconds later - live-bisected on device). The cold-start fan-out lands entirely in
