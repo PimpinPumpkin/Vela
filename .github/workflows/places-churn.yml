@@ -1,0 +1,81 @@
+name: Measure places archive churn
+
+# Answers one question with numbers: when a region is rebaked, how much of the archive genuinely
+# differs, and what would a delta update therefore put on the wire? It bakes the SAME region twice
+# from the same Overture release, once against an OSM extract from N days ago and once against
+# today's, so the difference is exactly what a scheduled rebake picks up. Nothing is published.
+#
+# Andorra, six days apart (measured 2026-09-18): 11% of tiles changed, 25% of bytes, zstd delta
+# 22% of a full download. Run it on a state before deciding whether deltas are worth building.
+
+on:
+  workflow_dispatch:
+    inputs:
+      region:
+        description: Region id from tools/places-regions.json
+        required: true
+        default: "delaware"
+      days:
+        description: How many days back the "before" OSM extract comes from
+        required: false
+        default: "7"
+      release:
+        description: Overture release (blank = newest in the bucket)
+        required: false
+        default: ""
+
+jobs:
+  churn:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: ~/vela-bin
+          key: bake-tools-${{ runner.os }}-tippecanoe-2.79.0-pmtiles-1.31.2-duckdb-latest
+      - name: Install the bake toolchain
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq jq osmium-tool zstd
+          if [ ! -x "$HOME/vela-bin/tippecanoe" ]; then
+            mkdir -p "$HOME/vela-bin"
+            curl -sL https://github.com/duckdb/duckdb/releases/latest/download/duckdb_cli-linux-amd64.zip -o duckdb.zip
+            unzip -q duckdb.zip && mv duckdb "$HOME/vela-bin/duckdb"
+            curl -sL https://github.com/protomaps/go-pmtiles/releases/download/v1.31.2/go-pmtiles_1.31.2_Linux_x86_64.tar.gz | tar -xz pmtiles
+            mv pmtiles "$HOME/vela-bin/pmtiles"
+            sudo apt-get install -y -qq build-essential libsqlite3-dev zlib1g-dev
+            git clone --depth 1 --branch 2.79.0 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
+            make -C /tmp/tippecanoe -j"$(nproc)" >/dev/null
+            cp /tmp/tippecanoe/tippecanoe /tmp/tippecanoe/tippecanoe-decode "$HOME/vela-bin/"
+          fi
+          sudo cp "$HOME/vela-bin/"* /usr/local/bin/
+      - name: Bake it twice and compare
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ID="${{ github.event.inputs.region }}"
+          DAYS="${{ github.event.inputs.days }}"
+          REL="${{ github.event.inputs.release }}"
+          if [ -z "$REL" ]; then
+            REL=$(curl -sL "https://overturemaps-us-west-2.s3.amazonaws.com/?prefix=release/&delimiter=/" \
+              | grep -oE 'release/[0-9]{4}-[0-9]{2}-[0-9]{2}\.[0-9]+/' | sort | tail -1 | sed 's#release/##; s#/$##')
+          fi
+          B=$(jq -c --arg id "$ID" '.regions[] | select(.id == $id) | .bbox' tools/places-regions.json)
+          [ -n "$B" ] || { echo "no region $ID"; exit 1; }
+          S=$(jq '.[0]' <<<"$B"); W=$(jq '.[1]' <<<"$B"); N=$(jq '.[2]' <<<"$B"); E=$(jq '.[3]' <<<"$B")
+          PBF=$(jq -r --arg id "$ID" '.regions[] | select(.id == $id) | .pbf_url' tools/routing-regions.json)
+          # Geofabrik keeps dated extracts beside -latest for about three months.
+          WAS=$(date -u -d "$DAYS days ago" +%y%m%d)
+          OLDPBF="${PBF%-latest.osm.pbf}-$WAS.osm.pbf"
+          echo "region $ID, overture $REL, osm $WAS vs latest"
+          curl -sfSL --retry 3 -o old.osm.pbf "$OLDPBF" || { echo "no dated extract at $OLDPBF"; exit 1; }
+          curl -sfSL --retry 3 -o new.osm.pbf "$PBF"
+          OSM_PBF=old.osm.pbf bash tools/build-places-region.sh "$ID" "$S" "$W" "$N" "$E" before.pmtiles "$REL" >/dev/null
+          OSM_PBF=new.osm.pbf bash tools/build-places-region.sh "$ID" "$S" "$W" "$N" "$E" after.pmtiles "$REL" >/dev/null
+          {
+            echo "## $ID: $DAYS days of OpenStreetMap edits"
+            echo '```'
+            python3 scripts/archive-churn.py before.pmtiles after.pmtiles --patch
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"

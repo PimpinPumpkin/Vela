@@ -642,6 +642,18 @@ breakages should be fixed there first.
 
 ## Not going to happen (accounts and backends)
 
+- **A shared Google-to-open POI correlation log (asked 2026-09-18, declined).** Clients would
+  contribute the links they resolve (this Overture or OSM id is that Google listing) to a shared
+  store, so a tap on a place nobody on this phone has tapped could skip the lookup. What it buys is
+  ONE saved request on a first tap: the link alone carries no rating, hours, reviews or photos, so
+  the place still has to be fetched, and repeat taps are already free from the on-disk link cache.
+  What it costs is a backend to receive, store, moderate and serve it, forever, plus a contribution
+  channel that reveals which places a user tapped and when. The rows themselves are impersonal
+  (place to place), and batching, delay and dropping rare pairs would blunt the rest, but adding
+  behavioral telemetry to save one request is the wrong side of the trade the project exists to
+  make. Revisit if first-tap linking ever fails at a rate a cache cannot fix; the thing that looked
+  like that (2026-09-18, POIs "not linking") was a 120 m bug in our own ranking.
+
 These stay off the table because they require a Google login or a Vela server, and the
 project's core promise is that neither exists:
 
@@ -653,6 +665,22 @@ project's core promise is that neither exists:
   documented, do not re-chase)
 
 ## Queued near-term
+
+- **Delta updates for downloaded archives (measurement in hand 2026-09-18, decision open).** Place
+  packs already update through row-level deltas; the places and basemap PMTiles archives do not, so
+  a rebaked region offers a full few-hundred-MB download. Now that a seventh of the catalog rebakes
+  nightly, that offer comes round weekly, which is the wrong trade for someone on a metered
+  connection. `scripts/archive-churn.py` reports, per zoom, how much of an archive a rebake actually
+  changes and builds a real `zstd --patch-from` delta so the saving is measured rather than guessed;
+  `.github/workflows/places-churn.yml` bakes any region twice, against an OSM extract from N days ago
+  and today's, and prints the table. FIRST NUMBER (Andorra, six days of edits): 11% of tiles changed,
+  25% of bytes, delta 22% of a full download. **Run it on a US state before building anything** - a
+  small archive exaggerates the share a single edit touches. Three options, cheapest first: offer
+  updates only on unmetered (or a data-updates setting), which fixes the annoyance and none of the
+  bytes; `zstd --patch-from`, one command each side, costing the bake a download of the previous
+  archive and the phone roughly 2x the region in transient disk while applying; or a tile-level patch
+  with an on-device directory rebuild, best on bytes and a real project. Gate: if a state also lands
+  near 20%, the saving is ~80% of the transfer and option 2 is worth it for big regions.
 
 - **Reroute on the phone first (deferred 2026-09-16).** When a downloaded region covers the drive,
   compute the reroute with the on-device engine at once (no network), then swap in the

@@ -2402,6 +2402,14 @@ architecture note.
   Three different failures (a throttled session returning nothing, a tile row whose name or point is
   off so nothing agrees within `NO_NAME_MATCH_M`, and a pick dropped by the 1.5 km cap) are
   indistinguishable on screen, and none of them used to leave a trace. NO coordinates in the line.
+- **MEASURE ARCHIVE CHURN BEFORE BUILDING DELTAS (2026-09-18):** `scripts/archive-churn.py old new
+  [--patch]` reports per-zoom identical/changed/added/dropped tiles (it parses the PMTiles v3
+  directory itself, same layout as the app's `PmtilesReader`) and builds a real `zstd --patch-from`
+  delta, which is the number the decision turns on. `.github/workflows/places-churn.yml <region>
+  <days>` bakes a region twice, against a dated Geofabrik extract and today's, and writes the table
+  to the job summary; it publishes nothing. Andorra over 6 days: 11% of tiles, 25% of bytes, delta
+  22% of a full download. Run it on a STATE before building a delta pipeline - a small archive
+  exaggerates what one edit touches.
 - **OSM BUSINESSES ARE A SOURCE IN THE PLACES BAKE (2026-09-18, user ask):** named business NODES
   from the region's Geofabrik extract are inserted into `raw` beside Overture and AllThePlaces,
   through the SHARED `osmcat(props)` / `isbiz(props)` macros (lifted out of the ATP block so both
