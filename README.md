@@ -13,7 +13,7 @@ Live traffic, real place data and turn-by-turn navigation, with zero Google on y
 [![License: GPL v3](https://img.shields.io/github/license/PimpinPumpkin/Vela?color=blue)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/PimpinPumpkin/Vela?style=flat&color=ffd43b)](https://github.com/PimpinPumpkin/Vela/stargazers)
 
-[Install](#install) · [What you get](#what-you-get) · [Privacy](#privacy) · [How it works](docs/HOW-IT-WORKS.md) · [Build](#build) · [Discussions](https://github.com/PimpinPumpkin/Vela/discussions) · [Translate](docs/TRANSLATING.md)
+[Install](#install) · [What you get](#what-you-get) · [FAQ](docs/FAQ.md) · [Privacy](#privacy) · [How it works](docs/HOW-IT-WORKS.md) · [Build](#build) · [Discussions](https://github.com/PimpinPumpkin/Vela/discussions) · [Translate](docs/TRANSLATING.md)
 
 [<img src="https://img.shields.io/badge/VISIT%20THE%20WEBSITE-149387?style=for-the-badge" alt="Visit the website">](https://pimpinpumpkin.github.io/Vela/)
 
@@ -170,6 +170,13 @@ There's also a one-page tour at
 The complete running feature list lives in [FEATURES.md](FEATURES.md).
 
 
+## Common questions
+
+Where the places on the map come from, what each feature uses, and how to run Vela with no
+Google contact at all: **[docs/FAQ.md](docs/FAQ.md)**. The short version is that the map and
+its businesses are open data by default, and Google answers searches, place pages and live
+traffic.
+
 ## Why a degoogled app uses Google
 
 A phone without Google Play Services cannot run Google Maps, and the open map
@@ -203,7 +210,7 @@ re-checks"); off-course re-routes remain, since turn-by-turn can't work without 
 | --- | --- | --- | --- |
 | Tied to your Google account | Yes, always signed in | Yes unless incognito | Never - there is no login |
 | A persistent device identifier | Yes (device + ad IDs via Play Services) | Browser cookies | No account, no app key; just an IP like any website visitor |
-| Your precise GPS position | Continuously while open, plus Location History if enabled | While the tab is open | Never while browsing - position stays on the phone; searches send the map area you are looking at. While navigating, anonymous re-routes and the optional live-traffic re-check send your current position (toggleable in Settings → Data & privacy) |
+| Your precise GPS position | Continuously while open, plus Location History if enabled | While the tab is open | Never while browsing - position stays on the phone; searches send the map area you are looking at. While navigating, anonymous re-routes and the optional live-traffic re-check send your current position (toggleable in Settings → Navigation) |
 | Every pan and zoom of the map | Yes - their servers render the map | Yes | No - map tiles come from OpenFreeMap, so Google never sees you browse |
 | Your searches | Yes, saved to your account history | Yes | The query text reaches Google anonymously, only when you search |
 | Place pages you open | Yes | Yes | The place lookup reaches Google anonymously |
