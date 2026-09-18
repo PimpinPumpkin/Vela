@@ -137,7 +137,7 @@ website, and hours when AllThePlaces supplied them), so it reads with no signal.
 reviews, photos and busy times. The match is name-first: the pool is listings whose name shares
 words with the tapped label, and only if none agrees does it fall back, to listings within 60 m.
 A tap on a business never resolves into a transit stop or an intersection, both of which Google
-lists as places and both of which sit metres away on the same corner.
+lists as places and both of which sit meters away on the same corner.
 
 ## Limits
 

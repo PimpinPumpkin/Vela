@@ -9,7 +9,7 @@ Last updated: 2026-07-13.
 ## Recently shipped
 - **Transit on open GTFS (2026-07-12/13).** Transitous (community MOTIS) is the primary source for
   departure boards, canonical stop icons on the map (offline-cached per area), and the tap-through
-  stop timeline, which now reads the actual GTFS run: passed stops grey out, moved times show
+  stop timeline, which now reads the actual GTFS run: passed stops gray out, moved times show
   struck-through, canceled runs drop. Boards refresh every 30 s while open. Same-named curb pairs
   draw as one icon with both directions on one board. Google keeps transit directions on purpose
   (traffic-aware ETAs).
@@ -18,7 +18,7 @@ Last updated: 2026-07-13.
 - **Whole-state offline place packs + self-updating packs (2026-07-07).** Downloading a state pulls a
   CI-baked SQLite of the entire region's OSM POIs/addresses/streets, so offline search works
   Organic-Maps-style anywhere in the state. Packs rebuild monthly from fresh OSM and installed ones
-  update in place through small row-level deltas (a Washington test delta was 5.6 KB against the 143 MB
+  update in place through small row-level deltas (a whole-state test delta was 5.6 KB against the 143 MB
   pack). Offline typed-address geocoding shipped alongside (house-precise, interpolated, street fallback).
 - **Android Auto (2026-07-08).** Vela appears in the car launcher (AA "Unknown sources" for
   sideloads): live map, puck, route, and the current-maneuver card from the same NavSession the phone
@@ -100,7 +100,7 @@ journeys below under Big bets / Known-hard:
   sub-areas of the big ones) built by a race-safe CI matrix, hosted on GitHub, downloaded per region;
   smallest-covering region selection; combined map+routing area download; a location-aware, filterable picker.
 - **Navigation** - a **real per-lane diagram** (OSRM lane data), highway/exit shields on the banner,
-  OSRM retry (fewer nameless fallbacks), and the traversed-grey trail tightened under the arrow.
+  OSRM retry (fewer nameless fallbacks), and the traversed-gray trail tightened under the arrow.
 - **Nav guidance de-noised (2026-07-01)** - the lane diagram now only shows within ~0.5 mi of the maneuver
   (`LANE_SHOW_M`) and the "then &lt;next&gt;" compound line only when the next maneuver closely follows
   (`COMPOUND_M`, `isCompoundNext`) + carries the next step's shield; both used to render for maneuvers miles
@@ -182,7 +182,7 @@ worth an offline drive past a signed exit to hear it).
   and broadening the ref capture once the **travel logs** show the real ref formats Google emits.
 - **Explore (nearby things to do)** - a Google-Maps-Explore-style surface: nearby
   restaurants / things to do / events, as cards on a bottom sheet from the bare map.
-  Data: our keyless POI search already returns categorised places (reuse the
+  Data: our keyless POI search already returns categorized places (reuse the
   category chips + `/search?tbm=map`), ranked by distance + rating; "events" is the
   harder, sparser part (no keyless Google events feed - likely OSM/OpenStreetMap +
   a public events source later, or skip v1). **Plan, not now** (per request). Start
@@ -243,7 +243,7 @@ worth an offline drive past a signed exit to hear it).
   enrichment plumbing), then Q&A, then review-topic chips.
 - ~~Traffic browse-overlay - keep, drop, or rebuild?~~ - **RESOLVED 2026-06-19:
   hidden in Settings.** Decision (yours): keep it but **move the toggle off the map
-  into Settings → Map** so it doesn't clutter - nav's per-segment route colouring is
+  into Settings → Map** so it doesn't clutter - nav's per-segment route coloring is
   the primary traffic view; the whole-map raster is now an opt-in browse aid in
   Settings, subdued (below POIs, 0.6 opacity). Not dropped entirely (still useful for
   scanning a wider area), not rebuilt (no keyless vector congestion source).
@@ -259,7 +259,7 @@ worth an offline drive past a signed exit to hear it).
 
 Real building footprints render now. They were **already in our tiles** - the
 OpenMapTiles `building` + `building-3d` layers (OSM data, much of it imported from
-Microsoft's footprints) - Vela just coloured them a hair off the land so they were
+Microsoft's footprints) - Vela just colored them a hair off the land so they were
 ~invisible; bumped the contrast + added an outline (2026-06-19). No key, no new
 data. The gap-filling actually happened (2026-07-04): **Microsoft footprints (US + Global ML) ship as
 per-region PMTiles** (`OverlayTileStore`, CI-baked, 361-row catalog), streamed under the OSM
@@ -294,7 +294,7 @@ Goals, **strictly opt-in**, off by default:
    said against where the maneuvers actually are on the route** - per-maneuver: announced
    how far out, turn-now fired?, worst card-distance error, nearest approach; flags
    silent/missed turns, miles-too-early announcements ("exit in 6 mi that didn't exist"),
-   and lying card distances. So a shipped travel log can be analysed **without the user
+   and lying card distances. So a shipped travel log can be analyzed **without the user
    remembering where it broke** - one call: `TripLog.audit(csv).summary()`, or the
    on-demand test harness `:core:testDebugUnitTest --tests '*auditSharedTripLog'
    -DvelaTrip=<csv>`. Unit-tested end-to-end (clean-drive measurements + the flag logic +
@@ -373,7 +373,7 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     clicks nor keyboard activation open its menu (`aria-expanded` never flips), so even a
     real browser can't be driven to emit a depart-time request. Confirms the old "ignores
     synthetic clicks" note. **Conclusion: predictive per-departure is login/Android-app-
-    only**; transit (already fetched via the WebView) is the only keyless mode honouring a
+    only**; transit (already fetched via the WebView) is the only keyless mode honoring a
     chosen time.
   - **Shipped instead (2026-06-20): the typical best→worst spread.** Google's own planning
     hint lives at directions `summary[10][4] = [lowSeconds, highSeconds, label]` ("usually
@@ -407,11 +407,11 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   congestion data was hiding in plain sight in the directions response: `route[3][5][0]`
   is a list of `[level, startMeters, lengthMeters]` spans (only the non-free-flowing
   stretches; gaps are free-flow). `DirectionsParser` reads it into `Route.trafficSpans`;
-  `MapScreen` converts metre offsets → fractions; `VelaMapView.routeGradientStops` paints
-  the route line per segment over the driven-grey gradient (free-flow blue base, amber =
+  `MapScreen` converts meter offsets → fractions; `VelaMapView.routeGradientStops` paints
+  the route line per segment over the driven-gray gradient (free-flow blue base, amber =
   level 1, red = level 2, dark red = 3+). Calibrated against Davis→Sac + Berkeley→SF
   (Bay-Bridge approach = one long level-2 span). The whole-map raster stays off during
-  nav - the route now carries the traffic, like Google. *(Level→colour mapping is the
+  nav - the route now carries the traffic, like Google. *(Level→color mapping is the
   best read of the 1/2 grades seen; trivially flipped if a heavy drive shows otherwise.)*
 - **EV charger detail (price / kW / plug availability) - INVESTIGATED 2026-07-10, keyless-stripped.**
   Gas stations carry their live price in the keyless search response (shipped: the fuelPrice path),
@@ -421,7 +421,7 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   surface appears; OpenChargeMap could fill it as an open-data source.
 - **Individual traffic incidents (crashes / construction / closures) - INVESTIGATED 2026-07-01, no clean
   keyless source yet.** Google shows discrete incident icons/cards ("Crash ahead", "Road closed"); Vela
-  today has only the aggregate **congestion spans** (`route[3][5]`, per-segment colour). Probed the raw
+  today has only the aggregate **congestion spans** (`route[3][5]`, per-segment color). Probed the raw
   keyless `/maps/preview/directions` (OkHttp) on a 25-mi the metro route: **423 KB, zero incident text**
   (no "crash"/"accident"/"construction"/"closure"/"closed" anywhere) and `route[3][5]` empty off-peak - so
   the OkHttp directions payload carries congestion grades but **no per-incident objects/text**. Three
@@ -443,7 +443,7 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
      free feed (live-testable). Cost: feeds are **fragmented** (per-state/metro APIs, differing shapes) and
      often **token-gated** (free, but a key → the optional-user-token model we use for `MAPTILER_KEY`, never
      committed). Pluggable provider + start with one region (like the routing catalog grew), grow coverage.
-  3. **Defer** - congestion colouring already covers "where's it slow"; discrete incidents are polish.
+  3. **Defer** - congestion coloring already covers "where's it slow"; discrete incidents are polish.
   4. **Waze live-map alerts - PROBED 2026-08-08, DEAD.** The community-report feed (crashes, hazards,
      police, closures) would have been the perfect fit, and its `live-map/api/georss` endpoint was
      historically an open keyless GET. No longer: it now sits behind **reCAPTCHA Enterprise token
@@ -529,17 +529,17 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     deps excluded); `consumer-rules.pro` keeps graphhopper/hppc/jts/jackson for R8. **`:app:assembleRelease`
     (R8) builds clean**, `:core` unit tests green (`GraphHopperRouterTest` covers the sign/phrase mapping).
     Cost: **APK 45.7 MB (~+10 MB)** - tighter keeps / on-demand (dynamic feature, like the voice engines) is
-    a later optimisation.
+    a later optimization.
   - **Phase 1b-i - DONE 2026-06-28: wired into `directions()` + release runtime proven on-device.**
     `RouteEngine` is provided via Hilt (`CoreModule`, pointing at the per-region graph in app-scoped external
     files) and injected into `GoogleMapsDataSource`; `directions()` falls back to it **only when OSRM came
-    back empty** (offline / FOSSGIS down) - online behaviour unchanged. On-device proof (release build,
-    Pixel 5a): with wifi+data OFF and a real WA graph present, the app **loaded the graph from external
+    back empty** (offline / FOSSGIS down) - online behavior unchanged. On-device proof (release build,
+    Pixel 5a): with wifi+data OFF and a real whole-state graph present, the app **loaded the graph from external
     storage and invoked the engine** (observed: 486 MB resident / climbing CPU during the compute) - so the
     R8 *release* runtime + external-storage load + offline wiring are all confirmed.
   - **Phase 1b PERF - SOLVED 2026-06-29: metro graph + Contraction Hierarchies + internal storage.**
     Two on-device perf traps, both measured + fixed:
-    1. **Storage** - a whole-state graph (WA, 250 MB) on **FUSE-mapped external storage** was I/O-bound
+    1. **Storage** - a whole-state graph (250 MB) on **FUSE-mapped external storage** was I/O-bound
        (25.8% CPU). Internal storage (`filesDir`/`cacheDir`) loads fast (a 53 MB metro graph: **168 ms**).
        External was only ever the adb-pushable *test* path; production downloads to internal.
     2. **Routing algorithm** - plain flexible A* with our interpreted `SpeedWeighting` override is fine on
@@ -576,8 +576,8 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   - **Graph HOSTING - LIVE 2026-06-30.** Region CH graphs + `routing-manifest.json` are published as assets on
     the **`routing-graphs` GitHub release** (a fixed-tag *prerelease*, so it never becomes the "Latest" the APK
     tracks). `ROUTING_MANIFEST_URL` defaults to `releases/download/routing-graphs/routing-manifest.json`.
-    Seeded with **Washington (147 MB), a metro region (21 MB), Washington DC (6 MB)**. **Verified end-to-end on
-    a Pixel 5a with a production build** (no localhost): fetched the GitHub manifest → downloaded Washington
+    Seeded with **a whole state (147 MB), a metro region (21 MB), Washington DC (6 MB)**. **Verified end-to-end on
+    a Pixel 5a with a production build** (no localhost): fetched the GitHub manifest → downloaded the state graph
     (147 MB) from the release → routed a ~22 mi metro trip offline (28 min, named turn-by-turn).
   - **World catalog + parallel build pipeline - DONE 2026-06-30.** The catalog is now a curated
     **`tools/routing-regions.json`** (135 regions: all 50 US states, Canadian provinces + Mexico, ~36 European
@@ -599,7 +599,7 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     backend.** On-device verified end-to-end on a Pixel 5a: full 135-region picker, name filter, correct
     location-aware ordering.
     - *bbox fix (2026-06-30):* region boxes come from `osmium fileinfo -g header.boxes` (the declared extract
-      region), **not** `data.bbox` (raw node extent - outlier nodes blew Oregon's box across WA + CA, so it
+      region), **not** `data.bbox` (raw node extent - outlier nodes blew Oregon's box across two neighboring states, so it
       falsely "covered" the metro in the picker). All catalog builds use the corrected script.
     - *border-overlap fix (2026-06-30):* even clean `header.boxes` boxes carry a Geofabrik buffer that spills
       across borders (British Columbia's box dips into the metro), so the picker, the tiles→routing combine, and
@@ -617,10 +617,10 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   Street View pill now opens this in-app viewer (no more external hand-off). Device-verified on the
   4a: real imagery, correct orientation, drag + close all work. **v2 SHIPPED 2026-07-15:** sharper
   tiles (zoom 3), faster panning, the capture date in the attribution, on-screen **walk arrows**
-  (fetch the neighbour by pano id via `photometa/v1` so the year matches the picture), and **time
+  (fetch the neighbor by pano id via `photometa/v1` so the year matches the picture), and **time
   travel** through a spot's older captures (a clock chip lists the dates, all keyless from the same
-  response). **Remaining polish:** walking can step to a different-year neighbour (Google keeps you
-  in-epoch - the neighbour graph carries no per-pano date to filter on, so it's a known quirk),
+  response). **Remaining polish:** walking can step to a different-year neighbor (Google keeps you
+  in-epoch - the neighbor graph carries no per-pano date to filter on, so it's a known quirk),
   exact initial-heading alignment, higher-zoom tiles on pinch-in, coverage-gate the pill.
 - **Gallery videos** - parked, low value (re-checked 2026-06-19). The full `hspqX`
   gallery for a busy place (In-N-Out, 50 photos) carried **zero video entries** (no
@@ -700,7 +700,7 @@ project's core promise is that neither exists:
   whole question: Overture places are CDLA-Permissive 2.0 and a business's own site is a primary
   source, both fine for ODbL; anything traced from Google is not and never enters the pipe. Until
   that conversation happens, Vela's in-app fixes stay local (the closed-listing hide list).
-- ~~Avoid tolls / avoid highways~~ - LIVE 2026-07-11: sticky chooser chips, honoured by the
+- ~~Avoid tolls / avoid highways~~ - LIVE 2026-07-11: sticky chooser chips, honored by the
   on-device graphs (all 135 regions rebaked with avoid CH profiles; the app reads the v2
   manifest). The public OSRM rejects exclude, so an online-only trip falls back to a normal
   route; a possible follow-up is nudging "download this region to use avoid offline" when a
@@ -715,12 +715,12 @@ project's core promise is that neither exists:
   are byte-identical to `calibration.json`'s `photosProto` - nothing drifted, so a bump is a
   no-op. The RPC is bot-gated to zero photos: Vela's ftid form, the captured per-page photo-token
   form, and the genuine page's own fresh-token request all returned an empty photo list from an
-  automated browser (same TLS/behavioural degradation OkHttp hits). The live gallery the app shows
+  automated browser (same TLS/behavioral degradation OkHttp hits). The live gallery the app shows
   comes from the WebView DOM walk (categories, no dates). Dates would need the RPC answered inside
   a trusted non-automated session the keyless model can't mint - not pursued. The in-app date-join
   plumbing stays ready + inert (see CLAUDE.md).
 - Ambient POI dot tiers like Google - DONE 2026-07-11: a circle layer under the ambient
-  icons draws every place as a small category-coloured dot; collision losers stay visible
+  icons draws every place as a small category-colored dot; collision losers stay visible
   as dots and upgrade to icons on zoom-in.
 - Map label font trickle-down: map text now renders from the self-hosted Roboto glyph pack
   (matches the app font today); true inheritance means regenerating that pack from the same
@@ -730,3 +730,24 @@ project's core promise is that neither exists:
   stop caching a tab-less result forever, and separate device render timing from Google-side
   variance.
 - Performance pass: frame profiling of dense-marker pans and the POI sheet in/out churn.
+
+---
+
+## Architecture work
+
+Carried over from the architecture review; the finished items (route provenance as one field,
+the shared hidden-WebView base, `NavController`) are in FEATURES.
+
+- **Finish carving the three large files.** `NavCamera` in `VelaMapView` (the follow ticker, the
+  puck overlay, the padding and zoom eases as one class with one `frame()` entry point) and
+  `SearchController` (query, suggestions, results, the three pickers and their gates as one
+  tested state machine). The camera piece needs a real drive to judge.
+- **Rules in prose become rules in code.** A SPEC paragraph describing a trap should come with a
+  unit test, a lint rule, or a type that makes the wrong state unrepresentable. Convert
+  opportunistically when touching one; the spec keeps the why, the test keeps the what.
+- **Infrastructure with an owner.** Turn-by-turn depends on the FOSSGIS community servers with no
+  agreement and no fallback except the on-device engine. One small self-hosted OSRM instance for
+  the main regions, used first with FOSSGIS as the fallback, removes the single failure that
+  takes routing from every user at once. The nav diagnostics record which router answered, so the
+  decision can be made from real drives.
+

@@ -8,12 +8,17 @@ ETAs. Targets GrapheneOS / no-GMS ROMs; F-Droid distribution. GPLv3.
 ## ⚠️ Docs discipline (read first)
 
 **Every change updates the docs in the same commit.** Hard rule for all
-collaborators (human or Claude). When you change behaviour, calibration,
+collaborators (human or Claude). When you change behavior, calibration,
 features, or structure, update - in the *same* commit:
 - `README.md` - status, architecture, calibrated request/response paths
 - `FEATURES.md` - tick/retire the affected items
-- `SPEC.md` - the authoritative rebuild spec (architecture / extractor contract /
-  resilience / constraints); update when a load-bearing decision or path changes
+- `SPEC.md` - **the authoritative technical document.** Every technical fact lives here:
+  contracts, constants, thresholds, constraints. A technical fact that exists only in another
+  file is a bug in SPEC. It absorbed the old HOW-IT-WORKS, CALIBRATION, MAP-STYLE, puck-jitter,
+  PERF-AUDIT and ARCHITECTURE-NEXT docs; do not recreate them. Write it in the spec's voice:
+  declarative present tense, no first person, no story of how a decision was reached, no
+  anecdotes. A rule that exists because something broke is written as the rule plus the failure
+  mode it prevents, in one sentence
 - `ROADMAP.md` - planned work + big bets (opt-in telemetry, Vela's own traffic layer,
   popular times, …); add new ideas here as they come up
 - `docs/book/` - the subsystem handbook (how places rank, when data is rebaked, what the
@@ -49,6 +54,23 @@ gh pr view <n> --json body -q .body | grep -i "claude\|generated with"          
 
 Same rule as the em-dash ban and the writing style below: this text is public and it should read
 like a person wrote it.
+
+## ⚠️ US English only (read first)
+
+**The repository is written in US English.** Code, comments, docs, commit messages, PR bodies,
+issue replies, release notes and the base string resources: color, center, meter, neighbor,
+labeled, canceled, traveled, gray, license, analyze, organize. British spellings were swept out
+on 2026-09-18 and must not come back.
+
+Three deliberate exceptions, all data rather than prose:
+
+- `app/src/main/res/values-en-rGB/strings.xml`, which exists to be British.
+- Strings that must match a foreign source's own spelling: OSM tag values (`fitness_centre`,
+  `arts_centre`, the `neighbourhood` place class) and the MOTIS wire field `cancelled`. Where
+  a keyword list matches user-facing text, keep **both** spellings.
+- Platform API names (`isCancelled`, `CancellationException`).
+
+Before pushing: `grep -rniE "\b(colour|centre|behaviour|neighbour|metres?|labelled|travelled|licence|defence|grey|organis|recognis|utilis)\b" --include="*.kt" --include="*.md" .` must return only the exceptions above.
 
 ## ⚠️ Location hygiene (read first, human or AI)
 
@@ -190,7 +212,7 @@ Defaults that make the safe path the easy one:
   (`core/build/test-results/testDebugUnitTest/*.xml`). The property passthrough lives in
   `core/build.gradle.kts` (`tasks.withType<Test>` forwards `velaTrip`) - without it the test JVM
   never saw `-D` and the harness silently skipped. It flags silent/missed turns, too-early
-  announcements, and lying card distances - built so a travel log can be analysed without knowing
+  announcements, and lying card distances - built so a travel log can be analyzed without knowing
   where it broke. **Trips are SEGMENTED**: every route the drive used (start + each reroute/
   faster-route swap) is its own `RP/RD/M` block, activated at the fix where it appears;
   `TripLog.parse().segments` carries them, audit + in-app replay are segment-aware, and replays
@@ -245,18 +267,18 @@ Defaults that make the safe path the easy one:
 - **Simulate-my-location (demo)** (`ui/SimLocation.kt`, Settings → Navigation, off by default,
   pref `sim_location` in `vela_settings`). BOTH sim entry points CANCEL the stale-location timer
   (2026-07-09): the pinned demo dot gets no fresh fixes, so a timer armed by the last real fix
-  greyed the dot ~30 s in and nothing ever turned it blue again. The sim branch in `startLocation()`
+  grayed the dot ~30 s in and nothing ever turned it blue again. The sim branch in `startLocation()`
   covers app restart with the toggle already on; `simulateLocationHere()` covers flipping the toggle
   mid-session (it cancels `locationJob` but the timer the collector armed outlives that cancel - the
   first fix was missed there and the bug came straight back). A sibling of demo-drive for demos/screenshots: when on,
-  Vela pretends to be at the map centre (captured when you flip the toggle), so the location dot,
+  Vela pretends to be at the map center (captured when you flip the toggle), so the location dot,
   the directions ORIGIN ("Your location"), and recenter all read from there instead of your real
   GPS - that is how every Davis/Sacramento screenshot was shot from elsewhere without leaking a real
   position. Process-wide reactive holder like `TransitLayer` (`init` in `VelaApp`); `MapViewModel`
   applies it - `startLocation()` pins `myLocation` to the sim point (guard sits AFTER the replaying
   guard so demo-drive still wins), `simulateLocationHere()` captures `mapCenter`,
   `stopSimulateLocation()` resumes live GPS. NB search/place-sheet DISTANCES are `near`-relative
-  (Google computes them off `mapCenter`), so those read local from wherever the map is centred, with
+  (Google computes them off `mapCenter`), so those read local from wherever the map is centered, with
   or without this toggle; sim-location is specifically about the dot + route origin. **Turn it OFF
   for real navigation.**
 - **GitHub releases are TWO different things - check the tag before touching one (2026-07-09).**
@@ -539,7 +561,7 @@ Defaults that make the safe path the easy one:
   launches through `MapViewModel.downloadLaunch(label) { ... }`: the work runs on the app-lifetime
   `DownloadWork.scope` (Main.immediate, byte-identical threading to viewModelScope) and a
   refcounted `dataSync` foreground service (`app/download/DownloadService`, quiet notification)
-  holds the process alive for its duration - viewModelScope is cancelled the moment the task is
+  holds the process alive for its duration - viewModelScope is canceled the moment the task is
   swiped, and without the FGS an OEM background killer (the issue's Galaxy) reaps the process
   seconds after Home. Labeled returns inside those blocks are `return@downloadLaunch`. Progress
   writes to a cleared ViewModel are inert by design; installed-ness is derived from disk at next
@@ -613,10 +635,10 @@ Defaults that make the safe path the easy one:
   Voice section) not an inline accordion - `SettingsScreen` early-returns to it when
   `showVoiceLibrary`; its own Back returns to Settings. Put a new setting in the section it serves;
   niche/experimental → Advanced, demo/test tools → Developer, place-content → Place pages not Map.)
-- **Route-row traffic words GRADE with the ETA colour (2026-07-10):** the "live traffic" tag in
+- **Route-row traffic words GRADE with the ETA color (2026-07-10):** the "live traffic" tag in
   RouteOption's via line is now "light/moderate/heavy traffic", switched on `trafficRatio` at the
   SAME thresholds `trafficEtaColor` uses (>1.4 heavy red, >1.15 moderate amber, else light green) -
-  words back up the colour for colour-blind users. Ratio-less live routes keep the plain "live
+  words back up the color for color-blind users. Ratio-less live routes keep the plain "live
   traffic"; keep the thresholds in lockstep if either side changes.
 - **Guidance volume (2026-08-08, issue #245):** Settings > Voice "Guidance volume" chips
   (Softer 0.6 / Normal 1.0 / Louder 1.6 / Loudest 2.2; pref `voice_volume`). The neural voice
@@ -653,7 +675,7 @@ Defaults that make the safe path the easy one:
   search-along-route chips are SOLID tonal (they are one-shot actions; a permanently
   unselected FilterChip read as disabled) while the REAL selection groups (travel mode,
   leave/depart/arrive) keep the M3 filled-when-selected contrast on purpose - filling those
-  would erase the selection signal. Past picks are impossible: the date picker greys out days
+  would erase the selection signal. Past picks are impossible: the date picker grays out days
   before today and a confirmed past time clamps to the next 5-minute mark now, WITH a toast
   (`place_time_past_toast`, all locales): the pill shows a different time than the pick,
   and a silent rewrite of explicit input reads as a bug.
@@ -665,7 +687,7 @@ Defaults that make the safe path the easy one:
   DirectionsPanel LOST its header (and the originName/onEdit*/stops/onSwap/onClose params) - it
   keeps mode chips / time chooser / routes / Start, so collapsing it to the Start bar no longer
   hides the endpoints (Google's layout, better on small screens). The card hides while the search
-  overlay, steps preview or stops editor own the screen; chrome colours (colorScheme tokens, NOT
+  overlay, steps preview or stops editor own the screen; chrome colors (colorScheme tokens, NOT
   SheetPalette - it replaces the search bar). Device-verified: card, edit rows, swap-reroutes,
   collapse-keeps-card. **Minimizing the chooser re-frames the route closer (2026-07-14):** the
   panel reports its collapsed state up (DirectionsPanel `onCollapsedChange` -> MapScreen
@@ -729,7 +751,7 @@ Defaults that make the safe path the easy one:
   the window is wider than ~2.5 km it also fetches one page over a 2.5 km window around the user
   and LEADS with it (the Google app weights distance the same way; before this, the outlet next
   to you lost its slot to better-known places across a town-zoom window and missed all three
-  pages, the "Subway near me never shows" complaint). Over another neighbourhood or city no
+  pages, the "Subway near me never shows" complaint). Over another neighborhood or city no
   nearby pass runs, so Google's order for where you are looking stands. The list ends in a "More
   results" row (`MapDataSource.searchMore`, `MapViewModel.loadMoreResults`, `resultsMoreQuery`)
   that pulls the next three pages of the same request and appends what is new; it disappears
@@ -744,7 +766,7 @@ Defaults that make the safe path the easy one:
   collapsed flip swaps nothing visible; the old collapse was a 6px-threshold boolean flip.
 - **Directions "Leave now" ETA line (2026-07-10):** "Arrive at 5:30 PM" renders titleMedium
   SemiBold in ink - the small dim line with a "current traffic" note under it was clutter (the
-  traffic-coloured per-route ETAs already carry that signal); the "Usually X-Y min" typical-range
+  traffic-colored per-route ETAs already carry that signal); the "Usually X-Y min" typical-range
   note stays. `place_current_traffic` was deleted from all locales.
 - **The sheet physics recipe is SHARED (2026-07-11):** the place sheet, the search-results sheet
   and the DirectionsPanel body all use the same grammar - a hand-driven `Animatable` (height for
@@ -849,15 +871,15 @@ Defaults that make the safe path the easy one:
   scroll - the START pill routes and launches in one tap (`MapViewModel.startNavToSelected` sets
   `autoStartOnRoute`; MapScreen consumes it ONCE when a route lands). **It fires through
   MapScreen's `onStartNav`, never straight at the VM** - a one-tap Start must not become a way
-  around the precise-location and notification gates the picker's Start honours; and the flag is
+  around the precise-location and notification gates the picker's Start honors; and the flag is
   consume-once + cleared by `clearRoute`/`startNav` AND by a route fetch that returns nothing
   (review 2026-09-06: an empty reply used to leave the flag armed for the next, unrelated
   Directions request) so a later refetch (mode change, added stop) cannot silently launch a drive. Not offered for the parked car (you are already at the start of
-  that walk). The nav bottom bar swapped End's labelled Button for a 54dp X icon on the LEFT with
-  the trip figures CENTRED and Steps on the right: two controls of the same size doing the same
+  that walk). The nav bottom bar swapped End's labeled Button for a 54dp X icon on the LEFT with
+  the trip figures CENTERD and Steps on the right: two controls of the same size doing the same
   job should be the same shape, and this is the arrangement where they cannot be mistaken for
-  each other. End keeps `errorContainer` colouring - it is the one control that throws the drive
-  away, and an unlabelled X must not read as just another button; its label lives on as the
+  each other. End keeps `errorContainer` coloring - it is the one control that throws the drive
+  away, and an unlabeled X must not read as just another button; its label lives on as the
   content description.
   **Nav UI style (2026-07-08):** ManeuverBanner + NavControls are RoundedCornerShape(24/28dp)
   Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
@@ -953,7 +975,7 @@ Defaults that make the safe path the easy one:
   automated browser - Vela's ftid-in-`[2][0]` form, the captured per-page photo-token form
   (`0qlSas...`, `["<tok>",...,81,...,16698]`), AND the genuine page's OWN fresh-token on-load
   request - all returned `[null,0,null,"<ei>"]` = zero photos (0 `googleusercontent` in the body).
-  Same TLS/behavioural degradation that gives OkHttp the Street-View-only reply; the live gallery
+  Same TLS/behavioral degradation that gives OkHttp the Street-View-only reply; the live gallery
   the app DOES show comes from the WebView DOM WALK, which has categories but no per-photo dates.
   So dates need the RPC to answer inside a trusted (non-automated, non-keyless) session, which the
   keyless model can't mint. The date-join plumbing stays correct + inert (stamps render only when a
@@ -1000,7 +1022,7 @@ Defaults that make the safe path the easy one:
   `VelaMapView.onUserPan` (fired from the camera-move-started listener on REASON_API_GESTURE,
   the same signal "Search this area" keys off) → MapScreen collapses the results sheet to its
   bar while `resultsShown` AND bumps `sheetPanTick` → PlaceSheet's `minimizeTick` effect glides
-  an open place card to its minimized detent - Google's behaviour; programmatic framing (a
+  an open place card to its minimized detent - Google's behavior; programmatic framing (a
   different move reason) never triggers it. Both drops use a SOFT spring (stiffness 140f, vs
   the 350f settle). Flip order differs BY DESIGN: the RESULTS sheet still GLIDES FIRST and flips
   `resultsCollapsed` after; its FILTER CHIPS + divider fold with the list height over its last
@@ -1027,7 +1049,7 @@ Defaults that make the safe path the easy one:
   query is the cuisine filter). **Chrome:** `resultsShown` (peek/expanded) hides the
   scale bar / locate FAB / "Search this area"; `resultsMinimized` shows them again but LIFTED by
   `chromeLift` (76dp) so nothing sits on the minimized bar. The compass is MapLibre's built-in
-  (`setCompassMargins`), which fades facing north (Google's behaviour) and reappears when
+  (`setCompassMargins`), which fades facing north (Google's behavior) and reappears when
   rotated/tilted or during heading-up nav - never removed, just north-hidden on the browse map.
   Its browse-mode top margin is statusBar + 122dp so it sits BELOW the floating search bar and the
   category chips (8dp under the status bar put it exactly behind the bar - a half-hidden circle, 2026-07-09).
@@ -1073,7 +1095,7 @@ Defaults that make the safe path the easy one:
   targets never see this layout.
 - **Search-result markers are Google's result treatment (2026-07-10, `PoiIcons` result section +
   the `vela-markers`/`vela-markers-dots` layers in `VelaMapView`).** Every result keeps the app's own
-  marker language - grey teardrop, circle, white glyph - with the circle RED (`resultPin`,
+  marker language - gray teardrop, circle, white glyph - with the circle RED (`resultPin`,
   drawn a step smaller than the ambient icons' backing); rated FOOD results get the wide rating
   "speech bubble": the same red circle + white glyph beside the rating in plain ink, NO star
   glyph (`ratingBubble`, label passed as a string so non-rating labels can ride the same bubble;
@@ -1089,12 +1111,12 @@ Defaults that make the safe path the easy one:
   OSM poi layers got the same treatment (2026-07-10): four anchor slots (RIGHT/LEFT/TOP/BOTTOM,
   = left of icon / right of it / below / above) instead of the old two - icons still collide by
   design, but a rendered icon's label now finds a clear side instead of dropping or sitting on a
-  neighbour's dot - Google doesn't category-tint result labels,
+  neighbor's dot - Google doesn't category-tint result labels,
   only ambient POI labels take the tint. resultPin's GEOMETRY is marker()'s exact proportions at
   0.86 scale (a taller-tailed variant read as a different species of pin, user 2026-07-10) -
   keep the two in lockstep. **OSM POIs hide by COVERAGE, not ambient non-emptiness (2026-07-10):**
-  `MapUiState.ambientCoversView` (computed each onViewport settle: ambient non-empty AND centre
-  within 0.35x of `lastAmbientSpan` of the fetch centre AND viewRadius ≤ 0.55x span; forced true
+  `MapUiState.ambientCoversView` (computed each onViewport settle: ambient non-empty AND center
+  within 0.35x of `lastAmbientSpan` of the fetch center AND viewRadius ≤ 0.55x span; forced true
   when a fresh fetch lands, false under z14) drives the poi_r* visibility - blanket-hiding left
   the outskirts iconless because one fetch only covers ~3.5-9 km (user 2026-07-10). Controls
   (signs/lights) render from z17.5 on the browse map but z15.4 during nav (set in the nav
@@ -1121,9 +1143,9 @@ Defaults that make the safe path the easy one:
 - **Map tap resolution order (`VelaMapView` click listener, 2026-07-08; nearest-to-finger 2026-07-14).**
   Every candidate class picks the feature NEAREST the tap in SCREEN pixels (`screenDist2`) - every
   pick used to be `firstOrNull` on `queryRenderedFeatures`, which returns RENDER-STACK order, so
-  the generous 48dp hit box at street zoom handed the tap to whichever neighbour the renderer
+  the generous 48dp hit box at street zoom handed the tap to whichever neighbor the renderer
   listed first (the dense-strip-mall wrong-POI reports). A single tap resolves, in priority:
-  (1) our search-result pin → `onMarkerTap`; (2) a saved pin; (3) a greyed
+  (1) our search-result pin → `onMarkerTap`; (2) a saved pin; (3) a grayed
   alternate route line → `onSelectAlternate`; (4) a BUSINESS **or a canonical GTFS stop icon** -
   the stop competes by distance with the businesses instead of outranking them (user 2026-09-18:
   a fuel station on a corner opened the stop beside it however dead-on the tap was, the same
@@ -1156,13 +1178,13 @@ Defaults that make the safe path the easy one:
   swipes still scroll. **The named-POI resolve is
   NAME-AGREEING first (2026-07-14):** onPoiTap searches the tapped name, but the pick used to
   ignore it - bare `nearest` plus the 35 m most-reviewed override let a strip mall's popular
-  NEIGHBOUR steal the tap (Google's per-listing pins in a shared building are loose; a sushi
+  NEIGHBOR steal the tap (Google's per-listing pins in a shared building are loose; a sushi
   tap opened the dessert shop two doors down). The pick pool is now the listings whose name
   shares the tapped label's words (`nameAgrees`, word-set overlap needing the shorter name's
   tokens, cap 2); only an EMPTY pool (renamed/closed business) falls back, and since 2026-09-18
   that fallback is bounded twice over: a NON-TRANSIT tap never adopts a listing whose category is
   transit (`isTransitCategory`) or map furniture (`JUNCTION_CATEGORIES`), because Google lists
-  stops and intersections as places metres from the businesses on the same corner and the
+  stops and intersections as places meters from the businesses on the same corner and the
   "nearest of everything" fallback made the stop the answer; and a listing that does not agree by
   name has to be within `NO_NAME_MATCH_M` (60 m, the same lot) rather than anywhere inside the
   1.5 km cap. Nothing left to adopt = the tapped label keeps its own name and point, which for an
@@ -1177,11 +1199,11 @@ Defaults that make the safe path the easy one:
   `MapViewModel.onAddressLabelTap` LEADS the pin with the label's own number and uses the reverse-
   geocode only for the street/city, replacing whatever house number the geocode led with (a regex
   strips `^\s*\d+\S*\s+` then prepends the tapped number). Reason: Google's reverse-geocode snaps to
-  the nearest ADDRESSABLE point, which for a tapped OSM label routinely returns a NEIGHBOUR (device:
+  the nearest ADDRESSABLE point, which for a tapped OSM label routinely returns a NEIGHBOR (device:
   tapped 1020, raw reverse-geocode said 1040) - exactly the "doesn't snap to the house number"
   complaint. A real business sitting on the point still wins (if the geocode has a rating/category it's
   shown as-is). Device-verified: tapping a numbered house label opens exactly that number, not the
-  neighbour the raw geocode returned; a bare footprint resolves to the building's own address.
+  neighbor the raw geocode returned; a bare footprint resolves to the building's own address.
 - **Place-content toggles (2026-07-08):** `ShowReviews` / `LoadPhotos` reactive holders
   (`ui/PlaceContent.kt`, same shape as `LiveReviews`, init in VelaApp, rows in Settings → Map).
   They gate BOTH fetch (`fetchReviews`/`fetchPhotos` first line) and render (PlaceSheet `hasReviews`
@@ -1230,7 +1252,7 @@ Defaults that make the safe path the easy one:
 - **POI-speed trio (2026-07-11):** (1) `nearbyPlaces` STREAMS its category fan-out via an
   `onPartial` callback (paints throttled to >=10 new places + 500 ms apart; the final
   return is still the complete ranked pool) so first dots stop waiting on the SLOWEST of
-  ~13 requests; (2) `prefetchAmbientNeighbours` warms the 4 view-sized neighbour areas
+  ~13 requests; (2) `prefetchAmbientNeighbors` warms the 4 view-sized neighbor areas
   into the ambient LRU after each idle fetch - UNMETERED network only (4 extra fan-outs),
   sequential with 700 ms gaps, skips cached areas, bails on any non-bare-map state; (3)
   the ambient LRU PERSISTS to `ambient_cache.json` (newest 8 areas x 200 slim places via
@@ -1269,7 +1291,7 @@ Defaults that make the safe path the easy one:
   enter the collision index - cheaper placement at street zoom and numbers can't evict icons
   whatever the layer order. (3) `ui/Buildings3d` holder + Settings → Map "3D buildings" toggle sets
   visibility on the basemap `building-3d` fill-extrusion layer (a LaunchedEffect in VelaMapView owns
-  visibility; applyLight/applyDark only colour it) - extrusion is the fragment-heavy layer, the
+  visibility; applyLight/applyDark only color it) - extrusion is the fragment-heavy layer, the
   documented 5a-class stutter source at z16+.
 - **Day/night theme (issue #262, 2026-08-15).** `ThemeMode.AUTO` is light by day and dark after
   sunset, worked out on the device: `:core` `util/SunTimes` is the standard sunrise equation (no
@@ -1279,7 +1301,7 @@ Defaults that make the safe path the easy one:
   Two rules learned building it: (1) round the sunrise DAY in LOCAL solar terms (`+ lng/360` before
   the floor) - rounding in UTC picks the wrong day either side of midnight UTC, so a Californian
   evening before sunset was compared against TOMORROW's sunrise and read as night; (2) AMOLED is a
-  flavour of dark and must yield when something resolves the app to light, or a daylight drive gets
+  flavor of dark and must yield when something resolves the app to light, or a daylight drive gets
   a black UI over a light map. The sun answer lives in ONE place (`AppTheme.night`, refreshed by a
   single one-minute ticker in VelaRoot and whenever a fix moves) so `isAppInDarkTheme()` stays a
   plain state read. The position is stored ROUNDED TO ~1 KM (sunset moves ~4 s per km of longitude,
@@ -1327,7 +1349,7 @@ Defaults that make the safe path the easy one:
   imports a whole collection into the Gulf of Guinea, so both orders are pinned by
   `PlaceImportTest`. Review 2026-09-06: a KML placemark whose `<coordinates>` holds more than one
   tuple (a LineString track, a Polygon area) is SKIPPED rather than pinned at its first vertex;
-  Takeout's capitalised keys (`Title`, `Location`, `Business Name`) are read as well as the
+  Takeout's capitalized keys (`Title`, `Location`, `Business Name`) are read as well as the
   lower-case ones; `importMerge` runs `distinctBy { id }` over the incoming set because two
   placemarks at one rounded coordinate share an id (every later id-keyed action would hit both);
   `ImportFormats.describe` tests KML before the XML prolog (both are XML, so every KML used to be
@@ -1344,7 +1366,7 @@ Defaults that make the safe path the easy one:
   WrongFormat(format?) / Unreadable) instead of a bare Int - four very different outcomes used to
   collapse into "0" and the UI could only say "Nothing to import", which is actively misleading
   when the real problem is that the file came from another app (a reporter hit exactly that with
-  Google Takeout data). `ImportFormats.describe` names a recognisable foreign file (Takeout,
+  Google Takeout data). `ImportFormats.describe` names a recognizable foreign file (Takeout,
   GeoJSON, GPX, KML, Organic Maps) so the message says what it IS; unit-tested
   (`ImportFormatsTest` - the Takeout matcher was written wrong first and the test caught it, real
   Takeout URLs are `maps.google.com/?cid=`, not `google.com/maps`). **AND the actual "button does
@@ -1372,19 +1394,19 @@ Defaults that make the safe path the easy one:
   tints for free: the search bar (surfaceContainerLow), VelaMenu popups (surfaceContainerHigh),
   chips, FABs, dialogs, Settings, the dpadHighlight ring, and the nav notification accent
   (NavigationService reads system_accent1_600 when the pref is on). PINNED NEUTRAL on purpose:
-  the place/results sheets (SheetPalette's fixed greys - they're reading surfaces dense with
-  meaning-bearing colour: open/closed green/red, star gold, note quotes, photos - and several
-  solids were hand-composited against those exact greys, e.g. the opaque filter-chip containers)
-  and every map-drawn colour (tiles, route blue, puck). Rules when adding UI: new chrome or
+  the place/results sheets (SheetPalette's fixed grays - they're reading surfaces dense with
+  meaning-bearing color: open/closed green/red, star gold, note quotes, photos - and several
+  solids were hand-composited against those exact grays, e.g. the opaque filter-chip containers)
+  and every map-drawn color (tiles, route blue, puck). Rules when adding UI: new chrome or
   transient surfaces take colorScheme tokens (they'll theme themselves); content inside a sheet
   takes SheetPalette; don't mix the two on one surface or one of the theme x dynamic combos
-  will look wrong. AND pick token pairs whose contrast the scheme GUARANTEES: on a coloured
-  container, buttons must use that container's own on-colour, never a default from a different
+  will look wrong. AND pick token pairs whose contrast the scheme GUARANTEES: on a colored
+  container, buttons must use that container's own on-color, never a default from a different
   role - the faster-route card's default-primary TextButton all but vanished on its
   tertiaryContainer under a wallpaper scheme (both roles derive from the same wallpaper hues;
   fixed 2026-07-14 with onTertiaryContainer text + an inverse-fill confirm). The dynamic scheme is luminance-sanity-checked in VelaTheme (a ROM handing a
-  light background for the dark scheme falls back to Vela colours - seen on GrapheneOS). NB
-  Google Maps itself is a dynamic-colour HOLDOUT (M3 components, zero wallpaper tinting) -
+  light background for the dark scheme falls back to Vela colors - seen on GrapheneOS). NB
+  Google Maps itself is a dynamic-color HOLDOUT (M3 components, zero wallpaper tinting) -
   Vela tinting its chrome already exceeds it; the split is our own design call.
 - **Basemap layer gotchas (`VelaMapView.ensureLayers`/`applyLight`/`applyDark`, OpenFreeMap Liberty).**
   (1) **`maxzoom` is EXCLUSIVE** - the bundled `building` FILL layer is `minzoom 13 / maxzoom 14`, so
@@ -1407,7 +1429,7 @@ Defaults that make the safe path the easy one:
   that asset. Verify basemap edits on-device in **both** themes. (3b) **Satellite deep zoom (2026-08-06, issue #244):** the base World_Imagery raster source is
   capped at `maxZoom 19` (Esri's safe global max) and MapLibre STRETCHES the z19 tile past that -
   the "blurry satellite" report. `MapViewModel.refreshSatDeep` probes Esri's `tilemap` availability
-  index (1x1 cell at the view centre, levels 22→21→20, area-cached box, fetch-fail caches nothing)
+  index (1x1 cell at the view center, levels 22→21→20, area-cached box, fetch-fail caches nothing)
   into `MapUiState.satDeep` (0 none / 20..22 Esri native level / -1 fallback), and
   `ensureSatelliteDeep` in VelaMapView adds ONE extra raster layer above the base imagery:
   Esri at its probed native level, or Google's `mt1.google.com/vt/lyrs=s` tiles (maxZoom 21) only
@@ -1420,7 +1442,7 @@ Defaults that make the safe path the easy one:
   handover is an era/lighting flip in the DATA - the fade blends the seam like Google does
   (user noticed the pop, 2026-08-08). The bottom credit follows whose pixels are on screen
   (review 2026-09-12): `satDeep == -1` past the fade reads "Google" with no Esri capture year,
-  the blend zone credits both; zoom is derived from the scale bar's metres-per-pixel.
+  the blend zone credits both; zoom is derived from the scale bar's meters-per-pixel.
   **OpenStreetMap attribution is ALWAYS on the map (issue #302, 2026-09-12):** MapLibre's own
   ⓘ button is disabled in VelaMapView (it covered the scale bar), and nothing else said OSM on
   screen, which the ODbL requires wherever the map is shown. A tappable "© OpenStreetMap
@@ -1428,7 +1450,7 @@ Defaults that make the safe path the easy one:
   bar via `navBarHeightPx`, over the minimized results bar via `chromeLift`, into the map strip in
   landscape), Settings > About has a "Map data" group with the same link, and README + the site
   footer carry the credit. Never gate the label on a chrome state; the satellite credit stays a
-  separate centred line because Esri's terms want their own wording. The probe runs 20 -> 21 -> 22 and stops at the first MISSING level (same review): where Esri tops out at 19, most of the world, one request settles the Google fallback where 22-first spent three sequential round trips on the blur; `ensureActive` between requests so a probe cancelled by the next pan stops, and the deep layer's minZoom is the fade's first stop (18.6) so it no longer loads tiles while invisible. (4) **Road-name halos are
+  separate centered line because Esri's terms want their own wording. The probe runs 20 -> 21 -> 22 and stops at the first MISSING level (same review): where Esri tops out at 19, most of the world, one request settles the Google fallback where 22-first spent three sequential round trips on the blur; `ensureActive` between requests so a probe canceled by the next pan stops, and the deep layer's minZoom is the fade's first stop (18.6) so it no longer loads tiles while invisible. (4) **Road-name halos are
   WIDER than the blanket** (2026-07-09): applyDark/applyLight give the three `highway-name-*`
   symbol layers `textHaloWidth 1.9` vs the 1.1 every other label gets - route lines and the
   dotted walking line run right under street names and made them unreadable; the fatter halo
@@ -1630,7 +1652,7 @@ Defaults that make the safe path the easy one:
   location, diagnostics consent, trip consent, …) gets the pill - don't hand-roll per-dialog buttons.
   The map's UpdateCard uses the same treatment (2026-07-10): its Update action is a filled primary
   CircleShape `Button` beside a plain "Not now" text button, so the action reads by shape and fill,
-  not text colour alone (colour-blind safe). Give any future card's primary action the same pill.
+  not text color alone (color-blind safe). Give any future card's primary action the same pill.
   The button row is a **`FlowRow`** (not `Row`): when the two labels don't fit on one line (a long
   "Download Vela voice" pill beside "Use system voice", or a small/feature-phone screen) the confirm
   pill wraps to its OWN full-width line instead of being squeezed and breaking mid-word. Both buttons
@@ -1670,7 +1692,7 @@ Defaults that make the safe path the easy one:
   gesture needs a key alternative; (2) D-pad code CALLS THE TOUCH PATHS (the named `handleTap`
   lambda, `gestureMove`, `navUserZoom`) - never fork them; (3) all D-pad affordances gate on
   `dpadMode`/`noTouch` so touch UX stays byte-identical; (4) keep the diff merge-friendly - 
-  new behaviour in new files, shared-file edits as small anchored insertions (the one
+  new behavior in new files, shared-file edits as small anchored insertions (the one
   commented import block per file). Search-overlay focus is subtle (armed field + explicit
   `searchExpanded` flag - THREE traps documented in docs/dpad.md: opens-on-focus,
   can't-BACK-out, and DOWN-must-escape-into-the-suggestions); don't "simplify" it back to
@@ -1796,7 +1818,7 @@ Defaults that make the safe path the easy one:
   come back localized. **The rewrite is GATED to `SearchParser.STATUS_LANGS` (= the 11 keyword-table
   languages, keyed off `CLOSED_WORDS`)** - for any OTHER locale the scrape stays `hl=en`, because a
   status string in a language `parseOpenNow` can't read leaves openNow null forever and the UI can't
-  colour open/closed; English text the English table handles is the safer fallback (audit 2026-07-06).
+  color open/closed; English text the English table handles is the safer fallback (audit 2026-07-06).
   The **open/closed BOOLEAN is parsed from the localized status TEXT against a
   per-language keyword table** (`SearchParser.parseOpenNow(status, lang)`, `lang` = the same
   `Locale.getDefault()` that set `hl=`; CLOSED words are matched FIRST - "Opens 5 AM" / "Ouvre à 07:00" /
@@ -1805,7 +1827,7 @@ Defaults that make the safe path the easy one:
   (`openFromCode`, paths `statusCodeRich`/`statusCodeSimple`, removed 2026-07-04): a live EN capture
   proved those ints are span/style markers, not open/closed codes (closed pharmacies carried "open" 6,
   an Open-24-hours place carried 13/4 and rendered red) - the hl=fr pin agreeing was a coincidence.
-  `placeStatusColor(status, openNow)` colours from the boolean and refuses to green English text that
+  `placeStatusColor(status, openNow)` colors from the boolean and refuses to green English text that
   literally reads closed even if fed `openNow=true`. **`gl` (region) follows the PHONE's region
   (2026-07-14):** `GoogleMapsDataSource.glRegion` (set by the VM at init from the cell network's
   country, locale fallback) rewrites `gl=us` in `regionalized()` - clean 2-letter codes only, US
@@ -1813,7 +1835,7 @@ Defaults that make the safe path the easy one:
   stay inline on purpose** (NB the REVIEW SORT menu + the place-sheet TAB titles were split
   2026-07-14: localized display labels over English logic keys - the sort KEY must stay English
   because it drives the live hl=en Google panel by clicking the matching option) - 
-  strings that double as a logic key (place "Open"/"Closed" → status-colour parser, the map category chips /
+  strings that double as a logic key (place "Open"/"Closed" → status-color parser, the map category chips /
   search-along-route chips are also the query, review sort/tab labels branch a `when`) are NOT in strings.xml;
   they localize only once display text is split from the logic key. One exception by REGION, not
   language (issue #338, 2026-09-06): the fuel chip's query is `ui/CategoryQuery.fuel()`, "Petrol
@@ -1906,9 +1928,9 @@ NOT live in the repo - re-upload it if the mark changes.
 
 The README stays SHORT: pitch, screenshots, install, what-you-get, the **privacy comparison
 matrix** (kept IN the README - user 2026-07-11, it's the sharpest one-glance pitch), build.
-Deep dives live in docs/ and get a pointer line, not a section: the capability/method
-**how-it-works table lives in `docs/HOW-IT-WORKS.md`** (moved out 2026-07-11, README just links
-it), alongside CALIBRATION.md, MAP-STYLE.md, dpad.md. The Roadmap section carries a "Not going
+Deep dives get a pointer line, not a section: the capability/method table, the calibration
+walk-through and the map-style reference all live in **`SPEC.md`** (sections 1.4, 3, 11 and 6),
+alongside docs/dpad.md and docs/book/. The Roadmap section carries a "Not going
 to happen" split for login/backend features - keep new won't-dos there AND in ROADMAP.md.
 Remote calibration is a HEADLINE feature in What-you-get (the self-healing pitch), not just an
 architecture note.
@@ -1934,7 +1956,7 @@ architecture note.
   computed from; the pb REQUEST bias stays `near` (the viewport is still the search area).
   `MapViewModel.rankBias(near)` passes the user's location when it is within ~50 km of the
   viewport, so a local search sorts and labels distances from YOU instead of reshuffling
-  around wherever the screen is centred; browsing a far city keeps viewport-centre ranking.
+  around wherever the screen is centered; browsing a far city keeps viewport-center ranking.
   Wired at runSearch + the suggest fetch; searchAlongRoute keeps its route-midpoint bias.
 - **Release cadence (user 2026-09-13): merges go to `canary` (push main to the canary branch); nightlies
   are the daily cron's job. Do not dispatch CI after every merge.**
@@ -1977,7 +1999,7 @@ architecture note.
   the classic panel; the affordance sits under the ETA and is always present (`exp_chooser_alts`
   plurals, `exp_chooser_alts_none`). `routeBubblesFor(..., detailed = altsOpen)` fills `RouteBubble.sub`
   with distance + delta and the bubble layer renders it as a second line. Only the fastest route is
-  labelled "fastest"; a near-tie says "about the same time".
+  labeled "fastest"; a near-tie says "about the same time".
 - **OSM POSITIONS IN THE PLACES BAKE (2026-09-17):** `OSM_PBF` (the region's Geofabrik extract, joined
   into the matrix from `tools/routing-regions.json` by id) is filtered with `osmium tags-filter` to
   NAMED business NODES, exported to geojsonseq (strip the 0x1e record separator before jq; the
@@ -2036,8 +2058,8 @@ architecture note.
 - **ROUTING OFFER + REGION SIZES (2026-09-17):** `MapViewModel.maybeOfferRouting()` (camera idle, once
   per session until answered; pref `routing_offer_done`) offers the smallest obf region covering
   Home or the fix, after onboarding, on the bare map; `answerRoutingOffer`. `archivesFor(region, list)`
-  picks the places/basemap archives a region download pulls: the SAME-ID archive first (the centre
-  rule alone pulled parent and neighbour archives), and `regionExtrasMb` feeds
+  picks the places/basemap archives a region download pulls: the SAME-ID archive first (the center
+  rule alone pulled parent and neighbor archives), and `regionExtrasMb` feeds
   `MapUiState.regionExtrasMb` into `regionInstalledMb(..., extraMb)` so every size shown is the
   real total. Route bubbles (`routeBubblesFor`) show in BOTH choosers and keep `minGap` (25% of
   the routes' diagonal) apart; the Google-style chooser's "Compare routes" sets MapScreen
@@ -2071,7 +2093,7 @@ architecture note.
   Work take the fuzzy compare in BOTH passes (the exact pass owns "take me to my ofice" once its
   verb matched), a bare verb may sit behind up to four filler words like the full verbs
   (`preSkippingFillers`: "can you please take me home"), the bare A-to-B rule rejects a misheard
-  verb as A (`looksLikeVerb`), and `normalise` strips apostrophes and joins spelled acronyms
+  verb as A (`looksLikeVerb`), and `normalize` strips apostrophes and joins spelled acronyms
   ("E.T.A.", "e t a" -> "eta"). Pinned by the `dictation slips still land` and `fuzziness never
   rewrites a short word or the destination` tests.
 - **Local suggestions (issue #180, 2026-07-19):** `onQueryChange` sets `localSuggestions` from
@@ -2134,14 +2156,14 @@ architecture note.
 - **Interface size (2026-07-11):** `UiScale` holder (pref `ui_scale`, chips 90/100/115/130% in
   Settings -> Appearance) applied as a LocalDensity override around VelaRoot's whole tree - all
   Compose UI scales, the map AndroidView keeps native size (built for car/vertical screens).
-- **Map colours are Google-verbatim (2026-07-11):** greens/water/land sampled from
+- **Map colors are Google-verbatim (2026-07-11):** greens/water/land sampled from
   maps.google.com at the arboretum. LIGHT: park/grass `#d3f8e2`, wood `#c9f2da`, water
   `#90daee`, land `#f2f1ee` - opaque (the old 0.3-0.7 over land washed them olive). DARK: park
   green was `#1c3326`, DARKER than the `#242f3e` navy land so it vanished (user 2026-07-11) -
   now `#2c4a34`/`#274330`, opaque, clearly readable. Re-sample the same way if either drifts.
   The **Map style Settings row was removed** (only one style ships; MapStyle/setStyle plumbing
   kept for a future re-add). Nav card trip time is a `FitText` (shrinks to fit, never wraps/
-  ellipsises) so the 54dp buttons + Interface-size scale can't clip the arrival time.
+  ellipsizes) so the 54dp buttons + Interface-size scale can't clip the arrival time.
 - **Issue sweep 2026-09-10, the traps behind each:** (#343) `ListsSheet` must be composed
   OUTSIDE the `fabChromeOk` block: that block is gone while the search overlay is up, and the
   search bar's Your-lists button is exactly there, so the flag flipped and nothing rendered.
@@ -2149,7 +2171,7 @@ architecture note.
   the flat surfaceContainerLow: a shadow smears on a dark map). (#357) The 12/24-hour clock is a
   device SETTING, not the locale: `ui/Clock24` reads `DateFormat.is24HourFormat` at startup and
   in `MainActivity.onResume`, mirrors it into `:core` `data/ClockFormat` for Transitous' board
-  times, and `formatArrivalClock` / `formatDateTime` honour it; never use
+  times, and `formatArrivalClock` / `formatDateTime` honor it; never use
   `ofLocalizedTime(SHORT)` alone for a clock the user sees. (#352) The nav Overview is a LIVE
   refit loop in VelaMapView (`overviewLive`, arrow-to-destination every 4 s, keyed on the
   polyline so a reroute refits), ended by pan/pinch/Re-center; the tick is the user's request,
@@ -2164,9 +2186,9 @@ architecture note.
   2026-09-09).** Liberty's `boundary_2` (admin 2), `boundary_3` (admin 3-6) and
   `boundary_disputed` were hidden with the footpath/rail-hatching clutter in July because the
   admin 5-6 county/city lines read as stray dashes all over a suburb. Google draws countries
-  (thin solid grey) and states/provinces (lighter, dashed, from ~z4) and not the rest, so
+  (thin solid gray) and states/provinces (lighter, dashed, from ~z4) and not the rest, so
   `applyMapTheme` now narrows `boundary_3`'s filter to admin 3-4 (minzoom 4, dashed) and themes
-  all three: the style's own dark grey vanished on the dark map. Never put the boundary ids back
+  all three: the style's own dark gray vanished on the dark map. Never put the boundary ids back
   in the hide list; if a region shows dashed junk, check its admin levels before touching the filter.
 - **Drag-to-reorder lists keep ONE modifier chain (2026-09-16).** The stops editor's rows wrapped
   the dragged row in `.then(if (dragging) Modifier.zIndex().graphicsLayer {} else Modifier)`, and
@@ -2298,7 +2320,7 @@ architecture note.
   changed nothing; hiding ALL symbol layers took one-zoom-in from 22 to 60 fps, and `vela-ambient` alone
   from 22 to 51. The cause was `GeoJsonOptions().withMaxZoom(12)` on AMBIENT_SRC: past a GeoJSON
   source's maxzoom every visible overscaled tile lays out all of its parent tile's features, so a few
-  hundred labelled places were placed many times per frame. maxzoom 18: 43 fps one step in, 51 at the
+  hundred labeled places were placed many times per frame. maxzoom 18: 43 fps one step in, 51 at the
   browse zoom (was 30). The other point sources are sparse and keep 12. ALSO LEARNED: the 4a hits
   thermal status 1 after ~5 minutes of scrubbing and every number drops to single digits, which is what
   the earlier "150 ms per frame at close zoom in every mode" was; benchmark with cool-downs
@@ -2389,17 +2411,17 @@ architecture note.
   badges, z12.5+) above `road_shield_us`; it is NOT in the car-mode strip list on purpose, and
   its id carries "shield" so the satellite white-text pass skips it. Junction NAMES (Europe,
   Japan) have no ref and are filtered out.
-- **Map COLOUR SETS (2026-07-11): Settings -> Appearance -> "Map colors" picks Modern or
+- **Map COLOR SETS (2026-07-11): Settings -> Appearance -> "Map colors" picks Modern or
   Classic.** `ui/MapColors` holder (pref `map_palette`; init in VelaApp); `applyMapTheme`
   dispatches to `applyLight`/`applyDark` (Modern, the pixel-sampled palette) or
-  `applyClassicLight`/`applyClassicDark` (the archived 071c6c3 look from docs/MAP-STYLE.md -
+  `applyClassicLight`/`applyClassicDark` (the archived pre-sample look, values in SPEC section 6.2 -
   white roads, faded casings, yellow motorways, true greens). The styleKey carries
   `|pal=` so a switch reloads the style like a theme flip. Post-archive twin layers
-  (trails/bikeroutes/pitch/commercial) get harmonious colours in the classic fns - they exist
+  (trails/bikeroutes/pitch/commercial) get harmonious colors in the classic fns - they exist
   in ensureLayers regardless of palette, and an unstyled LineLayer renders BLACK, so any NEW
-  twin layer must be coloured in ALL FOUR apply fns. **Same trap bit the maxspeed "Speed B" query
+  twin layer must be colored in ALL FOUR apply fns. **Same trap bit the maxspeed "Speed B" query
   layer (fixed 2026-07-13):** its `lineColor("#00000000")` 8-digit-hex string was REJECTED by
-  MapLibre's colour parser and fell back to the default OPAQUE BLACK - a 12dp black stripe over
+  MapLibre's color parser and fell back to the default OPAQUE BLACK - a 12dp black stripe over
   every road on the browse map (device report). **BUT opacity 0 kills the query (2026-07-13, found by ars18 in the
   vela-dpad fork, A/B-proven on device):** MapLibre skips fully transparent features at render
   time and queryRenderedFeatures only sees rendered features, so the transparent Speed B layer
@@ -2413,7 +2435,7 @@ architecture note.
   "atrocious panning" regression (user device A/B: 542 smooth, wave janky). The hysteresis also stops
   stoplight churn. The scale bar hides only while `driveFollowing && speedOverlayArmed` (actually
   free-driving) - `!driveFollowing` alone had it hidden on the whole browse map.
-  Never trust an 8-hex colour STRING for transparency. The FLEET DEFAULT is remote:
+  Never trust an 8-hex color STRING for transparency. The FLEET DEFAULT is remote:
   `calibration.json` `defaultMapPalette` (v15) -> `Calibration.defaultMapPalette` -> the VM
   pushes it into `MapColors.remoteDefault` at init + after refresh; a user's explicit pick
   always wins. Changing everyone's default = edit the field, bump version, re-sign, commit
@@ -2549,7 +2571,7 @@ architecture note.
 - **Flat vegetation (2026-07-11):** fill-pattern CANNOT be cleared once a style layer ships
   with one (empty-literal unset no-ops on device) - `ensureLayers` hides `landcover_wetland` +
   `road_area_pattern` and adds flat twins `vela-wetland`/`vela-plaza` that applyLight/applyDark
-  colour; the OSM poi tiers' filters exclude vegetation classes (park/garden/wood/tree/...) so
+  color; the OSM poi tiers' filters exclude vegetation classes (park/garden/wood/tree/...) so
   forests read as flat green like Google, not icon confetti. Nav mute/steps/End are 54dp.
   The search bar hides while an expanded place sheet covers it (its sliver still took taps).
 
@@ -2568,11 +2590,11 @@ architecture note.
   cross two detents via the projection.
 - **Map palette matched to the GOOGLE APP screenshots (2026-07-11):** DARK vegetation is TEAL
   (#1a4a4d park/grass, #17434a wood, #194247 wetland) - the app's dark green, clearly lighter
-  than the #242f3e land; LIGHT roads are FILLED blue-grey (#cbd9e3 minor, #c3d3e0 secondary,
+  than the #242f3e land; LIGHT roads are FILLED blue-gray (#cbd9e3 minor, #c3d3e0 secondary,
   #bfd0de trunk/primary, casing #bccbd8) - the APP fills roads solid where the web uses
-  white-with-a-grey-frame; light vegetation #d4edd5/#c8e6cb (app mint), land #f2f1ee, water
+  white-with-a-gray-frame; light vegetation #d4edd5/#c8e6cb (app mint), land #f2f1ee, water
   #90daee. The map-style Settings row is REMOVED (single style; plumbing kept). Nav-card trip
-  time is a FitText (shrinks to fit, floor 55%, never wraps/ellipsises).
+  time is a FitText (shrinks to fit, floor 55%, never wraps/ellipsizes).
 
 - **Sheet flick velocity is measured on INTEGRATED deltas (2026-07-11):** the manual
   VelocityTrackers (place handle, results handle, the drag-anywhere directions panel) fed
@@ -2592,15 +2614,15 @@ architecture note.
   draws the trail network green (dark #167055 sampled); `vela-pitch` (landuse
   pitch/playground/track/stadium, above park) tints sports fields (dark #0d4956 sampled)
   - AND Liberty's own `landuse_pitch`/`landuse_track` layers (they sit ABOVE the twin) are
-  coloured directly + exempted from the landuse-neutralise loops, else the tint never showed
+  colored directly + exempted from the landuse-neutralize loops, else the tint never showed
   (found at a park with ball courts).
   Trail light = #7fcdb0 (P9-SAMPLED); pitch light = #a9eac2 (P9-SAMPLED at Toomey Field,
-  no estimates left); campuses (landuse_school) = #f0eded warm grey (sampled at UC Davis,
-  light only - dark keeps the neutralised land).
+  no estimates left); campuses (landuse_school) = #f0eded warm gray (sampled at UC Davis,
+  light only - dark keeps the neutralized land).
 - **LIGHT palette is PIXEL-SAMPLED from the Google app on the P9 (2026-07-11, definitive,
   supersedes every earlier light set):** land #f8f7f7 (the app is cooler than the web's
   #f6f6f6 and the user's kept #f2f1ee - verbatim wins per user "all of it"), roads are ONE
-  blue-grey fill #aab9c9 for streets AND arterials with NO casings (casings = land),
+  blue-gray fill #aab9c9 for streets AND arterials with NO casings (casings = land),
   driveways/service #9bacbc, motorway #8aa4c0, buildings #e8e9ed w/ outline #d6d9e6
   (extrusion = fill, light killed), vegetation #d3f8e1 (park/grass/wood/wetland all one
   mint), water #90daee (unchanged), plaza/parking surface #dbe0e8, trails #7fcdb0,
@@ -2618,7 +2640,7 @@ architecture note.
   quick-category chips, which are a different kind of control. Bare map + empty query only, so it
   never crowds the clear button.
 - **Glyph ink rule (2026-07-11): leading/functional GLYPHS wear the SOFT ink, text keeps
-  the strong ink.** Solid Material icons read heavier than text at the same colour, and
+  the strong ink.** Solid Material icons read heavier than text at the same color, and
   several sites were outright BLACK (an untinted Icon on a non-Surface container falls
   back to LocalContentColor black - the search page is a plain Box). Fixed sites: search
   bar gear (now onSurfaceVariant, matches the mic), map category chips
@@ -2634,8 +2656,8 @@ architecture note.
   Overpass layer (sibling of `OverpassTrafficSignals`) - see ROADMAP.
 - **Ambient POI DOT TIER (2026-07-11):** `vela-ambient-dots`, a CircleLayer UNDER the
   ambient icon layer on the same source - every ambient place draws a small category-
-  coloured circle (`dotColor` prop from PoiIcons.colorFor; radius 2.6-4.2 by prominence,
-  ring = land colour per theme). Icons still collide; the losers now stay visible as dots
+  colored circle (`dotColor` prop from PoiIcons.colorFor; radius 2.6-4.2 by prominence,
+  ring = land color per theme). Icons still collide; the losers now stay visible as dots
   and upgrade to icons as slots free up while zooming - Google's tiering. Circles skip the
   collision engine (cheap on the 5a/4a class GPUs); taps work through the same
   AMBIENT_INDEX_PROP rect query. Don't gate the dots on zoom - the ambient FETCH gate
@@ -2678,11 +2700,11 @@ architecture note.
   `keepAmbientForView` filters, sorts and caps on AND what `ambientMarkersOf` hands the layer,
   so the cap, the collision order and the icon sizes all agree. Later answers still ADD places
   (they sort in on their own value); they cannot reshuffle what is drawn. `reset()` runs on the
-  same pan/zoom gate that re-queries and wherever the layer is cleared. 3D extrusions = the flat colour at
+  same pan/zoom gate that re-queries and wherever the layer is cleared. 3D extrusions = the flat color at
   opacity 1f (the 0.9f translucency was the "3d buildings render slightly different" wonk)
   AND the style light at intensity 0 + fillExtrusionVerticalGradient(false) - MapLibre's
   default light (0.5) brightens extrusion tops ~40% at z16+ (#1c3b69 rendered #2e5590; the
-  side-by-side P9 sample proved Google keeps buildings one colour at every zoom, 2026-07-11).
+  side-by-side P9 sample proved Google keeps buildings one color at every zoom, 2026-07-11).
   Sampling recipe: screencap Google Maps on the Pixel 9 over the target area, Counter the
   band, probe specifics. **Flick velocity, final form:** all manual trackers integrate
   deltas AND take max(tracked, plain travel/time average) at release - a flick can never
@@ -2704,7 +2726,7 @@ architecture note.
   estimates):** DARK land #111c31, buildings #172b56 (outline #243970), roads #304864 (trunk
   #3d5878, casings = land), vegetation #0d2b38. LIGHT vegetation #caf8dc, buildings #e2e3e9,
   roads #b0c1d4 (secondary #aabdd0, trunk #a4b8cd, casings #a2b4c9); light land stays #f2f1ee
-  (user prefers it over Google's #f6f6f6). Their eyedrop had macOS colour-shift on - expect a
+  (user prefers it over Google's #f6f6f6). Their eyedrop had macOS color-shift on - expect a
   fine-tune pass.
 - **Basemap labels are ROBOTO via self-hosted glyphs (built 2026-07-11, device-verified;
   dark-launched pending infra).** OpenFreeMap's glyph server is Noto-only (every Roboto stack
@@ -2748,7 +2770,7 @@ architecture note.
 
 - **Offline sizes are INSTALLED sizes (issue #214, 2026-07-23).** Region manifests carry
   `installedMb` (measured by the bake scripts: du of the unpacked graph dir / raw pack db);
-  the app falls back to zip x 1.8 (graphs) / x 2.35 (packs, WA measured 143->335 MB) for
+  the app falls back to zip x 1.8 (graphs) / x 2.35 (packs, a large state measured 143->335 MB) for
   manifests baked before the field existed. The Settings row shows graph+pack SUMMED
   (`regionInstalledMb` in OfflineSettings), regions over 1 GB installed confirm via VelaDialog
   before downloading, and the Storage group at the bottom of Offline maps reads
@@ -2786,7 +2808,7 @@ architecture note.
   config edit + version bump + re-sign, not an app release (issue #71 was exactly this class of
   bug). The bundle also carries **`defaultVoiceId`** (String - the Piper voice a fresh install
   downloads + activates), **`defaultVoiceSpeaker`** (int - only tunes libritts_r's 904
-  variants) and **`defaultVoiceSpeed`** (float - spoken-directions speed), so a favourite
+  variants) and **`defaultVoiceSpeed`** (float - spoken-directions speed), so a favorite
   voice/speaker/pace can be pushed as everyone's default with a version bump + re-sign, no
   app release (a user's own `voice_model`/`voice_speaker`/`voice_speed` pick still wins).
   Shipped defaults (calibration **v13**): voice **HFC Female** (`en_US-hfc_female-medium`),
@@ -2946,7 +2968,7 @@ Gotchas:
   no warning, arriving as indistinguishable-from-ordinary calibration drift.
 - **Do not chase the TLS fingerprint.** Matching Chrome JA3/JA4 and HTTP/2 frame ordering needs a
   custom TLS stack: permanent maintenance, native deps, and trouble for reproducible F-Droid builds.
-  Vela's defence is diffusion (every user on their own carrier IP, nothing central to block), not
+  Vela's defense is diffusion (every user on their own carrier IP, nothing central to block), not
   disguise. A current, coherent UA is ordinary client hygiene; a bespoke TLS stack is an arms race
   on a solo budget, and a worse posture if it ever mattered.
 
@@ -2985,7 +3007,7 @@ Gotchas:
   all return `InvalidValue: Exclude flag combination is not supported`). At the time Google's
   keyless endpoint was believed to have no avoid parameter; that was WRONG (see the keyless
   avoid paragraph under "Directions", 2026-09-06: the flags ride in the `!6m` feature block and
-  Google's own route honours them). So online avoid is now Google-honoured + OSRM-snapped, and
+  Google's own route honors them). So online avoid is now Google-honored + OSRM-snapped, and
   the note is rare. Back on 2026-08-24 it was the entire user-facing answer, so it was upgraded
   from dim `bodySmall` under the chips (it read as decoration; the reporter never registered it)
   **Wording fixed 2026-09-13:** the note said avoiding "works on downloaded areas only", which
@@ -3000,7 +3022,7 @@ Gotchas:
   InvalidValue - its profiles lack excludable classes; routeOsrm bails on any 4xx instead
   of retrying, AND `OSRM_SUPPORTS_EXCLUDE=false` keeps the param OFF entirely - sending it
   400'd the whole request and lost the clean named-turn route while a chip was on, a worse
-  route than just not honouring avoid online; flip the const on a self-hosted OSRM), so the AUTHORITATIVE avoid router
+  route than just not honoring avoid online; flip the const on a self-hosted OSRM), so the AUTHORITATIVE avoid router
   offline is the on-device obf engine: dynamic routing.xml params (`avoid_toll` / `avoid_highway`), no
   baked profiles. directions() tries the on-device avoid route FIRST when a toggle is on; an engine that
   cannot honor it returns EMPTY (never silently routes through a toll) and the online chain falls back to a
@@ -3008,7 +3030,7 @@ Gotchas:
   2026-07-11 were retired on 2026-09-15.) Device-verified on the graphs then: Dover-Smyrna with Avoid tolls
   swung off the DE-1 toll road onto the free route, single on-device route, no live-traffic tag.
 - Nav guidance discipline (2026-07-04 audit): prompt/turn-now distances SCALE WITH SPEED in
-  `NavEngine` (max(fixed, v×T), T=35/10 s since 2026-07-17; `spoken` stores band SLOTS not metres), one prompt per update speaking
+  `NavEngine` (max(fixed, v×T), T=35/10 s since 2026-07-17; `spoken` stores band SLOTS not meters), one prompt per update speaking
   the TRUE distance, REPEATS TRIMMED (2026-07-17: a step's non-first prompts speak
   `NavStrings.repeatShort` - EN drops the " toward ..." sign tail, other languages default to
   full until they override - and a MERGE skips the far band entirely; a long on-ramp narrated
@@ -3037,7 +3059,7 @@ Gotchas:
   legit wrong-way reroute mid-fetch). The 3-hit debounce absorbs turn transients/lane changes; a
   heading-off fix that is ALSO a quarter-corridor (10 m) off the line counts DOUBLE while moving,
   so a deliberate left-instead-of-straight reroutes on the 2nd fix after the turn (real drive
-  2026-09-07, `NavEngineWrongTurnTest`); a wide legit turn stays within a few metres of the corner
+  2026-09-07, `NavEngineWrongTurnTest`); a wide legit turn stays within a few meters of the corner
   and keeps counting single. THE PUCK has its own wrong-turn rule in VelaMapView's fix block: the
   engaged snap already rejects a fix whose course is 55°+ off the segment, but that rejection used
   to be a plain "miss", so the arrow dead-reckoned straight on along the old line for 3 s and then
@@ -3090,10 +3112,10 @@ Gotchas:
   where it resolved; `velaSeg` is forwarded by core/build.gradle.kts like `velaTrip`). Second
   finding from the same replay, NOT fixed: a start point ON an on-ramp snaps to the surface street
   under it on OSRM, with or without the bearing hint, so a recheck fetched from a ramp routes the
-  first kilometres over local streets; Google snaps it right, which is why its alternate led.
+  first kilometers over local streets; Google snaps it right, which is why its alternate led.
   **A REROUTE PINS ITS DEPARTURE HEADING (real-drive report 2026-08-17: "it keeps rerouting me the
   way I was going before").** After a wrong turn, an unconstrained reroute is perfectly entitled to
-  answer "U-turn and rejoin" - from a point a few tens of metres down the wrong road, going back
+  answer "U-turn and rejoin" - from a point a few tens of meters down the wrong road, going back
   often IS the fastest path - so the driver is told to turn around, carries on anyway, and is told
   to turn around again. `RouteGeometry.departBearingParam` sends OSRM `bearings=<heading>,65` for
   the FIRST waypoint only (every later waypoint gets an empty entry; the count MUST match the
@@ -3126,7 +3148,7 @@ Gotchas:
   the same 18 steps as the `nav start` 25 s after it and is followed by the chooser's WALK and
   BICYCLE prefetch, i.e. the driver ended nav inside those 40 s and the 105 s is the manual
   replan running the full planning ladder against the stalled router. Two further silent-cancel
-  facts from reading the export: a cancelled orphan dies at its next suspension point without its
+  facts from reading the export: a canceled orphan dies at its next suspension point without its
   DRIVE line, and `stop()` logged nothing. Now: `MapDataSource.directions(budgetMs=)` (null =
   planning, unchanged) and `core/data/RouteBudget` carry the deadline; NavSession passes
   `RerouteAttempt.budgetMs` (deadline minus `REROUTE_FINISH_RESERVE_MS` 4 s). Urgent: one OSRM
@@ -3156,7 +3178,7 @@ Gotchas:
   And
   since 2026-08-04 the reroute fetch is URGENT (`directions(urgent = true)`, issues #185/#236):
   single-shot OSRM + Google (no 3x ladders), no divergence snap - the full planning ladder
-  regularly outlived the deadline on a weak link, so the timeout cancelled fetches that were
+  regularly outlived the deadline on a weak link, so the timeout canceled fetches that were
   about to succeed (the reporter's "context canceled then 200 OK" logcat) and the driver sat
   unrerouted through repeated 20 s attempts. A lean route lands in seconds; maybeRecheck's
   stepsUpgrade/trafficUpgrade heal restores quality minutes later. Planning fetches keep the
@@ -3176,7 +3198,7 @@ Gotchas:
   synthetics pass the outlier gate). Never feeds `tripStore.record` (no fake points in trips).
   **Route bar (`RouteBarStrip`, 2026-09-04):** badges for CAMERA / RAIL_CROSSING / SPEED_HUMP, dots for
   SIGNAL / STOP, an arrow marker with `remainingMeters` and a top cap with `model.spanM`; the Layout
-  centres every child on the track by its window fraction (`RouteBarSpan`). Labels are `requiredWidth`
+  centers every child on the track by its window fraction (`RouteBarSpan`). Labels are `requiredWidth`
   wider than the strip so "768.8 mi" does not clip. The road-name pill in BAR mode caps its width at
   screenWidth - 176 dp so it can never reach the speed-limit sign or the FAB column.
   **Road label placement (`RoadLabel`, pref `road_label`: bar|puck|off, default bar) and
@@ -3199,7 +3221,7 @@ Gotchas:
   committing drag hands the lift over as `enterFromPx`; the nav-form sheet never slides: its
   list is the same well, `natural - drag - enterPx` tall, `enterPx` starting at 1e9 (first frame
   = closed = the bar) and, once the list is measured (`snapshotFlow` in a ONE-SHOT effect; an
-  effect keyed on the measured height got cancelled by a re-measure and froze the well shut),
+  effect keyed on the measured height got canceled by a re-measure and froze the well shut),
   snapping to `natural - lift` and easing to 0. Swipe-down shrinks the well with the finger;
   every close (X-chevron, swipe, BACK via `closeTick`) animates the well to 0 THEN flips the
   state, so the bar reappears under an identical header. The nav-form card keeps the bar's
@@ -3230,19 +3252,19 @@ Gotchas:
   vanished in 12 m chunks with a dithered edge a texel ahead of the arrow. Now the ahead line's
   gradient is transparent up to a texel BEFORE the cut piece's END (`pa` from `cutEnd`, recomputed
   on each slide), so nothing sits under the piece, and the piece's per-frame gradient (1.6 m texels)
-  paints transparent before the arrow and colour after - the same per-frame path as the trail-on
-  grey cut, only the "driven" colour differs. Do not move the per-frame cut back onto the ahead line.
+  paints transparent before the arrow and color after - the same per-frame path as the trail-on
+  gray cut, only the "driven" color differs. Do not move the per-frame cut back onto the ahead line.
   **Spur rule v2 (2026-09-06, from the reporter's trip log):** the real appendix was a 121 m
   turn-right / U-turn / turn-right stub 56 m off a state route; the car never came within 47 m of
   its tip. The v1 rule missed it (a side street leaving at an angle projects a little further along
   the course every vertex, and the 15 m "advance" step reset the stretch each time). Now a stretch
-  resets only on NORMAL progress (>=80% of distance travelled) and flags at >=80 m travelled with
+  resets only on NORMAL progress (>=80% of distance traveled) and flags at >=80 m traveled with
   <45% progress. Validated in Python against the actual route geometry before porting.
   **Via-route spur guard, the SHAPE test (2026-09-06, same day, after the reporter said the appendix
-  hung off a motorway with no turn for miles):** a via that lands on an OFF-RAMP snaps a few metres
+  hung off a motorway with no turn for miles):** a via that lands on an OFF-RAMP snaps a few meters
   and adds only a ramp pair, so the snap-distance and length guards below miss it. `hasSpur(route,
   course)` projects the via route onto Google's line (windowed) and flags any >=250 m stretch that
-  advances <35% of the distance travelled; the first/last 300 m are exempt. Applied to every via
+  advances <35% of the distance traveled; the first/last 300 m are exempt. Applied to every via
   route in `directions()`; unit-tested with an out-and-back appendix and a ramp-shaped loop.
   **Via-route spur guard (2026-09-06):** `routeOsrm` refuses a via route when any interior via snapped
   >40 m (`VIA_SNAP_MAX_M`, from OSRM's `waypoints[].distance`) and `snapReaches` also requires the via
@@ -3250,7 +3272,7 @@ Gotchas:
   landed on a frontage road or ramp; the plain route is used instead.
   **Driven trail is a setting (`RouteTrail`, `route_trail`, default OFF = hidden, 2026-09-03):** the
   ticker reads it per frame through `trailHolder`; off means `routeGradient(..., driven = TRANSPARENT)`
-  on the ahead and cut pieces and `ROUTE_LAYER` hidden, on means grey. A flip sets `splitReset` so the
+  on the ahead and cut pieces and `ROUTE_LAYER` hidden, on means gray. A flip sets `splitReset` so the
   next frame re-applies everything. Paint only; never touch geometry for this.
   **AVOID TOLLS / HIGHWAYS ARE KEYLESS ON GOOGLE (2026-09-06; the July "cannot" note was wrong).**
   The flags are in the `!6m` feature block's `!2m` submessage of the `/maps/preview/directions` pb:
@@ -3295,10 +3317,10 @@ Gotchas:
   first pass over every NODE in the extract, and buildings, landuse and the rest of the map are
   most of those nodes. `build-obf-region.sh` now runs `osmium tags-filter` first for a
   routing-only bake (highway ways with their nodes, ferry and shuttle-train routes,
-  turn-restriction relations): Washington went 363 MB -> 119 MB, 49.5 M -> 13 M nodes, in 4 s;
+  turn-restriction relations): a large US state went 363 MB -> 119 MB, 49.5 M -> 13 M nodes, in 4 s;
   the lean bake of the filtered file took 5 MINUTES at 12g instead of 48 and produced an 87 MB
   obf instead of 111 MB (the difference is non-highway ways OsmAnd's boat/ski/train profiles
-  would use, which Vela never asks for). Device-checked: the filtered Washington obf served
+  would use, which Vela never asks for). Device-checked: the filtered state obf served
   through a local manifest (`-PobfManifestUrl=http://127.0.0.1:8099/...` + `adb reverse`)
   routed a 40 km drive offline in ~15 s. A 150 km route ground for minutes at the engine's
   256 MB `RoutingMemoryLimits` (tile unloads every 100 ms) - that is the pre-existing
@@ -3307,18 +3329,18 @@ Gotchas:
   A bake that asks for address/POI sections (`VELA_OBF_SECTIONS`) skips the filter. **Route
   relations are indexed again (2026-09-12):** the lean bake had dropped them (and the filter
   dropped `type=route` relations), which cost the bicycle profile its signed-cycle-route
-  preference; measured on Washington they add 13% time and 0.4 MB, so `VelaObfShim` keeps
+  preference; measured on a state bake they add 13% time and 0.4 MB, so `VelaObfShim` keeps
   `indexRouteRelations` on (`VELA_OBF_ROUTE_RELATIONS=false` to drop) and the filter keeps
   `r/type=route`. The world was re-baked with them.
   **OBF BAKE, MEASURED 2026-09-04 (read before touching scripts/build-obf-region.sh or the shim):**
   the memory ceiling is MapCreator's FIRST pass (`extractOsmToNodesDB`), so it does not depend on
   which sections you index, only on the PBF and on which analysis passes run. Same 345 MB
-  Washington extract at a 12 GB heap: full routing+address+POI = OOM (7 min); routing-only with
+  US-state extract at a 12 GB heap: full routing+address+POI = OOM (7 min); routing-only with
   default passes = OOM (peak 11 GB); routing-only LEAN (multipolygon, route-relation, proximity and
   country-region indexing off) = SUCCESS, 48 min, 111 MB obf. Bavaria (810 MB) OOMs at 12g even
   lean (first pass, 81%); pieces that size need osmium chunks or a 32 GB machine (22g worked).
   Output sizes: Saarland 8 MB routing-only vs 52 MB with address+POI vs OsmAnd's own 66 MB
-  roads-only / 125 MB full; Washington 111 MB vs OsmAnd 595 MB roads-only. Also: the workflow
+  roads-only / 125 MB full; the same state 111 MB vs OsmAnd 595 MB roads-only. Also: the workflow
   file was invalid YAML (duplicate `default:` key) from Aug 16 to Sep 3, so no bake ran at all.
   **Corner-cut lag (2026-09-06, from the reporter's trip log, replayed offline):** a cut corner
   jumps the along-route measurement ~30 m in one fix; the puck's catch-up cap (`maxCatchUp`,
@@ -3327,7 +3349,7 @@ Gotchas:
   Now 1.5v+2: 34 m -> 7 m in 2.5 s, per-fix speed step unchanged (p50 0.27 m/s). A shorter
   PUCK_CORRECT_TIME_S (0.35) would cost smoothness (0.47/1.64 m/s) - left at 0.6. The replay
   harness is a scratch Python port of AlongRouteFilter + the rate rule over the trip's fixes.
-  **Read `docs/puck-jitter.md` first: the eight causes, the measurement scripts in `scripts/jitter/`, and
+  **Read SPEC section 4.7 first: the eight causes, the measurement scripts in `scripts/jitter/`, and
   the order to run them. Do not start from a theory.**
   **List order (issue #343, 2026-09-12):** `PlaceListStore.move(id, delta)` swaps within the stored
   JSON array, and that array order IS the display order everywhere (`state.lists` feeds the
@@ -3341,7 +3363,7 @@ Gotchas:
   (OSRM modes first, transit last because it is a hidden-WebView page load), through the SAME
   `directions()`/`transit()` calls the picker makes when the chip is tapped, so a chip never shows
   a number the list then contradicts (an OSRM free-flow guess reads minutes under the traffic-aware
-  time on a signalled arterial). Keyed per trip (endpoints, stops, avoids, time, 5-minute bucket)
+  time on a signaled arterial). Keyed per trip (endpoints, stops, avoids, time, 5-minute bucket)
   in `modeEtaCache`; `clearRoute` cancels the job and empties the chips. A prefetch skips the mode
   the user has just tapped (`route()` is already on it). Google's transit summary says "hr", ours
   "h": `transitChipText` folds the English form so the chips read alike.
@@ -3372,7 +3394,7 @@ Gotchas:
   the FIRST fix's provider, latency and accuracy; never coordinates). Both landed because #359
   (English reviews on a zh-TW phone) and #362 (a flip phone that "never" gets a fix) could not
   be reproduced here; ask those reporters for a Settings > Diagnostics export.
-  **Puck size/colour setting (issue #344, 2026-09-12):** `ui/NavChrome.PuckStyle` (prefs
+  **Puck size/color setting (issue #344, 2026-09-12):** `ui/NavChrome.PuckStyle` (prefs
   `puck_size` normal/large/xl = 1x/1.25x/1.5x, `puck_style` blue/white). `navPuckBitmap(scale,
   whiteDisc)` draws both the Compose overlay (`remember(PuckStyle.key())`) and the `NAV_PUCK_IMG`
   symbol; the symbol image is registered once per style load, so `PuckStyle.key()` rides the
@@ -3437,7 +3459,7 @@ Gotchas:
   `atrace_apps: "app.vela"` in the perfetto config; `android.os.Trace.beginSection` works in the
   release build, and `Compose:recompose` slices are emitted by the runtime already.
   Nav zoom range is 18.0→15.5 (2026-07-14, was 17.3→15.0).
-  **PUCK JITTER (issue #251) HAS EIGHT SEPARATE CAUSES, ALL FIXED. READ `docs/puck-jitter.md`
+  **PUCK JITTER (issue #251) HAS EIGHT SEPARATE CAUSES, ALL FIXED. READ SPEC section 4.7
   BEFORE TOUCHING THE PUCK.** It was re-diagnosed from scratch four times because each pass found
   a real cause, fixed it, and the symptom persisted - two of those passes then derived the SAME
   window fix independently. The list: (1) the along-route POSITION was never filtered; (2) the
@@ -3449,16 +3471,16 @@ Gotchas:
   again, the next thing to suspect is something NOT on this list - do not re-derive one of these.
   **(1) THE ALONG-ROUTE POSITION WAS NEVER FILTERED (2026-09-01, the biggest single cause).** The
   puck's SPEED had been Kalman-filtered since June; its POSITION never was. The snapped fix went
-  straight into `targetM` and the puck was drawn from it, so every metre of along-route GPS noise
-  was a metre the puck genuinely had to travel, once a second, for the whole drive. **No amount of
+  straight into `targetM` and the puck was drawn from it, so every meter of along-route GPS noise
+  was a meter the puck genuinely had to travel, once a second, for the whole drive. **No amount of
   downstream smoothing can fix that** - a smoother makes the movement gentler, it does not make it
   stop happening, which is precisely why four passes of smoothing work left the symptom alive.
   `AlongRouteFilter` (`:core`, unit-tested) is the missing measurement update: the estimate
-  dead-reckons at the modelled speed and grows variance, and each accepted fix folds in weighted by
+  dead-reckons at the modeled speed and grows variance, and each accepted fix folds in weighted by
   its OWN reported accuracy (`Location.getAccuracy` is a 68% radius; snapping discards the lateral
   component, so the along-route sigma is ~0.66x it). A clean 4 m fix pulls most of the way, a 25 m
   urban-canyon one barely moves the estimate. `targetM` still exists and still takes the raw fix -
-  the plausibility gate and the snap window are built on it and keep their behaviour - but what the
+  the plausibility gate and the snap window are built on it and keep their behavior - but what the
   puck DRAWS is now `navPuck.along`. Genuine discontinuities (engage, re-acquire, a persistent
   over-cap jump) call `reseed` instead, because a teleport is not noise to average down.
   Simulated against the old rule, 1 Hz fixes at 60 fps: along-road wobble 7.2 -> 2.8 px at cruise
@@ -3467,9 +3489,9 @@ Gotchas:
   `targetM + reckonedM` and was then clamped monotonic. Each half is individually sensible;
   together they fight. Every fix reset the reckoning, so the target JUMPED by however much the dead
   reckoning had over- or under-shot; an overshoot put the target BEHIND the puck, the ease pulled
-  backward, and the monotonic clamp FROZE the puck until the reckoning caught up. A few metres of
+  backward, and the monotonic clamp FROZE the puck until the reckoning caught up. A few meters of
   ordinary GPS noise did that once a second, forever. Now corrected in the RATE domain: the puck
-  always advances at the modelled speed and the estimate error enters as a BOUNDED nudge to that
+  always advances at the modeled speed and the estimate error enters as a BOUNDED nudge to that
   rate (`PUCK_CORRECT_TIME_S`, catch-up capped at 0.5x speed + 1 m/s, hold-back at 0.25x + 0.5).
   Cannot stall, cannot lurch, still monotonic. Stalled frames 2.7% -> 0% at cruise, 27.8% -> 0% in
   a canyon; frame-to-frame speed error 36% -> 3%.
@@ -3484,7 +3506,7 @@ Gotchas:
   and not worth re-deriving a third time.
   **Route geometry is requested at `polyline6`, not `polyline` (2026-09-01).** OSRM's default
   encoding is 1e5-scaled: a 1.11 m latitude grid, so every vertex of a physically straight road
-  arrives snapped to a metre-ish step and the puck has to smooth back out scatter Vela itself
+  arrives snapped to a meter-ish step and the puck has to smooth back out scatter Vela itself
   introduced. `geometries=polyline6` + `PolylineCodec.decode(s, 6)` removes it at the source -
   verified on the FOSSGIS server (same vertex count, same distance, 10x the resolution). Worth
   ~20-25% of the chord-bearing noise on real routes; the rest of the crinkle is genuinely in OSM.
@@ -3498,13 +3520,13 @@ Gotchas:
   became visible movement. `SpeedKalman.denoise` applies an `a^2/(a^2+n^2)` suppression gain
   (`ACCEL_NOISE` 0.5) before integrating. **NOT a subtract-the-floor shrinkage** - that was tried
   first and broke `brakingCollapsesThePredictionBetweenFixes`, because shrinking every sample taxes
-  a REAL brake by the floor, weakening the exact behaviour the filter exists for (the puck must
+  a REAL brake by the floor, weakening the exact behavior the filter exists for (the puck must
   decelerate with a stopping car). The gain leaves a 4 m/s2 brake within ~1.5% of itself while
   cutting 0.3 m/s2 of vibration to about a quarter. A steady bias is attenuated, not erased (~0.08
   m/s after a second), which the next fix corrects. **Rule: anything integrated per-frame from a
   phone sensor in a car needs a noise model, or it becomes puck motion.**
   **(3) THE CAMERA BEARING IS ADAPTIVELY DAMPED (2026-08-24, the "crinkly roads" residual).** Measured on a synthetic road that is physically
-  STRAIGHT but digitized with half-metre vertex scatter (what "crinkly" means in the data): the
+  STRAIGHT but digitized with half-meter vertex scatter (what "crinkly" means in the data): the
   chord bearing the puck derives swings **7.3 deg at a 5 m window, 2.3 deg at 14 m** - several
   times the 0.83 deg camera wiggle the earlier fixes chased. The camera is anchored to the puck,
   so that rotates the WHOLE MAP under a steady arrow. **Window WIDTH is the only lever on chord
@@ -3542,9 +3564,9 @@ Gotchas:
   (onNavZoomOverride) so MapScreen shows the nav Re-center FAB for it, and the button bumps
   navRecenterTick which clears navUserZoom/navUserTilt back to auto; GTFS stop icons hide during nav
   (declutter effect + the VM skips the fetch). The route line's
-  driven/ahead cut is a GEOMETRY split (`ROUTE_AHEAD_LAYER` window over a traversed-grey full line) plus
+  driven/ahead cut is a GEOMETRY split (`ROUTE_AHEAD_LAYER` window over a traversed-gray full line) plus
   a PAINT-ONLY moving cut since 2026-09-03: `ROUTE_CUT_LAYER`, a 400 m piece over the ahead line whose
-  `line-gradient` is the actual grey/colour cut (256 texels over 400 m = 1.6 m each, under the arrow); its
+  `line-gradient` is the actual gray/color cut (256 texels over 400 m = 1.6 m each, under the arrow); its
   geometry slides every ~300 m, only its paint changes per frame. NEVER move route geometry per frame
   or on a short timer for the cut: the old 150 ms re-upload of the 3 km window dropped a map frame at a
   fixed 6.7 Hz (Perfetto: over-budget renders spaced 133-167 ms, 46 in 8 s) - a whole-map vibration
@@ -3640,7 +3662,7 @@ Gotchas:
   not a copy seeded at engage - the shadow copy went blind to any rotation arriving from outside
   the ticker and the map stayed rotated. **The PUCK draws at the EASED position (`browseCam`), not the raw
   fix (2026-07-13):** at the raw fix the dot teleported forward on the map each fix while the camera eased to
-  catch up (the visible hop); at the eased position it stays centred and glides with the map, the locked
+  catch up (the visible hop); at the eased position it stays centered and glides with the map, the locked
   puck+camera the nav follow has. (A fuller constant-velocity dead-reckon between fixes is the next step if it
   still isn't smooth enough - needs a real drive to tune.) It OWNS the location
   source while running, so `applyData` must NOT repaint the raw compass over it - the call sites pass `meBearing`
@@ -3680,7 +3702,7 @@ Gotchas:
   reset the instant off) gates it - a graze can't reach 2, a real rejoin does. Self-healing (a re-deviation
   re-fires the edge; no cooldown charged). Threshold tunable from a real-drive U-turn capture. (4) **Traffic incidents** - re-investigated + DEFERRED
   (user, 2026-07-05): no keyless real-time source (Google keyless response carries none; incident tiles are
-  proprietary binary; OSM has only stale roadworks; DOT/511 needs a token + is per-state). Congestion colouring
+  proprietary binary; OSM has only stale roadworks; DOT/511 needs a token + is per-state). Congestion coloring
   already shows where it's slow. See ROADMAP.
 - Heading (browse-cone facing direction when stopped, where GPS course is noise): raw
   `SensorManager` `TYPE_ROTATION_VECTOR` (`core/location/HeadingProvider`) - a plain
@@ -3939,7 +3961,7 @@ Gotchas:
   view in `open`, and in `both` waits for a 1.5 s settle (cache paint included) and then runs one
   fan-out whose places are uploaded AS-IS (Google's copy wins a twin, see the "Google WINS" note).
   The open twins are hidden by `hideOpenTwins`, a DEBOUNCED pass (`ambientRedo` at 400 ms and
-  `ambientRedo2` at 2 s after the last upload, cancelled by a newer list or a style reload): it
+  `ambientRedo2` at 2 s after the last upload, canceled by a newer list or a style reload): it
   queries only the RENDERED open icons on screen, and re-checks the ids it already hid with a
   filtered `querySourceFeatures` (id IN the hidden set, so only a handful cross JNI), releasing
   any whose Google partner has left the set, so an open place is never left hidden with nothing in
@@ -3990,9 +4012,9 @@ Gotchas:
   `.github/workflows/places-overlays.yml` from `tools/places-regions.json` (manual dispatch while beta,
   `scripts/merge-places-manifest.sh` folds entries); `PlacesTileStore.download` (index.json by bbox,
   PMTiles magic check) rides along with a region download (`downloadPlacesForArea`, next to the building
-  overlay), `deleteRoutingGraph` removes archives whose bbox centre sits in the region; manifest misses are
+  overlay), `deleteRoutingGraph` removes archives whose bbox center sits in the region; manifest misses are
   memoised 10 min (the lookup runs on every camera idle). Labels use `PoiIcons.ambientLabelColor(dark)` off
-  the baked `icon` property (the fixed grey was the "text looks off" report), FOUR label anchors
+  the baked `icon` property (the fixed gray was the "text looks off" report), FOUR label anchors
   (right/left/top/bottom, 2026-09-15: with two, a strip mall's row of icons dropped every second
   label while Google labels every pin; below z15 only the coarse-cell winners carry text, so the
   extra slots cost nothing at the wide views. NB in Both mode the Google top-up's low-prominence
@@ -4015,7 +4037,7 @@ Gotchas:
   stored) makes a second tap on the same pin instant, across restarts. `MapPoiPrefs.lookupTappedPlaces`
   ("Look up tapped places on Google", Settings > Map under the source picker, default ON, pref
   `map_places_google_lookup`): off, a seeded open-place tap stays on the tile data, no search, no
-  reviews, nothing to Google; basemap taps still resolve. Licence:
+  reviews, nothing to Google; basemap taps still resolve. License:
   CDLA-Permissive 2.0, attribution still to add to About.
 - **Sheet titles follow the app language's SCRIPT (2026-09-15, `core/util/NameScript`).** Google
   answers a tap's correlation with the local-script name even under hl=en (a Hebrew title over an
@@ -4066,7 +4088,7 @@ Gotchas:
   the reason the old attempt was reverted - do NOT retry the WebView-embed path). Pipeline: (1)
   metadata via `MapDataSource.streetView` → `GoogleMapsDataSource` hits the keyless JS-API
   `GeoPhotoService.SingleImageSearch` (pb in `calibration.streetViewMetaUrl`, `{LAT}`/`{LNG}`;
-  the `get()` helper's `Referer: https://www.google.com/maps/` is what authorises it), parsed by
+  the `get()` helper's `Referer: https://www.google.com/maps/` is what authorizes it), parsed by
   `:core` `StreetViewParser` (address/copyright/position live INSIDE the pano node `root[1]`, not
   root - the off-by-one trap the unit test locks; copyright is `[1][4][0][0][0]`, one deeper than
   it looks). Returns null = no coverage. (2) tiles via `MapDataSource.streetViewTile` (fixed
@@ -4088,10 +4110,10 @@ Gotchas:
   shown in the attribution), **walk arrows** (`StreetViewPano.neighbors` = the local pano graph
   `[5][0][3][0]` de-cluttered to nearest-per-direction, excluding same-spot <4 m; the overlay projects
   each onto screen by `bearing - cameraYaw` within the FOV, polled each frame), and **time travel**
-  (`StreetViewPano.history` = `[5][0][8]` `[neighbourIndex,[yr,mo]]` resolved through the graph + this
+  (`StreetViewPano.history` = `[5][0][8]` `[neighborIndex,[yr,mo]]` resolved through the graph + this
   pano, newest-first; a clock chip switches captures via `timeTravelStreetView`, which loads tiles by
   pano id and keeps the base metadata so the arrows/dates return). **Two gotchas, both device-caught:**
-  (1) walking fetches the neighbour BY PANO ID (`streetViewByPano` -> `photometa/v1`, keyless, node
+  (1) walking fetches the neighbor BY PANO ID (`streetViewByPano` -> `photometa/v1`, keyless, node
   nested one deeper at `root[1][0]` with a `)]}'` guard - the parser handles both), NOT by nearest-
   location: a location lookup snapped to a different-year same-spot capture (green May imagery under a
   "December 2022" label). (2) the `PanoramaView` must NOT be `remember`ed keyed on panoId - `AndroidView`
@@ -4106,7 +4128,7 @@ Gotchas:
   ±40° nudge) are the FALLBACK for entries with no thumbnail - don't re-order that ladder: geometry alone
   provably mis-picks (the 2005-address alley saga, 3 attempts before copying Google won). **COMPASS FRAME
   (2026-07-16, the root of every "faces the wrong way"):** Google's equirect puts the CAPTURE heading at
-  the texture CENTRE (u=0.5, verified by stitching a pano), while PanoramaView's yaw=0 looks at u=0.75 -
+  the texture CENTER (u=0.5, verified by stitching a pano), while PanoramaView's yaw=0 looks at u=0.75 -
   so compass B = renderer yaw `B - captureHeading - 90`. Use `setCompass(panoHeading, faceCompass)` /
   compass-space `currentYawDeg()`; NEVER feed a compass bearing in as raw yaw, and never overwrite
   `StreetViewPano.headingDeg` (the texture reference) with a desired facing - that's `initialFacingDeg`.
@@ -4126,7 +4148,7 @@ Gotchas:
   VelaMapView draws the NAV PUCK + view cone (SV_SRC/SV_LAYER, data-driven `iconRotate` off the
   feature's "yaw" so a drag is one setGeoJson, identity-gated like the parking pin) and eases the
   camera to the pano on each HOP only (never per yaw frame), with `svTopInsetPx` (pane height) as
-  camera TOP padding so the puck centres in the VISIBLE strip - the sheet-inset block must not
+  camera TOP padding so the puck centers in the VISIBLE strip - the sheet-inset block must not
   clobber that padding while SV is open (it's gated on svPose==null; the SV close path restores it).
   PlaceSheet yields while SV is up (the bottom half must stay pure map). Mini-map TAP = pegman-drop:
   handleTap in VelaMapView pre-empts ALL other tap resolution while `svActive` and hands the LatLng to
@@ -4140,7 +4162,7 @@ Gotchas:
   canonically the HORIZONTAL fov (fovX) - a fixed vertical fov made fullscreen NARROW the view
   ("it just zoomed"); holding fovX keeps framing and reveals more sky/ground, and fovX is also what
   the arrow overlay projects across the screen width. Remaining:
-  walking can cross capture epochs (Google stays in-epoch; the neighbour entries carry no date to filter
+  walking can cross capture epochs (Google stays in-epoch; the neighbor entries carry no date to filter
   on), higher-zoom on pinch.
 - **Routing is OPEN, not Google (2026-06-28).** Turn-by-turn comes from **FOSSGIS OSRM**
   (`RouteGeometry.route`, `steps=true`, per-mode `routed-car`/`-bike`/`-foot`) - complete,
@@ -4187,7 +4209,7 @@ Gotchas:
   traffic overlay for bikes. Toggle off = the plain fastest OSRM bike route. Probed 2026-09-14:
   same Davis trip, 26 maneuvers along a cycleway corridor at 0.1 vs four turns on a county road at
   0.9. `ValhallaRouterTest` parses a captured two-leg reply with a roundabout.
-- **Congestion colours on every route (issue #403, 2026-09-14).** `applyTraffic` used to paint
+- **Congestion colors on every route (issue #403, 2026-09-14).** `applyTraffic` used to paint
   Google's spans only on a same-course route (mapped by fraction) and never on a multi-stop
   trip (`withSpans = false`), so a long trip that diverged anywhere and every trip with stops
   was solid blue. `RouteGeometry.transferSpans(from, to)` now carries the spans geometrically:
@@ -4195,7 +4217,7 @@ Gotchas:
   through a cell grid (`SegmentGrid`, 0.005 degrees, so a ten-hour route stays cheap); samples
   within 35 m mark that along-distance, runs become spans (gap 80 m, min 40 m). Same course
   keeps the fraction map; anything else, alternates and multi-stop included, gets the transfer;
-  what Google did not drive stays uncoloured. `TransferSpansTest`.
+  what Google did not drive stays uncolored. `TransferSpansTest`.
 - **Traffic-AWARE routing (option 3, 2026-06-28).** OSRM's free-flow route ignores live traffic, so
   when Google *rerouted around a jam* its path differs from OSRM's. `directions()` detects this
   (`RouteGeometry.divergent` - sample Google's polyline, true if any point strays >700 m from OSRM's
@@ -4213,8 +4235,8 @@ Gotchas:
   the ratio to the wrong baseline and read absurdly fast). applyTraffic now rebases a same-course
   OSRM route onto Google's typical: durations (route + legs + per-maneuver, so nav remaining-time
   sums agree) scale by (gTyp*distScale)/osrmFF clamped 0.5-3.0, the live ETA becomes Google's real
-  in-traffic figure, and trafficRatio stays traffic-vs-typical so the colour/words don't turn red
-  from OSRM optimism. directions() computes ONE calibration from the top OSRM route vs gTop and
+  in-traffic figure, and trafficRatio stays traffic-vs-typical so the color/words don't turn red
+  from OSRM optimizm. directions() computes ONE calibration from the top OSRM route vs gTop and
   applies it to every OSRM-derived route in the response (alternates share the speed-model bias;
   per-route calibration would re-rank them unfairly). **The basis is whichever route FOLLOWS
   Google's course (review 2026-09-12):** the top OSRM route when it does, else the via-snap.
@@ -4348,7 +4370,7 @@ Gotchas:
   onto the obf (phase 2). **The speed-limit badge reads the obf now (2026-09-15):**
   `ObfRouteEngine.currentRoadLimit` builds one small `RoutingContext` over the covering files (kept
   per region set, 32 MB limit, dropped in `shutdown`), snaps the fix with OsmAnd's
-  `RoutePlannerFrontEnd.findRouteSegment` (`distToProj` is the SQUARED distance in metres; farther
+  `RoutePlannerFrontEnd.findRouteSegment` (`distToProj` is the SQUARED distance in meters; farther
   than 25 m = off the network), and reads `RouteDataObject.getMaximumSpeed(true)` (m/s; 0 = untagged,
   `NONE_MAX_SPEED` = derestricted, both blank; same forward-only and `< 150` rules the
   retired GraphHopper lookup used). The badge reads the obf only since the graphs went (2026-09-15). Harness: `ObfSpeedLimitProbeTest` runs against a real file with
@@ -4401,15 +4423,15 @@ Gotchas:
   history now; `git log -- core/src/main/java/app/vela/core/data/GraphHopperRouteEngine.kt` has them.
   Offline phrasing moved to `core/data/OfflinePhrases` (`phrase` + `inBox`, `OfflinePhrasesTest`).
 - **Offline PLACE packs - whole-region POI/address search, Organic-Maps-style (`app/offline/PoiPackStore` +
-  `core/data/OfflinePacks`, DONE 2026-07-07, device-verified: a misspelled offline search ("pel meni") from the
+  `core/data/OfflinePacks`, DONE 2026-07-07, device-verified: a misspelled offline dish search from the
   downloaded test suburb → the intended dumpling restaurant in a city across the state, with address).** Downloading a state (routing region) also pulls its place pack - a
   per-region SQLite db baked by CI from the SAME Geofabrik PBF (`scripts/build-poi-region.sh`: osmium
   tags-filter → export geojsonseq → `poipack_build.py` → SQLite → zip; workflow `poi-packs.yml`, a matrix clone
   of routing-graphs.yml with `merge-poi-manifest.sh`; release tag `poi-packs`, manifest
   `poi-pack-manifest.json`, `POI_PACK_MANIFEST_URL` / `-PpoiPackManifestUrl=`). **Pack schema is NORMALIZED,
-  not the app stores' own schema** (that naive shape was 761 MB for WA): `poi(id,name,lat,lng,category,address,
+  not the app stores' own schema** (that naive shape was 761 MB for a large state): `poi(id,name,lat,lng,category,address,
   phone,website,hours)` + `streetname(sid,street,street_norm)` + `addr(hn,sid,city,lat,lng)` +
-  `streetpt(sid,lat,lng)` → WA = 335 MB raw / **143 MB zipped** (163k POIs, 2.8M addrs, 1.2M street pts, 92k
+  `streetpt(sid,lat,lng)` → a large state = 335 MB raw / **143 MB zipped** (163k POIs, 2.8M addrs, 1.2M street pts, 92k
   street names). The normalization is also the QUERY strategy: match street names first (~90k-row scan), hit
   the big tables only through sid/hn/lat indexes - never a LIKE scan of millions of rows. `OfflinePacks`
   (:core singleton) holds the opened read-only dbs; `OfflinePoiStore.search` runs its same SQL on each pack
@@ -4446,7 +4468,7 @@ Gotchas:
   (published before rev existed) have no rev; their first v2 rebuild yields no usable delta so clients just
   full-download once, then deltas kick in.
 - **The AREA SAVE reads the region's PLACE PACK, not Overpass (issue #304, 2026-09-13).**
-  `downloadOfflinePois` first looks up the smallest place-pack region covering the area's centre in
+  `downloadOfflinePois` first looks up the smallest place-pack region covering the area's center in
   the poi-pack manifest: pack installed = nothing to do; graph installed but no pack (a region from
   before packs, or a failed pack download) = `downloadPoiPackFor`; neither = a status line saying
   the region download this save also triggers brings the pack. Only an area NO pack covers still
@@ -4486,27 +4508,27 @@ Gotchas:
   `OverpassPois.fetchAddresses`/`fetchStreets`, DONE 2026-07-07, device-verified in the test suburb).** So an arbitrary
   typed street address routes offline (not only addresses that are an indexed POI). Populated when a map area is
   downloaded (`MapViewModel.downloadOfflinePois`) from keyless Overpass over a bbox **padded to a ~15 km min span
-  around the viewport centre** (`GEOCODE_PAD_DEG=0.09`, so a saved area covers the surrounding metro, not the few
+  around the viewport center** (`GEOCODE_PAD_DEG=0.09`, so a saved area covers the surrounding metro, not the few
   on-screen tiles - the tile-viewport bbox gave only 8 addresses; the padded box gave **8591 addresses + 1466
   streets**). TWO OSM sources into ONE SQLite db (`vela_offline_addr.db`, v2): **`addr:housenumber` points**
-  (`addr` table) for house-precise hits, and **named road centrelines** (`street` table, thinned to ~1 pt/120 m
+  (`addr` table) for house-precise hits, and **named road centerlines** (`street` table, thinned to ~1 pt/120 m
   by `toStreetPts`) for a street-level fallback where OSM has the road but no house numbers (the US-suburb
   reality - this is the SAME gap the OpenAddresses/Microsoft *render* overlays fill, but those are PMTiles, not
   queryable as a geocoder, so the geocoder uses OSM). `geocode()` is layered: (1) exact house number, (2)
   **interpolate** between the two bracketing mapped numbers, (3) nearest mapped house on the street, (4) nearest
-  point on the street centreline. `normalizeStreet` expands abbreviations both ways ("Pl"↔"place", "SE"↔
+  point on the street centerline. `normalizeStreet` expands abbreviations both ways ("Pl"↔"place", "SE"↔
   "southeast") so all spellings hit the same rows. Wired into the offline search branch (`MapViewModel`, gated by
   `OfflineAddressStore.looksLikeAddress` so "coffee" doesn't hit it) AND the network-error fallback; `haveArea`
   counts `count()`+`streetCount()` so a street-only suburb isn't misreported "no data". Big Overpass bodies → the
   no-call-timeout `offlineDownloadHttp` (same rule as the graph/overlay downloads). The result Place routes
   through the on-device engine. Device-verified wifi-off: a typed nearby street address → *5 min
   · 1.5 mi* through the offline engine. **Reverse-geocode backfill for offline POIs:** most US chains have no OSM
-  `addr:*` (Applebee's came back as bare "WA"), so `MapViewModel.backfillOfflineAddress` - on selecting a place
+  `addr:*` (a chain came back as bare state initials), so `MapViewModel.backfillOfflineAddress` - on selecting a place
   while offline, when its address has no house number (`.none { isDigit() }`) - calls
   `OfflineAddressStore.reverseGeocode(loc)` (nearest mapped house ≤60 m, else nearest street ≤150 m, bounded
   lat/lng box scan) and fills `selected.address` if still selected. Device-verified: the offline Applebee's
   card backfilled to its full street address. **Quiet offline indicator (no banner):** `MapUiState.offline` (a reactive
-  `ConnectivityManager` default-network callback, `observeConnectivity`, fails safe to online) drives a greyed
+  `ConnectivityManager` default-network callback, `observeConnectivity`, fails safe to online) drives a grayed
   globe-slash + "Offline" in `SearchBar` (bare map only) and a globe-slash chip **inline under the category
   chips** in `MapScreen`'s top Column (gated to the same bare-map state the chips show in, so it never trails a
   results list) - the old "Offline results" status line and the old bottom-left chip are gone. **The directions
@@ -4520,7 +4542,7 @@ Gotchas:
   device-verified in the test suburb).** Fills the map's building gaps where OSM is thin (a suburb the
   Microsoft→OSM import never reached) with **Microsoft US Building Footprints (ODbL)**. Off-device, CI bakes
   ONE `.pmtiles` per US state (`scripts/build-overlay-region.sh` → tippecanoe `-l building -Z14 -z16
-  --drop-densest-as-needed`; `-Z14` not `-Z12` - starting at z12 ballooned WA to 271 MB, z14 → 197 MB) →
+  --drop-densest-as-needed`; `-Z14` not `-Z12` - starting at z12 ballooned a state to 271 MB, z14 → 197 MB) →
   `building-overlays` GitHub release + `building-overlay-manifest.json`, matrix workflow
   `.github/workflows/building-overlays.yml` (clone of the routing one, `MANIFEST_MODE=emit` +
   `scripts/merge-overlay-manifest.sh`), catalog `tools/overlay-regions.json`. In-app: `OverlayTileStore` is a
@@ -4529,7 +4551,7 @@ Gotchas:
   runs on every camera-idle (`onViewport`) and emits, per view, a list of full `pmtiles://` URIs: a
   **`pmtiles://file://<abs-path>`** for any DOWNLOADED region (offline), and **`pmtiles://https://…<region>.pmtiles`**
   for the covering regions in view that AREN'T downloaded - the **UNION of up to the 3 smallest covering
-  boxes, NOT just the single smallest (2026-07-06)**: a neighbour's rectangular bbox can spill across an
+  boxes, NOT just the single smallest (2026-07-06)**: a neighbor's rectangular bbox can spill across an
   irregular border AND be smaller - Kansas's box crosses the Missouri River, covers all of NW Missouri
   (St Joseph) and beats Missouri's box, but kansas.pmtiles is EMPTY east of the river, so the old
   single-pick rendered NO footprints there (probed: the doll-museum z15 tile has 413 features in
@@ -4566,7 +4588,7 @@ Gotchas:
   aggregates + duplicate Locations (CzechRepublic→Czechia, DemocraticRepublicoftheCongo→CongoDRC) are dropped.
   The catalog is 361 regions - **over GitHub's 256-job matrix cap** - so each row carries a `group` (`us` / `world`
   / `chunk`) and dispatch is **one group at a time** (`-f group=world`); run-level concurrency is OFF so groups
-  build concurrently, only the merge job serialises. The app/manifest are source-AGNOSTIC - the emitted manifest
+  build concurrently, only the merge job serializes. The app/manifest are source-AGNOSTIC - the emitted manifest
   row is always `{id,name,url(asset),sizeMb,bbox}`, so no app change was needed for countries OR chunks.
 - **Open house-number overlay (`VelaMapView` + `scripts/build-address-region.sh`, DONE 2026-07-05,
   device-verified in the test suburb).** Microsoft footprints have geometry but **no addresses**, so house numbers
@@ -4581,8 +4603,8 @@ Gotchas:
   → its current `job` → `https://v2.openaddresses.io/batch-prod/job/<job>/source.geojson.gz` (GeoJSONL of Points
   with `number`/`street`; **42 US states have a `statewide` source**, the rest are county-only). Render:
   `VelaMapView`'s `LaunchedEffect(addressOverlays, …)` adds a `VectorSource` (the URI) + a **`SymbolLayer`**
-  `setSourceLayer("address")`, `textField(get("number"))`, `textFont(["Noto Sans Regular"])`, size 10, grey +
-  white halo, **minZoom 17 + stepped textOpacity (0 below z19, 1 at 19+)** - the visible behaviour is
+  `setSourceLayer("address")`, `textField(get("number"))`, `textFont(["Noto Sans Regular"])`, size 10, gray +
+  white halo, **minZoom 17 + stepped textOpacity (0 below z19, 1 at 19+)** - the visible behavior is
   still numbers-only-at-the-~50-ft-view (17.5 carpeted whole blocks, user 2026-07-13), but the zoom gate
   CANNOT live in the layer's minZoom: the address archives carry tiles **only at z16-17**, and **MapLibre's
   pmtiles path never cold-fetches a tile clamped 2+ levels below the camera on a cold source** - minZoom 19
@@ -4601,8 +4623,8 @@ Gotchas:
   (→ below the ambient POI icons), NOT `addLayer`/top - MapLibre places symbols TOPMOST-FIRST, so numbers
   stacked above the ambient layer grabbed collision boxes before the business icons placed and **EVICTED them
   at z16+** (the "Applebee's icon disappears on zoom-in" bug: reproduced on a big storefront building -
-  prominence-scaled icons collide the most; small neighbours survived). Below the icons, numbers place last
-  and yield - Google's behaviour. Also: while the overlay is active the basemap `vela-housenumber` layer is
+  prominence-scaled icons collide the most; small neighbors survived). Below the icons, numbers place last
+  and yield - Google's behavior. Also: while the overlay is active the basemap `vela-housenumber` layer is
   hidden (visibility NONE in the same LaunchedEffect) - both drew the SAME address at a slight offset
   (device-seen: the same number doubled at a slight offset). **NOT** the
   building overlay (different data + a Symbol not Fill layer + its own release/manifest). CI:
@@ -4672,7 +4694,7 @@ Gotchas:
   one announcement per camera per route; never for a camera behind you; silent below 2 m/s so
   sitting beside one is not narrated. A new route key EMPTIES `routeCamMeters` before the fetch
   (review 2026-09-12): a reroute resets traveledM to 0, so the old route's distances against it
-  announced a camera kilometres behind you until the corridor fetch landed. Flipping "Warn me out loud" on MID-DRIVE fetches the current route's cameras at once (a `snapshotFlow` on the two toggles in the VM); it used to wait for the next reroute. Unit-tested (`CameraAlertsTest`, `RouteProjectionTest`).
+  announced a camera kilometers behind you until the corridor fetch landed. Flipping "Warn me out loud" on MID-DRIVE fetches the current route's cameras at once (a `snapshotFlow` on the two toggles in the VM); it used to wait for the next reroute. Unit-tested (`CameraAlertsTest`, `RouteProjectionTest`).
   **The spoken half is its own nested opt-in** (`SpeedCamWarn`, "Warn me out loud", shown only
   while the layer is on): being spoken to is a different ask from seeing a marker, and warning
   about cameras while driving is legally restricted in some countries. Respects the global
@@ -4722,10 +4744,10 @@ Gotchas:
   every element to null (no coords) and the layer was ALWAYS empty (this is why it "never drew"); fixed to `out body`
   (verified: Atlanta Ponce City Market went 0 -> 5 cameras, purple badges visible). (2) `Flock.init` was NOT called in
   `VelaApp.onCreate` (unlike `Traffic`/`TransitLayer`), so the persisted toggle read `false` on EVERY launch - the
-  layer silently turned itself off after a restart; fixed by initialising it there. Real DeFlock nodes tag the vendor
+  layer silently turned itself off after a restart; fixed by initializing it there. Real DeFlock nodes tag the vendor
   as `manufacturer` ("Flock Safety"), not `operator`, so the parser falls back to it. Coverage is OSM's - dense in US
   metros (Atlanta metro ~1571 nodes, a mid-size suburban metro ~200), sparse in a given ~1 km high-zoom box, so cameras show
-  best around arterials at a neighbourhood zoom, not a quiet residential block. NB you can't browse to a far city and
+  best around arterials at a neighborhood zoom, not a quiet residential block. NB you can't browse to a far city and
   see them if free-drive-follow keeps recentering on your GPS - it fetches YOUR viewport (fine for the real use case:
   you driving through a covered area). **THIRD bug found 2026-07-13 (device): the fetch used a SINGLE hardcoded
   endpoint `overpass-api.de`, which regularly answers HTTP 504 "dispatcher" under load - so a fetch over a box that
@@ -4768,11 +4790,11 @@ Gotchas:
   `fetchStopDepartures` now calls `Transitous.board(lat,lng)` FIRST for any transit-category or
   Intersection place: `map/stops` finds the stop by PROXIMITY (no Google/OSM name correlation at all),
   and `stoptimes` on the nearest stop's PARENT station id returns EVERY route with realtime flags and
-  the agency's own route colours - a hub's bays merge for free (device-verified: a corner that gave 1
-  route via the Google blob shows 6 lines with official pill colours + live countdowns). The result maps
+  the agency's own route colors - a hub's bays merge for free (device-verified: a corner that gave 1
+  route via the Google blob shows 6 lines with official pill colors + live countdowns). The result maps
   into the SAME StopDepartures model, so the whole board UI renders unchanged. **Transitous boards
   REFRESH every 30 s while the sheet is open (2026-07-13):** `startBoardRefresh` re-queries the open
-  feed on the countdown clock's cadence and swaps the board in place, self-cancelling the moment the
+  feed on the countdown clock's cadence and swaps the board in place, self-canceling the moment the
   selection changes; Google-fallback boards stay one-shot on purpose (a refresh there is a whole
   WebView load). The Google blob paths
   (fetchBoardFrom / resolveIntersectionStopBoard) remain the FALLBACK where Transitous lacks coverage.
@@ -4836,7 +4858,7 @@ Gotchas:
   `:core` `nav/RouteBar` (`RouteBarTest`); the strip is `app/ui/nav/RouteBarStrip`.
   **It shows a 5 km WINDOW, not the whole route (`RouteBar.WINDOW_M`) - the first cut scaled to
   the entire remaining trip and was device-proven useless:** on a 769 mi demo drive every nearby
-  mark collapsed into the bottom pixel and the bar read as a plain grey stick. Near the end the
+  mark collapsed into the bottom pixel and the bar read as a plain gray stick. Near the end the
   window shrinks to the destination (`reachesDestination`). TomTom's original also carries live
   HAZARDS; ours deliberately cannot (every keyless incident source is a proven dead end), so it
   draws only what the map already knows. Two clocks: marks are projected onto the polyline ONCE
@@ -4866,10 +4888,10 @@ Gotchas:
   same road and the pill never did).** `foldRenames` folds a rename CONTINUE into the previous
   maneuver so it is neither a card nor a prompt, and until now the folded name was simply lost.
   It is kept on the leg as `Maneuver.renames` (`RoadRename(atMeters, road, ref)`, ascending), and
-  `Maneuver.roadAt(travelledOnLeg)` answers the road you are on; the pill and the banner's shield
+  `Maneuver.roadAt(traveledOnLeg)` answers the road you are on; the pill and the banner's shield
   both call it with `distanceMeters - nav.distanceToNextManeuver`. Unit-tested in VelaLogicTest.
   NB `TripLog` does not record renames (its M lines carry no such field), so a REPLAY of a saved
-  trip shows the old behaviour; adding a line kind means a `TripScrub` decision first. Hidden
+  trip shows the old behavior; adding a line kind means a `TripScrub` decision first. Hidden
   while PREVIEWING a step (previewing must not change where you "are"), in PiP, and until a puck
   position exists. Positioned from `VelaMapView`'s new `onPuckScreen` callback, which projects the
   drawn puck to screen px - **reported only when it moves >2 px**, because the follow camera parks
@@ -4938,9 +4960,9 @@ Gotchas:
   itinerary DRAWS ON THE MAP (issue #233, 2026-08-08, device-verified):** expanding a chooser row
   sets `MapUiState.transitPreview` (`onTransitRowExpanded`; cleared on refetch, and collapsing only
   clears it if that row still owns it) -> `ensureTransitPreview` in VelaMapView draws ride legs as
-  agency-coloured lines THROUGH the stops (board + intermediates + alight coordinates from the same
+  agency-colored lines THROUGH the stops (board + intermediates + alight coordinates from the same
   payload; stop-to-stop chords - the keyless data carries no track geometry) with white stop dots on
-  top (board/alight large, in-between small) and walk legs as dotted grey links, all inserted below
+  top (board/alight large, in-between small) and walk legs as dotted gray links, all inserted below
   the route line layer (empty in transit mode) so the drawing sits above roads + the satellite
   raster and below labels; a camera-fit branch (sibling of the route fit, keyed on coords + insets)
   frames the trip between the endpoints card and the chooser. MapScreen gates the param to the
@@ -4996,9 +5018,9 @@ Gotchas:
   (2026-07-12):** a station/subway groups entries by line -> direction -> departures (above), but a busy
   BUS stop lists every upcoming departure FLAT, each tagged with its own route pill at `entry[5][1]`
   shaped `["<label>", <int>, "#fill", "#text"]` (the same badge the itinerary line pills use). So the
-  parser doesn't assume one shape: it reads the badge (route number + colours) + headsign + times off
+  parser doesn't assume one shape: it reads the badge (route number + colors) + headsign + times off
   each entry and GROUPS by (route, direction) - the 25 separate "route 14" departures collapse into one
-  "14" row with its next few times, in its line colour, and lines sort soonest-first. The container path
+  "14" row with its next few times, in its line color, and lines sort soonest-first. The container path
   is positional; the LEAF details (time tuples, frequency, the route badge) are matched by SHAPE, and
   `place[62]` is validated with a shape-search fallback - a moved leaf/field index degrades one line, not
   the board. `parse` returns **null** for a non-station (routine - most
@@ -5063,7 +5085,7 @@ Gotchas:
   (label match) else the leg whose `boardStop` is nearest the stop (the direction tapped) else the
   first - that `TransitStep` already carries `boardStop`/`intermediateStops`/`alightStop` with per-stop
   times. Rendered by `PlaceSheet.RouteDetailSheet` (full-screen `Surface`, `MapScreen` draws it over the
-  place sheet when `state.routeDetail != null || routeDetailLoading`): a vertical rail in the line colour,
+  place sheet when `state.routeDetail != null || routeDetailLoading`): a vertical rail in the line color,
   board + alight bold, each `TransitStopTime` row `clickable` -> `openRouteStop(stop)` which
   `closeRouteDetail()` + `onPoiTap(stop.name, stop.location, "transit stop")` - so tapping a stop opens
   ITS board and the tap-through continues. **The transit KIND is load-bearing (fixed 2026-07-13):**
@@ -5088,18 +5110,18 @@ Gotchas:
   its timetable (`scheduledText != timeText`). **The timeline's PRIMARY source is the GTFS trip itself
   (2026-07-13, device-verified):** Transitous boards stamp every departure with its `tripId`
   (`StopDeparture.tripId`), and `Transitous.tripStops` (`/api/v1/trip`) returns that run's REAL stop
-  sequence - per-stop realtime vs timetable times AND per-stop/-run CANCELLED flags straight from the
-  agency feed (`TransitStopTime.cancelled` renders a red "Cancelled" + struck-through time,
-  `place_transit_cancelled` in all 15 locales). `buildTripStep` (pure, unit-tested) BOARDS at the tapped stop
+  sequence - per-stop realtime vs timetable times AND per-stop/-run CANCELED flags straight from the
+  agency feed (`TransitStopTime.canceled` renders a red "Canceled" + struck-through time,
+  `place_transit_canceled` in all 15 locales). `buildTripStep` (pure, unit-tested) BOARDS at the tapped stop
   (nearest to the tapped coordinate; a terminus tap boards at the origin) and puts the stops the
-  run already called at into `TransitStep.priorStops` - the sheet renders them GREYED above with a
-  grey rail (the coloured rail starts at your stop, Google's treatment) and opens scrolled to the
+  run already called at into `TransitStep.priorStops` - the sheet renders them GRAYED above with a
+  gray rail (the colored rail starts at your stop, Google's treatment) and opens scrolled to the
   boarding stop (`rememberLazyListState(initialFirstVisibleItemIndex = priors)`). A moved time
   renders the timetable time struck through beside the live one - red when late, green when early
   or on time (`TransitStopTime.delayMin`, signed; the feed carries EARLY runs too, verified live). The headsign-geocode + itinerary-reuse path (`itineraryStep`) remains the FALLBACK for
   Google-fallback boards (their departures carry no tripId) and trip-fetch failures. NB transit
   DIRECTIONS still ride Google on purpose (traffic-aware ETAs) - this moved only the stops list.
-  Boards still DROP fully-cancelled runs (`cancelled`/`tripCancelled`/`place.cancelled`); showing
+  Boards still DROP fully-canceled runs (`canceled`/`tripCanceled`/`place.canceled`); showing
   them struck-through on the board is an open option. **Device-verified: Powell St -> Yellow-S -> 11 stops (Powell…SFO, 12:23-12:54 PM), then
   tapping 16th St Mission opened that bus stop's own board.** **Per-line arrival depth raised 4 -> 8
   (2026-07-13, user report "only shows the next 4 or so arrivals"):** parser `MAX_TIMES` was 4, AND
@@ -5111,12 +5133,12 @@ Gotchas:
   reads hours+minutes via `formatDuration` ("in 1 h 6 min", `place_transit_in_duration`); after-midnight
   rows carry a localized short-weekday marker. **The TIME regex matches Unicode spaces explicitly**
   (`[\s\u00A0\u202F]`): some agencies put a NARROW NO-BREAK SPACE before AM/PM, which Android's ICU
-  regex counts as `\s` but the JVM does NOT - unit tests silently diverged from device behaviour until
+  regex counts as `\s` but the JVM does NOT - unit tests silently diverged from device behavior until
   a dumped blob exposed it. **Debug builds keep the last raw board payload** at `filesDir/depdump.txt`
   (WebStopDeparturesFetcher, BuildConfig.DEBUG only) - the schema is agency-shaped, so wrong-parse
   reports are only diagnosable from the actual blob. **The board renders FIRST in the sheet body**
   (above the address; renders nothing for non-transit places). **Badge matcher admits NAMED lines** (8-24
-  chars when BOTH colours are hex - branded BRT lines carry a name, not a number; verified against
+  chars when BOTH colors are hex - branded BRT lines carry a name, not a number; verified against
   a device blob). **Each row carries an explicit "Stops ›" action** (`place_transit_view_stops`, all
   locales) - the bare ripple wasn't discoverable as "tap to see the route's stops" (user 2026-07-13,
   overruling the earlier chevron removal in #168).

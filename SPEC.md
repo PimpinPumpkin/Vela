@@ -1,716 +1,2032 @@
-# Vela Maps - Specification
+# Vela Maps - technical specification
 
-> The single authoritative description of **what Vela is, how it's built, and every
-> load-bearing decision** - the target to rebuild against if the codebase is ever
-> lost or reimplemented. Paired with [`FEATURES.md`](FEATURES.md) (the exhaustive
-> feature catalogue), [`README.md`](README.md) (the public overview; the calibration
-> walk-through) and [`CLAUDE.md`](CLAUDE.md) (build rules + gotchas). When behaviour,
-> calibration, or architecture changes, **update this file in the same commit.**
+The authoritative description of what Vela is, how it is built, and every load-bearing
+technical decision. If the codebase were lost, this is the document to rebuild against.
 
-Last reviewed: 2026-07-13.
+**Rules for this document.** It states what the system does and the constraints that hold it
+in place. It is written in the present tense and in plain declarative sentences: no narrative
+of how a decision was reached, no first person, no anecdotes, no "we later found". A rule that
+exists because of a past failure is written as the rule plus the failure mode it prevents, in
+one sentence. Dates appear only where the date is itself the fact (a bake revision, a
+calibration version, the date of a measurement that could go stale). Numbers are exact and
+carry their units.
+
+**Scope.** Everything technical belongs here. Other documents may explain, narrate or index,
+but a technical fact that lives only in another file is a bug in this one.
+
+| Document | Holds |
+| --- | --- |
+| `SPEC.md` (this file) | Every technical rule, contract, constant and constraint |
+| `FEATURES.md` | The running changelog: what shipped, when, in what order |
+| `README.md` | The public overview and the install path |
+| `PRIVACY.md` | The per-request accounting of what leaves the phone |
+| `docs/book/` | Subsystem explainers for people who want to understand a behavior |
+| `docs/FAQ.md` | The ten questions people ask first |
+| `docs/dpad.md` | The per-surface D-pad audit and the contributor procedure |
+| `docs/ANDROID-AUTO.md`, `docs/BUILDING.md`, `docs/TRANSLATING.md`, `docs/LANGUAGES.md`, `FDROID.md` | Task guides |
+| `ROADMAP.md` | Open work, planned work, and what will never be built |
+| `CLAUDE.md` | Working rules for contributors and assistants, plus per-area gotchas |
+
+**Contents**
+
+- [1. Product definition](#1-product-definition)
+- [2. Architecture](#2-architecture)
+- [3. The Google extractor](#3-the-google-extractor)
+- [4. Routing and navigation](#4-routing-and-navigation)
+- [5. Places](#5-places)
+- [6. Map rendering](#6-map-rendering)
+- [7. Offline data](#7-offline-data)
+- [8. Transit](#8-transit)
+- [9. Voice, dictation and language](#9-voice-dictation-and-language)
+- [10. User interface](#10-user-interface)
+- [11. Remote resilience](#11-remote-resilience)
+- [12. Degoogled constraints](#12-degoogled-constraints)
+- [13. Performance model](#13-performance-model)
+- [14. Privacy, diagnostics and location hygiene](#14-privacy-diagnostics-and-location-hygiene)
+- [15. Build, release and distribution](#15-build-release-and-distribution)
+- [16. Where the rest lives](#16-where-the-rest-lives)
 
 ---
 
-## 1. What it is
+## 1. Product definition
 
-Vela Maps (`app.vela`) is a **degoogled, keyless Google-Maps replacement for
-Android** - "the NewPipe for Maps." It gives Google-parity search, places, routing,
-traffic-aware ETAs and turn-by-turn navigation on a phone with **no Google Play
-Services** (GrapheneOS / no-GMS ROMs), distributed via F-Droid/Obtainium, GPLv3.
+### 1.1 What it is
 
-### Ethos / non-negotiables
-- **No Vela backend.** Every install talks to Google directly from the user's own
-  IP, behaving like one logged-out browser. No shared API key, no server farm.
-- **No static shared Google API key, ever.** Per-user `GoogleSession` bootstrap only
-  (this is the NewPipe legal footing).
-- **Open basemap, scraped intelligence.** The map tiles are open vector tiles
-  (keyless OpenFreeMap), recoloured at runtime. Only POIs/routing/traffic are scraped
-  from Google's *public web* endpoints - the same ones `maps.google.com` calls.
-- **Degoogled at runtime** (hard rules, §6): AOSP location/TTS only, no FCM/Firebase/
-  Fused/Play Integrity.
-- **Maintenance is a lifestyle.** Google rotates these endpoints; the extractor is
-  built to be **re-calibrated and even hot-patched without an app update** (§5).
+Vela Maps (`app.vela`) is a degoogled maps application for Android: search, places, routing,
+traffic-aware ETAs and turn-by-turn navigation on a phone with no Google Play Services.
+Distribution is F-Droid and Obtainium; the license is GPLv3; the minimum target is
+GrapheneOS and other no-GMS ROMs.
 
-### Non-goals
-- Account sync. (In-app Street View, turn-by-turn *offline* routing and photo
-  author/date, once non-goals, are all DONE - the pano viewer renders Google's
-  equirect tiles on its own GL sphere since 2026-07-15 (embedding Google's WebGL
-  page rendered black, which is what originally parked it), the obf engine covers
-  offline routing, the reviews DOM scrape covers photo author/date.) See
-  `FEATURES.md` "Known debts."
-- **Popular/busy times - DONE keyless (2026-06-19), not a non-goal.** Earlier I wrongly
-  ruled it sign-in-gated: the histogram (`[84]`) is stripped from the keyless **OkHttp**
-  search (bot-degraded, like photos/transit), but a **warmed hidden WebView's same-origin
-  search returns the full response with `[84]`** (`WebPopularTimesFetcher` + `Popular-
-  TimesParser`, same trick as photos). **Load-bearing nuance:** the WebView query must be
-  **specific (name + address)** - a bare-name search still comes back as a 20-result
-  `[64]` list trimmed of `[84]`, whereas name+address resolves to the single focused
-  result (`[0][1][0][14]`) that keeps it. Lesson: a "needs login" call from the OkHttp
-  response alone should be re-checked through a real WebView engine.
+### 1.2 Non-negotiables
+
+- **No Vela backend.** Each install talks to the sources directly from the user's own IP and
+  behaves like one logged-out browser. There is no shared API key and no server tier.
+- **No static shared Google credential.** Sessions bootstrap per user (`GoogleSession`). This
+  is the legal footing the project stands on.
+- **Open data draws the map.** Basemap tiles are open vector tiles; place data defaults to
+  Vela's own bake of open datasets. Google is queried for search, for opening a place, and for
+  traffic.
+- **Degoogled at runtime** (section 12): AOSP location and TTS only; no FCM, Firebase, Play
+  Integrity or fused location.
+- **Recalibratable without a release.** Scraped endpoints drift by design of the other side.
+  Field indices, pb templates, endpoints, word tables, tuning dials and parse logic all ship
+  over a signed remote channel (section 11).
+
+### 1.3 Non-goals
+
+- Account sync of any kind.
+- Anything that requires a Google sign-in. The two data classes behind that wall are the
+  review "helpful" counts and the popular-times histogram on accounts where it is gated.
+- A Vela-hosted tile, routing or search service.
+
+### 1.4 Capability and source matrix
+
+| Capability | Source | Reaches Google | Works offline |
+| --- | --- | --- | --- |
+| Basemap | OpenFreeMap Liberty vector tiles, or a downloaded PMTiles region | No | With a downloaded region |
+| Place pins while browsing | Vela's own places bake (Overture + AllThePlaces positioned with OSM), or Google ambient places, or both (section 5.1) | Only in Google or Both mode | Vela data mode, with a downloaded region |
+| Opening a place | Google listing, correlated to the tapped feature | Yes, unless the lookup toggle is off | Tile data only |
+| Search | Google `search?tbm=map`; offline falls back to the on-device pack index | Yes | Region packs |
+| Reviews, photos, popular times, About | Hidden WebView scrapes of Google's own pages | Yes | No |
+| Turn-by-turn routing | FOSSGIS OSRM primary, Google as traffic and fallback, on-device obf offline | Yes for traffic | Downloaded obf region |
+| Traffic and live ETA | Google directions | Yes | No |
+| Traffic controls (lights, stops, crossings, humps) | Per-region road-features bake, Overpass only where no region exists | No | Yes |
+| Surveillance and speed cameras | Bundled and hosted DeFlock dataset; OSM speed cameras | No | Yes |
+| Transit boards and stop icons | Transitous (open GTFS + GTFS-Realtime) | No | Cached areas only |
+| Transit directions | Google directions page | Yes | No |
+| Street View | Google keyless pano metadata and tiles, rendered in-app | Yes | No |
+| Reverse geocoding | Nominatim | No | Region packs |
 
 ---
 
 ## 2. Architecture
 
-Two Gradle modules, strict boundary:
+### 2.1 Modules and boundaries
 
-- **`:core`** - the UI-agnostic *extractor* (NewPipeExtractor pattern). Models, the
-  `MapDataSource` seam, the Google scraper, parsers, pb builders, polyline codec, the
-  pure nav engine, location/voice/haptics abstractions, the remote-config layer, and the
-  opt-in **diagnostics** ring (`core/diag/DiagLog` - off by default; the scraper + nav
-  record breadcrumbs only when enabled; `app/diag/DiagExporter` shares them as a JSON
-  bundle, user-initiated, never auto-uploaded - the no-backend half of the telemetry plan).
-  **No MapLibre or Android-UI types may leak in** (convert `LatLng` at the view edge).
-- **`:app`** - the Compose UI + MapLibre Native 11.8.0 + the foreground nav service +
-  the **four hidden WebViews** (photos, transit, reviews, popular-times). Root package
-  `app.vela`, app class `VelaApp`, config `VelaConfig`.
+Two Gradle modules with a strict boundary.
 
-### Module tree
+- **`:core`** - the UI-agnostic extractor. Models, the `MapDataSource` seam, the Google
+  scraper and parsers, pb builders, the polyline codec, the pure navigation engine, routing
+  engines, offline stores, location and voice abstractions, the remote-config layer, and the
+  opt-in diagnostics ring. **No MapLibre type and no Android UI type may appear in `:core`**;
+  coordinates convert at the view boundary.
+- **`:app`** - the Compose UI, MapLibre Native 11.8.0, the foreground navigation service, the
+  Android Auto service, and the five hidden WebView scrapes. Root package `app.vela`,
+  application class `VelaApp`, compile-time switches in `VelaConfig`.
+
+The `:app` module may read `:core`; `:core` may not read `:app`. Where `:core` needs a user
+setting, `:app` writes a plain flag into `:core` (`CategoryFilter.enabled`, `LowRamMode`,
+`LowDataMode`, `RoutingPrefs`) rather than `:core` reading a Compose holder.
+
+### 2.2 Module tree
 
 ```
-:core   the "extractor" - no UI dependency, the NewPipeExtractor pattern
-        ├─ model/            LatLng, Place, Route, Maneuver … (pure Kotlin)
-        ├─ data/
-        │   ├─ MapDataSource         the one seam every screen talks to
-        │   ├─ MockMapDataSource     canned data → the app runs with no network
-        │   ├─ google/               the real scraper
-        │   │   ├─ GoogleSession         per-user bootstrap (token extraction)
-        │   │   ├─ GoogleMapsDataSource  search / directions / place details
-        │   │   ├─ PbBuilder             builds Google's `pb` URL protobuf
-        │   │   ├─ GoogleResponse        XSSI strip + positional-array navigator
-        │   │   ├─ PolylineCodec          encoded-polyline decode (calibration-free)
-        │   │   └─ parse/                 Search / Directions / Transit / Photos / Reviews
-        │   ├─ RouteGeometry             OSRM turn-by-turn (open router) + parse of steps/lanes/refs
-        │   ├─ RouteEngine               offline-routing interface (connectivity/region-presence picks it)
-        │   ├─ ObfRouteEngine            on-device OsmAnd obf router over the downloaded region files
-        │   ├─ RouteCorridor             "search along route" - filter results to the line
-        │   ├─ OverpassPois              keyless OSM POI + addr + street fetch (offline-search/geocode source)
-        │   ├─ OfflinePoiStore           on-device SQLite POI index (offline search)
-        │   ├─ OfflineAddressStore       on-device SQLite forward geocoder (typed address → coord, offline)
-        │   ├─ OfflinePacks              registry of downloaded whole-region place packs (both stores query them)
-        │   └─ tiles/                MapStyle catalog (OpenFreeMap default / Positron / Protomaps)
-        ├─ location/         LocationProvider - AOSP LocationManager (no Fused)
-        ├─ voice/            VoiceGuide - AOSP TextToSpeech, engine-selectable
-        ├─ feedback/         Haptics - direction-coded vibration turn cues
-        ├─ config/           Calibration + CalibrationStore (remote pb/paths)
-        ├─ nav/              NavEngine - pure turn-by-turn logic + NavReplay auditor (unit-tested)
-        ├─ replay/           TripLog - trip CSV format + offline route audit
-        └─ di/               Hilt wiring; picks Mock vs Google off VelaConfig
+:core
+  model/          LatLng, Place, Route, Maneuver, Transit types (pure Kotlin)
+  data/
+    MapDataSource         the one interface the UI depends on
+    MockMapDataSource     canned data, keeps the app usable with no network
+    google/
+      GoogleSession         per-user bootstrap and cookie seeding
+      GoogleMapsDataSource  search, directions, place details, ambient places
+      PbBuilder / SearchPb / DirectionsPb   request protobuf grammar
+      GoogleResponse        XSSI strip and positional-array navigator
+      PolylineCodec         encoded polyline, calibration-free
+      parse/                Search, Directions, Transit, Photos, Reviews, EntityList,
+                            PopularTimes, StreetView parsers
+    RouteGeometry         OSRM turn-by-turn, step and lane parsing, via snapping
+    RouteEngine           offline routing interface
+    ObfRouteEngine        on-device OsmAnd router over downloaded .obf files
+    ValhallaRouter        safety-weighted bicycle routing
+    RouteCorridor         search along a route
+    OverpassPois / OverpassEndpoints / OverpassTrafficSignals / OverpassAlprCameras
+    OfflinePoiStore / OfflineAddressStore / OfflinePacks
+    transit/Transitous    MOTIS client: stops, boards, trips
+    CategoryFilter        content gating inside :core
+    tiles/                map style catalog
+  location/       LocationProvider (AOSP), HeadingProvider, MotionProvider, SpeedKalman,
+                  AlongRouteFilter
+  nav/            NavEngine (pure), NavSession, RouteProjection, RouteBar, CameraAlerts,
+                  CameraFacing, SpeedingAlerts, ExitLabel
+  voice/          VoiceGuide, NeuralSynth seam, SpokenScript, SpeechText
+  feedback/       Haptics
+  config/         Calibration, CalibrationStore, BundleSignature, JsSandbox, JsTransforms
+  search/         QueryIntents, VoiceCommandExamples
+  replay/         TripLog, TripScrub, NavReplay, DemoTrace
+  i18n/           NavStrings tables and registry
+  util/           SunTimes, NameScript, OsmHours, ClockFormat
+  diag/           DiagLog, DiagScrub
 
-:app    Jetpack Compose UI (Material 3)
-        ├─ MainActivity, VelaApp
-        ├─ ui/map/           MapScreen, VelaMapView (MapLibre), MapViewModel, PoiIcons
-        ├─ ui/search/        SearchBar
-        ├─ ui/place/         PlaceSheet, DirectionsPanel, transit board, photo gallery
-        ├─ ui/nav/           ManeuverBanner (lanes/shields/swipe), NavControls, StepsSheet
-        ├─ ui/theme/         AppTheme - in-app light/dark, decoupled from the OS
-        ├─ ui/               SheetPalette (one shared sheet palette), Format, Units
-        ├─ web/              WebPhotoFetcher, WebDirectionsFetcher - hidden-WebView scrapes
-        ├─ offline/          OfflineMaps (MapLibre tiles) + ObfStore (obf region files) + RegionCatalog (manifests) + PoiPackStore (place packs) + OverlayTileStore (building-footprint PMTiles)
-        └─ ui/settings/      SettingsScreen (appearance / style / voice / haptics / keep-screen-on / offline)
+:app
+  MainActivity, VelaApp, VelaConfig
+  ui/map/         MapScreen, VelaMapView, MapViewModel, NavController, SearchGates,
+                  PoiIcons, AmbientStability, MapDpadController
+  ui/place/       PlaceSheet, GoogleChooser, DirectionsPanel, StopsEditor, StreetViewScreen
+  ui/nav/         ManeuverBanner, NavControls, NavOverlays, StepsSheet, RouteBarStrip,
+                  RoundaboutGlyph, RouteShield
+  ui/search/      SearchBar
+  ui/settings/    SettingsScreen, SettingsHub, SettingsScaffold, sections/
+  ui/theme/       AppTheme, Theme
+  ui/             process-wide holders (section 2.3), SheetPalette, Format, Units, VelaMenu,
+                  VelaDialog, DpadFocus, AdaptiveDensity, AppFont, QuickCategories
+  web/            HiddenWebView base plus the five scrapes and ReviewsPanel
+  offline/        ObfStore, RegionCatalog, PoiPackStore, PmtilesRegionStore, PlacesTileStore,
+                  BasemapTileStore, OverlayTileStore, GlyphPackStore, OfflineMaps
+  car/            VelaCarAppService, CarMapRenderer, ManeuverMapper, screen/
+  data/           RoadFeatures, FlockCameras, ContactAddresses
+  voice/          AsrRecognizer, AsrEngine, PiperSynth, VoiceInstaller, KokoroInstaller
+  service/        NavigationService, NavGlyphs
+  download/       DownloadService, DownloadWork
+  update/         SelfUpdater
+  diag/           DiagExporter, NavTrace
+  replay/         TripStore
+  streetview/     PanoramaView, StreetViewTiles
 ```
 
-### Key seams
-- **`MapDataSource`** (`:core/data`) - the one interface the UI depends on.
-  - `MockMapDataSource` (default; keeps the whole app usable offline) and
-  - `google/GoogleMapsDataSource` (the real scraper). Flip with
-    `VelaConfig.USE_GOOGLE_SOURCE`.
-- **`GoogleSession`** - bootstraps a logged-out session (cookies via an in-memory
-  `InMemoryCookieJar` pre-seeded with Google's `SOCS`/`CONSENT` consent cookies so an
-  EU session isn't bounced to `consent.google.com`).
-- **Process-wide reactive holders** (a `mutableStateOf` mirror + `SharedPreferences`,
-  `init()`-ed in `VelaApp`): `ui/Units` (metric/imperial), `ui/theme/AppTheme`
-  (Light/Dark/System - read via **`isAppInDarkTheme()`**, never `isSystemInDarkTheme()`),
-  `ui/Traffic` (overlay on/off), `ui/TransitLayer` (rail highlight), `ui/LiveReviews` (reviews panel),
-  `ui/PlaceContent` (`ShowReviews`/`LoadPhotos`/`HideAdult`), `ui/Buildings3d` (extrusion layer), `ui/AppLocale`
-  (language), `ui/Onboarding`.
+### 2.3 Seams and process-wide state
 
-### Data flow (search example)
-`MapScreen` → `MapViewModel.search()` → `GoogleMapsDataSource.search()` →
-build `pb` (`SearchPb`) + `GET` → **optional JS override** (`JsTransforms`, §5) →
-`GoogleResponse.parse` → `SearchParser.parse` (positional indices from
-`Calibration.paths`) → **optional JS post-process** → `SearchResult` → UI.
+- **`MapDataSource`** is the only interface the UI depends on. `MockMapDataSource` keeps the
+  whole app usable with no network; `GoogleMapsDataSource` is the real scraper. The binding is
+  chosen by `VelaConfig.USE_GOOGLE_SOURCE` in the Hilt module.
+- **`GoogleSession`** bootstraps a logged-out session. An in-memory cookie jar pre-seeds
+  Google's `SOCS` and `CONSENT` cookies so an EU session is not bounced to `consent.google.com`.
+  A `Set-Cookie` must never be allowed to downgrade `CONSENT` to `PENDING`.
+- **Process-wide reactive holders** are a `mutableStateOf` mirror over `SharedPreferences`,
+  initialized in `VelaApp`: `Units`, `AppTheme`, `AppLocale`, `AppFont`, `UiScale`,
+  `MapColors`, `MapPoiPrefs`, `HouseNumbers`, `Buildings3d`, `BuildingOverlay`, `Traffic`,
+  `TransitLayer`, `Flock`, `FlockNavAlert`, `SpeedCams`, `SpeedCamWarn`, `SpeedingAlert`,
+  `LiveReviews`, `PlaceContent` (`ShowReviews`, `LoadPhotos`, `HideAdult`,
+  `HideExternalLinks`), `RoutePicker`, `RouteTrail`, `RoadLabel`, `PreferButtons`,
+  `PuckStyle`, `VoiceSearch`, `ContactsSearch`, `LayersButton`, `Onboarding`, `PipMode`,
+  `MemoryPressure`, `ConstrainedNetwork`.
+- **One view model.** `MapViewModel` owns `MapUiState` and delegates navigation to
+  `NavController` through a `Host` interface. Nav code never reaches into the view model.
+  **Anything an init-time collector touches must be declared above `init`**: `viewModelScope`
+  is `Main.immediate`, so a collector's first pass runs inline, before properties declared
+  below `init` exist.
+
+### 2.4 Data flow, search example
+
+`MapScreen` calls `MapViewModel.search()`, which calls `GoogleMapsDataSource.search()`. That
+builds the `pb` with `SearchPb`, issues the GET, optionally hands the raw body to a remote JS
+transform (section 11), parses with `GoogleResponse` plus `SearchParser` using the calibrated
+index paths, optionally post-processes through a second JS hook, and returns a result list the
+view model publishes into `MapUiState`.
 
 ---
 
-## 3. The extractor (calibrated contract)
+## 3. The Google extractor
 
-> These field numbers / array indices are what *drift* when Google reshapes things.
-> The **live source of truth is [`calibration.json`](calibration.json)** (fetched at
-> runtime, §5); `Calibration.DEFAULT` is the compiled fallback and must be kept in
-> sync at release. [`docs/CALIBRATION.md`](docs/CALIBRATION.md) has the prose walk-through.
-> `PbBuilder` grammar and `PolylineCodec` are **stable**; field indices are **not**.
+Field numbers and array indices drift when Google reshapes a response. The live source of
+truth is `calibration.json` (section 11); `Calibration.DEFAULT` is the compiled fallback and
+is kept in step at release. The `PbBuilder` grammar and `PolylineCodec` are stable and need no
+calibration. A response that no longer matches raises `CalibrationNeededException`, which the
+UI surfaces as a non-fatal notice; that is the expected periodic failure mode, not a crash.
 
-### Endpoints (all keyless, google.com only - host-allowlisted)
+### 3.1 Endpoints
+
+All Google endpoints are keyless and host-allowlisted to `google.com` and `www.google.com`.
+
 | Purpose | Request |
-|---|---|
+| --- | --- |
 | Search | `GET /search?tbm=map&q=<q>&pb=<SearchPb>` |
-| Directions (turn-by-turn) | **PRIMARY: FOSSGIS OSRM** `route/v1?steps=true` (`routed-car`/`-bike`/`-foot`) - full street-named maneuvers + geometry |
-| Directions (traffic ETA + fallback) | `GET /maps/preview/directions?pb=<DirectionsPb>` - Google's live-traffic ETA/spans, overlaid on the OSRM route; also the fallback router |
-| Directions (traffic-aware path, option 3) | when Google's route diverges >700 m from OSRM's (jam reroute), OSRM `route/v1` **through ~12 vias sampled off Google's polyline** → Google's path with full OSRM steps. `/match` map-matching would be cleaner but FOSSGIS caps it at 10 coords - see "Why dense-via, not map-matching" |
-| Reviews | hidden WebView DOM-scrape of the place's own `?cid=` page (`WebReviewsFetcher`; the old `listentitiesreviews` RPC is dead, 404) |
-| Photos (full gallery) | `POST /maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX` (proto in calibration) |
-| Transit | hidden WebView on `/maps/dir/<o>/<d>/data=!4m2!4m1!3e3` (see below) |
-| Reverse-geocode | OSM **Nominatim** `/reverse` (NOT Google - Google `tbm=map` won't reverse a lat,lng) |
-| (legacy) Google route geometry fallback | when OSRM is down, Google's directions + OSRM geometry fill |
+| Ambient places | the same search endpoint, fanned out over category terms |
+| Directions (traffic, fallback router) | `GET /maps/preview/directions?pb=<DirectionsPb>` |
+| Turn-by-turn (primary) | FOSSGIS OSRM `route/v1/<profile>` with `steps=true`, `geometries=polyline6` |
+| Bicycle, safety-weighted | FOSSGIS Valhalla `/route`, costing `bicycle`, `use_roads` 0.1 |
+| Shared-list import | `/maps/preview/entitylist/getlist`, URL lifted verbatim from the share page |
+| Photos | hidden WebView DOM walk of the place's `?cid=` page |
+| Reviews | hidden WebView DOM scrape of the same page, or the visible carve panel |
+| Popular times, About, owner blurb | hidden WebView search for name plus address |
+| Transit directions | hidden WebView on `/maps/dir/<o>/<d>/data=!4m2!4m1!3e3` |
+| Street View metadata | `GeoPhotoService.SingleImageSearch` and `photometa/v1` |
+| Street View imagery | `streetviewpixels-pa.googleapis.com/v1/tile` |
+| Reverse geocoding | Nominatim `/reverse` (Google's map search does not reverse a coordinate) |
 
-### Search response (`root[64][i]`, each entry rooted at `[1]`)
-name `[1][11]` · full address `[1][39]` (fallback: join components `[1][2]`) · rating
-`[1][4][7]` · reviews `[1][4][8]` · lat `[1][9][2]` · lng `[1][9][3]` · category
-`[1][13][0]` · website `[1][7][0]` · phone `[1][178][0][0]` · price `[1][4][2]` (a
-dollar *range* "$10–20", not a 1–4 level - the tier flag lives in the `[1][4][9]`
-bucket tree; `SearchParser.priceLevelOf` derives a 1–4 from the label for the filter) ·
-open-status `[1][203][1][8][0]` · rich status `[1][203][1][4][0]` · **feature id**
-`[1][10]` (`0x..:0x..` → reviews) · place id `[1][78]` · photos
-`[1][72][0][i][6][0]` (FIFE URLs, re-size `=w500-h350`; **moved from `[105]` 2026-06-27 - fix shipped via calibration v7**) · featured review
-`[1][142][1][0][1][0][0]` · About sections `[1][100][1]` (title `[s][1]`, items
-`[s][2][j][1]`) · **editorial one-liner** `[1][32][1][1]` · **owner "From the owner"
-blurb** `[1][154][0][0]` · weekly hours `[1][203][0]` (fallback `[1][118][0][3][0]`; 7
-entries from today, name `[0]` + text `[3][0][0]`) · **in-store departments** `[1][118]`
-(the WHOLE list, path `departments`: each entry a named department "Safeway Pharmacy" /
-"Delivery" - name `[0]`, weekly hours `[3][0]` in the readHours shape, status
-`[3][1][4][0]`; `[203]` is the MAIN store's schedule, so status/hours always pair from
-the same block - taking status from `[118]` and hours from `[203]` was the
-"closes soon at 10 PM over a 5 AM–1 AM table" bug, live-probed 2026-07-08). A
-**far/specific address** is a
-single geocoded result at `[0][1][0][14]` (same schema), not a `[64]` list. **"People
-also search for"** is a sibling of a focused result at `root[2][11][0]` (path `similar`),
-each entry `[featureId, name, [[_,_,lat,lng], …, rating@6]]` - `SearchParser.parseSimilarPlaces`
-attaches it to the primary place (focused searches only; absent from multi-result lists). The
-`[84]` histogram **and** `[32]`/`[154]` descriptions are trimmed from the keyless/list
-response → fetched lazily via the WebView (`WebPopularTimesFetcher` → `PlaceDetails`).
-The same focused re-fetch **backfills the fields a *summary* node drops** - a suite/
-multi-tenant address snaps to a light node missing review count / full hours / address /
-phone / price / attributes; the focused result is a full node, so `PopularTimesParser`
-lifts them into `PlaceDetails` (**feature-id-gated**) and `MapViewModel.fetchPlaceDetails`
-merges them into any blank field (additive; no match → unchanged).
+A bare `q=` returns an empty envelope; the viewport-driven `pb` is what populates results.
 
-### Directions response (`root[0][1][r]`, summary `[0]`)
-distance m `[2][0]` · typical dur s `[3][0]` · **traffic dur s `[10][0][0]`** ·
-overall traffic level `[10][2]` · **typical spread `[10][4]` = `[lowSec, highSec, label]`**
-(Google's own depart-time hint, "usually 1 hr 8 min to 1 hr 27 min" → `Route.typicalRangeSeconds`) ·
-**per-route geometry** = delta-encoded E7 arrays at
-`[0][7][i]` (lat deltas `[i][0]`, lng deltas `[i][1]`, first element absolute E7;
-`[i][4]` is elevation, NOT traffic) - index-aligned with summaries, so alternates draw
-real roads. **Per-segment live traffic** at `route[3][5][0]` (note: hangs off the route
-node, NOT the `[0]` summary) = `[level, startMeters, lengthMeters]` spans, only the
-non-free-flow stretches → `Route.trafficSpans` → the route line's colour bands. Steps
-are `<step maneuver=… meters=…>` markup; lane hints ("Use the right 2 lanes…") split
-into `Maneuver.laneHint`. Each maneuver is placed at `cumulativeStepMeters/polyLength`
-along the geometry - **except the final (ARRIVE), which is pinned to the route end**:
-step distances total a few % short of the geometry, so the cumulative undershoots and
-once placed "arrive" ~15 km before a 134 km route's end (firing the 25 m arrival trigger
-there - a real test-drive bug, fixed 2026-06-20).
-**Predictive per-departure field: confirmed unreachable keyless** (2026-06-20, 6th probe):
-the response has no time-of-day curve, our `pb` is byte-identical to Google's live web
-client, injected time fields are ignored/400, and the web depart-time control is
-un-automatable → it's login/Android-app-only. We surface the typical spread (`[10][4]`,
-above) as the honest keyless stand-in; a true per-minute ETA needs one captured real
-depart-at request (mitmproxy on the Android app - see `ROADMAP.md`).
+### 3.2 Search response
 
-### Shared-list import (`/maps/preview/entitylist/getlist`, calibrated 2026-07-08)
+Results are at `root[64][i]`, each entry rooted at `[1]`.
 
-A maps.app.goo.gl share link fetched LOGGED-OUT redirects to `/maps/@/data=!4m3!11m2!2s<LISTID>!3e3`,
-and that page's HTML embeds a ready-made prefetch URL for the getlist RPC (list id + page session
-token included) - `GoogleMapsDataSource.importList` lifts it verbatim (regex on
-`/maps/preview/entitylist/getlist?...`, `&amp;`-unescaped), so no pb is constructed anywhere.
-Response after the `)]}'` guard: `root[0][4]`=title · `[5]`=description · `[3][0]`=author ·
-`[8]`=items, each `[2]`=display name, `[3]`=the owner's personal NOTE, `[1][4]`=address,
-`[1][5][2..3]`=lat/lng, `[1][6]`=feature id as a DECIMAL signed-int64 pair (two's-complement hex
-= the `0x..:0x..` reviews id - `EntityListParser.featureId`). Parser: `EntityListParser`
-(best-effort, unit-tested on a captured payload).
+| Field | Path |
+| --- | --- |
+| name | `[1][11]` |
+| full address | `[1][39]`, fallback join of `[1][2]` |
+| rating | `[1][4][7]` |
+| review count | `[1][4][8]` |
+| latitude, longitude | `[1][9][2]`, `[1][9][3]` |
+| category | `[1][13][0]` |
+| website | `[1][7][0]` |
+| phone | `[1][178][0][0]` |
+| price text | `[1][4][2]` (a range such as "$10-20", not a 1-4 level; `SearchParser.priceLevelOf` derives the level from the label) |
+| open status | `[1][203][1][8][0]` |
+| rich status | `[1][203][1][4][0]` |
+| feature id | `[1][10]`, shaped `0xHIGH:0xLOW` |
+| place id | `[1][78]` |
+| photos | `[1][72][0][i][6][0]` (FIFE URLs, resize with `=w500-h350`) |
+| landmark extra photos | `[1][204][0][i][1][2][0][0]` |
+| featured review | `[1][142][1][0][1][0][0]` |
+| About sections | `[1][100][1]`, title `[s][1]`, items `[s][2][j][1]` |
+| editorial one-liner | `[1][32][1][1]` |
+| owner blurb | `[1][154][0][0]` |
+| weekly hours | `[1][203][0]`, fallback `[1][118][0][3][0]` |
+| in-store departments | `[1][118]` |
+| fuel price | `[1][88][0]` |
+| wheelchair attribute | `[1][100][1]` attribute id `has_wheelchair_accessible_entrance` |
+| popular times histogram | `[1][84]` |
+| Street View thumbnail (pano id and yaw) | regex over the serialized entry, `SearchParser.svThumb` |
 
-### Hours node (`[1][203][0]`) - date-specific, holidays baked in (observed 2026-07-01)
-Each day entry is `[name, dow(1=Mon..7=Sun), [Y,M,D], ranges, flag, flag, special?]` - a **rolling next-7-days**
-list keyed to the ACTUAL date, so **holiday overrides are already in it**: a Jul-4 bank showed
-`["Saturday",6,[2026,7,4],[["Closed"]],1,2,["4th of July hours","4th of July",1]]`. `ranges` = `[[text,[[openH],[closeH]]], …]`
-(MULTIPLE per day - split shifts); `special[1]` = a holiday label ("4th of July"). `readHours` joins all
-ranges and appends `" · <label>"`; `OpeningHours` strips the label, so the open/closed FALLBACK is holiday-aware
-for free (it computes from today's date-specific, holiday-adjusted entry). Google's live status STRING stays
-PRIMARY (it's the only source for an owner's ad-hoc "closed today", which is NOT in the scheduled ranges).
+Shape rules:
 
-### Directions - untapped capabilities (observed on the wire, not from the binary)
-A running "port these into our own code" list, derived purely from the response we already receive
-(clean-room = protocol observation, never decompilation):
-- **Per-route in-traffic ETA → RE-RANK (DONE 2026-07-01).** Each route's `[10][0][0]` is *its own*
-  `duration_in_traffic` (not one shared figure - the earlier "can't re-rank" note was wrong). `directions()`
-  now sorts the returned list by it, so the fastest-right-now route leads, Google-style.
-- **Overall per-route traffic grade `[10][2]`** - a coarse congestion score per alternate; candidate for
-  colouring the ETA chip / a "heavy traffic" badge on a route without walking every span.
-- **Lane guidance inside Google's `<step>` markup** - Google's own per-step lane data (we currently take
-  lanes only from OSRM); worth capturing so the *Google-path* alternates get lane diagrams too.
-- **Route-preference request flags** (avoid tolls / highways / ferries) - PINNED: `pb` REQUEST fields
-  in the directions `!6m` feature block, `!2m{!1b1 highways, !2b1 tolls}` (2026-09-06) and a direct
-  `!7b1` ferries child (2026-09-16); `DirectionsPb.withAvoid` places them by pattern.
-- **Not-yet-parsed response nodes:** route warnings/advisories, toll cost, per-step road-name/ref (would
-  give named turns without OSRM), and the rest of the `[10]` node beyond `[0]/[2]/[4]`.
-- **The nav "polish" is NOT in this protocol** - GPS-jitter attenuation, accelerometer-fused dead
-  reckoning, junk-fix rejection, buttery puck - that's client-side **sensor fusion** (Kalman/complementary
-  filter + IMU dead-reckoning + accuracy-gated outlier rejection + map-match smoothing), documented in
-  public literature, NOT Google's binary. Vela already does the biggest lever (map-match snap during nav);
-  the gaps (IMU dead-reckon, accuracy gating) build straight from raw `SensorManager`. Spec it from the
-  literature + on-device tuning when prioritised - no disassembly, fully portable.
+- A specific or far address is not a `[64]` list. It is a single geocoded result whose place
+  node sits at `[0][1][0][14]` with the same internal schema. All three result-shape gates
+  (`singleResultEntry`, `atThisPlaceEntries`, `findResultsArray`) validate through
+  `paths.name` rather than a hard-coded index, so recalibrating `name` reaches them.
+- "People also search for" is a sibling of a focused result at `root[2][11][0]`, each entry
+  `[featureId, name, [[_,_,lat,lng], ..., rating@6]]`. Focused searches only.
+- `[84]`, `[32]` and `[154]` are trimmed from the keyless list response and are fetched lazily
+  through the WebView detail path.
+- A summary node drops review count, full hours, address, phone, price and attributes. The
+  focused re-fetch backfills them: `PopularTimesParser` lifts them into `PlaceDetails`, gated
+  on feature id, and `MapViewModel.fetchPlaceDetails` merges into blank fields only.
+- Status and hours must come from the same block. `[203]` is the main entity's schedule;
+  `[118]` carries a department's sub-schedule. Mixing them reports a department's closing time
+  against the store's hours.
+- The open/closed boolean is parsed from the localized status text by
+  `SearchParser.parseOpenNow(status, lang)` against a per-language keyword table, closed words
+  first, because several languages' opening phrases are prefix-cousins of their open words.
+  **The numeric status-code path does not exist**: those integers are span and style markers,
+  proven against a live capture, and reading them colors closed places green.
 
-### Traffic-aware path (option 3) - why dense-via, not map-matching (measured 2026-06-28)
-Google's `[0][7][i]` polyline is **complete** even when its steps are abbreviated (3.3 km of
-steps seen on a 6.4 km line), so we *can* trace Google's exact jam-avoiding path. The clean way
-is **map-matching** (snap a trace → roads + turns), but public infra won't give it: FOSSGIS
-**`/match` caps at 10 coords** (`TooBig` past that; ~0.01 confidence that sparse) and public
-**Valhalla `/trace_route` times out**. So `RouteGeometry` snaps via **dense-waypoint `/route`**
-instead - `sampleVias` takes ~12 interior points of Google's line, `routeVia` routes OSRM through
-them (no coord cap; path reproduced exactly, 0 U-turn artifacts). Tradeoff, measured: a via that
-lands *on* a turn is encoded as a via arrive/depart, not a turn - **~1-in-10 named turns lost** at
-60 vias. So we keep vias modest (12) and gate the whole thing behind real divergence
-(`divergent`, >700 m), leaving the free-flow majority as pure-OSRM with perfect turns. We also
-**only LEAD with the snapped route when it earns it** - its live in-traffic ETA must be within
-`SNAP_ETA_MARGIN` (×1.2) of OSRM's free-flow best, so a divergent-but-not-actually-faster snap steps
-aside for OSRM's clean route instead of being forced to the top (the `directions` diag logs `gEta`/`osrmFF`
-to tune this from real side-by-side data). Per-alternate re-rank IS done (2026-07-01): each Google alternate in `root[0][1]` carries its OWN
-`duration_in_traffic`, so the list is sorted by live in-traffic ETA - the fastest-shown route leads. And
-that order survives naming (fix 2026-07-08): `nameRoute` (the OSRM snap that runs when a provisional
-alternate is picked, or auto-runs when one sorts to the top) keeps the route's ORIGINAL Google
-duration/in-traffic figures instead of adopting the snap's recomputed ETA - the recomputed figure could
-leapfrog a neighbouring row in place and leave the "Fastest" tag below a slower first row. The
-cleaner unconditional "Google routes, OSRM names turns" wants **on-device map-matching** - now shipped as
-the offline router (next para); using it to clean up the online snap is the Phase-2 follow-up (`ROADMAP.md`).
+### 3.3 Hours node
 
-**Multi-stop (waypoints, DONE 2026-07-01).** `directions(origin, dest, mode, waypoints)` - when `waypoints`
-is non-empty it reuses the same `routeVia` machinery (OSRM through `origin → stops… → dest`, the per-via
-arrive/depart already filtered into one continuous trip) and overlays Google's in-traffic ratio for the ETA
-(`applyTrafficRatio` - scales duration only; the direct-path congestion spans wouldn't align to a through
-path so they're dropped). A waypointed trip returns a **single** route (the alternates/divergence-snap logic
-is skipped). The app holds the stops as `MapViewModel.directionsWaypoints` (a stop-pick mode mirrors the
-origin picker). **Follow-ups DONE 2026-07-01:** `NavEngine.stopMarks(route, stops)` projects each waypoint
-onto the route line → its along-route metre "pass mark" (or null if >150 m off the line); `NavSession` holds
-the stops + marks + a `passedStops` counter and fires a **per-stop voice cue** ("You've reached &lt;stop&gt;")
-in order as `traveledM` passes each mark (unit-tested `NavStopMarksTest`; `NavEngine` stays pure). `reroute`
-and the faster-route `maybeRecheck` now call `directions(loc, dest, mode, remainingStops)` where
-`remainingStops = stops.drop(passedStops)` - so going off-route (or taking a faster route) keeps the stops
-you haven't reached, instead of dropping them; the `reaches(dest)` guards are unchanged (the route still ends
-at the same final dest). The panel has up/down **reorder** arrows (`moveStop`).
+Each entry of `[1][203][0]` is `[name, dow(1=Mon..7=Sun), [Y,M,D], ranges, flag, flag,
+special?]`, a rolling next-seven-days list keyed to the actual date, so holiday overrides are
+already present. `ranges` is `[[text, [[openH],[closeH]]], ...]` with multiple entries per day
+for split shifts; `special[1]` carries a holiday label. `readHours` joins the ranges and
+appends the label; `OpeningHours` strips the label, so the computed open/closed fallback is
+holiday-aware. Google's live status string stays primary because it is the only source for an
+owner's ad-hoc closure.
 
-**Offline routing (on-device, DONE 2026-06-30; obf engine since 2026-09-15).** When OSRM is unreachable,
-`directions()` routes fully on the phone via **OsmAnd's router** (`core/data/ObfRouteEngine`, the vendored
-pure-Java router + binary reader over downloaded `.obf` region files; the speed-limit badge and the
-romanized road names read off the same files). Region files are **baked off-device** (`scripts/build-obf-region.sh`,
-MapCreator over a roads-only osmium pre-filter) and **hosted as GitHub-release assets** - a **414-piece world
-catalog** (`tools/routing-regions.json` -> a race-safe GitHub-Actions build matrix -> `obf-manifest.json`).
-The first engine, GraphHopper over CH graphs, was retired on 2026-09-15. The app downloads regions into `filesDir/obf/<id>.obf`
-(by picker, or bundled with an offline-tiles area download) and routes a trip on the **smallest installed
-region box covering both endpoints** (boxes overlap at borders; falls through to the next-smallest). A trip
-must fit one region's monolithic graph; cross-region falls online.
+### 3.4 Directions response
 
-**Offline place packs (whole-region search, DONE 2026-07-07).** Downloading a state's routing region also
-pulls its PLACE PACK - a CI-baked SQLite db (`scripts/build-poi-region.sh` from the same Geofabrik PBF the
-graph uses; workflow `poi-packs.yml`; release `poi-packs`) holding the entire region's named OSM POIs
-(address/phone/website/hours), address points and street names, so offline search/geocoding covers the whole
-state (Organic-Maps-style), not just saved map areas. The pack schema is normalized (street names deduped
-into an int-keyed `streetname` table; `addr`/`streetpt` reference them by sid) - Washington is 143 MB zipped
-for 163k POIs + 2.8M addresses - and queries match street names first (~90k-row scan) so the million-row
-tables are only ever hit through indexes. `OfflinePacks` (:core) registers the downloaded dbs;
-`OfflinePoiStore`/`OfflineAddressStore` query them alongside their own index. Packs install after the
-region's graph, delete with it, and show the same heads-up progress card as the voice download; graphs
-installed before packs existed get a "Get places" button. Device-verified: offline "pel meni" from
-the downloaded suburb → Pel'Meni Dumpling Tzar, Fremont, with address.
+Routes are at `root[0][1][r]`, summary at `[0]`.
 
-**Place pack freshness (rev + monthly cron + row-level deltas, DONE 2026-07-07).** `poi-packs.yml` also runs
-on a monthly cron that rebuilds every published region; each rebuild bumps the region's `rev` in the manifest
-(alongside `updatedAt` and per-table row counts). Installed revs live in `poipacks/revs.json`; a newer
-manifest rev puts an "Update places" button on the region's Settings row. CI diffs each rebuild against the
-previous rev (`scripts/poipack_delta.py`, one SQL EXCEPT per table producing del_/ins_ tables) and publishes
-the delta zip only when it is under half the full pack size. `PoiPackStore.applyDelta` (valid only when
-installed rev == the delta's fromRev, else full download) applies it in one transaction: delete by full-row
-match driven through each table's index (NULL-safe `IS` matching), insert the ins_ rows, then verify every
-table's count against the manifest before committing; any mismatch rolls back and the caller falls back to a
-full download. Street-name sids are stable content hashes (SHA-1 of the normalized name, truncated to a
-positive 63-bit int; the build fails on a collision), not insertion counters, so a rebuild leaves unchanged
-rows byte-identical and deltas stay small (a Washington test delta: 5.6 KB vs the 143 MB pack). The
-`TABLE_COLUMNS` map in PoiPackStore mirrors `poipack_build.py`/`poipack_delta.py`; keep all three in sync.
+| Field | Path |
+| --- | --- |
+| distance, meters | `[2][0]` |
+| typical duration, seconds | `[3][0]` |
+| in-traffic duration, seconds | `[10][0][0]` (per route, not shared) |
+| overall traffic level | `[10][2]` |
+| typical spread | `[10][4]` = `[lowSec, highSec, label]` |
+| geometry | `[0][7][i]`, delta-encoded E7, first element absolute; `[i][4]` is elevation |
+| per-segment congestion | `route[3][5][0]` = `[level, startMeters, lengthMeters]`, non-free-flow stretches only |
+| steps | `<step maneuver=... meters=...>` markup, lane hints split into `Maneuver.laneHint` |
 
-**Offline address geocoding (on-device, DONE 2026-07-07).** So an arbitrary typed street address routes with
-no signal, not just addresses that are an indexed POI. Downloading a map area builds a SQLite forward geocoder
-(`core/data/OfflineAddressStore`) from keyless Overpass (`OverpassPois.fetchAddresses`/`fetchStreets`) over a
-bbox **padded to a ~15 km min span** around the viewport (`GEOCODE_PAD_DEG`) - the tile-viewport box was too
-small (8 addresses in a dense suburb; the padded box → 8591 addresses + 1466 streets). Two OSM sources: `addr:
-housenumber` points (house-precise) and named-road centrelines thinned to ~1 pt/120 m (street-level fallback
-where OSM maps the road but no house numbers - the US-suburb reality). `geocode()` layers exact → interpolated
-between bracketing numbers → nearest house on street → nearest centreline point; street names are
-abbreviation-normalized both ways. The result Place routes through the same offline engine.
-Device-verified wifi-off in a downloaded suburb. A **quiet offline indicator** (reactive `ConnectivityManager` →
-`MapUiState.offline`) replaced the old banner: a greyed globe-slash + "Offline" in the search bar and a
-globe-slash chip on the basemap.
+Geometry is index-aligned with the summaries, so alternates draw real roads. Each maneuver is
+placed at `cumulativeStepMeters / polylineLength` **except the final ARRIVE, which is pinned to
+the route end**: step distances total a few percent short of the geometry, and an unpinned
+arrive lands kilometers early on a long route and fires the arrival trigger there.
 
-### Reviews / Photos / Transit (the hard ones)
-- **Reviews**: DOM-scraped from the place's own `?cid=` page in a hidden anonymous desktop-UA WebView
-  (`WebReviewsFetcher`) - the keyless `listentitiesreviews` RPC is **dead** (404) and only ever served
-  avatars anyway. `?cid=` = the `LOW` half of the `0xHIGH:0xLOW` feature id as unsigned decimal. **Three
-  things that were silently capping it at ~3, fixed 2026-07-01:** (1) the hidden WebView is never attached,
-  so it was **0×0**; Google's review list is **virtualized/lazy-loaded off the scroll viewport**, so at
-  0×0 it renders the chrome (rating histogram, topic filters) but **no review cards** - `measure`+`layout`
-  the WebView to a real **1200×3200 offscreen viewport** and the `m6QErb` scroll pane becomes real +
-  pages. (2) cards are **`.jJc9Ad`** each with a unique **`data-review-id`**; the scraper selects those
-  directly and **accumulates across scroll windows de-duped by review-id** (the panel recycles DOM nodes,
-  so one snapshot = ~10; the union = the list). (3) **on busy business pages** (food/retail - attractions
-  were unaffected) the list takes **~8 s to render** after the tab click, and the idle-termination
-  (`atBottom && noGrow`) mistook that blank pre-render window for "done", bailing with only the 3 overview
-  cards. Two guards fix it: open via the **`[role="tab"]` "Reviews" tab**, clicked-until-`aria-selected`
-  (a click on a not-yet-hydrated tab retries rather than no-opping; a selected-but-loading list is never
-  re-clicked - re-clicking restarts its render, which regressed busy pages back to 3), and **gate the
-  idle-bail on cards being rendered at bail time** (`cardsNow`, checked per tick - NOT a once-latched
-  flag: the overview's 3 preview cards latch just before the tab click blanks the panel, and that
-  timing hole still bailed with 3 on unlucky loads; a no-tab/no-button layout gets a 14-tick leash
-  then returns what's rendered). Per card: author
-  `.d4r55`, text `.wiI7pd`, rel-date `.rsqaWe`, star aria, avatar + **uploaded photos** (googleusercontent
-  background-images, avatars/ALV-/ACg8oc filtered). A "More reviews" button is the fallback for layouts
-  with no Reviews tab; dwells at the bottom to let the lazy-loader page in more, caps at 50. **Per-review
-  photos ARE delivered this way** (the old RPC's avatars-only limitation doesn't apply to the rendered
-  page). Device-verified: Taco Bell **3 → 50**, Pike Place Chowder **3 → 37**, a landmark **37 → 46**.
-  The place sheet adds a **"Search reviews"** box (≥5 loaded) that live-filters the loaded set by
-  text/author. **Default path since 2026-07-01 is the LIVE PANEL** (`app/web/ReviewsPanel.kt`,
-  `LiveReviews` toggle): Google's reviews pane in a VISIBLE WebView, CSS-carved - pixel-sized (vh
-  units are 0 in an embedded WebView), ancestor chain un-clipped/un-transformed (else nothing
-  paints), scroller stretched only after the Reviews tab reports `aria-selected`, trackers/beacons
-  blocked in `shouldInterceptRequest`, all post-load navigations blocked, disallow-intercept
-  re-asserted per touch event (the Compose sheet steals the gesture otherwise). The scrape above is
-  the automatic fallback (toggle off / carve failure). While the scrape runs (~10–40 s on busy places) the scraper **streams its running count**
-  (`onProgress` → "Loading reviews… N of ~min(count,50)" + a determinate bar) **and the accumulated
-  reviews themselves** (`onPartial` → the list fills in under the bar live). The streaming state update
-  is gated on `reviewsLoading` inside the atomic CAS (the final result clears the flag in the same copy
- - no straggler-partial overwrite), and an empty final after partials keeps the streamed set. **Idle
-  patience:** the opened list's "done" test is 8 no-growth / 6 at-bottom ticks - Google's pager takes
-  >2.2 s per page on busy places and the old 4/4 bailed mid-list (Taco Bell ~15 of 612 → now 50/cap).
-- **Photos**: the full gallery is **scraped from the place's own `?cid=` page** (2026-06-28),
-  *not* the `hspqX` RPC - that RPC is **bot-degraded per-session** to a Street-View-only reply
-  (an on-device log showed byte-identical degraded replies across retries, so retrying never
-  recovers it). `app/web/WebPhotoFetcher` loads the `?cid=` page in a **hidden, anonymous,
-  desktop-UA WebView**, lets Google's JS render it, and a self-polling script scrapes
-  `googleusercontent` photo URLs from the DOM (avatars + Street View filtered, de-duped by
-  image id, clicks the "Photos" affordance + scrolls to surface more) - **same pattern as
-  `WebReviewsFetcher`**; a rendered page is far harder to bot-degrade than a naked RPC POST.
-  ~9–25 photos/place, on-device-verified; a shimmer row (`MapState.photosLoading`) shows while
-  it's in flight. Gotchas: desktop UA (mobile → `intent://`), block non-http(s) redirects,
-  `Handler` not `View.postDelayed` (headless WebView never attaches). No contributor name from a DOM
-  scrape (that was an `hspqX`-only field). **Categories (2026-07-01):** Google keeps the gallery tabs
-  (Menu / Food & drink / Vibe / By owner) in the `?cid=` DOM, so the scraper **visits each tab** (click →
-  scroll → tag its photos) then sweeps "All" for the rest, returning `category⇥url` lines → `Photo.category`
-  / index-aligned `Place.photoCategories` → filter chips on the sheet. **Posted-dates deferred:** the tiles
-  carry only the URL; the date is per-**focused** photo (lightbox), too costly to harvest per tile.
-- **Transit**: departure boards, stop icons and trip stop-sequences come from the open
-  GTFS feeds via **Transitous** (`core/data/transit/Transitous.kt`, keyless MOTIS API) with
-  the Google place-page blob as fallback; see docs/HOW-IT-WORKS.md "Transit data: who
-  provides what". Transit DIRECTIONS stay Google: a plain keyless transit request is
-  silently downgraded to *driving*, so
-  `app/web/WebDirectionsFetcher` navigates the `/maps/dir/…/data=…!3e3` page and reads
-  `window.APP_INITIALIZATION_STATE`. The payload is the **longest** `)]}'`-guarded
-  string under slot `[3]` (poll for it; a stub sits alongside). `TransitParser`: trips
-  `root[0][1]`, each trip summary at `trip[0]`, legs at `trip[1][0][1]`.
+Request-side route options ride the `!6m` feature block: inside its `!2m` submessage,
+`!1b1` avoids highways and `!2b1` avoids tolls; `!7b1` avoids ferries as a direct child of the
+outer block. `DirectionsPb.withAvoid` places them by pattern and fixes up the `m` group counts,
+so a recalibrated template survives.
 
-### Hybrid model (load-bearing)
-Basemap POI icons/labels are **OSM** (OpenFreeMap), the opened sheet is **live
-Google** - the two can disagree (an OSM `drinking_water` node that's really a "Primo
-Water" kiosk inside a store). `onPoiTap` searches the OSM name on Google and, among
-listings within 35 m, picks the most-reviewed **only when it clearly dominates**
-(`canonical.reviews >= 2·nearest.reviews + 5`) so co-located-but-distinct shops aren't
-wrongly merged; "Also at this location" lists the others.
+**Not reachable keyless** (each probed and settled; do not re-chase):
 
-**Ambient POI icon = category, with a NAME fallback** (`PoiIcons.groupFor(name, category)`).
-Google's keyless data sometimes returns a generic administrative category
-("Non-profit organization", "Establishment") that themes to the grey `default` teardrop even
-though the place is really a gym/church/school - and the OSM basemap POI *does* classify it, so
-the grey ambient dot flipped to a themed OSM icon the moment the ambient layer cleared on select
-(the "grey YMCA on the map, orange weight 'YMCA' when I tap it" inconsistency - 
-the OSM `leisure=sports_centre` twin showing through). When the category resolves to `default` the
-NAME breaks the tie ("…YMCA"→sport, "…Church"→civic, "…Elementary"→edu, conservatively), so the
-ambient dot gets the same icon Google and the OSM POI give it. Category stays authoritative.
+- A per-departure or time-of-day ETA curve. The response carries no curve, the pb is
+  byte-identical to the live web client's, injected time fields are ignored or rejected. The
+  honest stand-in is the typical spread `[10][4]`.
+- The `listentitiesreviews` RPC. It 404s for everyone and only ever served avatars.
+- The `hspqX` photo RPC. It is bot-degraded per session to a Street-View-only reply; retries
+  in the same session return byte-identical degraded bodies. The page DOM walk replaces it.
+- Per-photo upload dates. The RPC that carries them returns zero photos to an automated
+  browser even with the page's own fresh token, and the place page does not embed photo URLs
+  at walk time. The date-join plumbing stays in place and inert.
+- Review "helpful" counts, which are login-gated to zero for logged-out sessions.
+- EV charger detail (type marker only), the recently-opened badge, and live incidents (Google
+  serves binary vector tiles; Waze's feed is reCAPTCHA-gated).
 
-### Traffic overlay
-Two layers. **(1) Whole-map raster** - `/maps/vt` PNG tiles on `www.google.com`
-(public, keyless, not bot-gated; the `incidents` params carry the data, NOT the
-map-version epoch); `VelaMapView.ensureTraffic` adds a `RasterLayer`. A manual toggle on
-the bare map; **off during navigation** (it washed every road). **(2) Per-segment route
-line** - the directions JSON *does* carry per-segment congestion after all
-(`route[3][5][0]`, see above); `VelaMapView.routeGradient` supplies the per-segment
-Google-style congestion bands. During nav the driven/ahead cut is a **geometry split**, not a
-gradient stop: a traversed-grey full line under an **ahead-suffix layer** (`ROUTE_AHEAD_LAYER`/
-`ROUTE_AHEAD_SRC`) trimmed exactly at the puck, with the traffic bands remapped onto the suffix - 
-MapLibre bakes line-gradients into a 256-texel texture (so a "hard" cut smears ~routeLength/256 m)
-and has no `line-trim-offset`, so geometry is the only pixel-exact cut. So during nav the route
-itself shows the traffic, not the whole map.
+### 3.5 Shared-list import
+
+A `maps.app.goo.gl` link fetched logged out redirects to `/maps/@/data=!4m3!11m2!2s<LISTID>!3e3`,
+whose HTML embeds a ready-made prefetch URL for the getlist RPC with the list id and page
+session token included. `GoogleMapsDataSource.importList` lifts that URL verbatim by regex and
+unescapes `&amp;`; no pb is constructed. Response after the guard: `root[0][4]` title, `[5]`
+description, `[3][0]` author, `[8]` items, each `[2]` display name, `[3]` the owner's note,
+`[1][4]` address, `[1][5][2..3]` coordinates, `[1][6]` feature id as a decimal signed-int64
+pair whose two's-complement hex is the `0x..:0x..` form.
+
+### 3.6 Browser identity
+
+Two user agents, and confusing them is a bug.
+
+- **Google-facing** requests send the calibrated browser UA plus the coherent Chrome header
+  set (`Sec-CH-UA*`, `Sec-Fetch-*`) through `BrowserHeaders.browserHeaders` and
+  `browserXhrHeaders`. Read it from `calibration.current().userAgent`, never from
+  `VelaConfig.USER_AGENT`, which is only the compiled fallback.
+- **Community services** (FOSSGIS OSRM and Valhalla, Nominatim, Photon, Overpass, Transitous)
+  send `VelaConfig.VELA_UA`, the honest contactable identifier their usage policies ask for.
+
+Constraints:
+
+- `secChUa`'s major version must match `userAgent`. `BrowserHeadersTest` locks the compiled
+  pair so bumping one alone fails the build.
+- Both fields are sanitized on parse (`BrowserHeaders.sanitize`): surrounding whitespace is
+  trimmed, interior control characters and non-ASCII are rejected back to the compiled
+  default. OkHttp throws on a control character at request-build time inside a `runCatching`,
+  so one stray newline in a pushed bundle would kill every scrape silently.
+- The UA is a **desktop** string on purpose. Mobile web Maps serves different markup and
+  endpoints, so switching is a recalibration of every parser, not a header edit. The
+  `Sec-CH-UA-Mobile: ?0` and `"Windows"` platform hints track it.
+- **Do not push a `userAgent` through calibration yet.** Six WebView scrapes still set
+  `userAgentString` from the compiled constant; until they read `CalibrationStore`, a pushed UA
+  makes one client present two Chrome versions, which is worse than being stale.
+- Do not chase a TLS fingerprint. Matching Chrome's JA3/JA4 and HTTP/2 frame ordering needs a
+  custom TLS stack, permanent maintenance and native dependencies, and it breaks reproducible
+  F-Droid builds. The defense is diffusion (every user on their own IP), not disguise.
+
+### 3.7 Hidden WebView scrapes
+
+Five fetchers plus the visible reviews panel run Google's own JS anonymously, because a
+rendered page is served data a bare request is not. They share `app/web/HiddenWebView`, which
+owns the view (JS, DOM storage, desktop UA, the `VelaBridge` result channel), a request id per
+page load so a late poller can only complete its own request, the idle reap and the
+memory-pressure reap, the sleep between fetches (`session { }` pairs `onResume` before with
+`onPause` after), the non-http scheme block, and console error logging under `VelaWeb`. A
+fetcher is its URL, its extractor script and its parser.
+
+Rules that hold for all of them:
+
+- `onResume` at the start of a fetch and `onPause` when the last pending fetch finishes. A
+  loaded Google page keeps its compositor and JS timers running indefinitely, which measured as
+  roughly 27 percent of app CPU during a plain map pan. `pauseTimers()` is process-wide and is
+  deliberately not used.
+- Desktop UA. A mobile UA makes Google deep-link to `intent://`.
+- Block every navigation after the initial load, and every non-http(s) scheme.
+- Use a `Handler`, not `View.postDelayed`: a headless WebView never attaches.
+- Size the view explicitly. The viewport is CSS pixels times density (1200x1000 CSS for
+  reviews, 1200x3200 offscreen for the photo walk); a raw 1200 physical pixels is about 450
+  CSS pixels on a 2.75x phone, which is Google's narrow layout.
+- Warm them **after** results land, never before a search: creating two Chromium instances on
+  the main thread ahead of a cold search held results at 13 seconds against 4 seconds warm.
+- In a Kotlin raw string, `${'$'}{x}` is not a template. Writing it that way emits the literal
+  text into the page and the whole script dies with a syntax error; that silently killed the
+  review scrape for a week. Every script reports a start marker and any JS error through the
+  bridge, and a `WebChromeClient` logs console errors, so the next one is visible.
+
+**Reviews.** The place's `?cid=` page, where `cid` is the low half of the feature id as
+unsigned decimal. Cards are `.jJc9Ad` with a unique `data-review-id`, accumulated across scroll
+windows and de-duped by that id, keeping the **longest** text seen per id (a card harvested on
+the tick its More toggle was clicked is still truncated). The Reviews tab is opened by
+`[role="tab"]`, clicked until `aria-selected`; a selected-but-loading list is never re-clicked,
+because re-clicking restarts its render. The idle bail is gated on cards being rendered at bail
+time, checked per tick rather than latched, because the overview's preview cards latch just
+before the tab click blanks the panel. Patience is 8 no-growth ticks and 6 at-bottom ticks.
+Every text test on a tab or button runs through `STRIP_PLACE_NAME_JS` first, because Google
+embeds the place name in those labels and a place name can contain a review word in some
+language.
+
+**The reviews panel** (`ReviewsPanel`, the default path) carves Google's own reviews pane in a
+visible WebView. Load-bearing carve rules: `vh` units are 0 in an embedded WebView, so
+everything is sized in pixels; the ancestor chain must be un-clipped and un-transformed or
+nothing paints; the scroller is stretched only after the Reviews tab reports selected;
+disallow-intercept is re-asserted on every touch event or the Compose sheet steals the gesture;
+Google's summary block is faded with opacity and only collapsed with `display:none` after the
+feed has been healthy about 5 seconds, because removing it from layout while the virtualized
+list mounts corrupts the list's offset math and unmounts every card. Scroll handoff to the
+sheet **forwards raw deltas**; it must not transfer gesture ownership, since Compose has
+already abandoned a stream whose early events the WebView consumed. The feed watchdog keys on
+relative-date texts, not class names, because Google A/B-serves builds with rotated classes.
+
+**Language.** Both review paths follow the app language (`reviewsHl()`), because the page
+language decides which reviews Google serves and reviews are content, never translated for the
+reader. Every English text test is backed by the per-language tables in `:core ReviewWords`
+(review, more, sort, star, ago, write, like, share, actions, all, processed), remotely
+overridable through calibration `reviewWords`. Ratings read the leading number, which every
+language leads with. The more-reviews button requires a review word **and** a more word, or a
+bare match clicks the review composer. The sort menu is clicked by index, because several
+languages label the button with the current choice rather than a sort word.
+
+**Photos.** The same page, walked: tabs are visited (Menu, Food and drink, Vibe, By owner),
+each tab's photos tagged, then "All" is swept for the rest. Photos are keyed off
+`jsaction*="review.openPhoto"`, never the aria-label, because Google labels some photos
+descriptively. The URL reads from inline background, computed background, or a child `<img>`.
+Partial results stream whenever the accumulated set grows.
+
+**Popular times** need a **specific** query, name plus address. A bare-name WebView search
+returns a 20-result list trimmed of `[84]`; name plus address resolves to a single focused
+result that keeps it.
+
+**Transit directions** go through the page because a keyless transit request is silently
+downgraded to a driving reply. The payload is the **longest** `)]}'`-guarded string under slot
+`[3]`, polled for because the SPA fills it after page-finish; a small stub sits beside it.
+
+### 3.8 Recalibration procedure
+
+1. Capture the live request in browser devtools or a proxy. Mask the query and any coordinates
+   before saving the capture anywhere.
+2. For a moved **field**, edit the path in `calibration.json` `paths` (or `directionsPaths`,
+   which merges key by key over `Calibration.DEFAULT_DIRECTIONS_PATHS`).
+3. For a moved **endpoint or pb**, edit the template. The host must stay on the allowlist.
+4. For a reshaped **response**, ship a `transformsJs` bundle (section 11).
+5. Bump `version`, run `./scripts/sign-calibration.sh`, and commit `calibration.json` with
+   `calibration.json.sig` in the same commit.
+6. Keep the compiled `Calibration.DEFAULT` values in step at the next release.
+   `DEFAULT.version` deliberately stays 1 so any remote bundle wins the newer-version check.
 
 ---
 
-## 4. Map / UI
+## 4. Routing and navigation
 
-- **Basemap**: OpenFreeMap **Liberty**, loaded **by URL** (`fromUri`, the only thing
-  that renders vector tiles on-device - a bundled/`fromJson` style blanks the vector
-  source). Recoloured at runtime in `VelaMapView.applyLight/applyDark` to a Google-clean
-  look (white roads, faded casings = outline-free, soft-yellow motorways, neutralised
-  landuse, killed fill-patterns). Hillshade relief from the keyless terrarium DEM
-  (`encoding="terrarium"`). Custom Google-style POI markers (`PoiIcons`, Material-icon
-  glyphs over coloured circles), nameless POIs hidden, transit density tuned to z16+.
-  Font is **Roboto** via self-hosted glyphs on the repo's GitHub Pages: Roboto composited
-  over OpenFreeMap's Noto per glyph (all non-Latin scripts keep full coverage), the live
-  Liberty style patched at launch with only its glyphs URL (`ui/map/MapFonts`), probed and
-  falling back to plain Noto when the host is unreachable. The old "bundling blanks the
-  map" failure was the bundled style's dated tile path, not the glyph swap.
-- **MapTiler** Streets is wired as an alternative (needs the `MAPTILER_KEY` secret,
-  never committed) but **off** (`USE_MAPTILER=false`) for keyless full control.
-- **D-pad-only operation (constraint - don't regress)**: the whole UI must stay drivable
-  with a 5-key D-pad and no touchscreen; touch is a bonus. Every interactive element is a
-  focus target with a visible ring in key-driven input mode (`app/ui/DpadFocus.kt`); the
-  map is key-drivable through `MapDpadController` (arrows pan, OK = tap at the centre
-  crosshair, hold-OK = long-press, on-screen +/− zoom buttons), which REUSES the touch
-  paths (same tap-resolution lambda, gesture flags, nav-zoom override) rather than forking
-  them; every gesture has a key alternative (banner ←/→ step preview, sheet-handle OK
-  toggle, photo-viewer ←/→). Text fields must not trap focus - `Modifier.dpadFieldEscape`
-  makes UP/DOWN leave the field (the search bar does the same inline). Choose-on-map keeps
-  the map pannable to place the pin (a `pickOnMap` exception in `mapTargetHidden`), and any
-  panel taller than the screen (e.g. the directions panel with 4 alternates) must scroll so
-  its primary action stays reachable. New interactive UI must keep all three properties
-  (reachable, activatable, visibly focused). A full-function D-pad sweep (2026-07-07) proved
-  every surface end-to-end. Full design + per-surface audit + upstream merge policy:
-  `docs/dpad.md`.
-- **Compose UI**: place sheet (fixed Google-grey palette via `ui/SheetPalette`, NOT
-  Material-You - deliberate), full-screen search page (Home/Work + saved + recent
-  places + recent searches), directions panel (alternates, swap, depart-time chooser,
-  search-along-route), nav overlays (maneuver banner with shields/lanes, speedometer,
-  re-center). MapLibre camera shifts its optical centre up via bottom padding so sheets
-  don't occlude the pin/route.
-- **Navigation**: foreground `NavigationService` + shared `@Singleton NavSession`
-  (survives backgrounding/screen-off, persistent notification, ~2-min faster-route
-  re-check, arrival summary). Spoken `VoiceGuide` (AOSP TTS, best offline voice) +
-  direction-coded `Haptics`. Heading-up tilted camera, blue-dot + heading cone.
-  `NavEngine` (pure, unit-tested) tracks **monotonic forward progress** (`NavState.traveledM`,
-  windowed projection in `projectAlong` - not global-nearest) so "remaining" and "distance to
-  next turn" stay **along-route** and honest on routes that pass near themselves
-  (switchback / cloverleaf / out-and-back); off-route it holds rather than snapping to a far leg.
-- **Android Auto (full car-side nav, PR #17)**: `app/car/` - a NAVIGATION-category
-  `CarAppService` (`VelaCarAppService`, host validator open because sideloads already
-  require AA's "Unknown sources" developer switch). Screens under `car/screen/`:
-  `MainCarScreen` (Home/Work/recents/saved) → `SearchCarScreen` (debounced
-  `MapDataSource.search`) → `RoutePreviewCarScreen` (up to 3 live-traffic alternates,
-  names provisional routes before start) → `ActiveNavCarScreen` (turn card, "then" step,
-  lane diagram via `LaneImage`, faster-route action, mute; `NavigationManager`
-  navigationStarted/updateTrip for the cluster). `CarDeps` bundles the Hilt singletons and
-  owns ONE shared `CarMapRenderer` per session (per-screen renderers freeze the map).
-  Rendering = MapLibre `MapSnapshotter` → bitmap → car surface (the old
-  VirtualDisplay+Presentation hack is gone), with route map-matching (40 m snap), eased
-  puck/bearing at 70 ms ticks, speed-adaptive zoom, look-ahead camera
-  (`LatLng.destinationPoint`, the one `:core` addition), day/night from the host's
-  `isDarkMode`. `VelaCarSession` feeds GPS to the same `@Singleton NavSession` the phone
-  drives and handles `androidx.car.app.action.NAVIGATE` geo intents (opaque-URI parsing).
-  The phone stays the nav brain and voice.
-- **Place-content toggles**: Settings → Map, `ShowReviews` / `LoadPhotos` holders
-  (default on). Off gates BOTH the fetch (`fetchReviews`/`fetchPhotos` in the VM) and the
-  render (review tab / photo strip in `PlaceSheet`), so off means no scrape traffic at
-  all, not just hidden UI.
-- **"Hide adult categories" toggle**: Settings → Map, `HideAdult` holder (default **off**).
-  On drops adult/nightlife/alcohol/gambling/smoking categories from search + ambient map via the
-  pure `:core` `CategoryFilter` (category-only, never name; multilingual keyword lists so it works
-  in every UI language; unit-tested). Applied at the `GoogleMapsDataSource.search`/`nearbyPlaces`
-  seam, gated by `CategoryFilter.enabled` (a `:core` flag `HideAdult` flips - keeps `:core` free of
-  the app's reactive holder).
-- **"Hide website & external links" toggle**: Settings → Map, `HideExternalLinks` holder (default
-  **off**). On hides the Website pill/row, the Street View pano and the Book/Reserve/Order action in
-  `PlaceSheet`, so nothing on a place page opens an arbitrary external site. Dial, directions and
-  `geo:` share stay.
-- **Nav puck motion model** (`VelaMapView`, `NavPuck`): the displayed position during
-  nav is decoupled from the raw GPS fix. A `withFrameNanos` ticker glides the puck
-  **monotonically forward along the route** by metres-along (`cumLengths`/`pointAtMeters`),
-  advancing in the **rate domain** - it always moves at the modelled speed, with the position
-  error folded in as a *bounded nudge to that rate* (`PUCK_CORRECT_TIME_S`) rather than an ease
-  toward a target, which is what used to stall and surge at the fix cadence - and with **heading
-  smoothed** (`smoothBearing`, τ≈0.2 s). BOTH halves of the motion are filtered: the
-  **position** by `core/location/AlongRouteFilter` (1-D Kalman over metres-along; dead-reckons
-  at the modelled speed, folds each accepted fix in weighted by that fix's own reported accuracy,
-  and `reseed`s on a genuine discontinuity) and the **speed** by a **1-D Kalman fusion**
-  (`core/location/SpeedKalman`,
-  pure + unit-tested): each GPS fix is the measurement update, and between fixes the
-  **accelerometer steers the prediction** - `MotionProvider` (`core/location`, raw
-  `TYPE_LINEAR_ACCELERATION` + `TYPE_ROTATION_VECTOR`, no GMS) emits world-frame horizontal
-  acceleration, `forwardAccel()` projects it onto the travel bearing, and the ticker runs
-  `kalman.predict(a, dt)` per frame - so braking collapses the modelled speed immediately
-  instead of the puck gliding at the stale fix speed into the monotonic-progress trap (the
-  "puck sits ahead of me when I stop" bug). Between fixes the position estimate is the
-  **integral** of that speed, blind-capped at `DEAD_RECKON_S` (3 s). Missing sensor → `a = 0` →
-  the old constant-speed reckoning. Each fix is snapped (`snapToRoute`, §honest-snap) then
-  its metres-along advance is **plausibility-clamped** (`speed·Δt·2.5 + 60 m`) so a
-  self-approaching route can't teleport the puck to a far leg. The **follow-camera targets the puck's smoothed point** (`NavPuck.drawn`), not
-  the raw fix, so map + puck move as one. The ticker owns `ME_SRC` while navigating;
-  `applyData` only drives it in browse / off-route. **Heading/speed are derived from
-  consecutive fixes** (`MapViewModel`, `bearingBetween`) when a `Location` lacks them - gated
-  on real movement - so the puck still points and dead-reckons on bearing-less fixes. (Whole
-  nav stack verified on-device 2026-06-21 via a mock-GPS drive of a real Davis→Sacramento route.)
-- **Deep links**: `MainActivity` is `singleTop` with intent-filters for `geo:` and
-  Google-Maps web links; `MapLinkParser` (`:core`, pure-Kotlin, unit-tested) →
-  `openDeepLink`. Sharing a place emits a keyless `geo:` pin too.
-- **Trip recording + offline nav audit**: opt-in trip recording writes each drive to a local
-  CSV (`:app/replay/TripStore` does the IO); the **format is canonical in `:core`**
-  (`replay/TripLog`: `META` header, then one or more route blocks + `lat,lng,t,bearing,speed`
-  fixes). **Trips are SEGMENTED**: the start route AND every mid-drive route swap (a reroute or
-  an accepted faster route) is its OWN `RP`/`RD`/`M` block, activated at the fix where it
-  appears (`TripLog.parse().segments` → `List<RouteSegment>`). Replay/audit are segment-aware - 
-  each block is diffed against exactly the fixes driven on it - so a trip that switched routes is
-  never mashed into one Franken-route. Replay is **HERMETIC**: `NavSession.replayMode` suppresses
-  all live reroute/faster-route fetches, the recorded swaps play back via `replaySetRoute`, and
-  the map view scales the puck's physics clocks by `replaySpeedup` so a fast-forwarded replay
-  glides like a live drive. `nav/NavReplay` replays the fixes back through the real `NavEngine`
-  to **diff cards/voice against the maneuver positions** - per-maneuver announce-distance /
-  turn-now / worst card-error / nearest-approach, flagging silent turns, too-early announcements
-  and lying distances. `TripLog.audit(csv)` is the one-call entry (segment-merged report), also
-  runnable on a shared CSV via `./gradlew :core:testDebugUnitTest --tests '*auditSharedTripLog'
-  -DvelaTrip=<abs.csv>` (the `velaTrip` property is forwarded to the test JVM in
-  `core/build.gradle.kts`). Unit-tested clean-drive + flag-logic + CSV round-trip. (Pure `:core`,
-  Android-free.)
-- **Demo / simulate-driving mode** (Settings → Navigation, off by default, pref `demo_drive`): a
-  synthetic-trace path that reuses the replay machinery so nav can be driven **anywhere** without a
-  real fix (demos, screenshots, testing). `DemoTrace.fromRoute(polyline)` (pure `:core`) densifies the
-  planned route into one clean `ReplayFix`/sec (cruise speed → real bearing + speed + monotonic time),
-  and `startDemoDrive` in `MapViewModel` starts nav through the SAME hermetic `LocationProvider.replay`
-  path a recorded trip uses (`replayMode`, puck physics, follow-camera, voice, speed-limit badge). It's
-  presented as real nav, not a replay: `MapUiState.demoDriving` hides the "Stop replay" pill, and the
-  normal **End** (`stopNav`) cancels the demo job - whose `finally` tears the session down and resumes
-  live GPS (dot/route reset to the pre-demo location). `startNav` branches on the `demo_drive` pref.
+### 4.1 Which engine answers
+
+Routing is open by default. Google is the traffic source and the fallback router, not the
+primary, because its keyless steps come back abbreviated on longer routes (a 6-mile route
+returns 2 of about 10 turns) while OSRM returns every turn with street names, refs, exits and
+lanes.
+
+Order for a planning request:
+
+1. **FOSSGIS OSRM** `route/v1` per mode (`routed-car`, `routed-bike`, `routed-foot`),
+   `steps=true`, `geometries=polyline6`. Three attempts with backoff.
+2. **Google directions**, fetched in parallel, for the in-traffic duration, the typical
+   spread, the per-segment congestion spans, and its own alternates. Also three attempts.
+3. **On-device obf** when an avoid is requested and a covering region is installed, or when
+   nothing online answers.
+4. **Valhalla** for bicycle when safety weighting is on (section 4.3).
+
+Request the geometry at `polyline6`. The default `polyline` is 1e5-scaled, a 1.11 meter
+latitude grid, so every vertex of a straight road arrives pre-quantized and the puck has to
+smooth out scatter Vela introduced itself. `TripLog` still writes 1e5 because changing it would
+misread every existing trip file.
+
+### 4.2 Traffic, calibration and the divergence snap
+
+**ETA calibration.** OSRM's free-flow model has no signal timing, so on signalized arterials
+its duration can run far under Google's typical for the same road. `applyTraffic` rebases a
+same-course OSRM route onto Google's typical: route, leg and per-maneuver durations scale by
+`(googleTypical * distanceScale) / osrmFreeFlow`, clamped to 0.5-3.0; the shown ETA becomes
+Google's in-traffic figure; `trafficRatio` stays traffic-versus-typical so the color and the
+words do not turn red from OSRM optimism. One calibration is computed per response and applied
+to every OSRM-derived route in it, because the alternates share the speed-model bias. The basis
+is whichever route follows Google's course: the top OSRM route when it does, otherwise the
+via-snap. Multi-stop trips compare average speeds instead (Google's answer is the direct trip,
+so distance cancels) and go through the same function with spans off.
+
+**The divergence snap.** When Google's route strays more than 700 meters from OSRM's line
+(`RouteGeometry.divergent`), Google is routing around a jam. `sampleVias` takes about 12
+interior points of Google's polyline and `routeVia` routes OSRM through them, producing
+Google's path with full OSRM steps. Constraints:
+
+- Keep the via count modest. A via that lands on a turn is encoded as a via arrive/depart
+  rather than a turn: at 60 vias about 1 in 10 named turns is lost.
+- Map-matching would be cleaner and is not available: the public FOSSGIS `/match` caps at 10
+  coordinates and public Valhalla `/trace_route` times out.
+- The snap leads only when it earns it. Its live ETA must be within `SNAP_ETA_MARGIN` (1.2) of
+  the calibrated OSRM free-flow best, or the clean OSRM route leads. When an avoid is on, the
+  Google route is the avoiding one and this gate is skipped.
+- Refuse a via route when any interior via snapped more than `VIA_SNAP_MAX_M` (40 m) from the
+  requested point, or when the via route is longer than Google's course times 1.05 plus 400 m.
+- Refuse a via route with a **spur**: project it onto Google's line and flag any stretch of at
+  least 250 m that advances less than 35 percent of the distance traveled, with the first and
+  last 300 m exempt. The per-fix variant resets a stretch only on normal progress (at least 80
+  percent of distance traveled) and flags at 80 m traveled with under 45 percent progress. A
+  via landing on an off-ramp snaps only a few meters, so the distance and length guards miss it.
+
+**Congestion bands.** Google's spans are `[level, startMeters, lengthMeters]` on its own line.
+Same-course routes map them by fraction. Every other case, alternates and multi-stop included,
+goes through `RouteGeometry.transferSpans`: each span's stretch is sampled every 25 m and
+projected onto the other route through a 0.005-degree cell grid (`SegmentGrid`); samples within
+35 m mark that along-distance, runs become spans with an 80 m gap tolerance and a 40 m minimum.
+What Google did not drive stays uncolored.
+
+**Ordering.** Each Google alternate carries its own `duration_in_traffic`, so the list sorts by
+`durationInTrafficSeconds ?: durationSeconds`, which is exactly the figure the picker displays,
+with provisional routes as the tie-break. The sort key and the displayed value must stay the
+same expression or the "fastest" tag lands on a row that is not first. Naming a picked
+provisional route keeps its original Google figures rather than adopting the snap's recomputed
+ETA, for the same reason.
+
+### 4.3 Avoids and per-mode options
+
+`RoutingPrefs.avoidTolls`, `avoidHighways`, `avoidFerries` mirror the chooser's sticky toggles
+and are seeded in `VelaApp`. **Every fetch carries them**, including the ones `NavSession` makes
+for itself (reroute, recheck, added stop, `nameRoute`); without that a reroute can route back
+through what the plan avoided.
+
+- Online: the flags ride the Google pb (section 3.4) and Google's own route honors them. The
+  public FOSSGIS OSRM rejects `exclude=` for every value, so `OSRM_SUPPORTS_EXCLUDE` is false
+  and the parameter is never sent; with an avoid on, the unrestricted OSRM routes are not
+  offered as alternates.
+- Offline: the obf car profile takes `avoid_toll`, `avoid_highway` and `avoid_ferries` as
+  dynamic routing.xml parameters, so no baked profiles are needed. The vendored routing.xml
+  declares `avoid_motorway` for the car profile and `avoid_highway` for horse riding, so the
+  offline highway avoid is unverified on a device.
+- The on-device avoid attempt is bounded (`AVOID_ONDEVICE_TIMEOUT_MS`, 4 s planning) and is
+  deliberately **unstructured**: a structured child would pin the scope open until the
+  non-cancellable native compute finished and defeat the timeout. The orphan finishes and is
+  discarded.
+- An engine that cannot honor an avoid returns empty rather than routing through what was
+  avoided, and the online chain falls back to a normal route tagged `avoidNotHonored`. The
+  chooser shows the note only when every route carries it.
+
+**Bicycle safety weighting** (`RoutingPrefs.bikeSafe`, on by default): the obf bicycle profile
+where a region covers the trip (6 s planning, 3 s urgent), otherwise Valhalla with `use_roads`
+0.1. Valhalla maneuver types map into the OSRM grammar (`osrmGrammar`) and are phrased by
+`osrmPhrase`, so voice, banner and step list are identical to every other route. No Google
+traffic overlay for bicycle routes.
+
+### 4.4 Multi-stop
+
+`directions(origin, dest, mode, waypoints)` reuses `routeVia` through origin, stops and
+destination, with the per-via arrive/depart filtered into one continuous trip. A waypointed
+trip returns a single route; alternates and the divergence snap are skipped.
+`NavEngine.stopMarks(route, stops)` projects each waypoint onto the line to its along-route
+pass mark (null past 150 m off the line); `NavSession` holds the stops, the marks and a passed
+counter and speaks one cue per stop in order. Reroutes and rechecks fetch with
+`stops.drop(passedStops)`, so going off route keeps the stops still ahead.
+`NavSession.setStops` is the one replan entry (`addStop` delegates to it): an unchanged list
+fetches nothing.
+
+### 4.5 Offline routing
+
+`ObfRouteEngine` runs OsmAnd's pure-Java router and binary reader over `.obf` region files.
+The same files answer the posted speed limit (`currentRoadLimit`) and supply romanized road
+names (`Route.roadNamesLatin`).
+
+- Region files are baked off-device (`scripts/build-obf-region.sh` plus `VelaObfShim`) and
+  hosted as release assets with a manifest; the catalog is `tools/routing-regions.json`.
+- A trip routes on the **smallest installed region box covering both endpoints**; boxes
+  overlap at borders, so selection falls through to the next smallest. A trip that does not fit
+  one region falls back online.
+- **Long routes can fail outright, not merely run slowly.** Past its budget the router throws
+  rather than degrading, and `MEMORY_MB` is 256 because the app already runs near its
+  `largeHeap` ceiling. Measured on a desktop with the shipped configuration, car profile:
+  4 km 0.87 s at 256 MB; 57 km 5.65 s at 256 MB; 151 km fails at 256 MB and takes 4.6 s at
+  1024 MB; 348 km fails at 1024 MB and takes 41.9 s at 3072 MB. The threshold is
+  region-dependent, not a fixed distance. Offline routing is therefore a city and metro
+  feature; intercity needs OsmAnd's precomputed HH, which the bake does not generate.
+- Three Android runtime requirements, all invisible until the engine logs:
+  commons-logging's reflective discovery must be pre-pinned to `SimpleLog` before any OsmAnd
+  class loads (R8 strips the implementation and the discovery NPEs on ART); `kxml2-vela.jar`
+  is upstream kxml2 with its bundled `org/xmlpull/**` removed, because the stock jar duplicates
+  platform interfaces and R8 hard-fails; and `PlatformUtil.setOsmandRegions(OsmandRegions(false))`
+  plus `RoutePlannerFrontEnd.CALCULATE_MISSING_MAPS = false` must be set at init, because
+  `searchRoute` otherwise loads a world-regions index from the working directory, which on
+  Android is read-only.
+- The departure heading reaches the engine as `RoutingConfiguration.initialDirection` in
+  compass radians.
+
+### 4.6 The navigation loop
+
+Every location update, in order: project the fix onto the route, advance the step, recompute
+remaining distance and time, emit the events that produced (speak, vibrate, arrived, reroute),
+announce a stop just passed, then consider a live-traffic recheck. Anything that stops
+navigation stops all of it, because everything is downstream of that one call; that is the
+mechanism the pause uses.
+
+**Fix discipline.** Network (beacon) fixes are dropped during navigation and used in browse
+only when GPS has been quiet for `NETWORK_FIX_QUIET_MS` (12 s). Inter-fix dt comes from
+`elapsedRealtimeNanos`, never `loc.time`, which mixes GNSS UTC with the system clock. Fixes
+with accuracy worse than 50 m never feed `NavSession`. The provider registration must keep
+`minDistanceM = 0`: a distance filter starves fixes at a standstill. Measured speeds pass a
+symmetric acceleration-bounded gate against the last accepted value with a two-fix persistence
+escape; a one-sided spike filter self-latches.
+
+**Off route.** The corridor is accuracy-scaled and mode-relative:
+`NavEngine.offRouteCorridor(mode, accuracyM)` returns `base + K * accuracy` clamped per mode,
+with foot tighter than bike tighter than drive. Defaults without an accuracy figure are
+`OFF_ROUTE_M` 40 m and `FAR_OFF_M` 90 m, with `OFF_ROUTE_HITS` 3. A fix beyond the far
+distance counts at any speed (parking-lot creep sits under the moving floor forever) and counts
+double while moving. A moving fix whose course diverges by more than `HEADING_OFF_DEG` (60
+degrees) from the route's local bearing counts as an off-route hit even inside the corridor,
+and counts double when it is also a quarter-corridor off the line; a heading-diverged fix never
+counts toward the on-route streak. Off-route distance is measured on the windowed, anchored
+projection, never a global nearest, so a route that passes near itself cannot claim the puck.
+`movingFloorMps` is 2.0.
+
+**Rerouting.**
+
+```
+REROUTE_COOLDOWN_MS        10_000   minimum gap between adopted reroutes
+REROUTE_FETCH_TIMEOUT_MS   20_000   one urgent attempt's deadline
+REROUTE_FINISH_RESERVE_MS   4_000   deadline headroom left for adoption
+URGENT_OSRM_TIMEOUT_MS      6_000   connect, read and call for the single urgent OSRM try
+URGENT_GOOGLE_GRACE_MS      2_500   how long an urgent fetch waits for Google once OSRM answered
+LADDER_OSRM_TRY_MS          8_000   one escalated OSRM try
+LADDER_OSRM_SHARE            0.55   share of an escalated budget OSRM may spend
+BACK_ON_COURSE_HITS             2   consecutive on-route fixes that discard a stale reroute
+```
+
+- The fetch is **unstructured** and its single-flight guard is **time-bounded**
+  (`NavSession.rerouteGate`). `withTimeoutOrNull` only interrupts at suspension points, so a
+  fetch wedged in non-cancellable work outlives its own deadline; without the time bound the
+  guard then rejects every later reroute for the rest of the drive. Never gate rerouting on job
+  liveness alone.
+- Attempts **escalate**. The first `REROUTE_ESCALATE_AFTER` attempts are urgent single shots;
+  after that the full ladder runs with the longer timeout. The failure streak resets on any
+  adopted route and on session start and stop.
+- A failed fetch clears the off-route latch on the location thread, and a request the cooldown
+  turned away clears it too, so the next deviated fixes retry naturally.
+- A reroute **pins its departure heading**: OSRM gets `bearings=<heading>,65` for the first
+  waypoint only, with an empty entry for every later waypoint (the count must match the
+  coordinates or the request is rejected outright and the reroute dies with it). Planning
+  fetches send nothing, and a stationary fix sends nothing.
+- When the open router gives nothing, `RerouteFallback.pick` takes Google's route if it is
+  already back, otherwise races Google against the on-device engine inside the remaining
+  budget, first non-empty wins. Google fallbacks are tagged `GOOGLE_ABBREVIATED`.
+- A reroute that arrives after the driver is solidly back on the original route is discarded
+  (`route === fromRoute && onRouteStreak >= BACK_ON_COURSE_HITS`). A single grazing fix must not
+  be enough, or one spurious graze kills a legitimate missed-turn reroute.
+- **A provisional route is never driven raw.** The three fetches `NavSession` makes for itself
+  run their top candidate through `NavSession.driveable`: a provisional top is named, and if
+  naming fails, a full-stepped open-router route from the same reply is preferred even when
+  slower. A provisional Google alternate adopted raw arrives as one maneuver placed at the
+  on-ramp the car is already on.
+
+**Rechecks and faster routes.**
+
+```
+RECHECK_INTERVAL_MS          120_000
+DEGRADED_RECHECK_INTERVAL_MS  20_000   while the adopted route is degraded
+DEGRADED_FAST_TRIES                6   then back to the normal cadence
+MIN_RECHECK_DISTANCE_M         1_500   stop rechecking near the destination
+FASTER_THRESHOLD_S                90   minimum saving before an alternate is offered
+SAME_COURSE_M                    250   within this of the current line is the SAME route
+```
+
+A same-course candidate recalibrates the shown arrival time (`etaScale`, multiplicative,
+clamped 0.5-2.5, applied at the publish site only, reset to 1.0 on every route swap) instead of
+being offered. A candidate that is a genuinely different course and saves more than the
+threshold is offered, never taken. A degraded candidate (trafficless or abbreviated) never
+calibrates and is never offered as faster: free-flow always appears to beat traffic-aware. The
+recheck also **heals** the adopted route: a full-stepped same-course candidate replaces an
+abbreviated one and a traffic-carrying candidate replaces a trafficless one, never the reverse.
+
+**Guidance.** Prompt and turn-now distances scale with speed, `max(fixed, v * T)` with T of 35
+and 10 seconds; `spoken` stores band slots, not meters, so each prompt speaks the true
+distance. A step's non-first prompts speak `NavStrings.repeatShort`, and a merge skips the far
+band entirely. Maneuvers more than 75 m behind are caught up silently. Arrival is proximity
+based (within 40 m crow-flight); no rerouting within 150 m of the destination or while
+stationary except for the far-off rule. The DEPART maneuver is spoken once by
+`NavSession.start` and skipped by the engine. ETA sums remaining step durations times the
+traffic ratio, never remaining distance over average speed.
+
+**Tunnels.** When the guidance feed goes quiet for more than 3.5 s while navigating, on route,
+not replaying and not from a standstill, the view model synthesizes 1 Hz fixes along the route
+at the last speed (decay tau 60 s, floor 1.5 m/s, cap 3 km) through the normal
+`NavSession.onLocation` path. The "searching for GPS" chip stays up for honesty, the first real
+fix re-anchors, and synthesized fixes are never recorded into a trip.
+
+**Pause** (`NavSession.paused`). `onLocation` records the fix and returns before the engine, so
+there is no engine update, no off-route detection, no reroute, no arrival, no stop cue, no
+voice, no recheck and no faster-route offer. The puck keeps moving because it is drawn from the
+raw fix, and the arrival clock keeps sliding on a 30-second tick. Resume reroutes once from the
+current position when the stop took the driver off the route (perpendicular distance against
+the corridor), otherwise speaks the current instruction. **Auto-resume is armed by the stop, not
+by the pause**: a stationary or off-route fix sets `autoResumeArmed`, and only then do
+`AUTO_RESUME_HITS` (3) consecutive moving, on-route fixes resume. Without the arming step a
+pause taken at speed resumes itself three fixes later.
+
+### 4.7 The puck and the camera
+
+The drawn position during navigation is decoupled from the raw fix and both halves of the
+motion are filtered.
+
+- **Position**: `core/location/AlongRouteFilter`, a 1-D Kalman over meters-along. It
+  dead-reckons at the modeled speed and folds each accepted fix in weighted by that fix's own
+  reported accuracy (the along-route sigma is about 0.66 of the reported 68-percent radius,
+  since snapping discards the lateral component). A genuine discontinuity calls `reseed`
+  instead of averaging a teleport down.
+- **Speed**: `core/location/SpeedKalman`. Each fix is the measurement update; between fixes the
+  accelerometer steers the prediction from `MotionProvider` (raw `TYPE_LINEAR_ACCELERATION`
+  plus `TYPE_ROTATION_VECTOR`, no GMS), projected onto the travel bearing. Accelerometer noise
+  is suppressed by an `a^2 / (a^2 + n^2)` gain with `ACCEL_NOISE` 0.5, which leaves a 4 m/s^2
+  brake within about 1.5 percent of itself while cutting 0.3 m/s^2 of vibration to a quarter.
+  **Do not use a subtract-the-floor shrinkage**: it taxes a real brake by the floor and weakens
+  the behavior the filter exists for.
+- **Progress** advances in the rate domain: the puck always moves at the modeled speed and the
+  position error enters as a bounded nudge to that rate (`PUCK_CORRECT_TIME_S` 0.6, catch-up
+  capped at 1.5x speed plus 2 m/s, hold-back at 0.25x plus 0.5). Easing toward a target plus a
+  monotonic clamp fight each other at the fix cadence and produce stall-then-lurch.
+- **Blind reckoning** is capped at `DEAD_RECKON_S` (3 s). Each fix's advance is
+  plausibility-clamped to `speed * dt * 2.5 + 60 m`.
+- **Smoothing window** width eases toward its speed target with `PUCK_WIN_TAU_S` 2.5 s. The
+  window width is a lateral position on a curve, so speed noise in the width becomes sideways
+  movement.
+- **Snap tolerance** is mode-aware: 22 m plus a speed term for driving, 8 m plus 1.2 times the
+  fix accuracy capped at 16 m for walking and cycling. The heading gate is not consulted below
+  2.5 m/s off-road.
+- **Camera bearing** eases with an amplitude-adaptive time constant: `CAM_BRG_TAU_STILL` 1.6 s
+  when the error is small, `CAM_BRG_TAU_TURN` 0.35 s past `CAM_BRG_TURN_DEG` 25 degrees.
+  Geometry noise is a couple of degrees and a real turn is tens, which is what separates them;
+  window width is the only lever on chord-bearing noise and a least-squares fit over the same
+  window measures no better.
+- **Cosmetic eases take a capped time step** (`dtEase` at most 65 ms). A main-thread hitch
+  otherwise delivers one frame whose exponential eases jump 45-70 percent of their error at
+  once. Integration keeps the real dt.
+- Navigation zoom range is 18.0 to 15.5. Free-drive follow engages once per session and eases
+  its bearing toward the GPS course with a speed-scaled look-ahead (`FREE_LOOKAHEAD_TAU_S`
+  2.5 s); the follow target is a continuously integrated estimate (`FollowEstimator`) fed the
+  **raw** accepted fix, not the low-passed one, with half of each residual spread over 0.9 s.
+- **In follow mode the puck is a Compose overlay**, not a map symbol, drawn at
+  `projection.toScreenLocation` of the same point computed right after the camera move. A
+  GeoJSON source update goes through MapLibre's async worker tiling while `moveCamera` is
+  synchronous, so a symbol lands on time or one frame late at random, which is one frame of
+  travel of vibration against a calm map. Per-frame values are written to
+  `mutableFloatStateOf` holders read in the draw phase so nothing recomposes per frame. The
+  GeoJSON puck is still used when not following and in browse.
+
+**Diagnosing a jitter report.** Measure before touching anything, in this order: track the
+arrow in a screen recording (`scripts/jitter/puck_track.py`); check whether the map itself moves
+or turns unevenly (`map_motion.py`, `rotation_fit.py`); check whether map renders are over
+budget and whether the over-budget ones are evenly spaced, which indicates a periodic culprit,
+or random, which is the device's floor (`gl_frames.py` over a Perfetto trace); check whether
+Compatibility rendering is on, which it should not be on a healthy phone. A demo drive has zero
+GPS noise, so if it jitters the cause is not GPS and no filter will fix it.
+
+Eight independent causes have been found and fixed. Suspect something **not** on this list
+before re-deriving one of them: unfiltered along-route position; ease-plus-clamp progress;
+camera bearing following digitization wiggle; a rippling smoothing-window width; demo drives
+running the puck clocks at 3x; a 60 ms main-thread stall per fix from a dictionary sort and a
+per-fix maneuver re-projection; a 3 km route-line re-upload every 150 ms dropping a map frame
+at 6.7 Hz; and the async GeoJSON puck above. Three things measured **worse** and must not
+return: a per-frame LineString source for the moving route cut (a line re-tiles on every worker
+thread; only a point source is cheap per frame), a whole-route line-gradient for the cut (256
+texels over the route smears it into a `routeLength / 256` meter ramp), and smoothing the route
+geometry for the arrow (the camera's turn rate through bends was already smooth to 0.02 degrees
+per frame of jerk).
+
+**The crash sentinel** that flips a device into Compatibility rendering (a TextureView map)
+counts only `REASON_CRASH_NATIVE` on API 30 and above; counting any process death during map
+init flipped healthy phones that had been force-stopped during testing, and the TextureView
+renderer then sat at 89 percent of a core. The Developer row states the date it engaged.
+
+### 4.8 Route line rendering
+
+- The line is inserted **above all road and bridge geometry and below labels**: anchor to the
+  first symbol layer after the last `bridge_*` layer, not simply the first symbol layer, which
+  in Liberty is the one-way arrow beneath the bridges.
+- The driven/ahead split is a **geometry** split: a traversed full line under an ahead-suffix
+  layer trimmed at the puck, with traffic bands remapped onto the suffix. MapLibre bakes a
+  line-gradient into a 256-texel texture and has no line-trim-offset, so geometry is the only
+  pixel-exact cut.
+- The **moving** cut is a paint-only update: `ROUTE_CUT_LAYER` is a 400 m piece over the ahead
+  line whose `line-gradient` carries the actual cut at 1.6 m per texel, and its geometry slides
+  about every 300 m. Never move route geometry per frame or on a short timer.
+- With the driven trail off (`RouteTrail`, default off), the ahead line's gradient is
+  transparent up to one texel before the cut piece's end, so the piece paints over nothing.
+
+### 4.9 Road furniture, cameras and alerts
+
+- **Traffic controls** (signals, stops, level crossings, speed humps) come from the per-region
+  road-features bake, with Overpass as the fallback only where no region exists. Same-kind nodes
+  within `CONTROLS_CLUSTER_M` (30 m) merge to their centroid, because OSM maps one node per
+  approach. The browse layer draws from z17.5; during navigation the corridor set draws from
+  z15.4, just under the camera's 15.5 floor. The corridor fetch is keyed per driven route so a
+  same-course heal never refetches, capped at `CONTROLS_ROUTE_CAP` (800) nearest the start.
+- **Ownership.** While a corridor set is loaded, the viewport path must neither refetch nor run
+  its zoom-clear branch, and the viewport job re-checks ownership **after** its settle delay,
+  not when it was scheduled, or a box set replaces the corridor set 350 ms later and paints
+  furniture that is not on the route.
+- **Stop signs are gated by bearing.** The road-features bake writes each control node's road
+  orientation (0-179, undirected); `RouteProjection.alignedWithRoad` keeps a STOP only within 40
+  degrees of the route's bearing there. A null bearing keeps the control, so un-rebaked regions
+  behave as before. Gating a STOP by its distance to the driven line does **not** work: a
+  clustered control sits at the junction centroid, not in the driver's lane.
+- **Corridor queries run off the main thread** and through `SegmentIndex`, which simplifies the
+  line to 3 m and buckets segments into 0.01-degree cells. A whole-region parse reads the
+  inflated bytes once and parses decimals by hand into primitive arrays.
+- **Surveillance (ALPR) cameras** ship as a bundled floor plus a hosted update
+  (`FlockCameras`): a gzipped `lat, lon, operator, direction` TSV, about 124,000 points, loaded
+  into flat arrays with a 0.1-degree grid index off the main thread. The loader compares
+  versions and prefers the higher, deleting a download the bundled floor has passed. Route
+  counts use a 45 m corridor. Badges cluster at 40 m below street zoom.
+- **Direction rule** (`CameraFacing`): for a camera inside the distance gate, take the nearest
+  non-degenerate route segment's bearing and compare as undirected lines, `min(d, 180 - d) <=
+  50` degrees. A camera with no facing counts. Applied to route counts, the avoid re-rank, the
+  alerts and the route bar; the map layer still draws every camera.
+- **Alert timing** (`CameraAlerts.due`): `LEAD_SECONDS` 12, floored at `MIN_LEAD_M` 150 and
+  capped at `MAX_LEAD_M` 600, silent below `MOVING_FLOOR_MPS` 2.0, once per camera per route,
+  never for a camera behind. Cameras within 40 m along the route group into one alert.
+- **Avoid surveillance cameras** re-ranks the alternates already offered, preferring the
+  fewest-camera route within a small detour (at most the lesser of 25 percent of the ETA and 10
+  minutes). It does not graph-route around cameras.
+- **Speeding alert** (off by default): the voice fires after 4 s continuously over the posted
+  limit, re-arms after 8 s back under, at most once per 45 s, with the same 5 km/h tolerance the
+  badge uses so the two never contradict each other.
+- **Cross-street labels** are points placed at the crossing, not line-center labels on the
+  basemap layer. Per crossing street, the pass computes where it meets the route window (first
+  proper crossing in route order, else a T-junction end within 25 m, 60 m for a next-turn
+  target), moves `NAV_XLABEL_OFFSET_M` (35 m) up that street to the side that ends farther from
+  the route, trying 1x, 1.8x and 3x offsets on both sides and keeping the first with clearance,
+  and uploads points with a `tier` property carrying the class split and zoom gates. The pass
+  runs once per 400 m quantum of progress or when the upcoming turn targets change, never on a
+  short timer, and a quantum is only marked done once something was placed.
+
+### 4.10 Trips, replay and demo mode
+
+- The trip format is canonical in `:core` (`replay/TripLog`): a `META` header, then one or more
+  route blocks and `lat,lng,t,bearing,speed` fixes. **Trips are segmented**: the start route and
+  every mid-drive swap is its own `RP`/`RD`/`M` block activated at the fix where it appears.
+  Auditing or replaying a multi-block trip against one mashed route corrupts it.
+- `RD` carries the route's provenance flags and source name. Every fix carries its provider and
+  the engine's off-route hit count. Every nav decision is a `K` line written through
+  `NavSession.onNote`; a `K` line never holds a coordinate by contract.
+- **Unknown line kinds are dropped by `TripScrub`, not passed through.** The format is
+  append-only, so adding a line kind requires deciding in `TripScrub` whether it is safe to
+  share.
+- Replay is **hermetic**: `NavSession.replayMode` suppresses live reroute and recheck fetches,
+  recorded swaps play back through `replaySetRoute`, and the map scales the puck's clocks by
+  `replaySpeedup`. The speedup applies to real replays only, never to demo drives.
+- `NavReplay` replays fixes through the real `NavEngine` and diffs cards and voice against the
+  maneuver positions, flagging silent turns, early announcements and lying distances.
+  `TripLog.audit(csv)` is the one-call entry; the on-demand harnesses take `-DvelaTrip=<abs.csv>`
+  and `-DvelaSeg=<n>`, forwarded to the test JVM in `core/build.gradle.kts`.
+- **Demo drive** (`demo_drive`, off by default) densifies a planned route into one clean
+  `ReplayFix` per second through `DemoTrace.fromRoute` and runs it down the same hermetic
+  replay path. It is presented as real navigation: the stop-replay pill is hidden and End
+  cancels the demo job, whose `finally` resumes live GPS.
 
 ---
 
-## 5. Remote resilience (push fixes without an app update)
+## 5. Places
 
-The differentiator: when Google breaks something, ship the fix **over a signed channel**,
-not an APK. `CalibrationStore` (`:core/config`) fetches **`calibration.json` + a detached
-`calibration.json.sig`** from the repo raw URL at launch and adopts the remote only if
-all hold:
+### 5.1 Sources
 
-1. **Signature verifies** - ECDSA-P256/SHA-256 against `PINNED_PUBLIC_KEY` (embedded;
-   private key `~/.vela-signing/vela-calibration.key`, **never committed**).
-   `BundleSignature.verify` (unit-tested). A bad/missing signature → ignored (keep
-   last-good). An unsigned/older cache → compiled `DEFAULT` for one launch.
-2. **Host-allowlist** - every endpoint host ∈ {`www.google.com`, `google.com`}.
-3. **Version is newer** than the active one.
+Settings > Data and privacy > "Places come from" (`MapPoiPrefs.placesSource`, pref
+`map_places_source`) has three values:
 
-Sign after every edit with **`scripts/sign-calibration.sh`** (self-verifies); commit
-`calibration.json` **and** `calibration.json.sig` together. Propagation: ~5 min
-(raw CDN cache); a transient skew between the two files just means the device keeps
-last-good until both are fresh (safe).
+- **`open`** - Vela's own bake. The compiled default, and the fleet default through
+  `calibration.json` `defaultPlacesSource`. Browsing the map contacts Google not at all.
+- **`google`** - Google's ambient places only.
+- **`both`** - Vela's data draws the map, and once panning stops one Google fan-out adds what
+  it lacks.
 
-What the signed bundle can carry, in escalating power:
-- **Config** (always): `pb` templates, endpoint URLs, the `hspqX` photo proto, and the
-  search parser's positional **field-index `paths`**. → a *moved field / endpoint / pb*
-  is a one-line edit + version bump + re-sign.
-- **Notices**: a `notices` array (`id`/`level`/`title`/`body`/`url`) → dismissable,
-  level-tinted cards on the bare map (`MapViewModel.refreshNotices`, dismissed ids in
-  `vela_notices` prefs). → push "search is down, fix coming."
-- **Parse logic** (`transformsJs`): a JavaScript bundle run in a **Rhino sandbox**
-  (`JsSandbox`: `org.mozilla:rhino-runtime`, **interpreted `optimizationLevel=-1`** - 
-  ART can't run Rhino's bytecode gen; **`initSafeStandardObjects`** = no Java/IO exposed;
-  R8-keep in `core/consumer-rules.pro`). `JsTransforms` exposes two search hooks over a
-  flat `PlaceJson` contract: **`parseSearch(rawResponse)`** (full re-parse of a reshaped
-  response, used instead of the compiled parser) and **`transformPlaces(placesJson)`**
-  (post-process). **Compiled Kotlin is always the fallback** (no script / missing fn /
-  any error → unchanged). → a *response-shape* change is fixable remotely too.
+The fleet default is remote (`Calibration.defaultPlacesSource` pushed into
+`MapPoiPrefs.setRemoteDefault` at init and after each refresh). It applies only to users who
+never touched the picker; an explicit pick always wins. `MapPoiPrefs.lookupTappedPlaces`
+(default on) controls whether tapping a place looks it up on Google at all.
 
-Security posture: the signature is the floor that makes pushing *code* safe; the sandbox
-means even a (hypothetically) malicious script can only transform the JSON string it's
-handed - no filesystem, network, or device access.
+In **Both** mode Google wins a twin outright. `hideOpenTwins` is a debounced pass (400 ms and
+2 s after the last upload) that queries only the **rendered** ambient icons on screen, matches
+an open feature by agreeing name within `DEDUPE_NAME_M` (80 m) or the same normalized name
+within `DEDUPE_SAME_NAME_M` (150 m), and filters those ids out of the open icon and dot layers.
+It re-checks already-hidden ids with a filtered `querySourceFeatures` and releases any whose
+Google partner has left the set, so an open place is never left hidden with nothing in its
+place. Running the queries inline on every streamed partial upload cost up to 119 ms per upload
+in a dense downtown. Google's copy wins because its coordinate is the storefront where Overture
+stacks a building's tenants on one parcel point, and because its ranking comes from review
+counts rather than a category prior. Offline nothing is hidden.
+
+The same pass purges closures: an open icon matching a permanently-closed Google listing within
+80 m, with no open listing of that name within 150 m, is added to the persisted closed set.
+
+**OSM basemap business POIs** (`poi_r1`, `poi_r7`, `poi_r20`) are hidden outright under an open
+places source unless "OpenStreetMap shops too" is on, because the three open datasets cover
+businesses far better. Everything else OSM draws (museums, attractions, parks, schools, civic
+buildings, places of worship, transit) stays, and `osmFillIn` drops by name only the
+non-business OSM points an open icon of a non-business group already draws within 80 m. That
+pass is viewport-only and rendered-only on both sides, grow-only within a source set (capped at
+1,500 names, because every `setFilter` re-lays the whole source), skipped when the tiers are
+hidden, and throttled to once per 2.5 s after a fifth of a screen or 0.4 zoom of movement. A
+rendered query costs 37-55 ms in a dense view even when it returns nothing. **Never build a
+`Regex` inside a per-feature loop**: compiling one per POI on the main thread produced an ANR in
+a dense city.
+
+### 5.2 The places bake
+
+`tools/build-places-region.sh <id> S W N E out.pmtiles [release] [local.parquet]` runs DuckDB
+over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
+
+- Business POIs only. Parks, schools, civic and transit are excluded; OSM covers those.
+- **AllThePlaces** rows are pulled from the world PMTiles for the region (`pmtiles extract
+  --bbox`, decoded with tippecanoe-decode and jq), filtered to business tags, mapped onto
+  Overture's category names, and inserted where no Overture row of the same brand or the same
+  two leading name words sits within about 150 m. Confidence 0.85, so a matched Overture row
+  wins ties. Chains carry OSM-syntax `hours`.
+- **OSM positions** win. The region's Geofabrik extract is filtered with `osmium tags-filter`
+  to named business nodes and exported to geojsonseq (strip the 0x1e record separator before
+  jq); `osm_snap` moves a baked row onto OSM's coordinate on a whole-name match at 30-120 m.
+  Order of preference: OSM, then the AllThePlaces locator, then Overture's parcel point.
+  Tenants never move.
+- **Stacked points.** Overture puts a building's tenants on one parcel point. A tenant whose own
+  address names a unit is snapped to the matching Overture address point (house number plus
+  unit within about 200 m, street name ignored: a number plus a unit is unique that close and
+  the two themes abbreviate streets differently). What is still stacked is spread on a golden-
+  angle ring of 8 to 20 m with the best row left in place.
+- **Tenants and kiosks** are flagged: a department of a nearby anchor (address, brand or
+  name-head match), a kiosk category or name, or an anchor brand's fuel station or convenience
+  shop within about 275 m. A tenant loses 2 prominence points and bakes at minzoom 17, except
+  fuel, which stays visible for driving.
+- **Every row-to-row rule must be a hash join.** A correlated subquery or an OR of tests goes
+  effectively quadratic over a state: with the joins fixed, a whole state bakes in minutes
+  (one measured state: 244,954 places, 2,960 chain rows added, 2,749 tenants snapped, 524 s end
+  to end). The duckdb heredoc runs with `.timer on`. The main heredoc is unquoted, so a backtick
+  in a SQL comment executes as a command.
+- Tenant demotion is a semi-join (`EXISTS`), not a LEFT JOIN: a tenant matching two anchors is
+  otherwise emitted twice and lands in two ring slots.
+
+Per-feature properties: `name`, `class`, `group`, `prominence`, `confidence`, `brand`, `addr`,
+`website`, `phone`, `hours`, `src`, `origin`, and the cell ranks `frank` (about 100 m), `rank`
+(about 400 m), `crank` (about 1.6 km) and `xrank` (about 6.5 km). `src` stays `overture` for
+every row because the tap gate keys on it; use `origin` to tell the datasets apart.
+
+**Prominence** is a category prior (4.5 landmark / 3.2 / 2.2 / 1.6 / 1.0) plus 1.6 for a brand,
+0.5 for a website, 0.4 for a phone, 0.2 for an address, plus confidence.
+
+**Baked minzoom** comes from the ranks: landmark categories and `xrank` 1 at z11, landmark
+`xrank` at most 3 at z12, `crank` 1 or prominence at least 6 at z13, `crank` at most 2 or
+prominence at least 5 at z14, `rank` at most 3 or at least 4.5 at z15, `rank` at most 12 or at
+least 3.5 at z16, else z17; tippecanoe runs at `-Z11`.
+
+### 5.3 What draws, by zoom
+
+Density on the map is decided by rank, not by collision.
+
+- Icons step by zoom: top 2 per coarse cell below z15, top 1 per fine cell at z15, `openRankZ16`
+  (3) or `openPromZ16` (5.5) at z16, `openRankZ17` (8) or `openPromZ17` (5.0) at z17, then the
+  `frank` block budget: `openIconCapNear` (8) at z17.5, `openIconCapClose` (16) at z18.5, and
+  everything from z19.5 capped at `openIconCapMax` (40). All of these are calibration dials.
+- A tile with no `frank` falls back to the 400 m `rank` with a quarter of the budget, so
+  archives baked before `frank` existed do not draw every tenant.
+- Default-group and health-group places need to be in the top `openGenericBlockTop` (3) of their
+  block or reach `openGenericMinProminence` (4.0), else they stay dots.
+- Everything below the cut still draws as a category-colored dot; dots are thinned by rank too
+  (none below z15, `rank` at most 6 at z15, at most 15 at z16, all from z17), by opacity steps,
+  because a filter cannot read zoom.
+- Labels use the same steps as the icons, and at z17.5 and above only the top `openLabelCap`
+  (20) per 400 m cell get a name. A label is glyph layout plus a collision pass over four
+  anchors; a mall puts dozens in one cell.
+- Tenants stay dots until z18.5 so the store owns the block. Icon overlap is allowed from z18
+  on the open layer and z17 on the ambient layer; below those, Google's extras lose collision to
+  the open icons and Both mode looks identical to Vela data.
+- While a route preview is open, the OSM business tiers hide and the open layer filters to
+  prominence at least `PREVIEW_LANDMARK_PROMINENCE` (5.5) with no dots. During drive navigation
+  the open layer is fuel-only, and the OSM tiers follow the same rule.
+- **The ambient GeoJSON source is maxzoom 18.** Past a GeoJSON source's maxzoom every visible
+  overscaled tile lays out all of its parent tile's features; at maxzoom 12 a few hundred
+  labeled places were placed many times per frame (22 to 51 fps from that one property).
+
+### 5.4 Google ambient ranking
+
+`ambientProminence = ln(reviews + 1) * (0.6 + rating / 10) + (categoryPrior - NEUTRAL_PRIOR) *
+PRIOR_WEIGHT`, with `NEUTRAL_PRIOR` 2.2 and `PRIOR_WEIGHT` 0.9. Review count dominates, the
+prior breaks the tie so a supermarket outranks the sushi counter inside it, and a place with no
+category sinks.
+
+The icon layer's collision sort key is `(10 - prominence) * 1000 + i`, never the list index:
+the streamed pool re-ranks as terms land, and an index key reshuffles the whole layer's
+placement on every partial upload.
+
+**Sticky ranking** (`AmbientStability`). A settled view is painted several times with different
+review counts for the same place: streamed partials, the twin-dedupe re-pass, and the slim-flavor
+heal's second fan-out. `remember` freezes each place's prominence at its first rich paint; a pool
+whose prominences are all zero is never remembered, because that is the slim flavor and freezing
+it would pin the flatness the heal exists to fix. `prominenceOf` is what the view filter, the
+cap, the collision order and the icon sizes all read, so later answers can add places but cannot
+reshuffle what is drawn. `reset()` runs on the same pan and zoom gate that re-queries and
+wherever the layer is cleared.
+
+**Slim flavor.** Google's first few seconds of a fresh session serve a stripped per-place block:
+rating yes, review count no. `nearbyPlaces` detects it (at least 3 rated, a majority of rated
+entries missing counts) and refetches the fan-out once about 1.2 s later, prepending the healed
+places so `distinctBy` keeps the rich copy. Before diagnosing a flat-looking ambient layer,
+check whether the pool's counts are null.
+
+**Fan-out discipline.** `nearbyPlaces` fires about 13 category requests, each parsed whole into
+a JsonElement tree of roughly 30 MB in a dense area. The fan-out is bounded by a `Semaphore(4)`
+(`ambientFanoutPermits`, read at construction), which took a fresh-launch burst from about
+400 MB of transient parse trees to about 64 MB and 13 percent janky frames to 2.3 percent. Do
+not unbound it. Partial paints escalate their batch (10 places, then 25 once 60 are painted),
+because each partial re-runs whole-layer placement.
+
+**Caching.** An empty `nearbyPlaces` result is never an answer and is never cached: each term
+swallows its network error into an empty list, so offline returns an empty success. The ambient
+path treats null and empty identically, keeps what is painted, serves the freshest covering
+store entry regardless of age, and leaves `lastAmbientCenter` unset so the next settle retries.
+The durable store is `ambient_cache.json` (32 areas of 200 slim places, 14-day TTL,
+write-through from non-empty results only) and drops blank areas at load. Entries carry their
+fetch span and a hit is within `span * 0.45`; a fixed radius misses most legitimate revisits.
+The cache repaint is unconditional, and a partial paint never shrinks the painted set. A fetch
+under `AMBIENT_FRESH_MS` (3 min) old that still covers the view is served as-is, because
+Google's ranking jitters between identical same-area requests and the tap-frame camera shift
+trips the moved gate.
+
+### 5.5 Tap resolution
+
+A single tap resolves in this order, each candidate class picking the feature **nearest the tap
+in screen pixels**, never render-stack order:
+
+1. a search-result pin;
+2. a saved pin;
+3. a greyed alternate route line;
+4. a business **or** a canonical GTFS stop icon, competing by distance rather than by class:
+   the ambient Google dots and the named basemap POIs compete with each other and with the stop
+   the same way. An absolute class priority lets a few-pixel dot anywhere in the box steal a tap
+   landed on an icon, and it made a corner fuel station open the transit stop beside it;
+5. a house-number label, which resolves through the reverse-geocode but **keeps the tapped
+   number**: the geocode supplies street and city, and a regex replaces whatever house number it
+   led with. Google's reverse geocode snaps to the nearest addressable point, which for a tapped
+   label is routinely the neighbor. The tile's road name vetoes a mismatched geocode street
+   unless the geocode's house number is exact;
+6. an unnamed POI icon, reverse-geocoded at the tap;
+7. a building footprint, reverse-geocoded at the tap;
+8. nothing. Only a long press drops a raw coordinate pin.
+
+The named-POI resolve is **name-agreeing first**: the pool is the listings whose name shares the
+tapped label's words (`nameAgrees`, word-set overlap needing the shorter name's tokens, cap 2).
+Only an empty pool falls back, and the fallback is bounded twice: a non-transit tap never adopts
+a listing whose category is transit or map furniture (`JUNCTION_CATEGORIES`), and a listing that
+does not agree by name must be within `NO_NAME_MATCH_M` (60 m) rather than anywhere inside the
+1.5 km cap. Nothing left to adopt means the tapped label keeps its own name and point.
+
+The pick must also be near the tap: a settlement label accepts a hit within 30 km, any other
+label within 1.5 km, transit stops unbounded. A clear-dominance duplicate override
+(`canonical.reviews >= 2 * nearest.reviews + 5`) runs **within** the pool only.
+
+Sheet titles follow the app language's script: `NameScript.prefer(uiLang, google, label)` keeps
+the map's own label as the title when Google's name is not in the app language's script and the
+label is.
+
+Offline, `offlineNow()` gates the reviews, photos, details, departures and tap-resolution
+fetches: an open place shows its tile data or the listing remembered from an earlier online tap
+(`openPlaceCache`, an LRU of 500 persisted to `open_place_links.json`), and nothing waits on a
+host that cannot answer.
+
+### 5.6 Search and results
+
+- A query runs three pages of 20 over the viewport window. When the user's location is inside
+  that window and the window is wider than about 2.5 km, one extra page runs over a 2.5 km
+  window around the user and **leads** the list, because Google's own app weights distance the
+  same way and the outlet next to you otherwise loses its slot to better-known places across a
+  town-zoom window. Over another neighborhood no nearby pass runs.
+- `SearchPb.build` stretches the template's baked window to the caller's real viewport span,
+  floored at `MIN_SPAN_M` (1 km) and capped at 500 km.
+- Ranking and the shown distances are computed from `rankFrom`: the user's location when it is
+  within about 50 km of the viewport, otherwise the viewport center. The request bias stays the
+  viewport. `plausibleBias()` discards any bias point within about 50 km of `0,0`, because a
+  device with no GPS never moves the camera off MapLibre's default.
+- The list ends in a "more results" row that pulls the next three pages and appends what is new;
+  it disappears when a pull adds fewer than five or the query changes.
+- A search from a close zoom **holds its view**: the fit skips the fly-out when the view is
+  under `HOLD_VIEW_SPAN_M` (2.5 km) and at least `HOLD_VIEW_MIN_HITS` (3) results land in the
+  visible strip.
+- The camera frames the result **cluster**: pins are median-centered and outliers past 4 times
+  the median spread (minimum 40 km) are dropped, so one stray far hit cannot zoom the map to a
+  continental view. The fit consumes `lastCameraTarget`, or the else-recenter branch re-fires on
+  the stale center one recomposition later.
+- Filters are local to the fetched results by design and also drop the map pins (the sheet
+  reports surviving ids upward).
+- Result markers keep the app's own marker language with a red circle, and rated food results
+  get a wide rating bubble. Pins collide by rank (`symbolSortKey` = result order, overlap not
+  allowed); losers draw as small dots on a second source below, expanding back into pins on
+  zoom. Pins anchor bottom; labels try below, then right, then left.
+- Typed coordinates drop a pin: `MapLinkParser.parseBareCoordinate` matches the whole string,
+  requires a decimal point in both halves and range-checks, so an address with numbers still
+  searches.
+- Local suggestions (recent queries, recent places, saved and list places, and opted-in
+  contacts) are computed **synchronously** on each keystroke before the debounced network
+  fetch, so they are instant and are the only thing that shows offline. Contacts are loaded into
+  memory once, because a provider query per keystroke janks. Dedupe against network rows by name
+  plus coarse location, not by feature id, which local rows lack.
+- One quick-category list (`ui/QuickCategories`) serves the map chips, search along route and
+  in-nav search. Every query must be one the offline store expands, or the chip is dead offline.
+
+### 5.7 Saved places, lists, parking and imports
+
+- List membership matches on `ListPlace.matches` (id **or** stable feature id), never a bare id
+  comparison: a Google place's id is derived from its name hash and a coarse coordinate, so a
+  multi-listing chain can resolve to a different co-located listing next visit.
+- `SavedPlace.of(Place)` carries an optional address, defaulted null so older payloads decode;
+  every store's JSON sets `ignoreUnknownKeys` so a downgrade survives.
+- Recents are timestamped under new preference keys; the legacy keys are read once for migration
+  and left in place so a downgraded build still reads them.
+- Imports accept GPX, KML and GeoJSON including Google Takeout (`core/data/PlaceImport`).
+  **GPX is latitude first; KML and GeoJSON are longitude first.** A KML placemark with more than
+  one coordinate tuple is skipped rather than pinned at its first vertex. Import takes name and
+  coordinate only, plus an address where the format gives one, because a confidently wrong
+  address is worse than no import. Ids are content-derived from the rounded coordinate, so
+  re-importing the same file adds nothing, and `0,0` or out-of-range coordinates are dropped.
+  The picker keeps a broad `*/*` last, because Android reports `.gpx` as an octet stream.
+  `ImportResult` distinguishes added, nothing-new, wrong-format and unreadable; a bare count
+  cannot say "this file came from another app". Never wrap the launcher in a bare `runCatching`:
+  on a device with no documents provider the button then does nothing at all.
+- Parking is one tap on the P button, with a history so an accidental overwrite never loses the
+  car.
+
 
 ---
 
-**Browser identity (`userAgent` / `secChUa`, 2026-09-14).** The UA the scrape presents moved into
-the signed bundle alongside the pb templates. Chrome ships stable every ~4 weeks, so a compiled
-constant is stale by construction - the shipped one sat at Chrome 124 (April 2024) well into 2026 -
-and stale is a CORRECTNESS risk before a fingerprinting one: Google serves different response shapes
-to different browser generations, so an old UA can pin the scrape to a legacy code path retired
-without notice, arriving as indistinguishable-from-ordinary calibration drift. Google-facing requests
-now also send the coherent Chrome header set (`Sec-CH-UA*`, `Sec-Fetch-*`) rather than a lone UA
-string, whose absence next to a Chrome UA was a sharper inconsistency than the version. Community
-services (FOSSGIS OSRM, Nominatim, Photon, Overpass, Transitous) send `VelaConfig.VELA_UA`, the
-honest contactable identifier their policies ask for. Both remote fields are sanitized on parse:
-OkHttp throws on a control character at request-build time inside `runCatching`, so one stray
-newline would otherwise kill every scrape silently. NOT YET SAFE TO PUSH - six WebView scrapes in
-`:app` still read the compiled const; see CLAUDE.md.
+## 6. Map rendering
 
-## 6. Degoogled constraints (hard rules - do not regress)
+### 6.1 Basemap and fonts
 
-- Location: AOSP `LocationManager` only - never `FusedLocationProviderClient`.
-- Voice: AOSP `TextToSpeech`, engine-selectable - never hard-depend on Google TTS. Plus a bundled
-  **in-process neural voice** (sherpa-onnx runtime + a downloaded Piper model, `PiperSynth` behind the
-  `:core` `NeuralSynth` seam), default once a model is downloaded; system engines stay selectable. Users
-  browse/download/switch **multiple** Piper voices (`PiperCatalog` in `:core`; one per `filesDir/piper/<id>/`;
-  selection in `voice_model`, per-voice speaker in `voice_speaker_<id>`; race-free `PiperSynth.reloadVoice`).
-  Model downloads use a no-`callTimeout` OkHttp client (the shared 12 s cap would abort a ~67–115 MB body).
-- **Large downloads (voice models, routing graphs, building overlays) MUST use a derived `callTimeout(0)`
-  OkHttp client, never the shared one.** The shared client caps a *scrape* at 12 s; a big body read blows
-  through that and the call aborts mid-stream - `runCatching` swallows it and the asset silently never
-  installs. `KokoroInstaller`, `RoutingGraphStore` and `OverlayTileStore` each derive
-  `http.newBuilder().callTimeout(0).readTimeout(60s)` for the body; manifest fetches stay on the short client.
-- **Open building-footprint overlay** (Microsoft US Building Footprints, ODbL): per-region `.pmtiles` built
-  off-device by CI (tippecanoe, layer `building`, z14–z16), downloaded by `OverlayTileStore` into
-  `filesDir/overlays/<id>.pmtiles`, rendered by `VelaMapView` as a `pmtiles://file://…` `VectorSource` +
-  `FillLayer` **beneath** the OSM `building` layer (themed identically), filling only the gaps OSM never mapped.
-  Pulled alongside the area's tiles+routing on the same smallest-covering-box rule. Data, not code (GPLv3-orthogonal).
-- **Voice search is two-tier and keyless.** Tier 1: in-process ASR - Whisper tiny int8 +
-  Silero VAD through the SAME bundled sherpa-onnx runtime the TTS uses (`WhisperRecognizer`,
-  `AsrModel`), model downloaded on demand from the `asr-models` GitHub release (tar.GZIP - bzip2
-  unpacked ~15 MB/s on-device), RECORD_AUDIO asked at point of use only, Whisper pinned to the app
-  language (auto-detect hallucinated scripts on noisy audio). Tier 2: `ACTION_RECOGNIZE_SPEECH`
-  handoff to an installed voice-input app (that app records - no mic permission for Vela). Never a
-  cloud STT API.
-- **Permissions are asked with context, never silently broken.** Onboarding = welcome → location →
-  notifications → voice offer; coarse-only location gets a one-time explainer (wide-circle dot +
-  an Android precise-upgrade shortcut) and draws a REAL accuracy circle; navigation start gates on
-  FINE (coarse fixes never feed the nav engine) with the upgrade dialog; a permanently-denied
-  locate tap explains and deep-links system settings.
-- No GMS: no FCM/Firebase/Play Integrity/Fused. Push (if ever) = UnifiedPush; crash
-  reporting = ACRA/self-hosted.
-- EU consent: pre-seed `SOCS`/`CONSENT` cookies; never let `Set-Cookie` downgrade
-  `CONSENT` to `PENDING`.
-- The four hidden WebViews (photos, transit, reviews, popular-times) run Google's JS
-  **anonymously** - an accepted, scoped tradeoff for data only a real engine is served.
+The basemap is OpenFreeMap **Liberty**, loaded **by URL**. A bundled style blanks the vector
+source on-device; the bundled `assets/styles/liberty-roboto.json` exists as an editable
+reference and for offline work. **That asset is one minified line**: edit it with a script that
+re-dumps with `separators=(',',':')`, or a pretty-print turns a one-line diff into thousands.
+
+Labels render in Roboto from a self-hosted glyph set: Roboto composited over OpenFreeMap's Noto
+per glyph, so every non-Latin script keeps full coverage, with the folders keeping the Noto
+family names so the only style change is the `glyphs` URL. `ui/map/MapFonts` fetches the live
+Liberty JSON at launch (so tile paths keep following the upstream snapshot), patches `glyphs`,
+caches the result, and probes the font host; an unreachable host evicts the cache and the map
+falls back to plain Noto rather than rendering no labels at all. A style fetch failure keeps the
+last good cache for at most 7 days.
+
+Offline, glyphs and the sprite are served from `file://` (`GlyphPackStore`, the `map-fonts`
+release unzipped into `files/glyphs/`, about 200 MB on disk). `asset://` hangs the same way the
+network does.
+
+Vela's own zoom reads about one level lower than Google's for the same visible area (512-pixel
+tiles). Compare against Google by matching the **visible area**, never the zoom number.
+
+### 6.2 Palettes
+
+Three color sets ship. `MapColors` (pref `map_palette`) picks Modern or Classic;
+`ThemeMode.AMOLED` layers `applyAmoled` on top of `applyDark`. The style key carries the
+palette, the theme and the AMOLED flag, so any change reloads the style. Every layer must be
+colored in **all four** apply functions: an unstyled runtime `LineLayer` renders black.
+
+**Modern** (the default, sampled from the Google app):
+
+- Light: land `#f8f7f7`, roads one blue-gray fill `#aab9c9` for streets and arterials with
+  casings equal to the land, service `#9bacbc`, motorway `#8aa4c0`, buildings `#e8e9ed` with
+  outline `#d6d9e6`, vegetation `#d3f8e1`, water `#90daee`, plaza and parking `#dbe0e8`, trails
+  `#7fcdb0`, pitches `#a9eac2`, campuses `#f0eded`, commercial and retail blocks `#fdf9ef`.
+- Dark: land `#162640`, other landuse `#1c2638`, water `#000d2a` (darker than the land, and the
+  inverted relationship matters), vegetation `#0d3847` (teal), buildings `#1c3b69` with outline
+  `#2e3d6d`, minor roads `#3d5a77`, arterials and motorway `#476789`, casings equal to the land,
+  service and alley `#2a4056`, trails `#167055`, pitches `#0d4956`.
+- Bike paths (OSM `highway=cycleway`) draw teal, `#007b8b` light and `#1f8f9c` dark, split out
+  of the trails layer, which keeps foot paths green. On-street painted lanes are not in the tile
+  schema and are not drawn.
+- 3D extrusions use the flat color at opacity 1 with the style light at intensity 0 and
+  `fillExtrusionVerticalGradient(false)`. MapLibre's default light brightens extrusion tops by
+  about 40 percent, and Google keeps buildings one color at every zoom.
+
+**Classic** (the archived pre-sample look, selectable):
+
+- Light: land `#f2f1ee`, water `#90daee`, park `#cfeccd`, grass `#d3f8e2`, wood `#c9f2da`,
+  wetland `#cdeff0`, plaza `#ededed`, buildings `#dde1e7` with outline `#c4c9d1`, minor and
+  secondary roads white with casings `#e4e6ea`, trunk and primary casing `#dadde2`, arterial
+  fill `#f9d27a`, motorway `#f0b85a`.
+- Dark: land `#242f3e`, water `#17263c`, park and grass `#2c4a34`, wood `#274330`, wetland
+  `#26403c`, plaza and other landuse `#2a3546` at opacity 0.5, buildings `#323f54` with outline
+  `#3f4e66`, roads `#49536a` minor, `#5e6a85` secondary, `#6f7a96` trunk and motorway, casings
+  equal to the land.
+
+**AMOLED**: land `#000000`, water `#04080C`, vegetation `#050E0A`, buildings `#0A0C0F` with
+outline `#14171A`, minor roads `#1A1D22`, service `#111418`, trunk and motorway `#22262C`,
+casings `#000000`, text halos `#000000`. It layers on `applyDark` so anything it does not touch
+inherits dark styling rather than Liberty's light defaults. A palette function must not change
+zoom gates or extrusion opacity; those belong in `ensureLayers` and `applyDark`.
+
+### 6.3 Layer rules
+
+- **`maxzoom` is exclusive.** Liberty's `building` fill is minzoom 13 / maxzoom 14, so setting a
+  min zoom of 14 without also setting max 24 collapses its range to empty.
+- Flat `building` fill draws from z16, `building-3d` extrusions from z17 growing 30 percent to
+  full height by z19. At about 500 feet, dense-city towers otherwise lean over the roads.
+- **House numbers**: the runtime `vela-housenumber` layer and the `vela-addr-*` overlay must
+  share `houseNumberMinZoom()` (a setting: near 18.3, normal 17.8, far 17.3). The address
+  overlay's archives carry tiles only at z16-17, and MapLibre never cold-fetches a tile clamped
+  two or more levels below the camera, so the layer arms at z17 and the zoom gate is an
+  **opacity** step, not the layer's minzoom.
+- Both house-number layers carry `textIgnorePlacement(true)`: they yield to icons but never
+  enter the collision index, so numbers cannot evict icons.
+- Address-overlay numbers anchor above basemap labels and below the ambient icons. Anchored to
+  the visible controls layer instead, they sink under the building extrusions.
+- **Traffic controls draw in two layers.** The visible layer sits at the very bottom of the
+  symbol stack so a sign can never cover a street name, and an invisible claim twin
+  (`iconOpacity` 0, `allowOverlap` true, `ignorePlacement` **false**) sits above the basemap
+  labels so labels shift away from sign positions. Draw order and placement order are the same
+  thing in MapLibre; these genuinely need two layers.
+- **Dots below labels.** Both dot tiers sit below the basemap's first symbol layer, so a label's
+  halo covers its dot.
+- **An invisible-but-queryable layer needs `lineOpacity(0.004)`**, not opacity 0: MapLibre skips
+  fully transparent features at render time and `queryRenderedFeatures` only sees rendered ones.
+  An 8-digit hex color string is rejected by the color parser and falls back to opaque black.
+- Point GeoJSON sources take an explicit maxzoom (18 for ambient, 12 for the sparse ones); line
+  sources keep their defaults for line metrics.
+- Every `setGeoJson` and every `setProperties` is identity-gated by a `lastApplied` holder, and
+  **every such holder must be reset in the style-reload block**, or a theme, palette or
+  satellite flip leaves sources invisible.
+- The traffic raster inserts above `building-3d` and `building` (fallback: below the first
+  symbol layer) so footprints do not paint over the congestion colors.
+- Satellite: the base imagery caps at z19 and MapLibre stretches past it. `refreshSatDeep`
+  probes the provider's availability index at the view center, 20 then 21 then 22, stopping at
+  the first missing level, and `ensureSatelliteDeep` adds one raster layer above the base at the
+  probed native level, or a fallback provider where the primary tops out at 19. The deep layer
+  cross-fades in (opacity 0 at z18.6 to 1 at z19.6) because the deeper tiles are a different
+  capture program, and its minzoom is the fade's first stop so it does not load tiles while
+  invisible.
+- **Attribution.** A tappable "(c) OpenStreetMap contributors" label sits bottom-left under the
+  scale bar in **every** map state, lifted over the nav bar and the minimized results bar and
+  moved into the map strip in landscape. MapLibre's own info button is disabled. The satellite
+  credit is a separate centered line. Never gate the OSM label on a chrome state.
+- **Boundaries**: countries and states or provinces are drawn (admin 2, and admin 3-4 from
+  minzoom 4, dashed); county and city limits are not. Never return the boundary layer ids to the
+  hide list.
+- Building footprints from the overlay draw **beneath** the OSM `building` layer with identical
+  theming, so OSM wins wherever it has data.
+
+### 6.4 The building-overlay gate
+
+The overlay is pure occluded overdraw where OSM is dense, so a gate probes rendered OSM coverage
+per viewport. Three rules:
+
+1. `queryRenderedFeatures` is a synchronous main-to-render-thread round trip and idle events can
+   fire per frame, so events only mark the verdict dirty; probes run at most once per
+   `OVL_GATE_MIN_GAP_MS` (1.2 s), 12 points, z16 and above. Probing straight from an idle event
+   froze a Pixel 4a to about 1 fps.
+2. Measure coverage by **area** (grid points on a building), never by feature count: tile
+   generalization merges a dense downtown block into two or three giant polygons.
+3. Layers are born hidden and only revealed after a finished render (`OnDidBecomeIdle`). A
+   "sparse" verdict before tiles land is indistinguishable from a real gap. Hiding is always
+   safe immediately. A floor-blocked call schedules one deferred retry, or an uncommitted
+   verdict sticks forever on an idle map.
+
+Gate state is composable-scoped, because `getMapAsync` can register listeners twice.
 
 ---
 
-## 7. Build, release, signing
+## 7. Offline data
 
-**In-app updater** (`app/update/SelfUpdater.kt`): checks
-`api.github.com/repos/PimpinPumpkin/Vela/releases/latest`, derives versionCode from the
-`v0.4.<run>` tag (`2000 + run`), and when newer offers a card on the map
-(`MapUiState.updateInfo`). Download uses a no-call-timeout client (the APK is ~80 MB),
-zip-magic-checks the body, then hands the file to the system installer via the app
-FileProvider (`filesDir/updates/`, same plumbing as the voice-engine installer) - the OS
-enforces same-package/same-signature. Launch check throttled to ~daily behind the
-`self_update_check` pref (Settings toggle, default on); "Not now" pins
-`update_dismissed_code` so only a newer release re-offers.
+### 7.1 What a region download contains
 
-- Toolchain: **AGP 8.7.3, Kotlin 2.1.0, Gradle 8.11.1,
-  compileSdk 35, minSdk 26, Java 17**, Compose + Hilt + version catalog. **R8 in the
-  `release` buildType** - always build release for on-device (debug lags the map).
-- **CI** (`.github/workflows/ci.yml`): every push to `main` builds + tests + signs the
-  APK and publishes a nightly PRERELEASE **`v0.4.<run>`** (versionName
-  `0.4.<run>`, versionCode `2000+run`); a weekly workflow promotes the newest
-  nightly to the stable release (same APK). Obtainium tracks stable by default,
-  nightlies via its prerelease toggle; the in-app updater follows stable.
-- **APK signing**: release keystore `~/.vela-signing/vela-release.jks` (alias `vela`,
-  password in `credentials.txt`); CI secrets `VELA_KEYSTORE_BASE64` /
-  `_PASSWORD` / `VELA_KEY_ALIAS`. **`CN=Vela Maps`**. **Keystore lives outside the repo
- - back it up; losing it = can never update installed builds.**
-- **Calibration signing**: separate EC key `~/.vela-signing/vela-calibration.key`
-  (§5). Also never committed.
-- **MapTiler key**: `MAPTILER_KEY` CI secret → `BuildConfig` only, **never committed**.
-- On-device dev loop (gotchas): build a release at **≥ the currently-installed
-  versionCode** (Obtainium auto-updates the device to each CI release, so an
-  old-vc local build is a downgrade `install -r` rejects); **`am force-stop` before
-  `am start`** (install over a running app keeps the old dex); screenshots are
-  device-px (1080 wide) vs the ~270px display (×4 coords).
+Routing (obf), places (PMTiles), the basemap picture (PMTiles), a place pack (SQLite), road
+features, and the building and address overlays where they exist. `MapPoiPrefs.placesWithDownloads`
+(default on) controls whether places ride along.
+
+| Artifact | Built by | Hosted on | Manifest |
+| --- | --- | --- | --- |
+| Routing `.obf` | `scripts/build-obf-region.sh` + `VelaObfShim` | `obf-regions` | `obf-manifest.json` |
+| Place pack | `scripts/build-poi-region.sh`, `poipack_build.py` | `poi-packs` | `poi-pack-manifest.json` |
+| Places tiles | `tools/build-places-region.sh` | `places-overlays` | `places-overlay-manifest.json` |
+| Basemap tiles | `tools/build-basemap-region.sh` (planetiler) | `basemap-tiles` | `basemap-manifest.json` |
+| Road features | `scripts/build-road-features.sh`, `road_features_tsv.py` | `road-features` | its own manifest |
+| Building overlay | `scripts/build-overlay-region.sh` | `building-overlays` | `building-overlay-manifest.json` |
+| Address overlay | `scripts/build-address-region.sh` | `address-overlays` | `address-overlay-manifest.json` |
+| Maxspeed overlay | `maxspeed-overlays.yml` | `maxspeed-overlays` | its own manifest |
+| ALPR cameras | `scripts/build-flock-cameras.py` | `flock-cameras` | `flock-manifest.json` |
+| Glyphs | `scripts/build-map-fonts.sh` | `map-fonts` | unpacked to Pages |
+| TTS runtime, ASR models | vendored builds | `tts-runtime`, `asr-models` | catalog in `:core` |
+
+**Infrastructure releases are not app releases.** Every non-`v0.*` tag is file hosting whose
+assets exist nowhere else. Two standing rules: any cleanup that deletes or edits releases selects
+by tag pattern `v0.*`, never by "prerelease" or "old", because the infrastructure releases are
+old prereleases by design; and any `gh release list` logic must paginate or bound by tag,
+because the repository holds hundreds of releases.
+
+### 7.2 Catalog and selection
+
+`tools/routing-regions.json` is the catalog (every Geofabrik country-level extract, US states,
+Canadian provinces, and first-level sub-areas for the countries Geofabrik divides). Rows carry
+`group`, `big`, `skip_obf` and `qkprefix` where relevant. A dispatch takes a group list or
+`all-sub`.
+
+Selection rules on the phone:
+
+- The smallest archive whose box covers the point wins, and `sourcesFor` returns exactly one
+  source: two nested archives draw the overlap twice.
+- A region download pulls the **same-id** archive first; the center rule alone pulls parent and
+  neighbor archives too.
+- Geofabrik boxes carry a buffer that spills across borders, so "any box that covers you" ranks
+  a neighbor above the right region.
+- Building and address overlays stream online from the **union of up to the three smallest**
+  covering regions, because a smaller neighboring box can cover a point its data does not reach.
+- A shallow basemap archive (maxzoom below `FULL_MAP_ZOOM` 14, read from byte 101 of the PMTiles
+  v3 header) is used **only offline**. The bake drops a zoom level when a region would pass the
+  2 GiB asset limit.
+
+### 7.3 Freshness
+
+Every manifest row carries `rev` as a `YYYYMMDD` integer; installed revs live beside the files
+(`revs.json`) and `MapViewModel.refreshRegionUpdates` turns a newer rev into an Update button.
+Place packs additionally publish **row-level deltas**: `poipack_delta.py` emits one SQL EXCEPT
+per table into `del_`/`ins_` tables, published only when the delta is under half the full size.
+`PoiPackStore.applyDelta` runs when the installed rev equals the delta's `fromRev`, in one
+transaction, deleting by full-row match through each table's index with NULL-safe matching,
+inserting, then verifying every table count against the manifest before committing. Street-name
+ids are stable content hashes (SHA-1 of the normalized name truncated to a positive 63-bit
+integer, collisions fail the build), never insertion counters, or a rebuild renumbers millions
+of rows and the delta balloons to pack size. `TABLE_COLUMNS` in `PoiPackStore` mirrors
+`poipack_build.py` and `poipack_delta.py`; all three must stay in step.
+
+Scheduled rebakes: ALPR cameras weekly (Monday 08:17 UTC); place packs monthly (3rd, 07:15);
+road features monthly (4th, 07:45); places (6th and 7th, 05:00, sharded); basemap (9th and 10th,
+05:00, split by catalog half); routing, buildings, addresses and maxspeed quarterly (January,
+April, July, October, 2nd, 04:00). The obf bake stays manual because of its runner memory limits
+and the manifest flip. A world obf bake stages into `obf-manifest-staging.json`, which the app
+never reads; copying staging over the live name flips the whole catalog atomically.
+
+### 7.4 Download discipline
+
+- **Every multi-megabyte download runs through `MapViewModel.downloadLaunch(label)`**: the work
+  runs on the app-lifetime `DownloadWork.scope` and a refcounted `dataSync` foreground service
+  holds the process alive. `viewModelScope` is canceled the moment the task is swiped, and
+  without the service an aggressive background killer reaps the process seconds after Home.
+- **Every large download must use a derived `callTimeout(0)` client** with a 60 s read timeout.
+  The shared scrape client caps a call at 12 s; a big body blows through it, `runCatching`
+  swallows the abort, and the asset silently never installs. Manifest fetches stay on the short
+  client.
+- Every download is cancellable: the store functions take an `active: () -> Boolean` polled per
+  chunk, the view model holds per-kind cancel flags reset at download start, and a cancel is not
+  reported as a failure. The tile-region save cancels by detaching the observer, setting the
+  region inactive and deleting the partial. Any UI that shows progress must show a cancel.
+- Whole-parent downloads queue their pieces (`regionQueue`), popping the next at the end of each
+  download; cancel clears the queue.
+- Sizes shown are **installed** sizes: manifests carry `installedMb`, with fallbacks of the zip
+  times 1.8 for graphs and times 2.35 for packs. Regions over 1 GB installed confirm first.
+
+### 7.5 Offline basemap rules
+
+Four rules, each of which produced a blank map:
+
+1. Add the local archive as a source **after** the style loads, and re-point every
+   `openmaptiles` layer at it (`withLocalBasemap`). Declared in the JSON or through
+   `Style.Builder.withSource`, it never gets past the z0 tile.
+2. A labeled tile only completes once every glyph range and the sprite resolve, so with no
+   signal the remote hosts hang and the map is blank. Serve both from `file://`.
+3. A process that **starts** offline on the remote style poisons the engine's shared glyph and
+   sprite managers for every later style, so the local style is chosen before the first load
+   (`refreshBasemapArchive(seed)` at init).
+4. Every helper that reads the basemap source must go through `basemapSrc(style)`, or the
+   offline map comes up light and bare.
 
 ---
 
-## 8. Feature catalogue
+## 8. Transit
 
-See **[`FEATURES.md`](FEATURES.md)** for the exhaustive, ticked list (search/places,
-reviews, photo gallery, directions + alternates + swap + depart-time +
-search-along-route, drive/walk/bike/transit, turn-by-turn with shields/lanes/voice/
-haptics/speedometer/**per-lane diagram**/**posted speed-limit sign** (OSM `maxspeed` off the downloaded
-obf's way data - keyless, offline; Google gates limits behind the paid Roads API), traffic overlay,
-**offline on-device routing** (the obf engine, 414-piece world catalog), offline basemap + POI (the offline SQLite POI index keeps OSM
-address/phone/website/opening_hours, not just name+category), Home/Work shortcuts,
-saved/recent places, deep links, scale bar, in-app theme, the resilience layer above).
+The stack mixes two sources deliberately.
+
+| Piece | Source | Why |
+| --- | --- | --- |
+| Departure boards | Transitous (MOTIS) first, Google's place page as fallback | The open feeds return every route at a stop with realtime lateness and the agency's own colors; a multi-bay center merges through its parent station. Google's anonymous page embeds as little as one route at a large hub. |
+| Stop icons | Transitous stop positions at z15 and above; OSM basemap icons where Transitous has no coverage | GTFS positions come from the agencies; tapping an icon opens the board by stop id and skips name matching entirely. |
+| Route stop list | The GTFS trip's own stop sequence (`/trip` by the tapped run) | Exact: the actual run, every stop, realtime per stop. The Google itinerary is the fallback. |
+| Realtime lateness | GTFS-Realtime through Transitous | Straight from the agency feed. |
+| Transit **directions** | Google's directions page | Google's itinerary ETAs reflect live road traffic on the bus's route; GTFS-Realtime only knows current lateness. |
+
+Details:
+
+- Boards refresh every 30 s while the sheet is open; Google-fallback boards stay one-shot,
+  because a refresh there is a whole page load.
+- **Directional curb pairs merge.** US GTFS names both curbs identically and carries no
+  direction field, so `Transitous.mergeDirectionalPairs` collapses same-name stops within
+  `PAIR_MERGE_M` (160 m) to the pair's midpoint, carrying the other ids as siblings; boards
+  merge stoptimes across the representative and its siblings, and the `(route, headsign)`
+  grouping shows both directions as separate rows. Direction-suffixed names differ as strings
+  and never merge.
+- Where the Transitous layer has coverage, the basemap's OSM bus icons hide by filter (rail and
+  airport stay), so a stop cannot draw twice.
+- Every successful viewport fetch overwrites its area in a 24-area on-disk LRU
+  (`TransitStopCache`), so visited areas keep canonical stops with no signal.
+- The transit category gate is multilingual and carries an exclusion list: gate words match and
+  non-transit words (fuel, EV, emergency, broadcast) must not, because "station" appears in all
+  of them. Both regexes are remotely overridable.
+- A hinted tap (the basemap class says transit) that resolves to no Google stop listing falls
+  back to a Transitous board at the tapped coordinate, by proximity, with no category and no
+  feature id.
+- A transit-named place that resolves to an "Intersection" entity re-resolves to the co-located
+  stop: search the name plus the mode word, take the nearest live transit listing within 250 m.
+  A real co-located pair measured 89 m apart, so a tighter radius misses it.
+- Google's transit request must carry the time block when a time is chosen. `!8j` is a **local
+  clock**, not a Unix timestamp: Google reads the seconds as wall-clock-as-UTC, so the phone's
+  zone offset is added. Preferred vehicles are `!5e{k}` entries in the same options group, and
+  the `!4m` wrappers are descendant counts that must be sized from the entries.
+- A parsed line is identified by its badge **or** by an agency icon filename when the badge
+  carries no text (subway bullets). The agency prefix is the rule: a line icon is
+  operator-scoped and contains a slash, while the generic vehicle icon is bare. Mode is read
+  from icon filenames only; matching mode words against nearby text misreads place names that
+  contain them.
+
+---
+
+## 9. Voice, dictation and language
+
+### 9.1 Spoken guidance
+
+Guidance text is generated per language by `NavStrings` tables in `:core/i18n`, switched by
+`NavStringsRegistry`. **Both routers feed the same tables**: `RouteGeometry.osrmPhrase` and
+`OfflinePhrases.phrase` both map their maneuvers onto the OSRM `(type, mod)` token pair.
+
+Speech runs through an in-process neural voice by default: the bundled sherpa-onnx runtime with
+a downloaded Piper model (`PiperSynth` behind the `:core NeuralSynth` seam). Any of about 40
+catalog voices can be installed, each in `filesDir/piper/<id>/`; the installed set is derived
+from the filesystem so a partial download self-heals. Selection persists in `voice_model`, the
+speaker per voice in `voice_speaker_<id>`.
+
+Rules:
+
+- **R8 must keep `com.k2fsa.sherpa.onnx.**`**: JNI resolves classes by original name.
+- **Generate the whole utterance before `AudioTrack.play()`.** Streaming underruns make
+  AudioFlinger drop the track, which aborts the process. The utterance is written in about
+  200 ms chunks with a generation check between them so an interrupt lands within that window
+  without underrunning.
+- **A Piper voice speaks one language.** `VoiceGuide` compares `NeuralSynth.voiceLanguage`
+  against the language the text was generated in and, on a mismatch, routes to a system TTS in
+  the target language; with none installed it stays silent and fires `langUnavailable`, which
+  surfaces a "get a voice" action. It never reads one language through another's model.
+- Audio focus is refcounted through the utterance callbacks. A system TTS `speak()` returning
+  `ERROR` enqueues no utterance and therefore no callback, so that path rolls back its acquire;
+  a failed `onInit` clears the pending queue rather than accumulating prompts for a later init.
+- Sentence pauses are made by splitting the utterance and splicing silence
+  (`splitSentences`/`joinWithGaps`). The runtime's own silence scale is a no-op on this model.
+- **Every fragment gets terminal punctuation before synthesis.** A fragment ending in a letter
+  or digit gives the model no final prosody contour and the last consonant is swallowed.
+- `SpeechText.spokenNumbers` pre-expands three-digit street ordinals ("120th" as "one twenty
+  eighth", with a space, not a hyphen) before the neural grapheme-to-phoneme stage.
+  `expandForSpeech` also rewrites `<XX>-<n>` state route refs to "State Route n" and inserts a
+  comma before " toward ", which makes the phonemizer treat the sign destination as its own
+  beat.
+- Guidance volume (`voice_volume`) is a gain over the neural voice's float PCM, hard-clipped at
+  full scale. The system TTS path takes `KEY_PARAM_VOLUME` capped at 1.0, because Android can
+  only attenuate system voices.
+- A voice install or a delete-fallback never auto-speaks; only an explicit library pick
+  auditions.
+
+### 9.2 Foreign scripts
+
+A road name can be in a different script than the guidance language.
+
+- `SpokenScript.forVoice(text, voiceLang, dict)` substitutes a **real** Latin name from the
+  dictionary first and only then falls back to ICU transliteration. Every voice keeps its own
+  native script and romanizes everything else; **CJK is never romanized** for any voice, because
+  ICU reads Han as pinyin.
+- `SpokenScript.forDisplay` does the same for the banner and step list but with **no ICU
+  fallback**: a vowel-less skeleton on a sign reads as broken, so an unmapped name keeps its
+  local script.
+- The dictionary is real data: the basemap's `name:en` and `name:latin` per road, collected by
+  the same quantized pass that places the crossing labels, plus `Route.roadNamesLatin` from the
+  obf route. The dictionary query is **warm-up paced**, re-running every 2 s while it is still
+  growing, because a drive starts with only low-zoom tiles loaded and those carry only major
+  roads.
+- The navigation opener is held up to `OPENER_MAX_WAIT_MS` (2.5 s), retrying every 200 ms until
+  the road it names is covered by the dictionary. An English opener never waits.
+- On-map labels use `roadLabelTextField()` = `coalesce(name:en, name:latin, name)` for a
+  Latin-script UI, and the local `name` for a non-Latin UI. Nav bubbles filter on the canonical
+  `name` and display the Latin form. Place names are data and are never romanized.
+- `SpokenScript.applyDict` returns in O(length) when the text contains no character the reader
+  cannot read, and digests each dictionary once per instance. Scanning a whole downloaded
+  region's dictionary twice per fix was a 60 ms main-thread stall at 1 Hz.
+
+### 9.3 Dictation
+
+Two tiers, both keyless.
+
+- **Tier 1, in process**: `AsrRecognizer` over the same sherpa-onnx runtime, with three
+  downloadable engines (`AsrEngine`): Whisper tiny int8 multilingual (58 MB, the default),
+  SenseVoice (154 MB, en/zh/ja/ko/yue) and Moonshine (101 MB, English). Each archive is
+  self-contained and carries its own Silero VAD. Recognizers cache on `"<engineId>|<lang>"`.
+  Whisper is pinned to the app language; auto-detect transcribes noisy far-field audio into the
+  wrong script. Recording takes `AUDIOFOCUS_GAIN_TRANSIENT` so media pauses rather than ducks.
+- **Tier 2, handoff**: `ACTION_RECOGNIZE_SPEECH` to an installed voice-input app, which records,
+  so Vela needs no microphone permission for it. Only apps registering the **activity** count; an
+  IME or a `RecognitionService` cannot be launched this way. Resolution is a ladder: the user's
+  pinned component, then Android's own default, then the first installed app, so the system
+  chooser never interrupts a dictation.
+
+RECORD_AUDIO is requested at the point of use. `listen()` returns a typed result
+(Text/NoSpeech/Failed(reason)) and every failure is explained in the UI.
+
+**The ASR path is crash-sentineled.** A truncated or corrupt archive makes sherpa-onnx abort
+natively, which is uncatchable, and warm-up runs at startup, so a bad model is an unrecoverable
+crash loop. A strike counter is bumped before every native load and cleared after; two stranded
+loads quarantine that engine and delete only its directory. One stranded load is forgiven,
+because a mid-load process kill strands the counter exactly like a crash and must not delete a
+healthy download.
+
+### 9.4 Interface language
+
+`AppLocale` holds the language (empty means follow the system) and is applied in **both**
+`MainActivity.attachBaseContext` and `VelaApp.attachBaseContext`. When following the system it
+also restores `Locale.setDefault` to the captured device locale, because the override is
+process-global and otherwise leaves date formatting and the scrape's `hl` in the previous
+language. Changing the language calls `recreate()`.
+
+- Strings live in `res/values/strings.xml` (US English) plus one folder per translated language.
+  `values-en-rGB` exists for British wording and carries only the strings that genuinely differ.
+- Counts use `<plurals>` with the correct CLDR categories per language.
+- Strings that double as a logic key are deliberately not in `strings.xml`. Where a display
+  label and a logic key must both exist, they are split, and the key stays English.
+- The scrape's `hl` follows the app language but only for the languages whose status keyword
+  table exists (`SearchParser.STATUS_LANGS`); any other locale stays `hl=en`, because a status
+  string the parser cannot read leaves open/closed null forever. `gl` follows the phone's
+  region.
+- Hyphenated language codes must resolve through `Locale.forLanguageTag`. The `Locale(String)`
+  constructor makes a bogus lowercase language that matches nothing.
+- Two build traps that a warm Gradle daemon hides: in a Kotlin string template a `$var`
+  touching a CJK character parses as one identifier, so brace it; and a raw apostrophe in
+  `strings.xml` is an AAPT error the release resource merge rejects even when a cached debug
+  build passed.
+- Names, streets and reviews are data and are never translated.
+- **US English is the repository's language.** British spellings do not appear in code,
+  comments, documentation, commit messages or the base string resources. The exception is
+  `values-en-rGB`, which exists to be British, and data strings that match a foreign source's
+  own spelling (OSM's `neighbourhood` place class, OSM tag values such as `fitness_centre`, and
+  the MOTIS wire field `cancelled`); those are marked where they appear.
+
+### 9.5 Query intents
+
+Every submitted query, typed or dictated, goes through `core/search/QueryIntents.parse(text,
+lang)` first: Home, Work, NavigateTo, Route(from, to), Search with filler stripped, or Eta. A
+null result means a plain search, so the parser can never make a query worse. Per-language word
+tables cover every app language, with English as a fallback in each. A bare verb counts only
+before home or work or an explicit "from A to B"; a bare "X to Y" is a route only when X is not
+a question word or a verb; and `routeBetween` runs the whole phrase as a search first, so a
+place whose name contains "to" stays a place.
+
+A fuzzy pass runs after the exact passes miss (spaced languages only). Tolerance is word-level
+and only over the **vocabulary**, never the free text: accents fold, one edit is allowed from
+five letters and two from eight, a single-word phrase never fuzzes, and a multi-word phrase must
+match word for word so "home depot" cannot collapse to "home".
+
+---
+
+## 10. User interface
+
+### 10.1 Sheet physics
+
+The place sheet, the results sheet and the directions chooser share one grammar, and a new sheet
+ports it rather than inventing a fourth:
+
+- A hand-driven `Animatable` (height for the sheets, a 0..1 body fraction for the chooser),
+  dragged 1:1 from the handle and from content-at-top through a nested-scroll connection.
+- Release projects the fling with `exponentialDecay(friction 1.6)` and rides `animateDecay`
+  clamped by `Animatable` bounds at the nearest detent, so the detent stops the coast rather
+  than a spring snapping to it. Only a throw that does not carry glides on the spring.
+- A flick faster than `FLING_COMMIT_DPS` (180 dp/s) advances at least one detent.
+- **Velocity is measured on integrated drag deltas**, not `change.position`, which is local to a
+  node that resizes as the sheet moves; position-based tracking measures about zero and every
+  flick reads as a slow drag. Every manual tracker also takes `max(tracked, travel / time)`.
+- The animated value is read in a **layout** modifier, never in composition. A composition read
+  recomposes the whole sheet every animation frame.
+- The whole gesture lives in `sheetDragGestures`; copies drift.
+- A region that is scrollable but has **zero range** never engages a drag, so a minimized card
+  whose content fits needs its own drag surface.
+- `SheetFold` folds extra content with the sheet's own height fraction. Its cross-fade uses
+  `CompositingStrategy.ModulateAlpha`: a plain `alpha` below 1 renders children into an
+  offscreen buffer, which measured about 20 ms of GPU per frame on a Pixel 4a.
+- Grabbing the map minimizes the sheets (`onUserPan` from the gesture camera-move reason only,
+  never a programmatic move). Every tick-style signal into a sheet needs a consume-once guard
+  seeded at mount, because a `LaunchedEffect` also fires on first composition and a remounted
+  sheet would replay a stale tick.
+
+### 10.2 Chrome
+
+- **Nothing that renders above the action pills may move after the first frame.** The photo
+  strip and the rating row reserve their space while `detailsLoading` is true for a place that
+  will have them, keyed on a non-blank `category`, because a place tapped on the open places
+  layer has no Google id until details land.
+- In landscape, every route-related overlay is a left column: both sheets, the directions
+  chooser, the endpoints card, the maneuver banner and the nav bar all take
+  `align(Start) + landscapeColumn(...)`, which caps the width and pads the display cutout on the
+  start edge. The camera claims `cameraLeftInset` instead of a bottom inset. New route or nav
+  chrome without this spans the screen.
+- Landscape browse chrome collapses to one line. The one-line condition must not include
+  `!searchOpen`: focusing the bar flips `searchOpen`, and moving the search bar to a different
+  subtree remounts it, which blurs the field, which flips `searchOpen` back.
+- Chrome hides are **measured**, not logical: a short-content place flips its expanded state
+  while its wrap-capped card never grows.
+- All top-of-map cards render in one top-center column with per-card dismissal. During
+  navigation the column hangs off the turn card's **measured** bottom edge.
+- Picture-in-picture: everything after the map call is inside one `if (!pipUi)` gate. The map's
+  compass and all gestures are off while PiP is active, because the system's own taps reach the
+  map as gestures and detach the follow camera.
+- The route bar is portrait-only and never in PiP, and shows a 5 km window rather than the whole
+  route: scaled to a long trip every nearby mark collapses into one pixel.
+
+### 10.3 D-pad operation
+
+The whole UI must stay drivable with a five-key D-pad and no touchscreen; touch is a bonus.
+
+- Every interactive element is a focus target with a visible ring in key-driven input mode
+  (`Modifier.dpadHighlight`), and every gesture has a key alternative.
+- **No screen may open with nothing focused.** A wasted first keypress is the bug. Compose's
+  focus recovery is nondeterministic, so every screen attaches an auto-focus target.
+- A Compose `DropdownMenu` popup and an `AlertDialog` **cannot** be pre-focused. Use `VelaMenu`
+  and `VelaDialog`, which fall back to a raw `Dialog` with an explicitly focusable element under
+  D-pad. Their items focus through `.focusable()` plus `.onKeyEvent` plus `pointerInput`, not
+  `.clickable`, whose nested focusable will not take `requestFocus` in a dialog window.
+- Text fields must not trap focus: `Modifier.dpadFieldEscape` makes up and down leave the field.
+- D-pad code **calls the touch paths** (the same tap lambda, gesture flags and zoom override)
+  rather than forking them, and every affordance is gated on `dpadMode` or `noTouch` so touch
+  behavior is unchanged.
+- **Detection is conservative.** `dpadFirst` is true only for a device with no touchscreen or a
+  physical non-virtual `SOURCE_DPAD` device. The framework's virtual aggregate device reports
+  `KEYBOARD | DPAD` on essentially every phone; counting it makes every phone D-pad-first and
+  breaks the search bar. A keypad phone with a fake touchscreen gets full D-pad behavior
+  reactively on the first key press through `rememberDpadMode`.
+- `AdaptiveDensity.wrap` (chained first in both `attachBaseContext`s) shrinks the effective
+  density so a tiny screen reports at least 360 dp of width. It is a hard no-op at 360 dp and
+  above.
+- Testing with `adb shell input text` or `keyevent` flips the live input mode to Keyboard and
+  disables the unarmed search field. That is the test tool, not a bug.
+
+Per-surface audits and the contributor procedure are in `docs/dpad.md`; the regression suite is
+`dpad_test_suite/` (`run_all.sh`, `audit_static.sh`, `audit_dynamic.sh`).
+
+### 10.4 Settings
+
+Settings is hub and spoke: `SettingsScreen` dispatches over a `SettingsSection` enum with no
+navigation library, `SettingsHub` holds the category rows and the settings search, and
+`SettingsScaffold` owns the focus plumbing every page builds on. The search is a static
+`SEARCH_INDEX` of label resource to section; a match opens the spoke **and** scrolls to the row
+(`Modifier.settingsAnchor(label)` plus `LocalSettingsHighlight`). A new row label must be added
+to the index, and a group whose rows can be empty must still render with an empty-state hint, or
+its index entry leads to nothing.
+
+**No blocking IPC or IO from a composable body.** A `PackageManager` query in composition
+re-runs on every recomposition; load such data with `produceState` plus `withContext(IO)`.
+
+### 10.5 Full-screen viewers
+
+Cover the system bars with `FLAG_LAYOUT_NO_LIMITS` plus transparent bar colors plus
+`Modifier.requiredFullScreen()` on the content root plus a top gradient scrim. Hide-bars, dim
+and decor tricks leave strips; a Compose dialog window re-asserts inset-fitted params and
+refuses to cover the bars.
+
+### 10.6 Android Auto
+
+`app/car/` is a navigation-category `CarAppService` (manifest service, `automotive_app_desc.xml`
+`<uses name="template"/>`, the `androidx.car.app.*` permissions, `minCarApiLevel=1`). A sideload
+appears in the car launcher only with the Android Auto developer setting "Unknown sources" on,
+so the host validator is open.
+
+Screens: `MainCarScreen` (`PlaceListNavigationTemplate`) to `SearchCarScreen` (`SearchTemplate`)
+to `RoutePreviewCarScreen` (`RoutePreviewNavigationTemplate`) to `ActiveNavCarScreen`
+(`NavigationTemplate`). `VelaCarSession` owns its own AOSP location feed into the shared
+`NavSession`, so navigation runs with the phone UI closed, and handles
+`androidx.car.app.action.NAVIGATE` geo intents.
+
+- The map is MapLibre's public `MapSnapshotter` to a bitmap to the car surface. The
+  VirtualDisplay and Presentation approach is gone. The renderer map-matches the puck to the
+  route, gates the feed to GPS-only, and eases puck and heading between the roughly 1 Hz fixes.
+- **One `CarMapRenderer` per session.** Per-screen renderers freeze the map.
+- The turn card needs both `NavigationManager.navigationStarted()` and `updateTrip()`;
+  `ManeuverMapper` maps Vela maneuvers to car `Maneuver`/`Step`/`Trip`, reading roundabout
+  direction and exit number from the route's own geometry rather than assuming.
+- The snapshotter resolves the same patched style file the phone map uses; a plain style URL
+  leaves the car on Noto.
+- Android Auto has no pause control yet.
+
+### 10.7 Street View
+
+The panorama is rendered in-app, not embedded. Google's WebGL page serves a stripped shell that
+renders black on ANGLE; do not retry the embed.
+
+- Metadata comes from the keyless JS-API `GeoPhotoService.SingleImageSearch` (by location) and
+  `photometa/v1` (by pano id), authorized by a `Referer: https://www.google.com/maps/` header.
+  The address, copyright and position live **inside** the pano node, not at the root. The
+  `photometa` response nests one level deeper and carries a `)]}'` guard.
+- Tiles come from `streetviewpixels-pa.googleapis.com/v1/tile`. The `/v1/thumbnail` path returns
+  403.
+- `StreetViewTiles` stitches one zoom level (about 2048x1024 or 4096x2048) and `PanoramaView`
+  textures it onto a GLES2 sphere. **Never stitch the full 16384x8192 level**: that is about
+  400 MB of texture.
+- Two GL rules: view the sphere from inside (culling off) and use **natural U** (`uv = u`).
+  Looking down -Z, screen-right is world +X, so a flipped U mirrors the whole panorama, which
+  reads as backwards signage.
+- **The tile pyramid is not one shape.** Modern panoramas are `512 * 2^z` wide; captures from
+  before about 2016 are `416 * 2^z` and some have only four levels. Size the grid from the
+  panorama's own level dimensions, or the loader requests tiles past the old grid's edge and
+  paints black bands. A stitch that is not 4096x2048 is scaled up, which is exact because an
+  equirect still covers 360 by 180 degrees.
+- **The compass frame**: Google puts the capture heading at the texture center (u = 0.5) while
+  the renderer's yaw 0 looks at u = 0.75, so compass bearing B is renderer yaw `B -
+  captureHeading - 90`. Use `setCompass(panoHeading, faceCompass)`; never feed a compass bearing
+  in as a raw yaw, and never overwrite the pano's own `headingDeg`, which is the texture
+  reference.
+- **Which panorama opens** is copied from Google: the search response's Street View thumbnail URL
+  carries the exact pano id and camera yaw, so it is used verbatim. The geometric heuristics
+  (nearest pano, street-of-address match, perpendicular probes) are the fallback for entries
+  without a thumbnail; geometry alone provably mis-picks.
+- Walking fetches the neighbor **by pano id**, never by nearest location, or a walk lands on a
+  different-year capture at the same spot. Time travel resolves the historical pano's own
+  metadata, because epochs differ in both pyramid shape and heading by up to 180 degrees.
+- The viewer is a top-aligned pane over the live map, not a dialog. It reports its pose so the
+  map draws the puck and a view cone, and the camera eases to the panorama on each hop only,
+  never per yaw frame. A tap on the visible map moves the panorama there.
+- A `SurfaceView`'s window hole does not follow a pure-Compose resize, so the fullscreen toggle
+  recreates the view (`remember(full)` inside `key(view) { AndroidView(...) }`) and re-feeds the
+  texture and the current yaw. Zoom is canonically the **horizontal** field of view; holding a
+  fixed vertical field of view narrows the view when the pane grows.
+
+### 10.8 Content gating
+
+`ShowReviews` and `LoadPhotos` gate both the fetch and the render, so off means no scrape
+traffic rather than hidden UI. `HideAdult` flips the `:core CategoryFilter` flag, which filters
+at the `search` and `nearbyPlaces` seam on **category only, never name**, with multilingual
+keyword lists, and drops the bars chip from the quick categories because the filter would empty
+it. `HideExternalLinks` hides the website row, the Street View pill and the book/order action.
+Any new review, photo or external-link surface goes behind the matching holder.
+
+
+---
+
+## 11. Remote resilience
+
+`CalibrationStore` fetches `calibration.json` and the detached `calibration.json.sig` from the
+repository's raw URL at launch and adopts the remote bundle only if all three hold:
+
+1. **The signature verifies** - ECDSA P-256 with SHA-256 against `PINNED_PUBLIC_KEY`. A bad or
+   missing signature is ignored and the last good bundle stands; an unsigned or older cache
+   falls back to the compiled default for one launch.
+2. **Every endpoint host is on the allowlist** (`google.com`, `www.google.com`).
+3. **The version is newer** than the active one.
+
+What the bundle can carry, in increasing power:
+
+- **Configuration**: pb templates, endpoint URLs, the photo proto, the search parser's
+  positional `paths`, `directionsPaths`, the language keyword tables (`statusClosedWords`,
+  `statusOpenWords`, `transitCategoryWords`, `transitExcludeWords`, `reviewWords`), the review
+  scrape's CSS selectors, the browser identity fields, the fleet defaults (`defaultVoiceId`,
+  `defaultVoiceSpeaker`, `defaultVoiceSpeed`, `defaultMapPalette`, `defaultPlacesSource`,
+  `classicRoutePicker`) and the `tuning` dials.
+- **Notices**: an array of `id`, `level`, `title`, `body`, `url`. Level `urgent` renders as a
+  modal dialog; anything else is a dismissable card on the bare map.
+- **Parse logic**: `transformsJs`, a JavaScript bundle run in a Rhino sandbox (`JsSandbox`:
+  `optimizationLevel = -1` because ART cannot run Rhino's bytecode generation,
+  `initSafeStandardObjects` so no Java or IO is reachable, R8 keep rules in
+  `core/consumer-rules.pro`, and a private `ContextFactory` arming the instruction observer as a
+  2-second wall-clock kill switch). `JsTransforms` exposes `parseSearch(rawResponse)` and
+  `transformPlaces(placesJson)` over a flat `PlaceJson` contract. **Compiled Kotlin is always
+  the fallback**: no script, a missing function or any error leaves the result unchanged.
+
+`tuning` is a flat name-to-number map read through `Calibration.tune(key, compiledDefault)`, so
+a missing key means the compiled default and adding a dial is a configuration edit. View-layer
+consumers read `CalibrationStore.latest`.
+
+Two procedural rules:
+
+- **Adding a `Calibration` field requires wiring `CalibrationStore.parse()` separately.** Fields
+  have shipped unread because only the data class was updated; grep for the field name in
+  `CalibrationStore` before assuming a push will land.
+- A fix that needs genuinely new parsing **logic** still ships as a release, unless it can be
+  expressed in `transformsJs`.
+
+---
+
+## 12. Degoogled constraints
+
+These are hard rules. Regressing one is a release blocker.
+
+- **Location**: AOSP `LocationManager` only, never `FusedLocationProviderClient`.
+- **`LocationListener` must be an explicit object, never a SAM lambda.** The lambda implements
+  only `onLocationChanged`; the other three methods got default bodies in the Android 11 SDK, so
+  it compiles, but on Android 10 and below the framework interface has no defaults and a
+  present-but-disabled provider triggers `AbstractMethodError` on every launch.
+- **Voice**: AOSP `TextToSpeech`, engine-selectable, plus the bundled in-process neural voice.
+  Never a hard dependency on Google TTS.
+- **Dictation**: on-device or an installed recognizer app. Never a cloud STT API.
+- **No GMS**: no FCM, Firebase, Play Integrity or fused location. Push, if ever, is UnifiedPush;
+  crash reporting is ACRA or self-hosted.
+- **No static Google API key**, in any build variant, ever.
+- **EU consent**: pre-seed `SOCS` and `CONSENT`; never let a `Set-Cookie` downgrade `CONSENT` to
+  `PENDING`.
+- The hidden WebViews run Google's JS **anonymously**. That is a scoped tradeoff for data only a
+  real engine is served, and no sign-in is offered anywhere.
+- **Permissions are asked with context.** Onboarding is welcome, location, notifications, voice,
+  and nothing more; a contextual in-place ask is preferred to a new onboarding step. A
+  coarse-only grant gets a one-time explainer and draws a real accuracy circle; navigation gates
+  on fine location with an upgrade dialog; a permanently denied locate tap deep-links to system
+  settings.
+- **Memory pressure is handled.** `MemoryPressure` fans `onTrimMemory` out to registered
+  releasers: the ASR model (severe trims plus a 120 s idle reap, with an in-flight counter,
+  because freeing native memory mid-decode is a use-after-free), the neural voice (critical
+  only, since dropping the voice mid-drive costs a turn), MapLibre's native caches, every hidden
+  WebView, and the image cache. `MemoryPressure.lowRam` drives a constrained path: a smaller
+  image cache, no ASR warm-up, no speculative WebView warms, and an 8-term ambient fan-out.
+  **Any new large or native holding registers a releaser here.**
+- **Constrained networks.** `ConstrainedNetwork` reads `NOT_BANDWIDTH_CONSTRAINED` and
+  `TRANSPORT_SATELLITE` **by name** through reflection, because the compile SDK does not define
+  them and hardcoding a framework integer is a guess. Absent constants yield false. On a
+  constrained link the photo walk is skipped and the ambient fan-out takes the lean path.
+
+---
+
+## 13. Performance model
+
+**The two serial resources** are MapLibre's render thread, which serializes symbol collision
+placement, every `setGeoJson` and `setProperties`, and drawing itself; and the main thread,
+which hosts the camera tickers, all JNI style calls and Compose recomposition. Neither can be
+parallelized from app code. The only lever is sending each of them less work, and never at the
+moment they are already saturated.
+
+Standing rules:
+
+- Identity-gate every source upload and every property write, and reset every gate holder on
+  style reload.
+- Never move route geometry per frame or on a short timer (section 4.8).
+- Never re-place a whole layer for a value that did not change: a `setFilter` re-lays the whole
+  source.
+- Keep per-frame work in the layout or draw phase, never in composition.
+- Anything read per frame goes into a `mutableFloatStateOf` holder, not `MapUiState`.
+- Compose recomposition of one large state object is the cost center: gate high-frequency writes
+  (the scale bar pushes only past a 1 percent change; the compass heading is throttled by angle
+  and interval).
+- A `queryRenderedFeatures` call in a dense view costs 37-55 ms even when it returns nothing.
+  Debounce it, gate it on camera stillness, and never run it from an idle event unthrottled.
+- **Build release for anything a person will feel.** Measured on the same device, same cold place
+  tap, sheet drag and review scroll: debug 14.8 percent janky frames with a 90th percentile of
+  69 ms; release 1.1 percent and 28 ms. A whole session's worth of "the sheet lags" was a debug
+  build.
+- The baseline profile at `app/src/release/generated/baselineProfiles/baseline-prof.txt` is
+  committed and baked into every release build, so a sideloaded build is compiled at install
+  time instead of running interpreter-cold until overnight background compilation. Regenerate it
+  on the Gradle-managed emulator. **Never point that task at a connected device**: the harness
+  uninstalls the target app when it finishes, which wipes saved places, trips and grants.
+- Measure the right thing. `dumpsys gfxinfo` percentiles cannot separate CPU from GPU; read
+  `framestats` phases instead (`DrawStart - PerformTraversalsStart` is measure and layout,
+  `FrameCompleted - IssueDrawCommandsStart` is GPU). `gfxinfo` is blind to the GL map surface
+  entirely, so the in-app frame probe is the fair per-frame number. A phone throttles after a
+  few minutes of scrubbing; check `dumpsys thermalservice` and alternate A/B runs.
+
+**The structural ceiling.** Google bakes server-ranked places and placement priorities into its
+tiles and places symbols incrementally in C++, so it never pays runtime whole-layer collision
+re-placement when data arrives. MapLibre re-solves whole-view symbol placement on its single
+render thread during camera motion, and every `setGeoJson` forces a whole-layer re-place. Vela
+streams places at runtime by design, so a placement spike at data-arrival moments in dense areas
+is permanent; deferring it to camera-idle moves it where it is invisible. Expect pans and
+flights indistinguishable from Google most of the time, with a brief settle-then-appear rhythm
+in dense areas.
+
+---
+
+## 14. Privacy, diagnostics and location hygiene
+
+### 14.1 What leaves the phone
+
+`PRIVACY.md` is the user-facing accounting and must agree with section 1.4. Browsing the map in
+the default configuration contacts Google not at all. Search, opening a place, traffic and
+transit directions reach Google. Routing reaches FOSSGIS. Transit boards reach Transitous.
+Reverse geocoding reaches Nominatim.
+
+### 14.2 Diagnostics
+
+`DiagLog` is an opt-in breadcrumb ring, off by default, persisted to a bounded
+`filesDir/diag_log.jsonl` so a report survives the process death that usually precedes it, and
+deleted on opt-out. `DiagExporter` shares it as a JSON bundle, user-initiated, never uploaded.
+
+`DiagScrub` has two levels. Plain export rounds coordinate-shaped decimals to 2 places (about
+1 km). "Redact places in exports" rounds to 1 place (about 10 km), replaces quoted search terms
+and intents, drops a navigation start's destination label, keeps only the host of a URL, blanks
+`cid` values and drops page-text detail. Counts, zoom levels and error text stay. Add a case to
+`DiagScrubTest` whenever a new breadcrumb can carry a name or an address.
+
+`NavTrace` (off by default) records one row per navigation frame: time, along-route progress,
+speed, bearing window, chord bearing, display bearing, camera bearing and frame dt. It carries
+**no** position data, which is what makes it safe to attach to a public issue, unlike a recorded
+trip.
+
+### 14.3 Sharing a trip
+
+A trip leaks its owner's endpoints in six places, and `TripScrub` handles all six: the fixes,
+the `META` destination, the `META` label, the maneuvers, the route polyline's start, and the
+spoken lines. It **trims** rather than blurs: every fix within the chosen radius of the start,
+the end, the destination and the user's Home and Work is deleted and the middle is kept at full
+precision, because rounding protects the ends weakly while destroying the geometry the trip
+exists to diagnose. Timestamps rebase to zero. An `S`, `J` or `B` event survives only if a fix
+within `EVENT_NEAR_MS` (3 s) survived, and a route block whose polyline trims to nothing drops
+its `RD` and `M` lines too. A batch share trims every entry; a trip that trims to nothing is
+left out and counted, never sent raw.
+
+### 14.4 Location hygiene
+
+This is about awareness, not a ban on real places. Real places are the raw material of a maps
+app: naming the business whose hours parse wrong is a good bug report. The failure mode is
+**defaulting to your own surroundings without noticing** - test coordinates, screenshot corners,
+sample addresses, "verified on a drive to X" commit lines. Each is nothing alone; together, in
+permanent public history, they put the author on a map, and scrubbing them later means rewriting
+history.
+
+The question to ask before any place, address or coordinate enters the repository: **was this
+chosen for a reason anyone could have, or is it here because it happens to be near the author?**
+
+- **Locality is input, never output.** Use it in a session to reason, query and reproduce; the
+  write-up carries the mechanism only. "A fuel station on a corner opened the transit stop beside
+  it, because the stop icon outranked every business in the tap box" says everything the fix
+  needs. If a bug cannot be explained without the place, it has not been root-caused yet.
+- **Fixture default: Davis and Sacramento, California.** Bounding box `38.30,-122.00` to
+  `38.90,-121.20`; example address `1451 W Covell Blvd, Davis, CA 95616`; San Francisco
+  (`37.7749,-122.4194`) for a generic big city; `37.0,-122.0` for an abstract grid. A different
+  area is fine with a reason; a synthetic grid at the author's own latitude is not a reason.
+- **Screenshots** default to the demo tools (simulate location, simulate driving). Check the
+  corners either way: search recents, place labels and street names all talk.
+- **Recorded trips, diagnostics exports and adb dumps carry raw GPS.** Never attach them to
+  issues, commits or CI artifacts.
+- `.github/workflows/location-guard.yml` scans added diff lines and commit messages against the
+  repository secret `LOCATION_TERMS` (one term per line) and reports the file and line only,
+  never the matched text. It cannot see issue bodies, comments, release notes or screenshots.
+
+### 14.5 Attribution
+
+No commit message, pull request body, issue comment, release note or file in this repository
+carries an AI co-author trailer, a "generated with" line, or any other AI attribution. The
+project reads as written by a person because it is maintained by one. This rule overrides any
+tooling default that claims otherwise. Before pushing, `git log origin/main..HEAD --format='%B'
+| grep -ci "claude\|anthropic\|generated with"` must be 0.
+
+---
+
+## 15. Build, release and distribution
+
+- **Toolchain**: AGP 8.7.3, Kotlin 2.1.0, Gradle 8.11.1, compileSdk 35, minSdk 26, Java 17,
+  Compose, Hilt, a version catalog, R8 in the `release` build type.
+- **Channels.** A push to `main` or `canary` builds and tests only; a push can never mint a
+  release. The nightly prerelease `v0.4.<run>` (versionName `0.4.<run>`, versionCode
+  `2000 + run`) is cut by a daily cron that skips when `main` has not moved, or on demand.
+  `canary` is the working branch and also a real update channel: each push replaces the single
+  APK on a fixed-tag rolling release whose tag is deliberately not `v0.*`. A weekly workflow
+  promotes the newest nightly to stable: same tag, same signed APK, no rebuild.
+- **The run number must stay in `ci.yml`.** A separate workflow would reset the counter and
+  regress versionCode. Never name a release `v0.4.0`: the updater's regex takes the run number
+  for the version code, so it would read as 2000 and never be offered. Keep local development
+  builds below versionCode 1000.
+- **Commit subjects are the changelog.** Release notes are built from the subjects since the
+  previous `v0.[0-9]*` tag. Every stable's notes lead with a hand-written "what's new" list above
+  the generated commit list, because the in-app dialog shows the release body verbatim.
+- Docs-only pushes skip CI and cut no nightly (`paths-ignore`); a mixed push still builds.
+  An fdroid metadata-only change also skips the index rebuild, which rides CI completion.
+- **F-Droid.** `fdroid-repo.yml` rebuilds a signed self-hosted repository (latest stable plus
+  newest nightly) and deploys it to GitHub Pages, pinning the index's suggested version to the
+  latest stable so default clients update weekly. It triggers on `workflow_run` of CI and the
+  promotion, not on the release event: releases created by CI's own token do not fire events for
+  other workflows. Never re-run only a failed deploy job; dispatch a fresh run.
+- **The project website rides the same Pages artifact.** Never add a second Pages deploy
+  workflow: `actions/deploy-pages` replaces the whole site, which would take down the F-Droid
+  channel and the map glyphs.
+- **Signing.** The release keystore lives outside the repository (`~/.vela-signing/`), with CI
+  secrets `VELA_KEYSTORE_BASE64`, `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS`. Losing it means
+  never updating installed builds. The app signing certificate's SHA-256 is published in README
+  and FDROID.md and can be read from any signed APK with `apksigner verify --print-certs`; do
+  not confuse it with the F-Droid index fingerprint. The calibration signing key is separate and
+  equally never committed. A `MAPTILER_KEY` secret reaches `BuildConfig` only.
+- **In-app updater** (`SelfUpdater`): reads the channel's releases, derives the version code
+  from the tag, offers a card, downloads with a no-call-timeout client, checks the zip magic
+  bytes, and hands the file to the system installer through the FileProvider, which enforces
+  same package and same signature. Notes are cumulative across the versions between installed
+  and offered. The launch check is throttled to about daily and "not now" pins the dismissed
+  code.
+- **On-device loop.** Build release at or above the installed version code, `adb install -r`,
+  and `am force-stop` before `am start` (installing over a running app keeps the old dex).
+  **Never `adb uninstall`**: it destroys saved trips and permission grants.
+- `MapScreen` sits near the JVM 64 KB method limit. Content lambdas do not count toward it but
+  direct composable calls and their argument lists do; when a debug compile fails with "method
+  too large", move a call with a long argument list into a small private composable.
+
+---
+
+## 16. Where the rest lives
+
+`FEATURES.md` is the exhaustive, dated list of what shipped and in what order, including the
+features this document describes only by rule. `ROADMAP.md` holds open work and the explicit
+"not going to happen" list. `docs/book/` explains subsystems for a reader who wants to
+understand a behavior rather than rebuild it. `CLAUDE.md` carries the working rules for
+contributors and assistants.

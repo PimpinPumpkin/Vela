@@ -24,7 +24,7 @@ picker, nav controls) needed **no operability work** - only focus *visibility* w
 5. **The full-screen photo viewer** - paging was swipe-only.
 
 **Finding 3: focus visibility is the other half.** Material's default focus indication
-(a faint ripple state layer) is too subtle on Vela's fixed-grey sheets. Without an
+(a faint ripple state layer) is too subtle on Vela's fixed-gray sheets. Without an
 obvious ring you can't tell where you are, which makes the app *technically* operable
 but practically unusable.
 
@@ -57,9 +57,9 @@ but practically unusable.
   and on any other device the instant Compose sees a non-touch key event (affordances appear
   on the first key press, melt away on the next tap). This is what carries hybrid/keypad
   phones now that `dpadFirst` no longer trusts the virtual device.
-- `Modifier.dpadHighlight(shape)` - a 2 dp primary-colour focus ring, drawn only while the
+- `Modifier.dpadHighlight(shape)` - a 2 dp primary-color focus ring, drawn only while the
   element (or a descendant - Material buttons host their own focus node, and
-  `onFocusEvent.hasFocus` covers both) holds focus **and** the UI is key-driven (honours
+  `onFocusEvent.hasFocus` covers both) holds focus **and** the UI is key-driven (honors
   `dpadFirst` directly, since a D-pad-first phone may still read `inputMode == Touch` until
   the first key event). Never appears under touch.
 - `rememberDpadAutoFocus(vararg keys)` - **D-pad-FIRST initial focus.** Returns a
@@ -104,7 +104,7 @@ and re-asserted in the `AndroidView` update block (MapLibre re-enables it on sur
 recreation). Touch gestures don't need view focus, so nothing is lost; keys now flow to the
 Compose focus system and `MapDpadController` drives the map instead.
 
-### The map - `MapDpadController` (new file) + a focusable centre target
+### The map - `MapDpadController` (new file) + a focusable center target
 
 `app/ui/map/MapDpadController.kt` is the key→camera seam. `VelaMapView` wires it up in
 `getMapAsync` alongside the touch listeners; MapScreen owns the key handling. The
@@ -122,7 +122,7 @@ controller deliberately **reuses the exact same code paths as touch**:
 - `zoomBy()` during nav adopts the manual nav-zoom override exactly like a pinch
   (`navUserZoom`); in browse it counts as a user gesture.
 
-**MapScreen's map target**: a 140 dp focusable box at the screen centre, with a
+**MapScreen's map target**: a 140 dp focusable box at the screen center, with a
 **two-stage** model:
 
 - **Focused** (pill: "OK: move the map"): a *normal* focus stop. Arrows keep
@@ -153,7 +153,7 @@ map; one BACK hands the arrows to the chrome.
 
 **Panel-aware (proven fix):** the map target is shown/focusable ONLY when the map is the
 primary surface. With a list/sheet/panel/search open (`mapTargetHidden`), it unmounts so
-the panel owns focus - a centre crosshair + focus stop floating over the results list stole
+the panel owns focus - a center crosshair + focus stop floating over the results list stole
 DOWN traversal into the rows (measured: DOWN from the results header jumped to the zoom `+`
 button, never reaching a result). Returning to the bare map re-acquires + re-engages it via
 `LaunchedEffect(dpadFirst, mapTargetHidden)` (retries because the focus node may not be
@@ -228,20 +228,20 @@ touches focus (`audit_static.sh` needs no device):
 (the Directions/Call/Street-View action pills, route-alternate rows, From/Add-stop/To editors,
 phone/website rows, "also at this location", "people also search for", photo thumbnails, hours/
 transit/popular-times expanders) originally had no `dpadHighlight`, so they were focus-reachable but
-*invisibly* (Material's default state-layer is too faint on the fixed-grey sheet). They all carry a
+*invisibly* (Material's default state-layer is too faint on the fixed-gray sheet). They all carry a
 ring now - `audit_static.sh` enforces it going forward. Same for the Settings voice-group headers.
 
 **Choose-on-map auto-engages (2026-07-08).** The bare map opening un-focused (above) removed the
 global auto-engage that Choose-on-map depended on, so pick mode opened dead (nothing focused, map
 not engaged, crosshair/pill suppressed in pick mode). Restored **scoped to pick mode**: a
-`LaunchedEffect(pickingOnMap)` in `MapScreen` requestFocuses + engages the centre target the moment
+`LaunchedEffect(pickingOnMap)` in `MapScreen` requestFocuses + engages the center target the moment
 `state.pickOnMap` goes non-null, so arrows pan immediately to place the pin and OK confirms. This
 works (unlike the cold-open bare map) because pick mode is entered mid-session, so focus already
 exists and `requestFocus` lands.
 
 **Settings horizontal-key focus trap (2026-07-08, found by `audit_dynamic.sh`'s multi-axis walk).**
 Settings is a `Column(verticalScroll)`. A LEFT/RIGHT press on a plain row (a `SelectableRow`, a
-switch row - no horizontal neighbour) made Compose's focus search CLEAR focus outright, with no way
+switch row - no horizontal neighbor) made Compose's focus search CLEAR focus outright, with no way
 back via arrows (only BACK escaped). Root cause: `moveFocus` clears on a no-target directional move
 in a scrolling column; `focusGroup()` doesn't help - only *swallowing* the key keeps focus. Fix: the
 reusable **`Modifier.dpadSwallowHorizontal()`** (`DpadFocus.kt`) on the Settings root `Column` AND on
@@ -263,15 +263,15 @@ like every platform settings app. Don't add a bare focusable `Switch`/`Checkbox`
 it in a ringed row.
 
 **The bare map is the ONE intentional exception (2026-07-08).** It used to auto-focus AND
-auto-engage the centre map target on open, so arrows immediately panned and you had to press
+auto-engage the center map target on open, so arrows immediately panned and you had to press
 BACK before you could reach the search bar (user report). Now the map neither auto-focuses nor
 auto-engages: nothing is focused on open, and the user's **first arrow lands on the search bar**
 (Compose's real-first-key initial focus picks the first focusable, which is the search bar). Why
 not just pre-focus the search bar? **Compose won't let us on the opening screen** - verified ~13
 ways: `requestFocus` no-ops while nothing is focused yet; `moveFocus` only ever lands on the
-centre map target (even after removing its `FocusRequester`); `moveFocus(Up)`/`Enter` and
+center map target (even after removing its `FocusRequester`); `moveFocus(Up)`/`Enter` and
 synthetic `KeyEvent`s don't take. So "nothing focused, first key → search bar" is the closest
-reachable behaviour - and it doesn't violate the spirit of the always-focused rule (the map is
+reachable behavior - and it doesn't violate the spirit of the always-focused rule (the map is
 ambient; the first key isn't wasted, it goes straight to search). From the search bar, DOWN walks
 to the category chips and the map target; OK on the map target engages it to pan.
 
@@ -368,7 +368,7 @@ keypad-phone search.
 | `SearchBar` | armed-field design + BACK-out + DOWN-escape into the entry rows (Traps A/B/C above) |
 | Search entry page (shortcut/saved/recent rows, menus) | `clickable` rows + `DropdownMenu`s - operable natively; rings added |
 | Search results list | rows/chips/chevron operable; top-sheet drag has button equivalents; rings added |
-| Map | `MapDpadController` + centre target (above) |
+| Map | `MapDpadController` + center target (above) |
 | Place sheet | handle fixed; action buttons/tabs/rows are Material or `clickable` - operable; Reviews tab search field got `dpadFieldEscape` (proven UP-escapes + dismisses the IME) |
 | Live reviews WebView (`ReviewsPanel`, "Read all reviews") | reachable (OK on the button) + exitable (BACK) proven; ↑/↓ now page-scroll the WebView (sweep fix); visual scroll not confirmable on the test network - see limitations |
 | Directions panel | handle ring; rows/chips/buttons (incl. stop reorder) are buttons - operable; body scroll-capped so **Start** is reachable with 4 alternates (sweep fix, helps touch too) |
@@ -483,7 +483,7 @@ content filter otherwise leaves routing without a usable fix on this device.)
 
 The whole feature follows these rules - keep following them when extending it:
 
-1. **New behaviour lives in new files**: `DpadFocus.kt`, `MapDpadController.kt`,
+1. **New behavior lives in new files**: `DpadFocus.kt`, `MapDpadController.kt`,
    `docs/dpad.md`. Upstream can't conflict with files it doesn't have.
 2. **Edits to shared files are additive and anchored**, never restructuring: one
    contiguous, commented import block per file ("docs/dpad.md" marker); new modifiers
@@ -495,7 +495,7 @@ The whole feature follows these rules - keep following them when extending it:
    the gesture handlers use. Upstream fixes to tap resolution, reroute-on-pan,
    nav-zoom overrides etc. automatically apply to D-pad input.
 4. **Everything is gated on `dpadMode`/`noTouch`** where it could change touch
-   behaviour; with a touchscreen and no key input, the UI is byte-identical.
+   behavior; with a touchscreen and no key input, the UI is byte-identical.
 
 If a pull does conflict, the conflicts will be in the small anchored insertions - 
 re-apply them around the upstream change and re-read this file's design section to
@@ -536,6 +536,6 @@ teal primary ring read as "green on green" against the teal ON-switch. Two new r
 helpers came with it: `Modifier.dpadContainVertical()` (keeps a no-target UP/DOWN at a scroll
 container's edge from clearing focus irrecoverably - the vertical twin of
 `dpadSwallowHorizontal`; the scaffold applies it) and `Modifier.dpadClickable()` (a clickable
-that drops Material's grey focus layer while input is key-driven, so the ring is the one focus
+that drops Material's gray focus layer while input is key-driven, so the ring is the one focus
 signal; pair it with `dpadHighlight` on the same row - `dpad_test_suite/audit_static.sh`
 exempts only DpadFocus.kt itself from the ring rule).

@@ -13,7 +13,7 @@ Live traffic, real place data and turn-by-turn navigation, with zero Google on y
 [![License: GPL v3](https://img.shields.io/github/license/PimpinPumpkin/Vela?color=blue)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/PimpinPumpkin/Vela?style=flat&color=ffd43b)](https://github.com/PimpinPumpkin/Vela/stargazers)
 
-[Install](#install) · [What you get](#what-you-get) · [FAQ](docs/FAQ.md) · [The book](docs/book/README.md) · [Privacy](#privacy) · [How it works](docs/HOW-IT-WORKS.md) · [Build](#build) · [Discussions](https://github.com/PimpinPumpkin/Vela/discussions) · [Translate](docs/TRANSLATING.md)
+[Install](#install) · [What you get](#what-you-get) · [FAQ](docs/FAQ.md) · [The book](docs/book/README.md) · [Privacy](#privacy) · [How it works](SPEC.md) · [Build](#build) · [Discussions](https://github.com/PimpinPumpkin/Vela/discussions) · [Translate](docs/TRANSLATING.md)
 
 [<img src="https://img.shields.io/badge/VISIT%20THE%20WEBSITE-149387?style=for-the-badge" alt="Visit the website">](https://pimpinpumpkin.github.io/Vela/)
 
@@ -168,7 +168,7 @@ There's also a one-page tour at
 - **Fixes itself when Google moves things.** The scraping recipes live in a signed
   config the app checks at launch - when Google shifts a field or an endpoint, a
   repair ships to every install in minutes, no update needed. The same channel can
-  push a heads-up notice ("search is down, fix coming") straight onto the map. See [`docs/CALIBRATION.md`](docs/CALIBRATION.md): for details.
+  push a heads-up notice ("search is down, fix coming") straight onto the map. See [`SPEC.md`](SPEC.md) sections 3 and 11 for details.
 - **Say it or type it.** "Take me home", "get me to work", "navigate to the station",
   "Davis to San Francisco", "nearest pharmacy", "what's my ETA": the search box understands
   those as actions, spoken through the mic or typed, in every language the app speaks, with
@@ -235,26 +235,25 @@ Full per-request detail is in [PRIVACY.md](PRIVACY.md).
 
 ## How it works
 
-Every capability, the keyless method behind it, and the file to read first is laid out in
-**[docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md)** - the one-screen index into the codebase
-(basemap, the Google scrape, open routing, the offline stack, remote self-repair, …).
-Deeper still is [`SPEC.md`](SPEC.md).
+Every capability, the method behind it, and the file to read first is laid out in
+**[SPEC.md](SPEC.md)**, the authoritative technical specification: the basemap, the places
+bake, the Google extractor, open routing, navigation, the offline stack and the signed
+remote-repair channel.
 
 | File | What's in it |
 |---|---|
 | [`README.md`](README.md) | This - what Vela is, why, and the privacy comparison |
-| [`docs/HOW-IT-WORKS.md`](docs/HOW-IT-WORKS.md) | Every capability, the keyless method behind it, and the file to read first |
+| [`SPEC.md`](SPEC.md) | Every technical rule, contract, constant and constraint |
 | [`docs/BUILDING.md`](docs/BUILDING.md) | Building from source, module architecture, and the release pipeline |
 | [`docs/LANGUAGES.md`](docs/LANGUAGES.md) | The 15 supported languages, layer by layer (UI, spoken nav, neural voice, dictation), and how to add one |
 | [`docs/TRANSLATING.md`](docs/TRANSLATING.md) | Translating Vela - edit one file, open a PR |
-| [`FEATURES.md`](FEATURES.md) | The full, categorised list of every shipped capability (the encyclopaedia) |
-| [`SPEC.md`](SPEC.md) | The authoritative **rebuild spec** - architecture, extractor contract (pb layouts + response indices), resilience layer, hard constraints |
+| [`FEATURES.md`](FEATURES.md) | The full, categorized list of every shipped capability (the encyclopedia) |
 | [`ROADMAP.md`](ROADMAP.md) | Planned work + big bets (opt-in telemetry, a Vela-own traffic layer, giant-country graph splits, …) |
 | [`PRIVACY.md`](PRIVACY.md) | Exactly what each Google endpoint receives, per request |
 | [`CLAUDE.md`](CLAUDE.md) | Build rules, module layout, and the hard-won gotchas - for contributors (human or AI) |
 | [`docs/dpad.md`](docs/dpad.md) | D-pad / no-touchscreen operation - design, findings, per-surface audit, and the merge-with-upstream policy |
-| [`docs/CALIBRATION.md`](docs/CALIBRATION.md) | The Google extractor + the signed remote-repair channel, in depth |
-| [`docs/MAP-STYLE.md`](docs/MAP-STYLE.md) | Basemap, fonts, custom layers and theming details |
+| [`docs/book/`](docs/book/README.md) | Subsystem explainers: how places rank, when data is rebaked, what the camera rules are |
+| [`docs/FAQ.md`](docs/FAQ.md) | The ten questions people ask first |
 
 ## Degoogled / GrapheneOS notes
 
@@ -303,7 +302,7 @@ The map itself is [OpenStreetMap](https://www.openstreetmap.org/copyright) data,
 contributors, available under the Open Database License, served as vector tiles by
 [OpenFreeMap](https://openfreemap.org). Offline routing regions, place packs, house-number and
 building overlays are built from OpenStreetMap, OpenAddresses and Microsoft Building Footprints
-extracts and carry their licences in the release notes of the hosting release. Satellite imagery
+extracts and carry their licenses in the release notes of the hosting release. Satellite imagery
 is Esri World Imagery, with Google imagery where Esri has none at close zoom.
 
 ## License
