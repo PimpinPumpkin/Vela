@@ -3864,6 +3864,16 @@ Gotchas:
   `unzip -t`-checked, because five jobs died on "Invalid or corrupt jarfile" when the unverified
   `latest` download came back as not-a-jar on a busy runner; and a bake over GitHub's 2 GiB asset
   limit (Nunavut at z14) is rebaked one zoom shallower in the same job before it fails.
+  **Third lesson (2026-09-17): planetiler MUST get explicit `--bounds`.** Geofabrik's PBF HEADER
+  bbox can be far looser than the extract polygon (new-mexico's header reaches ~7 degrees into
+  Texas), planetiler inherits it into the PMTiles header, `pmtiles-bbox.py` + the manifest copy
+  it faithfully, and `BasemapTileStore.installedFor` then mounts the archive for views it has no
+  tiles for - the vector basemap silently draws NOTHING there (a phone in north Texas with the
+  new-mexico archive showed traffic colors + Google dots but no OSM streets). The bake now pulls
+  the true polygon bbox from Geofabrik's index-v1.json (URL-path suffix-matched - index ids drop
+  the continent component) and passes `--bounds` in **W,S,E,N order** (planetiler's
+  `Arguments.bounds` constructs `Envelope(v0,v2,v1,v3)`; javap-pinned - do not "fix" it to
+  S,W,N,E). 37 of 413 published archives are >1 degree loose the same way and want a re-bake.
   Saarland full z14 = 33 MB (a lite z13 no-buildings tier = 8 MB, not wired). App: `PmtilesRegionStore`
   is the shared base of `PlacesTileStore` and `BasemapTileStore` (`files/basemap/`, never streamed,
   `installedFor(center)` = smallest covering archive); `MapUiState.basemapArchive`; `refreshBasemapArchive`
