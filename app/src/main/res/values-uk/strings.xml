@@ -893,6 +893,6 @@
     <string name="routing_offer_body">Завантажує дороги, місця й карту регіону, близько %1$s. Перебудова маршруту швидша, а навігація працює без зв\'язку. Завантаження є в Налаштуваннях, у розділі офлайн-карт.</string>
     <string name="nav_stop_offer_add">Заїзд</string>
     <string name="nav_stop_offer_ahead">через %1$s</string>
-    <string name="settings_nav_tap_places">Натискання на місця за кермом</string>
+    <string name="settings_nav_tap_places">Натискання на місця за кермом (експеримент)</string>
     <string name="settings_nav_tap_places_hint">Під час навігації на карті лишаються заправки, їжа та зарядки: дотик пропонує місце як заїзд, другий дотик додає його. Типово вимкнено: навігація ховає місця, щоб карта читалася. Увімкнення також вмикає показ місць.</string>
 </resources>

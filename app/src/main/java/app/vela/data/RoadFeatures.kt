@@ -42,7 +42,7 @@ object RoadFeatures {
 
     class Region(val id: String, val name: String, val url: String, val s: Double, val w: Double, val n: Double, val e: Double, val updatedAt: String)
 
-    private class Loaded(val lat: DoubleArray, val lng: DoubleArray, val kind: ByteArray) {
+    private class Loaded(val lat: DoubleArray, val lng: DoubleArray, val kind: ByteArray, val bearing: ShortArray) {
         val grid = HashMap<Long, IntArray>()
         init {
             // Two passes over primitive arrays (count, then fill) instead of a map of boxed lists.
@@ -143,7 +143,8 @@ object RoadFeatures {
      *  integers, a few hundred ms for the same file. */
     private fun parse(raw: InputStream): Loaded {
         val bytes = GZIPInputStream(raw, 1 shl 16).readBytes()
-        var las = DoubleArray(1 shl 16); var los = DoubleArray(1 shl 16); var ks = ByteArray(1 shl 16); var n = 0
+        var las = DoubleArray(1 shl 16); var los = DoubleArray(1 shl 16); var ks = ByteArray(1 shl 16)
+        var bs = ShortArray(1 shl 16); var n = 0
         var i = 0; val end = bytes.size
         while (i < end) {
             // lat
@@ -168,11 +169,23 @@ object RoadFeatures {
             if (i < end && bytes[i] == '\t'.code.toByte()) i++ else { i = skipLine(bytes, i); continue }
             if (i >= end || la.isNaN() || lo.isNaN()) { i = skipLine(bytes, i); continue }
             val k = bytes[i]
-            if (n == las.size) { las = las.copyOf(n * 2); los = los.copyOf(n * 2); ks = ks.copyOf(n * 2) }
-            las[n] = la; los[n] = lo; ks[n] = k; n++
+            i++
+            // Optional 4th column: the road's orientation, 0-179. -1 = absent (older bakes).
+            var bearing = -1
+            if (i < end && bytes[i] == '\t'.code.toByte()) {
+                i++
+                var v = 0; var any = false
+                while (i < end) {
+                    val c = bytes[i].toInt()
+                    if (c in 48..57) { v = v * 10 + (c - 48); any = true; i++ } else break
+                }
+                if (any) bearing = v
+            }
+            if (n == las.size) { las = las.copyOf(n * 2); los = los.copyOf(n * 2); ks = ks.copyOf(n * 2); bs = bs.copyOf(n * 2) }
+            las[n] = la; los[n] = lo; ks[n] = k; bs[n] = bearing.toShort(); n++
             i = skipLine(bytes, i)
         }
-        return Loaded(las.copyOf(n), los.copyOf(n), ks.copyOf(n))
+        return Loaded(las.copyOf(n), los.copyOf(n), ks.copyOf(n), bs.copyOf(n))
     }
     private val POW10 = doubleArrayOf(1.0, 10.0, 100.0, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9)
     private fun skipLine(b: ByteArray, from: Int): Int {
@@ -213,7 +226,7 @@ object RoadFeatures {
         return all
     }
 
-    private inline fun scan(south: Double, west: Double, north: Double, east: Double, visit: (Double, Double, Char) -> Unit) {
+    private inline fun scan(south: Double, west: Double, north: Double, east: Double, visit: (Double, Double, Char, Int) -> Unit) {
         val sets = synchronized(loaded) { loaded.values.toList() }
         val r0 = rowOf(south); val r1 = rowOf(north); val c0 = rowOf(west); val c1 = rowOf(east)
         for (l in sets) {
@@ -224,7 +237,7 @@ object RoadFeatures {
                     l.grid[key(r, c)]?.let { bucket ->
                         for (i in bucket) {
                             val la = l.lat[i]; val lo = l.lng[i]
-                            if (la in south..north && lo in west..east) visit(la, lo, l.kind[i].toInt().toChar())
+                            if (la in south..north && lo in west..east) visit(la, lo, l.kind[i].toInt().toChar(), l.bearing[i].toInt())
                         }
                     }
                     c++
@@ -244,13 +257,13 @@ object RoadFeatures {
 
     fun controlsInBox(south: Double, west: Double, north: Double, east: Double): List<TrafficControl> {
         val out = ArrayList<TrafficControl>()
-        scan(south, west, north, east) { la, lo, k -> kindOf(k)?.let { out.add(TrafficControl(LatLng(la, lo), it)) } }
+        scan(south, west, north, east) { la, lo, k, b -> kindOf(k)?.let { out.add(TrafficControl(LatLng(la, lo), it, b.takeIf { d -> d >= 0 })) } }
         return out
     }
 
     fun camerasInBox(south: Double, west: Double, north: Double, east: Double): List<SpeedCamera> {
         val out = ArrayList<SpeedCamera>()
-        scan(south, west, north, east) { la, lo, k -> if (k == 'C') out.add(SpeedCamera(LatLng(la, lo))) }
+        scan(south, west, north, east) { la, lo, k, _ -> if (k == 'C') out.add(SpeedCamera(LatLng(la, lo))) }
         return out
     }
 
@@ -274,10 +287,10 @@ object RoadFeatures {
         val t1 = System.nanoTime()
         val out = ArrayList<TrafficControl>()
         var visited = 0
-        scan(b[0], b[1], b[2], b[3]) { la, lo, k ->
+        scan(b[0], b[1], b[2], b[3]) { la, lo, k, bear ->
             val kind = kindOf(k) ?: return@scan
             visited++
-            if (idx.near(la, lo)) out.add(TrafficControl(LatLng(la, lo), kind))
+            if (idx.near(la, lo)) out.add(TrafficControl(LatLng(la, lo), kind, bear.takeIf { it >= 0 }))
         }
         android.util.Log.i("VelaControls", "corridor pts=${polyline.size} kept=${idx.segments} index=${(t1 - t0) / 1_000_000} ms scan=${(System.nanoTime() - t1) / 1_000_000} ms visited=$visited hits=${out.size}")
         return out
@@ -288,7 +301,7 @@ object RoadFeatures {
         val b = corridorBox(polyline, meters)
         val idx = SegmentIndex(polyline, meters)
         val out = ArrayList<SpeedCamera>()
-        scan(b[0], b[1], b[2], b[3]) { la, lo, k ->
+        scan(b[0], b[1], b[2], b[3]) { la, lo, k, _ ->
             if (k != 'C') return@scan
             if (idx.near(la, lo)) out.add(SpeedCamera(LatLng(la, lo)))
         }

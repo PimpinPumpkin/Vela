@@ -32,13 +32,25 @@ osmium tags-filter "$WORK/region.osm.pbf" \
   n/railway=level_crossing \
   n/traffic_calming=bump,hump,table,cushion \
   -o "$WORK/filtered.osm.pbf" --overwrite
-rm -f "$WORK/region.osm.pbf"
+
+# The HIGHWAY ways, for the orientation of the road each control sits on (the app uses it to tell a
+# stop sign that holds you from the one that holds the side street). A failure here is not fatal:
+# the column comes out empty and the app keeps every sign, as it did before.
+echo "→ exporting highway ways (for road bearings)"
+osmium tags-filter "$WORK/region.osm.pbf" w/highway -o "$WORK/ways.osm.pbf" --overwrite 2>/dev/null || true
+WAYS_ARG=""
+if [ -s "$WORK/ways.osm.pbf" ] && osmium export "$WORK/ways.osm.pbf" -f geojsonseq -o "$WORK/ways.geojsonseq" --overwrite 2>/dev/null; then
+  WAYS_ARG="--ways $WORK/ways.geojsonseq"
+else
+  echo "  (no way geometry; bearings will be empty)"
+fi
+rm -f "$WORK/ways.osm.pbf"
 
 echo "→ exporting → TSV"
 osmium export "$WORK/filtered.osm.pbf" -f geojsonseq -o - \
-  | python3 "$ROOT/scripts/road_features_tsv.py" "$WORK/$ID.bin"
+  | python3 "$ROOT/scripts/road_features_tsv.py" "$WORK/$ID.bin" $WAYS_ARG
 COUNT=$(gzip -dc "$WORK/$ID.bin" | wc -l | tr -d ' ')
-rm -f "$WORK/filtered.osm.pbf"
+rm -f "$WORK/filtered.osm.pbf" "$WORK/region.osm.pbf" "$WORK/ways.geojsonseq"
 SIZE_KB=$(( ( $(stat -f%z "$WORK/$ID.bin" 2>/dev/null || stat -c%s "$WORK/$ID.bin") + 1023 ) / 1024 ))
 ASSET_URL="https://github.com/$REPO/releases/download/$TAG/$ID.bin"
 UPDATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"

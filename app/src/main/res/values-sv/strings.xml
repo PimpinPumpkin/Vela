@@ -889,6 +889,6 @@
     <string name="routing_offer_body">Hämtar vägar, platser och karta för regionen, cirka %1$s. Omräkningar går snabbare och vägvisningen fungerar utan täckning. Nedladdningar finns under Inställningar, Offlinekartor.</string>
     <string name="nav_stop_offer_add">Lägg till</string>
     <string name="nav_stop_offer_ahead">om %1$s</string>
-    <string name="settings_nav_tap_places">Tryck på platser under körning</string>
+    <string name="settings_nav_tap_places">Tryck på platser under körning (experimentell)</string>
     <string name="settings_nav_tap_places_hint">Under navigering ligger bensin, mat och laddning kvar på kartan; ett tryck föreslår platsen som stopp och ett andra lägger till den. Av som standard, eftersom navigering döljer platser för att kartan ska gå att läsa. Att slå på detta slår även på Visa platser.</string>
 </resources>
