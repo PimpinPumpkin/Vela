@@ -2750,7 +2750,6 @@ fun VelaMapView(
 
     androidx.compose.foundation.layout.Box(modifier) {
     AndroidView(factory = { mapView }, modifier = Modifier.matchParentSize()) { mv ->
-        probeOnce(mv) // PROBE
         // Re-assert non-focusability each pass — MapLibre re-enables it on surface
         // (re)creation, which would let it eat D-pad keys again (docs/dpad.md).
         if (mv.isFocusable) {
@@ -5010,24 +5009,6 @@ private fun addRouteBubbleImage(st: Style, id: String, fill: Int, edge: Int, d: 
         listOf(org.maplibre.android.maps.ImageStretches(r + d, bodyH - r - d)),
         org.maplibre.android.maps.ImageContent(8 * d, 4 * d, w - 8 * d, bodyH - 4 * d),
     )
-}
-
-private val probeArmed = booleanArrayOf(false)
-private fun probeOnce(mv: org.maplibre.android.maps.MapView) { // PROBE
-    if (probeArmed[0]) return
-    probeArmed[0] = true
-    mv.addOnDidFinishRenderingFrameListener { fully, enc, ren ->
-        android.util.Log.i("VelaFps", "f ${android.os.SystemClock.elapsedRealtimeNanos()} $enc $ren $fully")
-    }
-    val startNs = longArrayOf(0L); val what = arrayOfNulls<String>(1)
-    android.os.Looper.getMainLooper().setMessageLogging { line ->
-        if (line.startsWith(">>>>> Dispatching")) { startNs[0] = System.nanoTime(); what[0] = line }
-        else if (line.startsWith("<<<<< Finished") && startNs[0] != 0L) {
-            val ms = (System.nanoTime() - startNs[0]) / 1_000_000.0
-            if (ms > 12.0) android.util.Log.i("VelaFps", "slow ${"%.1f".format(ms)} ${what[0]?.substringAfter("} ")?.take(120)}")
-            startNs[0] = 0L
-        }
-    }
 }
 
 private fun navBubbleBitmap(dark: Boolean, d: Float, green: Boolean = false): android.graphics.Bitmap {
