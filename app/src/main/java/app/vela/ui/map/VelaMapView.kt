@@ -411,6 +411,7 @@ private var placesNavFuelOnly = false
  *  would actually divert for, so there is something to tap. Still no dots and still the icon budget. */
 private var placesNavDriveSet = false
 private val NAV_DRIVE_GROUPS = arrayOf<Any>("fuel", "food")
+private const val NAV_DRIVE_BLOCK_TOP = 2 // best two per ~100 m block while driving
 /** ROUTE PREVIEW (the chooser is open, not navigating): only landmark-grade places draw, no dots,
  *  like Google's route overview, so the route reads before Start (user 2026-09-16). */
 private var placesPreviewLandmarks = false
@@ -425,7 +426,13 @@ private fun applyOpenPlacesHidden(style: Style) {
     val fuel = Expression.eq(Expression.get("group"), Expression.literal("fuel"))
     val landmark = Expression.gte(Expression.get("prominence"), Expression.literal(PREVIEW_LANDMARK_PROMINENCE))
     val modeFilter = when {
-        placesNavDriveSet -> Expression.`in`(Expression.get("group"), Expression.literal(NAV_DRIVE_GROUPS))
+        // In nav the same block budget is too generous: at speed every icon is placement work on a
+        // moving camera, so the drive set takes only the best few per block (user 2026-09-17: the 4a
+        // dropped frames with the tap-places set on).
+        placesNavDriveSet -> Expression.all(
+            Expression.`in`(Expression.get("group"), Expression.literal(NAV_DRIVE_GROUPS)),
+            Expression.lte(Expression.coalesce(Expression.get("frank"), Expression.literal(1)), Expression.literal(NAV_DRIVE_BLOCK_TOP)),
+        )
         placesNavFuelOnly -> fuel
         placesPreviewLandmarks -> landmark
         else -> null
@@ -1036,16 +1043,19 @@ fun VelaMapView(
                                     val at = lines.firstNotNullOfOrNull { pts ->
                                         crossLabelPoint(pts.map { it.longitude() to it.latitude() }, window, touch)
                                     } ?: continue
+                                    // Null = the point did not project onto the route; leave the
+                                    // property OFF so the layer's coalesce keeps the callout rather
+                                    // than treating it as "already passed" (which hid whole streets).
                                     val atM = app.vela.core.nav.RouteProjection.alongMeters(
                                         routePolyline, routeCum, LatLng(at.second, at.first), 400.0,
-                                    ) ?: 0.0
+                                    )
                                     out[name] = Feature.fromGeometry(Point.fromLngLat(at.first, at.second)).apply {
                                         addStringProperty("name", name)
                                         addStringProperty("tier", tier)
                                         // Where this callout sits along the route, so the layer can drop it
                                         // the moment the puck is past it (user 2026-09-17: bubbles hung
                                         // behind the car and ran into the bottom bar).
-                                        addNumberProperty(NAV_XLABEL_AT_PROP, atM)
+                                        atM?.let { addNumberProperty(NAV_XLABEL_AT_PROP, it) }
                                         runCatching { f.getStringProperty("name:en") }.getOrNull()?.let { addStringProperty("name:en", it) }
                                         runCatching { f.getStringProperty("name:latin") }.getOrNull()?.let { addStringProperty("name:latin", it) }
                                     }
@@ -5187,6 +5197,10 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
     val key = listOf(on, dark, exclude, uiWantsLatinLabels())
     if (key == lastNavLabelKey) return
     lastNavLabelKey = key
+    // A fresh drive starts at zero: without this the last drive's progress stayed in the filter and
+    // the first callouts of the new one were treated as already passed.
+    navLabelPassed = 0.0
+    lastPassedFilterM = -1.0
     val ids = listOf(NAV_ROADLABEL_LAYER, NAV_ROADLABEL_MINOR_LAYER)
     // The bubbles REPLACE the basemap's line-following road names during nav - both drawing is a
     // doubled label ("2nd Street" along the road right under its own bubble, device-caught

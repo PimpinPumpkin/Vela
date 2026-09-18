@@ -5710,6 +5710,10 @@ class MapViewModel @Inject constructor(
      * inner half — panning/driving through the box triggers no refetch (spares the fair-use Overpass server);
      * only nearing the box edge refetches. Single-flight + a short settle so a flick doesn't scrape.
      */
+    /** A stop sign this far off the driven line is the side street's, not yours; one nowhere near
+     *  the route at all is ordinary map furniture and stays. */
+    private val STOP_ON_ROUTE_VIEW_M = 11.0
+
     private fun refreshTrafficControls(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
         // During NAV the layer is served by the per-route corridor set (issue #248): the moving camera
         // crossed the cached box edge constantly, and the refetch churn against sometimes-dead mirrors
@@ -5763,7 +5767,19 @@ class MapViewModel @Inject constructor(
             // grid stay separate), each cluster drawn at its centroid. Fewer allowOverlap symbols
             // is also a straight render win.
             val merged = withContext(Dispatchers.Default) {
-                res.groupBy { it.kind }.flatMap { (kind, group) ->
+                // While a route is up, a STOP only counts when it is on the road you are driving -
+                // the same rule the corridor path uses. This path also serves nav when the corridor
+                // fetch failed, and without it the side street's sign drew as if it were yours.
+                val poly = _state.value.activeRoute?.polyline.orEmpty()
+                val onRoute = if (poly.size < 2) res else {
+                    val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+                    res.filter { c ->
+                        c.kind != app.vela.core.data.TrafficControl.Kind.STOP ||
+                            app.vela.core.nav.RouteProjection.alongMeters(poly, cum, c.loc, STOP_ON_ROUTE_VIEW_M) != null ||
+                            app.vela.core.nav.RouteProjection.alongMeters(poly, cum, c.loc, 4_000.0) == null
+                    }
+                }
+                onRoute.groupBy { it.kind }.flatMap { (kind, group) ->
                     app.vela.core.data.MapDeclutter.cluster(group, CONTROLS_CLUSTER_M) { it.loc }
                         .map { c -> app.vela.core.data.TrafficControl(c.centroid, kind) }
                 }
