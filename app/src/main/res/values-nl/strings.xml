@@ -891,4 +891,5 @@
     <string name="nav_stop_offer_ahead">over %1$s</string>
     <string name="settings_nav_tap_places">Plaatsen aantikken tijdens het rijden (experimenteel)</string>
     <string name="settings_nav_tap_places_hint">Tijdens navigatie blijven tankstations, eten en laadpunten op de kaart staan; tikken biedt de plaats als tussenstop aan, een tweede tik voegt hem toe. Standaard uit, omdat navigatie plaatsen verbergt om de kaart leesbaar te houden. Dit aanzetten zet ook Plaatsen tonen aan.</string>
+    <string name="mapvm_start_from_here">Start vanaf je locatie</string>
 </resources>

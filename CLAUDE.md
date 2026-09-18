@@ -1875,6 +1875,10 @@ architecture note.
   "Everything since" commit list: one line per feature, plain words, the reason for an early
   cut first if there is one (0.4.1217 is the model). The promote workflow cannot write this
   part; it is the release's own job, the same day. Nightlies keep the commit list alone.
+- **START RE-PLANS FROM THE FIX (issue #463, 2026-09-17):** `MapViewModel.startNav()` intercepts a
+  custom `directionsOrigin` more than `START_FROM_ME_M` (150 m) from `myLocation`: it clears the
+  origin, sets `autoStartOnRoute`, re-routes and lets the arrival start the drive, rather than
+  handing NavSession a line the driver is not on and letting the off-route reroute rewrite it.
 - **ONE TRIP EDITOR (issue #516, 2026-09-17):** `TripEditorSheet` + `tripPointsForEditor` / `applyTrip`
   is the editor for the route chooser regardless of the Google-style experiment; the pinned-ends
   `StopsEditorSheet` now serves only the IN-DRIVE case (where the start is where you are).

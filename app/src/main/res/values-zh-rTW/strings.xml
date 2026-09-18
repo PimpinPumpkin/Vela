@@ -909,4 +909,5 @@
     <string name="nav_stop_offer_ahead">%1$s後</string>
     <string name="settings_nav_tap_places">駕駛時點按地點 (實驗功能)</string>
     <string name="settings_nav_tap_places_hint">導航時仍在地圖上顯示加油、餐飲和充電地點,點按會將其作為途經點提示,再點一次即可加入。預設關閉,因為導航會隱藏地點以保持地圖清晰。開啟此項也會開啟「顯示地點」。</string>
+    <string name="mapvm_start_from_here">從你的位置開始導航</string>
 </resources>

@@ -895,4 +895,5 @@
     <string name="nav_stop_offer_ahead">через %1$s</string>
     <string name="settings_nav_tap_places">Нажатие на места за рулём (эксперимент)</string>
     <string name="settings_nav_tap_places_hint">Во время навигации на карте остаются заправки, еда и зарядки: нажатие предлагает место как заезд, второе нажатие добавляет его. По умолчанию выключено: навигация скрывает места, чтобы карта читалась. Включение также включает показ мест.</string>
+    <string name="mapvm_start_from_here">Начинаем с вашего местоположения</string>
 </resources>

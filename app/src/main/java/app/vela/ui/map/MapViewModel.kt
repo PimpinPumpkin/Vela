@@ -4246,7 +4246,25 @@ class MapViewModel @Inject constructor(
             s.toString()
         }
 
-    fun startNav() = nav.startNav()
+    /** Start the drive. With a CUSTOM start that is not where you are (issue #463: "from this gas
+     *  station to that city"), the planned line is one you are not standing on, and nav would begin
+     *  by deciding you are off route and re-planning from your position a few seconds later - which
+     *  reads as the app throwing your trip away for an older one. Re-plan from your position first,
+     *  keeping the destination and the stops, and start on that. Near the chosen start (you really
+     *  are there), nothing changes. */
+    fun startNav() {
+        val s = _state.value
+        val start = if (s.directionsReversed) null else s.directionsOrigin
+        val me = s.myLocation
+        if (start != null && me != null && me.distanceTo(start.location) > START_FROM_ME_M) {
+            autoStartOnRoute = true
+            _state.update { it.copy(directionsOrigin = null) }
+            showStatus(appContext.getString(R.string.mapvm_start_from_here))
+            route(_state.value.travelMode)
+            return
+        }
+        nav.startNav()
+    }
     fun stopNav() = nav.stopNav()
     fun onNavPanned() = nav.onNavPanned()
     fun recenterNav() = nav.recenterNav()
@@ -6441,6 +6459,8 @@ class MapViewModel @Inject constructor(
     }
 
     companion object {
+        /** Past this from the trip's chosen start, Start re-plans from where you are (issue #463). */
+        private const val START_FROM_ME_M = 150.0
         private const val ROUTING_OFFER_DONE = "routing_offer_done"
         const val KEY_DISMISSED = "dismissed"
         const val CONTROLS_MIN_ZOOM = 16.0 // draw traffic lights/stop signs only when zoomed in this close
