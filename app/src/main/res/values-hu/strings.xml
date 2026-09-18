@@ -891,6 +891,6 @@
     <string name="routing_offer_body">Letölti a régió útjait, helyeit és térképét, kb. %1$s. Gyorsabb az újratervezés, és a navigáció térerő nélkül is működik. A letöltések a Beállítások, Offline térképek alatt vannak.</string>
     <string name="nav_stop_offer_add">Megálló</string>
     <string name="nav_stop_offer_ahead">%1$s múlva</string>
-    <string name="settings_nav_tap_places">Helyek érintése vezetés közben</string>
+    <string name="settings_nav_tap_places">Helyek érintése vezetés közben (kísérleti)</string>
     <string name="settings_nav_tap_places_hint">Navigálás közben a benzinkutak, éttermek és töltők a térképen maradnak; egy érintés megállóként ajánlja fel a helyet, a második hozzáadja. Alapból ki van kapcsolva, mert a navigáció elrejti a helyeket az olvashatóságért. A bekapcsolása a Helyek megjelenítését is bekapcsolja.</string>
 </resources>

@@ -889,6 +889,6 @@
     <string name="routing_offer_body">Descarga las carreteras, los lugares y el mapa de esta región, unos %1$s. Los recálculos son más rápidos y las indicaciones funcionan sin señal. Las descargas están en Ajustes, Mapas sin conexión.</string>
     <string name="nav_stop_offer_add">Añadir</string>
     <string name="nav_stop_offer_ahead">a %1$s</string>
-    <string name="settings_nav_tap_places">Tocar lugares al conducir</string>
+    <string name="settings_nav_tap_places">Tocar lugares al conducir (experimental)</string>
     <string name="settings_nav_tap_places_hint">Durante la navegación, gasolineras, comida y puntos de carga siguen en el mapa y al tocar uno se ofrece como parada; un segundo toque la añade. Desactivado por defecto, ya que la navegación oculta los lugares para que el mapa se lea bien. Activarlo también activa Mostrar lugares.</string>
 </resources>

@@ -15,6 +15,23 @@ import app.vela.core.model.distanceTo
  */
 object RouteProjection {
 
+    /** The route's heading, in degrees 0-359, [m] metres along [poly]. */
+    fun bearingAt(poly: List<LatLng>, cum: DoubleArray, m: Double): Double {
+        if (poly.size < 2) return 0.0
+        var i = 1
+        while (i < cum.size - 1 && cum[i] < m) i++
+        val a = poly[i - 1]; val b = poly[i]
+        val dy = b.lat - a.lat
+        val dx = (b.lng - a.lng) * kotlin.math.cos(Math.toRadians((a.lat + b.lat) / 2))
+        return (Math.toDegrees(kotlin.math.atan2(dx, dy)) + 360.0) % 360.0
+    }
+
+    /** True when an undirected road orientation ([roadDeg], 0-179) lines up with a heading. */
+    fun alignedWithRoad(headingDeg: Double, roadDeg: Int, toleranceDeg: Double = 40.0): Boolean {
+        val d = kotlin.math.abs(((headingDeg % 180.0) + 180.0) % 180.0 - roadDeg)
+        return minOf(d, 180.0 - d) <= toleranceDeg
+    }
+
     /** The point [m] metres along [poly] (clamped to its ends). */
     fun pointAt(poly: List<LatLng>, cum: DoubleArray, m: Double): LatLng {
         if (poly.isEmpty()) return LatLng(0.0, 0.0)

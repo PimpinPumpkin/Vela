@@ -889,6 +889,6 @@
     <string name="routing_offer_body">Scarica strade, luoghi e mappa di questa regione, circa %1$s. I ricalcoli sono più rapidi e le indicazioni funzionano senza segnale. I download sono in Impostazioni, Mappe offline.</string>
     <string name="nav_stop_offer_add">Aggiungi</string>
     <string name="nav_stop_offer_ahead">tra %1$s</string>
-    <string name="settings_nav_tap_places">Toccare i luoghi alla guida</string>
+    <string name="settings_nav_tap_places">Toccare i luoghi alla guida (sperimentale)</string>
     <string name="settings_nav_tap_places_hint">Durante la navigazione restano sulla mappa distributori, ristoranti e colonnine, e toccandone uno viene proposto come tappa; un secondo tocco la aggiunge. Disattivato di default, perché la navigazione nasconde i luoghi per tenere la mappa leggibile. Attivarlo attiva anche Mostra luoghi.</string>
 </resources>
