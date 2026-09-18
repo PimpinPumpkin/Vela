@@ -51,6 +51,8 @@ internal class NavController(
     interface Host {
         var destination: LatLng?
         var controlsBox: DoubleArray?
+        /** Cancel a viewport controls fetch that is still inside its settle (see refreshNavRouteControls). */
+        fun cancelViewportControls()
         var autoStartOnRoute: Boolean
         fun startLocation()
         fun pauseLiveLocation()
@@ -1069,6 +1071,7 @@ internal class NavController(
             android.util.Log.i("VelaControls", "route corridor fetched=${res.size} merged=${merged.size} kept=${kept.size}")
             navControlsKey = key
             host.controlsBox = null // the box cache is superseded; the post-nav viewport refresh repaints fresh
+            host.cancelViewportControls() // and kill a box fetch still inside its settle, or it lands on top of this
             _state.update { it.copy(trafficControls = kept) }
         }
     }

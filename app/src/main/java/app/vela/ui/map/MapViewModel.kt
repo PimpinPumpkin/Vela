@@ -420,6 +420,7 @@ class MapViewModel @Inject constructor(
         override var controlsBox: DoubleArray?
             get() = this@MapViewModel.controlsBox
             set(v) { this@MapViewModel.controlsBox = v }
+        override fun cancelViewportControls() { this@MapViewModel.controlsJob?.cancel() }
         override var autoStartOnRoute: Boolean
             get() = this@MapViewModel.autoStartOnRoute
             set(v) { this@MapViewModel.autoStartOnRoute = v }
@@ -5812,6 +5813,13 @@ class MapViewModel @Inject constructor(
         controlsJob?.cancel()
         controlsJob = viewModelScope.launch {
             delay(350)
+            // Re-check ownership AFTER the settle, not just when the job was scheduled (user
+            // 2026-09-18: "stoplights and stop signs rendered that probably shouldn't be", off to
+            // the side of the route). A viewport settle fires as the camera swings into the drive,
+            // its 350 ms settle outlives the flip into navigation, and the write then landed on
+            // top of the route-corridor set: 28 controls along the route replaced by 99 across the
+            // whole padded box, most of them on streets the driver never touches.
+            if (_state.value.navigating && nav.corridorControlsActive) return@launch
             val padLat = (north - south) * 0.5; val padLng = (east - west) * 0.5
             val s = south - padLat; val n = north + padLat; val w = west - padLng; val e = east + padLng
             // null = FETCH FAILED (fetchControlsInBox returns null on network/non-2xx, empty list only on a
