@@ -3173,8 +3173,18 @@ class MapViewModel @Inject constructor(
                     // phone and hours.
                     val pool = answerable.filter { nameAgrees(name, it.name) }
                         .ifEmpty { answerable.filter { it.location.distanceTo(location) <= NO_NAME_MATCH_M } }
-                    val poolNearest = pool.minByOrNull { it.location.distanceTo(location) }
-                    val canonical = pool
+                    // THE SAME NAME BEATS A NEARER ONE (user 2026-09-18: tapping a supermarket
+                    // opened the brand's fuel station, and tapping it opened a counter inside the
+                    // store). `nameAgrees` is deliberately loose - it has to match "SpeeDee" to
+                    // "SpeeDee Midas" - so a brand's other listings all qualify, and the pick was
+                    // then whichever happened to sit nearest the tapped point. A listing whose name
+                    // IS the tapped name is what the tap asked for; only when none exists does the
+                    // looser pool decide. Store numbers are dropped so "SHOP #1561" still counts.
+                    val wanted = normalizedPlaceName(name)
+                    val exact = pool.filter { normalizedPlaceName(it.name) == wanted }
+                    val ranked = exact.ifEmpty { pool }
+                    val poolNearest = ranked.minByOrNull { it.location.distanceTo(location) }
+                    val canonical = ranked
                         .filter { it.location.distanceTo(location) < 35.0 }
                         .maxByOrNull { it.reviewCount ?: 0 }
                     if (canonical != null && poolNearest != null &&
@@ -3257,6 +3267,17 @@ class MapViewModel @Inject constructor(
     /** How near a listing that does NOT agree with the tapped name may be and still become the
      *  place: the same lot, not the far side of the junction. */
     private val NO_NAME_MATCH_M = 60.0
+
+    /** A place name reduced to what identifies the business: lowercase, no punctuation, no trailing
+     *  store number (the bake's own snap key uses the same rule, so the two agree about what counts
+     *  as the same name). */
+    private fun normalizedPlaceName(n: String?): String =
+        (n ?: "").lowercase()
+            .replace(Regex("[^a-z0-9 ]"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .replace(Regex(" (no|num|store|unit)? ?\\d{1,6}$"), "")
+            .trim()
 
     /** Google categories that are map FURNITURE, never the answer to tapping a business. */
     private val JUNCTION_CATEGORIES = setOf("intersection", "junction", "crossroads", "road", "highway")

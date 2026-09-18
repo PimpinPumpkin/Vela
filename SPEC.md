@@ -1101,6 +1101,15 @@ in screen pixels**, never render-stack order:
 7. a building footprint, reverse-geocoded at the tap;
 8. nothing. Only a long press drops a raw coordinate pin.
 
+**What is drawn under the finger wins.** Before ranking anything, the tap asks MapLibre what is
+rendered at the finger's own pixel on the business ICON layers (ambient, open places, the basemap
+POI tiers); when something is, only those candidates compete. Ranking the whole 24 dp box by
+distance to each feature's POINT is wrong twice over: a place icon is a teardrop anchored at its
+tip, so the blob being aimed at sits about 40 px above the point the distance is measured to, and a
+tenant's DOT is drawn on its own point, so a dot metres away routinely measures nearer to the finger
+than the icon under it. With no icon under the finger the box rules still run, so a dot stays
+tappable.
+
 The named-POI resolve is **name-agreeing first**: the pool is the listings whose name shares the
 tapped label's words (`nameAgrees`, word-set overlap needing the shorter name's tokens, cap 2).
 Only an empty pool falls back, and the fallback is bounded twice: a non-transit tap never adopts
@@ -1111,6 +1120,13 @@ does not agree by name must be within `NO_NAME_MATCH_M` (60 m) rather than anywh
 The pick must also be near the tap: a settlement label accepts a hit within 30 km, any other
 label within 1.5 km, transit stops unbounded. A clear-dominance duplicate override
 (`canonical.reviews >= 2 * nearest.reviews + 5`) runs **within** the pool only.
+
+**A listing whose name IS the tapped name beats a nearer one.** `nameAgrees` has to be loose enough
+to match a co-branded pair, so every listing a brand owns on that lot qualifies - the store, its
+fuel station, its pharmacy, its coffee counter - and the pick was then whichever sat nearest the
+tapped point. The pool is filtered to exact normalized-name matches when any exist (lowercase, no
+punctuation, trailing store number dropped, the same rule the bake's snap key uses), and only falls
+back to the loose pool when none do.
 
 Sheet titles follow the app language's script: `NameScript.prefer(uiLang, google, label)` keeps
 the map's own label as the title when Google's name is not in the app language's script and the
