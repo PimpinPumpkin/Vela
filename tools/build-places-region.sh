@@ -311,10 +311,27 @@ CREATE MACRO iskiosk(c, n) AS (
   c IN ('rental_kiosks','bank_equipment_service','money_transfer_services','atms','key_and_locksmith','vending_machine','photo_booth')
   OR lower(coalesce(n, '')) IN ('redbox','coinstar','ecoatm','western union','keyme locksmiths','keyme')
 );
+-- TWO ICONS, ONE NAME (user 2026-09-18). A brand's forecourt is often published under the BARE
+-- brand name, so the lot ends up with two icons labelled identically a few tens of metres apart:
+-- the store and the pumps. Demoting the forecourt does not help, because fuel is exempt from the
+-- tenant minzoom (you want pumps while driving), so both draw and a tap on "the store" is a coin
+-- toss. The forecourt keeps its own row and its own group; it just says which one it is. Only an
+-- EXACT name match is touched - a row already called "<brand> Fuel Station" is left alone.
+CREATE TABLE brandsame AS
+SELECT DISTINCT s.id, s.category FROM scored s JOIN anchors a ON lower(s.name) = lower(a.name)
+WHERE s.id <> a.id AND abs(s.lat - a.lat) < 0.0025 AND abs(s.lng - a.lng) < 0.0035
+  AND s.category IN ('gas_station', 'convenience_store', 'ev_charging_station');
 CREATE TABLE anchored AS
-SELECT s.* REPLACE (CASE WHEN t.id IS NOT NULL THEN s.prominence - 2.0 ELSE s.prominence END AS prominence),
+SELECT s.* REPLACE (
+    CASE WHEN t.id IS NOT NULL THEN s.prominence - 2.0 ELSE s.prominence END AS prominence,
+    CASE
+      WHEN b.id IS NULL THEN s.name
+      WHEN b.category = 'gas_station' THEN s.name || ' Fuel'
+      WHEN b.category = 'ev_charging_station' THEN s.name || ' Charging'
+      ELSE s.name || ' Market'
+    END AS name),
   CASE WHEN t.id IS NOT NULL OR iskiosk(s.category, s.name) THEN 1 ELSE 0 END AS tenant
-FROM scored s LEFT JOIN tenants t ON t.id = s.id;
+FROM scored s LEFT JOIN tenants t ON t.id = s.id LEFT JOIN brandsame b ON b.id = s.id;
 -- STACKED POINTS (2026-09-15): Overture puts every tenant of a building on the same parcel point
 -- (17% of Davis rows share their point with another: medical suites, strip-mall tenants), and
 -- coincident icons collide at every zoom, so all but the top one never drew. Spread the stack on

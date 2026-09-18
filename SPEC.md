@@ -986,6 +986,12 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   name-head match), a kiosk category or name, or an anchor brand's fuel station or convenience
   shop within about 275 m. A tenant loses 2 prominence points and bakes at minzoom 17, except
   fuel, which stays visible for driving.
+- **A forecourt says which one it is.** A brand's fuel station, charging bay or convenience shop
+  is often published under the bare brand name, and since fuel is exempt from the tenant minzoom
+  both it and the store draw, a few tens of metres apart, under the same label, so a tap on "the
+  store" is a coin toss. A row whose name is EXACTLY its anchor's gets " Fuel", " Charging" or
+  " Market" appended; a row that already names itself is left alone. Names are rewritten nowhere
+  else in the bake.
 - **Every row-to-row rule must be a hash join.** A correlated subquery or an OR of tests goes
   effectively quadratic over a state: with the joins fixed, a whole state bakes in minutes
   (one measured state: 244,954 places, 2,960 chain rows added, 2,749 tenants snapped, 524 s end
@@ -1692,9 +1698,11 @@ ports it rather than inventing a fourth:
   route: scaled to a long trip every nearby mark collapses into one pixel.
 - **Pause and mute are one button** (`NavHoldControls`). They are the drive's two "hold something"
   controls and both are touched rarely, so they get one 56 dp target rather than 112 dp of the right
-  edge. **The tap pauses**: the control reached for at speed costs one touch and never opens a menu
-  first. Mute slides out beside it for `OPEN_MS` (6 s) so it is there when wanted, and a long press
-  mutes outright. The button carries both states,
+  edge. The first tap on a running drive only slides mute out beside it, for `OPEN_MS` (6 s); a
+  second tap on the same target, which has not moved, pauses. Pausing on the first tap made holding
+  the drive the only way to reach mute, which is not what that reach was for. A long press mutes
+  outright, so anyone who knows it never sees the pop-out; and while the drive is paused a single
+  tap resumes, because the glyph already says what the tap does. The button carries both states,
   because one control standing for two has to: the glyph is pause or resume, the accent fill says
   the drive is held, and a small crossed speaker says it is silent. The long press is touch-only by
   nature and the row is its key path, which is what keeps it D-pad legal.
