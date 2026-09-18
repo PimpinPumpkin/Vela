@@ -1991,7 +1991,18 @@ architecture note.
   that). VelaMapView widens the drive-nav places filter from fuel-only to `NAV_DRIVE_GROUPS`
   (`placesNavDriveSet`); `onPoiTap` and `selectPlace` stop returning early during nav and instead
   set `navTapCandidate`, which MapScreen renders as `NavStopOffer` above the nav bar - the CARD's
-  button is the second tap, and it calls `addStopDuringNav`. The alternates pane names the
+  button is the second tap, and it calls `addStopDuringNav`. **Three additions 2026-09-18:** the
+  card carries what the stop COSTS (`priceNavTapDetour` fetches one route through the candidate,
+  bounded at `NAV_DETOUR_TIMEOUT_MS` 8 s, and `:core` `DetourEstimate.minutesAdded` compares it
+  with the drive's own live `nav.remainingDuration`; under 20 s apart or over 3 h apart shows
+  nothing rather than "+0 min" or a broken fetch's figure). The candidate goes FIRST in the
+  waypoint list because that is where `NavSession.addStop` puts it - price the drive the button
+  actually builds. The card AUTO-DISMISSES on a countdown ring drawn around its close button
+  (10 s, 25 s under `dpadMode` since reaching the button takes more presses), keyed on
+  `navTapOfferTick` so a second tap on the SAME place restarts the clock (an unchanged candidate
+  leaves state equal, so keying on the place alone left the old clock running). And the offer is
+  drawn on the map: `VelaMapView(candidatePin=)` feeds the existing stop-pin effect a red "+"
+  teardrop (`PoiIcons.CANDIDATE_PIN`), so the driver can see WHERE the offer is. The alternates pane names the
   fewest-camera route when `flockOnRoute` has counts that differ (that list is only populated when
   "Avoid surveillance cameras" is on).
 - **ALTERNATES PANE (2026-09-17):** the Google-style chooser owns its own list (`altsOpen` /

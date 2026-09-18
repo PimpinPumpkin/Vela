@@ -58,6 +58,7 @@ import kotlin.coroutines.coroutineContext
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -181,6 +182,12 @@ data class MapUiState(
     // Drive nav, "tap places while driving": the place a tap offered as a stop, waiting for the
     // confirm. Never acts on the first tap - a stray touch must not change the drive.
     val navTapCandidate: Place? = null,
+    // What that stop would cost, in whole minutes, once the check comes back (null while it is in
+    // flight, and whenever the two figures are too close or too far apart to mean anything).
+    val navTapDetourMin: Int? = null,
+    // Bumped by every offer, including a second tap on the same place: the card's countdown keys
+    // on it, and an unchanged candidate would otherwise leave the old clock running.
+    val navTapOfferTick: Int = 0,
     val buildingOverlays: List<String> = emptyList(), // full pmtiles:// URIs (file:// downloaded / https:// streamed for the view)
     val addressOverlays: List<String> = emptyList(), // pmtiles:// URIs streamed for house-number labels (OpenAddresses)
                                                       // .pmtiles — rendered beneath OSM to fill gaps
@@ -2113,7 +2120,7 @@ class MapViewModel @Inject constructor(
                 _state.value.results.isNotEmpty() -> addStopDuringNav(p)
                 // Tap-to-stop (off by default): the first tap only OFFERS the place; the card's
                 // button is the second tap that changes the drive.
-                app.vela.ui.MapPoiPrefs.navTapPlaces.value -> _state.update { it.copy(navTapCandidate = p) }
+                app.vela.ui.MapPoiPrefs.navTapPlaces.value -> offerNavTapStop(p)
             }
             return
         }
@@ -3036,7 +3043,7 @@ class MapViewModel @Inject constructor(
         if (_state.value.navigating) {
             if (app.vela.ui.MapPoiPrefs.navTapPlaces.value) {
                 val p = seed ?: Place(id = "poi:" + name.hashCode(), name = name, location = location)
-                _state.update { it.copy(navTapCandidate = p) }
+                offerNavTapStop(p)
             }
             return
         }
@@ -3850,15 +3857,60 @@ class MapViewModel @Inject constructor(
 
     fun addStopDuringNav(p: Place) = nav.addStopDuringNav(p)
 
+    /** Offer the tapped place as a stop and start pricing the detour. The card shows at once;
+     *  the minutes land when the check comes back, so a slow answer never delays the offer. */
+    private fun offerNavTapStop(p: Place) {
+        _state.update { it.copy(navTapCandidate = p, navTapDetourMin = null, navTapOfferTick = it.navTapOfferTick + 1) }
+        priceNavTapDetour(p)
+    }
+
+    /** One route through the candidate, compared with the drive's own live remaining time. The
+     *  fetch is bounded and nothing about the drive is touched by it: the session keeps routing on
+     *  what it already has, and a failed or slow check simply leaves the card without a figure. */
+    private fun priceNavTapDetour(p: Place) {
+        navTapDetourJob?.cancel()
+        val s = _state.value
+        val loc = s.myLocation ?: return
+        // The same fallback the session uses: a trip started from a deep link or a restored drive
+        // can be routing without the view model's own destination field set.
+        val dest = destination ?: s.activeRoute?.polyline?.lastOrNull() ?: return
+        val baseline = s.nav.remainingDuration
+        if (baseline <= 0.0) return
+        navTapDetourJob = viewModelScope.launch {
+            // The candidate goes FIRST, which is where NavSession.addStop puts it: the figure has to
+            // price the drive the button would actually build.
+            val stops = listOf(p.location) + nav.navRemainingStops().map { it.location }
+            val route = withTimeoutOrNull(NAV_DETOUR_TIMEOUT_MS) {
+                runCatching {
+                    dataSource.directions(
+                        loc, dest, s.travelMode, stops,
+                        s.avoidTolls, s.avoidHighways, s.avoidFerries,
+                    )
+                }.getOrNull()?.firstOrNull()
+            }
+            val via = route?.let { it.durationInTrafficSeconds ?: it.durationSeconds }
+            val minutes = via?.let { app.vela.core.nav.DetourEstimate.minutesAdded(baseline, it) }
+            // A newer tap (or a dismissal) owns the card by now; this answer is stale.
+            if (_state.value.navTapCandidate?.id != p.id) return@launch
+            _state.update { it.copy(navTapDetourMin = minutes) }
+        }
+    }
+
     /** The tapped place becomes the next stop (the confirm on the in-drive card). */
     fun confirmNavTapStop() {
         val p = _state.value.navTapCandidate ?: return
-        _state.update { it.copy(navTapCandidate = null) }
+        clearNavTapStop()
         addStopDuringNav(p)
     }
 
     fun dismissNavTapStop() {
-        if (_state.value.navTapCandidate != null) _state.update { it.copy(navTapCandidate = null) }
+        if (_state.value.navTapCandidate != null) clearNavTapStop()
+    }
+
+    private fun clearNavTapStop() {
+        navTapDetourJob?.cancel()
+        navTapDetourJob = null
+        _state.update { it.copy(navTapCandidate = null, navTapDetourMin = null) }
     }
 
     /** Append an intermediate stop and re-route through it. */
@@ -5775,6 +5827,8 @@ class MapViewModel @Inject constructor(
     }
 
     private var controlsJob: Job? = null
+    // The in-drive stop card's detour check. Cancelled by a newer tap, the confirm and the dismiss.
+    private var navTapDetourJob: Job? = null
     private var controlsBox: DoubleArray? = null // [s,w,n,e] of the last fetched (padded) box
     private var flockBox: DoubleArray? = null
     private var transitStopsBox: DoubleArray? = null
@@ -6528,6 +6582,11 @@ class MapViewModel @Inject constructor(
     }
 
     companion object {
+        /** How long the in-drive stop card waits for its detour figure. The card is already on
+         *  screen; past this the offer simply carries no minutes rather than holding a stale
+         *  spinner over a drive. */
+        private const val NAV_DETOUR_TIMEOUT_MS = 8_000L
+
         /** Past this from the trip's chosen start, Start re-plans from where you are (issue #463). */
         private const val START_FROM_ME_M = 150.0
         private const val ROUTING_OFFER_DONE = "routing_offer_done"

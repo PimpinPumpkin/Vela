@@ -1006,6 +1006,11 @@ fun ArrivalSummary(
  * The in-drive "add this as a stop?" card (Settings > Navigation, off by default). A tap on a place
  * while driving only OFFERS it; this card's button is the second tap that changes the drive, which
  * is the whole point: one stray touch at speed must not re-route you.
+ *
+ * The card takes itself away. [autoDismissMs] counts down on the ring around the close button and
+ * calls [onDismiss] at zero, so an offer the driver ignores cannot sit over the map for the rest of
+ * the drive; the countdown restarts whenever [name] changes, which is the next tap. Key paths get a
+ * longer window from the caller, since reaching the button takes more presses than a thumb does.
  */
 @Composable
 fun NavStopOffer(
@@ -1014,7 +1019,26 @@ fun NavStopOffer(
     onAdd: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    autoDismissMs: Long = 10_000L,
+    // Changes on every offer, so a second tap on the same place restarts the clock.
+    offerKey: Any = name,
 ) {
+    // Restarts on a new place, and only on a new place: a recomposition while the same offer is up
+    // (a speedo tick, the detour figure landing) must not give the driver back their ten seconds.
+    val left = remember(offerKey, autoDismissMs) { androidx.compose.animation.core.Animatable(1f) }
+    val dismiss = rememberUpdatedState(onDismiss)
+    LaunchedEffect(offerKey, autoDismissMs) {
+        left.snapTo(1f)
+        left.animateTo(
+            0f,
+            androidx.compose.animation.core.tween(
+                autoDismissMs.toInt(),
+                easing = androidx.compose.animation.core.LinearEasing,
+            ),
+        )
+        dismiss.value()
+    }
+    val ringColor = MaterialTheme.colorScheme.primary
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
@@ -1052,6 +1076,22 @@ fun NavStopOffer(
                 onClick = onDismiss,
                 modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
             ) {
+                // The ring is the clock: it says the offer is about to go without adding a number
+                // to read at speed. Drawn behind the X, read in the draw phase so the countdown
+                // never recomposes the card.
+                androidx.compose.foundation.Canvas(Modifier.size(36.dp)) {
+                    val stroke = 2.5.dp.toPx()
+                    val inset = stroke / 2f
+                    drawArc(
+                        color = ringColor,
+                        startAngle = -90f,
+                        sweepAngle = -360f * left.value,
+                        useCenter = false,
+                        topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
+                        size = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round),
+                    )
+                }
                 Icon(
                     androidx.compose.material.icons.Icons.Default.Close,
                     contentDescription = stringResource(R.string.place_close_directions),

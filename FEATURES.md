@@ -1705,6 +1705,19 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Self-hosted routing backend (replace the FOSSGIS community server)
 
 ## Navigation
+- ✅ **The in-drive stop card says what the stop costs, marks it on the map, and takes itself away
+  (2026-09-18).** Tapping a place while driving (Settings > Navigation, off by default) already
+  offered it rather than acting on it; the offer now carries the three things that make it usable
+  at speed. It prices the detour: one route through the candidate, fetched in the background and
+  bounded at 8 seconds, compared with the drive's own live remaining time, shown as "+4 min" on
+  the card. The candidate is priced where the button would actually put it, first in the stop
+  list, and a difference too small or too large to mean anything is not shown at all rather than
+  rendered as "+0 min". The card marks the offer on the map with a red "+" pin, so it is obvious
+  which place is being offered. And it dismisses itself on a countdown ring drawn around its close
+  button, ten seconds for a thumb and twenty-five on a key-driven phone, restarted by a second tap
+  on the same place - an offer nobody answers no longer sits over the map for the rest of the
+  drive. Nothing about the drive changes until the button is pressed, and the pricing fetch never
+  touches the running session.
 - ✅ **The nav puck glides on kinked road geometry (2026-07-25).** The drawn position is a real
   boxcar average across a speed-scaled along-route window and the arrow's heading is the chord
   across that window, so the lane-level micro-kinks in dense OSM geometry cancel instead of
