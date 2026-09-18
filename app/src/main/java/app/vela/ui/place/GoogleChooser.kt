@@ -140,6 +140,8 @@ fun GoogleStyleDirectionsPanel(
     minimizeTick: Int = 0,
     onCollapsedChange: (Boolean) -> Unit = {},
     bodyMaxDp: Float? = null,
+    /** Landscape: the column is short, so the card tightens up and its middle scrolls. */
+    compact: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
@@ -206,23 +208,32 @@ fun GoogleStyleDirectionsPanel(
             Modifier
                 .navigationBarsPadding()
                 .pointerInput(Unit) { sheetDragGestures(dragBy = { dragBy(it) }, settle = { settle(it) }) }
-                .padding(top = 6.dp, bottom = 12.dp),
+                .padding(top = if (compact) 2.dp else 6.dp, bottom = if (compact) 6.dp else 12.dp),
         ) {
             Box(
-                Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(8.dp)).clickable { collapsed.value = !collapsed.value }.padding(vertical = 6.dp),
+                Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(8.dp)).clickable { collapsed.value = !collapsed.value }
+                    .padding(vertical = if (compact) 2.dp else 6.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Box(Modifier.width(36.dp).height(4.dp).clip(CircleShape).background(dim.copy(alpha = 0.4f)))
             }
-            // Header: the mode is the title, the actions are round buttons (Google's grammar).
-            Row(Modifier.padding(start = 20.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    modeTitle(currentMode),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = ink,
-                    modifier = Modifier.weight(1f),
-                )
+            // Header: the mode is the title, the actions are round buttons (Google's grammar). In
+            // landscape the title gives way to the tabs, which name the mode anyway.
+            Row(
+                Modifier.padding(start = if (compact) 8.dp else 20.dp, end = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (compact) {
+                    ModeTabs(currentMode, modeEtas, ink, onModeSelected, Modifier.weight(1f))
+                } else {
+                    Text(
+                        modeTitle(currentMode),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = ink,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
                 RoundAction(Icons.Default.Tune, stringResource(R.string.exp_chooser_options), dark) {
                     collapsed.value = false
                     scope.launch { bodyScroll.animateScrollTo(0) }
@@ -232,275 +243,247 @@ fun GoogleStyleDirectionsPanel(
                 Spacer(Modifier.width(8.dp))
                 RoundAction(Icons.Default.Close, stringResource(R.string.place_close_directions), dark, onClose)
             }
-            Spacer(Modifier.height(10.dp))
-            // Mode tabs: glyph + time, the selected one in the accent with an underline.
-            Row(Modifier.horizontalScroll(rememberScrollState()).padding(start = 8.dp)) {
-                listOf(
-                    Triple(TravelMode.DRIVE, R.string.place_mode_drive, Icons.Default.DirectionsCar),
-                    Triple(TravelMode.TRANSIT, R.string.place_mode_transit, Icons.Default.DirectionsBus),
-                    Triple(TravelMode.WALK, R.string.place_mode_walk, Icons.AutoMirrored.Filled.DirectionsWalk),
-                    Triple(TravelMode.BICYCLE, R.string.place_mode_bike, Icons.AutoMirrored.Filled.DirectionsBike),
-                ).forEach { (mode, label, icon) ->
-                    val sel = mode == currentMode
-                    val tint = if (sel) MaterialTheme.colorScheme.primary else ink
-                    Column(
-                        Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .dpadHighlight(RoundedCornerShape(8.dp))
-                            .clickable { onModeSelected(mode) }
-                            .padding(horizontal = 12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Row(Modifier.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(icon, contentDescription = stringResource(label), tint = tint, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                modeEtas[mode] ?: stringResource(label),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal,
-                                color = tint,
-                            )
-                        }
-                        Box(
-                            Modifier
-                                .width(44.dp)
-                                .height(3.dp)
-                                .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
-                                .background(if (sel) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent),
-                        )
-                    }
-                }
+            if (!compact) {
+                Spacer(Modifier.height(10.dp))
+                ModeTabs(currentMode, modeEtas, ink, onModeSelected)
             }
             HorizontalDivider(color = dim.copy(alpha = 0.25f))
             // The selected route, summarized. Always visible (the collapsed sheet is this).
             val route = activeRoute ?: routes.firstOrNull()
-            Column(Modifier.padding(start = 20.dp, end = 16.dp, top = 12.dp)) {
-                if (route == null) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                        Text(stringResource(R.string.place_finding_route), style = MaterialTheme.typography.bodyMedium, color = dim)
-                    }
-                } else {
-                    val eta = route.durationInTrafficSeconds ?: route.durationSeconds
-                    val fastest = routes.minOfOrNull { it.durationInTrafficSeconds ?: it.durationSeconds } ?: eta
-                    val deltaMin = ((eta - fastest) / 60.0).roundToInt()
-                    Text(
-                        buildAnnotatedString {
-                            withStyle(SpanStyle(color = trafficEtaColor(route) ?: ink, fontWeight = FontWeight.Medium, fontSize = 22.sp)) {
-                                append(formatDuration(eta))
-                            }
-                            withStyle(SpanStyle(color = dim, fontSize = 18.sp)) { append(" (${formatDistance(route.distanceMeters)})") }
-                        },
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    // "Fastest" belongs to the fastest route only: a near-tie a few seconds slower
-                    // rounds to the same minute and used to claim it too.
-                    val isFastest = routes.indexOfFirst { (it.durationInTrafficSeconds ?: it.durationSeconds) == fastest } == routes.indexOf(route)
-                    val via = route.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) }
-                    Text(
-                        when {
-                            isFastest && routes.size > 1 -> listOfNotNull(stringResource(R.string.exp_chooser_fastest), via).joinToString(" · ")
-                            deltaMin >= 1 -> listOfNotNull(stringResource(R.string.exp_chooser_slower, formatDuration(eta - fastest)), via).joinToString(" · ")
-                            else -> via ?: ""
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = dim,
-                    )
-                    val idx = routes.indexOf(route).coerceAtLeast(0)
-                    val cams = flockOnRoute.getOrElse(idx) { 0 }
-                    if (cams > 0) {
-                        Text(stringResource(R.string.dir_cameras_on_route, cams), style = MaterialTheme.typography.bodyMedium, color = SheetPalette.TrafficAmber)
-                    }
-                    // The alternates affordance sits with the ETA, not down in the button row: it is
-                    // about THIS number ("29 min ... and what else?"). Always there, so its absence
-                    // never has to be interpreted; with one route it says so and does nothing.
-                    Spacer(Modifier.height(6.dp))
-                    if (routes.size > 1) {
-                        Row(
-                            Modifier
-                                .clip(CircleShape)
-                                .dpadHighlight(CircleShape)
-                                .clickable { onAltsOpenChange(!altsOpen) }
-                                .padding(vertical = 6.dp, horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(Icons.Default.AltRoute, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                androidx.compose.ui.res.pluralStringResource(R.plurals.exp_chooser_alts, routes.size - 1, routes.size - 1),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
+            // LANDSCAPE (compact): everything between the tabs and the action bar scrolls, so a
+            // short column can never push the Start button off the card or grow over the endpoints
+            // card above it (user 2026-09-17).
+            Column(
+                if (compact) Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()) else Modifier,
+            ) {
+                Column(Modifier.padding(start = 20.dp, end = 16.dp, top = if (compact) 6.dp else 12.dp)) {
+                    if (route == null) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                            Text(stringResource(R.string.place_finding_route), style = MaterialTheme.typography.bodyMedium, color = dim)
                         }
                     } else {
+                        val eta = route.durationInTrafficSeconds ?: route.durationSeconds
+                        val fastest = routes.minOfOrNull { it.durationInTrafficSeconds ?: it.durationSeconds } ?: eta
+                        val deltaMin = ((eta - fastest) / 60.0).roundToInt()
+                        Text(
+                            buildAnnotatedString {
+                                withStyle(SpanStyle(color = trafficEtaColor(route) ?: ink, fontWeight = FontWeight.Medium, fontSize = 22.sp)) {
+                                    append(formatDuration(eta))
+                                }
+                                withStyle(SpanStyle(color = dim, fontSize = 18.sp)) { append(" (${formatDistance(route.distanceMeters)})") }
+                            },
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        // "Fastest" belongs to the fastest route only: a near-tie a few seconds slower
+                        // rounds to the same minute and used to claim it too.
+                        val isFastest = routes.indexOfFirst { (it.durationInTrafficSeconds ?: it.durationSeconds) == fastest } == routes.indexOf(route)
+                        val via = route.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) }
+                        Text(
+                            when {
+                                isFastest && routes.size > 1 -> listOfNotNull(stringResource(R.string.exp_chooser_fastest), via).joinToString(" · ")
+                                deltaMin >= 1 -> listOfNotNull(stringResource(R.string.exp_chooser_slower, formatDuration(eta - fastest)), via).joinToString(" · ")
+                                else -> via ?: ""
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = dim,
+                        )
+                        val idx = routes.indexOf(route).coerceAtLeast(0)
+                        val cams = flockOnRoute.getOrElse(idx) { 0 }
+                        if (cams > 0) {
+                            Text(stringResource(R.string.dir_cameras_on_route, cams), style = MaterialTheme.typography.bodyMedium, color = SheetPalette.TrafficAmber)
+                        }
+                        // The alternates affordance sits with the ETA, not down in the button row: it is
+                        // about THIS number ("29 min ... and what else?"). Always there, so its absence
+                        // never has to be interpreted; with one route it says so and does nothing.
                         Spacer(Modifier.height(6.dp))
-                        Text(stringResource(R.string.exp_chooser_alts_none), style = MaterialTheme.typography.bodyMedium, color = dim)
+                        if (routes.size > 1) {
+                            Row(
+                                Modifier
+                                    .clip(CircleShape)
+                                    .dpadHighlight(CircleShape)
+                                    .clickable { onAltsOpenChange(!altsOpen) }
+                                    .padding(vertical = 6.dp, horizontal = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Icons.Default.AltRoute, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    androidx.compose.ui.res.pluralStringResource(R.plurals.exp_chooser_alts, routes.size - 1, routes.size - 1),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        } else {
+                            Spacer(Modifier.height(6.dp))
+                            Text(stringResource(R.string.exp_chooser_alts_none), style = MaterialTheme.typography.bodyMedium, color = dim)
+                        }
                     }
                 }
-            }
-            // The alternates pane, over the body: every route with its time, how much longer it is,
-            // its distance, the roads it uses and its camera count. Back returns to the Google view.
-            if (altsOpen && routes.size > 1) {
-                val fastestEta = routes.minOf { it.durationInTrafficSeconds ?: it.durationSeconds }
-                Column(Modifier.padding(top = 6.dp, bottom = 4.dp)) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        IconButton(onClick = { onAltsOpenChange(false) }, modifier = Modifier.dpadHighlight(CircleShape)) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.exp_chooser_alts_back), tint = ink)
-                        }
-                        Text(
-                            stringResource(R.string.exp_chooser_alts_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = ink,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    val fastestIdx = routes.indexOfFirst { (it.durationInTrafficSeconds ?: it.durationSeconds) == fastestEta }
-                    // With "Avoid surveillance cameras" on, the counts are computed and the app may
-                    // already have picked a route that is not the fastest. Say which one has the
-                    // fewest, so the choice it made explains itself (user 2026-09-17).
-                    val fewestCamIdx = flockOnRoute.takeIf { it.size == routes.size && it.distinct().size > 1 }
-                        ?.let { counts -> counts.indices.minByOrNull { counts[it] } }
-                    routes.forEachIndexed { i, r ->
-                        val eta = r.durationInTrafficSeconds ?: r.durationSeconds
-                        val delta = (eta - fastestEta).toInt()
-                        val chosen = r === activeRoute
-                        val cams = flockOnRoute.getOrElse(i) { 0 }
+                // The alternates pane, over the body: every route with its time, how much longer it is,
+                // its distance, the roads it uses and its camera count. Back returns to the Google view.
+                if (altsOpen && routes.size > 1) {
+                    val fastestEta = routes.minOf { it.durationInTrafficSeconds ?: it.durationSeconds }
+                    Column(Modifier.padding(top = 6.dp, bottom = 4.dp)) {
                         Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 3.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(if (chosen) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else androidx.compose.ui.graphics.Color.Transparent)
-                                .dpadHighlight(RoundedCornerShape(14.dp))
-                                .clickable { onSelectRoute(i); onAltsOpenChange(false) }
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Column(Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { onAltsOpenChange(false) }, modifier = Modifier.dpadHighlight(CircleShape)) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.exp_chooser_alts_back), tint = ink)
+                            }
+                            Text(
+                                stringResource(R.string.exp_chooser_alts_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = ink,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        val fastestIdx = routes.indexOfFirst { (it.durationInTrafficSeconds ?: it.durationSeconds) == fastestEta }
+                        // With "Avoid surveillance cameras" on, the counts are computed and the app may
+                        // already have picked a route that is not the fastest. Say which one has the
+                        // fewest, so the choice it made explains itself (user 2026-09-17).
+                        val fewestCamIdx = flockOnRoute.takeIf { it.size == routes.size && it.distinct().size > 1 }
+                            ?.let { counts -> counts.indices.minByOrNull { counts[it] } }
+                        routes.forEachIndexed { i, r ->
+                            val eta = r.durationInTrafficSeconds ?: r.durationSeconds
+                            val delta = (eta - fastestEta).toInt()
+                            val chosen = r === activeRoute
+                            val cams = flockOnRoute.getOrElse(i) { 0 }
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 3.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(if (chosen) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else androidx.compose.ui.graphics.Color.Transparent)
+                                    .dpadHighlight(RoundedCornerShape(14.dp))
+                                    .clickable { onSelectRoute(i); onAltsOpenChange(false) }
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            formatDuration(eta),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = trafficEtaColor(r) ?: ink,
+                                            fontWeight = FontWeight.Medium,
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            when {
+                                                i == fastestIdx -> stringResource(R.string.exp_chooser_fastest)
+                                                delta < 60 -> stringResource(R.string.exp_chooser_alts_same)
+                                                else -> stringResource(R.string.exp_chooser_slower, formatDuration(delta.toDouble()))
+                                            },
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = dim,
+                                        )
+                                    }
                                     Text(
-                                        formatDuration(eta),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = trafficEtaColor(r) ?: ink,
-                                        fontWeight = FontWeight.Medium,
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(
-                                        when {
-                                            i == fastestIdx -> stringResource(R.string.exp_chooser_fastest)
-                                            delta < 60 -> stringResource(R.string.exp_chooser_alts_same)
-                                            else -> stringResource(R.string.exp_chooser_slower, formatDuration(delta.toDouble()))
-                                        },
+                                        listOfNotNull(
+                                            formatDistance(r.distanceMeters),
+                                            r.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) },
+                                            if (cams > 0) stringResource(R.string.dir_cameras_on_route, cams) else null,
+                                            if (i == fewestCamIdx) stringResource(R.string.exp_chooser_fewest_cams) else null,
+                                        ).joinToString(" · "),
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = dim,
+                                        color = if (cams > 0) SheetPalette.TrafficAmber else dim,
                                     )
                                 }
-                                Text(
-                                    listOfNotNull(
-                                        formatDistance(r.distanceMeters),
-                                        r.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) },
-                                        if (cams > 0) stringResource(R.string.dir_cameras_on_route, cams) else null,
-                                        if (i == fewestCamIdx) stringResource(R.string.exp_chooser_fewest_cams) else null,
-                                    ).joinToString(" · "),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = if (cams > 0) SheetPalette.TrafficAmber else dim,
-                                )
+                                if (chosen) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             }
-                            if (chosen) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
-            }
-            // Expandable body: options, add-along-the-way, and the inline turn list.
-            val bodyComposed by remember { derivedStateOf { !collapsed.value || bodyH.value > 1f } }
-            if (bodyComposed && route != null) {
-                Column(
-                    Modifier
-                        .graphicsLayer {
-                            alpha = (bodyH.value / 120f).coerceIn(0f, 1f)
-                            clip = true
-                            compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.ModulateAlpha
-                        }
-                        .layout { measurable, constraints ->
-                            val cap = bodyH.value.dp.roundToPx().coerceAtLeast(0)
-                            val pl = measurable.measure(constraints.copy(maxHeight = minOf(constraints.maxHeight, cap)))
-                            layout(pl.width, pl.height) { pl.place(0, 0) }
-                        },
-                ) {
-                    Column(Modifier.nestedScroll(conn).verticalScroll(bodyScroll).padding(top = 12.dp)) {
-                        Box(Modifier.padding(horizontal = 16.dp)) {
-                            DepartTimeChooser(route, dim, isTransit = false, onTimeSelected = onTimeSelected)
-                        }
-                        if (currentMode == TravelMode.DRIVE) {
-                            Row(
-                                Modifier.horizontalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                FilterChip(
-                                    selected = avoidTolls, onClick = { onAvoidTolls(!avoidTolls) },
-                                    label = { Text(stringResource(R.string.place_avoid_tolls)) },
-                                    shape = CircleShape,
-                                    modifier = Modifier.dpadHighlight(CircleShape),
-                                )
-                                FilterChip(
-                                    selected = avoidHighways, onClick = { onAvoidHighways(!avoidHighways) },
-                                    label = { Text(stringResource(R.string.place_avoid_highways)) },
-                                    shape = CircleShape,
-                                    modifier = Modifier.dpadHighlight(CircleShape),
-                                )
-                                FilterChip(
-                                    selected = avoidFerries, onClick = { onAvoidFerries(!avoidFerries) },
-                                    label = { Text(stringResource(R.string.place_avoid_ferries)) },
-                                    shape = CircleShape,
-                                    modifier = Modifier.dpadHighlight(CircleShape),
-                                )
+                // Expandable body: options, add-along-the-way, and the inline turn list.
+                val bodyComposed by remember { derivedStateOf { !collapsed.value || bodyH.value > 1f } }
+                if (bodyComposed && route != null) {
+                    Column(
+                        Modifier
+                            .graphicsLayer {
+                                alpha = (bodyH.value / 120f).coerceIn(0f, 1f)
+                                clip = true
+                                compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.ModulateAlpha
                             }
-                            if ((avoidTolls || avoidHighways || avoidFerries) && routes.isNotEmpty() && routes.all { it.avoidNotHonored }) {
-                                Row(Modifier.padding(start = 20.dp, end = 16.dp, top = 8.dp), verticalAlignment = Alignment.Top) {
-                                    Icon(Icons.Outlined.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(stringResource(R.string.place_avoid_not_honored), style = MaterialTheme.typography.bodyMedium, color = ink)
+                            .layout { measurable, constraints ->
+                                val cap = bodyH.value.dp.roundToPx().coerceAtLeast(0)
+                                val pl = measurable.measure(constraints.copy(maxHeight = minOf(constraints.maxHeight, cap)))
+                                layout(pl.width, pl.height) { pl.place(0, 0) }
+                            },
+                    ) {
+                        Column(Modifier.nestedScroll(conn).verticalScroll(bodyScroll).padding(top = 12.dp)) {
+                            Box(Modifier.padding(horizontal = 16.dp)) {
+                                DepartTimeChooser(route, dim, isTransit = false, onTimeSelected = onTimeSelected)
+                            }
+                            if (currentMode == TravelMode.DRIVE) {
+                                Row(
+                                    Modifier.horizontalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    FilterChip(
+                                        selected = avoidTolls, onClick = { onAvoidTolls(!avoidTolls) },
+                                        label = { Text(stringResource(R.string.place_avoid_tolls)) },
+                                        shape = CircleShape,
+                                        modifier = Modifier.dpadHighlight(CircleShape),
+                                    )
+                                    FilterChip(
+                                        selected = avoidHighways, onClick = { onAvoidHighways(!avoidHighways) },
+                                        label = { Text(stringResource(R.string.place_avoid_highways)) },
+                                        shape = CircleShape,
+                                        modifier = Modifier.dpadHighlight(CircleShape),
+                                    )
+                                    FilterChip(
+                                        selected = avoidFerries, onClick = { onAvoidFerries(!avoidFerries) },
+                                        label = { Text(stringResource(R.string.place_avoid_ferries)) },
+                                        shape = CircleShape,
+                                        modifier = Modifier.dpadHighlight(CircleShape),
+                                    )
+                                }
+                                if ((avoidTolls || avoidHighways || avoidFerries) && routes.isNotEmpty() && routes.all { it.avoidNotHonored }) {
+                                    Row(Modifier.padding(start = 20.dp, end = 16.dp, top = 8.dp), verticalAlignment = Alignment.Top) {
+                                        Icon(Icons.Outlined.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(stringResource(R.string.place_avoid_not_honored), style = MaterialTheme.typography.bodyMedium, color = ink)
+                                    }
                                 }
                             }
-                        }
-                        Text(
-                            stringResource(R.string.exp_chooser_along),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = ink,
-                            modifier = Modifier.padding(start = 20.dp, top = 18.dp, bottom = 8.dp),
-                        )
-                        Row(
-                            Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            app.vela.ui.QuickCategories.all().map { Triple(it.label, it.query, it.icon) }.forEach { (labelRes, query, icon) ->
-                                FilterChip(
-                                    selected = false,
-                                    onClick = { onSearchAlongRoute(query) },
-                                    label = { Text(stringResource(labelRes)) },
-                                    leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = dim) },
-                                    shape = CircleShape,
-                                )
-                            }
-                        }
-                        if (route.maneuvers.isNotEmpty()) {
                             Text(
-                                stringResource(R.string.place_steps),
+                                stringResource(R.string.exp_chooser_along),
                                 style = MaterialTheme.typography.titleSmall,
                                 color = ink,
-                                modifier = Modifier.padding(start = 20.dp, top = 18.dp, bottom = 4.dp),
+                                modifier = Modifier.padding(start = 20.dp, top = 18.dp, bottom = 8.dp),
                             )
-                            Column(Modifier.padding(start = 20.dp, end = 8.dp)) {
-                                route.maneuvers.forEachIndexed { i, m ->
-                                    legStarts.firstOrNull { it.first == i }?.let { (_, name) -> StopDividerRow(name) }
-                                    StepRow(
-                                        m = m, active = false, highlighted = false, romanize = { it },
-                                        destName = destName, destAddress = destAddress,
-                                        onClick = { onStep(i) },
+                            Row(
+                                Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                app.vela.ui.QuickCategories.all().map { Triple(it.label, it.query, it.icon) }.forEach { (labelRes, query, icon) ->
+                                    FilterChip(
+                                        selected = false,
+                                        onClick = { onSearchAlongRoute(query) },
+                                        label = { Text(stringResource(labelRes)) },
+                                        leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = dim) },
+                                        shape = CircleShape,
                                     )
+                                }
+                            }
+                            if (route.maneuvers.isNotEmpty()) {
+                                Text(
+                                    stringResource(R.string.place_steps),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = ink,
+                                    modifier = Modifier.padding(start = 20.dp, top = 18.dp, bottom = 4.dp),
+                                )
+                                Column(Modifier.padding(start = 20.dp, end = 8.dp)) {
+                                    route.maneuvers.forEachIndexed { i, m ->
+                                        legStarts.firstOrNull { it.first == i }?.let { (_, name) -> StopDividerRow(name) }
+                                        StepRow(
+                                            m = m, active = false, highlighted = false, romanize = { it },
+                                            destName = destName, destAddress = destAddress,
+                                            onClick = { onStep(i) },
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -510,7 +493,7 @@ fun GoogleStyleDirectionsPanel(
             // Sticky action bar.
             if (route != null) {
                 Row(
-                    Modifier.horizontalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 12.dp),
+                    Modifier.horizontalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = if (compact) 6.dp else 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Button(onClick = onStartNav) {
@@ -556,5 +539,55 @@ private fun RoundAction(icon: androidx.compose.ui.graphics.vector.ImageVector, l
             .dpadHighlight(CircleShape),
     ) {
         Icon(icon, contentDescription = label, tint = SheetPalette.ink(dark), modifier = Modifier.size(20.dp))
+    }
+}
+
+
+/** Mode tabs: glyph + time, the selected one in the accent with an underline. In landscape they
+ *  share the header row with the round actions, which is the only way the card fits the column. */
+@Composable
+private fun ModeTabs(
+    currentMode: TravelMode,
+    modeEtas: Map<TravelMode, String>,
+    ink: androidx.compose.ui.graphics.Color,
+    onModeSelected: (TravelMode) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier.horizontalScroll(rememberScrollState()).padding(start = 8.dp)) {
+        listOf(
+            Triple(TravelMode.DRIVE, R.string.place_mode_drive, Icons.Default.DirectionsCar),
+            Triple(TravelMode.TRANSIT, R.string.place_mode_transit, Icons.Default.DirectionsBus),
+            Triple(TravelMode.WALK, R.string.place_mode_walk, Icons.AutoMirrored.Filled.DirectionsWalk),
+            Triple(TravelMode.BICYCLE, R.string.place_mode_bike, Icons.AutoMirrored.Filled.DirectionsBike),
+        ).forEach { (mode, label, icon) ->
+            val sel = mode == currentMode
+            val tint = if (sel) MaterialTheme.colorScheme.primary else ink
+            Column(
+                Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .dpadHighlight(RoundedCornerShape(8.dp))
+                    .clickable { onModeSelected(mode) }
+                    .padding(horizontal = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Row(Modifier.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(icon, contentDescription = stringResource(label), tint = tint, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        modeEtas[mode] ?: stringResource(label),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal,
+                        color = tint,
+                    )
+                }
+                Box(
+                    Modifier
+                        .width(44.dp)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
+                        .background(if (sel) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent),
+                )
+            }
+        }
     }
 }
