@@ -1718,7 +1718,10 @@ class MapViewModel @Inject constructor(
             if (!off) {
                 // Online applies IMMEDIATELY (and cancels a pending offline latch).
                 offlineLatchJob?.cancel()
+                val was = _state.value.offline
                 _state.update { if (it.offline) it.copy(offline = false) else it }
+                // Coming back online re-decides a shallow installed basemap (see refreshBasemapArchive).
+                if (was) refreshBasemapArchive()
             } else if (offlineLatchJob?.isActive != true) {
                 // DEBOUNCE the offline latch (user 2026-07-18, "thinks it's offline too often"):
                 // a WiFi-to-cellular handoff or a doze wake routinely passes through a moment
@@ -1728,7 +1731,9 @@ class MapViewModel @Inject constructor(
                 offlineLatchJob = viewModelScope.launch {
                     delay(3_000)
                     val stillOff = !isOnline()
+                    val changed = _state.value.offline != stillOff
                     _state.update { if (it.offline != stillOff) it.copy(offline = stillOff) else it }
+                    if (changed) refreshBasemapArchive()
                 }
             }
         }
@@ -5632,7 +5637,16 @@ class MapViewModel @Inject constructor(
     /** The installed basemap archive for [center], if any. Cheap (a folder listing), runs with the
      *  places refresh on camera idle and after every download or delete. */
     private fun refreshBasemapArchive(center: LatLng? = mapCenter ?: _state.value.myLocation) {
-        val uri = basemapStore.installedFor(center)?.let { "pmtiles://file://${it.absolutePath}" }
+        val file = basemapStore.installedFor(center)
+        // A SHALLOW archive (baked a zoom level short because the full bake would pass GitHub's
+        // 2 GiB asset limit) draws as a blurred version of the same map once you are past its
+        // depth, so a download made the map worse than streaming (issue #552). Online, the streamed
+        // tiles win; offline it is still far better than an empty screen.
+        val shallow = file != null &&
+            (basemapStore.maxZoomOf(file) ?: app.vela.offline.BasemapTileStore.FULL_MAP_ZOOM) < app.vela.offline.BasemapTileStore.FULL_MAP_ZOOM
+        val usable = file?.takeUnless { shallow && !_state.value.offline }
+        if (shallow) android.util.Log.i("VelaBasemap", "installed basemap is shallow (max zoom < ${app.vela.offline.BasemapTileStore.FULL_MAP_ZOOM}); using it only offline")
+        val uri = usable?.let { "pmtiles://file://${it.absolutePath}" }
         if (uri != _state.value.basemapArchive) {
             val fonts = app.vela.offline.GlyphPackStore.installed(appContext)
             android.util.Log.i("VelaBasemap", "offline basemap for the view: ${uri?.substringAfterLast('/') ?: "none"} (glyph pack installed=$fonts)")

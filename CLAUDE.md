@@ -1875,6 +1875,11 @@ architecture note.
   "Everything since" commit list: one line per feature, plain words, the reason for an early
   cut first if there is one (0.4.1217 is the model). The promote workflow cannot write this
   part; it is the release's own job, the same day. Nightlies keep the commit list alone.
+- **SHALLOW OFFLINE BASEMAPS ARE ONLY USED OFFLINE (2026-09-18):** `BasemapTileStore.maxZoomOf` reads
+  byte 101 of the PMTiles v3 header; `refreshBasemapArchive` skips an archive shallower than
+  `FULL_MAP_ZOOM` (14) unless `offline`, and the online/offline latch re-runs it. The workflow drops
+  a zoom level when a bake would pass GitHub's 2 GiB asset limit, which is what makes a region
+  shallow in the first place.
 - **START RE-PLANS FROM THE FIX (issue #463, 2026-09-17):** `MapViewModel.startNav()` intercepts a
   custom `directionsOrigin` more than `START_FROM_ME_M` (150 m) from `myLocation`: it clears the
   origin, sets `autoStartOnRoute`, re-routes and lets the arrival start the drive, rather than
