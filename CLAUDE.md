@@ -47,6 +47,15 @@ store near the user's house at 123 Sesame St has broken hours" written to a
 memory file IS a location leak; record it as "a grocery store with an in-store
 pharmacy mis-parses" plus the feature id if you need to find it again.
 
+A bug reported at a place near the user is still a bug worth chasing, and the
+locality is legitimate INPUT while you chase it: use it in the session to
+reason, query and reproduce. It is never OUTPUT. The write-up - commit, PR,
+code comment, docs, test fixture, memory note - carries the mechanism only:
+"a fuel station on a corner opened the transit stop beside it, because the stop
+icon outranked every business in the tap box" says everything the fix needs and
+puts nobody on a map. If the bug cannot be explained without the place, it has
+not been root-caused yet.
+
 Defaults that make the safe path the easy one:
 
 - **Fixture default: Davis / Sacramento, CA.** Bounding box `38.30,-122.00` to
