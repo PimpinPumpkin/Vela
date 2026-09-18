@@ -946,11 +946,16 @@ fun NavBarTop(
             }
             Spacer(Modifier.width(8.dp))
             // Bigger driving targets (user 2026-07-11, car-screen use): 54dp buttons, 26dp glyphs.
+            // Both can want this slot: the step-list button is asked for by "Prefer buttons over
+            // swipes", and pause is the default. Someone who asked for buttons gets both rather
+            // than a silent choice between them; the figures column shrinks to fit (FitText).
             if (showListButton) {
                 FilledTonalIconButton(onClick = onSteps, modifier = Modifier.size(54.dp)) {
                     Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.nav_steps), modifier = Modifier.size(26.dp))
                 }
-            } else if (onPause != null) {
+            }
+            if (showListButton && onPause != null) Spacer(Modifier.width(6.dp))
+            if (onPause != null) {
                 // Paused, it fills like End does: the bar already says "Paused" beside the figures,
                 // and the control that put the drive on hold should look held.
                 FilledTonalIconButton(
@@ -969,7 +974,8 @@ fun NavBarTop(
                         modifier = Modifier.size(26.dp),
                     )
                 }
-            } else {
+            }
+            if (!showListButton && onPause == null) {
                 Spacer(Modifier.size(54.dp)) // keeps the figures centered against the End button
             }
         }

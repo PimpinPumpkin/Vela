@@ -92,16 +92,33 @@ jobs:
       matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
+      # The binaries are CACHED, and tippecanoe is PINNED so the cache key means something. Every
+      # job used to build tippecanoe from source: 69 s of what is now a ~2 minute job, 414 times a
+      # wave, for a binary that does not change between them.
+      - name: Cache the bake toolchain
+        uses: actions/cache@v4
+        with:
+          path: ~/vela-bin
+          key: bake-tools-${{ runner.os }}-tippecanoe-2.79.0-pmtiles-1.31.2-duckdb-latest
       - name: Install duckdb + tippecanoe + pmtiles
         run: |
-          curl -sL https://github.com/duckdb/duckdb/releases/latest/download/duckdb_cli-linux-amd64.zip -o duckdb.zip
-          unzip -q duckdb.zip && sudo mv duckdb /usr/local/bin/duckdb
-          # go-pmtiles: `pmtiles extract` pulls a region's AllThePlaces tiles by range request.
-          curl -sL https://github.com/protomaps/go-pmtiles/releases/download/v1.31.2/go-pmtiles_1.31.2_Linux_x86_64.tar.gz | tar -xz pmtiles
-          sudo mv pmtiles /usr/local/bin/pmtiles
-          sudo apt-get update -qq && sudo apt-get install -y -qq build-essential libsqlite3-dev zlib1g-dev jq osmium-tool
-          git clone --depth 1 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
-          make -C /tmp/tippecanoe -j"$(nproc)" >/dev/null && sudo make -C /tmp/tippecanoe install >/dev/null
+          # osmium (the OSM position pass) and jq are apt's, and cheap; the rest is the cache.
+          sudo apt-get update -qq && sudo apt-get install -y -qq jq osmium-tool
+          if [ ! -x "$HOME/vela-bin/tippecanoe" ]; then
+            echo "toolchain cache miss, building"
+            mkdir -p "$HOME/vela-bin"
+            curl -sL https://github.com/duckdb/duckdb/releases/latest/download/duckdb_cli-linux-amd64.zip -o duckdb.zip
+            unzip -q duckdb.zip && mv duckdb "$HOME/vela-bin/duckdb"
+            # go-pmtiles: `pmtiles extract` pulls a region's AllThePlaces tiles by range request.
+            curl -sL https://github.com/protomaps/go-pmtiles/releases/download/v1.31.2/go-pmtiles_1.31.2_Linux_x86_64.tar.gz | tar -xz pmtiles
+            mv pmtiles "$HOME/vela-bin/pmtiles"
+            sudo apt-get install -y -qq build-essential libsqlite3-dev zlib1g-dev
+            git clone --depth 1 --branch 2.79.0 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
+            make -C /tmp/tippecanoe -j"$(nproc)" >/dev/null
+            cp /tmp/tippecanoe/tippecanoe /tmp/tippecanoe/tippecanoe-decode "$HOME/vela-bin/"
+          fi
+          sudo cp "$HOME/vela-bin/"* /usr/local/bin/
+          tippecanoe --version 2>&1 | head -1; duckdb --version; pmtiles version | head -1
       - name: Bake ${{ matrix.id }}
         run: |
           B='${{ toJson(matrix.bbox) }}'

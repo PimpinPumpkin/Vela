@@ -3212,7 +3212,25 @@ class MapViewModel @Inject constructor(
                     poiKind?.lowercase() in SETTLEMENT_KINDS -> 30_000.0
                     else -> 1_500.0
                 }
-                pick?.takeIf { it.location.distanceTo(location) <= maxM } to results
+                val kept = pick?.takeIf { it.location.distanceTo(location) <= maxM }
+                // WHY A TAP DID NOT LINK (user 2026-09-18: "more and more POIs that aren't
+                // linking"). Three very different causes look identical on screen - the search
+                // came back empty (a throttled session), nothing agreed by name or sat on the same
+                // lot (a tile row whose name or point is off), or the pick was dropped for being
+                // too far - and none of them left a trace. One line, no coordinates: the name is
+                // the map's own label and the rest are counts.
+                android.util.Log.d(
+                    "VelaTap",
+                    "tapped='" + name + "' kind=" + (seed?.category ?: poiKind) +
+                        " seeded=" + (seed != null) + " results=" + results.size +
+                        " answerable=" + results.count { p ->
+                            p.category?.let { isTransitCategory(it) || it.lowercase() in JUNCTION_CATEGORIES } != true
+                        } +
+                        " picked=" + (kept?.name ?: "NOTHING") +
+                        " at=" + (kept?.let { "%.0f".format(it.location.distanceTo(location)) + "m" } ?: "-") +
+                        " cap=" + maxM.toInt() + "m"
+                )
+                kept to results
             }.getOrNull()
             // Google answers with the local-script name even under hl=en (a Hebrew title over an
             // English app's Latin pin, user 2026-09-15): keep the map's own label when it is in

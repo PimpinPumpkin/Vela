@@ -2396,6 +2396,16 @@ architecture note.
   never the bare not-planned close - the label is how the tracker shows why, and `wontfix` is for
   a request that was understood and declined. The rules themselves are in CONTRIBUTING.md under
   "Bug reports and feature requests"; both issue forms carry the matching checklist.
+- **A TAP THAT DOES NOT LINK LOGS WHY (`VelaTap`, 2026-09-18).** The open-place resolve prints the
+  tapped label, the tile's kind, whether it was seeded, how many results Google returned, how many
+  survived the transit/junction filter, what was picked and at what distance, and the distance cap.
+  Three different failures (a throttled session returning nothing, a tile row whose name or point is
+  off so nothing agrees within `NO_NAME_MATCH_M`, and a pick dropped by the 1.5 km cap) are
+  indistinguishable on screen, and none of them used to leave a trace. NO coordinates in the line.
+- **THE BAKE TOOLCHAIN IS CACHED + PINNED (2026-09-18):** tippecanoe 2.79.0 and go-pmtiles 1.31.2
+  live in an `actions/cache` keyed on those versions (`~/vela-bin`), because building tippecanoe from
+  source was 69 s of every one of 414 jobs. A wave that misses the cache builds it once per job as
+  before, so the win lands on the NEXT wave, not the one you just started.
 - **PRUNE THE OVERTURE READ ON `bbox`, NOT ON THE GEOMETRY (2026-09-18).** `build-places-region.sh`
   filtered `raw` with `WHERE lng BETWEEN ... AND lat BETWEEN ...` where lng/lat are
   `ST_X(geometry)`/`ST_Y(geometry)`: a computed column, so DuckDB could prune nothing and read every
@@ -3804,10 +3814,12 @@ Gotchas:
   `nav_pause_in_bar`, DEFAULT ON, Settings > Navigation).** On a touch phone that slot is an empty
   54 dp spacer (it only keeps the figures centered against End), so pause takes it and the FAB stack
   keeps a PLAIN mute button; `NavBarTop(onPause=)` draws it, filled with `primary` while paused.
-  **The step-list button still wins the slot** whenever `PreferButtons.on || dpadFirst`
-  (`navListButton` / `navPauseInBar` in MapScreen), and pause stays in the stack for those people:
-  they asked for a discrete target, and the chevron handle is itself a focusable clickable that
-  opens the step sheet, so the list is never unreachable in either layout. Turning the setting off
+  **The step-list button also wants that slot** whenever `PreferButtons.on || dpadFirst`
+  (`navListButton` / `navPauseInBar` in MapScreen); the bar then carries BOTH (the figures FitText
+  shrinks) rather than silently picking one - the first cut gave the slot to the list button and the
+  new default never reached anyone with Prefer buttons on. On a keypad-first device pause stays in
+  the stack. The chevron handle is itself a focusable clickable that opens the step sheet, so the
+  list is never unreachable in any layout. Turning the setting off
   restores `NavHoldControls` in the stack.
 - **MUTE AND PAUSE ARE ONE BUTTON (user 2026-09-18, third pass; the layout the setting restores).** `NavHoldControls` in
   `ui/nav/NavOverlays.kt`: one 56 dp target. The FIRST tap on a running drive only slides MUTE out
