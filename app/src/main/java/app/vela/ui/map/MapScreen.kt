@@ -2040,24 +2040,14 @@ fun MapScreen(
 
             // The dedicated stops editor covers the directions panel while open (drag to
             // reorder, remove, add; one reroute on Done).
-            state.editingStops && state.directionsOpen && !searchOpen && state.pickOnMap == null &&
-                app.vela.ui.Experiments.googleChooser.value -> app.vela.ui.place.TripEditorSheet(
+            // The FULL-TRIP editor for everyone (issue #516): every row, start and destination
+            // included, can be dragged or dropped. It used to sit behind the chooser experiment
+            // while the plain editor pinned both ends, which is the complaint in that issue.
+            state.editingStops && state.directionsOpen && !searchOpen && state.pickOnMap == null ->
+                app.vela.ui.place.TripEditorSheet(
                 points = remember(state.selected, state.directionsOrigin, state.directionsReversed, state.directionsWaypoints) { vm.tripPointsForEditor() },
                 meLabel = stringResource(R.string.mapscreen_your_location),
                 onApply = vm::applyTrip,
-                onAddStop = vm::beginPickStop,
-                onDismiss = vm::closeStopsEditor,
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
-
-            state.editingStops && state.directionsOpen && !searchOpen && state.pickOnMap == null -> app.vela.ui.place.StopsEditorSheet(
-                originName = if (state.directionsReversed) (state.selected?.name ?: stringResource(R.string.mapscreen_place))
-                else (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location)),
-                originIsMe = !state.directionsReversed && state.directionsOrigin == null,
-                destinationName = if (state.directionsReversed) (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location))
-                else (state.selected?.name ?: stringResource(R.string.mapscreen_destination)),
-                stops = state.directionsWaypoints,
-                onApply = vm::applyStops,
                 onAddStop = vm::beginPickStop,
                 onDismiss = vm::closeStopsEditor,
                 modifier = Modifier.align(Alignment.BottomCenter),

@@ -1875,6 +1875,9 @@ architecture note.
   "Everything since" commit list: one line per feature, plain words, the reason for an early
   cut first if there is one (0.4.1217 is the model). The promote workflow cannot write this
   part; it is the release's own job, the same day. Nightlies keep the commit list alone.
+- **ONE TRIP EDITOR (issue #516, 2026-09-17):** `TripEditorSheet` + `tripPointsForEditor` / `applyTrip`
+  is the editor for the route chooser regardless of the Google-style experiment; the pinned-ends
+  `StopsEditorSheet` now serves only the IN-DRIVE case (where the start is where you are).
 - **TAP-TO-STOP IN NAV (2026-09-17):** `MapPoiPrefs.navTapPlaces` (off; its setter also flips
   `showPois` on and remembers it in `KEY_NAV_TAP_FORCED_POIS` so turning it off restores exactly
   that). VelaMapView widens the drive-nav places filter from fuel-only to `NAV_DRIVE_GROUPS`
