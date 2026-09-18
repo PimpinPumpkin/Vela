@@ -164,9 +164,19 @@ fi
 if [ -n "$LOCAL" ]; then
   SRC="read_parquet('$LOCAL')"
   SEL="id, name, category, confidence, brand, addr, website, phone, operating_status, lng, lat"
+  # The dev extract has plain lng/lat columns and no bbox struct.
+  BBOXPRED=""
 else
   SRC="read_parquet('s3://overturemaps-us-west-2/release/$RELEASE/theme=places/type=place/*', hive_partitioning=1)"
   SEL="id, names.primary AS name, categories.primary AS category, confidence, brand.names.primary AS brand, addresses[1].freeform AS addr, websites[1] AS website, phones[1] AS phone, operating_status, ST_X(geometry) AS lng, ST_Y(geometry) AS lat"
+  # PRUNE ON bbox, NOT ON THE GEOMETRY (2026-09-18). The region filter below is on ST_X/ST_Y, which
+  # DuckDB has to decode per row, so every place on earth was read for every region: 504 s of a
+  # 570 s Kentucky bake, once per region, 414 times. Overture's own `bbox` struct is a plain column
+  # with row-group statistics, so the same filter expressed against it skips the row groups outside
+  # the region: the identical 400,608 rows came back in 3.7 s. The addresses query below has always
+  # done this. The geometry test STAYS as the exact filter (this is only a pruning hint, and a point
+  # has xmin = xmax = lng), so the rows are the same set either way.
+  BBOXPRED="AND bbox.xmin BETWEEN $W AND $E AND bbox.ymin BETWEEN $S AND $N"
 fi
 # Overture ADDRESSES for the unit-level snap above. Skipped on the local-parquet dev path (the
 # extract has places only), which leaves the table empty and every stacked row on the ring.
@@ -205,7 +215,7 @@ duckdb <<SQL
 .timer on
 INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial; SET s3_region='us-west-2';
 CREATE TABLE raw AS SELECT $SEL, CAST(NULL AS VARCHAR) AS hours FROM $SRC
-  WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N;
+  WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N $BBOXPRED;
 -- The snap key is the WHOLE name, normalized, with a trailing store number dropped ("Safeway
 -- #1561" -> "safeway"): the two-word dedupe key is deliberately loose, and moving a point needs a
 -- tighter test than dropping a duplicate does (it dragged a campus onto its own outreach office,
