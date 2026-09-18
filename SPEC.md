@@ -1001,6 +1001,12 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   can edit, and the tile's `origin` property says `osm`. Ways and relations stay out: a building's
   centroid is the same guess as the parcel point. Measured on a small country: 766 business nodes in
   the box, 521 added after dedupe.
+- **Whether a rebake is worth a delta is measured, not assumed.** `scripts/archive-churn.py` reads
+  both archives' PMTiles directories, hashes every tile, and reports per zoom what is identical,
+  changed, added and dropped plus a real `zstd --patch-from` delta; `places-churn.yml` bakes a region
+  twice, against an OSM extract from N days ago and today's, so the difference is exactly what a
+  scheduled rebake picks up. Andorra over six days: 11% of tiles, 25% of bytes, delta 22% of a full
+  download.
 - **A seventh of the catalog rebakes nightly**, so an OSM edit reaches the map on its own within a
   week, and `only=<region>` ships one region in about two minutes. Not the whole catalog nightly:
   every archive would be re-published every night, and anyone who downloaded a region would be
