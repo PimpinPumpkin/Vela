@@ -87,3 +87,35 @@ object PreferButtons {
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
     private const val KEY = "prefer_buttons"
 }
+
+/**
+ * Where the PAUSE control sits during a drive (user 2026-09-18).
+ *
+ * On (the default) it takes the nav bar's right slot, which on a touch phone is an empty 54 dp
+ * spacer holding the figures centered against End, and the right-edge stack keeps a plain mute
+ * button. That puts the drive's two "hold something" controls where each is actually reached for:
+ * pause beside End and the trip figures, mute up with the other map controls, neither of them
+ * behind a pop-out.
+ *
+ * Off restores the combined button in the stack (tap opens, second tap pauses, long press mutes).
+ *
+ * The bar's right slot is also where the step-list button goes when it is asked for, and that
+ * button wins: `PreferButtons` and a keypad-first device asked for a discrete target, so taking it
+ * away to make room for this one is the wrong trade. The chevron handle opens the step list on its
+ * own in both layouts, so nothing becomes unreachable either way.
+ */
+object PauseInBar {
+    val on = mutableStateOf(true)
+
+    fun init(context: Context) {
+        on.value = prefs(context).getBoolean(KEY, true)
+    }
+
+    fun set(context: Context, value: Boolean) {
+        on.value = value
+        prefs(context).edit().putBoolean(KEY, value).apply()
+    }
+
+    private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
+    private const val KEY = "nav_pause_in_bar"
+}

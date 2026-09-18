@@ -95,12 +95,17 @@ it was built). With it, a pause taken at speed holds until you actually stop or 
 Pause is reachable from the map's nav controls and from the notification, because the phone is
 usually in a cradle and the decision to pull in is made from behind the wheel.
 
-On the map it shares one button with mute, since both are the drive's "hold something" controls
-and neither is touched often. The first tap slides mute out beside it for six seconds and the
-second tap, on the same target, pauses; a long press mutes on the spot, so anyone who knows it
-never sees the pop-out. The first build paused on that first tap, which meant the only way to
-reach mute was to hold the drive first. While paused, one tap resumes: the glyph already says
-what the tap will do.
+On the map it sits in the bottom bar, in the slot to the right of the trip figures. That slot
+is otherwise empty, there only to balance the End button on the left, and putting pause there
+leaves mute as a plain button with the other map controls, so neither is behind a pop-out.
+
+The step list button claims the same slot for anyone who has asked for buttons over gestures, and
+on a phone driven by keys. Pause then goes back to the map controls, sharing one button with mute:
+the first tap slides mute out beside it for six seconds and the second tap, on the same target,
+pauses; a long press mutes on the spot. That is also what the setting restores for anyone who
+prefers it. The step list is reachable in both layouts, because the bar's chevron is a real button
+as well as a handle. And while paused, one tap resumes wherever the control lives: the glyph
+already says what the tap will do.
 
 ## Limits
 
