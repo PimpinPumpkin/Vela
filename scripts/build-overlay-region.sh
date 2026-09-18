@@ -7,8 +7,8 @@
 #
 # TWO data sources (both Microsoft, both ODbL), picked by the SOURCE env var:
 #   SOURCE=us-legacy (default) — a US STATE from Microsoft US Building Footprints, one .geojson.zip:
-#     scripts/build-overlay-region.sh washington "Washington (state)" \
-#       https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Washington.geojson.zip \
+#     scripts/build-overlay-region.sh delaware "Delaware (state)" \
+#       https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Delaware.geojson.zip \
 #       "45.54,-124.85,49.00,-116.92"
 #   SOURCE=ms-global LOCATION=<Name> [QKPREFIX=<prefix>] — a COUNTRY (or a sub-national CHUNK of one) from
 #     Microsoft's Global ML Building Footprints (quadkey-partitioned GeoJSONL under global-buildings/, listed
@@ -19,7 +19,7 @@
 #     SOURCE=ms-global LOCATION=India QKPREFIX=13 scripts/build-overlay-region.sh india-13 "India (part)" - "<bbox>"
 #
 # Needs: gh (authenticated), tippecanoe, jq, unzip, curl, gzip. LICENSE: Microsoft Building Footprints is
-# ODbL — a DATA licence orthogonal to the app's GPLv3 (same as the OSM tiles). Obligation met by the
+# ODbL — a DATA license orthogonal to the app's GPLv3 (same as the OSM tiles). Obligation met by the
 # tippecanoe --attribution below (shown in-app) + this release publishing the derived tiles under ODbL.
 set -euo pipefail
 
@@ -73,7 +73,7 @@ else
 fi
 
 # Footprints render z14→z16 only (overzoomed above), matching the app's OSM `building` layer (minzoom 14)
-# — starting at z14 (not z12) drops the giant statewide low-zoom tiles that made WA balloon to 271 MB.
+# — starting at z14 (not z12) drops the giant statewide low-zoom tiles that made a big state balloon to 271 MB.
 # --drop-densest-as-needed + the default 500 KB tile cap keep a packed downtown tile from bloating; the
 # gap-fill overlay doesn't need every last footprint in a dense core (OSM already has those).
 echo "→ tiling with tippecanoe ($SOURCE)"
@@ -96,7 +96,7 @@ gh release upload "$TAG" "$WORK/$ID.pmtiles" --clobber --repo "$REPO"
 ENTRY="$(jq -nc --arg id "$ID" --arg name "$NAME" --arg url "$ASSET_URL" --argjson size "$SIZE" --argjson bbox "$BBOX" \
   '{id:$id,name:$name,url:$url,sizeMb:$size,bbox:$bbox}')"
 
-# MANIFEST_MODE=emit (CI matrix): drop the entry to $ENTRY_OUT and stop — the merge is centralised in one
+# MANIFEST_MODE=emit (CI matrix): drop the entry to $ENTRY_OUT and stop — the merge is centralized in one
 # job (merge-overlay-manifest.sh) so parallel region builds can't clobber the manifest. Default (local
 # single-region): read-modify-write the manifest here.
 if [ "${MANIFEST_MODE:-merge}" = "emit" ]; then

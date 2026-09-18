@@ -67,7 +67,7 @@ object OverpassSpeedCameras {
      * crosses a cached box constantly and refetches against sometimes-dead mirrors.
      *
      * [radiusM] is wider than the controls corridor (a camera can sit on a gantry or a verge set
-     * back from the centreline, and a missed warning is the failure that matters here); the caller
+     * back from the centerline, and a missed warning is the failure that matters here); the caller
      * still projects each hit onto the route and drops anything not genuinely on it.
      */
     @OptIn(ExperimentalSerializationApi::class)

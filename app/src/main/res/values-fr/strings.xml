@@ -279,7 +279,7 @@
     <string name="mapscreen_dpad_engage">OK : déplacer la carte</string>
     <string name="mapscreen_stop_replay">Arrêter la relecture</string>
     <string name="mapscreen_psds_tip_title">Verrouillage GPS lent ?</string>
-    <string name="mapscreen_psds_tip_body">Activez PSDS dans Paramètres → Localisation pour un positionnement bien plus rapide (sur GrapheneOS, il passe par leur proxy).</string>
+    <string name="mapscreen_psds_tip_body">Activez PSDS dans Paramètres → Localization pour un positionnement bien plus rapide (sur GrapheneOS, il passe par leur proxy).</string>
     <string name="mapscreen_got_it">Compris</string>
     <string name="mapscreen_heads_up">À noter</string>
     <string name="mapscreen_dismiss">Ignorer</string>
@@ -538,8 +538,8 @@
     <string name="nav_precise_body">La navigation vous suit par GPS, ce qui demande la position précise. Pour l\'instant, Vela ne connaît que votre zone approximative.</string>
     <string name="nav_precise_allow">Autoriser la précision</string>
     <string name="nav_precise_toast">Le guidage a besoin de la position précise</string>
-    <string name="loc_off_title">La localisation est désactivée</string>
-    <string name="loc_off_body">Vela n\'a pas accès à la localisation. Vous pouvez l\'autoriser dans les réglages du système.</string>
+    <string name="loc_off_title">La localization est désactivée</string>
+    <string name="loc_off_body">Vela n\'a pas accès à la localization. Vous pouvez l\'autoriser dans les réglages du système.</string>
     <string name="loc_off_settings">Ouvrir les réglages</string>
     <string name="loc_approx_title">Position approximative</string>
     <string name="loc_approx_body">Vela ne connaît que votre zone approximative, pas votre position exacte. La carte affiche un large cercle au lieu d\'un point, et la navigation ne fonctionnera pas. Vous pouvez passer à la position précise quand vous voulez.</string>

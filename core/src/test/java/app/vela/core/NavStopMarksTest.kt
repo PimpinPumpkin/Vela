@@ -11,7 +11,7 @@ import org.junit.Test
 
 /**
  * [NavEngine.stopMarks] projects each multi-stop waypoint onto the route line and returns the
- * metres-along-route of its nearest point (its "you're passing this stop" cue mark), or null when
+ * meters-along-route of its nearest point (its "you're passing this stop" cue mark), or null when
  * the stop sits too far from the line to be on this route. Drives the per-stop arrival cue.
  */
 class NavStopMarksTest {

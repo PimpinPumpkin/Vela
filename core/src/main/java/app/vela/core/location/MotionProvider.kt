@@ -15,7 +15,7 @@ import javax.inject.Singleton
 
 /**
  * World-frame horizontal acceleration — the accelerometer half of the nav puck's speed fusion
- * ([SpeedKalman]): between GPS fixes the puck's modelled speed follows the *measured* forward
+ * ([SpeedKalman]): between GPS fixes the puck's modeled speed follows the *measured* forward
  * acceleration, so it brakes and launches WITH the car instead of gliding at the last fix's
  * speed. Fuses `TYPE_LINEAR_ACCELERATION` (gravity already removed — an AOSP virtual sensor,
  * no GMS) with `TYPE_ROTATION_VECTOR` to rotate the device-frame reading into the world frame
@@ -24,7 +24,7 @@ import javax.inject.Singleton
  *
  * Degoogled: raw [SensorManager] only, same as [HeadingProvider]. Missing either sensor →
  * [available] false and the flow closes immediately; the Kalman then predicts with `a = 0`,
- * which is exactly the old constant-speed behaviour.
+ * which is exactly the old constant-speed behavior.
  */
 @Singleton
 class MotionProvider @Inject constructor(

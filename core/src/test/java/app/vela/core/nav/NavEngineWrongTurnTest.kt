@@ -12,7 +12,7 @@ import org.junit.Test
 /**
  * A deliberate wrong turn at speed must ask for a reroute on the SECOND fix after the turn, not
  * the third (real drive 2026-09-07: the guidance kept the driver on the old line for too long).
- * A wide but legitimate turn, which stays within a few metres of the corner while the fix's
+ * A wide but legitimate turn, which stays within a few meters of the corner while the fix's
  * course swings, must not.
  */
 class NavEngineWrongTurnTest {

@@ -60,7 +60,7 @@ fun VelaDialog(
     dismissText: String,
     onDismiss: () -> Unit,
     icon: (@Composable () -> Unit)? = null,
-    // Renders the dismiss button in a quieter colour than the confirm one - used when the two
+    // Renders the dismiss button in a quieter color than the confirm one - used when the two
     // choices are NOT equal weight and we want to visibly steer toward confirm (e.g. the voice
     // prompt nudging "Download Vela voice" over "Use existing voice") without disabling the
     // other option. It stays fully focusable and tappable; only the tint changes.

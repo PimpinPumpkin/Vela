@@ -49,7 +49,7 @@ class MapDpadController {
         m.easeCamera(CameraUpdateFactory.zoomBy(delta), 200)
     }
 
-    /** A "tap" at the crosshair (view centre). Returns true if something was hit. */
+    /** A "tap" at the crosshair (view center). Returns true if something was hit. */
     fun selectAtCenter(): Boolean {
         val m = map ?: return false
         val v = mapView ?: return false

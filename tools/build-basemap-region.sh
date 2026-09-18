@@ -8,7 +8,7 @@
 # Needs Java 21+ and planetiler.jar next to this script (or PLANETILER=/path/to/planetiler.jar).
 # planetiler downloads its base data (Natural Earth, water polygons, lake centerlines, about
 # 1.2 GB) into data/sources/ on the first run; cache that directory in CI. Saarland at z14 bakes
-# to 33 MB in about two minutes on a laptop; Washington is about 200 MB.
+# to 33 MB in about two minutes on a laptop; a large US state is about 200 MB.
 set -euo pipefail
 ID="$1"; PBF="$2"; OUT="$3"; MAXZOOM="${4:-14}"
 JAR="${PLANETILER:-$(dirname "$0")/planetiler.jar}"

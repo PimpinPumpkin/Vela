@@ -1,7 +1,7 @@
 package app.vela.core.data.google
 
 /**
- * Builds Google Maps' `pb` URL parameter: protobuf serialised into a string of
+ * Builds Google Maps' `pb` URL parameter: protobuf serialized into a string of
  * `!`-delimited fields, each `!{fieldNumber}{typeCode}{value}`.
  *
  * Type codes (stable): `m` = message/group, where the value is the number of

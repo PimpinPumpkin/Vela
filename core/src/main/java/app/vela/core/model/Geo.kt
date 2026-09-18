@@ -36,7 +36,7 @@ data class LatLngBounds(
     }
 }
 
-/** Great-circle distance in metres (haversine). Used for "near me" ranking and
+/** Great-circle distance in meters (haversine). Used for "near me" ranking and
  *  the nav engine's off-route / approaching-maneuver checks. */
 fun LatLng.distanceTo(o: LatLng): Double {
     val r = 6_371_000.0

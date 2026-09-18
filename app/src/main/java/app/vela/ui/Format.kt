@@ -16,7 +16,7 @@ object Units {
     fun init(context: Context) {
         // The DEVICE's locale, not the JVM default: AppLocale.wrap runs before this (in
         // attachBaseContext) and sets the JVM default to the in-app language, which for the
-        // plain "English" choice has no country, so a US phone silently flipped to kilometres
+        // plain "English" choice has no country, so a US phone silently flipped to kilometers
         // the moment its owner touched the language picker (seen on the P4a, 2026-09-12).
         val country = android.content.res.Resources.getSystem().configuration.locales.get(0)?.country
             ?: Locale.getDefault().country

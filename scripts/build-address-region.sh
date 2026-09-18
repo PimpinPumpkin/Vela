@@ -5,15 +5,15 @@
 # Sibling of build-overlay-region.sh (which does building FOOTPRINTS); this does ADDRESS POINTS.
 #
 #   scripts/build-address-region.sh <id> "<Display name>" <openaddresses-source> "<S,W,N,E>"
-#   e.g. scripts/build-address-region.sh washington "Washington (state)" us/wa/statewide "45.54,-124.85,49.00,-116.92"
+#   e.g. scripts/build-address-region.sh delaware "Delaware (state)" us/de/statewide "38.45,-75.79,39.84,-74.98"
 #
 # Data: OpenAddresses (openaddresses.io) — address points aggregated from open/government sources, per-source
-# licences (open). The batch API resolves the source's CURRENT job (job ids rotate per data refresh), whose
+# licenses (open). The batch API resolves the source's CURRENT job (job ids rotate per data refresh), whose
 # GeoJSONL output is one Point per line with a `number` (+ `street`, `unit`, `city`, `postcode`) property.
-# Needs: gh (authenticated), tippecanoe, jq, curl, gzip. LICENCE note in the release body.
+# Needs: gh (authenticated), tippecanoe, jq, curl, gzip. LICENSE note in the release body.
 set -euo pipefail
 
-ID="${1:?region id}"; NAME="${2:?display name}"; SRC="${3:?openaddresses source e.g. us/wa/statewide}"; BBOX_CSV="${4:?bbox S,W,N,E}"
+ID="${1:?region id}"; NAME="${2:?display name}"; SRC="${3:?openaddresses source e.g. us/de/statewide}"; BBOX_CSV="${4:?bbox S,W,N,E}"
 REPO="${VELA_REPO:-PimpinPumpkin/Vela}"
 TAG="address-overlays"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
@@ -80,7 +80,7 @@ echo "→ $ID: ${SIZE} MB, bbox $BBOX"
 
 gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 || \
   gh release create "$TAG" --repo "$REPO" --prerelease --title "Open address (house-number) overlays" \
-    --notes "OpenAddresses (openaddresses.io) address points as PMTiles for Vela's house-number labels, rendered where OSM lacks addr:housenumber. Data assets, not a code release. Addresses © OpenAddresses contributors, per-source open licences."
+    --notes "OpenAddresses (openaddresses.io) address points as PMTiles for Vela's house-number labels, rendered where OSM lacks addr:housenumber. Data assets, not a code release. Addresses © OpenAddresses contributors, per-source open licenses."
 
 gh release upload "$TAG" "$WORK/$ID.pmtiles" --clobber --repo "$REPO"
 

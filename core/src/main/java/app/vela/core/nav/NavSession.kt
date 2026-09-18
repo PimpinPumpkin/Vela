@@ -32,7 +32,7 @@ import javax.inject.Singleton
  * while underway it re-queries directions from the current position and, if the
  * fresh traffic-aware ETA beats the remaining time by a real margin, surfaces a
  * faster route the user can accept. That's the "is there a better way right now"
- * behaviour traffic apps live on.
+ * behavior traffic apps live on.
  */
 /** Outcome of [NavSession.rerouteGate] - whether a reroute request may proceed. */
 enum class RerouteGate { START, SKIP_IN_FLIGHT, SKIP_COOLDOWN, ABANDON_STUCK_AND_START }
@@ -48,7 +48,7 @@ class NavSession @Inject constructor(
         val navigating: Boolean = false,
         /**
          * The drive is HELD: the route, the stops and the remaining figures stay exactly as they
-         * are, and every per-fix behaviour stops - no engine update, no off-route detection, no
+         * are, and every per-fix behavior stops - no engine update, no off-route detection, no
          * reroute, no voice, no stop cues, no live-traffic recheck or faster-route offer. The puck
          * still follows you (the map draws it from the raw fix), so pulling into a fuel station
          * does not make the app argue with you about it (user 2026-09-18).
@@ -248,7 +248,7 @@ class NavSession @Inject constructor(
     }
 
     fun stop() {
-        // A reroute cancelled here ends without its own FAILED/adopted line, which made an export
+        // A reroute canceled here ends without its own FAILED/adopted line, which made an export
         // read as one attempt hanging for minutes (issue #557). Say so.
         if (rerouteJob?.isActive == true) {
             diag.record("nav", "nav ended with a reroute in flight for ${SystemClock.elapsedRealtime() - rerouteStartedMs} ms")
@@ -501,7 +501,7 @@ class NavSession @Inject constructor(
         }
     }
 
-    /** How far [loc] sits off the route line, in metres, measured the way the engine measures it
+    /** How far [loc] sits off the route line, in meters, measured the way the engine measures it
      *  (the anchor is our current progress, so an out-and-back route does not match the wrong leg). */
     private fun perpendicularToRouteM(route: Route, loc: LatLng): Double {
         val path = route.polyline
@@ -602,7 +602,7 @@ class NavSession @Inject constructor(
             val candidateEta = candidate.durationInTrafficSeconds ?: candidate.durationSeconds
             val remaining = _state.value.remainingDuration
             // A TRAFFICLESS candidate (Google fetch failed -> free-flow ETA) must never drive the
-            // ETA calibration or a faster-route offer: free-flow is systematically optimistic, so
+            // ETA calibration or a faster-route offer: free-flow is systematically optimiztic, so
             // against a traffic-aware baseline it always "wins" - the real-drive 2026-07-15 report
             // (white suspiciously-fast ETA after accepting, syncing back to reality a recheck
             // later) was exactly this. Trafficless can still silently heal abbreviated steps
@@ -632,7 +632,7 @@ class NavSession @Inject constructor(
             // real turns. Tagged at the source (Route.abbreviatedSteps), so a healthy route can
             // never be churned by this. Same self-heal for a TRAFFICLESS current route (white ETA,
             // real-drive 2026-07-15): once a same-course candidate carries live traffic again,
-            // adopt it so the ETA turns traffic-coloured and honest instead of staying white for
+            // adopt it so the ETA turns traffic-colored and honest instead of staying white for
             // the rest of the drive. Either upgrade qualifies; neither quality may downgrade.
             val stepsUpgrade = !current!!.hasRealSteps && candidate.hasRealSteps
             val trafficUpgrade = !current.hasLiveTraffic && candidate.hasLiveTraffic
@@ -803,7 +803,7 @@ class NavSession @Inject constructor(
             // so the next qualifying fix fires a FRESH request from where the car actually is.
             // urgent = single-shot fetches, no divergence snap (issues #185/#236): the full
             // planning ladder regularly outlived this deadline on a weak link, so the timeout
-            // cancelled work that was about to succeed and the driver sat unrerouted through
+            // canceled work that was about to succeed and the driver sat unrerouted through
             // repeated attempts. A lean route lands in seconds; the recheck loop restores
             // traffic/steps quality afterwards.
             // The fetch runs as an UNSTRUCTURED async so the deadline can actually ABANDON it
@@ -1031,7 +1031,7 @@ class NavSession @Inject constructor(
          *
          * A mid-drive reroute is `urgent`, which means a SINGLE-SHOT fetch with no retry ladder -
          * deliberately, because the full ladder used to outlive the deadline on a weak link and got
-         * cancelled just as it was about to succeed (issues #185/#236). But a single shot on a
+         * canceled just as it was about to succeed (issues #185/#236). But a single shot on a
          * genuinely flaky link can fail over and over, and nothing ever escalated: the driver sat
          * on "Re-routing" through attempt after attempt, while ENDING NAV AND STARTING AGAIN worked
          * first time - because a fresh plan is not urgent and gets the 3-try ladder. That is

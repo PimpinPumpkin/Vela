@@ -99,7 +99,7 @@ class StopDeparturesParserTest {
     """.trimIndent()
 
     @Test
-    fun `groups a flat bus board by route, with numbers and colours`() {
+    fun `groups a flat bus board by route, with numbers and colors`() {
         val d = StopDeparturesParser.parse(body(busTransit))!!
         assertEquals("Mission St & 16th St", d.stationName)
         assertEquals(2, d.lines.size)                       // 3 departures -> 2 routes

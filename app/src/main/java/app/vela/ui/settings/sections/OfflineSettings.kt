@@ -197,7 +197,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             }
             // The region you're IN = the SMALLEST bbox that contains you. Region boxes carry a Geofabrik
             // buffer that spills across borders (British Columbia's box dips into Sacramento), so "any box that
-            // covers you" mislabels big neighbours - the smallest covering box is the specific one. Sort:
+            // covers you" mislabels big neighbors - the smallest covering box is the specific one. Sort:
             // installed first (manage what you have), then that primary region, then everything by name.
             val primary = state.routingRegions.filter(covers)
                 .minByOrNull { (it.n - it.s) * (it.e - it.w) }
@@ -206,7 +206,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                     .thenByDescending { it.id == primary?.id }
                     .thenBy { it.name },
             )
-            // With a world-sized catalog, a name filter makes a region you're TRAVELLING to findable
+            // With a world-sized catalog, a name filter makes a region you're TRAVELING to findable
             // without scrolling past a hundred others (the sort above handles where you are now).
             var routeFilter by remember { mutableStateOf("") }
             if (state.routingRegions.size > 8) {
@@ -413,7 +413,7 @@ private fun StorageRow(label: String, mb: Int, onClick: (() -> Unit)? = null) {
 }
 
 /** The size a region really lands at: manifest installedMb when the bake published it, else the
- *  download size for an obf (it installs as-is) and ~2.35x the zip for a pack (the WA pack measured
+ *  download size for an obf (it installs as-is) and ~2.35x the zip for a pack (the state pack measured
  *  143 -> 335 MB). The obf, its place pack and [extraMb] (the places archive and offline map the
  *  same download pulls, MapUiState.regionExtrasMb) install together, so the shown number is their SUM. */
 internal fun regionInstalledMb(graph: app.vela.offline.RoutingRegion, pack: app.vela.offline.RoutingRegion?, extraMb: Int = 0): Int {

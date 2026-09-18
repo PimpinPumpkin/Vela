@@ -22,7 +22,7 @@ object DemoTrace {
     fun fromRoute(polyline: List<LatLng>, cruiseKmh: Double = 72.0): List<ReplayFix> {
         if (polyline.size < 2) return emptyList()
         val speedMs = cruiseKmh / 3.6
-        val stepM = speedMs // one fix per second → advance `speed` metres per fix
+        val stepM = speedMs // one fix per second → advance `speed` meters per fix
         val speedF = speedMs.toFloat()
         val out = ArrayList<ReplayFix>()
         var t = 0L
@@ -32,7 +32,7 @@ object DemoTrace {
         out.add(ReplayFix(pos.lat, pos.lng, t, headingHere(), speedF))
         while (seg < polyline.size - 1) {
             var remaining = stepM
-            // Advance `stepM` metres along the polyline from the current position.
+            // Advance `stepM` meters along the polyline from the current position.
             while (remaining > 0.0 && seg < polyline.size - 1) {
                 val next = polyline[seg + 1]
                 val d = pos.distanceTo(next)

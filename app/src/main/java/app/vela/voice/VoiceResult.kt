@@ -34,7 +34,7 @@ sealed interface VoiceResult {
         /** The Silero VAD model could not be constructed (asset missing or corrupt). */
         VAD,
 
-        /** `AudioRecord` refused to initialise - the prime suspect on unusual mic configurations. */
+        /** `AudioRecord` refused to initialize - the prime suspect on unusual mic configurations. */
         AUDIO_INIT,
 
         /** Recording or decoding threw partway through. */

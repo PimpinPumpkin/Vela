@@ -122,7 +122,7 @@ class VoiceGuide @Inject constructor(
     private fun targetLang(): String =
         app.vela.core.i18n.NavStringsRegistry.current().locale.language.ifBlank { "en" }
 
-    /** TTS health for the UI: null = initialising, true = a usable voice is ready,
+    /** TTS health for the UI: null = initializing, true = a usable voice is ready,
      *  false = init failed or the chosen language has no installed voice data. Lets
      *  Settings tell the user *why* it's silent instead of failing quietly. */
     @Volatile
@@ -198,7 +198,7 @@ class VoiceGuide @Inject constructor(
         }
     }
 
-    /** Initialise, or **re-initialise** if [enginePackage] differs from the engine
+    /** Initialize, or **re-initialize** if [enginePackage] differs from the engine
      *  currently loaded — so picking a different engine in Settings actually takes
      *  effect (the old idempotent guard ignored later picks). */
     fun init(enginePackage: String? = null) {
@@ -241,7 +241,7 @@ class VoiceGuide @Inject constructor(
             // override every interrupt stranded a refcount and focus never released.
             override fun onStop(utteranceId: String?, interrupted: Boolean) = releaseFocus()
             @Deprecated("deprecated") override fun onError(utteranceId: String?) {
-                working = false // the engine accepted text but couldn't synthesise it
+                working = false // the engine accepted text but couldn't synthesize it
                 releaseFocus()
             }
         })
@@ -263,7 +263,7 @@ class VoiceGuide @Inject constructor(
         }
         // A measured pace + neutral pitch reads more like a real nav voice than the engine default.
         // The LANGUAGE is set per-utterance now (speakViaSystem), keyed on the nav-text language —
-        // so a mid-drive app/system-language change is honoured and the engine never reads a
+        // so a mid-drive app/system-language change is honored and the engine never reads a
         // language it has no voice for.
         t.setSpeechRate(speechRate)
         t.setPitch(1.0f)
@@ -348,7 +348,7 @@ class VoiceGuide @Inject constructor(
     @Volatile var roadNameLatin: Map<String, String> = emptyMap()
 
     // Bumped by stop()/a new opener so a deferred nav-start opener (see speakOpener) that is still
-    // waiting for its road name to romanize gets cancelled instead of speaking into a dead session.
+    // waiting for its road name to romanize gets canceled instead of speaking into a dead session.
     @Volatile private var openerToken = 0
     private val OPENER_MAX_WAIT_MS = 2500L // cap the nav-start opener's wait for its romanized road name
 
@@ -391,7 +391,7 @@ class VoiceGuide @Inject constructor(
         val n = neural
         // Use the neural voice ONLY when it can actually speak the target language. A single-
         // language Piper model reading another language's text is gibberish (the "English voice
-        // read Russian" bug) — voiceLanguage==null means unknown → trust it (old behaviour).
+        // read Russian" bug) — voiceLanguage==null means unknown → trust it (old behavior).
         if (useNeural && n != null && n.voiceLanguage.let { it == null || it == t }) {
             // The neural synth fires onDone exactly ONCE per speak() (including aborted/
             // interrupted utterances — PiperSynth's finally), so the refcount balances without

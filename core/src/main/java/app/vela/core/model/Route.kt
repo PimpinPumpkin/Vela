@@ -32,7 +32,7 @@ data class Maneuver(
     // the under-the-puck pill read the current name through [roadAt].
     val renames: List<RoadRename> = emptyList(),
 ) {
-    /** The road (name, ref) you are on [traveledM] metres past this maneuver: the last rename
+    /** The road (name, ref) you are on [traveledM] meters past this maneuver: the last rename
      *  already passed, else the road the maneuver itself entered. */
     fun roadAt(traveledM: Double): Pair<String?, String?> {
         var name = road; var r = ref
@@ -110,7 +110,7 @@ fun continueHasGenuineFork(lanes: List<Lane>): Boolean {
         // "none" means the lane has NO painted arrow (its API's own wording), NOT "continues straight" — a
         // plain turn bay or an unmarked outer lane is commonly emitted as "none", and treating it as
         // straight-ish would re-speak the exact turn-bay case this gate silences. ("through" is never
-        // emitted — OSRM normalises the OSM `turn:lanes` value `through` to `straight` — so it's omitted.)
+        // emitted — OSRM normalizes the OSM `turn:lanes` value `through` to `straight` — so it's omitted.)
         !lane.valid && lane.indications.any { ind -> ind == "straight" || ind.startsWith("slight") }
     }
 }
@@ -126,7 +126,7 @@ data class RouteLeg(
  *  congestion grade (1 = moderate, 2 = heavy, 3+ = severe); free-flowing stretches
  *  are NOT listed (they're the gaps). [startMeters]..[startMeters]+[lengthMeters]
  *  locates it by distance from the route start — divide by the route distance for a
- *  fraction-along-route, which drives the per-segment colour of the route line. */
+ *  fraction-along-route, which drives the per-segment color of the route line. */
 data class TrafficSpan(
     val level: Int,
     val startMeters: Double,
@@ -195,13 +195,13 @@ data class Route(
     // upgrades an adopted abbreviated route to full steps once the open router recovers.
     val abbreviatedSteps: Boolean = false,
     // The user asked to avoid tolls/highways but this route came from a router that cannot
-    // honour that (online OSRM rejects excludes, Google keyless has no avoid param, and the
+    // honor that (online OSRM rejects excludes, Google keyless has no avoid param, and the
     // on-device engine had no coverage or timed out) - the picker shows an honesty note so a
     // toggled-on avoid is never silently ignored (the Reddit "still routed me through the
     // motorway" report).
     val avoidNotHonored: Boolean = false,
     // Computed ON THE PHONE from a downloaded region (no network, or an avoid toggle Google could
-    // not honour). The picker says so instead of a traffic word: an offline route has no live
+    // not honor). The picker says so instead of a traffic word: an offline route has no live
     // traffic and the user should know which kind they are looking at (issue #350).
     val offline: Boolean = false,
     // See [RouteSource]. Stamped by every constructor; UNKNOWN only for old trip files.
@@ -238,7 +238,7 @@ data class Route(
 
     /** How much slower the live, traffic-aware time is than the typical time
      *  (1.0 = no traffic; 1.4 = 40% slower). Null when no live traffic is known —
-     *  drives the route line's congestion colour. */
+     *  drives the route line's congestion color. */
     val trafficRatio: Double?
         get() = durationInTrafficSeconds?.let { t -> if (durationSeconds > 0) t / durationSeconds else null }
 }

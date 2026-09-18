@@ -154,7 +154,7 @@ internal fun SearchSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     // ONE focus stop = the whole row (dpadClickable); the RadioButton is read-only
                     // (onClick = null) so it isn't a second stop, matching the SelectableRow idiom.
                     // OK selects this engine; the ring is the only focus signal (dpadClickable drops
-                    // Material's grey layer under key input).
+                    // Material's gray layer under key input).
                     DpadFocusHandoff(keeper)
                     Row(
                         Modifier.fillMaxWidth().dpadHighlight(DpadShape(6.dp)).dpadClickable(enabled = !active) { vm.selectAsrEngine(engine) }.dpadFocusKept(keeper).padding(horizontal = 16.dp, vertical = 8.dp),

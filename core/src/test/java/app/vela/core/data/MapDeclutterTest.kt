@@ -5,10 +5,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /** Pins the map-declutter clustering: a four-way stop's per-approach nodes must merge to ONE
- *  drawn glyph at the intersection, while neighbouring intersections stay separate. */
+ *  drawn glyph at the intersection, while neighboring intersections stay separate. */
 class MapDeclutterTest {
 
-    // ~0.0001 deg latitude = ~11 m; a four-way stop's nodes sit 10-20 m from the junction centre.
+    // ~0.0001 deg latitude = ~11 m; a four-way stop's nodes sit 10-20 m from the junction center.
     private fun p(lat: Double, lng: Double) = LatLng(lat, lng)
 
     @Test
@@ -40,7 +40,7 @@ class MapDeclutterTest {
     }
 
     @Test
-    fun `distance approximation is metre-accurate at street scale`() {
+    fun `distance approximation is meter-accurate at street scale`() {
         // 0.0009 deg latitude = ~100 m.
         val d = MapDeclutter.approxDistanceM(p(38.5, -121.7), p(38.5009, -121.7))
         assertEquals(100.0, d, 1.0)

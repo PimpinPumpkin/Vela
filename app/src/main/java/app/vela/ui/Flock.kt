@@ -8,8 +8,8 @@ import androidx.compose.runtime.mutableStateOf
  * [Traffic] / [TransitLayer] / [Topography], flipped from Settings > Map and persisted. **ON by default**
  * (2026-07-13, user call): it's a headline privacy feature for Vela's audience, and now that the data is a
  * bundled on-device dataset ([app.vela.data.FlockCameras]) rather than a per-viewport Overpass query, it's
- * basically free to draw and only shows at neighbourhood zoom, so leaving it on costs nothing. Anyone who
- * doesn't want it flips it off in Settings (an explicit off is persisted and honoured). Data is the
+ * basically free to draw and only shows at neighborhood zoom, so leaving it on costs nothing. Anyone who
+ * doesn't want it flips it off in Settings (an explicit off is persisted and honored). Data is the
  * community DeFlock mapping in OpenStreetMap (`surveillance:type=ALPR`), no account, no Flock/Google.
  * NB the ROUTE-avoid re-rank ([FlockRouteAlert]) stays OFF by default - that one changes route choice.
  */

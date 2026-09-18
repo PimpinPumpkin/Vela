@@ -41,7 +41,7 @@ class ObfSpeedLimitProbeTest {
         val engine = ObfRouteEngine(dir!!)
         // South State Street in Dover carries no maxspeed tag in OSM: the badge must blank, never guess.
         assertNull(engine.currentRoadLimit(39.1197, -75.5160))
-        // Delaware Bay, inside the region box, kilometres from any road.
+        // Delaware Bay, inside the region box, kilometers from any road.
         assertNull(engine.currentRoadLimit(39.05, -75.25))
         engine.shutdown()
     }

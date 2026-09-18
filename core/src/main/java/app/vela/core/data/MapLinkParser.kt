@@ -14,7 +14,7 @@ data class MapLink(val query: String? = null, val lat: Double? = null, val lng: 
  *  - `geo:38.5,-121.7`               → a point
  *  - `geo:0,0?q=Coffee`              → a search
  *  - `geo:38.5,-121.7?q=Pier 39`     → a named place near a point
- *  - `geo:0,0?q=38.5,-121.7(Label)`  → a labelled point
+ *  - `geo:0,0?q=38.5,-121.7(Label)`  → a labeled point
  *  - `https://www.google.com/maps/place/Foo/@38.5,-121.7,15z` → a place / point
  *  - `https://www.google.com/maps/search/coffee` / `?q=...`    → a search
  *
@@ -61,7 +61,7 @@ object MapLinkParser {
         var lat = COORD.find(coordPart)?.groupValues?.get(1)?.toDoubleOrNull()
         var lng = COORD.find(coordPart)?.groupValues?.get(2)?.toDoubleOrNull()
         if (lat == 0.0 && lng == 0.0) { lat = null; lng = null } // 0,0 = "no point, see ?q"
-        // RFC-style zoom: geo:lat,lng?z=17 (1..21). Honoured for the camera; junk is ignored.
+        // RFC-style zoom: geo:lat,lng?z=17 (1..21). Honored for the camera; junk is ignored.
         val zoom = queryParam(raw, "z")?.toDoubleOrNull()?.takeIf { it in 1.0..21.0 }
 
         val q = queryParam(raw, "q")?.let { decode(it) }

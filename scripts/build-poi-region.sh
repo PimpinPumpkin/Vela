@@ -4,8 +4,8 @@
 # poi-pack-manifest.json. Runnable locally or from CI (.github/workflows/poi-packs.yml).
 #
 #   scripts/build-poi-region.sh <id> "<Display name>" <geofabrik .osm.pbf URL>
-#   e.g. scripts/build-poi-region.sh washington "Washington (state)" \
-#          https://download.geofabrik.de/north-america/us/washington-latest.osm.pbf
+#   e.g. scripts/build-poi-region.sh delaware "Delaware (state)" \
+#          https://download.geofabrik.de/north-america/us/delaware-latest.osm.pbf
 #
 # Needs: gh (authenticated), osmium-tool, jq, zip, python3. The pack is a SQLite db whose tables
 # match the app's OfflinePoiStore/OfflineAddressStore schemas (see poipack_build.py).
@@ -35,7 +35,7 @@ osmium tags-filter "$WORK/region.osm.pbf" \
 rm -f "$WORK/region.osm.pbf" # reclaim disk before the build (country PBFs are GB-scale)
 
 # The export STREAMS into the pack builder — never written to disk. The geojsonseq is ~12x the
-# filtered PBF (Washington: 161 MB -> 1.9 GB), so a country-sized export on disk would blow a
+# filtered PBF (a large state: 161 MB -> 1.9 GB), so a country-sized export on disk would blow a
 # 14 GB CI runner; piped, the peak disk is just filtered.pbf + the SQLite db.
 echo "→ exporting features → building SQLite pack (streamed)"
 osmium export "$WORK/filtered.osm.pbf" -f geojsonseq --add-unique-id=type_id -o - \

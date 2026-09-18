@@ -34,7 +34,7 @@ fun PermissionRationale(
         dismissText = notNowText,
         onDismiss = onNotNow,
         // Quiet the decline: the user tapped into a maps app / tapped the mic, so allowing is the
-        // expected path. It stays a real, working button - only the tint is de-emphasised.
+        // expected path. It stays a real, working button - only the tint is de-emphasized.
         dismissLowEmphasis = true,
         text = { Text(body) },
     )

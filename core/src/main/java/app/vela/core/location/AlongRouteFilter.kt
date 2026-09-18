@@ -1,16 +1,16 @@
 package app.vela.core.location
 
 /**
- * 1-D Kalman filter over the nav puck's **along-route position** (metres travelled along the
+ * 1-D Kalman filter over the nav puck's **along-route position** (meters traveled along the
  * navigated polyline), the other half of [SpeedKalman].
  *
  * The puck's SPEED has been filtered since June; its POSITION never was. The snapped fix was
- * written straight into the motion model, so every metre of along-route GPS noise was a metre the
+ * written straight into the motion model, so every meter of along-route GPS noise was a meter the
  * puck genuinely had to travel — once a second, for the whole drive. Smoothing downstream of that
  * cannot help: a smoother makes the movement gentler, it does not make it stop happening. This is
  * the missing measurement update (issue #251).
  *
- * The model is deliberately the simple one: the position is dead-reckoned forward at the modelled
+ * The model is deliberately the simple one: the position is dead-reckoned forward at the modeled
  * speed ([predict]) and its variance grows; a fix folds in ([update]) weighted by that variance
  * against the fix's own reported accuracy. A clean 4 m fix pulls most of the way; a 25 m
  * urban-canyon one barely moves the estimate, which is exactly the fix that used to throw the
@@ -22,11 +22,11 @@ package app.vela.core.location
  * an outage, a persistent over-cap jump) are not noise to be averaged down: the caller calls
  * [reseed] and the estimate snaps.
  *
- * Pure math, no Android — unit-tested in `:core`. Units: seconds, metres, m/s.
+ * Pure math, no Android — unit-tested in `:core`. Units: seconds, meters, m/s.
  */
 class AlongRouteFilter {
 
-    /** Filtered metres along the route. Meaningless until the first [reseed]. */
+    /** Filtered meters along the route. Meaningless until the first [reseed]. */
     var alongM = 0.0
         private set
 
@@ -38,7 +38,7 @@ class AlongRouteFilter {
         private set
 
     /**
-     * Dead-reckon [advanceM] metres forward (the modelled speed integrated over this frame) and
+     * Dead-reckon [advanceM] meters forward (the modeled speed integrated over this frame) and
      * grow the doubt by [dt] seconds' worth. No-op until seeded.
      */
     fun predict(advanceM: Double, dt: Double) {
@@ -47,7 +47,7 @@ class AlongRouteFilter {
         if (dt > 0.0) variance += Q * dt
     }
 
-    /** Fold in a fix at [m] metres along the route, reported to [accuracyM] metres. */
+    /** Fold in a fix at [m] meters along the route, reported to [accuracyM] meters. */
     fun update(m: Double, accuracyM: Float?) {
         if (!seeded) return reseed(m, accuracyM)
         val r = measurementVariance(accuracyM)

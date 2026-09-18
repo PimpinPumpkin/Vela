@@ -61,7 +61,7 @@ private val ROW_HEIGHT = 56.dp
 
 /**
  * The dedicated stops editor (Google-style): origin at the top, each intermediate stop as a
- * draggable row (grab the handle, drag past a neighbour's midpoint to swap), the destination
+ * draggable row (grab the handle, drag past a neighbor's midpoint to swap), the destination
  * pinned at the bottom, and Add stop / Done under the list. Edits are LOCAL until Done — one
  * reroute per visit, not one per micro-change; back / X discards. Under D-pad (no drag) each
  * row shows up/down arrows instead (docs/dpad.md: everything must stay key-operable).
@@ -156,7 +156,7 @@ fun StopsEditorSheet(
                                         onDrag = { change, delta ->
                                             change.consume()
                                             dragDy += delta.y
-                                            // Past a neighbour's midpoint → swap and carry the
+                                            // Past a neighbor's midpoint → swap and carry the
                                             // remainder, so a long drag walks multiple rows.
                                             while (dragDy > rowHeightPx / 2 && dragIdx < order.lastIndex) {
                                                 swap(dragIdx, dragIdx + 1); dragIdx += 1; dragDy -= rowHeightPx

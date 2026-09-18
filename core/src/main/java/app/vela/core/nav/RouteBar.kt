@@ -33,7 +33,7 @@ object RouteBar {
     data class Model(
         val bands: List<Band>,
         val pins: List<Pin>,
-        /** Metres of road the bar's full height represents (the window, not the whole trip). */
+        /** Meters of road the bar's full height represents (the window, not the whole trip). */
         val spanM: Double,
         /** True when the window reaches the end of the route, so the top of the bar is the
          *  destination and can be capped as such rather than implying more road. */
@@ -54,7 +54,7 @@ object RouteBar {
      *
      * Scaling the strip to the entire remaining route was the first cut and it is useless on any
      * long drive - on a 700 mile trip everything within the next few miles lands inside one pixel
-     * at the bottom and the bar reads as a plain grey stick (device-checked, that is exactly what
+     * at the bottom and the bar reads as a plain gray stick (device-checked, that is exactly what
      * it looked like). TomTom's bar has the same property and solves it the same way: show the
      * near road at a scale you can actually read. When less than this is left, the bar covers the
      * rest of the trip and its top IS the destination.
@@ -118,7 +118,7 @@ object RouteBar {
                 // Collapse a cluster to ONE member: the point is "something is coming up here",
                 // and two glyphs a pixel apart carry no more information than one. The kept
                 // member is the one that says the most: a camera or a crossing (a badge) over a
-                // light or a stop sign (a dot). ALPR cameras are mounted at signalled junctions,
+                // light or a stop sign (a dot). ALPR cameras are mounted at signaled junctions,
                 // so keeping the first member by distance hid the camera behind the light's dot.
                 if (acc.isEmpty() || item.second - acc.last().second >= PIN_MERGE_M) acc += item
                 else if (item.first.priority > acc.last().first.priority) acc[acc.lastIndex] = item

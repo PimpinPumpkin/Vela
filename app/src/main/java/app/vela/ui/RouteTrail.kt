@@ -4,8 +4,8 @@ import android.content.Context
 import androidx.compose.runtime.mutableStateOf
 
 /** Whether the part of the route you have already driven stays drawn behind the arrow during
- *  navigation (grey, Google's old look) or disappears (Google's current look, and the default
- *  since 2026-09-03: the grey strip trailing down the screen under the arrow was the first thing
+ *  navigation (gray, Google's old look) or disappears (Google's current look, and the default
+ *  since 2026-09-03: the gray strip trailing down the screen under the arrow was the first thing
  *  asked about once the puck stopped jittering). Read per frame by the nav ticker. */
 object RouteTrail {
     val on = mutableStateOf(false)

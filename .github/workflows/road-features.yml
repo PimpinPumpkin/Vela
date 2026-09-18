@@ -6,7 +6,7 @@
 name: Build road features
 
 on:
-  # Monthly refresh: rebuild EVERY catalogued region from current OSM (files are small; the app
+  # Monthly refresh: rebuild EVERY catalogd region from current OSM (files are small; the app
   # re-downloads a region whenever the manifest carries a newer updatedAt).
   schedule:
     - cron: "45 7 4 * *"
@@ -21,7 +21,7 @@ on:
         type: string
         default: us
       ids:
-        description: "Optional: space/comma-separated region ids (e.g. 'washington oregon'). Overrides 'group'."
+        description: "Optional: space/comma-separated region ids (e.g. 'delaware oregon'). Overrides 'group'."
         type: string
         default: ""
       skip_big:
@@ -106,7 +106,7 @@ jobs:
 
   merge:
     needs: build
-    if: ${{ !cancelled() }} # merge whatever succeeded, even if some regions failed
+    if: ${{ !canceled() }} # merge whatever succeeded, even if some regions failed
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

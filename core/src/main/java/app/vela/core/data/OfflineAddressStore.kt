@@ -36,7 +36,7 @@ class OfflineAddressStore @Inject constructor(
         val lng: Double,
     )
 
-    /** One sampled point on a named road centreline (from [OverpassPois.fetchStreets]) — the data behind
+    /** One sampled point on a named road centerline (from [OverpassPois.fetchStreets]) — the data behind
      *  the street-level geocoding fallback where OSM has the road but no house numbers on it. */
     data class StreetPt(val street: String, val lat: Double, val lng: Double)
 
@@ -184,7 +184,7 @@ class OfflineAddressStore @Inject constructor(
      *  1. exact `housenumber` on the street,
      *  2. interpolate the house's position between the two nearest mapped numbers on the street,
      *  3. any mapped house on the street (routes you to the right block),
-     *  4. nearest point on the street's centreline geometry (works with zero mapped houses).
+     *  4. nearest point on the street's centerline geometry (works with zero mapped houses).
      */
     fun geocode(query: String, near: LatLng?, limit: Int = 20): List<Place> {
         val m = HOUSE_STREET.find(query.trim())
@@ -213,7 +213,7 @@ class OfflineAddressStore @Inject constructor(
                 .sortedBy { it.distanceMeters ?: Double.MAX_VALUE }
                 .take(limit)
         }
-        // (4) no mapped houses on the street → nearest point on the road centreline.
+        // (4) no mapped houses on the street → nearest point on the road centerline.
         val onGeom = streetGeom(words)
         if (onGeom.isNotEmpty()) {
             val best = onGeom.minByOrNull { near?.distanceTo(LatLng(it.lat, it.lng)) ?: 0.0 } ?: onGeom.first()
@@ -309,7 +309,7 @@ class OfflineAddressStore @Inject constructor(
             .sortedBy { it.distanceMeters ?: Double.MAX_VALUE }
             .take(limit)
 
-    /** Street centreline points matching the street words — own index + region packs. */
+    /** Street centerline points matching the street words — own index + region packs. */
     private fun streetGeom(words: List<String>): List<StreetPt> {
         val clauses = words.map { "street_norm LIKE ?" }
         val args = words.map { "%$it%" }

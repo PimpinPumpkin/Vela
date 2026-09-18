@@ -7,12 +7,12 @@ import org.junit.Test
 /** The export scrub, both levels (issue #507). Fixture coordinates are Davis, CA. */
 class DiagScrubTest {
     @Test fun plainExportRoundsToTwoPlacesAndKeepsTheRest() {
-        val s = "\"pel meni\" near 38.54490,-121.74051 → 12 results (page1 6)"
-        assertEquals("\"pel meni\" near 38.54,-121.74 → 12 results (page1 6)", DiagScrub.summary(s, redact = false))
+        val s = "\"dumplins\" near 38.54490,-121.74051 → 12 results (page1 6)"
+        assertEquals("\"dumplins\" near 38.54,-121.74 → 12 results (page1 6)", DiagScrub.summary(s, redact = false))
     }
 
     @Test fun redactedExportHidesTheQueryAndCoarsensCoordinates() {
-        val s = "\"pel meni\" near 38.54490,-121.74051 → 12 results (page1 6)"
+        val s = "\"dumplins\" near 38.54490,-121.74051 → 12 results (page1 6)"
         assertEquals("\"[redacted]\" near 38.5,-121.7 → 12 results (page1 6)", DiagScrub.summary(s, redact = true))
     }
 

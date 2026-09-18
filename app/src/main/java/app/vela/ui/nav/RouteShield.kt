@@ -36,7 +36,7 @@ private val ShieldInk = Color(0xFF111111)
 /** Google-style route shield for a sign label ("I-80 E", "US 50", "CA-99"). Real interstate and
  *  US-route silhouettes; a neutral white marker for state/provincial routes; the plain bordered
  *  chip as the fallback. Network is inferred from the ref ([parseRouteRef]) — no OSM lookup. The
- *  shields use fixed real-signage colours (same in light/dark); [ink]/[dim] colour the generic
+ *  shields use fixed real-signage colors (same in light/dark); [ink]/[dim] color the generic
  *  chip + the trailing cardinal so those blend with the banner. */
 @Composable
 internal fun RouteShield(label: String, ink: Color, dim: Color) {

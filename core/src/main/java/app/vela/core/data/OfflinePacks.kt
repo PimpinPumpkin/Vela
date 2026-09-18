@@ -5,7 +5,7 @@ import android.database.sqlite.SQLiteDatabase
 /**
  * Process-wide registry of downloaded **offline place packs** — per-region SQLite databases baked by
  * CI (`scripts/build-poi-region.sh`) from the region's OSM extract, holding the whole region's named
- * POIs (`poi`), address points (`addr`) and street centreline samples (`street`) in the exact schemas
+ * POIs (`poi`), address points (`addr`) and street centerline samples (`street`) in the exact schemas
  * of [OfflinePoiStore] / [OfflineAddressStore]. Both stores query these packs alongside their own
  * Overpass-populated db, so downloading a state makes the whole state searchable offline
  * (Organic-Maps-style), not just the small viewport areas the user saved.

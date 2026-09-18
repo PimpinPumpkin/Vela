@@ -59,7 +59,7 @@ class NavigationService : Service() {
     private var observing = false
 
     // One-entry glyph cache (state ticks ~1 Hz; the type changes only at each turn).
-    // Keyed on the accent too, so flipping Material You mid-drive recolours the arrow.
+    // Keyed on the accent too, so flipping Material You mid-drive recolors the arrow.
     private var cachedGlyph: Bitmap? = null
     private var cachedGlyphType: ManeuverType? = null
     private var cachedGlyphAccent: Int = 0
@@ -197,7 +197,7 @@ class NavigationService : Service() {
             s.route?.maneuvers?.getOrNull(s.nav.stepIndex)?.type
         }
         // Material You (issue #15): the arrow tile + accent row follow the system accent when
-        // the user opted into dynamic colour; Vela teal otherwise (matches the in-app theme).
+        // the user opted into dynamic color; Vela teal otherwise (matches the in-app theme).
         val accent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && DynamicColor.isOn(this)) {
             getColor(android.R.color.system_accent1_600)
         } else {

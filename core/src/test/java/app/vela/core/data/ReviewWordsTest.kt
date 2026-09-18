@@ -10,7 +10,7 @@ import org.junit.Test
  * The review scraper's language handling ([ReviewWords], issue #278).
  *
  * The page is served in the reader's language now, so every label the scraper keys on has to be
- * recognised in that language. These are the failures that would otherwise be silent: ratings
+ * recognized in that language. These are the failures that would otherwise be silent: ratings
  * quietly becoming zero, the reviews tab never opening, and - the one that does damage - clicking
  * "Write a review" instead of "More reviews".
  *
@@ -39,12 +39,12 @@ class ReviewWordsTest {
         assertNull(ReviewWords.ratingOf("Local Guide · 11 reviews"))
     }
 
-    @Test fun `the reviews tab is recognised in every shipped language`() {
+    @Test fun `the reviews tab is recognized in every shipped language`() {
         listOf(
             "Reviews", "評論", "评论", "Rezensionen", "Bewertungen", "Avis", "Reseñas",
             "Recensioni", "Avaliações", "Beoordelingen", "Отзывы", "Opinie", "Omdömen",
             "Відгуки", "ביקורות", "クチコミ", "レビュー", "Vélemények",
-        ).forEach { assertTrue("tab not recognised: $it", ReviewWords.isReviewsTab(it)) }
+        ).forEach { assertTrue("tab not recognized: $it", ReviewWords.isReviewsTab(it)) }
     }
 
     // The one that does real damage: clicking this opens the review composer.
@@ -86,7 +86,7 @@ class ReviewWordsTest {
         assertNull(ReviewWords.histogramRow("4.5 stars"))
     }
 
-    @Test fun `the page controls are recognised in Chinese and English`() {
+    @Test fun `the page controls are recognized in Chinese and English`() {
         val w = ReviewWords.words(null)
         fun m(key: String, s: String) = Regex(w.getValue(key), RegexOption.IGNORE_CASE).containsMatchIn(s)
         assertTrue(m("sort", "排序評論")); assertTrue(m("sort", "Sort reviews"))

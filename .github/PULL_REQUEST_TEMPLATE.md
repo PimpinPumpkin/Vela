@@ -3,7 +3,7 @@
 
 **Checklist** (see CONTRIBUTING.md)
 - [ ] Every real place in the diff (coordinates, addresses, business names, screenshots, commit messages) is there on purpose, not because it's near me; fixtures default to the Davis / Sacramento box (CLAUDE.md, "Location hygiene")
-- [ ] Docs updated in this same PR where behaviour changed (README / FEATURES / SPEC / CLAUDE), or the description says why none were needed
+- [ ] Docs updated in this same PR where behavior changed (README / FEATURES / SPEC / CLAUDE), or the description says why none were needed
 - [ ] New user-facing strings added to all 15 locales with matching placeholder types
 - [ ] No GMS, no static Google keys, no backend calls introduced
 - [ ] `:core` stays free of Android UI / MapLibre types

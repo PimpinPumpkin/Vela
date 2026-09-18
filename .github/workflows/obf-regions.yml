@@ -116,7 +116,7 @@ jobs:
 
   merge:
     needs: build
-    if: ${{ !cancelled() }}
+    if: ${{ !canceled() }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

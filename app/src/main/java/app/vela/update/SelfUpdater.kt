@@ -142,7 +142,7 @@ class SelfUpdater @Inject constructor(
                         var read = 0L
                         var lastPct = -1
                         while (true) {
-                            if (!active()) error("cancelled")
+                            if (!active()) error("canceled")
                             val n = input.read(buf)
                             if (n < 0) break
                             out.write(buf, 0, n)

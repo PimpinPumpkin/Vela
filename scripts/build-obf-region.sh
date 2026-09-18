@@ -65,7 +65,7 @@ javac -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*" -d "$WO
 # come along), ferry and shuttle-train routes and turn-restriction relations cuts a US-state
 # extract to roughly a third of its bytes and a quarter of its nodes in a few seconds (route
 # relations ride along for the bicycle profile's signed-route preference), which is
-# what brings the big rows under a 16 GB runner's heap (measured on Washington 2026-09-11, see
+# what brings the big rows under a 16 GB runner's heap (measured on a state bake 2026-09-11, see
 # CLAUDE.md). A bake that asks for the address or POI sections needs the whole file and skips it.
 INDEX_PBF="region.osm.pbf"
 if [[ "${VELA_OBF_SECTIONS:-routing}" == "routing" ]]; then

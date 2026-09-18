@@ -68,12 +68,12 @@ private val AmoledColors = DarkColors.copy(
 
 /**
  * App theme. Vela's explicit teal light/dark schemes by default; Material You dynamic
- * colour (issue #15) when the user opts in via Settings -> Appearance ([DynamicColor]).
+ * color (issue #15) when the user opts in via Settings -> Appearance ([DynamicColor]).
  *
  * The dynamic scheme is sanity-checked before use: on some ROMs (observed on GrapheneOS)
  * `dynamicDarkColorScheme` handed back a *light* background, which broke "Dark" for every
  * MaterialTheme surface (Settings etc.). If the scheme's background luminance contradicts
- * the requested theme, Vela falls back to its own colours - the Light/Dark switch is the
+ * the requested theme, Vela falls back to its own colors - the Light/Dark switch is the
  * contract and always wins. Accent legibility comes from using the scheme's PAIRED slots
  * everywhere (primary with onPrimary, container with onContainer), which the system
  * generates at accessible contrast in both themes.
@@ -91,7 +91,7 @@ fun VelaTheme(
             val saneBackground = if (darkTheme) dyn.background.luminance() < 0.4f else dyn.background.luminance() > 0.6f
             if (saneBackground) dyn else if (darkTheme) DarkColors else LightColors
         }
-        // AMOLED is a flavour of DARK, so it must yield when something resolves the app to light -
+        // AMOLED is a flavor of DARK, so it must yield when something resolves the app to light -
         // the day/night-while-navigating override (issue #262) does exactly that, and without the
         // darkTheme guard a daylight drive got a black UI over a light map.
         AppTheme.mode.value == ThemeMode.AMOLED && darkTheme -> AmoledColors

@@ -9,7 +9,7 @@ import kotlin.random.Random
 
 /**
  * The along-route POSITION filter (issue #251). The puck used to take each snapped fix as its
- * position outright, so along-route GPS noise was distance the puck actually travelled, once a
+ * position outright, so along-route GPS noise was distance the puck actually traveled, once a
  * second, all drive. These pin that the noise is averaged down without the estimate going deaf to
  * a real correction.
  */

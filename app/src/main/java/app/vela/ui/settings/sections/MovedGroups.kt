@@ -281,7 +281,7 @@ internal fun DemoModesGroup(vm: app.vela.ui.map.MapViewModel) {
             hint = stringResource(R.string.settings_demo_drive_hint),
         )
 
-        // Simulated location - pretend to be at the current map centre (for demos / screenshots
+        // Simulated location - pretend to be at the current map center (for demos / screenshots
         // without leaking where you actually are). Reactive holder so the switch reflects state.
         GroupDivider()
         ToggleRow(

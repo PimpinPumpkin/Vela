@@ -39,7 +39,7 @@ class VelaCarAppService : CarAppService() {
 
     // Allow ANY Android Auto / AAOS host to connect. Vela is sideloaded (never on Play) and must
     // "just work" on whatever head unit / DHU a user plugs into — the
-    // standard release allowlist (hosts_allowlist_sample) rejects hosts it doesn't recognise, which
+    // standard release allowlist (hosts_allowlist_sample) rejects hosts it doesn't recognize, which
     // manifested as the app appearing but refusing to open. The host-spoofing risk this guards against
     // is negligible for a non-Play, self-distributed nav app. (2026-07-07)
     override fun createHostValidator(): HostValidator = HostValidator.ALLOW_ALL_HOSTS_VALIDATOR

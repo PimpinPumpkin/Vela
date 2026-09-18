@@ -57,14 +57,14 @@ object SearchParser {
         val similar = runCatching { parseSimilarPlaces(root, paths) }.getOrDefault(emptyList())
         val withSimilar = if (similar.isNotEmpty() && places.isNotEmpty())
             places.mapIndexed { i, p -> if (i == 0) p.copy(similarPlaces = similar) else p } else places
-        // Order nearest-first, BUT within the same ~120 m (a shopping centre / one address) rank by
+        // Order nearest-first, BUT within the same ~120 m (a shopping center / one address) rank by
         // prominence (review count) so the MAIN store beats its florist/pharmacy departments sitting at the
         // same spot. Distance still wins across genuinely different locations. (Was pure distance, which let
         // a nearby low-review department outrank the big store it's a part of — the "Safeway Floral" bug.)
         // ONLY when a bias point exists: with near==null every place lands in the same null-distance
         // bucket and the whole list would re-sort by review count — but callers without a bias point
         // (PopularTimesParser's focused name+address lookup) rely on Google's RESPONSE ORDER, where the
-        // FIRST entry is the focused result; re-ranking grafted a busier neighbour's data onto it.
+        // FIRST entry is the focused result; re-ranking grafted a busier neighbor's data onto it.
         val ranked = if (near == null) withSimilar else withSimilar.sortedWith(
             compareBy<Place>(
                 { it.distanceMeters?.let { d -> (d / 120.0).toLong() } ?: Long.MAX_VALUE }, // 120 m distance buckets
@@ -112,7 +112,7 @@ object SearchParser {
         val lng = field("lng").dbl() ?: return null
         val loc = LatLng(lat, lng)
         // ONE status string feeds BOTH the open/closed boolean AND the displayed text (they used to
-        // read in OPPOSITE orders, so the colour could contradict the words - audit 2026-07-06).
+        // read in OPPOSITE orders, so the color could contradict the words - audit 2026-07-06).
         // [203] FIRST, and hours must come from the SAME block as the status (live probe 2026-07-08,
         // the "Safeway closes soon at 10 PM but the hours say 5 AM-1 AM" report): [203] is the MAIN
         // entity's schedule while [118] carries a DEPARTMENT'S sub-schedule (a Safeway's [118] read
@@ -155,7 +155,7 @@ object SearchParser {
             actionLabel = field("actionLabel").str()?.trim()?.ifBlank { null }?.takeIf { it.length <= 30 },
             phone = field("phone").str(),
             // Open/closed comes from the STATUS TEXT, matched against the request language's
-            // keyword table (parseOpenNow) — the same string the user sees, so the colour can
+            // keyword table (parseOpenNow) — the same string the user sees, so the color can
             // never contradict the words. The numeric "status codes" pinned 2026-07-03
             // ([1,203,1,4,1,0,1]/[1,203,1,8,1,0,1], 6=open/5=closed/13=soon) were DISPROVEN by a
             // live EN capture 2026-07-04: closed pharmacies carried 6 ("open") and an
@@ -172,7 +172,7 @@ object SearchParser {
             // Owner-set TEMPORARY closure: when an owner marks the
             // business temporarily closed, Google replaces the status text with "Temporarily closed"
             // (localized) — surface it first-class so the UI can banner it and suppress the now-
-            // misleading weekly hours, instead of quietly relying on the red status colour alone.
+            // misleading weekly hours, instead of quietly relying on the red status color alone.
             temporarilyClosed = isTemporarilyClosed(
                 field("status118").str(), field("statusRich").str(), field("openStatus").str(),
             ),
@@ -306,7 +306,7 @@ object SearchParser {
     }
 
     /** "Permanently closed" (and the rarer "Permanently closed" rich-status variant)
-     *  → a dead POI. Kept in search results but hidden from the map and labelled. */
+     *  → a dead POI. Kept in search results but hidden from the map and labeled. */
     private fun isPermanentlyClosed(vararg status: String?): Boolean =
         status.any { it != null && it.contains("Permanently", ignoreCase = true) }
 
@@ -352,7 +352,7 @@ object SearchParser {
         // Hebrew: "סגור" (closed, also prefixes "סגור זמנית/לצמיתות"), "נפתח"/"ייפתח" (opens → closed now).
         // "המקום סגור" = "the place is closed": Google's Hebrew status strings PREFIX "המקום"
         // ("the place"), so the bare word never startsWith-matched and every Hebrew place showed
-        // no open/closed colour at all (live diag from an il user, 2026-07-19: openNow=null on
+        // no open/closed color at all (live diag from an il user, 2026-07-19: openNow=null on
         // "המקום סגור · ייפתח ביום..."). Keyed "iw" (Locale.getDefault().language yields the
         // legacy code on Android) + "he" for parity.
         "iw" to listOf("סגור", "נפתח", "ייפתח", "המקום סגור"),
@@ -362,7 +362,7 @@ object SearchParser {
     /** Languages [parseOpenNow] actually has a keyword table for. `GoogleMapsDataSource.localized()`
      *  gates its `hl=` rewrite on this — for a locale NOT covered here the scrape must stay `hl=en`,
      *  else the status text comes back in an unparseable language and openNow is always null (the UI
-     *  then can't colour it). Keyed off [CLOSED_WORDS] so the set can never drift from the tables. */
+     *  then can't color it). Keyed off [CLOSED_WORDS] so the set can never drift from the tables. */
     internal val STATUS_LANGS: Set<String> get() = CLOSED_WORDS.keys
 
     /** OPEN indicators per language: the "open" word itself plus the closes-later forms
@@ -393,7 +393,7 @@ object SearchParser {
     /** Live status text → open/closed, in the language the scrape requested (`hl=` follows
      *  [java.util.Locale.getDefault], same derivation as `GoogleMapsDataSource.localized()`).
      *  This is the AUTHORITATIVE open/closed signal: it reads the same words the user sees, so
-     *  the status colour can never contradict the display. (The numeric status-code path was
+     *  the status color can never contradict the display. (The numeric status-code path was
      *  removed 2026-07-04 — a live capture proved those ints aren't open/closed codes; see the
      *  call site.) CLOSED words are matched before OPEN words — order is load-bearing, see
      *  [CLOSED_WORDS]. Unknown language → the English table; no match → null (callers stay

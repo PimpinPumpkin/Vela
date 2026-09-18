@@ -7,7 +7,7 @@ Big regions MUST stream: the geojsonseq export is ~12x the filtered PBF (Washing
 1.9 GB of JSON), so a country-sized export written to disk blows a CI runner. build-poi-region.sh
 pipes `osmium export -o -` straight into this script.
 
-The pack holds a whole region's named POIs, address points and street centreline samples so the
+The pack holds a whole region's named POIs, address points and street centerline samples so the
 app can search/geocode the entire region offline (Organic-Maps-style), not just saved map areas.
 
 Pack schema (v1) — read by the app's OfflinePoiStore/OfflineAddressStore PACK query paths
@@ -17,7 +17,7 @@ file small — street names are deduped into `streetname` and referenced by inte
   poi(id, name, lat, lng, category, address, phone, website, hours)   -- same columns the app SELECTs
   streetname(sid INTEGER PK, street, street_norm)                     -- ~tens of thousands of rows
   addr(hn, sid, city, lat, lng)                                       -- millions of rows, lean
-  streetpt(sid, lat, lng)                                             -- sampled centreline points
+  streetpt(sid, lat, lng)                                             -- sampled centerline points
 
 KEEP IN SYNC with the app:
   - category formatting mirrors OverpassPois.toPlace ("fast_food" -> "Fast food")
@@ -50,7 +50,7 @@ ABBREV = {
     "ne": "northeast", "nw": "northwest", "se": "southeast", "sw": "southwest",
 }
 
-SAMPLE_M = 120.0  # one street point per this many metres, matching OverpassPois.SAMPLE_M
+SAMPLE_M = 120.0  # one street point per this many meters, matching OverpassPois.SAMPLE_M
 
 
 def normalize_street(s):
@@ -191,7 +191,7 @@ def main():
             fid = tags.pop("@id", None) or feat.get("id") or ""
             name = tags.get("name")
 
-            # Named road → sampled centreline points (the geocoder's street-level fallback).
+            # Named road → sampled centerline points (the geocoder's street-level fallback).
             hwy = tags.get("highway")
             if hwy in ROAD_CLASSES:
                 if name and geom.get("type") in ("LineString", "MultiLineString"):

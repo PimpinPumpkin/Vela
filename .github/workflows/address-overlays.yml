@@ -2,21 +2,21 @@
 # publish them to the `address-overlays` release — the app STREAMS them and renders the `number` field as a
 # house-number SymbolLayer where OSM lacks addr:housenumber. Sibling of building-overlays.yml (footprints).
 #
-# Run from Actions → "Build address overlays" → pass `ids` (e.g. "washington oregon") or tick `all`.
+# Run from Actions → "Build address overlays" → pass `ids` (e.g. "delaware oregon") or tick `all`.
 # Regions come from tools/address-regions.json (the 42 US states with an OpenAddresses statewide source).
 #
 # Race-safety: each region builds in its own matrix job and uploads ONLY its own <id>.pmtiles + a manifest
 # *entry* artifact. One final `merge` job folds every entry into address-overlay-manifest.json in a single
-# upload. Only the merge job serialises (its own concurrency group) so parallel runs can't clobber it.
+# upload. Only the merge job serializes (its own concurrency group) so parallel runs can't clobber it.
 name: Build address overlays
 
 on:
   workflow_dispatch:
     inputs:
       ids:
-        description: "Space/comma-separated region ids (e.g. 'washington oregon'). Blank + all=true builds the whole catalog."
+        description: "Space/comma-separated region ids (e.g. 'delaware oregon'). Blank + all=true builds the whole catalog."
         type: string
-        default: "washington"
+        default: "delaware"
       all:
         description: "Build every region in tools/address-regions.json (ignores 'ids')"
         type: boolean
@@ -55,7 +55,7 @@ jobs:
           gh release view address-overlays --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
             gh release create address-overlays --repo "$GITHUB_REPOSITORY" --prerelease \
               --title "Open address (house-number) overlays" \
-              --notes "OpenAddresses address points as PMTiles for Vela's house-number labels. Data assets, not a code release. Addresses © OpenAddresses contributors, per-source open licences."
+              --notes "OpenAddresses address points as PMTiles for Vela's house-number labels. Data assets, not a code release. Addresses © OpenAddresses contributors, per-source open licenses."
 
   build:
     needs: prep
@@ -88,7 +88,7 @@ jobs:
 
   merge:
     needs: build
-    if: ${{ !cancelled() }}
+    if: ${{ !canceled() }}
     runs-on: ubuntu-latest
     concurrency:
       group: address-overlays-manifest-merge

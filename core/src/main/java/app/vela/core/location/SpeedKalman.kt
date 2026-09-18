@@ -7,15 +7,15 @@ import kotlin.math.sin
 /**
  * 1-D Kalman filter over the nav puck's along-route SPEED, fusing the ~1 Hz GPS fixes
  * (measurement update) with the accelerometer (prediction step) — the missing piece behind the
- * puck's weird behaviour when slowing or stopping: dead reckoning at the LAST fix's speed keeps
+ * puck's weird behavior when slowing or stopping: dead reckoning at the LAST fix's speed keeps
  * gliding at full speed for up to a whole fix interval after you brake, and since the displayed
  * progress is monotonic (never backward, by design — GPS jitter protection) the overshoot can't
- * be walked back; the puck sat metres ahead of a stopping car until the car "caught up" to it.
+ * be walked back; the puck sat meters ahead of a stopping car until the car "caught up" to it.
  *
- * With the accelerometer in the predict step the modelled speed collapses the moment you brake —
+ * With the accelerometer in the predict step the modeled speed collapses the moment you brake —
  * `v ← v + a·dt` each frame, clamped at 0 — so the puck decelerates WITH the car between fixes
  * (what Google's puck does). No accelerometer (sensor missing / not yet delivering) degrades
- * gracefully: `a = 0` holds the speed constant, which is exactly the old behaviour.
+ * gracefully: `a = 0` holds the speed constant, which is exactly the old behavior.
  *
  * Pure math, no Android — unit-tested in `:core`. Units: seconds, m/s, m/s².
  */
@@ -52,7 +52,7 @@ class SpeedKalman {
         p = ((1 - k) * p).coerceAtLeast(P_FLOOR) // floor: never lock out future measurements
     }
 
-    /** Decay the modelled speed toward 0 during a measurement OUTAGE (no fixes > the dead-reckon
+    /** Decay the modeled speed toward 0 during a measurement OUTAGE (no fixes > the dead-reckon
      *  window). With no update() calls and accel ≈ 0 the filter otherwise holds its last speed
      *  FOREVER — a parked car whose GPS went quiet kept "moving" at the braking speed. τ = 4 s:
      *  fast enough to settle a stop, slow enough that a brief tunnel doesn't zero a real cruise
@@ -78,12 +78,12 @@ class SpeedKalman {
      * travel bearing. This runs ONCE PER FRAME, so between two 1 Hz GPS fixes about sixty of those
      * samples are integrated into the speed - and the puck advances at that speed, so the noise
      * becomes visible movement. A steady 0.3 m/s2 of vibration bias is 0.3 m/s of phantom speed
-     * after one second, which is a few tenths of a metre of shimmer, repeatedly.
+     * after one second, which is a few tenths of a meter of shimmer, repeatedly.
      *
      * The gain is `a^2 / (a^2 + noise^2)` - the standard suppression shape, and specifically NOT a
      * subtract-the-floor shrinkage, which was tried first and BROKE an existing test:
      * `brakingCollapsesThePredictionBetweenFixes` pins a 2 s brake at -4 m/s2, and shrinking every
-     * sample by the floor taxes a real brake by exactly that floor - weakening the one behaviour
+     * sample by the floor taxes a real brake by exactly that floor - weakening the one behavior
      * this filter exists for (the puck must decelerate WITH a stopping car). This shape leaves a
      * 4 m/s2 brake within ~1.5% of itself while cutting a 0.3 m/s2 vibration to about a quarter,
      * and it is smooth, so nothing chatters across a threshold the way a hard gate would.

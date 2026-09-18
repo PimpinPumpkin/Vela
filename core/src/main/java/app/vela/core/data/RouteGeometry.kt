@@ -43,7 +43,7 @@ import okhttp3.Request
 object RouteGeometry {
     private const val OSRM_BASE = "https://routing.openstreetmap.de"
     /** We ask OSRM for `geometries=polyline6`. The default `polyline` is 1e5-scaled, i.e. a
-     *  1.11 m latitude grid — every vertex of a physically straight road snapped to a metre-ish
+     *  1.11 m latitude grid — every vertex of a physically straight road snapped to a meter-ish
      *  step, which the nav puck then has to smooth back out (issue #251). Verified supported by
      *  the FOSSGIS community server: same vertex count, same distance, ten times the resolution. */
     private const val OSRM_PRECISION = 6
@@ -208,7 +208,7 @@ object RouteGeometry {
      * pointing (real-drive report, 2026-08-17: after a wrong turn the reroute kept answering "go
      * back the way you came").
      *
-     * Unconstrained, a reroute computed a few tens of metres down the wrong road is perfectly
+     * Unconstrained, a reroute computed a few tens of meters down the wrong road is perfectly
      * entitled to reply with a U-turn - from there, rejoining the old route often IS the fastest
      * path - so the driver is told to turn around, carries on instead, and gets told to turn around
      * again. Pinning the departure heading makes the router answer the question the driver is
@@ -319,7 +319,7 @@ object RouteGeometry {
         return emptyList()
     }
 
-    /** True when [OSRM_BASE] honours `exclude=` for toll/motorway. The FOSSGIS community
+    /** True when [OSRM_BASE] honors `exclude=` for toll/motorway. The FOSSGIS community
      *  server does NOT (probed 2026-07-11: InvalidValue - its profiles were built without
      *  excludable classes), and sending the param 400s the WHOLE request, losing the clean
      *  named-turn route too. Flip this on a self-hosted OSRM built with the exclude classes. */
@@ -358,7 +358,7 @@ object RouteGeometry {
         // step distances must keep TILING the polyline. NavEngine locates each maneuver by a
         // prefix-sum of step lengths (its wrong-pass protection), and a via-boundary DEPART
         // carries the real via→next-turn travel — on a traffic-snapped route (~12 vias) silently
-        // dropping those shifted every later estimate kilometres short.
+        // dropping those shifted every later estimate kilometers short.
         val last = raw.lastIndex
         val maneuvers = mutableListOf<Maneuver>()
         raw.forEachIndexed { i, m ->
@@ -501,7 +501,7 @@ object RouteGeometry {
      * says it when it helps: ONLY plain surface-street turns (not ramps/merges/roundabouts/continues), ONLY
      * when 1–2 signals fall within ~[LIGHT_APPROACH_M] before the turn AND within ~[LIGHT_SNAP_M] of the driven
      * line (a light on a parallel street doesn't count), and NEVER for 0 or 3+ (nobody narrates "pass 4
-     * lights"). Standard behaviour (no toggle since 2026-07-17), called only for the route being driven. [signals]
+     * lights"). Standard behavior (no toggle since 2026-07-17), called only for the route being driven. [signals]
      * = OverpassTrafficSignals.fetchAlong. Best-effort: empty signals or no match → route returned unchanged.
      */
     fun enrichWithLights(route: Route, signals: List<LatLng>): Route {
@@ -740,9 +740,9 @@ object RouteGeometry {
 
     /**
      * Carry Google's congestion spans onto a route with DIFFERENT geometry (issue #403): every
-     * stretch where the two routes share the road gets the colour, the rest stays uncoloured.
+     * stretch where the two routes share the road gets the color, the rest stays uncolored.
      * Before this, a route that diverged from Google's anywhere was painted entirely blue, and a
-     * trip with stops never got colours at all, because the spans could only be mapped by
+     * trip with stops never got colors at all, because the spans could only be mapped by
      * fraction along a same-course line.
      *
      * Each span's sub-polyline on [from] is sampled every ~[stepM]; each sample is projected onto
@@ -858,7 +858,7 @@ object RouteGeometry {
      *  (measured ~1-in-10 named-turn loss at 60 vias; negligible at ~12). Only ever used on the
      *  divergent minority of routes, so the tradeoff rides on few requests. */
     /**
-     * True when [route] contains a SPUR relative to [course]: a stretch where it keeps travelling
+     * True when [route] contains a SPUR relative to [course]: a stretch where it keeps traveling
      * but makes little progress along the course, then comes back. That is what a via that snapped
      * onto a side street or off-ramp produces (real drive 2026-09-06, from the trip log: a 121 m
      * out-and-back off a state route, 56 m to the side, turn right / U-turn / turn right, while the
@@ -866,16 +866,16 @@ object RouteGeometry {
      * extra length is large in that case, so those checks miss it; this one looks at the shape.
      *
      * Each route vertex is projected onto the course (windowed, both advance together). A stretch
-     * begins wherever progress was last normal; over a stretch of at least [SPUR_MIN_M] metres of
+     * begins wherever progress was last normal; over a stretch of at least [SPUR_MIN_M] meters of
      * route in which the best progress along the course is under [SPUR_PROGRESS_FRACTION] of the
-     * distance travelled, the route has a spur. The first version of this reset the stretch on any
+     * distance traveled, the route has a spur. The first version of this reset the stretch on any
      * 15 m of forward projection, which a side street leaving at an angle supplies every vertex -
      * it missed the real one. The first and last [SPUR_END_SLACK_M] are exempt: the origin and
      * destination approaches legitimately differ from the course.
      */
     internal fun hasSpur(route: List<LatLng>, course: List<LatLng>): Boolean = spurAt(route, course) != null
 
-    /** Metres along [route] where a spur was detected (see [hasSpur]), or null. */
+    /** Meters along [route] where a spur was detected (see [hasSpur]), or null. */
     internal fun spurAt(route: List<LatLng>, course: List<LatLng>): Double? {
         if (route.size < 3 || course.size < 2) return null
         val cum = app.vela.core.nav.RouteBar.cumulative(course)
@@ -908,10 +908,10 @@ object RouteGeometry {
                 continue
             }
             if (bestAlong > maxC) maxC = bestAlong
-            val travelled = r - stretchStartR
+            val traveled = r - stretchStartR
             val progress = maxC - stretchStartC
-            if (travelled >= SPUR_MIN_M && progress < travelled * SPUR_PROGRESS_FRACTION) return r
-            if (progress >= travelled * SPUR_NORMAL_FRACTION) {
+            if (traveled >= SPUR_MIN_M && progress < traveled * SPUR_PROGRESS_FRACTION) return r
+            if (progress >= traveled * SPUR_NORMAL_FRACTION) {
                 stretchStartR = r; stretchStartC = bestAlong; maxC = bestAlong
             }
         }
@@ -932,7 +932,7 @@ object RouteGeometry {
     }
 
     private const val SPUR_MIN_M = 80.0             // a stretch this long with too little progress is a spur
-    private const val SPUR_PROGRESS_FRACTION = 0.45 // progress along the course below this share of distance travelled (a 45-degree stub lands at ~37%)
+    private const val SPUR_PROGRESS_FRACTION = 0.45 // progress along the course below this share of distance traveled (a 45-degree stub lands at ~37%)
     private const val SPUR_NORMAL_FRACTION = 0.8    // progress at or above this share = normal driving, stretch resets
     private const val SPUR_END_SLACK_M = 300.0      // origin/destination approaches may differ from the course
     private const val SPUR_LOCAL_M = 200.0          // beyond this from the windowed match, search the whole course

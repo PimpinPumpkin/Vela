@@ -32,7 +32,7 @@ class PlaceListStore @Inject constructor(
     /** Creates a list (id is caller-supplied so the UI can select it immediately). */
     fun create(list: PlaceList): List<PlaceList> = write(listOf(list) + lists())
 
-    /** Replaces the list with the same id (rename / icon / colour / description edits). */
+    /** Replaces the list with the same id (rename / icon / color / description edits). */
     fun update(list: PlaceList): List<PlaceList> =
         write(lists().map { if (it.id == list.id) list else it })
 

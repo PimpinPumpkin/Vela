@@ -42,7 +42,7 @@ object MapDeclutter {
         return clusters
     }
 
-    /** Equirectangular approximation - exact enough at the tens-of-metres radii this is used at. */
+    /** Equirectangular approximation - exact enough at the tens-of-meters radii this is used at. */
     internal fun approxDistanceM(a: LatLng, b: LatLng): Double {
         val latM = (a.lat - b.lat) * 111_320.0
         val lngM = (a.lng - b.lng) * 111_320.0 * kotlin.math.cos(Math.toRadians((a.lat + b.lat) / 2))

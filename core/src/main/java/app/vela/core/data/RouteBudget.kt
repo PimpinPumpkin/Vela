@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit
  * tries on the escalated attempt, and only THEN were Google's answer or the on-device engine
  * consulted. With FOSSGIS hanging, the deadline expired before any fallback was even asked. The
  * budget travels into the fetch so each stage takes only its share and the fallbacks get the rest.
- * [NONE] is a planning fetch: no deadline, behaviour unchanged.
+ * [NONE] is a planning fetch: no deadline, behavior unchanged.
  */
 class RouteBudget private constructor(
     private val endNanos: Long?,

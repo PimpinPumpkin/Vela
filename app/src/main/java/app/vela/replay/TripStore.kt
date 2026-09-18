@@ -20,7 +20,7 @@ data class TripMeta(
     val startedAt: Long,
     val fixCount: Int,
     val dest: LatLng?,
-    /** Metres covered by the recorded fixes, and the time between the first and last one. */
+    /** Meters covered by the recorded fixes, and the time between the first and last one. */
     val distanceM: Double = 0.0,
     val durationMs: Long = 0L,
 )

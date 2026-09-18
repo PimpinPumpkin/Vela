@@ -12,7 +12,7 @@ import java.net.URLEncoder
 /**
  * **Photon** (photon.komoot.io) - komoot's community OSM geocoder, keyless with a fair-use policy,
  * built exactly for search-as-you-type. Vela uses it for ADDRESS suggestions only: Google's keyless
- * ranking is great for businesses but barely honours the location bias for a partial house address
+ * ranking is great for businesses but barely honors the location bias for a partial house address
  * ("123 main st" led with matches states away). Photon takes a lat/lon bias and ranks around it,
  * which is the polished-feeling piece the suggest dropdown was missing. One small call per typed
  * pause, only when the query LOOKS like an address (digits leading) - business queries never hit it.

@@ -41,7 +41,7 @@ import kotlin.math.sqrt
  */
 object TripScrub {
 
-    /** Metres trimmed around each private place by default. */
+    /** Meters trimmed around each private place by default. */
     const val DEFAULT_RADIUS_M = 400.0
 
     /** The trim distances the share dialogs offer, smallest first. */

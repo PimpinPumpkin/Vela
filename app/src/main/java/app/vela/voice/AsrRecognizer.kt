@@ -207,7 +207,7 @@ class AsrRecognizer @Inject constructor(
         // On a low-RAM device the warm-up is a bad trade: it spends ~267 MB at EVERY launch to
         // save ~1 s on a mic tap the user may never make (refreshAsr calls this from VM init plus
         // two LaunchedEffects). Those phones load on first listen instead; roomier devices keep
-        // the instant-mic behaviour they have always had.
+        // the instant-mic behavior they have always had.
         if (app.vela.ui.MemoryPressure.lowRam) {
             android.util.Log.i(TAG, "skipping ASR warm-up on a low-RAM device, will load on first listen")
             return
@@ -323,7 +323,7 @@ class AsrRecognizer @Inject constructor(
     /**
      * Record from the mic and return what was said, or null if nothing usable was heard (or the
      * model/permission isn't there). [onLevel] gets a 0..1 loudness for the listening animation,
-     * [onListening] fires once recording actually starts, and [cancelled] lets the UI stop early
+     * [onListening] fires once recording actually starts, and [canceled] lets the UI stop early
      * (the user tapped done/close). Runs off the main thread; safe to cancel via coroutine too.
      */
     /** Listen, transcribe, and say WHY when it does not work - see [VoiceResult]. Every failure exit
@@ -331,13 +331,13 @@ class AsrRecognizer @Inject constructor(
     suspend fun listen(
         onLevel: (Float) -> Unit,
         onListening: () -> Unit,
-        cancelled: () -> Boolean,
+        canceled: () -> Boolean,
     ): VoiceResult = withContext(Dispatchers.Default) {
         // Mark the recognizer busy so a memory trim arriving mid-utterance cannot free the native
         // model out from under the decode (see inFlight); re-arm the idle reap on every exit.
         inFlight.incrementAndGet()
         try {
-            listenInner(onLevel, onListening, cancelled)
+            listenInner(onLevel, onListening, canceled)
         } finally {
             inFlight.decrementAndGet()
             armIdleReap()
@@ -347,7 +347,7 @@ class AsrRecognizer @Inject constructor(
     private suspend fun listenInner(
         onLevel: (Float) -> Unit,
         onListening: () -> Unit,
-        cancelled: () -> Boolean,
+        canceled: () -> Boolean,
     ): VoiceResult = withContext(Dispatchers.Default) {
         fun fail(reason: VoiceResult.Reason, detail: String? = null): VoiceResult.Failed {
             android.util.Log.e(TAG, "listen failed: $reason${detail?.let { " ($it)" } ?: ""}")
@@ -401,7 +401,7 @@ class AsrRecognizer @Inject constructor(
             requestAudioFocus() // pause any playing music/podcast while we listen
             audio.startRecording()
             onListening()
-            while (!cancelled() && segment == null && total < SAMPLE_RATE * MAX_SECONDS) {
+            while (!canceled() && segment == null && total < SAMPLE_RATE * MAX_SECONDS) {
                 val n = audio.read(buf, 0, VAD_WINDOW)
                 if (n <= 0) continue
                 val f = FloatArray(n) { buf[it] / 32768f }

@@ -5,7 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * The open/closed boolean drives the status COLOUR (RatingStars.placeStatusColor paints
+ * The open/closed boolean drives the status COLOR (RatingStars.placeStatusColor paints
  * openNow==true green before it even looks at the text), so a false "open" literally paints a
  * closed place green — the field bug: a closed Starbucks rendered green ("the starbucks i am
  * looking at is closed but it shows green"). Two dead mechanisms, both pinned here:
@@ -36,7 +36,7 @@ class PlaceStatusTest {
 
     @Test fun `hebrew - the-place prefix matches (field bug - every il status began with hamakom)`() {
         // Live diag 2026-07-19: Google prefixes Hebrew statuses with "המקום" ("the place"), so
-        // bare "סגור"/"פתוח" never startsWith-matched and every Hebrew place showed no colour.
+        // bare "סגור"/"פתוח" never startsWith-matched and every Hebrew place showed no color.
         assertEquals(false, SearchParser.parseOpenNow("המקום סגור · ייפתח ביום יום א׳ בשעה 6:30", "he"))
         assertEquals(false, SearchParser.parseOpenNow("המקום סגור", "iw"))
         assertEquals(true, SearchParser.parseOpenNow("המקום פתוח · נסגר בשעה 22:00", "he"))
@@ -131,7 +131,7 @@ class PlaceStatusTest {
 
     /** STATUS_LANGS gates GoogleMapsDataSource.localized()'s hl= rewrite: the scrape may only ask
      *  Google for status text in a language parseOpenNow can read, else openNow is always null and
-     *  the UI can't colour open/closed. It MUST equal the shipped keyword-table languages (Hebrew
+     *  the UI can't color open/closed. It MUST equal the shipped keyword-table languages (Hebrew
      *  is keyed under both "iw" and "he"). */
     @Test fun `STATUS_LANGS covers exactly the shipped status-table languages`() {
         val expected = setOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "hu", "zh", "ja", "iw", "he")
@@ -152,7 +152,7 @@ class PlaceStatusTest {
             SearchParser.remoteClosedWords = null
             SearchParser.remoteOpenWords = null
         }
-        // back to compiled behaviour after clearing
+        // back to compiled behavior after clearing
         assertEquals(false, SearchParser.parseOpenNow("Closed", "en"))
     }
 }

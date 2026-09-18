@@ -9,7 +9,7 @@ import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Persisted favourite places (most-recently-saved first). */
+/** Persisted favorite places (most-recently-saved first). */
 @Singleton
 class SavedPlaceStore @Inject constructor(
     @ApplicationContext context: Context,

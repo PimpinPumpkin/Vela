@@ -37,7 +37,7 @@ object CameraFacing {
     fun seesRoad(facingDeg: Double?, roadBearingDeg: Double): Boolean =
         facingDeg == null || axisDiff(facingDeg, roadBearingDeg) <= MAX_AXIS_DIFF_DEG
 
-    /** The route segment nearest [p]: its distance in metres and its bearing (degrees from north). */
+    /** The route segment nearest [p]: its distance in meters and its bearing (degrees from north). */
     data class Nearest(val distanceM: Double, val bearingDeg: Double)
 
     /** The nearest non-degenerate segment of [poly] to [p], or null when there is none. */

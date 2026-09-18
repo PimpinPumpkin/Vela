@@ -153,7 +153,7 @@ SELECT id, alat, alng FROM (
     row_number() OVER (PARTITION BY o.id ORDER BY abs(a.lat - o.lat) + abs(a.lng - o.lng)) AS rn
   -- NAME key only, never brand alone: a brand match moved "Safeway Pharmacy" onto the Safeway
   -- and the store onto the pharmacy's locator point (Sacramento test box, 2026-09-17). And a
-  -- storefront correction is tens of metres; anything past ~120 m is a different branch.
+  -- storefront correction is tens of meters; anything past ~120 m is a different branch.
   FROM rawkeys o JOIN atpkeys a ON o.sk = a.sk
   WHERE abs(a.lat - o.lat) < 0.0015 AND abs(a.lng - o.lng) < 0.002
     AND 111320 * sqrt(pow(a.lat - o.lat, 2) + pow((a.lng - o.lng) * cos(radians(o.lat)), 2)) BETWEEN 30 AND 120

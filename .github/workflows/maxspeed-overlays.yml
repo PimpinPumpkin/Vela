@@ -15,7 +15,7 @@ on:
         type: string
         default: ""
       ids:
-        description: "Space/comma-separated region ids (e.g. 'oregon washington'). Blank + all=true builds everything."
+        description: "Space/comma-separated region ids (e.g. 'oregon delaware'). Blank + all=true builds everything."
         type: string
         default: "oregon"
       all:
@@ -91,7 +91,7 @@ jobs:
 
   merge:
     needs: build
-    if: ${{ !cancelled() }}
+    if: ${{ !canceled() }}
     runs-on: ubuntu-latest
     concurrency:
       group: maxspeed-overlays-manifest-merge

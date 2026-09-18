@@ -39,7 +39,7 @@ object SunTimes {
         val n = floor(julian - 2451545.0 + 0.0008 + 0.5 + lng / 360.0)
         val meanSolarNoon = n - lng / 360.0
         val m = rad((357.5291 + 0.98560028 * meanSolarNoon) % 360.0)
-        // Equation of the centre: the correction for Earth's orbit not being a circle.
+        // Equation of the center: the correction for Earth's orbit not being a circle.
         val c = 1.9148 * sin(m) + 0.02 * sin(2 * m) + 0.0003 * sin(3 * m)
         val lambda = rad((deg(m) + c + 180.0 + 102.9372) % 360.0)
         val transit = 2451545.0 + meanSolarNoon + 0.0053 * sin(m) - 0.0069 * sin(2 * lambda)

@@ -209,7 +209,7 @@ private fun buildPanelWebView(
     // scrapers are calibrated against. (A mobile UA deep-links to intent:// — non-starter.)
     wv.settings.userAgentString = VelaConfig.USER_AGENT
     // Match Vela's SheetPalette exactly (Dark #1F1F1F / Light #FFFFFF) so the WebView surface
-    // behind the page is the sheet colour before the page even paints.
+    // behind the page is the sheet color before the page even paints.
     wv.setBackgroundColor(if (dark) 0xFF1F1F1F.toInt() else 0xFFFFFFFF.toInt())
     // Scroll-sync: the panel lives inside the sheet's scrollable column and OWNS every vertical
     // gesture (disallow-intercept re-asserted on EVERY event — the Compose sheet resets a
@@ -547,20 +547,20 @@ private fun buildPanelWebView(
  *   review photo opens a lightbox that is a sibling of the panel.
  * - Strip Google's chrome we don't want: the Overview/Menu/Reviews/About tab bar, the
  *   "Order online" promo block, and the "Write a review" button (blocked — leads to sign-in).
- * - Theme to match Vela's sheet EXACTLY (no seam): <body> carries the Vela colour; main AND every
- *   ancestor are made transparent so that colour is the backdrop; dark inverts only main's content
+ * - Theme to match Vela's sheet EXACTLY (no seam): <body> carries the Vela color; main AND every
+ *   ancestor are made transparent so that color is the backdrop; dark inverts only main's content
  *   (a filter on <html> would become the fixed panel's containing block and re-break the sizing).
  *   The ancestors matter — they hold Google's white bg OUTSIDE the (main-scoped) filter, so left
  *   opaque they bleed white through the transparent main.
  * Maintenance passes keep re-applying for a while (the SPA re-attaches chrome on interaction).
  */
 private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
-    // Vela's own sheet colour (SheetPalette Dark/Light) — the panel matches it EXACTLY so there's
+    // Vela's own sheet color (SheetPalette Dark/Light) — the panel matches it EXACTLY so there's
     // no seam with the surrounding place sheet.
     val bg = if (dark) "#1f1f1f" else "#ffffff"
-    // Dark = a scoped invert on the PANEL CONTENT ONLY (main), NOT its background. The Vela colour
+    // Dark = a scoped invert on the PANEL CONTENT ONLY (main), NOT its background. The Vela color
     // lives on <body> (which the filter doesn't touch — it's on main), and main + every ancestor
-    // are made transparent so that colour is the panel's backdrop; only Google's content inverts.
+    // are made transparent so that color is the panel's backdrop; only Google's content inverts.
     val darkCss = if (dark) """
         [role="main"]{filter:invert(0.92) hue-rotate(180deg) !important}
         [role="main"] img,[role="main"] video,[role="main"] canvas{filter:invert(1) hue-rotate(180deg) !important}
@@ -570,7 +570,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
         [role="main"] .vela-stars{filter:invert(1) hue-rotate(180deg) saturate(1.7) brightness(1.12) !important}
         /* Overlays (Sort menu, per-review menus, photo viewer) live OUTSIDE main so the filter never
            reaches them — they'd flash Google's white. Invert them to match; un-invert their images
-           (a review photo in the viewer must stay true-colour). */
+           (a review photo in the viewer must stay true-color). */
         [role="menu"],[role="listbox"],[role="dialog"]{filter:invert(0.94) hue-rotate(180deg) !important}
         [role="menu"] img,[role="dialog"] img,[role="dialog"] video,[role="dialog"] [style*="background-image"]{filter:invert(1) hue-rotate(180deg) !important}
     """ else ""
@@ -853,7 +853,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
               main.style.setProperty('overflow-y','auto','important');
               main.style.setProperty('z-index','999999','important');
             }
-            // Transparent so <body>'s Vela colour is the panel backdrop (Google's white bg would
+            // Transparent so <body>'s Vela color is the panel backdrop (Google's white bg would
             // otherwise show — inverted to near-black in dark, mismatching the sheet).
             main.style.setProperty('background','transparent','important');
             var el=main;
@@ -881,7 +881,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
               p.style.setProperty('transform','none','important');
               // AND transparent — main's ancestors carry Google's white background OUTSIDE the
               // invert filter (which is on main), so they'd bleed white through the transparent
-              // main. Clearing them lets <body>'s Vela colour show as the seamless backdrop.
+              // main. Clearing them lets <body>'s Vela color show as the seamless backdrop.
               p.style.setProperty('background','transparent','important');
               p.style.setProperty('background-color','transparent','important');
               el=p;
@@ -933,7 +933,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           // carve hid, and OUTSIDE main so the dark filter never reaches them (they'd flash white).
           // For every LIVE overlay: un-hide the [data-vh] ancestors I hid, lift it above the panel,
           // clamp a menu that overflows the viewport, and (dark) invert it — un-inverting its images
-          // so review photos in the viewer stay true-colour.
+          // so review photos in the viewer stay true-color.
           function revealOverlays(){
             var live=[].slice.call(document.querySelectorAll('[role="menu"],[role="listbox"]'));
             [].slice.call(document.querySelectorAll('[role="dialog"]')).forEach(function(d){

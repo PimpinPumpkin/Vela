@@ -82,7 +82,7 @@ for m in re.finditer(r"<node [^>]*>", d):
 }
 # on_screen_contains <substr>  — 0 (true) if any node's text contains <substr> (partial match).
 on_screen_contains() { [ -n "$(find_text_contains "$1")" ]; }
-# ycenter <bounds>  — the vertical centre of an [x1,y1][x2,y2] bounds string.
+# ycenter <bounds>  — the vertical center of an [x1,y1][x2,y2] bounds string.
 ycenter() { echo "$1" | sed -E 's/^\[[0-9]+,([0-9]+)\]\[[0-9]+,([0-9]+)\].*/\1 \2/' | awk '{print int(($1+$2)/2)}'; }
 # focus_and_ok <exact>  — press DOWN until the focused row vertically contains the node with that
 # text, then OK it. Robust to the exact number of rows (the focused clickable Row often has no text

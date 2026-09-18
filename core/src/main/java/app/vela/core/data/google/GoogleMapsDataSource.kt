@@ -116,7 +116,7 @@ internal fun categoryPrior(category: String?): Double {
 private const val NEUTRAL_PRIOR = 2.2
 
 /** How hard the kind of place pulls, in prominence points per tier step. 0.9 puts an anchor about
- *  two points over a same-sized neighbour, which is roughly a supermarket's review-count edge over
+ *  two points over a same-sized neighbor, which is roughly a supermarket's review-count edge over
  *  the sushi counter inside it - enough to settle the label, not enough to beat a real landmark. */
 private const val PRIOR_WEIGHT = 0.9
 
@@ -127,7 +127,7 @@ private const val PRIOR_WEIGHT = 0.9
  * tiebreak. This is what a map wants — the recognizable landmarks (a Safeway with 1,273 reviews, an
  * Applebee's with 1,192) lead, and the low-signal junk the category fan-out drags in (a 0-review mobile
  * mechanic, an adult-family-home, a road intersection) sinks to the bottom and is dropped/loses its
- * collision. Distance-bucketing was tried and REVERTED: it floated that near-centre junk above the
+ * collision. Distance-bucketing was tried and REVERTED: it floated that near-center junk above the
  * landmarks (device-measured). The anchor-beats-tenant case still holds (Safeway's reviews ≫ its in-store
  * sushi counter's, so it wins their shared point).
  */
@@ -171,7 +171,7 @@ class GoogleMapsDataSource @Inject constructor(
         calibration.current().tune("ambientFanoutPermits", 4.0).toInt().coerceIn(1, 13),
     )
 
-    /** One result page: [offset] rows in, over a [viewport]-centred window [spanMeters] tall. A
+    /** One result page: [offset] rows in, over a [viewport]-centered window [spanMeters] tall. A
      *  parse drift on page 0 is thrown (and recorded) so the caller can surface it; on any later
      *  page it yields an empty list, because a later page drifting must never kill page 0. */
     private suspend fun searchPage(query: String, viewport: LatLng, spanMeters: Double?, rankFrom: LatLng?, offset: Int, cal: app.vela.core.config.Calibration): List<Place> {
@@ -211,7 +211,7 @@ class GoogleMapsDataSource @Inject constructor(
         // only catches it when the category fan-out happened to hold it. A second request over
         // a tight window around the user (the Google app weights distance the same way) leads
         // the list. Only when the user is INSIDE the search window and that window is wider
-        // than the nearby one, so a search over another neighbourhood or another city keeps
+        // than the nearby one, so a search over another neighborhood or another city keeps
         // Google's order for where the user is looking.
         val nearbyWanted = rankFrom != null &&
             (spanMeters == null || (rankFrom.distanceTo(viewport) <= spanMeters / 2 && spanMeters > NEARBY_SPAN_M * 1.5))
@@ -483,7 +483,7 @@ class GoogleMapsDataSource @Inject constructor(
 
     override suspend fun streetView(location: LatLng, preferStreet: String?): app.vela.core.model.StreetViewPano? = io {
         // Keyless nearest-pano lookup - the JS Maps API's own GeoPhotoService.SingleImageSearch,
-        // authorised by referer (the get() helper already sends it). The parser returns null with no
+        // authorized by referer (the get() helper already sends it). The parser returns null with no
         // imagery near the point.
         val cal = calibration.current()
         val nearest = streetViewNearest(cal.streetViewMetaUrl, location.lat, location.lng) ?: return@io null
@@ -495,7 +495,7 @@ class GoogleMapsDataSource @Inject constructor(
         // When the nearest pano isn't on the address's own street, PROBE toward the street: the nearest
         // pano's heading is the (parallel) street axis, so the frontage sits perpendicular to it. Query
         // a few points out along both perpendiculars and adopt the nearest pano that IS on the address's
-        // street. No-regression: no street given / already matches / nothing labelled found → keep the
+        // street. No-regression: no street given / already matches / nothing labeled found → keep the
         // nearest pano, and the probes only fire in the mismatch case.
         if (preferStreet.isNullOrBlank() ||
             StreetViewParser.streetOf(preferStreet) == null ||
@@ -556,7 +556,7 @@ class GoogleMapsDataSource @Inject constructor(
         // Mid-drive reroutes are URGENT: one shot per source, no divergence snap, no alternates
         // polish. The retry ladders below (3x OSRM + 3x Google with backoff) are right for a
         // planning fetch but can hold a reroute past NavSession's hard deadline on a flaky cell
-        // link, so the fetch gets cancelled mid-flight and the driver waits on the next attempt
+        // link, so the fetch gets canceled mid-flight and the driver waits on the next attempt
         // (issues #185/#236). The recheck loop upgrades the lean result minutes later anyway.
         val tries = if (urgent) 1 else 3
         // BOUNDED fetches (issue #557): a reroute carries its deadline in. A diagnostics export
@@ -648,7 +648,7 @@ class GoogleMapsDataSource @Inject constructor(
                     onDevice != null -> listOf(onDevice)
                     else -> googleOrGrace().take(1).map { it.copy(abbreviatedSteps = true, source = RouteSource.GOOGLE_ABBREVIATED) }
                 }
-                // Google's direct route honours avoid (DirectionsPb.withAvoid); the open router's
+                // Google's direct route honors avoid (DirectionsPb.withAvoid); the open router's
                 // via route and its on-device fallback do not - only those get the note.
                 if ((avoidTolls || avoidHighways || avoidFerries) && mode == TravelMode.DRIVE && via != null) {
                     result = result.map { it.copy(avoidNotHonored = true) }
@@ -744,13 +744,13 @@ class GoogleMapsDataSource @Inject constructor(
             val gTop = google.firstOrNull()
             // AVOID toggles: the public FOSSGIS OSRM rejects `exclude=` outright (probed
             // 2026-07-11 and again 2026-08-24: InvalidValue, its profiles were not built with
-            // excludable classes). Google's keyless directions DO honour avoid (DirectionsPb.withAvoid, 2026-09-06), so
+            // excludable classes). Google's keyless directions DO honor avoid (DirectionsPb.withAvoid, 2026-09-06), so
             // online the avoiding route IS gTop: the open router cannot exclude, so its plain route
             // diverges and the snap below follows Google's course with named turns, and Google's
             // own in-traffic time is the ETA. The on-device engine is the avoid router only when
             // Google is unreachable. (Until today avoid was on-device-or-nothing, with the plain
             // route and a note otherwise; #325's broken ETA came from that branch.)
-            // Honoured only when the request could actually carry the flags: a recalibrated pb
+            // Honored only when the request could actually carry the flags: a recalibrated pb
             // template without the feature block makes withAvoid a no-op (review 2026-09-06).
             if (avoidWanted && gTop != null && DirectionsPb.avoidSupported(calibration.current().directionsPb)) avoidHonored = true
             if (avoidWanted && gTop == null && routeEngine.isReady(mode)) {
@@ -829,7 +829,7 @@ class GoogleMapsDataSource @Inject constructor(
             // 2026-09-12 review the divergent case (Google routing around a jam, exactly when it
             // matters) got no calibration at all, so the plain OSRM route kept its fiction of an
             // ETA and sorted ahead of Google's honest alternates as "Fastest". Alternates share
-            // the same optimistic speed model, so rebasing them all by one factor keeps the
+            // the same optimiztic speed model, so rebasing them all by one factor keeps the
             // picker's ranking fair.
             val freeFlowCal = gTop?.takeIf { it.durationSeconds > 0 && it.polyline.size >= 5 }?.let { g ->
                 val basis = open.firstOrNull()?.takeIf { !RouteGeometry.divergent(it, g) }
@@ -993,8 +993,8 @@ class GoogleMapsDataSource @Inject constructor(
         // ratio of ~0.97 — the shown ETA was the ratio applied to the wrong baseline). When this
         // route follows Google's course, rebase it onto Google's typical: step/leg/route durations
         // scale up to the typical time (so nav's remaining-time sums agree), the live ETA becomes
-        // Google's actual in-traffic figure, and trafficRatio stays traffic-vs-typical (colours
-        // don't turn red just because OSRM was optimistic). A divergent route (a genuinely
+        // Google's actual in-traffic figure, and trafficRatio stays traffic-vs-typical (colors
+        // don't turn red just because OSRM was optimiztic). A divergent route (a genuinely
         // different path) can inherit the caller's calibration (the bias is the road network's,
         // not one route's); with none it keeps the old ratio-only overlay.
         val sameCourse = route.durationSeconds > 0 && route.polyline.size >= 2 &&
@@ -1021,7 +1021,7 @@ class GoogleMapsDataSource @Inject constructor(
             // on (review 2026-09-06).
             // Same course: Google's spans map by fraction. Any other geometry (a divergent open
             // route, an alternate, a trip with stops): carry the spans over wherever the two
-            // share the road (issue #403); the stretches Google did not drive stay uncoloured.
+            // share the road (issue #403); the stretches Google did not drive stay uncolored.
             trafficSpans = when {
                 !withSpans -> emptyList()
                 sameCourse -> g.trafficSpans.map { it.copy(startMeters = it.startMeters * scale, lengthMeters = it.lengthMeters * scale) }
@@ -1107,7 +1107,7 @@ class GoogleMapsDataSource @Inject constructor(
             ?.takeIf { it.polyline.lastOrNull()?.let { p -> p.distanceTo(destination) <= SNAP_REACH_M } == true }
         // Keep the route's OWN time figures through the snap. The picker sorted and displayed this
         // route by its Google per-route ETA; applyTraffic here would swap in a recomputed one
-        // (OSRM free-flow x the ratio) IN PLACE, which can leapfrog a neighbouring row and leave
+        // (OSRM free-flow x the ratio) IN PLACE, which can leapfrog a neighboring row and leave
         // the "Fastest" tag sitting below a slower first row. Naming is for geometry + named
         // turn-by-turn (and the congestion spans remapped onto that geometry), not a new ETA.
         if (named != null) applyTraffic(named, route).copy(
@@ -1267,7 +1267,7 @@ class GoogleMapsDataSource @Inject constructor(
         val lang = locale.language.lowercase()
         // Only rewrite to a language the STATUS parser can read (SearchParser.STATUS_LANGS). For any
         // other locale, keep hl=en: an unparseable status string leaves openNow null forever and the
-        // UI can't colour open/closed — English status text the English table handles is the safer
+        // UI can't color open/closed — English status text the English table handles is the safer
         // fallback than localized-but-unparseable (audit 2026-07-06).
         if (lang == "en" || lang !in SearchParser.STATUS_LANGS) return out
         // Chinese needs the SCRIPT in the hl tag: hl=zh-TW answers Traditional, hl=zh-CN Simplified

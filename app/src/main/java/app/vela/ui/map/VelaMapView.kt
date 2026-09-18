@@ -63,7 +63,7 @@ import org.maplibre.android.geometry.LatLng as MLLatLng
 import org.maplibre.android.geometry.LatLngBounds as MLLatLngBounds
 
 private const val ROUTE_SRC = "vela-route-src"
-// A search from a view this tall (metres, north to south) keeps its camera when at least
+// A search from a view this tall (meters, north to south) keeps its camera when at least
 // HOLD_VIEW_MIN_HITS results land in the visible strip, instead of flying out to frame every hit.
 private const val HOLD_VIEW_SPAN_M = 2_500.0
 private const val HOLD_VIEW_MIN_HITS = 3
@@ -86,16 +86,16 @@ private val ALT_ROUTE_WIDTH = Expression.interpolate(
 private const val ROUTE_DASH_LAYER = "vela-route-dash"
 private const val ROUTE_DOT_IMG = "vela-route-dot"
 private const val ROUTE_DOT_SRC = "vela-route-dot-src"
-// Target centre-to-centre dot spacing in MapLibre's density-independent px (dp) — the unit
+// Target center-to-center dot spacing in MapLibre's density-independent px (dp) — the unit
 // getMetersPerPixelAtLatitude works in. ~17dp = a ~10dp dot + a ~7dp gap, Google's dense chain.
 // Held constant at EVERY zoom by regenerating the dot POINTS ourselves (see regenRouteDots).
 private const val ROUTE_DOT_SPACING_PX = 17.0
 // The AHEAD half of the nav route. During nav the driven/ahead cut is a GEOMETRY split, not a
 // gradient stop: MapLibre rasterizes line-gradient into a 256×1 LINEAR-filtered texture, so a
-// "hard" step() cut renders as a grey→blue fade of routeLength/256 metres (~39 m on a 10 km
-// route — the "gradient appears if we zoom in" bug) with the centre quantized to the nearest
+// "hard" step() cut renders as a gray→blue fade of routeLength/256 meters (~39 m on a 10 km
+// route — the "gradient appears if we zoom in" bug) with the center quantized to the nearest
 // texel. Geometry is pixel-exact at any zoom/length: ROUTE_LAYER shows the full line in
-// traversed grey underneath; this layer draws the REMAINING suffix from the puck forward
+// traversed gray underneath; this layer draws the REMAINING suffix from the puck forward
 // (frame-ticker-updated, traffic spans remapped onto the suffix).
 private const val ROUTE_AHEAD_SRC = "vela-route-ahead-src"
 private const val ROUTE_AHEAD_LAYER = "vela-route-ahead"
@@ -108,16 +108,16 @@ private const val ROUTE_TAIL_LAYER = "vela-route-tail"
 private const val NAV_WINDOW_M = 3000.0   // leading window length
 private const val NAV_WINDOW_SLACK_M = 500.0 // re-anchor when the puck gets this close to the seam
 // The CUT piece (see the nav ticker): a short overlay on top of the ahead line whose line-gradient
-// paints traversed-grey up to the arrow and route colour past it. Its geometry moves every
-// NAV_CUT_M - NAV_CUT_SLACK_M metres; only its PAINT changes per frame.
+// paints traversed-gray up to the arrow and route color past it. Its geometry moves every
+// NAV_CUT_M - NAV_CUT_SLACK_M meters; only its PAINT changes per frame.
 private const val ROUTE_CUT_SRC = "vela-route-cut-src"
 private const val ROUTE_CUT_LAYER = "vela-route-cut"
 private const val NAV_CUT_M = 400.0       // cut piece length: 256 gradient texels over 400 m = 1.6 m each
 private const val NAV_CUT_SLACK_M = 100.0 // slide the piece forward when the arrow gets this close to its end
 private const val NAV_CUT_BACK_M = 20.0   // the piece starts this far behind the arrow when it slides
-private const val NAV_CUT_HIDE_M = 12.0   // the ahead line goes grey up to here past the piece start (one texel of its own
-                                          // gradient, so its soft edge lies entirely under the piece's grey)
-// Traversed-route grey, per theme — dimmer than and distinct from the alternates' #9AA0A6 so
+private const val NAV_CUT_HIDE_M = 12.0   // the ahead line goes gray up to here past the piece start (one texel of its own
+                                          // gradient, so its soft edge lies entirely under the piece's gray)
+// Traversed-route gray, per theme — dimmer than and distinct from the alternates' #9AA0A6 so
 // the driven tail doesn't read as another tappable route.
 private const val TRAVERSED_LIGHT = "#B9BDC2"
 private const val TRAVERSED_DARK = "#54585C"
@@ -130,7 +130,7 @@ private const val TRANSIT_PREV_SRC = "vela-transit-prev-src"
 private const val TRANSIT_PREV_WALK_LAYER = "vela-transit-prev-walk"
 private const val TRANSIT_PREV_RIDE_LAYER = "vela-transit-prev-ride"
 private const val TRANSIT_PREV_STOPS_LAYER = "vela-transit-prev-stops"
-private const val TRANSIT_PREV_FALLBACK_COLOR = "#4285F4" // rides whose agency sends no line colour
+private const val TRANSIT_PREV_FALLBACK_COLOR = "#4285F4" // rides whose agency sends no line color
 private const val TRANSIT_PREV_WALK_COLOR = "#7C8A99" // dotted walk links, legible on both themes
 private const val ALT_INDEX_PROP = "vela-alt-index"
 private const val ROUTE_BUBBLE_SRC = "vela-route-bubble-src"
@@ -140,7 +140,7 @@ private const val ROUTE_BUBBLE_ALT_IMG = "vela-rb-alt"
 
 /** A route's travel-time bubble on the map (the Google-style chooser experiment): [index] is the
  *  route's position in the chooser list, [at] a point on that route where it runs apart from the
- *  others, [selected] draws it filled in the route colour. Tapping one selects that route. */
+ *  others, [selected] draws it filled in the route color. Tapping one selects that route. */
 data class RouteBubble(
     val index: Int,
     val at: LatLng,
@@ -154,7 +154,7 @@ private const val MARKERS_SRC = "vela-markers-src"
 private const val MARKERS_LAYER = "vela-markers"
 // Collapsed search results: the same source drawn as small red dots UNDER the pins. The pin layer
 // collides (best rank wins the slot); a result whose pin is culled still shows as its dot, which
-// "expands" into the pin as you zoom in - Google's dense-results behaviour.
+// "expands" into the pin as you zoom in - Google's dense-results behavior.
 private const val MARKERS_DOTS_LAYER = "vela-markers-dots"
 private const val PIN_IMG = "vela-pin"
 // The saved parking spot: one teal "P" pin, tappable (opens the parked-car sheet).
@@ -285,7 +285,7 @@ private const val TRAFFIC_LAYER = "vela-traffic"
 private const val TRANSIT_LAYER = "vela-transit"
 private const val TRANSIT_RAIL = "#7E57C2"   // heavy rail — purple
 private const val TRANSIT_SUBWAY = "#12B5A5" // subway / light rail / tram — teal
-// Google's LIVE traffic, as a raster overlay (congestion-coloured roads +
+// Google's LIVE traffic, as a raster overlay (congestion-colored roads +
 // incidents) — the web map's own `/maps/vt` tile, which is a public, keyless PNG
 // on www.google.com (the same host we already scrape). The trimmed `pb` (no map
 // version epoch, so it doesn't rot): `!2straffic` = the traffic layer, `!1e2` =
@@ -314,7 +314,7 @@ private var lastAppliedFlock: List<app.vela.core.data.AlprCamera>? = null
 private var lastAppliedSpeedCams: List<app.vela.core.data.SpeedCamera>? = null
 private var lastAppliedTransitStops: List<app.vela.core.data.transit.Transitous.MapStop>? = null
 
-/** One saved place drawn on the browse map (issue #171): its list's icon key + colour. */
+/** One saved place drawn on the browse map (issue #171): its list's icon key + color. */
 data class SavedPin(val lat: Double, val lng: Double, val icon: String, val color: Long)
 private var lastTransitBusHidden: Boolean? = null // gate the poi_transit filter flip
 private var origPoiTransitFilter: Expression? = null // basemap filter to restore when coverage goes
@@ -512,7 +512,7 @@ private fun flightCb() = object : org.maplibre.android.maps.MapLibreMap.Cancelab
 }
 
 /**
- * MapLibre wrapped for Compose. Three camera behaviours:
+ * MapLibre wrapped for Compose. Three camera behaviors:
  *  - [navMode]: heading-up, tilted, close follow (drives like a nav app);
  *  - a fresh route preview: fit the whole route to the screen once;
  *  - otherwise: gentle north-up follow of the camera target.
@@ -540,7 +540,7 @@ fun VelaMapView(
     cameraTargetZoom: Double? = null, // deep-link z= override for the target fly (null = default framing)
     recenterTick: Int = 0, // bumped on each recenter tap → force a move even if already "centered"
     cameraBottomInsetPx: Int = 0,
-    // Landscape side-panel width (the place/results sheets as a left column): the optical centre
+    // Landscape side-panel width (the place/results sheets as a left column): the optical center
     // shifts RIGHT instead of up, so a focused pin lands in the map strip beside the panel.
     cameraLeftInsetPx: Int = 0,
     cameraTopInsetPx: Int = 0, // measured top chrome (the endpoints card) - the route fit clears it
@@ -548,7 +548,7 @@ fun VelaMapView(
     routeColor: String,
     routeDashed: Boolean = false, // draw the route dashed (walking / biking), Google-style
     // The transit itinerary whose drill-down is open in the chooser (issue #233): its ride legs
-    // draw as agency-coloured lines through the stops with white stop dots, walk legs as dotted
+    // draw as agency-colored lines through the stops with white stop dots, walk legs as dotted
     // links. Null = nothing drawn. The caller gates it to the open, non-navigating chooser — or
     // to step-by-step transit nav (issue #232), where [transitNavLeg] is the guided leg's index
     // and the camera frames THAT leg instead of the whole trip, re-framing on each advance.
@@ -556,7 +556,7 @@ fun VelaMapView(
     transitNavLeg: Int? = null,
 
     // Per-segment live traffic as (startFraction, endFraction, level) along the route
-    // — colours the route line like Google (free-flow elsewhere). Empty = no live data.
+    // — colors the route line like Google (free-flow elsewhere). Empty = no live data.
     routeTrafficSpans: List<Triple<Float, Float, Int>> = emptyList(),
     alternates: List<Pair<Int, List<LatLng>>> = emptyList(),
     altColor: String = "#9AA0A6",
@@ -577,7 +577,7 @@ fun VelaMapView(
     navMode: Boolean,
     navDriveMode: Boolean = false, // navigating a DRIVE route -> the aggressive car-mode declutter
     navLabelExclude: List<String> = emptyList(), // roads already DRIVEN: never bubble-label the road you're ON
-    navUpcomingRoads: List<String> = emptyList(), // the next turns' target roads: always bubble-labelled
+    navUpcomingRoads: List<String> = emptyList(), // the next turns' target roads: always bubble-labeled
     // Foreign-name romanizing (issue #184): as nav road tiles load, report each road's local name ->
     // its basemap name:latin, so guidance can SAY/SHOW the real romanized name instead of the ICU
     // consonant skeleton. Accumulates across the drive; called only when the map grows.
@@ -624,7 +624,7 @@ fun VelaMapView(
     // Draws the rotating view cone at the pano and eases the camera there on each pano hop.
     svPose: DoubleArray? = null,
     // Height (px) of the Street View pane covering the top of the screen: applied as camera TOP
-    // padding while the viewer is open so the pose puck centres in the VISIBLE strip below it.
+    // padding while the viewer is open so the pose puck centers in the VISIBLE strip below it.
     svTopInsetPx: Int = 0,
     // Tap on the mini-map while Street View is open = "take me there": the viewer jumps to the
     // nearest pano at the tapped point. Pre-empts all POI/pin tap resolution while the pane is up.
@@ -726,7 +726,7 @@ fun VelaMapView(
     // MS-overlay gate state, COMPOSABLE-scoped on purpose: getMapAsync can run more than once
     // (the AndroidView update block re-enters before the async callback lands), so listener-local
     // state meant every registration kept its own probe floor - the Davis logs showed interleaved
-    // ~500ms evaluations from two registrations, each individually honouring the 1.2s floor.
+    // ~500ms evaluations from two registrations, each individually honoring the 1.2s floor.
     // Shared holders make a duplicate registration harmless: the second fire hits the floor.
     val ovlGateKey = remember { arrayOf("") } // coarse pos+zoom key of the last verdict; "" = stale
     val ovlDirty = remember { booleanArrayOf(true) } // a render finished since the last verdict
@@ -766,7 +766,7 @@ fun VelaMapView(
     // Free-drive DRIVING mode (user 2026-07-15): [0] smoothed speed m/s, [1] engaged flag (latches
     // on at driving speed, released only by the follow ending - a red light must HOLD the heading,
     // not level the camera out), [2] the course the camera is easing toward, [3] eased forward
-    // lookahead metres (the padding-free puck-low).
+    // lookahead meters (the padding-free puck-low).
     val browseDrive = remember { doubleArrayOf(0.0, 0.0, Double.NaN, 0.0) }
     val lastBrowse = remember { doubleArrayOf(Double.NaN, Double.NaN, Double.NaN) } // last applied [lat,lng,bearing] (skip no-op frames)
     val viewport = rememberUpdatedState(onViewport)
@@ -784,13 +784,13 @@ fun VelaMapView(
     val speedupHolder = rememberUpdatedState(replaySpeedup)
     val lastGradM = remember { doubleArrayOf(-1e9) } // progressM the route split was last set at
     val splitReset = remember { booleanArrayOf(false) } // style reload: re-anchor the window + coarse cut (layers came back hidden)
-    // "Road behind you": the driven part of the route stays grey (on) or disappears (off, the
+    // "Road behind you": the driven part of the route stays gray (on) or disappears (off, the
     // default). Read per frame by the ticker through a holder; a flip mid-drive re-anchors the
     // split so the gradients and the full line's visibility are re-applied at once.
     val trailOn = app.vela.ui.RouteTrail.on.value
     val trailHolder = rememberUpdatedState(trailOn)
     LaunchedEffect(trailOn) { splitReset[0] = true; lastGradM[0] = -1e9 } // -1e9 so the block runs even while stopped
-    val mPerPxHolder = remember { doubleArrayOf(10.0) } // metres/pixel at the camera (scale-bar feed) —
+    val mPerPxHolder = remember { doubleArrayOf(10.0) } // meters/pixel at the camera (scale-bar feed) —
                                                         // sizes the split-update throttle to sub-pixel
     val lastScaleReport = remember { doubleArrayOf(-1.0) } // last mpp PUSHED to compose (gate, see reportScale)
     // A manual pinch sets a zoom override (navUserZoom) that we keep following at; it's cleared
@@ -1187,7 +1187,7 @@ fun VelaMapView(
                 listOf(
                     "highway-shield-non-us", "highway-shield-us-interstate", "road_shield_us",
                     "vela-bikeroutes", "vela-trails", TRANSIT_LAYER,
-                    // Neighbourhood/hamlet titles (2026-07-16): the read-by-nobody label tier.
+                    // Neighborhood/hamlet titles (2026-07-16): the read-by-nobody label tier.
                     // WATER names deliberately STAY (user 2026-07-16: liked them, and rivers are
                     // real landmarks - Google keeps major water names in nav too; a viewport has
                     // a handful at most, so the cost is noise). Town/city/state stay likewise.
@@ -1204,7 +1204,7 @@ fun VelaMapView(
     // downloaded region (offline), or `https://` for the region in view that isn't downloaded — MapLibre 11.7+
     // streams that one via PMTiles HTTP range requests, fetching only the visible tiles, so footprints appear
     // with no download. Keyed on styleRef (re-add after a style reload) + darkTheme (fill matches the themed OSM
-    // building colour, indistinguishable from a real OSM footprint).
+    // building color, indistinguishable from a real OSM footprint).
     // ---- Idle building warm-up (2026-07-23) ----------------------------------------------------
     // Zooming to street level waited a beat for the building-overlay PMTiles range-fetches (the
     // z15/16 footprint tiles only start downloading once the camera is already there). When the
@@ -1250,9 +1250,9 @@ fun VelaMapView(
         runCatching { style.sources.filter { it.id.startsWith("vela-ovl-src-") }.forEach { style.removeSource(it) } }
         // MUST equal the OSM `building` fill/outline in applyDark/applyLight AND
         // applyClassicDark/applyClassicLight, or the Microsoft-only footprints read as a second
-        // building colour beside the OSM ones. This pair is keyed on darkTheme but ALSO has to honour
+        // building color beside the OSM ones. This pair is keyed on darkTheme but ALSO has to honor
         // the Modern/Classic palette: it was hardcoded to Modern, so switching to Classic left the
-        // overlay houses Google-navy while the OSM ones went grey ("houses still bluish in classic",
+        // overlay houses Google-navy while the OSM ones went gray ("houses still bluish in classic",
         // user 2026-07-12). MapColors.current() feeds the styleKey, so a palette switch reloads the
         // style and re-runs this effect; reading classic() here picks up the new palette.
         val classic = app.vela.ui.MapColors.classic()
@@ -1297,7 +1297,7 @@ fun VelaMapView(
     // road segment, and reading its `maxspeed` tag gives the "Speed B" online limit without a downloaded
     // routing graph. minZoom low so it's present at nav/free-drive zoom (z16 tiles overzoom).
     // ONLY added while speedOverlayOn (driving/nav) - the poll reads it only then, and adding it during a
-    // plain browse was pure overhead AND rendered a BLACK stripe over every road: MapLibre's colour parser
+    // plain browse was pure overhead AND rendered a BLACK stripe over every road: MapLibre's color parser
     // rejected the 8-digit "#00000000" and fell back to its default OPAQUE BLACK. Fixed by the transparent
     // @ColorInt overload (no string parsing) and by not carrying the layer on the browse map at all.
     // The open-data places layer (Overture PMTiles): one symbol layer plus one dot layer per source,
@@ -1456,7 +1456,7 @@ fun VelaMapView(
                     value, Expression.literal(""),
                 )
                 // GENERIC tenants stay dots in dense blocks (2026-09-16, measured in Midtown: dozens
-                // of grey office pins and small-practice health pins per block, one per tenant of a
+                // of gray office pins and small-practice health pins per block, one per tenant of a
                 // tower, which both crowded taps and cost frames). A place in the default or health
                 // group gets an icon or label only if it is among the top `openGenericBlockTop` of its
                 // ~100 m block (`frank`, or the 400 m `rank` with a 4x cut on older archives) or
@@ -1560,7 +1560,7 @@ fun VelaMapView(
                                 // eight per block get an icon at 17.5, sixteen at 18.5, everything
                                 // from 19.5. A place below the cut still draws as a dot (the dots
                                 // tier is unfiltered from z17), which is the "see more later when
-                                // we zoom in" behaviour rather than a place disappearing.
+                                // we zoom in" behavior rather than a place disappearing.
                                 Expression.stop(17.5f, unlessTenant(unlessCrowdedGeneric(blockBudget(iconCapNear, 6.0, icon)))),
                                 Expression.stop(18.5f, unlessCrowdedGeneric(blockBudget(iconCapClose, 5.0, icon))),
                                 Expression.stop(19.5f, unlessCrowdedGeneric(blockBudget(iconCapMax, 4.5, icon))),
@@ -1573,10 +1573,10 @@ fun VelaMapView(
                             ),
                         ),
                         // Collide below z18; from z18 (about 40 ft) every icon draws even on top of a
-                        // neighbour. Overture stacks a building's tenants on one parcel point, so
+                        // neighbor. Overture stacks a building's tenants on one parcel point, so
                         // with collision on, the shop under a stack never appeared at any zoom (user
                         // 2026-09-15: a sandwich shop missing at 20 ft). The bake also spreads such
-                        // stacks a few metres; this is the belt for archives baked before that.
+                        // stacks a few meters; this is the belt for archives baked before that.
                         PropertyFactory.iconAllowOverlap(
                             Expression.step(Expression.zoom(), Expression.literal(false), Expression.stop(18f, Expression.literal(true))),
                         ),
@@ -1595,7 +1595,7 @@ fun VelaMapView(
                                 Expression.stop(16f, topOr("rank", rankZ16, promZ16, name)),
                                 Expression.stop(17f, topOr("rank", rankZ17, promZ17, name)),
                                 // Labels stay THINNED at max zoom (2026-09-16). Icons come in for
-                                // everything from 17.5 (the stop below), but labelling every one of
+                                // everything from 17.5 (the stop below), but labeling every one of
                                 // them is what costs: each label is glyph layout plus a collision
                                 // pass over four anchors, and a mall or a downtown block puts
                                 // dozens in one cell ("shit be laggin in areas with a lot of POIs").
@@ -1636,7 +1636,7 @@ fun VelaMapView(
                         PropertyFactory.textMaxWidth(7f),
                         PropertyFactory.textOptional(true),
                         PropertyFactory.textAllowOverlap(false),
-                        // The ambient layer's own label colours: per-group tints, pastel in dark.
+                        // The ambient layer's own label colors: per-group tints, pastel in dark.
                         PropertyFactory.textColor(PoiIcons.ambientLabelColor(darkTheme)),
                         PropertyFactory.textHaloColor(if (darkTheme) "#11161C" else "#FFFFFF"),
                         PropertyFactory.textHaloWidth(0.9f),
@@ -1695,7 +1695,7 @@ fun VelaMapView(
 
     // Poll the streamed maxspeed overlay under the puck (~2.5 s) while driving/navigating and report the
     // posted limit up, so a sign shows online with no routing graph. Uses the RAW fix (maxspeed needs no
-    // sub-metre precision), projected to screen, queried off the invisible line layer. Main-thread (Compose)
+    // sub-meter precision), projected to screen, queried off the invisible line layer. Main-thread (Compose)
     // so queryRenderedFeatures is legal; runCatching guards a mid-teardown style.
     val latestFix = rememberUpdatedState(myLocation)
     val latestMs = rememberUpdatedState(maxspeedOverlays)
@@ -1734,13 +1734,13 @@ fun VelaMapView(
     // House-number labels from the open ADDRESS overlay (OpenAddresses PMTiles of points): a SymbolLayer of the
     // `number` field, STREAMED for the region in view — fills in house numbers where OSM has no `addr:housenumber`
     // (the same gap the building overlay fills for footprints). Matched to the basemap `vela-housenumber` style
-    // (Noto Sans 10, grey + white halo). minZoom 19 so numbers only appear when truly close (~50 ft scale) and
+    // (Noto Sans 10, gray + white halo). minZoom 19 so numbers only appear when truly close (~50 ft scale) and
     // collision thins dense blocks. INSERTED BELOW the controls CLAIM layer (which sits below the ambient POI
     // icons) — NOT addLayer/top: MapLibre places symbols TOPMOST-LAYER-FIRST, so numbers stacked above the
     // ambient layer grabbed their collision boxes before the business icons placed, EVICTING them at z16+
     // (device-reproduced: Applebee's icon on the "5710" building vanished the moment numbers appeared; small
-    // neighbours survived because the prominence-scaled big icons collide the most). Below the icons, numbers
-    // place last and yield — Google's exact behaviour (a house number never displaces a business icon).
+    // neighbors survived because the prominence-scaled big icons collide the most). Below the icons, numbers
+    // place last and yield — Google's exact behavior (a house number never displaces a business icon).
     // Numbered stop pins: one teal pin per intermediate stop, numbered in visit order. The
     // whole feature set re-uploads whenever the list (or its order) changes, so a reorder in
     // the stops editor re-numbers the map immediately. Icons register on demand per number.
@@ -1863,9 +1863,9 @@ fun VelaMapView(
 
     // "3D buildings" setting → the basemap's building-3d fill-extrusion layer (z16+).
     // Extrusion is the most fragment-expensive thing the map draws, so this is the direct
-    // lever for zoomed-in pan stutter on weaker GPUs. applyLight/applyDark colour the layer
+    // lever for zoomed-in pan stutter on weaker GPUs. applyLight/applyDark color the layer
     // but never touch visibility, so this effect owns it (re-applied on style reload too).
-    // Extrusions also hide while SATELLITE imagery is on: the grey 3D boxes drew on top of the
+    // Extrusions also hide while SATELLITE imagery is on: the gray 3D boxes drew on top of the
     // photo roofs (they sit above the raster in the layer stack) - wrong-looking AND the most
     // fragment-expensive thing on screen (user 2026-07-13).
     // Also forced off DURING NAV (2026-07-17): the tilted nav camera at z16+ is exactly where
@@ -1965,7 +1965,7 @@ fun VelaMapView(
             browseZoomGoal[0] = Double.NaN
             browseEst.reset()
             browseEngaged[0] = false
-            browseFlying[0] = false // whatever cancelled the follow also cancelled the flight (onCancel), but never leak
+            browseFlying[0] = false // whatever canceled the follow also canceled the flight (onCancel), but never leak
             return@LaunchedEffect
         }
         var lastNanos = 0L
@@ -2015,7 +2015,7 @@ fun VelaMapView(
                     // First follow-engagement. If the camera is zoomed OUT past street level - a cold
                     // launch, a crash relaunch, or a locate tap from a far view - FLY to the fix at
                     // street zoom (AUDIT FIX 4, 2026-07-15: this used to be an instant moveCamera
-                    // teleport that also cancelled the launch flight). One owned animateCamera; the
+                    // teleport that also canceled the launch flight). One owned animateCamera; the
                     // ticker parks (browseFlying) until it lands. The flag clears in BOTH onFinish
                     // and onCancel - a leaked flag would kill follow for the session, and a missing
                     // cancel path would resurrect the "came back zoomed to the whole US" bug this
@@ -2111,7 +2111,7 @@ fun VelaMapView(
                 kotlin.math.abs(camLat - lastBrowse[0]) > 1e-6 ||
                 kotlin.math.abs(camLng - lastBrowse[1]) > 1e-6 ||
                 kotlin.math.abs(beam - lastBrowse[2]) > 0.4
-            // The locate tap's standard zoom rides the ticker (an animateCamera would be cancelled
+            // The locate tap's standard zoom rides the ticker (an animateCamera would be canceled
             // by the ticker's own writes a frame later): ease toward the goal, retire it on arrival.
             var zoomEase = Double.NaN
             if (cam != null && !scaling[0] && !browseFlying[0] && !browseZoomGoal[0].isNaN()) {
@@ -2122,7 +2122,7 @@ fun VelaMapView(
             if (moved || !zoomEase.isNaN()) {
                 // Draw the puck at the EASED follow position (camLat/camLng), not the raw fix: at the
                 // raw fix the dot teleported forward on the map each 1 Hz fix while the camera eased to
-                // catch up (the visible hop). At the eased position the dot stays centred and glides with
+                // catch up (the visible hop). At the eased position the dot stays centered and glides with
                 // the map - the same locked puck+camera the nav follow shows. (Falls back to the raw fix
                 // while pinching, when the camera isn't easing.)
                 val puckAt = if (cam != null && !scaling[0] && !browseFlying[0]) LatLng(camLat, camLng) else loc
@@ -2211,23 +2211,23 @@ fun VelaMapView(
         }
     }
 
-    // Centre on the user ONCE per session, the moment the map AND the first fix are both ready. A cold
+    // Center on the user ONCE per session, the moment the map AND the first fix are both ready. A cold
     // launch gets this for free, but a crash relaunch restores MapLibre's last (wide) camera and the
-    // seeded centre doesn't reliably override it (user 2026-07-12: "came back zoomed to the whole US;
+    // seeded center doesn't reliably override it (user 2026-07-12: "came back zoomed to the whole US;
     // it can take a sec for the location to resolve"). Runs in the VIEW layer, so it fires AFTER the map
     // is ready and the fix has landed - and waits for that fix however long it takes. Skipped once the
     // user has taken the wheel (a pan, or a search/route already owns the camera).
-    val didLaunchCentre = remember { booleanArrayOf(false) }
+    val didLaunchCenter = remember { booleanArrayOf(false) }
     LaunchedEffect(mapRef, myLocation, navMode) {
-        if (didLaunchCentre[0]) return@LaunchedEffect
+        if (didLaunchCenter[0]) return@LaunchedEffect
         val cam = mapRef ?: return@LaunchedEffect
         val loc = myLocation ?: return@LaunchedEffect
         // Nav owns the camera, or the user already took control → don't grab it; just retire the one-shot.
         if (navMode || gestureMove[0] || markers.isNotEmpty() || routePolyline.isNotEmpty()) {
-            didLaunchCentre[0] = true
+            didLaunchCenter[0] = true
             return@LaunchedEffect
         }
-        didLaunchCentre[0] = true
+        didLaunchCenter[0] = true
         runCatching {
             flightDepth[0]++
             cam.animateCamera(CameraUpdateFactory.newLatLngZoom(MLLatLng(loc.lat, loc.lng), app.vela.core.config.CalibrationStore.latest.tune("browseZoom", 15.5)), 650, flightCb())
@@ -2255,7 +2255,7 @@ fun VelaMapView(
             // "picking an alternate kills the fly-over" hitch. wasNavRef makes the teardown
             // one-shot per real drive.
             // Nav ended (or never ran): the ticker that owns the overlay is gone, so drop it HERE -
-            // the in-ticker drops never run once the effect is cancelled (the arrow stayed on the
+            // the in-ticker drops never run once the effect is canceled (the arrow stayed on the
             // browse map after ending a demo, user 2026-09-03).
             dropPuckOverlay()
             if (!wasNavRef[0]) return@LaunchedEffect
@@ -2265,8 +2265,8 @@ fun VelaMapView(
             navTiltEase[0] = 55.0 // next drive starts at the default pitch, not wherever this one ended
             // Camera padding is STICKY MapLibre state: the nav view's puck-low offset (top padding,
             // set on every follow frame + the pre-engage case) would otherwise shift the browse
-            // camera's centre for the rest of the session. Bearing + tilt are sticky the same way.
-            // ONE INSTANT move, not an animate: the 450 ms level-out used to get CANCELLED
+            // camera's center for the rest of the session. Bearing + tilt are sticky the same way.
+            // ONE INSTANT move, not an animate: the 450 ms level-out used to get CANCELED
             // mid-flight by the next camera write (a browse recenter, the follow ticker seeding)
             // and left the map PARTIALLY rotated after a drive - the "still not quite north-up"
             // report (user 2026-07-14). A snap can't be interrupted; the free-drive follow's
@@ -2319,7 +2319,7 @@ fun VelaMapView(
             val dtEase = dtE.coerceAtMost(0.065f)
             if (navPuck.engaged && routePolyline.size >= 2) {
                 // Kalman-predict the speed each frame: fold the MEASURED forward acceleration
-                // into the modelled speed, so braking kills the prediction NOW — not at the next
+                // into the modeled speed, so braking kills the prediction NOW — not at the next
                 // GPS fix. The old last-fix-speed × elapsed reckoning glided at full speed for up
                 // to a second after you hit the brakes, and monotonic progress could never walk
                 // it back (the "puck sits ahead of me when I stop" weirdness). The projection
@@ -2338,7 +2338,7 @@ fun VelaMapView(
                 FrameJank.tick((dtT * 1000).toInt()) // trip flight-recorder: UI frame pacing during nav
                 navPuck.kalman.predict(fwd, dtT.coerceAtMost(0.5))
                 navPuck.speed = navPuck.kalman.speed
-                // Dead-reckon by INTEGRATING the live modelled speed — over THIS frame's part of
+                // Dead-reckon by INTEGRATING the live modeled speed — over THIS frame's part of
                 // the blind window since the fix (TRACE time; the window caps how far a dropped
                 // GPS signal can run the puck away down the route).
                 // Blind window = 3 s (was 2): some chipsets deliver fixes 2.5-3.5 s apart under
@@ -2350,14 +2350,14 @@ fun VelaMapView(
                 val sinceFix = if (navPuck.holdReckon) DEAD_RECKON_S + 1.0
                     else (android.os.SystemClock.elapsedRealtime() - navPuck.targetAtMs) / 1000.0 * ts
                 // Past the dead-reckon window with no accepted fix = a measurement outage: decay
-                // the modelled speed toward 0 (there's no evidence we're still moving) so the
+                // the modeled speed toward 0 (there's no evidence we're still moving) so the
                 // zoom/look-ahead don't ride a stale speed forever. A resumed fix re-measures.
                 if (sinceFix > DEAD_RECKON_S) navPuck.kalman.decay(dtT.coerceAtMost(0.5))
                 // ALONG-ROUTE POSITION FILTER, predict step (issue #251). The puck's SPEED has
                 // been Kalman-filtered since June; its POSITION never was — `targetM` took the
-                // snapped fix RAW, so every metre of along-route GPS noise was a metre the puck
+                // snapped fix RAW, so every meter of along-route GPS noise was a meter the puck
                 // actually had to travel, once a second, for the whole drive. Here the estimate
-                // dead-reckons forward at the modelled speed and its variance grows with time;
+                // dead-reckons forward at the modeled speed and its variance grows with time;
                 // the fix folds in at the ingest site below as a MEASUREMENT weighted against
                 // that variance, rather than replacing the estimate outright. The reckoning is
                 // bounded by the same blind window as before, so a dropped signal still can't
@@ -2373,10 +2373,10 @@ fun VelaMapView(
                 // and together they surge and stall at exactly the fix cadence: every fix reset the
                 // reckoning, so the target JUMPED by however much it had over- or under-shot. An
                 // overshoot put the target BEHIND the puck, the ease pulled backward, and the
-                // monotonic clamp FROZE the puck until the reckoning caught up. A few metres of
+                // monotonic clamp FROZE the puck until the reckoning caught up. A few meters of
                 // ordinary GPS noise did that once a second, forever.
                 //
-                // Corrected in the RATE domain instead: the puck always advances at the modelled
+                // Corrected in the RATE domain instead: the puck always advances at the modeled
                 // speed, and the estimate error enters as a BOUNDED nudge to that rate. It cannot
                 // stall (the floor is 0 only when the model says stopped), it cannot lurch (the
                 // nudge is capped as a fraction of speed), and it is still monotonic.
@@ -2397,11 +2397,11 @@ fun VelaMapView(
                 // lane-level micro-kink of the dense OSM geometry - side-to-side wiggle "like a
                 // record needle" (user 2026-07-16, STILL visible 2026-07-24: the old 3-point
                 // average only cut each kink to a third, and in heading-up nav the puck is the
-                // screen anchor so every leftover millimetre moves the whole map). Real boxcar
+                // screen anchor so every leftover millimeter moves the whole map). Real boxcar
                 // now: average evenly spaced samples across an along-route window that grows
-                // with speed (at highway speed a kink spans more metres per second of travel),
+                // with speed (at highway speed a kink spans more meters per second of travel),
                 // so wiggle shorter than the window CANCELS instead of shrinking. Pure geometry
-                // smoothing, no temporal lag; corners round by a couple of metres at speed,
+                // smoothing, no temporal lag; corners round by a couple of meters at speed,
                 // which is what Google's puck does too.
                 // ...but the window WIDTH must not follow the LIVE speed (issue #251). On a curve
                 // the averaged point sits inside the arc by about win^2/(6R), so the width IS a
@@ -2473,7 +2473,7 @@ fun VelaMapView(
                         // live camera too. Position/zoom/bearing were seeded but tilt snapped to
                         // its eased remainder and the 0.45x top padding landed whole on frame ONE -
                         // re-attaching from the flat, unpadded overview slammed 55 degrees of tilt
-                        // plus a 22%-of-screen centre jump in a single frame (the overview->follow
+                        // plus a 22%-of-screen center jump in a single frame (the overview->follow
                         // jolt). Both now ease in with the same k as everything else.
                         navTiltEase[0] = cp.tilt
                         navPadEase[0] = (cp.padding?.getOrNull(1) ?: 0.0) / cam.height.toDouble().coerceAtLeast(1.0)
@@ -2590,17 +2590,17 @@ fun VelaMapView(
                 // vibration that read as puck jitter, issue #251). A per-frame line source is worse
                 // still (a LineString re-tiles on every worker thread; only a POINT source is cheap).
                 // So the geometry is three static-ish pieces and the per-frame change is PAINT only:
-                //  * ROUTE_LAYER: the full line, traversed-grey (uploaded once per route);
+                //  * ROUTE_LAYER: the full line, traversed-gray (uploaded once per route);
                 //  * ROUTE_AHEAD_LAYER: the leading window, from `aheadAnchor` to `navWin` (AUDIT
                 //    FIX 9: a window, not the whole route, so the far tail on ROUTE_TAIL_LAYER only
-                //    refreshes every few km). Its gradient goes grey up to just past the cut piece's
-                //    start, colour beyond, updated when the piece slides (every ~300 m);
+                //    refreshes every few km). Its gradient goes gray up to just past the cut piece's
+                //    start, color beyond, updated when the piece slides (every ~300 m);
                 //  * ROUTE_CUT_LAYER: a NAV_CUT_M piece drawn over the ahead line from just behind
-                //    the arrow, sliding forward every NAV_CUT_M - NAV_CUT_SLACK_M metres. Its
-                //    line-gradient is the actual cut - grey before the arrow's fraction, the traffic
-                //    spans' colours after - and THAT is what changes per frame. MapLibre bakes a
+                //    the arrow, sliding forward every NAV_CUT_M - NAV_CUT_SLACK_M meters. Its
+                //    line-gradient is the actual cut - gray before the arrow's fraction, the traffic
+                //    spans' colors after - and THAT is what changes per frame. MapLibre bakes a
                 //    gradient into 256 texels, which over the whole route smeared the cut into a
-                //    routeLength/256-metre ramp (the zoomed-in "gradient" once reported); over 400 m
+                //    routeLength/256-meter ramp (the zoomed-in "gradient" once reported); over 400 m
                 //    a texel is 1.6 m, a few px, under the arrow.
                 // (Dashed walk/bike lines keep their plain style - dasharray disables gradients.)
                 if (!dashHolder.value && routeCum.isNotEmpty() && routeCum.last() > 0.0 &&
@@ -2653,7 +2653,7 @@ fun VelaMapView(
                         style.getSourceAs<GeoJsonSource>(ROUTE_CUT_SRC)?.setGeoJson(lineFrom(cutStart[0], cutEnd[0]))
                     }
                     // The leading window re-anchors when the arrow nears its seam with the tail; the
-                    // ahead line is uploaded from the cut piece's start (the grey behind it is the
+                    // ahead line is uploaded from the cut piece's start (the gray behind it is the
                     // full line's).
                     var aheadDirty = slide
                     if (navWin[0].isNaN() || prog > navWin[0] - NAV_WINDOW_SLACK_M || navWin[0] > total) {
@@ -2671,15 +2671,15 @@ fun VelaMapView(
                         style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(lineFrom(aheadAnchor[0], tw))
                         aheadDirty = true
                     }
-                    // Driven colour: grey with the trail on, fully transparent with it off (the
-                    // full grey line beneath is hidden too, so only the road ahead is drawn).
+                    // Driven color: gray with the trail on, fully transparent with it off (the
+                    // full gray line beneath is hidden too, so only the road ahead is drawn).
                     val driven = if (trailHolder.value) ROUTE_DRIVEN else android.graphics.Color.TRANSPARENT
                     if (aheadDirty) {
-                        // Grey up to one texel past the piece start, so the ahead line's own soft
-                        // edge lies under the piece's grey; colour from there.
+                        // Gray up to one texel past the piece start, so the ahead line's own soft
+                        // edge lies under the piece's gray; color from there.
                         val a0 = aheadAnchor[0]
                         val a1 = navWin[0]
-                        // Trail ON: grey up to one texel past the piece start. Trail OFF: NOTHING
+                        // Trail ON: gray up to one texel past the piece start. Trail OFF: NOTHING
                         // up to a texel before the piece's END, so the whole span under the cut
                         // piece is clear and the piece alone decides what is drawn there.
                         val pa = if (a1 - a0 <= 1.0) 0f else if (trailHolder.value)
@@ -2703,7 +2703,7 @@ fun VelaMapView(
                         )
                     }
                     // Per frame: only PAINT moves, and only on the 400 m cut piece, whose 256
-                    // gradient texels are 1.6 m each. Trail ON it paints grey up to the arrow;
+                    // gradient texels are 1.6 m each. Trail ON it paints gray up to the arrow;
                     // trail OFF it paints nothing up to the arrow, over an ahead line that is
                     // itself clear under the whole piece (see `pa` above). The cut used to ride
                     // the AHEAD line's gradient with the trail off, whose texel is the 3 km
@@ -2786,7 +2786,7 @@ fun VelaMapView(
                     map.gesturesManager.shoveGestureDetector.pixelDeltaThreshold = 8f
                 }
                 map.setMaxPitchPreference(70.0)
-                // Tap a labelled POI on the map to open it. (Named so the D-pad
+                // Tap a labeled POI on the map to open it. (Named so the D-pad
                 // controller's OK-at-crosshair runs the EXACT same resolution path;
                 // docs/dpad.md.)
                 val handleTap = handleTap@{ tapped: MLLatLng ->
@@ -2806,7 +2806,7 @@ fun VelaMapView(
                     // order, and every pick here used to take firstOrNull - so with the generous 48dp
                     // hit box swallowing several icons at street zoom, "whichever the renderer listed
                     // first" won, not the icon under the finger (user 2026-07-14, dense strip mall:
-                    // taps kept opening a neighbour even dead-on the right icon).
+                    // taps kept opening a neighbor even dead-on the right icon).
                     fun screenDist2(f: Feature): Double {
                         val pt = f.geometry() as? Point ?: return Double.MAX_VALUE
                         val sp = map.projection.toScreenLocation(MLLatLng(pt.latitude(), pt.longitude()))
@@ -2847,7 +2847,7 @@ fun VelaMapView(
                     // it IS the nearest. (Handled below, after the alternate-route check, so a route
                     // pick keeps its priority.)
                     val amb = feats.filter { it.hasProperty(AMBIENT_INDEX_PROP) }.minByOrNull(::screenDist2)
-                    // Tap a greyed alternate route line to switch to it (Google-style).
+                    // Tap a grayed alternate route line to switch to it (Google-style).
                     val altHit = map.queryRenderedFeatures(
                         RectF(p.x - r, p.y - r, p.x + r, p.y + r), ROUTE_BUBBLE_LAYER, ALT_ROUTE_LAYER,
                     ).firstOrNull { it.hasProperty(ALT_INDEX_PROP) }
@@ -2972,7 +2972,7 @@ fun VelaMapView(
                     gestureMove[0] = reason ==
                         MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE
                     // The user grabbing the map is a signal in its own right — MapScreen uses it
-                    // to drop the results sheet down out of the way (Google's behaviour).
+                    // to drop the results sheet down out of the way (Google's behavior).
                     // A PINCH (or two-finger tilt) is NOT that signal: zooming while the free-drive
                     // follow is tracking you must keep tracking, just at the new zoom (user
                     // 2026-07-17 — same pan-vs-pinch split nav's onMove listener makes). By the
@@ -3234,7 +3234,7 @@ fun VelaMapView(
                     warmPending[0]?.let { warmHandler.removeCallbacks(it); warmPending[0] = null }
                     warmSnapshotter[0]?.cancel(); warmSnapshotter[0] = null
                 }
-                // Feed the on-screen scale bar: metres-per-pixel at the centre
+                // Feed the on-screen scale bar: meters-per-pixel at the center
                 // latitude (varies with zoom AND latitude on a Mercator map).
                 val reportScale = {
                     map.cameraPosition.target?.let { t ->
@@ -3271,7 +3271,7 @@ fun VelaMapView(
                 }
                 // D-pad control seam (docs/dpad.md): key-driven pan/zoom/select reuses the
                 // SAME tap resolution, long-press, gesture-flag and nav-zoom-override paths
-                // the touch listeners use, so behaviour is identical either way in.
+                // the touch listeners use, so behavior is identical either way in.
                 dpadHolder.value?.let { c ->
                     c.mapView = mv
                     c.map = map
@@ -3332,22 +3332,22 @@ fun VelaMapView(
         // user looked for it (user 2026-07-14; Google pins it during nav too).
         map.uiSettings.setCompassFadeFacingNorth(!navMode)
 
-        // Fraction of the route already driven (for the traversed-grey gradient) —
+        // Fraction of the route already driven (for the traversed-gray gradient) —
         // 0 unless we're navigating and on the line.
         // Hold the last fraction while the puck is re-engaging: a route swap (the heal that follows
         // a degraded re-check, a reroute) drops `engaged` for a moment, and falling to 0 redrew the
         // WHOLE line as un-driven for a frame or two - the periodic blue flash (user 2026-09-17).
         // A fraction may only be held for the SAME line: a reroute builds a fresh route from where
-        // we are, where 0 is the truth, and inheriting the old fraction would grey most of it out.
+        // we are, where 0 is the truth, and inheriting the old fraction would gray most of it out.
         val progressKey = routePolyline.lastOrNull()?.let { "${routePolyline.size}:${it.lat},${it.lng}" }
         if (progressKey != lastProgressKey) {
             lastProgressKey = progressKey
             lastRouteProgress[0] = 0f
         }
         val routeProgress = when {
-            // Split the traversed-grey at the puck's DRAWN position (progressM — exactly where
+            // Split the traversed-gray at the puck's DRAWN position (progressM — exactly where
             // the arrow is rendered), not the target it's easing toward (targetM). Using targetM
-            // left the grey/colour boundary a few metres off the arrow, so the transition peeked
+            // left the gray/color boundary a few meters off the arrow, so the transition peeked
             // out instead of sitting under the puck ("gradient not completely under the arrow").
             navMode && navPuck.engaged && routeCum.isNotEmpty() && routeCum.last() > 0.0 ->
                 (navPuck.progressM / routeCum.last()).toFloat().coerceIn(0f, 1f)
@@ -3356,7 +3356,7 @@ fun VelaMapView(
             navMode -> lastRouteProgress[0]
             else -> 0f
         }.also { lastRouteProgress[0] = if (navMode) it else 0f }
-        // Nav puck map-matching, OsmAnd-style (modelled on its RoutingHelper): snap the fix
+        // Nav puck map-matching, OsmAnd-style (modeled on its RoutingHelper): snap the fix
         // onto the route for a steady on-road puck + heading, but once engaged ONLY ever search
         // a bounded look-ahead FORWARD of our current progress — never behind, never the whole
         // route — so the camera can't be yanked onto a parallel or earlier leg where the route
@@ -3379,7 +3379,7 @@ fun VelaMapView(
                 val aheadSpeed = maxOf(navPuck.speed, navPuck.speedAtAccept)
                 val ahead = (aheadSpeed * 8.0).coerceIn(150.0, 600.0)
                 // Mode-aware tolerance (user 2026-09-12: "gets me unstuck slower than Google on
-                // foot"). A car sits a lane off the centreline at speed, so it keeps 22 m plus
+                // foot"). A car sits a lane off the centerline at speed, so it keeps 22 m plus
                 // speed; a walker or cyclist is where the fix says, within its accuracy, so 8 m
                 // plus a share of the reported accuracy, capped at 16 m: cutting a corner over a
                 // crosswalk frees the arrow within a fix or two instead of dragging it along the
@@ -3449,13 +3449,13 @@ fun VelaMapView(
                 val maxStep = navPuck.speed.coerceAtLeast(1.0) * dtFix * 2.5 + 60.0
                 val fwd = m - navPuck.targetM
                 when {
-                    // Parked-jitter gate: at ~zero modelled speed a small forward hop is GPS
+                    // Parked-jitter gate: at ~zero modeled speed a small forward hop is GPS
                     // noise, not travel — don't ratchet targetM. The old code accepted EVERY
                     // forward wobble at a red light, so the puck crept ahead, and on pull-away
                     // the real position sat BEHIND the crept target → every fix rejected as
-                    // backward → the puck froze until the car re-drove the phantom metres
+                    // backward → the puck froze until the car re-drove the phantom meters
                     // ("progression halts as if I'm not moving"). Thresholds sized for the
-                    // slowest real traveller: a stroll is ~0.9-1.4 m/s (must flow fix-by-fix),
+                    // slowest real traveler: a stroll is ~0.9-1.4 m/s (must flow fix-by-fix),
                     // parked doppler noise reads < ~0.4; queue-creep below even that still gets
                     // in once it accumulates past the 8 m noise floor.
                     fwd in 0.0..maxStep && (navPuck.kalman.speed > 0.5 || fwd > 8.0) -> {
@@ -3464,7 +3464,7 @@ fun VelaMapView(
                     }
                     // An over-cap forward jump that PERSISTS is the new reality (a long fix gap
                     // at speed) — accept on the 2nd consecutive one instead of deadlocking:
-                    // maxStep is computed from the (near-zero, post-stop) modelled speed, so a
+                    // maxStep is computed from the (near-zero, post-stop) modeled speed, so a
                     // genuine catch-up could exceed it every time while snaps kept succeeding,
                     // freezing targetM for 10+ s mid-drive.
                     fwd > maxStep -> {
@@ -3497,7 +3497,7 @@ fun VelaMapView(
                 // re-armed the creep every second; the old anchor stays until a fix is accepted)
                 // ALONG-ROUTE POSITION FILTER, measurement step (issue #251). `targetM` above is
                 // still the raw accepted fix — the plausibility gate and the snap window are built
-                // on it and keep their hard-won behaviour. What the puck DRAWS now comes from
+                // on it and keep their hard-won behavior. What the puck DRAWS now comes from
                 // `alongM`, which takes this fix as a measurement weighted by the fix's own
                 // reported accuracy against the estimate's grown variance. A clean 4 m fix pulls
                 // most of the way; a 25 m urban-canyon one barely moves it, which is exactly the
@@ -3552,9 +3552,9 @@ fun VelaMapView(
             navPuck.raw = myLocation
             navPuck.rawBearing = myBearing
         }
-        // Palette in the key so a Settings colour-set switch reloads the style, same as a theme flip.
+        // Palette in the key so a Settings color-set switch reloads the style, same as a theme flip.
         // The puck style rides the key too: the symbol image is registered once per style load
-        // (issue #344), so a size/colour change reloads to re-register it.
+        // (issue #344), so a size/color change reloads to re-register it.
         // The offline basemap rides the key: entering or leaving an installed region reloads the
         // style with its tile source pointed at the local archive (or back at OpenFreeMap).
         val styleKey = "$styleUri|dark=$darkTheme|amoled=$amoled|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn|puck=${app.vela.ui.PuckStyle.key()}|hn=${app.vela.ui.HouseNumbers.level.value}|base=${basemapArchive ?: ""}"
@@ -3674,8 +3674,8 @@ fun VelaMapView(
         if (previewTarget == null) lastPreviewTarget = null
         // Street View open: ease the map under the half-screen viewer to the pano, and again on
         // each walk (position change) - NOT per yaw frame; the cone rotation is data-driven.
-        // Top padding shifts the optical centre into the visible strip below the pane, so the
-        // pose puck sits CENTRED in the mini-map (a plain centre puts it under/behind the pane).
+        // Top padding shifts the optical center into the visible strip below the pane, so the
+        // pose puck sits CENTERD in the mini-map (a plain center puts it under/behind the pane).
         if (svPose != null) {
             val pos = svPose[0] to svPose[1]
             if (pos != lastSvPos) {
@@ -3692,7 +3692,7 @@ fun VelaMapView(
             lastSvPos = null
             map.setPadding(cameraLeftInsetPx, 0, 0, cameraBottomInsetPx) // hand padding back to the sheet logic
         }
-        // Shift the map's optical centre up by the bottom-sheet height so the
+        // Shift the map's optical center up by the bottom-sheet height so the
         // focused pin sits in the *visible* strip above the place sheet instead of
         // being hidden behind it. Padding is the map's single source of truth, so
         // every camera move below respects it. Reset to 0 when no sheet is up.
@@ -3710,7 +3710,7 @@ fun VelaMapView(
             // the SV close path restores the sheet padding itself.
             if (svPose == null) map.setPadding(cameraLeftInsetPx, 0, 0, cameraBottomInsetPx)
             // Not while a route is up: the route fit re-frames for the new inset itself, and a
-            // nulled target made the NEXT frame fly to the selected place, cancelling that fit
+            // nulled target made the NEXT frame fly to the selected place, canceling that fit
             // (the chooser's "Compare routes" swap landed zoomed in on the destination, 2026-09-17).
             if (grew && !(routePolyline.size >= 2 && !navMode)) lastCameraTarget = null // re-frame the current target against the new inset
         }
@@ -3745,7 +3745,7 @@ fun VelaMapView(
                             (Math.log((78271.517 * Math.cos(Math.toRadians(t.lat))) / mpd) / Math.log(2.0)).coerceIn(3.0, 15.0)
                         }
                         cameraBottomInsetPx > 0 || cameraLeftInsetPx > 0 -> app.vela.core.config.CalibrationStore.latest.tune("browseZoomFocus", 16.5)
-                        // 15.5 (~1000ft), matching the launch-centre and search flies - the tap
+                        // 15.5 (~1000ft), matching the launch-center and search flies - the tap
                         // used to land at 15.0 while every other path used 15.5, so a follow-up
                         // camera move visibly changed zoom (part of the locate rubber-band).
                         // All three browse zooms are fleet-tunable through calibration.json
@@ -3768,7 +3768,7 @@ fun VelaMapView(
             // Previewing a step takes over the camera (and holds, suppressing
             // nav-follow) so you can look ahead at where you'd turn.
             previewTarget != null -> {
-                lastNavTarget = null // so nav-follow re-centres cleanly when the preview ends
+                lastNavTarget = null // so nav-follow re-centers cleanly when the preview ends
                 if (previewTarget != lastPreviewTarget) {
                     lastPreviewTarget = previewTarget
                     // JUMP, don't fly (2026-07-21, real-drive "lag when swiping through turns"):
@@ -3838,7 +3838,7 @@ fun VelaMapView(
             // key always mismatches in nav (the chooser insets are gone), so the next ~1 Hz
             // recomposition fired an uninvited 800 ms whole-route flight: mid-drive pans got
             // yanked to a route overview, reroutes-while-detached teleported the view, and the
-            // Overview tap raced its own dedicated fit (two flights, loser cancelled mid-air) -
+            // Overview tap raced its own dedicated fit (two flights, loser canceled mid-air) -
             // the "intermittent" transition hitch. Matched-but-swallowed (not !navMode on the
             // condition) so the branches BELOW stay unreachable during nav, same pattern as the
             // nav follow branch's own pre-engage swallow.
@@ -3969,7 +3969,7 @@ fun VelaMapView(
                 if (target != null && target != lastCameraTarget) {
                     // GPS JITTER GATE (user 2026-07-18, "rubber band on the locate button"): when
                     // the target is the LIVE FIX (no explicit cameraTarget), a fresh fix a few
-                    // metres off used to re-fly the camera right after the locate flight settled,
+                    // meters off used to re-fly the camera right after the locate flight settled,
                     // and at THIS branch's own default zoom rather than the tap's - a visible
                     // snap. A fix that moved less than ~40 m is the same place: adopt it silently
                     // so the guard stays current, and never fly for it.
@@ -4003,7 +4003,7 @@ fun VelaMapView(
             bitmap = puckImg,
             contentDescription = null,
             modifier = Modifier
-                // Outer layer: place the centre at the projected point and squash by the tilt
+                // Outer layer: place the center at the projected point and squash by the tilt
                 // (in SCREEN space, after the rotation below - hence two layers).
                 .graphicsLayer {
                     translationX = puckOverlayX.floatValue - sizePx / 2f
@@ -4021,16 +4021,16 @@ fun VelaMapView(
 private fun ensureLayers(style: Style) {
     // Kill the style light: MapLibre lights fill-extrusion faces toward white (default
     // intensity 0.5), so at z16+ the building-3d tops rendered ~40% brighter than the
-    // palette (#1c3b69 became #2e5590) while Google keeps buildings the SAME colour at
+    // palette (#1c3b69 became #2e5590) while Google keeps buildings the SAME color at
     // every zoom (pixel-proven side by side, user 2026-07-11). Intensity 0 makes the
-    // extrusion render its set colour verbatim; the vertical-gradient flags on the
+    // extrusion render its set color verbatim; the vertical-gradient flags on the
     // building-3d layers (applyLight/applyDark) kill the remaining side shading.
     runCatching { style.light?.setIntensity(0f) }
     // FLAT vegetation, like Google (user 2026-07-11). Two parts. (1) Liberty's wetland +
     // pedestrian-plaza layers ship with a fill-PATTERN (fern hatch / dots), and setting
     // fill-pattern to an empty literal does NOT clear it on device (both themes tried - the
     // repeating icons kept rendering). So the patterned originals are hidden outright and
-    // clean flat twins take their place; applyLight/applyDark colour the twins.
+    // clean flat twins take their place; applyLight/applyDark color the twins.
     style.getLayer("landcover_wetland")?.setProperties(PropertyFactory.visibility(Property.NONE))
     style.getLayer("road_area_pattern")?.setProperties(PropertyFactory.visibility(Property.NONE))
     if (style.getLayer("vela-wetland") == null && style.getLayer("landcover_wetland") != null) {
@@ -4127,7 +4127,7 @@ private fun ensureLayers(style: Style) {
         style.addLayerBelow(bike, "road_minor")
     }
     // (2) The OSM poi tiers scatter park/garden/tree icons across every wood - Google keeps
-    // forests flat colour. Rebuild each tier's rank-band filter with vegetation excluded.
+    // forests flat color. Rebuild each tier's rank-band filter with vegetation excluded.
     applyPoiTierFilters(style, fuelOnly = false)
 
     if (style.getImage(ME_ARROW_IMG) == null) style.addImage(ME_ARROW_IMG, arrowBitmap())
@@ -4168,7 +4168,7 @@ private fun ensureLayers(style: Style) {
     }
 
     if (style.getSource(ROUTE_SRC) == null) {
-        // lineMetrics → line-progress works, so we can grey the *traversed* part of the
+        // lineMetrics → line-progress works, so we can gray the *traversed* part of the
         // route behind the vehicle (Google-style) with a line-gradient.
         style.addSource(GeoJsonSource(ROUTE_SRC, GeoJsonOptions().withLineMetrics(true)))
         // Insert the route line BELOW the basemap's first label layer (Google-style) so road
@@ -4194,7 +4194,7 @@ private fun ensureLayers(style: Style) {
         // The dotted foot/bike variant (hidden until a walk/bike route is shown). Google-style
         // CONSTANT-ON-SCREEN dots: a symbol layer placed along the line with a fixed
         // symbol-spacing, which is in SCREEN pixels and therefore zoom-invariant. A line
-        // dasharray can never do this — its units are line-widths and MapLibre quantises the
+        // dasharray can never do this — its units are line-widths and MapLibre quantizes the
         // dash texture to integer zooms (compressing up to ~2x in between), so dash dots always
         // cram together zoomed out (user report 2026-07-08). The dot is an SDF template so
         // iconColor can restyle it like lineColor did.
@@ -4214,7 +4214,7 @@ private fun ensureLayers(style: Style) {
         )
         if (firstLabel != null) style.addLayerBelow(routeDash, firstLabel) else style.addLayer(routeDash)
         // The nav ahead-suffix line (see ROUTE_AHEAD_SRC) — added after ROUTE_LAYER under the same
-        // label anchor, so it draws ON TOP of the full (traversed-grey) line during nav.
+        // label anchor, so it draws ON TOP of the full (traversed-gray) line during nav.
         style.addSource(GeoJsonSource(ROUTE_AHEAD_SRC, GeoJsonOptions().withLineMetrics(true)))
         val routeAhead = LineLayer(ROUTE_AHEAD_LAYER, ROUTE_AHEAD_SRC).withProperties(
             PropertyFactory.lineColor("#1F6FEB"),
@@ -4235,7 +4235,7 @@ private fun ensureLayers(style: Style) {
         )
         style.addLayerBelow(routeTail, ROUTE_AHEAD_LAYER)
         // The cut piece: identical paint, drawn ABOVE the ahead line (it paints the driven part of
-        // the ahead line grey and owns the seam under the arrow; its per-frame change is paint only).
+        // the ahead line gray and owns the seam under the arrow; its per-frame change is paint only).
         style.addSource(GeoJsonSource(ROUTE_CUT_SRC, GeoJsonOptions().withLineMetrics(true)))
         val routeCut = LineLayer(ROUTE_CUT_LAYER, ROUTE_CUT_SRC).withProperties(
             PropertyFactory.lineColor("#1F6FEB"),
@@ -4246,7 +4246,7 @@ private fun ensureLayers(style: Style) {
         )
         style.addLayerAbove(routeCut, ROUTE_AHEAD_LAYER)
     }
-    // Greyed, tappable alternate routes — drawn BELOW the active line (Google-style).
+    // Grayed, tappable alternate routes — drawn BELOW the active line (Google-style).
     if (style.getSource(ALT_ROUTE_SRC) == null) {
         style.addSource(GeoJsonSource(ALT_ROUTE_SRC))
         val alt = LineLayer(ALT_ROUTE_LAYER, ALT_ROUTE_SRC).withProperties(
@@ -4294,7 +4294,7 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                 PropertyFactory.textSize(13f),
                 // Labels try BELOW the pin first, then the pin's right side, then its left —
-                // a below-only anchor made crowded results drop labels (or sit on a neighbour's
+                // a below-only anchor made crowded results drop labels (or sit on a neighbor's
                 // dot) when the space under the pin was taken; a side slot usually still fits.
                 // (Anchor semantics: TOP = text below the point, LEFT = text right of it.)
                 PropertyFactory.textVariableAnchor(
@@ -4385,7 +4385,7 @@ private fun ensureLayers(style: Style) {
                 ),
                 // DECLUTTER like Google: let the dots collide (hide when they'd overlap) instead of
                 // stacking. allowOverlap+ignorePlacement were TRUE, so every ambient POI drew on top
-                // of its neighbours — a pile at tight zooms. Collision + padding spaces them; more
+                // of its neighbors — a pile at tight zooms. Collision + padding spaces them; more
                 // appear as you zoom in. (Sorted by rank so the prominent ones win the slot.)
                 // Collide below z17; from z17 (a strip of shops fills the screen) every Google pin
                 // draws. In Both mode the open layers sit above this one and claim placement
@@ -4447,15 +4447,15 @@ private fun ensureLayers(style: Style) {
                     ),
                 ),
                 // Google-style label placement. PREFER just to the LEFT of the icon; when that would
-                // collide with a neighbour, FALL BACK to sitting UNDER the icon — text-variable-anchor
+                // collide with a neighbor, FALL BACK to sitting UNDER the icon — text-variable-anchor
                 // picks the first anchor (right = text left of point, top = text below point) that fits,
                 // and hides the label (textOptional) only if neither does. The radial offset is the
-                // centre→text-edge gap in ems; 1.4 sits the label right up against the dot (was 2.7 → 2.0 →
+                // center→text-edge gap in ems; 1.4 sits the label right up against the dot (was 2.7 → 2.0 →
                 // 1.4 across "too far" reports) while still clearing it. justify=auto so the left form
-                // right-justifies and the under form centres. (Tune from a device glance if it crowds the dot.)
+                // right-justifies and the under form centers. (Tune from a device glance if it crowds the dot.)
                 // Four anchor slots (left of the icon, right of it, below, above) instead of the
                 // old two — with only left/below to try, a crowded block DROPPED labels (or let
-                // one sit on a neighbour's dot) when both slots were taken; a third/fourth side
+                // one sit on a neighbor's dot) when both slots were taken; a third/fourth side
                 // usually still fits. Icons still collide by design; this only helps the labels
                 // of the icons that DO render find a clear side (user 2026-07-10).
                 PropertyFactory.textVariableAnchor(
@@ -4476,13 +4476,13 @@ private fun ensureLayers(style: Style) {
             MARKERS_LAYER,
         )
         // The DOT TIER, Google-style: every ambient place also draws as a small category-
-        // coloured circle UNDER the icon layer. Icons collide and only the prominent
+        // colored circle UNDER the icon layer. Icons collide and only the prominent
         // survive a crowded view - the losers used to VANISH; now their dot still marks
         // them (tap works, the rect query reads any layer carrying the index prop), and
         // zooming in upgrades dots to icons as collision slots free up. Circles skip the
         // collision engine entirely, so 140 of them cost ~nothing on a weak GPU (the
-        // icon that renders on top simply covers its own dot - the coloured dot is the
-        // marker bitmap's centre). Radius scales gently with prominence.
+        // icon that renders on top simply covers its own dot - the colored dot is the
+        // marker bitmap's center). Radius scales gently with prominence.
         // Under the basemap's labels, not over them: circles skip collision, so a dot drawn
         // above the symbol layers could sit on a street name or a POI label. Below the first
         // symbol layer every label's halo covers its dot instead (user 2026-09-14, "small dots
@@ -4737,7 +4737,7 @@ private fun ensureLayers(style: Style) {
                     PropertyFactory.textHaloColor("#0e1626"),
                     PropertyFactory.textHaloWidth(1.1f),
                     // Google-style: bare badges from z15, NAMES only from z17 (user 2026-07-13) -
-                    // a stop every block meant a wall of grey text at street zoom. Opacity step,
+                    // a stop every block meant a wall of gray text at street zoom. Opacity step,
                     // not a second layer: the label still participates in collision (textOptional
                     // keeps the icon when a name can't fit), it's just invisible until close.
                     PropertyFactory.textOpacity(
@@ -4810,7 +4810,7 @@ private fun ensureLayers(style: Style) {
  * (AWS Open Data — no key; native fetch, so no CORS concern). Inserted just under
  * the road layers so roads + labels stay crisp on top, and capped at z16 so it's
  * terrain context for the overview/regional view and gone at street level. The
- * per-theme colours/strength are set in [applyLight]/[applyDark]. Verified in a
+ * per-theme colors/strength are set in [applyLight]/[applyDark]. Verified in a
  * MapLibre GL JS harness before shipping (same render engine as MapLibre Native).
  */
 private fun ensureHillshade(style: Style) {
@@ -4852,7 +4852,7 @@ private fun ensureTopography(style: Style, on: Boolean) {
 private const val NAV_ROADLABEL_LAYER = "vela-nav-roadlabels"
 private const val NAV_ROADLABEL_MINOR_LAYER = "vela-nav-roadlabels-minor"
 // The cross-street bubbles are POINTS we compute (2026-09-16): one per crossing street, placed a
-// short way up that street from where it meets the route. Line-centre placement on the basemap's
+// short way up that street from where it meets the route. Line-center placement on the basemap's
 // road-name lines put a bubble at the middle of the street's piece in the tile, often a block or
 // more from the route ("I want them near our actual path", user drive 2026-09-16).
 private const val NAV_XLABEL_SRC = "vela-nav-xlabels-src"
@@ -4870,7 +4870,7 @@ private const val NAV_XLABEL_MIN_CLEAR_M = 18.0 // below this the bubble would s
  *  labels, especially with the camera tilted (user 2026-07-16). A heavy rounded halo gives the
  *  chip look; LINE_CENTER placement puts one per road with the collision engine decluttering. */
 /** The basemap business-POI tiers' filters. Browse mode = the rank bands with vegetation excluded
- *  (Google keeps forests flat colour). During NAV [fuelOnly] narrows all three tiers to gas
+ *  (Google keeps forests flat color). During NAV [fuelOnly] narrows all three tiers to gas
  *  stations - the one POI class worth glancing at mid-drive (user 2026-07-17); everything else
  *  is clutter over the route. applyData flips the filter with navMode (identity-gated by
  *  lastPoiFuelOnly); ensureLayers seeds the browse form on every style load. */
@@ -5090,19 +5090,19 @@ private val NAV_LABEL_SLOW_CLASSES = arrayOf("tertiary", "minor")
 /** Where [line] meets the route [window] (the first proper crossing in route order, else a
  *  T-junction endpoint within [touchM]), moved [NAV_XLABEL_OFFSET_M] along the street to the side
  *  that ends farther from the route, as (lng, lat). Null when the street does not meet the window.
- *  Planar maths at the window's latitude: at a few hundred metres the error is centimetres. */
+ *  Planar maths at the window's latitude: at a few hundred meters the error is centimeters. */
 private fun crossLabelPoint(line: List<Pair<Double, Double>>, window: List<LatLng>, touchM: Double = 25.0): Pair<Double, Double>? {
     if (line.size < 2 || window.size < 2) return null
-    val k = Math.cos(Math.toRadians(window[0].lat)) * 111_320.0 // metres per degree of longitude
+    val k = Math.cos(Math.toRadians(window[0].lat)) * 111_320.0 // meters per degree of longitude
     val m = 111_320.0 // per degree of latitude
     fun x(lng: Double) = lng * k
     fun y(lat: Double) = lat * m
-    // Street as metres, with cumulative length.
+    // Street as meters, with cumulative length.
     val px = DoubleArray(line.size) { x(line[it].first) }
     val py = DoubleArray(line.size) { y(line[it].second) }
     val cum = DoubleArray(line.size)
     for (i in 1 until line.size) cum[i] = cum[i - 1] + Math.hypot(px[i] - px[i - 1], py[i] - py[i - 1])
-    var hitAt = -1.0 // position along the street, metres
+    var hitAt = -1.0 // position along the street, meters
     loop@ for (j in 1 until window.size) {
         val ax = x(window[j - 1].lng); val ay = y(window[j - 1].lat)
         val bx = x(window[j].lng); val by = y(window[j].lat)
@@ -5356,7 +5356,7 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
             )
         }
     }
-    // Cross-street tier: majors from z14; MINOR streets from z16 - in a neighbourhood the streets
+    // Cross-street tier: majors from z14; MINOR streets from z16 - in a neighborhood the streets
     // you cross ARE class minor (dropping them entirely made the layer near-mute on residential
     // drives, user 2026-07-17), and the nav camera only sits at z16+ at surface speeds, so the
     // minors show exactly when cross-streets matter and stay out of the highway view.
@@ -5392,7 +5392,7 @@ private fun ensureTraffic(style: Style, on: Boolean) {
         )
         // Below the labels, ABOVE the buildings. "Below the first symbol layer" used to put it
         // under Liberty's building fills: the first symbol is the one-way arrow, which sits
-        // before `building` / `building-3d` in the style, so at street zoom the grey footprints
+        // before `building` / `building-3d` in the style, so at street zoom the gray footprints
         // (and the 3D extrusions) painted over the congestion colors (issue #521). Anchoring on
         // the topmost building layer keeps POI icons and labels on top and the buildings under.
         // With satellite on, anchor above the imagery instead - the raster otherwise buries the
@@ -5414,7 +5414,7 @@ private fun ensureTraffic(style: Style, on: Boolean) {
 
 /** Highlight rail lines (heavy rail + subway/light-rail/tram) drawn from the basemap's own
  *  `transportation` source-layer (OpenMapTiles `class` = rail / transit), Google-transit-layer style.
- *  No new data or network — just a coloured LineLayer over the existing tiles, inserted below the first
+ *  No new data or network — just a colored LineLayer over the existing tiles, inserted below the first
  *  symbol layer so station/road labels stay on top. No-op if the basemap isn't OpenMapTiles (e.g. a
  *  MapTiler variant whose source id differs, or the demo style); removed cleanly when off. */
 private fun ensureTransit(style: Style, on: Boolean) {
@@ -5558,10 +5558,10 @@ private fun transitLegCoords(itin: app.vela.core.model.TransitItinerary?, leg: I
 
 /**
  * Issue #233: draw the expanded transit itinerary's legs on the map. Ride legs are a line in the
- * agency's own colour THROUGH the stops (board + intermediates + alight all carry coordinates in
+ * agency's own color THROUGH the stops (board + intermediates + alight all carry coordinates in
  * the itinerary payload; stop-to-stop chords, not the track geometry, which the keyless data does
  * not carry) with white stop dots on top (board/alight large, in-between small); walk legs are a
- * dotted grey link, Google's grammar. Null clears everything. Layers insert below the route line
+ * dotted gray link, Google's grammar. Null clears everything. Layers insert below the route line
  * layer, which is empty in transit mode, so the drawing sits exactly where a drawn route would:
  * above roads and the satellite raster, below every label.
  */
@@ -5594,13 +5594,13 @@ private fun ensureTransitPreview(style: Style, itin: app.vela.core.model.Transit
                 s.alightStop?.location?.let { add(it) }
             }
             if (pts.size >= 2) {
-                val colour = s.line?.colorHex?.takeIf { it.startsWith("#") } ?: TRANSIT_PREV_FALLBACK_COLOR
+                val color = s.line?.colorHex?.takeIf { it.startsWith("#") } ?: TRANSIT_PREV_FALLBACK_COLOR
                 feats += Feature.fromGeometry(LineString.fromLngLats(pts.map { Point.fromLngLat(it.lng, it.lat) }))
-                    .apply { addStringProperty("kind", "ride"); addStringProperty("c", colour) }
+                    .apply { addStringProperty("kind", "ride"); addStringProperty("c", color) }
                 pts.forEachIndexed { i, p ->
                     feats += Feature.fromGeometry(Point.fromLngLat(p.lng, p.lat)).apply {
                         addStringProperty("kind", "stop")
-                        addStringProperty("c", colour)
+                        addStringProperty("c", color)
                         addNumberProperty("r", if (i == 0 || i == pts.lastIndex) 5f else 2.8f)
                     }
                 }
@@ -5768,7 +5768,7 @@ private fun emphasizeShields(context: android.content.Context, style: Style) {
 }
 
 /**
- * Recolour the OpenFreeMap (OpenMapTiles) style for a cleaner look and a proper
+ * Recolor the OpenFreeMap (OpenMapTiles) style for a cleaner look and a proper
  * dark theme that follows the system. We reload the style when the theme flips
  * (see styleKey), so each pass starts from Liberty's defaults — no need to undo.
  * No-ops on non-OpenMapTiles styles (e.g. the MapLibre demo basemap). Keyless.
@@ -5836,8 +5836,8 @@ private fun firstSymbolLayerId(style: Style): String? =
 
 private fun applyMapTheme(style: Style, dark: Boolean, amoled: Boolean = false) {
     val basemapSource = basemapSrc(style) ?: return
-    // Two compiled colour sets, picked in Settings -> Appearance (MapColors): "modern" is the
-    // Google-app pixel-sampled palette, "classic" the archived pre-sample look (docs/MAP-STYLE.md).
+    // Two compiled color sets, picked in Settings -> Appearance (MapColors): "modern" is the
+    // Google-app pixel-sampled palette, "classic" the archived pre-sample look (SPEC 6.2md).
     val classic = app.vela.ui.MapColors.classic()
     when {
         amoled -> applyAmoled(style)
@@ -5847,7 +5847,7 @@ private fun applyMapTheme(style: Style, dark: Boolean, amoled: Boolean = false) 
         else -> applyLight(style)
     }
     PoiIcons.applyToLiberty(style, dark || amoled)
-    // Ambient Google-POI labels match the ICON's category colour, Google-style — saturated in light,
+    // Ambient Google-POI labels match the ICON's category color, Google-style — saturated in light,
     // pastel tints in dark (see PoiIcons.labelColor). Search-result pins stay plain (Google does too).
     (style.getLayer(AMBIENT_LAYER) as? SymbolLayer)?.setProperties(
         PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark || amoled)),
@@ -5862,21 +5862,21 @@ private fun applyMapTheme(style: Style, dark: Boolean, amoled: Boolean = false) 
             PropertyFactory.circleStrokeColor(if (amoled) "#000000" else if (dark) "#162640" else "#f8f7f7"),
         )
     }
-    // Canonical GTFS stop names take the TRANSIT category colour per theme - blue in light,
+    // Canonical GTFS stop names take the TRANSIT category color per theme - blue in light,
     // its pastel tint in dark, the same grammar every POI label follows. The creation-time
-    // colours in ensureLayers were hardcoded for dark (no theme there) and read as grey with
+    // colors in ensureLayers were hardcoded for dark (no theme there) and read as gray with
     // a navy halo on the light map (issue #71 follow-up, 2026-07-14).
     (style.getLayer(TRANSIT_STOPS_LAYER) as? SymbolLayer)?.setProperties(
         PropertyFactory.textColor(PoiIcons.labelColorFor("transit", dark || amoled)),
         PropertyFactory.textHaloColor(if (amoled) "#000000" else if (dark) "#11161C" else "#FFFFFF"),
     )
     // Search-result labels stay NEUTRAL ink - Google doesn't category-tint result labels the
-    // way it tints ambient POI labels (the red pin is the result signal, not the text colour).
+    // way it tints ambient POI labels (the red pin is the result signal, not the text color).
     (style.getLayer(MARKERS_LAYER) as? SymbolLayer)?.setProperties(
         PropertyFactory.textColor(if (dark || amoled) "#E8EAED" else "#3C4043"),
         PropertyFactory.textHaloColor(if (amoled) "#000000" else if (dark) "#11161C" else "#FFFFFF"),
     )
-    // The mini-dot tier wears a land-coloured ring so dots read as crisp beads per theme.
+    // The mini-dot tier wears a land-colored ring so dots read as crisp beads per theme.
     (style.getLayer(AMBIENT_DOT_LAYER) as? CircleLayer)?.setProperties(
         PropertyFactory.circleStrokeColor(if (dark) "#162640" else "#f8f7f7"),
     )
@@ -5891,12 +5891,12 @@ private fun applyMapTheme(style: Style, dark: Boolean, amoled: Boolean = false) 
         "tunnel_major_rail_hatching", "tunnel_transit_rail_hatching",
     ).forEach { style.getLayer(it)?.setProperties(PropertyFactory.visibility(Property.NONE)) }
     // Country and state/province borders (discussion #353, 2026-09-09). They were hidden with
-    // the clutter above since July, but Google draws both: countries as a thin solid grey
+    // the clutter above since July, but Google draws both: countries as a thin solid gray
     // line, states and provinces dashed and lighter, from about zoom 4. What Google does NOT
     // draw at these zooms is county and city limits, which on these tiles are admin levels
     // 5 and 6 of the same layer and were the stray-dash mess the hide was really for, so the
-    // layer's filter is narrowed to levels 3 and 4 instead of hidden. Colours per theme: the
-    // style's own dark grey vanished on the dark map.
+    // layer's filter is narrowed to levels 3 and 4 instead of hidden. Colors per theme: the
+    // style's own dark gray vanished on the dark map.
     val borderInk = if (dark) "#8C95A3" else "#9AA0A6"
     (style.getLayer("boundary_2") as? LineLayer)?.setProperties(
         PropertyFactory.visibility(Property.VISIBLE),
@@ -5946,7 +5946,7 @@ private fun applyMapTheme(style: Style, dark: Boolean, amoled: Boolean = false) 
  *  "texture_render" pref) beats it either way. */
 /** Whether this process's PREVIOUS life ended in a native crash, per the OS's own exit record
  *  (`ApplicationExitInfo`): the only kind of death the GPU-driver sentinel is for. Android 11+
- *  keeps that record; older devices report true (the old any-death behaviour) because the
+ *  keeps that record; older devices report true (the old any-death behavior) because the
  *  fragile-driver class the sentinel exists for is Android 14. */
 internal fun lastExitWasNativeCrash(context: android.content.Context): Boolean {
     if (android.os.Build.VERSION.SDK_INT < 30) return true
@@ -5969,7 +5969,7 @@ internal fun fragileGpuDefault(): Boolean =
  *  AFTER the flat footprints (z17 vs 16): at ~500ft Manhattan towers leaned over and BURIED the
  *  roads (user 2026-07-17) - that band now gets flat fills only, roads stay visible. From z17 the
  *  buildings grow in (30% -> full height by z19, Google's grow-as-you-approach), and the vertical
- *  gradient shades extrusion sides darker toward the base so same-coloured faces read as discrete
+ *  gradient shades extrusion sides darker toward the base so same-colored faces read as discrete
  *  buildings instead of one merged blob (the palettes had shut side shading off entirely).
  *  Starting 3D later is also the cheapest frame win in exactly the dense views that lag: one less
  *  zoom level of the most fragment-expensive layer the map draws. */
@@ -6006,14 +6006,14 @@ internal fun applyLight(style: Style) {
             PropertyFactory.textHaloWidth(1.9f),
         )
     }
-    // Google-Maps light palette: clean white road fills on a light-grey land, with
+    // Google-Maps light palette: clean white road fills on a light-gray land, with
     // every casing faded DOWN the hierarchy until minor-road casing == the land, so
     // streets are crisp white lines with NO outline (the outlines were exactly what
-    // made it look un-Google). Soft-yellow motorways, neutralised landuse (no tan
+    // made it look un-Google). Soft-yellow motorways, neutralized landuse (no tan
     // residential/commercial blobs), subtle buildings. Tuned live in a MapLibre GL
     // JS harness against Google for reference.
     // PIXEL-SAMPLED from Google Maps (the app) on the P9 in light mode, 2026-07-11:
-    // land #f8f7f7, roads ONE blue-grey fill #aab9c9 (streets AND arterials; no casing),
+    // land #f8f7f7, roads ONE blue-gray fill #aab9c9 (streets AND arterials; no casing),
     // driveways/service #9bacbc, motorway #8aa4c0, buildings #e8e9ed (outline #d6d9e6),
     // vegetation #d3f8e1, water #90daee, commercial cream #fdf9ef, trails #7fcdb0.
     val land = "#f8f7f7"
@@ -6024,29 +6024,29 @@ internal fun applyLight(style: Style) {
     style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#d3f8e1"), PropertyFactory.fillOpacity(1f))
     // Buildings (OSM footprints, already in the Liberty tiles — no key/data needed).
     // The old #e2e3e6 was a hair off the #e8eaed land, so they were ~invisible; give
-    // them a touch more grey + a subtle outline so they read like Google's at z15+.
+    // them a touch more gray + a subtle outline so they read like Google's at z15+.
     style.getLayer("building")?.setProperties(
         PropertyFactory.fillColor("#e8e9ed"),
         PropertyFactory.fillOutlineColor("#d6d9e6"),
     )
-    // Show footprints from neighbourhood zoom (Liberty hid them until ~z16-17, so
+    // Show footprints from neighborhood zoom (Liberty hid them until ~z16-17, so
     // residential houses only appeared when zoomed way in; Google shows them earlier).
     // The bundled `building` FILL layer is minzoom 13 / maxzoom 14, and MapLibre `maxzoom`
     // is EXCLUSIVE — so `setMinZoom(14f)` alone collapsed its range to empty (14 ≤ z < 14)
     // and the crisp flat footprints NEVER painted (only the faint building-3d extrusion
     // showed → the "sparse residential" look). Re-open the top with setMaxZoom so the flat
     // fill+outline draws from z14 up (overzoomed z14 tiles fill z15+).
-    style.getLayer("building")?.setMinZoom(16f) // Google-like: footprints only when zoomed in close (~250ft scale), not at neighbourhood zoom
+    style.getLayer("building")?.setMinZoom(16f) // Google-like: footprints only when zoomed in close (~250ft scale), not at neighborhood zoom
     style.getLayer("building")?.setMaxZoom(24f)
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionColor("#e8e9ed"),
         PropertyFactory.fillExtrusionOpacity(1f),
     )
     applyBuilding3dGeometry(style)
-    // Neutralise the tan/yellow landuse fills (residential/commercial/school/…) into
-    // the land — Google keeps these flat, not coloured blobs.
-    // pitch/track keep their OWN colour (the sports-field accent set beside the vela-pitch
-    // twin below) - the neutralise loop covered them and hid the tint (found at a park with
+    // Neutralize the tan/yellow landuse fills (residential/commercial/school/…) into
+    // the land — Google keeps these flat, not colored blobs.
+    // pitch/track keep their OWN color (the sports-field accent set beside the vela-pitch
+    // twin below) - the neutralize loop covered them and hid the tint (found at a park with
     // ball courts, 2026-07-11).
     val greens = setOf("park", "landcover_grass", "landcover_wood", "landuse_pitch", "landuse_track")
     style.layers.forEach { layer ->
@@ -6061,17 +6061,17 @@ internal fun applyLight(style: Style) {
     style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#d3f8e1"), PropertyFactory.fillOpacity(1f))
     style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#dbe0e8")) // pedestrian/parking surface, sampled
     style.getLayer("vela-commercial")?.setProperties(PropertyFactory.fillColor("#fdf9ef"), PropertyFactory.fillOpacity(1f)) // cream, sampled
-    // Sports fields: P9-sampled #a9eac2 (Toomey Field + the tennis centre both read it).
+    // Sports fields: P9-sampled #a9eac2 (Toomey Field + the tennis center both read it).
     style.getLayer("vela-pitch")?.setProperties(PropertyFactory.fillColor("#a9eac2"), PropertyFactory.fillOpacity(1f))
     listOf("landuse_pitch", "landuse_track").forEach { // Liberty's own pitch layers sit ABOVE the twin and covered it
         style.getLayer(it)?.setProperties(PropertyFactory.fillColor("#a9eac2"), PropertyFactory.fillOpacity(1f))
     }
-    // Institutional campuses (schools/universities) wear a warm pale grey distinct from
+    // Institutional campuses (schools/universities) wear a warm pale gray distinct from
     // the city land in the Google app (#f0eded, P9-sampled at UC Davis 2026-07-11).
     style.getLayer("landuse_school")?.setProperties(PropertyFactory.fillColor("#f0eded"), PropertyFactory.fillOpacity(1f))
     style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#7fcdb0")) // sampled
     style.getLayer("vela-bikeroutes")?.setProperties(PropertyFactory.lineColor("#007b8b")) // Google's bike teal (light)
-    // Roads: the app uses ONE blue-grey fill for streets and arterials alike, a deeper
+    // Roads: the app uses ONE blue-gray fill for streets and arterials alike, a deeper
     // blue for motorways, a darker tier for driveways, and NO visible casings (they
     // fade into the land, same rule as dark). All sampled.
     listOf("road_motorway", "road_motorway_link", "bridge_motorway", "bridge_motorway_link").forEach {
@@ -6092,7 +6092,7 @@ internal fun applyLight(style: Style) {
         "bridge_street_casing", "bridge_link_casing", "bridge_service_track_casing").forEach {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor(land))
     }
-    // Terrain relief: a soft warm-grey shadow, subtle so hills read as depth, not dirt.
+    // Terrain relief: a soft warm-gray shadow, subtle so hills read as depth, not dirt.
     style.getLayer(HILLSHADE_LAYER)?.setProperties(
         PropertyFactory.hillshadeExaggeration(0.32f),
         PropertyFactory.hillshadeShadowColor("#6b7280"),
@@ -6151,8 +6151,8 @@ internal fun applyDark(style: Style) {
     // Greens we keep as-is; every OTHER landuse/landcover fill (commercial, school,
     // retail, industrial, sand, …) must go dark too, or it stays a jarring cream
     // patch in dark mode.
-    // pitch/track keep their OWN colour (the sports-field accent set beside the vela-pitch
-    // twin below) - the neutralise loop covered them and hid the tint (found at a park with
+    // pitch/track keep their OWN color (the sports-field accent set beside the vela-pitch
+    // twin below) - the neutralize loop covered them and hid the tint (found at a park with
     // ball courts, 2026-07-11).
     val greens = setOf("park", "landcover_grass", "landcover_wood", "landuse_pitch", "landuse_track")
     style.layers.forEach { layer ->
@@ -6188,7 +6188,7 @@ internal fun applyDark(style: Style) {
     }
     style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#167055")) // park foot trails, sampled
     style.getLayer("vela-bikeroutes")?.setProperties(PropertyFactory.lineColor("#1f8f9c")) // bike teal, lightened for the dark land
-    // Terrain relief for the night palette: deep shadows + a cool blue-grey
+    // Terrain relief for the night palette: deep shadows + a cool blue-gray
     // highlight so ridges catch a little moonlight (a touch stronger than light).
     style.getLayer(HILLSHADE_LAYER)?.setProperties(
         PropertyFactory.hillshadeExaggeration(0.45f),
@@ -6199,7 +6199,7 @@ internal fun applyDark(style: Style) {
 }
 
 /**
- * AMOLED / true-black map palette: layers pure-black #000000 land, water, dark-grey road network,
+ * AMOLED / true-black map palette: layers pure-black #000000 land, water, dark-gray road network,
  * and pure-black halos on top of [applyDark] so every layer applyDark themes that applyAmoled does
  * not touch (boundaries, rail, aeroways, campus fills, untouched labels) inherits the dark styling
  * instead of falling back to Liberty's light defaults.
@@ -6228,7 +6228,7 @@ internal fun applyAmoled(style: Style) {
     listOf("road_motorway", "road_motorway_link", "bridge_motorway", "bridge_motorway_link").forEach {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#22262C"))
     }
-    // Casings are pure black so road edges vanish against the land — maximises pixel-off area.
+    // Casings are pure black so road edges vanish against the land — maximizes pixel-off area.
     listOf("road_motorway_casing", "road_motorway_link_casing", "road_trunk_primary_casing",
         "road_secondary_tertiary_casing", "road_minor_casing", "road_link_casing", "road_service_track_casing",
         "bridge_motorway_casing", "bridge_trunk_primary_casing", "bridge_secondary_tertiary_casing",
@@ -6273,10 +6273,10 @@ internal fun applyAmoled(style: Style) {
 
 /**
  * CLASSIC light: the archived pre-pixel-sample palette (commit 071c6c3, kept in
- * docs/MAP-STYLE.md) - clean white road fills with faded casings, soft-yellow
- * motorways, true greens, warm-grey land. Selectable in Settings -> Appearance;
+ * SPEC section 6.2) - clean white road fills with faded casings, soft-yellow
+ * motorways, true greens, warm-gray land. Selectable in Settings -> Appearance;
  * the twin layers that arrived after the archive (trails/bike/pitch/commercial)
- * get harmonious colours so nothing renders unstyled.
+ * get harmonious colors so nothing renders unstyled.
  */
 internal fun applyClassicLight(style: Style) {
     listOf("highway-name-path", "highway-name-minor", "highway-name-major").forEach {
@@ -6298,14 +6298,14 @@ internal fun applyClassicLight(style: Style) {
         PropertyFactory.fillColor("#dde1e7"),
         PropertyFactory.fillOutlineColor("#c4c9d1"),
     )
-    style.getLayer("building")?.setMinZoom(16f) // Google-like: footprints only when zoomed in close (~250ft scale), not at neighbourhood zoom
+    style.getLayer("building")?.setMinZoom(16f) // Google-like: footprints only when zoomed in close (~250ft scale), not at neighborhood zoom
     style.getLayer("building")?.setMaxZoom(24f)
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionColor("#dde1e7"),
         PropertyFactory.fillExtrusionOpacity(0.9f),
     )
     applyBuilding3dGeometry(style)
-    // Classic neutralises every non-green landuse into the land (no campus/commercial tints).
+    // Classic neutralizes every non-green landuse into the land (no campus/commercial tints).
     val greens = setOf("park", "landcover_grass", "landcover_wood")
     style.layers.forEach { layer ->
         if (layer is FillLayer && layer.id !in greens &&
@@ -6316,7 +6316,7 @@ internal fun applyClassicLight(style: Style) {
     }
     style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#cdeff0"), PropertyFactory.fillOpacity(1f))
     style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#ededed"))
-    // Post-archive twins, coloured to sit quietly in the classic look: commercial/pitch blend
+    // Post-archive twins, colored to sit quietly in the classic look: commercial/pitch blend
     // into the land (classic had no tint for them), trails keep green, bike paths keep teal.
     style.getLayer("vela-commercial")?.setProperties(PropertyFactory.fillColor(land), PropertyFactory.fillOpacity(1f))
     style.getLayer("vela-pitch")?.setProperties(PropertyFactory.fillColor("#d3f8e2"), PropertyFactory.fillOpacity(1f))
@@ -6353,9 +6353,9 @@ internal fun applyClassicLight(style: Style) {
 internal fun applyClassicDark(style: Style) {
     // Classic dark = a NEUTRAL charcoal-slate identity, deliberately UNLIKE Modern's Google-navy
     // dark (Modern pixel-samples #162640 land / #1c3b69 buildings / blue roads). The two used to
-    // differ, but once Modern was re-sampled to Google's blue, classic's old #242f3e blue-grey read
+    // differ, but once Modern was re-sampled to Google's blue, classic's old #242f3e blue-gray read
     // the same (user 2026-07-12: "classic looks bluish like modern, houses too"). So classic goes
-    // warm-neutral: slate land, GREY buildings (no blue houses), muted-amber motorways echoing the
+    // warm-neutral: slate land, GRAY buildings (no blue houses), muted-amber motorways echoing the
     // classic-light yellow, its true greens kept - a clearly separate look from Google's night navy.
     val land = "#2b2f36"     // neutral dark slate, not navy
     style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor(land))
@@ -6366,7 +6366,7 @@ internal fun applyClassicDark(style: Style) {
     style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#274330"), PropertyFactory.fillOpacity(0.95f))
     listOf("road_minor", "road_secondary_tertiary", "road_link", "road_service_track",
         "bridge_street", "bridge_secondary_tertiary", "bridge_link", "bridge_service_track").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#565b64"))          // neutral grey, not blue-grey
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#565b64"))          // neutral gray, not blue-gray
     }
     listOf("road_trunk_primary", "bridge_trunk_primary").forEach {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#6a707b"))
@@ -6381,10 +6381,10 @@ internal fun applyClassicDark(style: Style) {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor(land))
     }
     style.getLayer("building")?.setProperties(
-        PropertyFactory.fillColor("#383d45"),          // warm neutral grey - kills the "blue houses"
+        PropertyFactory.fillColor("#383d45"),          // warm neutral gray - kills the "blue houses"
         PropertyFactory.fillOutlineColor("#464c56"),
     )
-    style.getLayer("building")?.setMinZoom(16f) // Google-like: footprints only when zoomed in close (~250ft scale), not at neighbourhood zoom
+    style.getLayer("building")?.setMinZoom(16f) // Google-like: footprints only when zoomed in close (~250ft scale), not at neighborhood zoom
     style.getLayer("building")?.setMaxZoom(24f)
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionColor("#383d45"),
@@ -6413,7 +6413,7 @@ internal fun applyClassicDark(style: Style) {
     }
     style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#26403c"), PropertyFactory.fillOpacity(0.9f))
     style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#31363f"))
-    // Post-archive twins (see applyClassicLight): blend or keep their semantic colour.
+    // Post-archive twins (see applyClassicLight): blend or keep their semantic color.
     style.getLayer("vela-commercial")?.setProperties(PropertyFactory.fillColor("#31363f"), PropertyFactory.fillOpacity(0.5f))
     style.getLayer("vela-pitch")?.setProperties(PropertyFactory.fillColor("#2c4a34"), PropertyFactory.fillOpacity(1f))
     listOf("landuse_pitch", "landuse_track").forEach {
@@ -6430,9 +6430,9 @@ internal fun applyClassicDark(style: Style) {
 }
 
 /**
- * Tweak the MapTiler Streets style: its light variant colours motorways / major
- * roads orange (OSM-classification style). Recolour them white with a light-grey
- * casing (Google-like); dark Streets is already a calm blue-grey, kept consistent.
+ * Tweak the MapTiler Streets style: its light variant colors motorways / major
+ * roads orange (OSM-classification style). Recolor them white with a light-gray
+ * casing (Google-like); dark Streets is already a calm blue-gray, kept consistent.
  * MapTiler layer ids carry spaces ("Major road", "Highway", …).
  */
 private fun tuneMapTiler(style: Style, dark: Boolean) {
@@ -6444,7 +6444,7 @@ private fun tuneMapTiler(style: Style, dark: Boolean) {
     listOf("Highway outline", "Major road outline", "Tunnel outline", "Bridge outline").forEach {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor(casing))
     }
-    // Swap MapTiler's POI icons for our Google-style coloured markers (PoiIcons
+    // Swap MapTiler's POI icons for our Google-style colored markers (PoiIcons
     // registered the `vela-poi-*` images). MapTiler groups POIs by layer, so a
     // per-layer constant is enough — no class match needed.
     val poiLayers = mapOf(
@@ -6482,7 +6482,7 @@ private fun progressAlong(polyline: List<LatLng>, me: LatLng): Float {
 }
 
 /** Snap [me] onto the nearest point of the nav route for display — the snapped point, that
- *  segment's heading, and the metres-along of the projection — so the puck rides the road
+ *  segment's heading, and the meters-along of the projection — so the puck rides the road
  *  instead of wobbling with raw GPS. Only segments whose along-route range overlaps the window
  *  [[loM]‥[hiM]] are considered, so wherever the route passes near itself (a parallel return
  *  leg, switchback, cloverleaf, a doubled-back street) the global nearest-point can't yank the
@@ -6553,12 +6553,12 @@ private fun smoothBearing(cur: Float, target: Float, dt: Float, tau: Float): Flo
  *  "nearest point". Off-route it falls back to [raw] (honesty — see [snapToRouteWindowed]). */
 private class NavPuck {
     var engaged = false           // currently following the route (snapped)
-    var progressM = 0.0           // displayed metres along the route (what's drawn)
-    var targetM = 0.0             // latest fix's metres along the route (where we're heading)
+    var progressM = 0.0           // displayed meters along the route (what's drawn)
+    var targetM = 0.0             // latest fix's meters along the route (where we're heading)
     var targetAtMs = 0L           // elapsedRealtime() the target was set — for dead reckoning
     var speed = 0.0               // m/s — the KALMAN speed (GPS ⊕ accelerometer), see [kalman]
     val kalman = app.vela.core.location.SpeedKalman() // GPS-fix measurement + accel prediction
-    // The puck's POSITION estimate (see AlongRouteFilter). Dead-reckons at the modelled speed each
+    // The puck's POSITION estimate (see AlongRouteFilter). Dead-reckons at the modeled speed each
     // frame and takes each accepted fix as a variance-weighted MEASUREMENT, so along-route GPS
     // noise is averaged down instead of driven straight into the puck — which is what writing the
     // snapped fix into `targetM` and drawing from it used to do.
@@ -6595,7 +6595,7 @@ private var dashDotPoly: List<LatLng> = emptyList()
 private var dashDotZoom: Double = -1e9
 
 /** Regenerate the walk/bike dot POINTS for the current zoom: one dot every
- *  [ROUTE_DOT_SPACING_PX] screen pixels' worth of metres along the route. */
+ *  [ROUTE_DOT_SPACING_PX] screen pixels' worth of meters along the route. */
 private fun regenRouteDots(map: org.maplibre.android.maps.MapLibreMap, style: Style, poly: List<LatLng>) {
     val src = style.getSourceAs<GeoJsonSource>(ROUTE_DOT_SRC) ?: return
     dashDotPoly = poly
@@ -6781,11 +6781,11 @@ private fun trafficLevelColor(level: Int): Int = when {
     else -> TRAFFIC_SEVERE
 }
 
-/** Route line as **solid** colour bands over lineProgress (0..1 by length): grey for the
+/** Route line as **solid** color bands over lineProgress (0..1 by length): gray for the
  *  driven part (< [p]); ahead, per-segment live traffic from [spans] (startFrac, endFrac,
  *  level) over a free-flow base — or the overall [routeInt] tint when there are no spans
  *  (walk/bike, or no live data). A `step` expression, so the driven/ahead boundary and
- *  the span edges are HARD — no gradient fade between colours (test-drive feedback). */
+ *  the span edges are HARD — no gradient fade between colors (test-drive feedback). */
 private fun routeGradient(
     p: Float,
     routeInt: Int,
@@ -6793,15 +6793,15 @@ private fun routeGradient(
     driven: Int = ROUTE_DRIVEN, // TRANSPARENT when the "road behind you" trail is off
 ): Expression {
     val freeflow = if (spans.isEmpty()) routeInt else ROUTE_FREEFLOW
-    // Colour AT fraction f (half-open: a stop at b colours [b, next)). Driven part is grey
-    // STRICTLY BEFORE p (p == 0 preview paints no grey nub), so the cut lands exactly at p.
+    // Color AT fraction f (half-open: a stop at b colors [b, next)). Driven part is gray
+    // STRICTLY BEFORE p (p == 0 preview paints no gray nub), so the cut lands exactly at p.
     fun colorAt(f: Float): Int {
         if (p > 0f && f < p) return driven
         for ((s, e, lvl) in spans) if (f >= s && f < e) return trafficLevelColor(lvl)
         return freeflow
     }
     // EXACT breakpoints, not 256-sample slop: the driven/ahead cut at p precisely (so the
-    // grey/colour boundary sits DEAD under the arrow — the old sampling put it up to
+    // gray/color boundary sits DEAD under the arrow — the old sampling put it up to
     // route-length/256 m off, which read as a soft "gradient" ahead of the arrow), plus every
     // traffic-span edge. A hard `step` at each — no fade. "We either drove it or we didn't."
     val breaks = sortedSetOf<Float>()
@@ -6819,9 +6819,9 @@ private fun routeGradient(
     }
     // A `step` line-gradient needs ≥1 stop or MapLibre rejects the whole expression
     // ("line-gradient Expected at least 4 arguments, but found only 2") — which happens on EVERY
-    // route with no driven-grey and no traffic spans (any directions preview, and early nav before
+    // route with no driven-gray and no traffic spans (any directions preview, and early nav before
     // progress > 0): the line then renders unstyled and the error spams each refresh. Seed a single
-    // base-colour stop so a band-less route is a valid solid line.
+    // base-color stop so a band-less route is a valid solid line.
     if (stops.isEmpty()) stops.add(Expression.stop(0.9999f, Expression.color(base)))
     return Expression.step(Expression.lineProgress(), Expression.color(base), *stops.toTypedArray())
 }
@@ -6891,7 +6891,7 @@ private fun applyData(
         lastAppliedSvPose = svPose
     }
     // Saved-place pins (issue #171), identity-gated like the rest. Icon bitmaps are per
-    // (icon, colour) and added on demand; getImage probes are cheap and a style reload
+    // (icon, color) and added on demand; getImage probes are cheap and a style reload
     // resets lastAppliedSavedPins so they re-add on the fresh style.
     if (savedPins != lastAppliedSavedPins) {
         val feats = savedPins.mapIndexed { i, pin ->
@@ -6920,7 +6920,7 @@ private fun applyData(
         style.getSourceAs<GeoJsonSource>(ROUTE_SRC)?.setGeoJson(routeFc)
         // Mid-nav ROUTE SWAP (reroute / faster route): seed the ahead layer with the WHOLE new
         // route immediately — the ticker only repaints it after the puck re-engages and moves a
-        // throttle unit, and until then the new geometry showed entirely traversed-grey with the
+        // throttle unit, and until then the new geometry showed entirely traversed-gray with the
         // OLD route's blue suffix ghosted on top for a second. Progress on a fresh route ≈ 0, so
         // "everything is ahead" is the correct seed; the ticker takes over from the next engage.
         if (navMode && !routeDashed && route.size >= 2) {
@@ -6937,17 +6937,17 @@ private fun applyData(
         }
         lastAppliedRouteLine = route
     }
-    // Route line, Google-style: the part already DRIVEN greys out behind the vehicle;
+    // Route line, Google-style: the part already DRIVEN grays out behind the vehicle;
     // the part AHEAD shows live traffic PER SEGMENT — a free-flow base with amber/red
     // bands over the congested stretches (from [trafficSpans]) — or, with no live
     // data, a single congestion tint. A line-progress gradient (routeProgress =
-    // fraction travelled, 0 when not navigating → nothing greyed).
+    // fraction traveled, 0 when not navigating → nothing grayed).
     val routeInt = runCatching { android.graphics.Color.parseColor(routeColor) }
         .getOrDefault(ROUTE_FREEFLOW)
-    // 0 when not navigating (no driven-grey); only floor to a visible sliver once moving.
+    // 0 when not navigating (no driven-gray); only floor to a visible sliver once moving.
     val p = if (routeProgress <= 0f) 0f else routeProgress.coerceIn(0.001f, 0.998f)
     // AUDIT FIX 3d (2026-07-15): the visibility flips and the ahead-source clears are mode
-    // TRANSITION work, and the browse gradient only depends on (progress, colour, spans) - none
+    // TRANSITION work, and the browse gradient only depends on (progress, color, spans) - none
     // of it needs to re-run on every recomposition. Transition one-shots key off lastRouteMode;
     // the gradient keys off its own inputs. The nav→browse ahead-clear (lastNavRouteMode) is
     // covered by the transition path (browse entered from mode 2).
@@ -6955,9 +6955,9 @@ private fun applyData(
     val modeChanged = routeMode != lastRouteMode
     if (routeDashed) {
         if (modeChanged) {
-            // Walking / biking: show the dotted line (solid colour, no traffic gradient — there
+            // Walking / biking: show the dotted line (solid color, no traffic gradient — there
             // isn't any for foot/bike), hide the solid one. Walk/bike shows ONLY the dots: the
-            // solid grey alternate lines (and any leftover nav ahead-suffix) read as "the car
+            // solid gray alternate lines (and any leftover nav ahead-suffix) read as "the car
             // route is still drawn" next to them (user 2026-07-08); alternates stay pickable
             // from the route list.
             style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
@@ -6977,8 +6977,8 @@ private fun applyData(
         }
     } else if (!navMode) {
         if (modeChanged) {
-            // Driving, not navigating (preview / route picker): the solid traffic-coloured line,
-            // no driven-grey. The nav ahead-suffix layer is cleared ONCE on the nav→browse
+            // Driving, not navigating (preview / route picker): the solid traffic-colored line,
+            // no driven-gray. The nav ahead-suffix layer is cleared ONCE on the nav→browse
             // transition so the last drive's remnant doesn't linger under previews.
             style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
             if (dashDotPoly.isNotEmpty()) regenRouteDots(map, style, emptyList())
@@ -7003,7 +7003,7 @@ private fun applyData(
         }
     } else {
         // NAV: the frame ticker owns the route rendering — the driven/ahead GEOMETRY split
-        // (ahead suffix on ROUTE_AHEAD_LAYER, traversed grey on ROUTE_LAYER). Writing a
+        // (ahead suffix on ROUTE_AHEAD_LAYER, traversed gray on ROUTE_LAYER). Writing a
         // gradient from recomposition here would fight it once per fix.
         if (modeChanged) {
             style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
@@ -7124,7 +7124,7 @@ private fun applyData(
     // Google-first: hide the OSM *business* POIs (poi_r1/r7/r20) while EITHER the ambient Google
     // dots are up (the layers would duplicate) OR a search's result set is on the map — during
     // search only the results should read as places (Google declutters the same way). A single
-    // selected place (markers.size == 1) keeps the basemap POIs: its neighbours are context, not
+    // selected place (markers.size == 1) keeps the basemap POIs: its neighbors are context, not
     // clutter. Its OWN identity gate (not the ambient one): results can appear/clear while the
     // ambient list stays empty, and the old placement inside the ambient gate would strand the
     // visibility stale. OSM transit + the rest of the basemap always stay.
@@ -7307,7 +7307,7 @@ private fun applyData(
 
     // Two modes, Google-style. NAV: the puck IS the position — a solid blue arrow — so
     // hide the dot and swap the heading layer's icon to the arrow. BROWSE: the blue dot
-    // (grey when the fix is stale) + a faint heading cone. The cone/puck both hide while
+    // (gray when the fix is stale) + a faint heading cone. The cone/puck both hide while
     // stale (old bearing).
     val showPuck = navMode && me != null && bearing != null && !meStale
     // Key-gated (AUDIT FIX 3b): four JNI property sets per recomposition for values that only
@@ -7342,7 +7342,7 @@ private fun applyData(
 }
 
 /** Google-style heading beam: a translucent blue cone whose apex sits at the
- *  location dot (bitmap centre) and fans out toward north (0°); rotated by the
+ *  location dot (bitmap center) and fans out toward north (0°); rotated by the
  *  device bearing + drawn beneath the dot, it reads like Google's "flashlight"
  *  direction indicator rather than a hard arrow. */
 private fun arrowBitmap(): Bitmap {
@@ -7352,7 +7352,7 @@ private fun arrowBitmap(): Bitmap {
     val cx = size / 2f
     val tipY = 8f
     val path = Path().apply {
-        moveTo(cx, cx)               // apex at centre (under the dot)
+        moveTo(cx, cx)               // apex at center (under the dot)
         lineTo(cx - 44f, tipY)
         quadTo(cx, tipY - 8f, cx + 44f, tipY)
         close()
@@ -7412,7 +7412,7 @@ private fun navPuckBitmap(
     )
     // The bright-navy disc - no white ring this time (user call). #1a46e5 = a vivid, deep blue.
     // The "white disc" style (issue #344) inverts it: white disc, blue chevron, plus a hairline
-    // grey ring so the disc still has an edge over a light map.
+    // gray ring so the disc still has an edge over a light map.
     val blue = android.graphics.Color.parseColor("#1a46e5")
     canvas.drawCircle(
         cx, cy, r,
@@ -7428,7 +7428,7 @@ private fun navPuckBitmap(
             },
         )
     }
-    // Chevron/arrow, centred, pointing up - scaled up with the bigger disc.
+    // Chevron/arrow, centered, pointing up - scaled up with the bigger disc.
     val arrow = Path().apply {
         moveTo(cx, cy - 32f)          // tip
         lineTo(cx + 27f, cy + 26f)    // bottom-right
@@ -7446,10 +7446,10 @@ private fun navPuckBitmap(
     return bmp
 }
 
-/** A Google-style red map pin with a white centre dot, anchored at its bottom tip. */
+/** A Google-style red map pin with a white center dot, anchored at its bottom tip. */
 /** The walk/bike route dot: route-blue fill with a WHITE outline (Google's look — the ring
- *  keeps the chain readable over dark roads and the blue casing alike). Colours are baked in
- *  (not SDF-tinted): an SDF is single-colour, and the walk/bike line is always route-blue. */
+ *  keeps the chain readable over dark roads and the blue casing alike). Colors are baked in
+ *  (not SDF-tinted): an SDF is single-color, and the walk/bike line is always route-blue. */
 private fun routeDotBitmap(): Bitmap {
     val d = 26
     val bmp = Bitmap.createBitmap(d, d, Bitmap.Config.ARGB_8888)
@@ -7511,7 +7511,7 @@ private fun svConeBitmap(): Bitmap {
         },
     )
     val puck = navPuckBitmap()
-    val half = s * 0.30f // puck diameter ~60% of the canvas, centred
+    val half = s * 0.30f // puck diameter ~60% of the canvas, centered
     c.drawBitmap(puck, null, RectF(cx - half, cy - half, cx + half, cy + half), Paint(Paint.ANTI_ALIAS_FLAG))
     return bmp
 }
@@ -7544,7 +7544,7 @@ private fun parkingBitmap(): Bitmap {
 }
 
 /** A small traffic-light housing (white-rimmed dark rounded rect + red/amber/green dots) for the
- *  map-drawn signal layer. Sized to read as a recognisable stoplight at a ~0.55 icon scale, z16+. */
+ *  map-drawn signal layer. Sized to read as a recognizable stoplight at a ~0.55 icon scale, z16+. */
 private fun trafficLightBitmap(): Bitmap {
     val w = 30
     val h = 60
@@ -7588,7 +7588,7 @@ private fun stopSignBitmap(): Bitmap {
     return bmp
 }
 
-/** Railway level-crossing marker: dark disc (the traffic-light housing colour) with a white
+/** Railway level-crossing marker: dark disc (the traffic-light housing color) with a white
  *  crossbuck X - the "tracks cross here" shorthand, deliberately monochrome so it can't be read
  *  as one of the red/amber regulatory signs. Static OSM road aid (2026-08-08). */
 private fun railCrossingBitmap(): Bitmap {
@@ -7628,7 +7628,7 @@ private fun speedHumpBitmap(): Bitmap {
  *  deliberately distinct from the POI dots and the traffic controls so a plate reader reads as a
  *  "watch out" pin, not a place. */
 /** The facing cone for a direction-tagged camera: a translucent purple wedge fanning NORTH from
- *  the bitmap's bottom-centre (the badge point); the layer rotates it by the OSM direction tag.
+ *  the bitmap's bottom-center (the badge point); the layer rotates it by the OSM direction tag.
  *  Gradient so it reads as a field of view, not a solid arrow. SIZE MATTERS here: the first cut
  *  (64x56) barely peeked past the 46px badge and read as invisible on device (user 2026-07-21) -
  *  the beam must project several badge-lengths to register as a facing at browse zoom. */
@@ -7652,7 +7652,7 @@ private fun alprConeBitmap(): Bitmap {
         close()
     }
     c.drawPath(cone, paint)
-    // A thin brighter centreline gives the fan a readable axis even over busy imagery.
+    // A thin brighter centerline gives the fan a readable axis even over busy imagery.
     val axis = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = 0xB37B1FA2.toInt(); strokeWidth = 3f; style = Paint.Style.STROKE
     }

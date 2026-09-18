@@ -10,8 +10,8 @@ import org.junit.Test
 
 /**
  * Regression for the "Raising Cane's route mis-placed every turn" report (2026-06-28). The real
- * route had ~3.3 km of step metres on a ~6.4 km decoded polyline; `placeManeuvers` divided
- * cumulative step-metres by the POLYLINE length, which crammed all the turns into the first half
+ * route had ~3.3 km of step meters on a ~6.4 km decoded polyline; `placeManeuvers` divided
+ * cumulative step-meters by the POLYLINE length, which crammed all the turns into the first half
  * of the route and dropped them onto the wrong roads. The fix divides by the STEP-distance total,
  * so a turn lands at its proportional point regardless of the absolute-length mismatch.
  */

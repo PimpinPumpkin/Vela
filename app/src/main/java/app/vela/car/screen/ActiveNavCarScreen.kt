@@ -157,7 +157,7 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
         strip.addAction(
             Action.Builder()
                 .setTitle(carContext.getString(app.vela.R.string.car_end))
-                // A background colour is ONLY allowed on a PRIMARY action — without FLAG_PRIMARY the
+                // A background color is ONLY allowed on a PRIMARY action — without FLAG_PRIMARY the
                 // host throws "Background color can only be set for primary actions" building the strip.
                 .setFlags(Action.FLAG_PRIMARY)
                 .setBackgroundColor(CarColor.RED)

@@ -37,7 +37,7 @@ class SpeedKalmanTest {
     @Test fun brakingCollapsesThePredictionBetweenFixes() {
         val k = SpeedKalman()
         k.update(15.0)
-        // Brake at 4 m/s² for 2 s (a missed-fix window). Modelled speed follows the physics…
+        // Brake at 4 m/s² for 2 s (a missed-fix window). Modeled speed follows the physics…
         val dist = k.run(accel = -4.0, seconds = 2.0)
         assertEquals(7.0, k.speed, 0.5)
         // …so the reckoned distance is the braking integral (~22 m), NOT the old
@@ -54,7 +54,7 @@ class SpeedKalmanTest {
         assertEquals(0.0, creep, 1e-9)
     }
 
-    @Test fun noAccelerometerHoldsTheOldConstantSpeedBehaviour() {
+    @Test fun noAccelerometerHoldsTheOldConstantSpeedBehavior() {
         val k = SpeedKalman()
         k.update(12.0)
         k.run(accel = 0.0, seconds = 2.0)

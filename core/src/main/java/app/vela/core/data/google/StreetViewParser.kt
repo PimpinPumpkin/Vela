@@ -21,7 +21,7 @@ import kotlin.math.sqrt
  *   [1][4][0][0][0]     copyright
  *   [1][5][0][1]        position: [ [_,_,lat,lng], _, [heading,tilt,roll] ]
  *   [1][5][0][3][0]     the local pano graph (~100 nearby panos, each [[2,id],_,[[_,_,lat,lng]…]])
- *   [1][5][0][8]        history stack: [ [neighbourIndex,[year,month],…], … ]
+ *   [1][5][0][8]        history stack: [ [neighborIndex,[year,month],…], … ]
  *   [1][6][7]           THIS pano's capture [year, month]
  *
  * Only the pano id is required; everything else falls back. A "no imagery" response has no
@@ -31,7 +31,7 @@ object StreetViewParser {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
     private val PANO_ID = Regex("^[A-Za-z0-9_-]{20,25}$")
 
-    // Neighbour de-clutter: drop the same-spot historical panos, cap how far a "walk" arrow
+    // Neighbor de-clutter: drop the same-spot historical panos, cap how far a "walk" arrow
     // reaches, and keep only the nearest pano per direction bucket so arrows don't pile up.
     private const val SAME_SPOT_M = 4.0
     private const val MAX_WALK_M = 45.0
@@ -78,7 +78,7 @@ object StreetViewParser {
             Raw(id, gLa, gLn)
         }
 
-        // History: [ [neighbourIndex, [year,month], …], … ] indexes into the raw graph. Prepend
+        // History: [ [neighborIndex, [year,month], …], … ] indexes into the raw graph. Prepend
         // this pano as the newest so the list is the full "other dates" set.
         val history = buildList {
             if (year != null && month != null) add(StreetViewTime(panoId, year, month))
@@ -92,7 +92,7 @@ object StreetViewParser {
             }
         }.distinctBy { it.panoId }.sortedByDescending { it.year * 100 + it.month }
 
-        // Walkable neighbours: distance + bearing from this pano, drop same-spot (historical) and
+        // Walkable neighbors: distance + bearing from this pano, drop same-spot (historical) and
         // far panos, keep the nearest per BUCKET_DEG sector.
         val walk = raws.asSequence()
             .filter { it.id != panoId }
@@ -165,11 +165,11 @@ object StreetViewParser {
     private val ORDINAL = Regex("^\\d+(st|nd|rd|th)$")  // "1st", "5th", "12th"
 
     /**
-     * The street of an address line, normalised for comparison, or null when the text carries no
+     * The street of an address line, normalized for comparison, or null when the text carries no
      * confident street. Drops a leading house NUMBER (only a pure number, so ordinal names like "5th"
      * survive), a trailing unit ("Ste 200"), collapses the suffix words, lowercased. It requires a
      * real street signal - a known suffix (Ave/St/Blvd/…) or an ordinal (5th/12th) - so a bare city,
-     * neighbourhood, or business name ("Sacramento", "Midtown", "Joe's Cafe") returns null instead
+     * neighborhood, or business name ("Sacramento", "Midtown", "Joe's Cafe") returns null instead
      * of being mistaken for a street. "2005 5th St, Sacramento, CA" → "5th st"; a bare "5th St" →
      * "5th st"; "2001 4th St" → "4th st"; "120 Main Street" → "main st"; "Sacramento, CA" → null.
      * (Trade-off: a suffix-less street like "Broadway" also returns null - conservative on purpose,
@@ -190,7 +190,7 @@ object StreetViewParser {
     }
 
     /** True when a pano's own address label and [address] resolve to the same street. Both may be
-     *  full lines (house number + street + city); [streetOf] normalises each to the street. */
+     *  full lines (house number + street + city); [streetOf] normalizes each to the street. */
     fun streetMatches(panoLabel: String?, address: String): Boolean {
         val a = streetOf(panoLabel) ?: return false
         val b = streetOf(address) ?: return false

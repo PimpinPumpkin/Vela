@@ -49,7 +49,7 @@ interface NavStrings {
      *  with its own destination marker, same English-first pattern as [passLights]). */
     fun repeatShort(instruction: String): String = instruction
 
-    /** A distance phrased for SPEECH, honouring the imperial/metric preference — "500 feet" / "150 mètres". */
+    /** A distance phrased for SPEECH, honoring the imperial/metric preference — "500 feet" / "150 mètres". */
     fun spokenDistance(meters: Double, imperial: Boolean): String
 
     /** The pre-turn frame combining a distance phrase and the instruction — EN "In X, Y" / FR "Dans X, Y". */
@@ -148,7 +148,7 @@ object EnNavStrings : NavStrings {
         }
     }
 
-    // Feet under ~0.15 mi, else miles; metres under ~1 km, else kilometres (unchanged from NavEngine).
+    // Feet under ~0.15 mi, else miles; meters under ~1 km, else kilometers (unchanged from NavEngine).
     override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
         val feet = meters * 3.28084
         if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} feet"
@@ -241,7 +241,7 @@ object EnNavStrings : NavStrings {
         var s = text
         s = Regex("\\bI-(\\d+)").replace(s) { "Interstate ${it.groupValues[1]}" }
         s = Regex("\\bUS-(\\d+)").replace(s) { "US ${it.groupValues[1]}" }
-        // State/province highway refs (CA-99, SR-99, WA-520, …) → "State Route N". Reading the bare 2-letter
+        // State/province highway refs (CA-99, SR-99, NY-17, …) → "State Route N". Reading the bare 2-letter
         // code (e.g. "CA") makes espeak's G2P mangle the K/C onset — a cause of the "the K/T sounds off
         // sometimes" bug. Runs AFTER I-/US- so those keep their spoken forms (US- is already de-hyphenated).
         s = Regex("\\b[A-Z]{2}-(\\d+)").replace(s) { "State Route ${it.groupValues[1]}" }

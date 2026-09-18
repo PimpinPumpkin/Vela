@@ -25,12 +25,12 @@ import java.util.TimeZone
  * This client covers Vela's DEPARTURE BOARDS (phase 1 of the Transitous adoption): [board] finds the
  * stop(s) at a coordinate via `map/stops` and reads `stoptimes` - which, unlike Google's anonymous
  * place page, returns EVERY route serving the stop, with realtime flags and the agency's own route
- * colours. Querying a stop's PARENT station id aggregates all its child stops/bays (verified live),
+ * colors. Querying a stop's PARENT station id aggregates all its child stops/bays (verified live),
  * so a multi-bay transit center gets one complete merged board for free.
  *
  * Google's blob parse stays as the FALLBACK where Transitous has no coverage. Fair use: one fetch
  * per opened stop plus a 30 s refresh while its sheet stays open (the VM's startBoardRefresh, same
- * cadence as the countdown clock, self-cancelling on selection change); the User-Agent identifies
+ * cadence as the countdown clock, self-canceling on selection change); the User-Agent identifies
  * the app per the Transitous policy.
  */
 object Transitous {
@@ -67,8 +67,8 @@ object Transitous {
         val routeShortName: String? = null,
         val routeColor: String? = null,
         val tripId: String? = null,       // keys the /trip stop-sequence fetch
-        val cancelled: Boolean = false,   // this stop's call is cancelled
-        val tripCancelled: Boolean = false, // the whole run is cancelled
+        val cancelled: Boolean = false,   // this stop's call is canceled (MOTIS spells the wire field with two Ls - do not Americanize these four)
+        val tripCancelled: Boolean = false, // the whole run is canceled
     )
 
     @Serializable
@@ -240,7 +240,7 @@ object Transitous {
     /**
      * The FULL stop sequence of one GTFS run - the "Stops" timeline behind a departure-board line.
      * `/api/v1/trip` returns the actual trip the tapped departure belongs to: every stop it calls at,
-     * with per-stop realtime vs timetable times AND per-stop/-run CANCELLED flags straight from the
+     * with per-stop realtime vs timetable times AND per-stop/-run CANCELED flags straight from the
      * agency feed - none of which the Google itinerary reuse could provide. The result is trimmed to
      * start at the stop nearest ([atLat],[atLng]) (the stop whose board was tapped), mapped into the
      * SAME [TransitStep] the timeline UI already renders. Null on any failure - the caller falls back
@@ -262,12 +262,12 @@ object Transitous {
         if (all.size < 2) return null
         // The timeline BOARDS at the tapped stop (nearest-by-distance, so it works from a canonical
         // GTFS stop AND from a Google-resolved listing on a different corner); the stops the run
-        // already called at go into priorStops so the view can show them greyed above, Google-style.
+        // already called at go into priorStops so the view can show them grayed above, Google-style.
         // A terminus tap boards at the origin instead (an arrivals-only view has no ride left).
         val idx = (all.indices.minByOrNull { i -> distM(atLat, atLng, all[i].lat, all[i].lon) } ?: 0)
             .let { if (it >= all.size - 1) 0 else it }
-        val prior = all.subList(0, idx).map { st -> stopTime(st, legCancelled = leg.cancelled) }
-        val mapped = all.subList(idx, all.size).map { st -> stopTime(st, legCancelled = leg.cancelled) }
+        val prior = all.subList(0, idx).map { st -> stopTime(st, legCanceled = leg.cancelled) }
+        val mapped = all.subList(idx, all.size).map { st -> stopTime(st, legCanceled = leg.cancelled) }
         return TransitStep(
             mode = modeOf(leg.mode),
             line = TransitLine(
@@ -287,7 +287,7 @@ object Transitous {
         )
     }
 
-    private fun stopTime(st: TripStop, legCancelled: Boolean): TransitStopTime {
+    private fun stopTime(st: TripStop, legCanceled: Boolean): TransitStopTime {
         val shown = st.departure ?: st.arrival ?: st.scheduledDeparture ?: st.scheduledArrival
         val sched = st.scheduledDeparture ?: st.scheduledArrival
         val shownEpoch = shown?.let { parseIso(it) }
@@ -301,8 +301,8 @@ object Transitous {
             // "scheduled differs" as the live signal, same contract as the itinerary parser.
             scheduledText = if (moved) clockText(schedEpoch!!, st.tz) else null,
             location = app.vela.core.model.LatLng(st.lat, st.lon),
-            cancelled = st.cancelled || legCancelled,
-            // Signed minutes off the timetable (negative = early) so the row can colour a late
+            canceled = st.cancelled || legCanceled,
+            // Signed minutes off the timetable (negative = early) so the row can color a late
             // call differently from an early one - the feed carries both (verified live).
             delayMin = if (moved) (((shownEpoch!! - schedEpoch!!) / 60).toInt()) else null,
         )

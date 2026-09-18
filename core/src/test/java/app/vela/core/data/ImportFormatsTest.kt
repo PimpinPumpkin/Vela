@@ -29,7 +29,7 @@ class ImportFormatsTest {
         assertEquals("GeoJSON", ImportFormats.describe(geo))
     }
 
-    @Test fun `gpx and kml are recognised`() {
+    @Test fun `gpx and kml are recognized`() {
         assertEquals("GPX", ImportFormats.describe("""<?xml version="1.0"?><gpx version="1.1"></gpx>"""))
         assertEquals("KML", ImportFormats.describe("""<kml><Placemark></Placemark></kml>"""))
     }
@@ -40,7 +40,7 @@ class ImportFormatsTest {
         assertNull(ImportFormats.describe(ours))
     }
 
-    @Test fun `unrecognised junk simply has no name`() {
+    @Test fun `unrecognized junk simply has no name`() {
         assertNull(ImportFormats.describe("not json at all"))
         assertNull(ImportFormats.describe("{}"))
     }

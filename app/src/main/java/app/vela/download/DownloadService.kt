@@ -18,7 +18,7 @@ import kotlinx.coroutines.SupervisorJob
 
 /**
  * App-lifetime scope for long downloads (voice models, ASR engines, region graphs, place packs,
- * overlays, the update APK). Downloads used to ride `viewModelScope`, which is cancelled the moment
+ * overlays, the update APK). Downloads used to ride `viewModelScope`, which is canceled the moment
  * the task is swiped away, and nothing marked the process foreground-important while one ran, so
  * OEM background killers (the issue #212 Galaxy) reaped the process seconds after a Home press.
  * Work launched here survives the ViewModel; [DownloadService] holds the process alive around it.

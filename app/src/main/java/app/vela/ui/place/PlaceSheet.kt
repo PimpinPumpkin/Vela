@@ -275,7 +275,7 @@ fun PlaceSheet(
     onSetNote: (String?) -> Unit = {},
     onExpandedChange: (Boolean) -> Unit = {},
     // Bumped by MapScreen when the user grabs the map — the sheet glides down to its minimized
-    // card so the map is unobstructed (Google's behaviour). 0 = never.
+    // card so the map is unobstructed (Google's behavior). 0 = never.
     minimizeTick: Int = 0,
     modifier: Modifier = Modifier,
 ) {
@@ -615,7 +615,7 @@ fun PlaceSheet(
                     .fillMaxWidth()
                     .focusRequester(sheetAutoFocus)
                     // D-pad (docs/dpad.md): the handle is a real button — focusable, OK steps a
-                    // detent. clickable replaces the old tap-only detector (same tap behaviour
+                    // detent. clickable replaces the old tap-only detector (same tap behavior
                     // under touch); the drag detector below is untouched.
                     .dpadHighlight(RoundedCornerShape(3.dp))
                     .clickable {
@@ -747,7 +747,7 @@ fun PlaceSheet(
                 Text(
                     place.name,
                     // titleLarge (22sp) not headlineSmall (24sp) so a longer name ("Starbucks Coffee
-                    // Company") fits two lines beside the Save/Share/⋮/✕ icons instead of ellipsising.
+                    // Company") fits two lines beside the Save/Share/⋮/✕ icons instead of ellipsizing.
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = ink,
@@ -821,7 +821,7 @@ fun PlaceSheet(
             app.vela.ui.SheetFold(extrasComposed, extrasFraction) {
             // Distance (when the place came from a located search) + price +
             // category on their own line so a long category ("Hamburger restaurant")
-            // doesn't wrap mid-word next to the stars; ellipsised if huge.
+            // doesn't wrap mid-word next to the stars; ellipsized if huge.
             val rest = listOfNotNull(
                 place.distanceMeters?.let { formatDistance(it) },
                 place.priceText,
@@ -908,8 +908,8 @@ fun PlaceSheet(
             val statusLine = place.statusText
                 ?: computedStatus?.let { (if (it.open) "Open" else "Closed") + " · " + it.detail }
             statusLine?.takeIf { !place.permanentlyClosed && !place.temporarilyClosed }?.let { status ->
-                // Google colours the status word (Open/Closed) and keeps the time
-                // in the normal ink colour: "**Open** · Closes 9 PM".
+                // Google colors the status word (Open/Closed) and keeps the time
+                // in the normal ink color: "**Open** · Closes 9 PM".
                 val parts = status.split(Regex("\\s*[·⋅]\\s*"), limit = 2)
                 val annotated = buildAnnotatedString {
                     withStyle(SpanStyle(color = placeStatusColor(status, place.openNow), fontWeight = FontWeight.Bold)) {
@@ -1008,7 +1008,7 @@ fun PlaceSheet(
             // nag "Hours not listed" beneath it (the dead-POI hours are moot).
             // The list owner's personal note, carried over from an imported Google Maps list
             // ("this restaurant's fish is better than its chicken") — the part of a shared
-            // list Google itself throws away on export, kept front and centre here.
+            // list Google itself throws away on export, kept front and center here.
             place.savedNote?.let { note ->
                 Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.Top) {
                     Icon(Icons.Default.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
@@ -1514,7 +1514,7 @@ fun DirectionsPanel(
                 }
                 .padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 16.dp),
         ) {
-            // Drag handle — swipe down to minimise the chooser (peek the route on the
+            // Drag handle — swipe down to minimize the chooser (peek the route on the
             // map before you Start), swipe up or tap to bring it back.
             Box(
                 Modifier
@@ -1625,7 +1625,7 @@ fun DirectionsPanel(
                 }
             }
             // Route preferences, drive only (tolls/motorways/ferries mean nothing on foot or transit).
-            // Honoured on-device where the region graph carries the avoid profiles; online the
+            // Honored on-device where the region graph carries the avoid profiles; online the
             // route falls back to normal rather than failing (the public OSRM can't exclude).
             if (currentMode == TravelMode.DRIVE) {
                 Spacer(Modifier.height(10.dp))
@@ -1656,7 +1656,7 @@ fun DirectionsPanel(
                     )
                 }
                 // Honesty note: with a toggle on but no offline region covering the trip, the online
-                // routers cannot honour it and used to just quietly route through tolls/highways
+                // routers cannot honor it and used to just quietly route through tolls/highways
                 // anyway - say so instead of pretending (the "still routed me through the motorway"
                 // report). Keyed on the routes' own tag so it never shows when avoid worked.
                 if ((avoidTolls || avoidHighways || avoidFerries) && routes.isNotEmpty() && routes.all { it.avoidNotHonored }) {
@@ -1666,7 +1666,7 @@ fun DirectionsPanel(
                     // chips it read as decoration. It is the same weight as any other advisory now,
                     // with a glyph so the eye lands on it, and the text says what to DO rather than
                     // only what went wrong. (The public OSRM still rejects `exclude=` for every
-                    // value; Google's keyless request honours tolls/highways/ferries since
+                    // value; Google's keyless request honors tolls/highways/ferries since
                     // 2026-09-06 / 2026-09-16, so today this mostly shows on trips with stops.)
                     Row(
                         Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -1733,7 +1733,7 @@ fun DirectionsPanel(
                                 ),
                                 label = { Text(stringResource(labelRes)) },
                                 leadingIcon = {
-                                    // dim, not ink: solid glyphs at the label colour read darker
+                                    // dim, not ink: solid glyphs at the label color read darker
                                     // than the text (user 2026-07-11) - soft ink matches weight.
                                     Icon(
                                         icon,
@@ -1759,7 +1759,7 @@ fun DirectionsPanel(
                         }
                         onSteps?.let {
                             FilledTonalButton(onClick = it) {
-                                // Soft glyph ink: the solid List glyph at the label's own colour
+                                // Soft glyph ink: the solid List glyph at the label's own color
                                 // read darker than the word beside it (user 2026-07-11).
                                 Icon(
                                     Icons.AutoMirrored.Filled.List,
@@ -1775,7 +1775,7 @@ fun DirectionsPanel(
                 }
               }
             }
-            // Minimised: keep a Start button reachable without expanding. It FOLDS IN as the
+            // Minimized: keep a Start button reachable without expanding. It FOLDS IN as the
             // body folds out (inverse fraction of the same height), so neither end pops.
             val startComposed by remember(destinationName) {
                 derivedStateOf { collapsed.value || dirH.value < 160f }
@@ -1886,7 +1886,7 @@ internal fun DepartTimeChooser(
             val liveNoteDepart = stringResource(R.string.place_based_current_traffic)
             val departNote = when { range != null -> typicalNote; hasLive -> liveNoteDepart; else -> null }
             // Leave-now shows just the arrival time, prominently - the "current traffic" note under
-            // it was clutter (the traffic-coloured ETA already says it) and kept the time small.
+            // it was clutter (the traffic-colored ETA already says it) and kept the time small.
             val (summary, note) = when (mode) {
                 1 -> stringResource(R.string.place_depart_arrive, time.format(fmt), window(time, lo, hi, +1)) to departNote
                 2 -> stringResource(R.string.place_arriveby_leave, time.format(fmt), window(time, hi, lo, -1)) to departNote
@@ -1914,7 +1914,7 @@ internal fun DepartTimeChooser(
         val dp = androidx.compose.material3.rememberDatePickerState(
             initialSelectedDateMillis = date.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli(),
             selectableDates = object : androidx.compose.material3.SelectableDates {
-                // Days before today are greyed out (the confirm clamp still backstops a stale
+                // Days before today are grayed out (the confirm clamp still backstops a stale
                 // dialog left open across midnight).
                 override fun isSelectableDate(utcTimeMillis: Long) =
                     utcTimeMillis >= java.time.LocalDate.now().atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
@@ -1933,7 +1933,7 @@ internal fun DepartTimeChooser(
 }
 
 /** A Vela shell for the M3 time/date pickers: a raw Dialog (the D-pad house rule — an
- *  AlertDialog can't be pre-focused), sheet colours, and the VelaDialog button grammar
+ *  AlertDialog can't be pre-focused), sheet colors, and the VelaDialog button grammar
  *  (filled confirm pill that auto-focuses, plain dismiss). */
 @Composable
 private fun PickerDialog(onConfirm: () -> Unit, onDismiss: () -> Unit, content: @Composable () -> Unit) {
@@ -1980,7 +1980,7 @@ private fun PickerDialog(onConfirm: () -> Unit, onDismiss: () -> Unit, content: 
     }
 }
 
-/** One route choice in the directions panel: a traffic-coloured ETA + distance/
+/** One route choice in the directions panel: a traffic-colored ETA + distance/
  *  via, highlighted when it's the active one. The fastest carries a "Fastest" tag; each slower
  *  alternate shows how much longer it is ("+5 min") so the choice is legible at a glance. */
 @Composable
@@ -2032,8 +2032,8 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
                     )
                 }
             }
-            // The traffic word GRADES with the same thresholds that colour the ETA (trafficEtaColor),
-            // so "heavy traffic" in words backs up the red time - colour alone isn't readable for
+            // The traffic word GRADES with the same thresholds that color the ETA (trafficEtaColor),
+            // so "heavy traffic" in words backs up the red time - color alone isn't readable for
             // everyone. A live route whose typical time is unknown keeps the plain "live traffic".
             // An on-device route says so in the traffic slot (issue #350): the user asked to know
             // which kind of route they are looking at, and "no traffic word" alone did not say.
@@ -2066,8 +2066,8 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
     }
 }
 
-/** ETA colour by congestion when live traffic is known: green free-flowing →
- *  amber → red. Null when there's no live-traffic signal (use the ink colour). */
+/** ETA color by congestion when live traffic is known: green free-flowing →
+ *  amber → red. Null when there's no live-traffic signal (use the ink color). */
 internal fun trafficEtaColor(r: Route): Color? = r.trafficRatio?.let {
     when {
         it > 1.4 -> SheetPalette.TrafficRed
@@ -2077,7 +2077,7 @@ internal fun trafficEtaColor(r: Route): Color? = r.trafficRatio?.let {
 }
 
 /** The transit results board — Google's first transit view: a list of departure
- *  options, each a time window + total duration + the coloured line pills you
+ *  options, each a time window + total duration + the colored line pills you
  *  ride. Fed by the keyless WebView fetch ([app.vela.web.WebDirectionsFetcher]). */
 @Composable
 private fun TransitBoard(
@@ -2133,7 +2133,7 @@ fun TransitNavSheet(
     val itin = nav.itinerary
     val step = itin.steps.getOrNull(nav.stepIndex)
     // A BOTTOM PANE, not a full-screen takeover (issue #232, 2026-08-08): the top half stays live
-    // map, where the guided itinerary draws (coloured ride legs + stop dots + dotted walks) and
+    // map, where the guided itinerary draws (colored ride legs + stop dots + dotted walks) and
     // the camera frames the CURRENT leg, re-framing on each advance — the old full-screen sheet
     // hid the map entirely and the guidance read as a text list ("it just tells you the
     // instructions"). Same top-aligned-pane grammar as Street View's half-screen viewer.
@@ -2436,7 +2436,7 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
 }
 
 /** One stop in the transit drill-down: its call time, name, and (for board/alight) the agency
- *  stop code + any real-time delay. Emphasised for board/alight, lighter for the intermediate list. */
+ *  stop code + any real-time delay. Emphasized for board/alight, lighter for the intermediate list. */
 @Composable
 private fun StopLine(stop: TransitStopTime, ink: Color, dim: Color, emphasize: Boolean, delay: String? = null) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
@@ -2649,7 +2649,7 @@ fun RouteDetailSheet(
     val ink = if (dark) InkDark else InkLight
     val dim = if (dark) DimDark else DimLight
     val lineColor = parseHexColor(step?.line?.colorHex) ?: MaterialTheme.colorScheme.primary
-    // The full ordered call list: the stops the run ALREADY passed (greyed above, Google-style),
+    // The full ordered call list: the stops the run ALREADY passed (grayed above, Google-style),
     // then board, the in-betweens, and alight. Board/alight are often absent from
     // intermediateStops, so stitch them on the ends and de-dupe by name.
     val prior = step?.priorStops ?: emptyList()
@@ -2710,8 +2710,8 @@ fun RouteDetailSheet(
     }
 }
 
-/** One stop in the [RouteDetailSheet] timeline: a coloured connector rail with a node, the stop
- *  name (board/alight emphasised), its call time in normal ink (the boarding stop's - the next
+/** One stop in the [RouteDetailSheet] timeline: a colored connector rail with a node, the stop
+ *  name (board/alight emphasized), its call time in normal ink (the boarding stop's - the next
  *  departure - a step bigger) and a small status word under the time: a green "Live" when the
  *  agency feed adjusted this stop's time, else "Scheduled" (Google's treatment). The whole row
  *  taps through; a hairline between rows (inset past the rail, so the line stays continuous)
@@ -2725,7 +2725,7 @@ private fun RouteStopRow(
     isFirst: Boolean,
     isLast: Boolean,
     dark: Boolean,
-    past: Boolean = false, // the run already called here - greyed, no status word (Google-style)
+    past: Boolean = false, // the run already called here - grayed, no status word (Google-style)
     isTop: Boolean = isFirst, // first VISIBLE row (no rail above); differs from isFirst when priors show
     onClick: () -> Unit,
 ) {
@@ -2741,10 +2741,10 @@ private fun RouteStopRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Vertical rail + node, drawn so the line is continuous between rows. Board/alight get a
-            // bigger node; intermediate stops a smaller one - all solid in the line colour so they read
+            // bigger node; intermediate stops a smaller one - all solid in the line color so they read
             // on any sheet background.
             val big = isFirst || isLast
-            // Passed stops grey their node and the rail segments touching them, so the coloured
+            // Passed stops gray their node and the rail segments touching them, so the colored
             // line visually STARTS at the boarding stop (Google's treatment).
             val nodeColor = if (past) dim.copy(alpha = 0.45f) else lineColor
             val topRail = if (past || isFirst) dim.copy(alpha = 0.45f) else lineColor
@@ -2770,7 +2770,7 @@ private fun RouteStopRow(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         // Google's treatment for a moved time: the timetable time crossed out
                         // beside the live one, green when on time or early, red when late.
-                        if (live && !past && !stop.cancelled) {
+                        if (live && !past && !stop.canceled) {
                             Text(
                                 stop.scheduledText!!,
                                 style = MaterialTheme.typography.labelMedium,
@@ -2784,27 +2784,27 @@ private fun RouteStopRow(
                             style = if (isFirst) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
                             fontWeight = if (isFirst) FontWeight.SemiBold else FontWeight.Normal,
                             color = when {
-                                stop.cancelled || past -> dim
+                                stop.canceled || past -> dim
                                 live && (stop.delayMin ?: 0) > 0 -> SheetPalette.TrafficRed
                                 live -> SheetPalette.TrafficGreen
                                 else -> ink
                             },
-                            textDecoration = if (stop.cancelled) TextDecoration.LineThrough else null,
+                            textDecoration = if (stop.canceled) TextDecoration.LineThrough else null,
                         )
                     }
-                    // Passed stops carry no status word - the grey says it already.
+                    // Passed stops carry no status word - the gray says it already.
                     if (!past) {
                         Text(
                             stringResource(
                                 when {
-                                    stop.cancelled -> R.string.place_transit_cancelled
+                                    stop.canceled -> R.string.place_transit_cancelled
                                     live -> R.string.place_transit_live
                                     else -> R.string.place_transit_scheduled
                                 },
                             ),
                             style = MaterialTheme.typography.labelSmall,
                             color = when {
-                                stop.cancelled -> SheetPalette.TrafficRed
+                                stop.canceled -> SheetPalette.TrafficRed
                                 live -> SheetPalette.TrafficGreen
                                 else -> dim
                             },
@@ -2835,8 +2835,8 @@ private fun modeIcon(mode: TransitMode) = when (mode) {
     else -> Icons.Default.DirectionsTransit
 }
 
-/** A colour-filled line badge (e.g. a blue "Amtrak Thruway"), mirroring Google's
- *  transit pills; falls back to the theme primary when no colour is supplied. */
+/** A color-filled line badge (e.g. a blue "Amtrak Thruway"), mirroring Google's
+ *  transit pills; falls back to the theme primary when no color is supplied. */
 @Composable
 private fun LinePill(line: TransitLine) {
     val fallback = MaterialTheme.colorScheme.primary
@@ -2865,7 +2865,7 @@ private fun transitModeIcon(mode: TransitMode) = when (mode) {
     TransitMode.GENERIC -> Icons.Default.DirectionsTransit
 }
 
-/** Parse a CSS hex colour ("#rrggbb" / "#rgb"); null if absent/malformed. */
+/** Parse a CSS hex color ("#rrggbb" / "#rgb"); null if absent/malformed. */
 private fun parseHexColor(hex: String?): Color? {
     val h = hex?.trim()?.removePrefix("#") ?: return null
     return runCatching {
@@ -3169,7 +3169,7 @@ private fun MenuTab(place: Place, menuIndices: List<Int>, dim: Color, onOpen: (I
     }
 }
 
-/** A header action: an 18dp icon in a fixed 36dp grey circle. A plain clickable Box, NOT an M3
+/** A header action: an 18dp icon in a fixed 36dp gray circle. A plain clickable Box, NOT an M3
  *  IconButton — the IconButton's minimum-touch-target machinery kept re-inflating the layout
  *  box past the visible circle, which is why the header circles overlapped through two rounds
  *  of "make them smaller" (user 2026-07-10). Here the layout size IS the circle, full stop. */
@@ -3710,7 +3710,7 @@ private fun ReviewsTab(
     }
 }
 
-/** Emphasise every occurrence of [query] in [text] (case-insensitive) in bold — used to show
+/** Emphasize every occurrence of [query] in [text] (case-insensitive) in bold — used to show
  *  what a review search matched. Empty query → plain text. */
 private fun emphasize(text: String, query: String): androidx.compose.ui.text.AnnotatedString = buildAnnotatedString {
     if (query.isBlank()) { append(text); return@buildAnnotatedString }

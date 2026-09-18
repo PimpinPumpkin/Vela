@@ -15,7 +15,7 @@ sealed interface ImportResult {
     /** Valid Vela data, but every entry was already saved - importing a backup twice. */
     data object NothingNew : ImportResult
 
-    /** Readable, but not Vela's own export. [format] names it when recognisable, so the message
+    /** Readable, but not Vela's own export. [format] names it when recognizable, so the message
      *  can say what the file actually is instead of shrugging. */
     data class WrongFormat(val format: String?) : ImportResult
 

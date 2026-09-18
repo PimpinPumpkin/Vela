@@ -7,7 +7,7 @@ package app.vela.core.data
  * Google to serve English reviews to everyone, because the page language decides which reviews you
  * get - a Chinese reader looking at a Chinese restaurant was shown the English ones. Reviews are
  * content and must never be translated for the reader, so the page now follows the app's language,
- * which means every label the scraper keys on has to be recognised in that language too.
+ * which means every label the scraper keys on has to be recognized in that language too.
  *
  * Kept here rather than inline in the scraper's JavaScript so the patterns can be unit-tested: a
  * word list that silently stops matching is invisible until someone reports missing reviews.

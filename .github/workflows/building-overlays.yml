@@ -3,7 +3,7 @@
 # fill gaps where OSM lacks footprints. Sibling of obf-regions.yml. Two data sources, per catalog row's
 # `source`: us-legacy (a US state's .geojson.zip) or ms-global (a world country's quadkey GeoJSONL).
 #
-# Run from Actions → "Build building overlays" → pass `ids` (e.g. "washington andorra") or tick `all`.
+# Run from Actions → "Build building overlays" → pass `ids` (e.g. "delaware andorra") or tick `all`.
 # Regions come from tools/overlay-regions.json — add a line there to build something not listed.
 #
 # Race-safety: each region builds in its own matrix job and uploads ONLY its own <id>.pmtiles + a manifest
@@ -19,9 +19,9 @@ on:
         type: string
         default: ""
       ids:
-        description: "Space/comma-separated region ids (e.g. 'washington andorra'). Blank + all=true builds the whole catalog."
+        description: "Space/comma-separated region ids (e.g. 'delaware andorra'). Blank + all=true builds the whole catalog."
         type: string
-        default: "washington"
+        default: "delaware"
       all:
         description: "Build every region in tools/overlay-regions.json (ignores 'ids'). NB fails if the catalog exceeds 256 regions — prefer `group`."
         type: boolean
@@ -30,7 +30,7 @@ on:
 permissions:
   contents: write # create/upload assets on the building-overlays release
 # NB: run-level concurrency is intentionally NOT set — the `us`/`world`/`chunk` group dispatches must be able
-# to build concurrently. Only the MERGE job serialises (its own concurrency group below), so parallel runs
+# to build concurrently. Only the MERGE job serializes (its own concurrency group below), so parallel runs
 # accumulate into the one manifest instead of clobbering it.
 
 jobs:
@@ -104,9 +104,9 @@ jobs:
 
   merge:
     needs: build
-    if: ${{ !cancelled() }}
+    if: ${{ !canceled() }}
     runs-on: ubuntu-latest
-    # Serialise ONLY the manifest merge across concurrent group runs (us/world/chunk) — each folds its own
+    # Serialize ONLY the manifest merge across concurrent group runs (us/world/chunk) — each folds its own
     # entries into the shared manifest by replace-by-id, so they accumulate instead of clobbering.
     concurrency:
       group: building-overlays-manifest-merge

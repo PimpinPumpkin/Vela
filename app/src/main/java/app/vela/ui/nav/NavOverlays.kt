@@ -143,7 +143,7 @@ fun ManeuverBanner(
     modifier: Modifier = Modifier,
 ) {
     // Swiping the banner left/right walks the upcoming steps (Google-style): the
-    // card greys out, shows that step, and the map's preview marker + camera move
+    // card grays out, shows that step, and the map's preview marker + camera move
     // there (driven by previewStepIndex). Tapping it resumes live guidance.
     val container = if (previewing) MaterialTheme.colorScheme.surfaceVariant
     else MaterialTheme.colorScheme.primaryContainer
@@ -438,7 +438,7 @@ internal fun SignChip(sign: Sign) {
         }
     } else {
         // Real highway-shield shapes (interstate / US-route / state marker), inferred from the
-        // ref; falls back to the plain bordered chip for anything unrecognised.
+        // ref; falls back to the plain bordered chip for anything unrecognized.
         RouteShield(
             sign.label,
             ink = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -451,7 +451,7 @@ internal fun SignChip(sign: Sign) {
  *  turn-direction arrows for the lanes you want, plus the hint text. We don't
  *  get a per-lane diagram from Google's response, so this shows the count and
  *  direction rather than faking the full lane layout. */
-/** Single-line text that SHRINKS to fit its width (never wraps, never ellipsises) — for the
+/** Single-line text that SHRINKS to fit its width (never wraps, never ellipsizes) — for the
  *  nav card's trip time against the big driving buttons and Interface-size scaling. Steps down
  *  8% per layout pass while overflowing, floored at 55% of the base size. */
 @Composable
@@ -506,7 +506,7 @@ internal fun LaneDiagram(
     modifier: Modifier = Modifier,
 ) {
     val bright = on
-    // Flat mid-grey for the arrows you're NOT taking — a solid colour (not a translucent tint of
+    // Flat mid-gray for the arrows you're NOT taking — a solid color (not a translucent tint of
     // `on`) so overlapping strokes don't build up into a muddy skeuomorphic blob.
     val dim = Color(0xFF80868B)
     // A signed direction level for the maneuver, or null when the type doesn't pin a side (MERGE /
@@ -779,9 +779,9 @@ fun NavControls(
             contentColor = SheetPalette.ink(dark),
         ),
     ) {
-        // LAYOUT (issue #273): End on the LEFT as an icon, the trip figures CENTRED, Steps on the
+        // LAYOUT (issue #273): End on the LEFT as an icon, the trip figures CENTERD, Steps on the
         // right. Previously the figures sat left with two controls crowded right, one an icon and
-        // one a labelled button - two different shapes doing the same job at the same size. As
+        // one a labeled button - two different shapes doing the same job at the same size. As
         // icons they read as a matched pair with the numbers between them, which is also the one
         // arrangement where the two 54dp targets cannot be hit by mistake for each other.
         NavBarTop(
@@ -886,8 +886,8 @@ fun NavBarTop(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // End keeps a DESTRUCTIVE colour rather than the tonal fill Steps uses: it is the one
-            // control here that throws the drive away, and an unlabelled X must not look like just
+            // End keeps a DESTRUCTIVE color rather than the tonal fill Steps uses: it is the one
+            // control here that throws the drive away, and an unlabeled X must not look like just
             // another button. The label survives as its accessibility name.
             FilledTonalIconButton(
                 onClick = onStop,
@@ -904,7 +904,7 @@ fun NavBarTop(
                 Modifier.weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // Both lines SHRINK to fit rather than wrap or ellipsise: the 54dp buttons (and
+                // Both lines SHRINK to fit rather than wrap or ellipsize: the 54dp buttons (and
                 // any Interface-size scale) squeezed the column and "1 hr 25 min" wrapped rough,
                 // while ellipsis on the second line cut off the arrival TIME (user 2026-07-11).
                 FitText(
@@ -937,7 +937,7 @@ fun NavBarTop(
                     Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.nav_steps), modifier = Modifier.size(26.dp))
                 }
             } else {
-                Spacer(Modifier.size(54.dp)) // keeps the figures centred against the End button
+                Spacer(Modifier.size(54.dp)) // keeps the figures centered against the End button
             }
         }
     }

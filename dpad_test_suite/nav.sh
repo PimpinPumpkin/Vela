@@ -51,7 +51,7 @@ reach_directions() {
   open_first_place
   key "$K_OK" 1                          # expand the sheet so the action pills are on screen
   keys "$K_DOWN" "$K_DOWN" "$K_DOWN"     # -> the action-pills row (lands on Call, the middle pill)
-  key "$K_LEFT"                          # -> Directions (the leftmost, emphasised pill)
+  key "$K_LEFT"                          # -> Directions (the leftmost, emphasized pill)
   key "$K_OK" 5                         # open the directions panel
   on_screen "Add stop"                   # a directions-panel-only row
 }

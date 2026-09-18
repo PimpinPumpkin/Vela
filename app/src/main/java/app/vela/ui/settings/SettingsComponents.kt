@@ -37,7 +37,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape as DpadShape
 internal val LocalSettingsHighlight = androidx.compose.runtime.compositionLocalOf<String?> { null }
 
 /** Marks a row or title by its visible [label]. When that label is the search result the user
- *  tapped, the element is brought into view (the scaffold's scroll column honours the request)
+ *  tapped, the element is brought into view (the scaffold's scroll column honors the request)
  *  and painted with a primary tint that fades after a beat. A no-op for every other row. */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -130,7 +130,7 @@ internal fun SelectableRow(label: String, selected: Boolean, onClick: () -> Unit
  * read dated). Structure comes from the container fill, not borders or dividers. The fill is the
  * surfaceContainer TOKEN so it themes itself: Material You tints it from the wallpaper, light/dark
  * pick their own step, and the AMOLED scheme's near-black container roles keep the layering on
- * true black. Purely structural: no focus behaviour of its own.
+ * true black. Purely structural: no focus behavior of its own.
  */
 @Composable
 internal fun SettingsGroup(

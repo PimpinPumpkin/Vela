@@ -10,7 +10,7 @@
 name: Build offline place packs
 
 on:
-  # Monthly refresh: rebuild EVERY catalogued region from current OSM and publish row-level deltas
+  # Monthly refresh: rebuild EVERY catalogd region from current OSM and publish row-level deltas
   # alongside the full zips, so installed packs can update without a full re-download.
   schedule:
     - cron: "15 7 3 * *"
@@ -25,7 +25,7 @@ on:
         type: string
         default: us
       ids:
-        description: "Optional: space/comma-separated region ids (e.g. 'washington oregon'). Overrides 'group'."
+        description: "Optional: space/comma-separated region ids (e.g. 'delaware oregon'). Overrides 'group'."
         type: string
         default: ""
       skip_big:
@@ -110,7 +110,7 @@ jobs:
 
   merge:
     needs: build
-    if: ${{ !cancelled() }} # merge whatever succeeded, even if some regions failed
+    if: ${{ !canceled() }} # merge whatever succeeded, even if some regions failed
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
