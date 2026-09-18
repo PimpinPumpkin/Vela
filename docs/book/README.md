@@ -2,12 +2,14 @@
 
 How Vela actually works, subsystem by subsystem, with the real numbers in it.
 
-The other docs answer different questions. [README](../../README.md) says what Vela is,
-[FEATURES](../../FEATURES.md) is the running changelog, [FAQ](../FAQ.md) answers the ten
-questions people ask first, and [PRIVACY](../../PRIVACY.md) is the request-by-request
+The other docs answer different questions. [SPEC](../../SPEC.md) is the authoritative technical
+document, where every contract, constant and constraint lives; [README](../../README.md) says
+what Vela is; [FEATURES](../../FEATURES.md) is the running changelog; [FAQ](../FAQ.md) answers
+the ten questions people ask first; [PRIVACY](../../PRIVACY.md) is the request-by-request
 accounting. This book is for the person who wants to know *why the map decided that*: which
 dataset a pin came from, what made one shop win the label, when the data is rebuilt, what the
-thresholds are.
+thresholds are. Where the book and the spec disagree about a number, the spec is right and the
+book is a bug.
 
 Every chapter follows the same four beats, so you can skim one and know where to look in the
 next:
@@ -104,7 +106,7 @@ are only renamed when the behavior itself changes.
 ## The rule for changing it
 
 **A change that alters behavior updates its chapter in the same commit**, the same way it
-updates [FEATURES](../../FEATURES.md). A number in this book that no longer matches the code is
+updates [SPEC](../../SPEC.md) and [FEATURES](../../FEATURES.md). A number in this book that no longer matches the code is
 a bug, and it is a worse bug than a stale changelog line, because someone will trust it. If a
 change has no chapter yet, either write the chapter or add a line to the planned list above
 saying what is missing.

@@ -19,7 +19,7 @@ toggle:
 3. Open the three-dot menu, **Developer settings**, and enable **Unknown
    sources**.
 4. Reconnect to the car (or open the head-unit simulator). Vela should now appear
-   under **Customise vehicle launcher**.
+   under **Customize vehicle launcher**.
 
 That is the same step OsmAnd, Organic Maps, and every other sideloaded nav app
 needs. Media apps (music, podcasts) do **not** need it, which is why a sideloaded
