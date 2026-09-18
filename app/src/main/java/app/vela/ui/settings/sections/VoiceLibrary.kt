@@ -303,7 +303,6 @@ private fun VoiceRow(
     // The label above already reads "Installing…" during unpack; the bar must go indeterminate too,
     // or it sits frozen at 100% and reads as a hang (upstream 75c9104d, hunk f).
     if (downloading) {
-        if (installing) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        else LinearProgressIndicator(progress = { downloadPct }, modifier = Modifier.fillMaxWidth())
+        app.vela.ui.VelaProgressBar(if (installing) null else downloadPct)
     }
 }

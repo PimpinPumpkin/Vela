@@ -3643,9 +3643,9 @@ private fun ReviewsTab(
                     )
                 }
                 if (found > 0 && target > 0) {
-                    LinearProgressIndicator(
-                        progress = { (found.toFloat() / maxOf(target, found)).coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    app.vela.ui.VelaProgressBar(
+                        found.toFloat() / maxOf(target, found),
+                        Modifier.padding(top = 8.dp),
                     )
                 }
             }
