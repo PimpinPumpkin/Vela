@@ -72,7 +72,53 @@ import javax.inject.Singleton
  * everything, and nudged by rating so among similarly-popular places the better-rated wins.
  */
 fun ambientProminence(p: Place): Double =
-    ln((p.reviewCount ?: 0) + 1.0) * (0.6 + (p.rating ?: 3.5) / 10.0)
+    ln((p.reviewCount ?: 0) + 1.0) * (0.6 + (p.rating ?: 3.5) / 10.0) +
+        (categoryPrior(p.category) - NEUTRAL_PRIOR) * PRIOR_WEIGHT
+
+/**
+ * What KIND of place it is, on the same 1.0-4.5 scale the open-places bake uses, so the two places
+ * sources rank alike (user 2026-09-18: "hospitals, supermarkets, shit like that should be the big
+ * POIs in a plaza"). Google returns no ranking of its own - the ambient pool is the merge of ~13
+ * per-category searches, each ordered by its own relevance - so review count was the whole story,
+ * and a busy taco window could take the label off the hospital behind it.
+ *
+ * It is applied as a DIFFERENCE from [NEUTRAL_PRIOR] (the everyday-business tier), not as an
+ * addition, so an ordinary restaurant's prominence is unchanged and the zoom x prominence label
+ * tiers keep meaning what they meant: anchors rise, unknown-category junk sinks, the middle stays.
+ *
+ * Google's category text arrives in the app's language, and these keywords are English, so a
+ * non-English session simply gets the neutral prior - the ranking it had before this existed.
+ * Sharing the multilingual keyword tables CategoryFilter already carries is the upgrade path.
+ */
+internal fun categoryPrior(category: String?): Double {
+    val c = category?.lowercase()?.trim() ?: return 1.6 // no category at all: the fan-out's junk tier
+    fun any(vararg k: String) = k.any { it in c }
+    return when {
+        any("hospital", "medical center", "medical centre", "university", "college", "airport",
+            "stadium", "arena", "museum", "zoo", "aquarium", "amusement park", "theme park",
+            "shopping mall", "shopping center", "shopping centre", "supermarket", "grocery",
+            "department store", "convention cent", "casino", "warehouse club") -> 4.5
+        any("hotel", "motel", "resort", "pharmacy", "drugstore", "bank", "credit union",
+            "movie theater", "cinema", "gym", "fitness", "library", "church", "mosque",
+            "synagogue", "temple", "bowling", "hardware", "car dealer", "furniture",
+            "electronics", "sporting goods", "home improvement", "discount store") -> 3.2
+        any("restaurant", "cafe", "café", "coffee", "bar", "pub", "bakery", "fast food",
+            "ice cream", "brewery", "winery", "gas station", "charging station", "auto repair",
+            "car wash", "pet store", "book store", "bookstore", "clothing", "shoe store",
+            "jewelry", "florist", "liquor", "tobacco", "toy store", "bicycle", "dentist",
+            "veterinar", "optometr", "urgent care", "post office", "atm", "laundr",
+            "dry clean", "barber", "salon", "spa", "tattoo") -> 2.2
+        else -> 1.0
+    }
+}
+
+/** The tier an ordinary shop or restaurant sits in: the prior shifts prominence around THIS. */
+private const val NEUTRAL_PRIOR = 2.2
+
+/** How hard the kind of place pulls, in prominence points per tier step. 0.9 puts an anchor about
+ *  two points over a same-sized neighbour, which is roughly a supermarket's review-count edge over
+ *  the sushi counter inside it - enough to settle the label, not enough to beat a real landmark. */
+private const val PRIOR_WEIGHT = 0.9
 
 /**
  * Order ambient Google POIs for the browse map. Callers treat "first = wins the label slot" (the ambient

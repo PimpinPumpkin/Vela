@@ -2,7 +2,9 @@
 
 Short answers to what people actually ask. Longer detail lives in
 [PRIVACY.md](../PRIVACY.md), [README](../README.md) and
-[docs/HOW-IT-WORKS.md](HOW-IT-WORKS.md).
+[docs/HOW-IT-WORKS.md](HOW-IT-WORKS.md). For the rule-by-rule version of any answer here -
+what decides which places show, when the data is rebuilt, how the camera avoidance picks a
+route - see [the book](book/README.md).
 
 ## Are the shops and restaurants on the map Google's?
 
