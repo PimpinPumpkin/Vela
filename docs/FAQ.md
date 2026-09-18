@@ -2,7 +2,9 @@
 
 Short answers to what people actually ask. Longer detail lives in
 [PRIVACY.md](../PRIVACY.md), [README](../README.md) and
-[docs/HOW-IT-WORKS.md](HOW-IT-WORKS.md).
+[docs/HOW-IT-WORKS.md](HOW-IT-WORKS.md). For the rule-by-rule version of any answer here -
+what decides which places show, when the data is rebuilt, how the camera avoidance picks a
+route - see [the book](book/README.md).
 
 ## Are the shops and restaurants on the map Google's?
 
@@ -78,9 +80,10 @@ The full breakdown of what each request carries is in [PRIVACY.md](../PRIVACY.md
 
 ## What is marked "experiment"?
 
-Settings label experiments plainly, and they are off by default. Today that means the
-Google-style route chooser (Settings > Diagnostics > Experiments) and "Tap places while
-driving" (Settings > Navigation). They work, but they are newer and rougher than the rest.
+Settings label experiments plainly, and they are off by default. Today that means "Tap
+places while driving" (Settings > Navigation). It works, but it is newer and rougher than
+the rest. The Google-style route picker used to be here; it is the default now, and
+Settings > Navigation > "Google-style route picker" turns it off for the classic panel.
 
 ## Does Vela work on a phone with no Google services?
 

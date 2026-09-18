@@ -2832,13 +2832,13 @@ fun VelaMapView(
                         savedPinTap.value(savedHit.getNumberProperty(SAVED_INDEX_PROP).toInt())
                         return@handleTap true
                     }
-                    // A canonical GTFS stop icon (Transitous layer): open the stop's board directly
-                    // by stop id - no name resolution at all.
+                    // A canonical GTFS stop icon (Transitous layer): opens the stop's board directly
+                    // by stop id, no name resolution at all. It COMPETES BY DISTANCE with the
+                    // businesses below rather than outranking them (user 2026-09-18): a stop icon
+                    // anywhere in the 48dp box used to win outright, so a fuel station on a corner
+                    // with a stop beside it opened the departures board however dead-on the tap was.
+                    // The same lesson the ambient dots taught, applied to the third layer.
                     val gtfsStop = feats.filter { it.hasProperty(TRANSIT_STOP_INDEX_PROP) }.minByOrNull(::screenDist2)
-                    if (gtfsStop != null) {
-                        transitStopsNow.value.getOrNull(gtfsStop.getNumberProperty(TRANSIT_STOP_INDEX_PROP).toInt())
-                            ?.let { st -> transitStopTap.value(st); return@handleTap true }
-                    }
                     // Ambient Google POIs and NAMED basemap POIs are the same kind of thing at street
                     // zoom - two interleaved layers of businesses - so they compete by DISTANCE, not by
                     // class: the old absolute priority let an ambient DOT (a few px wide, all but
@@ -2867,6 +2867,12 @@ fun VelaMapView(
                                 !it.hasProperty(TRANSIT_STOP_INDEX_PROP)
                         }
                         .minByOrNull(::screenDist2)
+                    // The stop wins only when it really is the icon under the finger.
+                    val business = listOfNotNull(amb, hit).minByOrNull(::screenDist2)
+                    if (gtfsStop != null && (business == null || screenDist2(gtfsStop) < screenDist2(business))) {
+                        transitStopsNow.value.getOrNull(gtfsStop.getNumberProperty(TRANSIT_STOP_INDEX_PROP).toInt())
+                            ?.let { st -> transitStopTap.value(st); return@handleTap true }
+                    }
                     // The BUSINESS pick: ambient vs basemap POI by distance to the finger (see above).
                     if (amb != null && (hit == null || screenDist2(amb) <= screenDist2(hit))) {
                         ambientTap.value(amb.getNumberProperty(AMBIENT_INDEX_PROP).toInt())

@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -88,6 +89,8 @@ import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material.icons.filled.Search
@@ -1584,7 +1587,7 @@ fun MapScreen(
                             onAddStop = vm::openStopsEditor,
                             onSwap = vm::swapDirections,
                             onClose = vm::clearRoute,
-                            googleStyle = app.vela.ui.Experiments.googleChooser.value,
+                            googleStyle = app.vela.ui.RoutePicker.googleStyle.value,
                         )
                     }
                     // The bar hides while an expanded place sheet covers it: the visible sliver
@@ -1756,14 +1759,51 @@ fun MapScreen(
                     },
                     modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
                 ) { Icon(Icons.Default.ZoomOutMap, contentDescription = stringResource(R.string.nav_overview)) }
-                FloatingActionButton(
-                    onClick = vm::toggleVoice,
-                    modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
+                // MUTE + PAUSE share ONE pill (user 2026-09-18). They are the two "hold something"
+                // controls of a drive, they are both state (and both show that state in their
+                // glyph), and five stacked FABs down the right edge was most of a small phone's
+                // height - worse in landscape. Same dress as the zoom pair: one Surface, two
+                // square targets, a hairline between. PAUSE sits on top, nearer the thumb, because
+                // pulling in is the decision made at speed; paused, its half fills with the accent,
+                // since a drive that is quietly not navigating must never look like one that is.
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    shadowElevation = 6.dp,
                 ) {
-                    Icon(
-                        if (state.voiceMuted) Icons.Default.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                        contentDescription = if (state.voiceMuted) stringResource(R.string.nav_unmute_voice) else stringResource(R.string.nav_mute_voice),
-                    )
+                    Column(Modifier.width(56.dp)) {
+                        Box(
+                            Modifier
+                                .size(56.dp)
+                                .background(if (state.navPaused) MaterialTheme.colorScheme.primary else Color.Transparent)
+                                .dpadHighlight(RoundedCornerShape(16.dp))
+                                .clickable(onClick = vm::toggleNavPause),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                if (state.navPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                contentDescription = stringResource(if (state.navPaused) R.string.nav_resume else R.string.nav_pause),
+                                tint = if (state.navPaused) MaterialTheme.colorScheme.onPrimary else LocalContentColor.current,
+                            )
+                        }
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 10.dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.25f),
+                        )
+                        Box(
+                            Modifier
+                                .size(56.dp)
+                                .dpadHighlight(RoundedCornerShape(16.dp))
+                                .clickable(onClick = vm::toggleVoice),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                if (state.voiceMuted) Icons.Default.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = if (state.voiceMuted) stringResource(R.string.nav_unmute_voice) else stringResource(R.string.nav_mute_voice),
+                            )
+                        }
+                    }
                 }
                 FloatingActionButton(
                     onClick = {
@@ -2007,7 +2047,8 @@ fun MapScreen(
                 NavControls(
                     remainingDistanceMeters = state.nav.remainingDistance,
                     remainingSeconds = state.nav.remainingDuration,
-                    offRoute = state.nav.offRoute,
+                    offRoute = state.nav.offRoute && !state.navPaused,
+                    paused = state.navPaused,
                     onStop = vm::stopNav,
                     onSteps = {
                         // From the button / chevron: the well opens from closed.
@@ -2072,7 +2113,7 @@ fun MapScreen(
             // Hidden while the search overlay is up (e.g. picking a custom origin) so
             // the panel doesn't render over it.
             state.directionsOpen && !searchOpen && state.pickOnMap == null &&
-                app.vela.ui.Experiments.googleChooser.value && state.travelMode != app.vela.core.model.TravelMode.TRANSIT -> {
+                app.vela.ui.RoutePicker.googleStyle.value && state.travelMode != app.vela.core.model.TravelMode.TRANSIT -> {
                 val shareCtx = LocalContext.current
                 val destLabel = if (state.directionsReversed) (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location))
                 else (state.selected?.name ?: stringResource(R.string.mapscreen_destination))
@@ -2629,7 +2670,11 @@ fun MapScreen(
             // The landscape panel owns the bottom-left corner - the bar would draw on top of it.
             // OpenStreetMap attribution (issue #302): the basemap is OSM data and the ODbL asks
             // for a visible credit wherever the map is shown, so this stays up in every map
-            // state, browse and nav alike; MapLibre's own ⓘ button is off (it covered the
+            // state, browse and nav alike. The short form is deliberate: the OSMF attribution
+            // guidelines accept "© OpenStreetMap contributors" and "© OpenStreetMap" alike, and
+            // require that the credit make the ODbL findable - which the tap-through to
+            // openstreetmap.org/copyright below does. Do not shorten it further.
+            // MapLibre's own ⓘ button is off (it covered the
             // scale bar and read as a control). Bottom-left under the scale bar, lifted over
             // the nav bar and the minimized results bar, into the map strip in landscape.
             // Tapping it opens the OSM copyright page. Satellite keeps its own centred credit.
@@ -3028,8 +3073,11 @@ private fun ambientShownOf(state: MapUiState): List<Place> =
         emptyList()
     }
 
+// The layer's icon size and collision order read the prominence each place was PAINTED with, the
+// same value the view model ranked and capped on (AmbientStability), so a refined pool cannot
+// resize or reorder what is already on screen.
 private fun ambientMarkersOf(state: MapUiState): List<MapMarker> =
-    ambientShownOf(state).map { MapMarker(it.name, it.location, it.category, app.vela.core.data.google.ambientProminence(it)) }
+    ambientShownOf(state).map { MapMarker(it.name, it.location, it.category, AmbientStability.prominenceOf(it)) }
 
 private fun markersOf(state: MapUiState, filteredIds: Set<String>?): List<MapMarker> =
     displayedPlaces(state)

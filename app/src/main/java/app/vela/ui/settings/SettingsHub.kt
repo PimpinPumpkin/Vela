@@ -323,6 +323,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_hide_external_links to SettingsSection.PLACES,
     // Navigation
     R.string.settings_keep_screen_on to SettingsSection.NAVIGATION,
+    R.string.settings_route_picker to SettingsSection.NAVIGATION,
     R.string.settings_route_bar to SettingsSection.NAVIGATION,
     R.string.settings_route_trail to SettingsSection.NAVIGATION,
     R.string.settings_road_label to SettingsSection.NAVIGATION,
@@ -360,8 +361,6 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_save_trips to SettingsSection.DIAGNOSTICS,
     R.string.settings_building_debug to SettingsSection.DIAGNOSTICS,
     R.string.settings_nav_trace to SettingsSection.DIAGNOSTICS,
-    R.string.exp_google_chooser to SettingsSection.DIAGNOSTICS,
-    R.string.settings_experiments to SettingsSection.DIAGNOSTICS,
     R.string.settings_places_source to SettingsSection.PLACES,
     R.string.settings_cameras_group to SettingsSection.NAVIGATION,
     R.string.voice_capture_examples_title to SettingsSection.SEARCH,

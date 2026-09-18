@@ -233,6 +233,10 @@ import java.util.Locale
 // like Google Maps, instead of a washed-out dynamic tone.
 // The sheet palette is shared app-wide (see ui/SheetPalette) so the place sheet,
 // directions panel, route chooser and steps list all match.
+/** Height the rating row occupies (its 6dp top pad plus a titleMedium line) - the slot held while
+ *  a rated place's details are still loading, so the action pills below do not move when it lands. */
+private const val RATING_ROW_DP = 30f
+
 private val SheetDark = SheetPalette.Dark
 private val SheetLight = SheetPalette.Light
 private val InkDark = SheetPalette.InkDark
@@ -670,7 +674,20 @@ fun PlaceSheet(
                 place.category?.lowercase()?.let { c ->
                     listOf("station", "stop", "transit", "transport", "hub", "bus", "subway", "metro", "tram", "rail", "ferry", "terminal", "platform").any { it in c }
                 } == true
-            if (app.vela.ui.LoadPhotos.on.value && (place.photoUrls.isNotEmpty() || (photosLoading && !transitNoShimmer))) {
+            // RESERVE the strip's slot from the FIRST frame for a place that is going to have
+            // photos. The gallery scrape only raises photosLoading once the details land (a place
+            // tapped on the map arrives with no rating, so it does not read as photo-worthy yet),
+            // so the strip used to appear a second or two in and shove the action pills ~122dp
+            // down the screen - right as the user was reaching for Directions (user 2026-09-18).
+            // A named business will almost always have a gallery, so a CATEGORY is the signal: an
+            // address or a dropped pin has none, and reserving there would hold a placeholder for
+            // nothing. Deliberately NOT keyed on the feature id - a place tapped on Vela's own
+            // places layer carries no Google id until the details land, which is exactly the case
+            // the slot is for.
+            val photosExpected = detailsLoading && !place.category.isNullOrBlank()
+            if (app.vela.ui.LoadPhotos.on.value &&
+                (place.photoUrls.isNotEmpty() || ((photosLoading || photosExpected) && !transitNoShimmer))
+            ) {
                 // (The All/Menu category chips that used to sit here are gone — the Menu TAB is
                 // the menu surface now, and the other categories read as noise; user 2026-07-10.)
                 val shown = remember(place.photoUrls) { place.photoUrls.indices.toList() }
@@ -693,7 +710,7 @@ fun PlaceSheet(
                     }
                     // The full gallery scrapes in the background a beat after the sheet opens —
                     // pulse placeholder tiles so it reads as "more photos loading", not "done".
-                    if (photosLoading && !transitNoShimmer) {
+                    if ((photosLoading || photosExpected) && !transitNoShimmer) {
                         item { PhotoShimmerTile(dim) }
                         if (place.photoUrls.isEmpty()) {
                             item { PhotoShimmerTile(dim) }
@@ -779,6 +796,13 @@ fun PlaceSheet(
                 HeaderCircleButton(Icons.Default.Close, stringResource(R.string.place_close), dim, dim, onClick = onClose)
             }
 
+            // The rating row is the other thing that lands late above the action pills, and it is
+            // worth ~30dp of shove on its own. Hold its line while the details are in flight for a
+            // place that will have one (user 2026-09-18); an unrated place never reaches here
+            // because the fetch that would have brought a rating has already finished.
+            if (place.rating == null && detailsLoading && !place.category.isNullOrBlank()) {
+                Spacer(Modifier.height(RATING_ROW_DP.dp))
+            }
             if (place.rating != null) {
                 Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     // Google leads with a bold rating number; keep it prominent.

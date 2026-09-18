@@ -13,16 +13,20 @@ Live traffic, real place data and turn-by-turn navigation, with zero Google on y
 [![License: GPL v3](https://img.shields.io/github/license/PimpinPumpkin/Vela?color=blue)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/PimpinPumpkin/Vela?style=flat&color=ffd43b)](https://github.com/PimpinPumpkin/Vela/stargazers)
 
-[Install](#install) · [What you get](#what-you-get) · [FAQ](docs/FAQ.md) · [Privacy](#privacy) · [How it works](docs/HOW-IT-WORKS.md) · [Build](#build) · [Discussions](https://github.com/PimpinPumpkin/Vela/discussions) · [Translate](docs/TRANSLATING.md)
+[Install](#install) · [What you get](#what-you-get) · [FAQ](docs/FAQ.md) · [The book](docs/book/README.md) · [Privacy](#privacy) · [How it works](docs/HOW-IT-WORKS.md) · [Build](#build) · [Discussions](https://github.com/PimpinPumpkin/Vela/discussions) · [Translate](docs/TRANSLATING.md)
 
 [<img src="https://img.shields.io/badge/VISIT%20THE%20WEBSITE-149387?style=for-the-badge" alt="Visit the website">](https://pimpinpumpkin.github.io/Vela/)
 
 </div>
 
 A degoogled maps & navigation client for Android - *what NewPipe is to YouTube,
-for Google Maps.* Open vector tiles for the basemap, the device itself scraping
-Google's public web endpoints (per-user, no backend) for the things only Google
-does well: POI quality, routing, and **traffic-aware ETAs**. Built to run on
+for Google Maps.* The map itself is open data: open vector tiles for the
+basemap, and **Vela data** for the places on it - Overture Maps and
+AllThePlaces, positioned with OpenStreetMap, baked into tiles in this repo and
+streamed from its releases - so browsing around never asks Google anything. Tap
+a place or ask for a route and the device itself scrapes Google's public web
+endpoints (per-user, no backend) for the things only Google does well: hours,
+reviews and photos, routing, and **traffic-aware ETAs**. Built to run on
 GrapheneOS and other no-GMS ROMs.
 
 ## Screenshots
@@ -106,9 +110,17 @@ There's also a one-page tour at
   its green/amber/red time. Turn-by-turn navigation rides on it: lane diagrams,
   exit shields, a speedometer with the posted limit, and automatic reroutes when
   a jam builds ahead.
-- **Real info about places (points of interest, or POIs).** Hours with holidays
-  included, reviews you can search, photo galleries, busy times, phone and
-  website, with a warning if a place would be closed when you arrive.
+- **The places on the map are open data; Google fills in the details.** Every pin,
+  dot and label you pan past is **Vela data** - Overture Maps and AllThePlaces,
+  positioned with OpenStreetMap, baked into map tiles in this repo and streamed
+  from its releases, and carried offline with a downloaded region. Browsing sends
+  Google nothing. Tapping a place is what asks Google, and it answers with what
+  open data has no equivalent of: hours with holidays included, reviews you can
+  search, photo galleries, busy times, phone and website, with a warning if a
+  place would be closed when you arrive. **Settings → Places → "Places come from"**
+  switches the map between Vela data (the default), Both, or Google, and a
+  separate toggle stops even a tapped place from being looked up. The
+  [FAQ](docs/FAQ.md) has the per-feature breakdown of what uses what.
 - **Zero Google on your phone, and almost zero in your life.** No Play Services,
   no account, no app key, no ads, no GCM/FCM, no Play Integrity. Google never sees
   your map browsing, your saved places, or who you are; your GPS trail stays on the
