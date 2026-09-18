@@ -893,4 +893,5 @@
     <string name="nav_stop_offer_ahead">%1$s múlva</string>
     <string name="settings_nav_tap_places">Helyek érintése vezetés közben (kísérleti)</string>
     <string name="settings_nav_tap_places_hint">Navigálás közben a benzinkutak, éttermek és töltők a térképen maradnak; egy érintés megállóként ajánlja fel a helyet, a második hozzáadja. Alapból ki van kapcsolva, mert a navigáció elrejti a helyeket az olvashatóságért. A bekapcsolása a Helyek megjelenítését is bekapcsolja.</string>
+    <string name="mapvm_start_from_here">Indulás a jelenlegi helyedről</string>
 </resources>
