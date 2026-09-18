@@ -715,7 +715,23 @@ project's core promise is that neither exists:
   re-download, which is the same bytes) once it passes a threshold. Without both, deltas are not
   worth shipping: the point is saving bandwidth, not accumulating a slightly wrong map.
 
-  **Validate before building:** appending leaves the archive UNCLUSTERED, and the app's local
+  **VALIDATED ON THE DEVICE 2026-09-18.** `scripts/pmtiles-append-patch.py` patches a real 152 MB
+  region archive the way the design says: append the rewritten tile blobs, append the rebuilt
+  directory, flip the header last. MapLibre read it - 127 range requests, no crash, places drawing
+  from a file whose root directory sits 153 MB in - so the append-in-place design holds and the 2x
+  disk is avoidable. Three things the test taught that reading the spec did not:
+  - A real archive has LEAF directories (48 on that one); the applier has to walk them. The
+    prototype collapses them into one root, which MapLibre accepted, and which is fine for a LOCAL
+    archive since nothing range-fetches it.
+  - `pmtiles verify` REJECTS the result, because the header's length fields no longer account for
+    the whole file once there is dead space in it. The reference Go reader and MapLibre both read
+    it happily. Worth knowing before someone runs verify on a user's archive and panics.
+  - The first attempt crashed MapLibre with "incorrect header check" and it was the TEST HARNESS:
+    python's http.server ignores Range and answers a range request with the whole body. The control
+    (an unpatched archive over the same server) crashed identically, which is the only reason the
+    layout did not get the blame. Serve ranges when testing a pmtiles URL.
+
+  **Still to validate before building:** appending leaves the archive UNCLUSTERED, and the app's local
   archives are read by MapLibre's own PMTiles implementation, not by ours. Unclustered archives are
   legal (go-pmtiles ships a `cluster` command to re-optimize them) and Vela's `PmtilesReader` already
   handles arbitrary offsets, but MapLibre's reader is a third implementation. Prototype: mutate an
