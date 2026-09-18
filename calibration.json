@@ -159,7 +159,7 @@
   "defaultVoiceSpeed": 0.8,
   "_palette_comment": "Fleet default map colour set: modern (the Google-app-sampled palette) or classic (the archived pre-sample look, both compiled into the app). A user's own pick in Settings → Appearance overrides this. Re-sign after editing.",
   "defaultMapPalette": "modern",
-  "_places_comment": "Fleet default for Settings → Data source & privacy → Places come from: open (Vela data alone, browsing never touches Google), both (the open layer plus one Google request per settled view for what it lacks) or google. A user's own pick always wins. Re-sign after editing.",
+  "_places_comment": "Fleet default for Settings → Places → Places come from: open (Vela data alone, browsing never touches Google), both (the open layer plus one Google request per settled view for what it lacks) or google. A user's own pick always wins. Re-sign after editing.",
   "defaultPlacesSource": "open",
   "transitCategoryWords": [
     "(?<!gas )(?<!fuel )(?<!filling )(?<!service )(?<!charging )(?<!fire )(?<!police )(?<!power )(?<!pumping )(?<!radio )(?<!television )(?<!weigh )(?<!tank)(?<!laad)(?<!lade)(?<!bensin)station(?!-service)",
