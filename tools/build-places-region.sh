@@ -38,11 +38,24 @@ if [ "$ATP_RUN" != "none" ] && command -v pmtiles >/dev/null 2>&1 && command -v 
   # Both halves report what they cost. Silencing them meant a bake that died here died with no
   # output at all, which reads as flaky infrastructure rather than as a step (five regions, three
   # waves, 2026-09-18).
+  # The tag test is `isbiz` in cheap form, and it runs HERE rather than in DuckDB because
+  # AllThePlaces carries national ADDRESS registers alongside the store locators: Belgium's decode
+  # wrote a 3.5 GB ndjson of 7.1 million rows, nearly all of them addresses from one Flemish
+  # dataset, which DuckDB then parsed only to throw away. Nothing `isbiz` would accept lacks one of
+  # these keys, so the pre-filter cannot drop a business.
   echo "alltheplaces: extracting z15 for $ID"
   if pmtiles extract "$ATP_SRC" "$WORK/atp.pmtiles" --bbox="$W,$S,$E,$N" --minzoom=15 --maxzoom=15 >/dev/null 2>"$WORK/atp.err"; then
     echo "alltheplaces: extract $(du -m "$WORK/atp.pmtiles" | cut -f1) MB, decoding"
+    # grep FIRST, and that is not a micro-optimization: tippecanoe-decode emits the whole tileset
+    # as ONE json document, so `jq ..` over it parses the entire thing into memory and a dense
+    # country took the CI runner down with it. Every feature is exactly one line, so grep turns the
+    # document into a stream jq reads one small value at a time, in constant memory.
     tippecanoe-decode -z15 -Z15 "$WORK/atp.pmtiles" 2>/dev/null \
-      | jq -c '.. | objects | select(.type == "Feature" and .geometry.type == "Point") | {props: .properties, lng: .geometry.coordinates[0], lat: .geometry.coordinates[1]}' \
+      | grep -F '"type": "Feature",' \
+      | sed 's/,$//' \
+      | jq -c 'select(.geometry.type == "Point")
+               | select(.properties | has("shop") or has("amenity") or has("tourism") or has("leisure") or has("healthcare") or has("office"))
+               | {props: .properties, lng: .geometry.coordinates[0], lat: .geometry.coordinates[1]}' \
       > "$WORK/atp.ndjson" || true
     echo "alltheplaces: $(wc -l < "$WORK/atp.ndjson") rows, $(du -m "$WORK/atp.ndjson" | cut -f1) MB"
     rm -f "$WORK/atp.pmtiles"
