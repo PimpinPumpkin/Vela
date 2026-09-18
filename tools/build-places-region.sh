@@ -312,7 +312,7 @@ CREATE MACRO iskiosk(c, n) AS (
   OR lower(coalesce(n, '')) IN ('redbox','coinstar','ecoatm','western union','keyme locksmiths','keyme')
 );
 -- TWO ICONS, ONE NAME (user 2026-09-18). A brand's forecourt is often published under the BARE
--- brand name, so the lot ends up with two icons labelled identically a few tens of metres apart:
+-- brand name, so the lot ends up with two icons labeled identically a few tens of meters apart:
 -- the store and the pumps. Demoting the forecourt does not help, because fuel is exempt from the
 -- tenant minzoom (you want pumps while driving), so both draw and a tap on "the store" is a coin
 -- toss. The forecourt keeps its own row and its own group; it just says which one it is. Only an

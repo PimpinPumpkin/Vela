@@ -2858,9 +2858,9 @@ fun VelaMapView(
                     // things were wrong with ranking the box's contents by distance to the feature's
                     // POINT. A place icon is a teardrop anchored at its TIP, so the blob you aim at
                     // sits ~40 px above the point the distance is measured to, while a tenant DOT is
-                    // drawn on its own point - so a dot metres away routinely measured nearer to the
+                    // drawn on its own point - so a dot meters away routinely measured nearer to the
                     // finger than the icon under it. And a 4 px dot had the same claim as a 60 px
-                    // labelled pin. A rendered query at the finger's own pixel asks MapLibre what is
+                    // labeled pin. A rendered query at the finger's own pixel asks MapLibre what is
                     // actually DRAWN there, icons only; when something is, nothing else can win.
                     val tapStyle = map.style
                     val bizIconLayers = if (tapStyle == null) emptyList() else (

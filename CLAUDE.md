@@ -74,7 +74,7 @@ Three deliberate exceptions, all data rather than prose:
   jobs and mailed a failure for each. After any sweep that touches `.github/workflows`, grep for
   `always()`, `success()`, `failure()` and `cancelled()` before pushing.
 
-Before pushing: `grep -rniE "\b(colour|centre|behaviour|neighbour|metres?|labelled|travelled|licence|defence|grey|organis|recognis|utilis)\b" --include="*.kt" --include="*.md" .` must return only the exceptions above.
+Before pushing: `grep -rniE "\b(colour|centre|behaviour|neighbour|meters?|labeled|travelled|licence|defence|grey|organis|recognis|utilis)\b" --include="*.kt" --include="*.md" .` must return only the exceptions above.
 
 ## ⚠️ Location hygiene (read first, human or AI)
 
@@ -2068,7 +2068,7 @@ architecture note.
   understated the panel by ~130 px (the bars the map draws behind) and the trip's START framed
   behind it. The fractions remain as the first-frame fallback.
 - **A BRAND'S FORECOURT SAYS SO (2026-09-18):** fuel is exempt from the tenant minzoom, so a
-  supermarket and its pumps both draw a few tens of metres apart - and the forecourt is usually
+  supermarket and its pumps both draw a few tens of meters apart - and the forecourt is usually
   published under the BARE brand name, which made a tap on "the store" a coin toss (user report; the
   sheet read "Gas station"). `build-places-region.sh` appends " Fuel" / " Charging" / " Market" to a
   fuel, charging or convenience row whose name EXACTLY equals its anchor's; a row that already names

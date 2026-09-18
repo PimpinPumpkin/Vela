@@ -988,7 +988,7 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   fuel, which stays visible for driving.
 - **A forecourt says which one it is.** A brand's fuel station, charging bay or convenience shop
   is often published under the bare brand name, and since fuel is exempt from the tenant minzoom
-  both it and the store draw, a few tens of metres apart, under the same label, so a tap on "the
+  both it and the store draw, a few tens of meters apart, under the same label, so a tap on "the
   store" is a coin toss. A row whose name is EXACTLY its anchor's gets " Fuel", " Charging" or
   " Market" appended; a row that already names itself is left alone. Names are rewritten nowhere
   else in the bake.
@@ -1112,7 +1112,7 @@ rendered at the finger's own pixel on the business ICON layers (ambient, open pl
 POI tiers); when something is, only those candidates compete. Ranking the whole 24 dp box by
 distance to each feature's POINT is wrong twice over: a place icon is a teardrop anchored at its
 tip, so the blob being aimed at sits about 40 px above the point the distance is measured to, and a
-tenant's DOT is drawn on its own point, so a dot metres away routinely measures nearer to the finger
+tenant's DOT is drawn on its own point, so a dot meters away routinely measures nearer to the finger
 than the icon under it. With no icon under the finger the box rules still run, so a dot stays
 tappable.
 

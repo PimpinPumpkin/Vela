@@ -723,7 +723,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Tapping a place opens that place (2026-09-18).** In a plaza, tapping a supermarket could open
   a coin machine, a coffee counter inside it, or the brand's fuel station. Two reasons, both fixed.
   The map ranked everything in the touch area by distance to each feature's own point, but a place
-  icon hangs above its point like a pin while a small dot sits on its point, so a dot a few metres
+  icon hangs above its point like a pin while a small dot sits on its point, so a dot a few meters
   away measured closer to the finger than the icon being aimed at; now the map asks what is actually
   drawn at the pixel under the finger first, and only falls back to the wider area when nothing is
   there, so small dots stay tappable. And when Vela looks the tapped place up, a listing whose name
