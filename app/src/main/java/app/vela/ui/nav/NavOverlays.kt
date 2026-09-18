@@ -100,6 +100,13 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import app.vela.ui.dpadFieldEscape
 import app.vela.ui.dpadHighlight
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
 
 /**
  * Top banner during navigation, styled like Google's: a large directional turn
@@ -1100,3 +1107,142 @@ fun NavStopOffer(
         }
     }
 }
+
+/**
+ * The drive's two "hold something" controls behind ONE button (user 2026-09-18).
+ *
+ * Pause and mute used to sit as a two-target pill in the nav stack, which is 112 dp of a small
+ * phone's right edge for two things you touch rarely. Now there is one 56 dp button: a tap opens a
+ * little row beside it with both choices, and a LONG PRESS mutes straight away, so the pop-out is
+ * for people who need to look and skippable for people who know. The button carries both states -
+ * the glyph is pause or resume, the accent fill says the drive is held, and a muted drive wears a
+ * small crossed speaker - because one control standing for two states has to show both.
+ *
+ * The row closes itself after [OPEN_MS] and after either choice, so it can never sit over the map.
+ * Long press is touch-only by nature; the row is the key path, which is what keeps this D-pad legal.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+fun NavHoldControls(
+    paused: Boolean,
+    muted: Boolean,
+    onPause: () -> Unit,
+    onMute: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var open by remember { mutableStateOf(false) }
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    LaunchedEffect(open) {
+        if (open) {
+            kotlinx.coroutines.delay(OPEN_MS)
+            open = false
+        }
+    }
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        androidx.compose.animation.AnimatedVisibility(
+            visible = open,
+            enter = androidx.compose.animation.expandHorizontally(expandFrom = Alignment.End) +
+                androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.shrinkHorizontally(shrinkTowards = Alignment.End) +
+                androidx.compose.animation.fadeOut(),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                shadowElevation = 6.dp,
+                modifier = Modifier.padding(end = 8.dp),
+            ) {
+                Row(Modifier.height(56.dp), verticalAlignment = Alignment.CenterVertically) {
+                    HoldChoice(
+                        icon = if (paused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                        label = stringResource(if (paused) R.string.nav_resume else R.string.nav_pause),
+                        filled = paused,
+                    ) { onPause(); open = false }
+                    androidx.compose.material3.VerticalDivider(
+                        modifier = Modifier.padding(vertical = 10.dp),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.25f),
+                    )
+                    HoldChoice(
+                        icon = if (muted) Icons.Default.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                        label = stringResource(if (muted) R.string.nav_unmute_voice else R.string.nav_mute_voice),
+                        filled = false,
+                    ) { onMute(); open = false }
+                }
+            }
+        }
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = if (paused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
+            contentColor = if (paused) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
+            shadowElevation = 6.dp,
+        ) {
+            Box(
+                Modifier
+                    .size(56.dp)
+                    .dpadHighlight(RoundedCornerShape(16.dp))
+                    .combinedClickable(
+                        onClick = { open = !open },
+                        onLongClick = {
+                            haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            onMute()
+                            open = false
+                        },
+                        onClickLabel = stringResource(R.string.nav_hold_controls),
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    if (paused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                    contentDescription = stringResource(R.string.nav_hold_controls),
+                )
+                if (muted) {
+                    // The second state, as a badge rather than a second button: a held drive and a
+                    // silent one are different things and the button has to say which it is.
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(6.dp)
+                            .size(18.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.VolumeOff,
+                            contentDescription = null,
+                            modifier = Modifier.padding(3.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HoldChoice(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    filled: Boolean,
+    onClick: () -> Unit,
+) {
+    Box(
+        Modifier
+            .size(56.dp)
+            .background(if (filled) MaterialTheme.colorScheme.primary else Color.Transparent)
+            .dpadHighlight(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            icon,
+            contentDescription = label,
+            tint = if (filled) MaterialTheme.colorScheme.onPrimary else LocalContentColor.current,
+        )
+    }
+}
+
+/** How long the pop-out waits before closing itself. Long enough to open it, look, and reach the
+ *  second target from the wheel; short enough that it is never still there at the next junction. */
+private const val OPEN_MS = 6_000L
