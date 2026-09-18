@@ -1086,8 +1086,11 @@ Defaults that make the safe path the easy one:
   pick used to be `firstOrNull` on `queryRenderedFeatures`, which returns RENDER-STACK order, so
   the generous 48dp hit box at street zoom handed the tap to whichever neighbour the renderer
   listed first (the dense-strip-mall wrong-POI reports). A single tap resolves, in priority:
-  (1) our search-result pin → `onMarkerTap`; (2) a canonical GTFS stop icon; (3) a greyed
-  alternate route line → `onSelectAlternate`; (4) a BUSINESS - the ambient Google POI dots/icons
+  (1) our search-result pin → `onMarkerTap`; (2) a saved pin; (3) a greyed
+  alternate route line → `onSelectAlternate`; (4) a BUSINESS **or a canonical GTFS stop icon** -
+  the stop competes by distance with the businesses instead of outranking them (user 2026-09-18:
+  a fuel station on a corner opened the stop beside it however dead-on the tap was, the same
+  lesson the ambient dots taught in 2026-07-14) - the ambient Google POI dots/icons
   and the NAMED basemap POIs compete BY DISTANCE, not by class (absolute ambient priority let a
   few-px ambient dot anywhere in the box steal a tap landed dead on a basemap icon): nearest of
   the two → `onAmbientTap` / `onPoiTap`; (5) a **HOUSE-NUMBER label** (basemap `vela-housenumber` `housenumber`
@@ -1119,7 +1122,14 @@ Defaults that make the safe path the easy one:
   NEIGHBOUR steal the tap (Google's per-listing pins in a shared building are loose; a sushi
   tap opened the dessert shop two doors down). The pick pool is now the listings whose name
   shares the tapped label's words (`nameAgrees`, word-set overlap needing the shorter name's
-  tokens, cap 2); only an EMPTY pool (renamed/closed business) falls back to all results. The
+  tokens, cap 2); only an EMPTY pool (renamed/closed business) falls back, and since 2026-09-18
+  that fallback is bounded twice over: a NON-TRANSIT tap never adopts a listing whose category is
+  transit (`isTransitCategory`) or map furniture (`JUNCTION_CATEGORIES`), because Google lists
+  stops and intersections as places metres from the businesses on the same corner and the
+  "nearest of everything" fallback made the stop the answer; and a listing that does not agree by
+  name has to be within `NO_NAME_MATCH_M` (60 m, the same lot) rather than anywhere inside the
+  1.5 km cap. Nothing left to adopt = the tapped label keeps its own name and point, which for an
+  open-places tap still carries the tile's address, phone and hours. The
   clear-dominance duplicate override still runs WITHIN the pool (a co-brand's two profiles both
   agree with the tapped label, and the rich one should win). **And the pick must be NEAR THE
   TAP (issue #429, 2026-09-14):** a town label for Salem, Arkansas searched "Salem" and Google's
