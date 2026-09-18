@@ -113,7 +113,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.BuildingOverlay.init(this)
         app.vela.ui.BuildingDebug.init(this)
         app.vela.ui.MapPoiPrefs.init(this)
-        app.vela.ui.Experiments.init(this)
+        app.vela.ui.RoutePicker.init(this)
         app.vela.ui.VoiceSearch.init(this)
         app.vela.ui.ContactsSearch.init(this) // contacts-in-search toggle (issue #243)
         app.vela.diag.NavTrace.init(this) // opt-in nav smoothness trace (issue #251)

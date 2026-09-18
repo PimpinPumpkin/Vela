@@ -8,7 +8,6 @@ import app.vela.core.config.CalibrationStore
 import app.vela.core.config.Notice
 import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.MapDataSource
-import app.vela.core.data.google.ambientProminence
 import app.vela.core.data.MapLink
 import app.vela.core.data.MapLinkParser
 import app.vela.core.data.OfflinePoiStore
@@ -251,6 +250,8 @@ data class MapUiState(
     val streetViewShownMonth: Int? = null,
     val streetViewHistorical: Boolean = false,
     val navigating: Boolean = false,
+    /** The drive is held: route and figures frozen, puck free, nothing spoken or rerouted. */
+    val navPaused: Boolean = false,
     val resumeNavLabel: String? = null, // a nav session was interrupted (process killed mid-drive) and can
                                         // be resumed — drives the "Resume navigation to <label>?" prompt
     val navCameraDetached: Boolean = false,
@@ -419,6 +420,7 @@ class MapViewModel @Inject constructor(
         override var controlsBox: DoubleArray?
             get() = this@MapViewModel.controlsBox
             set(v) { this@MapViewModel.controlsBox = v }
+        override fun cancelViewportControls() { this@MapViewModel.controlsJob?.cancel() }
         override var autoStartOnRoute: Boolean
             get() = this@MapViewModel.autoStartOnRoute
             set(v) { this@MapViewModel.autoStartOnRoute = v }
@@ -589,7 +591,7 @@ class MapViewModel @Inject constructor(
         // Fleet default map colour set (a user's own Settings pick always wins - see MapColors).
         app.vela.ui.MapColors.remoteDefault.value = calibration.current().defaultMapPalette
         app.vela.ui.MapPoiPrefs.setRemoteDefault(calibration.current().defaultPlacesSource)
-        app.vela.ui.Experiments.setRemoteDefault(calibration.current().experimentGoogleChooser)
+        app.vela.ui.RoutePicker.setRemoteDefault(calibration.current().classicRoutePicker)
         adoptKeywordTables()
         // Pull the latest scraper calibration from the repo (non-blocking, once),
         // then surface any freshly-pushed notices.
@@ -598,7 +600,7 @@ class MapViewModel @Inject constructor(
             refreshNotices()
             app.vela.ui.MapColors.remoteDefault.value = calibration.current().defaultMapPalette
             app.vela.ui.MapPoiPrefs.setRemoteDefault(calibration.current().defaultPlacesSource)
-            app.vela.ui.Experiments.setRemoteDefault(calibration.current().experimentGoogleChooser)
+            app.vela.ui.RoutePicker.setRemoteDefault(calibration.current().classicRoutePicker)
             adoptKeywordTables()
         }
         maybeCheckForUpdate()
@@ -3147,7 +3149,23 @@ class MapViewModel @Inject constructor(
                     // old behaviour - apply. Within the pool, nearest still wins and the clear-
                     // dominance override still promotes the rich profile of a true duplicate
                     // (a "SpeeDee Midas" tap matches both the SpeeDee and the Midas listings).
-                    val pool = results.filter { nameAgrees(name, it.name) }.ifEmpty { results }
+                    // A NON-TRANSIT tap must never resolve INTO a transit stop or a road junction
+                    // (user 2026-09-18: a fuel station on a corner opened as the bus stop beside
+                    // it). Google lists stops and intersections as places, they sit metres from the
+                    // businesses on the same corner, and the pool below falls back to "everything"
+                    // when no listing agrees by name - so the nearest answer, the stop, became the
+                    // place. A stop is only ever the right answer for a tap that came FROM a stop,
+                    // which the transit branch above already handles.
+                    val answerable = results.filterNot { p ->
+                        p.category?.let { isTransitCategory(it) || it.lowercase() in JUNCTION_CATEGORIES } == true
+                    }
+                    // Nothing agrees by name (a renamed or closed business): the old behaviour was
+                    // the nearest of everything, which is how a neighbour across the road could
+                    // claim the tap. Keep it, but only on the same lot; past that the tapped label's
+                    // own name and point stay, which for an open-data place still has its address,
+                    // phone and hours.
+                    val pool = answerable.filter { nameAgrees(name, it.name) }
+                        .ifEmpty { answerable.filter { it.location.distanceTo(location) <= NO_NAME_MATCH_M } }
                     val poolNearest = pool.minByOrNull { it.location.distanceTo(location) }
                     val canonical = pool
                         .filter { it.location.distanceTo(location) < 35.0 }
@@ -3229,6 +3247,13 @@ class MapViewModel @Inject constructor(
      *  (0); "SpeeDee Midas" agrees with both the "SpeeDee" and "Midas" listings (a co-brand's
      *  duplicate profiles both stay in the pick pool). Single-character tokens are dropped so
      *  "&"/initials can't fake agreement. */
+    /** How near a listing that does NOT agree with the tapped name may be and still become the
+     *  place: the same lot, not the far side of the junction. */
+    private val NO_NAME_MATCH_M = 60.0
+
+    /** Google categories that are map FURNITURE, never the answer to tapping a business. */
+    private val JUNCTION_CATEGORIES = setOf("intersection", "junction", "crossroads", "road", "highway")
+
     private fun nameAgrees(tapped: String, listing: String?): Boolean {
         if (listing.isNullOrBlank()) return false
         fun words(s: String) = s.lowercase()
@@ -4298,6 +4323,15 @@ class MapViewModel @Inject constructor(
     }
 
     /** Mute / unmute spoken guidance (the in-nav speaker button). Persisted. */
+    /** Hold the drive where it is, or let it go again (the nav Pause button). The route, the
+     *  stops and the figures stay put; the puck keeps following you. Resuming reroutes from here
+     *  if the stop took us off the route, and driving on resumes it by itself. */
+    fun toggleNavPause() {
+        val s = _state.value
+        if (!s.navigating) return
+        navSession.setPaused(!s.navPaused)
+    }
+
     fun toggleVoice() = setSpokenDirections(voice.muted)
 
     /** Turn spoken directions on/off (Settings toggle; the nav mute button shares this state). */
@@ -5182,6 +5216,7 @@ class MapViewModel @Inject constructor(
         if (!app.vela.ui.MapPoiPrefs.showPois.value || (app.vela.ui.MapPoiPrefs.openPlacesOnly && s.placesOverlays.isNotEmpty())) {
             ambientJob?.cancel()
             lastAmbientCenter = null
+            app.vela.ui.map.AmbientStability.reset()
             if (s.ambientPois.isNotEmpty() || s.ambientCoversView) {
                 _state.update { it.copy(ambientPois = emptyList(), ambientCoversView = false) }
             }
@@ -5197,6 +5232,7 @@ class MapViewModel @Inject constructor(
         if (zoom < 14.0) {
             ambientJob?.cancel()
             lastAmbientCenter = null
+            app.vela.ui.map.AmbientStability.reset()
             if (s.ambientPois.isNotEmpty() || s.ambientCoversView) {
                 _state.update { it.copy(ambientPois = emptyList(), ambientCoversView = false) }
             }
@@ -5215,6 +5251,9 @@ class MapViewModel @Inject constructor(
         val moved = lastAmbientCenter?.let { it.distanceTo(center) >= 180.0 } ?: true
         val zoomed = abs(zoom - lastAmbientZoom) >= 0.8
         if (!moved && !zoomed && s.ambientPois.isNotEmpty()) return
+        // A real pan or zoom: the view the painted ranking was frozen for is gone, so rank the new
+        // one from scratch (AmbientStability).
+        app.vela.ui.map.AmbientStability.reset()
         ambientJob?.cancel()
         prefetchJob?.cancel() // the old neighbourhood's warm-up is moot once the view moved
         // Span ≈ viewport height: ~9 km at z14 down to ~3.5 km zoomed in (kept ≥3.5 km — tighter
@@ -5369,11 +5408,20 @@ class MapViewModel @Inject constructor(
             .filterNot { p -> p.permanentlyClosed }
             .filter { p ->
                 if (viewRadiusMeters <= 0.0) return@filter true
-                val reach = viewRadiusMeters * (1.25 + 0.35 * (ambientProminence(p) / 8.0).coerceIn(0.0, 1.0))
+                val reach = viewRadiusMeters * (1.25 + 0.35 * (app.vela.ui.map.AmbientStability.prominenceOf(p) / 8.0).coerceIn(0.0, 1.0))
                 (p.distanceMeters ?: 0.0) <= reach
             }
+            // Re-rank with the prominence each place was PAINTED with (AmbientStability): the pool
+            // arrives ranked on whatever review counts this request carried, and a settled view is
+            // painted several times, so the cap and the collision order used to shuffle under a
+            // user who had not moved. New places still sort into place on their own value.
+            .sortedWith(
+                compareByDescending<app.vela.core.model.Place> { app.vela.ui.map.AmbientStability.prominenceOf(it) }
+                    .thenBy { it.distanceMeters ?: Double.MAX_VALUE },
+            )
             .take(ambientCap(zoom))
             .toList()
+            .also { app.vela.ui.map.AmbientStability.remember(it) }
 
     fun hasViewport(): Boolean = viewport != null
 
@@ -5765,6 +5813,13 @@ class MapViewModel @Inject constructor(
         controlsJob?.cancel()
         controlsJob = viewModelScope.launch {
             delay(350)
+            // Re-check ownership AFTER the settle, not just when the job was scheduled (user
+            // 2026-09-18: "stoplights and stop signs rendered that probably shouldn't be", off to
+            // the side of the route). A viewport settle fires as the camera swings into the drive,
+            // its 350 ms settle outlives the flip into navigation, and the write then landed on
+            // top of the route-corridor set: 28 controls along the route replaced by 99 across the
+            // whole padded box, most of them on streets the driver never touches.
+            if (_state.value.navigating && nav.corridorControlsActive) return@launch
             val padLat = (north - south) * 0.5; val padLng = (east - west) * 0.5
             val s = south - padLat; val n = north + padLat; val w = west - padLng; val e = east + padLng
             // null = FETCH FAILED (fetchControlsInBox returns null on network/non-2xx, empty list only on a
