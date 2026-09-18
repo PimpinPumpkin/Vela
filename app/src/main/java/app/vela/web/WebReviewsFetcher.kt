@@ -161,7 +161,7 @@ class WebReviewsFetcher @Inject constructor(
         // reader whose reviews stay English while the app asks for zh-TW; the export says which
         // side to blame).
         view.evaluateJavascript(
-            "location.host+location.pathname.slice(0,40)+' lang='+document.documentElement.lang+' nav='+navigator.language",
+            "location.host+location.pathname.split('/@')[0].slice(0,40)+' lang='+document.documentElement.lang+' nav='+navigator.language",
         ) { v -> diag.record("reviews", "page loaded", v?.trim('"')) }
         main.postDelayed({ inject(requestId) }, SETTLE_MS)
     }
@@ -210,7 +210,7 @@ class WebReviewsFetcher @Inject constructor(
         return """
             (function(){
               var ID=$idj, tries=0, opened=false, acc={}, accN=0, lastN=0, noGrow=0, atBottom=0;
-              try{ VelaBridge.onInfo(ID, JSON.stringify({start:1,title:(document.title||'').slice(0,40),url:location.pathname.slice(0,60),ready:document.readyState,w:window.innerWidth,h:window.innerHeight})); }catch(e){}
+              try{ VelaBridge.onInfo(ID, JSON.stringify({start:1,title:(document.title||'').slice(0,40),url:location.pathname.split('/@')[0].slice(0,60),ready:document.readyState,w:window.innerWidth,h:window.innerHeight})); }catch(e){}
               window.onerror=function(m,src,l){ try{ VelaBridge.onInfo(ID,'jserror '+m+' @'+l); }catch(e){} };
               var openedAt=-1, lastRep=-1, openedBy='', sawEntry=false, everCards=false, btnReclicks=0, allClicked=false;
               var CAP=50;
@@ -382,7 +382,7 @@ class WebReviewsFetcher @Inject constructor(
                 if(tries===2 || tries%16===0){
                   try{
                     var tabLabels=[].slice.call(document.querySelectorAll('[role="tab"]')).map(function(t){ return ((t.getAttribute('aria-label')||t.textContent)||'').trim().slice(0,40); }).slice(0,4);
-                    VelaBridge.onInfo(ID, JSON.stringify({tries:tries,tabs:tabLabels,sawEntry:sawEntry,opened:opened,by:openedBy,cardsNow:document.querySelectorAll(SEL.card).length,acc:accN,w:window.innerWidth,h:window.innerHeight,main:!!document.querySelector('[role="main"]'),title:(document.title||'').slice(0,40),body:((document.body&&document.body.innerText)||'').length,url:location.pathname.slice(0,60)}));
+                    VelaBridge.onInfo(ID, JSON.stringify({tries:tries,tabs:tabLabels,sawEntry:sawEntry,opened:opened,by:openedBy,cardsNow:document.querySelectorAll(SEL.card).length,acc:accN,w:window.innerWidth,h:window.innerHeight,main:!!document.querySelector('[role="main"]'),title:(document.title||'').slice(0,40),body:((document.body&&document.body.innerText)||'').length,url:location.pathname.split('/@')[0].slice(0,60)}));
                   }catch(e){}
                 }
                 var moved=scrollStep();

@@ -2554,6 +2554,13 @@ architecture note.
   next launch retries), and Settings > About > "What's new in this version" reopens it on demand.
   The notes are the commit subjects CI writes into every release, run through `plainReleaseNotes`;
   nothing is bundled.
+- **A PROBE LINE MUST NOT CARRY GOOGLE'S `@lat,lng` (2026-09-18).** Google's place-page path is
+  `/maps/place//@<lat>,<lng>,<zoom>...`, and the coordinate it puts there is derived from the
+  SESSION, not from the place - on a device it reads as wherever the phone is. The reviews probes
+  logged `location.pathname` verbatim, so a logcat line (and a shared diagnostics export, where
+  DiagScrub only rounds it) carried the user's own area. Every probe now logs
+  `location.pathname.split('/@')[0]`. Any new page probe does the same: log the path up to `/@`,
+  never the whole thing.
 - **REVIEW LABELS ARE TESTED WITH THE PLACE NAME CUT OUT (issue #535, 2026-09-16).** Google's
   tab and button labels embed the place name ("Overview of Davis Food Co-op", 「X」總覽), and the
   review pattern carries the word in every language, so "D-avis" matched the French "avis": the

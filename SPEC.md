@@ -1976,6 +1976,10 @@ and intents, drops a navigation start's destination label, keeps only the host o
 `cid` values and drops page-text detail. Counts, zoom levels and error text stay. Add a case to
 `DiagScrubTest` whenever a new breadcrumb can carry a name or an address.
 
+**A page probe never logs Google's `@lat,lng`.** Google's place-page path carries a coordinate
+derived from the session rather than from the place, so logging `location.pathname` verbatim put the
+user's own area in logcat and in any shared export. Probes log the path up to `/@`.
+
 `NavTrace` (off by default) records one row per navigation frame: time, along-route progress,
 speed, bearing window, chord bearing, display bearing, camera bearing and frame dt. It carries
 **no** position data, which is what makes it safe to attach to a public issue, unlike a recorded
