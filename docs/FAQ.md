@@ -78,9 +78,10 @@ The full breakdown of what each request carries is in [PRIVACY.md](../PRIVACY.md
 
 ## What is marked "experiment"?
 
-Settings label experiments plainly, and they are off by default. Today that means the
-Google-style route chooser (Settings > Diagnostics > Experiments) and "Tap places while
-driving" (Settings > Navigation). They work, but they are newer and rougher than the rest.
+Settings label experiments plainly, and they are off by default. Today that means "Tap
+places while driving" (Settings > Navigation). It works, but it is newer and rougher than
+the rest. The Google-style route picker used to be here; it is the default now, and
+Settings > Navigation > "Google-style route picker" turns it off for the classic panel.
 
 ## Does Vela work on a phone with no Google services?
 
