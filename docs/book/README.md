@@ -63,7 +63,30 @@ with no signal and what silently does not.
 **Releases** (planned): canary, nightly and stable, what promotes what and when, and how the
 in-app updater picks a build.
 
-Also planned, with no question backlog yet: transit, languages and voices.
+**Transit** (planned): where the departure boards come from and why they are not Google's, what a
+canonical stop is and why two curbs merge into one icon, why transit directions deliberately stay
+with Google, and what the tap-through from a board to a route's stop list actually fetches.
+
+**Voices and listening** (planned): what a Vela voice is and why one voice speaks one language,
+what happens when the app language and the voice disagree, the three on-device dictation engines
+and what each costs in megabytes, and the voice commands that are parsed rather than searched.
+
+**Android Auto and the car screen** (planned): what runs on the head unit, why the car map is
+rendered as snapshots rather than a live map view, what the cluster and the turn card get, and
+what the car cannot do yet.
+
+**Keypad phones and the D-pad** (planned): the rule that every surface opens with something
+focused, why menus and dialogs are custom rather than Material defaults, and how a phone with no
+touchscreen drives the map.
+
+**Trips, diagnostics and what you share** (planned): what a recorded trip contains, what the share
+trims and why it trims the ends rather than blurring everything, what a diagnostics export holds,
+and the redaction switch.
+
+**Where the backlog came from:** these lists were built from questions asked during development
+and from a pass over all 399 merged pull requests, clustered by subsystem, to find the areas with
+the most shipped behavior and no chapter explaining it. Routing (108 PRs), navigation (76) and
+places (71) lead; navigation and places have chapters, routing does not yet.
 
 ## How to search it
 
