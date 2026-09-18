@@ -2629,7 +2629,11 @@ fun MapScreen(
             // The landscape panel owns the bottom-left corner - the bar would draw on top of it.
             // OpenStreetMap attribution (issue #302): the basemap is OSM data and the ODbL asks
             // for a visible credit wherever the map is shown, so this stays up in every map
-            // state, browse and nav alike; MapLibre's own ⓘ button is off (it covered the
+            // state, browse and nav alike. The short form is deliberate: the OSMF attribution
+            // guidelines accept "© OpenStreetMap contributors" and "© OpenStreetMap" alike, and
+            // require that the credit make the ODbL findable - which the tap-through to
+            // openstreetmap.org/copyright below does. Do not shorten it further.
+            // MapLibre's own ⓘ button is off (it covered the
             // scale bar and read as a control). Bottom-left under the scale bar, lifted over
             // the nav bar and the minimized results bar, into the map strip in landscape.
             // Tapping it opens the OSM copyright page. Satellite keeps its own centred credit.
