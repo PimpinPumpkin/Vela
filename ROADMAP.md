@@ -687,18 +687,34 @@ project's core promise is that neither exists:
   `delta: {fromRev, url, sizeMb}`; the app takes the patch only when `installedRev == fromRev` and
   falls back to a full download otherwise, exactly as `PoiPackStore.applyDelta` already does.
 
-  Two open decisions, both real:
-  - **What applies it on the phone.** `zstd --patch-from` is one command on the bake side, but
-    Android has no zstd; it means a native dependency (zstd-jni ships an AAR, and we already carry
-    sherpa-onnx, so the precedent exists). The alternative is our own tile-level patch: only 1.3% of
-    tiles change, so a "changed tiles + rebuilt directory" file is about the same size (5.9 MB raw
-    here) and needs no new library, but it needs a PMTiles writer and a careful directory rebuild.
-  - **Transient disk.** Either route rewrites the archive, so applying needs roughly 2x the region
-    free (about 370 MB for this state, ~1.2 GB for California). Check free space before offering the
-    delta and fall back to the full download, which is what the phone would have done anyway.
+  **The patch applies IN PLACE, which is the whole design (2026-09-18).** `zstd --patch-from` and
+  rsync-style block sync both assemble a new file, so applying one wants about 2x the region free:
+  370 MB for this state, over a gigabyte for California. A PMTiles archive does not have to be
+  rebuilt to be updated. The 127-byte header carries the root-directory, leaf-directory and
+  tile-data offsets, so a patch can append the changed and new tile blobs, append rebuilt
+  directories after them, and flip the header pointers last. Extra disk is the patch, not the
+  archive, and it is crash-safe by construction: until that final 127-byte write the file is still
+  the old archive with unused bytes on the end. The cost is dead space where the replaced tiles were
+  (about the changed bytes per update, so ~3% a week here), cleared by an occasional compaction or a
+  plain re-download.
 
-  Bake cost: downloading the previous archive plus `zstd -19 --long=31` roughly doubles a two-minute
-  job; a lower level trades a slightly bigger patch for most of that back.
+  **Existing tooling, checked 2026-09-18:** go-pmtiles carries `makesync` and `sync`, hidden from
+  `--help` and marked experimental. `makesync` works and writes a small block-hash sidecar (1,228
+  bytes, 92 blocks, for a 1.7 MB archive), so if a block-sync route is ever wanted the format need
+  not be invented. `pmtiles sync --dry-run` panicked with a nil pointer dereference on the first
+  local pair it was given. Either way the applier is ours: it runs on a phone, in Kotlin, and no
+  Android library patches PMTiles.
+
+  **Validate before building:** appending leaves the archive UNCLUSTERED, and the app's local
+  archives are read by MapLibre's own PMTiles implementation, not by ours. Unclustered archives are
+  legal (go-pmtiles ships a `cluster` command to re-optimize them) and Vela's `PmtilesReader` already
+  handles arbitrary offsets, but MapLibre's reader is a third implementation. Prototype: mutate an
+  archive, `pmtiles verify` it, load it on the 4a. If MapLibre refuses, the fallback is to keep the
+  archive clustered by writing a new file, which is where the 2x came from.
+
+  Bake side: emit the patch against the previously published rev (the archive is already downloaded
+  for the manifest rebuild), publish it beside the archive, and add `delta: {fromRev, url, sizeMb}`
+  to the manifest row, exactly as the place packs already do.
 
 - **Reroute on the phone first (deferred 2026-09-16).** When a downloaded region covers the drive,
   compute the reroute with the on-device engine at once (no network), then swap in the
