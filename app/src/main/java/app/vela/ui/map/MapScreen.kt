@@ -1504,7 +1504,13 @@ fun MapScreen(
         if (state.navigating && state.results.isEmpty() && !state.showSteps && !state.editingStops) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                // END, not centered: the hold control grows to the LEFT when its mute button slides
+                // out, and a centered column re-centers every sibling on the new width - so opening
+                // it slid the recenter, overview and search buttons sideways (user 2026-09-18).
+                // Pinned to the right edge they stay where they are; every other child is 56 dp
+                // wide, so nothing else changes. (Keeping the pop-out INSIDE the column's bounds
+                // matters as well: Compose does not hit-test a child drawn outside its parent.)
+                horizontalAlignment = Alignment.End,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
