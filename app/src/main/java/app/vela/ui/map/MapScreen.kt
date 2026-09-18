@@ -131,6 +131,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import kotlin.math.roundToInt
 import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.flow.debounce
@@ -2681,6 +2682,11 @@ fun MapScreen(
                         savingSeconds = state.fasterSavingSeconds,
                         onSwitch = vm::acceptFasterRoute,
                         onDismiss = vm::dismissFasterRoute,
+                        // Longer on a key-driven phone, where reaching either button is several
+                        // presses - the same allowance the tap-to-stop offer makes.
+                        autoMs = if (dpadMode) 25_000L else 10_000L,
+                        autoAccept = app.vela.ui.FasterRouteAuto.accept.value,
+                        offerKey = state.fasterRoute ?: state.fasterSavingSeconds,
                     )
                 }
                 state.status?.let { msg ->
@@ -5000,9 +5006,39 @@ private fun FasterRouteCard(
     onSwitch: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    // Issue #594: the offer used to wait forever, so a driver had to answer a prompt covering the
+    // map with their hands on the wheel. It resolves itself now, and the bar across the bottom of
+    // the card is the clock: no number to read at speed, and it drains toward whichever button is
+    // about to be pressed for you.
+    autoMs: Long = 10_000L,
+    autoAccept: Boolean = true,
+    // Identity of THIS offer, so a recomposition (the speedo ticking, the ETA moving) cannot give
+    // the driver their ten seconds back, and a second offer restarts the clock.
+    offerKey: Any = savingSeconds,
 ) {
+    val left = remember(offerKey, autoMs, autoAccept) { androidx.compose.animation.core.Animatable(1f) }
+    val act = rememberUpdatedState(if (autoAccept) onSwitch else onDismiss)
+    LaunchedEffect(offerKey, autoMs, autoAccept) {
+        left.snapTo(1f)
+        left.animateTo(
+            0f,
+            androidx.compose.animation.core.tween(autoMs.toInt(), easing = androidx.compose.animation.core.LinearEasing),
+        )
+        act.value()
+    }
+    val barColor = MaterialTheme.colorScheme.onTertiaryContainer
     Card(
-        modifier.fillMaxWidth(),
+        modifier
+            .fillMaxWidth()
+            // Read in the DRAW phase, so the countdown never recomposes the card.
+            .drawBehind {
+                val h = 3.dp.toPx()
+                drawRect(
+                    color = barColor,
+                    topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - h),
+                    size = androidx.compose.ui.geometry.Size(size.width * left.value, h),
+                )
+            },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
             contentColor = MaterialTheme.colorScheme.onTertiaryContainer,

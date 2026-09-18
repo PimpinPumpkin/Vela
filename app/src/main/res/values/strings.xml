@@ -907,6 +907,8 @@
     <string name="settings_road_label_hint">Where the name of the road you are on is shown while driving. Above the bar keeps it centered and readable for long names; under the arrow follows the arrow around.</string>
     <string name="settings_prefer_buttons">Prefer buttons over swipes</string>
     <string name="settings_prefer_buttons_hint">Keeps a button for things that also have a gesture: zoom in and out buttons on the map, and the step list button on the navigation bar. Always on for phones without a touch screen.</string>
+    <string name="settings_faster_auto">Take faster routes automatically</string>
+    <string name="settings_faster_auto_hint">When a faster route comes up mid drive, it is taken if you do not answer within a few seconds. Turn this off and an unanswered offer is dismissed instead. Either way the offer never stays on the map waiting.</string>
     <string name="settings_pause_in_bar">Pause button on the navigation bar</string>
     <string name="settings_pause_in_bar_hint">Puts pause beside the trip figures, where the step list button would be, and leaves mute with the map buttons. Off puts both on one button at the right of the map. Swipe up or use the arrow to open the step list either way.</string>
     <string name="settings_pause_in_bar_hint_buttons">The step list button has this spot while "Prefer buttons over swipes" is on, so pause stays with the map buttons.</string>
