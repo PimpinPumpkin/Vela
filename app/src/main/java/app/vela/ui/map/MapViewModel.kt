@@ -8,7 +8,6 @@ import app.vela.core.config.CalibrationStore
 import app.vela.core.config.Notice
 import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.MapDataSource
-import app.vela.core.data.google.ambientProminence
 import app.vela.core.data.MapLink
 import app.vela.core.data.MapLinkParser
 import app.vela.core.data.OfflinePoiStore
@@ -589,7 +588,7 @@ class MapViewModel @Inject constructor(
         // Fleet default map colour set (a user's own Settings pick always wins - see MapColors).
         app.vela.ui.MapColors.remoteDefault.value = calibration.current().defaultMapPalette
         app.vela.ui.MapPoiPrefs.setRemoteDefault(calibration.current().defaultPlacesSource)
-        app.vela.ui.Experiments.setRemoteDefault(calibration.current().experimentGoogleChooser)
+        app.vela.ui.RoutePicker.setRemoteDefault(calibration.current().classicRoutePicker)
         adoptKeywordTables()
         // Pull the latest scraper calibration from the repo (non-blocking, once),
         // then surface any freshly-pushed notices.
@@ -598,7 +597,7 @@ class MapViewModel @Inject constructor(
             refreshNotices()
             app.vela.ui.MapColors.remoteDefault.value = calibration.current().defaultMapPalette
             app.vela.ui.MapPoiPrefs.setRemoteDefault(calibration.current().defaultPlacesSource)
-            app.vela.ui.Experiments.setRemoteDefault(calibration.current().experimentGoogleChooser)
+            app.vela.ui.RoutePicker.setRemoteDefault(calibration.current().classicRoutePicker)
             adoptKeywordTables()
         }
         maybeCheckForUpdate()
@@ -5182,6 +5181,7 @@ class MapViewModel @Inject constructor(
         if (!app.vela.ui.MapPoiPrefs.showPois.value || (app.vela.ui.MapPoiPrefs.openPlacesOnly && s.placesOverlays.isNotEmpty())) {
             ambientJob?.cancel()
             lastAmbientCenter = null
+            app.vela.ui.map.AmbientStability.reset()
             if (s.ambientPois.isNotEmpty() || s.ambientCoversView) {
                 _state.update { it.copy(ambientPois = emptyList(), ambientCoversView = false) }
             }
@@ -5197,6 +5197,7 @@ class MapViewModel @Inject constructor(
         if (zoom < 14.0) {
             ambientJob?.cancel()
             lastAmbientCenter = null
+            app.vela.ui.map.AmbientStability.reset()
             if (s.ambientPois.isNotEmpty() || s.ambientCoversView) {
                 _state.update { it.copy(ambientPois = emptyList(), ambientCoversView = false) }
             }
@@ -5215,6 +5216,9 @@ class MapViewModel @Inject constructor(
         val moved = lastAmbientCenter?.let { it.distanceTo(center) >= 180.0 } ?: true
         val zoomed = abs(zoom - lastAmbientZoom) >= 0.8
         if (!moved && !zoomed && s.ambientPois.isNotEmpty()) return
+        // A real pan or zoom: the view the painted ranking was frozen for is gone, so rank the new
+        // one from scratch (AmbientStability).
+        app.vela.ui.map.AmbientStability.reset()
         ambientJob?.cancel()
         prefetchJob?.cancel() // the old neighbourhood's warm-up is moot once the view moved
         // Span ≈ viewport height: ~9 km at z14 down to ~3.5 km zoomed in (kept ≥3.5 km — tighter
@@ -5369,11 +5373,20 @@ class MapViewModel @Inject constructor(
             .filterNot { p -> p.permanentlyClosed }
             .filter { p ->
                 if (viewRadiusMeters <= 0.0) return@filter true
-                val reach = viewRadiusMeters * (1.25 + 0.35 * (ambientProminence(p) / 8.0).coerceIn(0.0, 1.0))
+                val reach = viewRadiusMeters * (1.25 + 0.35 * (app.vela.ui.map.AmbientStability.prominenceOf(p) / 8.0).coerceIn(0.0, 1.0))
                 (p.distanceMeters ?: 0.0) <= reach
             }
+            // Re-rank with the prominence each place was PAINTED with (AmbientStability): the pool
+            // arrives ranked on whatever review counts this request carried, and a settled view is
+            // painted several times, so the cap and the collision order used to shuffle under a
+            // user who had not moved. New places still sort into place on their own value.
+            .sortedWith(
+                compareByDescending<app.vela.core.model.Place> { app.vela.ui.map.AmbientStability.prominenceOf(it) }
+                    .thenBy { it.distanceMeters ?: Double.MAX_VALUE },
+            )
             .take(ambientCap(zoom))
             .toList()
+            .also { app.vela.ui.map.AmbientStability.remember(it) }
 
     fun hasViewport(): Boolean = viewport != null
 

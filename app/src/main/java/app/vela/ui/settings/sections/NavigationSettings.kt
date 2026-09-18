@@ -62,6 +62,16 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             switchModifier = topRow,
         )
 
+        // Which route chooser Directions opens. The Google-style picker graduated from an
+        // experiment to the default on 2026-09-18; the classic panel stays one toggle away.
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_route_picker),
+            checked = app.vela.ui.RoutePicker.googleStyle.value,
+            onCheckedChange = { app.vela.ui.RoutePicker.set(context, it) },
+            hint = stringResource(R.string.settings_route_picker_hint),
+        )
+
         // Route bar (issue #228). Off by default: it is extra chrome on the nav screen, and the
         // congestion colour already on the route line covers some of the same ground.
         var routeBar by remember { mutableStateOf(prefs.getBoolean("route_bar", false)) }

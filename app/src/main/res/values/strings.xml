@@ -110,8 +110,6 @@
     <string name="nav_flock_camera_ahead">License plate camera ahead</string>
     <string name="nav_flock_cameras_ahead">License plate cameras ahead</string>
     <string name="settings_speed_cams_hint">Shows fixed radar and speed cameras mapped in OpenStreetMap. Fixed installations only; coverage follows the map, strongest in Europe. Off by default.</string>
-    <string name="exp_google_chooser" translatable="false">Google-style route chooser (experiment)</string>
-    <string name="exp_google_chooser_hint" translatable="false">Lays the route chooser out like Google Maps: one route summary, the other routes picked from time bubbles on the map, the turn list inline, and Start, Add stops and Share along the bottom.</string>
     <string name="exp_chooser_fastest" translatable="false">Fastest route now</string>
     <string name="exp_chooser_slower" translatable="false">%1$s slower than the fastest route</string>
     <string name="exp_chooser_via" translatable="false">via %1$s</string>
@@ -233,7 +231,7 @@
     <string name="settings_places_lookup">Look up tapped places on Google</string>
     <string name="settings_places_lookup_hint">Tapping a place fetches its hours, reviews and photos from Google, and Vela remembers the match so the next tap is instant. Off = a tapped place shows only what Vela\'s data has (name, type, address, phone, website) and nothing about the tap reaches Google. Search and directions still use Google.</string>
     <string name="settings_places_source_more_title">Where Vela\'s place data comes from</string>
-    <string name="settings_places_source_more_body">Vela\'s place data is Overture Maps, an open dataset of businesses maintained by Meta, Microsoft and others. Vela serves it from its own GitHub repository, so nothing about where you look goes to Meta or Google.\n\nIt streams in as you browse and downloads with a region for offline use. Where Vela has no data for an area yet, the map falls back to Google.\n\nSearch, place details, hours, reviews and photos always come from Google, whichever option you pick.</string>
+    <string name="settings_places_source_more_body">Vela\'s place data is Overture Maps, an open dataset of businesses maintained by Meta, Microsoft and others, plus AllThePlaces, which collects chains from their own store locators, with OpenStreetMap correcting where each shop actually sits. Vela bakes the three into map tiles and serves them from its own GitHub repository, so nothing about where you look goes to Meta or Google.\n\nIt streams in as you browse and downloads with a region for offline use. Where Vela has no data for an area yet, the map falls back to Google.\n\nSearch, place details, hours, reviews and photos always come from Google, whichever option you pick.</string>
     <string name="settings_show_civic">Parks, schools and civic places</string>
     <string name="settings_show_civic_hint">The non-business tier of place icons. Off shows businesses only.</string>
     <string name="settings_show_transit_stops">Transit stops</string>
@@ -909,6 +907,8 @@
     <string name="settings_route_trail_hint">Keeps the part of the route you have already driven drawn in grey behind the arrow. Off hides it, so only the road ahead is drawn.</string>
     <string name="settings_bike_safe">Bike routes prefer bike lanes and quiet streets</string>
     <string name="settings_bike_safe_hint">Cycling routes favour signed cycle routes, bike lanes and residential streets over the fastest road, the way Google routes bikes. Uses the offline map where you have one downloaded, otherwise an open router online. Off gives the plain fastest bike route.</string>
+    <string name="settings_route_picker">Google-style route picker</string>
+    <string name="settings_route_picker_hint">Shows one route at a time, with the others behind a tap and their times on the map, and Start along the bottom. Turn it off for Vela\'s classic panel, which lists every route at once.</string>
     <string name="settings_route_bar">Road ahead bar</string>
     <string name="settings_route_bar_hint">A strip beside the map showing traffic and what is coming up on the rest of your route. Shows only what Vela actually knows: congestion, lights, stop signs, level crossings, speed bumps and surveillance cameras. Portrait only.</string>
     <string name="settings_font">Font</string>

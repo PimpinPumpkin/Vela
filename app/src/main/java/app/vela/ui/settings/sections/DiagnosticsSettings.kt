@@ -169,19 +169,11 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
         }
         }
 
-        // Demo modes and experiments (moved here 2026-09-17): test tools, kept apart from the
-        // settings people use every day.
+        // Demo modes (moved here 2026-09-17): test tools, kept apart from the settings people use
+        // every day. The Google-style route picker used to sit beside them as an experiment; it is
+        // the default now and lives in Settings > Navigation.
         Spacer(Modifier.height(4.dp))
         DemoModesGroup(vm)
-        Spacer(Modifier.height(4.dp))
-        SettingsGroup(title = stringResource(R.string.settings_experiments)) {
-        ToggleRow(
-            label = stringResource(R.string.exp_google_chooser),
-            checked = app.vela.ui.Experiments.googleChooser.value,
-            onCheckedChange = { app.vela.ui.Experiments.setGoogleChooser(context, it) },
-            hint = stringResource(R.string.exp_google_chooser_hint),
-        )
-        }
 
         // Trip recording - more invasive than diagnostics (it's your exact routes),
         // so it's a separate opt-in. Records nav GPS traces for replay testing.

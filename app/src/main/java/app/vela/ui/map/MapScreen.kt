@@ -1584,7 +1584,7 @@ fun MapScreen(
                             onAddStop = vm::openStopsEditor,
                             onSwap = vm::swapDirections,
                             onClose = vm::clearRoute,
-                            googleStyle = app.vela.ui.Experiments.googleChooser.value,
+                            googleStyle = app.vela.ui.RoutePicker.googleStyle.value,
                         )
                     }
                     // The bar hides while an expanded place sheet covers it: the visible sliver
@@ -2072,7 +2072,7 @@ fun MapScreen(
             // Hidden while the search overlay is up (e.g. picking a custom origin) so
             // the panel doesn't render over it.
             state.directionsOpen && !searchOpen && state.pickOnMap == null &&
-                app.vela.ui.Experiments.googleChooser.value && state.travelMode != app.vela.core.model.TravelMode.TRANSIT -> {
+                app.vela.ui.RoutePicker.googleStyle.value && state.travelMode != app.vela.core.model.TravelMode.TRANSIT -> {
                 val shareCtx = LocalContext.current
                 val destLabel = if (state.directionsReversed) (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location))
                 else (state.selected?.name ?: stringResource(R.string.mapscreen_destination))
@@ -3028,8 +3028,11 @@ private fun ambientShownOf(state: MapUiState): List<Place> =
         emptyList()
     }
 
+// The layer's icon size and collision order read the prominence each place was PAINTED with, the
+// same value the view model ranked and capped on (AmbientStability), so a refined pool cannot
+// resize or reorder what is already on screen.
 private fun ambientMarkersOf(state: MapUiState): List<MapMarker> =
-    ambientShownOf(state).map { MapMarker(it.name, it.location, it.category, app.vela.core.data.google.ambientProminence(it)) }
+    ambientShownOf(state).map { MapMarker(it.name, it.location, it.category, AmbientStability.prominenceOf(it)) }
 
 private fun markersOf(state: MapUiState, filteredIds: Set<String>?): List<MapMarker> =
     displayedPlaces(state)

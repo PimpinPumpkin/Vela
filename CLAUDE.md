@@ -548,7 +548,8 @@ Defaults that make the safe path the easy one:
   source & privacy: privacy link and **Clear history** since 2026-09-14 for issue #425:
   `MapViewModel.clearAllHistory()` = recent queries + recent places + parking history + every
   recorded trip behind a `VelaDialog` confirm, saved places and lists untouched, indexed for the
-  settings search), Diagnostics (`DemoModesGroup` and an Experiments group now sit here too;
+  settings search), Diagnostics (`DemoModesGroup` sits here too; the Experiments group is gone - its one
+  occupant, the Google-style picker, graduated to Settings > Navigation on 2026-09-18;
   (share-diagnostics, texture render, building debug, trip recording, crash card; NB the update
   card's notes are CUMULATIVE since 2026-09-14, issue #330: `SelfUpdater.check` pulls
   `/releases?per_page=40`, keeps the channel's releases with a code in (installed, offered],
@@ -1138,6 +1139,15 @@ Defaults that make the safe path the easy one:
   (`ui/PlaceContent.kt`, same shape as `LiveReviews`, init in VelaApp, rows in Settings → Map).
   They gate BOTH fetch (`fetchReviews`/`fetchPhotos` first line) and render (PlaceSheet `hasReviews`
   + the photo-hero `if`), so off = zero scrape traffic. Keep any new review/photo surface behind them.
+- **The sheet's LAYOUT MUST NOT MOVE while it loads (user 2026-09-18).** The photo strip and the
+  rating row sit ABOVE the action pills, and both land a second or two after the sheet opens, which
+  used to shove Directions / Start / Street View ~88dp down the screen just as a thumb arrived
+  (device-measured). Both now hold their space from the FIRST frame while `detailsLoading` is true
+  for a place that will have them - the signal is a non-blank `category` (a business), never the
+  feature id, because a place tapped on Vela's own places layer has no Google id until the details
+  land, and that is exactly the case it is for. An address or dropped pin has no category, so it
+  reserves nothing. Anything new that renders above the pills has to do the same or it re-opens
+  this bug.
 - **"Hide adult categories" toggle (2026-07-08):** `HideAdult` holder (`ui/PlaceContent.kt`, default
   **off**, init in VelaApp, row in Settings → Map). It flips `CategoryFilter.enabled` (a `:core` flag) - 
   `:core`'s `data/CategoryFilter` filters adult/nightlife/alcohol/gambling/smoking places at the
@@ -2130,19 +2140,23 @@ architecture note.
   `OfflineCategoryKeywordsTest` lists every chip query; add yours there. Bars is dropped from
   `all()` while `HideAdult` is on (the filter would empty it), and reading `HideAdult.on` there
   keeps the rows reactive.
-- **Google-style chooser EXPERIMENT (2026-09-16, `ui/Experiments`, pref `exp_google_chooser`).**
-  Off by default, Settings > Diagnostics. `GoogleStyleDirectionsPanel` (ui/place/GoogleChooser.kt)
+- **Google-style route picker - the DEFAULT since 2026-09-18 (`ui/RoutePicker`, pref
+  `route_picker_google`, Settings > Navigation).** It shipped as an experiment
+  (`ui/Experiments`, `exp_google_chooser`, Settings > Diagnostics) and graduated once it had been
+  driven; `RoutePicker.init` reads the legacy key when the new one is absent, so an experimenter's
+  explicit yes or no still speaks for them. Off = Vela's classic `DirectionsPanel`.
+  `GoogleStyleDirectionsPanel` (ui/place/GoogleChooser.kt)
   replaces DirectionsPanel for non-transit modes; `routeBubblesFor` (MapScreen) picks each route's
   bubble point as the sample farthest from the other routes, and VelaMapView draws them on
   `ROUTE_BUBBLE_LAYER` (tappable like the alternate lines, `ALT_INDEX_PROP`). Edit stops opens
   `TripEditorSheet` (StopsEditor.kt): the whole trip as one list, `MapViewModel.tripPointsForEditor`
   / `applyTrip` map it back onto directionsOrigin / selected / waypoints / reversed (a null point
-  is "your location"). The experiment strings are `translatable="false"` until it is kept.
-  **Remote switch:** `Calibration.experimentGoogleChooser` (boolean, default false, parsed from
-  `calibration.json` `experimentGoogleChooser`) is pushed into `Experiments.setRemoteDefault` at VM
-  init and after each refresh; it only applies to people who never touched the Diagnostics toggle
-  (the pref key's presence is the "explicit" marker). Turning it on for the fleet = add the field,
-  bump version, re-sign, commit. The bundle does not carry the field today, so it is off.
+  is "your location").
+  **Remote switch:** `Calibration.classicRoutePicker` (boolean, default false, parsed from
+  `calibration.json` `classicRoutePicker`) is pushed into `RoutePicker.setRemoteDefault` at VM
+  init and after each refresh; it only applies to people who never touched the toggle (the pref
+  key's presence is the "explicit" marker), and it exists to put the fleet back on the classic
+  panel without an app release if the new default goes wrong. The bundle does not carry the field.
 - **Stop dividers in the step list (2026-09-16, #519):** `StepsSheet(legStarts = [(maneuver index
   where leg k>0 starts, stop name)])` draws `StopDividerRow` before that step; MapScreen computes
   the indices from `activeRoute.legs` (cumulative maneuver counts) and names them from
@@ -2600,7 +2614,19 @@ architecture note.
   nearbyPlaces detects the flavor (>=3 rated, majority of rated missing counts) and refetches
   the fan-out once ~1.2 s later; healed places are prepended so distinctBy keeps the rich
   copy. Don't "fix" a flat-looking ambient layer by touching the expressions before checking
-  whether the pool's counts are null. 3D extrusions = the flat colour at
+  whether the pool's counts are null.
+  **STICKY RANKING (`ui/map/AmbientStability`, user 2026-09-18).** All of the above means a
+  SETTLED view is painted several times with different counts for the same place - streamed
+  partials, the twin-dedupe re-pass, and the slim heal's second full fan-out - and every paint
+  re-ranked, so labels traded places and icons resized under a user who had not moved (a sushi
+  counter taking the label off the Safeway it sits in, ~20 s after the map looked right).
+  `AmbientStability.remember` freezes each place's prominence at its first RICH paint (a pool
+  whose prominences are all zero is never remembered - that is the slim flavor, and freezing it
+  would pin the flatness the heal exists to fix); `prominenceOf` is then what
+  `keepAmbientForView` filters, sorts and caps on AND what `ambientMarkersOf` hands the layer,
+  so the cap, the collision order and the icon sizes all agree. Later answers still ADD places
+  (they sort in on their own value); they cannot reshuffle what is drawn. `reset()` runs on the
+  same pan/zoom gate that re-queries and wherever the layer is cleared. 3D extrusions = the flat colour at
   opacity 1f (the 0.9f translucency was the "3d buildings render slightly different" wonk)
   AND the style light at intensity 0 + fillExtrusionVerticalGradient(false) - MapLibre's
   default light (0.5) brightens extrusion tops ~40% at z16+ (#1c3b69 rendered #2e5590; the
