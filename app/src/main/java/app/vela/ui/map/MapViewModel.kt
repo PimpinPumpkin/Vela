@@ -3181,7 +3181,19 @@ class MapViewModel @Inject constructor(
                     // IS the tapped name is what the tap asked for; only when none exists does the
                     // looser pool decide. Store numbers are dropped so "SHOP #1561" still counts.
                     val exact = pool.filter { app.vela.core.util.PlaceNames.same(name, it.name) }
-                    val ranked = exact.ifEmpty { pool }
+                    // AND THE SAME KIND BEATS THE SAME NAME (user 2026-09-18, second report: the
+                    // store still opened as the fuel station). Some brands name their forecourt
+                    // listing exactly what they name the store, so the exact-name filter keeps both
+                    // and the nearest one wins - and the tapped feature's point is the parcel, which
+                    // can sit nearer the pumps than the doors. The tapped feature knows what KIND of
+                    // place it is (the tile's own class, or the basemap's), so a candidate of that
+                    // kind is preferred over one that merely shares the name: a supermarket tap
+                    // takes the supermarket, a fuel tap takes the fuel.
+                    val tappedGroup = PoiIcons.groupFor(name, seed?.category ?: poiKind)
+                    val sameKind = exact.filter { PoiIcons.groupFor(it.name, it.category) == tappedGroup }
+                        .takeIf { tappedGroup != "default" }
+                        .orEmpty()
+                    val ranked = sameKind.ifEmpty { exact.ifEmpty { pool } }
                     val poolNearest = ranked.minByOrNull { it.location.distanceTo(location) }
                     val canonical = ranked
                         .filter { it.location.distanceTo(location) < 35.0 }

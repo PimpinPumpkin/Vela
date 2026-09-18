@@ -1715,9 +1715,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 
 ## Navigation
 - ✅ **Pause and mute are one button (2026-09-18).** The two controls that hold something about a
-  drive shared a tall pill down the right edge; now they share one 56 dp button. A tap opens a small
-  row beside it with both choices, a long press mutes without opening anything, and the row takes
-  itself away after a few seconds. The button says what is going on without being touched: the glyph
+  drive shared a tall pill down the right edge; now they share one 56 dp button. The tap pauses, so
+  the thing you reach for at speed still costs one touch; mute slides out beside it for a few
+  seconds in case that is what you wanted, and a long press mutes outright. The button says what is going on without being touched: the glyph
   is pause or resume, it fills with the accent while the drive is held, and it wears a small crossed
   speaker while the voice is off.
 - ✅ **The in-drive stop card says what the stop costs, marks it on the map, and takes itself away

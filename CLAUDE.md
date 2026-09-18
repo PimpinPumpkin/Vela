@@ -3780,9 +3780,10 @@ Gotchas:
   dirs and sanitizes stale `vela.kokoro`/`vela.matcha` prefs to Piper. `project_vela_kokoro_tts` memory
   is that historical record, not the current design.)**
 - **MUTE AND PAUSE ARE ONE BUTTON (user 2026-09-18, second pass).** `NavHoldControls` in
-  `ui/nav/NavOverlays.kt`: one 56 dp target that opens a two-choice row beside itself on a tap,
-  mutes on a LONG PRESS without opening it ("nice to not have to see the pop out if u were in the
-  know"), and closes the row after `OPEN_MS` (4 s) or either choice. The button shows both states
+  `ui/nav/NavOverlays.kt`: one 56 dp target. **The TAP pauses** (user 2026-09-18, second pass: a tap
+  that only opened a menu read as unexpected, and pausing is the thing you reach for at speed) and
+  MUTE slides out beside it for `OPEN_MS` (6 s); a LONG PRESS mutes outright ("nice to not have to
+  see the pop out if u were in the know"). The button shows both states
   (pause/resume glyph, accent fill while held, a crossed-speaker badge while muted) because one
   control standing for two has to. Long press is touch-only; the row is the D-pad path, so no key
   alternative is missing. It replaced the two-target pill below.
