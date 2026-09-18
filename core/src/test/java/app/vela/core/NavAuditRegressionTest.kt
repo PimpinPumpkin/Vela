@@ -29,7 +29,7 @@ import org.junit.Test
 class NavAuditRegressionTest {
 
     private val lng = -122.0000
-    private fun latAt(m: Double) = 37.0 + m / 111_195.0 // haversine metres per degree at R=6371 km
+    private fun latAt(m: Double) = 37.0 + m / 111_195.0 // haversine meters per degree at R=6371 km
     private fun at(m: Double) = LatLng(latAt(m), lng)
 
     /** Straight-north polyline with a vertex every 50 m up to [totalM]. */

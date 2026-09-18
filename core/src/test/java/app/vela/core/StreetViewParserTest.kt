@@ -12,7 +12,7 @@ import org.junit.Test
  *  node (root[1]) - the classic off-by-one trap; copyright is one level deeper again. */
 class StreetViewParserTest {
     // Built to the real nesting: pano node with tile pyramid, address, copyright, a 3-pano local
-    // graph (self + a same-spot 2022 capture + a walkable neighbour ~11 m north), a history entry
+    // graph (self + a same-spot 2022 capture + a walkable neighbor ~11 m north), a history entry
     // referencing the 2022 pano, and this pano's own capture date (May 2025) at [1][6][7].
     private val response = "/**/cb && cb( " +
         """[[0],[[1],[2,"UiZ-8FRkJwHjR3mwzBTPmg"],[2,2,[8192,16384],""" +
@@ -48,7 +48,7 @@ class StreetViewParserTest {
         assertEquals(5, pano.captureMonth)
     }
 
-    @Test fun walkableNeighboursExcludeSameSpot() {
+    @Test fun walkableNeighborsExcludeSameSpot() {
         val pano = StreetViewParser.parse(response, 37.7749, -122.4194)!!
         // The 2022 pano is ~1 m away (same spot) so it must NOT be a walk target; the ~11 m
         // north one must be.
@@ -97,7 +97,7 @@ class StreetViewParserTest {
     }
 
     @Test fun streetOfRejectsNonStreets() {
-        // Needs a suffix or ordinal - a bare city, neighbourhood, or business name is NOT a street,
+        // Needs a suffix or ordinal - a bare city, neighborhood, or business name is NOT a street,
         // so it can't shadow the real street (which lives in a different field for address results).
         assertNull(StreetViewParser.streetOf("Sacramento, California"))
         assertNull(StreetViewParser.streetOf("Midtown, Sacramento"))
@@ -106,7 +106,7 @@ class StreetViewParserTest {
     }
 
     @Test fun streetMatchesAcrossAddressForms() {
-        // An alley/behind pano labelled only with the city must NOT match the address's street.
+        // An alley/behind pano labeled only with the city must NOT match the address's street.
         assertFalse(StreetViewParser.streetMatches("Sacramento, California", "2005 5th St, Sacramento, CA"))
         // A pano on the address's own street matches, house numbers and suffix spelling aside.
         assertTrue(StreetViewParser.streetMatches("1933 5th St", "2005 5th St, Sacramento, CA"))

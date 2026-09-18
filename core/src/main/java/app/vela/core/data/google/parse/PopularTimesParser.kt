@@ -38,7 +38,7 @@ object PopularTimesParser {
             ?: places.firstOrNull()
 
         // Trust the FULL backfill (rating / review count / hours / address …) only from a
-        // feature-id MATCH — so a focused query that happened to return a neighbour can't graft
+        // feature-id MATCH — so a focused query that happened to return a neighbor can't graft
         // its rating or hours onto this place. No id / no match → the sensitive fields stay
         // blank (no wrong data); the id-agnostic rich fields still come from `place` as before.
         val matched = if (featureId != null) places.firstOrNull { it.featureId == featureId } else null

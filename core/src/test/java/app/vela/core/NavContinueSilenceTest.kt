@@ -168,7 +168,7 @@ class NavContinueSilenceTest {
 
     /** Re-acquire (fix outside the forward window) on a route that passes near itself must pick
      *  the pass nearest our progress — nearest-perpendicular alone teleported progress onto the
-     *  return leg whenever GPS drifted a couple of metres toward it. */
+     *  return leg whenever GPS drifted a couple of meters toward it. */
     @Test fun `re-acquire prefers the pass nearest current progress`() {
         val up = north(20, lng = -122.0000)
         val down = north(20, lng = -122.00008).reversed() // return leg ~7 m west (divided road)

@@ -8,7 +8,7 @@ import app.vela.core.model.Route
  * builds ONE leg and the via boundaries carry no DEPART/ARRIVE, so a stop is invisible in the
  * turn list unless it is located by geometry: project the stop onto the polyline for its
  * along-route distance, project each maneuver the same way, and the first maneuver at or past
- * the stop (less a little slack, the stop's own pin sits a few metres off the road) starts the
+ * the stop (less a little slack, the stop's own pin sits a few meters off the road) starts the
  * next leg. A stop that projects nowhere near the route (a stale list) is skipped.
  */
 object RouteStops {
@@ -33,7 +33,7 @@ object RouteStops {
         return out
     }
 
-    /** Along-route metres and off-route metres of [p]'s nearest point on the polyline. */
+    /** Along-route meters and off-route meters of [p]'s nearest point on the polyline. */
     private fun project(poly: List<LatLng>, cum: DoubleArray, p: LatLng): Pair<Double, Double> {
         val latScale = Math.cos(Math.toRadians(p.lat)).coerceAtLeast(0.1)
         var bestAlong = 0.0

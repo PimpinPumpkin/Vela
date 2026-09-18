@@ -235,7 +235,7 @@ class NavEngineTest {
     }
 
     /** Walking/biking get a tighter off-route corridor than driving (NavSession passes it): a
-     *  pedestrian is on a known path a few metres wide, so a wrong turn should be caught long before
+     *  pedestrian is on a known path a few meters wide, so a wrong turn should be caught long before
      *  the 40 m a car needs for lane offset + shallow-angle lag. Same ~30 m deviation: inside the
      *  driving corridor (no reroute), outside the walking one (reroutes). */
     @Test
@@ -569,7 +569,7 @@ class NavEngineTest {
         )
     }
 
-    /** Spoken prompt distances follow the Imperial setting (TTS used to always say metres). */
+    /** Spoken prompt distances follow the Imperial setting (TTS used to always say meters). */
     @Test
     fun spokenPromptsUseImperialWhenImperial() {
         val r = turnRoute()
@@ -577,16 +577,16 @@ class NavEngineTest {
         val (_, events) = NavEngine.update(r, s1, r.polyline.first(), imperial = true)     // ~334 m out → prompt turn
         val spoken = events.filterIsInstance<NavEvent.Speak>().map { it.text }
         assertTrue("a prompt should use feet/miles, got $spoken", spoken.any { it.contains("feet") || it.contains("mile") })
-        assertTrue("must not say metres in imperial mode, got $spoken", spoken.none { it.contains("meter") })
+        assertTrue("must not say meters in imperial mode, got $spoken", spoken.none { it.contains("meter") })
     }
 
     @Test
-    fun spokenPromptsUseMetresWhenMetric() {
+    fun spokenPromptsUseMetersWhenMetric() {
         val r = turnRoute()
         val (s1, _) = NavEngine.update(r, NavState(), r.polyline.first(), imperial = false) // consume DEPART
         val (_, events) = NavEngine.update(r, s1, r.polyline.first(), imperial = false)      // ~334 m out → prompt turn
         val spoken = events.filterIsInstance<NavEvent.Speak>().map { it.text }
-        assertTrue("a prompt should use metres, got $spoken", spoken.any { it.contains("meter") })
+        assertTrue("a prompt should use meters, got $spoken", spoken.any { it.contains("meter") })
     }
 
     /** Vela SPEAKS the road name — "turn right onto Larch Way" — not the bare "turn right" modern
@@ -707,17 +707,17 @@ class NavReplayTest {
         // Silent exit: drove right past a turn that was never announced (the field "went quiet" bug).
         val silent = diff(ManeuverType.RAMP_RIGHT, announced = false, turnNow = false, firstAhead = null, cardErr = 20.0, nearest = 25.0)
         assertTrue("a silent missed turn must be flagged", silent.suspect)
-        assertTrue("…and labelled silent: ${silent.flags}", silent.flags.any { it.contains("SILENT") })
+        assertTrue("…and labeled silent: ${silent.flags}", silent.flags.any { it.contains("SILENT") })
 
         // Announced miles too early (the "exit in 6 miles that didn't exist yet" bug).
         val early = diff(ManeuverType.RAMP_RIGHT, announced = true, turnNow = true, firstAhead = 9000.0, cardErr = 50.0, nearest = 5.0)
         assertTrue("a too-early announcement must be flagged", early.suspect)
-        assertTrue("…and labelled early: ${early.flags}", early.flags.any { it.contains("early") })
+        assertTrue("…and labeled early: ${early.flags}", early.flags.any { it.contains("early") })
 
         // Card lying about the distance to the next turn.
         val liar = diff(ManeuverType.CONTINUE, announced = true, turnNow = true, firstAhead = 300.0, cardErr = 5000.0, nearest = 5.0)
         assertTrue("a wildly wrong card distance must be flagged", liar.suspect)
-        assertTrue("…and labelled as a card error: ${liar.flags}", liar.flags.any { it.contains("card off") })
+        assertTrue("…and labeled as a card error: ${liar.flags}", liar.flags.any { it.contains("card off") })
 
         // A genuinely missing arrival/depart shouldn't trip the turn-only heuristics.
         val arrive = diff(ManeuverType.ARRIVE, announced = false, turnNow = false, firstAhead = null, cardErr = 40.0, nearest = 10.0)
@@ -725,7 +725,7 @@ class NavReplayTest {
     }
 
     /** The whole shipped-log pipeline: encode a route + fixes in the exact on-device CSV format,
-     *  parse it back, and audit it — so a real travel log can be dropped in and analysed in one
+     *  parse it back, and audit it — so a real travel log can be dropped in and analyzed in one
      *  call. Guards the TripStore ↔ TripLog format contract too. */
     @Test
     fun roundTripsAndAuditsASavedTripCsv() {
@@ -914,7 +914,7 @@ class NavReplayTest {
         }
         val batt = parsed2.events.filter { it.tag == "B" }.mapNotNull { it.text.toIntOrNull() }
         if (batt.size >= 2) println("[NavReplay] battery over the drive: ${batt.first()}% -> ${batt.last()}%")
-        println("[NavReplay] spoken-line timeline (fix @ metres-along-route):")
+        println("[NavReplay] spoken-line timeline (fix @ meters-along-route):")
         report.cards.filter { it.spoke.isNotEmpty() }.forEach { c ->
             println("  @${c.fixIndex} (${c.alongM.toInt()} m): ${c.spoke.joinToString(" | ")}")
         }
@@ -966,7 +966,7 @@ class PhotosParserTest {
 
     /** The hspqX response is the chunked batchexecute envelope: `)]}'`, a length
      *  line, then the `["wrb.fr","hspqX",<payload-json-string>,…]` row. Photos live
-     *  at payload[0][i][6][0]; the FIFE size suffix is normalised. */
+     *  at payload[0][i][6][0]; the FIFE size suffix is normalized. */
     @Test
     fun extractsUserPhotosAndDropsStreetView() {
         // Real anonymous responses interleave Street View thumbnails (no Google
@@ -1097,7 +1097,7 @@ class SearchParserHoursTest {
     /** Phase-2: the parser reads every field from the *provided* path map, so a
      *  remote calibration can relocate an index without an app update. Fixture
      *  uses low indices (results at root[0]; name/coords/address shallow) — proving
-     *  parse() honours the supplied paths rather than the hard-coded ones. */
+     *  parse() honors the supplied paths rather than the hard-coded ones. */
     @Test
     fun readsFieldsFromProvidedPaths() {
         val root = json(
@@ -1186,7 +1186,7 @@ class TransitParserTest {
         assertEquals("0.3 mi", steps[0].distanceText)
         assertEquals(null, steps[0].line)
         assertEquals(null, steps[0].departText)
-        // leg 1 — the ride: line, colour, board + alight times
+        // leg 1 — the ride: line, color, board + alight times
         assertEquals(TransitMode.BUS, steps[1].mode)
         assertEquals("53 min", steps[1].durationText)
         assertEquals("42B", steps[1].line?.name)

@@ -43,11 +43,11 @@ object NavEngine {
                                               // debounce absorbs turn transients and lane changes.
 
     /**
-     * Accuracy-scaled off-route corridor, in metres, for a travel mode. Real navigators (OsmAnd,
+     * Accuracy-scaled off-route corridor, in meters, for a travel mode. Real navigators (OsmAnd,
      * Organic Maps) don't threshold on a fixed distance - they widen the tolerance with the GPS
      * fix's own reported accuracy: TIGHT when the fix is clean (a wrong turn is caught fast), WIDE
      * when it's noisy (urban-canyon multipath can't false-reroute). `base + K*accuracy`, clamped per
-     * mode. Foot/bike ride tighter than driving because the PATH is narrow (a metre or two), but they
+     * mode. Foot/bike ride tighter than driving because the PATH is narrow (a meter or two), but they
      * still widen under bad GPS - which is why fixed 22/28 m felt extreme (user 2026-07-15): those
      * only make sense when the fix is good. `accuracyM` null (dead-reckoning) → a typical-GPS default.
      *
@@ -75,7 +75,7 @@ object NavEngine {
         return (offRouteM * 2.0).coerceAtMost(cap)
     }
 
-    /** Compass bearing of the route segment at [m] metres along, or null on a degenerate line. */
+    /** Compass bearing of the route segment at [m] meters along, or null on a degenerate line. */
     private fun routeBearingAt(poly: List<LatLng>, cum: DoubleArray, m: Double): Double? {
         if (poly.size < 2 || cum.size != poly.size) return null
         var i = 1
@@ -138,7 +138,7 @@ object NavEngine {
         // Off-route corridor + "unambiguously far" distance, MODE-AWARE (NavSession passes them).
         // Driving keeps the wide 40 m corridor: a car has lane offset + shallow-angle divergence lag,
         // so a narrower corridor false-reroutes. Walking/biking is far more precise (a walker is on a
-        // known sidewalk/path a few metres wide), so NavSession hands down a much tighter pair -
+        // known sidewalk/path a few meters wide), so NavSession hands down a much tighter pair -
         // otherwise a pedestrian who takes the wrong footpath drifts 40 m before Vela notices.
         offRouteM: Double = OFF_ROUTE_M,
         farOffM: Double = FAR_OFF_M,
@@ -152,7 +152,7 @@ object NavEngine {
         if (maneuvers.isEmpty() || state.arrived) return state to events
 
         // Forward progress along the route (monotonic). Project the fix onto the polyline
-        // within a window around how far we'd already travelled — NOT globally — so a route
+        // within a window around how far we'd already traveled — NOT globally — so a route
         // that passes near itself (switchback / cloverleaf / parallel return leg) can't make
         // "remaining" collapse by matching a far leg. Only re-acquire globally when we've
         // clearly left the window (a reroute or a big GPS gap); when genuinely off-route we
@@ -209,11 +209,11 @@ object NavEngine {
         // while stationary — red-light multipath drift toward a parallel street must not reroute
         // a parked car (Google visibly refuses to reroute while stationary). The stationary floor
         // is MODE-AWARE ([movingFloorMps]): a walker's 1.4 m/s must count as moving or pedestrian
-        // rerouting is dead. Unknown speed counts as moving so tests/replays keep old behaviour.
+        // rerouting is dead. Unknown speed counts as moving so tests/replays keep old behavior.
         // EXCEPTION - a FAR deviation counts at ANY speed (real drive 2026-07-14): creeping out of
         // a parking lot sits under the 2 m/s floor the whole way, so a driver leaving the route at
         // walking pace never accumulated hits and the reroute (and the redrawn line) never came.
-        // Stationary multipath jitter is tens of metres at worst; FAR_OFF_M is comfortably beyond
+        // Stationary multipath jitter is tens of meters at worst; FAR_OFF_M is comfortably beyond
         // anything a parked car's GPS invents, so counting it can't bring back red-light reroutes.
         val moving = (speedMps ?: 99.0) >= movingFloorMps
         // Heading term: moving with a course >HEADING_OFF_DEG against the route's local direction is
@@ -235,7 +235,7 @@ object NavEngine {
             // "waits far too long after a wrong turn").
             moving && offDist > farOffM -> state.offRouteHits + 2
             // Moving AGAINST the route and already a quarter-corridor off the line: a wrong turn,
-            // not a wide legit one (which stays within a few metres of the corner while the
+            // not a wide legit one (which stays within a few meters of the corner while the
             // projection catches up). Counts double, so a deliberate left-instead-of-straight
             // reroutes on the 2nd fix after the turn instead of the 3rd; the sustained
             // back-on-course check in NavSession discards the rare false one (real drive
@@ -312,7 +312,7 @@ object NavEngine {
         // fired the prompt + advanced the step whenever the maneuver was geographically near,
         // even if miles ahead along the road — a highway curving back near an exit announced
         // "take the exit" miles early, then skipped the real one. The maneuver sits ON the line,
-        // so project it (window-anchored, above) and subtract how far we've travelled.
+        // so project it (window-anchored, above) and subtract how far we've traveled.
         val dtn = if (route.polyline.size < 2) loc.distanceTo(target.location)
             else (maneuverAlong(idxCur) - traveled).coerceAtLeast(0.0)
 
@@ -345,7 +345,7 @@ object NavEngine {
         val redundantContinue =
             (target.type == ManeuverType.CONTINUE || target.type == ManeuverType.STRAIGHT) &&
                 !app.vela.core.model.continueHasGenuineFork(target.lanes)
-        // MUTE turn guidance while off-route (Google's behaviour): the progress snap still maps
+        // MUTE turn guidance while off-route (Google's behavior): the progress snap still maps
         // the driver onto the OLD route while a reroute is pending (or failing in a dead spot),
         // and as the phantom snap drifts past old maneuvers the engine happily announced them -
         // "turn right onto X" spoken on a street that turn doesn't exist on (the wrong-direction
@@ -356,11 +356,11 @@ object NavEngine {
 
         // Approach prompts, SPEED-SCALED (Google/OsmAnd scale announcements with speed — the fixed
         // 400 m gave a 75 mph driver 12 s to cross three lanes for an exit). max(fixed, v×T) keeps
-        // city/walking behaviour — and every existing test — byte-identical. `spoken` stores the
-        // band SLOT (0=far, 1=near), not the metre value: the thresholds move between fixes.
+        // city/walking behavior — and every existing test — byte-identical. `spoken` stores the
+        // band SLOT (0=far, 1=near), not the meter value: the thresholds move between fixes.
         val v = speedMps ?: 0.0
         // 35/10 s (were 25/8, 2026-07-17): a real-drive A/B had Google announcing up to ~0.2 mi
-        // sooner at highway speed and lockstep in town — the floors keep city/walking behaviour
+        // sooner at highway speed and lockstep in town — the floors keep city/walking behavior
         // byte-identical, the T is what moves the open-road prompt earlier (~+0.2 mi at 70 mph).
         val farM = maxOf(400.0, round50(v * 35.0))    // ~35 s out on the open road
         val nearM = maxOf(150.0, round50(v * 10.0))   // ~10 s out
@@ -479,7 +479,7 @@ object NavEngine {
     /** The active language's nav strings (spoken frame + distance + arrival), English by default. */
     private fun nav() = app.vela.core.i18n.NavStringsRegistry.current()
 
-    /** A distance phrased for SPEECH, honouring the imperial/metric preference — now localized via the
+    /** A distance phrased for SPEECH, honoring the imperial/metric preference — now localized via the
      *  active [NavStrings] (English is byte-identical to the old inline logic). */
     private fun spokenDistance(meters: Double, imperial: Boolean): String = nav().spokenDistance(meters, imperial)
 
@@ -488,7 +488,7 @@ object NavEngine {
         return if (dur > 0) (route.distanceMeters / dur).coerceAtLeast(1.0) else 13.4
     }
 
-    /** For each intermediate [stops] waypoint, the metres-along-[route] of its nearest point on the route
+    /** For each intermediate [stops] waypoint, the meters-along-[route] of its nearest point on the route
      *  line — the "you're passing this stop" mark that drives the per-stop arrival cue — or null when the
      *  stop sits farther than [STOP_ON_ROUTE_M] from the line (not really on this route). Marks are
      *  NON-DECREASING: each stop is projected only onto the route AFTER the previous stop's mark, so an
@@ -503,14 +503,14 @@ object NavEngine {
             // Nudge the window start past the previous mark: a segment ENDING exactly at `from` still
             // "overlaps" the window, and its projection (before `from`) would win projectAlong's
             // strictly-less tie against the true later pass. Clamp the result for the same reason —
-            // ordering is what the cue logic needs; a metre of positional slack is irrelevant at
+            // ordering is what the cue logic needs; a meter of positional slack is irrelevant at
             // STOP_ARRIVE tolerances.
             val (m, d) = projectAlong(route.polyline, cum, s, from + 0.5, total)
             if (d <= STOP_ON_ROUTE_M) { from = m.coerceAtLeast(from); from } else null
         }
     }
 
-    /** The per-route geometry every [update] needs: cumulative metres at each vertex, and each
+    /** The per-route geometry every [update] needs: cumulative meters at each vertex, and each
      *  maneuver's along-route mark. Both depend on the ROUTE alone, yet were rebuilt on every fix:
      *  a full-polyline pass plus a windowed projection of EVERY maneuver over the remaining line,
      *  once a second on the main thread, ~19 ms on a long route (measured 2026-09-03: over a
@@ -546,7 +546,7 @@ object NavEngine {
     }
 
     /** Nearest projection of [p] onto [path], searched only among segments overlapping the
-     *  along-route window `[loM, hiM]`. Returns (metres-along-route, perpendicular-metres).
+     *  along-route window `[loM, hiM]`. Returns (meters-along-route, perpendicular-meters).
      *  Windowing is what stops a route that passes near itself from matching a far leg; a
      *  caller passes the window around the last known progress. Returns the clamped window
      *  start with a huge distance if no segment falls in the window. */
@@ -578,12 +578,12 @@ object NavEngine {
     }
 
     /** Global projection of [p] onto [path], scored by perpendicular distance PLUS a small
-     *  penalty (2 cm per metre) of along-route distance from [anchorM] — so where the route
+     *  penalty (2 cm per meter) of along-route distance from [anchorM] — so where the route
      *  reuses the same asphalt (out-and-back, divided highway) and several passes tie on
      *  perpendicular distance, the pass NEAREST the anchor wins. A far leg must be >20 m
      *  perpendicular-closer per km of along-distance to beat a near match — impossible inside
      *  the ON_ROUTE acceptance band, so re-acquire can no longer teleport progress onto the
-     *  return leg. Returns (metres-along-route, ACTUAL perpendicular metres of the winner). */
+     *  return leg. Returns (meters-along-route, ACTUAL perpendicular meters of the winner). */
     internal fun projectNearAnchor(path: List<LatLng>, cum: DoubleArray, p: LatLng, anchorM: Double): Pair<Double, Double> {
         val total = cum.lastOrNull() ?: 0.0
         var bestScore = Double.MAX_VALUE

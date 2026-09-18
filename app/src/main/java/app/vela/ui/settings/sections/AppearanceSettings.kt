@@ -96,7 +96,7 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         }
         // FONT (issue #252). Only two states, and deliberately so: the platform font, or a file the
         // user supplies. We ship no faces of our own - the one people ask for is proprietary and
-        // cannot be redistributed - so the honest offer is "use what you already have a licence to".
+        // cannot be redistributed - so the honest offer is "use what you already have a license to".
         Spacer(Modifier.height(8.dp))
         val fontBad = stringResource(R.string.settings_font_bad)
         val fontScope = androidx.compose.runtime.rememberCoroutineScope()
@@ -161,7 +161,7 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(8.dp))
-        // Map colour sets: Modern = the Google-app-sampled palette (default), Classic = the
+        // Map color sets: Modern = the Google-app-sampled palette (default), Classic = the
         // archived pre-sample look (white roads, yellow motorways, true greens). The fleet
         // default is remote-pushable via calibration.json; an explicit pick here wins.
         SettingsGroup(title = stringResource(R.string.settings_map_colors)) {

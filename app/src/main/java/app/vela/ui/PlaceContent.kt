@@ -50,7 +50,7 @@ object LoadPhotos {
  * Whether to hide adult / nightlife categories (bars, clubs, casinos, liquor stores, adult, smoking,
  * gambling, …) from search results and the ambient map. OFF by default (everything shown); ON drops
  * those places at the data-source seam via [app.vela.core.data.CategoryFilter]. Matches on Google's
- * free-text CATEGORY only, never the name, so a place categorised "Restaurant" is always kept. Same
+ * free-text CATEGORY only, never the name, so a place categorized "Restaurant" is always kept. Same
  * process-wide reactive holder shape as [ShowReviews] / [LoadPhotos], persisted in vela_settings.
  */
 object HideAdult {

@@ -109,7 +109,7 @@ fun SearchBar(
     // whole Card — a card-level clickable made the entire bar ONE focus stop and swallowed
     // the Settings gear inside it (the gear became unreachable by D-pad; measured on-device).
     // Light theme: a WHITE bar with a real shadow and a hairline border, the way Google's sits
-    // on its near-white map. surfaceContainerLow on the light land colour was almost the same
+    // on its near-white map. surfaceContainerLow on the light land color was almost the same
     // tone as the map, so the bar dissolved into it (issue #351). Dark keeps the flat tone: a
     // shadow reads as a smear on a dark map.
     val dark = app.vela.ui.theme.isAppInDarkTheme()
@@ -197,7 +197,7 @@ fun SearchBar(
                         // with nothing focused, taking a 3rd press to escape (measured).
                         // With the IME up, its window still eats the first BACK to hide
                         // itself; the next BACK reaches here and closes — platform-standard
-                        // two-press behaviour, now deterministic.
+                        // two-press behavior, now deterministic.
                         .onPreviewKeyEvent { ev ->
                             when {
                                 // BACK/ESC closes the overlay (see comment above).
@@ -235,7 +235,7 @@ fun SearchBar(
                     )
                 }
             }
-            // Quiet offline indicator: a greyed globe-with-a-slash + "Offline", shown when there's no
+            // Quiet offline indicator: a grayed globe-with-a-slash + "Offline", shown when there's no
             // connection (replaces the old banner). Hidden while typing so it doesn't crowd the clear "X".
             if (offline && query.isEmpty() && onBack == null) {
                 Icon(

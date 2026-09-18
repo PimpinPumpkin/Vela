@@ -131,7 +131,7 @@ class LocationProvider @Inject constructor(
 
     /** Replay a recorded trip as a synthetic fix stream — same shape as [updates], so
      *  the nav loop, camera and dot run exactly as if driving. Gaps between fixes are
-     *  honoured (divided by [speedup], capped at 2 s so a long stop doesn't stall). */
+     *  honored (divided by [speedup], capped at 2 s so a long stop doesn't stall). */
     fun replay(fixes: List<ReplayFix>, speedup: Float = 1f): Flow<Location> = flow {
         var prevT: Long? = null
         for (fix in fixes) {

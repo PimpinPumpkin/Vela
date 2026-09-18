@@ -11,7 +11,7 @@ class FollowEstimatorTest {
 
     /** Truth: due east at [v] m/s from (38.55, -121.74). Fixes at 1 Hz, optionally lagged the way
      *  the view model's low-pass lags them at low speed; frames at 60 Hz. Returns per-frame
-     *  eastward displacement in metres. */
+     *  eastward displacement in meters. */
     private fun run(v: Double, lagS: Double, seconds: Int, est: FollowEstimator): List<Double> {
         val out = ArrayList<Double>()
         var lastLng = Double.NaN

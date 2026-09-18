@@ -10,7 +10,7 @@ import app.vela.core.model.ManeuverType
 import app.vela.core.model.Maneuver as VelaManeuver
 
 /**
- * Maps Vela's routing model ([VelaManeuver]/[ManeuverType], metres, seconds) onto the
+ * Maps Vela's routing model ([VelaManeuver]/[ManeuverType], meters, seconds) onto the
  * `androidx.car.app.navigation` types a [androidx.car.app.navigation.model.NavigationTemplate]
  * consumes. Pure + unit-testable — no Android Auto host needed.
  *
@@ -82,7 +82,7 @@ object ManeuverMapper {
             .build()
     }
 
-    /** Metres → a car [Distance], rounded Google-style, in the user's unit system. */
+    /** Meters → a car [Distance], rounded Google-style, in the user's unit system. */
     fun carDistance(meters: Double, imperial: Boolean): Distance {
         return if (imperial) {
             val feet = meters * 3.28084

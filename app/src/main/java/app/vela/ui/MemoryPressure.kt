@@ -56,7 +56,7 @@ object MemoryPressure {
      *
      * Without this the low-RAM branches are dead code on every device we actually own (the M5 dev
      * phone reports heapClassMb=256, lowRam=false), which means they would ship unverified. Returns
-     * null when unset or on a non-debug build, so release behaviour is untouched.
+     * null when unset or on a non-debug build, so release behavior is untouched.
      */
     private fun forcedLowRam(): Boolean? {
         if (!app.vela.BuildConfig.DEBUG) return null

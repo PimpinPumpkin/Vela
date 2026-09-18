@@ -4,11 +4,11 @@ package app.vela.core.data
  * Whether this device is memory-constrained, exposed as a `:core`-visible flag.
  *
  * Same shape and reason as [CategoryFilter.enabled]: the detection lives in `:app`
- * (`app.vela.ui.MemoryPressure`, which needs `ActivityManager`), but the behaviour it gates has to
+ * (`app.vela.ui.MemoryPressure`, which needs `ActivityManager`), but the behavior it gates has to
  * act down at the data-source seam. `:core` stays UI-agnostic and never reads an app holder, so the
  * app pushes the value in at startup instead.
  *
- * Off by default, which keeps every roomier device byte-identical to previous behaviour.
+ * Off by default, which keeps every roomier device byte-identical to previous behavior.
  */
 object LowRamMode {
 

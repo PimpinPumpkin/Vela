@@ -90,12 +90,12 @@ object OverpassPois {
         emptyList()
     }
 
-    /** Named road centrelines in the bbox → sampled representative points per street, for the offline
+    /** Named road centerlines in the bbox → sampled representative points per street, for the offline
      *  geocoder's STREET-LEVEL fallback: OSM maps roads far more completely than house numbers, so a
      *  suburb with no `addr:housenumber` points still has every named street here — enough to route to
      *  "West Covell Boulevard" even when no individual house on it is mapped. Vehicle-routable highway classes
      *  only (skips footways/paths/tracks). Geometry comes back inline via `out geom`; we thin it to ~one
-     *  point per [SAMPLE_M] metres so the table stays bounded while "nearest point on the street" stays
+     *  point per [SAMPLE_M] meters so the table stays bounded while "nearest point on the street" stays
      *  accurate. Long-timeout client (a metro's road network is a big body). */
     @OptIn(ExperimentalSerializationApi::class)
     fun fetchStreets(
@@ -117,7 +117,7 @@ object OverpassPois {
         emptyList()
     }
 
-    /** Thin a way's inline `geometry` to ~one kept point per [SAMPLE_M] metres (endpoints always kept). */
+    /** Thin a way's inline `geometry` to ~one kept point per [SAMPLE_M] meters (endpoints always kept). */
     private fun toStreetPts(el: OvElement): List<OfflineAddressStore.StreetPt> {
         val name = el.tags["name"] ?: return emptyList()
         val pts = el.geometry.mapNotNull { g ->
@@ -135,7 +135,7 @@ object OverpassPois {
         return out
     }
 
-    private const val SAMPLE_M = 120.0 // keep ~one street-centreline point per this many metres
+    private const val SAMPLE_M = 120.0 // keep ~one street-centerline point per this many meters
 
     private fun toAddr(el: OvElement): OfflineAddressStore.Addr? {
         val hn = el.tags["addr:housenumber"] ?: return null

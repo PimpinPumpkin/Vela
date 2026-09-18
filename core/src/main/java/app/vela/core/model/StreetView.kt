@@ -3,8 +3,8 @@ package app.vela.core.model
 /**
  * A Street View panorama's metadata, resolved from a lat/lng by the keyless
  * `GeoPhotoService.SingleImageSearch` endpoint (the same one Google's own JS Maps API
- * uses - no API key, authorised by referer). Everything the in-app sphere viewer needs to
- * fetch tiles, orient the camera, walk to neighbours, and go back in time; the tiles
+ * uses - no API key, authorized by referer). Everything the in-app sphere viewer needs to
+ * fetch tiles, orient the camera, walk to neighbors, and go back in time; the tiles
  * themselves come from `streetviewpixels-pa.googleapis.com/v1/tile` (also keyless).
  *
  * The equirectangular image is a fixed 2:1 pyramid: at zoom `z` it is `512·2^z` wide by
@@ -16,7 +16,7 @@ data class StreetViewPano(
     val lat: Double,
     val lng: Double,
     // The pano's CAPTURE heading (degrees, true north). This is the texture's compass reference:
-    // Google's equirect is stitched with the capture direction at the IMAGE CENTRE (u=0.5), so the
+    // Google's equirect is stitched with the capture direction at the IMAGE CENTER (u=0.5), so the
     // viewer needs it to map compass bearings onto the sphere. Never overwrite it with a desired
     // facing - that's [initialFacingDeg].
     val headingDeg: Double = 0.0,
@@ -39,7 +39,7 @@ data class StreetViewPano(
     // Capture date of THIS pano (year, month). Google shows it ("Image capture: May 2025").
     val captureYear: Int? = null,
     val captureMonth: Int? = null,
-    // Walkable neighbours - the panoramas you can step to, one per rough direction (the viewer
+    // Walkable neighbors - the panoramas you can step to, one per rough direction (the viewer
     // draws a tappable arrow for each). Already de-cluttered from the raw ~100-pano local graph.
     val neighbors: List<StreetViewLink> = emptyList(),
     // Other captures AT THIS SPOT, newest first, INCLUDING this one - the "go back in time" list.
@@ -47,7 +47,7 @@ data class StreetViewPano(
     val history: List<StreetViewTime> = emptyList(),
 )
 
-/** A neighbouring pano you can walk to: its id, position, and the bearing+distance from the
+/** A neighboring pano you can walk to: its id, position, and the bearing+distance from the
  *  current pano (so the viewer can place a directional arrow and label how far it is). */
 data class StreetViewLink(
     val panoId: String,

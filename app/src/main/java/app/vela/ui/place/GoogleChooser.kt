@@ -101,7 +101,7 @@ import kotlin.math.roundToInt
  *
  * - A header with the MODE as the title ("Drive") and three round actions: options, share, close.
  * - Underlined mode TABS (glyph + time) instead of pill chips, with a divider under them.
- * - ONE route summary - the selected route's time in its traffic colour, the distance, and a line
+ * - ONE route summary - the selected route's time in its traffic color, the distance, and a line
  *   saying why it is the pick - instead of a list of route cards. The other routes are chosen
  *   from their time bubbles on the map ([app.vela.ui.map.RouteBubble]), or by tapping their line.
  * - Expanding the sheet shows the time and avoid chips, "add a stop along the way", and the TURN

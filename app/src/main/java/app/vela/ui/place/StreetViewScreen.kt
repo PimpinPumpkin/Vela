@@ -236,9 +236,9 @@ fun StreetViewScreen(
                 )
             }
 
-            // Walk arrows: one tappable chevron per neighbour that's within the visible arc. Shown in
-            // historical views too (the neighbour graph is the base pano's, so you can still walk from
-            // an older capture - it lands on that neighbour's imagery). Hidden only while loading.
+            // Walk arrows: one tappable chevron per neighbor that's within the visible arc. Shown in
+            // historical views too (the neighbor graph is the base pano's, so you can still walk from
+            // an older capture - it lands on that neighbor's imagery). Hidden only while loading.
             if (pano != null && bitmap != null && !loading) {
                 val halfFov = fov * 0.5f
                 for (link in pano.neighbors) {

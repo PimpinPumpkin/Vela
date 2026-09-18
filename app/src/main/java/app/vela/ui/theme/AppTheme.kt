@@ -76,8 +76,8 @@ object AppTheme {
     }
 
     /**
-     * Feed the sun calculation a position. **Stored ROUNDED to about a kilometre** - sunrise moves
-     * by ~4 seconds per kilometre of longitude, so the extra precision buys nothing and there is no
+     * Feed the sun calculation a position. **Stored ROUNDED to about a kilometer** - sunrise moves
+     * by ~4 seconds per kilometer of longitude, so the extra precision buys nothing and there is no
      * reason for a theme setting to keep a precise record of where its owner was.
      */
     fun rememberLocation(context: Context, latitude: Double, longitude: Double) {
@@ -121,7 +121,7 @@ object AppTheme {
     private const val KEY_AT = "theme_sun_at"
 }
 
-/** The single source of truth for "is the app dark right now" - honours the user's
+/** The single source of truth for "is the app dark right now" - honors the user's
  * [AppTheme] choice, falling back to the OS theme only in [ThemeMode.SYSTEM].
  * Every place that used to call `isSystemInDarkTheme()` should call this instead. */
 @Composable
@@ -144,10 +144,10 @@ fun isAppInAmoled(): Boolean =
 
 
 /**
- * Material You dynamic colour preference (issue #15). Same reactive-holder shape as
+ * Material You dynamic color preference (issue #15). Same reactive-holder shape as
  * [AppTheme]: flip it in Settings and every MaterialTheme surface recomposes with the
  * wallpaper palette. Off by default - Vela teal is the out-of-the-box look, dynamic
- * colour is the opt-in customization. Android 12+ only; the toggle is hidden below that.
+ * color is the opt-in customization. Android 12+ only; the toggle is hidden below that.
  */
 object DynamicColor {
     val on = mutableStateOf(false)

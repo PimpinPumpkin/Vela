@@ -85,7 +85,7 @@ internal fun SettingsScaffold(
     // focus-touching surface - entered via the soft-key Options menu, whose key events live in the
     // bar and the menu's own Dialog window, so the main window has never held Compose focus -
     // requestFocus AND moveFocus both no-op (40x50ms each, zero landings; the same wall as the
-    // cold-open bare map, docs/dpad.md). There the accepted behaviour applies here too: the first
+    // cold-open bare map, docs/dpad.md). There the accepted behavior applies here too: the first
     // key press establishes focus ON THE BACK BUTTON (the first focusable - screenshot-verified,
     // ring and all), so exactly one press is spent, like the bare map. Once ANY focus has existed
     // in the session, this loop lands Back on open and re-lands it when the soft-key bar teardown's

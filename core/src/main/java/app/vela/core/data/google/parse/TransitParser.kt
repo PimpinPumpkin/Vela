@@ -92,7 +92,7 @@ object TransitParser {
      *  and rendering them sequentially read as a journey with transfers. When the badges
      *  outnumber the rides, cluster each badge onto its nearest ride (by document order around
      *  the position where that ride's own line appears) and merge each cluster into one
-     *  slash-joined badge in the ridden line's colours - Google's "any of these" presentation.
+     *  slash-joined badge in the ridden line's colors - Google's "any of these" presentation.
      *  Any ride line missing from the badges means the shapes don't line up; keep the original
      *  list rather than guess. */
     internal fun mergeAlternativeLines(lines: List<TransitLine>, rideNames: List<String>): List<TransitLine> {
@@ -276,7 +276,7 @@ object TransitParser {
             a.forEach(::walk)
         }
         walk(root)
-        // A line drawn as a BULLET rather than a text pill carries no colour badge at all - the
+        // A line drawn as a BULLET rather than a text pill carries no color badge at all - the
         // whole identity is an agency-scoped icon. New York's subway is the case that exposed this
         // (issue #284): every subway leg parsed to no line, which made it fall through to WALK and
         // render as an empty walking step, while buses (which do get a text pill) were fine.

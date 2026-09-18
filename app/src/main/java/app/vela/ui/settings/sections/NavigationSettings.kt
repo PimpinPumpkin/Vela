@@ -73,7 +73,7 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         )
 
         // Route bar (issue #228). Off by default: it is extra chrome on the nav screen, and the
-        // congestion colour already on the route line covers some of the same ground.
+        // congestion color already on the route line covers some of the same ground.
         var routeBar by remember { mutableStateOf(prefs.getBoolean("route_bar", false)) }
         GroupDivider()
         ToggleRow(
@@ -126,7 +126,7 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         }
         Hint(stringResource(R.string.settings_road_label_hint))
 
-        // Arrow size + colours (issue #344): bigger targets for ageing eyes, and a white disc so
+        // Arrow size + colors (issue #344): bigger targets for aging eyes, and a white disc so
         // the puck does not blend into the blue route line.
         GroupDivider()
         Text(

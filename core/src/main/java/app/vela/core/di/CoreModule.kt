@@ -36,7 +36,7 @@ object CoreModule {
             .dispatcher(
                 Dispatcher().apply {
                     // The ambient-POI load fires ~13 parallel google.com requests; OkHttp's default
-                    // 5-per-host serialises them into ~3 rounds — the "POIs take ~10 s to load" report
+                    // 5-per-host serializes them into ~3 rounds — the "POIs take ~10 s to load" report
                     // (3 rounds × a slow connection). Let them all go at once → one round.
                     maxRequestsPerHost = 24
                     maxRequests = 64

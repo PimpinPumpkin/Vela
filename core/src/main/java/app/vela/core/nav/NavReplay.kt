@@ -175,5 +175,5 @@ object NavReplay {
     }
 }
 
-/** Compact metres formatter for the report (km over 1000 m). */
+/** Compact meters formatter for the report (km over 1000 m). */
 private fun m(v: Double): String = if (v < 1000) "${v.roundToInt()} m" else "${(v / 100).roundToInt() / 10.0} km"

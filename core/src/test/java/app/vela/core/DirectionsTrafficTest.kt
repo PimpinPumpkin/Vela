@@ -9,7 +9,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /** The per-segment live-traffic spans at `route[3][5][0]` — `[level, startMeters,
- *  lengthMeters]` tuples — drive the route line's Google-style congestion colour.
+ *  lengthMeters]` tuples — drive the route line's Google-style congestion color.
  *  Calibrated 2026-06-19; these guard the index path + tuple order. */
 class DirectionsTrafficTest {
 

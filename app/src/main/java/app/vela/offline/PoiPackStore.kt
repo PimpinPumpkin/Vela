@@ -101,7 +101,7 @@ class PoiPackStore @Inject constructor(
                 val total = resp.body!!.contentLength()
                 var lastPct = -1
                 val counting = CountingInputStream(resp.body!!.byteStream()) { read ->
-                    if (!active()) error("cancelled")
+                    if (!active()) error("canceled")
                     if (total > 0) (100 * read / total).toInt().let { p -> if (p != lastPct) { lastPct = p; onProgress(p) } }
                 }
                 ZipInputStream(counting).use { zis ->

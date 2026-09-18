@@ -199,7 +199,7 @@ object RoadFeatures {
     suspend fun hasRegion(context: Context, manifestUrl: String, lat: Double, lng: Double): Boolean =
         regionFor(regions(context, manifestUrl), lat, lng) != null
 
-    /** True when the region covering the box centre is loaded; false = no coverage or failed. */
+    /** True when the region covering the box center is loaded; false = no coverage or failed. */
     suspend fun ensureBox(context: Context, manifestUrl: String, south: Double, west: Double, north: Double, east: Double): Boolean {
         val r = regionFor(regions(context, manifestUrl), (south + north) / 2, (west + east) / 2) ?: return false
         return ensureRegion(context, r)

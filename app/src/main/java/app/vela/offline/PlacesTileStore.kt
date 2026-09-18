@@ -209,7 +209,7 @@ abstract class PmtilesRegionStore(
         File(root, "revs.json").writeText(readRevs().put(id, rev).toString())
     }
 
-    /** Installed archives whose bbox centre falls inside [s],[w],[n],[e]: the ones that belong to
+    /** Installed archives whose bbox center falls inside [s],[w],[n],[e]: the ones that belong to
      *  a region being removed. */
     fun idsInside(s: Double, w: Double, n: Double, e: Double): List<String> =
         readIndex().filter { (_, b) -> (b[0] + b[2]) / 2 in s..n && (b[1] + b[3]) / 2 in w..e }.keys.toList()

@@ -1,10 +1,10 @@
 package app.vela.core.model
 
-/** Coarse vehicle class for a transit line, used to pick a glyph + default colour. */
+/** Coarse vehicle class for a transit line, used to pick a glyph + default color. */
 enum class TransitMode { WALK, BUS, TRAM, SUBWAY, TRAIN, FERRY, GENERIC }
 
-/** One coloured line you ride on a transit itinerary (Google draws these as
- *  colour-filled pills, e.g. a blue "Amtrak Thruway" or a green "Route 42B"). */
+/** One colored line you ride on a transit itinerary (Google draws these as
+ *  color-filled pills, e.g. a blue "Amtrak Thruway" or a green "Route 42B"). */
 data class TransitLine(
     val name: String,
     val mode: TransitMode = TransitMode.GENERIC,
@@ -22,7 +22,7 @@ data class TransitStopTime(
     val timeText: String? = null,       // the shown (real-time if live) time, "4:35 PM"
     val scheduledText: String? = null,  // the timetable time when it differs, "4:30 PM"
     val location: LatLng? = null,       // stop position (for drawing / walk-leg routing)
-    val cancelled: Boolean = false,     // this call is cancelled (GTFS-Realtime; Google data never sets it)
+    val canceled: Boolean = false,     // this call is canceled (GTFS-Realtime; Google data never sets it)
     val delayMin: Int? = null,          // realtime minus timetable, minutes; negative = running early
 )
 
@@ -46,7 +46,7 @@ data class TransitStep(
     val numStops: Int? = null,                // "Ride 17 stops"
     val delayText: String? = null,            // "5 min late" / "2 min early" (real-time)
     val intermediateStops: List<TransitStopTime> = emptyList(), // the in-between stops
-    // Stops the run calls at BEFORE the boarding stop (the stop-timeline view shows them greyed
+    // Stops the run calls at BEFORE the boarding stop (the stop-timeline view shows them grayed
     // above your stop, Google-style). Empty for itinerary-sourced steps.
     val priorStops: List<TransitStopTime> = emptyList(),
     // Walk-leg endpoints (from the adjacent stops / itinerary origin+dest) — used to fetch
@@ -65,7 +65,7 @@ data class TransitStep(
 data class TransitItinerary(
     val departureEpochSec: Long? = null,
     val arrivalEpochSec: Long? = null,
-    val departureText: String? = null, // "6:10 AM" (already localised by Google)
+    val departureText: String? = null, // "6:10 AM" (already localized by Google)
     val arrivalText: String? = null,   // "6:55 AM"
     val durationText: String? = null,  // "45 min"
     val distanceText: String? = null,  // "15.0 miles"

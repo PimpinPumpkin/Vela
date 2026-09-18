@@ -9,7 +9,7 @@ import app.vela.core.data.google.SearchPb
  * [DEFAULT]; [CalibrationStore] fetches a newer version from the public repo at
  * runtime so a fix lands without an app update ("push out the scraping").
  *
- * Phase 1 covers pb templates + endpoints; Phase 2 externalised the positional field-index paths
+ * Phase 1 covers pb templates + endpoints; Phase 2 externalized the positional field-index paths
  * the parsers read (the `paths` object — `[1][39]`, `[1][10]`, …), so a moved field is also just an
  * edit + version bump. Genuinely new parsing *logic* still needs an app release (or a signed
  * transforms.js, phase 3); this fixes path/pb/endpoint drift.
@@ -30,11 +30,11 @@ data class Calibration(
     val photosEndpoint: String = DEFAULT_PHOTOS_ENDPOINT,
     val photosProto: String = DEFAULT_PHOTOS_PROTO,
     // Street View metadata: the keyless `GeoPhotoService.SingleImageSearch` the JS Maps API uses
-    // (no API key - authorised by referer, like the rest of the scrape). `{LAT}`/`{LNG}` are the
+    // (no API key - authorized by referer, like the rest of the scrape). `{LAT}`/`{LNG}` are the
     // query point; the response carries the nearest pano's id, tile pyramid, and true heading.
     // The equirect TILES come from a fixed template (streetviewpixels-pa) that needs no calibration.
     val streetViewMetaUrl: String = DEFAULT_STREETVIEW_META,
-    // Street View metadata BY PANO ID (walking to a neighbour / a historical capture): the
+    // Street View metadata BY PANO ID (walking to a neighbor / a historical capture): the
     // consumer photometa/v1 RPC, keyless. `{PANOID}` is the target pano; returns the SAME node
     // shape as the lat/lng search (nested one level deeper, )]}' guarded - the parser handles both).
     val streetViewPanoUrl: String = DEFAULT_STREETVIEW_PANO,
@@ -60,10 +60,10 @@ data class Calibration(
     // `voice_speed` pref wins. 0.8 is the user's preferred nav cadence. Settings slider goes to 0.5.
     val defaultVoiceSpeed: Float = DEFAULT_VOICE_SPEED,
     // The fleet default neural voice id (a Piper voice from PiperCatalog) — what onboarding downloads
-    // and a fresh install activates. Remote-pushable via the signed bundle so a favourite voice can be
+    // and a fresh install activates. Remote-pushable via the signed bundle so a favorite voice can be
     // made everyone's default without an app release; a user's own pick (voice_model) always wins.
     val defaultVoiceId: String = DEFAULT_VOICE_ID,
-    // The fleet default map colour set ("modern" = the Google-sampled palette, "classic" = the
+    // The fleet default map color set ("modern" = the Google-sampled palette, "classic" = the
     // archived pre-sample look; the app ships both compiled). Remote-pushable so the default can
     // flip without an app release; a user's explicit pick (map_palette pref) always wins.
     val defaultMapPalette: String = "modern",

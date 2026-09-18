@@ -12,8 +12,8 @@ data class NavState(
     val offRouteHits: Int = 0,
     val arrived: Boolean = false,
     val spoken: Set<Int> = emptySet(), // prompt band SLOTS (0=far, 1=near) already spoken this step —
-                                       // slots, not metres: the thresholds scale with live speed
-    val traveledM: Double = 0.0,       // monotonic metres travelled along the route (forward-progress anchor)
+                                       // slots, not meters: the thresholds scale with live speed
+    val traveledM: Double = 0.0,       // monotonic meters traveled along the route (forward-progress anchor)
     val reacquireHits: Int = 0,        // consecutive far global re-acquire candidates — a big along-jump
                                        // must persist before it's adopted (single outliers can't teleport)
     val onRouteStreak: Int = 0,        // consecutive on-corridor+moving fixes — the SUSTAINED "back on the

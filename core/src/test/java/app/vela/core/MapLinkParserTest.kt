@@ -15,7 +15,7 @@ class MapLinkParserTest {
         assertNull(l.query)
     }
 
-    @Test fun geoZoomIsHonoured() {
+    @Test fun geoZoomIsHonored() {
         val l = MapLinkParser.parse("geo:38.5449,-121.7405?z=17")!!
         assertEquals(17.0, l.zoom!!, 1e-6)
         // Junk/out-of-range zooms are dropped, never crash.
@@ -32,7 +32,7 @@ class MapLinkParserTest {
         assertNull(l.lat)
     }
 
-    @Test fun geoLabelledPoint() {
+    @Test fun geoLabeledPoint() {
         val l = MapLinkParser.parse("geo:0,0?q=38.5,-121.7(Home)")!!
         assertEquals("Home", l.query)
         assertEquals(38.5, l.lat!!, 1e-6)
@@ -45,7 +45,7 @@ class MapLinkParserTest {
         assertEquals(38.5, l.lat!!, 1e-6)
     }
 
-    /** The exact shape Vela's "Map pin (geo:)" share emits: a labelled point that
+    /** The exact shape Vela's "Map pin (geo:)" share emits: a labeled point that
      *  also pins the coordinates — must round-trip back to name + coords. */
     @Test fun geoSelfShareRoundTrips() {
         val l = MapLinkParser.parse("geo:38.5449,-121.7405?q=38.5449,-121.7405(Temple%20Coffee)")!!

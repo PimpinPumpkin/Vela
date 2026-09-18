@@ -14,7 +14,7 @@ import javax.inject.Singleton
  * Direction-coded haptic turn cues. A left turn buzzes differently from a right
  * one, so a biker or walker can navigate by feel — no need to look at the screen
  * or hear the TTS (handy with wind, traffic noise, or no earbuds). Fired by
- * [app.vela.core.nav.NavEngine] via `NavEvent.Haptic`. Honours the "Vibrate on
+ * [app.vela.core.nav.NavEngine] via `NavEvent.Haptic`. Honors the "Vibrate on
  * turns" setting (default on).
  */
 @Singleton
@@ -45,7 +45,7 @@ class Haptics @Inject constructor(
 
     /** Off-route buzz, fired alongside the spoken "Rerouting" (and just as sparsely — the caller's
      *  throttle gates both). Three quick ticks then a long buzz: unlike any turn pattern, so a rider
-     *  who can't hear the voice still knows the route changed rather than a turn coming up. Honours
+     *  who can't hear the voice still knows the route changed rather than a turn coming up. Honors
      *  the same per-mode "Vibrate on turns" setting. */
     fun reroute(mode: TravelMode) {
         if (!enabled(mode)) return

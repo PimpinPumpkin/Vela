@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.mutableStateOf
 
 /** Where the name of the road you are driving is shown during navigation (issue #288 asked for
- *  it under the arrow; that pill cannot be centred for long names because it is pinned to the
+ *  it under the arrow; that pill cannot be centered for long names because it is pinned to the
  *  arrow, so the default is Google's fixed spot above the bottom bar). Values: "off", "bar", "puck". */
 object RoadLabel {
     const val OFF = "off"
@@ -27,7 +27,7 @@ object RoadLabel {
     private const val KEY = "road_label"
 }
 
-/** The navigation arrow's size and colours (issue #344): three sizes for eyes that want a bigger
+/** The navigation arrow's size and colors (issue #344): three sizes for eyes that want a bigger
  *  target, and a white-disc variant so the puck does not blend into the blue route line. Both the
  *  follow-mode Compose overlay and the map symbol draw from the same bitmap, so one holder feeds
  *  both; the map style key carries [key] so a change re-registers the symbol image. */

@@ -15,18 +15,18 @@ import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
 
 /**
- * Google-style POI markers: a category-coloured circle with a white Material
+ * Google-style POI markers: a category-colored circle with a white Material
  * Icons glyph in the middle, generated at runtime and registered on the style as
  * `vela-poi-<group>` images. The bundled OpenFreeMap style (liberty-roboto.json)
  * references them from its POI layers via an `icon-image` match on `class`.
  * Keyless — the Material Icons font is bundled in assets.
  *
- * The group keys + colours here MUST stay in sync with the match expression baked
+ * The group keys + colors here MUST stay in sync with the match expression baked
  * into the style asset (see the python transform that generates it).
  */
 object PoiIcons {
 
-    // group -> (Material Icons codepoint, circle colour)
+    // group -> (Material Icons codepoint, circle color)
     private val GROUPS = listOf(
         Triple("food", 0xe56c, "#E8710A"),
         Triple("shop", 0xe8cc, "#4285F4"),
@@ -43,7 +43,7 @@ object PoiIcons {
         Triple("default", 0xe55f, "#5F6368"),
     )
 
-    /** The category colour for a dot group (the ambient mini-dot tier tints circles with it). */
+    /** The category color for a dot group (the ambient mini-dot tier tints circles with it). */
     fun colorFor(group: String): String = GROUPS.firstOrNull { it.first == group }?.third ?: "#5F6368"
 
     /** [colorFor] as a style expression over a feature's baked `group` property, for tile-sourced
@@ -55,7 +55,7 @@ object PoiIcons {
     )
 
     /** Set by VelaMapView at style load: over satellite imagery the teardrop backings render
-     *  WHITE (Google hybrid's treatment) instead of the muted grey - grey sank into rooftops.
+     *  WHITE (Google hybrid's treatment) instead of the muted gray - gray sank into rooftops.
      *  A satellite toggle reloads the style (it's in the styleKey), so every bitmap regenerates
      *  through this flag; ensureResultIcon's on-demand pins pick it up live too. */
     @Volatile var satellite: Boolean = false
@@ -238,9 +238,9 @@ object PoiIcons {
         return style.addImage(RESULT_DOT_IMG, bmp)
     }
 
-    /** A GREY teardrop pin with a RED circle holding the white category glyph — the app's own
-     *  marker language (grey backing, coloured dot) with red standing in for the category colour,
-     *  which is how a result reads as a result (user 2026-07-10). Pin TIP at bottom-centre, for a
+    /** A GRAY teardrop pin with a RED circle holding the white category glyph — the app's own
+     *  marker language (gray backing, colored dot) with red standing in for the category color,
+     *  which is how a result reads as a result (user 2026-07-10). Pin TIP at bottom-center, for a
      *  bottom-anchored layer (the tip marks the place, Google-style). The GEOMETRY is [marker]'s
      *  exact proportions scaled to 0.86 — an earlier taller-tailed variant read as a different
      *  species of pin next to the ambient icons (user 2026-07-10); keep the two in lockstep. */
@@ -292,8 +292,8 @@ object PoiIcons {
     /** Google's restaurant-result marker: a wide speech-bubble with a bottom tail, holding the
      *  white category glyph in a RED CIRCLE (the same circle language as the pins) beside the
      *  rating in plain ink - no star glyph, the number in a place bubble reads as a rating on its
-     *  own (user 2026-07-10). Theme-surfaced (white in light, grey in dark); tail tip at
-     *  bottom-centre for a bottom-anchored layer. */
+     *  own (user 2026-07-10). Theme-surfaced (white in light, gray in dark); tail tip at
+     *  bottom-center for a bottom-anchored layer. */
     private fun ratingBubble(tf: Typeface, codepoint: Int, label: String, dark: Boolean): Bitmap {
         val fill = Color.parseColor(if (dark) "#3C4043" else "#FFFFFF")
         val edge = Color.parseColor(if (dark) "#5F6368" else "#DADCE0")
@@ -321,7 +321,7 @@ object PoiIcons {
         val r = bodyH / 2f
         val bubble = Path().apply {
             addRoundRect(left, top, right, bottom, r, r, Path.Direction.CW)
-            // The comic-bubble tail: a small triangle to the tip at bottom-centre.
+            // The comic-bubble tail: a small triangle to the tip at bottom-center.
             op(
                 Path().apply {
                     moveTo(cx - 13f, bottom - 6f)
@@ -380,7 +380,7 @@ object PoiIcons {
     )
 
     /** Best dot group for a Google place's category phrase ("Pizza restaurant", "Gas station",
-     *  "Coffee shop") so an ambient Google POI gets the SAME coloured dot as the equivalent OSM
+     *  "Coffee shop") so an ambient Google POI gets the SAME colored dot as the equivalent OSM
      *  POI. Keyword match over the same vocabulary as [CLASS_GROUPS]; order matters (more specific
      *  first). The image to use is `vela-poi-<returned group>`. */
     fun groupForCategory(category: String?): String {
@@ -423,8 +423,8 @@ object PoiIcons {
     /** Best dot group for a Google place — its category FIRST, then a NAME fallback. Google's keyless
      *  data sometimes returns a generic administrative category ("Non-profit organization",
      *  "Establishment", "Corporate office") that themes to [default] even though the place is really a
-     *  gym, church, or school — and the OSM basemap DOES classify it (so the grey ambient dot turns into
-     *  a themed OSM icon the moment the ambient layer clears on select, the "grey on the map / orange
+     *  gym, church, or school — and the OSM basemap DOES classify it (so the gray ambient dot turns into
+     *  a themed OSM icon the moment the ambient layer clears on select, the "gray on the map / orange
      *  weight when I tap it" YMCA inconsistency). When the category is inconclusive, the NAME usually
      *  carries the real signal ("…YMCA", "…Community Church", "…Elementary"), so the ambient dot gets the
      *  SAME icon Google and our OSM POIs give it. Category stays authoritative; the name only breaks a
@@ -455,9 +455,9 @@ object PoiIcons {
         }
     }
 
-    /** Remap OpenFreeMap Liberty's poi_r1/r7/r20 layers to our coloured markers,
-     *  and colour the POI label text by category like Google — saturated in light, PASTEL TINTS in
-     *  dark (Google's dark labels are lightened category colours, not the full-saturation ones,
+    /** Remap OpenFreeMap Liberty's poi_r1/r7/r20 layers to our colored markers,
+     *  and color the POI label text by category like Google — saturated in light, PASTEL TINTS in
+     *  dark (Google's dark labels are lightened category colors, not the full-saturation ones,
      *  which vanish against a dark map — ground-truthed vs the Maps app; see [labelColor]). */
     fun applyToLiberty(style: Style, dark: Boolean) {
         runCatching {
@@ -494,8 +494,8 @@ object PoiIcons {
                     // labels are upright everywhere; pin the same regular face the ambient layer uses.
                     PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                 )
-                // Category-coloured labels (Google-style) in light mode; the dark
-                // theme keeps light-grey labels for contrast.
+                // Category-colored labels (Google-style) in light mode; the dark
+                // theme keeps light-gray labels for contrast.
                 layer.setProperties(PropertyFactory.textColor(textColor)) // per-category in BOTH modes (dark = pastel tints)
                 // Only show POIs that have a NAME — the nameless ones can't be opened
                 // (they'd just drop an address pin) and read as junk/duplicate icons.
@@ -508,7 +508,7 @@ object PoiIcons {
             style.getLayer("poi_r7")?.setMinZoom(15f)
             // Transit (bus/rail/airport) is its own always-on layer in Liberty, so
             // bus stops clutter every zoom level. Push it to z16+ like Google, and
-            // give it our marker + category colour for consistency.
+            // give it our marker + category color for consistency.
             (style.getLayer("poi_transit") as? SymbolLayer)?.let { layer ->
                 layer.setProperties(
                     PropertyFactory.iconImage(icon),
@@ -553,8 +553,8 @@ object PoiIcons {
     }
 
     /** Blend [hex] toward white by [f] — Google's DARK-mode POI labels are pastel TINTS of the
-     *  category colour (ground-truthed against the Maps app in Davis: restaurants read light
-     *  peach, shopping light blue, lodging light pink), not the saturated light-mode colour. */
+     *  category color (ground-truthed against the Maps app in Davis: restaurants read light
+     *  peach, shopping light blue, lodging light pink), not the saturated light-mode color. */
     private fun lighten(hex: String, f: Float): String {
         val c = hex.removePrefix("#").toLong(16)
         fun ch(shift: Int): Int {
@@ -564,10 +564,10 @@ object PoiIcons {
         return String.format("#%02X%02X%02X", ch(16), ch(8), ch(0))
     }
 
-    /** The label colour for a category [group] per theme: the icon colour in light, its pastel
+    /** The label color for a category [group] per theme: the icon color in light, its pastel
      *  tint in dark (Google's own dark-mode treatment — full saturation vanishes on a dark map). */
     /** Public single-group variant of [labelColor] for layers styled outside this file
-     *  (the canonical GTFS stop labels take the transit category colour per theme). */
+     *  (the canonical GTFS stop labels take the transit category color per theme). */
     fun labelColorFor(group: String, dark: Boolean): String = labelColor(group, dark)
 
     private fun labelColor(group: String, dark: Boolean): String {
@@ -575,9 +575,9 @@ object PoiIcons {
         return if (dark) lighten(base, 0.55f) else base
     }
 
-    /** Data-driven text colour for the AMBIENT Google-POI layer: match the feature's `icon`
-     *  property ("vela-poi-<group>") to the category label colour, Google-style — the label
-     *  reads as part of the icon. Default = the plain per-theme label grey. */
+    /** Data-driven text color for the AMBIENT Google-POI layer: match the feature's `icon`
+     *  property ("vela-poi-<group>") to the category label color, Google-style — the label
+     *  reads as part of the icon. Default = the plain per-theme label gray. */
     fun ambientLabelColor(dark: Boolean): Expression {
         val sb = StringBuilder("""["match",["get","icon"]""")
         GROUPS.forEach { (group, _, _) ->
@@ -596,9 +596,9 @@ object PoiIcons {
     )
 
     /**
-     * Saved-place map pin (issue #171): the list's colour as a small ringed disc with a white
+     * Saved-place map pin (issue #171): the list's color as a small ringed disc with a white
      * glyph, Google's saved-icon look. An "emoji:X" key draws the emoji itself on a white disc
-     * (emoji carry their own colours, a tinted disc clashed).
+     * (emoji carry their own colors, a tinted disc clashed).
      */
     fun savedPin(context: Context, iconKey: String, colorArgb: Long): Bitmap {
         val w = 64
@@ -635,20 +635,20 @@ object PoiIcons {
     }
 
     private fun marker(tf: Typeface, codepoint: Int, colorHex: String): Bitmap {
-        // Google-style POI: a category-coloured dot with a white glyph sitting in front of a
-        // muted-grey TEARDROP/pin backing whose point extends below the dot (NO white ring), with a
-        // soft drop shadow. The dot is the BITMAP CENTRE — so with the layer's default centre anchor
-        // the dot marks the place and the grey teardrop reads as a pin behind it (no placement shift).
+        // Google-style POI: a category-colored dot with a white glyph sitting in front of a
+        // muted-gray TEARDROP/pin backing whose point extends below the dot (NO white ring), with a
+        // soft drop shadow. The dot is the BITMAP CENTER — so with the layer's default center anchor
+        // the dot marks the place and the gray teardrop reads as a pin behind it (no placement shift).
         val w = 100
         val h = 92
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
         val cx = w / 2f
-        val bodyCy = h / 2f          // grey body + coloured dot centred → the dot IS the anchor point
-        val bodyR = w * 0.32f        // grey teardrop body radius
-        val dotR = w * 0.27f         // coloured dot (grey shows as a thin ring + the point below)
+        val bodyCy = h / 2f          // gray body + colored dot centered → the dot IS the anchor point
+        val bodyR = w * 0.32f        // gray teardrop body radius
+        val dotR = w * 0.27f         // colored dot (gray shows as a thin ring + the point below)
         val tipY = h - 4f            // teardrop point near the bottom
-        // Teardrop = grey body circle unioned with a triangle down to the point (tangent sides).
+        // Teardrop = gray body circle unioned with a triangle down to the point (tangent sides).
         val d = tipY - bodyCy
         val sin = (bodyR / d).coerceAtMost(0.985f)
         val cos = kotlin.math.sqrt(1f - sin * sin)
@@ -672,11 +672,11 @@ object PoiIcons {
             maskFilter = BlurMaskFilter(w * 0.05f, BlurMaskFilter.Blur.NORMAL)
         })
         canvas.restore()
-        // Grey teardrop backing.
+        // Gray teardrop backing.
         canvas.drawPath(teardrop, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = backing() })
-        // Category-coloured dot.
+        // Category-colored dot.
         canvas.drawCircle(cx, bodyCy, dotR, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(colorHex) })
-        // White Material glyph centred on the dot.
+        // White Material glyph centered on the dot.
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = tf
             color = Color.WHITE

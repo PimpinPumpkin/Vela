@@ -214,7 +214,7 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
 /** One-time, first-run offer of Vela's on-device neural voice. RECOMMENDED for everyone, but an
  *  honest two-way choice: the prominent "Download Vela voice" vs a quiet, low-emphasis "Use existing
  *  voice" that keeps whatever TTS the phone already has (nav still works through it). Not a fake or
- *  disabled option, just visibly de-emphasised so the recommendation is clear. Either choice is
+ *  disabled option, just visibly de-emphasized so the recommendation is clear. Either choice is
  *  one-time; the voice is changeable any time in Settings → Voice. [sizeMb] is the real download
  *  size, so the number never goes stale. */
 @Composable

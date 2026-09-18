@@ -7,7 +7,7 @@
          mono read as a blob in the themed circle; thinned to Lawnicons/stock-Pixel weight the
          same day; shrunk 30% on 2026-08-08, user call - the glyph filled too much of the themed
          circle). Round joins - a miter would spike far past the acute tip. The group stays
-         centred on (54,54): translate = 54 - centre(256,238)*scale. Stroke 23 in the 512 path
+         centered on (54,54): translate = 54 - center(256,238)*scale. Stroke 23 in the 512 path
          space keeps the RENDERED weight at ~2.9dp through the smaller scale (16/0.7) - shrinking
          the stroke with the glyph would have dropped it below the tuned Lawnicons weight. -->
     <group

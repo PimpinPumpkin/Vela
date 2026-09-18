@@ -15,7 +15,7 @@ import app.vela.core.model.distanceTo
  */
 object RouteProjection {
 
-    /** The route's heading, in degrees 0-359, [m] metres along [poly]. */
+    /** The route's heading, in degrees 0-359, [m] meters along [poly]. */
     fun bearingAt(poly: List<LatLng>, cum: DoubleArray, m: Double): Double {
         if (poly.size < 2) return 0.0
         var i = 1
@@ -32,7 +32,7 @@ object RouteProjection {
         return minOf(d, 180.0 - d) <= toleranceDeg
     }
 
-    /** The point [m] metres along [poly] (clamped to its ends). */
+    /** The point [m] meters along [poly] (clamped to its ends). */
     fun pointAt(poly: List<LatLng>, cum: DoubleArray, m: Double): LatLng {
         if (poly.isEmpty()) return LatLng(0.0, 0.0)
         if (poly.size == 1 || m <= 0.0) return poly.first()

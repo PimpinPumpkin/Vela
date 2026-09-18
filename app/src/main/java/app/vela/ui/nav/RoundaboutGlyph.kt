@@ -39,8 +39,8 @@ private const val CX = 12f
 private const val CY = 12f
 private const val R = 6.0f // ring radius
 private const val STUB = 4.2f // how far the entry/exit roads stick out past the ring
-private const val TRAVELLED_W = 2.1f
-private const val UNTRAVELLED_W = 1.1f
+private const val TRAVELED_W = 2.1f
+private const val UNTRAVELED_W = 1.1f
 
 /** Ring point at compass angle [deg] (0 = up, positive clockwise on screen). */
 private fun ring(deg: Double, radius: Float = R): Pair<Float, Float> {
@@ -65,13 +65,13 @@ internal fun roundaboutGlyph(geom: RoundaboutGeometry?): ImageVector {
         defaultWidth = 24.dp, defaultHeight = 24.dp,
         viewportWidth = VP, viewportHeight = VP,
     )
-    val ink = SolidColor(Color.Black) // Icon()'s tint colours the whole vector; this is just a placeholder
+    val ink = SolidColor(Color.Black) // Icon()'s tint colors the whole vector; this is just a placeholder
 
     // You always enter from the bottom of the glyph heading up, whatever the real compass heading -
     // the whole picture is drawn relative to your approach, which is how a driver reads it.
     val (entryX, entryY) = ring(180.0)
     b.path(
-        stroke = ink, strokeLineWidth = TRAVELLED_W,
+        stroke = ink, strokeLineWidth = TRAVELED_W,
         strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round,
     ) {
         moveTo(CX, CY + R + STUB)
@@ -80,7 +80,7 @@ internal fun roundaboutGlyph(geom: RoundaboutGeometry?): ImageVector {
 
     if (geom == null) {
         // Neutral: a plain ring. It says "roundabout" without claiming an exit we never measured.
-        b.path(stroke = ink, strokeLineWidth = UNTRAVELLED_W) { circleAt(R) }
+        b.path(stroke = ink, strokeLineWidth = UNTRAVELED_W) { circleAt(R) }
         return b.build()
     }
 
@@ -99,18 +99,18 @@ internal fun roundaboutGlyph(geom: RoundaboutGeometry?): ImageVector {
     // the closed ring instead. (Genuinely rare, genuinely reachable: a roundabout U-turn.)
     if (sweep <= 1.0 || 360.0 - sweep <= 1.0) {
         b.path(
-            stroke = ink, strokeLineWidth = TRAVELLED_W,
+            stroke = ink, strokeLineWidth = TRAVELED_W,
             strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round,
         ) { circleAt(R) }
         exitStub(b, ink, exitDeg)
         return b.build()
     }
 
-    // The travelled arc (sweep is > 1 here, the guard above took the degenerate cases).
+    // The traveled arc (sweep is > 1 here, the guard above took the degenerate cases).
     // isPositiveArc is the SVG sweep flag: true draws clockwise on screen, which is
     // left-hand-traffic circulation.
     b.path(
-        stroke = ink, strokeLineWidth = TRAVELLED_W,
+        stroke = ink, strokeLineWidth = TRAVELED_W,
         strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round,
     ) {
         moveTo(entryX, entryY)
@@ -119,7 +119,7 @@ internal fun roundaboutGlyph(geom: RoundaboutGeometry?): ImageVector {
     // ...and the rest of the ring, thinner, so the roundabout still reads as a full circle.
     val rest = 360.0 - sweep
     if (rest > 1.0) {
-        b.path(stroke = ink, strokeLineWidth = UNTRAVELLED_W) {
+        b.path(stroke = ink, strokeLineWidth = UNTRAVELED_W) {
             moveTo(exitX, exitY)
             arcTo(R, R, 0f, rest > 180.0, geom.clockwise, entryX, entryY)
         }
@@ -136,7 +136,7 @@ private fun exitStub(b: ImageVector.Builder, ink: SolidColor, exitDeg: Double) {
     val (exitX, exitY) = ring(exitDeg)
     val (outX, outY) = ring(exitDeg, R + STUB * 0.55f)
     b.path(
-        stroke = ink, strokeLineWidth = TRAVELLED_W,
+        stroke = ink, strokeLineWidth = TRAVELED_W,
         strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round,
     ) {
         moveTo(exitX, exitY)
@@ -155,7 +155,7 @@ private fun exitStub(b: ImageVector.Builder, ink: SolidColor, exitDeg: Double) {
     }
 }
 
-/** A full circle of [radius] about the glyph centre, as four arc quadrants (a path has no circle
+/** A full circle of [radius] about the glyph center, as four arc quadrants (a path has no circle
  *  primitive, and one 360-degree arcTo is degenerate - start and end coincide). */
 private fun androidx.compose.ui.graphics.vector.PathBuilder.circleAt(radius: Float) {
     moveTo(CX, CY - radius)

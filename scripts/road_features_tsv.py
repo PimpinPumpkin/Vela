@@ -7,7 +7,7 @@ C fixed speed camera. Anything else on stdin is skipped. Prints the row count.
 BEARING (2026-09-17): the orientation of the ROAD the node sits on, 0-179 degrees (undirected, so
 north-south is 0 and east-west is 90), or empty when it could not be worked out. It is what tells a
 stop sign that holds YOU from the one that holds the side street entering your road: the app keeps a
-sign whose road runs the way you are travelling and drops the one across it. Pass the highway ways
+sign whose road runs the way you are traveling and drops the one across it. Pass the highway ways
 as a second geojsonseq file with --ways; without it the column is empty and the app keeps every
 sign, exactly as before.
 

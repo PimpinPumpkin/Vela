@@ -29,7 +29,7 @@ interface RouteEngine {
         avoidTolls: Boolean = false,
         avoidHighways: Boolean = false,
         avoidFerries: Boolean = false,
-        // The heading the car is actually travelling, for a mid-drive reroute (same rule as the
+        // The heading the car is actually traveling, for a mid-drive reroute (same rule as the
         // open router's `bearings=`): the route should start the way the car is pointing instead
         // of answering "turn around". Null for planning.
         departBearingDeg: Double? = null,

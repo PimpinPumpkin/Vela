@@ -57,7 +57,7 @@ gh release upload "$TAG" "$WORK/$ID.pmtiles" --clobber --repo "$REPO"
 ENTRY="$(jq -nc --arg id "$ID" --arg name "$NAME" --arg url "$ASSET_URL" --argjson size "$SIZE" --argjson bbox "$BBOX" \
   '{id:$id,name:$name,url:$url,sizeMb:$size,bbox:$bbox}')"
 
-# MANIFEST_MODE=emit (CI matrix): drop the entry to $ENTRY_OUT; the merge is centralised in one job so
+# MANIFEST_MODE=emit (CI matrix): drop the entry to $ENTRY_OUT; the merge is centralized in one job so
 # parallel region builds can't clobber the manifest. Default (local single-region): read-modify-write here.
 if [ "${MANIFEST_MODE:-merge}" = "emit" ]; then
   printf '%s\n' "$ENTRY" > "${ENTRY_OUT:?set ENTRY_OUT in emit mode}"

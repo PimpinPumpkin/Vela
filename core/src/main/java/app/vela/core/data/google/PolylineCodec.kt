@@ -10,7 +10,7 @@ import app.vela.core.model.LatLng
  * [precision] is the number of decimal places the coordinates were scaled by. Google always uses
  * 5, which is the default and what every Google call site wants. OSRM can emit either, and Vela
  * asks it for **6** — at 5, a latitude step is 1.11 m, so every route vertex is snapped to a
- * metre-ish grid and a physically straight road arrives visibly kinked. That quantization is
+ * meter-ish grid and a physically straight road arrives visibly kinked. That quantization is
  * scatter the nav puck then has to smooth back out; asking for the extra digit removes it at the
  * source and costs nothing (same vertex count, ~15% more characters).
  */

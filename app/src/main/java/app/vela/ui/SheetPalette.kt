@@ -5,10 +5,10 @@ import androidx.compose.ui.graphics.Color
 /**
  * One Google-style palette shared by every bottom surface — the place sheet, the
  * directions panel, the route chooser, the steps list and the nav bar — so they
- * read as one consistent sheet instead of several differently-coloured cards.
+ * read as one consistent sheet instead of several differently-colored cards.
  *
  * Deliberately FIXED (not Material-You tokens) so a wallpaper tint can't wash the
- * text out; choose the variant with the in-app `isAppInDarkTheme()`. Accent colour
+ * text out; choose the variant with the in-app `isAppInDarkTheme()`. Accent color
  * stays the theme `primary` (teal); traffic uses [TrafficGreen]/[TrafficAmber]/
  * [TrafficRed].
  */
@@ -25,7 +25,7 @@ object SheetPalette {
     val RowLight = Color(0xFFF1F3F4)
     val BorderAmoled = Color(0xFF22252A) // subtle separation line for pure black surfaces
 
-    // Shared traffic-coded colours (route ETAs, the route line, the steps header).
+    // Shared traffic-coded colors (route ETAs, the route line, the steps header).
     val TrafficGreen = Color(0xFF1E8E3E)
     val TrafficAmber = Color(0xFFE8923D)
     val TrafficRed = Color(0xFFD93838)

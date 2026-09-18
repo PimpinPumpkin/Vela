@@ -23,7 +23,7 @@ interface MapDataSource {
      *  match how far out the map is zoomed (the pb template's baked span is ~25 km). */
     // rankFrom (issue from the search-bias report): the point result ORDER and shown distances
     // are computed from - your real location when you are searching where you are, so the list
-    // doesn't reshuffle around wherever the viewport happens to be centred. Null = rank from
+    // doesn't reshuffle around wherever the viewport happens to be centered. Null = rank from
     // `near` (the viewport), which stays the SEARCH AREA either way.
     suspend fun search(query: String, near: LatLng? = null, spanMeters: Double? = null, rankFrom: LatLng? = null): SearchResult
 
@@ -53,7 +53,7 @@ interface MapDataSource {
      *  way Google resolves an address. No-regression: only overrides on a confident match. */
     suspend fun streetView(location: LatLng, preferStreet: String? = null): app.vela.core.model.StreetViewPano? = null
 
-    /** A specific panorama BY ID (walking to a neighbour, so it's epoch-exact - a nearest-location
+    /** A specific panorama BY ID (walking to a neighbor, so it's epoch-exact - a nearest-location
      *  lookup can snap to a different-year capture). Keyless via photometa/v1. Best-effort. */
     suspend fun streetViewByPano(panoId: String): app.vela.core.model.StreetViewPano? = null
 
@@ -90,9 +90,9 @@ interface MapDataSource {
         // Intermediate stops the route must pass through, in order (multi-stop trips). Empty = direct
         // origin→destination. A waypointed route is a single path through the stops (no alternates).
         waypoints: List<LatLng> = emptyList(),
-        // Route preference toggles (drive only). Honoured by the OSRM paths via `exclude=`;
+        // Route preference toggles (drive only). Honored by the OSRM paths via `exclude=`;
         // Google-fallback routes and offline graphs baked before the avoid profiles cannot
-        // honour them (the fallback still routes rather than failing).
+        // honor them (the fallback still routes rather than failing).
         avoidTolls: Boolean = false,
         avoidHighways: Boolean = false,
         avoidFerries: Boolean = false,
@@ -100,7 +100,7 @@ interface MapDataSource {
         // beats a polished one after the reroute deadline (the recheck loop upgrades it later).
         urgent: Boolean = false,
         // The direction the car is ACTUALLY pointing, for a mid-drive reroute (real-drive report
-        // 2026-08-17). Without it a reroute a few tens of metres down a wrong road is free to
+        // 2026-08-17). Without it a reroute a few tens of meters down a wrong road is free to
         // answer "U-turn and rejoin" - which is often genuinely the fastest path, so the driver is
         // told to turn around, carries on anyway, and is told to turn around again. Null on a
         // planning fetch: which way a parked car happens to face is not a routing constraint.

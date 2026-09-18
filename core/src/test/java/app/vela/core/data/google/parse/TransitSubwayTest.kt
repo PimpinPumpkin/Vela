@@ -59,7 +59,7 @@ class TransitSubwayTest {
         assertEquals(listOf("M101", "2", "5"), names)
     }
 
-    @Test fun `a bus keeps its text pill and its colours`() {
+    @Test fun `a bus keeps its text pill and its colors`() {
         val lines = TransitParser.parseLinesForTest(busBadges, null)
         assertEquals("M101", lines[0].name)
         assertEquals("#1d59b3", lines[0].colorHex)

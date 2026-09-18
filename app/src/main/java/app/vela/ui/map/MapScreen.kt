@@ -230,7 +230,7 @@ import app.vela.ui.VelaMenu // D-pad-first menu (docs/dpad.md)
 import app.vela.ui.item
 
 // Basemap provider. Keyless OpenFreeMap (loaded by URL — the setup that always
-// worked) is active; POI markers + colours are applied at runtime. Flip to true
+// worked) is active; POI markers + colors are applied at runtime. Flip to true
 // for MapTiler Streets (needs the MAPTILER_KEY secret). Both paths stay wired.
 private const val USE_MAPTILER = false
 
@@ -243,7 +243,7 @@ private const val USE_MAPTILER = false
 private val SIDE_PANEL_WIDTH_MIN = 400.dp
 private val SIDE_PANEL_WIDTH_MAX = 520.dp
 
-/** Gap in px between the puck glyph's centre and the current-road pill below it (issue #288).
+/** Gap in px between the puck glyph's center and the current-road pill below it (issue #288).
  *  The nav puck bitmap is 202px drawn at ~half that on screen, so this clears its lower edge. */
 private const val PUCK_LABEL_GAP_PX = 62
 
@@ -286,7 +286,7 @@ fun MapScreen(
     val amoled = isAppInAmoled()
     val hasMapTiler = USE_MAPTILER && BuildConfig.MAPTILER_KEY.isNotBlank()
     // When the place sheet is the active bottom UI it covers ~the bottom 56% of the
-    // screen, so push the map's optical centre up by that much to keep the focused
+    // screen, so push the map's optical center up by that much to keep the focused
     // pin visible above it.
     val screenHeightPx = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
     val placeSheetUp = state.selected != null && !state.directionsOpen && !state.navigating
@@ -296,16 +296,16 @@ fun MapScreen(
     LaunchedEffect(state.streetView == null && !state.streetViewLoading) {
         if (state.streetView == null && !state.streetViewLoading) svPose = null
     }
-    // Push the optical centre up so the place sheet / directions panel doesn't sit on
+    // Push the optical center up so the place sheet / directions panel doesn't sit on
     // top of the pin or the route (the directions panel is tall — fit the route above it).
     // Bumped by the in-nav Overview button; VelaMapView fits the whole route on each bump.
     var navOverviewTick by remember { mutableStateOf(0) }
     var navRecenterTick by remember { mutableStateOf(0) }
-    // Coming back from picture-in-picture re-centres the drive: the surface changed size twice
+    // Coming back from picture-in-picture re-centers the drive: the surface changed size twice
     // under the follow camera, and whatever that did to it, the driver expects to land back on
     // the arrow (user 2026-09-13).
     val pipActiveNow = app.vela.ui.PipMode.active.value
-    // ...and ENTERING it re-centres too (user drive 2026-09-16): the home swipe that sends the app
+    // ...and ENTERING it re-centers too (user drive 2026-09-16): the home swipe that sends the app
     // to PiP starts as a touch on the map, which reads as a pan and detaches the camera just before
     // the window shrinks, so the mini map came up off the arrow.
     // The tick alone only clears pinch overrides; re-attaching the follow camera is the VM call the
@@ -388,7 +388,7 @@ fun MapScreen(
     }
     // MapTiler (when a key is built in) gives the Google-like look + its own
     // light/dark styles; otherwise fall back to the keyless OpenFreeMap basemap
-    // with our own dark/light recolour.
+    // with our own dark/light recolor.
     val mapStyleUri = if (hasMapTiler) {
         val variant = if (darkTheme) "streets-v2-dark" else "streets-v2"
         "https://api.maptiler.com/maps/$variant/style.json?key=${BuildConfig.MAPTILER_KEY}"
@@ -430,14 +430,14 @@ fun MapScreen(
 
     // --- D-pad-only operation (docs/dpad.md) -------------------------------------
     // dpadMode = user is driving with keys right now (always true with no touchscreen);
-    // the map gets a focusable centre target (arrows pan, OK selects, hold-OK = pin) and
+    // the map gets a focusable center target (arrows pan, OK selects, hold-OK = pin) and
     // on-screen zoom buttons. mapDpad is the key→camera seam into VelaMapView.
     val dpadMode = rememberDpadMode()
     val dpadFirst = rememberDpadFirstDevice()
     val mapDpad = remember { MapDpadController() }
     var mapFocused by remember { mutableStateOf(false) }
     var mapEngaged by remember { mutableStateOf(false) } // arrows pan only while engaged (docs/dpad.md)
-    // Focuses the centre map target. Used ONLY for Choose-on-map (entered mid-session, so
+    // Focuses the center map target. Used ONLY for Choose-on-map (entered mid-session, so
     // requestFocus lands) — the cold-open bare map deliberately does not auto-focus it (docs/dpad.md).
     val mapFocusRequester = remember { FocusRequester() }
     // D-pad (docs/dpad.md): under touch the overlay tracks field focus (blur = close), but
@@ -671,7 +671,7 @@ fun MapScreen(
     // The user asked for the search bar to be the landing focus, not the engaged map (which used to
     // force a BACK press to move). Compose won't let us programmatically pre-place focus on the
     // SEARCH BAR on the app's opening screen (verified ~13 ways: requestFocus no-ops with no prior
-    // focus; moveFocus lands only on the centre map target; moveFocus(Up)/Enter and synthetic
+    // focus; moveFocus lands only on the center map target; moveFocus(Up)/Enter and synthetic
     // KeyEvents don't take), so instead nothing is focused on open and the user's first arrow
     // lands on the search bar — Compose's real-first-key initial focus picks the first focusable,
     // which IS the search bar (measured). Net: no map engage, no BACK, one arrow reaches search.
@@ -761,7 +761,7 @@ fun MapScreen(
             val result = vm.voiceListen(
                 onLevel = { voiceLevel = it },
                 onListening = { voiceStarted = true },
-                cancelled = { voiceStop },
+                canceled = { voiceStop },
             )
             voiceListening = false
             if (voiceAbort) return@launch // the user backed out; never talk back at them
@@ -986,7 +986,7 @@ fun MapScreen(
     // START from the place sheet (issue #272): the pill routes, and guidance begins the moment a
     // route exists. It goes through onStartNav, NOT straight to the ViewModel, so the precise-
     // location and notification gates still get their say - a one-tap Start must not be a way to
-    // skip the permission prompts that the picker's Start button honours. Consumed once, so a
+    // skip the permission prompts that the picker's Start button honors. Consumed once, so a
     // later refetch (mode change, added stop) cannot silently launch a drive.
     LaunchedEffect(state.activeRoute, state.navigating) {
         if (state.activeRoute != null && !state.navigating && vm.consumeAutoStart()) onStartNav()
@@ -1053,7 +1053,7 @@ fun MapScreen(
     LaunchedEffect(app.vela.ui.Flock.on.value) { vm.refreshFlockNow() }
     LaunchedEffect(app.vela.ui.SpeedCams.on.value) { vm.refreshSpeedCamsNow() }
     // Saved-place pins for the browse map (issue #171): each list place carries its list's
-    // icon+colour, quick-saves ride the default bookmark blue; deduped by place id (a place in
+    // icon+color, quick-saves ride the default bookmark blue; deduped by place id (a place in
     // several lists draws once, newest list wins). Empty while a result set / nav / replay /
     // Street View owns the map.
     val savedPinData = remember(state.lists, state.saved, state.results, state.navigating, state.replaying, svPose) {
@@ -1123,7 +1123,7 @@ fun MapScreen(
                 else -> null
             },
             transitNavLeg = state.transitNav?.stepIndex,
-            // Greyed, tappable alternates (Google-style) — only off-nav, with a chooser up.
+            // Grayed, tappable alternates (Google-style) — only off-nav, with a chooser up.
             alternates = if (state.navigating) emptyList() else run {
                 val activeIdx = state.routes.indexOf(state.activeRoute)
                 state.routes.mapIndexedNotNull { i, r ->
@@ -1208,7 +1208,7 @@ fun MapScreen(
             applyKeylessTheme = !hasMapTiler,
             // Off-nav: the whole-map raster when the user toggles it on. During nav we
             // DON'T wash the whole map — the user asked for traffic on "just the road
-            // we're on, not all of it", so the route line itself is coloured per-segment
+            // we're on, not all of it", so the route line itself is colored per-segment
             // from the directions traffic spans (VelaMapView.routeGradientStops /
             // DirectionsParser.parseTrafficSpans); the whole-map overlay stays off unless
             // the user explicitly enables it in Settings → Map.
@@ -1227,7 +1227,7 @@ fun MapScreen(
             parkingSpot = state.parkingSpot,
             onParkingTap = { vm.showParkedCar(context.getString(R.string.map_parked_car)) },
             // Saved places stick out while browsing (issue #171): every list place + quick-save
-            // draws its list's icon/emoji in the list's colour. Hidden while a result set owns the
+            // draws its list's icon/emoji in the list's color. Hidden while a result set owns the
             // map (a list's own results would double-draw) and during nav/replay (declutter).
             savedPins = savedPinData.map { it.first },
             onSavedPinTap = { i -> savedPinData.getOrNull(i)?.second?.let(vm::selectPlace) },
@@ -1316,7 +1316,7 @@ fun MapScreen(
         //    confirms a Choose-on-map pick), holding OK long-presses (pin / direct pick),
         //    +/−/zoom keys zoom, BACK disengages (focus stays on the target).
         // Shown only when the MAP is the primary surface — with a list/sheet/panel open the
-        // panel owns focus (a centre crosshair + focus stop over the results list stole DOWN
+        // panel owns focus (a center crosshair + focus stop over the results list stole DOWN
         // traversal into the rows). Closing a panel returns to the bare map un-engaged (the first
         // arrow reaches the search bar); only Choose-on-map auto-engages the target (see above).
         if (dpadMode && !mapTargetHidden) {
@@ -1454,7 +1454,7 @@ fun MapScreen(
         if (state.navigating && !pipUi && state.previewStepIndex == null && roadLabelMode != app.vela.ui.RoadLabel.OFF && roadLabelMode != app.vela.ui.RoadLabel.IN_BAR) {
             val liveIdx = state.nav.stepIndex
             // The road you are ON right now: the leg's road, or the last silent rename already
-            // passed on it (travelled = leg length minus what is left to the next turn).
+            // passed on it (traveled = leg length minus what is left to the next turn).
             val onRoad = state.activeRoute?.maneuvers?.getOrNull(liveIdx - 1)?.let { m ->
                 val (name, ref) = m.roadAt(m.distanceMeters - state.nav.distanceToNextManeuver)
                 ref?.takeIf { r -> r.isNotBlank() } ?: name?.takeIf { r -> r.isNotBlank() }
@@ -1466,8 +1466,8 @@ fun MapScreen(
                 val shownRoad =
                     if (state.roadNameLatin.isEmpty()) onRoad
                     else app.vela.core.voice.SpokenScript.forDisplay(onRoad, uiLang, state.roadNameLatin)
-                // Two placements: Google's fixed spot centred above the bottom bar (default: it
-                // can always be centred, whatever the name's length) or pinned under the arrow
+                // Two placements: Google's fixed spot centered above the bottom bar (default: it
+                // can always be centered, whatever the name's length) or pinned under the arrow
                 // (issue #288's mockup; long names clamp to the screen edge there).
                 val abovePill = roadLabelMode == app.vela.ui.RoadLabel.BAR
                 Surface(
@@ -1481,13 +1481,13 @@ fun MapScreen(
                         .navigationBarsPadding()
                         .padding(bottom = with(LocalDensity.current) { navBarHeightPx.toDp() } + 16.dp + 10.dp)
                         // Never reaches the speed-limit sign (left) or the FAB column (right):
-                        // centred, symmetric, ellipsised past this.
+                        // centered, symmetric, ellipsized past this.
                         .widthIn(max = (LocalConfiguration.current.screenWidthDp - 176).coerceAtLeast(120).dp)
                     else Modifier
                         // Long names would otherwise run off the screen when the puck sits near an edge.
                         .widthIn(max = 260.dp)
-                        // Centred under the puck, then CLAMPED into the viewport: measured so the
-                        // pill can be any width and still sit centred, offset below the puck glyph
+                        // Centered under the puck, then CLAMPED into the viewport: measured so the
+                        // pill can be any width and still sit centered, offset below the puck glyph
                         // rather than over it.
                         .layout { measurable, constraints ->
                             val placeable = measurable.measure(constraints)
@@ -1531,7 +1531,7 @@ fun MapScreen(
                     .align(Alignment.TopCenter)
                     .then(
                         if (searchOpen) {
-                            // Same fixed sheet grey as the place sheet / results rows,
+                            // Same fixed sheet gray as the place sheet / results rows,
                             // not the wallpaper-tinted Material surface (which read as a
                             // slightly different shade).
                             Modifier.fillMaxSize().background(SheetPalette.bg(darkTheme))
@@ -1679,7 +1679,7 @@ fun MapScreen(
                     }
 
                     // Quiet offline marker: a small globe-with-a-slash chip tucked just under the category
-                    // chips, near the search box (pairs with the greyed "Offline" in the bar). Only on the
+                    // chips, near the search box (pairs with the grayed "Offline" in the bar). Only on the
                     // bare map — the same state the chips show in — so it never trails a results list.
                     if (state.offline && !searchOpen && !state.navigating && !state.replaying &&
                         state.selected == null && state.results.isEmpty()
@@ -1818,7 +1818,7 @@ fun MapScreen(
         // "Searching for GPS" chip — the banner distance/ETA freeze silently on signal loss
         // (tunnel, garage, Location toggled off); a confident-looking frozen arrow with no hint
         // it's stale was the audit's "GPS loss is completely invisible" finding. The dot/puck
-        // already greys via the same flag.
+        // already grays via the same flag.
         if (state.navigating && (state.myLocationStale || state.navStarved)) {
             Surface(
                 shape = CircleShape,
@@ -2423,7 +2423,7 @@ fun MapScreen(
             )
         }
 
-        // "Choose on map" crosshair — the map is visible; a fixed pin marks screen centre. Move the
+        // "Choose on map" crosshair — the map is visible; a fixed pin marks screen center. Move the
         // map under it (or long-press) and Confirm to set the start/stop from that point (Google-style).
         state.pickOnMap?.let { target ->
             ChooseOnMapOverlay(
@@ -2677,7 +2677,7 @@ fun MapScreen(
             // MapLibre's own ⓘ button is off (it covered the
             // scale bar and read as a control). Bottom-left under the scale bar, lifted over
             // the nav bar and the minimized results bar, into the map strip in landscape.
-            // Tapping it opens the OSM copyright page. Satellite keeps its own centred credit.
+            // Tapping it opens the OSM copyright page. Satellite keeps its own centered credit.
             run {
                 val osmUri = "https://www.openstreetmap.org/copyright"
                 val navLift = if (state.navigating) with(LocalDensity.current) { navBarHeightPx.toDp() } + 6.dp else 0.dp
@@ -2728,7 +2728,7 @@ fun MapScreen(
             // Portrait, place card at (or near) its minimized bar: the locate FAB rides ABOVE the
             // card's measured top edge (user 2026-07-20: current location stays reachable with a
             // card minimized). Offset from the sheet's live top so it tracks the card; the >55%
-            // floor keeps it to the minimized neighbourhood - at peek/expanded the measured top
+            // floor keeps it to the minimized neighborhood - at peek/expanded the measured top
             // sits above the floor so it stays hidden. MEASURED ONLY (2026-07-23): the logical
             // expanded flag also gated this, and a pill swipe on a short-content card flips that
             // flag while the card never grows, so the button vanished with the card unmoved
@@ -3020,7 +3020,7 @@ fun MapScreen(
     }
 }
 
-/** Route line colour by congestion: blue when free-flowing, amber/red when the
+/** Route line color by congestion: blue when free-flowing, amber/red when the
  *  live traffic-aware time runs meaningfully over the typical time. Walk/bike and
  *  traffic-less routes stay the default blue. */
 private fun routeTrafficColor(route: app.vela.core.model.Route?): String =
@@ -3034,8 +3034,8 @@ private fun routeTrafficColor(route: app.vela.core.model.Route?): String =
     }
 
 /** Per-segment live traffic as (startFraction, endFraction, level) along the route,
- *  converting Google's metre offsets to fractions of the route length — drives the
- *  route line's per-segment colour (Google-style). Empty when there's no live data. */
+ *  converting Google's meter offsets to fractions of the route length — drives the
+ *  route line's per-segment color (Google-style). Empty when there's no live data. */
 private fun routeTrafficSpans(route: app.vela.core.model.Route?): List<Triple<Float, Float, Int>> {
     val dist = route?.distanceMeters ?: return emptyList()
     if (dist <= 0.0) return emptyList()
@@ -3267,7 +3267,7 @@ private fun SearchResults(
             else shown.mapTo(HashSet()) { it.id },
         )
     }
-    // Same fixed sheet grey as the place sheet, not the wallpaper-tinted Material card.
+    // Same fixed sheet gray as the place sheet, not the wallpaper-tinted Material card.
     val dark = isAppInDarkTheme()
     Card(
         // statusBarsPadding caps the sheet's growth below the status bar, so the handle pill
@@ -3386,10 +3386,10 @@ private fun SearchResults(
                 // (a subtle tint when off, solid teal when on) so they read modern on the sheet —
                 // the default outlined M3 chip looked "old" against the filled category chips
                 // (user 2026-07-08). No border; a check icon marks an active toggle.
-                // OPAQUE container colours: these are ELEVATED chips, and a translucent container
+                // OPAQUE container colors: these are ELEVATED chips, and a translucent container
                 // let the elevation SHADOW show through the pill — invisible on the dark sheet but
                 // a muddy near-black blob on the light one (user report 2026-07-08). The solids are
-                // the translucent values composited over each sheet colour.
+                // the translucent values composited over each sheet color.
                 val chipColors = FilterChipDefaults.elevatedFilterChipColors(
                     containerColor = if (dark) Color(0xFF333539) else Color(0xFFF1F3F4),
                     labelColor = SheetPalette.ink(dark),
@@ -3862,7 +3862,7 @@ private fun CategoryChips(onPick: (String) -> Unit, modifier: Modifier = Modifie
     }
 }
 
-/** "Choose on map" mode: a full-screen overlay over the live map with a centre crosshair, a hint
+/** "Choose on map" mode: a full-screen overlay over the live map with a center crosshair, a hint
  *  banner and a Confirm button. Empty areas carry no gesture modifiers, so map pan/zoom pass straight
  *  through to the MapLibre view below; only the banner and button consume touches. */
 @Composable
@@ -3905,7 +3905,7 @@ private fun ChooseOnMapOverlay(
                 }
             }
         }
-        // Pin whose tip points at the exact map centre (offset up by ~half its height).
+        // Pin whose tip points at the exact map center (offset up by ~half its height).
         Icon(
             Icons.Default.Place,
             contentDescription = null,
@@ -4297,7 +4297,7 @@ private fun ShortcutRow(
     // Localized display label (the ShortcutKind.label enum value stays the stable "Home"/"Work" key).
     val label = stringResource(if (kind == ShortcutKind.HOME) R.string.shortcut_home else R.string.shortcut_work)
     // Fixed sheet palette (not the theme's on-surface, which renders dark/black on our
-    // fixed grey under some Material-You themes / light mode).
+    // fixed gray under some Material-You themes / light mode).
     val dark = isAppInDarkTheme()
     Row(
         Modifier
@@ -4332,7 +4332,7 @@ private fun ShortcutRow(
             Box {
                 IconButton(onClick = { menu = true }) {
                     // Same ink as the row's text - the default LocalContentColor went near-black
-                    // on the fixed sheet grey under some themes (user report).
+                    // on the fixed sheet gray under some themes (user report).
                     Icon(
                         Icons.Default.MoreVert,
                         contentDescription = stringResource(R.string.mapscreen_edit_shortcut, label),
@@ -4387,8 +4387,8 @@ private fun SavedRow(
     ) {
         Icon(Icons.Default.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(16.dp))
-        // Explicit colours: the search page is a background()-Box, not a Surface, so
-        // LocalContentColor is unset and a colourless Text/Icon renders BLACK in dark
+        // Explicit colors: the search page is a background()-Box, not a Surface, so
+        // LocalContentColor is unset and a colorless Text/Icon renders BLACK in dark
         // mode (same trap ShortcutRow documents). Match the SuggestionRow siblings.
         Text(
             place.name,
@@ -4433,8 +4433,8 @@ private fun AssignBanner(kind: ShortcutKind, onCancel: () -> Unit) {
         Text(
             stringResource(R.string.mapscreen_assign_shortcut_hint, kind.label.lowercase()),
             style = MaterialTheme.typography.bodyMedium,
-            // Explicit colour: the search page is a plain background()-Box, not a Surface, so
-            // LocalContentColor is NOT set for it — a colourless Text falls back to BLACK and
+            // Explicit color: the search page is a plain background()-Box, not a Surface, so
+            // LocalContentColor is NOT set for it — a colorless Text falls back to BLACK and
             // vanishes on the dark sheet. Same convention as SuggestionRow.
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
@@ -4465,7 +4465,7 @@ private fun PickStopBanner(@Suppress("UNUSED_PARAMETER") onCancel: () -> Unit) {
         Text(
             stringResource(R.string.mapscreen_pick_stop_hint),
             style = MaterialTheme.typography.labelLarge,
-            // Explicit colour: no Surface on the search page means no LocalContentColor.
+            // Explicit color: no Surface on the search page means no LocalContentColor.
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -4483,7 +4483,7 @@ private fun SectionLabel(text: String) {
 }
 
 // combinedClickable powers the press-hold on suggestion rows (issue #180). The row still
-// clicks on tap / D-pad centre; long-press (touch) opens the same menu the trailing ⋮ opens,
+// clicks on tap / D-pad center; long-press (touch) opens the same menu the trailing ⋮ opens,
 // so D-pad keeps a key path via the button.
 
 /** A contact's thumbnail on the tinted disc the Home/Work rows use; the person glyph shows
@@ -4658,7 +4658,7 @@ private fun InfoCard(
     pillLabel: String? = null,
     onPill: (() -> Unit)? = null,
 ) {
-    // Fixed sheet palette so this banner reads as the same grey as the place sheet
+    // Fixed sheet palette so this banner reads as the same gray as the place sheet
     // and results list, not a wallpaper-tinted Material card.
     val dark = isAppInDarkTheme()
     Card(
@@ -4667,7 +4667,7 @@ private fun InfoCard(
     ) {
         if (pillLabel != null && onPill != null) {
             // With a primary action the card takes the UpdateCard layout: text block, then a
-            // trailing row of quiet-dismiss + filled pill (reads by shape/fill, colour-blind safe).
+            // trailing row of quiet-dismiss + filled pill (reads by shape/fill, color-blind safe).
             Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, top = 12.dp, bottom = 10.dp)) {
                 Text(title, fontWeight = FontWeight.SemiBold, color = SheetPalette.ink(dark))
                 Text(body, style = MaterialTheme.typography.bodySmall, color = SheetPalette.dim(dark))
@@ -4845,7 +4845,7 @@ private fun UpdateCard(
                     TextButton(onClick = onDismiss) { Text(stringResource(R.string.update_later)) }
                     Spacer(Modifier.width(4.dp))
                     // A filled primary pill, same treatment as the dialogs' confirm button: the
-                    // action reads by SHAPE and fill, not by text colour alone (colour-blind safe).
+                    // action reads by SHAPE and fill, not by text color alone (color-blind safe).
                     Button(
                         onClick = onUpdate,
                         shape = CircleShape,
@@ -5136,7 +5136,7 @@ private fun ParkingHistorySheet(
     }
 }
 
-// The list icon set (keys stored in PlaceList.icon). Small, recognisable, Google-list-like.
+// The list icon set (keys stored in PlaceList.icon). Small, recognizable, Google-list-like.
 private val LIST_ICONS: List<Pair<String, androidx.compose.ui.graphics.vector.ImageVector>> = listOf(
     "bookmark" to Icons.Default.Bookmark,
     "star" to Icons.Default.Star,
@@ -5175,7 +5175,7 @@ private fun ListIconBadge(key: String, tint: Color, size: androidx.compose.ui.un
     }
 }
 
-/** Create / edit a place-list: name, icon and colour; Delete when editing. */
+/** Create / edit a place-list: name, icon and color; Delete when editing. */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun ListEditorDialog(

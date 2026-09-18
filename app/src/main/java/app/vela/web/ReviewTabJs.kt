@@ -7,7 +7,7 @@ package app.vela.web
  * Overview tab read as the Reviews tab. The full review page then reported ready on the Overview
  * and its More reviews button reloaded back to it (issue #535). The name is cut out before any
  * label is tested: the page heading when there is one, else the longest run shared by two tab
- * labels (every labelled tab repeats the name).
+ * labels (every labeled tab repeats the name).
  */
 internal const val STRIP_PLACE_NAME_JS = """
 function velaPlaceName(){

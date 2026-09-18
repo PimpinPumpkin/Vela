@@ -28,7 +28,7 @@ too).
 4. **The module boundary is real.** `:core` is a UI-agnostic extractor (the
    NewPipeExtractor pattern); `:app` is the Compose UI. MapLibre and Android UI types
    never leak into `:core`. The one seam between them is `core/data/MapDataSource`.
-5. **Docs move with code, in the same commit.** When behaviour changes, update
+5. **Docs move with code, in the same commit.** When behavior changes, update
    `README.md`, `FEATURES.md`, `SPEC.md` and `CLAUDE.md` as the change needs. Stale
    docs are treated as a bug. If a change genuinely needs no doc edit, say why in the
    commit message.
@@ -88,7 +88,7 @@ every open issue is something that can actually be acted on.
   list of things that will not be built is in [ROADMAP.md](ROADMAP.md) under "Not going
   to happen".
 - **Incomplete issues are closed without further explanation**, the same way NewPipe
-  and most small projects handle them, and they are labelled `incomplete` so the reason
+  and most small projects handle them, and they are labeled `incomplete` so the reason
   is on the record. Fill in the template and it will be read.
 
 ## Using an AI assistant

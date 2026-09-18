@@ -6,7 +6,7 @@ package app.vela.core.search
  * Voice search is dictation: the model turns speech into text and the text used to go straight
  * to the search box, so "take me home" searched for a place called "take me home". This parser
  * reads the handful of shapes people actually say and turns them into actions; anything it does
- * not recognise stays a plain search (null), so it can never make a query worse. Rule-based and
+ * not recognize stays a plain search (null), so it can never make a query worse. Rule-based and
  * on-device, per app language, no server: the tables below are the whole vocabulary.
  */
 sealed class QueryIntent {
@@ -272,11 +272,11 @@ object QueryIntents {
 
     /**
      * Parse [text] in language [lang] (ISO 639-1; a tag like "zh-TW" is reduced to its language).
-     * Null = no recognised shape, run it as a plain search. English is tried as a fallback for
+     * Null = no recognized shape, run it as a plain search. English is tried as a fallback for
      * any language, because people mix ("navigate to" in a French phone is common).
      */
     fun parse(text: String, lang: String): QueryIntent? {
-        val t = normalise(text)
+        val t = normalize(text)
         if (t.isBlank()) return null
         val code = lang.lowercase().substringBefore('-').substringBefore('_')
         val primary = TABLES[code]
@@ -368,7 +368,7 @@ object QueryIntents {
         return tw.dropLast(pw.size).joinToString(" ")
     }
 
-    private fun normalise(s: String): String =
+    private fun normalize(s: String): String =
         s.trim().lowercase()
             .replace(Regex("[\"“”«»'’`]"), "")
             .replace(Regex("[!?.,;:！？。、，]+$"), "")

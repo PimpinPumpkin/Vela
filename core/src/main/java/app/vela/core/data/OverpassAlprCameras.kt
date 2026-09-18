@@ -8,7 +8,7 @@ import kotlinx.serialization.json.decodeFromStream
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
-/** An automated licence-plate reader (ALPR / "Flock") camera at [loc]. [operator] is the agency/company
+/** An automated license-plate reader (ALPR / "Flock") camera at [loc]. [operator] is the agency/company
  *  that runs it when tagged (e.g. "Flock Safety"), [direction] the way it points (OSM `direction`, degrees
  *  or a compass string) when known - both may be blank. */
 data class AlprCamera(val loc: LatLng, val operator: String = "", val direction: String = "")
@@ -188,7 +188,7 @@ object OverpassAlprCameras {
         return polyline.size == 1 && segDistMeters(p, polyline[0], polyline[0]) <= meters
     }
 
-    /** Distance in metres from point [p] to the segment [a]-[b], via a local equirectangular
+    /** Distance in meters from point [p] to the segment [a]-[b], via a local equirectangular
      *  projection (exact enough at the ~100 m scale this gate uses). */
     internal fun segDistMeters(p: LatLng, a: LatLng, b: LatLng): Double {
         val mPerLat = 111_320.0

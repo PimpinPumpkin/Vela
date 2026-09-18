@@ -47,7 +47,7 @@ fun JsonElement?.int(): Int? = (this as? JsonPrimitive)?.intOrNull
 fun JsonElement?.long(): Long? = (this as? JsonPrimitive)?.longOrNull
 
 /** Depth-first search for the first string matching [predicate]. Handy for
- *  locating a recognisable value (an encoded polyline, a "23 min" string)
+ *  locating a recognizable value (an encoded polyline, a "23 min" string)
  *  without committing to an exact index path. */
 fun JsonElement?.findString(predicate: (String) -> Boolean): String? {
     when (this) {

@@ -23,8 +23,8 @@ import app.vela.ui.Units
 
 /**
  * A Google-style map scale bar: an open-topped bracket (⊔) sized to a round
- * distance, with the distance label above it. Honours the [Units] metric/
- * imperial preference and reads the live metres-per-pixel from the map.
+ * distance, with the distance label above it. Honors the [Units] metric/
+ * imperial preference and reads the live meters-per-pixel from the map.
  *
  * Drawn twice (a 1px offset shadow under the ink) so it stays legible over
  * both light and dark tiles.
@@ -83,7 +83,7 @@ private val METRIC = doubleArrayOf(
 private val FEET = doubleArrayOf(10.0, 20.0, 50.0, 100.0, 200.0, 500.0, 1000.0, 2000.0)
 private val MILES = doubleArrayOf(1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0, 500.0, 1000.0, 2000.0)
 
-/** Largest round distance whose bar is no wider than [maxMeters]; returns (metres, label). */
+/** Largest round distance whose bar is no wider than [maxMeters]; returns (meters, label). */
 private fun niceScale(maxMeters: Double, imperial: Boolean): Pair<Double, String> {
     if (imperial) {
         val maxFeet = maxMeters * 3.280839895

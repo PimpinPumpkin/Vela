@@ -19,7 +19,7 @@ import org.junit.Test
  */
 class RouteBarTest {
 
-    // A straight 10 km run east from the Davis fixture, roughly one vertex per kilometre.
+    // A straight 10 km run east from the Davis fixture, roughly one vertex per kilometer.
     private val poly = (0..10).map { LatLng(38.5449, -121.7405 + it * 0.0115) }
 
     private fun route(distanceM: Double, spans: List<TrafficSpan> = emptyList()) = Route(
@@ -74,7 +74,7 @@ class RouteBarTest {
         assertEquals("one glyph per junction", 2, m.pins.size)
     }
 
-    @Test fun `a camera at a signalled junction keeps its badge when the cluster merges`() {
+    @Test fun `a camera at a signaled junction keeps its badge when the cluster merges`() {
         val marks = listOf(
             RouteBar.Mark.SIGNAL to 5_000.0,
             RouteBar.Mark.CAMERA to 5_030.0, // mounted on the light's mast

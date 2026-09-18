@@ -64,7 +64,7 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
 
     /**
      * Orient the camera by COMPASS. Google's equirect puts the CAPTURE heading at the texture
-     * centre (u=0.5, verified against a stitched pano 2026-07-16), while this renderer's yaw=0
+     * center (u=0.5, verified against a stitched pano 2026-07-16), while this renderer's yaw=0
      * looks at texture u=0.75 - so a compass bearing B maps to renderer yaw B - panoHeading - 90.
      * Feeding compass values straight in (the old setInitialYaw) skewed every view by a per-pano
      * heading+90 offset, which is why the opening faced "randomly" wrong even with Google's own yaw.
@@ -129,7 +129,7 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
         return true
     }
 
-    /** The GLES 2.0 renderer: one textured sphere, camera at the centre. */
+    /** The GLES 2.0 renderer: one textured sphere, camera at the center. */
     private class PanoRenderer : Renderer {
         // Camera state (radians / degrees), touched from the UI thread but read on the GL thread;
         // volatile is enough for these scalars (a slightly stale frame is invisible).

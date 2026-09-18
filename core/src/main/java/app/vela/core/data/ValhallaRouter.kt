@@ -30,7 +30,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
  *
  * OSRM's bicycle profile weights speed, so it happily puts you on an arterial with no lane when
  * that is two minutes faster. Valhalla's bicycle costing has a `use_roads` knob: near zero it
- * hunts for signed cycle routes, cycleways, lanes and residential streets, the behaviour people
+ * hunts for signed cycle routes, cycleways, lanes and residential streets, the behavior people
  * describe as Google-like. Probed 2026-09-14 on the Davis fixture: the same trip came back as
  * 26 maneuvers along a cycleway corridor at 0.1 and as four turns down a county road at 0.9.
  *
@@ -168,9 +168,9 @@ object ValhallaRouter {
         }
         val maneuvers = RouteGeometry.foldRenames(RouteGeometry.consolidateExits(folded))
         if (maneuvers.size < 2) return null
-        // The steps' own sums, not the trip summary: Valhalla rounds each step to whole metres
+        // The steps' own sums, not the trip summary: Valhalla rounds each step to whole meters
         // and the summary separately, and NavEngine locates maneuvers by a prefix sum of steps,
-        // so the route's length must be the one the steps tile (a few metres apart otherwise).
+        // so the route's length must be the one the steps tile (a few meters apart otherwise).
         val dist = maneuvers.sumOf { it.distanceMeters }
         val dur = maneuvers.sumOf { it.durationSeconds }
         return Route(

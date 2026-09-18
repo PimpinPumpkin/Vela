@@ -9,7 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** [RouteGeometry.transferSpans]: Google's congestion spans carried onto a route with different
- *  geometry, coloured only where the two share the road (issue #403). */
+ *  geometry, colored only where the two share the road (issue #403). */
 class TransferSpansTest {
     /** A straight east-west line at [lat] from [lng0], [n] points [stepM] apart. */
     private fun line(lat: Double, lng0: Double, n: Int, stepM: Double = 50.0): List<LatLng> {
@@ -40,9 +40,9 @@ class TransferSpansTest {
     }
 
     @Test
-    fun `only the shared stretch is coloured when the open route joins late`() {
+    fun `only the shared stretch is colored when the open route joins late`() {
         // Google: 0..5000 m along the road, jammed the whole way. Open route: same road but it
-        // only joins at 2500 m (its first half runs 300 m north), so the colour starts there.
+        // only joins at 2500 m (its first half runs 300 m north), so the color starts there.
         val g = route(line(38.5, -121.7, 101), listOf(TrafficSpan(3, 0.0, 5000.0)))
         val north = line(38.5027, -121.7, 50)
         val shared = line(38.5, -121.7, 101).drop(50)

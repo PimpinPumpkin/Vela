@@ -57,7 +57,7 @@ class MainActivity : ComponentActivity() {
         // A language change re-creates this Activity so the whole UI re-reads localized resources.
         AppLocale.onLocaleChanged = { recreate() }
         // Picture-in-picture mini map while navigating (user 2026-07-24, the Google Maps
-        // behaviour): on Android 12+ the system auto-enters PiP on Home/gesture-up whenever the
+        // behavior): on Android 12+ the system auto-enters PiP on Home/gesture-up whenever the
         // params say so, so keep autoEnter in lockstep with the nav state; pre-12 the
         // onUserLeaveHint below calls enterPictureInPictureMode by hand. Everything is
         // best-effort (runCatching): a launcher or ROM that forbids PiP just falls back to the

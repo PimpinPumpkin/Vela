@@ -17,11 +17,11 @@ import kotlin.math.roundToInt
 /** Gold used for rating stars throughout the app. */
 val StarGold = Color(0xFFF5B400)
 
-/** Google-style status colour: green when open, amber when closing/opening soon,
+/** Google-style status color: green when open, amber when closing/opening soon,
  *  red when closed/temporarily/permanently. [openNow] comes from parseOpenNow's
  *  per-language keyword table over the STATUS TEXT (closed words checked first; the
  *  once-assumed numeric status code was disproven 2026-07-04, see CLAUDE.md), so the
- *  colour is right in every language; the English prefix checks below are the fallback
+ *  color is right in every language; the English prefix checks below are the fallback
  *  when it's absent. Green requires an affirmative signal AND no contradiction: a
  *  wrongly-true [openNow] must never paint text that literally reads closed
  *  ("Closed ⋅ Opens 5 AM") green - and "Opens …" ≠ "Open"/"Open 24 hours" (the prefix

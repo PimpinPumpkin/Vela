@@ -213,7 +213,7 @@ fun StepsSheet(
         if (committed) dismiss() else scope.launch { drag.animateTo(0f) }
     }
     // Nav form lands on the step the driver is heading to (the banner's step): the steps already
-    // passed sit above it, greyed, one scroll up. The preview (no currentStep) starts at the top.
+    // passed sit above it, grayed, one scroll up. The preview (no currentStep) starts at the top.
     val cur = currentStep?.coerceIn(0, (maneuvers.size - 1).coerceAtLeast(0))
     val landIndex = cur ?: 0
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = landIndex)
@@ -486,7 +486,7 @@ fun NavStopsRow(stops: List<String>, onEdit: () -> Unit, modifier: Modifier = Mo
 
 /** The stop that begins a leg (issue #519): a primary-tinted pin and "Stop: <name>" on its own
  *  band between the ARRIVE of the previous leg and the first turn of the next, so a long list
- *  reads leg by leg. Same left gutter as [StepRow]. [passed] greys it with the passed step below it. */
+ *  reads leg by leg. Same left gutter as [StepRow]. [passed] grays it with the passed step below it. */
 @Composable
 fun StopDividerRow(name: String, modifier: Modifier = Modifier, passed: Boolean = false) {
     val dark = isAppInDarkTheme()
@@ -522,7 +522,7 @@ fun StopDividerRow(name: String, modifier: Modifier = Modifier, passed: Boolean 
 
 /** One step of the list: glyph, instruction, signs, road, lanes, distance, then a divider. Shared
  *  by the sheet's lazy list and the nav bar's drag PREVIEW (the rows that show under the ETA row
- *  while the bar is being pulled up), so both render pixel-identical. [passed] (nav only) greys a
+ *  while the bar is being pulled up), so both render pixel-identical. [passed] (nav only) grays a
  *  step the driver has already driven: glyph and text in the dim ink, signs and lanes faded. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -541,7 +541,7 @@ fun StepRow(
     val dim = SheetPalette.dim(dark)
     // A passed step reads in the secondary ink everywhere the row would use the primary one.
     val ink = if (passed) dim else SheetPalette.ink(dark)
-    // Signs, lanes and the lane hint carry their own colours; fade them instead.
+    // Signs, lanes and the lane hint carry their own colors; fade them instead.
     val fade = if (passed) Modifier.alpha(PASSED_ALPHA) else Modifier
     Column(modifier) {
                     Row(
@@ -626,7 +626,7 @@ fun StepRow(
     }
 }
 
-/** How much a passed step's own-coloured parts (sign chips, lane diagram, lane hint) are faded. */
+/** How much a passed step's own-colored parts (sign chips, lane diagram, lane hint) are faded. */
 private const val PASSED_ALPHA = 0.5f
 
 /**

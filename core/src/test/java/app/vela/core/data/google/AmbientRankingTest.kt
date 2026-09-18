@@ -24,7 +24,7 @@ class AmbientRankingTest {
     }
 
     @Test fun `a landmark leads even a nearer low-signal place`() {
-        // A map wants the recognizable place first, not whatever's nearest the centre — this is the
+        // A map wants the recognizable place first, not whatever's nearest the center — this is the
         // real device case: Safeway(1273) must lead a near 0-review mobile mechanic / care home.
         val nearJunk = place("Always Mobile Mechanics", 0, null, 80.0)
         val mall = place("Mega Mall", 9000, 4.3, 4000.0)
@@ -52,7 +52,7 @@ class AmbientRankingTest {
 
     // The KIND of place counts too (user 2026-09-18), on the same scale the open-places bake uses,
     // so the two places sources rank alike instead of Google's review count deciding everything.
-    @Test fun `an anchor outranks a busier neighbour of an everyday kind`() {
+    @Test fun `an anchor outranks a busier neighbor of an everyday kind`() {
         val hospital = place("General Hospital", 300, 4.0, 200.0, "Hospital")
         val tacos = place("Busy Tacos", 1500, 4.5, 200.0, "Mexican restaurant")
         assertEquals("General Hospital", rankAmbientPlaces(listOf(tacos, hospital)).first().name)

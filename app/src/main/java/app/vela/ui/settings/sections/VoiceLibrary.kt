@@ -121,7 +121,7 @@ internal fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
         if (group.isNotEmpty()) {
             val installedHere = group.count { it.id in installed }
             val defaultOpen = lang == appLang || installedHere > 0
-            // A live search reveals every match; otherwise honour the user's toggle, falling back to the default.
+            // A live search reveals every match; otherwise honor the user's toggle, falling back to the default.
             val expanded = if (query.isNotBlank()) true else (langExpanded[lang] ?: defaultOpen)
             Spacer(Modifier.height(10.dp))
             Row(

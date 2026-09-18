@@ -37,7 +37,7 @@ import app.vela.ui.formatDistance
  * cameras, level crossings, speed humps) or small dots (lights, stop signs, which are too frequent
  * in a town to badge). The arrow marker carries the remaining trip distance; the top cap says how
  * much road the bar spans, so it reads as a scale rather than as decoration. The first cut of this
- * (2026-09-02) was a 10 dp strip with 3 dp coloured ticks: technically the same information, and
+ * (2026-09-02) was a 10 dp strip with 3 dp colored ticks: technically the same information, and
  * unreadable in practice (user 2026-09-04).
  */
 @Composable
@@ -121,7 +121,7 @@ fun RouteBarStrip(model: RouteBar.Model, modifier: Modifier = Modifier) {
             }) { measurables, constraints ->
                 val h = constraints.maxHeight
                 val w = constraints.maxWidth
-                // The track runs from the arrow's centre (bottom) to the top cap; badges centre on it.
+                // The track runs from the arrow's center (bottom) to the top cap; badges center on it.
                 val inset = (BADGE.dp.roundToPx() / 2)
                 val trackH = (h - 2 * inset).coerceAtLeast(1)
                 fun yAt(f: Double) = h - inset - (f * trackH).toInt()

@@ -123,7 +123,7 @@ object StopDeparturesParser {
         return listOf(firstHeadsign(entry) to entry)
     }
 
-    /** The route badge Google draws as a coloured pill: `["<label>", <int>, "#fill", "#text"]` — the
+    /** The route badge Google draws as a colored pill: `["<label>", <int>, "#fill", "#text"]` — the
      *  same shape as the itinerary line pills. First one found in the entry wins (its route). */
     private fun findBadge(node: JsonElement?, depth: Int = 0): Triple<String, String?, String?>? {
         if (node == null || depth > 10) return null
@@ -133,7 +133,7 @@ object StopDeparturesParser {
         // A route short name is short and alphanumeric-ish ("14", "14R", "38AX", "N", "M15-SBS"),
         // paired with a "#" fill; that combination is the pill and can't collide with a time/id node.
         // NAMED lines (BRT-style "<Brand> Green" / "<Brand> Orange" branding) run longer than 7 chars -
-        // admit up to 24 when BOTH colours are hex: the [label, x, "#fill", "#text"] double-hex shape is
+        // admit up to 24 when BOTH colors are hex: the [label, x, "#fill", "#text"] double-hex shape is
         // unambiguous (verified against a live device blob, 2026-07-13).
         val text = a.at(3).str()?.takeIf { it.startsWith("#") }
         if (label != null && label.any { it.isLetterOrDigit() } &&

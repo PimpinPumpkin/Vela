@@ -15,7 +15,7 @@ import app.vela.core.model.Place
  * Food "…bar" categories (sushi/juice/coffee/salad/oyster/snack bar) are deliberately KEPT — only
  * the alcohol-bar phrases below are blocked. "Bar & grill" is left as-is (food-primary).
  *
- * **Localised categories:** Google returns the category in the app's language (`hl=<lang>`), so the
+ * **Localized categories:** Google returns the category in the app's language (`hl=<lang>`), so the
  * PHRASE list also carries the equivalent terms for Vela's other UI languages (fr de es it pt nl ru
  * pl sv uk). Only high-confidence, unambiguous terms are included per language — deliberately
  * conservative to avoid dropping a benign place for a general user (a stricter, name-aware variant
@@ -56,7 +56,7 @@ object CategoryFilter {
         "go-go bar", "topless bar", "peep show", "adult entertainment", "adult video", "adult dvd",
         "sex shop", "adult store", "adult book", "escort service", "escort agency", "massage parlor",
         "brewpub", "brewery", "brewing company", "distillery", "winery", "vineyard", "wine cellar",
-        "liquor store", "wine shop", "wine store", "bottle shop", "off-licence", "off licence",
+        "liquor store", "wine shop", "wine store", "bottle shop", "off-license", "off license",
         "beer store", "beer garden", "beer hall",
         "casino", "gambling", "betting", "bookmaker", "sportsbook", "off-track betting", "lottery retailer",
         "hookah lounge", "shisha", "cigar lounge", "smoke shop", "head shop", "tobacco shop", "tobacco store",

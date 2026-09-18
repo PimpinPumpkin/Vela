@@ -10,7 +10,7 @@ import androidx.compose.runtime.mutableStateOf
  *
  * - [showPois]: master switch for the ambient place layer AND the OSM fallback business POIs.
  *   Off = a clean basemap; searched results, transit stops and traffic controls still show
- *   (they have their own switches/behaviour).
+ *   (they have their own switches/behavior).
  * - [showTransit]: the canonical GTFS stop icons (and their per-viewport fetch).
  * - [showCivic]: parks, schools and civic places inside the ambient pool - the "not really a
  *   business" tier; off = the ambient layer shows businesses only.

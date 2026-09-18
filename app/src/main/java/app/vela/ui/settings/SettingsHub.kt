@@ -53,7 +53,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape as DpadShape
  * presses instead of ~70. Row order is the fork's deliberate section order (AGENTS.md).
  *
  * D-pad: each row is ONE focus stop (dpadClickable + a ring hugging the row). On first open the
- * scaffold auto-focuses Back (the documented Settings behaviour); returning from a sub-screen
+ * scaffold auto-focuses Back (the documented Settings behavior); returning from a sub-screen
  * restores focus to the row you came from ([returnTo]) - Compose's own recovery is
  * nondeterministic when the focused tree unmounts, so the row is re-focused explicitly.
  */

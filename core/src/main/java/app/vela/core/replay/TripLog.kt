@@ -258,7 +258,7 @@ object TripLog {
      * Lives here, beside the format it edits, so the rename can never drift from what the parser
      * expects; `:app`'s TripStore does the file IO around it.
      *
-     * The label is sanitised the same way the writer sanitises it: a comma would shift every
+     * The label is sanitized the same way the writer sanitizes it: a comma would shift every
      * later field of the header by one (the destination would be read as the start time), and a
      * newline would turn the header into two records, the second of which parses as garbage.
      * Only field 0 changes; the start time, destination and version code are carried through

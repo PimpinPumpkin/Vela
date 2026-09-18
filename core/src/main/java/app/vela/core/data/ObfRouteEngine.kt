@@ -173,7 +173,7 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
                     null, readers.toTypedArray(), RoutePlannerFrontEnd.RouteCalculationMode.NORMAL,
                 ).also { limitCtx = it; limitCtxKey = key }
                 val seg = RoutePlannerFrontEnd().findRouteSegment(lat, lng, ctx, null) ?: return@synchronized null
-                // distToProj is the SQUARED distance in metres from the point to its projection.
+                // distToProj is the SQUARED distance in meters from the point to its projection.
                 if (seg.distToProj > LIMIT_SNAP_M * LIMIT_SNAP_M) return@synchronized null
                 val mps = seg.road.getMaximumSpeed(true)
                 if (mps <= 0f || mps >= RouteDataObject.NONE_MAX_SPEED - 0.5f) return@synchronized null

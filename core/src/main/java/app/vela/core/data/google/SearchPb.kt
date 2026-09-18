@@ -16,7 +16,7 @@ import app.vela.core.model.LatLng
  * query + the `!2d`/`!3d` viewport coords) and replace TEMPLATE.
  */
 object SearchPb {
-    /** Smallest search window sent to Google, metres. */
+    /** Smallest search window sent to Google, meters. */
     const val MIN_SPAN_M = 1_000.0
 
     // The shipped default; the live template comes from CalibrationStore (remotely
@@ -56,7 +56,7 @@ object SearchPb {
         // The template's !1d span is a BAKED ~25 km window - fine at street zoom, but a
         // zoomed-out search silently kept a city-sized net (user 2026-07-11). When the caller
         // knows its real viewport, stretch the window to it (floored so street-level searches
-        // keep the calibrated behaviour; capped so a whole-globe zoom asks something sane).
+        // keep the calibrated behavior; capped so a whole-globe zoom asks something sane).
         // The floor used to be 3 km: zoomed in to a few blocks, "food" then searched a 3 km net and the
         // result fit flew the camera out of the view the user had chosen (user 2026-09-15). 1 km keeps
         // Google's net near the view; the camera side holds the view when enough hits land inside it.

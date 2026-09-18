@@ -232,7 +232,7 @@ object DirectionsParser {
     internal fun placeManeuvers(maneuvers: List<Maneuver>, polyline: List<LatLng>): List<Maneuver> {
         if (maneuvers.isEmpty() || polyline.size < 2) return maneuvers
         // Place each turn by its fraction of the STEP-DISTANCE total, NOT the polyline length.
-        // The two often disagree (Google's per-step metres vs our decoded geometry can differ by
+        // The two often disagree (Google's per-step meters vs our decoded geometry can differ by
         // a lot — seen 3.3 km of steps on a 6.4 km polyline), and dividing by polyLength then
         // crammed every turn into the first half of the route, landing them on the wrong roads
         // ("turn onto a road miles away"). Fraction-of-step-total maps each turn to the right

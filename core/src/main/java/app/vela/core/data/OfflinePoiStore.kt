@@ -175,7 +175,7 @@ class OfflinePoiStore @Inject constructor(
             "park" to listOf("park"),
             "parks" to listOf("park"),
             "school" to listOf("school"),
-            "gym" to listOf("fitness centre", "sports centre"),
+            "gym" to listOf("fitness center", "fitness centre", "sports center", "sports centre"),
             "car wash" to listOf("car wash"),
             "post office" to listOf("post office"),
             "post offices" to listOf("post office"),
@@ -187,7 +187,7 @@ class OfflinePoiStore @Inject constructor(
             // win the category slot first (amenity is read before tourism).
             "things to do" to listOf(
                 "attraction", "museum", "viewpoint", "theme park", "zoo", "aquarium", "gallery",
-                "theatre", "cinema", "arts centre", "water park",
+                "theatre", "cinema", "arts center", "arts centre", "water park",
             ),
             "hardware" to listOf("hardware", "doityourself"),
         )

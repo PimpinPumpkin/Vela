@@ -105,7 +105,7 @@ class SpokenScriptTest {
         org.junit.Assert.assertTrue("plain text took ${perCallMs} ms per call", perCallMs < 1.0)
     }
 
-    @Test fun `a replaced dict instance is honoured, not the cached digest of the old one`() {
+    @Test fun `a replaced dict instance is honored, not the cached digest of the old one`() {
         val a = mapOf("רחוב" to "Rehov")
         val b = mapOf("רחוב" to "Street")
         assertEquals("onto Rehov", SpokenScript.forDisplay("onto רחוב", "en", a))

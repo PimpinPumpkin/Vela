@@ -371,7 +371,7 @@ internal class NavController(
         replayJob = job
     }
 
-    /** Fold traffic-light landmark clauses into [route]'s turns. Standard behaviour since 2026-07-17
+    /** Fold traffic-light landmark clauses into [route]'s turns. Standard behavior since 2026-07-17
      *  (the Advanced toggle it hid behind was cut - "pass the light, then turn right" when a turn is
      *  ambiguous is just better guidance, exactly when Google says it); the enrichment itself stays
      *  conservative (1-2 lights, plain surface-street turns only) and is a NO-OP in languages whose
@@ -511,7 +511,7 @@ internal class NavController(
         if (replayOwnsNav) { navSession.stop(); replayOwnsNav = false; host.destination = null }
         host.pauseLiveLocation() // live GPS (and its stale timer) pause while the trace owns the puck
         // Also kill any pending stale-location timer armed by the last live fix - otherwise it can fire
-        // ~seconds into the replay and flip myLocationStale=true, briefly greying the replay puck / hiding
+        // ~seconds into the replay and flip myLocationStale=true, briefly graying the replay puck / hiding
         // its arrow until the next trace fix clears it. The replay collector sets stale=false per fix.
         // The user's real position BEFORE the trace took over - restored on teardown so exiting the replay
         // snaps the dot back off the trace's end point to (approximately) where they are; the resumed live
@@ -751,7 +751,7 @@ internal class NavController(
         }
     }
 
-    /** The point [m] metres along [poly] (clamped to the ends). Linear walk - called at 1 Hz. */
+    /** The point [m] meters along [poly] (clamped to the ends). Linear walk - called at 1 Hz. */
     private fun pointAlongPolyline(poly: List<LatLng>, m: Double): LatLng? {
         if (poly.size < 2) return null
         if (m <= 0.0) return poly.first()
@@ -858,7 +858,7 @@ internal class NavController(
         _state.update { it.copy(routeBarEnabled = on, routeBar = if (on) it.routeBar else null) }
     }
 
-    // Speed cameras projected onto the CURRENT route, in ascending along-route metres, plus the
+    // Speed cameras projected onto the CURRENT route, in ascending along-route meters, plus the
     // indices already announced. Keyed like the controls corridor fetch so a same-course heal does
     // not refetch or re-arm warnings the driver already heard.
     private var routeCamKey: String? = null
@@ -889,7 +889,7 @@ internal class NavController(
         spokenCams = emptySet() // a genuinely new route: nothing has been announced on it yet
         // And nothing is KNOWN on it yet: a reroute resets traveledM to 0 on the new route, so
         // the old route's distances compared against it would announce a camera you left
-        // kilometres behind, every tick until the fetch lands (or forever if it fails).
+        // kilometers behind, every tick until the fetch lands (or forever if it fails).
         routeCamMeters = emptyList()
         routeCamJob?.cancel()
         routeCamJob = scope.launch {
@@ -918,7 +918,7 @@ internal class NavController(
         }
     }
 
-    // Plate (Flock / ALPR) camera groups on the CURRENT route, ascending along-route metres, and
+    // Plate (Flock / ALPR) camera groups on the CURRENT route, ascending along-route meters, and
     // the groups already announced. Keyed exactly like the speed-camera corridor so a same-course
     // heal neither re-projects nor re-arms an alert the driver already had.
     private var routeFlockKey: String? = null
@@ -1045,7 +1045,7 @@ internal class NavController(
                 // one sign per approach, so the corridor picks up the sign holding the street that
                 // ENTERS your road, which you never stop for. The baked road bearing is the test
                 // (2026-09-17, after a distance test binned nearly everything: a clustered control
-                // sits at the junction's centre, not in your lane). No bearing, no filtering - an
+                // sits at the junction's center, not in your lane). No bearing, no filtering - an
                 // older bake or the live Overpass path keeps every sign, as before.
                 val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
                 val onRoute = res.filter { c ->

@@ -19,7 +19,7 @@ import kotlinx.serialization.json.jsonPrimitive
  * Deliberately conservative. It only ever produces a NAME and a COORDINATE, because that is the one
  * thing every format agrees on and the one thing that cannot be wrong: a place with the right
  * coordinate and a plain name is useful, whereas a place with a confidently wrong address is worse
- * than no import at all. Everything else in these files (icons, colours, folders, per-app custom
+ * than no import at all. Everything else in these files (icons, colors, folders, per-app custom
  * fields) is left behind on purpose.
  *
  * Parsing is deliberately shallow string/regex work rather than a real XML parser: these are
@@ -124,7 +124,7 @@ object PlaceImport {
     private fun geoJsonName(props: JsonObject?): String? {
         val p = props ?: return null
         val loc = (p["location"] ?: p["Location"]) as? JsonObject
-        // Older Takeout exports capitalise their keys ("Title", "Location", "Business Name").
+        // Older Takeout exports capitalize their keys ("Title", "Location", "Business Name").
         return (
             loc?.get("name")?.text() ?: loc?.get("Business Name")?.text()
                 ?: p["name"]?.text() ?: p["title"]?.text() ?: p["Title"]?.text()

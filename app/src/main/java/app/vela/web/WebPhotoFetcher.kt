@@ -150,7 +150,7 @@ class WebPhotoFetcher @Inject constructor(
         synchronized(cache) { cache[featureId] }?.let { cached ->
             if (onHistogram != null) histCache[featureId]?.let(onHistogram) // cached walk = cached histogram
             if (onPhotoDates != null) dateCache[featureId]?.let(onPhotoDates)
-            // A CATEGORISED gallery is served from cache forever (it can't get better). A
+            // A CATEGORIZED gallery is served from cache forever (it can't get better). A
             // TAB-LESS one gets ONE fresh walk per session: one flaky fetch used to poison the
             // place all session, "sometimes there's just no Menu tab" (user 2026-07-11). The
             // cached set still shows instantly; the retry streams over it if it finds more.
@@ -376,7 +376,7 @@ class WebPhotoFetcher @Inject constructor(
                 }
                 else {
                   // Late-tab rescue: tabs that appeared AFTER phase 0 gave up would silently be
-                  // swept uncategorised - jump back and walk them once.
+                  // swept uncategorized - jump back and walk them once.
                   if(sub===0 && cats.length===0 && !rescued){
                     var late=tabsNow();
                     if(late.length>0){ rescued=1; cats=late; ci=0; sub=0; phase=1; partial(); setTimeout(tick, 500); return; }

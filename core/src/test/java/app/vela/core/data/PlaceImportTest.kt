@@ -88,11 +88,11 @@ class PlaceImportTest {
         assertTrue(PlaceImport.parse(bad).isEmpty())
     }
 
-    @Test fun `a waypoint with no name still imports, labelled by its coordinate`() {
+    @Test fun `a waypoint with no name still imports, labeled by its coordinate`() {
         val noName = """<gpx><wpt lat="38.5449" lon="-121.7405"></wpt></gpx>"""
         val out = PlaceImport.parse(noName)
         assertEquals(1, out.size)
-        assertTrue("should be labelled by coordinate", out[0].name.contains("38.54"))
+        assertTrue("should be labeled by coordinate", out[0].name.contains("38.54"))
     }
 
     @Test fun `something that is not a places file yields nothing`() {

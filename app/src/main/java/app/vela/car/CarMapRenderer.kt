@@ -44,9 +44,9 @@ import kotlin.math.roundToInt
  *
  * Two modes, driven by [NavSession.navigating]:
  *  - **Nav** — heading-up, camera looks AHEAD of the puck (puck sits in the lower third so you see
- *    the road you're driving into), zoom tightens as you slow, the route line is drawn coloured by
+ *    the road you're driving into), zoom tightens as you slow, the route line is drawn colored by
  *    live traffic, and a current-speed badge shows.
- *  - **Browse** — north-up, centred on you, NO route (so a finished trip's line doesn't linger).
+ *  - **Browse** — north-up, centered on you, NO route (so a finished trip's line doesn't linger).
  *
  * At night the snapshot is tinted dark (a real dark vector style via the snapshotter is a follow-up).
  */
@@ -130,7 +130,7 @@ class CarMapRenderer(
         color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 3f
     }
     private val bgPaint = Paint().apply { color = Color.parseColor("#0f1420") }
-    // Traffic colours (match the phone route line): free-flow blue → amber → red.
+    // Traffic colors (match the phone route line): free-flow blue → amber → red.
     private val trafficPaints = mapOf(
         0 to strokePaint("#4c8dff", 15f), // free-flowing
         1 to strokePaint("#f9a825", 15f), // moderate
@@ -217,7 +217,7 @@ class CarMapRenderer(
                     } else 0.0 // browse = north-up
                 }
                 // Render once per fix too (not only from the ticker): draw() reads LIVE state, so a
-                // route swap / reroute / faster-route adoption, per-span traffic recolour, the speed
+                // route swap / reroute / faster-route adoption, per-span traffic recolor, the speed
                 // badge, and the auto-recenter flip must repaint even when the puck is momentarily
                 // stationary (fixes still arrive ~1 Hz while parked). The ticker adds the smooth
                 // between-fix interpolation on top; both go through the rendering/dirty guard.
@@ -318,7 +318,7 @@ class CarMapRenderer(
         snapshotter = null
         snapWidth = 0; snapHeight = 0
         lastSnapshot = null
-        rendering = false; dirty = false // the cancelled snapshot's callback won't fire — unstick the flag
+        rendering = false; dirty = false // the canceled snapshot's callback won't fire — unstick the flag
     }
 
     override fun onVisibleAreaChanged(visibleArea: Rect) { requestRender() }
@@ -365,7 +365,7 @@ class CarMapRenderer(
         val follow = following // false while the user has panned (until auto-recenter)
         if (nav && follow) zoom = navZoom()
         // Look-ahead: while following in nav, push the camera target forward along the heading so the
-        // puck sits in the lower third (Google-style). Browse/panned keeps the plain centre.
+        // puck sits in the lower third (Google-style). Browse/panned keeps the plain center.
         val target = if (nav && follow && puck != null) {
             val mpp = 156543.03392 * cos(Math.toRadians(here.lat)) / Math.pow(2.0, zoom)
             val aheadMeters = height * 0.22 * mpp // ~22% of the view up-screen
@@ -437,11 +437,11 @@ class CarMapRenderer(
                 if (d < best) { best = d; splitI = i }
             }
         }
-        // Draw the WHOLE route ahead in blue first (robust baseline — always shows), grey behind.
+        // Draw the WHOLE route ahead in blue first (robust baseline — always shows), gray behind.
         if (splitI > 0) canvas.drawPath(pathOf(snap, poly, 0..splitI, sx, sy), drivenPaint)
         if (splitI < poly.lastIndex) canvas.drawPath(pathOf(snap, poly, splitI..poly.lastIndex, sx, sy), trafficPaints[0]!!)
 
-        // Overlay per-span traffic colour on the ahead portion (best-effort; the blue baseline shows
+        // Overlay per-span traffic color on the ahead portion (best-effort; the blue baseline shows
         // regardless if this finds nothing).
         val spans = route.trafficSpans
         if (spans.isEmpty() || route.distanceMeters <= 0) return
@@ -539,7 +539,7 @@ class CarMapRenderer(
     }
 
     /** Approx point→segment distance in a local equirectangular frame (lng scaled by cos lat). Good
-     *  enough to pick the nearest segment; not used for display metres. */
+     *  enough to pick the nearest segment; not used for display meters. */
     private fun distToSegment(p: LatLng, a: LatLng, b: LatLng): Double {
         val cosLat = cos(Math.toRadians(p.lat))
         val ax = a.lng * cosLat; val ay = a.lat
