@@ -84,7 +84,7 @@ are looking for.
 
 That exemption has a cost the bake pays for separately. The pumps out in the lot are usually
 published under the bare brand name, so the store and its forecourt drew as two icons carrying
-the same label a few tens of metres apart, and a tap on "the store" was a coin toss. A row whose
+the same label a few tens of meters apart, and a tap on "the store" was a coin toss. A row whose
 name is exactly its anchor's, and which is a fuel, charging or convenience row, gets " Fuel",
 " Charging" or " Market" appended. A row that already names itself ("<brand> Fuel Station") is
 left alone, and this is the only place in the bake where a name is rewritten at all.
@@ -142,7 +142,7 @@ basemap or open-places POI). A stop icon competes by distance like everything el
 icon layers, and when something is, only those compete. This is what stops a plaza's small dots
 from stealing a tap aimed at the shop they belong to: an icon hangs above its point like a pin,
 so measuring from each candidate's own point put the shop 40 px "away" while a coin machine's
-dot a few metres off sat right under the thumb. With nothing rendered at that pixel the wider
+dot a few meters off sat right under the thumb. With nothing rendered at that pixel the wider
 touch area decides as before, so a dot on its own is still tappable.
 
 For an open-data place the sheet is seeded from the tile itself (name, category, address, phone,
