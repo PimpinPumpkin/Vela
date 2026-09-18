@@ -35,13 +35,20 @@ echo "work dir $WORK ($(df -Pm "$WORK" | awk 'NR==2 {print $4}') MB free)"
 ATP_NDJSON=""
 if [ "$ATP_RUN" != "none" ] && command -v pmtiles >/dev/null 2>&1 && command -v tippecanoe-decode >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
   ATP_SRC="${ATP_LOCAL:-https://alltheplaces-data.openaddresses.io/runs/$ATP_RUN/output.pmtiles}"
-  if pmtiles extract "$ATP_SRC" "$WORK/atp.pmtiles" --bbox="$W,$S,$E,$N" --minzoom=15 --maxzoom=15 >/dev/null 2>&1; then
+  # Both halves report what they cost. Silencing them meant a bake that died here died with no
+  # output at all, which reads as flaky infrastructure rather than as a step (five regions, three
+  # waves, 2026-09-18).
+  echo "alltheplaces: extracting z15 for $ID"
+  if pmtiles extract "$ATP_SRC" "$WORK/atp.pmtiles" --bbox="$W,$S,$E,$N" --minzoom=15 --maxzoom=15 >/dev/null 2>"$WORK/atp.err"; then
+    echo "alltheplaces: extract $(du -m "$WORK/atp.pmtiles" | cut -f1) MB, decoding"
     tippecanoe-decode -z15 -Z15 "$WORK/atp.pmtiles" 2>/dev/null \
       | jq -c '.. | objects | select(.type == "Feature" and .geometry.type == "Point") | {props: .properties, lng: .geometry.coordinates[0], lat: .geometry.coordinates[1]}' \
       > "$WORK/atp.ndjson" || true
+    echo "alltheplaces: $(wc -l < "$WORK/atp.ndjson") rows, $(du -m "$WORK/atp.ndjson" | cut -f1) MB"
+    rm -f "$WORK/atp.pmtiles"
     if [ -s "$WORK/atp.ndjson" ]; then ATP_NDJSON="$WORK/atp.ndjson"; else echo "alltheplaces: no rows in the box"; fi
   else
-    echo "alltheplaces: extract failed for $ID, baking Overture only"
+    echo "alltheplaces: extract failed for $ID, baking Overture only: $(tail -2 "$WORK/atp.err" 2>/dev/null | tr '\n' ' ')"
   fi
 fi
 # OSM SHOPS (2026-09-17): the region's OpenStreetMap extract, filtered to named business nodes, is

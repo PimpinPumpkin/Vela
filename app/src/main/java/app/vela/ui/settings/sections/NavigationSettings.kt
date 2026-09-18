@@ -106,6 +106,13 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         )
         GroupDivider()
         ToggleRow(
+            label = stringResource(R.string.settings_faster_auto),
+            checked = app.vela.ui.FasterRouteAuto.accept.value,
+            onCheckedChange = { app.vela.ui.FasterRouteAuto.set(context, it) },
+            hint = stringResource(R.string.settings_faster_auto_hint),
+        )
+        GroupDivider()
+        ToggleRow(
             label = stringResource(R.string.settings_pause_in_bar),
             checked = app.vela.ui.PauseInBar.on.value,
             onCheckedChange = { app.vela.ui.PauseInBar.set(context, it) },

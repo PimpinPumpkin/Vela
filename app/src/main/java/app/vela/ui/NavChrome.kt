@@ -119,3 +119,31 @@ object PauseInBar {
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
     private const val KEY = "nav_pause_in_bar"
 }
+
+/**
+ * What happens to a faster-route offer nobody answers (issue #594).
+ *
+ * The offer used to sit there until it was answered, which is a prompt covering part of the map
+ * asking a driver to make a decision with their hands on the wheel. It always resolves itself now.
+ * On (the default, and what Google does) an unanswered offer is TAKEN: the route it names is
+ * faster, that is the whole reason it appeared, and the drive continues either way. Off, it is
+ * dismissed instead, for anyone who would rather keep the route they chose unless they say so.
+ *
+ * "Leave it on screen" is deliberately not one of the choices.
+ */
+object FasterRouteAuto {
+    /** True = take it, false = let it go. */
+    val accept = mutableStateOf(true)
+
+    fun init(context: Context) {
+        accept.value = prefs(context).getBoolean(KEY, true)
+    }
+
+    fun set(context: Context, value: Boolean) {
+        accept.value = value
+        prefs(context).edit().putBoolean(KEY, value).apply()
+    }
+
+    private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
+    private const val KEY = "faster_route_auto"
+}

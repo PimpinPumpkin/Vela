@@ -141,6 +141,7 @@ jobs:
         run: |
           sudo mkdir -p /mnt/vela-work && sudo chown "$(id -u):$(id -g)" /mnt/vela-work
           df -h / /mnt | sed 's/^/  /'
+          echo "  cpus $(nproc), memory $(free -g | awk 'NR==2 {print $2}') GB"
       - name: Bake ${{ matrix.id }}
         run: |
           B='${{ toJson(matrix.bbox) }}'
