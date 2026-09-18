@@ -42,16 +42,44 @@ class BasemapTileStore @Inject constructor(
     @ApplicationContext context: Context,
     http: OkHttpClient,
 ) : PmtilesRegionStore(context, http, "basemap") {
-    /** The smallest installed archive covering [center] (by the index bbox; an unindexed archive
-     *  counts as covering everything), else null. */
+    /** The archive to draw [center] from: the smallest installed one whose box covers the point AND
+     *  that actually holds a tile there, else the smallest covering one, else null.
+     *
+     *  The coverage test is what keeps the map from going blank (issue #552). A bounding box is a
+     *  rectangle and a region is not, so a neighbor's box routinely covers a point its tiles do not
+     *  reach - a small state next door can even have the SMALLER box and win the old pick outright.
+     *  The result was no vector basemap at all over that strip, with the traffic raster and the
+     *  place pins still drawing on top of bare land. [PmtilesReader.hasRoads] asks the file instead:
+     *  not "is there a tile here" (a bake emits tiles across its whole box from global base data,
+     *  so that answers yes over the neighbor and out to sea) but "does the tile here carry the road
+     *  network", which only the OSM-derived part of the bake does.
+     *  A probe that cannot answer (an unreadable file, a format this reader does not know, a zoom
+     *  outside the archive) leaves the old rule in charge, so this can only ever improve the pick. */
     fun installedFor(center: LatLng?): File? {
         val c = center ?: return null
         val index = readIndexPublic()
-        return installed().entries
+        val covering = installed().entries
             .filter { (id, _) -> index[id]?.let { b -> c.lat in b[0]..b[2] && c.lng in b[1]..b[3] } ?: true }
-            .minByOrNull { (id, _) -> index[id]?.let { b -> (b[2] - b[0]) * (b[3] - b[1]) } ?: Double.MAX_VALUE }
-            ?.value
+            .sortedBy { (id, _) -> index[id]?.let { b -> (b[2] - b[0]) * (b[3] - b[1]) } ?: Double.MAX_VALUE }
+        if (covering.isEmpty()) return null
+        val (tx, ty) = PmtilesReader.tileOf(c.lat, c.lng, COVERAGE_PROBE_Z)
+        covering.firstOrNull { (_, f) -> coverageCache.get(probeKey(f, tx, ty)) ?: probe(f, tx, ty) }
+            ?.let { return it.value }
+        return covering.first().value
     }
+
+    private fun probeKey(f: File, x: Int, y: Int) = "${f.name}|$x|$y"
+
+    private fun probe(f: File, x: Int, y: Int): Boolean {
+        val answer = PmtilesReader.hasRoads(f, COVERAGE_PROBE_Z, x, y)
+        // Only a definite answer is remembered: "cannot tell" must not harden into "no".
+        if (answer != null) coverageCache.put(probeKey(f, x, y), answer)
+        return answer == true
+    }
+
+    /** Probes are memoized per archive and tile: this runs on every camera idle, and the answer for
+     *  a tile cannot change while the file is installed. */
+    private val coverageCache = android.util.LruCache<String, Boolean>(256)
 
     /** The archive's own max zoom, read from the PMTiles v3 header (byte 101). A region baked
      *  shallower than [FULL_MAP_ZOOM] - the workflow drops a level when a bake would pass GitHub's
@@ -69,6 +97,11 @@ class BasemapTileStore @Inject constructor(
     companion object {
         /** What the online tiles carry; an archive at least this deep is as good as streaming. */
         const val FULL_MAP_ZOOM = 14
+
+        /** The zoom the coverage probe asks about. A tile here is about ten kilometers across:
+         *  fine enough to tell a neighboring state's archive from the right one, coarse enough
+         *  that a lake or a stretch of farmland inside the right region still has a tile. */
+        const val COVERAGE_PROBE_Z = 12
     }
 }
 

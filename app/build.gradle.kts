@@ -227,3 +227,11 @@ dependencies {
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
+
+// On-demand harnesses need their -D properties in the test JVM; Gradle does not forward them
+// (the same trap core/build.gradle.kts documents for velaTrip).
+tasks.withType<Test>().configureEach {
+    listOf("velaPmtiles", "velaLat", "velaLng").forEach { k ->
+        System.getProperty(k)?.let { systemProperty(k, it) }
+    }
+}

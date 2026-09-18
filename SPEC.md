@@ -1358,6 +1358,15 @@ Selection rules on the phone:
 
 - The smallest archive whose box covers the point wins, and `sourcesFor` returns exactly one
   source: two nested archives draw the overlap twice.
+- **The basemap pick then asks the file whether it draws the map there** (`PmtilesReader.hasRoads`,
+  probed at `COVERAGE_PROBE_Z` 12 and memoized per archive and tile). A box is a rectangle and a
+  region is not, so a neighbor's box always covers ground its data does not reach, and a small
+  neighbor can even have the smaller box and win outright; the result was a blank vector map over
+  that strip with the traffic raster and the place pins still drawing on bare land. The test is the
+  presence of the `transportation` layer, **not** the presence of a tile: a bake emits tiles across
+  its whole box from planetiler's global base data, so "is there a tile" answers yes over the
+  neighbor and out to sea. A probe that cannot answer leaves the old pick in charge, so the rule can
+  only improve on it. The pick runs off the main thread.
 - A region download pulls the **same-id** archive first; the center rule alone pulls parent and
   neighbor archives too.
 - Geofabrik boxes carry a buffer that spills across borders, so "any box that covers you" ranks
@@ -1665,6 +1674,13 @@ ports it rather than inventing a fourth:
   map as gestures and detach the follow camera.
 - The route bar is portrait-only and never in PiP, and shows a 5 km window rather than the whole
   route: scaled to a long trip every nearby mark collapses into one pixel.
+- **Pause and mute are one button** (`NavHoldControls`). They are the drive's two "hold something"
+  controls and both are touched rarely, so they get one 56 dp target rather than 112 dp of the right
+  edge: a tap opens a row beside it with both choices, a long press mutes without opening anything,
+  and the row closes itself after 4 s and after either choice. The button carries both states,
+  because one control standing for two has to: the glyph is pause or resume, the accent fill says
+  the drive is held, and a small crossed speaker says it is silent. The long press is touch-only by
+  nature and the row is its key path, which is what keeps it D-pad legal.
 
 ### 10.3 D-pad operation
 

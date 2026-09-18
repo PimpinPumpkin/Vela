@@ -5743,6 +5743,16 @@ class MapViewModel @Inject constructor(
     /** The installed basemap archive for [center], if any. Cheap (a folder listing), runs with the
      *  places refresh on camera idle and after every download or delete. */
     private fun refreshBasemapArchive(center: LatLng? = mapCenter ?: _state.value.myLocation) {
+        // Off the main thread: picking the archive now reads a directory page and one tile out of
+        // each candidate file to see whether it actually draws the map there (issue #552). The
+        // answers are memoized, so this is a handful of small reads on the first look at an area.
+        basemapArchiveJob?.cancel()
+        basemapArchiveJob = viewModelScope.launch(Dispatchers.IO) { pickBasemapArchive(center) }
+    }
+
+    private var basemapArchiveJob: Job? = null
+
+    private fun pickBasemapArchive(center: LatLng?) {
         val file = basemapStore.installedFor(center)
         // A SHALLOW archive (baked a zoom level short because the full bake would pass GitHub's
         // 2 GiB asset limit) draws as a blurred version of the same map once you are past its

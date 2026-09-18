@@ -1529,52 +1529,17 @@ fun MapScreen(
                     },
                     modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
                 ) { Icon(Icons.Default.ZoomOutMap, contentDescription = stringResource(R.string.nav_overview)) }
-                // MUTE + PAUSE share ONE pill (user 2026-09-18). They are the two "hold something"
-                // controls of a drive, they are both state (and both show that state in their
-                // glyph), and five stacked FABs down the right edge was most of a small phone's
-                // height - worse in landscape. Same dress as the zoom pair: one Surface, two
-                // square targets, a hairline between. PAUSE sits on top, nearer the thumb, because
-                // pulling in is the decision made at speed; paused, its half fills with the accent,
-                // since a drive that is quietly not navigating must never look like one that is.
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    shadowElevation = 6.dp,
-                ) {
-                    Column(Modifier.width(56.dp)) {
-                        Box(
-                            Modifier
-                                .size(56.dp)
-                                .background(if (state.navPaused) MaterialTheme.colorScheme.primary else Color.Transparent)
-                                .dpadHighlight(RoundedCornerShape(16.dp))
-                                .clickable(onClick = vm::toggleNavPause),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                if (state.navPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                contentDescription = stringResource(if (state.navPaused) R.string.nav_resume else R.string.nav_pause),
-                                tint = if (state.navPaused) MaterialTheme.colorScheme.onPrimary else LocalContentColor.current,
-                            )
-                        }
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 10.dp),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.25f),
-                        )
-                        Box(
-                            Modifier
-                                .size(56.dp)
-                                .dpadHighlight(RoundedCornerShape(16.dp))
-                                .clickable(onClick = vm::toggleVoice),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                if (state.voiceMuted) Icons.Default.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                                contentDescription = if (state.voiceMuted) stringResource(R.string.nav_unmute_voice) else stringResource(R.string.nav_mute_voice),
-                            )
-                        }
-                    }
-                }
+                // MUTE + PAUSE are ONE button (user 2026-09-18). They are the two "hold
+                // something" controls of a drive and both are touched rarely, so they no longer
+                // spend 112 dp of the right edge: one 56 dp button opens a little row with both
+                // choices, a long press mutes without the row, and the button itself carries both
+                // states (glyph and accent fill for the hold, a small crossed speaker for silence).
+                app.vela.ui.nav.NavHoldControls(
+                    paused = state.navPaused,
+                    muted = state.voiceMuted,
+                    onPause = vm::toggleNavPause,
+                    onMute = vm::toggleVoice,
+                )
                 FloatingActionButton(
                     onClick = {
                         navSearchOpen = !navSearchOpen

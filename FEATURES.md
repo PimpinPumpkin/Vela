@@ -1705,6 +1705,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Self-hosted routing backend (replace the FOSSGIS community server)
 
 ## Navigation
+- ✅ **Pause and mute are one button (2026-09-18).** The two controls that hold something about a
+  drive shared a tall pill down the right edge; now they share one 56 dp button. A tap opens a small
+  row beside it with both choices, a long press mutes without opening anything, and the row takes
+  itself away after a few seconds. The button says what is going on without being touched: the glyph
+  is pause or resume, it fills with the accent while the drive is held, and it wears a small crossed
+  speaker while the voice is off.
 - ✅ **The in-drive stop card says what the stop costs, marks it on the map, and takes itself away
   (2026-09-18).** Tapping a place while driving (Settings > Navigation, off by default) already
   offered it rather than acting on it; the offer now carries the three things that make it usable
@@ -2200,6 +2206,17 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - 🟡 BeaconDB WiFi positioning - NETWORK-provider coarse fixes are already used for the browse dot when GPS has been quiet (never during nav); an explicit opt-in and any deeper use are still open
 
 ## Offline
+- ✅ **A downloaded region can no longer blank the map (2026-09-18, issue #552).** Two things were
+  wrong at once. The bake let planetiler inherit the extract's header bounding box, which for 37 of
+  413 regions claims far more ground than the archive holds (one reached seven degrees into the next
+  state), so the app mounted an archive for views it had no tiles for and the vector map drew
+  nothing while traffic colors and place pins still painted on bare land. And the pick itself was
+  "the smallest box covering you", which is unsound even with honest boxes: a box is a rectangle and
+  a state is not, so a neighbor's box routinely covers ground its data never reaches. The bake now
+  pins its bounds to the region's own polygon, and the app asks the archive whether it actually
+  draws roads where you are before mounting it, falling back to the old pick when a file cannot
+  answer. Verified against the reporter's own screenshots: the archive that was being mounted over
+  south-west Pennsylvania answers "no roads here", so the right one is used instead.
 - ✅ **Offline maps live in Settings, not onboarding (declutter 2026-07-10; the 2026-07-07 first-run offline prompt was removed).** A one-time first-run prompt used to offer offline setup right after the voice offer. It was cut to keep onboarding short - a brand-new user hasn't searched anything yet, so "download an area" has no context. Offline map + routing downloads remain fully available in Settings → Offline (the section a search-with-no-signal or the locate flow points you to), which is where the download actually belongs.
 - ✅ **Settings → Offline is collapsible (2026-07-02)** - collapsed by default (tap the header to expand), so its long routing-region list doesn't force a big scroll past to reach the sections below it.
 - ✅ **Offline basemap region downloads** - **Settings → Offline → Map area → "Download the

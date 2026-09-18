@@ -982,6 +982,7 @@
     </plurals>
     <string name="exp_chooser_alts_same" translatable="false">About the same time</string>
     <string name="exp_chooser_fewest_cams" translatable="false">fewest cameras</string>
+    <string name="nav_hold_controls">Pause or mute</string>
     <string name="nav_stop_offer_add">Add stop</string>
     <string name="nav_stop_offer_ahead">%1$s ahead</string>
     <!-- 1: how much the stop adds to the drive, already formatted ("4 min") -->

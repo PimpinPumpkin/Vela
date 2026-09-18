@@ -3758,7 +3758,14 @@ Gotchas:
   on-device A/B - Kokoro was ~0.4× realtime even on a Pixel 9. `MapViewModel` reclaims their old model
   dirs and sanitizes stale `vela.kokoro`/`vela.matcha` prefs to Piper. `project_vela_kokoro_tts` memory
   is that historical record, not the current design.)**
-- **MUTE AND PAUSE ARE ONE PILL (user 2026-09-18).** The nav FAB stack was overview, voice, search,
+- **MUTE AND PAUSE ARE ONE BUTTON (user 2026-09-18, second pass).** `NavHoldControls` in
+  `ui/nav/NavOverlays.kt`: one 56 dp target that opens a two-choice row beside itself on a tap,
+  mutes on a LONG PRESS without opening it ("nice to not have to see the pop out if u were in the
+  know"), and closes the row after `OPEN_MS` (4 s) or either choice. The button shows both states
+  (pause/resume glyph, accent fill while held, a crossed-speaker badge while muted) because one
+  control standing for two has to. Long press is touch-only; the row is the D-pad path, so no key
+  alternative is missing. It replaced the two-target pill below.
+- **(superseded) MUTE AND PAUSE SHARED ONE PILL (user 2026-09-18).** The nav FAB stack was overview, voice, search,
   pause, plus recenter when detached: five controls down the right edge, most of a small phone's
   height and worse in landscape. Mute and pause are the two STATE controls of a drive, so they
   share one `Surface` in the zoom pair's dress (one pill, two 56dp targets, a hairline between),
@@ -3903,7 +3910,19 @@ Gotchas:
   `installedFor(center)` = smallest covering archive); `MapUiState.basemapArchive`; `refreshBasemapArchive`
   runs with the places refresh AND at VM init from the seed location; `downloadBasemapForRegion` /
   `downloadBasemapForArea` chain into every region and viewport download; deleted with the region;
-  counted under "Saved areas & map cache". **The engine rules found the hard way (a full evening):**
+  counted under "Saved areas & map cache". **Fifth rule (2026-09-18): the basemap pick ASKS THE FILE.** `BasemapTileStore.installedFor` no
+  longer stops at "smallest covering box": it probes each candidate with
+  `PmtilesReader.hasRoads(file, 12, x, y)` and takes the first that actually draws roads there,
+  falling back to the old pick when nothing answers. The probe tests the `transportation` LAYER, not
+  tile presence - planetiler's base data (water, landcover, Natural Earth) is global, so a bake has
+  tiles across its whole box and "is there a tile" answers yes over the neighbor and out to sea
+  (verified on the published hawaii archive: a mid-Pacific z12 tile exists and carries no roads).
+  Verified on the published west-virginia archive against issue #552's own screenshots: south-west
+  Pennsylvania answers false, inside WV answers true. `PmtilesReader` is ~200 lines of PMTiles v3
+  (header, directory, Hilbert tile id) plus the MVT layer-name walk; every failure answers null and
+  the old rule stands. The pick moved off the main thread (`pickBasemapArchive` on IO) because it
+  now reads a directory page and one tile per candidate; answers are memoized per archive and tile.
+  **The engine rules found the hard way (a full evening):**
   (1) the local archive must be added as a source AFTER the style loads and the layers using it
   re-attached (`LOCAL_BASEMAP_SRC`, `localBasemapLayerIds`, `withLocalBasemap` re-points every
   `openmaptiles` layer); declared in the JSON or via `Style.Builder.withSource` it never got past the z0
