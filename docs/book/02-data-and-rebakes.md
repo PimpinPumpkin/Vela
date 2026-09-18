@@ -48,6 +48,14 @@ points drift, but not week to week, and those bakes are the expensive ones.
 A rebake **overwrites the current generation in place**: same asset names, same manifest. New
 generations only fork when a file format changes, which is a deliberate cutover, never a cron.
 
+Each bake job publishes its own archive and one job at the end publishes the manifest that lists
+them, which makes that last job a single point of failure: it is serialized against other runs by
+a concurrency group, and a job left waiting in such a group is cancelled outright when a newer one
+joins it. So the merge does not fold the run's results into whatever the manifest said before. It
+rebuilds the list from the archives actually sitting on the release and then applies the run's own
+results on top. The manifest is a statement about what is published rather than a tally of which
+jobs survived, so a merge that never ran costs nothing and the next one puts everything back.
+
 ### How your phone picks up a new build
 
 **Streamed data** (the places layer while online) is read by HTTP range requests, so a rebuilt

@@ -3934,7 +3934,13 @@ Gotchas:
   (`.github/workflows/basemap-tiles.yml`, matrix from `tools/routing-regions.json` group/ids, Java 21,
   planetiler base data cached, bounds read from the archive header by `scripts/pmtiles-bbox.py` (bytes
   102..117, int32 E7; the pmtiles CLI download was rate-limited on shared runners and lost entries on
-  the first world run); `scripts/merge-basemap-manifest.sh`; `scripts/repair-basemap-manifest.sh`
+  the first world run); `scripts/merge-basemap-manifest.sh` **DERIVES the manifest from the release's
+  own archives (it calls the repair script) instead of folding this run's fragments into it - GitHub
+  CANCELS a job that is PENDING in a concurrency group when a newer one joins, so a wave of runs
+  loses its middle merges after the archives are already uploaded: 2026-09-18, 10 of 25 runs, and
+  the manifest listed 99 of 414 regions. Never write a manifest merge that depends on its own job
+  surviving, and dispatch a catalog as a couple of sharded runs, not one per group**;
+  `scripts/repair-basemap-manifest.sh`
   rebuilds the manifest from whatever archives sit on the release, one 127-byte range request each).
   Two world-bake lessons (2026-09-15): planetiler is fetched PINNED (v0.10.2), retried and
   `unzip -t`-checked, because five jobs died on "Invalid or corrupt jarfile" when the unverified

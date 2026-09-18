@@ -1363,6 +1363,20 @@ features, and the building and address overlays where they exist. `MapPoiPrefs.p
 | Glyphs | `scripts/build-map-fonts.sh` | `map-fonts` | unpacked to Pages |
 | TTS runtime, ASR models | vendored builds | `tts-runtime`, `asr-models` | catalog in `:core` |
 
+**A manifest merge derives the manifest from the release, never from the run's own fragments.**
+The bake matrix uploads one archive per region and the merge job publishes the manifest, so the
+merge is a read-modify-write on one shared asset and is serialized by a concurrency group. GitHub
+cancels a job that is PENDING in such a group when a newer one joins it, so in a wave of runs the
+middle merges are killed after their archives have already been uploaded: on 2026-09-18 that left
+99 of 414 basemap regions in the manifest, invisible except as regions the app could not find a
+map for. `scripts/repair-basemap-manifest.sh` (which `merge-basemap-manifest.sh` now calls) builds
+the list from the archives published on the release, reusing an existing row when the size is
+unchanged and reading the bbox out of the first 127 bytes otherwise, then lets the run's own entry
+files win for the regions it baked. The manifest is then a function of what is published: running
+it after the last upload is enough, running it twice changes nothing, and a merge that never ran
+costs nothing. Dispatch a catalog as a couple of sharded runs rather than one per group, so few
+merges can queue behind each other in the first place.
+
 **Infrastructure releases are not app releases.** Every non-`v0.*` tag is file hosting whose
 assets exist nowhere else. Two standing rules: any cleanup that deletes or edits releases selects
 by tag pattern `v0.*`, never by "prerelease" or "old", because the infrastructure releases are
