@@ -992,6 +992,20 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   store" is a coin toss. A row whose name is EXACTLY its anchor's gets " Fuel", " Charging" or
   " Market" appended; a row that already names itself is left alone. Names are rewritten nowhere
   else in the bake.
+- **OpenStreetMap is a SOURCE, not only a position.** Overture publishes monthly and nobody
+  outside it can correct a wrong row; OSM is the one source in the stack a person can fix and see
+  fixed, so named business NODES go in beside Overture's and AllThePlaces' rows, through the same
+  tag mapping (`osmcat` / `isbiz`, shared macros), the same name-and-brand dedupe within ~150 m, and
+  the same ranking. Confidence 0.8, under AllThePlaces' 0.85, so where another source has the same
+  place that row wins. The row's id is the OSM node id, so it is traceable back to the object anyone
+  can edit, and the tile's `origin` property says `osm`. Ways and relations stay out: a building's
+  centroid is the same guess as the parcel point. Measured on a small country: 766 business nodes in
+  the box, 521 added after dedupe.
+- **A seventh of the catalog rebakes nightly**, so an OSM edit reaches the map on its own within a
+  week, and `only=<region>` ships one region in about two minutes. Not the whole catalog nightly:
+  every archive would be re-published every night, and anyone who downloaded a region would be
+  offered a fresh copy of it daily, while streaming readers (the default) pick up a rebaked archive
+  with no prompt at all.
 - **The toolchain is cached and pinned.** tippecanoe was built from source in every job, which was
   69 s of a job that is now about two minutes, 414 times a wave, for a binary that is identical
   across them. The binaries live in a keyed cache; the key names the pinned tippecanoe and pmtiles

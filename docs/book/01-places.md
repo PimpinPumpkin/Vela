@@ -77,6 +77,15 @@ Each place is then ranked by prominence inside four nested grid cells: `frank` (
 
 So a downtown thins to its landmarks as you zoom out and a village keeps its one cafe at z15.
 
+OpenStreetMap is the third source, and the only one you can do anything about. Overture publishes
+monthly and nobody outside it can correct a row; a business you add or fix in OSM is in the next
+bake. Named business nodes come in beside the other two, through the same tag mapping and the same
+duplicate test, scored slightly below AllThePlaces so that where another source already has the
+place, that row keeps its slot. A seventh of the catalog rebakes every night, so an edit reaches
+the map within a week on its own, and a single region can be rebaked on demand in about two
+minutes. Buildings mapped as areas rather than points stay out: their centroid is the same guess
+as the parcel point the bake already spends effort correcting.
+
 Two demotions run before that. A **tenant** (a counter or kiosk inside another business) has its
 prominence cut by 2.0 and draws as a dot until z18.5, so a supermarket's in-store sushi bar
 cannot take the supermarket's label; fuel is exempt, because a fuel kiosk really is the thing you

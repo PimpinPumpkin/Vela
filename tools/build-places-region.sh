@@ -57,12 +57,15 @@ if [ -n "${OSM_PBF:-}" ] && command -v osmium >/dev/null 2>&1 && command -v jq >
     # kind of guess the parcel point already is, so only nodes qualify.
     osmium tags-filter --overwrite -R -o "$WORK/shops.osm.pbf" "$OSM_SRC"       n/shop n/amenity=restaurant,fast_food,cafe,bar,pub,pharmacy,bank,fuel,car_wash,car_rental,veterinary,dentist,doctors,clinic,cinema,post_office,atm       n/tourism=hotel,motel,guest_house,hostel n/leisure=fitness_centre >/dev/null 2>&1 || true
     if [ -s "$WORK/shops.osm.pbf" ]; then
-      osmium export -f geojsonseq --overwrite -o "$WORK/shops.geojsonseq" "$WORK/shops.osm.pbf" >/dev/null 2>&1 || true
+      # --add-unique-id puts "n123456" in the feature's own `id` (NOT in properties, checked
+      # against osmium 1.16 output), which becomes the row's id and makes an OSM-sourced place
+      # traceable back to the node anyone can edit.
+      osmium export -f geojsonseq --add-unique-id=type_id --overwrite -o "$WORK/shops.geojsonseq" "$WORK/shops.osm.pbf" >/dev/null 2>&1 || true
       if [ -s "$WORK/shops.geojsonseq" ]; then
         # tr: geojsonseq writes an ASCII record separator (0x1e) before every line and jq will not
         # parse it; the option that turns it off is not in every osmium build.
         tr -d '\036' < "$WORK/shops.geojsonseq" \
-          | jq -c 'select(.geometry.type == "Point" and (.properties.name // "") != "") | {name: .properties.name, lng: .geometry.coordinates[0], lat: .geometry.coordinates[1]}' \
+          | jq -c 'select(.geometry.type == "Point" and (.properties.name // "") != "") | {id: (.id // ""), name: .properties.name, props: .properties, lng: .geometry.coordinates[0], lat: .geometry.coordinates[1]}' \
           > "$WORK/osm.ndjson" 2>/dev/null || true
         [ -s "$WORK/osm.ndjson" ] && OSM_NDJSON="$WORK/osm.ndjson"
       fi
@@ -82,35 +85,7 @@ SELECT 'atp:' || (json_extract_string(props, '@spider')) || ':' || COALESCE(json
         AND (lower(json_extract_string(props, 'name')) = lower(COALESCE(json_extract_string(props, 'addr:city'), ''))
              OR json_extract_string(props, 'name') ILIKE '%, ' || COALESCE(json_extract_string(props, 'addr:state'), '~'))
        THEN json_extract_string(props, 'brand') ELSE json_extract_string(props, 'name') END AS name,
-  CASE
-    WHEN json_extract_string(props, 'amenity') = 'fast_food' THEN 'fast_food_restaurant'
-    WHEN json_extract_string(props, 'amenity') = 'cafe' THEN 'coffee_shop'
-    WHEN json_extract_string(props, 'amenity') = 'fuel' THEN 'gas_station'
-    WHEN json_extract_string(props, 'amenity') = 'cinema' THEN 'movie_theater'
-    WHEN json_extract_string(props, 'amenity') = 'ice_cream' THEN 'ice_cream_shop'
-    WHEN json_extract_string(props, 'amenity') IN ('doctors', 'clinic') THEN 'doctor'
-    WHEN json_extract_string(props, 'amenity') = 'veterinary' THEN 'veterinarian'
-    WHEN json_extract_string(props, 'amenity') = 'charging_station' THEN 'ev_charging_station'
-    WHEN json_extract_string(props, 'amenity') = 'car_repair' THEN 'automotive_repair'
-    WHEN json_extract_string(props, 'amenity') = 'theatre' THEN 'theater'
-    WHEN json_extract_string(props, 'amenity') IS NOT NULL THEN json_extract_string(props, 'amenity')
-    WHEN json_extract_string(props, 'shop') IS NOT NULL THEN CASE json_extract_string(props, 'shop')
-      WHEN 'supermarket' THEN 'supermarket' WHEN 'convenience' THEN 'convenience_store' WHEN 'department_store' THEN 'department_store'
-      WHEN 'hardware' THEN 'hardware_store' WHEN 'doityourself' THEN 'home_improvement_store' WHEN 'electronics' THEN 'electronics'
-      WHEN 'furniture' THEN 'furniture_store' WHEN 'florist' THEN 'florist' WHEN 'laundry' THEN 'laundromat' WHEN 'dry_cleaning' THEN 'dry_cleaner'
-      WHEN 'hairdresser' THEN 'hair_salon' WHEN 'beauty' THEN 'beauty_salon' WHEN 'jewelry' THEN 'jewelry_store' WHEN 'books' THEN 'bookstore'
-      WHEN 'pet' THEN 'pet_store' WHEN 'clothes' THEN 'clothing_store' WHEN 'shoes' THEN 'shoe_store' WHEN 'toys' THEN 'toy_store'
-      WHEN 'bicycle' THEN 'bicycle_shop' WHEN 'alcohol' THEN 'liquor_store' WHEN 'tobacco' THEN 'tobacco_shop' WHEN 'sports' THEN 'sporting_goods'
-      WHEN 'mall' THEN 'shopping_center' WHEN 'wholesale' THEN 'wholesale_store' WHEN 'variety_store' THEN 'discount_store' WHEN 'car' THEN 'car_dealer'
-      WHEN 'car_repair' THEN 'automotive_repair' WHEN 'car_parts' THEN 'auto_parts_store' WHEN 'chemist' THEN 'drugstore' WHEN 'optician' THEN 'optometrist'
-      ELSE (json_extract_string(props, 'shop')) || '_store' END
-    WHEN json_extract_string(props, 'tourism') IN ('hotel', 'motel', 'hostel') THEN json_extract_string(props, 'tourism')
-    WHEN json_extract_string(props, 'tourism') = 'guest_house' THEN 'bed_and_breakfast'
-    WHEN json_extract_string(props, 'tourism') = 'museum' THEN 'museum'
-    WHEN json_extract_string(props, 'leisure') = 'fitness_centre' THEN 'gym'
-    WHEN json_extract_string(props, 'healthcare') IS NOT NULL THEN 'medical_center'
-    WHEN json_extract_string(props, 'office') IS NOT NULL THEN (json_extract_string(props, 'office')) || '_office'
-    ELSE NULL END AS category,
+  osmcat(props) AS category,
   0.85 AS confidence,
   json_extract_string(props, 'brand') AS brand,
   COALESCE(json_extract_string(props, 'addr:full'), json_extract_string(props, 'addr:street_address')) AS addr,
@@ -119,18 +94,8 @@ SELECT 'atp:' || (json_extract_string(props, '@spider')) || ':' || COALESCE(json
 FROM atp_raw
 WHERE json_extract_string(props, 'name') IS NOT NULL AND json_extract_string(props, 'name') <> ''
   AND lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N
-  AND (json_extract_string(props, 'shop') IS NOT NULL
-    OR json_extract_string(props, 'tourism') IN ('hotel', 'motel', 'hostel', 'guest_house', 'museum')
-    OR json_extract_string(props, 'leisure') = 'fitness_centre'
-    OR json_extract_string(props, 'healthcare') IS NOT NULL
-    OR json_extract_string(props, 'office') IN ('insurance', 'financial_advisor', 'estate_agent', 'tax_advisor', 'lawyer', 'accountant', 'travel_agent')
-    OR json_extract_string(props, 'amenity') IN ('restaurant', 'fast_food', 'cafe', 'bar', 'pub', 'ice_cream', 'fuel', 'pharmacy', 'bank', 'dentist', 'doctors', 'clinic',
-      'veterinary', 'cinema', 'car_wash', 'car_rental', 'car_repair', 'post_office', 'charging_station', 'gym', 'hospital', 'childcare', 'kindergarten',
-      'coworking_space', 'theatre', 'nightclub', 'food_court', 'bureau_de_change', 'money_transfer', 'driving_school', 'language_school',
-      'music_school', 'dancing_school', 'library', 'marketplace', 'bicycle_rental'));
--- The first two significant words of a name, the app's own namesAgree rule in SQL form.
-CREATE MACRO nkey(n) AS trim(regexp_extract(regexp_replace(lower(n), '[^a-z0-9 ]', ' ', 'g'), '\\b([a-z0-9]{2,})\\b', 1) || ' ' ||
-  regexp_extract(regexp_replace(lower(n), '[^a-z0-9 ]', ' ', 'g'), '\\b[a-z0-9]{2,}\\b(?: [a-z0-9] )* +\\b([a-z0-9]{2,})\\b', 1));
+  AND isbiz(props);
+
 CREATE TABLE rawkeys AS SELECT id, lat, lng, nkey(name) AS nk, lower(brand) AS bk, snapkey(name) AS sk FROM raw;
 CREATE TABLE atpkeys AS SELECT id, lat, lng, nkey(name) AS nk, lower(brand) AS bk, snapkey(name) AS sk FROM atp;
 -- The Overture row a locator point matches keeps the locator's COORDINATE (atp_snap below):
@@ -191,10 +156,49 @@ FROM read_parquet('s3://overturemaps-us-west-2/release/$RELEASE/theme=addresses/
 WHERE unit IS NOT NULL AND number IS NOT NULL
   AND bbox.xmin BETWEEN $W AND $E AND bbox.ymin BETWEEN $S AND $N;"
 fi
+# OSM AS A SOURCE, not only a position (user 2026-09-18). Overture publishes monthly and neither
+# we nor anyone reading this can correct it; OpenStreetMap is the one source in the stack a person
+# can fix, and see fixed, so a business somebody adds or repairs there has to be able to reach the
+# map. The rows go in beside Overture's and AllThePlaces', through the same tag mapping, the same
+# name/brand dedupe and the same ranking. Only NODES qualify, same as the snap: a building way's
+# centroid is the same kind of guess as the parcel point we already have.
+OSM_BIZ_SQL=""
+if [ -n "$OSM_NDJSON" ]; then
+read -r -d '' OSM_BIZ_SQL <<OSMBIZSQL || true
+CREATE TABLE osm_src AS SELECT id, name, props, lng, lat FROM read_json('$OSM_NDJSON', format = 'newline_delimited',
+  columns = {id: 'VARCHAR', name: 'VARCHAR', props: 'JSON', lng: 'DOUBLE', lat: 'DOUBLE'})
+  WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N;
+CREATE TABLE osmbiz AS
+SELECT 'osm:' || id AS id, name, osmcat(props) AS category,
+  -- Under AllThePlaces' 0.85 and Overture's own scores: an OSM node is as good as its last editor,
+  -- and where the other two have the same place they should keep the row.
+  0.8 AS confidence,
+  json_extract_string(props, 'brand') AS brand,
+  nullif(trim(coalesce(json_extract_string(props, 'addr:housenumber'), '') || ' ' || coalesce(json_extract_string(props, 'addr:street'), '')), '') AS addr,
+  coalesce(json_extract_string(props, 'website'), json_extract_string(props, 'contact:website')) AS website,
+  coalesce(json_extract_string(props, 'phone'), json_extract_string(props, 'contact:phone')) AS phone,
+  'open' AS operating_status, json_extract_string(props, 'opening_hours') AS hours, lng, lat
+FROM osm_src WHERE name IS NOT NULL AND name <> '' AND id <> '' AND isbiz(props);
+-- Keys are recomputed here, AFTER the AllThePlaces insert, so OSM dedupes against everything
+-- already in the table rather than against Overture alone.
+CREATE TABLE rawkeys2 AS SELECT id, lat, lng, nkey(name) AS nk, lower(brand) AS bk FROM raw;
+CREATE TABLE osmbizkeys AS SELECT id, lat, lng, nkey(name) AS nk, lower(brand) AS bk FROM osmbiz;
+CREATE TABLE osmdupes AS
+SELECT DISTINCT o.id FROM osmbizkeys o JOIN rawkeys2 r ON r.nk = o.nk
+WHERE o.nk IS NOT NULL AND o.nk <> '' AND abs(r.lat - o.lat) < 0.0015 AND abs(r.lng - o.lng) < 0.002
+UNION
+SELECT DISTINCT o.id FROM osmbizkeys o JOIN rawkeys2 r ON r.bk = o.bk
+WHERE o.bk IS NOT NULL AND abs(r.lat - o.lat) < 0.0015 AND abs(r.lng - o.lng) < 0.002;
+INSERT INTO raw
+SELECT o.id, o.name, o.category, o.confidence, o.brand, o.addr, o.website, o.phone, o.operating_status, o.lng, o.lat, o.hours
+FROM osmbiz o WHERE o.id NOT IN (SELECT id FROM osmdupes) AND o.category IS NOT NULL;
+SELECT (SELECT count(*) FROM osmbiz) AS osm_biz_in_box, (SELECT count(*) FROM raw WHERE id LIKE 'osm:%') AS osm_biz_added;
+OSMBIZSQL
+fi
 OSM_SQL=""
 if [ -n "$OSM_NDJSON" ]; then
 read -r -d '' OSM_SQL <<OSMSQL || true
-CREATE TABLE osm_raw AS SELECT name, lng, lat FROM read_json('$OSM_NDJSON', format = 'newline_delimited', columns = {name: 'VARCHAR', lng: 'DOUBLE', lat: 'DOUBLE'})
+CREATE TABLE osm_raw AS SELECT name, lng, lat FROM osm_src
   WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N;
 CREATE TABLE osmkeys AS SELECT snapkey(name) AS sk, lat, lng FROM osm_raw WHERE snapkey(name) IS NOT NULL;
 -- Same shape as the chain-locator snap: whole-name key, 30-120 m, nearest candidate, one per row.
@@ -226,7 +230,53 @@ CREATE TABLE raw AS SELECT $SEL, CAST(NULL AS VARCHAR) AS hours FROM $SRC
 -- tighter test than dropping a duplicate does (it dragged a campus onto its own outreach office,
 -- 2026-09-17).
 CREATE MACRO snapkey(n) AS nullif(trim(regexp_replace(regexp_replace(lower(coalesce(n, '')), '[^a-z0-9]+', ' ', 'g'), '[ ]+(no|num|store|#)?[ ]*[0-9]{2,6}$', '')), '');
+-- SHARED TAG MAPPING. AllThePlaces and OpenStreetMap both describe a place with OSM tags, so the
+-- tag-to-category mapping and the "is this a business" test live here as macros and both sources
+-- use them; they used to be forty lines inside the AllThePlaces block.
+CREATE MACRO osmcat(props) AS (
+  CASE
+    WHEN json_extract_string(props, 'amenity') = 'fast_food' THEN 'fast_food_restaurant'
+    WHEN json_extract_string(props, 'amenity') = 'cafe' THEN 'coffee_shop'
+    WHEN json_extract_string(props, 'amenity') = 'fuel' THEN 'gas_station'
+    WHEN json_extract_string(props, 'amenity') = 'cinema' THEN 'movie_theater'
+    WHEN json_extract_string(props, 'amenity') = 'ice_cream' THEN 'ice_cream_shop'
+    WHEN json_extract_string(props, 'amenity') IN ('doctors', 'clinic') THEN 'doctor'
+    WHEN json_extract_string(props, 'amenity') = 'veterinary' THEN 'veterinarian'
+    WHEN json_extract_string(props, 'amenity') = 'charging_station' THEN 'ev_charging_station'
+    WHEN json_extract_string(props, 'amenity') = 'car_repair' THEN 'automotive_repair'
+    WHEN json_extract_string(props, 'amenity') = 'theatre' THEN 'theater'
+    WHEN json_extract_string(props, 'amenity') IS NOT NULL THEN json_extract_string(props, 'amenity')
+    WHEN json_extract_string(props, 'shop') IS NOT NULL THEN CASE json_extract_string(props, 'shop')
+      WHEN 'supermarket' THEN 'supermarket' WHEN 'convenience' THEN 'convenience_store' WHEN 'department_store' THEN 'department_store'
+      WHEN 'hardware' THEN 'hardware_store' WHEN 'doityourself' THEN 'home_improvement_store' WHEN 'electronics' THEN 'electronics'
+      WHEN 'furniture' THEN 'furniture_store' WHEN 'florist' THEN 'florist' WHEN 'laundry' THEN 'laundromat' WHEN 'dry_cleaning' THEN 'dry_cleaner'
+      WHEN 'hairdresser' THEN 'hair_salon' WHEN 'beauty' THEN 'beauty_salon' WHEN 'jewelry' THEN 'jewelry_store' WHEN 'books' THEN 'bookstore'
+      WHEN 'pet' THEN 'pet_store' WHEN 'clothes' THEN 'clothing_store' WHEN 'shoes' THEN 'shoe_store' WHEN 'toys' THEN 'toy_store'
+      WHEN 'bicycle' THEN 'bicycle_shop' WHEN 'alcohol' THEN 'liquor_store' WHEN 'tobacco' THEN 'tobacco_shop' WHEN 'sports' THEN 'sporting_goods'
+      WHEN 'mall' THEN 'shopping_center' WHEN 'wholesale' THEN 'wholesale_store' WHEN 'variety_store' THEN 'discount_store' WHEN 'car' THEN 'car_dealer'
+      WHEN 'car_repair' THEN 'automotive_repair' WHEN 'car_parts' THEN 'auto_parts_store' WHEN 'chemist' THEN 'drugstore' WHEN 'optician' THEN 'optometrist'
+      ELSE (json_extract_string(props, 'shop')) || '_store' END
+    WHEN json_extract_string(props, 'tourism') IN ('hotel', 'motel', 'hostel') THEN json_extract_string(props, 'tourism')
+    WHEN json_extract_string(props, 'tourism') = 'guest_house' THEN 'bed_and_breakfast'
+    WHEN json_extract_string(props, 'tourism') = 'museum' THEN 'museum'
+    WHEN json_extract_string(props, 'leisure') = 'fitness_centre' THEN 'gym'
+    WHEN json_extract_string(props, 'healthcare') IS NOT NULL THEN 'medical_center'
+    WHEN json_extract_string(props, 'office') IS NOT NULL THEN (json_extract_string(props, 'office')) || '_office'
+    ELSE NULL END);
+CREATE MACRO isbiz(props) AS ((json_extract_string(props, 'shop') IS NOT NULL
+    OR json_extract_string(props, 'tourism') IN ('hotel', 'motel', 'hostel', 'guest_house', 'museum')
+    OR json_extract_string(props, 'leisure') = 'fitness_centre'
+    OR json_extract_string(props, 'healthcare') IS NOT NULL
+    OR json_extract_string(props, 'office') IN ('insurance', 'financial_advisor', 'estate_agent', 'tax_advisor', 'lawyer', 'accountant', 'travel_agent')
+    OR json_extract_string(props, 'amenity') IN ('restaurant', 'fast_food', 'cafe', 'bar', 'pub', 'ice_cream', 'fuel', 'pharmacy', 'bank', 'dentist', 'doctors', 'clinic',
+      'veterinary', 'cinema', 'car_wash', 'car_rental', 'car_repair', 'post_office', 'charging_station', 'gym', 'hospital', 'childcare', 'kindergarten',
+      'coworking_space', 'theatre', 'nightclub', 'food_court', 'bureau_de_change', 'money_transfer', 'driving_school', 'language_school',
+      'music_school', 'dancing_school', 'library', 'marketplace', 'bicycle_rental')));
+-- The first two significant words of a name, the app's own namesAgree rule in SQL form.
+CREATE MACRO nkey(n) AS trim(regexp_extract(regexp_replace(lower(n), '[^a-z0-9 ]', ' ', 'g'), '\\b([a-z0-9]{2,})\\b', 1) || ' ' ||
+  regexp_extract(regexp_replace(lower(n), '[^a-z0-9 ]', ' ', 'g'), '\\b[a-z0-9]{2,}\\b(?: [a-z0-9] )* +\\b([a-z0-9]{2,})\\b', 1));
 $ATP_SQL
+$OSM_BIZ_SQL
 CREATE TABLE scored AS
 SELECT *,
   CASE
@@ -436,7 +486,7 @@ COPY (
       'group', grp, 'icon', 'vela-poi-' || grp, 'prominence', round(prominence, 2), 'confidence', round(COALESCE(confidence, 0.5), 2),
       'rank', rank, 'crank', crank, 'xrank', xrank, 'frank', frank, 'landmark', landmark, 'tenant', tenant,
       'brand', brand, 'addr', addr, 'website', website, 'phone', phone, 'hours', hours,
-      'src', 'overture', 'origin', CASE WHEN id LIKE 'atp:%' THEN 'atp' ELSE 'overture' END
+      'src', 'overture', 'origin', CASE WHEN id LIKE 'atp:%' THEN 'atp' WHEN id LIKE 'osm:%' THEN 'osm' ELSE 'overture' END
     )
   ) FROM ranked
 ) TO '$WORK/places.ndjson' (FORMAT CSV, HEADER false, QUOTE '', ESCAPE '', DELIMITER '\t');
