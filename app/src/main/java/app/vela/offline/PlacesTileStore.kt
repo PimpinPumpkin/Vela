@@ -52,6 +52,24 @@ class BasemapTileStore @Inject constructor(
             .minByOrNull { (id, _) -> index[id]?.let { b -> (b[2] - b[0]) * (b[3] - b[1]) } ?: Double.MAX_VALUE }
             ?.value
     }
+
+    /** The archive's own max zoom, read from the PMTiles v3 header (byte 101). A region baked
+     *  shallower than [FULL_MAP_ZOOM] - the workflow drops a level when a bake would pass GitHub's
+     *  2 GiB asset limit - draws as a blurred, detail-less version of the same map at street zoom,
+     *  which is worse than the tiles we can stream (issue #552). Null when it cannot be read. */
+    fun maxZoomOf(file: File): Int? = runCatching {
+        file.inputStream().use { s ->
+            val head = ByteArray(102)
+            if (s.read(head) < 102) return@runCatching null
+            if (String(head, 0, 7) != "PMTiles") return@runCatching null
+            head[101].toInt() and 0xFF
+        }
+    }.getOrNull()
+
+    companion object {
+        /** What the online tiles carry; an archive at least this deep is as good as streaming. */
+        const val FULL_MAP_ZOOM = 14
+    }
 }
 
 /** One folder of per-region PMTiles archives under `files/<folder>/` with an `index.json` of bboxes,
