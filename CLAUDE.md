@@ -645,7 +645,21 @@ Defaults that make the safe path the easy one:
   `bodyMaxDp` = screen - endpoints card bottom - `CHOOSER_MAP_STRIP_DP` (96) -
   `CHOOSER_HEADER_DP` (84), floored at `CHOOSER_BODY_MIN_DP` (120); the panel takes the smaller
   of that and its 58% cap, so a normal phone is unchanged and a 240x320 phone keeps a strip of
-  map above the chooser. **POI icons on low density:** `lowDensityIconScale(density)` multiplies
+  map above the chooser.
+  **Landscape chooser (user 2026-09-17):** the same cap runs in landscape with a thinner map strip
+  (`CHOOSER_MAP_STRIP_LAND_DP`) and a lower body floor, the WHOLE card is `heightIn`-capped to the
+  room under the endpoints card, and `compact = landscapeChrome` tightens the panel: the mode tabs
+  move up into the header row (the big "Drive" title drops, the tabs name the mode), the paddings
+  halve and everything between the tabs and the action row scrolls, so Start can never be pushed
+  off. Without it the panel's FIXED chrome alone was taller than a phone's landscape column and
+  grew over the stops card.
+  **Live configuration (user 2026-09-17):** MainActivity declares `configChanges` for
+  orientation/screenSize, so Android hands rotation to the Activity and never calls the
+  application-level `ComponentCallbacks` that Compose's own `LocalConfiguration` listens to - every
+  `LocalConfiguration.current` read stayed on the PREVIOUS orientation until the app restarted
+  (landscape kept portrait chrome, and back again). `MainActivity.onConfigurationChanged` now holds
+  the live Configuration in a state and provides it over `LocalConfiguration` for the whole tree;
+  read screen size through that local, never through `resources.configuration`. **POI icons on low density:** `lowDensityIconScale(density)` multiplies
   the Settings icon-size pref below 1.75x (fixed-pixel bitmaps were a fifth of a 120 dpi screen).
 - **Start is a FOOTER under the route list (user 2026-09-13):** the chooser body is an outer
   capped-and-faded Column holding a `weight(1f, fill = false)` scroll Column and, below it, the

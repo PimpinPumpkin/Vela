@@ -459,6 +459,8 @@ private var osmPoiExclude: List<String> = emptyList()
 private val osmFillHandler = android.os.Handler(android.os.Looper.getMainLooper())
 private val osmFillPending = arrayOfNulls<Runnable>(1)
 private var lastControlsVis: String? = null // identity-gate the traffic-control visibility flips
+private val lastRouteProgress = floatArrayOf(0f) // held so a momentary gap never redraws the line un-driven
+private var lastProgressKey: String? = null // which line that held fraction belongs to
 private var lastAppliedRouteLine: List<LatLng>? = null // identity-gate the route upload — applyData runs
                                                        // every recomposition and re-tessellating a
                                                        // thousands-of-vertices linestring per fix burned
@@ -564,6 +566,7 @@ fun VelaMapView(
     // Intermediate trip stops in VISIT ORDER - drawn as numbered teal pins (1, 2, ...) while a
     // trip is planned or driven; reordering the stops re-numbers the pins (list identity keys it).
     stopPins: List<LatLng> = emptyList(),
+    destinationPin: LatLng? = null, // the trip's END, drawn as a flag beside the numbered stops
     frameMarkers: Boolean,
     // True while a PLACE SHEET owns the camera (a result is open): the marker-cluster fit is
     // remembered, not forgotten, so closing the sheet returns to the results WITHOUT re-framing
@@ -1741,10 +1744,10 @@ fun VelaMapView(
     // Numbered stop pins: one teal pin per intermediate stop, numbered in visit order. The
     // whole feature set re-uploads whenever the list (or its order) changes, so a reorder in
     // the stops editor re-numbers the map immediately. Icons register on demand per number.
-    LaunchedEffect(stopPins, styleRef) {
+    LaunchedEffect(stopPins, destinationPin, styleRef) {
         val style = styleRef ?: return@LaunchedEffect
         runCatching {
-            if (stopPins.isEmpty()) {
+            if (stopPins.isEmpty() && destinationPin == null) {
                 style.getLayer(STOPNUM_LAYER)?.let { style.removeLayer(it) }
                 style.getSource(STOPNUM_SRC)?.let { style.removeSource(it) }
                 return@LaunchedEffect
@@ -1754,7 +1757,12 @@ fun VelaMapView(
                 Feature.fromGeometry(Point.fromLngLat(p.lng, p.lat)).apply {
                     addStringProperty("icon", "vela-stopnum-${i + 1}")
                 }
-            }
+            } + listOfNotNull(
+                destinationPin?.let { d ->
+                    val key = PoiIcons.ensureDestinationPin(style, context)
+                    Feature.fromGeometry(Point.fromLngLat(d.lng, d.lat)).apply { addStringProperty("icon", key) }
+                },
+            )
             val existing = style.getSource(STOPNUM_SRC) as? GeoJsonSource
             if (existing != null) {
                 existing.setGeoJson(FeatureCollection.fromFeatures(feats))
@@ -3320,6 +3328,16 @@ fun VelaMapView(
 
         // Fraction of the route already driven (for the traversed-grey gradient) —
         // 0 unless we're navigating and on the line.
+        // Hold the last fraction while the puck is re-engaging: a route swap (the heal that follows
+        // a degraded re-check, a reroute) drops `engaged` for a moment, and falling to 0 redrew the
+        // WHOLE line as un-driven for a frame or two - the periodic blue flash (user 2026-09-17).
+        // A fraction may only be held for the SAME line: a reroute builds a fresh route from where
+        // we are, where 0 is the truth, and inheriting the old fraction would grey most of it out.
+        val progressKey = routePolyline.lastOrNull()?.let { "${routePolyline.size}:${it.lat},${it.lng}" }
+        if (progressKey != lastProgressKey) {
+            lastProgressKey = progressKey
+            lastRouteProgress[0] = 0f
+        }
         val routeProgress = when {
             // Split the traversed-grey at the puck's DRAWN position (progressM — exactly where
             // the arrow is rendered), not the target it's easing toward (targetM). Using targetM
@@ -3327,9 +3345,11 @@ fun VelaMapView(
             // out instead of sitting under the puck ("gradient not completely under the arrow").
             navMode && navPuck.engaged && routeCum.isNotEmpty() && routeCum.last() > 0.0 ->
                 (navPuck.progressM / routeCum.last()).toFloat().coerceIn(0f, 1f)
-            navMode && myLocation != null && routePolyline.size >= 2 -> progressAlong(routePolyline, myLocation)
+            navMode && myLocation != null && routePolyline.size >= 2 ->
+                maxOf(progressAlong(routePolyline, myLocation), lastRouteProgress[0])
+            navMode -> lastRouteProgress[0]
             else -> 0f
-        }
+        }.also { lastRouteProgress[0] = if (navMode) it else 0f }
         // Nav puck map-matching, OsmAnd-style (modelled on its RoutingHelper): snap the fix
         // onto the route for a steady on-road puck + heading, but once engaged ONLY ever search
         // a bounded look-ahead FORWARD of our current progress — never behind, never the whole
