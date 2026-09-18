@@ -82,6 +82,13 @@ prominence cut by 2.0 and draws as a dot until z18.5, so a supermarket's in-stor
 cannot take the supermarket's label; fuel is exempt, because a fuel kiosk really is the thing you
 are looking for.
 
+That exemption has a cost the bake pays for separately. The pumps out in the lot are usually
+published under the bare brand name, so the store and its forecourt drew as two icons carrying
+the same label a few tens of metres apart, and a tap on "the store" was a coin toss. A row whose
+name is exactly its anchor's, and which is a fuel, charging or convenience row, gets " Fuel",
+" Charging" or " Market" appended. A row that already names itself ("<brand> Fuel Station") is
+left alone, and this is the only place in the bake where a name is rewritten at all.
+
 ### Which of the places in a tile get an icon, a label, or a dot
 
 The tile can hold more than the map should draw, so the app decides per zoom. Labels are tiered

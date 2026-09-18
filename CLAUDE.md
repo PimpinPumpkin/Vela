@@ -2067,6 +2067,13 @@ architecture note.
   frame) against `LocalView.current.height`, not a fraction of `screenHeightDp`: the fraction
   understated the panel by ~130 px (the bars the map draws behind) and the trip's START framed
   behind it. The fractions remain as the first-frame fallback.
+- **A BRAND'S FORECOURT SAYS SO (2026-09-18):** fuel is exempt from the tenant minzoom, so a
+  supermarket and its pumps both draw a few tens of metres apart - and the forecourt is usually
+  published under the BARE brand name, which made a tap on "the store" a coin toss (user report; the
+  sheet read "Gas station"). `build-places-region.sh` appends " Fuel" / " Charging" / " Market" to a
+  fuel, charging or convenience row whose name EXACTLY equals its anchor's; a row that already names
+  itself is untouched. It is the ONLY place the bake rewrites a name - keep it that way, and note it
+  only reaches the map on the next places re-bake.
 - **TENANTS AND STOREFRONTS IN THE BAKE (2026-09-17):** `tools/build-places-region.sh` now flags a
   row as `tenant` when it is a department of a nearby anchor (address, brand or name-head match, the
   existing hash joins), when its category or name is a KIOSK (`iskiosk`: Redbox, Coinstar, ecoATM,
@@ -3783,11 +3790,13 @@ Gotchas:
   on-device A/B - Kokoro was ~0.4× realtime even on a Pixel 9. `MapViewModel` reclaims their old model
   dirs and sanitizes stale `vela.kokoro`/`vela.matcha` prefs to Piper. `project_vela_kokoro_tts` memory
   is that historical record, not the current design.)**
-- **MUTE AND PAUSE ARE ONE BUTTON (user 2026-09-18, second pass).** `NavHoldControls` in
-  `ui/nav/NavOverlays.kt`: one 56 dp target. **The TAP pauses** (user 2026-09-18, second pass: a tap
-  that only opened a menu read as unexpected, and pausing is the thing you reach for at speed) and
-  MUTE slides out beside it for `OPEN_MS` (6 s); a LONG PRESS mutes outright ("nice to not have to
-  see the pop out if u were in the know"). The button shows both states
+- **MUTE AND PAUSE ARE ONE BUTTON (user 2026-09-18, third pass).** `NavHoldControls` in
+  `ui/nav/NavOverlays.kt`: one 56 dp target. The FIRST tap on a running drive only slides MUTE out
+  beside it for `OPEN_MS` (6 s) and the SECOND tap on the same target pauses - pausing on the first
+  tap made holding the drive the only way to reach mute ("pressing on the pause button to get to the
+  mute button obvi pauses shit first"). A LONG PRESS mutes outright, so anyone in the know never sees
+  the pop-out ("nice to not have to see the pop out if u were in the know"); while PAUSED a single
+  tap resumes, because the glyph already says what the tap does. The button shows both states
   (pause/resume glyph, accent fill while held, a crossed-speaker badge while muted) because one
   control standing for two has to. Long press is touch-only; the row is the D-pad path, so no key
   alternative is missing. It replaced the two-target pill below.

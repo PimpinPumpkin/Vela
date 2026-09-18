@@ -1173,9 +1173,14 @@ fun NavHoldControls(
                     .size(56.dp)
                     .dpadHighlight(RoundedCornerShape(16.dp))
                     .combinedClickable(
+                        // The FIRST tap only opens the pop-out (user 2026-09-18). Pausing on that
+                        // tap meant the one way to reach mute was to hold the drive first, which
+                        // is not what the reach was for; the second tap on the same target, which
+                        // has not moved, pauses. Anyone who knows the long press never sees this.
                         onClick = {
-                            onPause()
-                            open = true
+                            // Paused, the glyph already says what a tap does, so resuming is never
+                            // the two-tap case.
+                            if (open || paused) onPause() else open = true
                             openedAt = System.currentTimeMillis()
                         },
                         onLongClick = {
@@ -1183,7 +1188,13 @@ fun NavHoldControls(
                             onMute()
                             open = false
                         },
-                        onClickLabel = stringResource(if (paused) R.string.nav_resume else R.string.nav_pause),
+                        onClickLabel = stringResource(
+                            when {
+                                paused -> R.string.nav_resume
+                                open -> R.string.nav_pause
+                                else -> R.string.nav_hold_controls
+                            }
+                        ),
                     ),
                 contentAlignment = Alignment.Center,
             ) {

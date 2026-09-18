@@ -95,6 +95,13 @@ it was built). With it, a pause taken at speed holds until you actually stop or 
 Pause is reachable from the map's nav controls and from the notification, because the phone is
 usually in a cradle and the decision to pull in is made from behind the wheel.
 
+On the map it shares one button with mute, since both are the drive's "hold something" controls
+and neither is touched often. The first tap slides mute out beside it for six seconds and the
+second tap, on the same target, pauses; a long press mutes on the spot, so anyone who knows it
+never sees the pop-out. The first build paused on that first tap, which meant the only way to
+reach mute was to hold the drive first. While paused, one tap resumes: the glyph already says
+what the tap will do.
+
 ## Limits
 
 - **Distance left does not account for your detour.** It stays the route's remaining distance
