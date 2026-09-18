@@ -1,0 +1,90 @@
+name: Location guard
+
+# Fails a push or PR whose DIFF adds any term from a private list of place names.
+#
+# WHY A SECRET, not a file in the repo: the list is the leak. Writing "never commit <town>" into
+# a tracked file commits <town>. The list lives in the repository secret LOCATION_TERMS instead
+# (one term per line, case-insensitive, blank lines and #-comments ignored), which is private to
+# people with write access, masked in logs, and travels with the repo rather than with one
+# laptop's git hooks.
+#
+# WHAT IT REPORTS: the file and line number only, never the matched text - a failing log that
+# quoted the term would leak it to anyone who can read Actions output. If it fires, look at the
+# line yourself and generalize it: a place is fine when it is the SUBJECT of the change ("hours
+# mis-parse at stores with in-store pharmacies"), and not fine when it is the scenery of where
+# the author happens to live. See the Location hygiene section of CLAUDE.md.
+#
+# WHAT IT CANNOT SEE: issue and PR bodies, comments, release notes and screenshots. Those are
+# still on you.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    # A fork PR gets no secrets, so the step would silently pass. Skip it honestly instead.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan the diff for location terms
+        env:
+          TERMS: ${{ secrets.LOCATION_TERMS }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TERMS:-}" ]; then
+            echo "::notice::LOCATION_TERMS is not set; nothing to scan against."
+            exit 0
+          fi
+          # The range to scan: a PR is base..head, a push is before..after (and a new branch or a
+          # force-push with no usable before falls back to the last commit).
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.sha }}"
+            if [ "$BASE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+              BASE="$HEAD~1"
+            fi
+          fi
+          git cat-file -e "$BASE^{commit}" 2>/dev/null || { echo "::notice::no comparable base; skipping"; exit 0; }
+
+          # Added lines only, plus the commit messages in the range: a term that is being REMOVED
+          # must not fail the commit that removes it.
+          git diff --unified=0 "$BASE" "$HEAD" > /tmp/range.diff
+          git log --format='%B' "$BASE..$HEAD" > /tmp/range.msgs
+
+          fail=0
+          while IFS= read -r term; do
+            term="$(echo "$term" | sed 's/#.*//' | xargs || true)"
+            [ -z "$term" ] && continue
+            # Added lines carry their file via the preceding +++ header; awk tracks it so the
+            # report can name the file without ever echoing the matched text.
+            hits="$(awk -v t="$(echo "$term" | tr '[:upper:]' '[:lower:]')" '
+              /^\+\+\+ b\// { file = substr($0, 7); next }
+              /^\+/ && !/^\+\+\+/ { line = tolower($0); if (index(line, t) > 0) print file }
+            ' /tmp/range.diff | sort -u || true)"
+            if [ -n "$hits" ]; then
+              fail=1
+              echo "::error::A location term from LOCATION_TERMS was ADDED in: $(echo "$hits" | tr '\n' ' ')"
+            fi
+            if grep -qi -- "$term" /tmp/range.msgs; then
+              fail=1
+              echo "::error::A location term from LOCATION_TERMS appears in a commit message in this range."
+            fi
+          done <<< "$TERMS"
+
+          if [ "$fail" = "1" ]; then
+            echo "Generalize the line (mechanism, not place) and amend. CLAUDE.md > Location hygiene."
+            exit 1
+          fi
+          echo "Clean."

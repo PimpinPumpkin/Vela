@@ -250,6 +250,8 @@ data class MapUiState(
     val streetViewShownMonth: Int? = null,
     val streetViewHistorical: Boolean = false,
     val navigating: Boolean = false,
+    /** The drive is held: route and figures frozen, puck free, nothing spoken or rerouted. */
+    val navPaused: Boolean = false,
     val resumeNavLabel: String? = null, // a nav session was interrupted (process killed mid-drive) and can
                                         // be resumed — drives the "Resume navigation to <label>?" prompt
     val navCameraDetached: Boolean = false,
@@ -4320,6 +4322,15 @@ class MapViewModel @Inject constructor(
     }
 
     /** Mute / unmute spoken guidance (the in-nav speaker button). Persisted. */
+    /** Hold the drive where it is, or let it go again (the nav Pause button). The route, the
+     *  stops and the figures stay put; the puck keeps following you. Resuming reroutes from here
+     *  if the stop took us off the route, and driving on resumes it by itself. */
+    fun toggleNavPause() {
+        val s = _state.value
+        if (!s.navigating) return
+        navSession.setPaused(!s.navPaused)
+    }
+
     fun toggleVoice() = setSpokenDirections(voice.muted)
 
     /** Turn spoken directions on/off (Settings toggle; the nav mute button shares this state). */

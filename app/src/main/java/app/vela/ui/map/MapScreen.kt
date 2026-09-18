@@ -88,6 +88,8 @@ import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material.icons.filled.Search
@@ -1765,6 +1767,24 @@ fun MapScreen(
                         contentDescription = if (state.voiceMuted) stringResource(R.string.nav_unmute_voice) else stringResource(R.string.nav_mute_voice),
                     )
                 }
+                // PAUSE (user 2026-09-18): pulling into a fuel station you just spotted should not
+                // start an argument with the app - reroutes, "make a U-turn", the voice talking over
+                // your music. Paused keeps the route and the figures and lets the puck wander; the
+                // button wears the accent while held, because a drive that is quietly not navigating
+                // must never look like one that is.
+                FloatingActionButton(
+                    onClick = vm::toggleNavPause,
+                    containerColor = if (state.navPaused) MaterialTheme.colorScheme.primary
+                    else androidx.compose.material3.FloatingActionButtonDefaults.containerColor,
+                    contentColor = if (state.navPaused) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
+                ) {
+                    Icon(
+                        if (state.navPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                        contentDescription = stringResource(if (state.navPaused) R.string.nav_resume else R.string.nav_pause),
+                    )
+                }
                 FloatingActionButton(
                     onClick = {
                         navSearchOpen = !navSearchOpen
@@ -2007,7 +2027,8 @@ fun MapScreen(
                 NavControls(
                     remainingDistanceMeters = state.nav.remainingDistance,
                     remainingSeconds = state.nav.remainingDuration,
-                    offRoute = state.nav.offRoute,
+                    offRoute = state.nav.offRoute && !state.navPaused,
+                    paused = state.navPaused,
                     onStop = vm::stopNav,
                     onSteps = {
                         // From the button / chevron: the well opens from closed.

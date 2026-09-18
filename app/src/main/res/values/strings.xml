@@ -556,6 +556,9 @@
     <string name="nav_unmute_voice">Unmute voice guidance</string>
     <string name="nav_mute_voice">Mute voice guidance</string>
     <string name="nav_steps">Steps</string>
+    <string name="nav_pause">Pause the drive</string>
+    <string name="nav_resume">Resume the drive</string>
+    <string name="nav_paused">Paused</string>
     <string name="nav_end">End</string>
     <string name="nav_arrived">You\'ve arrived</string>
     <string name="nav_trip_time">Trip time</string>
@@ -650,6 +653,8 @@
     <string name="navservice_notif_text_remaining">%1$s · %2$s</string> <!-- format -->
     <string name="navservice_notif_text_faster_saving"> · %1$s faster available</string> <!-- format -->
     <string name="navservice_notif_text_faster_available"> · faster route available</string>
+    <string name="navservice_notif_action_pause">Pause</string>
+    <string name="navservice_notif_action_resume">Resume</string>
     <string name="navservice_notif_action_end">End</string>
     <string name="navservice_channel_name">Navigation</string>
     <string name="navservice_channel_turns_name">Spoken turn alerts</string>
