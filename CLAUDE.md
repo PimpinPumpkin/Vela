@@ -157,9 +157,10 @@ Defaults that make the safe path the easy one:
 - `./gradlew :core:test` runs the pure-logic unit tests (polyline, nav engine).
 - **MapScreen is at the JVM 64 KB method limit (2026-09-13).** CI builds release only; the
   DEBUG variant (what the 4a runs) carries Compose source info and failed with "Method too
-  large: MapScreenKt.MapScreen" while main built green. Three blocks were split into
-  `BoxScope.BuildingDebugBadge`, `BoxScope.NavTurnBanner` and `SearchEntryHost` (same file,
-  below MapScreen). Content lambdas do not count toward the limit, direct composable calls
+  large: MapScreenKt.MapScreen" while main built green. Four blocks are split out (same file,
+  below MapScreen): `MapSurface` - the `VelaMapView` call, about 220 lines of arguments, moved
+  2026-09-18 - plus `BoxScope.BuildingDebugBadge`, `BoxScope.NavTurnBanner` and
+  `SearchEntryHost`. Content lambdas do not count toward the limit, direct composable calls
   and their argument lists do, so when you add to MapScreen and the debug compile dies with
   that error, move a call with a long argument list into a small private composable.
 - **D-pad regression suite (`dpad_test_suite/`).** On-device, reproducible. Run after any change

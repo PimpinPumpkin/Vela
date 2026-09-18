@@ -2043,7 +2043,12 @@ tooling default that claims otherwise. Before pushing, `git log origin/main..HEA
   **Never `adb uninstall`**: it destroys saved trips and permission grants.
 - `MapScreen` sits near the JVM 64 KB method limit. Content lambdas do not count toward it but
   direct composable calls and their argument lists do; when a debug compile fails with "method
-  too large", move a call with a long argument list into a small private composable.
+  too large", move a call with a long argument list into a small private composable. Four blocks
+  are split out that way, all private composables in `MapScreen.kt` below `MapScreen` itself:
+  `MapSurface` (the `VelaMapView` call, plus the style URI, nav label lists and saved-pin list
+  only the map reads), `BoxScope.BuildingDebugBadge`, `BoxScope.NavTurnBanner` and
+  `SearchEntryHost`. A split block takes the locals it needs as parameters; a callback that
+  writes `MapScreen`'s own state is passed in as a parameter rather than moved.
 
 ---
 
