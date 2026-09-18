@@ -1875,6 +1875,12 @@ architecture note.
   "Everything since" commit list: one line per feature, plain words, the reason for an early
   cut first if there is one (0.4.1217 is the model). The promote workflow cannot write this
   part; it is the release's own job, the same day. Nightlies keep the commit list alone.
+- **docs/FAQ.md (2026-09-18)** is the user-facing answer to "are the places Google's", the
+  per-feature source matrix (map / places / place pages / search / routing / traffic / controls /
+  cameras / transit / Street View, each with "reaches Google?" and "works offline?") and the recipe
+  for running Vela with no Google contact. Keep it in step when a source or a default changes; the
+  fleet default for the places source lives in `calibration.json` (`defaultPlacesSource`, "open"
+  today) and a change there needs `./scripts/sign-calibration.sh`.
 - **SHALLOW OFFLINE BASEMAPS ARE ONLY USED OFFLINE (2026-09-18):** `BasemapTileStore.maxZoomOf` reads
   byte 101 of the PMTiles v3 header; `refreshBasemapArchive` skips an archive shallower than
   `FULL_MAP_ZOOM` (14) unless `offline`, and the online/offline latch re-runs it. The workflow drops
