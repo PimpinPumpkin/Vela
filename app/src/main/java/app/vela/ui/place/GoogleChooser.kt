@@ -28,7 +28,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.AddLocationAlt
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AltRoute
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.DirectionsCar
@@ -126,7 +128,9 @@ fun GoogleStyleDirectionsPanel(
     onSearchAlongRoute: (String) -> Unit,
     onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
     onEditStops: () -> Unit,
-    onCompareRoutes: () -> Unit = {},
+    altsOpen: Boolean = false,
+    onAltsOpenChange: (Boolean) -> Unit = {},
+    onSelectRoute: (Int) -> Unit = {},
     onShare: () -> Unit,
     onClose: () -> Unit,
     onStep: (Int) -> Unit = {},
@@ -307,6 +311,101 @@ fun GoogleStyleDirectionsPanel(
                     if (cams > 0) {
                         Text(stringResource(R.string.dir_cameras_on_route, cams), style = MaterialTheme.typography.bodyMedium, color = SheetPalette.TrafficAmber)
                     }
+                    // The alternates affordance sits with the ETA, not down in the button row: it is
+                    // about THIS number ("29 min ... and what else?"). Always there, so its absence
+                    // never has to be interpreted; with one route it says so and does nothing.
+                    Spacer(Modifier.height(6.dp))
+                    if (routes.size > 1) {
+                        Row(
+                            Modifier
+                                .clip(CircleShape)
+                                .dpadHighlight(CircleShape)
+                                .clickable { onAltsOpenChange(!altsOpen) }
+                                .padding(vertical = 6.dp, horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(Icons.Default.AltRoute, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                androidx.compose.ui.res.pluralStringResource(R.plurals.exp_chooser_alts, routes.size - 1, routes.size - 1),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    } else {
+                        Spacer(Modifier.height(6.dp))
+                        Text(stringResource(R.string.exp_chooser_alts_none), style = MaterialTheme.typography.bodyMedium, color = dim)
+                    }
+                }
+            }
+            // The alternates pane, over the body: every route with its time, how much longer it is,
+            // its distance, the roads it uses and its camera count. Back returns to the Google view.
+            if (altsOpen && routes.size > 1) {
+                val fastestEta = routes.minOf { it.durationInTrafficSeconds ?: it.durationSeconds }
+                Column(Modifier.padding(top = 6.dp, bottom = 4.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        IconButton(onClick = { onAltsOpenChange(false) }, modifier = Modifier.dpadHighlight(CircleShape)) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.exp_chooser_alts_back), tint = ink)
+                        }
+                        Text(
+                            stringResource(R.string.exp_chooser_alts_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = ink,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    val fastestIdx = routes.indexOfFirst { (it.durationInTrafficSeconds ?: it.durationSeconds) == fastestEta }
+                    routes.forEachIndexed { i, r ->
+                        val eta = r.durationInTrafficSeconds ?: r.durationSeconds
+                        val delta = (eta - fastestEta).toInt()
+                        val chosen = r === activeRoute
+                        val cams = flockOnRoute.getOrElse(i) { 0 }
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 3.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(if (chosen) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else androidx.compose.ui.graphics.Color.Transparent)
+                                .dpadHighlight(RoundedCornerShape(14.dp))
+                                .clickable { onSelectRoute(i); onAltsOpenChange(false) }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        formatDuration(eta),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = trafficEtaColor(r) ?: ink,
+                                        fontWeight = FontWeight.Medium,
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        when {
+                                            i == fastestIdx -> stringResource(R.string.exp_chooser_fastest)
+                                            delta < 60 -> stringResource(R.string.exp_chooser_alts_same)
+                                            else -> stringResource(R.string.exp_chooser_slower, formatDuration(delta.toDouble()))
+                                        },
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = dim,
+                                    )
+                                }
+                                Text(
+                                    listOfNotNull(
+                                        formatDistance(r.distanceMeters),
+                                        r.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) },
+                                        if (cams > 0) stringResource(R.string.dir_cameras_on_route, cams) else null,
+                                    ).joinToString(" · "),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (cams > 0) SheetPalette.TrafficAmber else dim,
+                                )
+                            }
+                            if (chosen) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
                 }
             }
             // Expandable body: options, add-along-the-way, and the inline turn list.
@@ -412,14 +511,6 @@ fun GoogleStyleDirectionsPanel(
                         Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.place_start))
-                    }
-                    // The classic list: each route's length, main roads and cameras side by side.
-                    if (routes.size > 1) {
-                        FilledTonalButton(onClick = onCompareRoutes) {
-                            Icon(Icons.Default.AltRoute, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.exp_chooser_compare))
-                        }
                     }
                     FilledTonalButton(onClick = onEditStops) {
                         Icon(Icons.Default.AddLocationAlt, contentDescription = null, modifier = Modifier.size(18.dp))

@@ -1875,6 +1875,12 @@ architecture note.
   "Everything since" commit list: one line per feature, plain words, the reason for an early
   cut first if there is one (0.4.1217 is the model). The promote workflow cannot write this
   part; it is the release's own job, the same day. Nightlies keep the commit list alone.
+- **ALTERNATES PANE (2026-09-17):** the Google-style chooser owns its own list (`altsOpen` /
+  `onAltsOpenChange`, BACK closes it through MapScreen's single back handler) instead of swapping in
+  the classic panel; the affordance sits under the ETA and is always present (`exp_chooser_alts`
+  plurals, `exp_chooser_alts_none`). `routeBubblesFor(..., detailed = altsOpen)` fills `RouteBubble.sub`
+  with distance + delta and the bubble layer renders it as a second line. Only the fastest route is
+  labelled "fastest"; a near-tie says "about the same time".
 - **OSM POSITIONS IN THE PLACES BAKE (2026-09-17):** `OSM_PBF` (the region's Geofabrik extract, joined
   into the matrix from `tools/routing-regions.json` by id) is filtered with `osmium tags-filter` to
   NAMED business NODES, exported to geojsonseq (strip the 0x1e record separator before jq; the

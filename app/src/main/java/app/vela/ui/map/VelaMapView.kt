@@ -141,7 +141,15 @@ private const val ROUTE_BUBBLE_ALT_IMG = "vela-rb-alt"
 /** A route's travel-time bubble on the map (the Google-style chooser experiment): [index] is the
  *  route's position in the chooser list, [at] a point on that route where it runs apart from the
  *  others, [selected] draws it filled in the route colour. Tapping one selects that route. */
-data class RouteBubble(val index: Int, val at: LatLng, val label: String, val selected: Boolean)
+data class RouteBubble(
+    val index: Int,
+    val at: LatLng,
+    val label: String,
+    val selected: Boolean,
+    /** A second line under the time (distance, or how much longer than the fastest); shown while
+     *  the alternates list is open, so the map carries the same detail the rows do. */
+    val sub: String? = null,
+)
 private const val MARKERS_SRC = "vela-markers-src"
 private const val MARKERS_LAYER = "vela-markers"
 // Collapsed search results: the same source drawn as small red dots UNDER the pins. The pin layer
@@ -1291,9 +1299,17 @@ fun VelaMapView(
             if (style.getSource(ROUTE_BUBBLE_SRC) == null) {
                 style.addSource(GeoJsonSource(ROUTE_BUBBLE_SRC))
                 val layer = SymbolLayer(ROUTE_BUBBLE_LAYER, ROUTE_BUBBLE_SRC).withProperties(
-                    PropertyFactory.textField(Expression.get("label")),
+                    PropertyFactory.textField(
+                        Expression.switchCase(
+                            Expression.has("sub"),
+                            Expression.concat(Expression.get("label"), Expression.literal("\n"), Expression.get("sub")),
+                            Expression.get("label"),
+                        ),
+                    ),
                     PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
                     PropertyFactory.textSize(13f),
+                    PropertyFactory.textLineHeight(1.15f),
+                    PropertyFactory.textJustify(Property.TEXT_JUSTIFY_CENTER),
                     PropertyFactory.textColor(
                         Expression.switchCase(Expression.get("sel"), Expression.color(android.graphics.Color.WHITE),
                             Expression.color(0xFF202124.toInt())),
@@ -1316,6 +1332,7 @@ fun VelaMapView(
                 routeBubbles.map { b ->
                     Feature.fromGeometry(Point.fromLngLat(b.at.lng, b.at.lat)).apply {
                         addStringProperty("label", b.label)
+                        b.sub?.let { addStringProperty("sub", it) }
                         addBooleanProperty("sel", b.selected)
                         addNumberProperty(ALT_INDEX_PROP, b.index)
                     }
