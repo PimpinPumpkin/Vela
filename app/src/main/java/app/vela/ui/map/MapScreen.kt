@@ -1232,6 +1232,7 @@ fun MapScreen(
             osmBusinesses = app.vela.ui.MapPoiPrefs.osmBusinesses.value,
             // The exit you are taking, for the green callout on the map: only a numbered exit off
             // a ramp or a fork, and only while its own step is the one being guided.
+            navTapPlaces = app.vela.ui.MapPoiPrefs.navTapPlaces.value,
             navExitCallout = if (!state.navigating) null else remember(state.activeRoute, state.nav.stepIndex) {
                 val m = state.activeRoute?.maneuvers?.getOrNull(state.nav.stepIndex)
                 val ramp = m?.type in setOf(
@@ -1949,6 +1950,34 @@ fun MapScreen(
                     .padding(16.dp)
                 else Modifier.align(Alignment.BottomCenter),
             )
+
+            // Tap-to-stop (Settings > Navigation): the tapped place is OFFERED here, above the
+            // nav bar, and only the button adds it. Nothing else about the drive changes until then.
+            state.navigating && state.navTapCandidate != null -> {
+                val cand = state.navTapCandidate!!
+                val ahead = remember(cand, state.activeRoute, state.nav.traveledM) {
+                    val poly = state.activeRoute?.polyline.orEmpty()
+                    if (poly.size < 2) null else {
+                        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+                        app.vela.core.nav.RouteProjection.alongMeters(poly, cum, cand.location, 2_000.0)
+                            ?.minus(state.nav.traveledM)?.takeIf { it > 0 }
+                    }
+                }
+                app.vela.ui.nav.NavStopOffer(
+                    name = cand.name,
+                    meta = listOfNotNull(
+                        cand.category,
+                        ahead?.let { stringResource(R.string.nav_stop_offer_ahead, formatDistance(it)) },
+                    ).joinToString(" · "),
+                    onAdd = vm::confirmNavTapStop,
+                    onDismiss = vm::dismissNavTapStop,
+                    modifier = Modifier
+                        .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
+                        .landscapeColumn(landscapeChrome, sidePanelWidthDp)
+                        .navigationBarsPadding()
+                        .padding(16.dp),
+                )
+            }
 
             // While an in-nav search has results, the results branch below takes the bottom
             // slot (Google's in-nav list does the same); clearing it brings the bar back.

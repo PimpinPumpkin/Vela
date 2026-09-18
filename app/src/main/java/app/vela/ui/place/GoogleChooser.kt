@@ -358,6 +358,11 @@ fun GoogleStyleDirectionsPanel(
                         )
                     }
                     val fastestIdx = routes.indexOfFirst { (it.durationInTrafficSeconds ?: it.durationSeconds) == fastestEta }
+                    // With "Avoid surveillance cameras" on, the counts are computed and the app may
+                    // already have picked a route that is not the fastest. Say which one has the
+                    // fewest, so the choice it made explains itself (user 2026-09-17).
+                    val fewestCamIdx = flockOnRoute.takeIf { it.size == routes.size && it.distinct().size > 1 }
+                        ?.let { counts -> counts.indices.minByOrNull { counts[it] } }
                     routes.forEachIndexed { i, r ->
                         val eta = r.durationInTrafficSeconds ?: r.durationSeconds
                         val delta = (eta - fastestEta).toInt()
@@ -398,6 +403,7 @@ fun GoogleStyleDirectionsPanel(
                                         formatDistance(r.distanceMeters),
                                         r.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) },
                                         if (cams > 0) stringResource(R.string.dir_cameras_on_route, cams) else null,
+                                        if (i == fewestCamIdx) stringResource(R.string.exp_chooser_fewest_cams) else null,
                                     ).joinToString(" · "),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = if (cams > 0) SheetPalette.TrafficAmber else dim,

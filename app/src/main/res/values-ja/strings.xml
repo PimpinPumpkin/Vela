@@ -910,4 +910,8 @@
     <string name="routing_offer_title">%1$s のオフライン経路を追加しますか?</string>
     <string name="routing_offer_download">ダウンロード</string>
     <string name="routing_offer_body">この地域の道路、スポット、地図(約 %1$s)を取得します。再検索が速くなり、電波がなくても案内が続きます。ダウンロードは設定のオフラインマップにあります。</string>
+    <string name="nav_stop_offer_add">経由地に追加</string>
+    <string name="nav_stop_offer_ahead">%1$s先</string>
+    <string name="settings_nav_tap_places">運転中に場所をタップ</string>
+    <string name="settings_nav_tap_places_hint">案内中もガソリン、飲食、充電の場所を地図に残し、タップすると経由地として提案します。もう一度タップで追加します。地図を読みやすくするため案内中は通常スポットを隠すので、初期設定はオフです。オンにすると「スポットを表示」もオンになります。</string>
 </resources>

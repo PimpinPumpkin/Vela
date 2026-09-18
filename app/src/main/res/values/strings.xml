@@ -976,4 +976,9 @@
         <item quantity="other">%1$d other routes</item>
     </plurals>
     <string name="exp_chooser_alts_same" translatable="false">About the same time</string>
+    <string name="exp_chooser_fewest_cams" translatable="false">fewest cameras</string>
+    <string name="nav_stop_offer_add">Add stop</string>
+    <string name="nav_stop_offer_ahead">%1$s ahead</string>
+    <string name="settings_nav_tap_places">Tap places while driving</string>
+    <string name="settings_nav_tap_places_hint">While navigating, fuel, food and charging places stay on the map and tapping one offers it as a stop; a second tap adds it. Off by default, since nav hides places to keep the map readable. Turning this on also turns on Show places.</string>
 </resources>
