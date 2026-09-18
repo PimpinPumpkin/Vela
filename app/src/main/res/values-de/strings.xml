@@ -887,4 +887,8 @@
     <string name="routing_offer_title">Offline-Navigation für %1$s?</string>
     <string name="routing_offer_download">Herunterladen</string>
     <string name="routing_offer_body">Lädt Straßen, Orte und Karte dieser Region, etwa %1$s. Neuberechnungen gehen schneller und die Führung funktioniert ohne Empfang. Downloads findest du unter Einstellungen, Offlinekarten.</string>
+    <string name="nav_stop_offer_add">Stopp</string>
+    <string name="nav_stop_offer_ahead">in %1$s</string>
+    <string name="settings_nav_tap_places">Orte beim Fahren antippen</string>
+    <string name="settings_nav_tap_places_hint">Während der Navigation bleiben Tankstellen, Essen und Ladesäulen auf der Karte; ein Tippen schlägt den Ort als Stopp vor, ein zweites fügt ihn hinzu. Standardmäßig aus, denn die Navigation blendet Orte aus, damit die Karte lesbar bleibt. Das Einschalten aktiviert auch Orte anzeigen.</string>
 </resources>

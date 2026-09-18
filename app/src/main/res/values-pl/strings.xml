@@ -896,4 +896,8 @@
     <string name="routing_offer_title">Trasy offline dla regionu %1$s?</string>
     <string name="routing_offer_download">Pobierz</string>
     <string name="routing_offer_body">Pobiera drogi, miejsca i mapę tego regionu, około %1$s. Przeliczanie trasy jest szybsze, a nawigacja działa bez zasięgu. Pobrane dane są w Ustawieniach, w mapach offline.</string>
+    <string name="nav_stop_offer_add">Dodaj</string>
+    <string name="nav_stop_offer_ahead">za %1$s</string>
+    <string name="settings_nav_tap_places">Dotykanie miejsc podczas jazdy</string>
+    <string name="settings_nav_tap_places_hint">Podczas nawigacji na mapie zostają stacje, jedzenie i ładowarki: dotknięcie proponuje miejsce jako przystanek, drugie je dodaje. Domyślnie wyłączone, bo nawigacja ukrywa miejsca dla czytelności mapy. Włączenie włącza też Pokaż miejsca.</string>
 </resources>

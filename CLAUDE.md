@@ -1875,6 +1875,14 @@ architecture note.
   "Everything since" commit list: one line per feature, plain words, the reason for an early
   cut first if there is one (0.4.1217 is the model). The promote workflow cannot write this
   part; it is the release's own job, the same day. Nightlies keep the commit list alone.
+- **TAP-TO-STOP IN NAV (2026-09-17):** `MapPoiPrefs.navTapPlaces` (off; its setter also flips
+  `showPois` on and remembers it in `KEY_NAV_TAP_FORCED_POIS` so turning it off restores exactly
+  that). VelaMapView widens the drive-nav places filter from fuel-only to `NAV_DRIVE_GROUPS`
+  (`placesNavDriveSet`); `onPoiTap` and `selectPlace` stop returning early during nav and instead
+  set `navTapCandidate`, which MapScreen renders as `NavStopOffer` above the nav bar - the CARD's
+  button is the second tap, and it calls `addStopDuringNav`. The alternates pane names the
+  fewest-camera route when `flockOnRoute` has counts that differ (that list is only populated when
+  "Avoid surveillance cameras" is on).
 - **ALTERNATES PANE (2026-09-17):** the Google-style chooser owns its own list (`altsOpen` /
   `onAltsOpenChange`, BACK closes it through MapScreen's single back handler) instead of swapping in
   the classic panel; the affordance sits under the ETA and is always present (`exp_chooser_alts`

@@ -155,6 +155,13 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         var trafficLights by remember { mutableStateOf(prefs.getBoolean("nav_traffic_lights", false)) }
         GroupDivider()
         ToggleRow(
+            label = stringResource(R.string.settings_nav_tap_places),
+            checked = app.vela.ui.MapPoiPrefs.navTapPlaces.value,
+            onCheckedChange = { app.vela.ui.MapPoiPrefs.setNavTapPlaces(context, it) },
+            hint = stringResource(R.string.settings_nav_tap_places_hint),
+        )
+        GroupDivider()
+        ToggleRow(
             label = stringResource(R.string.settings_traffic_lights),
             checked = trafficLights,
             onCheckedChange = {

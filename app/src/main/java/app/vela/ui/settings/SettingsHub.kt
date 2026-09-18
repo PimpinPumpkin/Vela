@@ -328,6 +328,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_road_label to SettingsSection.NAVIGATION,
     R.string.settings_prefer_buttons to SettingsSection.NAVIGATION,
     R.string.settings_traffic_lights to SettingsSection.NAVIGATION,
+    R.string.settings_nav_tap_places to SettingsSection.NAVIGATION,
     R.string.settings_vibrate_on_turns to SettingsSection.NAVIGATION,
     R.string.settings_demo_drive to SettingsSection.DIAGNOSTICS,
     R.string.settings_sim_location to SettingsSection.DIAGNOSTICS,

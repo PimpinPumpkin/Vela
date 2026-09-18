@@ -889,4 +889,8 @@
     <string name="routing_offer_title">Rotas offline para %1$s?</string>
     <string name="routing_offer_download">Transferir</string>
     <string name="routing_offer_body">Obtém as estradas, os locais e o mapa desta região, cerca de %1$s. Os recálculos ficam mais rápidos e as indicações funcionam sem rede. As transferências estão em Definições, Mapas offline.</string>
+    <string name="nav_stop_offer_add">Adicionar</string>
+    <string name="nav_stop_offer_ahead">a %1$s</string>
+    <string name="settings_nav_tap_places">Tocar em locais ao conduzir</string>
+    <string name="settings_nav_tap_places_hint">Durante a navegação, combustível, comida e carregadores ficam no mapa e tocar num deles propõe-no como paragem; um segundo toque adiciona-a. Desligado por predefinição, já que a navegação esconde os locais para manter o mapa legível. Ligar isto liga também Mostrar locais.</string>
 </resources>

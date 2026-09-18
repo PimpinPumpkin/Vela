@@ -888,4 +888,8 @@
     <string name="routing_offer_title">ניווט לא מקוון עבור %1$s?</string>
     <string name="routing_offer_download">הורדה</string>
     <string name="routing_offer_body">מוריד את הכבישים, המקומות והמפה של האזור, כ-%1$s. חישוב מסלול מחדש מהיר יותר והניווט עובד גם בלי קליטה. ההורדות נמצאות בהגדרות, מפות לא מקוונות.</string>
+    <string name="nav_stop_offer_add">הוספה</string>
+    <string name="nav_stop_offer_ahead">עוד %1$s</string>
+    <string name="settings_nav_tap_places">הקשה על מקומות בנהיגה</string>
+    <string name="settings_nav_tap_places_hint">בזמן ניווט תחנות דלק, אוכל ועמדות טעינה נשארים במפה; הקשה מציעה את המקום כעצירה והקשה שנייה מוסיפה אותה. כבוי כברירת מחדל, כי הניווט מסתיר מקומות כדי שהמפה תישאר קריאה. הפעלה כאן מפעילה גם הצגת מקומות.</string>
 </resources>

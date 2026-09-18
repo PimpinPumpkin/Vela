@@ -179,6 +179,9 @@ data class MapUiState(
     // ALPR/Flock cameras counted near each route option (index-aligned with `routes`), for the route
     // picker's opt-in "passes N cameras" badge. Empty when the alert is off or not yet computed.
     val flockOnRoute: List<Int> = emptyList(),
+    // Drive nav, "tap places while driving": the place a tap offered as a stop, waiting for the
+    // confirm. Never acts on the first tap - a stray touch must not change the drive.
+    val navTapCandidate: Place? = null,
     val buildingOverlays: List<String> = emptyList(), // full pmtiles:// URIs (file:// downloaded / https:// streamed for the view)
     val addressOverlays: List<String> = emptyList(), // pmtiles:// URIs streamed for house-number labels (OpenAddresses)
                                                       // .pmtiles — rendered beneath OSM to fill gaps
@@ -2099,7 +2102,12 @@ class MapViewModel @Inject constructor(
         // dots, resolved POIs), and a stray tap used to silently pin itself onto the route
         // (user 2026-07-14). With no results list open, a tap during nav does nothing.
         if (_state.value.navigating) {
-            if (_state.value.results.isNotEmpty()) addStopDuringNav(p)
+            when {
+                _state.value.results.isNotEmpty() -> addStopDuringNav(p)
+                // Tap-to-stop (off by default): the first tap only OFFERS the place; the card's
+                // button is the second tap that changes the drive.
+                app.vela.ui.MapPoiPrefs.navTapPlaces.value -> _state.update { it.copy(navTapCandidate = p) }
+            }
             return
         }
         // Search-along-route pick: the tapped place becomes a STOP on the stashed trip (Google's
@@ -3015,8 +3023,16 @@ class MapViewModel @Inject constructor(
     fun onPoiTap(name: String, location: LatLng, poiKind: String? = null, seed: Place? = null) {
         // Dead during a live drive: the map is carpeted with tappable POIs at nav zoom, the
         // sheet this would build can't render under nav's bottom slot, and the stale selection
-        // popped up when the drive ended. In-nav picks go through the search results instead.
-        if (_state.value.navigating) return
+        // popped up when the drive ended. In-nav picks go through the search results instead...
+        // ...unless "tap places while driving" is on, where the tap OFFERS the place as a stop
+        // (and only the card's button acts on it). No sheet, no selection, no Google lookup.
+        if (_state.value.navigating) {
+            if (app.vela.ui.MapPoiPrefs.navTapPlaces.value) {
+                val p = seed ?: Place(id = "poi:" + name.hashCode(), name = name, location = location)
+                _state.update { it.copy(navTapCandidate = p) }
+            }
+            return
+        }
         if (consumeAssign(SavedPlace(id = "poi:" + name.hashCode(), name = name, lat = location.lat, lng = location.lng))) return
         // Picking the route origin (or a stop) by tapping the map → adopt this POI, don't open it.
         if (_state.value.pickingStop) {
@@ -3803,6 +3819,17 @@ class MapViewModel @Inject constructor(
     fun cancelPickStop() = _state.update { it.copy(pickingStop = false) }
 
     fun addStopDuringNav(p: Place) = nav.addStopDuringNav(p)
+
+    /** The tapped place becomes the next stop (the confirm on the in-drive card). */
+    fun confirmNavTapStop() {
+        val p = _state.value.navTapCandidate ?: return
+        _state.update { it.copy(navTapCandidate = null) }
+        addStopDuringNav(p)
+    }
+
+    fun dismissNavTapStop() {
+        if (_state.value.navTapCandidate != null) _state.update { it.copy(navTapCandidate = null) }
+    }
 
     /** Append an intermediate stop and re-route through it. */
     fun addStop(p: Place) {

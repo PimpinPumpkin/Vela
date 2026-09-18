@@ -61,11 +61,32 @@ object MapPoiPrefs {
         placesWithDownloads.value = p.getBoolean(KEY_PLACES_WITH_DOWNLOADS, true)
         lookupTappedPlaces.value = p.getBoolean(KEY_LOOKUP_TAPPED, true)
         osmBusinesses.value = p.getBoolean(KEY_OSM_BUSINESSES, true)
+        navTapPlaces.value = p.getBoolean(KEY_NAV_TAP_PLACES, false)
     }
 
     fun setLookupTappedPlaces(context: Context, value: Boolean) {
         lookupTappedPlaces.value = value
         prefs(context).edit().putBoolean(KEY_LOOKUP_TAPPED, value).apply()
+    }
+
+    /** Drive navigation: show the places you would divert for (fuel, food, coffee, charging) and let
+     *  a tap on one offer it as a stop. Off by default - nav hides places on purpose, both for the
+     *  frame rate and for a readable map. Turning it on needs the master places switch, so it turns
+     *  that on too and remembers it did, and putting it back off undoes exactly that. */
+    val navTapPlaces = mutableStateOf(false)
+
+    fun setNavTapPlaces(context: Context, value: Boolean) {
+        navTapPlaces.value = value
+        val p = prefs(context)
+        val e = p.edit().putBoolean(KEY_NAV_TAP_PLACES, value)
+        if (value && !showPois.value) {
+            showPois.value = true
+            e.putBoolean(KEY_POIS, true).putBoolean(KEY_NAV_TAP_FORCED_POIS, true)
+        } else if (!value && p.getBoolean(KEY_NAV_TAP_FORCED_POIS, false)) {
+            showPois.value = false
+            e.putBoolean(KEY_POIS, false).putBoolean(KEY_NAV_TAP_FORCED_POIS, false)
+        }
+        e.apply()
     }
 
     fun setOsmBusinesses(context: Context, value: Boolean) {
@@ -120,6 +141,8 @@ object MapPoiPrefs {
     private const val KEY_PLACES_WITH_DOWNLOADS = "offline_places_with_downloads"
     private const val KEY_LOOKUP_TAPPED = "map_places_google_lookup"
     private const val KEY_OSM_BUSINESSES = "map_places_osm_businesses"
+    private const val KEY_NAV_TAP_PLACES = "map_places_nav_tap"
+    private const val KEY_NAV_TAP_FORCED_POIS = "map_places_nav_tap_forced_pois"
     const val SOURCE_OPEN = "open"
     const val SOURCE_GOOGLE = "google"
     const val SOURCE_BOTH = "both"
