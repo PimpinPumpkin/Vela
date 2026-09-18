@@ -27,7 +27,11 @@
 set -euo pipefail
 ID="$1"; S="$2"; W="$3"; N="$4"; E="$5"; OUT="$6"; RELEASE="${7:-2026-08-19.0}"; LOCAL="${8:-}"
 ATP_RUN="${ATP_RUN:-2026-09-05-13-32-25}"
+# TMPDIR decides where the scratch goes, and for a continent-sized region that matters: the
+# AllThePlaces extract, the OSM extract, DuckDB's spill and tippecanoe's temp files add up to more
+# than a CI runner's root disk holds (see the workflow, which points it at the big mount).
 WORK="$(mktemp -d)"
+echo "work dir $WORK ($(df -Pm "$WORK" | awk 'NR==2 {print $4}') MB free)"
 ATP_NDJSON=""
 if [ "$ATP_RUN" != "none" ] && command -v pmtiles >/dev/null 2>&1 && command -v tippecanoe-decode >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
   ATP_SRC="${ATP_LOCAL:-https://alltheplaces-data.openaddresses.io/runs/$ATP_RUN/output.pmtiles}"
@@ -222,7 +226,7 @@ INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial; SET s3_region='us-we
 -- runs out of memory reports it as "the runner has received a shutdown signal" with no output at
 -- all, which reads like flaky infrastructure (Australia and its states, twice, 2026-09-18). A
 -- limit under the runner's 16 GB with somewhere to spill turns that into a slower bake.
-SET memory_limit = '11GB'; SET temp_directory = '/tmp/duckdb-spill';
+SET memory_limit = '11GB'; SET temp_directory = '$WORK/duckdb-spill';
 CREATE TABLE raw AS SELECT $SEL, CAST(NULL AS VARCHAR) AS hours FROM $SRC
   WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N $BBOXPRED;
 -- The snap key is the WHOLE name, normalized, with a trailing store number dropped ("Safeway

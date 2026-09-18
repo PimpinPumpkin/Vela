@@ -131,11 +131,21 @@ jobs:
           fi
           sudo cp "$HOME/vela-bin/"* /usr/local/bin/
           tippecanoe --version 2>&1 | head -1; duckdb --version; pmtiles version | head -1
+      # A continent-sized region needs far more scratch than the runner's root disk has: the
+      # AllThePlaces extract alone is 619 MB for Australia, the OSM extract 1.3 GB, and DuckDB's
+      # spill and tippecanoe's temp files land beside them. Root has about 14 GB free and /mnt has
+      # about 65, and a runner whose disk fills is reported as "the runner has received a shutdown
+      # signal" with no output at all, which reads like flaky infrastructure (five regions, twice,
+      # 2026-09-18). mktemp, DuckDB and tippecanoe all honor TMPDIR.
+      - name: Scratch space on the big disk
+        run: |
+          sudo mkdir -p /mnt/vela-work && sudo chown "$(id -u):$(id -g)" /mnt/vela-work
+          df -h / /mnt | sed 's/^/  /'
       - name: Bake ${{ matrix.id }}
         run: |
           B='${{ toJson(matrix.bbox) }}'
           S=$(echo "$B" | jq '.[0]'); W=$(echo "$B" | jq '.[1]'); N=$(echo "$B" | jq '.[2]'); E=$(echo "$B" | jq '.[3]')
-          OSM_PBF="${{ matrix.pbf_url }}" bash tools/build-places-region.sh "${{ matrix.id }}" "$S" "$W" "$N" "$E" "places-${{ matrix.id }}.pmtiles" "${{ needs.plan.outputs.release }}"
+          TMPDIR=/mnt/vela-work OSM_PBF="${{ matrix.pbf_url }}" bash tools/build-places-region.sh "${{ matrix.id }}" "$S" "$W" "$N" "$E" "places-${{ matrix.id }}.pmtiles" "${{ needs.plan.outputs.release }}"
       - name: Upload archive + emit manifest entry
         env:
           GH_TOKEN: ${{ github.token }}
