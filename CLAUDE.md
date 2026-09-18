@@ -2402,6 +2402,17 @@ architecture note.
   Three different failures (a throttled session returning nothing, a tile row whose name or point is
   off so nothing agrees within `NO_NAME_MATCH_M`, and a pick dropped by the 1.5 km cap) are
   indistinguishable on screen, and none of them used to leave a trace. NO coordinates in the line.
+- **OSM BUSINESSES ARE A SOURCE IN THE PLACES BAKE (2026-09-18, user ask):** named business NODES
+  from the region's Geofabrik extract are inserted into `raw` beside Overture and AllThePlaces,
+  through the SHARED `osmcat(props)` / `isbiz(props)` macros (lifted out of the ATP block so both
+  sources use one tag mapping), deduped against everything already in `raw` by `nkey` or brand within
+  ~150 m, confidence 0.8, id `osm:<n123>` (osmium `--add-unique-id=type_id` puts it in the FEATURE's
+  `id`, NOT in properties), tile `origin` = `osm`. WHY: Overture is monthly and uncorrectable by us,
+  OSM is the one source a user can fix and see fixed. Nodes only (a way's centroid is the parcel-point
+  guess again). Andorra: 766 in box, 521 added, 245 deduped. A seventh of the catalog rebakes nightly
+  (cron 04:40, `NIGHTLY` slice by sorted position) so an edit lands within a week; `only=<region>` is
+  ~2 minutes. Deliberately NOT the whole catalog nightly: it would offer every downloaded region a
+  fresh few-hundred-MB copy every day.
 - **THE BAKE TOOLCHAIN IS CACHED + PINNED (2026-09-18):** tippecanoe 2.79.0 and go-pmtiles 1.31.2
   live in an `actions/cache` keyed on those versions (`~/vela-bin`), because building tippecanoe from
   source was 69 s of every one of 414 jobs. A wave that misses the cache builds it once per job as

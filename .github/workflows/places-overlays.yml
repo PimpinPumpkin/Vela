@@ -10,6 +10,12 @@ on:
     # (the matrix caps at 256 jobs), both against the newest release in the bucket.
     - cron: "0 5 6 * *"
     - cron: "0 5 7 * *"
+    # And a seventh of the catalog every night, so an OpenStreetMap edit reaches the map on its own
+    # within a week (OSM is a real source here, not just a position donor). A seventh rather than
+    # everything: a full nightly pass would re-publish every archive every night, and anyone who
+    # DOWNLOADED a region would be offered a fresh few-hundred-MB copy of it daily. Streaming
+    # readers, which is the default, pick up a rebaked archive with no prompt at all.
+    - cron: "40 4 * * *"
   workflow_dispatch:
     inputs:
       only:
@@ -39,12 +45,18 @@ jobs:
       - id: m
         run: |
           SHARD="${{ github.event.inputs.shard }}"
+          NIGHTLY=""
           case "${{ github.event.schedule }}" in
             "0 5 6 * *") SHARD=a ;;
             "0 5 7 * *") SHARD=b ;;
+            "40 4 * * *") NIGHTLY="$(( $(date -u +%u) - 1 ))" ;;
           esac
           if [ -n "${{ github.event.inputs.only }}" ]; then
             jq -c --arg id "${{ github.event.inputs.only }}" '{include: [.regions[] | select(.id == $id)]}' tools/places-regions.json > m.json
+          elif [ -n "$NIGHTLY" ]; then
+            # Tonight's seventh, by position in the sorted catalog: every region comes round once a
+            # week, and the same region always falls on the same night.
+            jq -c --argjson n "$NIGHTLY" '{include: [(.regions | sort_by(.id) | to_entries[] | select((.key % 7) == $n) | .value)]}' tools/places-regions.json > m.json
           else
             # Two shards by sorted id: GitHub caps a matrix at 256 jobs and the catalog is past that.
             case "$SHARD" in

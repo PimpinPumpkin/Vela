@@ -3125,6 +3125,7 @@ class MapViewModel @Inject constructor(
             val remembered = seed?.let { synchronized(openPlaceCache) { openPlaceCache[it.id] } }
             val resolved = if (remembered != null) (remembered to emptyList<Place>()) else runCatching {
                 val results = dataSource.search(searchQuery, location).places
+                var tapWhy = "" // filled by the business branch below, printed with the tap line
                 val pick = if (transitHint != null) {
                     // Transit tap: pick the OPERATING stop, not the nearest/most-reviewed thing at the
                     // coordinate. A stop's spot usually ALSO has a road junction (Google's "Intersection")
@@ -3195,6 +3196,14 @@ class MapViewModel @Inject constructor(
                         .orEmpty()
                     val ranked = sameKind.ifEmpty { exact.ifEmpty { pool } }
                     val poolNearest = ranked.minByOrNull { it.location.distanceTo(location) }
+                    // Which gate emptied the pool, and what the three nearest answers actually
+                    // were. Counts and distances only.
+                    tapWhy = "agree=" + answerable.count { nameAgrees(name, it.name) } +
+                        " near60=" + answerable.count { it.location.distanceTo(location) <= NO_NAME_MATCH_M } +
+                        " pool=" + pool.size + " exact=" + exact.size +
+                        " group=" + tappedGroup + " sameKind=" + sameKind.size +
+                        " nearest=[" + answerable.sortedBy { it.location.distanceTo(location) }.take(3)
+                            .joinToString("; ") { it.name + " " + "%.0f".format(it.location.distanceTo(location)) + "m/" + (it.category ?: "-") } + "]"
                     val canonical = ranked
                         .filter { it.location.distanceTo(location) < 35.0 }
                         .maxByOrNull { it.reviewCount ?: 0 }
@@ -3213,6 +3222,7 @@ class MapViewModel @Inject constructor(
                     else -> 1_500.0
                 }
                 val kept = pick?.takeIf { it.location.distanceTo(location) <= maxM }
+                val preCap = pick?.let { it.name + " " + "%.0f".format(it.location.distanceTo(location)) + "m" } ?: "none"
                 // WHY A TAP DID NOT LINK (user 2026-09-18: "more and more POIs that aren't
                 // linking"). Three very different causes look identical on screen - the search
                 // came back empty (a throttled session), nothing agreed by name or sat on the same
@@ -3226,6 +3236,7 @@ class MapViewModel @Inject constructor(
                         " answerable=" + results.count { p ->
                             p.category?.let { isTransitCategory(it) || it.lowercase() in JUNCTION_CATEGORIES } != true
                         } +
+                        " " + tapWhy + " beforeCap=" + preCap +
                         " picked=" + (kept?.name ?: "NOTHING") +
                         " at=" + (kept?.let { "%.0f".format(it.location.distanceTo(location)) + "m" } ?: "-") +
                         " cap=" + maxM.toInt() + "m"
