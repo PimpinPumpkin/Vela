@@ -18,10 +18,14 @@ on:
       maxzoom:
         description: "Top zoom to bake (6 is Natural Earth territory and cheap; 8 starts wanting the planet)"
         required: false
-        default: "6"
+        default: "7"
+      publish:
+        description: "Upload it to the basemap-tiles release as basemap-world.pmtiles (what the app downloads)"
+        required: false
+        default: "false"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency: world-lowzoom
 
@@ -100,3 +104,15 @@ jobs:
           path: /tmp/world-z*.pmtiles
           if-no-files-found: error
           retention-days: 7
+      - name: Publish to the basemap-tiles release
+        # Onto the EXISTING basemap release under a fixed name, deliberately NOT as a manifest row:
+        # it is the floor under the pick, not a region anybody chooses from a list. The app has the
+        # URL compiled in (WORLD_BASEMAP_URL) and pulls it alongside the first offline download.
+        if: github.event.inputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAXZOOM: ${{ github.event.inputs.maxzoom }}
+        run: |
+          cp "/tmp/world-z${MAXZOOM}.pmtiles" /tmp/basemap-world.pmtiles
+          gh release upload basemap-tiles /tmp/basemap-world.pmtiles --clobber --repo "$GITHUB_REPOSITORY"
+          echo "published basemap-world.pmtiles (z0-${MAXZOOM})" >> "$GITHUB_STEP_SUMMARY"

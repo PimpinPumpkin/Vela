@@ -5786,9 +5786,18 @@ class MapViewModel @Inject constructor(
             }
             if (any) {
                 app.vela.offline.GlyphPackStore.ensureInstalled(appContext, http)
+                ensureWorldBasemap()
                 refreshBasemapArchive()
             }
         }
+    }
+
+    /** The whole planet at low zoom, fetched once alongside the first offline download (about
+     *  11 MB). It is the floor under the basemap pick: away from a saved region, losing the
+     *  network draws a coarse world instead of an empty screen. Best effort and silent - it is an
+     *  improvement on nothing, so failing to get it changes nothing. */
+    private suspend fun ensureWorldBasemap() {
+        runCatching { basemapStore.ensureWorld(app.vela.BuildConfig.WORLD_BASEMAP_URL) }
     }
 
     /** The smallest basemap archive covering ([lat],[lng]), pulled with a viewport download. */
@@ -5800,6 +5809,7 @@ class MapViewModel @Inject constructor(
             if (region.id in basemapStore.installedIds()) return@downloadLaunch
             if (basemapStore.download(region) { }) {
                 app.vela.offline.GlyphPackStore.ensureInstalled(appContext, http)
+                ensureWorldBasemap()
                 refreshBasemapArchive()
             }
         }

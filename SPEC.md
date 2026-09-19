@@ -1485,6 +1485,15 @@ Selection rules on the phone:
   were about to arrive, and crossing the box edge then unmounted it, so a pan along a download's
   border alternated gray and network. Only a probe that CANNOT answer leaves the old pick in
   charge, because that is the case where asking told us nothing. The pick runs off the main thread.
+- **A global low-zoom archive is the floor under the pick** (`BasemapTileStore.WORLD_ID`, baked by
+  `world-lowzoom.yml`, about 11 MB at z0-7, pulled once alongside the first offline download). It is
+  kept OUT of the per-region candidate list: it covers every point on earth, and it carries no
+  `transportation` layer, so the coverage probe would reject it everywhere. It is returned as the
+  explicit last resort instead, which is what stops "nothing here holds the map, so stream it" from
+  meaning a blank screen with no network. Its max zoom is below `FULL_MAP_ZOOM`, so the existing
+  shallow rule already makes it offline-only with nothing new written. Natural Earth supplies water,
+  coastlines, boundaries and place labels globally at these zooms, which is why it is cheap; roads
+  are OSM-derived and absent, which is what a region download is for.
 - **Source swaps have a floor of `BASEMAP_SWAP_COOLDOWN_MS` (2 s).** Re-pointing every basemap layer
   re-tiles and re-lays out the map, which is a visible freeze; at a region's edge the honest answer
   genuinely changes as the view crosses the data, so without a floor a pan along the border stutters
