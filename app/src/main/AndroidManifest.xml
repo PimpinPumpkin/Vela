@@ -14,6 +14,10 @@
     <!-- Keeps voice/region/update downloads alive in the background (DownloadService, issue #212). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- The drive as an Android 16 live update: the status bar chip and the lock screen bar
+         (issue #595). Normal permission with an app op, so the user can turn the promotion off
+         in the app's notification settings and the drive falls back to an ordinary card. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <!-- Contacts-in-search (issue #243): OFF by default, asked at point of use (flipping the
          Settings toggle on), matched entirely on-device. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
