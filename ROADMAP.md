@@ -416,6 +416,22 @@ job would be to feed it frames - which is nearly free, because `CarMapRenderer` 
 map to a bitmap for a car surface. One nice alignment: it wants gearhead out of the way to claim
 the accessory, and Vela's users are the people who do not have gearhead.
 
+**That project has a name now: Gearslip** (Seb3thehacker, repo pending). Moving it out of this repo
+does not move the certificate problem: a sender that needs key material extracted from Google's app
+or from head unit firmware cannot be distributed from anywhere - F-Droid would refuse it, and
+redistributing somebody's private key is a different order of risk from a license violation. Where
+the key was FOUND changes nothing about whose it is. So the cert question decides whether Gearslip
+can exist at all, not merely whether Vela can talk to it.
+
+**What is worth building here regardless is the SEAM, not the integration.** A projection client of
+any kind needs three things from Vela: frames at a size it names, input events going back, and the
+nav state for the cluster. Vela already has all three internally (`CarMapRenderer` renders to a
+bitmap, the car screens take input, `NavSession` publishes the state `ManeuverMapper` reads). A
+small bound service exposing them would let a companion render Vela on a car screen without forking
+it - and the same surface serves Google's Desktop Head Unit, an OpenAuto-style receiver on an
+aftermarket unit, an AAOS companion, and anyone else's experiment. It is useful before Gearslip
+works and it stays useful if Gearslip never does, which is the test for building it now.
+
 **Not scheduled.** The prep is the flavor split, which is useful on its own: it proves how much of
 Vela stands up with no Google at all, which is the direction the project has been walking anyway.
 
