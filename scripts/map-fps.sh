@@ -15,6 +15,12 @@
 set -euo pipefail
 D="${1:-$(adb devices | awk 'NR==2 {print $1}')}"
 LABEL="${2:-run}"
+# ONE RUN IS NOT A MEASUREMENT. Repeated runs of the IDENTICAL build vary by 5 to 7 fps of median
+# on a 4a, which is wide enough to invent a regression that is not there (done on 2026-09-18: a
+# street-width change was reported as 40-55 fps down to 29-53, and three runs a side showed the two
+# distributions sitting on top of each other). Run this at least three times a side and compare the
+# spreads. Batching the runs inside one invocation does not work either: the idle seconds between
+# them are logged at 59 fps and drag the median up.
 
 echo "thermal: $(adb -s "$D" shell dumpsys thermalservice 2>/dev/null | grep -m1 'Thermal Status' | tr -d '\r' || echo unknown)"
 adb -s "$D" shell setprop debug.vela.fps true
@@ -28,7 +34,6 @@ for _ in 1 2 3 4 5 6 7 8; do
   adb -s "$D" shell input swipe 300 900 800 1500 320
 done
 sleep 2
-
 adb -s "$D" logcat -d -s VelaFps:D 2>/dev/null > /tmp/velafps.txt
 python3 - "$LABEL" <<'PY'
 import re, sys
@@ -41,7 +46,8 @@ if not fps:
     print(f"{label}: no frames seen. Is the app the one with the probe, and did it restart?")
     raise SystemExit
 fps.sort()
-print(f"{label}: {len(fps)} seconds of panning")
+print(f"{label}: {len(fps)} seconds of panning across the runs")
 print(f"  fps  min {fps[0]}  p10 {fps[len(fps)//10]}  median {fps[len(fps)//2]}  max {fps[-1]}")
 print(f"  seconds under 30 fps: {sum(1 for f in fps if f < 30)} of {len(fps)}")
+print("  (one run proves nothing: run it three times a side, and ignore a median gap under ~6 fps)")
 PY
