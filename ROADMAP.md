@@ -301,6 +301,50 @@ buildings by default and downloadable for offline - so thin-OSM suburbs render h
 pursuing** (lot/assessment data - a per-county scraping + backend commitment with
 licensing heterogeneity; out of scope by decision 2026-06-19).
 
+### Contributing back to OpenStreetMap  *(wanted; the hard part is a firewall, not an API)*
+
+Vela takes a great deal from OSM - the basemap, the routing graph, the addresses, the road
+features, half the places bake - and gives nothing back. Fixing that is worth doing, and the order
+it has to be done in is the opposite of what it looks like.
+
+**The blocker is not the API.** Notes are a plain POST and need no account; editing is OAuth 2.0
+with PKCE (a public client, no secret to hide) against the 0.6 API, and the whole write path is a
+changeset open, a small diff, a close. That is a week of work. What takes longer is earning the
+right to send it.
+
+**The firewall comes first, and it is the thing to bring to the community.** OSM forbids data
+derived from Google, and Vela is an app that shows Google's places beside OSM's. So an editor here
+cannot work the way an editor in any other app works: **no OSM edit may ever be pre-filled,
+suggested or autocompleted from anything that came from Google.** That means the code, not the
+wording of a warning. Concretely: the edit path can only read fields whose provenance is the OSM
+tile, the Overture/AllThePlaces bake, or what the user typed; a Place that carries a Google feature
+id can open a NOTE ("there is a shop here that OSM is missing") but never a tag edit; and the two
+paths cannot share a model object, because the moment they do somebody will pass the wrong one.
+Getting that wrong once would be a data incident for OSM and the end of Vela's standing with them.
+
+**Build it the way StreetComplete did.** Bounded questions with unambiguous answers, asked about
+something the user is standing in front of, never a free-form tag editor. That is what got
+StreetComplete community trust, and it is the difference between useful contributions and a flood
+of drive-by edits from people who have never seen a changeset. A first set, in order of how safe
+they are: a NOTE anywhere (no account, no tags, a human triages it); "is this still here" on a
+place the bake shows and the user is standing at; opening hours, phone and website on a place with
+NO Google listing open; a missing house number. Nothing that moves geometry.
+
+**The etiquette, all of which the community will ask about:** a real `created_by=Vela <version>`
+on every changeset, `source=survey` only when it genuinely was, the app's own OAuth client rather
+than a shared one, testing against the dev API (`master.apis.dev.openstreetmap.org`) and never the
+live one, a visible changeset comment the user can edit, and an obvious way to see and undo what
+you sent.
+
+**Who to ask.** The OpenStreetMap Foundation is the legal and infrastructure body; it does not
+approve features, so there is no permission to collect from it. The conversations that matter are
+on the community forum (an editor announcing itself before it ships is normal and welcome), and
+with the Data Working Group specifically about the Google question - they are the ones who would
+act if it went wrong, so they are the ones worth telling first, in writing, before a line of the
+editor exists. Expect the first question to be exactly the firewall above.
+
+**Not scheduled.** Notes alone would be a real contribution and could ship on their own.
+
 ### A Google Play listing  *(prep work - the split has to be real, not a disguise)*
 
 The reason to want one is **Android Auto**. AA gates navigation apps on the installer, so a
