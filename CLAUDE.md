@@ -126,6 +126,21 @@ icon outranked every business in the tap box" says everything the fix needs and
 puts nobody on a map. If the bug cannot be explained without the place, it has
 not been root-caused yet.
 
+**A MEASUREMENT IS LOCATION DATA TOO (2026-09-18).** A number taken from the maintainer's own
+region identifies it even when the region is not named: exact counts out of a baked file can be
+matched back by anyone who bakes the catalog. Signal and stop-sign counts went into SPEC that way
+and had to be replaced. So: **never write down a number measured from the maintainer's own area.**
+Re-measure on a fixture region and name it, so the reader can check it and nobody can read anything
+else out of it. The fixtures are Davis/Sacramento, and Delaware or Kentucky for per-region data.
+
+**There is a LOCAL guard now, and it is the one that catches this class before it is public.**
+`scripts/check-location.sh`, run by the pre-push hook (`bash scripts/install-hooks.sh`), fails any
+push whose diff or commit messages contain a term from a private list kept OUTSIDE the repo at
+`~/.vela-location-terms` (override with `VELA_LOCATION_TERMS`). The list is never committed, never
+pasted into an issue, and never read back into a commit message; the check reports that a term
+matched, never which one. CI's Location guard is the same test with the `LOCATION_TERMS` secret,
+one push too late.
+
 Defaults that make the safe path the easy one:
 
 - **Fixture default: Davis / Sacramento, CA.** Bounding box `38.30,-122.00` to
