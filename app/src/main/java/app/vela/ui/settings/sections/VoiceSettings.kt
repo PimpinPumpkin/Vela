@@ -63,14 +63,16 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
             // The top focusable control: Back routes its DOWN here, UP from here goes back to Back.
             switchModifier = topRow,
         )
-        // Only meaningful while something is being spoken at all.
+        // Nested under the master switch, like the speed-camera warning under its layer: it has
+        // nothing to say while nothing is being spoken. It stays in the settings search index all
+        // the same, so a search lands on this page with the switch that reveals it in view.
         if (!state.voiceMuted) {
             ToggleRow(
                 label = stringResource(R.string.settings_spoken_road_names),
                 checked = app.vela.ui.SpokenRoadNames.on.value,
                 onCheckedChange = { app.vela.ui.SpokenRoadNames.set(context, it) },
+                hint = stringResource(R.string.settings_spoken_road_names_hint),
             )
-            Hint(stringResource(R.string.settings_spoken_road_names_hint))
         }
         }
         Spacer(Modifier.height(4.dp))

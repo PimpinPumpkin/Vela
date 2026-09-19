@@ -1885,7 +1885,11 @@ Defaults that make the safe path the easy one:
   are valid in Kotlin identifiers) -> "unresolved reference"; ALWAYS brace a `$var` that touches a
   CJK char: `"${road}出发"`. (2) in strings.xml a raw apostrophe (`app's`, `l'ancien`) is an AAPT
   error the RELEASE resource merge rejects even though a cached debug build passed; escape as `\'`
-  (the whole file already does). Both slipped a local `:core:test`/`assembleDebug` because the
+  (the whole file already does). **A raw DOUBLE quote is worse, because it is not an error at all -
+  it is silently STRIPPED**: a hint written `\"Turn left\" instead of \"Turn left onto Maple Street\"`
+  shipped as `Turn left instead of Turn left onto Maple Street` and read as a broken sentence, past
+  both a debug and a release build, and was only caught by reading the row off a device
+  (2026-09-19). Escape it as `\"`, which is what the rest of the file does. Both slipped a local `:core:test`/`assembleDebug` because the
   daemon reused stale outputs - trust CI, or `--rerun-tasks` when touching these.
   The runtime switch is `AppLocale.wrap(context)` (overrides the Configuration locale; when FOLLOWING
   the system it also RESTORES `Locale.setDefault` to the captured device locale - the override is
