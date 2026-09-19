@@ -842,9 +842,10 @@ renderer then sat at 89 percent of a core. The Developer row states the date it 
   on in the next few seconds (0.98 at z15.5 rising to 1.95 at z19). The browse layer draws from the
   same zoom its viewport FETCH uses, so the gate that decides whether to ask for them is the gate
   that decides whether to draw them; during navigation the corridor set draws from z15.4, just under
-  the camera's 15.5 floor. What appears is bounded by OSM: signals are mapped far more than stop
-  signs (one state's bake: 24,307 signals against 8,759 stops), so a residential area can show
-  lights and no signs at all. The corridor fetch is keyed per driven route so a
+  the camera's 15.5 floor. What appears is bounded by OSM, which maps signals more consistently than
+  stop signs, and unevenly between places: Delaware's bake holds 2,331 signals against 2,144 stops,
+  while a western state's runs nearer three to one. A residential area can therefore show lights and
+  no signs at all, whatever the layer is willing to draw. The corridor fetch is keyed per driven route so a
   same-course heal never refetches, capped at `CONTROLS_ROUTE_CAP` (800) nearest the start.
 - **Ownership.** While a corridor set is loaded, the viewport path must neither refetch nor run
   its zoom-clear branch, and the viewport job re-checks ownership **after** its settle delay,
