@@ -2468,7 +2468,12 @@ architecture note.
   fingerprint cannot drift) / `app/offline/PmtilesPatch.kt` (the applier on the phone). The patch
   appends the changed tiles and a rebuilt directory and flips the 127-byte header LAST, so an
   interrupted apply leaves the old archive intact and the cost is the patch, not a second copy of the
-  region. The result is PROVEN before the header moves: the fingerprint (SHA-256 over sorted tile ids
+  region. **The patch names no offsets** (format v2): it carries the new directory minus its offsets
+  plus a carried/kept flag per entry, and the applier resolves them against its own file and writes
+  the directory itself. v1 shipped the finished directory, so a patch only applied to a byte-exact
+  copy of the archive the bake diffed against - a phone that had taken one patch bounced every later
+  one and re-downloaded the region for ever. Found on a device (`patch refused, archive is 3355121
+  bytes, patch wants 3259302`), pinned by `PmtilesCompactTest`'s chain tests. The result is PROVEN before the header moves: the fingerprint (SHA-256 over sorted tile ids
   + tile hashes, phone-computable - Android has no blake2b) must equal the one the patch carries,
   which is a fresh download's; a mismatch truncates back and the caller downloads whole. Policy is
   `ui/RegionUpdates` (pref `region_update_mode`, OFF **is the default until somebody has watched a

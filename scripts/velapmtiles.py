@@ -15,9 +15,7 @@ from pathlib import Path
 
 HEADER_LEN = 127
 MAGIC = b"VELAPTCH"
-VERSION = 1
-MAGIC = b"VELAPTCH"
-VERSION = 1
+VERSION = 2
 
 
 def varint(buf, i):
@@ -90,6 +88,29 @@ def entries_of(path):
 def blob(f, tile_off, off, ln):
     f.seek(tile_off + off)
     return f.read(ln)
+
+
+def write_plan(entries, carried, comp):
+    """The patch's directory PLAN: what the new archive's directory says, minus the offsets.
+
+    Offsets are the one thing the producer cannot know, because the archive on the phone may have
+    been patched or compacted since and its tiles no longer sit where this bake's old file had
+    them. So the patch describes each entry as "the tile you already have under this id" or "the
+    next blob in this patch", and the applier works the offsets out against its OWN file. That is
+    what lets a second patch land on an archive the first one already changed.
+    """
+    out = bytearray()
+    put_varint(out, len(entries))
+    last = 0
+    for tid, _, _, _ in entries:
+        put_varint(out, tid - last); last = tid
+    for _, _, _, run in entries:
+        put_varint(out, run)
+    for _, _, ln, _ in entries:
+        put_varint(out, ln)
+    for flag in carried:
+        put_varint(out, flag)
+    return gzip.compress(bytes(out), mtime=0) if comp == 2 else bytes(out)
 
 
 def write_dir(entries, comp):

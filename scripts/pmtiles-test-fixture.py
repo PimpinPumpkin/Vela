@@ -9,6 +9,7 @@ tile payloads are not real vector tiles on purpose. Nothing in the patch or comp
 a tile; it moves bytes and hashes them, and a fixture made of recognisable filler makes a failure
 easier to read than one made of gzipped geometry.
 """
+import json
 import struct
 import subprocess
 import sys
@@ -51,28 +52,47 @@ def main():
     work = out / ".fixture-work"
     work.mkdir(exist_ok=True)
 
-    old = {tid: f"tile {tid} as it was".encode() * 8 for tid in range(100, 140)}
-    new = dict(old)
+    a_tiles = {tid: f"tile {tid} as it was".encode() * 8 for tid in range(100, 140)}
+    b_tiles = dict(a_tiles)
     for tid in (103, 117, 138):
-        new[tid] = f"tile {tid} after the edit".encode() * 11
-    new[140] = b"a tile that did not exist before" * 5
+        b_tiles[tid] = f"tile {tid} after the first edit".encode() * 11
+    b_tiles[140] = b"a tile that did not exist before" * 5
+    c_tiles = dict(b_tiles)
+    for tid in (101, 117, 140):
+        c_tiles[tid] = f"tile {tid} after the second edit".encode() * 7
+    c_tiles[141] = b"and another new one" * 9
 
-    a, b = work / "old.pmtiles", work / "new.pmtiles"
-    build(a, old)
-    build(b, new)
-    patch = work / "delta.vpatch"
-    subprocess.run([sys.executable, str(HERE / "pmtiles-make-patch.py"), str(a), str(b), str(patch),
-                    "--rev-from", "1", "--rev-to", "2"], check=True)
+    a, b, c = (work / f"{n}.pmtiles" for n in "abc")
+    build(a, a_tiles)
+    build(b, b_tiles)
+    build(c, c_tiles)
 
+    def make(src, dst, path, rev_from, rev_to):
+        subprocess.run([sys.executable, str(HERE / "pmtiles-make-patch.py"), str(src), str(dst),
+                        str(path), "--rev-from", str(rev_from), "--rev-to", str(rev_to)], check=True)
+
+    first = work / "first.vpatch"
+    make(a, b, first, 1, 2)
+    # The fixture is an archive that has ALREADY taken a patch: dead bytes in it, its tiles no
+    # longer where a fresh bake would put them. Both of the things the second patch has to cope
+    # with, and the second patch bouncing off exactly this file is the bug the plan format fixed.
     patched = out / "patched.pmtiles"
     patched.write_bytes(a.read_bytes())
-    subprocess.run([sys.executable, str(HERE / "pmtiles-apply-patch.py"), str(patched), str(patch),
+    subprocess.run([sys.executable, str(HERE / "pmtiles-apply-patch.py"), str(patched), str(first),
                     "--verify"], check=True)
+    make(b, c, out / "chain.vpatch", 2, 3)
 
-    h, entries = entries_of(patched)
-    print(f"{patched}: {patched.stat().st_size} bytes, {len(entries)} tiles, "
-          f"fingerprint {fingerprint(patched, entries, h['tile_off'])}, "
-          f"fresh is {b.stat().st_size} bytes")
+    def fp(path):
+        h, entries = entries_of(path)
+        return fingerprint(path, entries, h["tile_off"])
+
+    (out / "fixtures.json").write_text(json.dumps({
+        "patched": fp(patched),
+        "chain": fp(c),
+        "freshBytes": b.stat().st_size,
+    }, indent=2) + "\n")
+    print(f"{patched}: {patched.stat().st_size} bytes against a fresh {b.stat().st_size}, "
+          f"fingerprint {fp(patched)}; chain patch to {fp(c)}")
     for f in work.iterdir():
         f.unlink()
     work.rmdir()
