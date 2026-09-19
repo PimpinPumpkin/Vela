@@ -390,13 +390,13 @@ object NavEngine {
                     // spokenSign drops the secondary sign destinations for SPEECH (the banner keeps
                     // the full sign) - speaking the whole sign took long enough that the next
                     // prompt interrupted it mid-sentence.
-                    firstForStep && lane != null -> nav().useLanesToDo(lane.side, lane.count, nav().spokenSign(target.instruction))
-                    firstForStep -> nav().spokenSign(target.instruction)
+                    firstForStep && lane != null -> nav().useLanesToDo(lane.side, lane.count, nav().spokenSign(target.spokenInstruction()))
+                    firstForStep -> nav().spokenSign(target.spokenInstruction())
                     // The step's SECOND prompt drops the sign-destination tail ("toward X"):
                     // the far band already named it, and repeating the whole thing at every
                     // band read as "the same shit in declining feet counts" off an exit
                     // (real-drive report, 2026-07-17; Google shortens repeats the same way).
-                    else -> nav().repeatShort(target.instruction)
+                    else -> nav().repeatShort(target.spokenInstruction())
                 }
                 events += NavEvent.Speak(nav().inThen(spokenDistance(sayM, imperial), instruction))
                 // A light "get ready" tick once the NEAR band is reached, so bikers/walkers feel
@@ -415,7 +415,7 @@ object NavEngine {
                 if (!voiceSilent) {
                     // Turn-now repeats short once any approach band already spoke the full
                     // instruction — "Take the ramp", not the whole sign again (see repeatShort).
-                    val turnText = if (spoken.isEmpty()) nav().spokenSign(target.instruction) else nav().repeatShort(target.instruction)
+                    val turnText = if (spoken.isEmpty()) nav().spokenSign(target.spokenInstruction()) else nav().repeatShort(target.spokenInstruction())
                     events += NavEvent.Speak(turnText, interrupt = true)
                     events += NavEvent.Haptic(target.type) // firm, direction-coded buzz at the turn
                 }

@@ -31,7 +31,17 @@ data class Maneuver(
     // another a mile on). Ascending by [RoadRename.atMeters] from this maneuver. The banner and
     // the under-the-puck pill read the current name through [roadAt].
     val renames: List<RoadRename> = emptyList(),
+    // The same instruction with the road left OUT, built by the same per-language template rather
+    // than by stripping a tail (issue #596). Spoken instead of [instruction] when the user has
+    // turned street names off in spoken directions; the banner and the step list always keep the
+    // named form. Null where the router gave us no way to rebuild it (Google's abbreviated steps),
+    // in which case speech falls back to [instruction] and simply keeps saying the name.
+    val instructionNoRoad: String? = null,
 ) {
+    /** What the VOICE should say for this maneuver, honoring the spoken-street-names preference. */
+    fun spokenInstruction(): String =
+        if (app.vela.core.nav.SpokenRoadNames.enabled) instruction else instructionNoRoad ?: instruction
+
     /** The road (name, ref) you are on [traveledM] meters past this maneuver: the last rename
      *  already passed, else the road the maneuver itself entered. */
     fun roadAt(traveledM: Double): Pair<String?, String?> {

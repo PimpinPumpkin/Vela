@@ -63,6 +63,15 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
             // The top focusable control: Back routes its DOWN here, UP from here goes back to Back.
             switchModifier = topRow,
         )
+        // Only meaningful while something is being spoken at all.
+        if (!state.voiceMuted) {
+            ToggleRow(
+                label = stringResource(R.string.settings_spoken_road_names),
+                checked = app.vela.ui.SpokenRoadNames.on.value,
+                onCheckedChange = { app.vela.ui.SpokenRoadNames.set(context, it) },
+            )
+            Hint(stringResource(R.string.settings_spoken_road_names_hint))
+        }
         }
         Spacer(Modifier.height(4.dp))
         // Vela's own on-device neural voices - offer a one-tap download for whichever isn't

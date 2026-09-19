@@ -140,6 +140,7 @@ object ValhallaRouter {
                 raw += Maneuver(
                     type = RouteGeometry.osrmType(type, mod),
                     instruction = RouteGeometry.osrmPhrase(type, mod, road, null, null, rbExit),
+                    instructionNoRoad = RouteGeometry.osrmPhrase(type, mod, null, null, null, rbExit),
                     roundaboutExit = rbExit,
                     side = side,
                     location = at,
