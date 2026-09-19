@@ -8,7 +8,10 @@ import androidx.compose.runtime.mutableStateOf
  * Map-POI visibility + sizing preferences (user 2026-07-15). Same reactive-object pattern as
  * [Buildings3d]: Compose state the map layer reads live, persisted in vela_settings.
  *
- * - [showPois]: master switch for the ambient place layer AND the OSM fallback business POIs.
+ * - [showPois]: master switch for EVERY business layer on the browse map: the ambient place
+ *   layer, the open (Overture) places layer, and the OSM fallback business POIs. It predates the
+ *   open layer, and forgetting to extend it there was issue #597 - once the open source became the
+ *   default, turning the switch off still left those places drawn.
  *   Off = a clean basemap; searched results, transit stops and traffic controls still show
  *   (they have their own switches/behavior).
  * - [showTransit]: the canonical GTFS stop icons (and their per-viewport fetch).
