@@ -38,3 +38,20 @@ counters. Every number here is a floor, never a total.
 
 **The canary APK is deliberately absent.** Its asset is replaced on every push, so its counter is
 never older than the last commit.
+
+## The one counter that measures every channel
+
+The two `flock-cameras` assets are an accident worth protecting, because they see installs that
+release counters never can - F-Droid, canary, and anyone who simply has not updated:
+
+- `FlockCameras.refresh` runs once per process start, from `VelaApp.onCreate`, and ALWAYS fetches
+  `flock-manifest.json`. So that counter is **cold launches**.
+- It downloads `flock_cameras.bin` only when the hosted version beats the copy on disk. So that
+  counter is **distinct installs that have opened the app** since the dataset was last re-baked.
+- `flock-cameras.yml` re-bakes on Mondays at 08:17 UTC, and replacing an asset resets its counter.
+  Both figures therefore mean "since Monday morning", which makes them a WEEKLY ACTIVE INSTALL
+  reading rather than a cumulative total.
+
+**The snapshot cron is deliberately Monday 06:20 UTC, two hours BEFORE that bake**, so it records a
+full week just before the reset. Moving either job breaks the reading; if the bake time changes,
+move this one with it.

@@ -10,6 +10,9 @@ name: Reach snapshot
 
 on:
   schedule:
+    # Monday 06:20 UTC, two hours BEFORE flock-cameras.yml re-bakes at 08:17 and resets its
+    # counters. Those two assets are the only measure of reach that sees every channel (see
+    # docs/stats/README.md); snapshot them while they still hold the whole week.
     - cron: "20 6 * * 1"
   workflow_dispatch:
 
