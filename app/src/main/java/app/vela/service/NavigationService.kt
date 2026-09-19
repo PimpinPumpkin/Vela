@@ -351,12 +351,23 @@ class NavigationService : Service() {
 
     private fun ensureChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // DEFAULT importance with no sound and no buzz, which is what Google Maps' own
+            // navigation channel is. LOW would be quieter still, but the system files a LOW channel
+            // as "silent" and a phone set to hide silent notifications on the lock screen then hides
+            // the drive - which is the one place a live update is worth having. A foreground
+            // notification with ONLY_ALERT_ONCE and no sound makes no noise at DEFAULT either.
+            // (A channel's importance is fixed once it exists, so this is a new id; the old one is
+            // removed so it does not sit in Settings doing nothing.)
+            notificationManager().deleteNotificationChannel(OLD_CHANNEL_ID)
             notificationManager().createNotificationChannel(
                 NotificationChannel(
                     CHANNEL_ID,
                     getString(R.string.navservice_channel_name),
-                    NotificationManager.IMPORTANCE_LOW,
-                ),
+                    NotificationManager.IMPORTANCE_DEFAULT,
+                ).apply {
+                    setSound(null, null)
+                    enableVibration(false)
+                },
             )
             // HIGH so it pops as a heads-up, but explicitly soundless and buzz-free: the spoken
             // guidance is the audio channel, and a system ding on top of "turn right onto..."
@@ -385,7 +396,9 @@ class NavigationService : Service() {
         private const val TAG = "VelaNavService"
         private const val ACTION_STOP = "app.vela.service.NAV_STOP"
         private const val ACTION_PAUSE = "app.vela.service.NAV_PAUSE"
-        private const val CHANNEL_ID = "vela_nav"
+        private const val CHANNEL_ID = "vela_nav_drive"
+        /** The LOW-importance channel the drive used to live on, deleted on first run. */
+        private const val OLD_CHANNEL_ID = "vela_nav"
         private const val TURN_CHANNEL_ID = "vela_nav_turns"
         private const val NOTIF_ID = 42
 

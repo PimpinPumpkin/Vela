@@ -1885,7 +1885,12 @@ ports it rather than inventing a fourth:
   posts and renders correctly in the shade, and the system simply never raises the chip. Verified
   on a Pixel 9 (2026-09-19): every extra lands (`android.template=ProgressStyle`, `progressMax` in
   route meters, segments, tracker bitmap, `requestPromotedOngoing`, `shortCriticalText`), and the
-  chip appeared only once the permission was declared.
+  chip appeared only once the permission was declared. The drive's channel is DEFAULT importance
+  with no sound and no vibration, which is what Google Maps' own navigation channel is: LOW files it
+  as "silent", and a phone set to hide silent notifications on the lock screen hides the live update
+  exactly where it is most useful. A foreground notification with `ONLY_ALERT_ONCE` and no sound is
+  as quiet at DEFAULT as it was at LOW. Channel importance is fixed once the channel exists, so this
+  is a new id (`vela_nav_drive`) and the old one is deleted on first run.
 
 ### 10.3 D-pad operation
 
