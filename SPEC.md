@@ -1539,6 +1539,14 @@ applier is `app/offline/PmtilesPatch`.
   candidate: Guernsey and Jersey re-baked a day after the OSM-business source landed carried 2506 of
   4586 tiles (2.17 MB against a 3.3 MB archive) and was correctly refused. The number that matters is
   two bakes of the SAME script, and that is what `scripts/archive-churn.py` measures.
+- **Settings > Offline maps reports the archives too.** `offlineStorageBreakdown`'s "Offline places"
+  counts `files/poipacks` AND `files/places`; the archives were absent from the only storage screen
+  in the app, so a region's few hundred MB of places were invisible.
+- **The archive catalog is memoized for an hour, not forever.** `PmtilesRegionStore.manifest` runs on
+  every camera idle, so it caches; the cache EXPIRES (`MANIFEST_TTL_MS`) because a bake publishes a
+  new revision while the app is running, and a process that lives for days would otherwise never
+  offer the update or take the delta. Found on a device: a rebake published four minutes before the
+  Offline maps screen was opened, and the row still said there was nothing to update.
 - **Policy is the user's**: `ui/RegionUpdates` (never, the default until the path has been proven
   on a device / on Wi-Fi / on mobile data too),
   metered judged by the system rather than by which radio it is. A FULL re-download is never
