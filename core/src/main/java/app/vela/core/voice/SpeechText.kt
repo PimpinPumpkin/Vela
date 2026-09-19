@@ -102,6 +102,40 @@ object SpeechText {
         }
 
     /**
+     * Read a clock time as words: "6:00 PM" -> "six PM", "5:49 PM" -> "five forty nine PM",
+     * "12:05" -> "twelve oh five".
+     *
+     * The neural voice's phonemizer reads "5:49" as a measurement and says "five foot nine" (user
+     * 2026-09-18, from a drive: a shop closing at 6 was announced with the arrival time as a
+     * height). Times reach the voice from the closing-soon warning and the spoken ETA, and a colon
+     * between two numbers is the one shape that goes wrong, so it is spelled out before the model
+     * ever sees it. Same approach as the street ordinals above: fix the TEXT, do not fight the G2P.
+     *
+     * English only, and only where the whole token is a time: a bare "12:05" in other prose is rare
+     * and reading it as a clock is right anyway. A minute of 00 is dropped, the way people say it.
+     */
+    fun spokenClock(text: String): String =
+        CLOCK.replace(text) { m ->
+            val h = m.groupValues[1].toInt()
+            val min = m.groupValues[2].toInt()
+            val suffix = m.groupValues[3]
+            val minuteWords = when {
+                min == 0 -> ""
+                min < 10 -> " oh ${CARD[min]}"
+                else -> " ${twoDigitCardinal(min)}"
+            }
+            (twoDigitCardinal(h) + minuteWords + if (suffix.isBlank()) "" else " $suffix").trim()
+        }
+
+    /** 0-59 as words, for the hour and the minutes of a clock time. */
+    private fun twoDigitCardinal(n: Int): String = when {
+        n < 10 -> CARD[n]
+        n < 20 -> TEEN_CARD[n - 10]
+        n % 10 == 0 -> TENS_CARD[n / 10]
+        else -> "${TENS_CARD[n / 10]} ${CARD[n % 10]}"
+    }
+
+    /**
      * Clean a raw speech-to-text transcript into a search QUERY. Whisper (the on-device voice-search
      * ASR) is a general audio model: on non-speech audio (silence, a tap, background music) it emits
      * bracketed sound tags - "[music]", "[thud]", "[BLANK_AUDIO]" - instead of words. Those are never a
@@ -171,6 +205,14 @@ object SpeechText {
         "", "", "twentieth", "thirtieth", "fortieth",
         "fiftieth", "sixtieth", "seventieth", "eightieth", "ninetieth",
     )
+    // "6:49 PM" -> "six forty nine PM": the clock expansion needs teens as cardinals too.
+    private val TEEN_CARD = arrayOf(
+        "ten", "eleven", "twelve", "thirteen", "fourteen",
+        "fifteen", "sixteen", "seventeen", "eighteen", "nineteen",
+    )
+    // A clock time, with an optional AM/PM the app formats in the device's own locale. Anchored on
+    // a word boundary either side so "1:5" or a ratio in prose is left alone.
+    private val CLOCK = Regex("\\b([01]?\\d|2[0-3]):([0-5]\\d)(?:\\s?([AaPp]\\.?[Mm]\\.?))?\\b")
     private val TENS_CARD = arrayOf(
         "", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety",
     )

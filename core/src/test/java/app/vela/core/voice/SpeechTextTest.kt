@@ -224,4 +224,25 @@ class SpeechTextTest {
         assertEquals("depart 7:33 PM", SpeechText.spokenEnUnits("depart 7:33 PM"))
         assertEquals("Route 9 to H St", SpeechText.spokenEnUnits("Route 9 to H St"))
     }
+
+    @Test fun `a clock time is read as a time, not a measurement`() {
+        // The phonemizer read "5:49" as feet and inches on a real drive.
+        assertEquals("five forty nine PM", SpeechText.spokenClock("5:49 PM"))
+        assertEquals("six PM", SpeechText.spokenClock("6:00 PM"))
+        assertEquals("twelve oh five", SpeechText.spokenClock("12:05"))
+        assertEquals("seventeen oh nine", SpeechText.spokenClock("17:09"))
+        assertEquals("ten thirty AM", SpeechText.spokenClock("10:30 AM"))
+    }
+
+    @Test fun `it only rewrites what is actually a clock`() {
+        assertEquals("a 1:5 slope", SpeechText.spokenClock("a 1:5 slope"))
+        assertEquals("ratio 30:70", SpeechText.spokenClock("ratio 30:70"))
+    }
+
+    @Test fun `the whole sentence survives the rewrite`() {
+        assertEquals(
+            "Shop closes at six PM and you arrive around five forty nine PM",
+            SpeechText.spokenClock("Shop closes at 6:00 PM and you arrive around 5:49 PM"),
+        )
+    }
 }

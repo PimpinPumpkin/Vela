@@ -6729,8 +6729,11 @@ class MapViewModel @Inject constructor(
         const val CONTROLS_MIN_ZOOM = 16.0 // draw traffic lights/stop signs only when zoomed in this close
         const val SAT_DEEP_PROBE_ZOOM = 17.0 // probe deep-imagery availability once this close (tiles ready before the blur)
         // One glyph per intersection: per-approach OSM nodes within this radius merge before draw.
-        // Same 30 m the spoken pass-the-light clustering uses; keeps dense-grid neighbors separate.
-        const val CONTROLS_CLUSTER_M = 30.0
+        // 30 m was the spoken pass-the-light radius and it is too tight for a real four-way, where
+        // the stop line on each approach sits well back from the middle: a wide junction drew two
+        // lights where one in the center says the same thing (user 2026-09-18, from a drive). 45 m
+        // still keeps the next junction down a dense grid block separate.
+        const val CONTROLS_CLUSTER_M = 45.0
         const val CONTROLS_ROUTE_CAP = 800 // max controls from a route-corridor fetch (nearest-to-start wins) —
         // the corridor is thin so a whole drive stays modest; this is a dense-metro backstop, and the layer's
         // symbols are allowOverlap (no per-frame collision), so the cap can sit above the viewport one.
