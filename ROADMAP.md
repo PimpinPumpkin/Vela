@@ -432,6 +432,26 @@ it - and the same surface serves Google's Desktop Head Unit, an OpenAuto-style r
 aftermarket unit, an AAOS companion, and anyone else's experiment. It is useful before Gearslip
 works and it stays useful if Gearslip never does, which is the test for building it now.
 
+**Which SEAM depends on what Gearslip can consume, and that is not known yet.** Android Auto is a
+VIDEO protocol, not a web one: the phone renders frames, H.264 encodes them and ships them to the
+unit, which decodes. There is no browser on the other end, so "serve the UI over HTTP" adds a
+renderer rather than reusing one. Two shapes, and the tradeoff is real either way:
+
+- **Frames.** Vela hands out the bitmaps `CarMapRenderer` already produces. Reuses the tuned native
+  renderer, no second map engine, no compositing step. Needs Gearslip to accept an external frame
+  source.
+- **A URL.** Vela serves a car page and the client renders it in a WebView. Consumable by anything
+  that can show a URL, and Seb's own demo got a WebView onto a car screen, so Gearslip may simply
+  BE this shape. The cost is MapLibre GL JS instead of the native renderer plus a compositing pass,
+  which makes the map-render term worse. It is not the dominant term (on wireless the radio and the
+  encoder are) but it is the one term we would be choosing to inflate.
+
+**The half that does NOT depend on the answer is most of the work:** nav state out (what
+`ManeuverMapper` already reads from `NavSession`) and input back. Both transports need those, in
+the same shape. So the decision can wait for Gearslip to have a transport, and nothing is blocked
+by waiting. Frame pacing is worth saying once: a car screen has no use for 60 fps of map, and 30
+halves the encode.
+
 **Not scheduled.** The prep is the flavor split, which is useful on its own: it proves how much of
 Vela stands up with no Google at all, which is the direction the project has been walking anyway.
 
