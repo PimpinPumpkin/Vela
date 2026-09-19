@@ -17,6 +17,17 @@ import java.io.File
  */
 class PmtilesCompactTest {
 
+    private fun fixtures() = org.json.JSONObject(
+        javaClass.getResourceAsStream("/fixtures.json")!!.use { String(it.readBytes()) },
+    )
+
+    /** NB `javaClass` inside an `apply` block is the FILE's class, whose loader cannot see test
+     *  resources - it reads back null and the test dies in a null check far from the cause. */
+    private fun chainPatch(): File {
+        val bytes = javaClass.getResourceAsStream("/chain.vpatch")!!.use { it.readBytes() }
+        return File.createTempFile("vela-chain", ".vpatch").apply { writeBytes(bytes) }
+    }
+
     private fun fixture(): File {
         val bytes = javaClass.getResourceAsStream("/patched.pmtiles")!!.use { it.readBytes() }
         return File.createTempFile("vela-compact", ".pmtiles").apply { writeBytes(bytes) }
@@ -55,6 +66,29 @@ class PmtilesCompactTest {
         val again = PmtilesCompact.compact(file)
         assertTrue(again is PmtilesCompact.Outcome.Done)
         assertEquals("compacting twice must change nothing", once, file.length())
+    }
+
+    @Test fun `a second patch lands on an archive the first one already changed`() {
+        // The bug this pins: the patch used to ship a finished directory, whose offsets only
+        // described a byte-exact copy of the archive the bake diffed against. A phone that had
+        // taken one patch was then refused every later one and downloaded the region whole for
+        // ever - seen on a device before the plan format replaced it.
+        val file = fixture()
+        val patch = chainPatch()
+        val want = fixtures().getString("chain")
+
+        val out = PmtilesPatch.apply(file, patch)
+        assertTrue("patch refused: $out", out is PmtilesPatch.Outcome.Applied)
+        assertEquals(want, PmtilesPatch.fingerprint(file))
+    }
+
+    @Test fun `a second patch lands on a COMPACTED archive too`() {
+        val file = fixture()
+        assertTrue(PmtilesCompact.compact(file) is PmtilesCompact.Outcome.Done)
+        val patch = chainPatch()
+        val out = PmtilesPatch.apply(file, patch)
+        assertTrue("patch refused: $out", out is PmtilesPatch.Outcome.Applied)
+        assertEquals(fixtures().getString("chain"), PmtilesPatch.fingerprint(file))
     }
 
     @Test fun `a file that is not an archive is refused, and left alone`() {

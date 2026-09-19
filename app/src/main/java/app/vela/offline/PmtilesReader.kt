@@ -238,7 +238,7 @@ object PmtilesReader {
         return List(n) { Entry(ids[it], offsets[it], lengths[it], runs[it]) }
     }
 
-    private class Varints(private val b: ByteArray) {
+    internal class Varints(private val b: ByteArray) {
         private var i = 0
         fun hasMore() = i < b.size
         fun position() = i
@@ -294,7 +294,7 @@ object PmtilesReader {
         return x to y
     }
 
-    private fun le64(b: ByteArray, at: Int): Long {
+    internal fun le64(b: ByteArray, at: Int): Long {
         var v = 0L
         for (i in 7 downTo 0) v = (v shl 8) or (b[at + i].toLong() and 0xFF)
         return v

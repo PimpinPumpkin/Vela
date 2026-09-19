@@ -30,21 +30,19 @@ object PmtilesPatch {
     private const val TAG = "VelaDelta"
     private const val HEADER_LEN = 127
     private val MAGIC = "VELAPTCH".toByteArray()
-    private const val VERSION = 1
+    private const val VERSION = 2
 
     data class Plan(
         val fromRev: Int,
         val toRev: Int,
-        val fromSize: Long,
-        val fromHeaderSha: String,
-        val tileDataOffset: Long,
+        val internalCompression: Int,
         val tileLengths: IntArray,
-        val dirLength: Int,
         val toFingerprint: String?,
         val deadBytes: Long,
-        /** Where the directory sits in the PATCH. It comes before the tile blobs there and has to
-         *  go after them in the archive, so the applier buffers it. */
-        val dirOffset: Long,
+        /** Where the directory PLAN sits in the patch: what the new directory says, minus the
+         *  offsets, which only the applier can know (see `scripts/pmtiles-make-patch.py`). */
+        val planOffset: Long,
+        val planLength: Int,
         /** Where the first tile blob sits in the patch. */
         val bodyOffset: Long,
     )
@@ -70,20 +68,18 @@ object PmtilesPatch {
             }
             val head = ByteArray(le32(f)).also { f.readFully(it) }
             val json = org.json.JSONObject(String(head))
-            val dirLen = le32(f)
+            val planLen = le32(f)
             val tiles = json.getJSONArray("tiles")
             Plan(
                 fromRev = json.optInt("fromRev"),
                 toRev = json.optInt("toRev"),
-                fromSize = json.getLong("fromSize"),
-                fromHeaderSha = json.getString("fromHeaderSha"),
-                tileDataOffset = json.getLong("tileDataOffset"),
+                internalCompression = json.optInt("internalCompression", 2),
                 tileLengths = IntArray(tiles.length()) { tiles.getJSONObject(it).getInt("len") },
-                dirLength = dirLen,
                 toFingerprint = json.optString("toFingerprint").takeIf { it.isNotBlank() },
                 deadBytes = json.optLong("deadBytes"),
-                dirOffset = f.filePointer,
-                bodyOffset = f.filePointer + dirLen,
+                planOffset = f.filePointer,
+                planLength = planLen,
+                bodyOffset = f.filePointer + planLen,
             )
         }
     }.getOrNull()
@@ -95,38 +91,63 @@ object PmtilesPatch {
      */
     fun apply(archive: File, patch: File, verify: Boolean = true): Outcome {
         val plan = read(patch) ?: return Outcome.Refused("unreadable patch")
-        if (archive.length() != plan.fromSize) {
-            return Outcome.Refused("archive is ${archive.length()} bytes, patch wants ${plan.fromSize}")
-        }
         val head = runCatching {
             RandomAccessFile(archive, "r").use { a -> ByteArray(HEADER_LEN).also { a.readFully(it) } }
         }.getOrNull() ?: return Outcome.Refused("cannot read the archive header")
-        if (sha256(head) != plan.fromHeaderSha) return Outcome.Refused("archive is not the revision the patch expects")
+        val tileDataOffset = PmtilesReader.le64(head, 56)
+        val mine = PmtilesReader.entries(archive) ?: return Outcome.Refused("cannot read the archive directory")
+        val have = HashMap<Long, PmtilesReader.Entry>(mine.size * 2)
+        for (e in mine) have[e.id] = e
+
+        // The plan names no offsets: each entry is either a tile this archive already holds under
+        // that id, or the next blob in the patch. That is what lets a patch land on an archive an
+        // earlier patch (or a compaction) has already moved things around in.
+        val rows = readPlan(patch, plan) ?: return Outcome.Refused("unreadable patch plan")
+        val entries = ArrayList<PmtilesReader.Entry>(rows.size)
+        var carriedAt = archive.length() - tileDataOffset
+        var carriedTiles = 0
+        for (r in rows) {
+            if (r.carried) {
+                entries.add(PmtilesReader.Entry(r.id, carriedAt, r.length, r.runLength))
+                carriedAt += r.length
+                carriedTiles++
+            } else {
+                val e = have[r.id]
+                // Cheap and exact: the archive must hold every tile the patch expects it to keep,
+                // at the length it expects. It catches the wrong file before a byte is written,
+                // and the fingerprint at the end catches anything subtler.
+                if (e == null || e.length != r.length) {
+                    return Outcome.Refused("archive does not hold the tile ${r.id} this patch keeps")
+                }
+                entries.add(PmtilesReader.Entry(r.id, e.offset, r.length, r.runLength))
+            }
+        }
+        if (carriedTiles != plan.tileLengths.size) {
+            return Outcome.Refused("plan carries $carriedTiles tiles, patch ships ${plan.tileLengths.size}")
+        }
+        val directory = PmtilesCompact.writeDirectory(entries, plan.internalCompression)
+            ?: return Outcome.Refused("cannot write a ${plan.internalCompression} directory")
 
         val before = archive.length()
-        // Append, PROVE, then commit. The fingerprint is computed against the directory the patch
-        // just wrote, while the header still describes the old archive, so a patch that does not
+        // Append, PROVE, then commit. The fingerprint is computed against the directory just
+        // written, while the header still describes the old archive, so a patch that does not
         // produce what it promised costs a truncate rather than a broken map.
         val applied = runCatching {
             RandomAccessFile(patch, "r").use { p ->
-                // The patch carries the directory before the tiles (the producer knows its size
-                // only after it has laid the tiles out); the archive needs it after them.
-                p.seek(plan.dirOffset)
-                val dir = ByteArray(plan.dirLength).also { p.readFully(it) }
                 p.seek(plan.bodyOffset)
                 RandomAccessFile(archive, "rw").use { a ->
                     a.seek(before)
                     val buf = ByteArray(1 shl 16)
                     for (len in plan.tileLengths) copy(p, a, len, buf)
                     val rootAt = a.filePointer
-                    a.write(dir)
+                    a.write(directory)
                     val eof = a.filePointer
                     // Everything the old header describes is still intact at this point. Force it
                     // to disk BEFORE the header moves, or a power cut between the two leaves a
                     // header pointing at a directory that was never written.
                     a.fd.sync()
                     if (verify && plan.toFingerprint != null) {
-                        val got = fingerprintAt(archive, rootAt, plan.dirLength.toLong(), plan.tileDataOffset, head[97].toInt() and 0xFF)
+                        val got = fingerprintAt(archive, rootAt, directory.size.toLong(), tileDataOffset, plan.internalCompression)
                         if (got != plan.toFingerprint) {
                             Log.d(TAG, "patch would produce $got, expected ${plan.toFingerprint}; rolling back")
                             a.channel.truncate(before)
@@ -136,10 +157,10 @@ object PmtilesPatch {
                     }
                     val newHead = head.copyOf()
                     putLe64(newHead, 8, rootAt)
-                    putLe64(newHead, 16, plan.dirLength.toLong())
+                    putLe64(newHead, 16, directory.size.toLong())
                     putLe64(newHead, 40, 0)   // the patch folds the leaves into one root
                     putLe64(newHead, 48, 0)
-                    putLe64(newHead, 64, eof - plan.tileDataOffset)
+                    putLe64(newHead, 64, eof - tileDataOffset)
                     newHead[96] = 0           // no longer clustered: appended tiles are out of order
                     a.seek(0)
                     a.write(newHead)
@@ -154,6 +175,32 @@ object PmtilesPatch {
             "rev ${plan.fromRev} -> ${plan.toRev}, grew ${grew / 1024} KB, dead ${plan.deadBytes / 1024} KB")
         return Outcome.Applied(plan.tileLengths.size, grew, plan.deadBytes)
     }
+
+    private class Row(val id: Long, val runLength: Long, val length: Long, val carried: Boolean)
+
+    /** The plan's four varint columns: ids (delta encoded), run lengths, tile lengths, and whether
+     *  the tile rides in this patch or is already in the archive. */
+    private fun readPlan(patch: File, plan: Plan): List<Row>? = runCatching {
+        val raw = RandomAccessFile(patch, "r").use { f ->
+            f.seek(plan.planOffset)
+            ByteArray(plan.planLength).also { f.readFully(it) }
+        }
+        val bytes = when (plan.internalCompression) {
+            1 -> raw
+            2 -> java.util.zip.GZIPInputStream(raw.inputStream()).use { it.readBytes() }
+            else -> return null
+        }
+        val r = PmtilesReader.Varints(bytes)
+        val n = r.next().toInt()
+        if (n <= 0 || n > 8_000_000) return null
+        val ids = LongArray(n)
+        var last = 0L
+        for (i in 0 until n) { last += r.next(); ids[i] = last }
+        val runs = LongArray(n) { r.next() }
+        val lengths = LongArray(n) { r.next() }
+        val carried = LongArray(n) { r.next() }
+        List(n) { Row(ids[it], runs[it], lengths[it], carried[it] != 0L) }
+    }.getOrNull()
 
     /** A hash over every tile the archive holds, in id order, independent of where they sit on
      *  disk. Equal fingerprints mean equal maps. Null when the archive cannot be read. */

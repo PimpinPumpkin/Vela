@@ -111,8 +111,9 @@ object PmtilesCompact {
         return Outcome.Done(before, file.length())
     }
 
-    /** The directory as PMTiles writes it: counts and then four varint columns, gzipped. */
-    private fun writeDirectory(entries: List<PmtilesReader.Entry>, compression: Int): ByteArray? {
+    /** The directory as PMTiles writes it: counts and then four varint columns, gzipped.
+     *  Shared with the patch applier, which also has to build a directory of its own now. */
+    internal fun writeDirectory(entries: List<PmtilesReader.Entry>, compression: Int): ByteArray? {
         val body = java.io.ByteArrayOutputStream(entries.size * 8)
         putVarint(body, entries.size.toLong())
         var last = 0L

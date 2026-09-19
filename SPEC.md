@@ -1525,6 +1525,14 @@ applier is `app/offline/PmtilesPatch`.
   the region. The archive becomes unclustered, which MapLibre reads (verified on a device with a
   152 MB region archive; `pmtiles verify` refuses it, because the header's length fields stop
   accounting for the whole file once there is dead space in it).
+- **The patch names no offsets.** It carries the new directory's ids, run lengths and tile lengths
+  plus one flag per entry: the tile rides in this patch, or the archive already holds it under that
+  id. The applier resolves those against ITS OWN file and writes the directory itself. The first
+  format shipped the finished directory, whose offsets only described a byte-exact copy of the
+  archive the bake diffed against, so a phone that had taken one patch was refused every later one
+  and downloaded the region whole for ever - found on a device, not in review. The applier also
+  reads the tile-data offset from the archive's own header rather than the patch's, which is what
+  lets a COMPACTED archive take the next patch.
 - **Proven before it is committed**: the fingerprint (SHA-256 over sorted tile ids, run lengths and
   tile hashes, phone-computable because Android has no blake2b) is computed against the directory
   the patch just wrote, while the header still describes the old archive. A mismatch truncates back
