@@ -1533,7 +1533,12 @@ applier is `app/offline/PmtilesPatch`.
 - **The bake publishes a patch only if it applies.** It diffs against the archive it is replacing,
   applies the result to a copy, checks the fingerprint, and only then uploads it and adds
   `delta: {fromRev, url, sizeMb}` to the manifest row. Over a third of the archive, it is not worth
-  a second code path and is skipped.
+  a second code path and is skipped. Two bakes on the same UTC day share a revision and so skip the
+  patch entirely; the workflow's `rev` input overrides the stamp, which is how the path is exercised
+  on demand instead of waiting a night. A rebake that also carries a BAKE CHANGE is not a delta
+  candidate: Guernsey and Jersey re-baked a day after the OSM-business source landed carried 2506 of
+  4586 tiles (2.17 MB against a 3.3 MB archive) and was correctly refused. The number that matters is
+  two bakes of the SAME script, and that is what `scripts/archive-churn.py` measures.
 - **Policy is the user's**: `ui/RegionUpdates` (never, the default until the path has been proven
   on a device / on Wi-Fi / on mobile data too),
   metered judged by the system rather than by which radio it is. A FULL re-download is never
@@ -1859,7 +1864,13 @@ ports it rather than inventing a fourth:
   phone), and each remaining stop is a point on it. The chip's critical text is the distance to the
   next turn, the one number worth a glance while moving. Everything is additive and guarded: below
   API 36, with no route, or if anything throws, the notification is exactly what it was, and
-  promotion is a REQUEST the system may refuse.
+  promotion is a REQUEST the system may refuse. The request only counts when the app holds
+  `android.permission.POST_PROMOTED_NOTIFICATIONS` (normal, with an app op, so the user can turn
+  the promotion off in the app's notification settings): without it the ProgressStyle notification
+  posts and renders correctly in the shade, and the system simply never raises the chip. Verified
+  on a Pixel 9 (2026-09-19): every extra lands (`android.template=ProgressStyle`, `progressMax` in
+  route meters, segments, tracker bitmap, `requestPromotedOngoing`, `shortCriticalText`), and the
+  chip appeared only once the permission was declared.
 
 ### 10.3 D-pad operation
 

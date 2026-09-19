@@ -3919,8 +3919,10 @@ Gotchas:
   route line, points = remaining stops, `setShortCriticalText` = distance to the next turn, then
   `setRequestPromotedOngoing(true)`. Needs androidx core 1.17 (compat class, no raw platform API)
   and compileSdk 36; targetSdk stays 35 on purpose. Guarded by `Build.VERSION.SDK_INT >= 36` and a
-  runCatching, so every older device and every failure gets exactly the old notification. NOT yet
-  seen on an Android 16 device - the 4a is API 34.
+  runCatching, so every older device and every failure gets exactly the old notification.
+  **The promotion also needs `android.permission.POST_PROMOTED_NOTIFICATIONS` in the manifest** -
+  without it the styled notification posts fine and the chip never appears, which is exactly what
+  the first Pixel 9 run showed (2026-09-19): the extras were all correct, the status bar was bare.
 - **A FASTER-ROUTE OFFER AUTO-RESOLVES (issue #594, 2026-09-18, benwiley4000):** it used to sit
   until answered, so a driver had to answer a prompt covering the map. `FasterRouteCard` drains a
   bar along its bottom edge over 10 s for everyone, FROZEN while focus is anywhere on the card

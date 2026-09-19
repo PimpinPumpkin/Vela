@@ -30,6 +30,10 @@ on:
         description: "Which half of the catalog to bake when `only` is blank: a = first half by id, b = second half, blank = all (fails past 256 regions, the matrix cap)"
         required: false
         default: ""
+      rev:
+        description: "Revision stamp to publish as (blank = today, UTC). Two bakes on the same day would otherwise share a revision, which skips the patch; set this to test the delta path."
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -179,6 +183,7 @@ jobs:
           mkdir -p entries
           SIZE=$(stat -c %s "places-${{ matrix.id }}.pmtiles")
           REV=$(date -u +%Y%m%d)
+          [ -n "${{ github.event.inputs.rev }}" ] && REV="${{ github.event.inputs.rev }}"
           DELTA=null
           # A PATCH AGAINST WHAT IS PUBLISHED. A week of edits moves about 1% of a region's tiles,
           # so a phone that already has the old archive can take a few MB instead of a few hundred
@@ -202,7 +207,7 @@ jobs:
                   echo "patch $PNAME: $(echo "scale=1; $PSIZE/1000000" | bc) MB of $(echo "scale=1; $SIZE/1000000" | bc) MB"
                 fi
               else
-                echo "patch not published: too big or it did not verify"
+                echo "patch not published: $(echo "scale=1; $PSIZE/1000000" | bc) MB against a $(echo "scale=1; $SIZE/1000000" | bc) MB archive is too big, or it did not verify"
               fi
             fi
             rm -f check.pmtiles prev.pmtiles patch.vpatch
