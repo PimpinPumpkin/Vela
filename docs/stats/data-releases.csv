@@ -1,0 +1,15 @@
+snapshot,tag,assets,downloads,kind
+2026-09-19,address-overlays,53,110197,streamed
+2026-09-19,asr-models,4,971,downloaded
+2026-09-19,basemap-tiles,415,612,downloaded
+2026-09-19,building-overlays,361,246405,streamed
+2026-09-19,flock-cameras,2,8840,downloaded
+2026-09-19,map-fonts,1,662,downloaded
+2026-09-19,maxspeed-overlays,51,110205,streamed
+2026-09-19,obf-regions,416,2393,downloaded
+2026-09-19,obf-runtime,4,3331,ci
+2026-09-19,obf-tools,1,1021,ci
+2026-09-19,places-overlays,418,2595,streamed
+2026-09-19,poi-packs,257,3134,downloaded
+2026-09-19,road-features,425,3494,downloaded
+2026-09-19,tts-runtime,1,1473,ci
