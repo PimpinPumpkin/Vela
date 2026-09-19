@@ -881,8 +881,13 @@ renderer then sat at 89 percent of a core. The Developer row states the date it 
   basemap layer. Per crossing street, the pass computes where it meets the route window (first
   proper crossing in route order, else a T-junction end within 25 m, 60 m for a next-turn
   target), moves `NAV_XLABEL_OFFSET_M` (35 m) up that street to the side that ends farther from
-  the route, trying 1x, 1.8x and 3x offsets on both sides and keeping the first with clearance,
-  and uploads points with a `tier` property carrying the class split and zoom gates. The pass
+  the route, trying a ladder of offsets on both sides and keeping the first with clearance,
+  and uploads points with a `tier` property carrying the class split and zoom gates. Clearance is
+  measured from the route to the bubble's ANCHOR, which is the tip of its tail; the chip body sits
+  above that point and is wider than it, so the on-screen gap is always smaller than
+  `NAV_XLABEL_CLEAR_M` (44 m) and shrinks further with camera tilt. Below `NAV_XLABEL_MIN_CLEAR_M`
+  (26 m) no callout is drawn at all, because a chip clipping the road you are driving is worse than
+  a missing street name. The pass
   runs once per 400 m quantum of progress or when the upcoming turn targets change, never on a
   short timer, and a quantum is only marked done once something was placed.
 
