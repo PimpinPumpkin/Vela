@@ -339,6 +339,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_parking_history to SettingsSection.SAVED_PLACES,
     // Voice
     R.string.settings_spoken_directions to SettingsSection.VOICE,
+    R.string.settings_spoken_road_names to SettingsSection.VOICE,
     R.string.settings_voice_library to SettingsSection.VOICE,
     R.string.settings_voice_advanced to SettingsSection.VOICE,
     R.string.settings_voice_test to SettingsSection.VOICE,
