@@ -700,8 +700,11 @@ SAME_COURSE_M                    250   within this of the current line is the SA
 
 **The offer always resolves itself** (issue #594). It used to wait for an answer, which is a card
 over part of the map asking a driver to decide with their hands on the wheel. A bar across the
-bottom of the card drains over 10 s (25 s in key-driven mode, where reaching either button is
-several presses) and then acts: by default it TAKES the route, which is what the offer exists for
+bottom of the card drains over 10 s, the same however the UI is driven, and focus landing anywhere
+on the card FREEZES it until focus leaves. A longer key-driven window was tried and argued down by
+the reporter: someone driving with keys is less likely to answer at all, so extra time mostly means
+the interruption sits on screen longer, while stopping the clock when they reach for it gives time
+exactly to whoever wants it. Then it acts: by default it TAKES the route, which is what the offer exists for
 and what Google does, and `FasterRouteAuto` off dismisses it instead. Leaving it on screen is not
 one of the choices. The countdown is keyed on the offer itself, so the ETA moving or the speed
 ticking cannot hand the driver their ten seconds back, and it is read in the draw phase so it never
