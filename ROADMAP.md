@@ -666,23 +666,32 @@ project's core promise is that neither exists:
 
 ## Queued near-term
 
-- **Bake the Microsoft footprints INTO the basemap archive, minus what OSM already has (user
-  2026-09-18).** Today a phone pulls two things for one picture: the basemap archive (planetiler,
-  OSM) and the building overlay (Microsoft footprints, its own release and its own PMTiles), and
-  then spends render-time work deciding which to show, because the overlay is only wanted where OSM
-  is thin. `runOvlGate` probes rendered OSM coverage per viewport to make that call, with three
-  hard-won rules behind it (probe off the idle event, measure by AREA not feature count, reveal
-  only after a finished render). All of that exists because the two datasets meet on the phone.
-  They could meet in the bake instead. Straight concatenation is the wrong version of this: a
-  state's MS overlay is about as big as its basemap, so a naive merge roughly doubles every
-  download for something only needed in the gaps. SUBTRACT at bake time: drop every MS footprint
-  that a nearby OSM building already covers, and emit what is left as a second source-layer in the
-  same archive. Then the download is one file, barely bigger, the app drops a whole source and its
-  manifest, and the viewport gate can go, because the data no longer overlaps. Open questions worth
-  measuring before building: how much of the MS set survives the subtraction in a well-mapped
-  region versus a new suburb (that ratio is the whole case), whether tile-join can do the merge or
-  planetiler needs a custom profile, and what happens to regions that have an overlay but no
-  basemap archive yet.
+- **Bake the Microsoft footprints INTO the basemap archive (MEASURED 2026-09-18; the premise did
+  not hold).** The idea: subtract the footprints OpenStreetMap already has, merge the rest into the
+  basemap archive as the same `building` layer, and drop both the second download and the
+  render-time coverage gate. Prototyped on Delaware against the real archives:
+
+  | | |
+  | --- | --- |
+  | Microsoft footprints already mapped in OSM | **12%** (900 sampled against all 112,408 OSM buildings in the state) |
+  | basemap archive / overlay / merged | 20.5 MB / 22.0 MB / **42.4 MB** |
+  | `tile-join` of the two | 6 seconds, layers merge by name |
+
+  So subtraction removes about an eighth, not most, and a merged archive is roughly DOUBLE. That is
+  not a surprise in hindsight: US OSM building coverage is thin, which is the whole reason the
+  overlay exists. The merge saves no bytes at all (both sides are already compressed tiles: 42.4
+  merged vs 42.5 apart).
+
+  What it would still buy: one source instead of two on the phone, and a downloaded REGION would
+  gain real buildings, which today it does not get at all (only a saved viewport area pulls the
+  overlay). What it cannot buy: deleting `runOvlGate`, because ONLINE the basemap is OpenFreeMap's
+  and the overlay still has to stream separately; the gate could only be skipped when a merged
+  local archive is in use.
+
+  **Cheaper route to the same offline result:** have a region download pull the building overlay
+  the way a saved area already does. Identical bytes, no bake change, no format coupling between
+  the two datasets. The merge is then a tidiness win (one file, one manifest) rather than a size
+  one, and worth doing only if the second source is itself the problem.
 
 - **The neural voice's phonemizer is the weak link (2026-09-18, from a drive).** espeak's G2P sits
   in front of the Piper model and it reads text that is not prose: "5:49 PM" came out as a height,
