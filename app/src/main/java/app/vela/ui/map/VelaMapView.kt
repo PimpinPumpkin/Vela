@@ -5293,12 +5293,28 @@ private fun roadLabelTextField(): Expression =
         Expression.get("name")
     }
 
-/** The OpenMapTiles field for the UI language, with the one code that differs from the tag OSM
- *  uses: Android still reports Hebrew as `iw`, the tiles carry `name:he`. */
-private fun uiLangTagField(): Expression {
-    val lang = app.vela.ui.AppLocale.effective().language.lowercase()
-    return Expression.get("name:" + if (lang == "iw") "he" else lang)
+/** The OpenMapTiles name fields for the UI language, most specific first.
+ *
+ *  Two codes do not map straight through. Android still reports Hebrew as `iw` while the tiles
+ *  carry `name:he`. And Chinese splits by SCRIPT, not by language: a Traditional reader asking for
+ *  `name:zh` gets Simplified where the tiles carry it, so `name:zh-Hant` is tried first for them
+ *  and falls through where OSM has not tagged it. Same script split [NavStringsRegistry.tagOf]
+ *  makes for the nav tables. */
+private fun uiLangTagFields(): List<Expression> {
+    val locale = app.vela.ui.AppLocale.effective()
+    val lang = locale.language.lowercase()
+    val tags = when {
+        lang == "iw" -> listOf("he")
+        lang == "zh" && isTraditionalChinese(locale) -> listOf("zh-Hant", "zh")
+        else -> listOf(lang)
+    }
+    return tags.map { Expression.get("name:$it") }
 }
+
+/** Traditional where the locale says so by script, or by one of the regions that use it. */
+private fun isTraditionalChinese(locale: java.util.Locale): Boolean =
+    locale.script.equals("Hant", ignoreCase = true) ||
+        locale.country.uppercase() in setOf("TW", "HK", "MO")
 
 /** The textField for a PLACE label (country, state, city, town, village).
  *
@@ -5307,18 +5323,21 @@ private fun uiLangTagField(): Expression {
  *  name, in the reader's own language. The UI language wins where the tiles carry it; a Latin-script
  *  reader then falls back through the English name (both spellings OpenMapTiles and Liberty use) and
  *  the romanized one, and everyone lands on the local `name` when nothing else is there. */
-private fun placeLabelTextField(): Expression =
-    if (uiWantsLatinLabels()) {
-        Expression.coalesce(
-            uiLangTagField(),
+private fun placeLabelTextField(): Expression {
+    val own = uiLangTagFields()
+    val rest = if (uiWantsLatinLabels()) {
+        listOf(
             Expression.get("name:en"),
             Expression.get("name_en"),
             Expression.get("name:latin"),
             Expression.get("name"),
         )
     } else {
-        Expression.coalesce(uiLangTagField(), Expression.get("name"))
+        // No transliteration for a reader of another script: their own tag, then the local name.
+        listOf(Expression.get("name"))
     }
+    return Expression.coalesce(*(own + rest).toTypedArray())
+}
 
 /** Liberty's `place` source-layer labels, coarsest first. */
 private val PLACE_LABEL_LAYERS = listOf(

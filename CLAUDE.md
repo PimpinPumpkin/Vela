@@ -1847,12 +1847,17 @@ Defaults that make the safe path the easy one:
   **PLACE labels follow the UI LANGUAGE (issue #598, 2026-09-19):** Liberty stacks `name:latin` over
   `name:nonlatin` where both exist, so an English phone drew a Hebrew or Japanese city twice, once
   in a script its reader cannot use. `placeLabelTextField()` coalesces the UI language's own tag
-  first (`uiLangTagField`, which maps Android's legacy `iw` to the tiles' `name:he`), then for a
+  first (`uiLangTagFields`), then for a
   Latin-script reader `name:en`, Liberty's `name_en`, `name:latin`, and finally the local `name`;
   a non-Latin reader gets their tag then the local name, never a transliteration. Applied to the
   nine `place` layers (`PLACE_LABEL_LAYERS`) from `applyMapTheme`, NOT from the four palette
   functions, because the text does not change with the colors; a language change recreates the
-  activity, which reloads the style and runs it again.
+  activity, which reloads the style and runs it again. TWO codes do not map straight through:
+  Android still reports Hebrew as `iw` while the tiles carry `name:he`, and Chinese splits by
+  SCRIPT rather than language, so a Traditional reader (locale script Hant, or country TW/HK/MO)
+  asks for `name:zh-Hant` before `name:zh` and falls through where OSM has not tagged it - the
+  same split `NavStringsRegistry.tagOf` makes for the nav tables. Device-verified over Tokyo:
+  every `place` label draws one Latin line where it used to draw a stacked pair.
   `SpokenScript.forVoice(text, lang, dict)` swaps a known local name for its real Latin form FIRST, ICU only
   for the rest; `SpokenScript.forDisplay(text, uiLang, dict)` does the same for the banner + steps but with
   NO ICU fallback (a skeleton on a sign reads broken - why the earlier ICU display romanization was
