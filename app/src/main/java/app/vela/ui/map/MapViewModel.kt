@@ -5880,8 +5880,9 @@ class MapViewModel @Inject constructor(
     }
 
     private var basemapArchiveJob: Job? = null
+    private var lastBasemapSwapMs = 0L
 
-    private fun pickBasemapArchive(center: LatLng?) {
+    private suspend fun pickBasemapArchive(center: LatLng?) {
         val file = basemapStore.installedFor(center)
         // A SHALLOW archive (baked a zoom level short because the full bake would pass GitHub's
         // 2 GiB asset limit) draws as a blurred version of the same map once you are past its
@@ -5893,6 +5894,15 @@ class MapViewModel @Inject constructor(
         if (shallow) android.util.Log.i("VelaBasemap", "installed basemap is shallow (max zoom < ${app.vela.offline.BasemapTileStore.FULL_MAP_ZOOM}); using it only offline")
         val uri = usable?.let { "pmtiles://file://${it.absolutePath}" }
         if (uri != _state.value.basemapArchive) {
+            // Swapping the source re-points every basemap layer, which re-tiles and re-lays out the
+            // whole map: a visible freeze. At the edge of a downloaded region the honest answer
+            // genuinely changes as the view crosses the data, so without a floor on how often that
+            // can happen, panning along the border stutters on every camera idle (issue #552,
+            // HirschBerge). A newer camera idle cancels this job outright, so waiting here can only
+            // ever delay a swap the view still wants.
+            val since = android.os.SystemClock.elapsedRealtime() - lastBasemapSwapMs
+            if (since < BASEMAP_SWAP_COOLDOWN_MS) kotlinx.coroutines.delay(BASEMAP_SWAP_COOLDOWN_MS - since)
+            lastBasemapSwapMs = android.os.SystemClock.elapsedRealtime()
             val fonts = app.vela.offline.GlyphPackStore.installed(appContext)
             android.util.Log.i("VelaBasemap", "offline basemap for the view: ${uri?.substringAfterLast('/') ?: "none"} (glyph pack installed=$fonts)")
             _state.update { it.copy(basemapArchive = uri) }
@@ -6766,6 +6776,10 @@ class MapViewModel @Inject constructor(
         private const val ROUTING_OFFER_DONE = "routing_offer_done"
         const val KEY_DISMISSED = "dismissed"
         const val CONTROLS_MIN_ZOOM = 16.0 // draw traffic lights/stop signs only when zoomed in this close
+        /** The least time between two offline-basemap source swaps. A swap re-points every basemap
+         *  layer and re-lays out the map, so at a downloaded region's edge this is what keeps a pan
+         *  along the border from stuttering on every camera idle (issue #552). */
+        const val BASEMAP_SWAP_COOLDOWN_MS = 2_000L
         const val SAT_DEEP_PROBE_ZOOM = 17.0 // probe deep-imagery availability once this close (tiles ready before the blur)
         // One glyph per intersection: per-approach OSM nodes within this radius merge before draw.
         // 30 m was the spoken pass-the-light radius and it is too tight for a real four-way, where

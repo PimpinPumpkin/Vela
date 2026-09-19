@@ -63,18 +63,34 @@ class BasemapTileStore @Inject constructor(
             .sortedBy { (id, _) -> index[id]?.let { b -> (b[2] - b[0]) * (b[3] - b[1]) } ?: Double.MAX_VALUE }
         if (covering.isEmpty()) return null
         val (tx, ty) = PmtilesReader.tileOf(c.lat, c.lng, COVERAGE_PROBE_Z)
-        covering.firstOrNull { (_, f) -> coverageCache.get(probeKey(f, tx, ty)) ?: probe(f, tx, ty) }
-            ?.let { return it.value }
-        return covering.first().value
+        // "Cannot tell" and "definitely no roads here" are NOT the same answer, and collapsing them
+        // was the second half of issue #552: past a region's real data but still inside its
+        // bounding box, every probe said a definite no and the pick mounted the archive regardless,
+        // painting an empty map over streamed tiles that were about to arrive. Crossing the box
+        // edge then unmounted it, so panning along a download's border alternated gray and network
+        // (HirschBerge). A definite no from everything that could cover the point means NOTHING
+        // here is worth mounting; only an archive we could not READ leaves the old rule in charge,
+        // because that is the case where asking told us nothing.
+        var unreadable = false
+        for ((_, f) in covering) {
+            when (coverage(f, tx, ty)) {
+                true -> return f
+                null -> unreadable = true
+                false -> Unit
+            }
+        }
+        return if (unreadable) covering.first().value else null
     }
 
     private fun probeKey(f: File, x: Int, y: Int) = "${f.name}|$x|$y"
 
-    private fun probe(f: File, x: Int, y: Int): Boolean {
+    /** True with roads, false definitely without, null when the file could not answer. */
+    private fun coverage(f: File, x: Int, y: Int): Boolean? {
+        coverageCache.get(probeKey(f, x, y))?.let { return it }
         val answer = PmtilesReader.hasRoads(f, COVERAGE_PROBE_Z, x, y)
         // Only a definite answer is remembered: "cannot tell" must not harden into "no".
         if (answer != null) coverageCache.put(probeKey(f, x, y), answer)
-        return answer == true
+        return answer
     }
 
     /** Probes are memoized per archive and tile: this runs on every camera idle, and the answer for
