@@ -1,0 +1,102 @@
+name: World low-zoom probe
+
+# MEASUREMENT, not a published artifact. Organic Maps ships a ~39 MB world overview so a fresh
+# install is never a blank screen; the question is what the same thing costs in the OpenMapTiles
+# schema Vela already renders, and where the zoom line should sit.
+#
+# The trick is that at low zoom the OpenMapTiles layers that matter (water, boundary, place) come
+# from planetiler's NATURAL EARTH base data, which is global and downloaded anyway, NOT from the
+# OSM extract. So a bake with a tiny OSM input and world bounds measures the global floor without
+# importing the planet. Roads at these zooms are OSM-derived and will be missing outside the tiny
+# extract; that is expected, and it is the thing the zoom line buys.
+#
+# Dispatch it, read the job summary. Nothing is published and nothing on a phone changes.
+
+on:
+  workflow_dispatch:
+    inputs:
+      maxzoom:
+        description: "Top zoom to bake (6 is Natural Earth territory and cheap; 8 starts wanting the planet)"
+        required: false
+        default: "6"
+
+permissions:
+  contents: read
+
+concurrency: world-lowzoom
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Cache planetiler base data
+        uses: actions/cache@v4
+        with:
+          path: data/sources
+          key: planetiler-sources-v1
+      - name: Fetch planetiler
+        run: |
+          mkdir -p tools
+          for i in 1 2 3; do
+            curl -fsSL --retry 5 --retry-delay 10 -o tools/planetiler.jar \
+              https://github.com/onthegomap/planetiler/releases/download/v0.10.2/planetiler.jar \
+              && unzip -tq tools/planetiler.jar >/dev/null 2>&1 && exit 0
+            echo "planetiler.jar download attempt $i failed or was not a jar; retrying"
+            rm -f tools/planetiler.jar
+            sleep 20
+          done
+          echo "could not fetch a valid planetiler.jar" >&2
+          exit 1
+      - name: Tiny OSM input
+        # The profile wants an OSM file. Monaco is the smallest Geofabrik publishes; what it
+        # contributes is a few square kilometres of detail, and what we are measuring is everything
+        # else.
+        run: |
+          curl -fsSL --retry 5 -o /tmp/tiny.osm.pbf \
+            https://download.geofabrik.de/europe/monaco-latest.osm.pbf
+          ls -l /tmp/tiny.osm.pbf
+      - name: Bake the world at low zoom
+        env:
+          MAXZOOM: ${{ github.event.inputs.maxzoom }}
+        run: |
+          set -o pipefail
+          # -180,-85,180,85 is W,S,E,N: planetiler's Arguments.bounds builds Envelope(v0,v2,v1,v3),
+          # so the order is NOT S,W,N,E. Getting this wrong is what shipped 37 over-wide archives.
+          java -Xmx6g -jar tools/planetiler.jar \
+            --osm-path=/tmp/tiny.osm.pbf \
+            --output=/tmp/world-z${MAXZOOM}.pmtiles \
+            --download --http-timeout=10m --http-retries=8 \
+            --minzoom=0 --maxzoom="$MAXZOOM" \
+            --bounds=-180,-85,180,85 \
+            --force 2>&1 | tail -40
+      - name: Report
+        env:
+          MAXZOOM: ${{ github.event.inputs.maxzoom }}
+        run: |
+          F=/tmp/world-z${MAXZOOM}.pmtiles
+          BYTES=$(stat -c %s "$F")
+          {
+            echo "## World basemap at z0-${MAXZOOM}"
+            echo
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| size | **$(numfmt --to=iec --suffix=B "$BYTES")** ($BYTES bytes) |"
+            echo "| for comparison, Organic Maps World.mwm | about 39 MB |"
+            echo "| Vela APK today | about 100 MB |"
+            echo
+            echo "Natural Earth supplies water, boundaries and places globally here; roads are"
+            echo "OSM-derived and only present around the tiny input extract, which is why this is"
+            echo "cheap. Decide the zoom line against this number."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "size: $BYTES bytes"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: world-lowzoom
+          path: /tmp/world-z*.pmtiles
+          if-no-files-found: error
+          retention-days: 7
