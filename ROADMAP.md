@@ -396,6 +396,26 @@ the other one. A link is fine; an in-app downloader of an APK is not.
   the id cannot change afterwards.
 - listing copy and screenshots that never imply a Google affiliation
 
+**The one door nobody has opened: a phone-side Android Auto sender.** Every open implementation of
+the protocol (aasdk, openauto, the Rust `android-auto` crate) is the HEAD UNIT side - they pretend
+to be a car so a phone will project to them. The other direction, an app that speaks the protocol
+straight to a real head unit in place of Google's, barely exists, and it is the only approach where
+Google's allowlist is not in the loop at all: with no gearhead in the conversation there is nothing
+to consult a list. Seb3thehacker reported getting text, buttons and then a WebView onto a car screen
+this way (issue #179).
+
+What decides whether that is big or a curiosity is ONE question: what happened in the TLS handshake.
+If the unit accepted a certificate we can generate, this is clean-room protocol work and shippable.
+If it took a certificate extracted from Google's app, it is the `aauto.aar` problem again - the
+thing that rules Fermata out - and no amount of good engineering fixes it. Everything else (per-unit
+compatibility, wired before wireless, H.264 encode, claiming USB accessory mode) is ordinary work
+that only matters after that answer.
+
+It would not live here either way. A sender is its own project, the size of openauto, and Vela's
+job would be to feed it frames - which is nearly free, because `CarMapRenderer` already renders the
+map to a bitmap for a car surface. One nice alignment: it wants gearhead out of the way to claim
+the accessory, and Vela's users are the people who do not have gearhead.
+
 **Not scheduled.** The prep is the flavor split, which is useful on its own: it proves how much of
 Vela stands up with no Google at all, which is the direction the project has been walking anyway.
 
