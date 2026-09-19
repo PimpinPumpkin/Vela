@@ -2701,7 +2701,8 @@ fun MapScreen(
                         onDismiss = vm::dismissFasterRoute,
                         // Longer on a key-driven phone, where reaching either button is several
                         // presses - the same allowance the tap-to-stop offer makes.
-                        autoMs = if (dpadMode) 25_000L else 10_000L,
+                        // The same ten seconds however you drive the UI: focus stops the clock.
+                        autoMs = 10_000L,
                         autoAccept = app.vela.ui.FasterRouteAuto.accept.value,
                         offerKey = state.fasterRoute ?: state.fasterSavingSeconds,
                     )
@@ -5022,16 +5023,26 @@ private fun FasterRouteCard(
 ) {
     val left = remember(offerKey, autoMs, autoAccept) { androidx.compose.animation.core.Animatable(1f) }
     val act = rememberUpdatedState(if (autoAccept) onSwitch else onDismiss)
-    LaunchedEffect(offerKey, autoMs, autoAccept) {
-        left.snapTo(1f)
+    // REACHING FOR IT STOPS THE CLOCK (benwiley4000 on #594). The first cut gave key-driven phones
+    // a longer window because reaching a button takes more presses, and he pointed out that this
+    // is backwards: a longer window mostly means the interruption sits on the screen longer, since
+    // someone driving with keys is LESS likely to answer at all. So everybody gets the same ten
+    // seconds, and focus landing anywhere on the card, which is what reaching for it looks like on
+    // a key-driven phone, freezes the countdown until it leaves again.
+    var held by remember(offerKey) { mutableStateOf(false) }
+    LaunchedEffect(offerKey, autoMs, autoAccept, held) {
+        if (held) return@LaunchedEffect
+        val remaining = (autoMs * left.value).toInt()
         left.animateTo(
             0f,
-            androidx.compose.animation.core.tween(autoMs.toInt(), easing = androidx.compose.animation.core.LinearEasing),
+            androidx.compose.animation.core.tween(remaining.coerceAtLeast(1), easing = androidx.compose.animation.core.LinearEasing),
         )
         act.value()
     }
     Card(
-        modifier.fillMaxWidth(),
+        modifier
+            .fillMaxWidth()
+            .onFocusChanged { held = it.hasFocus },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
             contentColor = MaterialTheme.colorScheme.onTertiaryContainer,

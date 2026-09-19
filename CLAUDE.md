@@ -3898,7 +3898,10 @@ Gotchas:
   is that historical record, not the current design.)**
 - **A FASTER-ROUTE OFFER AUTO-RESOLVES (issue #594, 2026-09-18, benwiley4000):** it used to sit
   until answered, so a driver had to answer a prompt covering the map. `FasterRouteCard` drains a
-  bar along its bottom edge over 10 s (25 s under `dpadMode`) and then acts: ACCEPT by default
+  bar along its bottom edge over 10 s for everyone, FROZEN while focus is anywhere on the card
+  (benwiley4000 argued the key-driven 25 s down: more time mostly prolongs the interruption for
+  someone less likely to answer, while stopping the clock when they reach for it gives time to
+  whoever actually wants it), and then acts: ACCEPT by default
   (`ui/FasterRouteAuto`, pref `faster_route_auto`, Settings > Navigation "Take faster routes
   automatically"), dismiss when off. Never indefinite. The countdown keys on
   `state.fasterRoute` so a recomposition cannot restart it, and is read in the draw phase.
