@@ -116,6 +116,8 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.BuildingOverlay.init(this)
         app.vela.ui.BuildingDebug.init(this)
         app.vela.ui.MapPoiPrefs.init(this)
+        // Mirrors into the :core flag NavEngine reads (issue #596).
+        app.vela.ui.SpokenRoadNames.init(this)
         app.vela.ui.RoutePicker.init(this)
         app.vela.ui.VoiceSearch.init(this)
         app.vela.ui.ContactsSearch.init(this) // contacts-in-search toggle (issue #243)

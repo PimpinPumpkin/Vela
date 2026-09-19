@@ -1921,6 +1921,17 @@ ports it rather than inventing a fourth:
   rather than recomposing its host, and null progress means indeterminate, for a step that cannot
   report a percentage.
 
+- **Spoken guidance can leave the street name out** (issue #596, Settings > Voice "Say street
+  names", on by default, `ui/SpokenRoadNames` mirrored into the `:core` flag `nav/SpokenRoadNames`
+  that `NavEngine` reads). Off, the voice says "Turn left" where it said "Turn left onto Maple
+  Street". NOTHING ON SCREEN CHANGES: the banner, the step list and the pill under the puck keep
+  the name, because the reason to drop it is that hearing it is noisy, not that knowing it is
+  unwanted. It is NOT a strip of the spoken string: `Maneuver.instructionNoRoad` is built by the
+  same per-language template as `instruction` with the road left out, so the word order stays right
+  in languages where the name is not at the end, and a null road was never a new case for those
+  tables because unnamed roads are everywhere. Filled by the OSRM, Valhalla and obf builders; null
+  for Google's abbreviated steps, which are scraped prose with nothing to rebuild from, and there
+  speech keeps the full instruction rather than risk a mangled one.
 - **The drive is an Android 16 live update** (issue #595, API 36+, `promoteToLiveUpdate`). The nav
   notification asks to be promoted, which puts the drive in the status bar chip and on the lock
   screen instead of only in the shade. The bar is the ROUTE rather than a download: its scale is the

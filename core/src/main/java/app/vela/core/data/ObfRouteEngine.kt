@@ -299,6 +299,7 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
                     Maneuver(
                         type = type,
                         instruction = OfflinePhrases.phrase(type, road, rbExit, dest, null),
+                        instructionNoRoad = OfflinePhrases.phrase(type, null, rbExit, dest, null),
                         roundaboutExit = rbExit,
                         location = at,
                         distanceMeters = 0.0,

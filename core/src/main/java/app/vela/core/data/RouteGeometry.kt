@@ -643,6 +643,8 @@ object RouteGeometry {
         return Maneuver(
             type = osrmType(effType, mod),
             instruction = osrmPhrase(effType, mod, road, dest, exits, man["exit"]?.jsonPrimitive?.intOrNull),
+            // The same template with the road left out, for the spoken-street-names switch.
+            instructionNoRoad = osrmPhrase(effType, mod, null, dest, exits, man["exit"]?.jsonPrimitive?.intOrNull),
             roundaboutExit = man["exit"]?.jsonPrimitive?.intOrNull?.takeIf { it > 0 },
             side = if (type == "arrive" && mod != null) {
                 when {
