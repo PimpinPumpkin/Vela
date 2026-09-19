@@ -1115,6 +1115,13 @@ Defaults that make the safe path the easy one:
   ~190dp, which sat exactly on the compass (user report); 200dp clears the touch target, not just
   the visible circle. Keyed on `LayersButton.on` (the pref), not the button's transient visibility,
   so the compass doesn't jump around as sheets open.
+  **In LANDSCAPE NAV the compass steps IN from the right edge by the FAB column's width
+  (`NAV_FAB_COLUMN_DP`, 2026-09-19):** the overview / mute / search stack grows UP the right edge
+  from the bottom bar, and a landscape phone is only about 390 dp tall, so four 56 dp buttons reach
+  the status bar and sat on the compass (user report). It also stops using the banner's measured
+  bottom there: in landscape the banner is a left COLUMN (issue #297), so there is nothing above
+  the compass to drop below, and doing it anyway floated the compass down the middle of the right
+  edge into the middle of that same stack. Straight under the status bar, one column in.
   **Landscape panel width is HALF THE SCREEN, floored 400dp / capped 520dp (`sidePanelWidth()`,
   2026-07-23)** - the fixed 400 read too narrow; every consumer (both sheets' widthIn, the camera
   left inset, the attribution pad) reads the computed value. **Sheet heights RE-SNAP on rotation:**
@@ -2167,9 +2174,19 @@ architecture note.
   it, and the remaining-distance label is gone (the bottom bar has it; "768.8 mi" overflowed the
   strip). `NavController.refreshRouteBar` adds `speedCameras` as CAMERA marks (flock marks already
   pass `CameraFacing.onRoute`; fixed speed cams carry no direction, so distance only).
-  `crossLabelPoint` now tries `NAV_XLABEL_OFFSETS` (1x/1.8x/3x of 35 m) on BOTH sides and keeps the
+  `crossLabelPoint` now tries `NAV_XLABEL_OFFSETS` on BOTH sides and keeps the
   first with `NAV_XLABEL_CLEAR_M` clearance, and the label pass only marks its quantum done once it
   placed something (`emptyPassTicks`), so labels no longer wait 400 m when tiles land late.
+  **The clearance is measured to the bubble's ANCHOR, which is the TIP OF ITS TAIL (2026-09-19).**
+  The chip body sits above that point and is much wider than it, so the gap on screen is always
+  smaller than the constant, and more so with the camera tilted: at 30 m measured, chips still drew
+  over the blue line on a real drive. `NAV_XLABEL_CLEAR_M` is 44 m and the floor
+  `NAV_XLABEL_MIN_CLEAR_M` 26 m, with a finer ladder (1x/1.4x/1.8x/2.4x/3x of 35 m) because the
+  clearance a rung buys depends on the angle the street crosses at, and the coarse one overshot a
+  perpendicular street by a block to win a few meters. This is a WALK-BACK, not a reset: the
+  callouts were deliberately moved close to the route in 2026-09-16, when line-center placement was
+  putting them a block away, and the answer to overlap is a few more meters rather than the old
+  behavior.
 - **ROUTING OFFER + REGION SIZES (2026-09-17):** `MapViewModel.maybeOfferRouting()` (camera idle, once
   per session until answered; pref `routing_offer_done`) offers the smallest obf region covering
   Home or the fix, after onboarding, on the bare map; `answerRoutingOffer`. `archivesFor(region, list)`

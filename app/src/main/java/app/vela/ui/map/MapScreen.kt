@@ -252,6 +252,12 @@ private const val PUCK_LABEL_GAP_PX = 62
  *  bottom-left corner: the box's height plus its 16 dp margin and a couple of dp of air. */
 private val SPEED_BOX_LIFT_DP = 78.dp
 
+/** The nav FAB column: a stack of 56 dp buttons hard against the right edge with this much air
+ *  outside it. VelaMapView steps MapLibre's compass in by [NAV_FAB_COLUMN_DP] in landscape so the
+ *  two cannot overlap, which is the only reason these are shared constants rather than literals. */
+internal val NAV_FAB_EDGE_DP = 16.dp
+internal val NAV_FAB_COLUMN_DP = 56.dp + NAV_FAB_EDGE_DP
+
 // The route chooser's body cap on short screens (issue #400): the map strip that must stay
 // visible between the endpoints card and the chooser, the chooser's own header (handle + mode
 // chips) above the body, and the least the body may shrink to.
@@ -1542,7 +1548,7 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
-                    .padding(end = 16.dp, bottom = navBarClearance),
+                    .padding(end = NAV_FAB_EDGE_DP, bottom = navBarClearance),
             ) {
                 if (state.navCameraDetached || state.previewStepIndex != null || navZoomOverride) {
                     FloatingActionButton(

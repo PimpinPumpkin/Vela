@@ -683,7 +683,13 @@ fun VelaMapView(
     // to a generous fixed offset until the first measurement lands (or if it's somehow 0).
     val statusBarTopPx = WindowInsets.statusBars.getTop(density)
     val gap8Px = with(density) { 8.dp.roundToPx() }
+    val landscapeNow = LocalConfiguration.current.screenWidthDp > LocalConfiguration.current.screenHeightDp
     val compassTopPx = when {
+        // LANDSCAPE NAV: the banner is a left COLUMN (issue #297), so it does not cover the
+        // top-right at all and there is nothing to drop below - sitting the compass under the
+        // banner's measured bottom just floated it down the middle of the right edge, into the
+        // FAB stack. Straight under the status bar instead; the stack is cleared sideways below.
+        navMode && landscapeNow -> statusBarTopPx + gap8Px
         navMode && navBannerBottomPx > 0 -> navBannerBottomPx + gap8Px
         navMode -> statusBarTopPx + with(density) { 176.dp.roundToPx() }
         // Browse: below the floating search bar AND the category-chip row - 8dp under the
@@ -697,7 +703,7 @@ fun VelaMapView(
         // slots rise a row too - the stacked offsets pushed the compass down into the
         // parking/locate FABs on a ~390dp-tall landscape phone (user 2026-07-15).
         else -> statusBarTopPx + with(density) {
-            val landscape = LocalConfiguration.current.screenWidthDp > LocalConfiguration.current.screenHeightDp
+            val landscape = landscapeNow
             val layersOn = app.vela.ui.LayersButton.on.value
             when {
                 layersOn && landscape -> 140.dp
@@ -707,7 +713,12 @@ fun VelaMapView(
             }.roundToPx()
         }
     }
-    val compassRightPx = with(density) { 8.dp.roundToPx() }
+    // The nav FAB stack (overview, mute, search, and re-center when detached) grows UP the right
+    // edge from the bottom bar. Portrait it never gets near the compass; a landscape phone is only
+    // ~390 dp tall, so four 56 dp buttons reach the status bar and sat right on it (user
+    // 2026-09-19). Step the compass in by the column's width so the two cannot meet, whatever the
+    // stack currently holds.
+    val compassRightPx = with(density) { (if (navMode && landscapeNow) 8.dp + NAV_FAB_COLUMN_DP else 8.dp).roundToPx() }
     val poiTap = rememberUpdatedState(onPoiTap)
     val openPlaceTap = rememberUpdatedState(onOpenPlaceTap)
     val mapTap = rememberUpdatedState(onMapTap)
@@ -4950,9 +4961,18 @@ private var lastPassedFilterM = -1.0
 private var navLabelAts: List<Double> = emptyList() // the uploaded callouts' distances along the route, ascending
 private const val NAV_XLABEL_DROP_BEHIND_M = 12.0 // a callout is gone once the puck is this far past it
 private const val NAV_XLABEL_OFFSET_M = 35.0
-private val NAV_XLABEL_OFFSETS = doubleArrayOf(1.0, 1.8, 3.0) // tried in turn until the bubble clears the route
-private const val NAV_XLABEL_CLEAR_M = 30.0
-private const val NAV_XLABEL_MIN_CLEAR_M = 18.0 // below this the bubble would sit on the driven road
+// Tried in turn until the bubble clears the route. The rungs are close together on purpose: the
+// clearance a given step buys depends on the angle the street crosses at, and a coarse ladder
+// overshot a perpendicular street by a whole block to win a few meters.
+private val NAV_XLABEL_OFFSETS = doubleArrayOf(1.0, 1.4, 1.8, 2.4, 3.0)
+// CLEARANCE IS MEASURED TO THE BUBBLE'S ANCHOR, WHICH IS THE TIP OF ITS TAIL - the chip body sits
+// above that point and is far wider than it, so the gap on screen is always smaller than the number
+// here, and more so with the camera tilted. 30 m measured clear still drew chips over the blue line
+// (user drive 2026-09-19). These are deliberately a walk-back and not a reset: the callouts were
+// moved close to the route on purpose in 2026-09-16, because line-center placement had been putting
+// them a block away, and the fix for overlap is a few more meters, not the old behavior.
+private const val NAV_XLABEL_CLEAR_M = 44.0
+private const val NAV_XLABEL_MIN_CLEAR_M = 26.0 // below this the bubble would sit on the driven road
 
 /** Google-style floating road labels during NAV: horizontal, viewport-aligned name chips over the
  *  roads you're crossing or driving beside - far more legible than the line-following basemap
