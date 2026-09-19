@@ -1129,6 +1129,13 @@ a JsonElement tree of roughly 30 MB in a dense area. The fan-out is bounded by a
 not unbound it. Partial paints escalate their batch (10 places, then 25 once 60 are painted),
 because each partial re-runs whole-layer placement.
 
+**Offline the fan-out does not run at all.** `maybeLoadAmbientPois` returns before launching when
+`offlineNow()`, placed AFTER the cache repaint so an area visited earlier keeps its dots and only
+the network is skipped. Thirteen requests that cannot succeed are cheap with the radio cleanly off
+and expensive on a FLAKY link, where each one hangs to the call timeout; that is the case the gate
+is for. Measured with the network off: 0.8% of CPU over thirty seconds of panning, four MapLibre
+HTTP lines in the whole window, no retry storm.
+
 **Caching.** An empty `nearbyPlaces` result is never an answer and is never cached: each term
 swallows its network error into an empty list, so offline returns an empty success. The ambient
 path treats null and empty identically, keeps what is painted, serves the freshest covering
