@@ -700,6 +700,19 @@ project's core promise is that neither exists:
 
 ## Queued near-term
 
+- **Android 16 Live updates for the nav notification (issue #595, DodoLeDev, 2026-09-18).** Android
+  16 promotes an ongoing activity into the status bar chip and onto the lock screen
+  (`Notification.ProgressStyle` plus the promoted-ongoing request), and Google's own example for it
+  is turn-by-turn navigation. Vela already runs a foreground nav service with a turn notification,
+  so the content exists; this is about presenting it the way the platform now expects. Fits the
+  ground rules: no backend, no key, no new data.
+  The real cost is the TOOLCHAIN, not the feature: the APIs need compileSdk 36 and the project is on
+  compileSdk 35 with AGP 8.7.3, so this pulls in an AGP and Gradle bump, a targetSdk decision, and a
+  pass over everything a targetSdk change alters (notification behavior, foreground service types,
+  permissions). That is a release-sized change to make on purpose rather than as a side effect, and
+  it needs a device on Android 16 to verify against. Worth doing, once somebody is ready to own the
+  upgrade.
+
 - **Bake the Microsoft footprints INTO the basemap archive (MEASURED 2026-09-18; the premise did
   not hold).** The idea: subtract the footprints OpenStreetMap already has, merge the rest into the
   basemap archive as the same `building` layer, and drop both the second download and the
