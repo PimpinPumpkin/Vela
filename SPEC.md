@@ -1539,6 +1539,13 @@ applier is `app/offline/PmtilesPatch`.
   candidate: Guernsey and Jersey re-baked a day after the OSM-business source landed carried 2506 of
   4586 tiles (2.17 MB against a 3.3 MB archive) and was correctly refused. The number that matters is
   two bakes of the SAME script, and that is what `scripts/archive-churn.py` measures.
+- **Dead space is bounded, and compaction is a full download.** A patch appends and leaves the tiles
+  it replaced behind, which is the ONLY way a patched archive differs from a freshly downloaded one:
+  same tiles, more bytes. `dead.json` accumulates those bytes per archive; past a fifth of the file
+  the next update refuses the delta and takes the region whole, which puts the file back to exactly
+  what the bake published and resets the counter. A full download and a `delete` both clear it.
+  Measured on a device: one day of Guernsey and Jersey left 70 KB dead in a 3.3 MB archive, so the
+  compacting download lands about every ten updates.
 - **Settings > Offline maps reports the archives too.** `offlineStorageBreakdown`'s "Offline places"
   counts `files/poipacks` AND `files/places`; the archives were absent from the only storage screen
   in the app, so a region's few hundred MB of places were invisible.
