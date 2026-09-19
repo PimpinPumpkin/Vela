@@ -1553,7 +1553,10 @@ applier is `app/offline/PmtilesPatch`.
   revision, same fingerprint - 17 bytes apart, which is the leaf directory a fresh bake writes.
   A whole download stays as the last resort for a phone with no room to rewrite: past HALF the file
   in dead space the delta is refused and the region is taken whole. `adb shell setprop
-  debug.vela.compact true` rewrites after every patch, for watching it happen.
+  debug.vela.compact true` rewrites after every patch, for watching it happen. `PmtilesCompactTest`
+  holds the claim down in CI: its fixture (`scripts/pmtiles-test-fixture.py`) is a small archive run
+  through the real producer and the real applier, so it carries dead bytes the way a phone's does,
+  and the test compacts it and checks the fingerprint, every tile id, length and run.
 - **Settings > Offline maps reports the archives too.** `offlineStorageBreakdown`'s "Offline places"
   counts `files/poipacks` AND `files/places`; the archives were absent from the only storage screen
   in the app, so a region's few hundred MB of places were invisible.
