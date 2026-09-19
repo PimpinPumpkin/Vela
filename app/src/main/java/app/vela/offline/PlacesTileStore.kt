@@ -112,7 +112,11 @@ abstract class PmtilesRegionStore(
     private val http: OkHttpClient,
     folder: String,
 ) {
-    data class Region(val id: String, val name: String, val url: String, val sizeMb: Double, val s: Double, val w: Double, val n: Double, val e: Double, val rev: Int = 0) {
+    /** A delta the bake published against an earlier revision: applicable only to an archive
+     *  installed at exactly [fromRev]. Absent until the bake publishes one. */
+    data class Delta(val fromRev: Int, val url: String, val sizeMb: Double)
+
+    data class Region(val id: String, val name: String, val url: String, val sizeMb: Double, val s: Double, val w: Double, val n: Double, val e: Double, val rev: Int = 0, val delta: Delta? = null) {
         fun covers(p: LatLng) = p.lat in s..n && p.lng in w..e
         fun area() = (n - s) * (e - w)
     }
@@ -153,9 +157,11 @@ abstract class PmtilesRegionStore(
                 (0 until arr.length()).map { i ->
                     val o = arr.getJSONObject(i)
                     val b = o.getJSONArray("bbox") // [S, W, N, E]
+                    val d = o.optJSONObject("delta")
                     Region(
                         o.getString("id"), o.optString("name", o.getString("id")), o.getString("url"), o.optDouble("sizeMb", 0.0),
                         b.getDouble(0), b.getDouble(1), b.getDouble(2), b.getDouble(3), o.optInt("rev"),
+                        d?.let { Delta(it.optInt("fromRev"), it.getString("url"), it.optDouble("sizeMb", 0.0)) },
                     )
                 }
             }.getOrDefault(emptyList())
@@ -217,6 +223,72 @@ abstract class PmtilesRegionStore(
                 onProgress(100)
                 true
             }.getOrElse { tmp.delete(); false }
+        }
+    }
+
+    /**
+     * Update an installed archive with the manifest's delta instead of downloading it whole.
+     *
+     * Only when the patch is FOR the installed revision, and only when the archive is actually
+     * installed. Everything else (no delta published, a revision gap, a patch that does not apply,
+     * a fingerprint that does not match) answers false and the caller downloads the region, which
+     * is what it would have done anyway. The patch is applied in place, so this needs the patch's
+     * own size in free space rather than a second copy of the region.
+     *
+     * [log] gets one line per attempt, for the diagnostics ring: a region that quietly falls back
+     * to a full download every week is the failure mode worth being able to see.
+     */
+    suspend fun updateWithDelta(
+        region: Region,
+        onProgress: (Int) -> Unit,
+        log: (String) -> Unit = {},
+    ): Boolean = withContext(Dispatchers.IO) {
+        val delta = region.delta ?: run { log("${region.id}: no delta published for rev ${region.rev}"); return@withContext false }
+        val file = fileFor(region.id)
+        if (!file.exists()) { log("${region.id}: not installed"); return@withContext false }
+        val have = installedRev(region.id)
+        if (have != delta.fromRev) {
+            log("${region.id}: installed rev $have, patch is from ${delta.fromRev}")
+            return@withContext false
+        }
+        downloadMutex.withLock {
+            val tmp = File(root, "${region.id}.vpatch.tmp")
+            val ok = runCatching {
+                downloadHttp.newCall(Request.Builder().url(delta.url).build()).execute().use { resp ->
+                    if (!resp.isSuccessful) error("HTTP ${resp.code}")
+                    val total = resp.body!!.contentLength()
+                    var read = 0L
+                    var lastPct = -1
+                    resp.body!!.byteStream().use { input ->
+                        tmp.outputStream().use { out ->
+                            val buf = ByteArray(64 * 1024)
+                            while (true) {
+                                val n = input.read(buf)
+                                if (n < 0) break
+                                out.write(buf, 0, n)
+                                read += n
+                                if (total > 0) (100 * read / total).toInt().let { p -> if (p != lastPct) { lastPct = p; onProgress(p) } }
+                            }
+                        }
+                    }
+                }
+                when (val outcome = PmtilesPatch.apply(file, tmp)) {
+                    is PmtilesPatch.Outcome.Applied -> {
+                        synchronized(indexLock) { writeRev(region.id, region.rev) }
+                        log("${region.id}: patched ${delta.fromRev} -> ${region.rev}, " +
+                            "${tmp.length() / 1024} KB down, ${outcome.tiles} tiles, " +
+                            "${outcome.deadBytes / 1024} KB dead")
+                        true
+                    }
+                    is PmtilesPatch.Outcome.Refused -> {
+                        log("${region.id}: patch refused, ${outcome.why}")
+                        false
+                    }
+                }
+            }.getOrElse { log("${region.id}: patch download failed, ${it.javaClass.simpleName}"); false }
+            tmp.delete()
+            onProgress(100)
+            ok
         }
     }
 

@@ -5013,25 +5013,8 @@ private fun FasterRouteCard(
         )
         act.value()
     }
-    val barColor = MaterialTheme.colorScheme.onTertiaryContainer
     Card(
-        modifier
-            .fillMaxWidth()
-            // Clipped to the card's own shape, or a square-cornered bar hangs off the rounded
-            // bottom corners (user, on the device). OVER the content, not behind it: a Card paints
-            // an opaque container, so a drawBehind bar is hidden under it and shows only where the
-            // corners expose it. Read in the DRAW phase either way, so the countdown never
-            // recomposes the card.
-            .clip(CardDefaults.shape)
-            .drawWithContent {
-                drawContent()
-                val h = 4.dp.toPx()
-                drawRect(
-                    color = barColor,
-                    topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - h),
-                    size = androidx.compose.ui.geometry.Size(size.width * left.value, h),
-                )
-            },
+        modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
             contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
@@ -5067,6 +5050,14 @@ private fun FasterRouteCard(
                 ),
             ) { Text(stringResource(R.string.mapscreen_switch)) }
         }
+        // INSIDE the card, where every other progress bar in the app sits (user 2026-09-18: the
+        // update card draws its bar inside the box and this one drew a hairline along the very
+        // bottom edge, so the two read as different kinds of thing). The value is read in the draw
+        // phase, so the countdown still never recomposes the card.
+        app.vela.ui.VelaProgressBarOf(
+            { left.value },
+            Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+        )
     }
 }
 

@@ -1404,7 +1404,10 @@ fun VelaMapView(
     }
     ambientClosedNow = ambientClosed
     openPlaceClosedCb = onOpenPlaceClosed
-    LaunchedEffect(placesOverlays, styleRef, darkTheme, hiddenOpenPlaceIds) {
+    // poiIconScale is a KEY, not just a value read inside: these layers are rebuilt from scratch
+    // here, so a size baked in at creation is the only one they ever get, and a settings change has
+    // to rebuild them to take effect (user 2026-09-18, on a head unit).
+    LaunchedEffect(placesOverlays, styleRef, darkTheme, hiddenOpenPlaceIds, poiIconScale) {
         val style = styleRef ?: return@LaunchedEffect
         // A pin whose Google listing came back permanently closed (Overture lags Google by months)
         // is filtered out of both tiers the moment the tap resolved, and stays out across restarts.
@@ -1514,7 +1517,7 @@ fun VelaMapView(
                         PropertyFactory.circleRadius(
                             Expression.interpolate(
                                 Expression.linear(), Expression.get("prominence"),
-                                Expression.stop(0.0, 2.2f), Expression.stop(8.0, 3.6f),
+                                Expression.stop(0.0, 2.2f * poiIconScale), Expression.stop(8.0, 3.6f * poiIconScale),
                             ),
                         ),
                         PropertyFactory.circleStrokeWidth(1.2f),
@@ -1569,10 +1572,14 @@ fun VelaMapView(
                                 Expression.stop(19.5f, unlessCrowdedGeneric(blockBudget(iconCapMax, 4.5, icon))),
                             ),
                         ),
+                        // Scaled like every other icon layer. Without this the open places layer
+                        // was the ONE thing that ignored the icon-size setting and the low-density
+                        // correction, so on a car screen the businesses drew huge while the road
+                        // shields and street names beside them were tiny (user 2026-09-18).
                         PropertyFactory.iconSize(
                             Expression.interpolate(
                                 Expression.linear(), Expression.get("prominence"),
-                                Expression.stop(0.0, 0.78f), Expression.stop(8.0, 1.3f),
+                                Expression.stop(0.0, 0.78f * poiIconScale), Expression.stop(8.0, 1.3f * poiIconScale),
                             ),
                         ),
                         // Collide below z18; from z18 (about 40 ft) every icon draws even on top of a
@@ -1618,7 +1625,7 @@ fun VelaMapView(
                         PropertyFactory.textSize(
                             Expression.interpolate(
                                 Expression.linear(), Expression.get("prominence"),
-                                Expression.stop(0.0, 11f), Expression.stop(8.0, 14f),
+                                Expression.stop(0.0, 11f * poiIconScale), Expression.stop(8.0, 14f * poiIconScale),
                             ),
                         ),
                         // Two anchors, not the ambient layer's four: this layer carries hundreds of
@@ -5428,6 +5435,12 @@ private fun ensureTraffic(style: Style, on: Boolean) {
             // full opacity that buries the basemap and reads as noise. ~0.6 keeps the
             // red/amber congestion legible while the green recedes.
             PropertyFactory.rasterOpacity(0.6f),
+            // Google's tiles expire while you drive, and a replaced tile used to pop: the old one
+            // vanished and the new one appeared on the next frame, which reads as the whole
+            // congestion layer flickering (user 2026-09-18). MapLibre cross-fades a tile over its
+            // predecessor for this long; the default 300 ms is still a blink on a full-screen
+            // overlay, and traffic has no detail that a slower fade can smear.
+            PropertyFactory.rasterFadeDuration(900f),
         )
         // Below the labels, ABOVE the buildings. "Below the first symbol layer" used to put it
         // under Liberty's building fills: the first symbol is the one-way arrow, which sits

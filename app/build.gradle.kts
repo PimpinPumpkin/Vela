@@ -9,8 +9,16 @@ plugins {
     alias(libs.plugins.baselineprofile)
 }
 
+// android.util.Log and friends THROW "not mocked" in a JVM unit test otherwise, which turns a
+// logging line inside a runCatching into a mysterious failure of the thing being tested (cost an
+// afternoon on the delta applier). Same setting :core has had for the obf engine's logging.
+android.testOptions.unitTests.isReturnDefaultValues = true
+
 dependencies {
     testImplementation(libs.junit) // app-module unit tests (SearchGatesTest, DiagScrubTest)
+    // Android's org.json is a STUB on the unit-test classpath: every method throws "not mocked",
+    // so code that parses JSON (the delta patch header) cannot be tested without a real one.
+    testImplementation("org.json:json:20240303")
 }
 
 android {
@@ -231,7 +239,7 @@ dependencies {
 // On-demand harnesses need their -D properties in the test JVM; Gradle does not forward them
 // (the same trap core/build.gradle.kts documents for velaTrip).
 tasks.withType<Test>().configureEach {
-    listOf("velaPmtiles", "velaLat", "velaLng").forEach { k ->
+    listOf("velaPmtiles", "velaLat", "velaLng", "velaArchive", "velaPatch", "velaFingerprint").forEach { k ->
         System.getProperty(k)?.let { systemProperty(k, it) }
     }
 }
