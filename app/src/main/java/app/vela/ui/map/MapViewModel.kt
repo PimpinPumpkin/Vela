@@ -2037,6 +2037,13 @@ class MapViewModel @Inject constructor(
             try {
                 val res = dataSource.search(query, route[route.size / 2])
                 val along = RouteCorridor.alongRoute(res.places, route)
+                // "Searched and nothing happened" has three different causes (the search came back
+                // empty, the corridor filter dropped everything, or the results arrived and the
+                // sheet did not show) and none of them used to leave a trace.
+                android.util.Log.d(
+                    "VelaNavSearch",
+                    "'$query' along ${route.size} points: ${res.places.size} results, ${along.size} in the corridor",
+                )
                 _state.update {
                     it.copy(
                         results = along,

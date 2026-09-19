@@ -1141,9 +1141,12 @@ fun VelaMapView(
         // Stop signs + lights are a NAV aid from z15.4 — a hair UNDER the nav camera's 15.5 zoom
         // floor, so they can't blink out at highway speed (the old 16 sat above the floor and the
         // icons vanished exactly when the auto-zoom pulled back, half of issue #248). On the browse
-        // map they hold back until true street zoom (user 2026-07-10: too busy mid-zoom otherwise).
+        // map they used to hold back until 17.5, which is nearly on top of a junction: zooming in
+        // while browsing showed nothing until you were practically parked (user 2026-09-18). Now
+        // they arrive at the zoom the VIEWPORT FETCH itself uses, so the gate that decides whether
+        // to ask for them is the same one that decides whether to draw them.
         runCatching {
-            val minZ = if (navMode) 15.4f else 17.5f
+            val minZ = if (navMode) 15.4f else MapViewModel.CONTROLS_MIN_ZOOM.toFloat()
             (style.getLayer(CONTROLS_LAYER))?.minZoom = minZ
             (style.getLayer(CONTROLS_CLAIM_LAYER))?.minZoom = minZ
         }

@@ -248,6 +248,10 @@ private val SIDE_PANEL_WIDTH_MAX = 520.dp
  *  The nav puck bitmap is 202px drawn at ~half that on screen, so this clears its lower edge. */
 private const val PUCK_LABEL_GAP_PX = 62
 
+/** How far the OpenStreetMap credit lifts to clear the free-drive speed box, which sits in the same
+ *  bottom-left corner: the box's height plus its 16 dp margin and a couple of dp of air. */
+private val SPEED_BOX_LIFT_DP = 78.dp
+
 // The route chooser's body cap on short screens (issue #400): the map strip that must stay
 // visible between the endpoints card and the chooser, the chooser's own header (handle + mode
 // chips) above the body, and the least the body may shrink to.
@@ -1495,6 +1499,7 @@ fun MapScreen(
                     navSearchOpen = false
                     navSearchQuery = ""
                     focusManager.clearFocus()
+                    android.util.Log.d("VelaNavSearch", "picked '$q' along the route")
                     vm.searchAlongRoute(q)
                 },
                 modifier = Modifier
@@ -1567,6 +1572,13 @@ fun MapScreen(
                 }
                 FloatingActionButton(
                     onClick = {
+                        // Three things have to line up for this panel to appear, and when it does
+                        // not the driver just sees a button that does nothing (user 2026-09-18).
+                        android.util.Log.d(
+                            "VelaNavSearch",
+                            "search FAB: opening=${!navSearchOpen} navigating=${state.navigating} " +
+                                "results=${state.results.size} steps=${state.showSteps} stops=${state.editingStops}",
+                        )
                         navSearchOpen = !navSearchOpen
                         if (!navSearchOpen) focusManager.clearFocus()
                     },
@@ -2475,6 +2487,11 @@ fun MapScreen(
             run {
                 val osmUri = "https://www.openstreetmap.org/copyright"
                 val navLift = if (state.navigating) with(LocalDensity.current) { navBarHeightPx.toDp() } + 6.dp else 0.dp
+                // The free-drive speed box takes the same low corner, and the credit was touching
+                // it (user 2026-09-18). The scale bar already yields the spot; this has to as
+                // well, and it may not simply hide, because the ODbL wants the credit visible in
+                // every map state. SPEED_BOX_LIFT_DP clears the box's own height and margin.
+                val speedLift = if (!state.navigating && movingFree) SPEED_BOX_LIFT_DP else 0.dp
                 Text(
                     stringResource(R.string.map_osm_attribution),
                     style = MaterialTheme.typography.labelSmall,
@@ -2482,7 +2499,7 @@ fun MapScreen(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .navigationBarsPadding()
-                        .padding(start = if (sidePanelUp) sidePanelWidthDp + 8.dp else 8.dp, bottom = 2.dp + chromeLift + navLift)
+                        .padding(start = if (sidePanelUp) sidePanelWidthDp + 8.dp else 8.dp, bottom = 2.dp + chromeLift + navLift + speedLift)
                         .dpadHighlight(RoundedCornerShape(6.dp))
                         .clickable {
                             runCatching {

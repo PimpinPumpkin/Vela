@@ -666,6 +666,24 @@ project's core promise is that neither exists:
 
 ## Queued near-term
 
+- **Bake the Microsoft footprints INTO the basemap archive, minus what OSM already has (user
+  2026-09-18).** Today a phone pulls two things for one picture: the basemap archive (planetiler,
+  OSM) and the building overlay (Microsoft footprints, its own release and its own PMTiles), and
+  then spends render-time work deciding which to show, because the overlay is only wanted where OSM
+  is thin. `runOvlGate` probes rendered OSM coverage per viewport to make that call, with three
+  hard-won rules behind it (probe off the idle event, measure by AREA not feature count, reveal
+  only after a finished render). All of that exists because the two datasets meet on the phone.
+  They could meet in the bake instead. Straight concatenation is the wrong version of this: a
+  state's MS overlay is about as big as its basemap, so a naive merge roughly doubles every
+  download for something only needed in the gaps. SUBTRACT at bake time: drop every MS footprint
+  that a nearby OSM building already covers, and emit what is left as a second source-layer in the
+  same archive. Then the download is one file, barely bigger, the app drops a whole source and its
+  manifest, and the viewport gate can go, because the data no longer overlaps. Open questions worth
+  measuring before building: how much of the MS set survives the subtraction in a well-mapped
+  region versus a new suburb (that ratio is the whole case), whether tile-join can do the merge or
+  planetiler needs a custom profile, and what happens to regions that have an overlay but no
+  basemap archive yet.
+
 - **The neural voice's phonemizer is the weak link (2026-09-18, from a drive).** espeak's G2P sits
   in front of the Piper model and it reads text that is not prose: "5:49 PM" came out as a height,
   "five foot nine", in the closing-soon warning. The pattern is old and the workarounds are stacking
