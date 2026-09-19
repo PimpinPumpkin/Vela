@@ -1992,8 +1992,14 @@ NOT live in the repo - re-upload it if the mark changes.
 
 ## README layout rule (2026-07-11)
 
-The README stays SHORT: pitch, screenshots, install, what-you-get, the **privacy comparison
-matrix** (kept IN the README - user 2026-07-11, it's the sharpest one-glance pitch), build.
+The README stays SHORT: pitch, **"What reaches Google, by default"**, screenshots, install,
+what-you-get, the full **privacy comparison matrix** (kept IN the README - user 2026-07-11, it's
+the sharpest one-glance pitch), build. The at-a-glance table sits ABOVE the screenshots on purpose
+(user 2026-09-19): people were reading the app as a Google Maps WebView, which the screenshots
+encourage, and the full matrix was 200 lines down where a visitor never reached it. Its first line
+answers the wrapper question directly and every row has to stay literally true - the routing row
+says the traffic and only the traffic, because `directions()` does fetch Google in parallel for the
+ETA.
 Deep dives get a pointer line, not a section: the capability/method table, the calibration
 walk-through and the map-style reference all live in **`SPEC.md`** (sections 1.4, 3, 11 and 6),
 alongside docs/dpad.md and docs/book/. The Roadmap section carries a "Not going

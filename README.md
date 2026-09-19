@@ -29,6 +29,28 @@ endpoints (per-user, no backend) for the things only Google does well: hours,
 reviews and photos, routing, and **traffic-aware ETAs**. Built to run on
 GrapheneOS and other no-GMS ROMs.
 
+## What reaches Google, by default
+
+**It is not a Google Maps wrapper.** The map is a native Android app drawing open vector tiles
+(Jetpack Compose and MapLibre) - no Google SDK, no Play Services, no API key, nothing to sign in
+to. It looks like Google Maps because that is the point; underneath, almost none of it is.
+
+| What you do | What reaches Google |
+| --- | --- |
+| Pan, zoom, browse the map | **Nothing.** Tiles from OpenFreeMap, streets and labels from OpenStreetMap |
+| The places drawn on the map | **Nothing, by default.** Open data baked in this repo: Overture Maps and AllThePlaces, positioned with OpenStreetMap |
+| Look up an address, read a departure board | **Nothing.** OpenStreetMap addresses, Transitous boards |
+| Ask for directions | **The traffic, and only the traffic.** The route itself is computed by open OSRM, or on the phone from an OsmAnd-format region file; Google is asked anonymously for the live ETA on top of it, which is switchable off |
+| Tap a place, type a search | **An anonymous request, when you ask for it** - no account, no app key, like a logged-out browser. Hours, reviews and photos are the things only Google does well |
+| Everything you save | **Nothing, ever.** No account, no Vela backend, no telemetry; saved places, history and settings stay on the phone |
+
+Download a region and the answer becomes *nothing at all*: the map, search, routing and
+turn-by-turn navigation work with no network. Reviews and photos are the one place Vela loads a
+Google page, in an offscreen WebView, anonymously, only when you open a place.
+
+**[The full comparison against the Google Maps app and Google Maps web is below](#privacy)**, and
+the per-request detail is in [PRIVACY.md](PRIVACY.md).
+
 ## Screenshots
 
 | Navigation | Map & search | Place details | Directions | Search results |

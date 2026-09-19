@@ -1,0 +1,44 @@
+name: Reach snapshot
+
+# The numbers GitHub keeps about Vela's reach all EXPIRE: the nightly prune deletes a release and
+# its download counter together, the traffic API is a rolling fourteen days, and a re-baked asset
+# starts counting from zero. None of it is telemetry - it is a byproduct of hosting files, counted
+# whether anyone looks or not - but it is gone unless somebody writes it down on the day.
+#
+# Weekly, into docs/stats (which CI's paths-ignore skips, so this never builds an APK or cuts a
+# nightly). docs/stats/README.md says how to read the files without fooling yourself.
+
+on:
+  schedule:
+    - cron: "20 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: reach-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/download-stats.sh docs/stats
+      - name: Commit when something moved
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/stats
+          # A week with no change at all is possible (and is itself information), but an empty
+          # commit is not worth a line in the history.
+          if git diff --cached --quiet; then
+            echo "nothing moved this week"
+            exit 0
+          fi
+          git commit -m "Reach snapshot for $(date -u +%Y-%m-%d)"
+          git push

@@ -2302,6 +2302,16 @@ tooling default that claims otherwise. Before pushing, `git log origin/main..HEA
   same package and same signature. Notes are cumulative across the versions between installed
   and offered. The launch check is throttled to about daily and "not now" pins the dismissed
   code.
+- **Reach is snapshotted weekly** (`scripts/download-stats.sh`, `download-stats.yml`, into
+  `docs/stats`). Not telemetry: release download counters, the repo traffic API and per-region
+  asset counts are byproducts of hosting files, and every one of them EXPIRES - a deleted release
+  takes its counter, traffic is a rolling fourteen days, and a rebuilt asset restarts at zero.
+  `docs/stats/README.md` carries the rules for reading them (a streamed overlay counts tile reads,
+  not people; the F-Droid channel is invisible; the newest stable's counter is the closest thing to
+  an active-install floor because each device pulls it once).
+- **Stables are never pruned** (CI's prune step): they are the changelog, the build somebody
+  bisecting a regression installs, and the only record of reach there is. Nightlies keep a rolling
+  thirty.
 - **An update that would cost the car screen asks first** (`InstallSource`). Android Auto will not
   list a sideloaded navigation app, and the tools people use to get around that (AAEnabler, King
   Installer) work by setting the INSTALL SOURCE to Play. The source belongs to the install, not to
