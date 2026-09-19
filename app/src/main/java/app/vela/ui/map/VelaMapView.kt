@@ -660,6 +660,12 @@ fun VelaMapView(
     onCompassTap: () -> Boolean = { false },
     poisEnabled: Boolean = true, // master "Show places on the map" - also hides the OSM fallback POIs
     poiIconScale: Float = 1f, // Settings icon-size multiplier (low-density car screens want < 1)
+    // LABELS do not take the low-density correction. That correction exists because an icon is a
+    // fixed-pixel BITMAP, which a 120 dpi head unit draws physically huge; text is rendered from
+    // SDF glyphs at a size that already accounts for the pixel ratio, so shrinking it by the same
+    // factor just made it unreadable in a car (user 2026-09-19, "text next to POIs is way too
+    // small" with the icons finally right). This is the Settings multiplier alone.
+    poiLabelScale: Float = 1f,
     onCameraIdle: (center: LatLng) -> Unit,
     onMapLongPress: (location: LatLng) -> Unit,
     onAddressLabelTap: (number: String, location: LatLng, tileStreet: String?) -> Unit = { _, _, _ -> },
@@ -1410,7 +1416,7 @@ fun VelaMapView(
     // poiIconScale is a KEY, not just a value read inside: these layers are rebuilt from scratch
     // here, so a size baked in at creation is the only one they ever get, and a settings change has
     // to rebuild them to take effect (user 2026-09-18, on a head unit).
-    LaunchedEffect(placesOverlays, styleRef, darkTheme, hiddenOpenPlaceIds, poiIconScale) {
+    LaunchedEffect(placesOverlays, styleRef, darkTheme, hiddenOpenPlaceIds, poiIconScale, poiLabelScale) {
         val style = styleRef ?: return@LaunchedEffect
         // A pin whose Google listing came back permanently closed (Overture lags Google by months)
         // is filtered out of both tiers the moment the tap resolved, and stays out across restarts.
@@ -1628,7 +1634,7 @@ fun VelaMapView(
                         PropertyFactory.textSize(
                             Expression.interpolate(
                                 Expression.linear(), Expression.get("prominence"),
-                                Expression.stop(0.0, 11f * poiIconScale), Expression.stop(8.0, 14f * poiIconScale),
+                                Expression.stop(0.0, 11f * poiLabelScale), Expression.stop(8.0, 14f * poiLabelScale),
                             ),
                         ),
                         // Two anchors, not the ambient layer's four: this layer carries hundreds of
@@ -1906,9 +1912,10 @@ fun VelaMapView(
     // (re)load and whenever the Settings value changes. Low-density screens (car head units)
     // render the fixed-px bitmaps physically huge - a 0.7x here is the fix that doesn't touch
     // phones (their default stays 1.0).
-    LaunchedEffect(styleRef, poiIconScale) {
+    LaunchedEffect(styleRef, poiIconScale, poiLabelScale) {
         val st = styleRef ?: return@LaunchedEffect
         val sc = poiIconScale
+        val lc = poiLabelScale
         runCatching {
             st.getLayer(AMBIENT_LAYER)?.setProperties(
                 PropertyFactory.iconSize(
@@ -1920,7 +1927,7 @@ fun VelaMapView(
                 PropertyFactory.textSize(
                     Expression.interpolate(
                         Expression.linear(), Expression.get("prominence"),
-                        Expression.stop(0.0, 11f * sc), Expression.stop(8.0, 14f * sc),
+                        Expression.stop(0.0, 11f * lc), Expression.stop(8.0, 14f * lc),
                     ),
                 ),
             )
@@ -1942,7 +1949,7 @@ fun VelaMapView(
                         Expression.stop(15f, 0.78f * sc), Expression.stop(17f, 1.1f * sc), Expression.stop(19f, 1.4f * sc),
                     ),
                 ),
-                PropertyFactory.textSize(10.5f * sc),
+                PropertyFactory.textSize(10.5f * lc),
             )
             val controlsScaled = Expression.interpolate(
                 Expression.linear(), Expression.zoom(),
@@ -1957,7 +1964,7 @@ fun VelaMapView(
             // the "sometimes" giants. Base values mirror layer creation; keep them in lockstep.
             st.getLayer(MARKERS_LAYER)?.setProperties(
                 PropertyFactory.iconSize(1.15f * sc),
-                PropertyFactory.textSize(13f * sc),
+                PropertyFactory.textSize(13f * lc),
             )
             st.getLayer(MARKERS_DOTS_LAYER)?.setProperties(PropertyFactory.iconSize(sc))
             st.getLayer(SAVED_LAYER)?.setProperties(PropertyFactory.iconSize(sc))

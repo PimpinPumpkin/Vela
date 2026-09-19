@@ -3666,6 +3666,8 @@ private fun MapSurface(
         // phone at 120 dpi, issue #400, showed pins a fifth of the screen wide). Below 1.75x the
         // default shrinks with the density; the Settings multiplier still applies on top.
         poiIconScale = app.vela.ui.MapPoiPrefs.iconScale.floatValue * lowDensityIconScale(LocalDensity.current.density),
+        // No density correction on labels: see the parameter's note in VelaMapView.
+        poiLabelScale = app.vela.ui.MapPoiPrefs.iconScale.floatValue,
         onNavPanned = vm::onNavPanned,
         ambientCoversView = state.ambientCoversView,
         // Grabbing the map with a sheet up drops it down out of the way so the map is yours
