@@ -343,6 +343,11 @@ with the Data Working Group specifically about the Google question - they are th
 act if it went wrong, so they are the ones worth telling first, in writing, before a line of the
 editor exists. Expect the first question to be exactly the firewall above.
 
+**Write to the DWG before any of it is built.** That is the gate, not a courtesy: the firewall
+above is a design constraint that has to be agreed before there is code to argue about, and
+turning up with a finished editor and a question about Google derivation is the wrong order.
+Nothing in this entry starts until that conversation has happened.
+
 **Not scheduled.** Notes alone would be a real contribution and could ship on their own.
 
 ### A Google Play listing  *(prep work - the split has to be real, not a disguise)*

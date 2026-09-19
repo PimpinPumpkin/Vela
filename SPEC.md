@@ -2302,6 +2302,15 @@ tooling default that claims otherwise. Before pushing, `git log origin/main..HEA
   same package and same signature. Notes are cumulative across the versions between installed
   and offered. The launch check is throttled to about daily and "not now" pins the dismissed
   code.
+- **An update that would cost the car screen asks first** (`InstallSource`). Android Auto will not
+  list a sideloaded navigation app, and the tools people use to get around that (AAEnabler, King
+  Installer) work by setting the INSTALL SOURCE to Play. The source belongs to the install, not to
+  the file, so a self-install overwrites it and the head unit drops Vela. When
+  `installingPackageName` is Play - which on a build that is not distributed there can only have
+  been put there deliberately - the downloaded APK is held back and offered as a FILE instead, so
+  it can be installed through the same tool as the first time; "Update anyway" installs it and
+  loses the listing. Obtainium and a plain sideload are unaffected: they claim their own install
+  source, which Android Auto was never going to accept.
 - **On-device loop.** Build release at or above the installed version code, `adb install -r`,
   and `am force-stop` before `am start` (installing over a running app keeps the old dex).
   **Never `adb uninstall`**: it destroys saved trips and permission grants.

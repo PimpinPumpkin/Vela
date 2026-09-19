@@ -668,6 +668,10 @@
     <string name="update_later">Not now</string>
     <string name="update_install">Update</string>
     <string name="update_download_failed">Update download failed. Try again later.</string>
+    <string name="update_car_title">This update will drop Vela from Android Auto</string>
+    <string name="update_car_body">Vela was installed in the way Android Auto accepts. Installing this update here replaces that, and the car will stop listing Vela until you install the file with the tool you used the first time (AAEnabler, King Installer).\n\nSave the file and install it that way to keep the car working.</string>
+    <string name="update_car_save">Save the file</string>
+    <string name="update_car_anyway">Update anyway</string>
     <!-- Background-download keeper notification (DownloadService, issue #212). -->
     <string name="download_notif_channel">Downloads</string>
     <string name="download_notif_title">Downloading %1$s</string> <!-- format -->
