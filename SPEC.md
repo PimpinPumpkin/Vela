@@ -1932,6 +1932,17 @@ ports it rather than inventing a fourth:
   tables because unnamed roads are everywhere. Filled by the OSRM, Valhalla and obf builders; null
   for Google's abbreviated steps, which are scraped prose with nothing to rebuild from, and there
   speech keeps the full instruction rather than risk a mangled one.
+  `Maneuver.spokenInstruction()` is what every SPOKEN site reads: the five in `NavEngine`, plus the
+  nav OPENER and the faster-route line in `NavSession`, which are built from the first maneuver and
+  are otherwise the first and the loudest place the name would survive the switch. Each of those two
+  keeps the NAMED form for its banner and card, which is the whole contract: the switch decides what
+  is read aloud, never what is shown.
+  ANYTHING THAT REWRITES AN INSTRUCTION AFTER THE ROUTER BUILT IT MUST REWRITE BOTH FORMS, or the
+  switch silently undoes that rewrite. Two places do: `consolidateExits` drops the direction that is
+  not taken from a folded ramp (missing it, the voice announces both again, which is the bug that
+  fix exists for), and `enrichWithLights` prepends the pass-the-lights clause (missing it, turning
+  street names off also threw away traffic-light guidance, a separate feature with its own switch).
+  Both are pinned by `SpokenRoadNamesTest`.
 - **The drive is an Android 16 live update** (issue #595, API 36+, `promoteToLiveUpdate`). The nav
   notification asks to be promoted, which puts the drive in the status bar chip and on the lock
   screen instead of only in the shade. The bar is the ROUTE rather than a download: its scale is the

@@ -422,6 +422,10 @@ object RouteGeometry {
                     out += m.copy(
                         distanceMeters = folded,
                         instruction = disambiguateDest(m.instruction, branch?.instruction),
+                        // The nameless twin gets the same surgery, or with spoken street names
+                        // off the voice would go back to announcing BOTH directions of the split
+                        // - the exact bug disambiguateDest exists to fix (issue #596).
+                        instructionNoRoad = m.instructionNoRoad?.let { disambiguateDest(it, branch?.instruction) },
                         lanes = m.lanes.ifEmpty { branch?.lanes.orEmpty() },
                         laneHint = m.laneHint ?: branch?.laneHint,
                         // The road ENTERED by the fold is the branch's (the ramp itself is
@@ -540,7 +544,14 @@ object RouteGeometry {
                 val count = clusters.size
                 val lead = if (count in 1..2) nav.passLights(count) else ""
                 if (lead.isBlank()) m
-                else m.copy(instruction = "$lead, then " + m.instruction.replaceFirstChar { it.lowercaseChar() })
+                // Both forms take the clause: without this, turning spoken street names off
+                // silently threw away traffic-light guidance, which is a different feature with
+                // its own switch (issue #596).
+                else m.copy(
+                    instruction = "$lead, then " + m.instruction.replaceFirstChar { it.lowercaseChar() },
+                    instructionNoRoad = m.instructionNoRoad
+                        ?.let { "$lead, then " + it.replaceFirstChar { c -> c.lowercaseChar() } },
+                )
             }
             leg.copy(maneuvers = newMans)
         }
