@@ -1129,6 +1129,13 @@ a JsonElement tree of roughly 30 MB in a dense area. The fan-out is bounded by a
 not unbound it. Partial paints escalate their batch (10 places, then 25 once 60 are painted),
 because each partial re-runs whole-layer placement.
 
+**"Show places on the map" is the master switch for EVERY business layer**: the ambient dots, the
+open (Overture) layer and the OSM fallback business icons. It predates the open layer and covered
+only the first two, so once the open source became the fleet default, turning it off left exactly
+the places it exists to hide still drawn (issue #597). `refreshPlacesOverlays` checks it alongside
+the source, and `onPoiPrefsChanged` re-runs that path so the toggle acts at once rather than on the
+next camera idle.
+
 **Offline the fan-out does not run at all.** `maybeLoadAmbientPois` returns before launching when
 `offlineNow()`, placed AFTER the cache repaint so an area visited earlier keeps its dots and only
 the network is skipped. Thirteen requests that cannot succeed are cheap with the radio cleanly off

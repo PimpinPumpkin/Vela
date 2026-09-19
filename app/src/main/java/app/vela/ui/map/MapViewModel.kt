@@ -2939,6 +2939,9 @@ class MapViewModel @Inject constructor(
             _state.update { it.copy(transitStops = emptyList()) }
         }
         refreshAmbientForCurrentView()
+        // The open places layer is driven by its own state, so the switch has to reach it here or
+        // it would only take effect on the next camera idle (issue #597).
+        refreshPlacesOverlays()
     }
 
     private fun refreshAmbientForCurrentView() {
@@ -5934,7 +5937,11 @@ class MapViewModel @Inject constructor(
 
     private fun refreshPlacesOverlays(center: LatLng? = mapCenter ?: _state.value.myLocation) {
         refreshBasemapArchive(center)
-        if (!app.vela.ui.MapPoiPrefs.openPlaces) {
+        // "Show places on the map" is the MASTER switch and the open layer has to obey it too
+        // (issue #597). It predates this layer, so it only ever cleared the ambient dots and hid
+        // the OSM business icons; once the open source became the fleet default, turning the
+        // switch off left the very places it is meant to hide still drawn.
+        if (!app.vela.ui.MapPoiPrefs.openPlaces || !app.vela.ui.MapPoiPrefs.showPois.value) {
             if (_state.value.placesOverlays.isNotEmpty() || _state.value.placesPending) _state.update { it.copy(placesOverlays = emptyList(), placesPending = false) }
             return
         }
