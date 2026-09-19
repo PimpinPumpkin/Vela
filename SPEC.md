@@ -836,9 +836,15 @@ renderer then sat at 89 percent of a core. The Developer row states the date it 
 
 - **Traffic controls** (signals, stops, level crossings, speed humps) come from the per-region
   road-features bake, with Overpass as the fallback only where no region exists. Same-kind nodes
-  within `CONTROLS_CLUSTER_M` (30 m) merge to their centroid, because OSM maps one node per
-  approach. The browse layer draws from z17.5; during navigation the corridor set draws from
-  z15.4, just under the camera's 15.5 floor. The corridor fetch is keyed per driven route so a
+  within `CONTROLS_CLUSTER_M` (45 m) merge to their centroid, because OSM maps one node per
+  approach and each approach's stop line sits well back from the middle: 30 m drew two lights at a
+  wide four-way where one in the center says the same thing. Icons are sized for something you act
+  on in the next few seconds (0.98 at z15.5 rising to 1.95 at z19). The browse layer draws from the
+  same zoom its viewport FETCH uses, so the gate that decides whether to ask for them is the gate
+  that decides whether to draw them; during navigation the corridor set draws from z15.4, just under
+  the camera's 15.5 floor. What appears is bounded by OSM: signals are mapped far more than stop
+  signs (one state's bake: 24,307 signals against 8,759 stops), so a residential area can show
+  lights and no signs at all. The corridor fetch is keyed per driven route so a
   same-course heal never refetches, capped at `CONTROLS_ROUTE_CAP` (800) nearest the start.
 - **Ownership.** While a corridor set is loaded, the viewport path must neither refetch nor run
   its zoom-clear branch, and the viewport job re-checks ownership **after** its settle delay,
@@ -1191,6 +1197,12 @@ fetches: an open place shows its tile data or the listing remembered from an ear
 (`openPlaceCache`, an LRU of 500 persisted to `open_place_links.json`), and nothing waits on a
 host that cannot answer.
 
+- **The remembered link is dropped when the app updates or the region's archive changes.** The
+  open-place-to-Google link cache short-circuits the resolve, so a link made by an older, worse rule
+  outlives the fix for it: a supermarket kept opening its fuel station after the ranking bug was
+  fixed, because the tap never reached the ranking again. The recorded CLOSURES are not dropped;
+  those are corrections, not a cache.
+
 ### 5.6 Search and results
 
 - A query runs three pages of 20 over the viewport window. When the user's location is inside
@@ -1369,6 +1381,11 @@ zoom gates or extrusion opacity; those belong in `ensureLayers` and `applyDark`.
 - Building footprints from the overlay draw **beneath** the OSM `building` layer with identical
   theming, so OSM wins wherever it has data.
 
+- **The traffic raster cross-fades.** Google's tiles expire while you drive and a replaced tile
+  swapping between frames reads as the whole congestion layer flickering, so the layer carries a
+  900 ms `raster-fade-duration`. The default 300 ms is still a blink on a full-screen overlay, and
+  traffic has no fine detail a slower fade can smear.
+
 ### 6.4 The building-overlay gate
 
 The overlay is pure occluded overdraw where OSM is dense, so a gate probes rendered OSM coverage
@@ -1481,6 +1498,33 @@ road features monthly (4th, 07:45); places (6th and 7th, 05:00, sharded); basema
 April, July, October, 2nd, 04:00). The obf bake stays manual because of its runner memory limits
 and the manifest flip. A world obf bake stages into `obf-manifest-staging.json`, which the app
 never reads; copying staging over the live name flips the whole catalog atomically.
+
+**Delta updates (the applier exists; the bake publishes patches since 2026-09-18).** A rebaked
+region changes about one tile in a hundred, so a patch carries only what moved. The format, the
+producer (`scripts/pmtiles-make-patch.py`) and the reference applier (`pmtiles-apply-patch.py`)
+share one reader (`velapmtiles.py`) so the fingerprint cannot drift between them; the phone's
+applier is `app/offline/PmtilesPatch`.
+
+- **Applied IN PLACE**: append the changed tile blobs, append the rebuilt directory, then flip the
+  127-byte header LAST. Nothing the old header describes is touched until that write, so an
+  interrupted apply leaves the old archive intact and the cost is the patch, not a second copy of
+  the region. The archive becomes unclustered, which MapLibre reads (verified on a device with a
+  152 MB region archive; `pmtiles verify` refuses it, because the header's length fields stop
+  accounting for the whole file once there is dead space in it).
+- **Proven before it is committed**: the fingerprint (SHA-256 over sorted tile ids, run lengths and
+  tile hashes, phone-computable because Android has no blake2b) is computed against the directory
+  the patch just wrote, while the header still describes the old archive. A mismatch truncates back
+  and the caller downloads the region whole. A patched archive therefore holds exactly what a fresh
+  download holds, checked rather than asserted.
+- **The bake publishes a patch only if it applies.** It diffs against the archive it is replacing,
+  applies the result to a copy, checks the fingerprint, and only then uploads it and adds
+  `delta: {fromRev, url, sizeMb}` to the manifest row. Over a third of the archive, it is not worth
+  a second code path and is skipped.
+- **Policy is the user's**: `ui/RegionUpdates` (never / on Wi-Fi, the default / on mobile data too),
+  metered judged by the system rather than by which radio it is. A FULL re-download is never
+  automatic on any setting. Every attempt is recorded in the diagnostics ring (kind `delta`) and
+  logcat `VelaDelta` with the bytes and the reason for any fallback, because the failure worth
+  seeing is a region that quietly downloads itself whole every week.
 
 ### 7.4 Download discipline
 
@@ -1607,6 +1651,11 @@ Rules:
   only attenuate system voices.
 - A voice install or a delete-fallback never auto-speaks; only an explicit library pick
   auditions.
+
+- **Clock times are spelled out** (`SpeechText.spokenClock`, English): the phonemizer reads a colon
+  between numbers as a measurement and announced an arrival time of 5:49 as a height. Same approach
+  as the street ordinals: fix the text rather than fight the G2P. Every spoken string carrying
+  numbers, units or punctuation needs the same look, and a test.
 
 ### 9.2 Foreign scripts
 
@@ -1780,6 +1829,12 @@ ports it rather than inventing a fourth:
   the frames before a puck position exists. The gray dot is what the message is about, and the
   bottom band it used to sit in is where the speed widget and the mute pop-out already are. The
   road-name pill takes the space under the arrow, so the two never meet.
+
+- **One progress bar** (`VelaProgressBar`). Every download had grown its own, which left the one in
+  Settings running the full width of a group while every row beside it kept a margin. It has rounded
+  ends like the rest of the chrome, a lambda form so an animating value is read in the draw phase
+  rather than recomposing its host, and null progress means indeterminate, for a step that cannot
+  report a percentage.
 
 ### 10.3 D-pad operation
 
@@ -2037,6 +2092,21 @@ flights indistinguishable from Google most of the time, with a brief settle-then
 in dense areas.
 
 ---
+
+**Measuring the map.** `dumpsys gfxinfo` counts the Compose chrome and is BLIND to the map, which
+draws on its own GL thread in a SurfaceView: it reports zero frames rendered for a pan that visibly
+stutters. The map's own end-of-frame callback is the signal. `VelaMapView` logs it once a second
+under `VelaFps` when the system property `debug.vela.fps` is set (read at map creation, so restart
+after setting it), and `scripts/map-fps.sh` runs the whole loop: property, restart, warm map, a
+fixed pan pattern, then min/p10/median/max. A Pixel 4a holds 40-55 fps panning a suburb at browse
+zoom.
+
+**A dense GeoJSON source needs a high maxzoom.** Past a source's maxzoom every visible overscaled
+tile lays out ALL of its parent tile's features, so a source holding hundreds of points and drawn
+several zooms above its maxzoom re-places the lot every frame. The ambient places source cost
+22 fps against 51 until it went from 12 to 18; the traffic controls (up to 800 along a route),
+transit stops and result markers are 18 for the same reason, the camera layers 16, and genuinely
+sparse sources (the puck, parking, saved places, Street View, the accuracy circle) stay at 12.
 
 ## 14. Privacy, diagnostics and location hygiene
 
