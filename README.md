@@ -266,7 +266,7 @@ remote-repair channel.
 Everything shipped so far is in [FEATURES.md](FEATURES.md) (the complete list) and the
 release notes of each build. Still open (details in [ROADMAP.md](ROADMAP.md)):
 
-- [ ] Move to Weblate translations (project needs to exist for at least three months)
+- [ ] Move to Weblate translations (the three-month age bar is cleared; the application is the next step)
 - [ ] F-Droid submission + reproducible build
 - [ ] A Google Play listing, so Android Auto works on factory head units: a clean shell on Play
       (map, offline routing, places from OpenStreetMap) with the Google-reading half as an

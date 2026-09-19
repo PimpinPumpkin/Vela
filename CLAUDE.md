@@ -1913,8 +1913,10 @@ Defaults that make the safe path the easy one:
   checklist) and a missing translation falls back to English. Hand-filling every `values-<lang>/` in
   the same commit (the old rule) is still fine for small batches but no longer required.
   ⚠️ **WEBLATE IS NOT LIVE and its link 404s - do not point anyone at it** (issue #285, 2026-08-28):
-  hosted Weblate requires a project to be at least THREE MONTHS OLD to qualify and Vela is not there
-  yet. README/CONTRIBUTING/FEATURES/TRANSLATING were corrected to describe the PR flow; the README
+  hosted Weblate requires a project to be at least THREE MONTHS OLD to qualify. **That bar is
+  cleared as of 2026-09-15** (the repo was created 2026-06-15), so applying is now an open action
+  rather than a wait; until an application is actually accepted the PR flow below is still what
+  the docs describe. README/CONTRIBUTING/FEATURES/TRANSLATING were corrected to describe the PR flow; the README
   roadmap keeps it as an open item. Rewrite those four the day the project is actually approved. Match the
   `%1$s`/`%2$d` placeholder TYPE to the arg (Int → `%d`, else `%s`; a `%d` fed a String crashes).
   **Count strings use `<plurals>`, not a bare `%d X` (2026-07-11, issue #56 "1 results"):** the
