@@ -133,6 +133,7 @@ abstract class PmtilesRegionStore(
         .build()
 
     @Volatile private var cached: List<Region>? = null
+    @Volatile private var cachedAtMs = 0L
     @Volatile private var lastMissMs = 0L
 
     private fun fileFor(id: String) = File(root, "$id.pmtiles")
@@ -145,7 +146,9 @@ abstract class PmtilesRegionStore(
     fun installedIds(): Set<String> = installed().keys
 
     suspend fun manifest(manifestUrl: String): List<Region> {
-        cached?.let { return it }
+        // The memo EXPIRES. A bake publishes a new revision while the app is running, and a process
+        // that lives for days would otherwise never see it: no Update offered, no delta taken.
+        cached?.let { if (SystemClock.elapsedRealtime() - cachedAtMs < MANIFEST_TTL_MS) return it }
         // A missing or unreachable manifest is remembered for a while: this runs on every camera
         // idle, and without the memo each pan retried the fetch.
         if (SystemClock.elapsedRealtime() - lastMissMs < MISS_MEMO_MS) return emptyList()
@@ -166,7 +169,10 @@ abstract class PmtilesRegionStore(
                 }
             }.getOrDefault(emptyList())
         }
-        if (fetched.isNotEmpty()) cached = fetched else lastMissMs = SystemClock.elapsedRealtime()
+        if (fetched.isNotEmpty()) {
+            cached = fetched
+            cachedAtMs = SystemClock.elapsedRealtime()
+        } else lastMissMs = SystemClock.elapsedRealtime()
         return fetched
     }
 
@@ -339,5 +345,8 @@ abstract class PmtilesRegionStore(
 
     private companion object {
         const val MISS_MEMO_MS = 10 * 60 * 1000L
+        /** How long a fetched catalog is reused. Bakes are daily at most, so an hour is plenty and
+         *  still cheap: this runs on camera idle, not per frame. */
+        const val MANIFEST_TTL_MS = 60 * 60 * 1000L
     }
 }

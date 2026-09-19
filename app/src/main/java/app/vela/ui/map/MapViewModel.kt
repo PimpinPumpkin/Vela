@@ -5596,7 +5596,10 @@ class MapViewModel @Inject constructor(
             mapsMb = mbOf(java.io.File(files, ".mapbox")) + mbOf(java.io.File(files, "mbgl-offline.db")) +
                 mbOf(java.io.File(files, "overlays")) + mbOf(java.io.File(files, "basemap")),
             routingMb = mbOf(java.io.File(files, "obf")),
-            placesMb = mbOf(java.io.File(files, "poipacks")),
+            // The packs AND the places archives a region download pulls: both are the place data
+            // behind the map's businesses, and leaving the archives out of the only storage screen
+            // made a few hundred MB invisible.
+            placesMb = mbOf(java.io.File(files, "poipacks")) + mbOf(java.io.File(files, "places")),
             voicesMb = mbOf(java.io.File(files, "piper")) + mbOf(java.io.File(files, "asr")),
         )
     }
