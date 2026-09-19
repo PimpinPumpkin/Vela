@@ -3930,6 +3930,13 @@ Gotchas:
   **The promotion also needs `android.permission.POST_PROMOTED_NOTIFICATIONS` in the manifest** -
   without it the styled notification posts fine and the chip never appears, which is exactly what
   the first Pixel 9 run showed (2026-09-19): the extras were all correct, the status bar was bare.
+  **And the channel has to be DEFAULT importance, not LOW** (`vela_nav_drive`, sound null, vibration
+  off - a new id, since importance is fixed once a channel exists): the system files LOW as "silent",
+  and the same Pixel 9 hides silent notifications on the lock screen, so the live update was missing
+  from the one place worth having it. Google Maps' own `1_foreground_1` channel is importance 3 for
+  this reason. Verified on the device: with the channel silent the lock screen showed nothing; with
+  silent notifications shown it drew the full live update - route bar, maneuver tracker at the car,
+  Pause/End.
 - **A FASTER-ROUTE OFFER AUTO-RESOLVES (issue #594, 2026-09-18, benwiley4000):** it used to sit
   until answered, so a driver had to answer a prompt covering the map. `FasterRouteCard` drains a
   bar along its bottom edge over 10 s for everyone, FROZEN while focus is anywhere on the card
