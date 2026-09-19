@@ -5,7 +5,8 @@ Vela ships in 15 languages (the canonical layer-by-layer table is in
 they come in as ordinary pull requests.
 
 > **Weblate is not up yet.** Hosted Weblate is free for open-source projects, but
-> a project has to be at least three months old to qualify and Vela is not there
+> a project has to be at least three months old to qualify. Vela passed that mark on
+> 2026-09-15 and has not applied yet, so it is not there
 > yet. Until it is, there is no Weblate project to sign in to, so please use the
 > pull-request flow below. This page gets rewritten the day it is running.
 
