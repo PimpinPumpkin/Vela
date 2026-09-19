@@ -2424,6 +2424,21 @@ architecture note.
   Three different failures (a throttled session returning nothing, a tile row whose name or point is
   off so nothing agrees within `NO_NAME_MATCH_M`, and a pick dropped by the 1.5 km cap) are
   indistinguishable on screen, and none of them used to leave a trace. NO coordinates in the line.
+- **MEASURE MAP FRAMES WITH THE MAP'S OWN CALLBACK, NOT gfxinfo (2026-09-18):** the map draws on
+  its own GL thread in a SurfaceView, so `dumpsys gfxinfo` counts the Compose chrome and reports
+  "Total frames rendered: 0" for a pan that visibly stutters (checked on the 4a). `VelaMapView`
+  registers MapLibre's `addOnDidFinishRenderingFrameListener` and logs fps once a second under
+  `VelaFps` when `debug.vela.fps` is set (read at MAP CREATION, so restart the app after setprop;
+  same escape-hatch style as `debug.vela.lowram`). `scripts/map-fps.sh [serial] [label]` does the
+  whole loop: setprop, restart, wait for a warm map, a fixed pan pattern, then min/p10/median/max.
+  Measured that way the 4a holds 40-55 fps panning a suburb at browse zoom.
+- **A DENSE GeoJSON SOURCE NEEDS A HIGH maxzoom (2026-09-18, the ambient lesson generalized):**
+  past a source's maxzoom every visible overscaled tile lays out ALL of its parent tile's features.
+  `AMBIENT_SRC` cost 22 -> 51 fps when it went 12 -> 18 (2026-09-16); the same shape was still in
+  `CONTROLS_SRC` (up to `CONTROLS_ROUTE_CAP` 800 features along a drive, drawn from z15.4 with
+  maxzoom 12), `TRANSIT_STOPS_SRC` and `MARKERS_SRC`, now 18, and the camera/flock sources, now 16.
+  Sparse ones (me, parking, saved, Street View, accuracy) keep 12. NOT yet A/B'd: the sources are
+  nearly empty in a quiet suburb with no route, so the win should show during nav or in a city.
 - **MEASURE ARCHIVE CHURN BEFORE BUILDING DELTAS (2026-09-18):** `scripts/archive-churn.py old new
   [--patch]` reports per-zoom identical/changed/added/dropped tiles (it parses the PMTiles v3
   directory itself, same layout as the app's `PmtilesReader`) and builds a real `zstd --patch-from`

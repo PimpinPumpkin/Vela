@@ -3261,6 +3261,30 @@ fun VelaMapView(
                 // (also ~constant) runs the gate once the time floor allows. renderSettled arms the
                 // gate's REVEAL path - before the first finished render a "sparse" verdict is just
                 // unloaded tiles, and revealing on it is the arrival flash.
+                // FRAME PROBE (2026-09-18). gfxinfo counts the Compose chrome and is blind to the
+                // map, which draws on its own GL thread in a SurfaceView, so a pan that stutters
+                // visibly can report zero janky frames. MapLibre's own end-of-frame callback is the
+                // real signal. Off unless asked for, and asked for WITHOUT touching the user's
+                // settings: `adb shell setprop debug.vela.fps true` (same escape hatch as
+                // debug.vela.lowram), then read logcat VelaFps.
+                val fpsProbeOn = runCatching {
+                    @Suppress("PrivateApi")
+                    val m = Class.forName("android.os.SystemProperties").getMethod("get", String::class.java)
+                    (m.invoke(null, "debug.vela.fps") as? String).orEmpty()
+                }.getOrDefault("") == "true"
+                if (fpsProbeOn) {
+                    var frames = 0
+                    var since = android.os.SystemClock.elapsedRealtime()
+                    mv.addOnDidFinishRenderingFrameListener { _, _, _ ->
+                        frames++
+                        val now = android.os.SystemClock.elapsedRealtime()
+                        if (now - since >= 1000) {
+                            android.util.Log.d("VelaFps", "${frames * 1000L / (now - since)} fps (${frames} frames)")
+                            frames = 0
+                            since = now
+                        }
+                    }
+                }
                 mv.addOnDidBecomeIdleListener {
                     // First finished render = the GL surface survived init: clear the crash
                     // sentinel and decay the counter (texture_render itself is untouched, so an
@@ -4309,7 +4333,7 @@ private fun ensureLayers(style: Style) {
     }
     if (style.getImage(PIN_IMG) == null) style.addImage(PIN_IMG, pinBitmap())
     if (style.getSource(MARKERS_SRC) == null) {
-        style.addSource(GeoJsonSource(MARKERS_SRC, GeoJsonOptions().withMaxZoom(12)))
+        style.addSource(GeoJsonSource(MARKERS_SRC, GeoJsonOptions().withMaxZoom(18)))
         // Search results, Google's treatment: every result is a RED marker that keeps its
         // category glyph (rated food places get the wide rating bubble instead - see PoiIcons),
         // and the pins COLLIDE by rank instead of stacking - in a dense downtown the best
@@ -4560,7 +4584,13 @@ private fun ensureLayers(style: Style) {
     if (style.getImage(RAILX_IMG) == null) style.addImage(RAILX_IMG, railCrossingBitmap())
     if (style.getImage(HUMP_IMG) == null) style.addImage(HUMP_IMG, speedHumpBitmap())
     if (style.getSource(CONTROLS_SRC) == null) {
-        style.addSource(GeoJsonSource(CONTROLS_SRC, GeoJsonOptions().withMaxZoom(12)))
+        // MAXZOOM MATTERS MORE THAN IT LOOKS (the ambient layer's 22 -> 51 fps lesson, 2026-09-16,
+        // applied to the rest of the dense point sources 2026-09-18). Past a GeoJSON source's
+        // maxzoom every visible overscaled tile lays out ALL of its parent tile's features, so a
+        // source holding hundreds of points and drawn several zooms above its maxzoom re-places the
+        // lot, every frame. These three are the dense ones: up to CONTROLS_ROUTE_CAP (800) controls
+        // along a drive, a city's transit stops, and a screenful of result pins.
+        style.addSource(GeoJsonSource(CONTROLS_SRC, GeoJsonOptions().withMaxZoom(18)))
         // A third bigger than they were (user 2026-09-18, from a drive): a stop sign or a light is
         // something you act on in the next few seconds, and at the old size they read as map dust
         // next to the road shields.
@@ -4631,7 +4661,7 @@ private fun ensureLayers(style: Style) {
     if (style.getImage(FLOCK_IMG) == null) style.addImage(FLOCK_IMG, alprCameraBitmap())
     if (style.getImage(FLOCK_DIR_IMG) == null) style.addImage(FLOCK_DIR_IMG, alprConeBitmap())
     if (style.getSource(FLOCK_SRC) == null) {
-        style.addSource(GeoJsonSource(FLOCK_SRC, GeoJsonOptions().withMaxZoom(12)))
+        style.addSource(GeoJsonSource(FLOCK_SRC, GeoJsonOptions().withMaxZoom(16)))
         val flockSize = Expression.interpolate(
             Expression.linear(), Expression.zoom(),
             Expression.stop(11f, 0.55f),
@@ -4683,7 +4713,7 @@ private fun ensureLayers(style: Style) {
         // minZoom must match the VM's FLOCK_MIN_ZOOM fetch gate: clamped at 13.5 this layer sat
         // on fetched cameras without drawing them (z13-13.5 was a dead band, and route-overview
         // zoom showed nothing at all - the half-done state vela-dpad caught, issue #131).
-        style.addSource(GeoJsonSource(FLOCK_CLUSTER_SRC, GeoJsonOptions().withMaxZoom(12)))
+        style.addSource(GeoJsonSource(FLOCK_CLUSTER_SRC, GeoJsonOptions().withMaxZoom(16)))
         style.addLayerBelow(
             SymbolLayer(FLOCK_CLUSTER_LAYER, FLOCK_CLUSTER_SRC).apply {
                 setMinZoom(11f)
@@ -4726,7 +4756,7 @@ private fun ensureLayers(style: Style) {
     // shares the flock zoom floor; no cones (facing is rarely tagged and matters less here).
     if (style.getImage(SPEEDCAM_IMG) == null) style.addImage(SPEEDCAM_IMG, speedCamBitmap())
     if (style.getSource(SPEEDCAM_SRC) == null) {
-        style.addSource(GeoJsonSource(SPEEDCAM_SRC, GeoJsonOptions().withMaxZoom(12)))
+        style.addSource(GeoJsonSource(SPEEDCAM_SRC, GeoJsonOptions().withMaxZoom(16)))
         val camSize = Expression.interpolate(
             Expression.linear(), Expression.zoom(),
             Expression.stop(11f, 0.55f),
@@ -4756,7 +4786,7 @@ private fun ensureLayers(style: Style) {
     // in applyData). Drawn above the ambient POIs (and above the flock layer, which yields to both).
     if (style.getImage(TRANSIT_STOP_IMG) == null) style.addImage(TRANSIT_STOP_IMG, transitStopBitmap())
     if (style.getSource(TRANSIT_STOPS_SRC) == null) {
-        style.addSource(GeoJsonSource(TRANSIT_STOPS_SRC, GeoJsonOptions().withMaxZoom(12)))
+        style.addSource(GeoJsonSource(TRANSIT_STOPS_SRC, GeoJsonOptions().withMaxZoom(18)))
         // Deliberately a touch smaller than the POI markers (stops are dense), but not tiny -
         // the first cut (0.62-1.2) read too small on device (user 2026-07-13).
         val stopSize = Expression.interpolate(
