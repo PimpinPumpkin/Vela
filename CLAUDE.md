@@ -2477,8 +2477,15 @@ architecture note.
   `isActiveNetworkMetered` so a metered Wi-Fi counts), Settings > Offline maps; a FULL re-download is
   never automatic on any setting. Every attempt is logged (`diag.record("delta")` + logcat
   `VelaDelta`) with the bytes and the reason for a fallback, because the failure worth seeing is a
-  region that quietly downloads itself whole every week. NOT WIRED YET: the bake publishes no
-  patches, so no manifest row carries `delta` and the path is inert. TEST TRAPS: `org.json` is a STUB
+  region that quietly downloads itself whole every week. **PROVEN END TO END ON A PIXEL 9
+  (2026-09-19):** a region was installed at one revision, re-baked, and the phone took the published
+  patch - `applied 23 tiles ... rev 20260919 -> 20260920, grew 93 KB, dead 70 KB`, 94 KB down against
+  a 3.3 MB archive. Two app-side bugs fell out of that run and are fixed: the catalog was memoized
+  for the life of the PROCESS (a bake landing while the app ran was never noticed, so no update was
+  ever offered), and dead space was counted but never bounded (`dead.json`, past a fifth of the file
+  the next update is taken whole, which is the compaction). The same run measured the churn a delta
+  actually saves: a same-code rebake carried 23 of 4586 tiles (3% of the archive), while the rebake
+  that also carried a BAKE CHANGE carried 2506 and was correctly refused as too big. TEST TRAPS: `org.json` is a STUB
   in app unit tests (needs `testImplementation("org.json:json:...")`) and `android.util.Log` THROWS
   unless `testOptions.unitTests.isReturnDefaultValues = true`, which turns a log line inside a
   runCatching into a mystery failure of the thing under test.

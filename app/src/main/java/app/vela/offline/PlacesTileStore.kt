@@ -225,6 +225,7 @@ abstract class PmtilesRegionStore(
                 synchronized(indexLock) {
                     writeIndex(readIndex() + (region.id to doubleArrayOf(region.s, region.w, region.n, region.e)))
                     writeRev(region.id, region.rev)
+                    writeDead(region.id, 0)
                 }
                 onProgress(100)
                 true
@@ -257,6 +258,16 @@ abstract class PmtilesRegionStore(
             log("${region.id}: installed rev $have, patch is from ${delta.fromRev}")
             return@withContext false
         }
+        // COMPACTION. A patch appends and leaves the tiles it replaced behind, so a file updated
+        // this way forever would drift from what a fresh download holds - same tiles, more bytes.
+        // Past a fifth of the file in dead space the delta is refused and the caller downloads the
+        // region whole, which IS the compaction: the archive goes back to being byte for byte what
+        // the bake published, and the counter starts again.
+        val dead = deadBytes(region.id)
+        if (dead > file.length() / DEAD_LIMIT_DIVISOR) {
+            log("${region.id}: ${dead / 1024} KB dead in a ${file.length() / 1024} KB archive, taking it whole to compact")
+            return@withContext false
+        }
         downloadMutex.withLock {
             val tmp = File(root, "${region.id}.vpatch.tmp")
             val ok = runCatching {
@@ -280,7 +291,10 @@ abstract class PmtilesRegionStore(
                 }
                 when (val outcome = PmtilesPatch.apply(file, tmp)) {
                     is PmtilesPatch.Outcome.Applied -> {
-                        synchronized(indexLock) { writeRev(region.id, region.rev) }
+                        synchronized(indexLock) {
+                            writeRev(region.id, region.rev)
+                            writeDead(region.id, dead + outcome.deadBytes)
+                        }
                         log("${region.id}: patched ${delta.fromRev} -> ${region.rev}, " +
                             "${tmp.length() / 1024} KB down, ${outcome.tiles} tiles, " +
                             "${outcome.deadBytes / 1024} KB dead")
@@ -300,8 +314,12 @@ abstract class PmtilesRegionStore(
 
     fun delete(id: String) {
         fileFor(id).delete()
-        synchronized(indexLock) { writeIndex(readIndex() - id); writeRev(id, 0) }
+        synchronized(indexLock) { writeIndex(readIndex() - id); writeRev(id, 0); writeDead(id, 0) }
     }
+
+    /** Bytes in the installed archive that patches have superseded: the only way a patched file
+     *  differs from a freshly downloaded one. */
+    fun deadBytes(id: String): Long = synchronized(indexLock) { readDead().optLong(id, 0L) }
 
     /** The manifest rev the installed archive came from (0 for archives older than revs). */
     fun installedRev(id: String): Int = synchronized(indexLock) { readRevs().optInt(id, 0) }
@@ -314,6 +332,14 @@ abstract class PmtilesRegionStore(
 
     private fun readRevs(): JSONObject =
         runCatching { JSONObject(File(root, "revs.json").readText()) }.getOrDefault(JSONObject())
+
+    private fun readDead(): JSONObject =
+        runCatching { JSONObject(File(root, "dead.json").readText()) }.getOrDefault(JSONObject())
+
+    private fun writeDead(id: String, bytes: Long) {
+        root.mkdirs()
+        File(root, "dead.json").writeText(readDead().put(id, bytes).toString())
+    }
 
     private fun writeRev(id: String, rev: Int) {
         root.mkdirs()
@@ -345,6 +371,8 @@ abstract class PmtilesRegionStore(
 
     private companion object {
         const val MISS_MEMO_MS = 10 * 60 * 1000L
+        /** Dead space a patched archive may carry before the next update is taken whole instead. */
+        const val DEAD_LIMIT_DIVISOR = 5
         /** How long a fetched catalog is reused. Bakes are daily at most, so an hour is plenty and
          *  still cheap: this runs on camera idle, not per frame. */
         const val MANIFEST_TTL_MS = 60 * 60 * 1000L
