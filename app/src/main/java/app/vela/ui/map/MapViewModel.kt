@@ -5471,6 +5471,11 @@ class MapViewModel @Inject constructor(
                 return
             }
         }
+        // OFFLINE the fan-out is thirteen requests that cannot succeed. The cache repaint above
+        // still runs, so an area visited earlier keeps its dots; only the network is skipped.
+        // Cleanly offline these fail fast and cost little, but the case that actually burns the
+        // radio is a FLAKY link, where every one of them hangs to the call timeout.
+        if (offlineNow()) return
         ambientJob = viewModelScope.launch {
             delay(300) // brief settle so a flick doesn't scrape — but snappy
             // PROGRESSIVE paint: the fan-out streams its accumulated pool as category terms
