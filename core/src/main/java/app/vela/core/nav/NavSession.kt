@@ -214,6 +214,11 @@ class NavSession @Inject constructor(
         // Google's markup gives "Head toward F St"; add the cardinal so guidance
         // says "Head east on F St" like Google's own voice.
         val first = Heading.withCardinal(route.maneuvers.firstOrNull()?.instruction.orEmpty(), route.polyline)
+        // The opener is the first thing the voice says on every drive, so it honors the
+        // spoken-street-names switch too (issue #596). The BANNER keeps `first`: the switch is
+        // about what is read aloud, never about what is shown.
+        val firstSpoken =
+            Heading.withCardinal(route.maneuvers.firstOrNull()?.spokenInstruction().orEmpty(), route.polyline)
         _state.value = State(
             navigating = true,
             route = route,
@@ -238,7 +243,7 @@ class NavSession @Inject constructor(
         // speakOpener (not speak): briefly hold the opener until the first road's real romanized name
         // has loaded from the map tiles, so a foreign street isn't read as an ICU skeleton at T=0 while
         // the nav-zoom tiles are still loading (issue #184). Falls through to speaking after a short cap.
-        voice.speakOpener(app.vela.core.i18n.NavStringsRegistry.current().startNav(first))
+        voice.speakOpener(app.vela.core.i18n.NavStringsRegistry.current().startNav(firstSpoken))
         diag.record(
             "nav",
             "start → ${destinationLabel.ifBlank { "destination" }} " +
@@ -514,6 +519,9 @@ class NavSession @Inject constructor(
         val faster = _state.value.fasterRoute ?: return
         lastSwapReason = "faster"
         val first = faster.maneuvers.firstOrNull()?.instruction.orEmpty()
+        // Spoken half of the same split as the opener: the card keeps the road name, the voice
+        // drops it when the user asked for that (issue #596).
+        val firstSpoken = faster.maneuvers.firstOrNull()?.spokenInstruction().orEmpty()
         // The faster candidate was routed through the remaining stops (maybeRecheck rejects candidates
         // that don't cover them) → adopt them + recompute marks, atomically with the plan-route swap.
         synchronized(stopLock) {
@@ -540,7 +548,7 @@ class NavSession @Inject constructor(
                 fasterSavingSeconds = 0.0,
             )
         }
-        voice.speak(app.vela.core.i18n.NavStringsRegistry.current().fasterRoute(first), interrupt = true)
+        voice.speak(app.vela.core.i18n.NavStringsRegistry.current().fasterRoute(firstSpoken), interrupt = true)
         note("accepted faster route (${faster.maneuvers.size} steps)")
     }
 
