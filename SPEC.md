@@ -1539,13 +1539,21 @@ applier is `app/offline/PmtilesPatch`.
   candidate: Guernsey and Jersey re-baked a day after the OSM-business source landed carried 2506 of
   4586 tiles (2.17 MB against a 3.3 MB archive) and was correctly refused. The number that matters is
   two bakes of the SAME script, and that is what `scripts/archive-churn.py` measures.
-- **Dead space is bounded, and compaction is a full download.** A patch appends and leaves the tiles
+- **Dead space is reclaimed on the phone, not re-downloaded.** A patch appends and leaves the tiles
   it replaced behind, which is the ONLY way a patched archive differs from a freshly downloaded one:
-  same tiles, more bytes. `dead.json` accumulates those bytes per archive; past a fifth of the file
-  the next update refuses the delta and takes the region whole, which puts the file back to exactly
-  what the bake published and resets the counter. A full download and a `delete` both clear it.
-  Measured on a device: one day of Guernsey and Jersey left 70 KB dead in a 3.3 MB archive, so the
-  compacting download lands about every ten updates.
+  same tiles, more bytes. `dead.json` accumulates those bytes per archive, and past a fifth of the
+  file `PmtilesCompact` REWRITES it: every live tile is already on the phone, so putting them back
+  in tile id order and dropping the rest costs a pass over the file and nothing on the network. The
+  result is the layout the bake publishes (header, directory, metadata, clustered tile data, no
+  leaves, no gaps) and it is proven before it is committed, like the patch: the rewrite goes to a
+  temporary file, its fingerprint has to equal the one it came from, and only then does it replace
+  the archive. `scripts/pmtiles-compact.py` is the same code on a desktop and is how the layout was
+  checked: the published Guernsey and Jersey patch applied to the previous revision gave a 3.36 MB
+  archive, compacting it gave 3,259,268 bytes against the 3,259,285 of a fresh download of that
+  revision, same fingerprint - 17 bytes apart, which is the leaf directory a fresh bake writes.
+  A whole download stays as the last resort for a phone with no room to rewrite: past HALF the file
+  in dead space the delta is refused and the region is taken whole. `adb shell setprop
+  debug.vela.compact true` rewrites after every patch, for watching it happen.
 - **Settings > Offline maps reports the archives too.** `offlineStorageBreakdown`'s "Offline places"
   counts `files/poipacks` AND `files/places`; the archives were absent from the only storage screen
   in the app, so a region's few hundred MB of places were invisible.
