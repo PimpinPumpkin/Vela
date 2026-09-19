@@ -96,6 +96,16 @@ android {
             "\"${(project.findProperty("basemapManifestUrl") as String?)
                 ?: "https://github.com/PimpinPumpkin/Vela/releases/download/basemap-tiles/basemap-manifest.json"}\"",
         )
+        // The GLOBAL low-zoom basemap (`world-lowzoom.yml`): the whole planet's coastlines, water,
+        // boundaries and place labels at z0-7, about 11 MB, pulled alongside the first offline
+        // download so losing the network away from a saved region is a coarse map and not an empty
+        // screen. Same override pattern (-PworldBasemapUrl=...).
+        buildConfigField(
+            "String",
+            "WORLD_BASEMAP_URL",
+            "\"${(project.findProperty("worldBasemapUrl") as String?)
+                ?: "https://github.com/PimpinPumpkin/Vela/releases/download/basemap-tiles/basemap-world.pmtiles"}\"",
+        )
         // Offline PLACE packs (whole-region POI/address SQLite, pulled with a routing-region download so a
         // state is searchable offline) — same override pattern (-PpoiPackManifestUrl=… via `adb reverse`).
         buildConfigField(

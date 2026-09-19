@@ -58,10 +58,14 @@ class BasemapTileStore @Inject constructor(
     fun installedFor(center: LatLng?): File? {
         val c = center ?: return null
         val index = readIndexPublic()
+        // The WORLD archive is never a normal candidate: it covers every point on earth, so the
+        // area sort would rank it last anyway, and the roads probe below would reject it outright
+        // (it carries no transportation layer at any zoom). It is the explicit last resort instead.
         val covering = installed().entries
+            .filter { (id, _) -> id != WORLD_ID }
             .filter { (id, _) -> index[id]?.let { b -> c.lat in b[0]..b[2] && c.lng in b[1]..b[3] } ?: true }
             .sortedBy { (id, _) -> index[id]?.let { b -> (b[2] - b[0]) * (b[3] - b[1]) } ?: Double.MAX_VALUE }
-        if (covering.isEmpty()) return null
+        if (covering.isEmpty()) return worldArchive()
         val (tx, ty) = PmtilesReader.tileOf(c.lat, c.lng, COVERAGE_PROBE_Z)
         // "Cannot tell" and "definitely no roads here" are NOT the same answer, and collapsing them
         // was the second half of issue #552: past a region's real data but still inside its
@@ -79,7 +83,29 @@ class BasemapTileStore @Inject constructor(
                 false -> Unit
             }
         }
-        return if (unreadable) covering.first().value else null
+        // Nothing here holds the map. Online that means stream it; the caller's shallow rule turns
+        // the world archive down while there is a connection, so this only ever draws when there
+        // is nothing else at all.
+        return if (unreadable) covering.first().value else worldArchive()
+    }
+
+    /** The whole planet at low zoom (`WORLD_ID`), the floor under everything else: coastlines,
+     *  water, boundaries and place labels, so losing the network away from a downloaded region is
+     *  a coarse map rather than an empty screen. Baked by `world-lowzoom.yml`; it holds no roads,
+     *  which is why it bypasses the coverage probe, and its shallow max zoom is what keeps it
+     *  offline-only without a rule of its own. */
+    fun worldArchive(): File? = installed()[WORLD_ID]
+
+    /** Pull the world archive once, if it is not already here. Best effort and quiet: it is a
+     *  floor under the map, so failing to get it leaves everything exactly as it was. */
+    suspend fun ensureWorld(url: String, onProgress: (Int) -> Unit = {}): Boolean {
+        if (worldArchive() != null) return true
+        // The bbox is the whole planet on purpose; nothing sorts against it because the pick
+        // filters it out of the candidate list by id.
+        return download(
+            Region(WORLD_ID, "World", url, 0.0, -85.0, -180.0, 85.0, 180.0),
+            onProgress,
+        )
     }
 
     private fun probeKey(f: File, x: Int, y: Int) = "${f.name}|$x|$y"
@@ -118,6 +144,9 @@ class BasemapTileStore @Inject constructor(
          *  fine enough to tell a neighboring state's archive from the right one, coarse enough
          *  that a lake or a stretch of farmland inside the right region still has a tile. */
         const val COVERAGE_PROBE_Z = 12
+
+        /** The id of the global low-zoom archive, kept out of the per-region candidate list. */
+        const val WORLD_ID = "world"
     }
 }
 
