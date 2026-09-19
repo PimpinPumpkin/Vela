@@ -5927,6 +5927,49 @@ private fun withLocalBasemap(context: android.content.Context, json: String, arc
 private fun firstSymbolLayerId(style: Style): String? =
     style.layers.firstOrNull { it is SymbolLayer }?.id
 
+/**
+ * Residential streets, wider and named earlier (user 2026-09-18).
+ *
+ * The style Vela renders is OpenFreeMap's Liberty, where a minor road is invisible below z13.5,
+ * 2.5 px at z14, and its NAME does not place until z15. Beside Google at the same visible area the
+ * town reads as a sketch: the grid is there but thin, and you have to zoom another step to find out
+ * what any of it is called. Remember that our zoom number reads about one lower than Google's for
+ * the same extent (512 px tiles), so "z14 here" is their z15.
+ *
+ * Two levers, both needed. Wider lines make the grid legible sooner; the label minzoom is what
+ * actually puts names on it, since a symbol layer draws nothing above its own floor however fat the
+ * line underneath is. Paths keep their higher floor: a trail name at town zoom is clutter.
+ *
+ * This costs frames - every label is glyph layout plus a collision pass over four anchors - so it
+ * is the kind of change to check with `scripts/map-fps.sh` if a dense city starts feeling worse.
+ */
+private fun widenStreets(style: Style) {
+    runCatching {
+        // Minor streets: visible from z12.5 instead of z13.5, and about 60% fatter through the
+        // town zooms, converging on the style's own 18 px by z20 so close zoom is untouched.
+        (style.getLayer("road_minor") as? LineLayer)?.setProperties(
+            PropertyFactory.lineWidth(
+                Expression.interpolate(
+                    Expression.exponential(1.2f), Expression.zoom(),
+                    Expression.stop(12.5f, 0f), Expression.stop(13f, 1.6f),
+                    Expression.stop(14f, 4f), Expression.stop(16f, 9f), Expression.stop(20f, 18f),
+                ),
+            ),
+        )
+        (style.getLayer("road_minor_casing") as? LineLayer)?.setProperties(
+            PropertyFactory.lineWidth(
+                Expression.interpolate(
+                    Expression.exponential(1.2f), Expression.zoom(),
+                    Expression.stop(12f, 0.8f), Expression.stop(13f, 2.4f),
+                    Expression.stop(14f, 6f), Expression.stop(16f, 11.5f), Expression.stop(20f, 20f),
+                ),
+            ),
+        )
+        // The names themselves. 15 is a full step past where the streets are legible.
+        style.getLayer("highway-name-minor")?.minZoom = 13.5f
+    }
+}
+
 private fun applyMapTheme(style: Style, dark: Boolean, amoled: Boolean = false) {
     val basemapSource = basemapSrc(style) ?: return
     // Two compiled color sets, picked in Settings -> Appearance (MapColors): "modern" is the
@@ -5939,6 +5982,7 @@ private fun applyMapTheme(style: Style, dark: Boolean, amoled: Boolean = false) 
         classic -> applyClassicLight(style)
         else -> applyLight(style)
     }
+    widenStreets(style)
     PoiIcons.applyToLiberty(style, dark || amoled)
     // Ambient Google-POI labels match the ICON's category color, Google-style — saturated in light,
     // pastel tints in dark (see PoiIcons.labelColor). Search-result pins stay plain (Google does too).

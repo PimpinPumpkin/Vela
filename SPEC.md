@@ -1387,6 +1387,17 @@ zoom gates or extrusion opacity; those belong in `ensureLayers` and `applyDark`.
   900 ms `raster-fade-duration`. The default 300 ms is still a blink on a full-screen overlay, and
   traffic has no fine detail a slower fade can smear.
 
+- **Residential streets are widened and named earlier than Liberty draws them** (`widenStreets`,
+  applied by the theme pass so every palette gets it). The style leaves a minor road invisible below
+  z13.5, 2.5 px at z14, and its NAME unplaced until z15, which next to Google at the same visible
+  area reads as a sketch of a town you cannot identify. Minor roads now start at z12.5 and run about
+  60% fatter through the town zooms, converging on the style's own 18 px by z20 so close zoom is
+  untouched, and `highway-name-minor` drops to a 13.5 floor. Both levers are needed: a symbol layer
+  draws nothing above its own floor however fat the line under it is. Paths keep the higher floor,
+  since a trail name at town zoom is clutter. It costs frames, because every label is glyph layout
+  plus a collision pass over four anchors; measured on a 4a it moved a suburban pan from 40-55 fps
+  to 29-53.
+
 ### 6.4 The building-overlay gate
 
 The overlay is pure occluded overdraw where OSM is dense, so a gate probes rendered OSM coverage
