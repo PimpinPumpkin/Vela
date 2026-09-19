@@ -961,6 +961,22 @@ fun MapScreen(
             )
         }
     }
+    // A downloaded update that would cost this phone its Android Auto listing (issue #179). The
+    // install source is what the head unit keys on and a self-install overwrites it, so the file
+    // is offered instead: installing it through AAEnabler or King Installer keeps the car.
+    state.updateApkPending?.let {
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { vm.dismissPendingUpdate() },
+            title = stringResource(R.string.update_car_title),
+            confirmText = stringResource(R.string.update_car_save),
+            onConfirm = { vm.sharePendingUpdate() },
+            dismissText = stringResource(R.string.update_car_anyway),
+            onDismiss = { vm.installPendingUpdate() },
+            dismissLowEmphasis = true,
+        ) {
+            Text(stringResource(R.string.update_car_body), style = MaterialTheme.typography.bodyMedium)
+        }
+    }
     // START from the place sheet (issue #272): the pill routes, and guidance begins the moment a
     // route exists. It goes through onStartNav, NOT straight to the ViewModel, so the precise-
     // location and notification gates still get their say - a one-tap Start must not be a way to

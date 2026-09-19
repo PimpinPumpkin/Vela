@@ -557,6 +557,14 @@ Defaults that make the safe path the easy one:
   `CarAppService` (manifest service + `xml/automotive_app_desc.xml` `<uses name="template"/>` + the
   `androidx.car.app.*` permissions + `minCarApiLevel=1`); a sideload appears in the car launcher only
   with AA developer "Unknown sources" on, hence `HostValidator.ALLOW_ALL_HOSTS_VALIDATOR`.
+  **THE GATE IS GOOGLE'S AND NOTHING HERE OPENS IT (issue #179, settled twice):** Android Auto
+  accepts only entertainment categories for an app that draws on the car screen, so declaring maps
+  honestly is refused and declaring "game" gets a map that greys out the moment the car moves; the
+  sideloaded apps that DO draw while driving bundle Google's unreleased car toolkit, which cannot
+  be redistributed. Play, or a full-Android head unit, or wait for cars running Android natively.
+  What Vela CAN do is not break the workarounds: AAEnabler and King Installer set the INSTALL
+  SOURCE to Play and some units accept that, and a self-update overwrites it, so `InstallSource`
+  holds the APK back and offers it as a file (see the updater notes).
   **Full car-side nav** via a `screen/` package: `MainCarScreen` (Home/Work/recent/saved,
   `PlaceListNavigationTemplate`) → `SearchCarScreen` (`SearchTemplate`) → `RoutePreviewCarScreen`
   (`RoutePreviewNavigationTemplate`, alternates) → `ActiveNavCarScreen` (`NavigationTemplate`).

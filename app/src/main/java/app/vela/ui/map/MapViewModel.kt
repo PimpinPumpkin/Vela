@@ -326,6 +326,9 @@ data class MapUiState(
     val assigningShortcut: ShortcutKind? = null, // picking a place to pin as Home/Work
     val notices: List<Notice> = emptyList(), // pushed via the signed calibration channel
     val updateInfo: app.vela.update.SelfUpdater.UpdateInfo? = null, // newer release found (card on the bare map)
+    /** A downloaded update held back because installing it would cost this phone its Android Auto
+     *  listing (issue #179). The user chooses: save the file for AAEnabler, or install anyway. */
+    val updateApkPending: java.io.File? = null,
     val updateDownloadPct: Int? = null, // non-null while the update APK downloads
     // Offline routing (downloadable per-region CH graphs — Settings → Offline routing)
     val routingRegions: List<app.vela.offline.RoutingRegion> = emptyList(),
@@ -1384,11 +1387,37 @@ class MapViewModel @Inject constructor(
             }
             _state.update { it.copy(updateDownloadPct = null) }
             if (apk != null) {
-                selfUpdater.install(apk)
+                // Installing here takes over the install source, and on a phone set up for the car
+                // that is what the head unit keys on - so ask instead of quietly breaking it.
+                if (app.vela.update.InstallSource.setForCar(appContext)) {
+                    _state.update { it.copy(updateApkPending = apk) }
+                } else {
+                    selfUpdater.install(apk)
+                }
             } else if (!updateCancel.get()) { // canceled = quiet
                 showStatus(appContext.getString(app.vela.R.string.update_download_failed))
             }
         }
+    }
+
+    /** Install the held-back update anyway; the car will stop listing Vela until it is installed
+     *  again the way it was the first time. */
+    fun installPendingUpdate() {
+        val apk = _state.value.updateApkPending ?: return
+        _state.update { it.copy(updateApkPending = null, updateInfo = null) }
+        selfUpdater.install(apk)
+    }
+
+    /** Hand the held-back APK out as a file, which is what AAEnabler and its siblings take. The
+     *  card stays: nothing is installed until the user comes back through that tool. */
+    fun sharePendingUpdate() {
+        val apk = _state.value.updateApkPending ?: return
+        _state.update { it.copy(updateApkPending = null) }
+        runCatching { app.vela.update.InstallSource.shareApk(appContext, apk) }
+    }
+
+    fun dismissPendingUpdate() {
+        _state.update { it.copy(updateApkPending = null) }
     }
 
     /** "Not now": hide the card and stay quiet about THIS version (a newer one re-offers). */
