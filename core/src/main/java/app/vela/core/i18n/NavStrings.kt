@@ -260,6 +260,9 @@ object EnNavStrings : NavStrings {
         s = Regex("""\btake exit (\w+)""", RegexOption.IGNORE_CASE).replace(s) { "take the ${it.groupValues[1]} exit" }
         EN_SPEECH_WORDS.forEach { (re, rep) -> s = re.replace(s, rep) }
         s = SpeechText.spokenNumbers(s) // "128th" → "one twenty eighth" (space, not hyphen — the compound got a mushy -ty), not a mangled "one hundred and 28th"
+        // "5:49 PM" -> "five forty nine PM": the phonemizer reads a colon between numbers as a
+        // measurement and said "five foot nine" for an arrival time (user 2026-09-18).
+        s = SpeechText.spokenClock(s)
         return s
     }
 }

@@ -1649,7 +1649,12 @@ fun VelaMapView(
                         // The ambient layer's own label colors: per-group tints, pastel in dark.
                         PropertyFactory.textColor(PoiIcons.ambientLabelColor(darkTheme)),
                         PropertyFactory.textHaloColor(if (darkTheme) "#11161C" else "#FFFFFF"),
-                        PropertyFactory.textHaloWidth(0.9f),
+                        // Wider than the 0.9 it was (user 2026-09-18: a label sitting half on a
+                        // road read as mush). MapLibre's collision engine avoids other SYMBOLS, not
+                        // LINES, so a label over a road cannot be prevented the way an icon over an
+                        // icon can; the halo is what makes it legible when it happens. Same reason
+                        // the road-name layers carry a fatter halo than everything else.
+                        PropertyFactory.textHaloWidth(1.3f),
                     )
                 }
                 // Above the Google ambient layer, so in the "both" setting the open layer's icons
@@ -1938,7 +1943,7 @@ fun VelaMapView(
             )
             val controlsScaled = Expression.interpolate(
                 Expression.linear(), Expression.zoom(),
-                Expression.stop(15.5f, 0.75f * sc), Expression.stop(17f, 1.05f * sc), Expression.stop(19f, 1.5f * sc),
+                Expression.stop(15.5f, 0.98f * sc), Expression.stop(17f, 1.37f * sc), Expression.stop(19f, 1.95f * sc),
             )
             st.getLayer(CONTROLS_LAYER)?.setProperties(PropertyFactory.iconSize(controlsScaled))
             st.getLayer(CONTROLS_CLAIM_LAYER)?.setProperties(PropertyFactory.iconSize(controlsScaled))
@@ -4553,11 +4558,14 @@ private fun ensureLayers(style: Style) {
     if (style.getImage(HUMP_IMG) == null) style.addImage(HUMP_IMG, speedHumpBitmap())
     if (style.getSource(CONTROLS_SRC) == null) {
         style.addSource(GeoJsonSource(CONTROLS_SRC, GeoJsonOptions().withMaxZoom(12)))
+        // A third bigger than they were (user 2026-09-18, from a drive): a stop sign or a light is
+        // something you act on in the next few seconds, and at the old size they read as map dust
+        // next to the road shields.
         val controlsSize = Expression.interpolate(
             Expression.linear(), Expression.zoom(),
-            Expression.stop(15.5f, 0.75f),
-            Expression.stop(17f, 1.05f),
-            Expression.stop(19f, 1.5f),
+            Expression.stop(15.5f, 0.98f),
+            Expression.stop(17f, 1.37f),
+            Expression.stop(19f, 1.95f),
         )
         // The VISIBLE controls draw ABOVE the route lines and the bridge geometry but BELOW the
         // basemap text and every Vela POI layer. They used to sit at the very BOTTOM of the

@@ -142,6 +142,21 @@ jobs:
           sudo mkdir -p /mnt/vela-work && sudo chown "$(id -u):$(id -g)" /mnt/vela-work
           df -h / /mnt | sed 's/^/  /'
           echo "  cpus $(nproc), memory $(free -g | awk 'NR==2 {print $2}') GB"
+      # The archive currently published, kept for the patch. Fetched before the bake so the two
+      # exist side by side; a region with nothing published yet simply gets no patch.
+      - name: Fetch what is published, for the delta
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PREV_REV=$(curl -sL "https://github.com/$GITHUB_REPOSITORY/releases/download/places-overlays/places-overlay-manifest.json" \
+            | jq -r --arg id "${{ matrix.id }}" '.regions[] | select(.id == $id) | .rev // 0' | head -1)
+          echo "PREV_REV=${PREV_REV:-0}" >> "$GITHUB_ENV"
+          if [ -n "$PREV_REV" ] && [ "$PREV_REV" != "0" ] && [ "$PREV_REV" != "null" ]; then
+            curl -sfL -o prev.pmtiles \
+              "https://github.com/$GITHUB_REPOSITORY/releases/download/places-overlays/places-${{ matrix.id }}.pmtiles" \
+              && echo "have rev $PREV_REV ($(du -m prev.pmtiles | cut -f1) MB) to diff against" \
+              || { rm -f prev.pmtiles; echo "could not fetch the published archive; no patch this run"; }
+          fi
       - name: Bake ${{ matrix.id }}
         run: |
           B='${{ toJson(matrix.bbox) }}'
@@ -163,10 +178,40 @@ jobs:
           done
           mkdir -p entries
           SIZE=$(stat -c %s "places-${{ matrix.id }}.pmtiles")
+          REV=$(date -u +%Y%m%d)
+          DELTA=null
+          # A PATCH AGAINST WHAT IS PUBLISHED. A week of edits moves about 1% of a region's tiles,
+          # so a phone that already has the old archive can take a few MB instead of a few hundred
+          # (see ROADMAP). The patch is BUILT AND PROVEN here or it is not published: it is applied
+          # to a copy of the old archive and the result has to carry the new one's fingerprint, so a
+          # patch that would leave somebody with a subtly wrong map never reaches them.
+          if [ -f "prev.pmtiles" ] && [ -n "$PREV_REV" ] && [ "$PREV_REV" != "0" ] && [ "$PREV_REV" != "$REV" ]; then
+            if python3 scripts/pmtiles-make-patch.py prev.pmtiles "places-${{ matrix.id }}.pmtiles" \
+                 "patch.vpatch" --rev-from "$PREV_REV" --rev-to "$REV"; then
+              PSIZE=$(stat -c %s patch.vpatch)
+              # Past about a third of the archive the saving stops being worth a second code path.
+              if [ "$PSIZE" -lt "$((SIZE / 3))" ] && cp prev.pmtiles check.pmtiles && \
+                 python3 scripts/pmtiles-apply-patch.py check.pmtiles patch.vpatch --verify; then
+                PNAME="places-${{ matrix.id }}.$PREV_REV.vpatch"
+                mv patch.vpatch "$PNAME"
+                if gh release upload places-overlays "$PNAME" --clobber --repo "$GITHUB_REPOSITORY"; then
+                  DELTA=$(jq -n --argjson fromRev "$PREV_REV" \
+                    --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/places-overlays/$PNAME" \
+                    --argjson sizeMb "$(echo "scale=2; $PSIZE/1000000" | bc)" \
+                    '{fromRev:$fromRev,url:$url,sizeMb:$sizeMb}')
+                  echo "patch $PNAME: $(echo "scale=1; $PSIZE/1000000" | bc) MB of $(echo "scale=1; $SIZE/1000000" | bc) MB"
+                fi
+              else
+                echo "patch not published: too big or it did not verify"
+              fi
+            fi
+            rm -f check.pmtiles prev.pmtiles patch.vpatch
+          fi
           jq -n --arg id "${{ matrix.id }}" --arg name "${{ matrix.name }}" \
             --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/places-overlays/places-${{ matrix.id }}.pmtiles" \
-            --argjson sizeMb "$(echo "scale=2; $SIZE/1000000" | bc)" --argjson bbox '${{ toJson(matrix.bbox) }}' --argjson rev "$(date -u +%Y%m%d)" \
-            '{id:$id,name:$name,url:$url,sizeMb:$sizeMb,bbox:$bbox,rev:$rev}' > "entries/${{ matrix.id }}.json"
+            --argjson sizeMb "$(echo "scale=2; $SIZE/1000000" | bc)" --argjson bbox '${{ toJson(matrix.bbox) }}' --argjson rev "$REV" \
+            --argjson delta "$DELTA" \
+            '{id:$id,name:$name,url:$url,sizeMb:$sizeMb,bbox:$bbox,rev:$rev} + (if $delta == null then {} else {delta:$delta} end)' > "entries/${{ matrix.id }}.json"
       - uses: actions/upload-artifact@v4
         with:
           name: places-entry-${{ matrix.id }}

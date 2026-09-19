@@ -666,6 +666,21 @@ project's core promise is that neither exists:
 
 ## Queued near-term
 
+- **The neural voice's phonemizer is the weak link (2026-09-18, from a drive).** espeak's G2P sits
+  in front of the Piper model and it reads text that is not prose: "5:49 PM" came out as a height,
+  "five foot nine", in the closing-soon warning. The pattern is old and the workarounds are stacking
+  up: street ordinals are spelled out, "I-80" and "CA-99" are expanded, "take exit 186" is rewritten
+  because it mis-voweled, " toward " gets a comma to break the clause, every fragment gets terminal
+  punctuation so the model does not swallow the last consonant, and now clock times are spelled out
+  (`SpeechText.spokenClock`). Each one is right on its own and together they are a signal: we are
+  patching the TEXT because we cannot fix the phonemizer. Options, roughly in order of cost:
+  a better-behaved model in the same runtime (Kokoro was measured too slow in 2026, worth
+  re-measuring on current phones), a model whose front end does its own normalization, or training
+  one. Anything chosen has to keep the constraints that killed the last attempt: in-process, no
+  network, arm64, and fast enough on a Pixel 4a to speak a turn before you reach it. Until then, any
+  new spoken string that carries numbers, units or punctuation needs a look at what espeak does with
+  it, and a test in `SpeechTextTest`.
+
 - **Delta updates for downloaded archives (measured 2026-09-18, WORTH BUILDING).** Place packs
   already update through row-level deltas; the places and basemap PMTiles archives do not, so a
   rebaked region offers a full few-hundred-MB download, and with a seventh of the catalog rebaking
