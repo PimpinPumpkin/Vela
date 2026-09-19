@@ -255,6 +255,40 @@ worth an offline drive past a signed exit to hear it).
 
 ## Big bets
 
+### Serving our own map tiles  *(only if the project gets bigger and is ready to run infrastructure)*
+
+**Not now, and not a code problem.** Vela already bakes the whole world's basemap: 414 PMTiles
+archives, about 88 GB, on the `basemap-tiles` release, and the app already renders from them
+whenever a downloaded region covers the view, online or off. What it has never done is STREAM them.
+Online, with nothing downloaded, the basemap is OpenFreeMap's.
+
+Streaming ours is mechanically almost free, since the app already reads two other datasets from
+that same release by HTTP range request. Two things stop it being a good idea today:
+
+- **Seams.** Our archives are per region and OpenFreeMap is one planet, so panning across a
+  boundary would swap sources mid-gesture, which is the failure class of issue #552. The fix is one
+  planet-sized archive, and a GitHub release asset caps at 2 GB against a planet of roughly 90.
+- **Release hosting is not a CDN.** An occasional overlay range-read is one thing; a map session
+  pulls hundreds of tiles. That is a different order of traffic on hosting never meant for it.
+
+So the missing piece is hosting (PMTiles behind a CDN; object storage plus a small worker is the
+standard path, and the format was designed for it), which means a bill, uptime and somebody
+carrying it. That is the trigger: **do this when the project is big enough to want its own
+infrastructure and ready to run it**, not before.
+
+What it would unlock, and why it is worth writing down now:
+
+- The **Microsoft building merge** stops being an offline-only win. Today it cannot help streaming
+  users because online the basemap belongs to someone else, and `runOvlGate` can only be skipped,
+  not deleted. With our own tiles everywhere, the merge reaches everyone and the gate dies.
+- One schema everywhere: the map a downloaded region draws and the map a streaming user draws stop
+  being two slightly different things.
+- Independence from OpenFreeMap's donated bandwidth, which is the same courtesy already extended to
+  FOSSGIS, Nominatim and Overpass.
+
+Until then the honest position is that OpenFreeMap serves the online map, downloading a region is
+how you get ours, and the buildings question stays parked behind this one.
+
 ### Buildings  *(done - keyless, no key, no infra)*
 
 Real building footprints render now. They were **already in our tiles** - the
@@ -687,6 +721,9 @@ project's core promise is that neither exists:
   overlay). What it cannot buy: deleting `runOvlGate`, because ONLINE the basemap is OpenFreeMap's
   and the overlay still has to stream separately; the gate could only be skipped when a merged
   local archive is in use.
+
+  **Parked behind self-hosted tiles** (see Big bets): most of the value, including deleting the
+  coverage gate rather than skipping it, only arrives when the online basemap is ours too.
 
   **Cheaper route to the same offline result:** have a region download pull the building overlay
   the way a saved area already does. Identical bytes, no bake change, no format coupling between
