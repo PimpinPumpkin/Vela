@@ -3913,6 +3913,14 @@ Gotchas:
   on-device A/B - Kokoro was ~0.4× realtime even on a Pixel 9. `MapViewModel` reclaims their old model
   dirs and sanitizes stale `vela.kokoro`/`vela.matcha` prefs to Piper. `project_vela_kokoro_tts` memory
   is that historical record, not the current design.)**
+- **THE NAV NOTIFICATION IS A LIVE UPDATE ON ANDROID 16 (issue #595, 2026-09-19):**
+  `NavigationService.promoteToLiveUpdate` sets a `NotificationCompat.ProgressStyle` scaled to the
+  ROUTE (meters), tracker = the maneuver glyph, segments = `route.trafficSpans` colored like the
+  route line, points = remaining stops, `setShortCriticalText` = distance to the next turn, then
+  `setRequestPromotedOngoing(true)`. Needs androidx core 1.17 (compat class, no raw platform API)
+  and compileSdk 36; targetSdk stays 35 on purpose. Guarded by `Build.VERSION.SDK_INT >= 36` and a
+  runCatching, so every older device and every failure gets exactly the old notification. NOT yet
+  seen on an Android 16 device - the 4a is API 34.
 - **A FASTER-ROUTE OFFER AUTO-RESOLVES (issue #594, 2026-09-18, benwiley4000):** it used to sit
   until answered, so a driver had to answer a prompt covering the map. `FasterRouteCard` drains a
   bar along its bottom edge over 10 s for everyone, FROZEN while focus is anywhere on the card

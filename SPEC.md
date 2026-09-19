@@ -1851,6 +1851,16 @@ ports it rather than inventing a fourth:
   rather than recomposing its host, and null progress means indeterminate, for a step that cannot
   report a percentage.
 
+- **The drive is an Android 16 live update** (issue #595, API 36+, `promoteToLiveUpdate`). The nav
+  notification asks to be promoted, which puts the drive in the status bar chip and on the lock
+  screen instead of only in the shade. The bar is the ROUTE rather than a download: its scale is the
+  route's length in meters, the tracker is the current maneuver glyph sitting where the car is, the
+  segments are the traffic spans Vela already has (so the jam ahead is visible without unlocking the
+  phone), and each remaining stop is a point on it. The chip's critical text is the distance to the
+  next turn, the one number worth a glance while moving. Everything is additive and guarded: below
+  API 36, with no route, or if anything throws, the notification is exactly what it was, and
+  promotion is a REQUEST the system may refuse.
+
 ### 10.3 D-pad operation
 
 The whole UI must stay drivable with a five-key D-pad and no touchscreen; touch is a bonus.

@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.graphics.drawable.IconCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import app.vela.MainActivity
@@ -210,7 +211,7 @@ class NavigationService : Service() {
                 background = accent,
             ).also { cachedGlyph = it; cachedGlyphType = t; cachedGlyphAccent = accent }
         }
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val b = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_nav)
             .setContentTitle(title)
             .setContentText(text)
@@ -229,7 +230,76 @@ class NavigationService : Service() {
             .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // full turn info on the lock screen
-            .build()
+        promoteToLiveUpdate(b, s, largeIcon)
+        return b.build()
+    }
+
+    /**
+     * Android 16's live update: the drive gets the status bar chip and a progress bar on the lock
+     * screen, instead of living only in the shade (issue #595).
+     *
+     * The bar is the ROUTE, not a download: its scale is the route's length in meters and the
+     * tracker sits where the car is. The segments are the traffic Vela already knows about, so the
+     * jam ahead is visible without unlocking the phone, and each remaining stop is a point on the
+     * bar. The chip's critical text is the distance to the next turn, because that is the one
+     * number worth a glance while moving.
+     *
+     * Everything here is additive: below API 36, or with no route, the notification is exactly what
+     * it was. A live update is a REQUEST - the system decides whether to promote it - so nothing
+     * depends on it being granted.
+     */
+    private fun promoteToLiveUpdate(
+        b: NotificationCompat.Builder,
+        s: app.vela.core.nav.NavSession.State,
+        tracker: android.graphics.Bitmap?,
+    ) {
+        if (Build.VERSION.SDK_INT < 36) return
+        val route = s.route ?: return
+        val total = route.distanceMeters
+        if (total <= 0 || s.arrived) return
+        runCatching {
+            val traveled = (total - s.remainingDistance).coerceIn(0.0, total)
+            val style = NotificationCompat.ProgressStyle()
+                .setProgress(traveled.toInt())
+                .setProgressTrackerIcon(tracker?.let { IconCompat.createWithBitmap(it) })
+            // One segment per traffic span so the bar is colored the way the route line is, and a
+            // plain one for whatever the spans do not cover. A route with no traffic data gets a
+            // single segment, which is the same bar Google draws before it knows anything.
+            val segments = ArrayList<NotificationCompat.ProgressStyle.Segment>()
+            var at = 0.0
+            for (span in route.trafficSpans.sortedBy { it.startMeters }) {
+                if (span.lengthMeters <= 0) continue
+                if (span.startMeters > at) {
+                    segments += NotificationCompat.ProgressStyle.Segment((span.startMeters - at).toInt())
+                        .setColor(TRAFFIC_CLEAR)
+                }
+                segments += NotificationCompat.ProgressStyle.Segment(span.lengthMeters.toInt())
+                    .setColor(trafficColor(span.level))
+                at = span.startMeters + span.lengthMeters
+            }
+            if (at < total) segments += NotificationCompat.ProgressStyle.Segment((total - at).toInt()).setColor(TRAFFIC_CLEAR)
+            if (segments.isNotEmpty()) style.setProgressSegments(segments)
+            // Stops still ahead: one point each, so a multi-stop trip reads as a trip rather than
+            // one long bar. The final destination is the end of the bar and needs no point.
+            var legStart = 0.0
+            val points = ArrayList<NotificationCompat.ProgressStyle.Point>()
+            for (leg in route.legs.dropLast(1)) {
+                legStart += leg.distanceMeters
+                if (legStart > traveled) points += NotificationCompat.ProgressStyle.Point(legStart.toInt())
+            }
+            if (points.isNotEmpty()) style.setProgressPoints(points)
+            b.setStyle(style)
+            b.setRequestPromotedOngoing(true)
+            if (!s.arrived && s.nav.distanceToNextManeuver > 0.0) {
+                b.setShortCriticalText(formatDistance(s.nav.distanceToNextManeuver))
+            }
+        }.onFailure { android.util.Log.d("VelaNav", "live update not applied: ${it.javaClass.simpleName}") }
+    }
+
+    private fun trafficColor(level: Int): Int = when {
+        level >= 3 -> 0xFFD93025.toInt()  // stopped, the route line's red
+        level == 2 -> 0xFFE8A33D.toInt()  // slow, its amber
+        else -> TRAFFIC_CLEAR
     }
 
 
@@ -318,6 +388,10 @@ class NavigationService : Service() {
         private const val CHANNEL_ID = "vela_nav"
         private const val TURN_CHANNEL_ID = "vela_nav_turns"
         private const val NOTIF_ID = 42
+
+        /** The live-update bar's color for road that is not congested: the route line's own blue,
+         *  so the notification and the map agree about what the drive looks like. */
+        private const val TRAFFIC_CLEAR = 0xFF1F6FEB.toInt()
         private const val TURN_ALERT_ID = 43
         private const val TURN_ALERT_TIMEOUT_MS = 9_000L
 
