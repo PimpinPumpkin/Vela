@@ -1394,9 +1394,11 @@ zoom gates or extrusion opacity; those belong in `ensureLayers` and `applyDark`.
   60% fatter through the town zooms, converging on the style's own 18 px by z20 so close zoom is
   untouched, and `highway-name-minor` drops to a 13.5 floor. Both levers are needed: a symbol layer
   draws nothing above its own floor however fat the line under it is. Paths keep the higher floor,
-  since a trail name at town zoom is clutter. It costs frames, because every label is glyph layout
-  plus a collision pass over four anchors; measured on a 4a it moved a suburban pan from 40-55 fps
-  to 29-53.
+  since a trail name at town zoom is clutter. It was reported here as costing frames, from a single run
+  each side; three runs a side put the two distributions on top of each other (baseline medians
+  45/40/43, with the change 41/42/39) and the claim did not survive. Repeated runs of one build vary
+  by 5 to 7 fps of median on a 4a, which is wide enough to invent a regression, so a median gap
+  under about 6 fps from this rig means nothing.
 
 ### 6.4 The building-overlay gate
 
@@ -1532,7 +1534,8 @@ applier is `app/offline/PmtilesPatch`.
   applies the result to a copy, checks the fingerprint, and only then uploads it and adds
   `delta: {fromRev, url, sizeMb}` to the manifest row. Over a third of the archive, it is not worth
   a second code path and is skipped.
-- **Policy is the user's**: `ui/RegionUpdates` (never / on Wi-Fi, the default / on mobile data too),
+- **Policy is the user's**: `ui/RegionUpdates` (never, the default until the path has been proven
+  on a device / on Wi-Fi / on mobile data too),
   metered judged by the system rather than by which radio it is. A FULL re-download is never
   automatic on any setting. Every attempt is recorded in the diagnostics ring (kind `delta`) and
   logcat `VelaDelta` with the bytes and the reason for any fallback, because the failure worth

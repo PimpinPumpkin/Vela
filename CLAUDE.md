@@ -2471,7 +2471,9 @@ architecture note.
   region. The result is PROVEN before the header moves: the fingerprint (SHA-256 over sorted tile ids
   + tile hashes, phone-computable - Android has no blake2b) must equal the one the patch carries,
   which is a fresh download's; a mismatch truncates back and the caller downloads whole. Policy is
-  `ui/RegionUpdates` (pref `region_update_mode`, OFF / WIFI default / MOBILE, metered judged by
+  `ui/RegionUpdates` (pref `region_update_mode`, OFF **is the default until somebody has watched a
+  patch download and apply on a device** - a feature that rewrites an installed archive does not get
+  to default itself on - then WIFI / MOBILE, metered judged by
   `isActiveNetworkMetered` so a metered Wi-Fi counts), Settings > Offline maps; a FULL re-download is
   never automatic on any setting. Every attempt is logged (`diag.record("delta")` + logcat
   `VelaDelta`) with the bytes and the reason for a fallback, because the failure worth seeing is a
