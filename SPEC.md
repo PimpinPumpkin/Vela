@@ -1148,7 +1148,7 @@ in screen pixels**, never render-stack order:
 
 1. a search-result pin;
 2. a saved pin;
-3. a greyed alternate route line;
+3. a grayed alternate route line;
 4. a business **or** a canonical GTFS stop icon, competing by distance rather than by class:
    the ambient Google dots and the named basemap POIs compete with each other and with the stop
    the same way. An absolute class priority lets a few-pixel dot anywhere in the box steal a tap
@@ -1480,8 +1480,16 @@ Selection rules on the phone:
   that strip with the traffic raster and the place pins still drawing on bare land. The test is the
   presence of the `transportation` layer, **not** the presence of a tile: a bake emits tiles across
   its whole box from planetiler's global base data, so "is there a tile" answers yes over the
-  neighbor and out to sea. A probe that cannot answer leaves the old pick in charge, so the rule can
-  only improve on it. The pick runs off the main thread.
+  neighbor and out to sea. **A definite "no roads here" from every candidate returns NOTHING**, so
+  the view streams: mounting an archive that has answered no paints an empty map over tiles that
+  were about to arrive, and crossing the box edge then unmounted it, so a pan along a download's
+  border alternated gray and network. Only a probe that CANNOT answer leaves the old pick in
+  charge, because that is the case where asking told us nothing. The pick runs off the main thread.
+- **Source swaps have a floor of `BASEMAP_SWAP_COOLDOWN_MS` (2 s).** Re-pointing every basemap layer
+  re-tiles and re-lays out the map, which is a visible freeze; at a region's edge the honest answer
+  genuinely changes as the view crosses the data, so without a floor a pan along the border stutters
+  on every camera idle. A newer camera idle cancels the pending pick, so the wait can only delay a
+  swap the view still wants.
 - A region download pulls the **same-id** archive first; the center rule alone pulls parent and
   neighbor archives too.
 - Geofabrik boxes carry a buffer that spills across borders, so "any box that covers you" ranks

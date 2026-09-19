@@ -559,7 +559,7 @@ Defaults that make the safe path the easy one:
   with AA developer "Unknown sources" on, hence `HostValidator.ALLOW_ALL_HOSTS_VALIDATOR`.
   **THE GATE IS GOOGLE'S AND NOTHING HERE OPENS IT (issue #179, settled twice):** Android Auto
   accepts only entertainment categories for an app that draws on the car screen, so declaring maps
-  honestly is refused and declaring "game" gets a map that greys out the moment the car moves; the
+  honestly is refused and declaring "game" gets a map that grays out the moment the car moves; the
   sideloaded apps that DO draw while driving bundle Google's unreleased car toolkit, which cannot
   be redistributed. Play, or a full-Android head unit, or wait for cars running Android natively.
   What Vela CAN do is not break the workarounds: AAEnabler and King Installer set the INSTALL
@@ -4144,8 +4144,15 @@ Gotchas:
   `downloadBasemapForArea` chain into every region and viewport download; deleted with the region;
   counted under "Saved areas & map cache". **Fifth rule (2026-09-18): the basemap pick ASKS THE FILE.** `BasemapTileStore.installedFor` no
   longer stops at "smallest covering box": it probes each candidate with
-  `PmtilesReader.hasRoads(file, 12, x, y)` and takes the first that actually draws roads there,
-  falling back to the old pick when nothing answers. The probe tests the `transportation` LAYER, not
+  `PmtilesReader.hasRoads(file, 12, x, y)` and takes the first that actually draws roads there.
+  **`hasRoads` answers null for "cannot tell" and false for "definitely no roads", and collapsing
+  the two was the second half of #552 (HirschBerge, 2026-09-19: panning a download's border
+  "alternate between completely gray and using network").** Past a region's real data but inside
+  its box every probe returns a definite false, and the old fallback mounted the archive anyway,
+  painting gray over streamable tiles; crossing the box edge unmounted it again. A definite no from
+  everything that covers the point now returns NULL (stream it); only an UNREADABLE candidate falls
+  back to the old smallest-covering pick. Swaps also have a floor of `BASEMAP_SWAP_COOLDOWN_MS`
+  (2 s) because re-pointing every layer re-tiles the whole map, which is the freeze he described. The probe tests the `transportation` LAYER, not
   tile presence - planetiler's base data (water, landcover, Natural Earth) is global, so a bake has
   tiles across its whole box and "is there a tile" answers yes over the neighbor and out to sea
   (verified on the published hawaii archive: a mid-Pacific z12 tile exists and carries no roads).
