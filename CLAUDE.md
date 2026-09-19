@@ -732,7 +732,13 @@ Defaults that make the safe path the easy one:
   `LocalConfiguration.current` read stayed on the PREVIOUS orientation until the app restarted
   (landscape kept portrait chrome, and back again). `MainActivity.onConfigurationChanged` now holds
   the live Configuration in a state and provides it over `LocalConfiguration` for the whole tree;
-  read screen size through that local, never through `resources.configuration`. **POI icons on low density:** `lowDensityIconScale(density)` multiplies
+  read screen size through that local, never through `resources.configuration`. **POI icons on low density:** EVERY icon layer must carry the scale,
+  including the OPEN PLACES layers, which their own effect REBUILDS from scratch - so `poiIconScale`
+  is one of that effect's KEYS and is baked into their iconSize/textSize/circleRadius at creation.
+  Until 2026-09-18 they were the one layer that ignored it: on a head unit the businesses drew huge
+  while the road shields and street names beside them stayed tiny, and they looked right for a
+  moment after a style reload until the next places refresh rebuilt them unscaled.
+  `lowDensityIconScale(density)` multiplies
   the Settings icon-size pref below 1.75x (fixed-pixel bitmaps were a fifth of a 120 dpi screen).
 - **Start is a FOOTER under the route list (user 2026-09-13):** the chooser body is an outer
   capped-and-faded Column holding a `weight(1f, fill = false)` scroll Column and, below it, the
@@ -2419,6 +2425,32 @@ architecture note.
   vs a 183 MB archive; Andorra over 6 days reads 11% / 25% / 22%, so ALWAYS measure a region the
   size of the ones people download - a small archive exaggerates what one edit touches. Verdict:
   deltas are worth building (ROADMAP has the shape and the two open decisions).
+- **DELTA UPDATES FOR DOWNLOADED ARCHIVES (2026-09-18, app half built):** `scripts/pmtiles-make-patch.py`
+  (producer) / `pmtiles-apply-patch.py` (reference applier) / `velapmtiles.py` (the ONE reader, so the
+  fingerprint cannot drift) / `app/offline/PmtilesPatch.kt` (the applier on the phone). The patch
+  appends the changed tiles and a rebuilt directory and flips the 127-byte header LAST, so an
+  interrupted apply leaves the old archive intact and the cost is the patch, not a second copy of the
+  region. The result is PROVEN before the header moves: the fingerprint (SHA-256 over sorted tile ids
+  + tile hashes, phone-computable - Android has no blake2b) must equal the one the patch carries,
+  which is a fresh download's; a mismatch truncates back and the caller downloads whole. Policy is
+  `ui/RegionUpdates` (pref `region_update_mode`, OFF / WIFI default / MOBILE, metered judged by
+  `isActiveNetworkMetered` so a metered Wi-Fi counts), Settings > Offline maps; a FULL re-download is
+  never automatic on any setting. Every attempt is logged (`diag.record("delta")` + logcat
+  `VelaDelta`) with the bytes and the reason for a fallback, because the failure worth seeing is a
+  region that quietly downloads itself whole every week. NOT WIRED YET: the bake publishes no
+  patches, so no manifest row carries `delta` and the path is inert. TEST TRAPS: `org.json` is a STUB
+  in app unit tests (needs `testImplementation("org.json:json:...")`) and `android.util.Log` THROWS
+  unless `testOptions.unitTests.isReturnDefaultValues = true`, which turns a log line inside a
+  runCatching into a mystery failure of the thing under test.
+- **REMEMBERED PLACE LINKS ARE DROPPED ON UPDATE (2026-09-18, user):** `openPlaceCache` /
+  `open_place_links.json` short-circuits the tap resolve, so a link resolved by an older, worse rule
+  outlived the fix for it - a supermarket kept opening its fuel station after the ranking bug was
+  fixed, because the tap never reached the ranking again. `forgetOpenPlaceLinks` runs when
+  `BuildConfig.VERSION_CODE` differs from the stored `open_links_build`, and after a places archive is
+  updated or re-downloaded. The CLOSURES list is NOT dropped: that is a correction, not a cache.
+- **THE TRAFFIC RASTER CROSS-FADES (2026-09-18):** `rasterFadeDuration(900f)` on `vela-traffic`.
+  Google's tiles expire mid-drive and a replaced tile used to swap between frames, which reads as the
+  whole congestion layer flickering.
 - **OSM BUSINESSES ARE A SOURCE IN THE PLACES BAKE (2026-09-18, user ask):** named business NODES
   from the region's Geofabrik extract are inserted into `raw` beside Overture and AllThePlaces,
   through the SHARED `osmcat(props)` / `isbiz(props)` macros (lifted out of the ATP block so both
