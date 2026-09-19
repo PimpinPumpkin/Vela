@@ -1,5 +1,5 @@
 [versions]
-agp = "8.7.3"
+agp = "8.10.1"
 # Baseline-profile toolchain: the macrobenchmark generator module + the runtime installer that
 # makes ART AOT-compile the recorded hot paths at INSTALL time (sideloads get no Play cloud
 # profiles, so every nightly used to run interpreter-cold until overnight dexopt - the "is this
