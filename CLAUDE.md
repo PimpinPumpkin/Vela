@@ -771,6 +771,13 @@ Defaults that make the safe path the easy one:
   moment after a style reload until the next places refresh rebuilt them unscaled.
   `lowDensityIconScale(density)` multiplies
   the Settings icon-size pref below 1.75x (fixed-pixel bitmaps were a fifth of a 120 dpi screen).
+  **IT APPLIES TO ICONS ONLY (user 2026-09-19, car screen).** An icon is a fixed-pixel BITMAP, which
+  is why a 120 dpi head unit draws it huge and why the correction exists; TEXT is drawn from SDF
+  glyphs at a size that already accounts for the pixel ratio, so putting the same 0.4x on labels
+  made them unreadable in a car, which only showed once the icons were finally right.
+  `poiLabelScale` is the Settings multiplier ALONE and feeds every `textSize` (ambient, open places,
+  transit stops, markers); `poiIconScale` keeps the correction and feeds icons, dots and circles.
+  Two parameters, two effect KEYS - do not collapse them.
 - **Start is a FOOTER under the route list (user 2026-09-13):** the chooser body is an outer
   capped-and-faded Column holding a `weight(1f, fill = false)` scroll Column and, below it, the
   Start / Steps row, so four alternates scroll under a Start that stays put; the cap wraps both,
