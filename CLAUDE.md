@@ -1844,6 +1844,15 @@ Defaults that make the safe path the easy one:
   filter still matches on the canonical `name` (Hebrew) - display latin, filter on name. NB the search-result
   markers + transit-stop labels stay on `name` (those are place-name DATA, not streets - a Hebrew business
   keeps its Hebrew name like Google).
+  **PLACE labels follow the UI LANGUAGE (issue #598, 2026-09-19):** Liberty stacks `name:latin` over
+  `name:nonlatin` where both exist, so an English phone drew a Hebrew or Japanese city twice, once
+  in a script its reader cannot use. `placeLabelTextField()` coalesces the UI language's own tag
+  first (`uiLangTagField`, which maps Android's legacy `iw` to the tiles' `name:he`), then for a
+  Latin-script reader `name:en`, Liberty's `name_en`, `name:latin`, and finally the local `name`;
+  a non-Latin reader gets their tag then the local name, never a transliteration. Applied to the
+  nine `place` layers (`PLACE_LABEL_LAYERS`) from `applyMapTheme`, NOT from the four palette
+  functions, because the text does not change with the colors; a language change recreates the
+  activity, which reloads the style and runs it again.
   `SpokenScript.forVoice(text, lang, dict)` swaps a known local name for its real Latin form FIRST, ICU only
   for the rest; `SpokenScript.forDisplay(text, uiLang, dict)` does the same for the banner + steps but with
   NO ICU fallback (a skeleton on a sign reads broken - why the earlier ICU display romanization was

@@ -5293,6 +5293,46 @@ private fun roadLabelTextField(): Expression =
         Expression.get("name")
     }
 
+/** The OpenMapTiles field for the UI language, with the one code that differs from the tag OSM
+ *  uses: Android still reports Hebrew as `iw`, the tiles carry `name:he`. */
+private fun uiLangTagField(): Expression {
+    val lang = app.vela.ui.AppLocale.effective().language.lowercase()
+    return Expression.get("name:" + if (lang == "iw") "he" else lang)
+}
+
+/** The textField for a PLACE label (country, state, city, town, village).
+ *
+ *  Liberty stacks `name:latin` over `name:nonlatin` where both exist, so an English phone shows a
+ *  Hebrew or Japanese city twice, once in a script its reader cannot use. Issue #598 asked for one
+ *  name, in the reader's own language. The UI language wins where the tiles carry it; a Latin-script
+ *  reader then falls back through the English name (both spellings OpenMapTiles and Liberty use) and
+ *  the romanized one, and everyone lands on the local `name` when nothing else is there. */
+private fun placeLabelTextField(): Expression =
+    if (uiWantsLatinLabels()) {
+        Expression.coalesce(
+            uiLangTagField(),
+            Expression.get("name:en"),
+            Expression.get("name_en"),
+            Expression.get("name:latin"),
+            Expression.get("name"),
+        )
+    } else {
+        Expression.coalesce(uiLangTagField(), Expression.get("name"))
+    }
+
+/** Liberty's `place` source-layer labels, coarsest first. */
+private val PLACE_LABEL_LAYERS = listOf(
+    "label_country_1", "label_country_2", "label_country_3", "label_state",
+    "label_city_capital", "label_city", "label_town", "label_village", "label_other",
+)
+
+private fun applyPlaceLabelLanguage(style: Style) {
+    val field = placeLabelTextField()
+    PLACE_LABEL_LAYERS.forEach { id ->
+        runCatching { style.getLayer(id)?.setProperties(PropertyFactory.textField(field)) }
+    }
+}
+
 /** The tier filter plus "not behind the puck": every callout carries its own distance along the
  *  route, and [navLabelPassed] is how far the puck has come. Callouts used to hang behind the car
  *  and slide under the ETA bar (user 2026-09-17). */
@@ -5990,6 +6030,10 @@ private fun applyMapTheme(style: Style, dark: Boolean, amoled: Boolean = false) 
         else -> applyLight(style)
     }
     widenStreets(style)
+    // Country and city names in the reader's language (issue #598). Here rather than in the four
+    // palette functions: the text does not change with the colors, and a language change recreates
+    // the activity, which reloads the style and runs this again.
+    applyPlaceLabelLanguage(style)
     PoiIcons.applyToLiberty(style, dark || amoled)
     // Ambient Google-POI labels match the ICON's category color, Google-style — saturated in light,
     // pastel tints in dark (see PoiIcons.labelColor). Search-result pins stay plain (Google does too).
