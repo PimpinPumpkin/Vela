@@ -54,6 +54,12 @@ PR. The em-dash half covers issue comments, PR bodies and release notes too, whi
 see: that part is still on the person writing them, and it was slipped once on 2026-09-18 in a
 drafted issue reply.
 
+**Install the hook once per clone: `bash scripts/install-hooks.sh`.** It puts a pre-push hook in
+place that runs the checker on exactly the range being pushed. Running the checker by hand is not
+enough and has twice failed in practice on 2026-09-18: it was run against the wrong range before
+committing, the commit went out, and a commit message cannot be amended once it is public. CI
+catches it after the fact; the hook catches it while it can still be fixed.
+
 Before pushing a branch:
 
 ```
