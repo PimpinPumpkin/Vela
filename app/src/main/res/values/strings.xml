@@ -155,6 +155,10 @@
     <string name="settings_offline_hint">Saving the area around you is usually all you need: the full map, addresses and places nearby, plus routing. Whole states and countries are for long trips with no signal, and they are large.</string>
     <string name="settings_offline_map_area">This area (full map)</string>
     <string name="settings_offline_download_viewport">Download the area you\'re viewing</string>
+    <string name="settings_region_updates">Update downloaded regions</string>
+    <string name="settings_region_updates_off">Never on its own</string>
+    <string name="settings_region_updates_wifi">On Wi-Fi</string>
+    <string name="settings_region_updates_mobile">On Wi-Fi and mobile data</string>
     <string name="settings_offline_places_with_downloads">Include places with downloads</string>
     <string name="settings_offline_places_with_downloads_hint">A region download also brings Vela\'s place data for it, so the businesses on the map show with no signal. Around half a gigabyte for a big state. Off = places only stream while online.</string>
     <string name="settings_offline_download_viewport_hint">Saves the whole map you\'re looking at, its streets, house numbers and buildings, plus turn-by-turn directions for the region around it. Everything here keeps working with no signal.</string>

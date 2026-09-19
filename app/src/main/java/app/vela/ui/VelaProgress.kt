@@ -26,13 +26,24 @@ import androidx.compose.ui.unit.dp
 fun VelaProgressBar(
     progress: Float?,
     modifier: Modifier = Modifier,
+) = VelaProgressBarOf(progress?.let { p -> { p } }, modifier)
+
+/**
+ * The same, taking the value as a lambda so an animating bar is read in the draw phase instead of
+ * recomposing whatever draws it. A download reports a new percent a few times a second and either
+ * form is fine; a countdown runs at frame rate and needs this one.
+ */
+@Composable
+fun VelaProgressBarOf(
+    progress: (() -> Float)?,
+    modifier: Modifier = Modifier,
 ) {
     val shaped = modifier.fillMaxWidth().height(6.dp).clip(CircleShape)
     if (progress == null) {
         LinearProgressIndicator(modifier = shaped)
     } else {
         LinearProgressIndicator(
-            progress = { progress.coerceIn(0f, 1f) },
+            progress = { progress().coerceIn(0f, 1f) },
             modifier = shaped,
             // The track's own ends are drawn by the component; clipping the whole thing keeps both
             // ends round without fighting the M3 version's stop-indicator behavior.

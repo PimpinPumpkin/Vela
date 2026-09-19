@@ -2971,6 +2971,21 @@ class MapViewModel @Inject constructor(
         // init raced the constructor and hit the cache before its initializer ran (crash, 2026-09-14).
         viewModelScope.launch {
             val loaded = withContext(Dispatchers.IO) {
+                // AN UPDATE DROPS THE REMEMBERED LINKS (user 2026-09-18). The cache exists so a
+                // second tap on the same pin is instant, but it also means a link resolved by an
+                // OLDER, worse rule survives the fix for it: a supermarket that once resolved to
+                // the fuel station beside it kept opening the fuel station after the ranking bug
+                // was fixed, because the tap never reached the ranking again. A new build is
+                // exactly the moment those answers stop being trustworthy, and re-resolving costs
+                // one search on the next tap.
+                val prefs = appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+                val seen = prefs.getInt("open_links_build", 0)
+                if (seen != app.vela.BuildConfig.VERSION_CODE) {
+                    val had = openLinksFile().length()
+                    openLinksFile().delete()
+                    prefs.edit().putInt("open_links_build", app.vela.BuildConfig.VERSION_CODE).apply()
+                    android.util.Log.d("VelaPlaces", "build changed ($seen -> ${app.vela.BuildConfig.VERSION_CODE}), dropped $had bytes of remembered place links")
+                }
                 val raw = runCatching { openLinksFile().readText() }.getOrNull() ?: return@withContext emptyList()
                 val arr = runCatching { org.json.JSONArray(raw) }.getOrNull() ?: return@withContext emptyList()
                 val out = ArrayList<Pair<String, Place>>()
@@ -2992,6 +3007,16 @@ class MapViewModel @Inject constructor(
             synchronized(openPlaceCache) { loaded.forEach { (id, p) -> if (id !in openPlaceCache) openPlaceCache[id] = p } }
             android.util.Log.d("VelaPlaces", "open place links: loaded ${loaded.size}, closed ${closed.size}")
         }
+    }
+
+    /** Drop the remembered open-place-to-Google links. The rebaked data may have moved, renamed or
+     *  merged the rows those links were keyed on, so keeping them would pin answers to places that
+     *  no longer exist in that form. The closures list is NOT dropped: that is a correction, not a
+     *  cache. */
+    private fun forgetOpenPlaceLinks(why: String) {
+        synchronized(openPlaceCache) { openPlaceCache.clear() }
+        openLinksFile().delete()
+        android.util.Log.d("VelaPlaces", "dropped remembered place links: $why")
     }
 
     private fun closedOpenPlacesFile() = java.io.File(appContext.filesDir, "open_place_closed.json")
@@ -6496,6 +6521,35 @@ class MapViewModel @Inject constructor(
     /** Refresh everything installed for [region] that has a newer bake: the place pack (delta when
      *  offered), then every places and basemap archive inside the region, then the routing obf. One
      *  tap on the row's Update button; the progress card shows the region's name throughout. */
+    /**
+     * Bring one archive up to the manifest's revision: the published delta when there is one that
+     * fits what is installed, the whole file otherwise.
+     *
+     * Every attempt is recorded (diagnostics ring, kind "delta", plus logcat VelaDelta) with what
+     * it cost and why it fell back, because the failure worth seeing is not a crash: it is a region
+     * that silently downloads itself whole every week while a patch sits published beside it.
+     */
+    private suspend fun refreshArchive(
+        store: app.vela.offline.PmtilesRegionStore,
+        region: app.vela.offline.PmtilesRegionStore.Region,
+    ) {
+        val note: (String) -> Unit = { line ->
+            app.vela.ui.RegionUpdates.lastResult.value = line
+            diag.record("delta", line)
+            android.util.Log.d("VelaDelta", line)
+        }
+        if (region.delta != null && app.vela.ui.RegionUpdates.allowedNow(appContext)) {
+            if (store.updateWithDelta(region, onProgress = { }, log = note)) { forgetOpenPlaceLinks("${region.id} updated"); return }
+        } else if (region.delta != null) {
+            note("${region.id}: delta available but updates are ${app.vela.ui.RegionUpdates.mode.value.name.lowercase()} on this connection")
+        }
+        val size = region.sizeMb
+        store.delete(region.id)
+        val ok = store.download(region) { }
+        if (ok) forgetOpenPlaceLinks("${region.id} redownloaded")
+        note("${region.id}: full download of ${"%.0f".format(size)} MB ${if (ok) "done" else "FAILED"}")
+    }
+
     fun updateRegion(region: app.vela.offline.RoutingRegion) {
         if (_state.value.poiPackDownloadingId != null || _state.value.routingDownloadingId != null) return
         regionCancel.set(false)
@@ -6509,13 +6563,13 @@ class MapViewModel @Inject constructor(
             if ("places" in kinds) {
                 placesStore.updatable(placesStore.manifest(app.vela.BuildConfig.PLACES_MANIFEST_URL))
                     .filter { inside(it.s, it.w, it.n, it.e) }
-                    .forEach { if (!regionCancel.get()) { placesStore.delete(it.id); placesStore.download(it) { } } }
+                    .forEach { if (!regionCancel.get()) refreshArchive(placesStore, it) }
                 refreshPlacesOverlays()
             }
             if ("map" in kinds) {
                 basemapStore.updatable(basemapStore.manifest(app.vela.BuildConfig.BASEMAP_MANIFEST_URL))
                     .filter { inside(it.s, it.w, it.n, it.e) }
-                    .forEach { if (!regionCancel.get()) { basemapStore.delete(it.id); basemapStore.download(it) { } } }
+                    .forEach { if (!regionCancel.get()) refreshArchive(basemapStore, it) }
                 refreshBasemapArchive()
             }
             if ("routing" in kinds && !regionCancel.get()) {

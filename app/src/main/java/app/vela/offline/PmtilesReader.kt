@@ -158,7 +158,37 @@ object PmtilesReader {
         return names
     }
 
-    private data class Entry(val id: Long, val offset: Long, val length: Long, val runLength: Long)
+    data class Entry(val id: Long, val offset: Long, val length: Long, val runLength: Long)
+
+    /** Every tile entry in the archive, leaf directories walked, in id order. The delta applier
+     *  needs the whole set to fingerprint an archive; the mount probe only ever wants one tile and
+     *  uses [entryFor], which stops as soon as it finds it. */
+    fun entries(file: File): List<Entry>? {
+        val h = header(file) ?: return null
+        return entriesAt(file, h.rootOffset, h.rootLength, h.leafOffset, h.internalCompression)
+    }
+
+    /** The same walk against a directory the header does not point at yet. The delta applier uses
+     *  it to fingerprint what a patch WOULD produce before it commits the header to it. */
+    fun entriesAt(file: File, rootOffset: Long, rootLength: Long, leafOffset: Long, compression: Int): List<Entry>? = runCatching {
+        val h = Triple(rootOffset, rootLength, leafOffset)
+        RandomAccessFile(file, "r").use { f ->
+            val out = ArrayList<Entry>()
+            val stack = ArrayDeque<Pair<Long, Long>>()
+            stack.addLast(h.first to h.second)
+            var pages = 0
+            while (stack.isNotEmpty()) {
+                if (pages++ > 8192) return@runCatching null // a malformed archive must not spin forever
+                val (off, len) = stack.removeLast()
+                val dir = readDirectory(f, off, len, compression) ?: return@runCatching null
+                for (e in dir) {
+                    if (e.runLength == 0L) stack.addLast(h.third + e.offset to e.length) else out.add(e)
+                }
+            }
+            out.sortBy { it.id }
+            out
+        }
+    }.getOrNull()
 
     private fun find(entries: List<Entry>, want: Long): Entry? {
         var lo = 0

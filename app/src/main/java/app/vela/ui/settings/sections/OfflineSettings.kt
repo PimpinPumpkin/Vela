@@ -45,6 +45,7 @@ import app.vela.ui.settings.PageIntro
 import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.settings.SubHead
+import app.vela.ui.settings.SelectableRow
 import app.vela.ui.settings.ToggleRow
 import app.vela.ui.dpadFieldEscape // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.dpadHighlight
@@ -106,6 +107,28 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             onCheckedChange = { app.vela.ui.MapPoiPrefs.setPlacesWithDownloads(context, it) },
             hint = stringResource(R.string.settings_offline_places_with_downloads_hint),
         )
+        GroupDivider()
+        // What a rebaked region is allowed to do on its own. Deltas make an update a few megabytes
+        // instead of a few hundred, but they are still the user's bytes, so the default patches on
+        // Wi-Fi and asks nowhere else. A full re-download is never automatic on any of these.
+        Text(
+            stringResource(R.string.settings_region_updates),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
+        )
+        listOf(
+            app.vela.ui.RegionUpdates.Mode.OFF to R.string.settings_region_updates_off,
+            app.vela.ui.RegionUpdates.Mode.WIFI to R.string.settings_region_updates_wifi,
+            app.vela.ui.RegionUpdates.Mode.MOBILE to R.string.settings_region_updates_mobile,
+        ).forEach { (m, label) ->
+            SelectableRow(
+                label = stringResource(label),
+                selected = app.vela.ui.RegionUpdates.mode.value == m,
+                onClick = { app.vela.ui.RegionUpdates.set(context, m) },
+            )
+        }
+        app.vela.ui.RegionUpdates.lastResult.value?.let { Hint(it) }
+        GroupDivider()
         if (regions.isEmpty()) {
             Hint(stringResource(R.string.settings_offline_no_areas))
         } else {
