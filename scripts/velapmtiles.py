@@ -44,8 +44,8 @@ def header_of(f):
     h = f.read(HEADER_LEN)
     assert h[:7] == b"PMTiles" and h[7] == 3, "not a PMTiles v3 archive"
     u64 = lambda at: struct.unpack_from("<Q", h, at)[0]
-    return h, {"root_off": u64(8), "root_len": u64(16), "leaf_off": u64(40),
-               "tile_off": u64(56), "internal": h[97]}
+    return h, {"root_off": u64(8), "root_len": u64(16), "meta_off": u64(24), "meta_len": u64(32),
+               "leaf_off": u64(40), "tile_off": u64(56), "internal": h[97]}
 
 
 def read_dir(f, off, ln, comp):
@@ -102,8 +102,13 @@ def write_dir(entries, comp):
         put_varint(out, run)
     for _, _, ln, _ in entries:
         put_varint(out, ln)
-    for _, off, _, _ in entries:
-        put_varint(out, off + 1)
+    # Offsets use the spec's shorthand: 0 means "right after the previous entry", which is most of
+    # them once an archive is clustered, and saves several bytes per tile against writing the
+    # offset out. The patch directory rides over the network, so this is not just disk.
+    prev_end = None
+    for _, off, ln, _ in entries:
+        put_varint(out, 0 if off == prev_end else off + 1)
+        prev_end = off + ln
     return gzip.compress(bytes(out), mtime=0) if comp == 2 else bytes(out)
 
 

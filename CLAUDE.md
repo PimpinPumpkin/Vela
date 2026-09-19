@@ -2482,8 +2482,11 @@ architecture note.
   patch - `applied 23 tiles ... rev 20260919 -> 20260920, grew 93 KB, dead 70 KB`, 94 KB down against
   a 3.3 MB archive. Two app-side bugs fell out of that run and are fixed: the catalog was memoized
   for the life of the PROCESS (a bake landing while the app ran was never noticed, so no update was
-  ever offered), and dead space was counted but never bounded (`dead.json`, past a fifth of the file
-  the next update is taken whole, which is the compaction). The same run measured the churn a delta
+  ever offered), and dead space was counted but never bounded (`dead.json`). Dead bytes are now
+  RECLAIMED LOCALLY (`PmtilesCompact`, past a fifth of the file): the phone already holds every live
+  tile, so the rewrite is a pass over the file with no network, it lands on the bake's own layout,
+  and it is fingerprint-checked into a temp file before it replaces anything. A full download
+  survives only as the last resort when there is no room to rewrite. The same run measured the churn a delta
   actually saves: a same-code rebake carried 23 of 4586 tiles (3% of the archive), while the rebake
   that also carried a BAKE CHANGE carried 2506 and was correctly refused as too big. TEST TRAPS: `org.json` is a STUB
   in app unit tests (needs `testImplementation("org.json:json:...")`) and `android.util.Log` THROWS

@@ -301,6 +301,55 @@ buildings by default and downloadable for offline - so thin-OSM suburbs render h
 pursuing** (lot/assessment data - a per-county scraping + backend commitment with
 licensing heterogeneity; out of scope by decision 2026-06-19).
 
+### A Google Play listing  *(prep work - the split has to be real, not a disguise)*
+
+The reason to want one is **Android Auto**. AA gates navigation apps on the installer, so a
+sideloaded Vela is a fight with the head unit every time (see `project_vela_android_auto`); a Play
+listing ends that. The listing would also reach people who will never install an APK by hand.
+
+**The shape that works is a compile-time flavor, not a switch.** A `play` flavor where the Google
+extractor is NOT IN THE APK: no scrape, no hidden path, nothing to turn on. What is left is a
+complete OpenStreetMap maps app, because most of Vela already is one:
+
+- routing and turn by turn from the on-device obf graph (OSRM online as it is today)
+- places from the Overture/OSM bake, offline packs, the address geocoder, speed limits from obf
+- the basemap from OpenFreeMap or a downloaded region
+- transit from Transitous, road features, cameras
+
+What it loses is the Google half: place pages (reviews, photos, hours), the traffic layer, traffic
+ETAs, and Google as the directions fallback. That is a real product difference and the listing has
+to describe the app it ships, not the other one.
+
+**What will NOT work, and is worth being blunt about:** shipping a boring app and restoring the
+Google half afterwards. Downloading executable code outside Play breaks the Device and Network
+Abuse policy, and an app that behaves differently from what review saw breaks Deceptive Behavior.
+Both are enforced at the ACCOUNT level, not the app level, and a suspended developer account is not
+appealable in any way worth planning around. A remote flag that quietly enables scraping is the
+textbook example. The other half of that risk is specific to us: the Google half is built on
+Google's own service, and a Play listing puts the account that publishes it directly under Google's
+enforcement, which is a different exposure than GitHub or F-Droid.
+
+So the honest split is two distributions: the full app stays on GitHub, Obtainium and F-Droid; the
+Play build is the OSM app, honestly described, with a link to the project site for people who want
+the other one. A link is fine; an in-app downloader of an APK is not.
+
+**Work it implies, roughly in order:**
+
+- a flavor dimension, with the Google extractor, the WebView scrape and the place-page surfaces
+  compiled out, and the search/place paths falling back to what the offline stack already does
+- `REQUEST_INSTALL_PACKAGES` and the in-app updater gone from that flavor (Play forbids an app that
+  updates itself), which also means the What's new dialog and the update checker are flavor-aware
+- the Data Safety form, a privacy policy URL, content rating, and the background location
+  declaration with the demo video Play asks for
+- package id and signing: Play App Signing re-signs, so a Play install and a GitHub install cannot
+  replace each other. Either accept that moving between them needs an uninstall, or publish the Play
+  build under its own id and accept two apps on one phone. Decide before the first upload, because
+  the id cannot change afterwards.
+- listing copy and screenshots that never imply a Google affiliation
+
+**Not scheduled.** The prep is the flavor split, which is useful on its own: it proves how much of
+Vela stands up with no Google at all, which is the direction the project has been walking anyway.
+
 ### Opt-in telemetry  *(planned - deliberate, careful)*
 
 Goals, **strictly opt-in**, off by default:

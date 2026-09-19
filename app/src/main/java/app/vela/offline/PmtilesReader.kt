@@ -32,6 +32,8 @@ object PmtilesReader {
     data class Header(
         val rootOffset: Long,
         val rootLength: Long,
+        val metaOffset: Long,
+        val metaLength: Long,
         val leafOffset: Long,
         val tileDataOffset: Long,
         val internalCompression: Int,
@@ -48,6 +50,8 @@ object PmtilesReader {
             Header(
                 rootOffset = le64(head, 8),
                 rootLength = le64(head, 16),
+                metaOffset = le64(head, 24),
+                metaLength = le64(head, 32),
                 leafOffset = le64(head, 40),
                 tileDataOffset = le64(head, 56),
                 internalCompression = head[97].toInt() and 0xFF,

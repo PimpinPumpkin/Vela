@@ -258,14 +258,14 @@ abstract class PmtilesRegionStore(
             log("${region.id}: installed rev $have, patch is from ${delta.fromRev}")
             return@withContext false
         }
-        // COMPACTION. A patch appends and leaves the tiles it replaced behind, so a file updated
-        // this way forever would drift from what a fresh download holds - same tiles, more bytes.
-        // Past a fifth of the file in dead space the delta is refused and the caller downloads the
-        // region whole, which IS the compaction: the archive goes back to being byte for byte what
-        // the bake published, and the counter starts again.
+        // A patch appends and leaves the tiles it replaced behind, so without something to reclaim
+        // them a file updated this way forever would drift from what a fresh download holds: the
+        // same tiles, more bytes. `PmtilesCompact` reclaims them locally after the patch lands, so
+        // this only has to catch the case where that has been failing - no free space, say - and
+        // fall back to the download of last resort rather than let the file grow without end.
         val dead = deadBytes(region.id)
-        if (dead > file.length() / DEAD_LIMIT_DIVISOR) {
-            log("${region.id}: ${dead / 1024} KB dead in a ${file.length() / 1024} KB archive, taking it whole to compact")
+        if (dead > file.length() / 2) {
+            log("${region.id}: ${dead / 1024} KB dead in a ${file.length() / 1024} KB archive and compaction is not keeping up, taking it whole")
             return@withContext false
         }
         downloadMutex.withLock {
@@ -291,13 +291,28 @@ abstract class PmtilesRegionStore(
                 }
                 when (val outcome = PmtilesPatch.apply(file, tmp)) {
                     is PmtilesPatch.Outcome.Applied -> {
-                        synchronized(indexLock) {
-                            writeRev(region.id, region.rev)
-                            writeDead(region.id, dead + outcome.deadBytes)
-                        }
                         log("${region.id}: patched ${delta.fromRev} -> ${region.rev}, " +
                             "${tmp.length() / 1024} KB down, ${outcome.tiles} tiles, " +
                             "${outcome.deadBytes / 1024} KB dead")
+                        var carried = dead + outcome.deadBytes
+                        // Past a fifth of the file, rewrite it without the dead bytes. This is
+                        // local: every live tile is already here, so it costs a pass over the file
+                        // and nothing on the network, and the result is the layout the bake
+                        // publishes. A refusal is fine - the archive is correct either way.
+                        if (carried > file.length() / DEAD_LIMIT_DIVISOR || compactAlways()) {
+                            when (val c = PmtilesCompact.compact(file)) {
+                                is PmtilesCompact.Outcome.Done -> {
+                                    carried = 0
+                                    log("${region.id}: compacted ${c.beforeBytes / 1024} KB to ${c.afterBytes / 1024} KB")
+                                }
+                                is PmtilesCompact.Outcome.Refused ->
+                                    log("${region.id}: not compacted, ${c.why}")
+                            }
+                        }
+                        synchronized(indexLock) {
+                            writeRev(region.id, region.rev)
+                            writeDead(region.id, carried)
+                        }
                         true
                     }
                     is PmtilesPatch.Outcome.Refused -> {
@@ -371,8 +386,17 @@ abstract class PmtilesRegionStore(
 
     private companion object {
         const val MISS_MEMO_MS = 10 * 60 * 1000L
-        /** Dead space a patched archive may carry before the next update is taken whole instead. */
+        /** Dead space a patched archive may carry before it is rewritten without it. */
         const val DEAD_LIMIT_DIVISOR = 5
+
+        /** `adb shell setprop debug.vela.compact true` rewrites after EVERY patch, so the rewrite
+         *  can be watched on a device without waiting for a tenth update. The same escape hatch as
+         *  debug.vela.fps: it touches nothing the user can see. */
+        private fun compactAlways(): Boolean = runCatching {
+            @Suppress("PrivateApi")
+            val m = Class.forName("android.os.SystemProperties").getMethod("get", String::class.java)
+            (m.invoke(null, "debug.vela.compact") as? String).orEmpty()
+        }.getOrDefault("") == "true"
         /** How long a fetched catalog is reused. Bakes are daily at most, so an hour is plenty and
          *  still cheap: this runs on camera idle, not per frame. */
         const val MANIFEST_TTL_MS = 60 * 60 * 1000L
