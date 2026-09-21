@@ -2097,7 +2097,8 @@ architecture note.
   shipped asset and fails if a region is missing (a bake fetch that failed would otherwise put that
   region silently back on its box) and pins Hong Kong outside Vietnam and inside China, Hanoi
   inside Vietnam, and Kansas City in Missouri not Kansas. Hong Kong itself has no Geofabrik
-  extract; a row for it means clipping China's PBF with osmium, which is the open follow-up.
+  extract of its own at first look; it turned out Geofabrik cuts one (see the catalog bullet), and
+  `china-sub` was added the same day.
 - **SHALLOW OFFLINE BASEMAPS ARE ONLY USED OFFLINE (2026-09-18):** `BasemapTileStore.maxZoomOf` reads
   byte 101 of the PMTiles v3 header; `refreshBasemapArchive` skips an archive shallower than
   `FULL_MAP_ZOOM` (14) unless `offline`, and the online/offline latch re-runs it. The workflow drops
@@ -3570,7 +3571,14 @@ Gotchas:
   `sea` and whole `russia`). `big:true` from a HEAD sweep at 450 MB. Ten whole-country/state rows
   carry `skip_obf:true` (california, italy, germany, france, great-britain, spain, japan, india,
   indonesia, brazil): they OOM the obf bake even filtered, their sub-area rows cover them, and
-  obf-regions.yml's selector drops them; routing-graphs/poi-packs still build them. China joined the list 2026-09-12 (1.5 GB, OOM at 12g, and Geofabrik has no China sub-extracts, so there is no obf for China until a bigger bake machine exists). The list of
+  obf-regions.yml's selector drops them; routing-graphs/poi-packs still build them. China joined the list 2026-09-12 (1.5 GB, OOM at 12g). **Geofabrik DOES cut China into 33
+  sub-extracts now (checked 2026-09-21, issue #599): every province plus Beijing, Shanghai,
+  Tianjin, Chongqing, Hong Kong and Macau, the largest 164 MB**, so `china-sub` (ids
+  `china-<slug>`, names "<Local> (China)", 458 catalog rows in all) bakes like `germany-sub` and the
+  whole-country row keeps `skip_obf`. Hong Kong and Macau are their own rows AND inside Guangdong's
+  extract; the polygon pick's smallest-box tie-break gives a Hong Kong point the Hong Kong row.
+  The earlier "no China sub-extracts" note here was wrong or out of date, and it cost Hong Kong
+  users every offline feature for a week. The list of
   what Geofabrik has vs the catalog is one script against `index-v1-nogeom.json`; rerun it when
   Geofabrik adds an extract.
   **OBF BAKE, THE FILTER THAT MADE IT FIT (2026-09-11):** MapCreator's memory ceiling is its

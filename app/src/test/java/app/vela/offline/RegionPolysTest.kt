@@ -24,11 +24,24 @@ class RegionPolysTest {
         return e.outers.any { RegionPolys.inside(lat, lng, it) } && e.holes.none { RegionPolys.inside(lat, lng, it) }
     }
 
-    @Test fun `the whole catalog has a polygon`() {
+    @Test fun `every catalog row has a polygon`() {
         // Every routing row is a Geofabrik extract and Geofabrik publishes a .poly beside each one;
-        // a missing entry here is a fetch that failed during the bake, and that region would silently
-        // go back to its box.
-        assertTrue("only ${table.size} regions", table.size >= 425)
+        // a row missing here is a fetch that failed during the bake, or a row added without re-running
+        // scripts/region-polys.py, and that region would silently go back to its box.
+        val cat = listOf("../tools/routing-regions.json", "tools/routing-regions.json").map(::File).first { it.exists() }
+        val ids = Regex("\"id\"\\s*:\\s*\"([^\"]+)\"").findAll(cat.readText()).map { it.groupValues[1] }.toList()
+        assertTrue("catalog read", ids.size > 400)
+        val missing = ids.filter { it !in table }
+        assertTrue("no polygon for: $missing", missing.isEmpty())
+    }
+
+    @Test fun `hong kong has its own row and wins over guangdong`() {
+        // Geofabrik cuts Hong Kong and Macau as their own extracts AND folds them into Guangdong's;
+        // both polygons cover the point, and the smaller box is the specific region (issue #599).
+        assertTrue(covers("china-hong-kong", 22.32, 114.17))
+        assertTrue(covers("china-guangdong", 22.32, 114.17))
+        assertTrue(covers("china-macau", 22.19, 113.54))
+        assertFalse(covers("china-hong-kong", 22.19, 113.54))
     }
 
     @Test fun `hong kong is not in vietnam`() {

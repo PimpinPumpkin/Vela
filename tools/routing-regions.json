@@ -1518,6 +1518,204 @@
       "pbf_url": "https://download.geofabrik.de/asia/japan/tohoku-latest.osm.pbf"
     },
     {
+      "id": "china-anhui",
+      "name": "Anhui (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/anhui-latest.osm.pbf"
+    },
+    {
+      "id": "china-beijing",
+      "name": "Beijing (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/beijing-latest.osm.pbf"
+    },
+    {
+      "id": "china-chongqing",
+      "name": "Chongqing (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/chongqing-latest.osm.pbf"
+    },
+    {
+      "id": "china-fujian",
+      "name": "Fujian (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/fujian-latest.osm.pbf"
+    },
+    {
+      "id": "china-gansu",
+      "name": "Gansu (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/gansu-latest.osm.pbf"
+    },
+    {
+      "id": "china-guangdong",
+      "name": "Guangdong (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/guangdong-latest.osm.pbf"
+    },
+    {
+      "id": "china-guangxi",
+      "name": "Guangxi (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/guangxi-latest.osm.pbf"
+    },
+    {
+      "id": "china-guizhou",
+      "name": "Guizhou (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/guizhou-latest.osm.pbf"
+    },
+    {
+      "id": "china-hainan",
+      "name": "Hainan (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/hainan-latest.osm.pbf"
+    },
+    {
+      "id": "china-hebei",
+      "name": "Hebei (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/hebei-latest.osm.pbf"
+    },
+    {
+      "id": "china-heilongjiang",
+      "name": "Heilongjiang (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/heilongjiang-latest.osm.pbf"
+    },
+    {
+      "id": "china-henan",
+      "name": "Henan (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/henan-latest.osm.pbf"
+    },
+    {
+      "id": "china-hong-kong",
+      "name": "Hong Kong (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/hong-kong-latest.osm.pbf"
+    },
+    {
+      "id": "china-hubei",
+      "name": "Hubei (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/hubei-latest.osm.pbf"
+    },
+    {
+      "id": "china-hunan",
+      "name": "Hunan (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/hunan-latest.osm.pbf"
+    },
+    {
+      "id": "china-inner-mongolia",
+      "name": "Inner Mongolia (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/inner-mongolia-latest.osm.pbf"
+    },
+    {
+      "id": "china-jiangsu",
+      "name": "Jiangsu (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/jiangsu-latest.osm.pbf"
+    },
+    {
+      "id": "china-jiangxi",
+      "name": "Jiangxi (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/jiangxi-latest.osm.pbf"
+    },
+    {
+      "id": "china-jilin",
+      "name": "Jilin (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/jilin-latest.osm.pbf"
+    },
+    {
+      "id": "china-liaoning",
+      "name": "Liaoning (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/liaoning-latest.osm.pbf"
+    },
+    {
+      "id": "china-macau",
+      "name": "Macau (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/macau-latest.osm.pbf"
+    },
+    {
+      "id": "china-ningxia",
+      "name": "Ningxia (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/ningxia-latest.osm.pbf"
+    },
+    {
+      "id": "china-qinghai",
+      "name": "Qinghai (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/qinghai-latest.osm.pbf"
+    },
+    {
+      "id": "china-shaanxi",
+      "name": "Shaanxi (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/shaanxi-latest.osm.pbf"
+    },
+    {
+      "id": "china-shandong",
+      "name": "Shandong (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/shandong-latest.osm.pbf"
+    },
+    {
+      "id": "china-shanghai",
+      "name": "Shanghai (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/shanghai-latest.osm.pbf"
+    },
+    {
+      "id": "china-shanxi",
+      "name": "Shanxi (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/shanxi-latest.osm.pbf"
+    },
+    {
+      "id": "china-sichuan",
+      "name": "Sichuan (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/sichuan-latest.osm.pbf"
+    },
+    {
+      "id": "china-tianjin",
+      "name": "Tianjin (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/tianjin-latest.osm.pbf"
+    },
+    {
+      "id": "china-tibet",
+      "name": "Tibet (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/tibet-latest.osm.pbf"
+    },
+    {
+      "id": "china-xinjiang",
+      "name": "Xinjiang (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/xinjiang-latest.osm.pbf"
+    },
+    {
+      "id": "china-yunnan",
+      "name": "Yunnan (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/yunnan-latest.osm.pbf"
+    },
+    {
+      "id": "china-zhejiang",
+      "name": "Zhejiang (China)",
+      "group": "china-sub",
+      "pbf_url": "https://download.geofabrik.de/asia/china/zhejiang-latest.osm.pbf"
+    },
+    {
       "id": "south-korea",
       "name": "South Korea",
       "group": "asia",
