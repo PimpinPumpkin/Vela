@@ -42,4 +42,11 @@ class CameraDetourTest {
         assertEquals(listOf(a, v, b), plan2)
         assertEquals(listOf(v), CameraDetour.mergePlan(emptyList(), listOf(2000.0 to v)))
     }
+
+    @Test fun `an edited visible list gets the silent vias back where they were`() {
+        // A drive with stops A (1 km) and B (5 km) and a detour via at 3 km; the user removes A
+        // and adds C, which is not on the current route: the via stays between what remains.
+        val merged = CameraDetour.mergeOrdered(listOf(5000.0 to "B", null to "C"), listOf(3000.0 to "via"))
+        assertEquals(listOf("via", "B", "C"), merged)
+    }
 }

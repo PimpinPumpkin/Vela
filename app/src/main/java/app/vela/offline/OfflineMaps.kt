@@ -112,6 +112,29 @@ object OfflineMaps {
         })
     }
 
+    /** Give the space back. MapLibre keeps saved areas and the browsing cache in ONE SQLite file,
+     *  and deleting a region removes its rows, not the bytes: the file keeps its size until it is
+     *  packed (VACUUM). A phone that had saved and deleted a few big areas showed 5 GB of "map
+     *  data" with nothing left to delete (issue #601). Called after every area delete and by the
+     *  delete-everything path; always completes (an error is reported as done). */
+    fun packDatabase(context: Context, onDone: () -> Unit = {}) {
+        runCatching {
+            OfflineManager.getInstance(context).packDatabase(object : OfflineManager.FileSourceCallback {
+                override fun onSuccess() = onDone()
+                override fun onError(message: String) = onDone()
+            })
+        }.onFailure { onDone() }
+    }
+
+    /** Delete every saved area, then pack the database. */
+    fun deleteAll(context: Context, onDone: () -> Unit) {
+        list(context) { regions ->
+            var left = regions.size
+            if (left == 0) { packDatabase(context, onDone); return@list }
+            regions.forEach { r -> delete(r) { if (--left == 0) packDatabase(context, onDone) } }
+        }
+    }
+
     fun nameOf(region: OfflineRegion): String =
         runCatching { JSONObject(String(region.metadata)).optString(KEY_NAME) }
             .getOrNull()?.takeIf { it.isNotBlank() } ?: "Saved area"

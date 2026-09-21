@@ -451,6 +451,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **The turn list opens on the turn you are driving to (2026-09-16).** Swiping up the nav bar (or tapping the list button) lands on the current step instead of the first one. Steps you have already driven are still there one scroll up, grayed out, along with any stop band before them. The directions preview from the route chooser still starts at the top with nothing grayed, and under a D-pad focus lands on the current step.
 - ✅ **Stops stand out in the turn list (2026-09-16, issue #519).** On a trip with stops, the step list draws a tinted "Stop: name" band where each leg begins, between the arrival of one leg and the first turn of the next, so a long list reads leg by leg. Names come from the planned stops, or the stops still ahead while driving.
 - ✅ **Traffic overlay draws over buildings (2026-09-16, issue #521).** At street zoom the gray building footprints and the 3D extrusions painted over the congestion colors; the traffic raster now sits above the buildings and still below every icon and label.
+- ✅ **Delete all offline data, and deleting actually frees space (2026-09-21, issue #601).**
+  Offline maps > Storage has a "Delete all offline data" button: every saved area, every
+  downloaded region (routing, places, map), the building and address overlays, the road features
+  and the browsing cache go, and the map database is packed so the file shrinks. Deleting a single
+  saved area and clearing the map cache pack it too; before this, MapLibre kept the file at its
+  largest size after a delete, so a phone could report gigabytes of map data with every list
+  empty. Voices and speech models are kept.
 - ✅ **Offline maps: storage first (2026-09-16, issue #518).** The storage breakdown and Clear map cache moved above the state and country catalog, so what the phone already holds is visible before the list of downloads.
 - ✅ **Place titles stay in your language's script (2026-09-15).** Tapping a place abroad used to retitle the sheet with Google's local-script name (a Hebrew title over a pin the map labeled in English). The sheet now keeps the map's own label when Google's name is in another script than the app language, and takes Google's name when it is in yours.
 - ✅ **Open in another map app (2026-09-15).** The place sheet's share menu hands the place to any

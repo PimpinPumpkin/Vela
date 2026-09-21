@@ -54,9 +54,15 @@ object CameraDetour {
     /** The user's stops and the detour points merged into ONE travel-ordered list by their
      *  position along the route. A stop with no position (not on this line) keeps its place by
      *  index between the ones that have one. */
-    fun mergePlan(stops: List<Pair<Double?, LatLng>>, vias: List<Pair<Double, LatLng>>): List<LatLng> {
-        // Fill a stop's missing position from its neighbors so the sort is stable and in order.
-        val filled = ArrayList<Pair<Double, LatLng>>(stops.size)
+    fun mergePlan(stops: List<Pair<Double?, LatLng>>, vias: List<Pair<Double, LatLng>>): List<LatLng> =
+        mergeOrdered(stops, vias)
+
+    /** [mergePlan] over anything: stops in list order with a position where known, vias with a
+     *  position, out as one list ordered along the route. A stop with no position is placed
+     *  halfway to the next positioned stop, else just past the previous one. Used by the nav
+     *  session too, to keep the silent detour vias in place when the visible stops are edited. */
+    fun <T> mergeOrdered(stops: List<Pair<Double?, T>>, vias: List<Pair<Double, T>>): List<T> {
+        val filled = ArrayList<Pair<Double, T>>(stops.size)
         var last = 0.0
         for ((i, s) in stops.withIndex()) {
             val at = s.first ?: (stops.drop(i + 1).firstNotNullOfOrNull { it.first }?.let { (last + it) / 2 } ?: (last + 1.0))

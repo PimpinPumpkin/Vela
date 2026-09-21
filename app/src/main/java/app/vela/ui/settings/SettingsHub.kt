@@ -352,6 +352,8 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     // Offline
     R.string.settings_offline to SettingsSection.OFFLINE,
     R.string.settings_offline_places_with_downloads to SettingsSection.OFFLINE,
+    R.string.settings_clear_map_cache to SettingsSection.OFFLINE,
+    R.string.settings_delete_offline_all to SettingsSection.OFFLINE,
     // Saved places
     R.string.settings_export to SettingsSection.SAVED_PLACES,
     R.string.settings_import to SettingsSection.SAVED_PLACES,

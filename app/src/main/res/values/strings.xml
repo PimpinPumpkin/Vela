@@ -194,6 +194,11 @@
     <string name="settings_clear_map_cache">Clear map cache</string>
     <string name="settings_clear_map_cache_hint">Frees the tiles the map cached while browsing. Saved areas are kept.</string>
     <string name="settings_map_cache_cleared">Map cache cleared</string>
+    <string name="settings_delete_offline_all">Delete all offline data</string>
+    <string name="settings_delete_offline_all_hint">Removes every saved area, every downloaded region (routing, places, map), the building and address overlays and the browsing cache, and shrinks the map database. Voices are kept. Use this if the storage figures above do not add up to what you can see in the lists.</string>
+    <string name="settings_delete_offline_all_title">Delete all offline data?</string>
+    <string name="settings_delete_offline_all_body">About %1$s of downloaded maps, routing and places will be removed. Saved places, trips and voices are kept.</string>
+    <string name="mapvm_offline_all_deleted">Offline data deleted</string>
     <string name="settings_routing_remove">Remove offline routing</string>
     <string name="settings_download">Download</string>
     <string name="settings_region_group_title">All of %1$s</string> <!-- format -->

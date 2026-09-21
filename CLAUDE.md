@@ -3065,6 +3065,21 @@ architecture note.
   before downloading, and the Storage group at the bottom of Offline maps reads
   `MapViewModel.offlineStorageBreakdown()` (.mapbox db + overlays / graphs / poipacks /
   piper+asr) with `clearMapCache()` = MapLibre `clearAmbientCache` (saved areas untouched).
+  **SPACE COMES BACK ONLY WHEN THE DATABASE IS PACKED (issue #601, 2026-09-21).** MapLibre's
+  offline store is ONE SQLite file (`mbgl-offline.db` / `.mapbox`) holding saved areas and the
+  browsing cache; deleting a region deletes rows, and SQLite keeps the file at its high-water mark
+  until a VACUUM. A user who had saved and deleted a few big areas in the old tile-pack days saw
+  5 GB of "map data" with every list empty. `OfflineMaps.packDatabase` (`OfflineManager.packDatabase`)
+  now runs after every saved-area delete (the row's trash icon in Offline maps) and inside
+  `clearMapCache()`. And there is finally one button that reaches everything: Offline maps >
+  Storage > "Delete all offline data" (`MapViewModel.deleteAllOfflineData`, VelaDialog confirm
+  with the total): every saved area, every store's installed ids, then a SWEEP of every file under
+  `obf/ poipacks/ places/ basemap/ overlays/ roadfeatures/ graphs/` except the index files
+  (an archive whose id left the catalog when a country was re-split is unreachable by any region
+  row), the ambient cache, then pack. Building overlays had NO delete path at all before this:
+  every area save pulled a ~200 MB state file that nothing ever removed. Voices/ASR are left alone
+  (they have their own Remove). Both buttons are in the settings search now; "Clear map cache"
+  never was.
   Old translated locales had the zip-size strings DELETED (orphans fail lint); the new
   installed-size keys are base-English until a translator fills them (Weblate is still a plan,
   see docs/LANGUAGES.md).

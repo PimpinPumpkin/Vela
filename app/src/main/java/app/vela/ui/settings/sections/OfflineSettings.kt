@@ -144,7 +144,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape), onClick = { OfflineMaps.delete(r) { OfflineMaps.list(context) { regions = it } } }) {
+                    IconButton(modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape), onClick = { OfflineMaps.delete(r) { OfflineMaps.packDatabase(context) { OfflineMaps.list(context) { regions = it } } } }) {
                         Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_offline_delete_area))
                     }
                 }
@@ -206,6 +206,28 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                 ) { Text(stringResource(R.string.settings_clear_map_cache)) }
             }
             Hint(stringResource(R.string.settings_clear_map_cache_hint))
+            GroupDivider()
+            // The one button that reaches everything, including what no region row can (issue #601).
+            var confirmDeleteAll by remember { mutableStateOf(false) }
+            if (confirmDeleteAll) {
+                app.vela.ui.VelaDialog(
+                    onDismissRequest = { confirmDeleteAll = false },
+                    title = stringResource(R.string.settings_delete_offline_all_title),
+                    text = { Text(stringResource(R.string.settings_delete_offline_all_body, fmtMb(storage?.let { it.mapsMb + it.routingMb + it.placesMb } ?: 0))) },
+                    confirmText = stringResource(R.string.settings_delete_offline_all),
+                    onConfirm = { confirmDeleteAll = false; vm.deleteAllOfflineData(); storageScope.launch { kotlinx.coroutines.delay(1500); storageTick++; OfflineMaps.list(context) { regions = it } } },
+                    dismissText = stringResource(R.string.settings_cancel),
+                    onDismiss = { confirmDeleteAll = false },
+                )
+            }
+            androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 8.dp)) {
+                androidx.compose.material3.TextButton(
+                    onClick = { confirmDeleteAll = true },
+                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                ) { Text(stringResource(R.string.settings_delete_offline_all)) }
+            }
+            Hint(stringResource(R.string.settings_delete_offline_all_hint))
         }
         Spacer(Modifier.height(8.dp))
         SubHead(stringResource(R.string.settings_routing_regions))
