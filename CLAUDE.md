@@ -2643,6 +2643,26 @@ architecture note.
   `building-3d`/`building` (fallback: below the first symbol layer, which in Liberty is the one-way
   arrow at index 61, BEFORE the buildings at 83-84, which is how the footprints ended up painting
   over the congestion colors). Satellite still anchors above the imagery. Keep it under the labels.
+- **SIDE-STREET DETOURS AROUND PLATE CAMERAS (issue #600, 2026-09-21).** `ui/FlockDetour` (pref
+  `flock_detour`, OFF, Settings > Navigation > Cameras, nested under "Avoid surveillance cameras",
+  in the settings search). After `refreshFlockOnRoute`'s re-rank, when the leading route still
+  passes cameras, `tryCameraDetour` runs the reporter's workaround: `core/nav/CameraDetour.candidates`
+  groups the lead route's cameras into clusters (`CameraAlerts.group`, nearest first, at most
+  `MAX_CLUSTERS` 3) and for each gives the two points `OFFSET_M` (150 m) to the driver's left and
+  right of the road there; the pass tries left then right through `dataSource.directions(waypoints=)`
+  with the point merged into the user's stops in travel order (`CameraDetour.mergePlan`), keeps a
+  candidate whose camera count drops inside the SAME cap as the re-rank (the lesser of 25% or 10 min
+  over the fastest route), builds the next cluster on it, and stops at `MAX_REQUESTS` (6). The
+  router's own snap does the graph work: a point that lands on the same road folds back into the
+  same route and fails the count; a point on a parallel street is a real detour. The kept route
+  leads the list with its badge, carries `Route.detourPlan` (the full ordered waypoint list), and
+  `NavController.navStopsFor` starts the drive with the detour points as SILENT `NavStop`s
+  (`NavStop.silent`: routed through by every reroute and recheck, never spoken, filtered out of
+  `remainingStops()` so the stops row, the editor and the leg dividers never show them). A mid-drive
+  stops EDIT rebuilds the list from the visible stops and drops the detour; `addStop` keeps it.
+  Logcat `VelaFlockRoute`: `detour: clusters=N requests=N kept=… cameras A -> B`. It depends on the
+  same-day waypoint work: Google prices every candidate through its stops with traffic, so the cap
+  compare is honest. DRIVE only, and epoch-guarded like the re-rank.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.

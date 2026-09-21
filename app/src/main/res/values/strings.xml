@@ -122,6 +122,8 @@
     <string name="exp_chooser_along" translatable="false">Add a stop along the way</string>
     <string name="exp_chooser_share_text" translatable="false">Directions to %1$s: %2$s, %3$s</string>
     <string name="settings_flock_route_alert" translatable="false">Avoid surveillance cameras</string>
+    <string name="settings_flock_detour" translatable="false">Try side streets around cameras</string>
+    <string name="settings_flock_detour_hint" translatable="false">When every route still passes cameras, tries a point just off the road at each camera and routes through it, the way you would by long-pressing the map. A route that passes fewer cameras within the same small detour goes to the top of the list. Costs a few extra route requests per trip. Off by default.</string>
     <string name="settings_flock_route_alert_hint" translatable="false">Counts the license-plate reader (Flock) cameras on each route (a camera aimed across the road is left out, since it reads cross traffic) and auto-picks a lower-camera one when it costs only a little longer. It never sends you far out of the way, so where cameras are unavoidable it just shows the counts and leaves the choice to you. Long-press the map to route through a point yourself. Off by default.</string>
     <string name="dir_cameras_on_route" translatable="false">%1$d cameras on this route</string> <!-- format -->
 

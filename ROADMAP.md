@@ -855,7 +855,8 @@ project's core promise is that neither exists:
 ## Queued near-term
 
 - **Try side streets around plate cameras automatically (issue #600, some1ataplace, 2026-09-20;
-  scheduled 2026-09-21).** With "Avoid surveillance cameras" on, every route the routers offer can
+  SHIPPED 2026-09-21 as Settings > Navigation > Cameras > "Try side streets around cameras", off by
+  default, see FEATURES).** Kept here for the reasoning.** With "Avoid surveillance cameras" on, every route the routers offer can
   still pass cameras, and the reporter's workaround is to long-press "route through here" on a
   parallel street by hand every trip. The machinery exists: the camera positions, `routeVia` through
   invisible points (the divergence snap already does it), the per-route camera count and the

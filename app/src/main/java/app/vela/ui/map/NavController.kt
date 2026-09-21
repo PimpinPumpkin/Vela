@@ -327,7 +327,7 @@ internal class NavController(
                 // doesn't), so a demo of a bike route must buzz like the real ride would. And the
                 // stops (2026-09-14): a demo used to start the session without them, so per-stop
                 // cues and the mid-drive stops editor (#402) had nothing to work with.
-                val demoStops = _state.value.directionsWaypoints.map { NavSession.NavStop(it.location, it.name) }
+                val demoStops = navStopsFor(route, _state.value.directionsWaypoints)
                 navSession.start(route, dest, label, engine, demoStops, _state.value.travelMode)
                 replayOwnsNav = true
                 // Demo mode presents as REAL nav, so the ongoing turn notification is part of
@@ -394,7 +394,7 @@ internal class NavController(
         // Stops are stored in travel order (swapDirections reverses the list itself) → per-stop arrival
         // cues + reroute-through-remaining.
         val s = _state.value
-        val stops = s.directionsWaypoints.map { NavSession.NavStop(it.location, it.name) }
+        val stops = navStopsFor(route, s.directionsWaypoints)
         // Robust host.destination lines for the ARRIVE step: name, else address, else the raw
         // coordinates (offline routing can have any of those missing); the address rides along
         // only when it says something the primary line doesn't.
@@ -485,6 +485,16 @@ internal class NavController(
 
     /** The labels of the stops still ahead, for the nav sheet's Stops row. */
     fun navRemainingStopLabels(): List<String> = navSession.remainingStops().map { it.label }
+
+    /** The drive's stop list for [route]: the user's stops, or, for a route the camera pass built
+     *  through side-street points (issue #600), its whole waypoint plan with those points as SILENT
+     *  stops, so a reroute or recheck keeps the detour instead of routing back past the cameras. */
+    private fun navStopsFor(route: Route, waypoints: List<app.vela.core.model.Place>): List<NavSession.NavStop> =
+        if (route.detourPlan.isEmpty()) waypoints.map { NavSession.NavStop(it.location, it.name) }
+        else route.detourPlan.map { p ->
+            waypoints.firstOrNull { it.location == p }?.let { NavSession.NavStop(it.location, it.name) }
+                ?: NavSession.NavStop(p, "", silent = true)
+        }
     fun navRemainingStops(): List<app.vela.core.nav.NavSession.NavStop> = navSession.remainingStops()
 
     /** In-nav stop insert: hand the pick to the session (it replans the drive through it) and

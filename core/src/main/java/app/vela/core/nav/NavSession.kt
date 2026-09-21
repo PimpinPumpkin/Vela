@@ -159,7 +159,11 @@ class NavSession @Inject constructor(
     private var planRoute: Route? = null // the route [stopMarks] were computed against
 
     /** An intermediate stop on a multi-stop trip. */
-    data class NavStop(val location: LatLng, val label: String)
+    /** A stop on the drive. [silent] marks a side-street detour point the camera pass added (issue
+     *  #600): routed through like a stop, so a reroute or recheck keeps the detour, but never
+     *  spoken, never listed, never a leg divider. A mid-drive stops EDIT rebuilds the list from the
+     *  visible stops, so it drops the detour; the search that placed it would have to run again. */
+    data class NavStop(val location: LatLng, val label: String, val silent: Boolean = false)
 
     /** Fold a light-ENRICHED copy of the current route in after nav has already started, so
      *  START never waits on the Overpass traffic-signal fetch (that blocked nav start for up to
@@ -283,8 +287,9 @@ class NavSession @Inject constructor(
         setStops(listOf(stop) + remaining, loc, "add stop mid-nav → ${stop.label}", "stop-added")
     }
 
-    /** The stops still ahead on the drive, in order (the ones already passed are dropped). */
-    fun remainingStops(): List<NavStop> = synchronized(stopLock) { stops.drop(passedStops) }
+    /** The stops still ahead on the drive, in order (the ones already passed are dropped). The
+     *  VISIBLE ones: a silent detour via is routed through but is not a stop to anyone. */
+    fun remainingStops(): List<NavStop> = synchronized(stopLock) { stops.drop(passedStops).filter { !it.silent } }
 
     /** Replace the stops still ahead with [newRemaining] (the stops editor's Done during nav,
      *  issue #402: reorder, remove, add, then ONE replan from [loc]) and replan the drive through
@@ -434,7 +439,7 @@ class NavSession @Inject constructor(
                 val mark = stopMarks.getOrNull(passedStops)
                 if (mark == null) { passedStops++; continue }
                 if (traveledM >= mark - STOP_ARRIVE_TOL_M) {
-                    toSpeak += stops[passedStops].label
+                    if (!stops[passedStops].silent) toSpeak += stops[passedStops].label
                     passedStops++
                 } else break
             }

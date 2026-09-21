@@ -58,6 +58,20 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   camera per route; cameras within 40 m of each other along the route are one alert ("License
   plate cameras ahead"). Uses the bundled camera data, so no network. The voice follows the
   spoken-directions mute.
+- ✅ **Google routes your trips with stops (2026-09-21).** A trip with stops used to be routed
+  through them by the open router alone, with Google's direct origin-to-destination time painted
+  on as a speed ratio; Google is now asked for the trip through the stops, so its traffic chooses
+  the roads and its time is the one shown, and the open router names the turns along Google's
+  line. The route chooser checks that Google's line really passes every stop before trusting it.
+- ✅ **Side streets around plate cameras (2026-09-21, issue #600).** Settings, Navigation, Cameras:
+  "Try side streets around cameras", nested under "Avoid surveillance cameras", off by default.
+  When every route still passes cameras, the chooser tries a point just off the road at each
+  camera cluster (up to three, nearest first) and routes through it; a route that passes fewer
+  cameras inside the same detour limit (the lesser of 25% or 10 minutes) goes to the top of the
+  list with its camera badge. Google routes and prices each candidate with traffic; at most six
+  extra route requests per trip. Starting a drive on that route keeps the detour through reroutes
+  and rechecks (the detour points ride along as silent stops: never spoken, never listed). A
+  mid-drive edit of the stops rebuilds the list from the visible stops and drops the detour.
 - ✅ **Plate cameras are counted by the way they face (2026-09-16).** A plate reader sees traffic
   moving along its road, not across it, so a camera with a known facing only counts for a route
   when it points within 50 degrees of that route's direction (either way) at the nearest stretch.

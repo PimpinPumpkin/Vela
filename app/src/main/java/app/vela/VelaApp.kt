@@ -87,6 +87,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
             app.vela.core.data.RoutingPrefs.avoidFerries = p.getBoolean("avoid_ferries", false)
         }
         app.vela.ui.FlockRouteAlert.init(this) // load the persisted "warn about cameras on route" toggle
+        app.vela.ui.FlockDetour.init(this) // side-street detours around cameras (issue #600), nested under it
         app.vela.ui.FlockNavAlert.init(this) // plate-camera card + spoken alert while navigating, off by default
         // Parse the bundled on-device ALPR/Flock camera dataset off the main thread (map layer draws
         // instantly, route counts are reliable), then refresh from the hosted manifest so the data updates
