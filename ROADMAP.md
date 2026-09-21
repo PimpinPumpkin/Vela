@@ -865,6 +865,11 @@ project's core promise is that neither exists:
   rejected by the count; a parallel street means a real detour); keep a candidate only when its
   camera count drops and its cost is inside the limit, then put it at the top with its badge. The
   spur guards (`hasSpur`, `VIA_SNAP_MAX_M`) already reject a via that landed somewhere silly.
+  STEP ONE LANDED THE SAME DAY: Google is now asked for the trip THROUGH the stops (it never was;
+  every trip with stops was the open router's free-flow choice with Google's direct-trip speed
+  painted on), so a detour via handed to `directions(waypoints=)` is routed and priced by Google
+  with traffic, and the open router only names the turns. What is left is the candidate placement
+  and the count-and-limit loop.
   TWO RULES. It is opt-in and capped (a few clusters, a handful of extra requests), because a
   three-cluster route becomes up to seven open-router requests instead of one and FOSSGIS is
   fair-use infrastructure. And the candidate goes through `applyTraffic` like every other route,

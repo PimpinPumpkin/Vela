@@ -39,6 +39,7 @@ object DirectionsPb {
         avoidTolls: Boolean = false,
         avoidHighways: Boolean = false,
         avoidFerries: Boolean = false,
+        waypoints: List<LatLng> = emptyList(),
     ): String {
         val modeCode = when (mode) {
             TravelMode.DRIVE -> 0
@@ -47,7 +48,7 @@ object DirectionsPb {
             TravelMode.TRANSIT -> 3
         }
         val drive = mode == TravelMode.DRIVE
-        return withAvoid(template, avoidTolls && drive, avoidHighways && drive, avoidFerries && drive)
+        return withWaypoints(withAvoid(template, avoidTolls && drive, avoidHighways && drive, avoidFerries && drive), waypoints)
             .replace("{OLAT}", origin.lat.toString())
             .replace("{OLNG}", origin.lng.toString())
             .replace("{DLAT}", destination.lat.toString())
@@ -73,6 +74,33 @@ object DirectionsPb {
      *  grows by one. */
     /** Whether [withAvoid] can place the flags in [template] at all. */
     fun avoidSupported(template: String): Boolean = AVOID_BLOCK.containsMatchIn(template)
+
+    /** STOPS. The template's origin and destination are two identical top-level waypoint groups,
+     *  `!1m4!3m2!3d<lat>!4d<lng>!6e2`, which is how a repeated protobuf field reads in pb form; a
+     *  stop is one more of them between the two, in trip order. Top-level, so no enclosing count
+     *  moves. Verified live from a plain client (2026-09-21, Davis fixture): direct Davis to
+     *  Sacramento answered 15.3 mi / 21 min with three alternates; through Woodland it answered ONE
+     *  route, 45 min, with per-leg distances, so a waypointed reply carries no alternates (the same
+     *  as Google's own web client). Until this landed Vela never sent a stop to Google at all: a trip
+     *  with stops was routed through them by the open router and Google's DIRECT answer only
+     *  calibrated the speed (issue #600 is what made that visible).
+     *
+     *  A recalibrated template without the two placeholder groups makes this a no-op ([waypointsSupported]),
+     *  and the caller must then treat Google's answer as the direct trip it is. */
+    fun waypointsSupported(template: String): Boolean = DEST_GROUP.containsMatchIn(template)
+
+    // Regex.escape, not a hand-written pattern: the first cut wrote `\{DLAT}` with the closing
+    // brace bare, which java.util.regex accepts and Android's ICU regex REJECTS - the object's
+    // static init threw, every later call saw "Rejecting re-init on previously-failed class", and
+    // Google directions were dead on the device while every JVM test passed (2026-09-21).
+    private val DEST_GROUP = Regex(Regex.escape("!1m4!3m2!3d{DLAT}!4d{DLNG}!6e2"))
+
+    internal fun withWaypoints(template: String, waypoints: List<LatLng>): String {
+        if (waypoints.isEmpty()) return template
+        val m = DEST_GROUP.find(template) ?: return template
+        val groups = waypoints.joinToString("") { "!1m4!3m2!3d${it.lat}!4d${it.lng}!6e2" }
+        return template.substring(0, m.range.first) + groups + template.substring(m.range.first)
+    }
 
     private val AVOID_BLOCK = Regex("""!6m(\d+)(!1m5!18b1!30b1!31m1!1b1!34e1!2m)(\d+)""")
 
