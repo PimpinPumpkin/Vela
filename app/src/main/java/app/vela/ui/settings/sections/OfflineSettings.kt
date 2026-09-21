@@ -216,7 +216,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
         } else {
             val loc = state.myLocation
             val covers = { r: app.vela.offline.RoutingRegion ->
-                loc != null && loc.lat in r.s..r.n && loc.lng in r.w..r.e
+                loc != null && r.covers(loc.lat, loc.lng)
             }
             // The region you're IN = the SMALLEST bbox that contains you. Region boxes carry a Geofabrik
             // buffer that spills across borders (British Columbia's box dips into Sacramento), so "any box that

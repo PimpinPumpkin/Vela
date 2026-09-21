@@ -162,8 +162,13 @@ abstract class PmtilesRegionStore(
     data class Delta(val fromRev: Int, val url: String, val sizeMb: Double)
 
     data class Region(val id: String, val name: String, val url: String, val sizeMb: Double, val s: Double, val w: Double, val n: Double, val e: Double, val rev: Int = 0, val delta: Delta? = null) {
-        fun covers(p: LatLng) = p.lat in s..n && p.lng in w..e
+        /** The region's real boundary where [RegionPolys] has one (the places and basemap catalogs
+         *  share the routing catalog's ids), else the box (issue #599). */
+        fun covers(lat: Double, lng: Double): Boolean =
+            RegionPolys.covers(id, lat, lng) ?: (lat in s..n && lng in w..e)
+        fun covers(p: LatLng) = covers(p.lat, p.lng)
         fun area() = (n - s) * (e - w)
+        fun boxArea() = area()
     }
 
     private val root = File(context.filesDir, folder)

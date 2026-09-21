@@ -5705,8 +5705,8 @@ class MapViewModel @Inject constructor(
             }
             // smallest covering box = the specific region for this area (boxes overlap at borders; a big
             // neighbor like British Columbia shouldn't be grabbed for a the metro download)
-            val region = regions.filter { lat in it.s..it.n && lng in it.w..it.e }
-                .minByOrNull { (it.n - it.s) * (it.e - it.w) } ?: return@downloadLaunch
+            val region = regions.filter { it.covers(lat, lng) }
+                .minByOrNull { it.boxArea() } ?: return@downloadLaunch
             if (region.id in obfStore.installedIds() || _state.value.routingDownloadingId != null) return@downloadLaunch
             downloadRoutingGraph(region) // shows its own progress + status
         }
@@ -5722,7 +5722,7 @@ class MapViewModel @Inject constructor(
     private fun downloadOverlayForArea(lat: Double, lng: Double) {
         downloadLaunch(appContext.getString(R.string.download_label_map_data)) {
             val regions = overlayStore.manifest(app.vela.BuildConfig.OVERLAY_MANIFEST_URL)
-            val region = regions.filter { lat in it.s..it.n && lng in it.w..it.e }
+            val region = regions.filter { it.covers(lat, lng) }
                 .minByOrNull { (it.n - it.s) * (it.e - it.w) } ?: return@downloadLaunch
             if (region.id in overlayStore.installedIds()) return@downloadLaunch
             overlayStore.download(region) { }
@@ -5744,12 +5744,9 @@ class MapViewModel @Inject constructor(
         // California download took the whole-state places file, a city test bake and Nevada's
         // places and map (1.5 GB for an 800 MB region, 2026-09-17).
         regions.firstOrNull { it.id == region.id }?.let { return listOf(it) }
-        val inside = regions.filter { p ->
-            val cy = (p.s + p.n) / 2; val cx = (p.w + p.e) / 2
-            cy in region.s..region.n && cx in region.w..region.e
-        }
+        val inside = regions.filter { p -> region.covers((p.s + p.n) / 2, (p.w + p.e) / 2) }
         return inside.ifEmpty {
-            listOfNotNull(regions.filter { (region.s + region.n) / 2 in it.s..it.n && (region.w + region.e) / 2 in it.w..it.e }.minByOrNull { it.area() })
+            listOfNotNull(regions.filter { it.covers((region.s + region.n) / 2, (region.w + region.e) / 2) }.minByOrNull { it.area() })
         }
     }
 
@@ -5812,7 +5809,7 @@ class MapViewModel @Inject constructor(
     private fun downloadBasemapForArea(lat: Double, lng: Double) {
         downloadLaunch(appContext.getString(R.string.download_label_map_data)) {
             val region = basemapStore.manifest(app.vela.BuildConfig.BASEMAP_MANIFEST_URL)
-                .filter { lat in it.s..it.n && lng in it.w..it.e }
+                .filter { it.covers(lat, lng) }
                 .minByOrNull { it.area() } ?: return@downloadLaunch
             if (region.id in basemapStore.installedIds()) return@downloadLaunch
             if (basemapStore.download(region) { }) {
@@ -5828,7 +5825,7 @@ class MapViewModel @Inject constructor(
     private fun downloadPlacesForArea(lat: Double, lng: Double) {
         downloadLaunch(appContext.getString(R.string.download_label_map_data)) {
             val regions = placesStore.manifest(app.vela.BuildConfig.PLACES_MANIFEST_URL)
-            val region = regions.filter { lat in it.s..it.n && lng in it.w..it.e }
+            val region = regions.filter { it.covers(lat, lng) }
                 .minByOrNull { it.area() } ?: return@downloadLaunch
             if (region.id in placesStore.installedIds()) return@downloadLaunch
             placesStore.download(region) { }
@@ -5870,8 +5867,8 @@ class MapViewModel @Inject constructor(
                     // (probed: the doll-museum tile has 413 features in missouri.pmtiles, 36 river-bank scraps
                     // in kansas's). With both streamed, whichever archive has the data paints; the empty one's
                     // range requests cost ~nothing. Cap 3 bounds pathological corner overlaps.
-                    man.filter { c.lat in it.s..it.n && c.lng in it.w..it.e }
-                        .sortedBy { (it.n - it.s) * (it.e - it.w) }
+                    man.filter { it.covers(c.lat, c.lng) }
+                        .sortedBy { it.boxArea() }
                         .take(3)
                         .filter { it.id !in installed.keys }        // downloaded? the local file already covers it
                         .forEach { uris.add("pmtiles://${it.url}") } // else stream over HTTP range requests
@@ -5994,8 +5991,8 @@ class MapViewModel @Inject constructor(
                 // UNION of covering regions, same rule (and reason) as refreshBuildingOverlays: a spilled
                 // rectangular bbox from a neighbor state (Kansas over NW Missouri) can be the smallest cover
                 // while its archive is empty there — stream up to the 3 smallest covers so the one with data wins.
-                val list = man.filter { c.lat in it.s..it.n && c.lng in it.w..it.e }
-                    .sortedBy { (it.n - it.s) * (it.e - it.w) }
+                val list = man.filter { it.covers(c.lat, c.lng) }
+                    .sortedBy { it.boxArea() }
                     .take(3)
                     .map { "pmtiles://${it.url}" }
                 if (list != _state.value.addressOverlays) _state.update { it.copy(addressOverlays = list) }
@@ -6460,8 +6457,8 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             val regions = runCatching { regionCatalog.manifest(app.vela.BuildConfig.OBF_MANIFEST_URL) }.getOrDefault(emptyList())
             if (regions.isEmpty()) { routingOfferChecked = false; return@launch } // try again on a later idle
-            val region = regions.filter { anchor.lat in it.s..it.n && anchor.lng in it.w..it.e }
-                .minByOrNull { (it.n - it.s) * (it.e - it.w) } ?: run { markRoutingOfferDone(); return@launch }
+            val region = regions.filter { it.covers(anchor.lat, anchor.lng) }
+                .minByOrNull { it.boxArea() } ?: run { markRoutingOfferDone(); return@launch }
             if (region.id in obfStore.installedIds()) { markRoutingOfferDone(); return@launch }
             if (_state.value.poiPackRegions.isEmpty()) {
                 val packs = runCatching { poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL) }.getOrDefault(emptyList())
@@ -6581,7 +6578,7 @@ class MapViewModel @Inject constructor(
             if (r.id !in _state.value.routingInstalledIds) continue
             val kinds = ArrayList<String>()
             if (r.rev > obfStore.installedRev(r.id) && obfStore.installedRev(r.id) > 0) kinds += "routing"
-            fun inside(s: Double, w: Double, n: Double, e: Double) = (s + n) / 2 in r.s..r.n && (w + e) / 2 in r.w..r.e
+            fun inside(s: Double, w: Double, n: Double, e: Double) = r.covers((s + n) / 2, (w + e) / 2)
             if (places.any { inside(it.s, it.w, it.n, it.e) }) kinds += "places"
             if (maps.any { inside(it.s, it.w, it.n, it.e) }) kinds += "map"
             if (kinds.isNotEmpty()) out[r.id] = kinds
@@ -6630,7 +6627,7 @@ class MapViewModel @Inject constructor(
             if (packRegion != null && region.id in poiPackStore.installedIds() && packRegion.rev > poiPackStore.installedRev(region.id)) {
                 downloadPoiPack(region, update = true)
             }
-            fun inside(s: Double, w: Double, n: Double, e: Double) = (s + n) / 2 in region.s..region.n && (w + e) / 2 in region.w..region.e
+            fun inside(s: Double, w: Double, n: Double, e: Double) = region.covers((s + n) / 2, (w + e) / 2)
             if ("places" in kinds) {
                 placesStore.updatable(placesStore.manifest(app.vela.BuildConfig.PLACES_MANIFEST_URL))
                     .filter { inside(it.s, it.w, it.n, it.e) }
@@ -6706,8 +6703,8 @@ class MapViewModel @Inject constructor(
             val cLat0 = (south + north) / 2.0
             val cLng0 = (west + east) / 2.0
             val pack = runCatching { poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL) }.getOrDefault(emptyList())
-                .filter { cLat0 in it.s..it.n && cLng0 in it.w..it.e }
-                .minByOrNull { (it.n - it.s) * (it.e - it.w) }
+                .filter { it.covers(cLat0, cLng0) }
+                .minByOrNull { it.boxArea() }
             if (pack != null) {
                 val graphHere = pack.id in obfStore.installedIds()
                 when {

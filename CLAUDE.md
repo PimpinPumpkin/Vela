@@ -2078,6 +2078,26 @@ architecture note.
   for running Vela with no Google contact. Keep it in step when a source or a default changes; the
   fleet default for the places source lives in `calibration.json` (`defaultPlacesSource`, "open"
   today) and a change there needs `./scripts/sign-calibration.sh`.
+- **A REGION IS PICKED BY ITS REAL BOUNDARY, NOT ITS BOX (issue #599, 2026-09-21).** Vietnam's
+  Geofabrik extract carries the island claims, so its bounding box reaches 114.6 E and swallows Hong
+  Kong; China has no obf row (it OOMs the bake), so nothing smaller competed and "download the area
+  you're viewing" from Hong Kong announced "Downloading Vietnam". Kansas's box across the Missouri
+  River was the same fact, handled there by streaming three candidates. `scripts/region-polys.py`
+  fetches the `.poly` Geofabrik publishes beside every extract in `tools/routing-regions.json`
+  (all 425), simplifies each to ~5 km and writes `app/src/main/assets/region_polys.json` (about
+  300 KB, 20k points); `offline/RegionPolys` loads it once at app start (beside the flock data) and
+  answers `covers(id, lat, lng)`, NULL when it has no polygon for the id. `RoutingRegion.covers` and
+  `PmtilesRegionStore.Region.covers` ask it first and fall back to the box, so a catalog whose ids
+  are not the routing catalog's (the building overlays) or a row added since the last bake behaves
+  exactly as before. EVERY "which region is this point in" site goes through `covers()` now (the
+  viewport download's routing / places / basemap / overlay picks, `archivesFor`, the two streaming
+  unions, the routing offer, the region-update kinds, the saved-area pack lookup, `RoadFeatures`,
+  the Offline settings "you are here" row); the tie-break among covering regions stays the smallest
+  BOX (`boxArea`). Re-run the script when a catalog row is added; `RegionPolysTest` reads the
+  shipped asset and fails if a region is missing (a bake fetch that failed would otherwise put that
+  region silently back on its box) and pins Hong Kong outside Vietnam and inside China, Hanoi
+  inside Vietnam, and Kansas City in Missouri not Kansas. Hong Kong itself has no Geofabrik
+  extract; a row for it means clipping China's PBF with osmium, which is the open follow-up.
 - **SHALLOW OFFLINE BASEMAPS ARE ONLY USED OFFLINE (2026-09-18):** `BasemapTileStore.maxZoomOf` reads
   byte 101 of the PMTiles v3 header; `refreshBasemapArchive` skips an archive shallower than
   `FULL_MAP_ZOOM` (14) unless `offline`, and the online/offline latch re-runs it. The workflow drops
