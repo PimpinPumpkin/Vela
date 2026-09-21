@@ -19,8 +19,11 @@ features, or structure, update - in the *same* commit:
   declarative present tense, no first person, no story of how a decision was reached, no
   anecdotes. A rule that exists because something broke is written as the rule plus the failure
   mode it prevents, in one sentence
-- `ROADMAP.md` - planned work + big bets (opt-in telemetry, Vela's own traffic layer,
-  popular times, …); add new ideas here as they come up
+- `ROADMAP.md` - what is still OPEN + the big bets (self-hosted tiles, OSM contributions, a Play
+  listing, telemetry, Vela's own traffic layer); add new ideas here as they come up. Since
+  2026-09-21 it holds open items only: when something ships or is proven dead, move its entry
+  with its reasoning to `docs/ROADMAP-HISTORY.md` in the same commit, never leave a struck-through
+  or "DONE" line in the roadmap
 - `docs/book/` - the subsystem handbook (how places rank, when data is rebaked, what the
   camera rules are). A behavior change updates its chapter, with the real numbers, in the same
   commit; a constant in the book that no longer matches the code is a bug. No chapter yet for
