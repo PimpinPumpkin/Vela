@@ -9,3 +9,4 @@ snapshot,referrer,views,unique_views
 2026-09-19,com.reddit.frontpage,41,29
 2026-09-19,ecosia.org,28,14
 2026-09-19,anabaptistcodeblocks.com,12,7
+{"message":"Resource not accessible by integration","documentation_url":"https://docs.github.com/rest/metrics/traffic#get-top-referral-sources","status":"403"}
