@@ -2087,6 +2087,7 @@ fun MapScreen(
                     ?.takeIf { state.stopDeparturesFor != null && state.stopDeparturesFor == state.selected?.id },
                 stopDeparturesLoading = state.stopDeparturesLoading &&
                     state.stopDeparturesFor != null && state.stopDeparturesFor == state.selected?.id,
+                stopDeparturesCachedAt = state.stopDeparturesCachedAt?.takeIf { state.stopDeparturesFor == state.selected?.id },
                 onTapRoute = vm::openRouteDetail,
                 onClose = vm::clearSelection,
                 onToggleSave = vm::toggleSave,

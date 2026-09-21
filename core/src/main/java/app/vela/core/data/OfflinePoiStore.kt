@@ -61,6 +61,37 @@ class OfflinePoiStore @Inject constructor(
         .rawQuery("SELECT COUNT(*) FROM poi", null)
         .use { if (it.moveToFirst()) it.getInt(0) else 0 }
 
+    /** Every POI within [radiusM] of [loc], nearest first: the businesses AT a typed address. A
+     *  pack POI often has no `addr:*` of its own (most US chains do not in OSM), so an address
+     *  search could find the house point but never the shop standing on it (user 2026-09-19). */
+    fun near(loc: LatLng, radiusM: Double, limit: Int = 6): List<Place> {
+        val dLat = radiusM / 111_000.0
+        val dLng = dLat / Math.cos(Math.toRadians(loc.lat)).coerceAtLeast(0.2)
+        val args = arrayOf((loc.lat - dLat).toString(), (loc.lat + dLat).toString(), (loc.lng - dLng).toString(), (loc.lng + dLng).toString())
+        val sql = "SELECT id,name,lat,lng,category,address,phone,website,hours FROM poi WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?"
+        val rows = ArrayList<Place>()
+        fun query(db: android.database.sqlite.SQLiteDatabase) {
+            runCatching {
+                db.rawQuery(sql, args).use { c ->
+                    while (c.moveToNext()) {
+                        val at = LatLng(c.getDouble(2), c.getDouble(3))
+                        val d = loc.distanceTo(at)
+                        if (d > radiusM) continue
+                        rows.add(Place(
+                            id = c.getString(0), name = c.getString(1), location = at, category = c.getString(4),
+                            address = c.getString(5), phone = c.getString(6), website = c.getString(7),
+                            hours = c.getString(8)?.split("\n")?.filter { it.isNotBlank() } ?: emptyList(),
+                            distanceMeters = d,
+                        ))
+                    }
+                }
+            }
+        }
+        query(helper.readableDatabase)
+        OfflinePacks.dbs.forEach(::query)
+        return rows.distinctBy { it.id }.sortedBy { it.distanceMeters }.take(limit)
+    }
+
     /** Name/category match, nearest first. Robust to a few things a plain LIKE misses:
      *  - Category words ("gas", "coffee", "food", the map's chips) are expanded to the OSM tag values
      *    we actually store — a gas station is category "Fuel" (from `amenity=fuel`), not "gas".

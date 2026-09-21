@@ -472,7 +472,11 @@ class CarMapRenderer(
     private fun drawPuck(canvas: Canvas, snap: MapSnapshot, sx: Float, sy: Float) {
         val here = puck ?: return
         val pt = project(snap, here, sx, sy) ?: return
-        val r = 22f
+        // Sized to the SCREEN, not a fixed pixel count: a fixed 22 px radius was a fifth of the
+        // height of a 480 px head unit (user 2026-09-19, "the puck on the car stereo is huge").
+        // A fortieth of the short side reads like the phone's puck (about 5% of the screen).
+        val r = (minOf(width, height) / 40f).coerceIn(9f, 22f)
+        puckStroke.strokeWidth = (r / 7f).coerceIn(1.5f, 3f)
         val path = Path().apply {
             moveTo(pt.x, pt.y - r)
             lineTo(pt.x + r * 0.8f, pt.y + r * 0.7f)

@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -691,17 +692,27 @@ internal class NavController(
         val dest = resumeDest ?: return
         val label = _state.value.resumeNavLabel.orEmpty()
         val mode = resumeMode
-        val origin = _state.value.myLocation
-        if (origin == null) { host.showStatus(appContext.getString(R.string.mapvm_resume_waiting_gps)); return }
+        if (_state.value.myLocation == null) { host.showStatus(appContext.getString(R.string.mapvm_resume_waiting_gps)); return }
         _state.update { it.copy(resumeNavLabel = null) }
         scope.launch {
+            // Route from a FRESH fix, not the launch seed. A cold start shows the LAST KNOWN
+            // position first (where the process died, minutes and miles ago), and routing from it
+            // drew the blue line from there over the road already driven since (user 2026-09-19,
+            // "resuming redraws the blue line over the entirety of the route"). Wait for the first
+            // fix that arrives after the tap, briefly; past the wait the seed is what there is.
+            host.startLocation()
+            val seedFix = _state.value.myFixRaw
+            val fresh = kotlinx.coroutines.withTimeoutOrNull(RESUME_FRESH_FIX_WAIT_MS) {
+                _state.first { it.myFixRaw != null && it.myFixRaw != seedFix }
+            }
+            val origin = fresh?.myLocation ?: _state.value.myLocation
+            if (origin == null) { host.showStatus(appContext.getString(R.string.mapvm_resume_waiting_gps)); return@launch }
             val routes = runCatching { dataSource.directions(origin, dest, mode, emptyList()) }.getOrDefault(emptyList())
             var route = routes.firstOrNull()
             if (route?.provisional == true) route = host.nameIfNeeded(route)
             if (route == null) { host.showStatus(appContext.getString(R.string.mapvm_resume_failed)); clearPersistedNav(); return@launch }
             host.destination = dest
             _state.update { it.copy(activeRoute = route, routes = routes) }
-            host.startLocation()
             // No address survives a process kill (only the label was persisted); destinationDisplay
             // still guarantees SOMETHING shows on the arrive step (label, else the coordinates).
             val (resumedName, _) = NavSession.destinationDisplay(label, null, dest)
@@ -1096,4 +1107,5 @@ internal class NavController(
 
 }
 
-
+/** How long a resume waits for a fix newer than the launch seed before routing from the seed. */
+private const val RESUME_FRESH_FIX_WAIT_MS = 8_000L

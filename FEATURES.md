@@ -1666,6 +1666,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   terminus), the way Google presents an intersection stop. Transit directions are unaffected: they
   already walk you to the exact boarding coordinate of the specific curb. Stops whose names carry
   the direction (NB/SB station styles) never merge.
+- ✅ **Offline departure board (2026-09-21).** Every board fetched is kept on the phone, so a stop
+  tapped with no connection shows the routes, headsigns and colors it had last time with a "last
+  seen" line instead of nothing (`TransitBoardCache`).
 - ✅ **Live stop departure board (2026-07-12, keyless + device-verified).** The board is
   **ownership-gated (2026-07-16)**: it renders only on the place it was fetched for, so a
   previously viewed stop's departures can never linger onto an unrelated place (a saved/recent
@@ -1790,6 +1793,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   mis-voweled "take" ("tyke") when the whole ramp sentence was phonemized in one breath; the
   spoken text now inserts a comma before "toward", so the maneuver clause and the sign
   destination are separate beats (Google pauses there too). Banner text unchanged.
+- ✅ **Car-screen puck sized to the screen (2026-09-21).** A fortieth of the short side instead of a
+  fixed 22 px radius, which was a fifth of a 480 px head unit's height.
 - ✅ **Android Auto, full car-side navigation (2026-07-08, PR #17 by jacobjeger; replaces the first cut).**
   Vela registers as a navigation-category templated car app (sideloads appear once AA's developer "Unknown
   sources" switch is on). The car now runs the WHOLE flow by itself: a home screen (Home/Work, recents,
@@ -1839,6 +1844,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   cleared the instant nav ends, the toggle is turned off, or the map screen leaves
   composition, so the display sleeps normally everywhere else (no battery drain when
   you're not driving)
+- ✅ **Music gets a beat to pause before the first word (2026-09-21).** A fresh audio-focus grant
+  leads the first sample by 350 ms; players that pause on a duck used to be spoken over.
+- ✅ **Resume after a process kill routes from a fresh fix (2026-09-21).** The resumed drive waits
+  up to 8 s for a fix newer than the launch seed, so the line no longer starts where the app died.
+- ✅ **Offline routes no longer announce a turn on a road that only bends and renames (2026-09-21).**
+  Turns OsmAnd itself would skip are folded as renames.
 - ✅ Spoken guidance via AOSP TextToSpeech (engine-selectable) - **tuned for the
   car**: a measured speech rate (0.97) + neutral pitch, and on init it auto-selects
   the **highest-quality offline voice** for the locale (engines often default to a
@@ -2241,6 +2252,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - 🟡 BeaconDB WiFi positioning - NETWORK-provider coarse fixes are already used for the browse dot when GPS has been quiet (never during nav); an explicit opt-in and any deeper use are still open
 
 ## Offline
+- ✅ **Offline search finds the shop at a typed address and shows addresses on results
+  (2026-09-21).** An address query leads with the businesses standing at that address (from the
+  place pack, 40 m), then the house point; the first 20 results with no address of their own are
+  filled from the address index, the way the sheet already did on select.
 - ✅ **A downloaded region can no longer blank the map (2026-09-18, issue #552).** Two things were
   wrong at once. The bake let planetiler inherit the extract's header bounding box, which for 37 of
   413 regions claims far more ground than the archive holds (one reached seven degrees into the next
