@@ -624,6 +624,10 @@ names (`Route.roadNamesLatin`).
   emits a turn type for the road's own bend when nothing is there to choose, and OsmAnd's voice
   skips it; mapping the bare type spoke "turn left onto X" where a road only curved and renamed.
   As CONTINUE it folds into the previous maneuver as a rename. Roundabouts keep their type.
+  **A left or right carrying under `STRAIGHT_TURN_DEG` (20) of measured turn is a CONTINUE too:**
+  where a one-way carriageway joins its two-way continuation under lane markings the router
+  emits `Turn left` with a turn angle of well under a degree and `skipToSpeak` false (measured on
+  a state file). The angle is the router's own measurement; a real left is tens of degrees.
 - A trip routes on the **smallest installed region box covering both endpoints**; boxes
   overlap at borders, so selection falls through to the next smallest. A trip that does not fit
   one region falls back online.
@@ -843,6 +847,13 @@ init flipped healthy phones that had been force-stopped during testing, and the 
 renderer then sat at 89 percent of a core. The Developer row states the date it engaged.
 
 ### 4.8 Route line rendering
+
+- **A paused drive draws the ahead line in `ROUTE_PAUSED_COLOR` (`#9C8AD6`, a muted lavender)**
+  and the live traffic color returns on resume. Distinct from the live blue, the congestion amber
+  and red and the driven gray, and visible on both themes; a slate gray was tried first and
+  vanished into the dark map's road fill. A route color change re-anchors the split
+  (`splitReset`) the way the trail toggle does, because the ahead line's gradient is only
+  re-uploaded when the cut piece slides; without that only the 400 m around the arrow changed.
 
 - The line is inserted **above all road and bridge geometry and below labels**: anchor to the
   first symbol layer after the last `bridge_*` layer, not simply the first symbol layer, which

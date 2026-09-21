@@ -42,6 +42,23 @@ Roughly in the order they are worth doing. Each one is small enough for a single
   was proven on a Pixel 9 the next day (a 94 KB patch against a 3.3 MB archive, fingerprint
   checked, dead space reclaimed locally). `RegionUpdates` still defaults to OFF; flip it to WIFI
   once a second device has taken a patch on a real state-sized archive.
+- **A name index for the downloaded places archive (2026-09-21).** Offline search reads the OSM
+  place pack, and OSM is missing whole chains in places (the parts store that started this was
+  on the map from the Overture archive and absent from search). The places PMTiles is spatial
+  only, so finding it by name means scanning tiles. Bake a small sidecar per region (name,
+  normalized key, category, lat, lng; a few MB for a state) beside the archive, download it with
+  the archive, and have the offline search branch query it after the pack, deduped by name and
+  distance. Same shape as the road-features file.
+- **Offline timetables per region (open question, 2026-09-21).** The cached boards cover stops
+  the user has tapped online; a stop never tapped shows nothing offline. A real answer is a
+  per-region bake of GTFS stop times: for every stop, each route and headsign with its departure
+  minutes per service day, compacted (a run is the same pattern most days, so store patterns once
+  and reference them). Rough size: raw `stop_times.txt` for a big state's agencies is gigabytes,
+  the compacted per-stop form is a few percent of that, so tens of MB for a mid-size state and a
+  few hundred for California, on top of the routing and places downloads. The pipeline is the real
+  cost: feed discovery (the Mobility Database lists them, but per agency), calendars and
+  exceptions, weekly refresh, and no realtime at all, which is what the online board is for. Worth
+  it only if people navigate by transit offline; the cached boards are the cheap version.
 - **Google-off, per feature.** The master switch shipped 2026-09-21 (Settings > Privacy > "Use
   Vela without Google"). Still wanted: individual toggles under it, in particular "no Google
   routing or live traffic" for people who want Google places but not Google directions; a

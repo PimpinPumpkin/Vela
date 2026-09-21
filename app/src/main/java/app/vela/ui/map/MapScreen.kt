@@ -2863,6 +2863,11 @@ fun MapScreen(
 /** Route line color by congestion: blue when free-flowing, amber/red when the
  *  live traffic-aware time runs meaningfully over the typical time. Walk/bike and
  *  traffic-less routes stay the default blue. */
+/** The ahead line while the drive is paused: a muted lavender, distinct from the live blue, the
+ *  congestion amber and red and the driven gray, and visible on both themes (a slate gray was
+ *  tried first and vanished into the dark map's road fill). */
+private const val ROUTE_PAUSED_COLOR = "#9C8AD6"
+
 private fun routeTrafficColor(route: app.vela.core.model.Route?): String =
     when (val ratio = route?.trafficRatio) {
         null -> "#1F6FEB"
@@ -3607,7 +3612,9 @@ private fun MapSurface(
         cameraBottomInsetPx = cameraBottomInset,
         cameraLeftInsetPx = cameraLeftInset,
         routePolyline = state.activeRoute?.polyline ?: emptyList(),
-        routeColor = routeTrafficColor(state.activeRoute),
+        // A PAUSED drive draws its line in slate (user 2026-09-21): the map should say the
+        // guidance is on hold without reading the bar. Traffic spans keep their colors.
+        routeColor = if (state.navPaused) ROUTE_PAUSED_COLOR else routeTrafficColor(state.activeRoute),
         routeDashed = state.travelMode == app.vela.core.model.TravelMode.WALK ||
             state.travelMode == app.vela.core.model.TravelMode.BICYCLE,
         routeTrafficSpans = routeTrafficSpans(state.activeRoute),

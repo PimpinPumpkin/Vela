@@ -4190,8 +4190,14 @@ Gotchas:
   and routing from it drew the line over the road driven since. (4) `CarMapRenderer` sizes the
   puck to the car screen. (5) `VoiceGuide.FOCUS_LEAD_MS` (350) delays the first sample after a
   FRESH focus grant so a pausing player has stopped. (6) `ObfRouteEngine.spokenType` maps a
-  `skipToSpeak` turn to CONTINUE (see SPEC 4.5): OsmAnd's own voice skips those, ours said
-  "turn left" on a road that bent and renamed.
+  `skipToSpeak` turn to CONTINUE, AND a TL/TR with under `STRAIGHT_TURN_DEG` (20) of measured
+  angle (see SPEC 4.5). The second rule is the one that fixed the reported drive: probed on the
+  state's own obf, the router emitted `Turn left (+TL|C|C|C)` with a 0.7 degree angle and
+  skipToSpeak FALSE where a one-way carriageway rejoins its two-way continuation, twice on one
+  4 km stretch. Probe recipe: a throwaway core test that calls `ObfRouteEngine.route` with
+  `-DvelaObf=<dir with the .obf + index.json>` (extra `-D` properties are NOT forwarded to the
+  test JVM; read inputs from a file beside the obf) and a temporary println of
+  `turn.toString()`, `turnAngle`, `isSkipToSpeak` and `lanes` inside `toRoute`.
 - **Offline taps stay on the phone (2026-09-14).** `MapViewModel.offlineNow()` (latched `offline` or the
   system says no internet) gates `fetchReviews`, `fetchPhotos`, `fetchPlaceDetails`, `fetchStopDepartures`
   and the tap resolution in `onPoiTap`: offline, an open place shows its tile data or the Google listing

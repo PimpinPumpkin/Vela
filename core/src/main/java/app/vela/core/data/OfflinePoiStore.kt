@@ -152,11 +152,18 @@ class OfflinePoiStore @Inject constructor(
         // Rank by how many query words hit the name/category (so "mexican restaurant" leads with the
         // Mexican restaurant, not a random one), then by distance.
         val qWords = (if (words.size > 1) words else listOf(term)).map { it.lowercase() }
+        // TRANSIT STOPS GO LAST unless the query asks for transit. US stops are named by their
+        // corner ("172nd St NE & Smokey Point Blvd"), so any query carrying a street or a town
+        // word matched hundreds of them and a business search offline read as a list of
+        // intersections (user 2026-09-21, a parts store the pack did not have). They still show,
+        // after everything else.
+        val transitQuery = TRANSIT_QUERY_WORDS.any { term.lowercase().contains(it) }
         return rows.distinctBy { it.id }.sortedWith(
-            compareByDescending<Place> { p ->
-                val hay = (p.name + " " + (p.category ?: "") + " " + (p.address ?: "")).lowercase()
-                qWords.count { hay.contains(it) }
-            }.thenBy { it.distanceMeters ?: Double.MAX_VALUE },
+            compareBy<Place> { p -> if (!transitQuery && (p.category ?: "").lowercase() in TRANSIT_STOP_CATS) 1 else 0 }
+                .thenByDescending { p ->
+                    val hay = (p.name + " " + (p.category ?: "") + " " + (p.address ?: "")).lowercase()
+                    qWords.count { hay.contains(it) }
+                }.thenBy { it.distanceMeters ?: Double.MAX_VALUE },
         ).take(limit)
     }
 
@@ -225,6 +232,10 @@ class OfflinePoiStore @Inject constructor(
 
         /** Exact key first, then the word minus a trailing "s", so typed plurals ("cafes", "gyms")
          *  reach the singular entry. Irregular plurals need their own key ("groceries"). */
+        /** Pack categories that are transit stops (public_transport=* and amenity=bus_station). */
+        internal val TRANSIT_STOP_CATS = setOf("platform", "stop position", "stop area", "station", "bus station", "bus stop")
+        internal val TRANSIT_QUERY_WORDS = listOf("bus", "stop", "station", "transit", "train", "tram", "platform", "metro", "light rail", "subway", "ferry")
+
         internal fun categoryKeywords(query: String): List<String> {
             val key = query.trim().lowercase()
             return CATEGORY_KEYWORDS[key]

@@ -30,7 +30,14 @@ class ObfRouteEngineTest {
     fun `a turn OsmAnd would not speak is a rename, not a turn`() {
         val bend = TurnType.valueOf(TurnType.TL, false).apply { isSkipToSpeak = true }
         assertEquals(ManeuverType.CONTINUE, ObfRouteEngine.spokenType(bend))
-        assertEquals(ManeuverType.TURN_LEFT, ObfRouteEngine.spokenType(t(TurnType.TL)))
+        assertEquals(ManeuverType.TURN_LEFT, ObfRouteEngine.spokenType(t(TurnType.TL).apply { turnAngle = -90f }))
+        // A left with no actual turn in it (a divided road joining its two-way continuation under
+        // lane markings, measured on a real state file at 0.7 and 0.005 degrees) is a rename;
+        // a real left keeps its angle and its type.
+        assertEquals(ManeuverType.CONTINUE, ObfRouteEngine.spokenType(t(TurnType.TL).apply { turnAngle = -0.72f }))
+        assertEquals(ManeuverType.CONTINUE, ObfRouteEngine.spokenType(t(TurnType.TR).apply { turnAngle = 12f }))
+        assertEquals(ManeuverType.TURN_LEFT, ObfRouteEngine.spokenType(t(TurnType.TL).apply { turnAngle = -89.9f }))
+        assertEquals(ManeuverType.SLIGHT_LEFT, ObfRouteEngine.spokenType(t(TurnType.TSLL).apply { turnAngle = -8f }))
         // A roundabout is never silenced: the exit number is the instruction.
         val rb = TurnType.getExitTurn(2, 0f, false).apply { isSkipToSpeak = true }
         assertEquals(ManeuverType.ROUNDABOUT, ObfRouteEngine.spokenType(rb))
