@@ -854,6 +854,25 @@ project's core promise is that neither exists:
 
 ## Queued near-term
 
+- **Try side streets around plate cameras automatically (issue #600, some1ataplace, 2026-09-20;
+  scheduled 2026-09-21).** With "Avoid surveillance cameras" on, every route the routers offer can
+  still pass cameras, and the reporter's workaround is to long-press "route through here" on a
+  parallel street by hand every trip. The machinery exists: the camera positions, `routeVia` through
+  invisible points (the divergence snap already does it), the per-route camera count and the
+  existing detour limit (the lesser of 25% or 10 minutes). The shape: for each camera cluster on the
+  best route, drop ONE via about 150 m to either side of the route at the cluster and let the open
+  router's snap find whatever road is there (the same road means the detour collapses and is
+  rejected by the count; a parallel street means a real detour); keep a candidate only when its
+  camera count drops and its cost is inside the limit, then put it at the top with its badge. The
+  spur guards (`hasSpur`, `VIA_SNAP_MAX_M`) already reject a via that landed somewhere silly.
+  TWO RULES. It is opt-in and capped (a few clusters, a handful of extra requests), because a
+  three-cluster route becomes up to seven open-router requests instead of one and FOSSGIS is
+  fair-use infrastructure. And the candidate goes through `applyTraffic` like every other route,
+  so its ETA is Google's in-traffic figure and the compare against the limit is honest; a free-flow
+  detour "within 10 minutes" of a traffic-aware route is not a fair comparison. Offline the obf
+  engine chains through points already. The reporter's other ideas (a settable detour limit, a
+  visible deletable stop instead of an invisible one) are worth their own issues.
+
 - **Android 16 Live updates for the nav notification (issue #595, DodoLeDev, 2026-09-18).** Android
   16 promotes an ongoing activity into the status bar chip and onto the lock screen
   (`Notification.ProgressStyle` plus the promoted-ongoing request), and Google's own example for it
