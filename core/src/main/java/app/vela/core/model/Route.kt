@@ -214,6 +214,12 @@ data class Route(
     // not honor). The picker says so instead of a traffic word: an offline route has no live
     // traffic and the user should know which kind they are looking at (issue #350).
     val offline: Boolean = false,
+    /** The ORDERED waypoint list this route was built through when the chooser's camera pass
+     *  added side-street detour points to the user's stops (issue #600): the user's stops plus the
+     *  invisible detour vias, in travel order. Empty for every ordinary route. Nav starts a drive on
+     *  such a route with the vias as SILENT stops, so a reroute or recheck keeps the detour instead
+     *  of routing straight back through the cameras. */
+    val detourPlan: List<LatLng> = emptyList(),
     // See [RouteSource]. Stamped by every constructor; UNKNOWN only for old trip files.
     val source: RouteSource = RouteSource.UNKNOWN,
     /** Local road name -> its Latin alias (OSM `name:en`, else a Latin `name:latin`) for the roads this

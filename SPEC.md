@@ -885,6 +885,16 @@ renderer then sat at 89 percent of a core. The Developer row states the date it 
 - **Avoid surveillance cameras** re-ranks the alternates already offered, preferring the
   fewest-camera route within a small detour (at most the lesser of 25 percent of the ETA and 10
   minutes). It does not graph-route around cameras.
+- **Try side streets around cameras** (off by default, nested under the re-rank) adds one
+  candidate route when the leading route still passes cameras: `CameraDetour` groups the lead
+  route's cameras into clusters (join distance 40 m, nearest first, at most 3) and offers the
+  points 150 m to the left and right of the road at each; the chooser routes the trip through the
+  left then the right point (merged into the stops in travel order), keeps a candidate whose camera
+  count drops within the same detour cap, builds the next cluster on it, and sends at most 6 route
+  requests per trip. A kept route leads the list with its badge and carries its waypoint plan
+  (`Route.detourPlan`); a drive started on it carries the detour points as silent stops, which
+  every reroute and recheck routes through and nothing speaks or lists. A mid-drive stops edit
+  rebuilds the list from the visible stops and drops the detour. Drive mode only.
 - **Speeding alert** (off by default): the voice fires after 4 s continuously over the posted
   limit, re-arms after 8 s back under, at most once per 45 s, with the same 5 km/h tolerance the
   badge uses so the two never contradict each other.

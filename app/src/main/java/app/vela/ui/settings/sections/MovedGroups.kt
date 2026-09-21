@@ -79,6 +79,15 @@ internal fun CameraSettingsGroup() {
             onCheckedChange = { app.vela.ui.FlockRouteAlert.set(context, it) },
             hint = stringResource(R.string.settings_flock_route_alert_hint),
         )
+        // Nested like the speed-camera warning: a detour search means nothing without the counts.
+        if (app.vela.ui.FlockRouteAlert.on.value) {
+            ToggleRow(
+                label = stringResource(R.string.settings_flock_detour),
+                checked = app.vela.ui.FlockDetour.on.value,
+                onCheckedChange = { app.vela.ui.FlockDetour.set(context, it) },
+                hint = stringResource(R.string.settings_flock_detour_hint),
+            )
+        }
         // Plate cameras coming up while navigating: a heads-up card and a spoken line, each its
         // own opt-in. Not nested under the layer toggle: the bundled dataset is loaded either way.
         GroupDivider()

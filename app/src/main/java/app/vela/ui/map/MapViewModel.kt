@@ -4206,7 +4206,7 @@ class MapViewModel @Inject constructor(
                 shownDuration(routes)?.let { publishModeEta(etaKey, mode, formatDuration(it)) }
                 prefetchModeEtas(etaKey, origin, dest, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries, s.directionsTimeMode, s.directionsTimeEpochSec, except = mode)
                 val flockEpoch = ++routesEpoch // stamp THIS route set; a newer route() bumps it and stales the flock job
-                if (routes.isNotEmpty()) refreshFlockOnRoute(routes, flockEpoch)
+                if (routes.isNotEmpty()) refreshFlockOnRoute(routes, flockEpoch, origin, dest, mode, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries)
                 // The default active route can be a PROVISIONAL Google alternate (it sorts to the
                 // top when it has the fastest live ETA). A provisional route carries Google's
                 // ABBREVIATED steps + an ETA over un-snapped geometry — so the pre-nav preview showed
@@ -4230,7 +4230,17 @@ class MapViewModel @Inject constructor(
      *  Overpass, index-aligned with [routes]) so the picker can badge "passes N cameras" AND auto-prefer
      *  the fewest-camera alternate - but only for a MODEST detour (never send you an hour around a camera
      *  on a 15-minute trip). Off the hot path; a failure just shows no badge and no reroute. */
-    private fun refreshFlockOnRoute(routes: List<Route>, epoch: Int) {
+    private fun refreshFlockOnRoute(
+        routes: List<Route>,
+        epoch: Int,
+        origin: LatLng,
+        dest: LatLng,
+        mode: TravelMode,
+        stops: List<LatLng>,
+        avoidTolls: Boolean,
+        avoidHighways: Boolean,
+        avoidFerries: Boolean,
+    ) {
         flockRouteJob?.cancel()
         if (!app.vela.ui.FlockRouteAlert.on.value) return
         flockRouteJob = viewModelScope.launch {
@@ -4258,12 +4268,12 @@ class MapViewModel @Inject constructor(
             // Auto-avoid: pick the fewest-camera route (tie → the faster one) IF it beats the fastest on
             // cameras and costs at most 25% / 10 min more. The cap is where we "draw the line" - a modest
             // detour to dodge cameras, not a wild one. Long-press "route through here" is the manual override.
+            val eta = { r: Route -> r.durationInTrafficSeconds ?: r.durationSeconds }
+            val eta0 = eta(cur[0]) // routes are sorted fastest-first, and cur[0] is the default active
+            val cap = minOf(eta0 * 0.25, 600.0)
             if (counts.any { it > 0 }) {
-                val eta = { r: Route -> r.durationInTrafficSeconds ?: r.durationSeconds }
-                val eta0 = eta(cur[0]) // routes are sorted fastest-first, and cur[0] is the default active
                 val best = counts.indices.minByOrNull { counts[it] * 1_000_000L + eta(cur[it]).toLong() } ?: 0
                 val extra = eta(cur[best]) - eta0
-                val cap = minOf(eta0 * 0.25, 600.0)
                 // No heads-up flash for the swap (removed 2026-07-13): the reorder below makes
                 // the pick visible at the top of the list; the banner was noise on the card.
                 if (counts[best] < counts[0] && extra <= cap && best != 0) {
@@ -4282,7 +4292,67 @@ class MapViewModel @Inject constructor(
                     selectRoute(0)
                 }
             }
+            // SIDE STREETS (issue #600, opt-in): the leading route still passes cameras, so try the
+            // reporter's own workaround for them - a point a little way to either side of the road
+            // at each camera cluster, routed through like a stop. Google routes and prices every
+            // candidate through its stops with traffic (the 2026-09-21 waypoint work), so the
+            // compare against the same cap as the re-rank is an honest one.
+            if (app.vela.ui.FlockDetour.on.value && mode == TravelMode.DRIVE) {
+                val lead = _state.value.routes.firstOrNull()
+                val leadCount = _state.value.flockOnRoute.firstOrNull() ?: 0
+                if (lead != null && leadCount > 0 && lead.detourPlan.isEmpty()) {
+                    tryCameraDetour(lead, leadCount, eta0, cap, epoch, origin, dest, mode, stops, avoidTolls, avoidHighways, avoidFerries)
+                }
+            }
         }
+    }
+
+    /** One greedy pass over the camera clusters of [lead]: for each, its left then right point is
+     *  added to the trip and the trip re-routed; a candidate that passes fewer cameras inside
+     *  [cap] is kept and the next cluster builds on it. The result, if any, leads the list with its
+     *  badge and carries its waypoint plan ([Route.detourPlan]) so a drive keeps the detour. */
+    private suspend fun tryCameraDetour(
+        lead: Route, leadCount: Int, eta0: Double, cap: Double, epoch: Int,
+        origin: LatLng, dest: LatLng, mode: TravelMode, stops: List<LatLng>,
+        avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean,
+    ) {
+        val eta = { r: Route -> r.durationInTrafficSeconds ?: r.durationSeconds }
+        val poly = lead.polyline
+        val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
+        val cands = withContext(Dispatchers.Default) {
+            val along = app.vela.data.FlockCameras.along(poly).mapNotNull { app.vela.core.nav.RouteProjection.alongMeters(poly, cum, it.loc, 45.0) }
+            app.vela.core.nav.CameraDetour.candidates(poly, along)
+        }
+        if (cands.isEmpty()) return
+        val stopAt = stops.map { app.vela.core.nav.RouteProjection.alongMeters(poly, cum, it, 250.0) to it }
+        var vias = emptyList<Pair<Double, LatLng>>()
+        var best: Route? = null
+        var bestCount = leadCount
+        var requests = 0
+        outer@ for (c in cands) {
+            for (via in listOf(c.left, c.right)) {
+                if (requests >= app.vela.core.nav.CameraDetour.MAX_REQUESTS) break@outer
+                val trial = vias + (c.atM to via)
+                val plan = app.vela.core.nav.CameraDetour.mergePlan(stopAt, trial)
+                requests++
+                val r = runCatching { dataSource.directions(origin, dest, mode, plan, avoidTolls, avoidHighways, avoidFerries) }
+                    .getOrDefault(emptyList()).firstOrNull() ?: continue
+                if (routesEpoch != epoch) return
+                val n = withContext(Dispatchers.Default) { app.vela.data.FlockCameras.along(r.polyline).size }
+                val extra = eta(r) - eta0
+                if (n < bestCount && extra <= cap) {
+                    vias = trial
+                    best = r.copy(detourPlan = plan)
+                    bestCount = n
+                    break
+                }
+            }
+        }
+        android.util.Log.i("VelaFlockRoute", "detour: clusters=${cands.size} requests=$requests kept=${best != null} cameras $leadCount -> $bestCount")
+        val kept = best ?: return
+        if (routesEpoch != epoch) return
+        _state.update { it.copy(routes = listOf(kept) + it.routes, flockOnRoute = listOf(bestCount) + it.flockOnRoute) }
+        selectRoute(0)
     }
 
     /** Turn-by-turn walking steps between two points (for a transit trip's walk legs), via the
