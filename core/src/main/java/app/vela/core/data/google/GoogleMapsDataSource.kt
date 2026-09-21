@@ -587,9 +587,14 @@ class GoogleMapsDataSource @Inject constructor(
         if (mode == TravelMode.BICYCLE && RoutingPrefs.bikeSafe) {
             bikeSafeRoutes(origin, destination, waypoints, avoidTolls, avoidHighways, avoidFerries, urgent)?.let { return@io it }
         }
-        // Multi-stop: route OSRM straight THROUGH the stops (routeVia filters the spurious per-via
-        // arrive/depart into one continuous trip), then overlay Google's live in-traffic ETA ratio for the
-        // whole origin→dest so the time is traffic-aware. A waypointed trip is a single path — no alternates.
+        // Multi-stop (rebuilt 2026-09-21, issue #600): Google is asked for the trip THROUGH the stops
+        // (DirectionsPb.withWaypoints) and the open router is routed through them too. Same course =
+        // the open route with Google's real through-the-stops time and spans; Google left the course
+        // (traffic, an avoid) = the open router is snapped along Google's line leg by leg, with the
+        // stops as vias between the samples, exactly as the single-destination path snaps below.
+        // Before this Google was only ever asked for the DIRECT trip and its answer calibrated a
+        // speed; every trip with stops was the open router's free-flow choice with a ratio on it.
+        // A waypointed trip is a single path: neither router returns alternates for one.
         if (waypoints.isNotEmpty()) {
             return@io coroutineScope {
                 val viaD = async {
@@ -600,8 +605,8 @@ class GoogleMapsDataSource @Inject constructor(
                 }
                 // Same urgent grace as the single-destination path below (issue #397).
                 val gD = if (bounded) kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
-                    googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways, avoidFerries)
-                } else async { googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways, avoidFerries) }
+                    googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways, avoidFerries, waypoints)
+                } else async { googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways, avoidFerries, waypoints) }
                 val via = viaD.await().firstOrNull()
                 if (bounded && via == null) {
                     // Bounded + open router empty (issue #557): Google's direct route if it is back,
@@ -636,30 +641,80 @@ class GoogleMapsDataSource @Inject constructor(
                 // (which reaches the destination but loses the stops).
                 val onDevice = if (via == null && routeEngine.isReady(mode))
                     chainOnDevice(listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways, avoidFerries) else null
+                // Google is awaited only on the branches that read it (the on-device fallback with no
+                // open route never waited for it, and still does not).
+                val g: Route? = if (via != null || onDevice == null) googleOrGrace().firstOrNull() else null
+                // THE GUARD: Google's line has to pass every stop, or the reply is the direct trip
+                // (a template without the waypoint groups, or a drift) and gets the old direct-trip
+                // handling, never adopted as if it called at the stops.
+                val gStops = g?.takeIf { it.polyline.size >= 5 && RouteGeometry.stopsOnLine(it.polyline, waypoints) }
+                val avoidWantedHere = (avoidTolls || avoidHighways || avoidFerries) && mode == TravelMode.DRIVE
+                var divergentStops = false
+                var snapKeptStops = false
+                var honoredByGoogle = false
                 var result = when {
-                    // Calibrated like a single-destination trip (review 2026-09-12): the ratio-only
-                    // overlay this used to take reproduced issue #227 verbatim the moment one stop was
-                    // added, and the nav recheck's etaScale jumped by up to 2.5x when the last stop
-                    // was passed and the recheck switched to the calibrated path. Google's keyless
-                    // answer is the DIRECT trip, so the bias is measured as a speed ratio (the
-                    // distance difference cancels) and Google's congestion spans stay off a route
-                    // that takes other roads.
-                    via != null -> googleOrGrace().firstOrNull().let { g -> listOf(applyTraffic(via, g, freeFlowCal = speedCal(via, g))) }
+                    via != null && gStops != null -> {
+                        divergentStops = RouteGeometry.divergent(via, gStops)
+                        var snapped: Route? = null
+                        if (divergentStops && (!urgent || avoidWantedHere)) {
+                            val pts = RouteGeometry.sampleViasThrough(gStops.polyline, waypoints)
+                            if (pts != null) {
+                                val all = listOf(origin) + pts + destination
+                                // The real stops' positions in the via list: exempt from the strict
+                                // snap-distance refusal (a stop in a lot is a stop, not an appendix).
+                                val loose = all.indices.filter { i -> i in 1 until all.lastIndex && waypoints.any { it == all[i] } }.toSet()
+                                snapped = RouteGeometry.routeVia(
+                                    http, all, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg,
+                                    strictVias = true, looseVias = loose, tries = tries, callTimeoutMs = osrmTryMs, budget = budget,
+                                ).firstOrNull()?.takeIf { r ->
+                                    r.polyline.lastOrNull()?.let { it.distanceTo(destination) <= SNAP_REACH_M } == true &&
+                                        r.distanceMeters <= gStops.distanceMeters * SNAP_LENGTH_SLACK + SNAP_LENGTH_SLACK_M &&
+                                        !spurWithTurn(r, gStops.polyline)
+                                }
+                            }
+                        }
+                        // One calibration from whichever open route follows Google's course, the
+                        // single-destination rule: both now cover the same trip through the same stops.
+                        val basis = if (!divergentStops) via else snapped
+                        val cal = basis?.takeIf { it.durationSeconds > 0 && gStops.durationSeconds > 0 }?.let { b ->
+                            val dScale = if (gStops.distanceMeters > 0) b.distanceMeters / gStops.distanceMeters else 1.0
+                            ((gStops.durationSeconds * dScale) / b.durationSeconds).coerceIn(0.5, 3.0)
+                        }
+                        val gEta = gStops.durationInTrafficSeconds ?: gStops.durationSeconds
+                        snapKeptStops = snapped != null &&
+                            (avoidWantedHere || gEta <= via.durationSeconds * (cal ?: 1.0) * SNAP_ETA_MARGIN)
+                        when {
+                            !divergentStops -> { honoredByGoogle = true; listOf(applyTraffic(via, gStops, freeFlowCal = cal)) }
+                            snapKeptStops -> { honoredByGoogle = true; listOf(applyTraffic(snapped!!, gStops, freeFlowCal = cal)) }
+                            // Avoid on and the open router could not be led along Google's avoiding
+                            // course: Google's own (abbreviated) route through the stops beats a
+                            // plain one that ignores the avoid, the single-destination rule.
+                            avoidWantedHere -> { honoredByGoogle = true; listOf(gStops.copy(abbreviatedSteps = true, source = RouteSource.GOOGLE_ABBREVIATED)) }
+                            // Google's detour was not worth it: the open route, its speed rebased on
+                            // Google's through-the-stops time, spans transferred where the roads overlap.
+                            else -> listOf(applyTraffic(via, gStops, freeFlowCal = speedCal(via, gStops)))
+                        }
+                    }
+                    // Google answered with the direct trip (or not at all): the old calibration, a
+                    // speed ratio so the distance difference cancels, spans kept off other roads.
+                    via != null -> listOf(applyTraffic(via, g, freeFlowCal = speedCal(via, g)))
                     onDevice != null -> listOf(onDevice)
-                    else -> googleOrGrace().take(1).map { it.copy(abbreviatedSteps = true, source = RouteSource.GOOGLE_ABBREVIATED) }
+                    else -> listOfNotNull(g).map { it.copy(abbreviatedSteps = true, source = RouteSource.GOOGLE_ABBREVIATED) }
                 }
-                // Google's direct route honors avoid (DirectionsPb.withAvoid); the open router's
-                // via route and its on-device fallback do not - only those get the note.
-                if ((avoidTolls || avoidHighways || avoidFerries) && mode == TravelMode.DRIVE && via != null) {
+                // The open router cannot exclude; only a result that left Google's avoiding course
+                // (or never had one) gets the note.
+                if (avoidWantedHere && via != null && !honoredByGoogle) {
                     result = result.map { it.copy(avoidNotHonored = true) }
                 }
-                diag.record(
-                    "directions",
-                    "$mode multi-stop ×${waypoints.size} → via=${via != null} onDevice=${onDevice != null} " +
-                        "googleDirect=${result.isNotEmpty() && via == null && onDevice == null}" +
-                        if (via == null && onDevice == null) " (STOPS DROPPED if google won)" else "",
-                    "",
-                )
+                val line = "$mode multi-stop ×${waypoints.size} → via=${via != null} onDevice=${onDevice != null} " +
+                    "googleStops=${when { g == null -> "none"; gStops != null -> "honored"; else -> "IGNORED" }} " +
+                    "divergent=$divergentStops snapKept=$snapKeptStops " +
+                    "googleDirect=${result.isNotEmpty() && via == null && onDevice == null}" +
+                    if (via == null && onDevice == null && gStops == null) " (STOPS DROPPED if google won)" else ""
+                diag.record("directions", line, "")
+                // Mirrored to logcat (no coordinates in it): the diag ring needs an opt-in and an
+                // export, and whether Google took the stops is the first thing to check in the field.
+                runCatching { android.util.Log.d("VelaDirections", line) }
                 result
             }
         }
@@ -1130,11 +1185,11 @@ class GoogleMapsDataSource @Inject constructor(
      *  drastically between restarts (user real-drive report 2026-07-14). Two short backoff
      *  retries recover the routine blips; a genuinely unreachable Google still degrades to
      *  free-flow exactly as before, just honestly rarer. */
-    private suspend fun googleDirectionsRetried(origin: LatLng, destination: LatLng, mode: TravelMode, tries: Int = 3, avoidTolls: Boolean = false, avoidHighways: Boolean = false, avoidFerries: Boolean = false): List<Route> {
+    private suspend fun googleDirectionsRetried(origin: LatLng, destination: LatLng, mode: TravelMode, tries: Int = 3, avoidTolls: Boolean = false, avoidHighways: Boolean = false, avoidFerries: Boolean = false, waypoints: List<LatLng> = emptyList()): List<Route> {
         var routes: List<Route> = emptyList()
         for (attempt in 0 until tries) {
             if (attempt > 0) kotlinx.coroutines.delay(300L * attempt)
-            routes = runCatching { googleDirections(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries) }.getOrNull().orEmpty()
+            routes = runCatching { googleDirections(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, waypoints) }.getOrNull().orEmpty()
             if (routes.isNotEmpty()) return routes
         }
         diag.record("directions", "google directions empty after $tries attempt(s) — trafficless fetch")
@@ -1144,10 +1199,10 @@ class GoogleMapsDataSource @Inject constructor(
     /** Google's keyless directions — now the FALLBACK router (OSRM unreachable) and the
      *  live-traffic source (ETA / duration-in-traffic / congestion spans). Its step list is
      *  abbreviated for long routes, which is exactly why OSRM is primary. */
-    private suspend fun googleDirections(origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean = false, avoidHighways: Boolean = false, avoidFerries: Boolean = false): List<Route> {
+    private suspend fun googleDirections(origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean = false, avoidHighways: Boolean = false, avoidFerries: Boolean = false, waypoints: List<LatLng> = emptyList()): List<Route> {
         session.ensure()
         val cal = calibration.current()
-        val pb = DirectionsPb.build(origin, destination, mode, cal.directionsPb, avoidTolls, avoidHighways, avoidFerries)
+        val pb = DirectionsPb.build(origin, destination, mode, cal.directionsPb, avoidTolls, avoidHighways, avoidFerries, waypoints)
         val url = "${cal.directionsEndpoint}&pb=${pb.enc()}"
         val routes = try {
             DirectionsParser.parse(GoogleResponse.parse(get(url)), cal.directionsPaths)

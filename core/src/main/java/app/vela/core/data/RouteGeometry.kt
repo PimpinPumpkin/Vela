@@ -191,6 +191,10 @@ object RouteGeometry {
         // road): a via that snapped far away is refused. A user's STOP is routinely set back
         // from the road (a mall lot, a driveway), so the multi-stop router must not use this.
         strictVias: Boolean = false,
+        // Indices into [waypoints] that are the user's REAL stops inside a strict snap (2026-09-21):
+        // they are exempt from the snap-distance refusal, because a stop set back in a lot is a
+        // stop, while a sampled point that snapped far is the appendix the check exists to catch.
+        looseVias: Set<Int> = emptySet(),
         tries: Int = OSRM_TRIES,
         callTimeoutMs: Long? = null,
         budget: RouteBudget = RouteBudget.NONE,
@@ -199,7 +203,7 @@ object RouteGeometry {
         if (waypoints.size < 2) emptyList()
         else routeOsrm(
             http, waypoints, mode, alternatives = false, avoidTolls, avoidHighways, avoidFerries, tries = tries,
-            departBearingDeg = departBearingDeg, strictVias = strictVias,
+            departBearingDeg = departBearingDeg, strictVias = strictVias, looseVias = looseVias,
             callTimeoutMs = callTimeoutMs, budget = budget, onFailure = onFailure,
         )
 
@@ -243,6 +247,7 @@ object RouteGeometry {
         tries: Int = OSRM_TRIES,
         departBearingDeg: Double? = null,
         strictVias: Boolean = false,
+        looseVias: Set<Int> = emptySet(),
         callTimeoutMs: Long? = null,
         budget: RouteBudget = RouteBudget.NONE,
         onFailure: ((String) -> Unit)? = null,
@@ -283,7 +288,7 @@ object RouteGeometry {
                         if (strictVias && points.size > 2) {
                             val wps = body["waypoints"]?.jsonArray
                             val badVia = wps != null && wps.size == points.size && (1 until wps.size - 1).any { i ->
-                                (wps[i].jsonObject["distance"]?.jsonPrimitive?.doubleOrNull ?: 0.0) > VIA_SNAP_MAX_M
+                                i !in looseVias && (wps[i].jsonObject["distance"]?.jsonPrimitive?.doubleOrNull ?: 0.0) > VIA_SNAP_MAX_M
                             }
                             if (badVia) return emptyList()
                         }
@@ -955,5 +960,56 @@ object RouteGeometry {
         val interior = poly.size - 2
         val n = count.coerceAtMost(interior)
         return (1..n).map { poly[(1 + (interior - 1).toLong() * (it - 1) / (n - 1).coerceAtLeast(1)).toInt()] }
+    }
+
+    /** How far a stop may sit from Google's line before the reply is judged to have IGNORED it. A
+     *  stop is routinely set back from the road (a mall lot, a driveway), so this is generous; the
+     *  direct trip runs whole kilometers from a stop that was meant to bend it. */
+    internal const val STOP_ON_LINE_M = 250.0
+
+    /** The vertex of [poly] nearest each of [stops], in order, or null when a stop is farther than
+     *  [tolM] from the line or the stops do not follow it in trip order. Google's geometry is dense
+     *  (a vertex every few tens of meters), so nearest-vertex is within a pixel of a true projection
+     *  and needs no per-segment math. */
+    internal fun stopIndicesOn(poly: List<LatLng>, stops: List<LatLng>, tolM: Double = STOP_ON_LINE_M): List<Int>? {
+        if (poly.size < 2) return null
+        var from = 0
+        val out = ArrayList<Int>(stops.size)
+        for (stop in stops) {
+            var best = -1; var bestD = Double.MAX_VALUE
+            for (i in from until poly.size) {
+                val d = poly[i].distanceTo(stop)
+                if (d < bestD) { bestD = d; best = i }
+            }
+            if (best < 0 || bestD > tolM) return null
+            out += best
+            from = best
+        }
+        return out
+    }
+
+    /** Whether Google's reply actually went THROUGH the stops it was asked for (issue #600, 2026-09-21).
+     *  A template drift that dropped the waypoint groups would hand back the direct trip and read as
+     *  a valid route; this is the guard that turns that into the old direct-trip handling. */
+    internal fun stopsOnLine(poly: List<LatLng>, stops: List<LatLng>, tolM: Double = STOP_ON_LINE_M): Boolean =
+        stops.isEmpty() || stopIndicesOn(poly, stops, tolM) != null
+
+    /** The via list for snapping the open router onto Google's line on a trip WITH stops: the
+     *  samples of each leg of [poly] (split at the stops) with the real stop between them, so the
+     *  snapped route bends where Google's did and still calls at every stop. Null when a stop is not
+     *  on the line. The caller passes the stops' positions in the result as [routeVia]'s `looseVias`:
+     *  only the SAMPLED points are on the carriageway by construction, and a stop that snaps far
+     *  (a mall lot, a driveway) is a stop, not the appendix the strict check refuses. */
+    internal fun sampleViasThrough(poly: List<LatLng>, stops: List<LatLng>, perLeg: Int = 12): List<LatLng>? {
+        val idx = stopIndicesOn(poly, stops) ?: return null
+        val out = ArrayList<LatLng>()
+        var start = 0
+        for ((k, at) in idx.withIndex()) {
+            out += sampleVias(poly.subList(start, at + 1), perLeg)
+            out += stops[k]
+            start = at
+        }
+        out += sampleVias(poly.subList(start, poly.size), perLeg)
+        return out
     }
 }

@@ -513,8 +513,9 @@ Google's in-traffic figure; `trafficRatio` stays traffic-versus-typical so the c
 words do not turn red from OSRM optimism. One calibration is computed per response and applied
 to every OSRM-derived route in it, because the alternates share the speed-model bias. The basis
 is whichever route follows Google's course: the top OSRM route when it does, otherwise the
-via-snap. Multi-stop trips compare average speeds instead (Google's answer is the direct trip,
-so distance cancels) and go through the same function with spans off.
+via-snap. A multi-stop trip whose Google reply went through the stops is calibrated the same
+way; only a reply that missed a stop (the direct trip) compares average speeds instead, so the
+distance difference cancels, and goes through the same function with spans off.
 
 **The divergence snap.** When Google's route strays more than 700 meters from OSRM's line
 (`RouteGeometry.divergent`), Google is routing around a jam. `sampleVias` takes about 12
@@ -581,9 +582,19 @@ traffic overlay for bicycle routes.
 
 ### 4.4 Multi-stop
 
-`directions(origin, dest, mode, waypoints)` reuses `routeVia` through origin, stops and
-destination, with the per-via arrive/depart filtered into one continuous trip. A waypointed
-trip returns a single route; alternates and the divergence snap are skipped.
+`directions(origin, dest, mode, waypoints)` asks Google for the trip through the stops
+(`DirectionsPb.withWaypoints`: one more top-level `!1m4!3m2!3d<lat>!4d<lng>!6e2` group per stop
+between the origin and destination groups; no enclosing count changes) and routes the open
+router through them with `routeVia`, the per-via arrive/depart filtered into one continuous
+trip. `RouteGeometry.stopsOnLine` (250 m to the nearest vertex of Google's line, in trip order)
+decides whether Google honored the stops; a reply that missed one is handled as the direct trip
+it is. When both follow the same course the open route carries Google's time and spans; when
+Google's course diverges the open router is snapped along Google's line leg by leg
+(`sampleViasThrough`: each leg's samples with the real stop between them, the stops exempt from
+the strict via-snap refusal through `routeVia(looseVias)`), kept on the single-destination reach,
+length, spur and ETA-margin rules; with an avoid on and no usable snap, Google's own route through
+the stops is returned as abbreviated steps. A waypointed trip returns a single route; neither
+router offers alternates for one.
 `NavEngine.stopMarks(route, stops)` projects each waypoint onto the line to its along-route
 pass mark (null past 150 m off the line); `NavSession` holds the stops, the marks and a passed
 counter and speaks one cue per stop in order. Reroutes and rechecks fetch with

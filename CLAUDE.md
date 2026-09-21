@@ -1903,6 +1903,14 @@ Defaults that make the safe path the easy one:
   both a debug and a release build, and was only caught by reading the row off a device
   (2026-09-19). Escape it as `\"`, which is what the rest of the file does. Both slipped a local `:core:test`/`assembleDebug` because the
   daemon reused stale outputs - trust CI, or `--rerun-tasks` when touching these.
+  **(3) A REGEX THAT COMPILES ON THE JVM CAN THROW ON ANDROID (2026-09-21).** Android's regex is
+  ICU, the unit tests run java.util.regex, and ICU is stricter: an unbalanced `}` (`\{DLAT}` with
+  the closing brace bare) is a `PatternSyntaxException` on the phone and fine on the JVM. Worse,
+  a `Regex` in an `object`'s initializer takes the WHOLE object down: `DirectionsPb` threw
+  `ExceptionInInitializerError` once, every later call logged "Rejecting re-init on
+  previously-failed class", and Google directions were dead in that build while 660 tests were
+  green. Use `Regex.escape(literal)` for literal text, and read logcat after the first device run
+  of any new `object`-level Regex.
   The runtime switch is `AppLocale.wrap(context)` (overrides the Configuration locale; when FOLLOWING
   the system it also RESTORES `Locale.setDefault` to the captured device locale - the override is
   process-global and survived the recreate, so switching Russian back to English left
@@ -3260,7 +3268,9 @@ Gotchas:
   non-cancellable native compute ends and defeat the timeout; the orphan finishes and is
   discarded) because the obf engine can spend many seconds on a long route; and routes the
   online chain produced while a toggle was on carry `Route.avoidNotHonored` (set in both the
-  single-dest and multi-stop paths, never on the on-device result) - DirectionsPanel shows
+  single-dest and multi-stop paths, never on the on-device result; since 2026-09-21 a multi-stop
+  result that follows Google's avoiding course through the stops, or IS Google's route, is
+  honored and carries no note) - DirectionsPanel shows
   `place_avoid_not_honored` under the chips when EVERY route carries it, so a toggled avoid is
   never silently ignored.
   **RE-PROBED 2026-08-24 (issue #286, a new user: "Avoid tolls doesn't appear to do anything"):
@@ -4585,7 +4595,7 @@ Gotchas:
   Google's honest alternates; and the snap's ETA-margin gate compared Google's live ETA against
   the RAW free-flow, so a jam-avoiding snap lost to the fiction every time. The gate now uses the
   calibrated free-flow, and the `directions` diag logs `cal=`. Multi-stop trips still take the
-  ratio-only `applyTrafficRatio` path (open, #227 for stops). **Multi-stop trips are calibrated too (same review):** Google's keyless answer is the DIRECT trip, so `speedCal` compares average SPEEDS (the distance difference cancels) and the via route goes through `applyTraffic` with `withSpans = false`; `applyTrafficRatio` is gone, and the recheck's `etaScale` no longer jumps when the last stop is passed. A same-course primary also carries Google's `typicalLow/High` range (distance-scaled), so the depart-time chooser shows "usually X-Y" for it, not only for provisional alternates. **Per-alternate re-rank (2026-07-01):** each Google route in `root[0][1]` carries its
+  ratio-only `applyTrafficRatio` path (open, #227 for stops). **Multi-stop trips are calibrated too (same review):** Google's keyless answer USED TO BE the DIRECT trip, so `speedCal` compared average SPEEDS (the distance difference cancels) and the via route went through `applyTraffic` with `withSpans = false`; `applyTrafficRatio` is gone, and the recheck's `etaScale` no longer jumps when the last stop is passed. **SINCE 2026-09-21 GOOGLE IS ASKED FOR THE TRIP THROUGH THE STOPS (issue #600 made the gap visible: "why are we hitting open source routers when google supports stops").** `DirectionsPb.withWaypoints` adds one top-level `!1m4!3m2!3d<lat>!4d<lng>!6e2` group per stop between the origin and destination groups (a repeated field; no enclosing count moves; verified live from a plain client on the Davis fixture: direct 15.3 mi / 21 min with three alternates, through Woodland ONE route at 45 min with per-leg distances). The multi-stop branch then mirrors the single-destination one: same course = the open via route with Google's real through-the-stops time and spans (`freeFlowCal` from durations, like a single trip); Google left the course = the open router is snapped along Google's line LEG BY LEG (`RouteGeometry.sampleViasThrough`: the samples of each leg with the real stop between them), kept on the same reach / length / spur / ETA-margin rules, with the stops passed as `routeVia(looseVias=)` so a stop set back in a lot does not trip the strict via-snap refusal that exists for sampled points; avoid on and the snap failed = Google's own abbreviated route through the stops (it honors the avoid) rather than a plain route that ignores it. **THE GUARD:** `RouteGeometry.stopsOnLine` (250 m to the nearest vertex of Google's line, in trip order) decides whether Google actually called at the stops; a template drift that dropped the waypoint groups would otherwise hand back the direct trip and read as a valid route, so a reply that misses a stop takes the OLD direct-trip handling (`speedCal`, spans off) and the diag line says `googleStops=IGNORED`. The `directions` multi-stop line is mirrored to logcat as `VelaDirections` (no coordinates). `speedCal` stays for exactly that fallback. NB `DirectionsParser`'s `start`/`end` paths (`[7][3][2]`, `[7][3][3]`) are the route's BOUNDING-BOX corners, not its endpoints; they only coincide on a southwest-to-northeast trip like Davis to Sacramento (found reading the via reply, where the "start" mixed Davis's latitude with Woodland's longitude). They feed only the no-geometry fallback line, so nothing shipped wrong, but do not build on them. A same-course primary also carries Google's `typicalLow/High` range (distance-scaled), so the depart-time chooser shows "usually X-Y" for it, not only for provisional alternates. **Per-alternate re-rank (2026-07-01):** each Google route in `root[0][1]` carries its
   OWN `duration_in_traffic` (`parseRoute` reads `summary[10][0][0]` per route), so the returned list is now
   **sorted by live in-traffic ETA - fastest leads, Google-style.** (Earlier note that this was "impossible"
   was wrong: it's only true for the OSRM-only alts, which share `gTop`'s ratio; Google's alts carry real
