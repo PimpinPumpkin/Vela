@@ -1717,7 +1717,7 @@ class MapViewModel @Inject constructor(
      *  fresh app, right under the sheet's open animation (the 4a dropped frames "like crazy",
      *  2026-09-14). Searching warms them anyway; this covers the map-tap-first session. */
     private fun warmWebViewsWhenQuiet() {
-        if (webWarmScheduled || app.vela.ui.MemoryPressure.lowRam) return
+        if (webWarmScheduled || app.vela.ui.MemoryPressure.lowRam || app.vela.ui.GoogleFree.on.value) return
         webWarmScheduled = true
         viewModelScope.launch {
             // Keep looking for a quiet moment on our own: the first idle often comes with a sheet
@@ -1812,6 +1812,11 @@ class MapViewModel @Inject constructor(
      *  cannot answer (user 2026-09-14). */
     private fun offlineNow(): Boolean = _state.value.offline || !isOnline()
 
+    /** Offline, or the user turned Google off (Settings > Privacy): the Google-only fetches take
+     *  the same "nothing to ask" path either way. NOT [offlineNow] itself: that one also decides
+     *  routing and basemap fallbacks, which must keep using the open services while online. */
+    private fun googleOff(): Boolean = offlineNow() || app.vela.ui.GoogleFree.on.value
+
     private fun isOnline(): Boolean = runCatching {
         val cm = appContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
         val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
@@ -1835,7 +1840,7 @@ class MapViewModel @Inject constructor(
     /** Prime the hidden WebViews behind the place sheet's popular times and photos, once results
      *  are on screen. Low-RAM phones skip it and build the WebView on first real use. */
     private fun warmPlaceWebViews() {
-        if (app.vela.ui.MemoryPressure.lowRam) return
+        if (app.vela.ui.MemoryPressure.lowRam || app.vela.ui.GoogleFree.on.value) return
         viewModelScope.launch { runCatching { webPopularTimes.prewarm() } }
         viewModelScope.launch { runCatching { webPhotos.warm() } }
     }
@@ -2658,7 +2663,7 @@ class MapViewModel @Inject constructor(
      *  browser engine isn't — see [WebPopularTimesFetcher]). Best-effort, applied
      *  only to fields we don't already have and only if it's still selected. */
     private fun fetchPlaceDetails(p: Place) {
-        if (p.name.isBlank() || offlineNow()) return
+        if (p.name.isBlank() || googleOff()) return
         // Fetch unless the place already looks complete. Beyond the three rich fields, a
         // missing review count / full weekly hours / address means this is a sparse summary
         // node (a suite/multi-tenant address snap) worth enriching from the focused re-fetch.
@@ -2702,7 +2707,7 @@ class MapViewModel @Inject constructor(
     private fun fetchPhotos(p: Place) {
         // "Load photos" off: never start the gallery scrape (it's the heaviest per-place
         // request); the sheet also hides the photo strip, so no loading flag either.
-        if (!app.vela.ui.LoadPhotos.on.value || offlineNow()) return
+        if (!app.vela.ui.LoadPhotos.on.value || googleOff()) return
         // Satellite / bandwidth-constrained link (issue #235): the gallery walk is the single
         // heaviest per-place transfer, so it is the first thing to go. Everything else on the
         // sheet still loads - the place is still usable, just without photos.
@@ -2802,7 +2807,7 @@ class MapViewModel @Inject constructor(
 
     private fun fetchReviews(p: Place, force: Boolean = false) {
         // "Show reviews" off: no review section is rendered, so don't scrape either.
-        if (!app.vela.ui.ShowReviews.on.value || offlineNow()) return
+        if (!app.vela.ui.ShowReviews.on.value || googleOff()) return
         // BARE transit stops: never scrape reviews. A bus stop's content is its departure board, not
         // reviews (the WebView grind competed with the board load and rendered awkwardly). But gate on
         // "transit-category AND UNRATED", not category alone - a rated transit CENTER (a real building
@@ -3175,9 +3180,10 @@ class MapViewModel @Inject constructor(
             rememberRecentPlace(SavedPlace.of(placeholder))
             return
         }
-        // Offline: no search, no reviews, no photos. An open place shows its tile data, or the
-        // Google listing remembered from an earlier online tap; a basemap tap keeps its name.
-        if (offlineNow()) {
+        // Offline, or Google off: no search, no reviews, no photos. An open place shows its tile
+        // data, or the Google listing remembered from an earlier online tap; a basemap tap keeps
+        // its name.
+        if (googleOff()) {
             val remembered = seed?.let { synchronized(openPlaceCache) { openPlaceCache[it.id] } }
             if (remembered != null && _state.value.selected == placeholder) {
                 _state.update { it.copy(selected = withListNote(remembered)) }
@@ -5548,7 +5554,7 @@ class MapViewModel @Inject constructor(
         // still runs, so an area visited earlier keeps its dots; only the network is skipped.
         // Cleanly offline these fail fast and cost little, but the case that actually burns the
         // radio is a FLAKY link, where every one of them hangs to the call timeout.
-        if (offlineNow()) return
+        if (googleOff()) return
         ambientJob = viewModelScope.launch {
             delay(300) // brief settle so a flick doesn't scrape — but snappy
             // PROGRESSIVE paint: the fan-out streams its accumulated pool as category terms

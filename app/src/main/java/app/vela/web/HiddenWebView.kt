@@ -102,6 +102,9 @@ abstract class HiddenWebView(
     /** Register a request id, run [start] with it (which should [load] a page), and wait for the
      *  bridge to deliver that id's payload, or null after [timeoutMs]. */
     protected suspend fun request(timeoutMs: Long, start: suspend (id: String) -> Unit): String? {
+        // "Use Vela without Google": every one of these pages is google.com. A null result is the
+        // fetcher's ordinary failure path, so nothing above needs to know why.
+        if (app.vela.ui.GoogleFree.on.value) return null
         val id = seq.incrementAndGet().toString()
         val deferred = CompletableDeferred<String>()
         pending[id] = deferred
