@@ -878,6 +878,16 @@ project's core promise is that neither exists:
   detour "within 10 minutes" of a traffic-aware route is not a fair comparison. Offline the obf
   engine chains through points already. The reporter's other ideas (a settable detour limit, a
   visible deletable stop instead of an invisible one) are worth their own issues.
+  **FOLLOW-UP, the holistic pass (user 2026-09-21):** the shipped pass only detours the route that
+  LEADS after the camera re-rank, and the two stages can disagree. A route with three cameras all
+  on one arterial with a parallel street beside it detours better than the one-camera route whose
+  camera sits on a bridge, but the one-camera route wins the re-rank and the pass never looks at
+  the other. The holistic version runs the cluster/offset pass on every drivable candidate, scores
+  each result by cameras left plus time added, and leads with the best; the cost is the request
+  budget (six per route, not six in total), so it wants a shared cap or a cheap pre-screen that
+  skips a route whose cameras sit where the geometry offers no parallel road. Whether the two
+  toggles then become one switch is the same decision: today "avoid" costs no requests and "side
+  streets" costs a handful, which is why the second is nested and off.
 
 - **Android 16 Live updates for the nav notification (issue #595, DodoLeDev, 2026-09-18).** Android
   16 promotes an ongoing activity into the status bar chip and onto the lock screen
