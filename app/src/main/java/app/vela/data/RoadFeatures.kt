@@ -98,7 +98,8 @@ object RoadFeatures {
 
     /** The smallest catalog region covering a point, or null when the manifest has none. */
     private fun regionFor(regions: List<Region>, lat: Double, lng: Double): Region? =
-        regions.filter { lat in it.s..it.n && lng in it.w..it.e }.minByOrNull { (it.n - it.s) * (it.e - it.w) }
+        regions.filter { app.vela.offline.RegionPolys.covers(it.id, lat, lng) ?: (lat in it.s..it.n && lng in it.w..it.e) }
+            .minByOrNull { (it.n - it.s) * (it.e - it.w) }
 
     /** Load [region] into memory, downloading first when the file is missing or the manifest says
      *  it was rebuilt since. True when loaded. */

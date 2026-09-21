@@ -26,7 +26,16 @@ data class RoutingRegion(
     val deltaUrl: String? = null,           // row-level delta from [deltaFromRev] to [rev], if published
     val deltaFromRev: Int = 0,
     val deltaSizeMb: Int = 0,
-)
+) {
+    /** Whether this region holds the point: its real boundary where [RegionPolys] has one, else
+     *  the box. Every "which region is this point in" decision goes through here (issue #599). */
+    fun covers(lat: Double, lng: Double): Boolean =
+        RegionPolys.covers(id, lat, lng) ?: (lat in s..n && lng in w..e)
+
+    /** The box's area in square degrees, the tie-break among covering regions: the smallest one is
+     *  the specific region for a point where boxes overlap at a border. */
+    fun boxArea(): Double = (n - s) * (e - w)
+}
 
 /**
  * The region catalog fetch: reads a `{regions:[...]}` manifest into [RoutingRegion] rows. The obf

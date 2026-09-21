@@ -891,6 +891,17 @@ renderer then sat at 89 percent of a core. The Developer row states the date it 
   runs once per 400 m quantum of progress or when the upcoming turn targets change, never on a
   short timer, and a quantum is only marked done once something was placed.
 
+- **A region covers a point by its boundary polygon, not its bounding box.** `assets/region_polys.json`
+  (baked by `scripts/region-polys.py` from the Geofabrik `.poly` beside each catalog extract,
+  simplified to about 5 km, 425 regions, about 300 KB) is loaded once at app start into
+  `RegionPolys`. `RoutingRegion.covers(lat, lng)` and `PmtilesRegionStore.Region.covers(lat, lng)`
+  test the polygon when one exists and the box otherwise, and every region-for-a-point decision
+  (the viewport download's routing, places, basemap and overlay picks, the streaming unions, the
+  routing offer, the update kinds, the saved-area pack lookup, the road-features region, the Offline
+  settings row) goes through them; the tie-break among covering regions remains the smallest box.
+  A box is not coverage: an extract's box includes every outlying island and claim, so Vietnam's
+  reached Hong Kong and Kansas's crosses the Missouri River.
+
 ### 4.10 Trips, replay and demo mode
 
 - The trip format is canonical in `:core` (`replay/TripLog`): a `META` header, then one or more
