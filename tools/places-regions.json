@@ -2052,6 +2052,336 @@
       ]
     },
     {
+      "id": "china-anhui",
+      "name": "Anhui (China)",
+      "bbox": [
+        29.3882,
+        114.8693,
+        34.655,
+        119.6566
+      ]
+    },
+    {
+      "id": "china-beijing",
+      "name": "Beijing (China)",
+      "bbox": [
+        39.4408,
+        115.4155,
+        41.0638,
+        117.5095
+      ]
+    },
+    {
+      "id": "china-chongqing",
+      "name": "Chongqing (China)",
+      "bbox": [
+        28.1513,
+        105.283,
+        32.2064,
+        110.2004
+      ]
+    },
+    {
+      "id": "china-fujian",
+      "name": "Fujian (China)",
+      "bbox": [
+        23.1825,
+        115.8409,
+        28.3224,
+        121.6277
+      ]
+    },
+    {
+      "id": "china-gansu",
+      "name": "Gansu (China)",
+      "bbox": [
+        32.5844,
+        92.2991,
+        42.8135,
+        108.7193
+      ]
+    },
+    {
+      "id": "china-guangdong",
+      "name": "Guangdong (China)",
+      "bbox": [
+        20.0585,
+        109.3565,
+        25.5243,
+        117.665
+      ]
+    },
+    {
+      "id": "china-guangxi",
+      "name": "Guangxi (China)",
+      "bbox": [
+        20.7422,
+        104.4419,
+        26.3965,
+        112.0654
+      ]
+    },
+    {
+      "id": "china-guizhou",
+      "name": "Guizhou (China)",
+      "bbox": [
+        24.6171,
+        103.5982,
+        29.232,
+        109.5594
+      ]
+    },
+    {
+      "id": "china-hainan",
+      "name": "Hainan (China)",
+      "bbox": [
+        14.2974,
+        108.3153,
+        20.4038,
+        118.4373
+      ]
+    },
+    {
+      "id": "china-hebei",
+      "name": "Hebei (China)",
+      "bbox": [
+        36.043,
+        113.451,
+        42.6249,
+        119.9982
+      ]
+    },
+    {
+      "id": "china-heilongjiang",
+      "name": "Heilongjiang (China)",
+      "bbox": [
+        43.4108,
+        121.15,
+        53.6556,
+        134.8036
+      ]
+    },
+    {
+      "id": "china-henan",
+      "name": "Henan (China)",
+      "bbox": [
+        31.3781,
+        110.3458,
+        36.368,
+        116.647
+      ]
+    },
+    {
+      "id": "china-hong-kong",
+      "name": "Hong Kong (China)",
+      "bbox": [
+        22.1304,
+        113.813,
+        22.569,
+        114.506
+      ]
+    },
+    {
+      "id": "china-hubei",
+      "name": "Hubei (China)",
+      "bbox": [
+        29.0301,
+        108.3597,
+        33.2734,
+        116.1361
+      ]
+    },
+    {
+      "id": "china-hunan",
+      "name": "Hunan (China)",
+      "bbox": [
+        24.6327,
+        108.7792,
+        30.138,
+        114.2585
+      ]
+    },
+    {
+      "id": "china-inner-mongolia",
+      "name": "Inner Mongolia (China)",
+      "bbox": [
+        37.3996,
+        97.1433,
+        53.4451,
+        126.0767
+      ]
+    },
+    {
+      "id": "china-jiangsu",
+      "name": "Jiangsu (China)",
+      "bbox": [
+        30.759,
+        116.3538,
+        35.5551,
+        122.9453
+      ]
+    },
+    {
+      "id": "china-jiangxi",
+      "name": "Jiangxi (China)",
+      "bbox": [
+        24.4781,
+        113.5688,
+        30.0884,
+        118.4865
+      ]
+    },
+    {
+      "id": "china-jilin",
+      "name": "Jilin (China)",
+      "bbox": [
+        40.7895,
+        121.6276,
+        46.3147,
+        131.3514
+      ]
+    },
+    {
+      "id": "china-liaoning",
+      "name": "Liaoning (China)",
+      "bbox": [
+        38.2619,
+        118.8305,
+        43.493,
+        125.7959
+      ]
+    },
+    {
+      "id": "china-macau",
+      "name": "Macau (China)",
+      "bbox": [
+        22.0755,
+        113.5272,
+        22.2171,
+        113.6325
+      ]
+    },
+    {
+      "id": "china-ningxia",
+      "name": "Ningxia (China)",
+      "bbox": [
+        35.2327,
+        104.275,
+        39.3861,
+        107.6571
+      ]
+    },
+    {
+      "id": "china-qinghai",
+      "name": "Qinghai (China)",
+      "bbox": [
+        31.5867,
+        89.39,
+        39.2216,
+        103.0727
+      ]
+    },
+    {
+      "id": "china-shaanxi",
+      "name": "Shaanxi (China)",
+      "bbox": [
+        31.695,
+        105.4801,
+        39.589,
+        111.2479
+      ]
+    },
+    {
+      "id": "china-shandong",
+      "name": "Shandong (China)",
+      "bbox": [
+        34.3757,
+        114.8133,
+        38.44,
+        123.5632
+      ]
+    },
+    {
+      "id": "china-shanghai",
+      "name": "Shanghai (China)",
+      "bbox": [
+        30.6391,
+        120.847,
+        31.8846,
+        123.679
+      ]
+    },
+    {
+      "id": "china-shanxi",
+      "name": "Shanxi (China)",
+      "bbox": [
+        34.5789,
+        110.2,
+        40.7512,
+        114.57
+      ]
+    },
+    {
+      "id": "china-sichuan",
+      "name": "Sichuan (China)",
+      "bbox": [
+        26.046,
+        97.3128,
+        34.3315,
+        108.5508
+      ]
+    },
+    {
+      "id": "china-tianjin",
+      "name": "Tianjin (China)",
+      "bbox": [
+        38.5533,
+        116.6944,
+        40.2531,
+        118.063
+      ]
+    },
+    {
+      "id": "china-tibet",
+      "name": "Tibet (China)",
+      "bbox": [
+        27.1997,
+        78.294,
+        36.53,
+        99.1255
+      ]
+    },
+    {
+      "id": "china-xinjiang",
+      "name": "Xinjiang (China)",
+      "bbox": [
+        34.2677,
+        73.4179,
+        49.262,
+        96.43
+      ]
+    },
+    {
+      "id": "china-yunnan",
+      "name": "Yunnan (China)",
+      "bbox": [
+        21.0448,
+        97.4285,
+        29.2352,
+        106.215
+      ]
+    },
+    {
+      "id": "china-zhejiang",
+      "name": "Zhejiang (China)",
+      "bbox": [
+        26.6916,
+        118.0206,
+        31.1908,
+        123.8379
+      ]
+    },
+    {
       "id": "jordan",
       "name": "Jordan",
       "bbox": [
