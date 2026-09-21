@@ -13,3 +13,17 @@ snapshot,tag,assets,downloads,kind
 2026-09-19,poi-packs,257,3134,downloaded
 2026-09-19,road-features,425,3494,downloaded
 2026-09-19,tts-runtime,1,1473,ci
+2026-09-21,address-overlays,53,116935,streamed
+2026-09-21,asr-models,4,993,downloaded
+2026-09-21,basemap-tiles,416,1578,downloaded
+2026-09-21,building-overlays,361,260406,streamed
+2026-09-21,flock-cameras,2,11937,downloaded
+2026-09-21,map-fonts,1,779,downloaded
+2026-09-21,maxspeed-overlays,51,119301,streamed
+2026-09-21,obf-regions,416,3154,downloaded
+2026-09-21,obf-runtime,4,3463,ci
+2026-09-21,obf-tools,1,1021,ci
+2026-09-21,places-overlays,446,12462,streamed
+2026-09-21,poi-packs,257,3649,downloaded
+2026-09-21,road-features,425,6061,downloaded
+2026-09-21,tts-runtime,1,1521,ci
