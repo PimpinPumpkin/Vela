@@ -270,7 +270,7 @@ remote-repair channel.
 | [`docs/LANGUAGES.md`](docs/LANGUAGES.md) | The 15 supported languages, layer by layer (UI, spoken nav, neural voice, dictation), and how to add one |
 | [`docs/TRANSLATING.md`](docs/TRANSLATING.md) | Translating Vela - edit one file, open a PR |
 | [`FEATURES.md`](FEATURES.md) | The full, categorized list of every shipped capability (the encyclopedia) |
-| [`ROADMAP.md`](ROADMAP.md) | Planned work + big bets (opt-in telemetry, a Vela-own traffic layer, giant-country graph splits, …) |
+| [`ROADMAP.md`](ROADMAP.md) | What is still open + the big bets (self-hosted tiles, OSM contributions, a Play listing, opt-in telemetry, a Vela-own traffic layer); shipped and dead-end entries live in `docs/ROADMAP-HISTORY.md` |
 | [`PRIVACY.md`](PRIVACY.md) | Exactly what each Google endpoint receives, per request |
 | [`CLAUDE.md`](CLAUDE.md) | Build rules, module layout, and the hard-won gotchas - for contributors (human or AI) |
 | [`docs/dpad.md`](docs/dpad.md) | D-pad / no-touchscreen operation - design, findings, per-surface audit, and the merge-with-upstream policy |
@@ -290,10 +290,11 @@ release notes of each build. Still open (details in [ROADMAP.md](ROADMAP.md)):
 
 - [ ] Move to Weblate translations (the three-month age bar is cleared; the application is the next step)
 - [ ] F-Droid submission + reproducible build
-- [ ] A Google Play listing, so Android Auto works on factory head units: a clean shell on Play
-      (map, offline routing, places from OpenStreetMap) with the Google-reading half as an
-      add-on APK from GitHub, the way Nova and CoMaps handle plugins Play would not carry.
-      A big job (a developer account, review, a split build); on the radar, not started.
+- [ ] A Google Play listing, so Android Auto works on factory head units: a separate build
+      with the Google half compiled out (map, offline routing, places from OpenStreetMap and
+      Overture), honestly described, while the full app stays on GitHub, Obtainium and F-Droid.
+      Play forbids an app that downloads its missing half later, so the two stay two.
+      A big job (a developer account, review, a flavor split); on the radar, not started.
 - [ ] An iOS build. The engine module is plain Kotlin and would move to Kotlin Multiplatform;
       the map (MapLibre), the neural voice (sherpa-onnx) and the hidden-page scrapes all have
       iOS counterparts. The whole interface would be rewritten. On the radar, not started.
