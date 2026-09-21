@@ -1256,7 +1256,8 @@ fun VelaMapView(
     // zooms instead. Both slot directly above the base imagery, below the ghost roads + labels.
     LaunchedEffect(satelliteOn, satDeep, styleRef) {
         val style = styleRef ?: return@LaunchedEffect
-        runCatching { ensureSatelliteDeep(style, satelliteOn, satDeep) }
+        // -1 is the Google imagery fallback where Esri tops out; without Google, no deep layer.
+        runCatching { ensureSatelliteDeep(style, satelliteOn, if (satDeep == -1 && app.vela.ui.GoogleFree.on.value) 0 else satDeep) }
     }
 
     // Transit itinerary preview (issue #233): draw/clear the expanded chooser row's legs.
@@ -3736,7 +3737,8 @@ fun VelaMapView(
                 applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, speedCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, savedPins, poisEnabled, svPose)
                 ensureSatellite(style, satelliteOn)
                 ensureNavRoadLabels(style, navMode, darkTheme, context.resources.displayMetrics.density, navLabelExclude)
-                ensureTraffic(style, trafficOn)
+                // The traffic raster is Google's tile server; off entirely without Google.
+                ensureTraffic(style, trafficOn && !app.vela.ui.GoogleFree.on.value)
                 ensureTransit(style, transitOn)
                 ensureTopography(style, topographyOn)
             }

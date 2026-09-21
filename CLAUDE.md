@@ -2083,7 +2083,25 @@ architecture note.
 - **docs/FAQ.md (2026-09-18)** is the user-facing answer to "are the places Google's", the
   per-feature source matrix (map / places / place pages / search / routing / traffic / controls /
   cameras / transit / Street View, each with "reaches Google?" and "works offline?") and the recipe
-  for running Vela with no Google contact. Keep it in step when a source or a default changes; the
+  for running Vela with no Google contact, which since 2026-09-21 is ONE SWITCH: **Settings >
+  Privacy > "Use Vela without Google"** (`ui/GoogleFree`, pref `google_free`, mirrored into the
+  `:core` flag `data/NoGoogle`, the LowRamMode seam). Gated at the network edge in
+  `GoogleMapsDataSource`: `search` answers from `PhotonGeocoder` (Photon's own importance ranking softly biased to the
+  user, limit 20, then the suggest path's hard metro box appended for partial addresses; the box
+  alone led with fuzzy address rows two states away and never showed the city itself, checked on
+  the 4a. Names and addresses, not categories, which the downloaded place packs cover),
+  `searchMore`/`nearbyPlaces`/`reviews`/`placePhotos` answer empty, `streetView*` null, and
+  `googleDirections` empty, which every caller already reads as "Google did not answer" (open
+  router only, no traffic, no alternates, no abbreviated fallback). App side: `MapViewModel.googleOff()`
+  (= `offlineNow() || GoogleFree.on`, deliberately NOT `offlineNow` itself, which also picks
+  routing and basemap fallbacks that must keep using the open services online) gates
+  fetchPlaceDetails / fetchPhotos / fetchReviews / onPoiTap's lookup / the ambient fan-out; the
+  two WebView warm-ups return; `HiddenWebView.request` returns null for all five fetchers in one
+  place (reviews, photos, popular times, transit directions, the stop-board Google fallback);
+  `ensureTraffic` is off (the raster is Google's tile server); the satellite `-1` fallback draws
+  no deep layer; the place sheet hides the Street View pill and the full-screen reviews page.
+  `importList` (a Google Maps share link the user pasted) is deliberately not gated. No unit test
+  covers the switch itself (it is a flag read at each seam); the FAQ lists what it costs. Keep it in step when a source or a default changes; the
   fleet default for the places source lives in `calibration.json` (`defaultPlacesSource`, "open"
   today) and a change there needs `./scripts/sign-calibration.sh`.
 - **A REGION IS PICKED BY ITS REAL BOUNDARY, NOT ITS BOX (issue #599, 2026-09-21).** Vietnam's

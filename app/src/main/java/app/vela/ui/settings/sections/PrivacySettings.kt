@@ -30,12 +30,23 @@ internal fun PrivacySettingsScreen(vm: app.vela.ui.map.MapViewModel, onBack: () 
     SettingsScaffold(stringResource(R.string.settings_privacy), onBack) { topRow ->
         Spacer(Modifier.height(4.dp))
         PageIntro(stringResource(R.string.settings_data_privacy_hint))
+        // The master switch (2026-09-21): one control instead of the four-toggle recipe the FAQ
+        // used to give, and it reaches the surfaces those toggles could not (search, Street View,
+        // transit, the satellite fallback, the traffic raster).
+        SettingsGroup {
+            app.vela.ui.settings.ToggleRow(
+                label = stringResource(R.string.settings_google_free),
+                checked = app.vela.ui.GoogleFree.on.value,
+                onCheckedChange = { app.vela.ui.GoogleFree.set(context, it) },
+                hint = stringResource(R.string.settings_google_free_hint),
+                switchModifier = topRow,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
         SettingsGroup {
         androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
         FilledTonalButton(
-            // The top (and only) focusable control; on the old page this button sat beside a
-            // VelaSwitch whose ring token satisfied the audit window - here it carries its own ring.
-            modifier = topRow.dpadHighlight(androidx.compose.material3.ButtonDefaults.filledTonalShape),
+            modifier = Modifier.dpadHighlight(androidx.compose.material3.ButtonDefaults.filledTonalShape),
             onClick = {
                 runCatching {
                     context.startActivity(

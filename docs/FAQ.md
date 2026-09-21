@@ -42,22 +42,24 @@ There is no Vela server anywhere in that table, no account and no telemetry.
 
 ## Can I use Vela without Google at all?
 
-Yes, and it is worth knowing exactly what you give up. Set it up like this:
+Yes. **Settings > Privacy > "Use Vela without Google"** turns off every request to a Google
+host in one go: places on the map come from Vela's own data, search uses OpenStreetMap and
+the regions you have downloaded, routes come from the open router, and nothing else asks
+Google either (no Street View, no traffic overlay, no satellite close-ups, no transit
+directions, no reviews or photos). Download the region you live in under Settings > Offline
+maps and the map, search, addresses, routing and navigation all work with no signal too.
 
-1. **Settings > Places**: set "Places come from" to **Vela data**, and turn off
-   **"Look up tapped places on Google"**. Tapping a shop then shows what the map data holds:
-   name, type, address, phone and website where they exist, and no request leaves the phone.
-2. **Settings > Offline maps**: download the region you live in. That brings the map, the
-   routing data, the searchable places and the addresses onto the phone.
-3. **Settings > Navigation**: turn off **"Live traffic re-checks while navigating"**. You
-   lose live arrival times and faster-route offers; routing and re-routing still work.
-4. Optionally turn off **Settings > Map > Live traffic overlay**.
-
-What you keep: the map, search, addresses, turn-by-turn navigation with voice, speed limits,
-cameras, stop signs and lights, saved places and offline routing.
+What you keep: the map, search by name and address, turn-by-turn navigation with voice, speed
+limits, cameras, stop signs and lights, transit departure boards, saved places and offline
+routing.
 
 What you lose: reviews, photos, opening hours, live traffic and its arrival times, Street
-View, and the long tail of businesses that only Google knows about.
+View, transit directions, the satellite close-ups, and the long tail of businesses that only
+Google knows about.
+
+The four individual toggles the older recipe used (Places come from, Look up tapped places,
+Live traffic re-checks, the traffic overlay) still exist; the switch does not change them, it
+sits above them.
 
 ## Why is a shop missing, or in the wrong place?
 

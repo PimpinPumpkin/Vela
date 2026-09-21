@@ -116,7 +116,17 @@ Two Gradle modules with a strict boundary.
 
 The `:app` module may read `:core`; `:core` may not read `:app`. Where `:core` needs a user
 setting, `:app` writes a plain flag into `:core` (`CategoryFilter.enabled`, `LowRamMode`,
-`LowDataMode`, `RoutingPrefs`) rather than `:core` reading a Compose holder.
+`LowDataMode`, `NoGoogle`, `RoutingPrefs`) rather than `:core` reading a Compose holder.
+
+- **Use Vela without Google** (`NoGoogle.enabled`, set from Settings > Privacy) is enforced at
+  the data source: search answers from the OpenStreetMap geocoder (Photon, 20 results, biased
+  around the user), the page-2 search, the ambient fan-out, reviews and photos answer empty,
+  Street View answers null, and the Google directions call answers empty, so every route is the
+  open router's with no traffic, no Google alternates and no abbreviated fallback. The app gates
+  its own Google surfaces on the same setting: the hidden WebView fetchers return null at
+  `HiddenWebView.request`, the traffic raster is not added, the satellite Google fallback draws
+  no deep layer, the tap lookup and the ambient fan-out are skipped, and the Street View pill and
+  the full-screen reviews page are hidden. A pasted Google Maps share link still imports.
 
 ### 2.2 Module tree
 

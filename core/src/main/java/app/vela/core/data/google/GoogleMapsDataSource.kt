@@ -198,6 +198,21 @@ class GoogleMapsDataSource @Inject constructor(
         p.featureId ?: "${p.name.lowercase()}|${(p.location.lat * 2000).toInt()}|${(p.location.lng * 2000).toInt()}"
 
     override suspend fun search(query: String, near: LatLng?, spanMeters: Double?, rankFrom: LatLng?): SearchResult = io {
+        // Without Google (NoGoogle): the OpenStreetMap geocoder answers, biased around the user.
+        // It knows names and addresses, not categories; the downloaded place packs cover those
+        // where a region is installed (the view model's offline search runs them first).
+        if (app.vela.core.data.NoGoogle.enabled) {
+            val bias = rankFrom ?: near
+            val lang = java.util.Locale.getDefault().language
+            // Photon's own ranking (importance, softly biased to the user) leads, so a city or a
+            // landmark across the state is found; the suggest path's hard metro box is appended
+            // for the partial-address case. Checked on a device the other way round: the box
+            // led with fuzzy address rows two states away and the city itself never showed.
+            val ranked = app.vela.core.data.PhotonGeocoder.suggest(http, query, bias, lang, limit = 20, hardBox = false)
+            val nearby = app.vela.core.data.PhotonGeocoder.suggest(http, query, bias, lang, limit = 10)
+            val places = (ranked + nearby).distinctBy { it.id }
+            return@io SearchResult(query, places)
+        }
         session.ensure()
         // Results are viewport-driven, so a location is required; callers
         // normally pass the user's location, with a fallback for the rare null.
@@ -260,6 +275,7 @@ class GoogleMapsDataSource @Inject constructor(
      *  (2026-09-13). Same window, same ranking point; the pages fetch concurrently and a
      *  failing one is just missing. Dedupe against what is already shown is the caller's. */
     override suspend fun searchMore(query: String, near: LatLng?, spanMeters: Double?, rankFrom: LatLng?, fromPage: Int, pages: Int): List<Place> = io {
+        if (app.vela.core.data.NoGoogle.enabled) return@io emptyList()
         session.ensure()
         val viewport = near ?: DEFAULT_VIEWPORT
         val cal = calibration.current()
@@ -274,6 +290,7 @@ class GoogleMapsDataSource @Inject constructor(
     }
 
     override suspend fun nearbyPlaces(center: LatLng, spanMeters: Double, onPartial: ((List<Place>) -> Unit)?): List<Place> = io {
+        if (app.vela.core.data.NoGoogle.enabled) return@io emptyList()
         session.ensure()
         val cal = calibration.current()
         // The wide default search (!1d≈25229, !4f13.1) returns the ~20 most prominent places over a
@@ -452,6 +469,7 @@ class GoogleMapsDataSource @Inject constructor(
     }
 
     override suspend fun reviews(featureId: String): List<Review> = io {
+        if (app.vela.core.data.NoGoogle.enabled) return@io emptyList()
         // /maps/preview/review/listentitiesreviews — a keyless GET. The feature id
         // "0xHIGH:0xLOW" splits into two unsigned-64 decimals (1y/2y); 2i/3i page,
         // 3e1 sorts by most-relevant. The 1s session token can be any string.
@@ -467,6 +485,7 @@ class GoogleMapsDataSource @Inject constructor(
     }
 
     override suspend fun placePhotos(featureId: String): List<app.vela.core.model.Photo> = io {
+        if (app.vela.core.data.NoGoogle.enabled) return@io emptyList()
         // batchexecute `hspqX` (/MapsPhotoService.ListEntityPhotos) — a keyless POST
         // (no `at` token, just the warmed session cookies). The feature id goes in
         // the proto verbatim ([2][0]); the response carries the full gallery, URL at
@@ -482,6 +501,7 @@ class GoogleMapsDataSource @Inject constructor(
     }
 
     override suspend fun streetView(location: LatLng, preferStreet: String?): app.vela.core.model.StreetViewPano? = io {
+        if (app.vela.core.data.NoGoogle.enabled) return@io null
         // Keyless nearest-pano lookup - the JS Maps API's own GeoPhotoService.SingleImageSearch,
         // authorized by referer (the get() helper already sends it). The parser returns null with no
         // imagery near the point.
@@ -525,6 +545,7 @@ class GoogleMapsDataSource @Inject constructor(
     }
 
     override suspend fun streetViewByPano(panoId: String): app.vela.core.model.StreetViewPano? = io {
+        if (app.vela.core.data.NoGoogle.enabled) return@io null
         // Epoch-exact pano fetch (walking): photometa/v1 by id, keyless. Same parser - it handles
         // the )]}' guard and the extra nesting. Lat/lng fall back to the response's own position.
         val cal = calibration.current()
@@ -533,6 +554,7 @@ class GoogleMapsDataSource @Inject constructor(
     }
 
     override suspend fun streetViewTile(panoId: String, x: Int, y: Int, zoom: Int): ByteArray? = io {
+        if (app.vela.core.data.NoGoogle.enabled) return@io null
         // The consumer equirect tile endpoint (what maps.google.com renders) - keyless, JPEG,
         // needs only the Google referer. Fixed template, no calibration: the panoid + x/y/zoom
         // fully address a tile in the standard SV pyramid.
@@ -1200,6 +1222,10 @@ class GoogleMapsDataSource @Inject constructor(
      *  live-traffic source (ETA / duration-in-traffic / congestion spans). Its step list is
      *  abbreviated for long routes, which is exactly why OSRM is primary. */
     private suspend fun googleDirections(origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean = false, avoidHighways: Boolean = false, avoidFerries: Boolean = false, waypoints: List<LatLng> = emptyList()): List<Route> {
+        // Without Google the open router's answer stands alone: no traffic, no Google alternates,
+        // no abbreviated fallback. Every caller already handles an empty reply as "Google did not
+        // answer", which is exactly the state this is.
+        if (app.vela.core.data.NoGoogle.enabled) return emptyList()
         session.ensure()
         val cal = calibration.current()
         val pb = DirectionsPb.build(origin, destination, mode, cal.directionsPb, avoidTolls, avoidHighways, avoidFerries, waypoints)

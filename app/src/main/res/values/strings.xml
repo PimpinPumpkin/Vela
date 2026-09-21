@@ -261,6 +261,8 @@
     <string name="settings_clear_history_confirm_body">Recent searches, recent places, parking history and every recorded trip will be deleted. This cannot be undone. Saved places and lists are not affected.</string>
     <string name="settings_clear_history_done">History cleared</string>
     <string name="settings_privacy_button">What data Google receives</string>
+    <string name="settings_google_free">Use Vela without Google</string>
+    <string name="settings_google_free_hint">Nothing is sent to Google. Search uses OpenStreetMap and your downloaded regions, places on the map come from Vela\'s own data, and routes come from the open router with no live traffic. You lose reviews, photos, opening hours, live arrival times, Street View, transit directions and the satellite close-ups; downloaded regions still work fully offline.</string>
     <string name="settings_diagnostics">Diagnostics</string>
     <string name="settings_diagnostics_hint">Off by default. When on, Vela keeps a short local log you can export and hand to a developer. Nothing is uploaded, and turning it off wipes the log.</string>
     <string name="settings_share_diagnostics">Share diagnostics</string>

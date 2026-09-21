@@ -360,6 +360,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.mapscreen_section_lists to SettingsSection.SAVED_PLACES,
     // Privacy
     R.string.settings_privacy_button to SettingsSection.PRIVACY,
+    R.string.settings_google_free to SettingsSection.PRIVACY,
     R.string.settings_live_rechecks to SettingsSection.NAVIGATION,
     R.string.settings_clear_history to SettingsSection.PRIVACY,
     // Diagnostics

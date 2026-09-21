@@ -26,17 +26,23 @@ object PhotonGeocoder {
     fun looksLikeAddress(q: String): Boolean = Regex("""^\d+\s+\S+""").containsMatchIn(q.trim())
 
     /** Address suggestions near [near], nearest-biased by Photon itself. Empty on any failure. */
-    fun suggest(http: OkHttpClient, q: String, near: LatLng?, lang: String = "en", limit: Int = 4): List<Place> {
+    fun suggest(http: OkHttpClient, q: String, near: LatLng?, lang: String = "en", limit: Int = 4, hardBox: Boolean = true): List<Place> {
         val url = buildString {
             append(BASE).append("?q=").append(URLEncoder.encode(q, "UTF-8")).append("&limit=").append(limit)
             // A HARD metro bbox (~±60 km), not the soft lat/lon bias: probed live, the bias still
             // let a famous far "123 Main Street" outrank every nearby one, while the bbox returns
             // only matches around you - which is what a partial house address means.
+            // [hardBox] false = the soft bias instead, for a full SEARCH (the no-Google search
+            // path): a city across the state is a legitimate answer there, and the box hides it.
             near?.let {
-                val dLat = 0.55
-                val dLng = 0.55 / Math.cos(Math.toRadians(it.lat)).coerceAtLeast(0.2)
-                append("&bbox=").append(it.lng - dLng).append(",").append(it.lat - dLat)
-                    .append(",").append(it.lng + dLng).append(",").append(it.lat + dLat)
+                if (hardBox) {
+                    val dLat = 0.55
+                    val dLng = 0.55 / Math.cos(Math.toRadians(it.lat)).coerceAtLeast(0.2)
+                    append("&bbox=").append(it.lng - dLng).append(",").append(it.lat - dLat)
+                        .append(",").append(it.lng + dLng).append(",").append(it.lat + dLat)
+                } else {
+                    append("&lat=").append(it.lat).append("&lon=").append(it.lng)
+                }
             }
             // Photon only speaks a few UI languages; anything else falls back to default names.
             if (lang in setOf("en", "de", "fr")) append("&lang=").append(lang)

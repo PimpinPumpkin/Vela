@@ -451,6 +451,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **The turn list opens on the turn you are driving to (2026-09-16).** Swiping up the nav bar (or tapping the list button) lands on the current step instead of the first one. Steps you have already driven are still there one scroll up, grayed out, along with any stop band before them. The directions preview from the route chooser still starts at the top with nothing grayed, and under a D-pad focus lands on the current step.
 - ✅ **Stops stand out in the turn list (2026-09-16, issue #519).** On a trip with stops, the step list draws a tinted "Stop: name" band where each leg begins, between the arrival of one leg and the first turn of the next, so a long list reads leg by leg. Names come from the planned stops, or the stops still ahead while driving.
 - ✅ **Traffic overlay draws over buildings (2026-09-16, issue #521).** At street zoom the gray building footprints and the 3D extrusions painted over the congestion colors; the traffic raster now sits above the buildings and still below every icon and label.
+- ✅ **Use Vela without Google, one switch (2026-09-21).** Settings > Privacy > "Use Vela without
+  Google" stops every request to a Google host: search goes to OpenStreetMap and your downloaded
+  regions, places come from Vela's data, routes come from the open router, and Street View, the
+  traffic overlay, satellite close-ups, transit directions, reviews and photos are off. Replaces
+  the four-toggle recipe the FAQ used to give, and reaches the surfaces those toggles could not.
 - ✅ **Delete all offline data, and deleting actually frees space (2026-09-21, issue #601).**
   Offline maps > Storage has a "Delete all offline data" button: every saved area, every
   downloaded region (routing, places, map), the building and address overlays, the road features

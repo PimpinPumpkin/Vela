@@ -978,7 +978,11 @@ fun PlaceSheet(
                 // 2026-07-15). Not gated by HideExternalLinks anymore: it's a first-class in-app
                 // surface now, not a hand-off to Google's app. A tap loads the nearest pano; no
                 // coverage shows a brief "no Street View here" toast.
-                ActionPill(Icons.Filled.Streetview, stringResource(R.string.place_street_view), onClick = onStreetView)
+                // Hidden without Google: the imagery is Google's, and a pill that always answers
+                // "no Street View here" is worse than no pill.
+                if (!app.vela.ui.GoogleFree.on.value) {
+                    ActionPill(Icons.Filled.Streetview, stringResource(R.string.place_street_view), onClick = onStreetView)
+                }
             }
 
             app.vela.ui.SheetFold(extrasComposed, extrasFraction) {
@@ -3397,7 +3401,7 @@ private fun PlaceTabs(
                         onPhotoTap = { urls, start, caption ->
                             reviewPhotos = Triple(urls, urls.map { caption }, start)
                         },
-                        onReadAll = if (app.vela.ui.LiveReviews.on.value && fid != null && fid.contains(":")) {
+                        onReadAll = if (app.vela.ui.LiveReviews.on.value && !app.vela.ui.GoogleFree.on.value && fid != null && fid.contains(":")) {
                             { showFullPanel = true }
                         } else null,
                     )
