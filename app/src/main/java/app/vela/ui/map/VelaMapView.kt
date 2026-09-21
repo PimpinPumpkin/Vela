@@ -810,6 +810,10 @@ fun VelaMapView(
     val trailOn = app.vela.ui.RouteTrail.on.value
     val trailHolder = rememberUpdatedState(trailOn)
     LaunchedEffect(trailOn) { splitReset[0] = true; lastGradM[0] = -1e9 } // -1e9 so the block runs even while stopped
+    // A route COLOR change (pause turns the line slate, resume turns it back) re-anchors too: the
+    // ahead line's gradient is only re-uploaded when the cut piece slides, so without this only
+    // the 400 m around the arrow changed color and the rest stayed blue (4a, 2026-09-21).
+    LaunchedEffect(routeColor) { splitReset[0] = true; lastGradM[0] = -1e9 }
     val mPerPxHolder = remember { doubleArrayOf(10.0) } // meters/pixel at the camera (scale-bar feed) —
                                                         // sizes the split-update throttle to sub-pixel
     val lastScaleReport = remember { doubleArrayOf(-1.0) } // last mpp PUSHED to compose (gate, see reportScale)

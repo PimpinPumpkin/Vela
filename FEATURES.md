@@ -1849,7 +1849,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Resume after a process kill routes from a fresh fix (2026-09-21).** The resumed drive waits
   up to 8 s for a fix newer than the launch seed, so the line no longer starts where the app died.
 - ✅ **Offline routes no longer announce a turn on a road that only bends and renames (2026-09-21).**
-  Turns OsmAnd itself would skip are folded as renames.
+  Turns OsmAnd itself would skip, and lefts or rights with under 20 degrees of measured turn (a
+  divided road rejoining its two-way continuation), are folded as renames; verified on the
+  reported stretch against the state's own obf.
+- ✅ **A paused drive draws its route in slate (2026-09-21)** so the hold shows on the map, not
+  only in the bar; traffic spans keep their colors.
+- ✅ **The car-screen puck follows the puck-size setting (2026-09-21).**
+- ✅ **Offline search puts transit stops last unless the query asks for transit (2026-09-21)**:
+  US stops are named by their corner, so a street or town word used to fill the list with them.
 - ✅ Spoken guidance via AOSP TextToSpeech (engine-selectable) - **tuned for the
   car**: a measured speech rate (0.97) + neutral pitch, and on init it auto-selects
   the **highest-quality offline voice** for the locale (engines often default to a

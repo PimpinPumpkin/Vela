@@ -475,7 +475,8 @@ class CarMapRenderer(
         // Sized to the SCREEN, not a fixed pixel count: a fixed 22 px radius was a fifth of the
         // height of a 480 px head unit (user 2026-09-19, "the puck on the car stereo is huge").
         // A fortieth of the short side reads like the phone's puck (about 5% of the screen).
-        val r = (minOf(width, height) / 40f).coerceIn(9f, 22f)
+        // Settings > Navigation > Puck size (PuckStyle) scales it the same way it scales the phone's.
+        val r = (minOf(width, height) / 40f).coerceIn(9f, 22f) * app.vela.ui.PuckStyle.scale()
         puckStroke.strokeWidth = (r / 7f).coerceIn(1.5f, 3f)
         val path = Path().apply {
             moveTo(pt.x, pt.y - r)

@@ -399,9 +399,21 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
          *  offline drive said "turn left onto X" on a road that only renamed itself (user
          *  2026-09-19). As CONTINUE it folds into the previous maneuver as a rename
          *  (`RouteGeometry.foldRenames`), which is what the online routers produce there.
-         *  Roundabouts keep their type: the exit is the instruction. */
-        internal fun spokenType(t: TurnType): ManeuverType =
-            if (t.isSkipToSpeak && !t.isRoundAbout) ManeuverType.CONTINUE else obfType(t)
+         *  Roundabouts keep their type: the exit is the instruction.
+         *  And a LEFT or RIGHT with under [STRAIGHT_TURN_DEG] of actual turn is a rename too:
+         *  probed on a real state file, OsmAnd emitted `Turn left` with a turn angle of 0.7 and
+         *  0.005 degrees where a one-way carriageway joins its two-way continuation under lane
+         *  markings (`+TL|C|C|C`), `skipToSpeak` false, and the drive is dead straight. The
+         *  angle is what the router measured; a real left is tens of degrees. */
+        internal fun spokenType(t: TurnType): ManeuverType = when {
+            t.isRoundAbout -> obfType(t)
+            t.isSkipToSpeak -> ManeuverType.CONTINUE
+            (t.value == TurnType.TL || t.value == TurnType.TR) && kotlin.math.abs(t.turnAngle) < STRAIGHT_TURN_DEG -> ManeuverType.CONTINUE
+            else -> obfType(t)
+        }
+
+        /** A left/right turn type carrying less actual turn than this is the road continuing. */
+        const val STRAIGHT_TURN_DEG = 20f
 
         /** OsmAnd [TurnType] -> Vela [ManeuverType]. Roundabouts map by flag (value carries the
          *  exit); KL/KR are lane keeps = our KEEP_*; TU/TRU both read as a u-turn. */
