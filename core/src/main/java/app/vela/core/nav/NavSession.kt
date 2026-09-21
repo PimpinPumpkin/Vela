@@ -161,8 +161,8 @@ class NavSession @Inject constructor(
     /** An intermediate stop on a multi-stop trip. */
     /** A stop on the drive. [silent] marks a side-street detour point the camera pass added (issue
      *  #600): routed through like a stop, so a reroute or recheck keeps the detour, but never
-     *  spoken, never listed, never a leg divider. A mid-drive stops EDIT rebuilds the list from the
-     *  visible stops, so it drops the detour; the search that placed it would have to run again. */
+     *  spoken, never listed, never a leg divider. A mid-drive stops EDIT hands back the VISIBLE
+     *  list; [withSilentVias] puts the silent points still ahead back into it in route order. */
     data class NavStop(val location: LatLng, val label: String, val silent: Boolean = false)
 
     /** Fold a light-ENRICHED copy of the current route in after nav has already started, so
@@ -287,6 +287,20 @@ class NavSession @Inject constructor(
         setStops(listOf(stop) + remaining, loc, "add stop mid-nav → ${stop.label}", "stop-added")
     }
 
+    /** [visible] (an edited stop list from the UI, which never sees silent stops) with the silent
+     *  detour vias still ahead put back in, each where it falls along the current plan route
+     *  relative to the visible stops (a visible stop not on that route keeps its list position).
+     *  Without this the first stops edit of a drive silently threw the camera detour away. */
+    private fun withSilentVias(visible: List<NavStop>): List<NavStop> {
+        val (silent, plan) = synchronized(stopLock) { stops.drop(passedStops).filter { it.silent } to planRoute }
+        if (silent.isEmpty()) return visible
+        if (plan == null) return visible + silent
+        val vMarks = NavEngine.stopMarks(plan, visible.map { it.location })
+        val sMarks = NavEngine.stopMarks(plan, silent.map { it.location })
+        val vias = silent.indices.mapNotNull { i -> sMarks[i]?.let { it to silent[i] } }
+        return CameraDetour.mergeOrdered(visible.indices.map { i -> vMarks[i] to visible[i] }, vias)
+    }
+
     /** The stops still ahead on the drive, in order (the ones already passed are dropped). The
      *  VISIBLE ones: a silent detour via is routed through but is not a stop to anyone. */
     fun remainingStops(): List<NavStop> = synchronized(stopLock) { stops.drop(passedStops).filter { !it.silent } }
@@ -296,8 +310,9 @@ class NavSession @Inject constructor(
      *  them. The same user-ordered reroute as [addStop]: no cooldown, no back-on-course discard,
      *  and the new list is the plan at once, so even a failed fetch keeps it for the next
      *  reroute/recheck. */
-    fun setStops(newRemaining: List<NavStop>, loc: LatLng, reason: String, swapReason: String = "stops-edited") {
+    fun setStops(newVisible: List<NavStop>, loc: LatLng, reason: String, swapReason: String = "stops-edited") {
         val dest = destination ?: return
+        val newRemaining = withSilentVias(newVisible)
         synchronized(stopLock) {
             stops = newRemaining
             stopMarks = List(newRemaining.size) { null } // measured against no route yet: cues hold

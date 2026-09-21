@@ -1633,6 +1633,17 @@ applier is `app/offline/PmtilesPatch`.
   holds the claim down in CI: its fixture (`scripts/pmtiles-test-fixture.py`) is a small archive run
   through the real producer and the real applier, so it carries dead bytes the way a phone's does,
   and the test compacts it and checks the fingerprint, every tile id, length and run.
+- **Deleting gives the space back.** MapLibre keeps saved areas and the browsing cache in one
+  SQLite file; deleting a region removes its rows, not the bytes, so `OfflineMaps.packDatabase`
+  (`OfflineManager.packDatabase`, a VACUUM) runs after every saved-area delete and after Clear
+  map cache. A phone that had saved and deleted a few large areas otherwise reports gigabytes of
+  map data with nothing listed (issue #601). Settings > Offline maps > "Delete all offline data"
+  (`MapViewModel.deleteAllOfflineData`, behind a confirm naming the total) removes every saved
+  area, every region's routing, place pack, places and basemap archive, the building and address
+  overlays (which an area save pulls and no region row can delete), the road features and any
+  legacy graph tree, sweeps the stores' folders for files no catalog id reaches any more, clears
+  the browsing cache and packs the database. Voices and speech models are not offline map data
+  and stay.
 - **Settings > Offline maps reports the archives too.** `offlineStorageBreakdown`'s "Offline places"
   counts `files/poipacks` AND `files/places`; the archives were absent from the only storage screen
   in the app, so a region's few hundred MB of places were invisible.

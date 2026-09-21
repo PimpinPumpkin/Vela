@@ -5711,9 +5711,52 @@ class MapViewModel @Inject constructor(
         )
     }
 
+    /** Everything downloaded for offline use, gone (issue #601): every saved area, every region's
+     *  routing, place pack, places and basemap archives, the building and address overlays (which
+     *  ride along with an area save and had NO delete path of their own), the road features, any
+     *  legacy graph tree, and the browsing cache; then MapLibre's database is PACKED so the file
+     *  actually shrinks. Files a per-region delete could not reach (an archive whose id left the
+     *  catalog when a country was re-split) go too: after the stores have deleted what they know,
+     *  every remaining file under their folders is swept, keeping only the index files. Voices and
+     *  speech models are not offline map data and are left alone. */
+    fun deleteAllOfflineData() {
+        viewModelScope.launch {
+            kotlinx.coroutines.withContext(Dispatchers.IO) {
+                runCatching { obfStore.installedIds().forEach { obfStore.delete(it) } }
+                runCatching { poiPackStore.installedIds().forEach { poiPackStore.delete(it) } }
+                runCatching { placesStore.installedIds().forEach { placesStore.delete(it) } }
+                runCatching { basemapStore.installedIds().forEach { basemapStore.delete(it) } }
+                runCatching { overlayStore.installedIds().forEach { overlayStore.delete(it) } }
+                val keep = setOf("index.json", "revs.json", "dead.json")
+                for (folder in listOf("obf", "poipacks", "places", "basemap", "overlays", "roadfeatures", "graphs")) {
+                    java.io.File(appContext.filesDir, folder).listFiles()?.forEach { f ->
+                        if (f.name !in keep) runCatching { if (f.isDirectory) f.deleteRecursively() else f.delete() }
+                    }
+                }
+            }
+            (routeEngine as? app.vela.core.data.ObfRouteEngine)?.shutdown()
+            kotlinx.coroutines.suspendCancellableCoroutine<Unit> { cont ->
+                app.vela.offline.OfflineMaps.deleteAll(appContext) { if (cont.isActive) cont.resume(Unit) { _, _, _ -> } }
+            }
+            clearMapCache(flash = false)
+            kotlinx.coroutines.suspendCancellableCoroutine<Unit> { cont ->
+                app.vela.offline.OfflineMaps.packDatabase(appContext) { if (cont.isActive) cont.resume(Unit) { _, _, _ -> } }
+            }
+            _state.update {
+                it.copy(
+                    routingInstalledIds = obfStore.installedIds(), poiPackInstalledIds = poiPackStore.installedIds(),
+                    placesOverlays = emptyList(), basemapArchive = null, buildingOverlays = emptyList(), addressOverlays = emptyList(),
+                )
+            }
+            refreshPlacesOverlays()
+            flashStatus(appContext.getString(R.string.mapvm_offline_all_deleted))
+        }
+    }
+
     /** Clear MapLibre's ambient (browsing) tile cache. Saved offline areas are untouched -
-     *  clearAmbientCache only drops the cache the map filled while browsing. */
-    suspend fun clearMapCache(): Unit = kotlinx.coroutines.withContext(Dispatchers.Main) {
+     *  clearAmbientCache only drops the cache the map filled while browsing. Packs the database
+     *  after, so the cleared bytes leave the file (issue #601). */
+    suspend fun clearMapCache(flash: Boolean = true): Unit = kotlinx.coroutines.withContext(Dispatchers.Main) {
         kotlinx.coroutines.suspendCancellableCoroutine { cont ->
             runCatching {
                 org.maplibre.android.offline.OfflineManager.getInstance(appContext).clearAmbientCache(
@@ -5724,7 +5767,10 @@ class MapViewModel @Inject constructor(
                 )
             }.onFailure { if (cont.isActive) cont.resume(Unit) { _, _, _ -> } }
         }
-        flashStatus(appContext.getString(R.string.settings_map_cache_cleared))
+        kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+            app.vela.offline.OfflineMaps.packDatabase(appContext) { if (cont.isActive) cont.resume(Unit) { _, _, _ -> } }
+        }
+        if (flash) flashStatus(appContext.getString(R.string.settings_map_cache_cleared))
     }
 
     fun downloadViewport() {
