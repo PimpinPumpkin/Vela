@@ -4197,7 +4197,11 @@ Gotchas:
   4 km stretch. Probe recipe: a throwaway core test that calls `ObfRouteEngine.route` with
   `-DvelaObf=<dir with the .obf + index.json>` (extra `-D` properties are NOT forwarded to the
   test JVM; read inputs from a file beside the obf) and a temporary println of
-  `turn.toString()`, `turnAngle`, `isSkipToSpeak` and `lanes` inside `toRoute`.
+  `turn.toString()`, `turnAngle`, `isSkipToSpeak` and `lanes` inside `toRoute`. (7) A PAUSED
+  drive draws its line lavender (`ROUTE_PAUSED_COLOR` in MapScreen, SPEC 4.8); `VelaMapView`
+  re-anchors the split on any `routeColor` change, or only the cut piece recolors (4a, demo
+  drive). (8) Offline search puts transit stops last unless the query asks for transit
+  (`OfflinePoiStore.TRANSIT_STOP_CATS`).
 - **Offline taps stay on the phone (2026-09-14).** `MapViewModel.offlineNow()` (latched `offline` or the
   system says no internet) gates `fetchReviews`, `fetchPhotos`, `fetchPlaceDetails`, `fetchStopDepartures`
   and the tap resolution in `onPoiTap`: offline, an open place shows its tile data or the Google listing
