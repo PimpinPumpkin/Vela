@@ -169,12 +169,24 @@ class VoiceGuide @Inject constructor(
         }
     }
 
-    private fun acquireFocus() {
+    /** Returns true when this call REQUESTED focus (nothing was held), which is when the driver's
+     *  player has not reacted yet and the first word needs a beat of lead (see [FOCUS_LEAD_MS]). */
+    private fun acquireFocus(): Boolean {
         focusHandler.removeCallbacks(abandonFocusRunnable) // cancel a pending release — keep the duck continuous
         synchronized(focusLock) {
             activeUtterances += 1
-            if (!focusHeld) requestFocus() // still held from the last prompt? don't re-request
+            if (!focusHeld) { requestFocus(); return true } // still held from the last prompt? don't re-request
         }
+        return false
+    }
+
+    /** Run [go] now when focus was already held, else after [FOCUS_LEAD_MS]: a player that pauses
+     *  on a transient duck (podcast and audiobook apps do, by Android's own guidance) takes a few
+     *  hundred milliseconds to stop, and the first word used to land on top of the music (user
+     *  2026-09-19, "pause music a little early"). A fresh grant means nothing of ours is
+     *  speaking, so nothing waits on an interrupt behind the delay. */
+    private fun afterFocusLead(fresh: Boolean, go: () -> Unit) {
+        if (fresh) focusHandler.postDelayed(go, FOCUS_LEAD_MS) else go()
     }
 
     private fun releaseFocus() {
@@ -398,10 +410,11 @@ class VoiceGuide @Inject constructor(
             // any interrupt special-casing. Do NOT reset the count here: the interrupted
             // utterance's own onDone is still in flight and a reset would double-count it,
             // abandoning focus while the interrupting prompt speaks.
-            acquireFocus()
+            val fresh = acquireFocus()
             // Romanize any foreign-script name for this (Latin) neural voice so it isn't dropped
             // (issue #184); the on-screen banner keeps the real local-script name.
-            n.speak(forSpeech(SpokenScript.forVoice(text, n.voiceLanguage ?: t, roadNameLatin)), interrupt) { releaseFocus() }
+            val spoken = forSpeech(SpokenScript.forVoice(text, n.voiceLanguage ?: t, roadNameLatin))
+            afterFocusLead(fresh) { n.speak(spoken, interrupt) { releaseFocus() } }
             return
         }
         speakViaSystem(text, interrupt, t)
@@ -433,7 +446,11 @@ class VoiceGuide @Inject constructor(
         }
         // A FLUSH stops the current utterance + drops the queue; their onStop callbacks
         // decrement, so just acquire for the new utterance.
-        acquireFocus()
+        val fresh = acquireFocus()
+        afterFocusLead(fresh) { speakViaSystemNow(engine, text, interrupt, t) }
+    }
+
+    private fun speakViaSystemNow(engine: TextToSpeech, text: String, interrupt: Boolean, t: String) {
         val mode = if (interrupt) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
         // Same foreign-name romanizing as the neural path (issue #184): the system voice for [t]
         // is Latin-script for the Latin languages, so a foreign road name would otherwise be lost.
@@ -526,6 +543,8 @@ class VoiceGuide @Inject constructor(
         // Keep audio focus this long after the last prompt so back-to-back prompts don't flap the
         // driver's music on/off between them. Short enough that music resumes promptly after a cluster.
         const val FOCUS_HOLD_MS = 1500L
+        // Lead between a FRESH focus grant and the first sample, so a pausing player has stopped.
+        const val FOCUS_LEAD_MS = 350L
     }
 }
 // (Road-abbreviation → spoken-form expansion moved to EnNavStrings.expandForSpeech in core/i18n, so it's

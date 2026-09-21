@@ -234,6 +234,7 @@ data class MapUiState(
     // A transit stop's live departure board (keyless, from the station's own place page).
     val stopDepartures: app.vela.core.model.StopDepartures? = null,
     val stopDeparturesLoading: Boolean = false,
+    val stopDeparturesCachedAt: Long? = null,   // set when the board is the OFFLINE copy (epoch ms it was seen)
     // The id of the place the board belongs to. The sheet renders the board ONLY when this matches
     // the selected place: writers are guarded, but selection paths that don't clear the board (a
     // saved/recent place open) let the previous stop's departures render on an unrelated place
@@ -1913,11 +1914,25 @@ class MapViewModel @Inject constructor(
             // Empty index = no area downloaded yet, so point the user at the download (issue #3).
             if (!isOnline()) {
                 val (offline, haveArea) = withContext(Dispatchers.IO) {
-                    val pois = runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList())
-                    // If it looks like a street address, geocode it too and lead with the address matches.
+                    val rawPois = runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList())
+                    // A pack POI usually carries no address of its own (OSM tags few), so the rows
+                    // read as bare names; fill the shown ones from the address index, the same
+                    // lookup the sheet runs on select (user 2026-09-19, "does not show the POI
+                    // address"). Bounded to what the list shows first.
+                    val pois = rawPois.mapIndexed { i, p ->
+                        if (i < OFFLINE_ADDR_FILL || !p.address.isNullOrBlank()) p
+                        else p.copy(address = runCatching { addressStore.reverseGeocode(p.location) }.getOrNull() ?: p.address)
+                    }
+                    // If it looks like a street address, geocode it too and lead with the address matches,
+                    // and with the BUSINESSES standing at that address ahead of the bare house point:
+                    // a typed address is usually a way of naming the shop on it.
                     val addrs = if (app.vela.core.data.OfflineAddressStore.looksLikeAddress(q))
                         runCatching { addressStore.geocode(q, near) }.getOrDefault(emptyList()) else emptyList()
-                    val merged = (if (addrs.isNotEmpty()) addrs + pois else pois + addrs).distinctBy { it.id }
+                    val atAddr = addrs.take(3).flatMap { a ->
+                        runCatching { offlinePoiStore.near(a.location, OFFLINE_AT_ADDR_M) }.getOrDefault(emptyList())
+                            .map { p -> if (p.address.isNullOrBlank()) p.copy(address = a.address ?: a.name) else p }
+                    }
+                    val merged = (if (addrs.isNotEmpty()) atAddr + addrs + pois else pois + addrs).distinctBy { it.id }
                     val have = merged.isNotEmpty() ||
                         runCatching { offlinePoiStore.count() > 0 || addressStore.count() > 0 || addressStore.streetCount() > 0 }.getOrDefault(false)
                     merged to have
@@ -2294,7 +2309,7 @@ class MapViewModel @Inject constructor(
     }
 
     private fun fetchStopDepartures(p: Place) {
-        if (offlineNow()) return
+        if (offlineNow()) { showCachedBoard(p); return }
         val fid = p.featureId
         if (fid.isNullOrBlank() || !fid.contains(":")) return
         val cat = p.category ?: ""
@@ -2312,9 +2327,10 @@ class MapViewModel @Inject constructor(
             }
             android.util.Log.i("VelaDepartures", "transitous lines=${board?.lines?.size ?: -1}")
             if (board != null && board.lines.isNotEmpty()) {
+                withContext(Dispatchers.IO) { transitBoardCache.put(p.location.lat, p.location.lng, board) }
                 _state.update { st ->
                     if (st.selected?.featureId != fid) st
-                    else st.copy(stopDepartures = board, stopDeparturesLoading = false, stopDeparturesFor = p.id)
+                    else st.copy(stopDepartures = board, stopDeparturesLoading = false, stopDeparturesFor = p.id, stopDeparturesCachedAt = null)
                 }
                 startBoardRefresh(p.id, p.location.lat, p.location.lng)
                 return@launch
@@ -2330,6 +2346,19 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** No connection: show the board this stop had the last time it was fetched, marked with when,
+     *  so the routes, headsigns and colors are there and nobody reads an old time as a live one. */
+    private fun showCachedBoard(p: Place) {
+        viewModelScope.launch {
+            val hit = withContext(Dispatchers.IO) { runCatching { transitBoardCache.get(p.location.lat, p.location.lng) }.getOrNull() }
+            _state.update { st ->
+                if (st.selected?.id != p.id) st
+                else if (hit == null) st.copy(stopDeparturesLoading = false)
+                else st.copy(stopDepartures = hit.board, stopDeparturesLoading = false, stopDeparturesFor = p.id, stopDeparturesCachedAt = hit.at)
+            }
+        }
+    }
+
     /** Fetch a transit stop's board from its own [boardFid] and attach it to the still-selected place
      *  ([selectedFid]). Feature-id-gated so a slow fetch can't land on a place the user has moved off. */
     private fun fetchBoardFrom(boardFid: String, selectedFid: String?, ownerId: String) {
@@ -2339,7 +2368,7 @@ class MapViewModel @Inject constructor(
             android.util.Log.i("VelaDepartures", "board lines=${board?.lines?.size ?: -1}")
             _state.update { st ->
                 if (st.selected?.featureId != selectedFid) st
-                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false, stopDeparturesFor = ownerId)
+                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false, stopDeparturesFor = ownerId, stopDeparturesCachedAt = null)
             }
         }
     }
@@ -3242,8 +3271,14 @@ class MapViewModel @Inject constructor(
                     // claim the tap. Keep it, but only on the same lot; past that the tapped label's
                     // own name and point stay, which for an open-data place still has its address,
                     // phone and hours.
+                    // A PERMANENTLY CLOSED listing never beats a live one (user 2026-09-19: a
+                    // chain store that had moved across the road kept resolving to its old,
+                    // closed listing, which then hid the open pin for good). Google keeps the
+                    // closed profile beside the live one for months; the live one is the answer
+                    // whenever there is one.
                     val pool = answerable.filter { nameAgrees(name, it.name) }
                         .ifEmpty { answerable.filter { it.location.distanceTo(location) <= NO_NAME_MATCH_M } }
+                        .let { p -> p.filterNot { it.permanentlyClosed }.ifEmpty { p } }
                     // THE SAME NAME BEATS A NEARER ONE (user 2026-09-18: tapping a supermarket
                     // opened the brand's fuel station, and tapping it opened a counter inside the
                     // store). `nameAgrees` is deliberately loose - it has to match "SpeeDee" to
@@ -3333,7 +3368,13 @@ class MapViewModel @Inject constructor(
             if (full != null && seed != null && (full.reviewCount != null || full.hours.isNotEmpty())) {
                 rememberOpenPlaceLink(seed.id, full)
             }
-            if (full != null && seed != null && full.permanentlyClosed) hideClosedOpenPlace(seed.id)
+            // Hide the open pin for a closed listing ONLY when Google has no live listing of that
+            // name nearby: a closure is a correction, a move is not (the same 150 m rule the
+            // ambient purge uses). Before this a slow session that surfaced the old profile
+            // first buried a business that was open across the street.
+            if (full != null && seed != null && full.permanentlyClosed &&
+                resolved.second.none { !it.permanentlyClosed && nameAgrees(name, it.name) && it.location.distanceTo(location) <= 150.0 }
+            ) hideClosedOpenPlace(seed.id)
             if (full != null && _state.value.selected == placeholder) {
                 _state.update { it.copy(selected = withListNote(full), placesHere = othersAt(full, resolved.second)) }
                 fetchReviews(full)
@@ -6130,6 +6171,7 @@ class MapViewModel @Inject constructor(
     private var transitStopsBox: DoubleArray? = null
     private var transitStopsJob: Job? = null
     private val transitStopCache by lazy { app.vela.data.TransitStopCache(appContext) }
+    private val transitBoardCache by lazy { app.vela.data.TransitBoardCache(appContext) }
     private var lastFlockViewport: DoubleArray? = null
     private var flockJob: Job? = null
 
@@ -6477,13 +6519,15 @@ class MapViewModel @Inject constructor(
                 directionsOpen = false,
             )
         }
+        if (offlineNow()) { showCachedBoard(placeholder); return }
         viewModelScope.launch {
             val board = withContext(Dispatchers.IO) {
                 runCatching { app.vela.core.data.transit.Transitous.boardFor(http, stop) }.getOrNull()
+                    ?.also { if (it.lines.isNotEmpty()) transitBoardCache.put(stop.lat, stop.lon, it) }
             }
             _state.update { st ->
                 if (st.selected?.id != placeholder.id) st
-                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false, stopDeparturesFor = placeholder.id)
+                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false, stopDeparturesFor = placeholder.id, stopDeparturesCachedAt = null)
             }
             if (board != null && board.lines.isNotEmpty()) startBoardRefresh(placeholder.id, stop.lat, stop.lon)
         }
@@ -6961,6 +7005,8 @@ class MapViewModel @Inject constructor(
         const val DR_MAX_M = 3_000.0      // hard cap on blind travel - longer than any common tunnel, short enough to bound a wrong guess
         const val SPEED_LIMIT_FORGET_M = 300.0 // drive this far past the last KNOWN limit with only
                                                // untagged snaps → clear the badge (don't show a stale limit)
+        const val OFFLINE_ADDR_FILL = 20      // offline search rows whose blank address is filled from the index
+        const val OFFLINE_AT_ADDR_M = 40.0    // a POI this close to a typed address is "at" it
         const val RESUME_MAX_AGE_MS = 60 * 60 * 1000L // a persisted nav older than this = that drive is long
                                                       // over; don't offer to resume it on the next launch
         const val NAV_HEARTBEAT_MS = 5 * 60 * 1000L   // refresh the resume timestamp this often WHILE driving,

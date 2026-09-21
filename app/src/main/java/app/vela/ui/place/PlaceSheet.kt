@@ -256,6 +256,7 @@ fun PlaceSheet(
     placesHere: List<Place> = emptyList(),
     stopDepartures: app.vela.core.model.StopDepartures? = null,
     stopDeparturesLoading: Boolean = false,
+    stopDeparturesCachedAt: Long? = null,
     onTapRoute: (app.vela.core.model.StopDepartureLine) -> Unit = {},
     onClose: () -> Unit,
     onToggleSave: () -> Unit,
@@ -989,7 +990,7 @@ fun PlaceSheet(
             // Live departure board for a transit stop, FIRST in the body (user 2026-07-13: the schedule
             // is what you open a stop for - Google leads with it too). Renders nothing for non-transit
             // places, so the unconditional position is safe.
-            StopDepartureBoard(stopDepartures, stopDeparturesLoading, ink, dim, dark, onTapRoute)
+            StopDepartureBoard(stopDepartures, stopDeparturesLoading, ink, dim, dark, onTapRoute, stopDeparturesCachedAt)
             place.address?.let { addr ->
                 Row(
                     Modifier.fillMaxWidth().padding(top = 14.dp),
@@ -2485,12 +2486,24 @@ private fun StopDepartureBoard(
     dim: Color,
     dark: Boolean,
     onTapRoute: (app.vela.core.model.StopDepartureLine) -> Unit = {},
+    cachedAt: Long? = null,
 ) {
     if (d == null && !loading) return
     Spacer(Modifier.height(14.dp))
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Icon(Icons.Default.DirectionsTransit, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
         Text(stringResource(R.string.place_departures), style = MaterialTheme.typography.titleSmall, color = ink)
+    }
+    // The offline copy says WHEN it was seen: the routes and colors are still right, the times
+    // are whatever they were then.
+    if (d != null && cachedAt != null) {
+        val ago = android.text.format.DateUtils.getRelativeTimeSpanString(cachedAt).toString()
+        Text(
+            stringResource(R.string.place_transit_cached, ago),
+            style = MaterialTheme.typography.bodySmall,
+            color = dim,
+            modifier = Modifier.padding(top = 4.dp),
+        )
     }
     if (d == null) {
         Row(

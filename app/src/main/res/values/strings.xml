@@ -717,6 +717,7 @@
     <string name="place_transit_scheduled">Scheduled</string>
     <string name="place_transit_cancelled">Canceled</string>
     <string name="place_departures">Departures</string>
+    <string name="place_transit_cached">Last seen %1$s. No connection, so times may have changed.</string>
     <string name="place_every">Every %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">You have arrived.</string>
     <string name="transit_nav_walk">Walk %1$s</string> <!-- format -->

@@ -289,7 +289,7 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
                     ?.takeIf { it.isNotBlank() }?.split(';', ',')?.first()?.trim()?.takeIf { it.isNotEmpty() }
                 val dest = runCatching { obj.getDestinationName(null, false, forward) }.getOrNull()?.takeIf { it.isNotBlank() }
                 val road = name ?: ref
-                val type = if (isFirst) ManeuverType.DEPART else obfType(turn!!)
+                val type = if (isFirst) ManeuverType.DEPART else spokenType(turn!!)
                 val rbExit = turn?.takeIf { it.isRoundAbout }?.exitOut?.takeIf { it > 0 }
                 val at = LatLng(
                     MapUtils.get31LatitudeY(obj.getPoint31YTile(seg.startPointIndex)),
@@ -391,6 +391,17 @@ class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
         @Volatile private var cachedBuilder: RoutingConfiguration.Builder? = null
         private fun builder(): RoutingConfiguration.Builder =
             cachedBuilder ?: RoutingConfiguration.getDefault().also { cachedBuilder = it }
+
+        /** [obfType], except that a turn OsmAnd itself would not announce is a CONTINUE. The
+         *  router sets `skipToSpeak` on a turn type it emitted for the road's own bend when there
+         *  is nothing to choose at that point (the road curves left and changes its name, no side
+         *  road worth the name), and OsmAnd's voice skips those. Vela mapped the bare type, so an
+         *  offline drive said "turn left onto X" on a road that only renamed itself (user
+         *  2026-09-19). As CONTINUE it folds into the previous maneuver as a rename
+         *  (`RouteGeometry.foldRenames`), which is what the online routers produce there.
+         *  Roundabouts keep their type: the exit is the instruction. */
+        internal fun spokenType(t: TurnType): ManeuverType =
+            if (t.isSkipToSpeak && !t.isRoundAbout) ManeuverType.CONTINUE else obfType(t)
 
         /** OsmAnd [TurnType] -> Vela [ManeuverType]. Roundabouts map by flag (value carries the
          *  exit); KL/KR are lane keeps = our KEEP_*; TU/TRU both read as a u-turn. */

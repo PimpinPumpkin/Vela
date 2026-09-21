@@ -620,6 +620,10 @@ names (`Route.roadNamesLatin`).
 
 - Region files are baked off-device (`scripts/build-obf-region.sh` plus `VelaObfShim`) and
   hosted as release assets with a manifest; the catalog is `tools/routing-regions.json`.
+- **A turn OsmAnd marks `skipToSpeak` is a CONTINUE (`ObfRouteEngine.spokenType`).** The router
+  emits a turn type for the road's own bend when nothing is there to choose, and OsmAnd's voice
+  skips it; mapping the bare type spoke "turn left onto X" where a road only curved and renamed.
+  As CONTINUE it folds into the previous maneuver as a rename. Roundabouts keep their type.
 - A trip routes on the **smallest installed region box covering both endpoints**; boxes
   overlap at borders, so selection falls through to the next smallest. A trip that does not fit
   one region falls back online.
@@ -1731,6 +1735,11 @@ Details:
   airport stay), so a stop cannot draw twice.
 - Every successful viewport fetch overwrites its area in a 24-area on-disk LRU
   (`TransitStopCache`), so visited areas keep canonical stops with no signal.
+- **Every board fetched is kept on disk (`TransitBoardCache`, newest 48, keyed by the stop's
+  coordinate to ~10 m, a 40 m near-match).** A stop tapped with no connection shows the board it
+  had last time, with a line saying when it was seen (`stopDeparturesCachedAt`), so the routes,
+  headsigns and colors are there and an old time is never read as a live one. A live board
+  replaces it and clears the marker; no cached board means the sheet shows no board, as before.
 - The transit category gate is multilingual and carries an exclusion list: gate words match and
   non-transit words (fuel, EV, emergency, broadcast) must not, because "station" appears in all
   of them. Both regexes are remotely overridable.
@@ -1780,6 +1789,11 @@ Rules:
 - Audio focus is refcounted through the utterance callbacks. A system TTS `speak()` returning
   `ERROR` enqueues no utterance and therefore no callback, so that path rolls back its acquire;
   a failed `onInit` clears the pending queue rather than accumulating prompts for a later init.
+- **A fresh focus grant leads the first sample by `FOCUS_LEAD_MS` (350 ms).** A player that
+  pauses on a transient duck (spoken-word apps, by Android's own guidance) takes a few hundred
+  milliseconds to stop, and without the lead the first word lands on the music. Focus already
+  held from the previous prompt (`FOCUS_HOLD_MS` 1500) speaks at once; a fresh grant means
+  nothing of Vela's is speaking, so no interrupt waits behind the delay.
 - Sentence pauses are made by splitting the utterance and splicing silence
   (`splitSentences`/`joinWithGaps`). The runtime's own silence scale is a no-op on this model.
 - **Every fragment gets terminal punctuation before synthesis.** A fragment ending in a letter
@@ -2380,7 +2394,10 @@ tooling default that claims otherwise. Before pushing, `git log origin/main..HEA
   Compose, Hilt, a version catalog, R8 in the `release` build type.
 - **Channels.** A push to `main` or `canary` builds and tests only; a push can never mint a
   release. The nightly prerelease `v0.4.<run>` (versionName `0.4.<run>`, versionCode
-  `2000 + run`) is cut by a daily cron that skips when `main` has not moved, or on demand.
+  `2000 + run`) is cut by a daily cron that skips when `main` has not moved, or on demand. Its
+  title is `Vela <version> nightly` and its notes open with "Nightly build."; the promotion
+  retitles to `Vela <version>` and regenerates the notes, so the channel is readable on the
+  release page and in the in-app What's new dialog.
   `canary` is the working branch and also a real update channel: each push replaces the single
   APK on a fixed-tag rolling release whose tag is deliberately not `v0.*`. A weekly workflow
   promotes the newest nightly to stable: same tag, same signed APK, no rebuild.

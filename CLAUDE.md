@@ -329,7 +329,8 @@ Defaults that make the safe path the easy one:
   zip), `flock-cameras` (the ALPR/DeFlock camera dataset `.bin` + manifest, weekly-refreshed).
   Those assets exist NOWHERE
   else - not in git, not on any server - the release IS the download backend the app's manifest
-  URLs point at. Deleting one takes the corresponding offline feature down globally until its
+  URLs point at. **Nightly titles say `nightly` and their notes open with "Nightly build."
+  (2026-09-21); promote-stable retitles to the bare version and regenerates the notes.** Deleting one takes the corresponding offline feature down globally until its
   workflow rebuilds everything (hours). This is not hypothetical: the first nightly-prune run
   (2026-07-09) deleted four of the five and broke every offline download; `routing-graphs`
   survived only because the repo has 400+ releases and it sat past the query's `--limit 200`
@@ -2541,6 +2542,14 @@ architecture note.
   never the bare not-planned close - the label is how the tracker shows why, and `wontfix` is for
   a request that was understood and declined. The rules themselves are in CONTRIBUTING.md under
   "Bug reports and feature requests"; both issue forms carry the matching checklist.
+- **A CLOSED LISTING NEVER BEATS A LIVE ONE, AND ONLY HIDES A PIN WHEN NO LIVE TWIN EXISTS
+  (2026-09-21).** Google keeps a moved business's old, permanently closed profile beside the live
+  one for months. The tap pool now drops closed listings whenever a live candidate exists, and
+  `hideClosedOpenPlace` fires only when no live listing of that name sits within 150 m (the
+  ambient purge's rule): a closure is a correction, a move is not. Before this a slow session that
+  surfaced the old profile first hid an open store for good (user 2026-09-19, a parts chain).
+  Nothing offline is ever cached as "no Google listing": the offline tap branch reads
+  `openPlaceCache` and writes nothing; the closed set was the only persistent negative.
 - **A TAP THAT DOES NOT LINK LOGS WHY (`VelaTap`, 2026-09-18).** The open-place resolve prints the
   tapped label, the tile's kind, whether it was seeded, how many results Google returned, how many
   survived the transit/junction filter, what was picked and at what distance, and the distance cap.
@@ -4170,6 +4179,19 @@ Gotchas:
   multisets, `\n` counts and XML validated per key). Weblate is still not live, so this is the flow:
   when `values/strings.xml` grows, re-run the per-locale catch-up before a stable. Voice-command
   examples are localized (a French address in fr, Ukrainian places in uk), not transliterated.
+- **Offline round two (user's own list, 2026-09-21).** (1) `TransitBoardCache` keeps every board
+  fetched (48, by stop coordinate); offline, `fetchStopDepartures` and `onTransitStopTap` show the
+  cached one with `stopDeparturesCachedAt` and the sheet prints "Last seen X". (2) The offline
+  search branch leads an address query with the pack POIs within `OFFLINE_AT_ADDR_M` (40 m) of
+  the geocoded point (`OfflinePoiStore.near`) and fills blank addresses on the first
+  `OFFLINE_ADDR_FILL` (20) rows through `reverseGeocode`; pack POIs rarely carry `addr:*`, so
+  results read as bare names before. (3) `resumeNav` waits up to `RESUME_FRESH_FIX_WAIT_MS`
+  (8 s) for a fix newer than the launch seed before routing: the seed is where the process died,
+  and routing from it drew the line over the road driven since. (4) `CarMapRenderer` sizes the
+  puck to the car screen. (5) `VoiceGuide.FOCUS_LEAD_MS` (350) delays the first sample after a
+  FRESH focus grant so a pausing player has stopped. (6) `ObfRouteEngine.spokenType` maps a
+  `skipToSpeak` turn to CONTINUE (see SPEC 4.5): OsmAnd's own voice skips those, ours said
+  "turn left" on a road that bent and renamed.
 - **Offline taps stay on the phone (2026-09-14).** `MapViewModel.offlineNow()` (latched `offline` or the
   system says no internet) gates `fetchReviews`, `fetchPhotos`, `fetchPlaceDetails`, `fetchStopDepartures`
   and the tap resolution in `onPoiTap`: offline, an open place shows its tile data or the Google listing

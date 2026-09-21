@@ -27,6 +27,16 @@ class ObfRouteEngineTest {
     }
 
     @Test
+    fun `a turn OsmAnd would not speak is a rename, not a turn`() {
+        val bend = TurnType.valueOf(TurnType.TL, false).apply { isSkipToSpeak = true }
+        assertEquals(ManeuverType.CONTINUE, ObfRouteEngine.spokenType(bend))
+        assertEquals(ManeuverType.TURN_LEFT, ObfRouteEngine.spokenType(t(TurnType.TL)))
+        // A roundabout is never silenced: the exit number is the instruction.
+        val rb = TurnType.getExitTurn(2, 0f, false).apply { isSkipToSpeak = true }
+        assertEquals(ManeuverType.ROUNDABOUT, ObfRouteEngine.spokenType(rb))
+    }
+
+    @Test
     fun `u-turns are never silenced`() {
         // Both u-turn codes must speak: CONTINUE is voice-silent in NavEngine, and a u-turn
         // mapped there would be swallowed whole (the GraphHopper path had this exact bug).

@@ -230,9 +230,13 @@ jobs:
             COMPARE=""
           fi
           [ -z "$LOG" ] && LOG="- Maintenance and internal changes"
-          NOTES="$(printf 'What'\''s changed in %s\n\n%s\n\n%s\n' "$VER" "$LOG" "$COMPARE")"
+          # The title and the first line say NIGHTLY: the release page listed nightlies and
+          # stables with the same "Vela 0.4.N" title and only the prerelease badge apart, and the
+          # in-app What's new dialog shows the body verbatim, so people could not tell which
+          # channel they were reading (user 2026-09-21). promote-stable.yml retitles and rewrites.
+          NOTES="$(printf 'Nightly build.\n\nWhat'\''s changed in %s\n\n%s\n\n%s\n' "$VER" "$LOG" "$COMPARE")"
           gh release create "v${VER}" \
-            --title "Vela $VER" \
+            --title "Vela $VER nightly" \
             --target "$GITHUB_SHA" \
             --prerelease \
             --notes "$NOTES" \
