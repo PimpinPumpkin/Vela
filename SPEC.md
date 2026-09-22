@@ -2561,8 +2561,12 @@ tooling default that claims otherwise. Before pushing, `git log origin/main..HEA
   and FDROID.md and can be read from any signed APK with `apksigner verify --print-certs`; do
   not confuse it with the F-Droid index fingerprint. The calibration signing key is separate and
   equally never committed. A `MAPTILER_KEY` secret reaches `BuildConfig` only.
-- **In-app updater** (`SelfUpdater`): reads the channel's releases, derives the version code
-  from the tag, offers a card, downloads with a no-call-timeout client, checks the zip magic
+- **In-app updater** (`SelfUpdater`): lists the app-release tags through
+  `git/matching-refs/tags/v0.` and reads one release per tag (`releases/tags/<tag>`; stable reads
+  `releases/latest`, canary its rolling tag), never the releases list, whose data releases carry
+  ~450 assets each and made a check 4 to 9 MB; a check is 2 to 3 requests plus at most
+  `HISTORY_MAX_RELEASES` (8) for the cumulative notes, and logs one `VelaUpdate` line with its
+  request and byte counts. It derives the version code from the tag, offers a card, downloads with a no-call-timeout client, checks the zip magic
   bytes, and hands the file to the system installer through the FileProvider, which enforces
   same package and same signature. Notes are cumulative across the versions between installed
   and offered. The launch check is throttled to about daily and "not now" pins the dismissed

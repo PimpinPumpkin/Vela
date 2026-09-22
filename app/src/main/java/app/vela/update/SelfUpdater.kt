@@ -47,6 +47,9 @@ class SelfUpdater @Inject constructor(
         .build()
 
     companion object {
+        /** Releases fetched for the cumulative What's-new notes, newest first; one request each. */
+        const val HISTORY_MAX_RELEASES = 8
+
         const val CHANNEL_STABLE = "stable"
         const val CHANNEL_NIGHTLY = "nightly"
         const val CHANNEL_CANARY = "canary"
@@ -77,9 +80,20 @@ class SelfUpdater @Inject constructor(
                     .firstOrNull { it.getString("name").endsWith(".apk") } ?: return null
                 return UpdateInfo(tag.removePrefix("v"), code, apk.getString("browser_download_url"), apk.optLong("size"), o.optString("body"))
             }
+            var requests = 0; var bytes = 0L
+            val started = System.currentTimeMillis()
             fun getJson(url: String): String = http.newCall(
                 Request.Builder().url(url).header("Accept", "application/vnd.github+json").build(),
-            ).execute().use { r -> if (!r.isSuccessful) error("HTTP ${r.code}"); r.body!!.string() }
+            ).execute().use { r ->
+                requests++
+                if (!r.isSuccessful) error("HTTP ${r.code}")
+                r.body!!.string().also { bytes += it.length }
+            }
+            fun logCheck(result: UpdateInfo?) = android.util.Log.d(
+                "VelaUpdate",
+                "check channel=$channel installed=$currentVersionCode -> " + (result?.let { "${it.versionName} (${it.versionCode})" } ?: "nothing newer") +
+                    " requests=$requests bytes=$bytes in ${System.currentTimeMillis() - started} ms",
+            )
             // The rolling canary release: the tag is always "canary", so the version comes from
             // the versionName/versionCode lines CI writes into the release notes each push.
             fun canaryInfo(): UpdateInfo? = runCatching {
@@ -93,35 +107,63 @@ class SelfUpdater @Inject constructor(
                     .firstOrNull { it.getString("name").endsWith(".apk") } ?: return null
                 UpdateInfo(name, code, apk.getString("browser_download_url"), apk.optLong("size"), body)
             }.getOrNull()
+            // THE RELEASES LIST IS NEVER FETCHED (2026-09-22). The repository's data releases
+            // (obf-regions, places-overlays, basemap-tiles, road-features) each list ~450 assets,
+            // about 780 KB of JSON apiece, and since the world bakes they sort into the top of the
+            // list: one check pulled 4 to 9 MB over cellular and parsed it with org.json on the
+            // phone, which is what "checking for updates is slow" was. The app-release TAGS come
+            // from the refs endpoint instead (~200 KB for 550 tags, no bodies, no assets) and a
+            // release is fetched one tag at a time (~15 KB each), at most a dozen per check.
+            fun appRuns(): List<Int> = runCatching {
+                val arr = JSONArray(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/git/matching-refs/tags/v0."))
+                (0 until arr.length()).mapNotNull { i ->
+                    val ref = arr.getJSONObject(i).optString("ref")
+                    Regex("""^refs/tags/v0\.\d+\.(\d+)$""").find(ref)?.groupValues?.get(1)?.toIntOrNull()
+                }.distinct().sortedDescending()
+            }.getOrDefault(emptyList())
+            fun releaseForRun(run: Int, minor: Int? = null): JSONObject? = runCatching {
+                // The tag's minor is not in the run number; try the current line first, then the
+                // older ones (the line moved 0.2 -> 0.3 -> 0.4 already).
+                val minors = listOfNotNull(minor) + listOf(4, 3, 2).filter { it != minor }
+                minors.firstNotNullOfOrNull { m ->
+                    runCatching { JSONObject(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/releases/tags/v0.$m.$run")) }.getOrNull()
+                }
+            }.getOrNull()
             fun nightlyInfo(): UpdateInfo? {
-                // The nightlies live in the full releases list (prereleases). Pick the highest code.
-                val arr = JSONArray(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/releases?per_page=15"))
-                return (0 until arr.length())
-                    .map { arr.getJSONObject(it) }
-                    .filterNot { it.optBoolean("draft") }
-                    .mapNotNull { releaseToInfo(it) }
-                    .maxByOrNull { it.versionCode }
+                // The newest app tag that has a published, non-draft release (a nightly, or a stable
+                // that was a nightly): the highest run is the newest either way.
+                for (run in appRuns().take(3)) {
+                    val o = releaseForRun(run) ?: continue
+                    if (o.optBoolean("draft")) continue
+                    return releaseToInfo(o) ?: continue
+                }
+                return null
             }
             val candidate = when (channel) {
                 CHANNEL_CANARY -> listOfNotNull(canaryInfo(), nightlyInfo()).maxByOrNull { it.versionCode }
                 CHANNEL_NIGHTLY -> nightlyInfo()
                 else -> releaseToInfo(JSONObject(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/releases/latest")))
             }
-            val picked = candidate?.takeIf { it.versionCode > currentVersionCode } ?: return@runCatching null
+            val picked = candidate?.takeIf { it.versionCode > currentVersionCode } ?: run { logCheck(null); return@runCatching null }
             // Every release between the one installed and the one offered, newest first (issue
             // #330): a phone that skipped a few releases gets their notes too, not just the
             // last. Canary's rolling tag carries its own list already, and a failure here
             // falls back to the single release's notes.
-            if (channel == CHANNEL_CANARY) return@runCatching picked
+            if (channel == CHANNEL_CANARY) { logCheck(picked); return@runCatching picked }
+            // The releases between the installed and the offered one, one small fetch each,
+            // capped so a phone many releases behind does not spend its API allowance.
             val history = runCatching {
-                val arr = JSONArray(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/releases?per_page=40"))
-                (0 until arr.length()).map { arr.getJSONObject(it) }
+                val minor = picked.versionName.substringAfter("0.").substringBefore(".").toIntOrNull()
+                appRuns()
+                    .filter { run -> 2000 + run in (currentVersionCode + 1)..picked.versionCode }
+                    .take(HISTORY_MAX_RELEASES)
+                    .mapNotNull { run -> releaseForRun(run, minor) }
                     .filterNot { it.optBoolean("draft") }
                     .filter { it.optBoolean("prerelease") == (channel != CHANNEL_STABLE) }
                     .mapNotNull { o -> releaseToInfo(o)?.let { it to o.optString("body") } }
             }.getOrDefault(emptyList())
-            picked.copy(notes = cumulativeNotes(history, currentVersionCode, picked))
-        }.getOrNull()
+            picked.copy(notes = cumulativeNotes(history, currentVersionCode, picked)).also { logCheck(it) }
+        }.onFailure { android.util.Log.w("VelaUpdate", "check failed: $it") }.getOrNull()
     }
 
 

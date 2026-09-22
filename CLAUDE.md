@@ -683,7 +683,14 @@ Defaults that make the safe path the easy one:
   occupant, the Google-style picker, graduated to Settings > Navigation on 2026-09-18;
   (share-diagnostics, texture render, building debug, trip recording, crash card; NB the update
   card's notes are CUMULATIVE since 2026-09-14, issue #330: `SelfUpdater.check` pulls
-  `/releases?per_page=40`, keeps the channel's releases with a code in (installed, offered],
+  the app-release TAGS from `git/matching-refs/tags/v0.` (about 200 KB, no bodies, no assets)
+  and then one `releases/tags/<tag>` per release with a code in (installed, offered], at most
+  `HISTORY_MAX_RELEASES` (8) of them; **NEVER `/releases?per_page=N` again (2026-09-22): the four
+  data releases each list ~450 assets, ~780 KB of JSON apiece, and since the world bakes they sort
+  into the top of that list, so a check pulled 4 to 9 MB over cellular and parsed it with org.json
+  on the phone, which was "checking for updates is slow". Device-checked on the 4a: a canary check
+  is 3 requests and 208 KB in 1.7 s; the line is logged as `VelaUpdate: check channel=... requests=N
+  bytes=N`.** It keeps the channel's releases with a code in (installed, offered],
   and `cumulativeNotes` joins them newest first under their versions, falling back to the single
   release's notes; canary keeps its rolling list), About
   (support, version tap-to-copy, auto-update, nightly toggle, check now). ⚠️ The vela-dpad fork
