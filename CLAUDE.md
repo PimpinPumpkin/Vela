@@ -4750,7 +4750,9 @@ Gotchas:
   the basemap merge's shape; it used to fold the run's own entries into the old manifest, and the
   merge job sat in a concurrency group, where a PENDING job is cancelled when a newer run joins: a
   54-state wave lost 34 merges that way and mailed a failure for each. Neither bake workflow has a
-  concurrency group on its merge now. Run the repair by hand after any wave to be sure:
+  concurrency group on its merge now. Parallel single-region runs finishing together also race on the manifest UPLOAD itself (a 422
+"already exists" or a 404 on the replaced asset); `upload_manifest` in both repair scripts retries
+with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sure:
   `bash scripts/repair-places-manifest.sh`); `PlacesTileStore.download` (index.json by bbox,
   PMTiles magic check) rides along with a region download (`downloadPlacesForArea`, next to the building
   overlay), `deleteRoutingGraph` removes archives whose bbox center sits in the region; manifest misses are

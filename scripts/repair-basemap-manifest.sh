@@ -53,7 +53,20 @@ if [ -n "$ENTRIES" ] && ls "$ENTRIES"/*.json >/dev/null 2>&1; then
 else
   jq -s '{regions: (. | sort_by(.name))}' "$WORK/entries.ndjson" > "$WORK/basemap-manifest.json"
 fi
-gh release upload "$TAG" "$WORK/basemap-manifest.json" --clobber --repo "$REPO"
+# Several merges finishing together race on the ONE manifest asset: --clobber deletes and
+# re-uploads, so a concurrent merge sees "already exists" (422) or a 404 for the asset it was
+# replacing (2026-09-22, two of nine parallel runs). Every merge derives the full manifest from
+# the release, so the loser only has to try again a few seconds later.
+upload_manifest() {
+  local f="$1" try
+  for try in 1 2 3 4 5; do
+    gh release upload "$TAG" "$f" --clobber --repo "$REPO" && return 0
+    echo "manifest upload lost a race (try $try); retrying"
+    sleep $((RANDOM % 15 + 5))
+  done
+  return 1
+}
+upload_manifest "$WORK/basemap-manifest.json"
 echo "basemap manifest now lists $(jq '.regions | length' "$WORK/basemap-manifest.json") regions"
 # An archive uploaded while this ran is not in the listing; without a concurrency group a
 # merge can be overtaken by a newer upload, so run once more when the release moved.
