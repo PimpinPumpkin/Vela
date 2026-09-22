@@ -773,6 +773,7 @@
     <string name="map_parking_earlier">Earlier spots</string>
     <string name="map_parking_clear">Clear parking</string>
     <string name="map_parking_moved">Parking moved here</string>
+    <string name="map_import_needs_google">Importing a Google Maps list asks Google for it. Turn off \"Use Vela without Google\" in Settings > Privacy to import it.</string>
     <string name="map_import_failed">Couldn\'t import that list. Check the link and try again.</string>
     <string name="place_clear_parking">Clear parking</string>
     <string name="parking_history_title">Parking history</string>
@@ -952,12 +953,12 @@
     <string name="settings_faster_auto_hint">When a faster route comes up mid drive, it is taken if you do not answer within a few seconds. Turn this off and an unanswered offer is dismissed instead. Either way the offer never stays on the map waiting.</string>
     <string name="settings_pause_in_bar">Pause button on the navigation bar</string>
     <string name="settings_pause_in_bar_hint">Puts pause beside the trip figures, where the step list button would be, and leaves mute with the map buttons. Off puts both on one button at the right of the map. Swipe up or use the arrow to open the step list either way.</string>
-    <string name="settings_pause_in_bar_hint_buttons">The step list button has this spot while "Prefer buttons over swipes" is on, so pause stays with the map buttons.</string>
+    <string name="settings_pause_in_bar_hint_buttons">With \"Prefer buttons over swipes\" on, the bar carries pause and the step list button side by side, and the trip figures shrink to fit.</string>
     <string name="nav_steps_handle_cd">Show steps</string>
     <string name="settings_route_trail">Road behind you</string>
     <string name="settings_route_trail_hint">Keeps the part of the route you have already driven drawn in gray behind the arrow. Off hides it, so only the road ahead is drawn.</string>
     <string name="settings_bike_safe">Bike routes prefer bike lanes and quiet streets</string>
-    <string name="settings_bike_safe_hint">Cycling routes favour signed cycle routes, bike lanes and residential streets over the fastest road, the way Google routes bikes. Uses the offline map where you have one downloaded, otherwise an open router online. Off gives the plain fastest bike route.</string>
+    <string name="settings_bike_safe_hint">Cycling routes favor signed cycle routes, bike lanes and residential streets over the fastest road, the way Google routes bikes. Uses the offline map where you have one downloaded, otherwise an open router online. Off gives the plain fastest bike route.</string>
     <string name="settings_route_picker">Google-style route picker</string>
     <string name="settings_route_picker_hint">Shows one route at a time, with the others behind a tap and their times on the map, and Start along the bottom. Turn it off for Vela\'s classic panel, which lists every route at once.</string>
     <string name="settings_route_bar">Road ahead bar</string>

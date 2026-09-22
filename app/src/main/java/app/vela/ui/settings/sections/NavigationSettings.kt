@@ -116,8 +116,7 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             label = stringResource(R.string.settings_pause_in_bar),
             checked = app.vela.ui.PauseInBar.on.value,
             onCheckedChange = { app.vela.ui.PauseInBar.set(context, it) },
-            // Reads as unavailable rather than absent when the step-list button owns the slot,
-            // which is the honest thing to say: the setting is fine, the slot is taken.
+            // With Prefer buttons on the bar carries the step-list button as well, so say so.
             hint = stringResource(
                 if (app.vela.ui.PreferButtons.on.value) R.string.settings_pause_in_bar_hint_buttons
                 else R.string.settings_pause_in_bar_hint

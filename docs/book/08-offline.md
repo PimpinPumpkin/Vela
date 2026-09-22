@@ -274,7 +274,8 @@ Deleting a region removes its routing file, its pack, and every places and basem
 its id or its center inside it. **Delete all offline data** removes every saved area and every
 installed file the stores know about, then sweeps their folders (`obf`, `poipacks`, `places`,
 `basemap`, `overlays`, `roadfeatures`, and the retired `graphs`) for anything left, such as an
-archive whose id vanished when a country was re-split. It clears the browsing cache and packs the
+archive whose id vanished when a country was re-split. It also deletes the label glyph pack the
+offline basemap needs (about 200 MB), which comes back with the next basemap download. It clears the browsing cache and packs the
 database. Voices and speech models stay.
 
 ### Updates: patches and compaction

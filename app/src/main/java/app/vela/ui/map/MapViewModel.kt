@@ -774,11 +774,15 @@ class MapViewModel @Inject constructor(
                 // red light from a 30 m BeaconDB hop (and re-armed the puck's creep).
                 val accFloor = maxOf(3.0, (if (loc.hasAccuracy()) loc.accuracy else 10f) * 0.7).toFloat()
                 val canDerive = prev != null && prevWasGps && isGps && movedM > accFloor && dt in 0.3..10.0
-                val bearing = when {
+                // fixBearing = a course THIS fix actually measured or derived; null when stopped.
+                // The dot keeps the last one, but guidance gets only a fresh one: a reroute pins
+                // its departure heading, and a stale heading from before a stop is worse than none.
+                val fixBearing = when {
                     loc.hasBearing() && loc.speed > 0.5f -> loc.bearing
                     canDerive && movedM > 3.0 -> bearingBetween(prev!!, here)
-                    else -> _state.value.myBearing
+                    else -> null
                 }
+                val bearing = fixBearing ?: _state.value.myBearing
                 // Speed EVIDENCE = this fix measured it (doppler) or real GPS movement derived it.
                 // A speedless fix used to hold the previous speed FOREVER — each one re-froze a
                 // stale nonzero mph through a whole stop. Hold at most SPEED_HOLD_MS; past that,
@@ -839,8 +843,9 @@ class MapViewModel @Inject constructor(
                     navSession.onLocation(
                         here, app.vela.ui.Units.imperial.value, speed?.toDouble(),
                         accuracyM = if (loc.hasAccuracy()) loc.accuracy.toDouble() else null,
-                        // Course for the engine's heading-vs-route off-route term.
-                        bearingDeg = bearing?.toDouble(),
+                        // Course for the engine's heading-vs-route off-route term and the
+                        // reroute's departure heading. Fresh only: stopped = null.
+                        bearingDeg = fixBearing?.toDouble(),
                     )
                     nav.lastNavFedMs = nowMs
                     updateSpeedLimit(here) // posted-limit badge for the road under the puck (off-thread)
@@ -1943,6 +1948,12 @@ class MapViewModel @Inject constructor(
             // resolves keylessly to the list's places, each carrying the owner's note; they land
             // as results (title in the bar) and each is savable/openable like any search hit.
             if (MapLinkParser.isShareLink(q)) {
+                // A shared list lives on Google's servers; with "Use Vela without Google" on, say
+                // so instead of fetching it (the switch promises no request reaches Google).
+                if (app.vela.ui.GoogleFree.on.value) {
+                    _state.update { it.copy(searching = false, status = appContext.getString(R.string.map_import_needs_google)) }
+                    return@launch
+                }
                 val imported = withContext(Dispatchers.IO) { runCatching { dataSource.importList(q) }.getOrNull() }
                 if (imported != null && imported.places.isNotEmpty()) {
                     // Show the places as results and OFFER to save (a banner over the results),
@@ -2827,7 +2838,11 @@ class MapViewModel @Inject constructor(
             // the RPC documents it's absent, and mining the page DOM for it isn't worth the
             // extra walking. Best-effort like everything else here.
             var rpcDates: Map<String, String> = emptyMap()
-            val datesJob = launch {
+            // The RPC has answered zero photos to every keyless client since 2026-07-11 (bot-gated,
+            // not drifted), so it is NOT sent by default: a request per place tap that can only
+            // come back empty is Google contact for nothing. The `photoDatesRpc` tuning dial (1 =
+            // on) revives it from the signed calibration if Google ever answers again.
+            val datesJob = if (app.vela.core.config.CalibrationStore.latest.tune("photoDatesRpc", 0.0) < 0.5) null else launch {
                 val rpc = runCatching { dataSource.placePhotos(fid) }.getOrDefault(emptyList())
                 rpcDates = rpc.mapNotNull { ph -> ph.postedText?.let { ph.url.substringBefore('=') to it } }.toMap()
                 // Join diagnostics (menu dates weren't showing, user 2026-07-11): how many photos
@@ -2887,7 +2902,7 @@ class MapViewModel @Inject constructor(
             }.getOrDefault(emptyList())
             // Wait for the date fetch before the final apply so the settled gallery is dated
             // even when the RPC was slower than the walk (partials may have gone out dateless).
-            datesJob.join()
+            datesJob?.join()
             _state.update { st ->
                 val sel = st.selected
                 if (sel?.featureId == fid) st.copy(
@@ -6051,9 +6066,11 @@ class MapViewModel @Inject constructor(
         val files = appContext.filesDir
         OfflineStorage(
             // MapLibre keeps saved areas AND the browsing cache in one database (.mapbox);
-            // the downloaded building/address overlays are map data too.
+            // the downloaded building/address overlays are map data too, and so are the label
+            // glyph pack the offline basemap needs (~200 MB) and the baked road features.
             mapsMb = mbOf(java.io.File(files, ".mapbox")) + mbOf(java.io.File(files, "mbgl-offline.db")) +
-                mbOf(java.io.File(files, "overlays")) + mbOf(java.io.File(files, "basemap")),
+                mbOf(java.io.File(files, "overlays")) + mbOf(java.io.File(files, "basemap")) +
+                mbOf(java.io.File(files, "glyphs")) + mbOf(java.io.File(files, "roadfeatures")),
             routingMb = mbOf(java.io.File(files, "obf")),
             // The packs AND the places archives a region download pulls: both are the place data
             // behind the map's businesses, and leaving the archives out of the only storage screen
@@ -6066,7 +6083,7 @@ class MapViewModel @Inject constructor(
     /** Everything downloaded for offline use, gone (issue #601): every saved area, every region's
      *  routing, place pack, places and basemap archives, the building and address overlays (which
      *  ride along with an area save and had NO delete path of their own), the road features, any
-     *  legacy graph tree, and the browsing cache; then MapLibre's database is PACKED so the file
+     *  legacy graph tree, the basemap's label glyph pack, and the browsing cache; then MapLibre's database is PACKED so the file
      *  actually shrinks. Files a per-region delete could not reach (an archive whose id left the
      *  catalog when a country was re-split) go too: after the stores have deleted what they know,
      *  every remaining file under their folders is swept, keeping only the index files. Voices and
@@ -6085,6 +6102,10 @@ class MapViewModel @Inject constructor(
                         if (f.name !in keep) runCatching { if (f.isDirectory) f.deleteRecursively() else f.delete() }
                     }
                 }
+                // The label glyph pack only serves the offline basemap, which is gone now; it comes
+                // back with the next basemap download (and heals itself if one is ever installed
+                // without it).
+                runCatching { app.vela.offline.GlyphPackStore.delete(appContext) }
             }
             (routeEngine as? app.vela.core.data.ObfRouteEngine)?.shutdown()
             kotlinx.coroutines.suspendCancellableCoroutine<Unit> { cont ->

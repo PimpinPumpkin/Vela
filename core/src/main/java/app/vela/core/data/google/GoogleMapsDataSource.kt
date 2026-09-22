@@ -1300,6 +1300,8 @@ class GoogleMapsDataSource @Inject constructor(
      *  can't break the URL builder (only the parser paths, which are documented in
      *  [EntityListParser]). Calibrated live 2026-07-08. */
     override suspend fun importList(shareUrl: String): app.vela.core.model.ImportedList? = io {
+        // The link resolves on Google's own servers, so "Use Vela without Google" refuses it.
+        if (app.vela.core.data.NoGoogle.enabled) return@io null
         runCatching {
             session.ensure()
             val html = get(shareUrl.trim())

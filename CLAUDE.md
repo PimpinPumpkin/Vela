@@ -2226,7 +2226,9 @@ architecture note.
   place (reviews, photos, popular times, transit directions, the stop-board Google fallback);
   `ensureTraffic` is off (the raster is Google's tile server); the satellite `-1` fallback draws
   no deep layer; the place sheet hides the Street View pill and the full-screen reviews page.
-  `importList` (a Google Maps share link the user pasted) is deliberately not gated. No unit test
+  `importList` (a pasted Google Maps share link) is gated too since 2026-09-22 (it was exempt, but
+  the switch and the FAQ promise no request reaches Google; the search shows
+  `map_import_needs_google` instead). No unit test
   covers the switch itself (it is a flag read at each seam); the FAQ lists what it costs. Keep it in step when a source or a default changes; the
   fleet default for the places source lives in `calibration.json` (`defaultPlacesSource`, "open"
   today) and a change there needs `./scripts/sign-calibration.sh`.
@@ -2949,7 +2951,8 @@ architecture note.
   `NavController.navStopsFor` starts the drive with the detour points as SILENT `NavStop`s
   (`NavStop.silent`: routed through by every reroute and recheck, never spoken, filtered out of
   `remainingStops()` so the stops row, the editor and the leg dividers never show them). A mid-drive
-  stops EDIT rebuilds the list from the visible stops and drops the detour; `addStop` keeps it.
+  stops EDIT keeps the detour too (`NavSession.withSilentVias` re-inserts the silent points still
+  ahead in route order around the edited list), and so does `addStop`.
   Logcat `VelaFlockRoute`: `detour: clusters=N requests=N kept=… cameras A -> B`. It depends on the
   same-day waypoint work: Google prices every candidate through its stops with traffic, so the cap
   compare is honest. DRIVE only, and epoch-guarded like the re-rank.
@@ -3390,7 +3393,8 @@ architecture note.
   with the total): every saved area, every store's installed ids, then a SWEEP of every file under
   `obf/ poipacks/ places/ basemap/ overlays/ roadfeatures/ graphs/` except the index files
   (an archive whose id left the catalog when a country was re-split is unreachable by any region
-  row), the ambient cache, then pack. Building overlays had NO delete path at all before this:
+  row), the glyph pack (`files/glyphs`, only the offline basemap uses it; the map storage figure
+  counts it and `roadfeatures/` since 2026-09-22), the ambient cache, then pack. Building overlays had NO delete path at all before this:
   every area save pulled a ~200 MB state file that nothing ever removed. Voices/ASR are left alone
   (they have their own Remove). Both buttons are in the settings search now; "Clear map cache"
   never was.
@@ -3509,7 +3513,9 @@ architecture note.
   `browseZoomWide` / `browseZoomFocus` (the browse fly-to zooms, 15.5/14.5/16.5),
   `overlayCoverFrac` (the MS building-overlay hide threshold, 0.18), `ambientFanoutPermits`
   (parallel scrape parses, 4; read at construction so it applies on the next process start),
-  `ambientCapMin`/`ambientCapMax` (the zoom-tiered on-screen POI cap, 45/140). View-layer
+  `ambientCapMin`/`ambientCapMax` (the zoom-tiered on-screen POI cap, 45/140), `photoDatesRpc`
+  (0 = the dead hspqX photo-dates request is not sent per place tap, 1 = send it; since
+  2026-09-22, because it answers zero photos to every keyless client). View-layer
   consumers read `CalibrationStore.latest` (a static of the last verified bundle) since
   composables can't inject the store. Same edit+bump+re-sign flow as everything else.
 - **Signed channel (mandatory).** The bundle is **ECDSA-P256/SHA-256 signed**
@@ -4732,7 +4738,7 @@ Gotchas:
   BUSINESS classes (`OSM_BUSINESS_CLASSES`: the style's food/shop/lodging/fuel groups plus the
   commercial health and money classes) are hidden outright by a static term in
   `applyPoiTierFilters` (`osmHideBusiness`, false when `MapPoiPrefs.osmBusinesses` "OpenStreetMap
-  shops too" is on (2026-09-17, off by default); then `osmFillIn` queries EVERY open icon group, not
+  shops too" is on (2026-09-17, ON by default); then `osmFillIn` queries EVERY open icon group, not
   just the non-business ones, so OSM businesses twinning an open place drop by name; set by the overlay effect, and also while
   `placesPending` says the first places lookup has not answered, so a cold start does not flash
   OSM's shops and then drop them), because Overture,
@@ -5395,15 +5401,16 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   bump/hump/table/cushion (amber disc + bump glyph, HUMP_IMG - only the shapes a driver FEELS;
   island/chicane/choker are lane geometry, excluded) ride the SAME pipeline: `TrafficControl.kind`
   (enum SIGNAL/STOP/RAIL_CROSSING/SPEED_HUMP, replaced the old stop boolean), one shared
-  `controlSelectors()` in both the viewport-box and route-corridor queries, per-kind 30 m
+  `controlSelectors()` in both the viewport-box and route-corridor queries, per-kind 45 m
   clustering, same layers/zoom gates/caps. Built as the buildable subset of "aids on the road"
   after every LIVE incident source proved dead (see ROADMAP: Google=binary vt tiles,
   Waze=reCAPTCHA-gated). OSM `highway=traffic_signals` (a stoplight icon) and `highway=stop` (a red STOP octagon) as a
   non-interactive `SymbolLayer` (`vela-controls`, icons `vela-signal`/`vela-stop`) drawn **beneath** the POI dots
   + pins, `minZoom 16`. **CLUSTERED PER INTERSECTION (2026-07-25):** OSM maps one control node per APPROACH (a
   four-way stop = four `highway=stop` nodes), so `refreshTrafficControls` merges same-type nodes
-  within 30 m (`MapDeclutter.cluster`, the same radius the spoken pass-the-light counting uses)
-  to their centroid before the cap - one drawn glyph per junction, like Google, and fewer
+  within `CONTROLS_CLUSTER_M` (45 m, `MapDeclutter.cluster`; it was 30 m, which drew two lights at
+  a wide four-way; the spoken pass-the-light count still clusters at 30 m) to their centroid
+  before the cap - one drawn glyph per junction, like Google, and fewer
   allowOverlap symbols to render. **Icon sizing/visibility (2026-07-06, device-verified in downtown Davis):** `iconSize`
   is a zoom-interpolated expression (~0.75 at z15.5 → 1.05 at z17 → 1.5 at z19) - the flat 0.55 was too small to
   spot, especially tilted in nav; and `iconAllowOverlap(true)`+`iconIgnorePlacement(true)` so they ALWAYS draw
