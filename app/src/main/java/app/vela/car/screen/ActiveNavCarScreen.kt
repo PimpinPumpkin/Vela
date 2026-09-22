@@ -105,7 +105,14 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
         val next = s.route?.maneuvers?.getOrNull(s.nav.stepIndex)
         val then = s.route?.maneuvers?.getOrNull(s.nav.stepIndex + 1) // "then …" junction preview
 
-        val info = ManeuverMapper.routingInfo(next, then, s.nav.distanceToNextManeuver, imperial)
+        // The road you are on: the leg's road, following its silent renames (the phone's pill rule).
+        val currentRoad = s.route?.maneuvers?.getOrNull(s.nav.stepIndex - 1)?.let { prev ->
+            prev.roadAt(prev.distanceMeters - s.nav.distanceToNextManeuver).let { (n, r) -> n?.takeIf { it.isNotBlank() } ?: r?.takeIf { it.isNotBlank() } }
+        }
+        val continueCue = currentRoad?.let { carContext.getString(app.vela.R.string.car_continue_on, it) }
+        val info: androidx.car.app.navigation.model.NavigationTemplate.NavigationInfo =
+            if (s.paused) androidx.car.app.navigation.model.MessageInfo.Builder(carContext.getString(app.vela.R.string.car_paused)).build()
+            else ManeuverMapper.routingInfo(next, then, s.nav.distanceToNextManeuver, imperial, continueCue)
         val estimate = ManeuverMapper.destinationEstimate(
             s.remainingDistance, s.remainingDuration, System.currentTimeMillis(), imperial,
         )
@@ -154,6 +161,24 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
                     .build(),
             )
         }
+        // Hold the drive (the phone's pause): the route and the figures stay, the guidance stops.
+        strip.addAction(
+            Action.Builder()
+                .setTitle(carContext.getString(if (s.paused) app.vela.R.string.car_resume else app.vela.R.string.car_pause))
+                .setOnClickListener { deps.navSession.setPaused(!deps.navSession.state.value.paused); invalidate() }
+                .build(),
+        )
+        // Fuel, food, coffee along the drive; a pick becomes the next stop.
+        strip.addAction(
+            Action.Builder()
+                .setIcon(
+                    androidx.car.app.model.CarIcon.Builder(
+                        androidx.core.graphics.drawable.IconCompat.createWithResource(carContext, android.R.drawable.ic_menu_search),
+                    ).build(),
+                )
+                .setOnClickListener { screenManager.push(AlongRouteCarScreen(carContext, deps)) }
+                .build(),
+        )
         strip.addAction(
             Action.Builder()
                 .setTitle(carContext.getString(app.vela.R.string.car_end))
@@ -170,6 +195,8 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
             .addAction(carAction(android.R.drawable.ic_menu_mylocation) { deps.mapRenderer(carContext).follow() })
             .addAction(carAction(android.R.drawable.ic_menu_add) { deps.mapRenderer(carContext).zoomBy(1.0) })
             .addAction(carAction(android.R.drawable.ic_menu_revert) { deps.mapRenderer(carContext).zoomBy(-1.0) })
+            // Overview: the whole remaining route framed, tap again (or recenter) to follow again.
+            .addAction(carAction(android.R.drawable.ic_menu_mapmode) { deps.mapRenderer(carContext).toggleOverview() })
             .build()
 
         return NavigationTemplate.Builder()

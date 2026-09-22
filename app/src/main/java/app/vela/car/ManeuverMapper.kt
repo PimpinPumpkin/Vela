@@ -100,13 +100,27 @@ object ManeuverMapper {
 
     /** The next-turn card for the [NavigationTemplate] — current step + distance to it, plus the
      *  following maneuver as the "then" step (Google's "then turn left" junction preview). */
-    fun routingInfo(next: VelaManeuver?, then: VelaManeuver?, distanceToNext: Double, imperial: Boolean): RoutingInfo {
+    fun routingInfo(next: VelaManeuver?, then: VelaManeuver?, distanceToNext: Double, imperial: Boolean, continueCue: String? = null): RoutingInfo {
         val b = RoutingInfo.Builder()
         if (next == null) return b.setLoading(true).build()
+        // A turn still far ahead: the card leads with the road you are ON ("Continue on X" and the
+        // distance to the turn) and shows the turn as the "then" step, the way Google's does; up
+        // close, the turn itself leads with the following one as "then".
+        if (continueCue != null && distanceToNext > CONTINUE_FAR_M) {
+            b.setCurrentStep(
+                Step.Builder(continueCue).setManeuver(Maneuver.Builder(Maneuver.TYPE_STRAIGHT).build()).build(),
+                carDistance(distanceToNext, imperial),
+            )
+            runCatching { b.setNextStep(carStep(next)) }
+            return b.build()
+        }
         b.setCurrentStep(carStep(next), carDistance(distanceToNext, imperial))
         if (then != null) runCatching { b.setNextStep(carStep(then)) } // "then …" preview
         return b.build()
     }
+
+    /** Past this distance to the next turn the card leads with the current road. */
+    const val CONTINUE_FAR_M = 1_500.0
 
     /** A per-STEP [TravelEstimate] (distance + time to the NEXT maneuver) for Trip.addStep — the host's
      *  navigation data channel (cluster/rail). Time is a rough proportional estimate; the host mainly

@@ -1799,6 +1799,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   mis-voweled "take" ("tyke") when the whole ramp sentence was phonemized in one breath; the
   spoken text now inserts a comma before "toward", so the maneuver clause and the sign
   destination are separate beats (Google pauses there too). Banner text unchanged.
+- ✅ **Car screen round three (2026-09-22, awaiting a head-unit check).** Pause/Resume from the car
+  with a "Paused" card, search along the route (fuel, food, coffee, the phone's quick categories)
+  with a pick becoming the next stop, camera/speeding/closing-soon alerts as car toasts, a
+  "Continue on <road>" card while the next turn is far, an overview toggle, and the route's
+  lights, stop signs, speed cameras and plate cameras drawn on the car map.
 - ✅ **Car screen round two (2026-09-21, awaiting a head-unit check).** Vela's own map theme on
   the car map, the library's multi-source watermark replaced by one OpenStreetMap credit, the puck
   framed inside the visible area (it hung off the bottom edge), the phone's smooth between-fix
