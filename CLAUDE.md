@@ -5552,6 +5552,13 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   `buildBoard` is pure + unit-tested (TransitousTest). Remaining phase-2 candidate: transit
   directions via `/api/v1/plan` as a FALLBACK only - Google stays the primary transit router on
   purpose (its ETAs are traffic/history-aware; GTFS-RT only knows current lateness).
+- **A board needs no Google listing (2026-09-22):** `fetchStopDepartures` used to return before
+  Transitous whenever the place had no Google feature id, and the Google-off tap path never
+  called it, so an OpenStreetMap station tapped with Google off showed no departures although
+  Transitous needs only the coordinate. The fetch now gates on the category alone, owns its
+  result by the place id when there is no feature id, skips only the Google fallbacks, and runs
+  from the Google-off and lookup-off tap paths (a basemap stop passes its transit hint as the
+  category). Verified on the 4a: Davis station, Google off, 27 lines.
 - **Canonical GTFS stops drawn on the map (2026-07-13, phase 2 of the Transitous adoption,
   device-verified).** At z >= 15 (`TRANSIT_STOPS_MIN_ZOOM`) the viewport's transit stops come from
   `Transitous.stopsInBox` (`map/stops`) and draw as a blue bus badge + stop-name label

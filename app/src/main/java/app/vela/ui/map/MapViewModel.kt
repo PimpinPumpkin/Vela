@@ -2369,18 +2369,21 @@ class MapViewModel @Inject constructor(
     }
 
     private fun fetchStopDepartures(p: Place) {
-        if (offlineNow()) { showCachedBoard(p); return }
-        val fid = p.featureId
-        if (fid.isNullOrBlank() || !fid.contains(":")) return
         val cat = p.category ?: ""
         val isTransit = isTransitCategory(cat)
         val isIntersection = cat.contains("intersection", ignoreCase = true)
         if (!isTransit && !isIntersection) return
+        if (offlineNow()) { showCachedBoard(p); return }
+        // A place with no Google listing (an open-data stop, any tap with Google off) still gets its
+        // board: Transitous needs only the coordinate. Only the Google-page fallbacks need the id
+        // (user 2026-09-22: the id check used to come first, so those places never got a board).
+        val fid = p.featureId?.takeIf { it.contains(":") }
+        fun owns(st: MapUiState) = if (fid != null) st.selected?.featureId == fid else st.selected?.id == p.id
         // PRIMARY: Transitous (open GTFS + realtime, keyless). One proximity lookup at the place's own
         // coordinate - no name correlation against Google/OSM at all - and unlike Google's anonymous
         // page it returns EVERY route at the stop (a hub's parent station merges all its bays). The
         // Google blob paths below stay as the fallback where Transitous has no coverage.
-        _state.update { if (it.selected?.featureId == fid) it.copy(stopDeparturesLoading = true, stopDeparturesFor = p.id) else it }
+        _state.update { if (owns(it)) it.copy(stopDeparturesLoading = true, stopDeparturesFor = p.id) else it }
         viewModelScope.launch {
             val board = withContext(Dispatchers.IO) {
                 runCatching { app.vela.core.data.transit.Transitous.board(http, p.location.lat, p.location.lng) }.getOrNull()
@@ -2389,10 +2392,15 @@ class MapViewModel @Inject constructor(
             if (board != null && board.lines.isNotEmpty()) {
                 withContext(Dispatchers.IO) { transitBoardCache.put(p.location.lat, p.location.lng, board) }
                 _state.update { st ->
-                    if (st.selected?.featureId != fid) st
+                    if (!owns(st)) st
                     else st.copy(stopDepartures = board, stopDeparturesLoading = false, stopDeparturesFor = p.id, stopDeparturesCachedAt = null)
                 }
                 startBoardRefresh(p.id, p.location.lat, p.location.lng)
+                return@launch
+            }
+            // The Google fallbacks need a Google listing and Google itself.
+            if (fid == null || googleOff()) {
+                _state.update { st -> if (owns(st)) st.copy(stopDeparturesLoading = false) else st }
                 return@launch
             }
             // FALLBACK: the Google place-page blob (agency-dependent, one route at hubs - but better
@@ -3299,6 +3307,7 @@ class MapViewModel @Inject constructor(
         // resolve (they have nothing else to show).
         if (seed != null && !app.vela.ui.MapPoiPrefs.lookupTappedPlaces.value) {
             rememberRecentPlace(SavedPlace.of(placeholder))
+            fetchStopDepartures(placeholder) // Transitous is not Google
             return
         }
         // Offline, or Google off: no search, no reviews, no photos. An open place shows its tile
@@ -3310,6 +3319,11 @@ class MapViewModel @Inject constructor(
                 _state.update { it.copy(selected = withListNote(remembered)) }
             }
             rememberRecentPlace(SavedPlace.of(remembered ?: placeholder))
+            // Transitous needs no Google. A basemap stop has only its tile class, which the transit
+            // hint already read, so the hint stands in for the category here.
+            (_state.value.selected ?: placeholder).let { p ->
+                fetchStopDepartures(if (p.category == null && transitHint != null) p.copy(category = transitHint) else p)
+            }
             return
         }
         val uiLang = app.vela.ui.AppLocale.language.value.ifBlank { java.util.Locale.getDefault().language }
