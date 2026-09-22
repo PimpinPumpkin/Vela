@@ -201,6 +201,10 @@
     <string name="mapvm_offline_all_deleted">Offline data deleted</string>
     <string name="settings_routing_remove">Remove offline routing</string>
     <string name="settings_download">Download</string>
+    <string name="settings_region_whole_or_pieces">One file, or %1$d pieces below</string> <!-- format -->
+    <string name="settings_downloaded_title">Downloaded</string>
+    <string name="settings_downloaded_none">Nothing downloaded yet. Save the area you are looking at above, or pick a state or country below.</string>
+    <string name="settings_downloaded_area">Saved area</string>
     <string name="settings_region_group_title">All of %1$s</string> <!-- format -->
     <string name="settings_region_group_size">%1$d pieces, about %2$s once installed</string> <!-- format -->
     <string name="settings_region_group_partial">%1$d of %2$d pieces installed, about %3$s for all</string> <!-- format -->
@@ -329,6 +333,9 @@
     <string name="donate_no_browser">No browser installed to open the donate page</string>
     <string name="settings_version">Version</string>
     <string name="settings_version_line">Vela %1$s  (build %2$d)</string> <!-- format -->
+    <string name="settings_installer_play">Installed by %1$s. This install is set up for Android Auto; an in-app update would undo that, so update through the same installer.</string>
+    <string name="settings_installer_none">Sideloaded (no installer recorded). Android Auto will not list this install.</string>
+    <string name="settings_installer_other">Installed by %1$s. Android Auto will not list this install.</string>
     <string name="settings_version_copied">Version copied</string>
     <string name="settings_collapse">Collapse</string>
     <string name="settings_expand">Expand</string>

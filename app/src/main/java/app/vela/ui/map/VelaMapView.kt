@@ -7634,7 +7634,7 @@ private fun arrowBitmap(): Bitmap {
 /** Navigation puck: a WHITE chevron inside a filled BRIGHT-NAVY circle with a soft drop shadow
  *  and NO white ring (user 2026-07-11: bigger, drop the ring, brighter navy blue). Points up
  *  (north) so `iconRotate(bearing)` aims it down the heading. */
-private fun navPuckBitmap(
+internal fun navPuckBitmap(
     scale: Float = app.vela.ui.PuckStyle.scale(),
     whiteDisc: Boolean = app.vela.ui.PuckStyle.whiteDisc(),
 ): Bitmap {

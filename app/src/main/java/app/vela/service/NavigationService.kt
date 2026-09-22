@@ -59,6 +59,8 @@ class NavigationService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var observing = false
 
+    /** The live update's tracker puck, drawn once per process. */
+    private var cachedPuck: android.graphics.Bitmap? = null
     // One-entry glyph cache (state ticks ~1 Hz; the type changes only at each turn).
     // Keyed on the accent too, so flipping Material You mid-drive recolors the arrow.
     private var cachedGlyph: Bitmap? = null
@@ -230,7 +232,12 @@ class NavigationService : Service() {
             .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // full turn info on the lock screen
-        promoteToLiveUpdate(b, s, largeIcon)
+        // The live update's TRACKER is the puck, the thing that moves along the bar (Google's own
+        // card draws its blue arrow dot there and keeps the turn glyph as the large icon on the
+        // right, user 2026-09-22); it used to be the maneuver glyph, which changed shape at every
+        // turn and read as the next action rather than the car.
+        val puck = cachedPuck ?: app.vela.ui.map.navPuckBitmap(scale = 1f).also { cachedPuck = it }
+        promoteToLiveUpdate(b, s, puck)
         return b.build()
     }
 
