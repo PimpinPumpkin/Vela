@@ -12,7 +12,6 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import app.vela.core.VelaConfig
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -134,7 +133,7 @@ abstract class HiddenWebView(
         val wv = WebView(context)
         wv.settings.javaScriptEnabled = true
         wv.settings.domStorageEnabled = true
-        wv.settings.userAgentString = VelaConfig.USER_AGENT // desktop UA -> desktop web Maps (mobile deep-links to intent://)
+        WebViewIdentity.apply(wv.settings) // desktop UA -> desktop web Maps (mobile deep-links to intent://); no X-Requested-With, desktop client hints
         wv.addJavascriptInterface(bridge(), "VelaBridge")
         wv.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(m: ConsoleMessage): Boolean {

@@ -216,6 +216,7 @@ dependencies {
     implementation("org.apache.commons:commons-compress:1.27.1")
 
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.webkit)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

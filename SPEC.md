@@ -391,9 +391,38 @@ Constraints:
 - The UA is a **desktop** string on purpose. Mobile web Maps serves different markup and
   endpoints, so switching is a recalibration of every parser, not a header edit. The
   `Sec-CH-UA-Mobile: ?0` and `"Windows"` platform hints track it.
-- **Do not push a `userAgent` through calibration yet.** Six WebView scrapes still set
-  `userAgentString` from the compiled constant; until they read `CalibrationStore`, a pushed UA
-  makes one client present two Chrome versions, which is worse than being stale.
+- **The six WebViews present the same identity (`app/web/WebViewIdentity`, 2026-09-22).** Every
+  hidden WebView (the five fetchers and the reviews panel) applies the calibrated `userAgent`
+  and user-agent metadata built from `secChUa` (the brands, mobile `?0`, platform Windows,
+  x86 64-bit, a matching full-version list) through androidx.webkit, feature-gated. Measured on
+  a device with a header echo before this: a WebView with an overridden UA string still sent its
+  own hints, `"Android WebView";v="153"`, `sec-ch-ua-mobile: ?1`, `sec-ch-ua-platform:
+  "Android"`, under the Windows Chrome UA, and the high-entropy ones (`sec-ch-ua-model: "K"`,
+  platform version 10.0.0) when asked. After: Chrome 153 brands, `?0`, Windows, x86, 64, on
+  Vanadium 153. A pushed `userAgent` now reaches the OkHttp client and the WebViews together.
+- **`X-Requested-With: <package name>` goes out on EVERY WebView request and no app can stop
+  it.** Chromium's removal of the header (M112, a deprecation trial) was abandoned: its feature
+  list marks the androidx allow-list API "disabled since the XRW origin trial ended", and
+  WebView's own tests assert the header is the package name on main-frame and sub-resource
+  requests, on Google's WebView as on Vanadium (where the API reports unsupported). So the
+  WebView-backed features (reviews, photos, popular times, transit directions, the stop-board
+  fallback, the reviews page) tell google.com "app.vela" by name; search, directions and the
+  ambient fan-out (OkHttp) do not. `loadUrl(url, headers)` could replace it on the document
+  request only, and the page's own script requests (the review feed's POSTs) would still carry
+  it, so that half-measure is not taken. The `VelaWeb identity:` log line records the WebView
+  package and whether each switch took.
+- The compiled UA tracks Chrome's CURRENT stable on Windows (chromiumdash `fetch_releases`,
+  channel Stable, platform Windows); it was one major ahead of stable for a week, which is a
+  browser that does not exist. Recalibrate it to the shipping major, not the next one.
+- google.com's `Accept-CH` asks for `Downlink` and `RTT` only (checked 2026-09-22), so the XHR
+  header set carries both (`Downlink: 10`, `RTT: 50`, Chrome's rounded values on a good link) and
+  the document fetch does not, the order a real session has. The high-entropy UA hints are not
+  requested there, so only the low-entropy three matter and the WebView metadata's full version,
+  platform version and architecture are plausible rather than load-bearing.
+- Residuals that are not fixed and not worth chasing: Chrome sends `X-Client-Data` (its
+  variations proto) to Google origins and neither client here does; the WebView and OkHttp keep
+  separate cookie jars, so one phone is two sessions from one IP; the two clients differ in the
+  TLS and HTTP/2 fingerprints below.
 - Do not chase a TLS fingerprint. Matching Chrome's JA3/JA4 and HTTP/2 frame ordering needs a
   custom TLS stack, permanent maintenance and native dependencies, and it breaks reproducible
   F-Droid builds. The defense is diffusion (every user on their own IP), not disguise.

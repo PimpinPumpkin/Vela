@@ -84,8 +84,26 @@ object BrowserHeaders {
         header("Sec-Fetch-Mode", fetchMode)
         header("Sec-Fetch-Site", fetchSite)
         if (referer != null) header("Referer", referer)
+        // The two client hints google.com asks for (`Accept-CH: Downlink, RTT`, checked
+        // 2026-09-22): Chrome sends them on every later request to the origin, rounded (Mbps
+        // capped at 10, RTT to 25 ms steps), so a request without them is one that never saw
+        // the document. The session warm-up is the document; the XHRs that follow carry them.
+        if (referer != null) {
+            header("Downlink", "10")
+            header("RTT", "50")
+        }
         return this
     }
+
+    /** One brand out of a `Sec-CH-UA` list: `"Google Chrome";v="153"`. */
+    data class Brand(val name: String, val major: String)
+
+    /** The brands in a `Sec-CH-UA` value, in order, for the WebView's client-hint metadata. */
+    fun brands(secChUa: String): List<Brand> =
+        Regex(""""([^"]+)";v="(\d+)"""").findAll(secChUa).map { Brand(it.groupValues[1], it.groupValues[2]) }.toList()
+
+    /** The major version in a Chrome user-agent string, or null. */
+    fun chromeMajor(ua: String): String? = Regex("""Chrome/(\d+)\.""").find(ua)?.groupValues?.get(1)
 
     const val ACCEPT_DOCUMENT =
         "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
