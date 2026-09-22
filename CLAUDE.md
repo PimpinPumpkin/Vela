@@ -2745,6 +2745,23 @@ architecture note.
   surfaced the old profile first hid an open store for good (user 2026-09-19, a parts chain).
   Nothing offline is ever cached as "no Google listing": the offline tap branch reads
   `openPlaceCache` and writes nothing; the closed set was the only persistent negative.
+- **Tap resolve round, 2026-09-22 (two link bugs + the loading sheet).** (1) The transit detector
+  matched the bare word "station", so every open-places seed of kind "Gas station" / "Fire station"
+  / "Electric vehicle charging station" took the TRANSIT branch: the lookup searched "<name> transit
+  stop", kept only stop listings and, with the transit branch's unlimited cap, linked nothing. The
+  kind now passes `NON_TRANSIT_CAT` (the same exclusion list results use) first; `VelaTap` shows
+  `cap=2147483647m` when a tap is on the transit branch. (2) `kindBesideAnchor`: a row named for the
+  SITE ("<Station> <pizza counter>") while Google lists the pumps under a brand found only the
+  other business in the building, which the kind rule refuses. When nothing of the tapped kind
+  agrees, the nearest name-agreeing listing on the lot is the anchor and a search for the tapped
+  kind (the tile's category text) around it keeps the nearest same-group listing within 60 m of the
+  anchor (`kind=` in the `VelaTap` line). One extra search, only on a tap that would not link.
+  (3) The sheet: `tapResolvingFor` (state) drives `PlaceSheet(resolving)` pulse skeletons for the
+  rating, details and body plus the photo tiles; the listing fades in (`reveal`, 280 ms,
+  ModulateAlpha). `sheetAlias` keeps the sheet's `sheetKey` at the placeholder id when the tap
+  resolves to a listing with another id: every `remember(place.id)` in the sheet re-keyed on the
+  swap, which re-mounted it (the "flash"). Watchdog: 6 s, then the label's own data shows and a
+  late listing still fades in. Transit taps do not skeleton (their board has its own loading).
 - **A TAP THAT DOES NOT LINK LOGS WHY (`VelaTap`, 2026-09-18).** The open-place resolve prints the
   tapped label, the tile's kind, whether it was seeded, how many results Google returned, how many
   survived the transit/junction filter, what was picked and at what distance, and the distance cap.

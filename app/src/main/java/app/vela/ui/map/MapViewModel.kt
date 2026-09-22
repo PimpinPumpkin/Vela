@@ -172,6 +172,12 @@ data class MapUiState(
     // as they type, instant and offline.
     val localSuggestions: List<LocalSuggestion> = emptyList(),
     val selected: Place? = null,
+    /** Id of the tapped placeholder whose Google lookup is still in flight: the sheet shows its
+     *  loading skeleton while [selected] still has this id. */
+    val tapResolvingFor: String? = null,
+    /** (resolved listing id, tapped placeholder id): the sheet keeps the placeholder's identity
+     *  when the tap resolves to a listing, so the open sheet updates in place. */
+    val sheetAlias: Pair<String, String>? = null,
     val placesHere: List<Place> = emptyList(), // other Google listings at the selected spot
     val reviews: List<Review> = emptyList(),
     val reviewsLoading: Boolean = false,
@@ -3219,7 +3225,13 @@ class MapViewModel @Inject constructor(
         // "<x> & <y> bus stop" -> the Stop). When the TAPPED POI's kind says transit (its class/subclass,
         // not its name, so a business called "Salt & Straw" is untouched), append a mode word to the lookup
         // so the search returns the stop. Non-transit POIs search by name exactly as before.
-        val transitHint = poiKind?.lowercase()?.let { k ->
+        // ...but only for a TRANSIT kind. The open places layer seeds the tap with Overture's
+        // category ("Gas station", "Fire station", "Electric vehicle charging station"), and the
+        // bare "station" below took every one of those for a stop (user 2026-09-22: a fuel
+        // station never linked; its lookup searched "<name> transit stop", kept only transit
+        // listings, found none, and the unlimited transit cap hid that). The same exclusion list
+        // the results use for "is this a stop" decides it here.
+        val transitHint = poiKind?.lowercase()?.takeUnless { NON_TRANSIT_CAT.containsMatchIn(it) || "service station" in it }?.let { k ->
             when {
                 "bus" in k -> "bus stop"
                 "tram" in k || "light_rail" in k -> "tram stop"
@@ -3231,9 +3243,16 @@ class MapViewModel @Inject constructor(
             }
         }
         val searchQuery = if (transitHint != null && !name.lowercase().contains(transitHint)) "$name $transitHint" else name
+        // The sheet shows its loading skeleton while the tap is looked up (user 2026-09-22): only
+        // when a lookup will actually run, and not for a transit stop, whose board has its own
+        // loading state and which usually has no photos or rating to wait for.
+        val willResolve = transitHint == null && !googleOff() &&
+            (seed == null || app.vela.ui.MapPoiPrefs.lookupTappedPlaces.value)
         _state.update {
             it.copy(
                 selected = placeholder,
+                tapResolvingFor = if (willResolve) placeholder.id else null,
+                sheetAlias = null,
                 results = emptyList(),
                 center = location,
                 placesHere = emptyList(),
@@ -3272,7 +3291,12 @@ class MapViewModel @Inject constructor(
             return
         }
         val uiLang = app.vela.ui.AppLocale.language.value.ifBlank { java.util.Locale.getDefault().language }
+        // A lookup that hangs must not leave the sheet pulsing: after a few seconds the tapped
+        // label's own data shows, and a late listing still swaps in (faded) when it lands.
+        fun stopResolving() = _state.update { if (it.tapResolvingFor == placeholder.id) it.copy(tapResolvingFor = null) else it }
+        if (willResolve) viewModelScope.launch { delay(TAP_RESOLVE_WATCHDOG_MS); stopResolving() }
         viewModelScope.launch {
+          try {
             val remembered = seed?.let { synchronized(openPlaceCache) { openPlaceCache[it.id] } }
             val resolved = if (remembered != null) (remembered to emptyList<Place>()) else runCatching {
                 val results = dataSource.search(searchQuery, location).places
@@ -3342,7 +3366,14 @@ class MapViewModel @Inject constructor(
                     // English phone) gets a second search in the script's own language when
                     // nothing agreed; see crossScriptCandidates.
                     val crossScript = if (agreeing.isEmpty()) crossScriptCandidates(name, location, searchQuery, tappedKind, localGeneric, uiLang) else emptyList()
+                    // The tapped kind, found BESIDE the building the name found (user 2026-09-22:
+                    // an open-data fuel row named for the site, "<Station> <Pizza counter>", sat
+                    // out on the highway; the name search found the pizza counter inside the
+                    // station and no gas listing, and the kind rule rightly refused the pizza).
+                    val kindRescue = if (agreeing.isEmpty() && crossScript.isEmpty() && tappedKind != "default")
+                        kindBesideAnchor(name, location, seed?.category ?: poiKind, tappedKind, answerable) else emptyList()
                     val pool = agreeing.ifEmpty { crossScript }
+                        .ifEmpty { kindRescue }
                         .ifEmpty { answerable.filter { it.location.distanceTo(location) <= NO_NAME_MATCH_M } }
                         .let { p -> p.filterNot { it.permanentlyClosed }.ifEmpty { p } }
                     // THE SAME NAME BEATS A NEARER ONE (user 2026-09-18: tapping a supermarket
@@ -3380,7 +3411,7 @@ class MapViewModel @Inject constructor(
                     // were. Counts and distances only.
                     tapWhy = "agree=" + answerable.count { nameAgrees(name, it.name, it.address) } +
                         " near60=" + answerable.count { it.location.distanceTo(location) <= NO_NAME_MATCH_M } +
-                        " cross=" + crossScript.size + " pool=" + pool.size + " exact=" + exact.size +
+                        " cross=" + crossScript.size + " kind=" + kindRescue.size + " pool=" + pool.size + " exact=" + exact.size +
                         " local=" + local.size + " group=" + tappedGroup + " sameKind=" + sameKind.size +
                         " nearest=[" + answerable.sortedBy { it.location.distanceTo(location) }.take(3)
                             .joinToString("; ") { it.name + " " + "%.0f".format(it.location.distanceTo(location)) + "m/" + (it.category ?: "-") } + "]"
@@ -3441,7 +3472,14 @@ class MapViewModel @Inject constructor(
                 resolved.second.none { !it.permanentlyClosed && nameAgrees(name, it.name, it.address) && it.location.distanceTo(location) <= 150.0 }
             ) hideClosedOpenPlace(seed.id)
             if (full != null && _state.value.selected == placeholder) {
-                _state.update { it.copy(selected = withListNote(full), placesHere = othersAt(full, resolved.second)) }
+                // One update: the listing, the end of loading and the sheet identity together, so
+                // the open sheet recomposes once, in place.
+                _state.update {
+                    it.copy(
+                        selected = withListNote(full), placesHere = othersAt(full, resolved.second),
+                        tapResolvingFor = null, sheetAlias = full.id to placeholder.id,
+                    )
+                }
                 fetchReviews(full)
                 fetchStopDepartures(full) // issue #71: a bus stop / station tapped on the MAP gets its board too
                 // Photos and popular times are two more Chromium page loads; a beat later, so they
@@ -3480,8 +3518,15 @@ class MapViewModel @Inject constructor(
                     startBoardRefresh(placeholder.id, location.lat, location.lng)
                 }
             }
+          } finally {
+            stopResolving() // nothing resolved, an error, or a cancel: the label's own data shows
+          }
         }
     }
+
+    /** How long a tapped place's sheet may show its loading skeleton before the label's own data
+     *  shows anyway. A healthy lookup lands in well under 2 s. */
+    private val TAP_RESOLVE_WATCHDOG_MS = 6_000L
 
     /** Does a Google [listing] name agree with the [tapped] basemap label? Word-set overlap on
      *  normalized tokens, needing the SHORTER name's words (capped at 2) to appear in the other:
@@ -3498,6 +3543,35 @@ class MapViewModel @Inject constructor(
      *  across town over the business under the finger. Wider than [NO_NAME_MATCH_M] because a big
      *  store and its pumps can sit that far apart. */
     private val SAME_LOT_M = 120.0
+
+    /**
+     * The tap resolve's kind pass, for a tapped place whose NAME is the site's rather than the
+     * listing's: the open-data row for a fuel station called "<Station> <Pizza counter>" while
+     * Google lists the pumps as "<Brand> <Town>". The name search then finds only the other
+     * business in the same building, which the kind rule refuses, and the tap linked to nothing.
+     *
+     * The name still says WHERE: the nearest listing that agrees by name, on the same lot as the
+     * tap, is the anchor (the tap's own point when there is none). A search for the tapped kind
+     * ([kindText]: the tile's category, "Gas station", or the basemap class) around it returns the
+     * candidates, and the nearest one of the same icon group within [NO_NAME_MATCH_M] of the
+     * anchor is kept. One extra request, only on a tap that would otherwise not link.
+     */
+    private suspend fun kindBesideAnchor(name: String, location: LatLng, kindText: String?, group: String?, answerable: List<Place>): List<Place> {
+        val q = kindText?.trim()?.takeIf { it.length >= 3 } ?: return emptyList()
+        val anchor = answerable
+            .filter { nameAgrees(name, it.name, it.address) && it.location.distanceTo(location) <= SAME_LOT_M }
+            .minByOrNull { it.location.distanceTo(location) }
+        val center = anchor?.location ?: location
+        val hits = runCatching { dataSource.search(q, center).places }.getOrDefault(emptyList())
+        return hits
+            .filter { p ->
+                !p.permanentlyClosed && p.location.distanceTo(center) <= NO_NAME_MATCH_M &&
+                    PoiIcons.groupFor(p.name, p.category) == group &&
+                    p.category?.let { isTransitCategory(it) || it.lowercase() in JUNCTION_CATEGORIES } != true
+            }
+            .sortedBy { it.location.distanceTo(center) }
+            .take(1)
+    }
 
     /** Google categories that are map FURNITURE, never the answer to tapping a business. */
     private val JUNCTION_CATEGORIES = setOf("intersection", "junction", "crossroads", "road", "highway")

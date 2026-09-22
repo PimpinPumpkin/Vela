@@ -254,6 +254,13 @@ fun PlaceSheet(
     photosLoading: Boolean = false,
     detailsLoading: Boolean = false,
     placesHere: List<Place> = emptyList(),
+    /** The tapped label is still being looked up on Google: skeletons stand in for the details,
+     *  which fade in when the listing lands. */
+    resolving: Boolean = false,
+    /** What the sheet's own state (detent, expanded, menus) is keyed on. The map screen keeps it
+     *  at the tapped placeholder's id when the tap resolves to a listing with another id, so the
+     *  resolve updates the open sheet instead of re-mounting it (the "flash", user 2026-09-22). */
+    sheetKey: String = place.id,
     stopDepartures: app.vela.core.model.StopDepartures? = null,
     stopDeparturesLoading: Boolean = false,
     stopDeparturesCachedAt: Long? = null,
@@ -290,20 +297,29 @@ fun PlaceSheet(
     // multi-listing chain, which hid the "Edit note"/"Saved" affordances (see ListPlace.matches).
     val containingLists = lists.filter { l -> l.places.any { it.matches(place.id, place.featureId) } }
     val inAnyList = containingLists.isNotEmpty()
-    var showListChooser by remember(place.id) { mutableStateOf(false) }
-    var showNoteEditor by remember(place.id) { mutableStateOf(false) }
+    // The listing's details fade in when a tap resolves, instead of popping in all at once.
+    val reveal = remember(sheetKey) { Animatable(if (resolving) 0f else 1f) }
+    LaunchedEffect(sheetKey, resolving) {
+        if (resolving) reveal.snapTo(0f) else if (reveal.value < 1f) reveal.animateTo(1f, tween(280))
+    }
+    val revealMod = Modifier.graphicsLayer {
+        alpha = reveal.value
+        compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.ModulateAlpha
+    }
+    var showListChooser by remember(sheetKey) { mutableStateOf(false) }
+    var showNoteEditor by remember(sheetKey) { mutableStateOf(false) }
     // A tapped photo opens the full-screen gallery; resets when the sheet switches place.
-    var galleryStart by remember(place.id) { mutableStateOf<Int?>(null) }
+    var galleryStart by remember(sheetKey) { mutableStateOf<Int?>(null) }
     // Gallery category filter (null = All); resets per place. Chips appear only when Google tagged photos.
-    var photoCat by remember(place.id) { mutableStateOf<String?>(null) }
+    var photoCat by remember(sheetKey) { mutableStateOf<String?>(null) }
 
     // Three detents, Google-style: EXPANDED (reviews) ↔ PEEK (default, ~half) ↔ MINIMIZED (a small
     // card). A gentle swipe down steps one detent (expanded→peek→minimized); from minimized another
     // swipe dismisses, and a big/fast swipe dismisses outright. So the first gentle pull minimizes
     // instead of closing. expandedState stays the reviews driver; minimizedState is only ever set from
     // peek, so the two are never both true.
-    val expandedState = remember(place.id) { mutableStateOf(false) }
-    val minimizedState = remember(place.id) { mutableStateOf(false) }
+    val expandedState = remember(sheetKey) { mutableStateOf(false) }
+    val minimizedState = remember(sheetKey) { mutableStateOf(false) }
     val screenH = LocalConfiguration.current.screenHeightDp
     // The sheet height is a hand-driven Animatable (dp), not animateDpAsState: dragging moves it
     // 1:1 WITH THE FINGER, and releasing coasts on the fling velocity to whichever detent the
@@ -344,13 +360,13 @@ fun PlaceSheet(
         minimized -> minH
         else -> peekH
     }
-    val heightAnim = remember(place.id) { Animatable(detentFor(expandedState.value, minimizedState.value)) }
+    val heightAnim = remember(sheetKey) { Animatable(detentFor(expandedState.value, minimizedState.value)) }
     val settleSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f) }
     // landscapeSheet + screenH in the keys: ROTATING kept the other orientation's pixel height
     // (the effect never re-ran, its keys hadn't changed), so a sheet expanded in portrait came
     // into landscape taller than the landscape cap and sat over the search bar (user 2026-07-23).
     // Re-running on a geometry change snaps to the detent the new orientation computes.
-    LaunchedEffect(place.id, expandedState.value, minimizedState.value, landscapeSheet, screenH) {
+    LaunchedEffect(sheetKey, expandedState.value, minimizedState.value, landscapeSheet, screenH) {
         val target = detentFor(expandedState.value, minimizedState.value)
         // Skip when a drag-release settle is already animating to this exact detent - restarting
         // would zero the coast velocity mid-glide.
@@ -398,7 +414,7 @@ fun PlaceSheet(
     // floor - the same lifecycle the old mini-card swap gave the hidden body, keeping
     // zero-height controls out of D-pad focus search. derivedStateOf collapses the
     // per-frame height reads into one recomposition at the flip points.
-    val extrasComposed by remember(place.id, singleDetent, minH) {
+    val extrasComposed by remember(sheetKey, singleDetent, minH) {
         derivedStateOf { singleDetent || !minimizedState.value || heightAnim.value > minH + 1f }
     }
     // Release: project where the fling would coast to, snap the STATES to the nearest detent (so
@@ -473,7 +489,7 @@ fun PlaceSheet(
             bodyScroll.animateScrollTo(0, tween(250))
         }
     }
-    val dismissConn = remember(place.id) {
+    val dismissConn = remember(sheetKey) {
         object : NestedScrollConnection {
             // True once this gesture actually moved the sheet - its release then settles the sheet
             // and eats the fling instead of letting the body scroll run away with it.
@@ -516,11 +532,11 @@ fun PlaceSheet(
     val scope = rememberCoroutineScope()
     // [0]=pull-down overshoot, [1]=push-up overshoot, [2]=collapsed-this-gesture guard (0/1) so one
     // continuous down-drag collapses but can't also dismiss (matches dismissConn).
-    val pull = remember(place.id) { floatArrayOf(0f, 0f, 0f) }
+    val pull = remember(sheetKey) { floatArrayOf(0f, 0f, 0f) }
     // True while the user is reading reviews "full screen" (panel engaged): set by the panel's
     // engagement signal, cleared when they drag back toward the sheet top. Hides the native
     // histogram so the panel gets the height.
-    val reviewsEngaged = remember(place.id) { mutableStateOf(false) }
+    val reviewsEngaged = remember(sheetKey) { mutableStateOf(false) }
     val onPanelOverscroll: (Float) -> Unit = { dy ->
         val consumed = bodyScroll.dispatchRawDelta(-dy)
         val leftover = -dy - consumed
@@ -685,7 +701,7 @@ fun PlaceSheet(
             // nothing. Deliberately NOT keyed on the feature id - a place tapped on Vela's own
             // places layer carries no Google id until the details land, which is exactly the case
             // the slot is for.
-            val photosExpected = detailsLoading && !place.category.isNullOrBlank()
+            val photosExpected = (detailsLoading && !place.category.isNullOrBlank()) || resolving
             if (app.vela.ui.LoadPhotos.on.value &&
                 (place.photoUrls.isNotEmpty() || ((photosLoading || photosExpected) && !transitNoShimmer))
             ) {
@@ -737,7 +753,7 @@ fun PlaceSheet(
                 // full name and a LONG-PRESS copies it (issue #169). D-pad: the name is a focus stop
                 // with a ring, OK toggles; copying rides the share menu's "Copy name" item (the key
                 // alternative the long-press gesture needs, docs/dpad.md).
-                var nameExpanded by remember(place.id) { mutableStateOf(false) }
+                var nameExpanded by remember(sheetKey) { mutableStateOf(false) }
                 fun copyName() {
                     runCatching {
                         val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
@@ -801,11 +817,13 @@ fun PlaceSheet(
             // worth ~30dp of shove on its own. Hold its line while the details are in flight for a
             // place that will have one (user 2026-09-18); an unrated place never reaches here
             // because the fetch that would have brought a rating has already finished.
-            if (place.rating == null && detailsLoading && !place.category.isNullOrBlank()) {
+            if (resolving) {
+                SheetSkeleton(dim, listOf(128.dp), height = 16.dp, top = 10.dp)
+            } else if (place.rating == null && detailsLoading && !place.category.isNullOrBlank()) {
                 Spacer(Modifier.height(RATING_ROW_DP.dp))
             }
-            if (place.rating != null) {
-                Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (place.rating != null && !resolving) {
+                Row(Modifier.padding(top = 6.dp).then(revealMod), verticalAlignment = Alignment.CenterVertically) {
                     // Google leads with a bold rating number; keep it prominent.
                     Text(
                         String.format(Locale.US, "%.1f", place.rating),
@@ -820,6 +838,8 @@ fun PlaceSheet(
                 }
             }
             app.vela.ui.SheetFold(extrasComposed, extrasFraction) {
+            if (resolving) SheetSkeleton(dim, listOf(196.dp, 150.dp), top = 8.dp)
+            else Column(revealMod) {
             // Distance (when the place came from a located search) + price +
             // category on their own line so a long category ("Hamburger restaurant")
             // doesn't wrap mid-word next to the stars; ellipsized if huge.
@@ -941,6 +961,7 @@ fun PlaceSheet(
                 )
             }
             }
+            }
             // Quick-action pills FIRST — a highlighted Directions + short Call / Website, right under
             // the identity block so Directions is reachable WITHOUT scrolling (Google's order). Save/
             // Share live in the header; the actual phone number / website domain are tappable detail
@@ -987,6 +1008,11 @@ fun PlaceSheet(
             }
 
             app.vela.ui.SheetFold(extrasComposed, extrasFraction) {
+            // While the tap is still being looked up on Google the body is a skeleton, so the
+            // sheet reads as "loading the listing" instead of showing the bare label's half-empty
+            // body and then jumping when the listing lands (user 2026-09-22).
+            if (resolving) SheetSkeleton(dim, listOf(260.dp, 220.dp, 240.dp, 180.dp), gap = 18.dp, top = 18.dp)
+            else Column(revealMod) {
             // Live departure board for a transit stop, FIRST in the body (user 2026-07-13: the schedule
             // is what you open a stop for - Google leads with it too). Renders nothing for non-transit
             // places, so the unconditional position is safe.
@@ -1205,6 +1231,7 @@ fun PlaceSheet(
             }
 
             PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onPanelOverscroll, onPanelOverscrollEnd, onPanelEngaged, reviewsEngaged.value)
+            }
             }
             }
         }
@@ -2893,6 +2920,36 @@ private fun parseHexColor(hex: String?): Color? {
             else -> null
         }
     }.getOrNull()
+}
+
+/** Pulsing placeholder bars for the rows a tapped place is still loading (rating, details, body). */
+@Composable
+private fun SheetSkeleton(
+    base: Color,
+    widths: List<androidx.compose.ui.unit.Dp>,
+    height: androidx.compose.ui.unit.Dp = 14.dp,
+    gap: androidx.compose.ui.unit.Dp = 10.dp,
+    top: androidx.compose.ui.unit.Dp = 8.dp,
+) {
+    // Same pulse as the photo tiles, so the whole sheet breathes in step while it loads.
+    val transition = rememberInfiniteTransition(label = "sheetSkeleton")
+    val alpha by transition.animateFloat(
+        initialValue = 0.12f,
+        targetValue = 0.32f,
+        animationSpec = infiniteRepeatable(tween(750), RepeatMode.Reverse),
+        label = "sheetSkeletonAlpha",
+    )
+    Column(Modifier.padding(top = top), verticalArrangement = Arrangement.spacedBy(gap)) {
+        widths.forEach { w ->
+            Box(
+                Modifier
+                    .width(w)
+                    .height(height)
+                    .clip(RoundedCornerShape(height / 2))
+                    .background(base.copy(alpha = alpha)),
+            )
+        }
+    }
 }
 
 /** A photo-tile-sized placeholder that gently pulses while the full gallery scrapes in —
