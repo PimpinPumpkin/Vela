@@ -31,17 +31,17 @@ derive() {
     ID="${NAME#places-}"; ID="${ID%.pmtiles}"
     URL="https://github.com/$REPO/releases/download/$TAG/$NAME"
     MB="$(echo "scale=2; $SIZE/1000000" | bc)"
-    OLD=$(jq -c --arg id "$ID" '.regions[] | select(.id == $id)' "$WORK/old.json")
-    ROW=$(jq -c --arg id "$ID" '.regions[] | select(.id == $id)' "$CATALOG")
-    NAME_=$(jq -r '.name // empty' <<<"${ROW:-{}}"); [ -n "$NAME_" ] || NAME_="$ID"
-    BBOX=$(jq -c '.bbox // empty' <<<"${ROW:-{}}"); [ -n "$BBOX" ] || BBOX=$(jq -c '.bbox // empty' <<<"${OLD:-{}}")
+    OLD=$(jq -c --arg id "$ID" '.regions[] | select(.id == $id)' "$WORK/old.json"); [ -n "$OLD" ] || OLD='{}'
+    ROW=$(jq -c --arg id "$ID" '.regions[] | select(.id == $id)' "$CATALOG"); [ -n "$ROW" ] || ROW='{}'
+    NAME_=$(jq -r '.name // empty' <<<"$ROW"); [ -n "$NAME_" ] || NAME_="$ID"
+    BBOX=$(jq -c '.bbox // empty' <<<"$ROW"); [ -n "$BBOX" ] || BBOX=$(jq -c '.bbox // empty' <<<"$OLD")
     [ -n "$BBOX" ] || { echo "skip $ID (no bounds in the catalog or the old manifest)"; continue; }
-    if [ -n "$OLD" ] && [ "$(jq -r '.sizeMb' <<<"$OLD")" = "$MB" ]; then
+    if [ "$OLD" != "{}" ] && [ "$(jq -r '.sizeMb' <<<"$OLD")" = "$MB" ]; then
       # unchanged archive: keep its rev and delta, refresh name and bounds from the catalog
       jq -c --arg name "$NAME_" --argjson bbox "$BBOX" '.name = $name | .bbox = $bbox' <<<"$OLD" >> "$WORK/entries.ndjson"; continue
     fi
     DELTA=null
-    OLDREV=$(jq -r '.rev // 0' <<<"${OLD:-{}}")
+    OLDREV=$(jq -r '.rev // 0' <<<"$OLD")
     if [ "$OLDREV" != "0" ]; then
       PATCH=$(awk -v n="places-$ID.$OLDREV.vpatch" '$1 == n {print $2}' "$WORK/assets.txt")
       if [ -n "$PATCH" ]; then
