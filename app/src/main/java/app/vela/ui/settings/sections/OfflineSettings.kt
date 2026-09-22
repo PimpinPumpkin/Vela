@@ -116,8 +116,9 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
         )
         GroupDivider()
         // What a rebaked region is allowed to do on its own. Deltas make an update a few megabytes
-        // instead of a few hundred, but they are still the user's bytes, so the default patches on
-        // Wi-Fi and asks nowhere else. A full re-download is never automatic on any of these.
+        // instead of a few hundred, but they are still the user's bytes, so the default is off.
+        // On Wi-Fi or mobile, published patches apply once a day by themselves; a full re-download
+        // is never automatic on any of these.
         Text(
             stringResource(R.string.settings_region_updates),
             style = MaterialTheme.typography.titleMedium,

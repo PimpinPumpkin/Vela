@@ -9,8 +9,9 @@ import androidx.compose.runtime.mutableStateOf
  *
  * A rebaked region used to mean a fresh few-hundred-MB download, so updating was always a
  * deliberate act. Deltas change the economics (a week of edits is about 3% of a state's tiles), but
- * bytes are still bytes on a phone plan, so the choice stays the user's and the default is the
- * cautious one: patch on Wi-Fi, ask nowhere else.
+ * bytes are still bytes on a phone plan, so the choice stays the user's, and the default is OFF
+ * (see [mode]). On Wi-Fi or mobile, MapViewModel.scheduleAutoRegionPatches applies published
+ * patches on its own once a day; the setting also decides whether the Update button may patch.
  *
  * [MOBILE] means "use cellular too" rather than "use everything": it still only ever applies a
  * DELTA unprompted. A full re-download is never automatic on any setting, because that is the

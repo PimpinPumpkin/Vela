@@ -4924,7 +4924,58 @@ class MapViewModel @Inject constructor(
     // blocks in DECLARATION order, and `settingsPrefs` is declared this far down the class, so an
     // early caller reads it as null and the app dies on launch before the map ever draws. Any
     // future pref read that has to happen at construction belongs after this line too.
-    init { refreshRouteBar() }
+    init { refreshRouteBar(); scheduleAutoRegionPatches() }
+
+    /**
+     * "Update downloaded regions" doing what it says (2026-09-22). The setting used to decide only
+     * whether the Update BUTTON could use a patch; nothing ever updated on its own, whatever the
+     * row read. Now, when the setting allows the current connection, a minute after start and at
+     * most once a day, every installed places or basemap archive and place pack whose manifest
+     * publishes a patch FROM the installed revision takes it, quietly. Patches only: a full
+     * re-download is never automatic on any setting (a region is hundreds of megabytes), and the
+     * routing files publish no patches, so they stay on the Update button. Skipped mid-drive.
+     */
+    private fun scheduleAutoRegionPatches() {
+        viewModelScope.launch {
+            delay(AUTO_PATCH_DELAY_MS)
+            if (!app.vela.ui.RegionUpdates.allowedNow(appContext) || _state.value.navigating) return@launch
+            val now = System.currentTimeMillis()
+            if (now - settingsPrefs.getLong(KEY_AUTO_PATCH_AT, 0L) < AUTO_PATCH_EVERY_MS) return@launch
+            settingsPrefs.edit().putLong(KEY_AUTO_PATCH_AT, now).apply()
+            val note: (String) -> Unit = { line ->
+                app.vela.ui.RegionUpdates.lastResult.value = line
+                diag.record("delta", "auto: $line")
+                android.util.Log.d("VelaDelta", "auto: $line")
+            }
+            val due = withContext(Dispatchers.IO) {
+                listOf(placesStore to app.vela.BuildConfig.PLACES_MANIFEST_URL, basemapStore to app.vela.BuildConfig.BASEMAP_MANIFEST_URL)
+                    .flatMap { (store, url) ->
+                        runCatching { store.updatable(store.manifest(url)) }.getOrDefault(emptyList())
+                            .filter { r -> r.delta != null && store.installedRev(r.id) == r.delta.fromRev }
+                            .map { store to it }
+                    }
+            }
+            val packs = withContext(Dispatchers.IO) {
+                runCatching { poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL) }.getOrDefault(emptyList())
+                    .filter { p -> p.id in poiPackStore.installedIds() && p.deltaUrl != null && p.rev > poiPackStore.installedRev(p.id) &&
+                        p.deltaFromRev == poiPackStore.installedRev(p.id) }
+            }
+            if (due.isEmpty() && packs.isEmpty()) { note("nothing to patch"); return@launch }
+            downloadLaunch(appContext.getString(R.string.settings_region_updates)) {
+                for ((store, r) in due) {
+                    if (_state.value.navigating) break
+                    if (store.updateWithDelta(r, onProgress = { }, log = note)) forgetOpenPlaceLinks("${r.id} patched")
+                }
+                for (p in packs) {
+                    if (_state.value.navigating) break
+                    _state.value.routingRegions.firstOrNull { it.id == p.id }?.let { downloadPoiPack(it, update = true) }
+                }
+                refreshPlacesOverlays()
+                refreshBasemapArchive()
+                if (_state.value.routingRegions.isNotEmpty()) refreshRegionUpdates()
+            }
+        }
+    }
 
     /** Reflect the persisted route-bar flag into UI state (pref `route_bar`, default off - it is
      *  extra chrome on the nav screen, so it should be asked for, not imposed). */
@@ -7036,8 +7087,8 @@ class MapViewModel @Inject constructor(
             note("${region.id}: delta available but updates are ${app.vela.ui.RegionUpdates.mode.value.name.lowercase()} on this connection")
         }
         val size = region.sizeMb
-        store.delete(region.id)
-        val ok = store.download(region) { }
+        // Over the installed copy, never after deleting it: a failed download keeps the region.
+        val ok = store.download(region, replace = true) { }
         if (ok) forgetOpenPlaceLinks("${region.id} redownloaded")
         note("${region.id}: full download of ${"%.0f".format(size)} MB ${if (ok) "done" else "FAILED"}")
     }
@@ -7242,6 +7293,10 @@ class MapViewModel @Inject constructor(
         const val FLOCK_MIN_ZOOM = 11.0
         val CIVIC_GROUPS = setOf("park", "edu", "civic") // the "not really a business" ambient tier
         const val SUGGEST_NEAR_M = 80_000.0 // ~a metro radius: suggestions inside it rank first
+        /** The automatic region patch pass: a minute after start, at most once in 20 hours. */
+        const val AUTO_PATCH_DELAY_MS = 60_000L
+        const val AUTO_PATCH_EVERY_MS = 20 * 60 * 60 * 1000L
+        const val KEY_AUTO_PATCH_AT = "region_autopatch_at"
         const val TRANSIT_STOPS_MIN_ZOOM = 15.0 // GTFS stop icons from street-ish zoom (denser than cameras)
         const val CONTROLS_ONSCREEN_CAP = 400 // max controls handed to the map (nearest-to-center wins) — a
                                               // dense metro's padded box can carry 1000+, and every handed

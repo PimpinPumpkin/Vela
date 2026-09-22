@@ -1843,8 +1843,10 @@ applier is `app/offline/PmtilesPatch`.
   Offline maps screen was opened, and the row still said there was nothing to update.
 - **Policy is the user's**: `ui/RegionUpdates` (never, the default until the path has been proven
   on a device / on Wi-Fi / on mobile data too),
-  metered judged by the system rather than by which radio it is. A FULL re-download is never
-  automatic on any setting. Every attempt is recorded in the diagnostics ring (kind `delta`) and
+  metered judged by the system rather than by which radio it is. On Wi-Fi or mobile the app applies
+  every published patch that fits an installed archive or pack on its own, a minute after start and
+  at most once in 20 hours, skipping a drive in progress. A FULL re-download is never automatic on
+  any setting, and a tapped one downloads over the installed copy so a failure keeps the region. Every attempt is recorded in the diagnostics ring (kind `delta`) and
   logcat `VelaDelta` with the bytes and the reason for any fallback, because the failure worth
   seeing is a region that quietly downloads itself whole every week.
 

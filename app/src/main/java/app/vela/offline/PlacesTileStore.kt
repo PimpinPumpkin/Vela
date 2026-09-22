@@ -133,7 +133,7 @@ class BasemapTileStore @Inject constructor(
         // filters it out of the candidate list by id.
         return download(
             Region(WORLD_ID, "World", url, 0.0, -85.0, -180.0, 85.0, 180.0),
-            onProgress,
+            onProgress = onProgress,
         )
     }
 
@@ -300,9 +300,12 @@ abstract class PmtilesRegionStore(
     }
 
     /** Download [region]'s archive for offline use. True when installed (or already was). */
-    suspend fun download(region: Region, onProgress: (Int) -> Unit): Boolean = withContext(Dispatchers.IO) {
+    /** [replace] downloads a fresh copy over an installed archive: the new file lands in `.tmp` and
+     *  is renamed over the old one only when complete and verified, so a failed or canceled update
+     *  leaves the region as it was (the Update button used to delete first, 2026-09-22). */
+    suspend fun download(region: Region, replace: Boolean = false, onProgress: (Int) -> Unit): Boolean = withContext(Dispatchers.IO) {
         downloadMutex.withLock {
-            if (fileFor(region.id).exists()) { onProgress(100); return@withLock true }
+            if (!replace && fileFor(region.id).exists()) { onProgress(100); return@withLock true }
             root.mkdirs()
             val file = fileFor(region.id)
             val tmp = File(root, "${region.id}.pmtiles.tmp")
