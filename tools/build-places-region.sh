@@ -25,6 +25,9 @@
 # `opening_hours`, which Overture never has. ATP_RUN=none skips it (also when the pmtiles or
 # tippecanoe-decode binaries are missing); ATP_LOCAL points at a local extract for dev runs.
 set -euo pipefail
+# The repo root, for files the bake reads beside itself (the generic-word list pinned to
+# core/util/PlaceNames.GENERIC); CI runs the script from the checkout root, a dev may not.
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ID="$1"; S="$2"; W="$3"; N="$4"; E="$5"; OUT="$6"; RELEASE="${7:-2026-08-19.0}"; LOCAL="${8:-}"
 # The AllThePlaces run: the NEWEST published one unless the caller pins ATP_RUN. It was a fixed
 # id until 2026-09-22, so every bake since 2026-09-15 carried the same week-old locator data
