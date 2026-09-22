@@ -622,7 +622,12 @@ Defaults that make the safe path the easy one:
   takes the style's layer ids (parsed from the JSON the snapshotter loaded, or the bundled
   Liberty asset) so `applyMapTheme`'s blanket passes run on the car, and `applyTheme` logs
   success or the swallowed exception under `VelaCar`. Next stock-Pixel session: read that line
-  first. The car attribution is the phone's `map_osm_attribution` text verbatim.
+  first. The car attribution is the phone's `map_osm_attribution` text verbatim. **The car map
+  follows the PHONE's theme when it is explicit** (Light / Dark / AMOLED; Auto = the sun the phone
+  computes) and defers to the car's day/night only under "System": the driver had Vela dark and
+  got a light car map because the head unit said day. The puck is an eighth of the short side.
+  **Gearslip's in-app "Car preview" (its Debug mode) renders Vela's car screens on the phone**, the
+  same host path a head unit gets, so the car map can be checked without a car or the DHU.
   **THE GATE, READ OFF A REAL CAR LOG (2026-09-22, GrapheneOS Pixel 9, sandboxed Play, Android
   Auto 17.4, "Unknown sources" on, KingInstaller's Shizuku method so the install fields read
   installer=com.android.vending, requester=com.android.packageinstaller):** on connect the

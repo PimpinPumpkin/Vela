@@ -200,7 +200,17 @@ class CarMapRenderer(
 
     // The HOST's day/night signal, not a wall-clock guess (a fixed 6/19 split is wrong across
     // seasons and latitudes; the car host already computes this from location + time).
-    private fun isNight(): Boolean = runCatching { carContext.isDarkMode }.getOrDefault(false)
+    /** Whether the car map draws dark. The PHONE's theme choice decides when it is explicit
+     *  (Light, Dark, AMOLED; Auto follows the sun the phone already computes), and only the
+     *  "System" choice defers to the car's own day/night. A driver who set Vela to dark got a
+     *  light car map because the head unit said day (user 2026-09-22); Google's app follows the
+     *  car, but Vela has a theme setting and the car is one more screen it applies to. */
+    private fun isNight(): Boolean = when (app.vela.ui.theme.AppTheme.mode.value) {
+        app.vela.ui.theme.ThemeMode.LIGHT -> false
+        app.vela.ui.theme.ThemeMode.DARK, app.vela.ui.theme.ThemeMode.AMOLED -> true
+        app.vela.ui.theme.ThemeMode.AUTO -> app.vela.ui.theme.AppTheme.night.value
+        else -> runCatching { carContext.isDarkMode }.getOrDefault(false)
+    }
 
     fun start() {
         collectJob?.cancel()
@@ -583,11 +593,12 @@ class CarMapRenderer(
         // height of a 480 px head unit (user 2026-09-19, "the puck on the car stereo is huge").
         // A fortieth of the short side reads like the phone's puck (about 5% of the screen).
         // Settings > Navigation > Puck size (PuckStyle) scales it the same way it scales the phone's.
-        val r = (minOf(width, height) / 40f).coerceIn(9f, 22f) * app.vela.ui.PuckStyle.scale()
         // The phone's puck bitmap (disc, shadow, chevron), not a chevron of the car's own; the
         // bitmap's arrow points up, so it turns by the heading against the camera's bearing:
-        // straight up in heading-up nav, by the course in a north-up view.
-        val px = (r * 2.6f).roundToInt().coerceAtLeast(12)
+        // straight up in heading-up nav, by the course in a north-up view. An eighth of the
+        // short side, about what the phone draws relative to its width (user 2026-09-22: the
+        // fortieth-based size read too small on the car), times the Settings puck size.
+        val px = (minOf(width, height) / 8f * app.vela.ui.PuckStyle.scale()).roundToInt().coerceIn(24, 220)
         val bmp = puckBitmap?.takeIf { puckBitmapPx == px } ?: android.graphics.Bitmap.createScaledBitmap(
             app.vela.ui.map.navPuckBitmap(scale = 1f), px, px, true,
         ).also { puckBitmap = it; puckBitmapPx = px }
