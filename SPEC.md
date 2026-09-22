@@ -164,7 +164,7 @@ setting, `:app` writes a plain flag into `:core` (`CategoryFilter.enabled`, `Low
   search/         QueryIntents, VoiceCommandExamples
   replay/         TripLog, TripScrub, NavReplay, DemoTrace
   i18n/           NavStrings tables and registry
-  util/           SunTimes, NameScript, OsmHours, ClockFormat
+  util/           SunTimes, NameScript, OsmHours (OSM opening_hours to the sheet's day lines; `lines()` is the one entry point for every open source), ClockFormat
   diag/           DiagLog, DiagScrub
 
 :app
@@ -1306,6 +1306,19 @@ Only an empty pool falls back, and the fallback is bounded twice: a non-transit 
 a listing whose category is transit or map furniture (`JUNCTION_CATEGORIES`), and a listing that
 does not agree by name must be within `NO_NAME_MATCH_M` (60 m) rather than anywhere inside the
 1.5 km cap. Nothing left to adopt means the tapped label keeps its own name and point.
+
+The order of the pool is: name matches within the 1.5 km cap (a name match farther away never
+blocks the fallbacks, since a brand's other stations miles off otherwise emptied every nearby
+option), a cross-script second search, a listing of the tapped kind within 60 m already in the
+results, `kindBesideAnchor` (one extra search for the tapped kind around the nearest name-agreeing
+listing on the lot, nearest same-kind hit within 60 m of that anchor), then anything within 60 m.
+
+**The house number gates it.** Distance cannot tell a fuel station from the one across the
+junction, 40 to 80 m apart. When the tapped row has an address with a leading house number and a
+candidate does too, a different number rules the candidate out of every fallback without a name
+match and out of name matches beyond `SAME_LOT_M`; on the lot a mismatch is tolerated (open data
+numbers are sometimes wrong) and an agreeing number wins. Either side without a number decides
+nothing.
 
 The pick must also be near the tap: a settlement label accepts a hit within 30 km, any other
 label within 1.5 km, transit stops unbounded. A clear-dominance duplicate override

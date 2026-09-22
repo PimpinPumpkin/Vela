@@ -180,7 +180,7 @@ object OverpassPois {
             // as a single line — better than nothing offline.
             // Converted to Google-style day lines when the syntax is the common kind, so the sheet's
             // open/closed status works on offline places too; the raw string otherwise.
-            hours = (tag("opening_hours"))?.let { app.vela.core.util.OsmHours.toDayLines(it) ?: listOf(it) } ?: emptyList(),
+            hours = app.vela.core.util.OsmHours.lines(tag("opening_hours")),
         )
     }
 }

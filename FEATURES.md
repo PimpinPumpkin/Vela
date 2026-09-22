@@ -452,6 +452,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   becomes) a Google listing says so in small gray text under its name: "From Overture",
   "From AllThePlaces (chain)" or "From OpenStreetMap", then "checking Google" or "not matched on
   Google". An OpenStreetMap row's line opens its node, so a wrong place can be fixed at the source.
+- ✅ **Taps check the house number (2026-09-22).** When a tapped place and a Google listing both
+  have a street number and they differ, the listing is not linked, so a station can no longer open
+  the one across the intersection.
+- ✅ **Open-data hours read like Google's and compute open or closed (2026-09-22).** OpenStreetMap
+  and store-locator hours are converted for about 98% of real listings (it was 86%), including
+  comma-separated days, holidays and sunrise-to-sunset parks, so the sheet shows the week and says
+  "Open" or "Closed" even with Google off. The places data also keeps OpenStreetMap's hours when
+  another source already had the same shop.
 - ✅ **Fuel stations (and fire, police, charging stations) link again (2026-09-22).** Their open
   data category contains "station", which sent the lookup down the transit-stop path, and it
   never linked. And a fuel row named for its site rather than its brand now finds the gas

@@ -2782,7 +2782,19 @@ architecture note.
   link, bare Overture hex, basemap `poi:` = OSM) and the sheet shows "From X · checking Google" /
   "· not matched on Google" (`tapUnlinkedFor` state) / "From X" (Google off) under the name. A
   Google listing's id matches none of them, so the line leaves when the tap links. It is how to
-  tell which dataset needs fixing for a place that never links.
+  tell which dataset needs fixing for a place that never links. **Round four:** the HOUSE NUMBER
+  gates the tap (`tappedHouse` from the placeholder's address or the seed's, `houseClash` /
+  `houseAgrees`, both through `PlaceNames.houseNumber`): a clash rules a candidate out of every
+  no-name fallback and out of name matches beyond `SAME_LOT_M`, an agreeing number wins on the lot,
+  and a missing number on either side decides nothing (`house=` and `clash=` in `VelaTap`). Open
+  hours: `OsmHours.lines(raw)` is the single converter for the open-places seed, Overpass and the
+  place packs (`OfflinePoiStore.near`/`search` returned the pack's RAW OSM tag, which is what showed
+  as a "weird raw string" with Google off). It covered 86% of Washington's tagged businesses before
+  and 97.7% after (comma rule groups, spaced day lists, PH/SH and date rules skipped, "00:00+",
+  sun events as words, quoted notes shown cleaned); measure with the pack's distinct `hours`
+  strings through `toDayLines` before changing it. The places bake now CARRIES an OSM duplicate's
+  hours / phone / website onto the kept row (`osmfill`, same-name within the dedupe box, never by
+  brand); before, the dedupe dropped the node with its hours.
 - **A TAP THAT DOES NOT LINK LOGS WHY (`VelaTap`, 2026-09-18).** The open-place resolve prints the
   tapped label, the tile's kind, whether it was seeded, how many results Google returned, how many
   survived the transit/junction filter, what was picked and at what distance, and the distance cap.

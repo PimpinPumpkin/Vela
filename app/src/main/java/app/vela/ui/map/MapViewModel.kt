@@ -3378,6 +3378,22 @@ class MapViewModel @Inject constructor(
                     // closed profile beside the live one for months; the live one is the answer
                     // whenever there is one.
                     val tappedKind = PoiIcons.groupFor(name, seed?.category ?: poiKind)
+                    // THE ADDRESS, where both sides have one (user 2026-09-22: "are we gating by
+                    // actual address?"). Distances alone cannot tell a station from the one
+                    // across the junction, 40-80 m apart; the house number can. The tapped row's
+                    // number (the open-data address, or the pack twin's) against the listing's:
+                    // a clash rules the listing out of every fallback that has no name match and
+                    // out of name matches beyond the lot, and an agreeing number wins on the lot.
+                    // Either side without a number decides nothing.
+                    val tappedHouse = app.vela.core.util.PlaceNames.houseNumber(
+                        _state.value.selected?.takeIf { isPlaceholder(it, placeholder) }?.address ?: seed?.address,
+                    )
+                    fun houseClash(p: Place): Boolean {
+                        val a = tappedHouse ?: return false
+                        val b = app.vela.core.util.PlaceNames.houseNumber(p.address) ?: return false
+                        return a != b
+                    }
+                    fun houseAgrees(p: Place) = tappedHouse != null && app.vela.core.util.PlaceNames.houseNumber(p.address) == tappedHouse
                     // Words shared by three or more of the listings around the tap are the area's
                     // (a neighborhood, a mall, a landmark), generic for the comparison.
                     val localGeneric = app.vela.core.util.PlaceNames.localGeneric(results.map { it.name })
@@ -3386,7 +3402,9 @@ class MapViewModel @Inject constructor(
                     // miles away, which kept every nearby fallback from running while the right
                     // listing, under the seller's own name, sat 11 m from the pin; the far ones
                     // were then dropped by the distance cap and the tap linked to nothing).
-                    val agreeing = answerable.filter { it.location.distanceTo(location) <= BUSINESS_TAP_CAP_M }.filter { p ->
+                    val agreeing = answerable.filter { it.location.distanceTo(location) <= BUSINESS_TAP_CAP_M }
+                        .filter { it.location.distanceTo(location) <= SAME_LOT_M || !houseClash(it) }
+                        .filter { p ->
                         app.vela.core.util.PlaceNames.sameBusiness(
                             name, tappedKind, p.name, PoiIcons.groupFor(p.name, p.category),
                             app.vela.core.util.PlaceNames.cityWords(p.address) + localGeneric,
@@ -3403,16 +3421,19 @@ class MapViewModel @Inject constructor(
                     // A listing of the tapped KIND on the same spot is the next best thing to a name
                     // match, and costs nothing: it is already in the results.
                     val sameKindNear = if (tappedKind == "default") emptyList() else answerable.filter {
-                        it.location.distanceTo(location) <= NO_NAME_MATCH_M && PoiIcons.groupFor(it.name, it.category) == tappedKind
+                        it.location.distanceTo(location) <= NO_NAME_MATCH_M && PoiIcons.groupFor(it.name, it.category) == tappedKind &&
+                            !houseClash(it)
                     }
                     var kindRescue: List<Place> = emptyList()
                     val pool = agreeing.ifEmpty { crossScript }
                         .ifEmpty { sameKindNear }
                         .ifEmpty {
                             if (tappedKind != "default") kindRescue = kindBesideAnchor(name, location, seed?.category ?: poiKind, tappedKind, answerable)
+                                .filterNot(::houseClash)
                             kindRescue
                         }
-                        .ifEmpty { answerable.filter { it.location.distanceTo(location) <= NO_NAME_MATCH_M } }
+                        .ifEmpty { answerable.filter { it.location.distanceTo(location) <= NO_NAME_MATCH_M && !houseClash(it) } }
+                        .let { p -> p.filter(::houseAgrees).ifEmpty { p } }
                         .let { p -> p.filterNot { it.permanentlyClosed }.ifEmpty { p } }
                     // THE SAME NAME BEATS A NEARER ONE (user 2026-09-18: tapping a supermarket
                     // opened the brand's fuel station, and tapping it opened a counter inside the
@@ -3451,6 +3472,7 @@ class MapViewModel @Inject constructor(
                         " near60=" + answerable.count { it.location.distanceTo(location) <= NO_NAME_MATCH_M } +
                         " cross=" + crossScript.size + " kindNear=" + sameKindNear.size + " kind=" + kindRescue.size + " pool=" + pool.size + " exact=" + exact.size +
                         " local=" + local.size + " group=" + tappedGroup + " sameKind=" + sameKind.size +
+                        " house=" + (tappedHouse ?: "-") + " clash=" + answerable.count(::houseClash) +
                         " nearest=[" + answerable.sortedBy { it.location.distanceTo(location) }.take(3)
                             .joinToString("; ") { it.name + " " + "%.0f".format(it.location.distanceTo(location)) + "m/" + (it.category ?: "-") } + "]"
                     val canonical = ranked
