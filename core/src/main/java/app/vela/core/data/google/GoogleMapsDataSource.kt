@@ -272,6 +272,18 @@ class GoogleMapsDataSource @Inject constructor(
         SearchResult(query, CategoryFilter.applyIfEnabled(jsTransforms.refineSearch(places)))
     }
 
+    /** The tap resolve's search: page one only. A chain's name fills the page, and [search] then
+     *  fetched pages two and three too, a second round trip that could only add branches farther
+     *  from the tap than the ones already on page one (measured 2026-09-22 on the 4a: 4.3 s of a
+     *  4.7 s tap). Without Google, the OSM geocoder answers as [search] does. */
+    override suspend fun searchOnce(query: String, near: LatLng, lang: String?): List<Place> = io {
+        if (app.vela.core.data.NoGoogle.enabled) return@io search(query, near, null, null, lang).places
+        session.ensure()
+        val cal = calibration.current()
+        val places = searchPage(query, near, null, null, 0, cal, lang)
+        CategoryFilter.applyIfEnabled(jsTransforms.refineSearch(places))
+    }
+
     /**
      * Google's own autocomplete (see [SuggestParser]) for the typed suggestions. Not the
      * calibrated search endpoint: that one ranks a partial address by prominence over the

@@ -443,7 +443,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Tapped places load like Google's (2026-09-22).** Tapping a place opens its sheet with the
   name at once and pulsing placeholders for the photos, rating, details and body while the
   listing is looked up; when it lands, the details fade in and the sheet stays put instead of
-  re-opening. If the lookup hangs, the map's own data shows after a few seconds.
+  re-opening. If the lookup hangs, the map's own data shows after a few seconds. What the map's
+  own data already knows shows immediately (category, address, phone, website, and hours where
+  OpenStreetMap or a chain's store locator has them, including from downloaded place packs), and
+  Google's listing replaces it in place. The lookup itself is about three times faster: it asks
+  for one page of results instead of three.
 - ✅ **Fuel stations (and fire, police, charging stations) link again (2026-09-22).** Their open
   data category contains "station", which sent the lookup down the transit-stop path, and it
   never linked. And a fuel row named for its site rather than its brand now finds the gas

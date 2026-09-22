@@ -35,6 +35,12 @@ interface MapDataSource {
      *  [search] itself covers pages 0..2). Empty when the source cannot page. */
     suspend fun searchMore(query: String, near: LatLng? = null, spanMeters: Double? = null, rankFrom: LatLng? = null, fromPage: Int, pages: Int = 3): List<Place> = emptyList()
 
+    /** One page of results for [query] around [near], no pagination and no nearby pass: what a
+     *  tapped map label needs to find its own listing, which is always among the nearest few.
+     *  The full [search] is the fallback for a provider without a cheaper path. */
+    suspend fun searchOnce(query: String, near: LatLng, lang: String? = null): List<Place> =
+        search(query, near, lang = lang).places
+
     /** Search-as-you-type: the provider's own autocomplete for a partial [query], biased to
      *  [near] over a window [spanMeters] wide. Places carry a location; [SuggestResult.queries]
      *  are bare query rows to run as a search. Empty when the provider has no such thing. */
