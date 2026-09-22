@@ -257,7 +257,10 @@ The reason to want one is **Android Auto**. What the gate actually checks was re
 on 2026-09-22 (GrapheneOS Pixel 9, sandboxed Play, "Unknown sources" on, install fields spoofed to
 Play by KingInstaller): on connect the Android Auto app asks the Play Store who owns each app,
 Play answers `app owners empty` for anything it did not install, and the validator denies the
-package "failed all other checks". So it is Play's own install record, not the installer fields;
+package "failed all other checks". (Yet on the 4a, stock Android 14 with Play installed but no
+Google account, the Desktop Head Unit listed and ran a plain sideloaded Vela on 2026-09-22; the
+next test is that same account-less phone in a real car, which separates "developer head unit"
+from "no account, no owner check".) So it is Play's own install record, not the installer fields;
 no spoof, no stub package, no copied installer and no patched Gearhead (re-signing it breaks its
 signature-gated bindings to Play services, which is the instant crash) can pass it, and the
 developer toggle does not cover a navigation app. A Play listing ends that. It would also reach
