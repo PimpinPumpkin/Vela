@@ -3277,10 +3277,13 @@ class MapViewModel @Inject constructor(
                     // closed profile beside the live one for months; the live one is the answer
                     // whenever there is one.
                     val tappedKind = PoiIcons.groupFor(name, seed?.category ?: poiKind)
+                    // Words shared by three or more of the listings around the tap are the area's
+                    // (a neighborhood, a mall, a landmark), generic for the comparison.
+                    val localGeneric = app.vela.core.util.PlaceNames.localGeneric(results.map { it.name })
                     val pool = answerable.filter { p ->
                         app.vela.core.util.PlaceNames.sameBusiness(
                             name, tappedKind, p.name, PoiIcons.groupFor(p.name, p.category),
-                            app.vela.core.util.PlaceNames.cityWords(p.address),
+                            app.vela.core.util.PlaceNames.cityWords(p.address) + localGeneric,
                         )
                     }
                         .ifEmpty { answerable.filter { it.location.distanceTo(location) <= NO_NAME_MATCH_M } }

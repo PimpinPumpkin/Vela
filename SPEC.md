@@ -1290,8 +1290,22 @@ only generic words: "Circle K | Gas Station", "U.S. Bank Branch", "CVS" against 
 "Hilton Garden Inn Davis Downtown", "Petco Grooming"), OVERLAP (nested with non-generic extra
 words, "SpeeDee-Midas" over "SpeeDee", or not nested but two identifying words in common, "Davis
 Dental Creations" plus the dentist's surname) or NONE. `GENERIC` is the list of words that
-describe a business rather than name it (category, structure and place words), and a caller adds
-the town out of an address. A single shared identifying word is NOT a match ("Arroyo Park" against
+describe a business rather than name it (category, structure and place words, street types), and
+a caller adds the town out of an address plus `localGeneric(names)`, the words three or more names
+in the pool it compares against share (a neighborhood, a mall, a landmark: "Bryant Park",
+"Flatiron", "Memorial Heights"), which is the IDF the app cannot compute globally. Three more
+families came out of a Midtown Manhattan and downtown Houston side by side (2026-09-22): a BRAND
+PREFIX of two or more words with an identifying one among them ("Bank of America Financial
+Center" and "Bank of America ATM"); the shorter name, less generic words at its ends, as a PHRASE
+inside the longer (three words carry it even when the only identifying one is a street number,
+"23rd Street Dental"; two words need a word that is not); and the shorter name's identifying words
+all inside the longer's when the longer LEADS with them ("Laurenzo's Restaurant" and "Laurenzo's
+Prime Rib"). Plurals fold pairwise ("Sola Salons" and "Sola Salon Studios"), "Dr." is "doctor",
+and a nested or subset match needs a strong core (two identifying words, or one of five letters
+that is not an ordinal): "The Finn" is not "Dish Society at Finn Hall", "Bayou Place" is not
+"Bunnies On The Bayou". Measured through the real rule over the four areas: Davis 72% of Google's
+places linked, a suburban corridor 68%, Midtown 81%, downtown Houston 83%; the rest are mostly
+places the archive does not have. A single shared identifying word is NOT a match ("Arroyo Park" against
 "Arroyo Pool"), a name made only of generic words matches nothing by overlap ("Hair" inside "Hair
 Studio"), and a brand's other listing is a VARIANT that `same` keeps out. Pinned by
 `PlaceNamesMatchTest` with the fixture pairs. Two rules take the places' KINDS (the icon group)

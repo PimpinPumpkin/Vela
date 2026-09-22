@@ -42,6 +42,7 @@ object PlaceNames {
     private val TRAILING_NUMBER = Regex("( (no|num|store|unit|#) ?\\p{N}{1,6}| \\p{N}{2,6})$")
     private val COMBINING = Regex("\\p{M}+")
 
+    private val CONNECTORS = setOf("and", "of", "at", "by", "for", "with")
     private val LEGAL = setOf("llc", "inc", "corp", "co", "ltd", "company", "incorporated", "corporation", "pc", "apc", "llp", "pllc", "gmbh", "ag", "sa", "srl", "bv", "pty", "plc")
     private val CHAIN_TAILS = listOf(
         "by wyndham", "by marriott", "by hilton", "by ihg", "by choice hotels", "by best western", "by radisson",
@@ -51,6 +52,7 @@ object PlaceNames {
         "st" to "street", "ave" to "avenue", "blvd" to "boulevard", "rd" to "road", "ctr" to "center", "centre" to "center",
         "ny" to "new york", "nyc" to "new york", "univ" to "university", "mt" to "mount", "ft" to "fort", "hwy" to "highway",
         "pkwy" to "parkway", "sq" to "square", "jr" to "junior", "intl" to "international", "natl" to "national",
+        "dr" to "doctor", "drs" to "doctors", "ln" to "lane", "ct" to "court", "ter" to "terrace", "pl" to "place",
     )
 
     /**
@@ -72,7 +74,7 @@ object PlaceNames {
         "mobile", "pet", "pets", "animal", "veterinary", "vet", "spa", "nails", "nail", "hair", "beauty", "pizza", "sushi", "taqueria",
         "cuisine", "catering", "team", "associates", "partners", "properties", "management", "rental", "rentals", "storage", "cleaners",
         "laundry", "wash", "tire", "tires", "smog", "oil", "change", "lube", "glass", "body", "collision", "parts", "hardware", "lumber",
-        "paint", "garden", "nursery", "florist", "flowers", "gifts", "gift", "books", "bookstore", "toys", "thrift", "resale", "vintage",
+        "paint", "garden", "nursery", "florist", "flowers", "gifts", "gift", "books", "bookstore", "toys", "thrift", "resale",
         "boutique", "jewelry", "jewelers", "optical", "vision", "eye", "eyecare", "chiropractic", "physical", "therapy", "massage", "yoga",
         "pilates", "martial", "arts", "dance", "music", "lessons", "academy", "learning", "preschool", "daycare", "child", "childcare",
         "kids", "senior", "living", "community", "county", "city", "public", "library", "park", "pool", "recreation", "sports", "club",
@@ -83,6 +85,9 @@ object PlaceNames {
         "wholesale", "retail", "convenience", "general", "family", "practice", "physician", "physicians", "doctor", "doctors", "dds",
         "dmd", "md", "dr", "professional", "professionals", "solutions", "systems", "technologies", "international", "national",
         "north", "south", "east", "west", "inc", "co",
+        // Street types: "38th st grocery deli" and "Rsvp 38th Street Venture" share "38th street"
+        // and are not one business; the ordinal alone must not carry it.
+        "street", "avenue", "boulevard", "road", "lane", "court", "way", "highway", "parkway", "terrace", "alley", "route",
     )
 
     /** Accents folded, case and punctuation gone, "&" read as "and", legal suffixes, chain tails,
@@ -117,7 +122,10 @@ object PlaceNames {
             if (w == "s" && glued.isNotEmpty()) glued[glued.lastIndex] = glued.last() + "s" else glued.add(w)
         }
         joined.clear(); joined.addAll(glued)
-        if (joined.isNotEmpty() && (joined[0] == "the" || joined[0] == "dr")) joined.removeAt(0)
+        if (joined.isNotEmpty() && joined[0] == "the") joined.removeAt(0)
+        // A connector left dangling by a dropped suffix ("Avid & Co." is "avid and" without this).
+        while (joined.isNotEmpty() && joined.last() in CONNECTORS) joined.removeAt(joined.lastIndex)
+        while (joined.isNotEmpty() && joined.first() in CONNECTORS) joined.removeAt(0)
         return joined.joinToString(" ")
     }
 
@@ -128,8 +136,41 @@ object PlaceNames {
     fun distinctive(name: String?, extraGeneric: Set<String> = emptySet()): Set<String> =
         tokens(name).filter { isDistinctive(it, extraGeneric) }.toSet()
 
+    // A number that survived the trailing-store-number strip IS the name ("Thai 5", "Pho 175",
+    // "Studio 54"): without it those names were all generic words and matched nothing.
+    /** [words] with each plural replaced by its singular WHEN the other name has that singular. */
+    private fun foldPlurals(words: List<String>, other: Set<String>): List<String> = words.map { w ->
+        if (w.length > 3 && w.endsWith("s") && !w.endsWith("ss") && w.dropLast(1) in other) w.dropLast(1) else w
+    }
+
+    /** Two identifying words, or one of at least five letters: "speedee", "nordstrom", "laurenzos"
+     *  carry a name on their own; "finn", "bayou", "main" do not (Midtown and Houston, 2026-09-22:
+     *  "Bayou Place" against "Bunnies On The Bayou", "Bryant Health Clinic" against an osteria
+     *  in Bryant Park). */
+    private fun strongCore(words: List<String>): Boolean =
+        words.size >= 2 || (words.size == 1 && words[0].length >= 5 && !isOrdinal(words[0]))
+
+    private val ORDINAL = Regex("\\d+(st|nd|rd|th)?")
+    private fun isOrdinal(w: String) = ORDINAL.matches(w)
+
+    /**
+     * Words that are generic IN THIS POOL: a token carried by [minNames] or more of [names] names
+     * a neighborhood or a mall rather than a business ("Memorial Heights", "NoMad", "Flatiron"),
+     * and a caller passes the result as `extraGeneric` so two businesses that merely share the
+     * neighborhood are not one. The pool is whatever the caller is comparing against (the places
+     * on screen, a search's results), so it costs nothing to compute.
+     */
+    fun localGeneric(names: Collection<String?>, minNames: Int = 3): Set<String> {
+        val counts = HashMap<String, Int>()
+        for (n in names) for (t in tokens(n).toSet()) counts[t] = (counts[t] ?: 0) + 1
+        return counts.filterValues { it >= minNames }.keys
+    }
+
     private fun isDistinctive(w: String, extraGeneric: Set<String>): Boolean =
-        w !in GENERIC && w !in extraGeneric && w.length >= 2 && !w.all { c -> c.isDigit() }
+        (w !in GENERIC && w !in extraGeneric && !pluralGeneric(w) && w.length >= 2) || (w.length == 1 && w[0].isDigit())
+
+    /** "studios", "salons", "cleaners" are as generic as their singulars. */
+    private fun pluralGeneric(w: String): Boolean = w.length > 3 && w.endsWith("s") && w.dropLast(1) in GENERIC
 
     /** True when two names identify the same business under [normalized] (the strict test). */
     fun same(a: String?, b: String?): Boolean {
@@ -147,8 +188,13 @@ object PlaceNames {
         val na = normalized(a); val nb = normalized(b)
         if (na.isEmpty() || nb.isEmpty()) return Match.NONE
         if (na == nb) return Match.EXACT
-        val ta = na.split(' ').toSet(); val tb = nb.split(' ').toSet()
-        val da = distinctive(a, extraGeneric); val db = distinctive(b, extraGeneric)
+        // Plurals fold PAIRWISE ("Sola Salons" against "Sola Salon Studios"): a word loses its "s"
+        // only when the other name carries the singular, so "Davis" and "Wells" stay themselves.
+        val ra = na.split(' '); val rb = nb.split(' ')
+        val la = foldPlurals(ra, rb.toSet()); val lb = foldPlurals(rb, ra.toSet())
+        if (la == lb) return Match.EXACT
+        val ta = la.toSet(); val tb = lb.toSet()
+        val da = la.filter { isDistinctive(it, extraGeneric) }.toSet(); val db = lb.filter { isDistinctive(it, extraGeneric) }.toSet()
         val nested = ta.containsAll(tb) || tb.containsAll(ta)
         if (nested) {
             val extra = if (ta.size >= tb.size) ta - tb else tb - ta
@@ -160,13 +206,44 @@ object PlaceNames {
             if (extra.none { isDistinctive(it, extraGeneric) }) return Match.VARIANT
             // Extra words that are not generic ("SpeeDee-Midas" over "SpeeDee", "Sam's
             // Mediterranean Cuisine" over "Sam's Cuisine"): the same business when what the
-            // shorter name identifies is all there.
-            return Match.OVERLAP
+            // shorter name identifies is all there. A short lone word is not enough of an
+            // identity to claim a longer name ("The Finn" is not "Dish Society at Finn Hall").
+            return if (strongCore(coreDistinct)) Match.OVERLAP else Match.NONE
         }
         // Not nested: two identifying words in common ("Davis Dental Creations" plus a dentist's
         // surname, "Dunloe" and "Local"). ONE shared word is not enough: "Arroyo Park" is not
         // "Arroyo Pool", "Avid & Co." is not "The Avid Reader Bookstore".
-        return if ((da intersect db).size >= 2) Match.OVERLAP else Match.NONE
+        if ((da intersect db).size >= 2) return Match.OVERLAP
+        // Three more families from the Midtown and Houston side by sides (2026-09-22):
+        // - a BRAND PREFIX of two or more words with an identifying one among them: "Bank of
+        //   America Financial Center" and "Bank of America ATM";
+        val prefix = la.zip(lb).takeWhile { (x, y) -> x == y }.size
+        if (prefix >= 2 && la.take(prefix).any { isDistinctive(it, extraGeneric) }) return Match.OVERLAP
+        // - the shorter name, less generic words at its ends, is a PHRASE inside the longer ("23rd
+        //   Street Dental" of "23rd Street Dental Associates" inside "My NYC Dentist - 23rd Street
+        //   Dental"). Three words carry it even when the only identifying one is a street number
+        //   (that is how New York names things); two words need an identifying word that is not.
+        val (short, long) = if (la.size <= lb.size) la to lb else lb to la
+        val lead = short.dropWhile { !isDistinctive(it, extraGeneric) }
+        for (k in lead.size downTo 2) {
+            val phrase = lead.take(k)
+            val named = phrase.any { isDistinctive(it, extraGeneric) && !isOrdinal(it) } || (k >= 3 && phrase.any { isDistinctive(it, extraGeneric) })
+            if (named && long.windowed(k).any { it == phrase }) return Match.OVERLAP
+        }
+        // - the shorter name's identifying words all sit in the longer's, which has more of them
+        //   ("Laurenzo's Restaurant" against "Laurenzo's Prime Rib"), when the shorter is more than
+        //   one word and its identity is not just a street number. A one-word name inside a longer
+        //   one stays out ("Avid & Co." is still not "The Avid Reader"), and so does "Arroyo Park"
+        //   against "Arroyo Pool" (the same one identifying word on both sides).
+        // With ONE identifying word in the shorter name, the longer has to LEAD with it (a brand
+        // in front: "Laurenzo's Prime Rib", "Walgreens Photo", "Chase Home Lending"); a word that
+        // merely appears inside the longer name is a neighborhood or a landmark far more often
+        // than a business ("Bayou Place" against "Bunnies On The Bayou").
+        val (dShort, dLong) = if (short === la) da to db else db to da
+        if (short.size >= 2 && dShort.isNotEmpty() && dLong.size > dShort.size && dLong.containsAll(dShort) &&
+            dShort.any { !isOrdinal(it) } && (dShort.size >= 2 || long.first() == dShort.single())
+        ) return Match.OVERLAP
+        return Match.NONE
     }
 
     /** The loose test: the same business by [match], any kind but NONE. */

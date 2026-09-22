@@ -1666,6 +1666,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   terminus), the way Google presents an intersection stop. Transit directions are unaffected: they
   already walk you to the exact boarding coordinate of the specific curb. Stops whose names carry
   the direction (NB/SB station styles) never merge.
+- ✅ **Same-business rule, city pass (2026-09-22).** Brand prefixes ("Bank of America Financial
+  Center" / "Bank of America ATM"), phrases inside longer names ("23rd Street Dental"), plurals,
+  "Dr."/"Doctors", street words no longer counting as identity, and neighborhood words shared
+  across the places on screen treated as generic. Checked against Google over Midtown Manhattan
+  (81% of Google's places linked) and downtown Houston (83%).
 - ✅ **One same-business rule for taps, twins and the bake (2026-09-21).** Descriptor tails ("Circle K
   | Gas Station", "U.S. Bank Branch", "CVS" vs "CVS Pharmacy"), spelling variants ("&"/"and",
   "St"/"Street", accents, "DDS Inc.", "by Wyndham") and agreeing identifying words now read as one
