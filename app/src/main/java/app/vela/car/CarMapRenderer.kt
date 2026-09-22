@@ -116,7 +116,7 @@ class CarMapRenderer(
         const val BEARING_EASE = 0.22
         const val ZOOM_EASE = 0.06    // per tick, so a speed tier change glides over a second or so
         const val PUCK_DOWN = 0.72    // the puck sits this far down the VISIBLE area while following in nav
-        const val ATTRIBUTION = "\u00a9 OpenStreetMap contributors"
+        const val ATTRIBUTION = "\u00a9 OpenStreetMap" // the phone's map_osm_attribution, verbatim
         const val STOPPED_MPS = 1.0   // below this, treat as parked: don't trust GPS-course noise
         const val SNAP_MAX_M = 40.0   // map-match to the route only within this distance (else off-route)
     }
@@ -338,6 +338,14 @@ class CarMapRenderer(
             runCatching { java.io.File(effectiveStyle.removePrefix("file://")).readText() }
                 .getOrNull()?.takeIf { it.isNotBlank() }
         } else null
+        // The layer ids of the style being loaded, for the palette's blanket passes: the patched
+        // JSON when there is one, else the bundled Liberty asset (the same layer ids as the live
+        // style; it is the phone's offline fallback for the same reason).
+        styleLayerIds = runCatching {
+            val json = patchedJson ?: carContext.assets.open("styles/liberty-roboto.json").bufferedReader().use { it.readText() }
+            val layers = org.json.JSONObject(json).getJSONArray("layers")
+            (0 until layers.length()).map { layers.getJSONObject(it).getString("id") }
+        }.getOrDefault(emptyList())
         val opts = MapSnapshotter.Options(width, height)
             .let { if (patchedJson != null) it.withStyleJson(patchedJson) else it.withStyle(MapStyle.LIBERTY.uri) }
             .withPixelRatio(1.0f)
@@ -401,16 +409,25 @@ class CarMapRenderer(
         }
     }
 
-    /** Vela's palette on the snapshotter's style, for the car's current day/night. */
+    private var styleLayerIds: List<String> = emptyList()
+
+    /** Vela's palette on the snapshotter's style, for the car's current day/night. Logged under
+     *  `VelaCar`, with the failure when it throws: a drive on a stock Pixel 9 (2026-09-22) showed
+     *  a light map that did not look like Vela's light palette at all, and a swallowed exception
+     *  here is the one explanation the log could not rule out. */
     private fun applyTheme(s: MapSnapshotter) {
         val night = isNight()
-        runCatching {
+        val t0 = android.os.SystemClock.elapsedRealtime()
+        val host = app.vela.ui.map.SnapshotterHost(s, styleLayerIds)
+        val ok = runCatching {
             app.vela.ui.map.applyMapTheme(
-                app.vela.ui.map.SnapshotterHost(s),
+                host,
                 dark = night,
                 amoled = night && app.vela.ui.theme.AppTheme.mode.value == app.vela.ui.theme.ThemeMode.AMOLED,
             )
         }
+        ok.onFailure { android.util.Log.w("VelaCar", "theme failed (dark=$night, ${styleLayerIds.size} ids): $it") }
+        ok.onSuccess { android.util.Log.i("VelaCar", "theme applied dark=$night layers=${host.layers.size} in ${android.os.SystemClock.elapsedRealtime() - t0} ms") }
         themed = true
         themedNight = night
     }
