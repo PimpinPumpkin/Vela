@@ -351,7 +351,9 @@ AVOID_ONDEVICE_TIMEOUT_MS = 4_000
 Past that, the online chain answers and the result is tagged `avoidNotHonored`. The chooser shows
 the "may still use tolls, highways, or ferries" note only when **every** route carries that tag,
 so a toggled avoid is never ignored silently. Today it shows mainly on a trip with stops whose
-open-router route could not be led along Google's avoiding course.
+open-router route could not be led along Google's avoiding course. The open router's own
+alternates are never offered while an avoid is on: they were computed without it. When its top
+route already follows Google's avoiding course, that single route is kept and the rest dropped.
 
 ### Bikes route for safety
 
@@ -436,9 +438,6 @@ optimistic on signalized roads.
   three tries first. Self-hosting OSRM would fix this and would also allow `exclude=`.
 - **Online avoid depends on Google.** With Google down or turned off, only a downloaded region can
   honor an avoid, and the on-phone attempt gets 4 seconds.
-- **With an avoid on, OSRM's own alternates can still appear** when the top OSRM route already
-  follows Google's avoiding course (no toll on the main line anyway). They were computed without
-  the avoid, and nothing tags them.
 - **The alternate ETAs are one ratio.** OSRM's alternates all share Google's single traffic
   ratio and one calibration, so the picker cannot rank two OSRM alternates by live traffic; only
   Google's own alternates carry per-route traffic.

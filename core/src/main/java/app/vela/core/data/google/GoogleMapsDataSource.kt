@@ -992,7 +992,12 @@ class GoogleMapsDataSource @Inject constructor(
                 if (avoidFallbackToGoogle) return@coroutineScope google.map { it.copy(abbreviatedSteps = true, source = RouteSource.GOOGLE_ABBREVIATED) }
                 // With avoid on, the open router's unrestricted routes are not offered as alternates.
                 val primary = if (snapWorthIt) (listOf(trafficRoute!!) + (if (avoidWanted) emptyList() else open)).map { applyTraffic(it, gTop, freeFlowCal) }
-                    else open.map { applyTraffic(it, gTop, freeFlowCal) }
+                    // Avoid on and the open router's top route already follows Google's avoiding
+                    // course: that one route IS the avoiding route, but the open router's OTHER
+                    // routes were computed with no avoid at all (it cannot exclude), so they are
+                    // not offered, the same rule as the snapped branch. Before this they were, and
+                    // with Google having honored the avoid, without the "may still use" note.
+                    else (if (avoidWanted && gTop != null) open.take(1) else open).map { applyTraffic(it, gTop, freeFlowCal) }
                 // ALTERNATES to choose from = Google's OWN alternate routes (the real, traffic-aware ones you
                 // miss). Kept PROVISIONAL: their polyline + live ETA are shown now, but turn-by-turn is named
                 // only when you PICK one to drive ([nameRoute]) — so the picker loads fast and we never snap a
