@@ -6,7 +6,7 @@ package app.vela.core.util
  * ("Monday: 8 AM–5 PM"), which is what the place sheet's hours section and [OpeningHours.statusAt]
  * (open/closed right now) already understand.
  *
- * Covered (measured against every tagged business in the Washington place pack, 2026-09-22):
+ * Covered (measured against every tagged business in one US state's place pack, 2026-09-22):
  * day ranges and lists, lists written with spaces ("Mo-Th, Su"), wrapping ranges ("Su-We"), one or
  * more time ranges per rule, rule groups separated by commas as well as semicolons, `off` and
  * `closed`, `24/7`, `00:00-24:00` and `00:00-00:00`, open-ended times ("17:00+"), overnight ranges,

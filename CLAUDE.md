@@ -2789,7 +2789,7 @@ architecture note.
   and a missing number on either side decides nothing (`house=` and `clash=` in `VelaTap`). Open
   hours: `OsmHours.lines(raw)` is the single converter for the open-places seed, Overpass and the
   place packs (`OfflinePoiStore.near`/`search` returned the pack's RAW OSM tag, which is what showed
-  as a "weird raw string" with Google off). It covered 86% of Washington's tagged businesses before
+  as a "weird raw string" with Google off). It covered 86% of one US state pack's tagged businesses before
   and 97.7% after (comma rule groups, spaced day lists, PH/SH and date rules skipped, "00:00+",
   sun events as words, quoted notes shown cleaned); measure with the pack's distinct `hours`
   strings through `toDayLines` before changing it. The places bake now CARRIES an OSM duplicate's

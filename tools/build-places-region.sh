@@ -396,7 +396,7 @@ CREATE TABLE dupk AS SELECT id, lat, lng, sk, confidence, kiosk, fields FROM (
   UNION ALL
   -- A FORECOURT IS ONE PER LOT: two fuel rows with one house number within the box are one station
   -- named after different things (the brand and the shop inside it). The NUMBER, not the street
-  -- line: the two rows spell the same road three ways ("State Route 9 Se #1", "WA-9", "STATE RTE 9 SE").
+  -- line: the two rows spell the same road three ways ("State Route 113 #1", "SR-113", "STATE RTE 113").
   SELECT id, lat, lng, 'fuel@' || regexp_extract(addr, '^([0-9]+)', 1) AS sk, confidence, 0 AS kiosk,
     ((addr IS NOT NULL)::INT + (phone IS NOT NULL)::INT + (website IS NOT NULL)::INT + (hours IS NOT NULL)::INT) AS fields
   FROM raw WHERE category = 'gas_station' AND addr IS NOT NULL AND regexp_matches(addr, '^[0-9]')
