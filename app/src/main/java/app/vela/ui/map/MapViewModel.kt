@@ -164,6 +164,10 @@ data class MapUiState(
     // OSM icons back in instead of leaving the outskirts iconless (user 2026-07-10).
     val ambientCoversView: Boolean = false,
     val suggestions: List<Place> = emptyList(),
+    /** Bare query rows from the provider's autocomplete ("Starbucks" + "See locations"): run as a search. */
+    val querySuggestions: List<String> = emptyList(),
+    /** Counts the times [query] was set from outside the keyboard (fill-in arrow, voice); the search field moves its cursor to the end on each. */
+    val queryEdits: Int = 0,
     // Matches from the user's OWN recents + lists (issue #180), shown above the network suggestions
     // as they type, instant and offline.
     val localSuggestions: List<LocalSuggestion> = emptyList(),
@@ -973,7 +977,7 @@ class MapViewModel @Inject constructor(
         suggestJob?.cancel()
         val term = q.trim()
         if (term.length < 2) {
-            _state.update { it.copy(suggestions = emptyList(), localSuggestions = emptyList()) }
+            _state.update { it.copy(suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList()) }
             return
         }
         // Match the user's OWN history + lists FIRST, synchronous, no network, so these land
@@ -1007,6 +1011,37 @@ class MapViewModel @Inject constructor(
                     runCatching { addressStore.geocode(term, near, limit = 3) }.getOrDefault(emptyList())
                 }
             } else null
+            // Google's OWN autocomplete leads (2026-09-22): it honors the location bias for a
+            // partial address, which the search endpoint below never did. "a house number" typed at home
+            // answered with a ZIP code two time zones away and "459 Ralston" typed in another
+            // state found nothing, while the Google app lists the five houses numbered a house number
+            // on the next streets and the San Francisco street with its city. When it answers,
+            // its rows are the suggestions (the local pack's exact hits still lead, deduped by
+            // house number) and the Photon + search-endpoint race below is skipped; when it
+            // fails or is off (offline, Google off), the old pipeline runs unchanged.
+            val auto = runCatching { dataSource.suggest(term, near, spanM0) }.getOrNull()
+            if (auto != null && (auto.places.isNotEmpty() || auto.queries.isNotEmpty())) {
+                val localAddrs = localDeferred?.await().orEmpty()
+                photonDeferred?.cancel()
+                if (_state.value.query.trim() == term) {
+                    val houseNo = Regex("""^\s*(\d+)""").find(term)?.groupValues?.get(1)
+                    fun coveredByGoogle(p: Place) = houseNo != null && auto.places.any { g ->
+                        g.location.distanceTo(p.location) < 120.0 &&
+                            (g.name.contains(houseNo) || g.address?.contains(houseNo) == true)
+                    }
+                    val addrLead = localAddrs
+                        .filter { p -> near == null || p.location.distanceTo(near) <= SUGGEST_NEAR_M }
+                        .filter { p -> !coveredByGoogle(p) }
+                    val localPlaces = _state.value.localSuggestions.mapNotNull { it.place }
+                    val localNameLoc = localPlaces.map { nameLocKey(it) }.toHashSet()
+                    val localFids = localPlaces.mapNotNull { it.featureId }.toHashSet()
+                    val deduped = (addrLead + auto.places).filterNot {
+                        nameLocKey(it) in localNameLoc || (it.featureId != null && it.featureId in localFids)
+                    }
+                    _state.update { it.copy(suggestions = deduped.take(8), querySuggestions = auto.queries.take(3)) }
+                }
+                return@launch
+            }
             val res = runCatching { dataSource.search(term, near, spanM0, rankFrom = rankBias(near)).places }.getOrDefault(emptyList())
             val photon = photonDeferred?.await().orEmpty()
             val localAddrs = localDeferred?.await().orEmpty()
@@ -1050,9 +1085,16 @@ class MapViewModel @Inject constructor(
                 val deduped = (addrLead + ranked).filterNot {
                     nameLocKey(it) in localNameLoc || (it.featureId != null && it.featureId in localFids)
                 }
-                _state.update { it.copy(suggestions = deduped.take(8)) }
+                _state.update { it.copy(suggestions = deduped.take(8), querySuggestions = emptyList()) }
             }
         }
+    }
+
+    /** The search box takes this text without searching: the arrow on a suggestion row (Google's
+     *  "put it in the box" arrow), so a long address or a name can be finished by hand. */
+    fun fillQuery(text: String) {
+        onQueryChange(text)
+        _state.update { it.copy(queryEdits = it.queryEdits + 1) }
     }
 
     private fun placeKey(p: Place): String =
@@ -1130,7 +1172,7 @@ class MapViewModel @Inject constructor(
         val near = plausibleBias(_state.value.myLocation) ?: plausibleBias(mapCenter)
         searchJob?.cancel()
         suggestJob?.cancel()
-        _state.update { it.copy(searching = true, suggestions = emptyList(), localSuggestions = emptyList()) }
+        _state.update { it.copy(searching = true, suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList()) }
         searchJob = viewModelScope.launch {
             // Prefer the ADDRESS feature over a business that happens to sit at it: searching a
             // house number where a shop is returns the shop first, and its rating, hours and
@@ -1201,7 +1243,7 @@ class MapViewModel @Inject constructor(
         if (backToTrip != null) {
             _state.update {
                 it.copy(
-                    query = "", results = emptyList(), suggestions = emptyList(), localSuggestions = emptyList(),
+                    query = "", results = emptyList(), suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(),
                     selected = backToTrip, alongRouteDest = null, directionsOpen = true,
                     resultsCollapsed = false, showSearchThisArea = false,
                 )
@@ -1210,7 +1252,7 @@ class MapViewModel @Inject constructor(
         }
         _state.update {
             it.copy(
-                query = "", results = emptyList(), suggestions = emptyList(), localSuggestions = emptyList(), selected = null,
+                query = "", results = emptyList(), suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(), selected = null,
                 resultsCollapsed = false, showSearchThisArea = false, openListId = null, pendingImport = null,
             )
         }
@@ -1450,7 +1492,7 @@ class MapViewModel @Inject constructor(
         shortcutStore.set(kind, sp)
         _state.update {
             it.copy(
-                assigningShortcut = null, selected = null, suggestions = emptyList(), localSuggestions = emptyList(),
+                assigningShortcut = null, selected = null, suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(),
                 results = emptyList(), query = "",
                 home = shortcutStore.get(ShortcutKind.HOME), work = shortcutStore.get(ShortcutKind.WORK),
                 status = appContext.getString(R.string.mapvm_shortcut_set, kind.label, sp.name),
@@ -1579,7 +1621,7 @@ class MapViewModel @Inject constructor(
         when (intent) {
             is app.vela.core.search.QueryIntent.Home -> {
                 val home = _state.value.home ?: run { showStatus(appContext.getString(R.string.intent_home_unset)); return true }
-                _state.update { it.copy(query = q, suggestions = emptyList(), localSuggestions = emptyList()) }
+                _state.update { it.copy(query = q, suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList()) }
                 // A BARE place under the shortcut's own name: selectSaved enriches by searching
                 // the address, which dresses Home as the business at that address (the same
                 // trap the contact pick had, issue #342).
@@ -1587,7 +1629,7 @@ class MapViewModel @Inject constructor(
             }
             is app.vela.core.search.QueryIntent.Work -> {
                 val work = _state.value.work ?: run { showStatus(appContext.getString(R.string.intent_work_unset)); return true }
-                _state.update { it.copy(query = q, suggestions = emptyList(), localSuggestions = emptyList()) }
+                _state.update { it.copy(query = q, suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList()) }
                 selectPlace(Place(id = work.id, name = appContext.getString(R.string.shortcut_work), location = work.location, address = work.address)); routeToSelected()
             }
             is app.vela.core.search.QueryIntent.NavigateTo -> {
@@ -1616,7 +1658,7 @@ class MapViewModel @Inject constructor(
      *  origin is geocoded and set as a custom From (which re-routes). Best-effort; a miss on
      *  either end says so instead of silently routing from the wrong place. */
     private fun routeBetween(from: String, to: String, near: LatLng?) {
-        _state.update { it.copy(query = "$from → $to", searching = true, suggestions = emptyList(), localSuggestions = emptyList()) }
+        _state.update { it.copy(query = "$from → $to", searching = true, suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList()) }
         viewModelScope.launch {
             val bias = rankBias(near)
             // GUARD: a name that merely contains "to" ("Road to Hana", "Flights to Denver") is a
@@ -1854,7 +1896,7 @@ class MapViewModel @Inject constructor(
         MapLinkParser.parseBareCoordinate(q)?.let { link ->
             val at = LatLng(link.lat!!, link.lng!!)
             recentStore.add(q)
-            _state.update { it.copy(recents = recentStore.recent(), suggestions = emptyList(), localSuggestions = emptyList(), searching = false, center = at) }
+            _state.update { it.copy(recents = recentStore.recent(), suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(), searching = false, center = at) }
             onMapLongPress(at)
             return
         }
@@ -1887,7 +1929,7 @@ class MapViewModel @Inject constructor(
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             // A fresh typed search leaves any along-route browse: picks open places normally again.
-            _state.update { it.copy(searching = true, suggestions = emptyList(), localSuggestions = emptyList(), showSearchThisArea = false, resultsCollapsed = false, alongRouteDest = null) }
+            _state.update { it.copy(searching = true, suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(), showSearchThisArea = false, resultsCollapsed = false, alongRouteDest = null) }
             // A pasted Google Maps SHARE LINK: try the shared-list import (issue #1). The link
             // resolves keylessly to the list's places, each carrying the owner's note; they land
             // as results (title in the bar) and each is savable/openable like any search hit.
@@ -1959,7 +2001,16 @@ class MapViewModel @Inject constructor(
                 val vp = viewport
                 val spanM = vp?.let { LatLng(it[0], it[1]).distanceTo(LatLng(it[2], it[1])) }
                 val res = dataSource.search(q, near, spanM, rankFrom = rankBias(near))
-                if (res.places.isNotEmpty()) {
+                // A typed house address whose results carry no such house number: the search
+                // endpoint ranks by prominence over the window and answered "459 Ralston" typed
+                // from another state with businesses named Ralston. Google's autocomplete
+                // geocodes it (2026-09-22); its rows with that house number lead the results.
+                val houseNo = Regex("""^\s*(\d+)\s+\S""").find(q)?.groupValues?.get(1)
+                fun carries(p: Place) = houseNo != null && (p.name.contains(houseNo) || p.address?.contains(houseNo) == true)
+                val geocoded = if (houseNo != null && res.places.none(::carries)) {
+                    runCatching { dataSource.suggest(q, near, spanM).places.filter(::carries).take(3) }.getOrDefault(emptyList())
+                } else emptyList()
+                if (res.places.isNotEmpty() || geocoded.isNotEmpty()) {
                     // ADDRESS queries: the on-device geocoder's exact house-number hits lead even
                     // when Google returned results (user 2026-07-15) - Google's keyless ranking
                     // for a local house number is weak, and a wrong-but-nonempty result set used
@@ -1969,7 +2020,7 @@ class MapViewModel @Inject constructor(
                         withContext(Dispatchers.IO) {
                             runCatching { addressStore.geocode(q, near, limit = 3) }.getOrDefault(emptyList())
                         }.filter { a ->
-                            res.places.none { g ->
+                            (geocoded + res.places).none { g ->
                                 g.location.distanceTo(a.location) < 120.0 &&
                                     a.name.takeWhile { it.isDigit() }.let { n -> n.isNotEmpty() && (g.name.contains(n) || g.address?.contains(n) == true) }
                             }
@@ -2003,7 +2054,7 @@ class MapViewModel @Inject constructor(
                         // offline flag (the network callback can miss an event after doze and leave
                         // `offline` latched until relaunch; seen on-device 2026-07-09).
                         it.copy(
-                            results = localAddrs + res.places + ambientExtra, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false,
+                            results = localAddrs + geocoded + res.places + ambientExtra, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false,
                             // Three full pages back = the window holds more; offer the next three.
                             resultsMoreQuery = if (res.places.size >= 40) q else null, resultsLoadingMore = false,
                         )
@@ -2013,7 +2064,7 @@ class MapViewModel @Inject constructor(
                     // "Navigate to X": the top hit is the destination, straight into the chooser.
                     if (openDirectionsOnResult) {
                         openDirectionsOnResult = false
-                        (res.places.firstOrNull())?.let { top -> selectPlace(top); routeToSelected() }
+                        (geocoded.firstOrNull() ?: res.places.firstOrNull())?.let { top -> selectPlace(top); routeToSelected() }
                     }
                 } else {
                     openDirectionsOnResult = false
@@ -2076,7 +2127,7 @@ class MapViewModel @Inject constructor(
         searchJob = viewModelScope.launch {
             _state.update {
                 it.copy(
-                    query = query, searching = true, directionsOpen = false, suggestions = emptyList(), localSuggestions = emptyList(),
+                    query = query, searching = true, directionsOpen = false, suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(),
                     resultsCollapsed = false, recents = recentStore.recent(),
                     // Stash the trip's destination: browsing stop candidates must not lose the trip.
                     // While this is set, picking a result ADDS IT AS A STOP and returns to the panel.
@@ -2198,7 +2249,7 @@ class MapViewModel @Inject constructor(
         routeJob?.cancel() // a directions fetch in flight must not resurrect the stale panel
         _state.update {
             it.copy(
-                selected = withListNote(p), center = p.location, centerZoom = null, reviews = emptyList(), suggestions = emptyList(), localSuggestions = emptyList(),
+                selected = withListNote(p), center = p.location, centerZoom = null, reviews = emptyList(), suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(),
                 placesHere = othersAt(p, it.results), loadingDetails = false, photosLoading = false,
                 // Picking a NEW place while a route chooser is open closes it: the chooser
                 // belonged to the previous destination and kept covering the fresh place
@@ -3920,7 +3971,7 @@ class MapViewModel @Inject constructor(
     // Every pick starts CLEAN (issue #405, 2026-09-13): the destination search's results were
     // still in state, so the picker's first keystroke flipped the overlay off the entry page,
     // the field lost focus after one character, and a stale list sat under the picker.
-    fun beginPickOrigin() = _state.update { it.copy(pickingOrigin = true, pickingDest = false, query = "", suggestions = emptyList(), localSuggestions = emptyList(), results = emptyList(), resultsCollapsed = false) }
+    fun beginPickOrigin() = _state.update { it.copy(pickingOrigin = true, pickingDest = false, query = "", suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(), results = emptyList(), resultsCollapsed = false) }
 
     fun cancelPickOrigin() = _state.update { it.copy(pickingOrigin = false, pickingDest = false) }
 
@@ -3929,7 +3980,7 @@ class MapViewModel @Inject constructor(
      *  backing out and retyping lost the custom origin). [setDirectionsDestination] or
      *  [cancelPickDestination] ends the mode. */
     fun beginPickDestination() = _state.update {
-        it.copy(pickingDest = true, pickingOrigin = false, pickingStop = false, query = "", suggestions = emptyList(), localSuggestions = emptyList(), results = emptyList(), resultsCollapsed = false)
+        it.copy(pickingDest = true, pickingOrigin = false, pickingStop = false, query = "", suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(), results = emptyList(), resultsCollapsed = false)
     }
 
     fun cancelPickDestination() = _state.update { it.copy(pickingDest = false) }
@@ -3942,7 +3993,7 @@ class MapViewModel @Inject constructor(
         _state.update {
             it.copy(
                 selected = withListNote(p), pickingDest = false, pickOnMap = null,
-                directionsOpen = true, results = emptyList(), query = "", suggestions = emptyList(), localSuggestions = emptyList(),
+                directionsOpen = true, results = emptyList(), query = "", suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(),
                 reviews = emptyList(), reviewsLoading = false, reviewsFound = 0, photosLoading = false,
                 loadingDetails = false, placesHere = emptyList(),
                 stopDepartures = null, stopDeparturesLoading = false, stopDeparturesFor = null,
@@ -3991,7 +4042,7 @@ class MapViewModel @Inject constructor(
 
     /** Tapped "Add stop" → the next search pick becomes an intermediate stop (multi-stop routing).
      *  [addStop]/[cancelPickStop] ends the mode. */
-    fun beginPickStop() = _state.update { it.copy(pickingStop = true, pickingDest = false, editingStops = false, query = "", suggestions = emptyList(), localSuggestions = emptyList(), results = emptyList(), resultsCollapsed = false) }
+    fun beginPickStop() = _state.update { it.copy(pickingStop = true, pickingDest = false, editingStops = false, query = "", suggestions = emptyList(), querySuggestions = emptyList(), localSuggestions = emptyList(), results = emptyList(), resultsCollapsed = false) }
 
     /** The dedicated stops editor (reorder / remove / add in one sheet, one reroute on Done).
      *  During nav (issue #402) it opens over the ETA bar; the step sheet closes first so Done
