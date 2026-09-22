@@ -80,7 +80,7 @@ class OfflinePoiStore @Inject constructor(
                         rows.add(Place(
                             id = c.getString(0), name = c.getString(1), location = at, category = c.getString(4),
                             address = c.getString(5), phone = c.getString(6), website = c.getString(7),
-                            hours = c.getString(8)?.split("\n")?.filter { it.isNotBlank() } ?: emptyList(),
+                            hours = app.vela.core.util.OsmHours.lines(c.getString(8)), // packs keep OSM's raw tag
                             distanceMeters = d,
                         ))
                     }
@@ -137,7 +137,7 @@ class OfflinePoiStore @Inject constructor(
                                 address = c.getString(5),
                                 phone = c.getString(6),
                                 website = c.getString(7),
-                                hours = c.getString(8)?.split("\n")?.filter { it.isNotBlank() } ?: emptyList(),
+                                hours = app.vela.core.util.OsmHours.lines(c.getString(8)), // packs keep OSM's raw tag
                                 distanceMeters = near?.distanceTo(loc),
                             ),
                         )

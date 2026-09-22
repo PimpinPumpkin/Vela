@@ -224,6 +224,24 @@ WHERE o.nk IS NOT NULL AND o.nk <> '' AND abs(r.lat - o.lat) < 0.0015 AND abs(r.
 UNION
 SELECT DISTINCT o.id FROM osmbizkeys o JOIN rawkeys2 r ON r.bk = o.bk
 WHERE o.bk IS NOT NULL AND abs(r.lat - o.lat) < 0.0015 AND abs(r.lng - o.lng) < 0.002;
+-- A DUPLICATE STILL KNOWS THINGS (user 2026-09-22: a convenience store's OSM node carried its
+-- opening hours, Overture's row for the same shop did not, and the dedupe dropped the node with
+-- them, so the map showed no hours for a place OSM describes fully). The kept row takes the
+-- nearest same-name OSM node's hours, phone and website wherever it has none; a value it already
+-- has (Overture's, or a chain locator's) stays. Name only, never brand, so one branch's hours
+-- cannot land on another branch of the chain a block away.
+CREATE TABLE osmfill AS
+SELECT rid, hours, phone, website FROM (
+  SELECT r.id AS rid, o.hours, o.phone, o.website,
+    row_number() OVER (PARTITION BY r.id ORDER BY abs(r.lat - ok.lat) + abs(r.lng - ok.lng)) AS rn
+  FROM rawkeys2 r JOIN osmbizkeys ok ON ok.nk = r.nk JOIN osmbiz o ON o.id = ok.id
+  WHERE ok.nk IS NOT NULL AND ok.nk <> '' AND abs(r.lat - ok.lat) < 0.0015 AND abs(r.lng - ok.lng) < 0.002
+    AND (o.hours IS NOT NULL OR o.phone IS NOT NULL OR o.website IS NOT NULL)
+) WHERE rn = 1;
+UPDATE raw SET hours = coalesce(raw.hours, f.hours), phone = coalesce(raw.phone, f.phone),
+  website = coalesce(raw.website, f.website)
+FROM osmfill f WHERE raw.id = f.rid;
+SELECT (SELECT count(*) FROM osmfill WHERE hours IS NOT NULL) AS osm_hours_carried;
 INSERT INTO raw
 SELECT o.id, o.name, o.category, o.confidence, o.brand, o.addr, o.website, o.phone, o.operating_status, o.lng, o.lat, o.hours
 FROM osmbiz o WHERE o.id NOT IN (SELECT id FROM osmdupes) AND o.category IS NOT NULL;

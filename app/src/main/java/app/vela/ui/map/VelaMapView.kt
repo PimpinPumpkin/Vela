@@ -2982,7 +2982,7 @@ fun VelaMapView(
                             // `hours` (OSM opening_hours syntax, baked from AllThePlaces for chain
                             // rows) as Google-style day lines so the sheet shows them and computes
                             // open/closed offline; the raw string when the syntax is exotic.
-                            hours = prop("hours")?.let { app.vela.core.util.OsmHours.toDayLines(it) ?: listOf(it) } ?: emptyList(),
+                            hours = app.vela.core.util.OsmHours.lines(prop("hours")),
                         )
                         openPlaceTap.value(place)
                         return@handleTap true
