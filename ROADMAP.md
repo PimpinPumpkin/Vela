@@ -253,9 +253,32 @@ DWG conversation first. Until then in-app fixes stay local (the closed-listing h
 
 ### A Google Play listing  *(prep work - the split has to be real, not a disguise)*
 
-The reason to want one is **Android Auto**. AA gates navigation apps on the installer, so a
-sideloaded Vela is a fight with the head unit every time (see `project_vela_android_auto`); a Play
-listing ends that. The listing would also reach people who will never install an APK by hand.
+The reason to want one is **Android Auto**. What the gate actually checks was read off a car log
+on 2026-09-22 (GrapheneOS Pixel 9, sandboxed Play, "Unknown sources" on, install fields spoofed to
+Play by KingInstaller): on connect the Android Auto app asks the Play Store who owns each app,
+Play answers `app owners empty` for anything it did not install, and the validator denies the
+package "failed all other checks". So it is Play's own install record, not the installer fields;
+no spoof, no stub package, no copied installer and no patched Gearhead (re-signing it breaks its
+signature-gated bindings to Play services, which is the instant crash) can pass it, and the
+developer toggle does not cover a navigation app. A Play listing ends that. It would also reach
+people who will never install an APK by hand.
+
+Two ideas that came up the same day and do not work: a Vela BACKEND that does the Google
+fetching so the app on Play is "clean" (it centralizes every user's Google traffic on one address,
+which is the one thing the per-user design exists to avoid, it is trivially blocked, and it puts
+the publishing account under Google's enforcement for server-side scraping instead of on-device
+scraping, which is not better); and installing the Play edition and then sideloading the full
+build over it to inherit Play's record (Play App Signing re-signs, so the two cannot replace each
+other, as the signing note below already says).
+
+**The other route worth a test is a dongle.** Not the wireless Android Auto adapters, which still
+run the phone's Android Auto app and hit the same gate, but the Android "AI box" class
+(Carlinkit, Ottocast and the like): a small Android device that plugs into the car's USB, presents
+itself to the head unit over the CarPlay/Android Auto channel, and shows its own screen there.
+Vela installs on the box like on a phone, with no Google gate in the loop; the box gets location
+from the car or its own receiver and data from a SIM or the phone's hotspot. It is the
+"head unit that runs Android" answer in a form that fits an existing car, and it is untested here:
+one box, one drive, and it is either a documented path or a dead one.
 
 **The shape that works is a compile-time flavor, not a switch.** A `play` flavor where the Google
 extractor is NOT IN THE APK: no scrape, no hidden path, nothing to turn on. What is left is a
