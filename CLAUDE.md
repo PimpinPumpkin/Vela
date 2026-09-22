@@ -4444,7 +4444,13 @@ Gotchas:
   `installedFor(center, mounted, view)` now has hysteresis: unmounting stays eager (center tile
   without roads = stream), but MOUNTING an archive that is not already mounted needs the z12 ring
   around the center AND the four viewport corners to hold roads. Once the border is on screen the
-  view keeps streaming; an archive comes back only when the border has left the screen. The probe tests the `transportation` LAYER, not
+  view keeps streaming; an archive comes back only when the border has left the screen. **Fourth
+  round (2026-09-22, reproduced on the 4a in airplane mode with Pennsylvania installed, panning
+  from Scranton over the New York line at the 10 mi scale): offline, the eager unmount blanked the
+  WHOLE screen for twelve seconds, the Pennsylvania half included, because nothing streams in the
+  archive's place. `installedFor(keepMounted = offline)` keeps the mounted archive while its roads
+  still reach the center tile, the ring around it or any viewport corner; a view entirely outside
+  its data lets go. Online is unchanged.** The probe tests the `transportation` LAYER, not
   tile presence - planetiler's base data (water, landcover, Natural Earth) is global, so a bake has
   tiles across its whole box and "is there a tile" answers yes over the neighbor and out to sea
   (verified on the published hawaii archive: a mid-Pacific z12 tile exists and carries no roads).

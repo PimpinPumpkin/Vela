@@ -1698,7 +1698,10 @@ Selection rules on the phone:
   (no roads at the center tile means stream); mounting an archive that is not the one in use
   requires roads at the eight z12 tiles around the center and at the four corners of the visible
   viewport (`installedFor(center, mounted, view)`), so an archive returns only once the border has
-  left the screen. Swaps also keep a `BASEMAP_SWAP_COOLDOWN_MS` (2 s) floor.
+  left the screen. Swaps also keep a `BASEMAP_SWAP_COOLDOWN_MS` (2 s) floor. Offline the eager
+  unmount is replaced (`keepMounted`): the archive in use stays while its roads reach the center
+  tile, the ring or any viewport corner, because nothing streams in its place and letting go
+  blanked the whole screen, the downloaded half included, on a pan across a state line.
 - **A global low-zoom archive is the floor under the pick** (`BasemapTileStore.WORLD_ID`, baked by
   `world-lowzoom.yml`, about 11 MB at z0-7, pulled once alongside the first offline download). It is
   kept OUT of the per-region candidate list: it covers every point on earth, and it carries no

@@ -55,9 +55,21 @@ class BasemapTileStore @Inject constructor(
      *  network", which only the OSM-derived part of the bake does.
      *  A probe that cannot answer (an unreadable file, a format this reader does not know, a zoom
      *  outside the archive) leaves the old rule in charge, so this can only ever improve the pick. */
-    fun installedFor(center: LatLng?, mounted: File? = null, view: List<LatLng> = emptyList()): File? {
+    fun installedFor(center: LatLng?, mounted: File? = null, view: List<LatLng> = emptyList(), keepMounted: Boolean = false): File? {
         val c = center ?: return null
         val index = readIndexPublic()
+        // OFFLINE THE MOUNTED ARCHIVE STAYS WHILE ANY OF THE VIEW IS IN IT (issue #552, fourth
+        // round, 2026-09-22). The eager unmount below is right online, where the streamed tiles
+        // take over the moment the center leaves the data; offline nothing takes over, so on a
+        // recorded pan from Scranton across the New York line the whole screen went blank for
+        // twelve seconds, the Pennsylvania half included, until the pan back remounted the file.
+        // With [keepMounted] the archive in use is kept as long as its roads still reach the
+        // center, the ring around it or any corner of the viewport; only a view entirely outside
+        // its data lets go of it.
+        if (keepMounted && mounted != null && mounted.name != "$WORLD_ID.pmtiles" && mounted.exists()) {
+            val (mx, my) = PmtilesReader.tileOf(c.lat, c.lng, COVERAGE_PROBE_Z)
+            if (viewTouches(mounted, mx, my, view)) return mounted
+        }
         // The WORLD archive is never a normal candidate: it covers every point on earth, so the
         // area sort would rank it last anyway, and the roads probe below would reject it outright
         // (it carries no transportation layer at any zoom). It is the explicit last resort instead.
@@ -128,6 +140,16 @@ class BasemapTileStore @Inject constructor(
             if (coverage(f, x + dx, y + dy) == false) return false
         }
         return true
+    }
+
+    /** Roads of [f] reach the center tile, one of the eight around it, or a viewport corner. */
+    private fun viewTouches(f: File, x: Int, y: Int, view: List<LatLng>): Boolean {
+        if (coverage(f, x, y) == true) return true
+        for (dx in -1..1) for (dy in -1..1) if (coverage(f, x + dx, y + dy) == true) return true
+        return view.any { p ->
+            val (cx, cy) = PmtilesReader.tileOf(p.lat, p.lng, COVERAGE_PROBE_Z)
+            coverage(f, cx, cy) == true
+        }
     }
 
     /** Every viewport corner's z12 tile holds roads in [f]; "cannot tell" counts as yes. */
