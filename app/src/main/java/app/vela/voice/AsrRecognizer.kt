@@ -212,7 +212,14 @@ class AsrRecognizer @Inject constructor(
             android.util.Log.i(TAG, "skipping ASR warm-up on a low-RAM device, will load on first listen")
             return
         }
-        Thread({ runCatching { ensureRecognizer() } }, "asr-warmup").start()
+        // BACKGROUND priority (2026-09-22): the load is seconds of CPU at launch, and at default
+        // priority it shared the big cores with the map's render thread - a cold-launch pan on the
+        // 4a ran 9-40 fps until the warm-ups finished (59 once settled). In the background cgroup
+        // it still finishes a few seconds after launch, on cores the map is not using.
+        Thread({
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
+            runCatching { ensureRecognizer() }
+        }, "asr-warmup").start()
     }
 
     /** Load the recognizer for the engine we'd run NOW (the pick, or Whisper for a language the pick

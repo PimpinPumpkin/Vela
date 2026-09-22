@@ -97,7 +97,25 @@ class PiperSynth @Inject constructor(
         // changed. It's idempotent per-voice (returns the current engine when the right voice is up), so
         // a warm-up on the already-loaded voice is a cheap no-op.
         if (loadFailed || !VelaPiper.isReady(context)) return
-        worker.execute { ensureLoaded() }
+        // BACKGROUND priority while warming (see AsrRecognizer.warmUp: the load competed with the
+        // map's render thread at launch). The worker is also the thread that speaks, so a prompt
+        // queued behind a slow background load raises it back ([speak] calls [boostWarm]).
+        worker.execute {
+            warmingTid = android.os.Process.myTid()
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
+            try { ensureLoaded() } finally {
+                warmingTid = 0
+                android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_DEFAULT)
+            }
+        }
+    }
+
+    @Volatile private var warmingTid = 0
+
+    /** A prompt is waiting: finish any background warm-up at normal priority. */
+    private fun boostWarm() {
+        val tid = warmingTid
+        if (tid != 0) runCatching { android.os.Process.setThreadPriority(tid, android.os.Process.THREAD_PRIORITY_DEFAULT) }
     }
 
     private fun ensureLoaded(): OfflineTts? {
@@ -170,6 +188,7 @@ class PiperSynth @Inject constructor(
     }
 
     override fun speak(text: String, interrupt: Boolean, onDone: () -> Unit) {
+        boostWarm()
         val myGen = if (interrupt) ++generation else generation
         worker.execute {
             val engine = ensureLoaded()
