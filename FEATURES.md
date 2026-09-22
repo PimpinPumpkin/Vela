@@ -1680,7 +1680,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   "St"/"Street", accents, "DDS Inc.", "by Wyndham") and agreeing identifying words now read as one
   business, while shared generic words ("Russell Park Apartments" vs "Orchard Park Apartments") no
   longer do; the bake keeps one row per business (a gas station listed twice, a store and the
-  counter inside it). Derived from a Google-versus-archive study over the Davis fixture.
+  counter inside it). Derived from a Google-versus-archive study over the Davis fixture, then
+  Midtown, Houston, Berlin and Tokyo: one generic table per app language, legal forms and street
+  abbreviations per language, CJK names compared as strings, Europe's four-letter brands, glued
+  names, and a tap on a label in another script (a Japanese map on an English phone) that looks
+  the listing up in the label's own language when the English answer does not name it.
 - ✅ **Offline departure board (2026-09-21).** Every board fetched is kept on the phone, so a stop
   tapped with no connection shows the routes, headsigns and colors it had last time with a "last
   seen" line instead of nothing (`TransitBoardCache`).

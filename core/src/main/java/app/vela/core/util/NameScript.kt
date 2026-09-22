@@ -45,6 +45,45 @@ object NameScript {
         return letters > 0 && hit * 2 > letters
     }
 
+    /** The language a NAME's script implies, as Google's `hl` code, or null when the script does
+     *  not say (Latin, or one this does not know). Kana is Japanese wherever it is; Han alone is
+     *  Japanese inside Japan and Chinese elsewhere (Traditional over Taiwan, Hong Kong and Macau),
+     *  so the place's position decides. Hebrew is `iw`, the code Android and Google both take. */
+    fun scriptLanguage(name: String, lat: Double, lng: Double): String? {
+        val counts = HashMap<UnicodeScript, Int>()
+        var i = 0
+        while (i < name.length) {
+            val cp = name.codePointAt(i); i += Character.charCount(cp)
+            if (!Character.isLetter(cp)) continue
+            val sc = runCatching { UnicodeScript.of(cp) }.getOrNull() ?: continue
+            counts[sc] = (counts[sc] ?: 0) + 1
+        }
+        if ((counts[UnicodeScript.HIRAGANA] ?: 0) + (counts[UnicodeScript.KATAKANA] ?: 0) > 0) return "ja"
+        val top = counts.maxByOrNull { it.value }?.key ?: return null
+        return when (top) {
+            UnicodeScript.HAN -> when {
+                lat in 24.0..46.0 && lng in 122.5..146.5 -> "ja"
+                lat in 21.5..25.5 && lng in 119.5..122.5 -> "zh-TW"
+                lat in 22.1..22.6 && lng in 113.5..114.5 -> "zh-TW"
+                else -> "zh-CN"
+            }
+            UnicodeScript.HANGUL -> "ko"
+            UnicodeScript.CYRILLIC -> "ru"
+            UnicodeScript.HEBREW -> "iw"
+            UnicodeScript.THAI -> "th"
+            UnicodeScript.ARABIC -> "ar"
+            UnicodeScript.GREEK -> "el"
+            else -> null
+        }
+    }
+
+    /** True when [hl] names the app's own language [uiLang] (Hebrew is `iw` on Android and `he`
+     *  elsewhere; region and script tags do not count). */
+    fun sameLanguage(hl: String, uiLang: String): Boolean {
+        fun base(s: String) = s.lowercase().substringBefore('-').substringBefore('_').let { if (it == "he") "iw" else it }
+        return base(hl) == base(uiLang)
+    }
+
     /** [google] unless it is in another script than the app's while [label] is in the app's. */
     fun prefer(language: String, google: String, label: String?): String {
         if (label.isNullOrBlank()) return google

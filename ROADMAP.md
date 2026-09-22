@@ -145,6 +145,14 @@ Roughly in the order they are worth doing. Each one is small enough for a single
   installer spoof, and any in-app update undoes both. The decision (2026-09-13) is the Play split
   below. Aftermarket units with their own receiver already list sideloaded Vela after King
   Installer plus an ADB install.
+- **Both-mode twins across scripts (2026-09-22).** The tap resolve now searches a label in its
+  own script language when the English answer does not name it, but the Both-mode twin pass
+  still compares Google's English-localized ambient names with the archive's local ones, so over
+  Tokyo on an English phone about half the open icons draw beside their Google twin (38% link
+  under `hl=en`, 65% under `hl=ja` through the same rule). Options: run the ambient fan-out in
+  the region's language when the phone's differs and keep the English copy for the sheet, or
+  bake a romanized name into the archive where Overture carries none (it has no alternate names
+  in Japan). Needs a device in the region; not chased blind.
 - **iOS (2026-09-13, not started).** `:core` is plain Kotlin and would move to Kotlin
   Multiplatform with the Android-only bits (SQLite stores, WebView bridges, LocationManager)
   behind expect/actual seams; MapLibre has an iOS SDK, sherpa-onnx ships iOS builds, the hidden

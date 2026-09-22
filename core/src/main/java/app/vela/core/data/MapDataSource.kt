@@ -25,7 +25,9 @@ interface MapDataSource {
     // are computed from - your real location when you are searching where you are, so the list
     // doesn't reshuffle around wherever the viewport happens to be centered. Null = rank from
     // `near` (the viewport), which stays the SEARCH AREA either way.
-    suspend fun search(query: String, near: LatLng? = null, spanMeters: Double? = null, rankFrom: LatLng? = null): SearchResult
+    /** [lang] (an `hl` code) asks the source for its answer in that language instead of the app's;
+     *  the tap resolve uses it for a label written in another script. Null = the app's. */
+    suspend fun search(query: String, near: LatLng? = null, spanMeters: Double? = null, rankFrom: LatLng? = null, lang: String? = null): SearchResult
 
     /** The NEXT [pages] result pages of the same query, starting at page [fromPage] (zero-based;
      *  [search] itself covers pages 0..2). Empty when the source cannot page. */

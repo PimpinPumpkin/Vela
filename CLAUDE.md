@@ -2608,7 +2608,18 @@ architecture note.
   薬局 / 銀行 / 지점). `PlaceNamesI18nTest` pins a pair per language. The four English study
   areas moved by one or two matches either way under the union. Regenerate
   `tools/place-generic-words.txt` from ALL the `GENERIC_xx` tables (the generator has to accept
-  both `private val X = setOf(` and the typed form; comment lines excluded).
+  both `private val X = setOf(` and the typed form; comment lines excluded). **Berlin + Tokyo
+  (2026-09-22):** Berlin links 75% through the rule after a four-letter-brand allowance (Lidl,
+  Aldi, Rewe: a four-letter word carries a nested match when it leads both names and the longer
+  adds one identifying word, or when both names reduce to it and the kinds agree; a bare "Hair"
+  or "Finn" still claims nothing) and a glued-name rule ("greengymberlin" reads as its words).
+  Tokyo is the cross-script case: 38% under `hl=en`, 65% under `hl=ja`, because Google names
+  places in English for an English phone and the archive is three-quarters Japanese with NO
+  Overture alternate names. So the tap resolve runs a second search in the label's own script
+  language when nothing agreed (`NameScript.scriptLanguage` + `MapDataSource.search(lang)` +
+  `MapViewModel.crossScriptCandidates`, then the pick's copy in the app language by feature id).
+  NOT device-verified in Japan; the Both-mode twin pass still compares English ambient names with
+  the local archive and is the open half (ROADMAP).
 - **A CLOSED LISTING NEVER BEATS A LIVE ONE, AND ONLY HIDES A PIN WHEN NO LIVE TWIN EXISTS
   (2026-09-21).** Google keeps a moved business's old, permanently closed profile beside the live
   one for months. The tap pool now drops closed listings whenever a live candidate exists, and
