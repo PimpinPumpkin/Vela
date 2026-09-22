@@ -4450,7 +4450,10 @@ Gotchas:
   WHOLE screen for twelve seconds, the Pennsylvania half included, because nothing streams in the
   archive's place. `installedFor(keepMounted = offline)` keeps the mounted archive while its roads
   still reach the center tile, the ring around it or any viewport corner; a view entirely outside
-  its data lets go. Online is unchanged.** The probe tests the `transportation` LAYER, not
+  its data lets go. Online the rule is the mirror: the archive is mounted only while the ring
+  AND the corners are all inside it, so a border on screen means streaming, and a pan along the
+  border (the reporter's video, center wobbling across the line) no longer reloads the style at
+  every crossing; one reload when the border enters the screen, one when it leaves.** The probe tests the `transportation` LAYER, not
   tile presence - planetiler's base data (water, landcover, Natural Earth) is global, so a bake has
   tiles across its whole box and "is there a tile" answers yes over the neighbor and out to sea
   (verified on the published hawaii archive: a mid-Pacific z12 tile exists and carries no roads).

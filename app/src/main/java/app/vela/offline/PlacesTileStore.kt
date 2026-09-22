@@ -96,10 +96,18 @@ class BasemapTileStore @Inject constructor(
         // zoom, where a fixed ring is a rounding error; keying on the corners means an archive is
         // mounted only once the border has left the screen, and once the border shows the view
         // keeps streaming instead of flipping the style every couple of seconds.
+        // ONLINE THE ARCHIVE IS MOUNTED ONLY WHILE THE WHOLE VIEW IS INSIDE IT (issue #552, fourth
+        // round, the online half). The mounted archive used to be kept until the CENTER tile left
+        // its data, so with a border on screen the far side drew nothing while the center was
+        // still inside, and a pan along the border, with the center wobbling across it, reloaded
+        // the style at every crossing (the reporter's video: gray, then network, then gray). Now
+        // the archive is in use exactly when the ring and the corners are all inside it: the
+        // moment a border comes on screen the view streams, and it keeps streaming, one reload
+        // each way, none while the border stays in view. Offline is the [keepMounted] rule above.
         var unreadable = false
         for ((_, f) in covering) {
             when (coverage(f, tx, ty)) {
-                true -> if (f == mounted || (ringCovered(f, tx, ty) && cornersCovered(f, view))) return f
+                true -> if (ringCovered(f, tx, ty) && cornersCovered(f, view)) return f
                 null -> unreadable = true
                 false -> Unit
             }
