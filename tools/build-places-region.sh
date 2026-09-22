@@ -336,6 +336,35 @@ FROM dupk a JOIN dupk b ON b.sk = a.sk AND abs(b.lat - a.lat) < 0.00055 AND abs(
 GROUP BY a.id;
 DELETE FROM raw WHERE id IN (SELECT id FROM dupleader WHERE id <> leader);
 SELECT (SELECT count(*) FROM dupleader WHERE id <> leader) AS same_business_rows_dropped;
+-- THE VARIANT FAMILY (2026-09-22): "Chevron Gas Station" beside "Chevron", "Walgreens Pharmacy"
+-- beside "Walgreens", "Starbucks Coffee Company" beside "Starbucks" are one business whose names
+-- differ only by GENERIC words. The core key is the snap key minus the app's generic word list
+-- (tools/place-generic-words.txt, pinned to core/util/PlaceNames.GENERIC by a unit test); rows
+-- with the same non-empty core key within ~60 m fold onto the leader the same way. A key that is
+-- only a street number ("38th") or a single short word is not a name and is left out, which is
+-- the app's strong-core rule in SQL.
+CREATE TABLE generic AS SELECT w FROM read_csv('$ROOT/tools/place-generic-words.txt', header = false, columns = {'w': 'VARCHAR'});
+-- (No lambda here: DuckDB refuses a subquery inside one, so the tokens are unnested and the
+-- generic ones anti-joined away, then re-joined in order.)
+CREATE TABLE corek AS
+WITH toks AS (
+  SELECT r.id, r.lat, r.lng, r.confidence, r.category, r.addr, r.phone, r.website, r.hours, t.tok, t.i
+  FROM (SELECT *, string_split(snapkey(name), ' ') AS tl FROM raw WHERE snapkey(name) IS NOT NULL) r,
+       unnest(r.tl) WITH ORDINALITY AS t(tok, i)
+  WHERE t.tok <> '' AND t.tok NOT IN (SELECT w FROM generic)
+)
+SELECT id, any_value(lat) AS lat, any_value(lng) AS lng, string_agg(tok, ' ' ORDER BY i) AS ck, any_value(confidence) AS confidence,
+  any_value(CASE WHEN category IN ('rental_kiosks','bank_equipment_service','money_transfer_services','atms','key_and_locksmith','vending_machine','photo_booth') THEN 1 ELSE 0 END) AS kiosk,
+  any_value((addr IS NOT NULL)::INT + (phone IS NOT NULL)::INT + (website IS NOT NULL)::INT + (hours IS NOT NULL)::INT) AS fields
+FROM toks GROUP BY id
+HAVING NOT regexp_matches(string_agg(tok, ' ' ORDER BY i), '^[0-9]+(st|nd|rd|th)?$')
+   AND (length(string_agg(tok, ' ' ORDER BY i)) >= 5 OR string_agg(tok, ' ' ORDER BY i) LIKE '% %');
+CREATE TABLE coreleader AS
+SELECT a.id, first(b.id ORDER BY b.kiosk, b.confidence DESC, b.fields DESC, b.id) AS leader
+FROM corek a JOIN corek b ON b.ck = a.ck AND abs(b.lat - a.lat) < 0.00055 AND abs(b.lng - a.lng) < 0.0007
+GROUP BY a.id;
+DELETE FROM raw WHERE id IN (SELECT id FROM coreleader WHERE id <> leader);
+SELECT (SELECT count(*) FROM coreleader WHERE id <> leader) AS same_business_variant_rows_dropped;
 CREATE TABLE scored AS
 SELECT *,
   CASE

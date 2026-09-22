@@ -1095,8 +1095,16 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   box as the residual. The snap key mirrors `PlaceNames.normalized` (accents, parentheticals, "&",
   possessives, legal suffixes, store numbers) so a row the bake keeps is one the app can match.
   Fuel rows also key by their HOUSE NUMBER (`fuel@<number>`, within the same 60 m box): a station
-  is one per lot and its rows spell the road three ways. Otherwise exact keys only; the VARIANT
-  family ("Chevron Station Davis") is left to the app's rule, which is the next step for the bake.
+  is one per lot and its rows spell the road three ways. **And the VARIANT family folds too
+  (2026-09-22):** a CORE KEY is the snap key minus every word in `tools/place-generic-words.txt`
+  (the app's `PlaceNames.GENERIC`, pinned equal by `PlaceNamesTest`; the bake anti-joins the
+  unnested tokens because DuckDB refuses a subquery inside a lambda), and rows with the same
+  non-empty core key within the box fold onto one leader: "Chevron Gas Station" onto "Chevron",
+  "Walgreens Pharmacy" onto "Walgreens", "Starbucks Coffee Company" onto "Starbucks", "The Toasted
+  Yolk Cafe" onto "Toasted Yolk". A core key that is only a street number or a single word under
+  five letters is not a name and stays out (the app's strong-core rule), so "38th Street Deli" and
+  "38th St Grocery" stay two rows, as do "Fine Art Gallery" and "Modern Art Gallery" (empty cores).
+  The OVERLAP family stays app-side: it needs the kinds and the pool's shared words.
 - **Whether a rebake is worth a delta is measured, not assumed.** `scripts/archive-churn.py` reads
   both archives' PMTiles directories, hashes every tile, and reports per zoom what is identical,
   changed, added and dropped plus a real `zstd --patch-from` delta; `places-churn.yml` bakes a region

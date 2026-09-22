@@ -112,6 +112,16 @@ class PlaceNamesMatchTest {
         assertEquals(PlaceNames.Match.OVERLAP, m("Patsy's Pizzeria Flatiron", "Patsy's"))
     }
 
+    @Test fun `the bake's copy of the generic list matches the app's`() {
+        // tools/place-generic-words.txt is read by tools/build-places-region.sh for its core-key
+        // fold; a word added here has to land there too, or the bake and the app disagree on what
+        // a name is. Regenerate: sort the words of GENERIC into the file, one per line.
+        val f = java.io.File("../tools/place-generic-words.txt").takeIf { it.exists() } ?: java.io.File("tools/place-generic-words.txt")
+        assertTrue("tools/place-generic-words.txt is missing", f.exists())
+        val file = f.readLines().filter { it.isNotBlank() }.toSet()
+        assertEquals(PlaceNames.GENERIC, file)
+    }
+
     @Test fun `a neighborhood shared across the pool is generic there`() {
         val pool = listOf("Memorial Heights Reflexology", "The Shops at Memorial Heights", "Memorial Heights Dental", "Joe's Pizza")
         val local = PlaceNames.localGeneric(pool)
