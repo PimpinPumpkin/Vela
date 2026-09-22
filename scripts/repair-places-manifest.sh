@@ -23,10 +23,13 @@ WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 CATALOG="tools/places-regions.json"
 
 derive() {
-  gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[] | "\(.name) \(.size)"' | sort > "$WORK/assets.txt"
+  # name, size and the upload DATE: two bakes of a small state can round to the same size in MB
+  # (Nebraska, 2026-09-22), so "unchanged" also needs the asset not to have been uploaded since
+  # the rev the old row carries.
+  gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[] | "\(.name) \(.size) \(.updatedAt | .[0:10] | gsub("-"; ""))"' | sort > "$WORK/assets.txt"
   gh release download "$TAG" --repo "$REPO" -p places-overlay-manifest.json -O "$WORK/old.json" 2>/dev/null || echo '{"regions":[]}' > "$WORK/old.json"
   : > "$WORK/entries.ndjson"
-  while read -r NAME SIZE; do
+  while read -r NAME SIZE UPDATED; do
     case "$NAME" in places-*.pmtiles) ;; *) continue ;; esac
     ID="${NAME#places-}"; ID="${ID%.pmtiles}"
     URL="https://github.com/$REPO/releases/download/$TAG/$NAME"
@@ -36,7 +39,7 @@ derive() {
     NAME_=$(jq -r '.name // empty' <<<"$ROW"); [ -n "$NAME_" ] || NAME_="$ID"
     BBOX=$(jq -c '.bbox // empty' <<<"$ROW"); [ -n "$BBOX" ] || BBOX=$(jq -c '.bbox // empty' <<<"$OLD")
     [ -n "$BBOX" ] || { echo "skip $ID (no bounds in the catalog or the old manifest)"; continue; }
-    if [ "$OLD" != "{}" ] && [ "$(jq -r '.sizeMb' <<<"$OLD")" = "$MB" ]; then
+    if [ "$OLD" != "{}" ] && [ "$(jq -r '.sizeMb' <<<"$OLD")" = "$MB" ] && [ "${UPDATED:-0}" -le "$(jq -r '.rev // 0' <<<"$OLD")" ]; then
       # unchanged archive: keep its rev and delta, refresh name and bounds from the catalog
       jq -c --arg name "$NAME_" --argjson bbox "$BBOX" '.name = $name | .bbox = $bbox' <<<"$OLD" >> "$WORK/entries.ndjson"; continue
     fi
@@ -70,7 +73,7 @@ for attempt in 1 2 3; do
   gh release upload "$TAG" "$WORK/places-overlay-manifest.json" --clobber --repo "$REPO"
   echo "places manifest now lists $(jq '.regions | length' "$WORK/places-overlay-manifest.json") regions (attempt $attempt)"
   # An archive uploaded while this ran is not in the listing above; go round once more.
-  gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[] | "\(.name) \(.size)"' | sort > "$WORK/assets.after"
+  gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[] | "\(.name) \(.size) \(.updatedAt | .[0:10] | gsub("-"; ""))"' | sort > "$WORK/assets.after"
   if diff -q <(grep '\.pmtiles$' "$WORK/assets.before") <(grep '\.pmtiles$' "$WORK/assets.after") >/dev/null; then break; fi
   echo "the release changed during the merge; rebuilding"
 done
