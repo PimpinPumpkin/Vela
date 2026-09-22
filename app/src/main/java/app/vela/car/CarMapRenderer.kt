@@ -482,6 +482,16 @@ class CarMapRenderer(
             snap.setCameraPosition(cam)
             snap.start({ result ->
                 rendering = false
+                // THE STYLE OBSERVER NEVER FIRED IN PRACTICE (Gearslip preview, 2026-09-22: no
+                // theme line in the log, the map drawn as stock Liberty under the old darkening
+                // filter): a style handed over as JSON finishes parsing before setObserver runs.
+                // A returned snapshot proves the style is loaded, so the palette goes on here on
+                // the first one, and that frame is thrown away for a themed one.
+                if (!themed) {
+                    applyTheme(snap)
+                    requestRender()
+                    return@start
+                }
                 lastSnapshot = result
                 draw(result)
                 if (dirty) { dirty = false; requestRender() }
