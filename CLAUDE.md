@@ -2772,7 +2772,17 @@ architecture note.
   missing fields are filled from the downloaded place packs (`offlineTwin`: `OfflinePoiStore.near`
   within 80 m, agreeing by name), which is also what an offline tap now shows. The resolve's
   "still this tap" gates compare id + point (`isPlaceholder`), not the whole Place, because the
-  placeholder is filled in while the lookup runs.
+  placeholder is filled in while the lookup runs. **Round three:** (a) name matches count only
+  within `BUSINESS_TAP_CAP_M` of the tap: a pin named for the brand on the pumps agreed with 17
+  of that brand's stations miles away, the non-empty pool blocked every nearby fallback, and the
+  right listing (under the seller's name, 11 m away) never got a look; (b) a same-kind listing
+  within 60 m that is already in the results (`kindNear=` in `VelaTap`) is tried before
+  `kindBesideAnchor` spends a request. (c) The SOURCE LINE: `PlaceOrigin.of(place.id)` reads the
+  bake's id prefixes (`overture:atp:<spider>:` AllThePlaces, `overture:osm:n123` OSM with a node
+  link, bare Overture hex, basemap `poi:` = OSM) and the sheet shows "From X · checking Google" /
+  "· not matched on Google" (`tapUnlinkedFor` state) / "From X" (Google off) under the name. A
+  Google listing's id matches none of them, so the line leaves when the tap links. It is how to
+  tell which dataset needs fixing for a place that never links.
 - **A TAP THAT DOES NOT LINK LOGS WHY (`VelaTap`, 2026-09-18).** The open-place resolve prints the
   tapped label, the tile's kind, whether it was seeded, how many results Google returned, how many
   survived the transit/junction filter, what was picked and at what distance, and the distance cap.
