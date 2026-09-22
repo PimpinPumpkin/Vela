@@ -387,7 +387,14 @@ class CarMapRenderer(
     }
 
     override fun onVisibleAreaChanged(visibleArea: Rect) { visible = Rect(visibleArea); requestRender() }
-    override fun onStableAreaChanged(stableArea: Rect) { requestRender() }
+    override fun onStableAreaChanged(stableArea: Rect) { stable = Rect(stableArea); requestRender() }
+    // The host's STABLE area: the part of the surface no template UI ever covers, in any state.
+    // The speed badge and the attribution live in it, because the visible area still had the
+    // map action strip stacked over the badge on a tall unit (real drive, 2026-09-22).
+    @Volatile private var stable: Rect? = null
+
+    private fun safeArea(): Rect = stable?.takeIf { !it.isEmpty && it.width() > 40 && it.height() > 40 }
+        ?: visible?.takeIf { !it.isEmpty } ?: Rect(0, 0, width, height)
 
     override fun onScroll(distanceX: Float, distanceY: Float) {
         val snap = lastSnapshot ?: return
@@ -591,7 +598,7 @@ class CarMapRenderer(
      *  (user 2026-09-21, "the watermark is wrong and says way more than just OpenStreetMap"). The
      *  phone map shows the same single line. Drawn inside the visible area. */
     private fun drawAttribution(canvas: Canvas) {
-        val vis = visible?.takeIf { !it.isEmpty } ?: Rect(0, 0, width, height)
+        val vis = safeArea()
         attributionPaint.textSize = (minOf(width, height) / 45f).coerceIn(9f, 14f)
         canvas.drawText(ATTRIBUTION, vis.left + 8f, vis.bottom - 8f, attributionPaint)
     }
@@ -629,7 +636,7 @@ class CarMapRenderer(
         // Inside the host's VISIBLE area, not the surface's corner: the template's map action
         // strip (overview, zoom) sits over the surface's bottom right, and the badge drew under
         // it (user 2026-09-22, stock Pixel 9). Scaled like the puck so a small unit keeps room.
-        val vis = visible?.takeIf { !it.isEmpty } ?: Rect(0, 0, width, height)
+        val vis = safeArea()
         val rad = (minOf(width, height) / 12f).coerceIn(30f, 46f)
         val cx = vis.right - rad - 16f; val cy = vis.bottom - rad - 20f
         canvas.drawRoundRect(RectF(cx - rad, cy - rad, cx + rad, cy + rad), 20f, 20f, badgeBg)

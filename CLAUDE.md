@@ -635,6 +635,13 @@ Defaults that make the safe path the easy one:
   from the FIRST SNAPSHOT CALLBACK now (a returned snapshot proves the style is loaded; that frame
   is discarded for a themed one); the observer stays as a no-cost second chance. Proof: the
   `VelaCar: theme applied dark=true layers=111` line and a navy car map in the preview.**
+  **From the real head unit's photos (2026-09-22):** the nav action strip is ICON-ONLY now
+  (`ic_car_*` vector glyphs: mute/unmute, pause/play, search, a red X to end, recenter, zoom,
+  overview); titled actions were drawn as "Mute / Pause / End" text pills across the map. The
+  speed badge and the attribution sit in the host's STABLE area (`onStableAreaChanged`, the
+  part no template UI ever covers), because on a tall unit the map action strip stacks over the
+  bottom-right corner of the visible area. The along-route category rows carry the map's own
+  category markers (`PoiIcons.groupMarker`). None of this is re-checked on a unit yet.
   **THE GATE, READ OFF A REAL CAR LOG (2026-09-22, GrapheneOS Pixel 9, sandboxed Play, Android
   Auto 17.4, "Unknown sources" on, KingInstaller's Shizuku method so the install fields read
   installer=com.android.vending, requester=com.android.packageinstaller):** on connect the

@@ -32,9 +32,18 @@ class AlongRouteCarScreen(carContext: CarContext, private val deps: CarDeps) : S
         val items = ItemList.Builder()
         if (q == null) {
             QuickCategories.all().forEach { chip ->
+                // The map's own category marker on each row (a real head unit, 2026-09-22: bare
+                // text rows read as a settings list next to Google's iconed categories).
+                val marker = app.vela.ui.map.PoiIcons.groupMarker(carContext, app.vela.ui.map.PoiIcons.groupFor(null, chip.query))
                 items.addItem(
                     Row.Builder()
                         .setTitle(carContext.getString(chip.label))
+                        .apply {
+                            if (marker != null) setImage(
+                                androidx.car.app.model.CarIcon.Builder(androidx.core.graphics.drawable.IconCompat.createWithBitmap(marker)).build(),
+                                Row.IMAGE_TYPE_ICON,
+                            )
+                        }
                         .setOnClickListener { search(chip.query) }
                         .build(),
                 )
