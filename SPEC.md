@@ -2246,7 +2246,15 @@ refuses to cover the bars.
 `app/car/` is a navigation-category `CarAppService` (manifest service, `automotive_app_desc.xml`
 `<uses name="template"/>`, the `androidx.car.app.*` permissions, `minCarApiLevel=1`). A sideload
 appears in the car launcher only with the Android Auto developer setting "Unknown sources" on,
-so the host validator is open.
+so the host validator is open. What the phone-side gate actually checks, read off a car log on a
+GrapheneOS phone with sandboxed Play (2026-09-22): the Android Auto app asks the Play Store for
+the app's owners and denies a package Play never installed (`PlayGearheadService app.vela, app
+owners empty` then `CAR.VALIDATOR: Package DENIED`), whatever the install fields say, and the
+"Unknown sources" toggle does not cover it; on a stock Pixel an install routed through Google's
+own package installer passes. The car map re-applies the palette whenever the car's day/night
+changes, draws the phone's puck bitmap rotated by heading minus camera bearing, and keeps the
+speed badge inside the host's visible area. The guidance voice is band-limited by the protocol
+(the Android Auto guidance stream is 16 kHz mono).
 
 Screens: `MainCarScreen` (`PlaceListNavigationTemplate`) to `SearchCarScreen` (`SearchTemplate`)
 to `RoutePreviewCarScreen` (`RoutePreviewNavigationTemplate`) to `ActiveNavCarScreen`

@@ -607,6 +607,28 @@ Defaults that make the safe path the easy one:
   overview toggle on the map strip, and corridor dots on the car map. `AlongRouteCarScreen` is
   two `ListTemplate`s (categories, then results) because the host refuses a typed search while
   driving. Still unverified on a unit.
+  **Round four (2026-09-22, from a real drive on a stock Pixel 9, NOT yet re-checked on a unit):**
+  the palette was applied once when the style loaded, so a drive that started in daylight stayed
+  light after the car flipped to night; `applyTheme` now re-runs from `requestRender` whenever
+  `carContext.isDarkMode` no longer matches the applied look. The puck is the phone's
+  `navPuckBitmap` scaled to the screen and rotated by heading minus camera bearing (it was a
+  green chevron of the car's own). The speed badge sits inside the host's VISIBLE area, scaled
+  to the screen (it was anchored to the surface's corner, under the map action strip). The
+  voice sounding "muffled, like Bluetooth" is the protocol: Android Auto's guidance audio stream
+  is 16 kHz mono, so every nav voice, Google's included, is band-limited on the car; a head unit
+  set to route navigation prompts over the phone-call link makes it 8 kHz.
+  **THE GATE, READ OFF A REAL CAR LOG (2026-09-22, GrapheneOS Pixel 9, sandboxed Play, Android
+  Auto 17.4, "Unknown sources" on, KingInstaller's Shizuku method so the install fields read
+  installer=com.android.vending, requester=com.android.packageinstaller):** on connect the
+  Android Auto app asks the Play Store for each app's owners, `Finsky: PlayGearheadService
+  app.vela, app owners empty`, then `CAR.VALIDATOR: Package DENIED; failed all other checks
+  [app.vela]`, the same for CoMaps and Organic Maps. The check is Play's own install record, not
+  the installer fields, so no installer spoof and no stub package named like Google's installer
+  can pass it; the "Unknown sources" toggle did not cover it either. On a stock Pixel the
+  KingInstaller "Google installer" method (Google's `com.google.android.packageinstaller`, which
+  GrapheneOS does not ship) does get Vela listed. The capture recipe: `nohup logcat -f
+  /data/local/tmp/aa.txt -r 32768 -n 6 &` over adb before the drive (a reboot kills it), pull
+  the files after, grep `CAR.VALIDATOR` and `PlayGearheadService`.
   **Turn card requirements (per the Android for Cars docs):** `ActiveNavCarScreen` calls
   `NavigationManager.navigationStarted()` AND `updateTrip()` - both are needed for the RoutingInfo turn
   card + the cluster/HUD nav data; `ManeuverMapper` maps Vela maneuvers → car `Maneuver`/`Step`/`Trip`.

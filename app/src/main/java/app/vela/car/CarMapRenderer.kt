@@ -96,6 +96,15 @@ class CarMapRenderer(
     private var lastTickMs = 0L
     private var zoomTarget = 16.5 // the speed-tiered nav zoom eases toward this; it used to step
     @Volatile private var themed = false // Vela's palette applied to the snapshotter's style
+    // Which look the palette was applied FOR. The car flips day/night on its own (the head unit's
+    // light sensor or clock), and a palette applied once at style load stayed light through a
+    // drive into the evening (user 2026-09-22, stock Pixel 9); requestRender re-applies it when
+    // carContext.isDarkMode no longer matches.
+    @Volatile private var themedNight: Boolean? = null
+    // The Vela puck (the same bitmap the phone draws, ui/map/navPuckBitmap), scaled to the screen
+    // once per size; the car used to draw its own green chevron (user: "not our pretty puck").
+    private var puckBitmap: android.graphics.Bitmap? = null
+    private var puckBitmapPx = 0
 
     // Preview mode: draw this route framed (no puck-follow) — used by the route-preview screen.
     @Volatile private var previewRoute: Route? = null
@@ -149,10 +158,6 @@ class CarMapRenderer(
     }
 
     private val drivenPaint = strokePaint("#7b8494", 14f)
-    private val puckPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#2ee6a6") }
-    private val puckStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 3f
-    }
     private val bgPaint = Paint().apply { color = Color.parseColor("#0f1420") }
     // Traffic colors (match the phone route line): free-flow blue → amber → red.
     private val trafficPaints = mapOf(
@@ -344,14 +349,7 @@ class CarMapRenderer(
             // "a weird theme that is not ours" (user). The observer fires once the style is in.
             s2.setObserver(object : MapSnapshotter.Observer {
                 override fun onDidFinishLoadingStyle() {
-                    runCatching {
-                        app.vela.ui.map.applyMapTheme(
-                            app.vela.ui.map.SnapshotterHost(s2),
-                            dark = isNight(),
-                            amoled = isNight() && app.vela.ui.theme.AppTheme.mode.value == app.vela.ui.theme.ThemeMode.AMOLED,
-                        )
-                    }
-                    themed = true
+                    applyTheme(s2)
                     requestRender()
                 }
                 override fun onStyleImageMissing(id: String) {}
@@ -403,12 +401,28 @@ class CarMapRenderer(
         }
     }
 
+    /** Vela's palette on the snapshotter's style, for the car's current day/night. */
+    private fun applyTheme(s: MapSnapshotter) {
+        val night = isNight()
+        runCatching {
+            app.vela.ui.map.applyMapTheme(
+                app.vela.ui.map.SnapshotterHost(s),
+                dark = night,
+                amoled = night && app.vela.ui.theme.AppTheme.mode.value == app.vela.ui.theme.ThemeMode.AMOLED,
+            )
+        }
+        themed = true
+        themedNight = night
+    }
+
     private fun requestRender() {
         val snap = snapshotter
         val here = center
         if (snap == null || here == null) return
         if (rendering) { dirty = true; return }
         rendering = true
+        // The car flipped day/night since the palette went on: re-theme before this frame.
+        if (themed && themedNight != isNight()) applyTheme(snap)
 
         val nav = navigating()
         if (nav && overview) navSession.state.value.route?.let { r -> frameRoute(remainingRoute(r)); zoomTarget = zoom }
@@ -553,16 +567,18 @@ class CarMapRenderer(
         // A fortieth of the short side reads like the phone's puck (about 5% of the screen).
         // Settings > Navigation > Puck size (PuckStyle) scales it the same way it scales the phone's.
         val r = (minOf(width, height) / 40f).coerceIn(9f, 22f) * app.vela.ui.PuckStyle.scale()
-        puckStroke.strokeWidth = (r / 7f).coerceIn(1.5f, 3f)
-        val path = Path().apply {
-            moveTo(pt.x, pt.y - r)
-            lineTo(pt.x + r * 0.8f, pt.y + r * 0.7f)
-            lineTo(pt.x, pt.y + r * 0.3f)
-            lineTo(pt.x - r * 0.8f, pt.y + r * 0.7f)
-            close()
-        }
-        canvas.drawPath(path, puckPaint)
-        canvas.drawPath(path, puckStroke)
+        // The phone's puck bitmap (disc, shadow, chevron), not a chevron of the car's own; the
+        // bitmap's arrow points up, so it turns by the heading against the camera's bearing:
+        // straight up in heading-up nav, by the course in a north-up view.
+        val px = (r * 2.6f).roundToInt().coerceAtLeast(12)
+        val bmp = puckBitmap?.takeIf { puckBitmapPx == px } ?: android.graphics.Bitmap.createScaledBitmap(
+            app.vela.ui.map.navPuckBitmap(scale = 1f), px, px, true,
+        ).also { puckBitmap = it; puckBitmapPx = px }
+        val camBearing = if (navigating() && following && previewRoute == null) bearing else 0.0
+        canvas.save()
+        canvas.rotate((bearing - camBearing).toFloat(), pt.x, pt.y)
+        canvas.drawBitmap(bmp, pt.x - px / 2f, pt.y - px / 2f, dayBitmapPaint)
+        canvas.restore()
     }
 
     /** Bottom-right current-speed badge (km/h or mph per the user's units), plus a Google-style
@@ -572,7 +588,12 @@ class CarMapRenderer(
         val v = if (imperial) speedMps * 2.236936 else speedMps * 3.6
         val num = v.roundToInt().coerceAtLeast(0)
         val unit = if (imperial) "mph" else "km/h"
-        val cx = width - 62f; val cy = height - 66f; val rad = 46f
+        // Inside the host's VISIBLE area, not the surface's corner: the template's map action
+        // strip (overview, zoom) sits over the surface's bottom right, and the badge drew under
+        // it (user 2026-09-22, stock Pixel 9). Scaled like the puck so a small unit keeps room.
+        val vis = visible?.takeIf { !it.isEmpty } ?: Rect(0, 0, width, height)
+        val rad = (minOf(width, height) / 12f).coerceIn(30f, 46f)
+        val cx = vis.right - rad - 16f; val cy = vis.bottom - rad - 20f
         canvas.drawRoundRect(RectF(cx - rad, cy - rad, cx + rad, cy + rad), 20f, 20f, badgeBg)
         canvas.drawText(num.toString(), cx, cy + 6f, badgeNum)
         canvas.drawText(unit, cx, cy + 30f, badgeUnit)
