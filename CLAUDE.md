@@ -385,7 +385,10 @@ Defaults that make the safe path the easy one:
   subjects since the previous `v0.[0-9]*` tag (the glob spans minor bumps so a fresh
   0.3 release still finds the last 0.2 tag; checkout is `fetch-depth: 0` so the tag
   history is present; the publish step formats them + a compare link into `--notes`).
-  So **commit subjects ARE the user-facing changelog** - write them as plain-language
+  **`scripts/changelog.sh` builds every one of those lists (canary "Latest change", nightly and
+  stable notes, 2026-09-22) and SKIPS commits a user cannot see**: docs-only paths, comment-only
+  code changes, and subjects starting "Docs:" (user: repo documentation updates do not belong in
+  the in-app version notes). So **commit subjects ARE the user-facing changelog** - write them as plain-language
   changelog lines (see the writing-style rule: no em-dashes, human voice), not terse
   hashes. (Switched off the rolling-nightly scheme 2026-06-16 - it
   confused Obtainium. Bumped `0.1.<run>`/`1000+run` → `0.2.<run>`/`2000+run` on

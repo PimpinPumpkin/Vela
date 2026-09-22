@@ -58,10 +58,10 @@ jobs:
           VER="${NIGHTLY#v}"
           # Regenerate the notes to cover the whole span since the previous stable.
           if [ -n "$STABLE" ]; then
-            LOG="$(git log --no-merges --pretty=format:'- %s' "${STABLE}..${NIGHTLY}")"
+            LOG="$(bash scripts/changelog.sh "${STABLE}..${NIGHTLY}")"
             COMPARE="**Full changelog:** https://github.com/${GITHUB_REPOSITORY}/compare/${STABLE}...${NIGHTLY}"
           else
-            LOG="$(git log --no-merges --pretty=format:'- %s' -n 30 "$NIGHTLY")"
+            LOG="$(bash scripts/changelog.sh -n 30 "$NIGHTLY")"
             COMPARE=""
           fi
           [ -z "$LOG" ] && LOG="- Maintenance and internal changes"
