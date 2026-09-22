@@ -1561,6 +1561,12 @@ Selection rules on the phone:
   were about to arrive, and crossing the box edge then unmounted it, so a pan along a download's
   border alternated gray and network. Only a probe that CANNOT answer leaves the old pick in
   charge, because that is the case where asking told us nothing. The pick runs off the main thread.
+  **The mount has hysteresis.** A swap reloads the whole style (`basemapArchive` is part of the
+  style key), so the pick must not flip on every camera idle along a border. Unmounting is eager
+  (no roads at the center tile means stream); mounting an archive that is not the one in use
+  requires roads at the eight z12 tiles around the center and at the four corners of the visible
+  viewport (`installedFor(center, mounted, view)`), so an archive returns only once the border has
+  left the screen. Swaps also keep a `BASEMAP_SWAP_COOLDOWN_MS` (2 s) floor.
 - **A global low-zoom archive is the floor under the pick** (`BasemapTileStore.WORLD_ID`, baked by
   `world-lowzoom.yml`, about 11 MB at z0-7, pulled once alongside the first offline download). It is
   kept OUT of the per-region candidate list: it covers every point on earth, and it carries no

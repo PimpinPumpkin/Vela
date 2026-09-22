@@ -55,7 +55,7 @@ class BasemapTileStore @Inject constructor(
      *  network", which only the OSM-derived part of the bake does.
      *  A probe that cannot answer (an unreadable file, a format this reader does not know, a zoom
      *  outside the archive) leaves the old rule in charge, so this can only ever improve the pick. */
-    fun installedFor(center: LatLng?): File? {
+    fun installedFor(center: LatLng?, mounted: File? = null, view: List<LatLng> = emptyList()): File? {
         val c = center ?: return null
         val index = readIndexPublic()
         // The WORLD archive is never a normal candidate: it covers every point on earth, so the
@@ -75,10 +75,19 @@ class BasemapTileStore @Inject constructor(
         // (HirschBerge). A definite no from everything that could cover the point means NOTHING
         // here is worth mounting; only an archive we could not READ leaves the old rule in charge,
         // because that is the case where asking told us nothing.
+        // HYSTERESIS AT THE EDGE (issue #552, third round). A swap reloads the whole style, so
+        // it must not happen on every camera idle while the view wanders along a download's
+        // border. Unmounting stays eager (the center tile has no roads: stream, never draw gray
+        // over tiles the network can supply), but MOUNTING a candidate that is not already the one
+        // in use needs the whole VISIBLE VIEW to hold roads: the corners of the viewport ([view])
+        // and the ring of z12 tiles around the center. The reporter's video was at a 200 km wide
+        // zoom, where a fixed ring is a rounding error; keying on the corners means an archive is
+        // mounted only once the border has left the screen, and once the border shows the view
+        // keeps streaming instead of flipping the style every couple of seconds.
         var unreadable = false
         for ((_, f) in covering) {
             when (coverage(f, tx, ty)) {
-                true -> return f
+                true -> if (f == mounted || (ringCovered(f, tx, ty) && cornersCovered(f, view))) return f
                 null -> unreadable = true
                 false -> Unit
             }
@@ -111,6 +120,22 @@ class BasemapTileStore @Inject constructor(
     private fun probeKey(f: File, x: Int, y: Int) = "${f.name}|$x|$y"
 
     /** True with roads, false definitely without, null when the file could not answer. */
+    /** Every z12 tile around (x, y) holds roads in [f], "cannot tell" counted as yes so an
+     *  unreadable neighbor never blocks a mount the center tile earned. */
+    private fun ringCovered(f: File, x: Int, y: Int): Boolean {
+        for (dx in -1..1) for (dy in -1..1) {
+            if (dx == 0 && dy == 0) continue
+            if (coverage(f, x + dx, y + dy) == false) return false
+        }
+        return true
+    }
+
+    /** Every viewport corner's z12 tile holds roads in [f]; "cannot tell" counts as yes. */
+    private fun cornersCovered(f: File, view: List<LatLng>): Boolean = view.none { p ->
+        val (x, y) = PmtilesReader.tileOf(p.lat, p.lng, COVERAGE_PROBE_Z)
+        coverage(f, x, y) == false
+    }
+
     private fun coverage(f: File, x: Int, y: Int): Boolean? {
         coverageCache.get(probeKey(f, x, y))?.let { return it }
         val answer = PmtilesReader.hasRoads(f, COVERAGE_PROBE_Z, x, y)

@@ -2263,6 +2263,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   (2026-09-21).** An address query leads with the businesses standing at that address (from the
   place pack, 40 m), then the house point; the first 20 results with no address of their own are
   filled from the address index, the way the sheet already did on select.
+- ✅ **No more style reloads while panning along a download's border (2026-09-21, issue #552).** An
+  offline basemap is mounted only once the whole visible view sits inside its data, and unmounted
+  as soon as the center leaves it, so the view near a border streams instead of flipping.
 - ✅ **A downloaded region can no longer blank the map (2026-09-18, issue #552).** Two things were
   wrong at once. The bake let planetiler inherit the extract's header bounding box, which for 37 of
   413 regions claims far more ground than the archive holds (one reached seven degrees into the next

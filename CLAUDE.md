@@ -4320,7 +4320,14 @@ Gotchas:
   painting gray over streamable tiles; crossing the box edge unmounted it again. A definite no from
   everything that covers the point now returns NULL (stream it); only an UNREADABLE candidate falls
   back to the old smallest-covering pick. Swaps also have a floor of `BASEMAP_SWAP_COOLDOWN_MS`
-  (2 s) because re-pointing every layer re-tiles the whole map, which is the freeze he described. The probe tests the `transportation` LAYER, not
+  (2 s) because re-pointing every layer re-tiles the whole map, which is the freeze he described.
+  **Third round (2026-09-21, same reporter, video at a 200 km wide zoom):** a swap is a FULL STYLE
+  RELOAD (`basemapArchive` is part of `styleKey`), and the pick flipped every time the view center
+  crossed the data edge, so panning along a border reloaded the style every couple of seconds.
+  `installedFor(center, mounted, view)` now has hysteresis: unmounting stays eager (center tile
+  without roads = stream), but MOUNTING an archive that is not already mounted needs the z12 ring
+  around the center AND the four viewport corners to hold roads. Once the border is on screen the
+  view keeps streaming; an archive comes back only when the border has left the screen. The probe tests the `transportation` LAYER, not
   tile presence - planetiler's base data (water, landcover, Natural Earth) is global, so a bake has
   tiles across its whole box and "is there a tile" answers yes over the neighbor and out to sea
   (verified on the published hawaii archive: a mid-Pacific z12 tile exists and carries no roads).
