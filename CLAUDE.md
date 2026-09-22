@@ -2802,7 +2802,19 @@ architecture note.
   marked and its parent starts open. The old page led with an "All of <country>" block (whose
   United States entry held three territories) and then a flat 450-row list with installed and
   nearby rows pulled to the top. `RegionRow` / `ParentRow` are the two row composables; the
-  filter matches a parent or a piece and opens matching parents.
+  filter matches a parent or a piece and opens matching parents. **Two rules from the same day's
+  device pass (user: "so laggy when I go to offline maps"):** the catalog is a LazyColumn with
+  the SCREEN'S height inside the page's scroller (a lazy list cannot be unbounded inside a
+  scroller; the page scrolls to it, then it scrolls inside), with parents and their open pieces
+  flattened into one keyed item list (`CatalogRow`). Measured on a 4a release build with
+  Perfetto: the plain Column composed and measured every catalog row on open, a 430 ms frame
+  (232 ms measure, 110 ms recompose); revealing rows a chunk per frame was no better because a
+  Column re-measures everything per chunk. And the filter field scrolls itself to the top of the
+  area above the keyboard when it takes focus (`bringIntoViewRequester` + a rect far taller than
+  the viewport, whose TOP edge the scroller aligns), because it sits low on the page and the
+  keyboard covered the rows it filters. NB gfxinfo is blind to this page's open (0 frames in its
+  window); Perfetto with `atrace_apps: "app.vela"` and the config piped on stdin (`perfetto -c -
+  --txt`, the phone refuses a config file under /data/local/tmp) is what measured it.
 - **Route shields are Vela's own bitmaps (2026-09-15, `ui/map/RoadShields`).** The OpenFreeMap
   sprite's `us-interstate_N` / `us-highway_N` / `road_N` are white outline shapes sized for 10 pt
   text and there is NO `us-state_N`, so state routes drew as bare numbers and "80" squeezed into

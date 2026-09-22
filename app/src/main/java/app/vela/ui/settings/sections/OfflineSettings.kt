@@ -46,6 +46,9 @@ import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.settings.SubHead
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import app.vela.ui.settings.SelectableRow
@@ -67,6 +70,7 @@ import org.maplibre.android.offline.OfflineRegion
  * [onCloseSettings] closes ALL of Settings back to the map (not just this page) - the download
  * buttons use it so the user sees the on-map progress card.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onCloseSettings: () -> Unit, onOpenVoice: () -> Unit = {}) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -259,11 +263,24 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             // in is marked and its parent starts open.
             val nodes = remember(state.routingRegions) { regionTree(state.routingRegions) }
             var routeFilter by remember { mutableStateOf("") }
+            // The field sits low on the page, so the keyboard covered the rows it filters (user
+            // 2026-09-22): on focus the page scrolls so the field lands at the TOP of what is left
+            // above the keyboard. A rect far taller than the viewport is asked into view, and the
+            // scroller aligns its top edge, which is the field.
+            val filterReq = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+            val filterScope = rememberCoroutineScope()
             if (state.routingRegions.size > 8) {
                 OutlinedTextField(
                     value = routeFilter,
                     onValueChange = { routeFilter = it },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).dpadFieldEscape(),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).dpadFieldEscape()
+                        .bringIntoViewRequester(filterReq)
+                        .onFocusChanged { f ->
+                            if (f.isFocused) filterScope.launch {
+                                kotlinx.coroutines.delay(350) // the keyboard's own resize first
+                                runCatching { filterReq.bringIntoView(androidx.compose.ui.geometry.Rect(0f, 0f, 1f, 6000f)) }
+                            }
+                        },
                     singleLine = true,
                     shape = androidx.compose.foundation.shape.CircleShape,
                     colors = app.vela.ui.settings.settingsFieldColors(),
@@ -282,7 +299,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             val shownNodes = if (q.isBlank()) nodes else nodes.mapNotNull { n ->
                 when {
                     n.title.contains(q, ignoreCase = true) -> n
-                    n.pieces.size > 1 -> n.pieces.filter { it.name.contains(q, ignoreCase = true) }.takeIf { it.isNotEmpty() }?.let { n.copy(pieces = it) }
+                    n.pieces.size > 1 -> n.pieces.filter { it.name.contains(q, ignoreCase = true) }.takeIf { it.isNotEmpty() }?.let { n.copy(listed = it) }
                     else -> null
                 }
             }
@@ -290,31 +307,42 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                 Hint(stringResource(R.string.settings_routing_no_match, q))
             }
             val expanded = remember { mutableStateMapOf<String, Boolean>() }
+            // THE CATALOG IS A LAZY LIST (user 2026-09-22, "so laggy when I go to offline maps").
+            // The page is a plain scrolling Column, and composing and measuring every catalog row
+            // at once cost a 430 ms frame on a Pixel 4a release build (Perfetto: 232 ms of measure,
+            // 110 ms of recompose); revealing rows a chunk per frame was no better, because a
+            // Column re-measures everything on every chunk. A LazyColumn cannot have unbounded
+            // height inside a scroller, so the catalog gets the height of the screen and scrolls
+            // inside the page once the page has scrolled to it; only the visible rows exist.
+            // Parents and their open pieces are flattened into one keyed item list.
+            val rows = remember(shownNodes, expanded.toMap(), q, primary?.id) {
+                val out = ArrayList<CatalogRow>()
+                for (node in shownNodes) {
+                    val open = expanded[node.title] ?: (q.isNotBlank() || node.pieces.any { it.id == primary?.id })
+                    out += CatalogRow(node, null, open)
+                    if (node.parent && open) node.listed.forEach { out += CatalogRow(node, it, open) }
+                }
+                out
+            }
+            val catalogHeight = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp - 160).coerceAtLeast(320).dp
             SettingsGroup {
-                shownNodes.forEachIndexed { ni, node ->
-                    if (ni > 0) GroupDivider()
-                    if (!node.parent) {
-                        RegionRow(node.pieces[0], state, vm, primary?.id, indent = false, onConfirm = { confirmRegion = it })
-                    } else {
-                        val open = expanded[node.title] ?: (q.isNotBlank() || node.pieces.any { it.id == primary?.id })
-                        if (node.whole != null) {
-                            // The country's own file carries the row; the chevron opens its pieces.
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick = { expanded[node.title] = !open }, modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape)) {
-                                    Icon(if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxWidth().height(catalogHeight)) {
+                    itemsIndexed(rows, key = { _, r -> r.key }) { ri, row ->
+                        if (ri > 0) GroupDivider()
+                        val node = row.node
+                        when {
+                            row.piece != null -> RegionRow(row.piece, state, vm, primary?.id, indent = true, onConfirm = { confirmRegion = it })
+                            !node.parent -> RegionRow(node.pieces[0], state, vm, primary?.id, indent = false, onConfirm = { confirmRegion = it })
+                            node.whole != null -> Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                // The country's own file carries the row; the chevron opens its pieces.
+                                IconButton(onClick = { expanded[node.title] = !row.open }, modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape)) {
+                                    Icon(if (row.open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 androidx.compose.foundation.layout.Box(Modifier.weight(1f)) {
                                     RegionRow(node.whole, state, vm, primary?.id, indent = false, onConfirm = { confirmRegion = it }, subtitleSuffix = stringResource(R.string.settings_region_whole_or_pieces, node.pieces.size))
                                 }
                             }
-                        } else {
-                            ParentRow(node, state, vm, open = open, onToggle = { expanded[node.title] = !open })
-                        }
-                        if (open) {
-                            node.pieces.forEach { piece ->
-                                GroupDivider()
-                                RegionRow(piece, state, vm, primary?.id, indent = true, onConfirm = { confirmRegion = it })
-                            }
+                            else -> ParentRow(node, state, vm, open = row.open, onToggle = { expanded[node.title] = !row.open })
                         }
                     }
                 }
@@ -324,9 +352,20 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
     }
 }
 
+/** One row of the lazy catalog: a node's own row ([piece] null) or one of its open pieces. */
+internal data class CatalogRow(val node: RegionNode, val piece: app.vela.offline.RoutingRegion?, val open: Boolean) {
+    val key: String get() = piece?.id ?: "node:" + node.title
+}
+
 /** A catalog entry: one region, or a parent with its pieces ("Germany" over the Laender). [whole]
  *  is the country's own single file when the catalog has both ("Australia" beside its states). */
-internal data class RegionNode(val title: String, val pieces: List<app.vela.offline.RoutingRegion>, val whole: app.vela.offline.RoutingRegion? = null) {
+internal data class RegionNode(
+    val title: String,
+    val pieces: List<app.vela.offline.RoutingRegion>,
+    val whole: app.vela.offline.RoutingRegion? = null,
+    /** The pieces the filter left to LIST; the summary and Download all still speak for [pieces]. */
+    val listed: List<app.vela.offline.RoutingRegion> = pieces,
+) {
     /** A parent stays a parent when the filter leaves it one piece ("Pennsylvania" under United States). */
     val parent: Boolean get() = whole != null || pieces.size > 1 || (pieces.size == 1 && pieces[0].name != title)
 }
