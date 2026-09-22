@@ -351,10 +351,15 @@ Defaults that make the safe path the easy one:
   working branch**: Claude pushes there freely, batches assemble there, and merging/pushing
   canary to main is the deliberate release-worthy act. Obtainium nightly users opt in with
   "include prereleases". **Canary is ALSO a real update channel (2026-08-07):** every canary
-  push replaces the single APK on the fixed-tag rolling `canary` release (versionName
+  push replaces the single APK on the rolling `canary` release (versionName
   `0.4.<run>-canary`, same monotonic `2000+run` versionCode line as every channel so switching
   channels is always an upgrade; the tag is deliberately NOT v0.* so the nightly/stable
-  queries, the prune and F-Droid never see it). The in-app updater is channel-aware:
+  queries, the prune and F-Droid never see it). **Since 2026-09-22 the release is DELETED AND
+  RECREATED per push (`--cleanup-tag`, `--target` the pushed commit, title "Vela 0.4.<run>-canary"):
+  GitHub orders releases by creation date, so the edited-in-place release from August sat
+  fifteen rows down under every nightly and data release and read as "the canaries are gone".
+  The download URL and the updater's tag lookup are unchanged; the swap is a few seconds of
+  404 the updater reads as nothing newer.** The in-app updater is channel-aware:
   Settings > About > "Update channel" picks Stable/Nightly/Canary (pref `update_channel`,
   migrated from the old `update_nightly` boolean via `SelfUpdater.channel()`); the canary
   check reads versionName/versionCode out of the canary release NOTES (the tag never changes)

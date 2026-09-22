@@ -190,12 +190,15 @@ jobs:
           # The in-app What's new dialog shows this body verbatim, so the first line is a label,
           # not a warning paragraph (user 2026-09-15).
           NOTES="$(printf 'Canary branch.\n\nversionName: %s\nversionCode: %s\n\nLatest change: %s\n' "$VER" "$CODE" "$SUBJ")"
-          if gh release view canary >/dev/null 2>&1; then
-            gh release upload canary vela-maps-canary.apk --clobber
-            gh release edit canary --prerelease --title "Vela canary" --notes "$NOTES"
-          else
-            gh release create canary --prerelease --title "Vela canary" --notes "$NOTES" vela-maps-canary.apk
-          fi
+          # RECREATED on every push, not edited (2026-09-22): GitHub lists releases by creation
+          # date, so an edited-in-place release created in August sat fifteen rows down, under
+          # every nightly and every data release, and "where is canary 1753" was the question.
+          # Deleting and recreating moves it to the top, names it after the build, and moves the
+          # tag to the pushed commit; the download URL (releases/download/canary/...) and the
+          # updater's releases/tags/canary lookup are unchanged, with a few seconds of 404
+          # during the swap that the updater reads as "nothing newer".
+          gh release delete canary --yes --cleanup-tag 2>/dev/null || true
+          gh release create canary --prerelease --target "$GITHUB_SHA" --title "Vela $VER" --notes "$NOTES" vela-maps-canary.apk
 
       - name: Publish nightly (prerelease)
         # The nightly channel: ONE prerelease per day from the cron (or an on-demand
