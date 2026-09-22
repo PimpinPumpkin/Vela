@@ -58,6 +58,7 @@ apartments
 apotek
 apotheek
 apotheke
+apotheken
 apteka
 architect
 architects
@@ -65,6 +66,7 @@ armazem
 art
 arts
 arzt
+arzte
 arztpraxis
 as
 asador
@@ -113,6 +115,7 @@ bakkerij
 banca
 banco
 bank
+banken
 banketbakkerij
 banque
 bar
@@ -333,6 +336,8 @@ daycare
 dds
 de
 dei
+dein
+deine
 del
 deli
 delikatesy
@@ -354,6 +359,7 @@ des
 design
 designer
 designs
+deutschland
 di
 die
 dienst
@@ -430,6 +436,7 @@ escola
 escritorio
 escuela
 esportes
+essen
 est
 estacao
 estacion
@@ -444,6 +451,7 @@ eszak
 eszaki
 et
 etterem
+euer
 event
 events
 express
@@ -531,7 +539,9 @@ gemeente
 gemeentehuis
 gemeinde
 general
+gerichte
 geschaft
+geschafte
 gesellschaft
 gestao
 gestion
@@ -616,6 +626,8 @@ i
 ice
 iglesia
 igreja
+ihr
+ihre
 il
 im
 imbiss
@@ -653,6 +665,7 @@ javitas
 jewelers
 jewelry
 joalheria
+jouw
 joyeria
 jubiler
 juice
@@ -690,6 +703,7 @@ kindergarten
 kino
 kiosk
 kirche
+kirchen
 kita
 kitchen
 kitchens
@@ -721,6 +735,7 @@ kozpont
 krankenhaus
 krog
 ksiegarnia
+kuche
 kwiaciarnia
 kwiaty
 kyrka
@@ -789,6 +804,7 @@ lounge
 lube
 lumber
 lycee
+ma
 macelleria
 mack
 magasin
@@ -809,6 +825,7 @@ market
 marketing
 markets
 markt
+markte
 mart
 martial
 massage
@@ -824,25 +841,34 @@ medical
 medico
 mediterranean
 megallo
+mein
+meine
 mercado
 mercato
 mercearia
+mes
 met
 metro
 metropolitan
 metzgerei
 mexican
+mi
+mia
 miasta
 miasto
 midtown
+mijn
 mini
 ministries
 ministry
+mio
+mis
 mit
 mobile
 moda
 mode
 modern
+mon
 mortgage
 mosoda
 mosque
@@ -859,6 +885,7 @@ museu
 museum
 music
 muzeum
+my
 myjnia
 na
 nail
@@ -878,14 +905,19 @@ nord
 norra
 norte
 north
+nos
 nossa
+nostra
+nostro
 notaio
 notaire
 notar
 notaria
 notaris
 notariusz
+notre
 nuestra
+nuestro
 nursery
 nyugat
 nyugati
@@ -907,6 +939,8 @@ oil
 on
 onkormanyzat
 online
+ons
+onze
 oost
 op
 optica
@@ -927,10 +961,12 @@ ospedale
 osrodek
 ost
 osteria
+osterreich
 ostra
 otica
 ottica
 ouest
+our
 outlet
 ovest
 ovoda
@@ -1049,6 +1085,7 @@ praia
 praktijk
 pralnia
 prawny
+praxen
 praxis
 prefeitura
 preschool
@@ -1137,6 +1174,8 @@ schoonheid
 schoonmaak
 schuhe
 schule
+schulen
+schweiz
 schwimmbad
 scuola
 security
@@ -1187,6 +1226,7 @@ spa
 sparkasse
 specialist
 specialists
+speisen
 spiaggia
 spolka
 sport
@@ -1222,6 +1262,7 @@ strasse
 street
 studio
 studios
+su
 sud
 sugarut
 suite
@@ -1239,6 +1280,7 @@ surgeon
 surgeons
 surgery
 surgical
+sus
 sushi
 sw
 swietego
@@ -1314,7 +1356,11 @@ transport
 trattoria
 travessa
 trucking
+tu
+tua
 tuin
+tuo
+tus
 tvatt
 u
 ubezpieczenia
@@ -1336,6 +1382,8 @@ universiteit
 universitet
 university
 uniwersytet
+unser
+unsere
 uptown
 urban
 urgent
@@ -1347,6 +1395,7 @@ ut
 utca
 utcai
 uthyrning
+uw
 uzlet
 vag
 vagen
@@ -1396,6 +1445,10 @@ vision
 volksbank
 vom
 von
+vos
+vostra
+vostro
+votre
 w
 warehouse
 warenhuis
@@ -1429,9 +1482,11 @@ wynajem
 y
 yoga
 yogurt
+your
 z
 zachod
 zahnarzt
+zahnarzte
 zahnarztpraxis
 zapateria
 zarzad

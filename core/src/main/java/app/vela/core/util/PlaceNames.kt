@@ -79,7 +79,7 @@ object PlaceNames {
      */
     val GENERIC: Set<String> get() = GENERIC_ALL
     private val GENERIC_EN: Set<String> = setOf(
-        "the", "of", "and", "at", "in", "on", "a", "an", "for", "by", "with", "to",
+        "the", "of", "and", "at", "in", "on", "a", "an", "for", "by", "with", "to", "your", "our", "my",
         "store", "stores", "shop", "shoppe", "shops", "station", "center", "centers", "services", "service", "group", "office", "offices",
         "company", "branch", "bank", "atm", "atms", "pharmacy", "drug", "drugs", "grooming", "fuel", "gas", "market", "markets", "mart", "mini",
         "grocery", "restaurant", "cafe", "coffee", "inn", "hotel", "hotels", "suites", "motel", "apartments", "apartment", "clinic", "medical",
@@ -137,7 +137,7 @@ object PlaceNames {
      * descriptor in one language and a name in another is rare enough to accept.
      */
     private val GENERIC_FR = setOf(
-        "le", "la", "les", "de", "du", "des", "et", "au", "aux", "chez", "sur", "sous", "en",
+        "le", "la", "les", "de", "du", "des", "et", "au", "aux", "chez", "sur", "sous", "en", "votre", "vos", "notre", "nos", "mon", "ma", "mes",
         "restaurant", "cafe", "bar", "brasserie", "bistro", "bistrot", "boulangerie", "patisserie", "pizzeria", "creperie", "traiteur",
         "boucherie", "charcuterie", "fromagerie", "epicerie", "supermarche", "hypermarche", "marche", "magasin", "boutique", "librairie",
         "papeterie", "tabac", "presse", "pharmacie", "parapharmacie", "clinique", "cabinet", "medical", "dentaire", "veterinaire",
@@ -150,11 +150,13 @@ object PlaceNames {
         "nettoyage", "pressing", "laverie", "fleuriste", "fleurs", "opticien", "optique", "bijouterie", "chaussures", "vetements", "mode",
     )
     private val GENERIC_DE = setOf(
-        "der", "die", "das", "und", "am", "im", "an", "auf", "bei", "zum", "zur", "von", "vom", "mit",
+        "deutschland", "osterreich", "schweiz", "essen", "speisen", "kuche", "gerichte", "imbiss",
+        "der", "die", "das", "und", "am", "im", "an", "auf", "bei", "zum", "zur", "von", "vom", "mit", "ihr", "ihre", "unser", "unsere", "dein", "deine", "mein", "meine", "euer",
         "restaurant", "gasthaus", "gasthof", "gaststatte", "wirtshaus", "kneipe", "bar", "cafe", "kaffee", "backerei", "konditorei",
         "metzgerei", "fleischerei", "pizzeria", "imbiss", "doner", "kebap", "biergarten", "brauerei", "weinstube", "eisdiele", "eiscafe",
         "supermarkt", "markt", "laden", "geschaft", "kaufhaus", "einkaufszentrum", "center", "zentrum", "apotheke", "drogerie",
-        "praxis", "zahnarzt", "zahnarztpraxis", "arzt", "arztpraxis", "klinik", "krankenhaus", "tierarzt", "physiotherapie", "bank",
+        "praxis", "praxen", "zahnarzt", "zahnarzte", "zahnarztpraxis", "arzt", "arzte", "arztpraxis", "klinik", "krankenhaus", "tierarzt", "physiotherapie", "bank",
+        "banken", "apotheken", "schulen", "kirchen", "geschafte", "laden", "markte", "hotels", "garten",
         "sparkasse", "volksbank", "raiffeisenbank", "versicherung", "versicherungen", "immobilien", "makler", "notar", "rechtsanwalt",
         "rechtsanwalte", "anwalt", "kanzlei", "steuerberater", "friseur", "frisor", "salon", "kosmetik", "hotel", "pension", "gastehaus",
         "ferienwohnung", "tankstelle", "autohaus", "werkstatt", "kfz", "waschanlage", "parkhaus", "parkplatz", "schule", "grundschule",
@@ -165,7 +167,7 @@ object PlaceNames {
         "optiker", "juwelier", "schuhe", "mode", "bekleidung", "fitness", "studio", "sport", "schwimmbad", "bad", "bibliothek", "museum",
     )
     private val GENERIC_ES = setOf(
-        "el", "la", "los", "las", "de", "del", "y", "al", "en", "con", "por", "para",
+        "el", "la", "los", "las", "de", "del", "y", "al", "en", "con", "por", "para", "su", "sus", "tu", "tus", "nuestro", "nuestra", "mi", "mis",
         "restaurante", "restaurant", "cafe", "cafeteria", "bar", "taberna", "cerveceria", "bodega", "panaderia", "pasteleria", "pizzeria",
         "taqueria", "marisqueria", "asador", "carniceria", "pescaderia", "fruteria", "supermercado", "mercado", "tienda", "almacen",
         "libreria", "papeleria", "farmacia", "clinica", "consultorio", "dental", "veterinaria", "veterinario", "hospital", "laboratorio",
@@ -179,7 +181,7 @@ object PlaceNames {
         "piscina", "biblioteca", "museo", "teatro", "cine", "san", "santa", "santo", "nuestra", "senora",
     )
     private val GENERIC_IT = setOf(
-        "il", "lo", "la", "i", "gli", "le", "di", "del", "della", "dei", "delle", "e", "al", "alla", "da", "in", "con", "per",
+        "il", "lo", "la", "i", "gli", "le", "di", "del", "della", "dei", "delle", "e", "al", "alla", "da", "in", "con", "per", "vostro", "vostra", "nostro", "nostra", "tuo", "tua", "mio", "mia",
         "ristorante", "trattoria", "osteria", "pizzeria", "bar", "caffe", "caffetteria", "pasticceria", "gelateria", "panificio",
         "panetteria", "forno", "macelleria", "pescheria", "salumeria", "enoteca", "birreria", "supermercato", "mercato", "negozio",
         "bottega", "libreria", "cartoleria", "tabacchi", "edicola", "farmacia", "parafarmacia", "clinica", "studio", "medico", "dentistico",
@@ -207,7 +209,7 @@ object PlaceNames {
         "biblioteca", "museu", "teatro", "cinema", "sao", "santa", "santo", "nossa", "senhora",
     )
     private val GENERIC_NL = setOf(
-        "de", "het", "een", "en", "van", "der", "den", "te", "bij", "aan", "op", "in", "met",
+        "de", "het", "een", "en", "van", "der", "den", "te", "bij", "aan", "op", "in", "met", "uw", "onze", "ons", "jouw", "mijn",
         "restaurant", "cafe", "eetcafe", "bar", "brasserie", "bakkerij", "banketbakkerij", "slagerij", "pizzeria", "snackbar", "cafetaria",
         "supermarkt", "markt", "winkel", "warenhuis", "winkelcentrum", "boekhandel", "apotheek", "drogisterij", "praktijk", "tandarts",
         "huisarts", "huisartsen", "kliniek", "ziekenhuis", "dierenarts", "fysiotherapie", "bank", "verzekeringen", "makelaar",
@@ -369,7 +371,7 @@ object PlaceNames {
         for (w in s.split(' ')) {
             if (w.isEmpty() || w in LEGAL) continue
             val exp = ABBR[w]
-            if (exp != null) words.addAll(exp.split(' ')) else words.add(w)
+            if (exp != null) words.addAll(exp.split(' ')) else words.addAll(splitCompound(w))
         }
         // "u s bank" -> "us bank": abbreviations written with dots come through as single letters.
         val joined = ArrayList<String>(words.size)
@@ -401,9 +403,37 @@ object PlaceNames {
 
     // A number that survived the trailing-store-number strip IS the name ("Thai 5", "Pho 175",
     // "Studio 54"): without it those names were all generic words and matched nothing.
+    /** A compound whose tail is a generic word of five letters or more comes apart: "Sophienkirche"
+     *  is "sophien kirche", so Google's "Sophien Church" can meet it; "Greenhouse Cafe" meets "Green
+     *  House Cafe". The head keeps at least four letters, a token that is itself generic stays whole
+     *  ("bookstore"), and the split is only ever a suffix split. */
+    private fun splitCompound(w: String): List<String> {
+        if (w.length < 9 || w in GENERIC_ALL || w.any { it.isDigit() }) return listOf(w)
+        for (cut in 4..(w.length - 5)) {
+            val tail = w.substring(cut)
+            if (tail in GENERIC_ALL) return listOf(w.substring(0, cut), tail)
+        }
+        return listOf(w)
+    }
+
     /** [words] with each plural replaced by its singular WHEN the other name has that singular. */
     private fun foldPlurals(words: List<String>, other: Set<String>): List<String> = words.map { w ->
         if (w.length > 3 && w.endsWith("s") && !w.endsWith("ss") && w.dropLast(1) in other) w.dropLast(1) else w
+    }
+
+    private fun unglue(words: List<String>, other: List<String>): List<String> {
+        if (other.size < 2 || words.none { it.length >= 8 && it !in other }) return words
+        val out = ArrayList<String>(words.size + 2)
+        for (w in words) {
+            var found: List<String>? = null
+            if (w.length >= 8 && w !in other) {
+                outer@ for (n in 2..minOf(4, other.size)) for (win in other.windowed(n)) {
+                    if (win.joinToString("") == w) { found = win; break@outer }
+                }
+            }
+            if (found != null) out.addAll(found) else out += w
+        }
+        return out
     }
 
     /** Two identifying words, or one of at least five letters: "speedee", "nordstrom", "laurenzos"
@@ -412,6 +442,17 @@ object PlaceNames {
      *  in Bryant Park). */
     private fun strongCore(words: List<String>): Boolean =
         words.size >= 2 || (words.size == 1 && words[0].length >= 5 && !isOrdinal(words[0]))
+
+    /** The nested rule's allowance for Europe's four-letter brands (Lidl, Aldi, Rewe, Aral, Esso,
+     *  Ikea): a four-letter word LEADS both names, the shorter name has other (generic) words of
+     *  its own, and the longer one adds exactly one identifying word ("Kolo Coffee" inside "Kolo
+     *  coffee klcf shop", "Meya Meya" inside "Meya Meya - ägyptisches Essen"). A bare four-letter
+     *  name never reaches here (the nested rule needs two words on the short side), so "Hair"
+     *  against "Hair Studio" and "The Finn" against "Dish Society at Finn Hall" stay apart. */
+    private fun leadingShortBrand(dShort: Set<String>, dLong: Set<String>, long: List<String>): Boolean {
+        val w = dShort.singleOrNull() ?: return false
+        return w.length == 4 && !isOrdinal(w) && dLong.size == 2 && long.first() == w
+    }
 
     private val ORDINAL = Regex("\\d+(st|nd|rd|th)?")
     private fun isOrdinal(w: String) = ORDINAL.matches(w)
@@ -432,8 +473,10 @@ object PlaceNames {
     private fun isDistinctive(w: String, extraGeneric: Set<String>): Boolean =
         (w !in GENERIC && w !in extraGeneric && !pluralGeneric(w) && w.length >= 2) || (w.length == 1 && w[0].isDigit())
 
-    /** "studios", "salons", "cleaners" are as generic as their singulars. */
-    private fun pluralGeneric(w: String): Boolean = w.length > 3 && w.endsWith("s") && w.dropLast(1) in GENERIC
+    /** "studios", "salons", "cleaners" are as generic as their singulars. English only: against the
+     *  union, "vans" read as a plural of the Dutch "van" and a VANS store became a variant of its
+     *  mall (Berlin, 2026-09-22). */
+    private fun pluralGeneric(w: String): Boolean = w.length > 3 && w.endsWith("s") && w.dropLast(1) in GENERIC_EN
 
     /** True when two names identify the same business under [normalized] (the strict test). */
     fun same(a: String?, b: String?): Boolean {
@@ -455,10 +498,20 @@ object PlaceNames {
         // Plurals fold PAIRWISE ("Sola Salons" against "Sola Salon Studios"): a word loses its "s"
         // only when the other name carries the singular, so "Davis" and "Wells" stay themselves.
         val ra = na.split(' '); val rb = nb.split(' ')
-        val la = foldPlurals(ra, rb.toSet()); val lb = foldPlurals(rb, ra.toSet())
+        // A name glued into one word ("greengymberlin health and fitness club" against "Green
+        // Gym Berlin"): a token of eight letters or more that a run of the other name's words
+        // spells out is read as those words.
+        val la = unglue(foldPlurals(ra, rb.toSet()), rb); val lb = unglue(foldPlurals(rb, ra.toSet()), ra)
         if (la == lb) return Match.EXACT
         val ta = la.toSet(); val tb = lb.toSet()
         val da = la.filter { isDistinctive(it, extraGeneric) }.toSet(); val db = lb.filter { isDistinctive(it, extraGeneric) }.toSet()
+        // The same identifying words on both sides with only descriptors around them, in whatever
+        // language: "torhaus - Your Dentists in Berlin" and "torhaus - Ihre Zahnärzte", "Pharmacy at
+        // Mehringplatz" and "Apotheke am Mehringplatz". Google translates the descriptors with the
+        // interface language and the archive keeps the local ones.
+        // Two or more identifying words; a single one ("Arroyo Park" and "Arroyo Pool" share
+        // "arroyo") is decided by the kinds in [sameBusiness], never by the name alone.
+        if (da.size >= 2 && da == db) return Match.VARIANT
         val nested = ta.containsAll(tb) || tb.containsAll(ta)
         if (nested) {
             val extra = if (ta.size >= tb.size) ta - tb else tb - ta
@@ -471,8 +524,13 @@ object PlaceNames {
             // Extra words that are not generic ("SpeeDee-Midas" over "SpeeDee", "Sam's
             // Mediterranean Cuisine" over "Sam's Cuisine"): the same business when what the
             // shorter name identifies is all there. A short lone word is not enough of an
-            // identity to claim a longer name ("The Finn" is not "Dish Society at Finn Hall").
-            return if (strongCore(coreDistinct)) Match.OVERLAP else Match.NONE
+            // identity to claim a longer name ("The Finn" is not "Dish Society at Finn Hall"),
+            // unless it is a four-letter brand leading both names with one word added
+            // ([leadingShortBrand]: "Kolo Coffee" inside "Kolo coffee klcf shop").
+            val shortWords = if (ta.size >= tb.size) lb else la
+            val longWords = if (ta.size >= tb.size) la else lb
+            val longDistinct = longWords.filter { isDistinctive(it, extraGeneric) }.toSet()
+            return if (strongCore(coreDistinct) || (shortWords.size >= 2 && leadingShortBrand(coreDistinct.toSet(), longDistinct, longWords))) Match.OVERLAP else Match.NONE
         }
         // Not nested: two identifying words in common ("Davis Dental Creations" plus a dentist's
         // surname, "Dunloe" and "Local"). ONE shared word is not enough: "Arroyo Park" is not
@@ -505,7 +563,8 @@ object PlaceNames {
         // than a business ("Bayou Place" against "Bunnies On The Bayou").
         val (dShort, dLong) = if (short === la) da to db else db to da
         if (short.size >= 2 && dShort.isNotEmpty() && dLong.size > dShort.size && dLong.containsAll(dShort) &&
-            dShort.any { !isOrdinal(it) } && (dShort.size >= 2 || long.first() == dShort.single())
+            dShort.any { !isOrdinal(it) } && (dShort.size >= 2 || long.first() == dShort.single()) &&
+            (strongCore(dShort.toList()) || leadingShortBrand(dShort, dLong, long))
         ) return Match.OVERLAP
         return Match.NONE
     }
@@ -523,10 +582,33 @@ object PlaceNames {
      */
     fun sameBusiness(a: String?, kindA: String?, b: String?, kindB: String?, extraGeneric: Set<String> = emptySet()): Boolean {
         val m = match(a, b, extraGeneric)
-        if (m == Match.NONE) return false
+        if (m == Match.NONE) {
+            // One identifying word on both sides with only descriptors around it, and the two are
+            // the same KIND of place: "Apotheke am Mehringplatz" is "Pharmacy at Mehringplatz",
+            // "Sophienkirche" is "Sophien Church". A different kind ("Arroyo Park" and "Arroyo
+            // Pool") is two things named after one landmark.
+            return knownKind(kindA) && kindA == kindB && sameSingleIdentity(a, b, extraGeneric)
+        }
         if (m == Match.OVERLAP && knownKind(kindA) && knownKind(kindB) && kindA != kindB) return false
+        // A business named after the place it stands on is not that place: "Pharmacy At
+        // Strausberger Platz" is a VARIANT of the plaza by name alone (Berlin, 2026-09-22).
+        if (m == Match.VARIANT && (kindA in PLACE_KINDS) != (kindB in PLACE_KINDS) && knownKind(kindA) && knownKind(kindB)) return false
         return true
     }
+
+    /** Both names carry exactly one identifying word and it is the same strong one. */
+    /** Same as [sameSingleIdentity]'s core test, with the four-letter brands admitted: two names
+     *  that both reduce to exactly "lidl" ("Lidl", "Lidl Deutschland") and share a known kind are
+     *  one store. */
+    private fun singleIdentityCore(w: String): Boolean = !isOrdinal(w) && w.length >= 4
+
+    private fun sameSingleIdentity(a: String?, b: String?, extraGeneric: Set<String>): Boolean {
+        val da = distinctive(a, extraGeneric); val db = distinctive(b, extraGeneric)
+        return da.size == 1 && da == db && singleIdentityCore(da.single())
+    }
+
+    /** Icon groups that are places rather than businesses. */
+    private val PLACE_KINDS = setOf("park", "transit", "culture")
 
     /** Two fuel stations within [FUEL_LOT_M] are one station: a forecourt is one per lot, and the
      *  sources name it after different things (the brand, the operator, the shop inside). Two

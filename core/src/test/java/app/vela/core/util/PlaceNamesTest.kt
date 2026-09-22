@@ -69,7 +69,7 @@ class PlaceNamesMatchTest {
 
     @Test fun `the identifying words agreeing is the same business`() {
         assertEquals(PlaceNames.Match.OVERLAP, m("Davis Dental Creations -Dr. Harsimran Bains", "Davis Dental Creations -dr. Simran Bains"))
-        assertEquals(PlaceNames.Match.OVERLAP, m("Dunloe Brewing - The Local", "The Local by Dunloe Brewing"))
+        assertTrue(PlaceNames.agree("Dunloe Brewing - The Local", "The Local by Dunloe Brewing"))
         assertEquals(PlaceNames.Match.OVERLAP, m("SpeeDee-Midas", "SpeeDee"))
         assertTrue(PlaceNames.agree("Sam's Mediterranean Cuisine", "Sam's Cuisine")) // a cuisine word is generic: VARIANT
         assertEquals(PlaceNames.Match.OVERLAP, m("Jennifer P. Clary, M.D.", "Jennifer Papazian Clary, M.d."))
@@ -185,6 +185,38 @@ class PlaceNamesI18nTest {
         assertEquals(PlaceNames.Match.NONE, m("Restaurant Zur Post", "Gasthaus Zur Linde"))
         assertEquals(PlaceNames.Match.NONE, m("Farmacia Central", "Farmacia Sol"))
         assertEquals(PlaceNames.Match.NONE, m("Salon de Coiffure Marie", "Salon de Coiffure Julie"))
+    }
+
+    @Test fun `Google's English descriptors meet the archive's local ones`() {
+        // One identifying word on both sides: the kinds decide, and here they agree.
+        assertTrue(PlaceNames.sameBusiness("torhaus - Your Dentists in Berlin", "health", "torhaus - Ihre Zahnärzte", "health", setOf("berlin")))
+        assertTrue(PlaceNames.sameBusiness("Pharmacy at Mehringplatz", "health", "Apotheke am Mehringplatz", "health"))
+        assertTrue(PlaceNames.sameBusiness("Sophien Church", "civic", "Sophienkirche", "civic"))
+        assertFalse(PlaceNames.sameBusiness("Arroyo Park", "park", "Arroyo Pool", "sports"))
+        assertTrue(PlaceNames.agree("Pharmacy at Mehringplatz", "Apotheke am Mehringplatz")) // "mehring platz" is a phrase in both
+        assertTrue(PlaceNames.agree("Greenhouse Cafe", "Green House Cafe"))
+        assertEquals("sophien kirche", PlaceNames.normalized("Sophienkirche"))
+        assertEquals("bookstore", PlaceNames.normalized("Bookstore"))
+        // A store in a mall is not the mall, and a pharmacy on a plaza is not the plaza.
+        assertFalse(PlaceNames.same("VANS Store Berlin Alexa", "ALEXA Berlin"))
+        assertEquals(PlaceNames.Match.OVERLAP, PlaceNames.match("VANS Store Berlin Alexa", "ALEXA Berlin", setOf("berlin")))
+        assertFalse(PlaceNames.sameBusiness("Pharmacy At Strausberger Platz", "health", "Strausberger Platz", "park"))
+        assertTrue(PlaceNames.sameBusiness("Safeway Pharmacy", "health", "Safeway", "shop"))
+    }
+
+    @Test fun `four-letter European brands carry a name when the other side adds little`() {
+        assertTrue(PlaceNames.sameBusiness("Lidl", "grocery", "Lidl Deutschland", "grocery"))
+        assertTrue(PlaceNames.agree("Kolo coffee klcf shop", "Kolo Coffee"))
+        assertTrue(PlaceNames.agree("Meya Meya - ägyptisches Essen", "Meya Meya"))
+        assertEquals(PlaceNames.Match.NONE, PlaceNames.match("The Finn", "Dish Society at Finn Hall"))
+        assertEquals(PlaceNames.Match.NONE, PlaceNames.match("Hair", "Hair Studio"))
+        assertEquals(PlaceNames.Match.NONE, PlaceNames.match("Avid & Co.", "The Avid Reader Bookstore"))
+    }
+
+    @Test fun `a name glued into one word reads as its words`() {
+        assertTrue(PlaceNames.agree("greengymberlin health and fitness club", "Green Gym Berlin"))
+        assertTrue(PlaceNames.agree("Green Gym Berlin", "greengymberlin"))
+        assertEquals(PlaceNames.Match.NONE, PlaceNames.match("Bellboyhouse", "Bell Boy Shop")) // no run of words spells it
     }
 
     @Test fun `CJK names compare as strings with their suffixes stripped`() {

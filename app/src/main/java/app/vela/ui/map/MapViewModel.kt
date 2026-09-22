@@ -3220,6 +3220,7 @@ class MapViewModel @Inject constructor(
             rememberRecentPlace(SavedPlace.of(remembered ?: placeholder))
             return
         }
+        val uiLang = app.vela.ui.AppLocale.language.value.ifBlank { java.util.Locale.getDefault().language }
         viewModelScope.launch {
             val remembered = seed?.let { synchronized(openPlaceCache) { openPlaceCache[it.id] } }
             val resolved = if (remembered != null) (remembered to emptyList<Place>()) else runCatching {
@@ -3280,12 +3281,17 @@ class MapViewModel @Inject constructor(
                     // Words shared by three or more of the listings around the tap are the area's
                     // (a neighborhood, a mall, a landmark), generic for the comparison.
                     val localGeneric = app.vela.core.util.PlaceNames.localGeneric(results.map { it.name })
-                    val pool = answerable.filter { p ->
+                    val agreeing = answerable.filter { p ->
                         app.vela.core.util.PlaceNames.sameBusiness(
                             name, tappedKind, p.name, PoiIcons.groupFor(p.name, p.category),
                             app.vela.core.util.PlaceNames.cityWords(p.address) + localGeneric,
                         )
                     }
+                    // A label in another script than the app's answer (a Japanese map under an
+                    // English phone) gets a second search in the script's own language when
+                    // nothing agreed; see crossScriptCandidates.
+                    val crossScript = if (agreeing.isEmpty()) crossScriptCandidates(name, location, searchQuery, tappedKind, localGeneric, uiLang) else emptyList()
+                    val pool = agreeing.ifEmpty { crossScript }
                         .ifEmpty { answerable.filter { it.location.distanceTo(location) <= NO_NAME_MATCH_M } }
                         .let { p -> p.filterNot { it.permanentlyClosed }.ifEmpty { p } }
                     // THE SAME NAME BEATS A NEARER ONE (user 2026-09-18: tapping a supermarket
@@ -3323,7 +3329,7 @@ class MapViewModel @Inject constructor(
                     // were. Counts and distances only.
                     tapWhy = "agree=" + answerable.count { nameAgrees(name, it.name, it.address) } +
                         " near60=" + answerable.count { it.location.distanceTo(location) <= NO_NAME_MATCH_M } +
-                        " pool=" + pool.size + " exact=" + exact.size +
+                        " cross=" + crossScript.size + " pool=" + pool.size + " exact=" + exact.size +
                         " local=" + local.size + " group=" + tappedGroup + " sameKind=" + sameKind.size +
                         " nearest=[" + answerable.sortedBy { it.location.distanceTo(location) }.take(3)
                             .joinToString("; ") { it.name + " " + "%.0f".format(it.location.distanceTo(location)) + "m/" + (it.category ?: "-") } + "]"
@@ -3369,7 +3375,6 @@ class MapViewModel @Inject constructor(
             // Google answers with the local-script name even under hl=en (a Hebrew title over an
             // English app's Latin pin, user 2026-09-15): keep the map's own label when it is in
             // the app language's script and Google's is not (core NameScript, unit-tested).
-            val uiLang = app.vela.ui.AppLocale.language.value.ifBlank { java.util.Locale.getDefault().language }
             val full = resolved?.first?.let { f -> f.copy(name = app.vela.core.util.NameScript.prefer(uiLang, f.name, placeholder.name)) }
             // Remember the listing for an instant second tap, unless the session was still on the
             // slim flavor (no review count, no hours) and would pin a stripped listing for the
@@ -3449,6 +3454,34 @@ class MapViewModel @Inject constructor(
     /** The shared same-business rule (`core/util/PlaceNames`, 2026-09-21): descriptor tails, spelling
      *  variants and agreeing identifying words count, shared generic words do not. The town out of
      *  the listing's address is generic for the comparison, so "FIT House Davis" is "FIT House". */
+    /**
+     * The tap resolve's second pass when nothing agreed by name and the tapped label is written in
+     * a script Google answers differently under the app's language: a Japanese label against an
+     * English-localized reply reads "東京ミッドタウン" against "Tokyo Midtown", and no name rule
+     * bridges that (Tokyo, 2026-09-22: 19% of Google's places linked to the archive under hl=en,
+     * 32% under hl=ja, and the tap has only the label). The same search runs in the script's own
+     * language ([NameScript.scriptLanguage]), the listings that agree are kept, and the nearest
+     * one's English-localized copy is fetched by its own name so the sheet keeps the app language's
+     * category and hours; the copy replaces it when the feature ids match, else the foreign
+     * listing stands. Two requests at most, only on a cross-script miss.
+     */
+    private suspend fun crossScriptCandidates(name: String, location: LatLng, query: String, tappedKind: String?, localGeneric: Set<String>, uiLang: String): List<Place> {
+        val hl = app.vela.core.util.NameScript.scriptLanguage(name, location.lat, location.lng) ?: return emptyList()
+        if (app.vela.core.util.NameScript.sameLanguage(hl, uiLang)) return emptyList()
+        val foreign = runCatching { dataSource.search(query, location, lang = hl).places }.getOrDefault(emptyList())
+        val agreeing = foreign.filter { p ->
+            p.category?.let { isTransitCategory(it) || it.lowercase() in JUNCTION_CATEGORIES } != true &&
+                app.vela.core.util.PlaceNames.sameBusiness(
+                    name, tappedKind, p.name, PoiIcons.groupFor(p.name, p.category),
+                    app.vela.core.util.PlaceNames.cityWords(p.address) + localGeneric,
+                )
+        }
+        if (agreeing.isEmpty()) return emptyList()
+        val best = agreeing.minByOrNull { it.location.distanceTo(location) }!!
+        val localized = runCatching { dataSource.search(best.name, best.location).places }.getOrDefault(emptyList())
+        return agreeing.map { f -> localized.firstOrNull { it.featureId != null && it.featureId == f.featureId } ?: f }
+    }
+
     private fun nameAgrees(tapped: String, listing: String?, address: String? = null): Boolean =
         app.vela.core.util.PlaceNames.agree(tapped, listing, app.vela.core.util.PlaceNames.cityWords(address))
 

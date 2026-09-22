@@ -1331,7 +1331,28 @@ are compared as strings by `cjkMatch`: descriptor suffixes and prefixes (店, �
 餐厅, 超市, 有限公司, 지점, 약국, สาขา...) are stripped from both ends, equal cores are a
 VARIANT ("星巴克咖啡" and "星巴克"), a core inside the other is an OVERLAP (the extra is a branch
 name: "スターバックス 渋谷店"), and a core shorter than two characters matches nothing. The bake's
-word file carries the same union. A single shared identifying word is NOT a match ("Arroyo Park" against
+word file carries the same union. Three rules from a Berlin and Tokyo side by side (2026-09-22):
+Europe's brands are four letters (Lidl, Aldi, Rewe, Aral, Esso, Ikea), so a four-letter word
+carries a nested or subset match when it LEADS both names, the shorter name has words of its own
+and the longer adds exactly one identifying word ("Kolo Coffee" inside "Kolo coffee klcf shop"),
+and two names that both reduce to one four-letter word ("Lidl", "Lidl Deutschland") are one
+business under `sameBusiness` when their kinds agree; a bare four-letter name still claims nothing
+("Hair" against "Hair Studio", "The Finn" against "Dish Society at Finn Hall"). Country names and
+food descriptors are generic in German (Deutschland, Essen, Küche). A name glued into one word is
+read as its words when a run of the other name's words spells it ("greengymberlin health and
+fitness club" and "Green Gym Berlin"; eight letters or more). Measured through the rule: Berlin
+links 75% of Google's places to the de-berlin archive, Tokyo 38% under `hl=en` and 65% under
+`hl=ja`: Google names Tokyo's places in English for an English phone while three quarters of the
+archive's names are Japanese, and Overture carries no alternate-language names there, so no name
+rule bridges the two. The tap resolve bridges it instead: when nothing agrees by name and the
+tapped label is in a script Google answers differently (`NameScript.scriptLanguage`: kana or Han
+inside Japan is `ja`, Han elsewhere `zh-CN`, Traditional over Taiwan, Hong Kong and Macau, Hangul
+`ko`, Cyrillic `ru`, Hebrew `iw`, Thai `th`, Arabic `ar`, Greek `el`; Latin decides nothing) and
+that language is not the app's, `MapViewModel.crossScriptCandidates` runs the same search with
+`hl=<that language>` (`MapDataSource.search(lang)`), keeps the listings that agree, and fetches the
+nearest one's copy in the app's language by its own name so the sheet keeps the app language's
+category and hours; the copy replaces it when the feature ids match, else the foreign listing
+stands. Two requests at most, only on a cross-script miss; the `VelaTap` line carries `cross=N`. A single shared identifying word is NOT a match ("Arroyo Park" against
 "Arroyo Pool"), a name made only of generic words matches nothing by overlap ("Hair" inside "Hair
 Studio"), and a brand's other listing is a VARIANT that `same` keeps out. Pinned by
 `PlaceNamesMatchTest` with the fixture pairs. Two rules take the places' KINDS (the icon group)

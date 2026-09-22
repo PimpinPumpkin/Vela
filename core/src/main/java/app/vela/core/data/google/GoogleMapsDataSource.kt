@@ -174,8 +174,8 @@ class GoogleMapsDataSource @Inject constructor(
     /** One result page: [offset] rows in, over a [viewport]-centered window [spanMeters] tall. A
      *  parse drift on page 0 is thrown (and recorded) so the caller can surface it; on any later
      *  page it yields an empty list, because a later page drifting must never kill page 0. */
-    private suspend fun searchPage(query: String, viewport: LatLng, spanMeters: Double?, rankFrom: LatLng?, offset: Int, cal: app.vela.core.config.Calibration): List<Place> {
-        val url = "${cal.searchEndpoint}&q=${query.enc()}&pb=${SearchPb.build(query, viewport, cal.searchPb, spanMeters, offset).enc()}".localized()
+    private suspend fun searchPage(query: String, viewport: LatLng, spanMeters: Double?, rankFrom: LatLng?, offset: Int, cal: app.vela.core.config.Calibration, lang: String? = null): List<Place> {
+        val url = "${cal.searchEndpoint}&q=${query.enc()}&pb=${SearchPb.build(query, viewport, cal.searchPb, spanMeters, offset).enc()}".localized(lang)
         val raw = get(url)
         // A remote transforms.js can fully re-parse a reshaped response (searchOverride);
         // otherwise the compiled parser runs. Either way, an optional transformPlaces
@@ -197,7 +197,7 @@ class GoogleMapsDataSource @Inject constructor(
     private fun placeKey(p: Place) =
         p.featureId ?: "${p.name.lowercase()}|${(p.location.lat * 2000).toInt()}|${(p.location.lng * 2000).toInt()}"
 
-    override suspend fun search(query: String, near: LatLng?, spanMeters: Double?, rankFrom: LatLng?): SearchResult = io {
+    override suspend fun search(query: String, near: LatLng?, spanMeters: Double?, rankFrom: LatLng?, lang: String?): SearchResult = io {
         // Without Google (NoGoogle): the OpenStreetMap geocoder answers, biased around the user.
         // It knows names and addresses, not categories; the downloaded place packs cover those
         // where a region is installed (the view model's offline search runs them first).
@@ -218,8 +218,8 @@ class GoogleMapsDataSource @Inject constructor(
         // normally pass the user's location, with a fallback for the rare null.
         val viewport = near ?: DEFAULT_VIEWPORT
         val cal = calibration.current()
-        val firstUrl = "${cal.searchEndpoint}&q=${query.enc()}&pb=${SearchPb.build(query, viewport, cal.searchPb, spanMeters).enc()}".localized()
-        suspend fun page(offset: Int): List<Place> = searchPage(query, viewport, spanMeters, rankFrom, offset, cal)
+        val firstUrl = "${cal.searchEndpoint}&q=${query.enc()}&pb=${SearchPb.build(query, viewport, cal.searchPb, spanMeters).enc()}".localized(lang)
+        suspend fun page(offset: Int): List<Place> = searchPage(query, viewport, spanMeters, rankFrom, offset, cal, lang)
         // NEARBY PASS (2026-09-13): Google's keyless ranking is prominence-heavy over the WHOLE
         // window, so at town zoom the outlet next to the user loses its slot to better-known
         // places across the visible area and misses all three pages; the ambient merge below
@@ -232,7 +232,7 @@ class GoogleMapsDataSource @Inject constructor(
             (spanMeters == null || (rankFrom.distanceTo(viewport) <= spanMeters / 2 && spanMeters > NEARBY_SPAN_M * 1.5))
         val (nearby, first) = kotlinx.coroutines.coroutineScope {
             val n = async {
-                if (nearbyWanted) runCatching { searchPage(query, rankFrom!!, NEARBY_SPAN_M, rankFrom, 0, cal) }.getOrDefault(emptyList())
+                if (nearbyWanted) runCatching { searchPage(query, rankFrom!!, NEARBY_SPAN_M, rankFrom, 0, cal, lang) }.getOrDefault(emptyList())
                 else emptyList()
             }
             val f = async { page(0) }
@@ -1342,8 +1342,11 @@ class GoogleMapsDataSource @Inject constructor(
      *  and boolean can't disagree. `Locale.getDefault()` reflects the in-app language override
      *  (AppLocale sets it) or the system locale. **No-op for English → English users are
      *  byte-for-byte unchanged.** */
-    private fun String.localized(): String {
+    private fun String.localized(force: String? = null): String {
         val out = regionalized()
+        // A caller's own language (the tap resolve, for a label in another script) wins outright;
+        // its status text is parsed against that language's table where there is one.
+        if (force != null) return out.replace("hl=en", "hl=$force")
         val locale = java.util.Locale.getDefault()
         val lang = locale.language.lowercase()
         // Only rewrite to a language the STATUS parser can read (SearchParser.STATUS_LANGS). For any
