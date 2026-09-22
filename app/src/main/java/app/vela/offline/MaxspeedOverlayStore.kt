@@ -29,7 +29,9 @@ class MaxspeedOverlayStore @Inject constructor(
 ) {
     /** One catalog row: a region's streamed PMTiles [url] and its [s]/[w]/[n]/[e] bbox. */
     data class Region(val id: String, val url: String, val s: Double, val w: Double, val n: Double, val e: Double) {
-        fun covers(p: LatLng) = p.lat in s..n && p.lng in w..e
+        /** The region's real boundary where [RegionPolys] has one (the ids are the routing
+         *  catalog's), else the box; a globe-wide box never covers on its own. */
+        fun covers(p: LatLng) = RegionPolys.covers(id, p.lat, p.lng) ?: RegionPolys.boxCovers(s, w, n, e, p.lat, p.lng)
         fun area() = (n - s) * (e - w)
     }
 

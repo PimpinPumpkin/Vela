@@ -220,7 +220,7 @@ abstract class PmtilesRegionStore(
         /** The region's real boundary where [RegionPolys] has one (the places and basemap catalogs
          *  share the routing catalog's ids), else the box (issue #599). */
         fun covers(lat: Double, lng: Double): Boolean =
-            RegionPolys.covers(id, lat, lng) ?: (lat in s..n && lng in w..e)
+            RegionPolys.covers(id, lat, lng) ?: RegionPolys.boxCovers(s, w, n, e, lat, lng)
         fun covers(p: LatLng) = covers(p.lat, p.lng)
         fun area() = (n - s) * (e - w)
         fun boxArea() = area()

@@ -34,6 +34,7 @@ osmium export "$WORK/ms.osm.pbf" -f geojsonseq --geometry-types=linestring -o "$
 # Bbox from the PBF header (not the geometry extent - a stray node sends it to Alaska; same guard as routing).
 read -r MINLON MINLAT MAXLON MAXLAT < <(osmium fileinfo -g header.boxes "$WORK/region.osm.pbf" | tr -d '()' | tr ',' ' ')
 BBOX="[$MINLAT,$MINLON,$MAXLAT,$MAXLON]" # [S,W,N,E], the shape the routing manifest + picker use
+BBOX=$(python3 "$(dirname "$0")/clamp-bbox.py" "$ID" <<<"$BBOX") # Alaska's antimeridian box (issue #257)
 
 # Tile z11→z16: roads must be present + queryable at nav/free-drive zoom (~14-17), and z11 keeps the file
 # small while covering a snap. Keep ONLY the maxspeed attributes (-y) so the tiles carry no other tags.
