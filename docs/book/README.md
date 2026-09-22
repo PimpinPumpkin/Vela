@@ -27,16 +27,17 @@ next:
 | 2 | [Data and rebakes](02-data-and-rebakes.md) | Every hosted dataset, when it is rebuilt, how your phone picks up a new build |
 | 3 | [Surveillance cameras](03-cameras.md) | The camera dataset, what counts as "on your route", the avoid rule, the warnings |
 | 4 | [Navigation](04-navigation.md) | The per-fix loop, off-route and rerouting, traffic rechecks, and the pause |
+| 5 | [Routing](05-routing.md) | Which engine answers, how Google's traffic reaches an open route, stops, avoids, offline and bike routing |
+| 6 | [Search](06-search.md) | What a typed query is sent to, the autocomplete, local and contact suggestions, intents, offline and Google-off search |
+| 7 | [Talking to Google](07-talking-to-google.md) | The keyless scrape, the browser identity, signed calibration, the hidden WebViews, and the no-Google switch |
+| 8 | [Offline](08-offline.md) | What a region download holds, what works with no signal, borders, storage and updates |
+| 9 | [Transit](09-transit.md) | Departure boards, canonical stops, the stop-list tap-through, transit directions and guidance |
+| 10 | [Android Auto and the car screen](10-android-auto.md) | What runs on the head unit, the snapshot map, the screens, and the install gate |
 
 ## What the remaining chapters owe
 
 Every question below was asked by a real person about how something actually works, and is the
 reason the chapter exists. A chapter is not finished until it answers its list.
-
-**Routing** (planned): which engine answers, and when the on-phone one takes over from the online
-one; whether the arrival time is still Google's when the route is not; how a stop is added
-mid-drive and what it does to the plan; what "avoid tolls / highways / ferries" can and cannot
-honor per engine.
 
 **The map itself** (planned): why streets and their labels are drawn at the widths and zooms they
 are, and how that compares with Google's; how the day and night styles are chosen; what the 3D
@@ -48,34 +49,16 @@ is portrait-only; the street and exit callouts, where they are placed and when t
 how a stop sign or traffic light on a crossing street is told apart from one on your road; the
 two-tap "add this place as a stop" and why it is opt-in.
 
-**Search** (planned): what a typed query is actually sent to, what happens offline, how search
-along a route differs from search on the map, and how contacts and saved places enter results.
-
 **The route chooser** (planned): the Google-style picker and the classic panel, what each shows,
 how alternates are picked and labeled, what the camera and toll badges mean, and what the steps
 preview is for.
 
-**Talking to Google** (planned): what the keyless scrape sends, the browser headers it claims,
-how the user agent is kept current through signed calibration without an app release, and what
-the app does when Google answers with the stripped early-session shape.
-
-**Offline** (planned): what a region download contains, how big each part is, what still works
-with no signal and what silently does not.
-
 **Releases** (planned): canary, nightly and stable, what promotes what and when, and how the
 in-app updater picks a build.
-
-**Transit** (planned): where the departure boards come from and why they are not Google's, what a
-canonical stop is and why two curbs merge into one icon, why transit directions deliberately stay
-with Google, and what the tap-through from a board to a route's stop list actually fetches.
 
 **Voices and listening** (planned): what a Vela voice is and why one voice speaks one language,
 what happens when the app language and the voice disagree, the three on-device dictation engines
 and what each costs in megabytes, and the voice commands that are parsed rather than searched.
-
-**Android Auto and the car screen** (planned): what runs on the head unit, why the car map is
-rendered as snapshots rather than a live map view, what the cluster and the turn card get, and
-what the car cannot do yet.
 
 **Keypad phones and the D-pad** (planned): the rule that every surface opens with something
 focused, why menus and dialogs are custom rather than Material defaults, and how a phone with no
@@ -88,7 +71,7 @@ and the redaction switch.
 **Where the backlog came from:** these lists were built from questions asked during development
 and from a pass over all 399 merged pull requests, clustered by subsystem, to find the areas with
 the most shipped behavior and no chapter explaining it. Routing (108 PRs), navigation (76) and
-places (71) lead; navigation and places have chapters, routing does not yet.
+places (71) lead; navigation, places and routing now all have chapters.
 
 ## How to search it
 
