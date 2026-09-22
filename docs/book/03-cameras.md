@@ -39,7 +39,7 @@ newer of the bundled and downloaded copies. In the few seconds before the file f
 at startup, a live Overpass query stands in.
 
 Speed cameras are OSM `highway=speed_camera` nodes. They ride along in the per-region
-`road-features` bake, rebuilt monthly (the 4th, 07:45 UTC); the phone downloads the file for the
+`road-features` bake, rebuilt monthly (half the catalog on the 4th, half on the 6th, 07:45 UTC); the phone downloads the file for the
 region you are in once and answers from memory. Only a place no region covers still asks Overpass.
 
 No request is made to any camera service while you drive. The one thing in this chapter that
