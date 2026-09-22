@@ -627,7 +627,14 @@ Defaults that make the safe path the easy one:
   computes) and defers to the car's day/night only under "System": the driver had Vela dark and
   got a light car map because the head unit said day. The puck is an eighth of the short side.
   **Gearslip's in-app "Car preview" (its Debug mode) renders Vela's car screens on the phone**, the
-  same host path a head unit gets, so the car map can be checked without a car or the DHU.
+  same host path a head unit gets, so the car map can be checked without a car or the DHU. **And
+  that preview found the real theme bug (2026-09-22): `MapSnapshotter.Observer.onDidFinishLoadingStyle`
+  NEVER FIRED, on any build, because a style handed over as JSON finishes parsing before
+  `setObserver` runs, so the palette never went on and every car map since 2026-09-21 was stock
+  Liberty under the old darkening filter (the "generic crap" on both Pixels). The palette is applied
+  from the FIRST SNAPSHOT CALLBACK now (a returned snapshot proves the style is loaded; that frame
+  is discarded for a themed one); the observer stays as a no-cost second chance. Proof: the
+  `VelaCar: theme applied dark=true layers=111` line and a navy car map in the preview.**
   **THE GATE, READ OFF A REAL CAR LOG (2026-09-22, GrapheneOS Pixel 9, sandboxed Play, Android
   Auto 17.4, "Unknown sources" on, KingInstaller's Shizuku method so the install fields read
   installer=com.android.vending, requester=com.android.packageinstaller):** on connect the
