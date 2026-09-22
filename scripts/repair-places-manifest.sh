@@ -67,10 +67,24 @@ derive() {
   fi
 }
 
+# Several merges finishing together race on the ONE manifest asset: --clobber deletes and
+# re-uploads, so a concurrent merge sees "already exists" (422) or a 404 for the asset it was
+# replacing (2026-09-22, two of nine parallel runs). Every merge derives the full manifest from
+# the release, so the loser only has to try again a few seconds later.
+upload_manifest() {
+  local f="$1" try
+  for try in 1 2 3 4 5; do
+    gh release upload "$TAG" "$f" --clobber --repo "$REPO" && return 0
+    echo "manifest upload lost a race (try $try); retrying"
+    sleep $((RANDOM % 15 + 5))
+  done
+  return 1
+}
+
 for attempt in 1 2 3; do
   derive
   cp "$WORK/assets.txt" "$WORK/assets.before"
-  gh release upload "$TAG" "$WORK/places-overlay-manifest.json" --clobber --repo "$REPO"
+  upload_manifest "$WORK/places-overlay-manifest.json"
   echo "places manifest now lists $(jq '.regions | length' "$WORK/places-overlay-manifest.json") regions (attempt $attempt)"
   # An archive uploaded while this ran is not in the listing above; go round once more.
   gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[] | "\(.name) \(.size) \(.updatedAt | .[0:10] | gsub("-"; ""))"' | sort > "$WORK/assets.after"
