@@ -1971,7 +1971,7 @@ class MapViewModel @Inject constructor(
                     // lookup the sheet runs on select (user 2026-09-19, "does not show the POI
                     // address"). Bounded to what the list shows first.
                     val pois = rawPois.mapIndexed { i, p ->
-                        if (i < OFFLINE_ADDR_FILL || !p.address.isNullOrBlank()) p
+                        if (i >= OFFLINE_ADDR_FILL || !p.address.isNullOrBlank()) p // fill only the first rows, the ones on screen
                         else p.copy(address = runCatching { addressStore.reverseGeocode(p.location) }.getOrNull() ?: p.address)
                     }
                     // If it looks like a street address, geocode it too and lead with the address matches,

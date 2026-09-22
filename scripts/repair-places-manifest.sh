@@ -88,6 +88,8 @@ for attempt in 1 2 3; do
   echo "places manifest now lists $(jq '.regions | length' "$WORK/places-overlay-manifest.json") regions (attempt $attempt)"
   # An archive uploaded while this ran is not in the listing above; go round once more.
   gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[] | "\(.name) \(.size) \(.updatedAt | .[0:10] | gsub("-"; ""))"' | sort > "$WORK/assets.after"
-  if diff -q <(grep '\.pmtiles$' "$WORK/assets.before") <(grep '\.pmtiles$' "$WORK/assets.after") >/dev/null; then break; fi
+  # Each line is "<name> <size> <date>", so match the archive name at the START of the line (an
+  # end-anchored ".pmtiles$" never matched, and the check always stopped after one pass).
+  if diff -q <(grep '^places-[^ ]*\.pmtiles ' "$WORK/assets.before") <(grep '^places-[^ ]*\.pmtiles ' "$WORK/assets.after") >/dev/null; then break; fi
   echo "the release changed during the merge; rebuilding"
 done

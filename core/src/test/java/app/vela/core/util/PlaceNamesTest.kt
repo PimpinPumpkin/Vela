@@ -137,18 +137,18 @@ class PlaceNamesMatchTest {
     }
 
     @Test fun `an overlap across two known kinds is two businesses on one lot`() {
-        assertFalse(PlaceNames.sameBusiness("Cathcart Station Alfy's", "fuel", "Cathcart Station LLC", "food"))
-        assertTrue(PlaceNames.sameBusiness("Cathcart Station Alfy's", "fuel", "Cathcart Station LLC", null))
+        assertFalse(PlaceNames.sameBusiness("Covell Station Marco's", "fuel", "Covell Station LLC", "food"))
+        assertTrue(PlaceNames.sameBusiness("Covell Station Marco's", "fuel", "Covell Station LLC", null))
         assertTrue(PlaceNames.sameBusiness("Safeway Pharmacy", "health", "Safeway", "shop")) // a VARIANT crosses kinds
         assertTrue(PlaceNames.sameFuelLot("fuel", "fuel", 11.0))
-        assertTrue(PlaceNames.sameFuelLot("fuel", "fuel", 11.0, "16315", "16315"))
-        assertTrue(PlaceNames.sameFuelLot("fuel", "fuel", 11.0, "16315", null))
+        assertTrue(PlaceNames.sameFuelLot("fuel", "fuel", 11.0, "1451", "1451"))
+        assertTrue(PlaceNames.sameFuelLot("fuel", "fuel", 11.0, "1451", null))
         // Across the street: a different house number is a different lot at any distance.
-        assertFalse(PlaceNames.sameFuelLot("fuel", "fuel", 11.0, "16315", "16326"))
+        assertFalse(PlaceNames.sameFuelLot("fuel", "fuel", 11.0, "1451", "1460"))
         assertFalse(PlaceNames.sameFuelLot("fuel", "food", 11.0))
         assertFalse(PlaceNames.sameFuelLot("fuel", "fuel", 45.0))
-        assertEquals("16315", PlaceNames.houseNumber("16315 State Route 9 SE"))
-        assertEquals(null, PlaceNames.houseNumber("State Route 9 SE"))
+        assertEquals("1451", PlaceNames.houseNumber("1451 W Covell Blvd"))
+        assertEquals(null, PlaceNames.houseNumber("W Covell Blvd"))
     }
 
     @Test fun `city words come out of an address`() {

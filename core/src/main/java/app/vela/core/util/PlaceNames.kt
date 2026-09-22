@@ -576,7 +576,7 @@ object PlaceNames {
     /**
      * [agree] with the two places' KINDS (the icon group, "fuel", "food", "shop"...; null or
      * "default" = unknown) in hand: an OVERLAP between two known, different kinds is not a match.
-     * "Cathcart Station Alfy's" (a fuel station) and "Cathcart Station LLC" (a pizza place) share
+     * "Covell Station Marco's" (a fuel station) and "Covell Station LLC" (a pizza place) share
      * their identifying words and are two businesses on one lot; a VARIANT or EXACT still counts
      * across kinds, because "Safeway Pharmacy" and "Safeway" ARE one business in two listings.
      */
@@ -621,7 +621,7 @@ object PlaceNames {
         return distanceM < FUEL_LOT_M
     }
 
-    /** The house number a street address starts with ("16315 State Route 9 SE" -> "16315"). */
+    /** The house number a street address starts with ("1451 W Covell Blvd" -> "1451"). */
     fun houseNumber(address: String?): String? =
         address?.trimStart()?.takeWhile { it.isDigit() }?.takeIf { it.isNotEmpty() }
 

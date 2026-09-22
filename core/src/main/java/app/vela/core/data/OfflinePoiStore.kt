@@ -153,7 +153,7 @@ class OfflinePoiStore @Inject constructor(
         // Mexican restaurant, not a random one), then by distance.
         val qWords = (if (words.size > 1) words else listOf(term)).map { it.lowercase() }
         // TRANSIT STOPS GO LAST unless the query asks for transit. US stops are named by their
-        // corner ("172nd St NE & Smokey Point Blvd"), so any query carrying a street or a town
+        // corner ("Russell Blvd & Anderson Rd"), so any query carrying a street or a town
         // word matched hundreds of them and a business search offline read as a list of
         // intersections (user 2026-09-21, a parts store the pack did not have). They still show,
         // after everything else.
