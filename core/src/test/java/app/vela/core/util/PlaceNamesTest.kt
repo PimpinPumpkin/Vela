@@ -156,3 +156,43 @@ class PlaceNamesMatchTest {
         assertTrue(PlaceNames.cityWords("239 G St").isEmpty())
     }
 }
+
+/** The same families in the app's other languages: the tables are the union, so a phone in English
+ *  looking at Berlin or Madrid gets the descriptors read the same way. */
+class PlaceNamesI18nTest {
+    private fun m(a: String, b: String) = PlaceNames.match(a, b)
+
+    @Test fun `descriptors in other languages are generic`() {
+        assertEquals(PlaceNames.Match.VARIANT, m("Boulangerie Paul", "Paul"))
+        assertEquals(PlaceNames.Match.VARIANT, m("Aral Tankstelle", "Aral"))
+        assertEquals(PlaceNames.Match.VARIANT, m("Farmacia Guadalajara", "Guadalajara"))
+        assertEquals(PlaceNames.Match.VARIANT, m("Ristorante Da Mario", "Da Mario"))
+        assertEquals(PlaceNames.Match.VARIANT, m("Supermercado Dia", "Dia"))
+        assertEquals(PlaceNames.Match.VARIANT, m("REWE Center", "REWE"))
+        assertEquals(PlaceNames.Match.VARIANT, m("Аптека Ригла", "Ригла"))
+        assertEquals(PlaceNames.Match.VARIANT, m("Bäckerei Müller GmbH", "Müller"))
+        assertEquals(PlaceNames.Match.EXACT, m("Bäckerei Müller GmbH", "Backerei Mueller".replace("ue", "u")))
+    }
+
+    @Test fun `spelling variants across languages fold`() {
+        assertEquals(PlaceNames.Match.EXACT, m("Straße des 17. Juni Apotheke", "Strasse des 17 Juni Apotheke"))
+        assertEquals(PlaceNames.Match.EXACT, m("Кафе Пушкинъ", "Кафе Пушкинъ"))
+        assertEquals(PlaceNames.Match.EXACT, m("Ёлки", "Елки"))
+        assertEquals(PlaceNames.Match.EXACT, m("Łódź Bar", "Lodz Bar"))
+    }
+
+    @Test fun `shared descriptors are still not identity in other languages`() {
+        assertEquals(PlaceNames.Match.NONE, m("Restaurant Zur Post", "Gasthaus Zur Linde"))
+        assertEquals(PlaceNames.Match.NONE, m("Farmacia Central", "Farmacia Sol"))
+        assertEquals(PlaceNames.Match.NONE, m("Salon de Coiffure Marie", "Salon de Coiffure Julie"))
+    }
+
+    @Test fun `CJK names compare as strings with their suffixes stripped`() {
+        assertEquals(PlaceNames.Match.OVERLAP, m("スターバックス 渋谷店", "スターバックス")) // the branch name is the extra
+        assertEquals(PlaceNames.Match.VARIANT, m("星巴克咖啡", "星巴克"))
+        assertEquals(PlaceNames.Match.OVERLAP, m("セブン-イレブン渋谷駅前店", "セブン-イレブン"))
+        assertEquals(PlaceNames.Match.OVERLAP, m("스타벅스 강남점", "스타벅스"))
+        assertEquals(PlaceNames.Match.NONE, m("松屋", "吉野家"))
+        assertEquals(PlaceNames.Match.NONE, m("店", "本店"))
+    }
+}

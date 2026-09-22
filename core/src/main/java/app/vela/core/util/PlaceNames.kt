@@ -43,7 +43,21 @@ object PlaceNames {
     private val COMBINING = Regex("\\p{M}+")
 
     private val CONNECTORS = setOf("and", "of", "at", "by", "for", "with")
-    private val LEGAL = setOf("llc", "inc", "corp", "co", "ltd", "company", "incorporated", "corporation", "pc", "apc", "llp", "pllc", "gmbh", "ag", "sa", "srl", "bv", "pty", "plc")
+    private val LEGAL = setOf(
+        "llc", "inc", "corp", "co", "ltd", "company", "incorporated", "corporation", "pc", "apc", "llp", "pllc", "pty", "plc",
+        // the same suffixes in the app's other languages (a legal form is never a name)
+        "gmbh", "ag", "kg", "ohg", "ug", "ev", "mbh",                 // de
+        "sarl", "sas", "sa", "eurl", "sci", "snc",                    // fr
+        "srl", "spa", "snc", "sas", "sapa",                           // it
+        "sl", "slu", "sau", "cb", "scp",                              // es
+        "lda", "ltda", "eireli", "sa", "me", "epp", "cia",            // pt
+        "bv", "nv", "vof", "cv",                                      // nl
+        "ab", "hb", "kb",                                             // sv
+        "zoo", "sp", "spj", "ska",                                    // pl (sp. z o.o.)
+        "ооо", "зао", "оао", "пао", "ип", "ао", "тов", "фоп", "пп",   // ru, uk
+        "kft", "bt", "zrt", "nyrt",                                   // hu
+        "בעמ",                                                        // he
+    )
     private val CHAIN_TAILS = listOf(
         "by wyndham", "by marriott", "by hilton", "by ihg", "by choice hotels", "by best western", "by radisson",
         "an ascend collection hotel", "a tribute portfolio hotel", "a marriott hotel", "a hilton hotel",
@@ -53,6 +67,8 @@ object PlaceNames {
         "ny" to "new york", "nyc" to "new york", "univ" to "university", "mt" to "mount", "ft" to "fort", "hwy" to "highway",
         "pkwy" to "parkway", "sq" to "square", "jr" to "junior", "intl" to "international", "natl" to "national",
         "dr" to "doctor", "drs" to "doctors", "ln" to "lane", "ct" to "court", "ter" to "terrace", "pl" to "place",
+        "str" to "strasse", "av" to "avenida", "avda" to "avenida", "bd" to "boulevard", "bvd" to "boulevard", "pza" to "plaza",
+        "ул" to "улица", "пр" to "проспект", "просп" to "проспект", "пл" to "площадь", "бул" to "бульвар", "вул" to "вулиця",
     )
 
     /**
@@ -61,7 +77,8 @@ object PlaceNames {
      * as one list on purpose: it is the IDF of a places corpus written down, and it has to be the
      * same list in every caller.
      */
-    val GENERIC: Set<String> = setOf(
+    val GENERIC: Set<String> get() = GENERIC_ALL
+    private val GENERIC_EN: Set<String> = setOf(
         "the", "of", "and", "at", "in", "on", "a", "an", "for", "by", "with", "to",
         "store", "stores", "shop", "shoppe", "shops", "station", "center", "centers", "services", "service", "group", "office", "offices",
         "company", "branch", "bank", "atm", "atms", "pharmacy", "drug", "drugs", "grooming", "fuel", "gas", "market", "markets", "mart", "mini",
@@ -112,12 +129,236 @@ object PlaceNames {
         "landing", "station", "junction", "terminal", "campus", "annex", "wing", "suite", "floor", "level", "unit", "bldg",
     )
 
+    /**
+     * The same words in the app's other languages, one table each, all folded through
+     * [normalized] (so no accents). The comparison uses the UNION rather than picking a language:
+     * the names on a map belong to the region, not to the phone, and a user in Berlin with an
+     * English phone still needs "Tankstelle" and "Apotheke" read as descriptors. A word that is a
+     * descriptor in one language and a name in another is rare enough to accept.
+     */
+    private val GENERIC_FR = setOf(
+        "le", "la", "les", "de", "du", "des", "et", "au", "aux", "chez", "sur", "sous", "en",
+        "restaurant", "cafe", "bar", "brasserie", "bistro", "bistrot", "boulangerie", "patisserie", "pizzeria", "creperie", "traiteur",
+        "boucherie", "charcuterie", "fromagerie", "epicerie", "supermarche", "hypermarche", "marche", "magasin", "boutique", "librairie",
+        "papeterie", "tabac", "presse", "pharmacie", "parapharmacie", "clinique", "cabinet", "medical", "dentaire", "veterinaire",
+        "hopital", "laboratoire", "banque", "agence", "assurance", "assurances", "immobilier", "immobiliere", "notaire", "avocat", "avocats",
+        "coiffeur", "coiffure", "salon", "institut", "beaute", "hotel", "auberge", "gite", "camping", "garage", "carrosserie",
+        "station", "service", "parking", "ecole", "college", "lycee", "universite", "eglise", "chapelle", "temple", "mairie", "poste",
+        "bureau", "centre", "commercial", "galerie", "parc", "jardin", "place", "rue", "avenue", "boulevard", "chemin", "route",
+        "impasse", "allee", "quai", "pont", "gare", "port", "plage", "maison", "village", "ville", "nord", "sud", "est", "ouest",
+        "societe", "compagnie", "groupe", "entreprise", "services", "conseil", "gestion", "location", "vente", "achat", "reparation",
+        "nettoyage", "pressing", "laverie", "fleuriste", "fleurs", "opticien", "optique", "bijouterie", "chaussures", "vetements", "mode",
+    )
+    private val GENERIC_DE = setOf(
+        "der", "die", "das", "und", "am", "im", "an", "auf", "bei", "zum", "zur", "von", "vom", "mit",
+        "restaurant", "gasthaus", "gasthof", "gaststatte", "wirtshaus", "kneipe", "bar", "cafe", "kaffee", "backerei", "konditorei",
+        "metzgerei", "fleischerei", "pizzeria", "imbiss", "doner", "kebap", "biergarten", "brauerei", "weinstube", "eisdiele", "eiscafe",
+        "supermarkt", "markt", "laden", "geschaft", "kaufhaus", "einkaufszentrum", "center", "zentrum", "apotheke", "drogerie",
+        "praxis", "zahnarzt", "zahnarztpraxis", "arzt", "arztpraxis", "klinik", "krankenhaus", "tierarzt", "physiotherapie", "bank",
+        "sparkasse", "volksbank", "raiffeisenbank", "versicherung", "versicherungen", "immobilien", "makler", "notar", "rechtsanwalt",
+        "rechtsanwalte", "anwalt", "kanzlei", "steuerberater", "friseur", "frisor", "salon", "kosmetik", "hotel", "pension", "gastehaus",
+        "ferienwohnung", "tankstelle", "autohaus", "werkstatt", "kfz", "waschanlage", "parkhaus", "parkplatz", "schule", "grundschule",
+        "gymnasium", "kindergarten", "kita", "universitat", "hochschule", "kirche", "kapelle", "gemeinde", "rathaus", "post", "buro",
+        "strasse", "platz", "weg", "allee", "gasse", "ring", "damm", "ufer", "bahnhof", "haltestelle", "hafen", "brucke", "park",
+        "garten", "haus", "hof", "stadt", "dorf", "nord", "sud", "ost", "west", "gesellschaft", "gruppe", "firma", "betrieb",
+        "service", "dienst", "dienste", "beratung", "verwaltung", "handel", "vertrieb", "reparatur", "reinigung", "blumen", "optik",
+        "optiker", "juwelier", "schuhe", "mode", "bekleidung", "fitness", "studio", "sport", "schwimmbad", "bad", "bibliothek", "museum",
+    )
+    private val GENERIC_ES = setOf(
+        "el", "la", "los", "las", "de", "del", "y", "al", "en", "con", "por", "para",
+        "restaurante", "restaurant", "cafe", "cafeteria", "bar", "taberna", "cerveceria", "bodega", "panaderia", "pasteleria", "pizzeria",
+        "taqueria", "marisqueria", "asador", "carniceria", "pescaderia", "fruteria", "supermercado", "mercado", "tienda", "almacen",
+        "libreria", "papeleria", "farmacia", "clinica", "consultorio", "dental", "veterinaria", "veterinario", "hospital", "laboratorio",
+        "banco", "caja", "agencia", "seguros", "inmobiliaria", "notaria", "abogado", "abogados", "peluqueria", "barberia", "salon",
+        "estetica", "belleza", "hotel", "hostal", "pension", "posada", "gasolinera", "estacion", "servicio", "taller", "mecanico",
+        "lavadero", "parking", "aparcamiento", "estacionamiento", "escuela", "colegio", "instituto", "universidad", "iglesia", "capilla",
+        "parroquia", "ayuntamiento", "correos", "oficina", "centro", "comercial", "galeria", "parque", "jardin", "plaza", "calle",
+        "avenida", "paseo", "camino", "carretera", "ronda", "puente", "playa", "puerto", "casa", "pueblo", "ciudad", "norte", "sur",
+        "este", "oeste", "sociedad", "compania", "grupo", "empresa", "servicios", "asesoria", "gestion", "alquiler", "venta", "reparacion",
+        "limpieza", "lavanderia", "floristeria", "flores", "optica", "joyeria", "zapateria", "ropa", "moda", "gimnasio", "deportes",
+        "piscina", "biblioteca", "museo", "teatro", "cine", "san", "santa", "santo", "nuestra", "senora",
+    )
+    private val GENERIC_IT = setOf(
+        "il", "lo", "la", "i", "gli", "le", "di", "del", "della", "dei", "delle", "e", "al", "alla", "da", "in", "con", "per",
+        "ristorante", "trattoria", "osteria", "pizzeria", "bar", "caffe", "caffetteria", "pasticceria", "gelateria", "panificio",
+        "panetteria", "forno", "macelleria", "pescheria", "salumeria", "enoteca", "birreria", "supermercato", "mercato", "negozio",
+        "bottega", "libreria", "cartoleria", "tabacchi", "edicola", "farmacia", "parafarmacia", "clinica", "studio", "medico", "dentistico",
+        "veterinario", "ospedale", "laboratorio", "banca", "agenzia", "assicurazioni", "immobiliare", "notaio", "avvocato", "avvocati",
+        "parrucchiere", "barbiere", "salone", "estetica", "bellezza", "hotel", "albergo", "pensione", "locanda", "agriturismo", "benzinaio",
+        "distributore", "stazione", "servizio", "officina", "carrozzeria", "autolavaggio", "parcheggio", "scuola", "liceo", "istituto",
+        "universita", "chiesa", "cappella", "parrocchia", "comune", "municipio", "poste", "ufficio", "centro", "commerciale", "galleria",
+        "parco", "giardino", "piazza", "via", "viale", "corso", "strada", "vicolo", "ponte", "spiaggia", "porto", "casa", "villa",
+        "paese", "citta", "nord", "sud", "est", "ovest", "societa", "compagnia", "gruppo", "impresa", "servizi", "consulenza",
+        "gestione", "noleggio", "vendita", "riparazione", "pulizie", "lavanderia", "fioraio", "fiori", "ottica", "gioielleria",
+        "calzature", "abbigliamento", "moda", "palestra", "sport", "piscina", "biblioteca", "museo", "teatro", "cinema", "san", "santa",
+    )
+    private val GENERIC_PT = setOf(
+        "o", "a", "os", "as", "de", "do", "da", "dos", "das", "e", "ao", "no", "na", "em", "com", "por", "para",
+        "restaurante", "cafe", "cafeteria", "bar", "lanchonete", "padaria", "confeitaria", "pastelaria", "pizzaria", "churrascaria",
+        "acougue", "peixaria", "mercearia", "supermercado", "mercado", "loja", "armazem", "livraria", "papelaria", "farmacia", "drogaria",
+        "clinica", "consultorio", "odontologia", "veterinaria", "hospital", "laboratorio", "banco", "caixa", "agencia", "seguros",
+        "imobiliaria", "cartorio", "advogado", "advogados", "cabeleireiro", "barbearia", "salao", "estetica", "beleza", "hotel", "pousada",
+        "posto", "gasolina", "combustivel", "estacao", "servico", "oficina", "mecanica", "lavagem", "estacionamento", "escola", "colegio",
+        "faculdade", "universidade", "igreja", "capela", "paroquia", "prefeitura", "camara", "correios", "escritorio", "centro",
+        "comercial", "galeria", "parque", "jardim", "praca", "rua", "avenida", "alameda", "estrada", "rodovia", "travessa", "ponte",
+        "praia", "porto", "casa", "vila", "cidade", "bairro", "norte", "sul", "leste", "oeste", "sociedade", "companhia", "grupo",
+        "empresa", "servicos", "consultoria", "gestao", "aluguel", "locacao", "venda", "vendas", "reparo", "conserto", "limpeza",
+        "lavanderia", "floricultura", "flores", "otica", "joalheria", "calcados", "roupas", "moda", "academia", "esportes", "piscina",
+        "biblioteca", "museu", "teatro", "cinema", "sao", "santa", "santo", "nossa", "senhora",
+    )
+    private val GENERIC_NL = setOf(
+        "de", "het", "een", "en", "van", "der", "den", "te", "bij", "aan", "op", "in", "met",
+        "restaurant", "cafe", "eetcafe", "bar", "brasserie", "bakkerij", "banketbakkerij", "slagerij", "pizzeria", "snackbar", "cafetaria",
+        "supermarkt", "markt", "winkel", "warenhuis", "winkelcentrum", "boekhandel", "apotheek", "drogisterij", "praktijk", "tandarts",
+        "huisarts", "huisartsen", "kliniek", "ziekenhuis", "dierenarts", "fysiotherapie", "bank", "verzekeringen", "makelaar",
+        "makelaardij", "notaris", "advocaat", "advocaten", "kapper", "kapsalon", "salon", "schoonheid", "hotel", "pension", "tankstation",
+        "garage", "autobedrijf", "wasstraat", "parkeergarage", "parkeerplaats", "school", "basisschool", "college", "universiteit",
+        "kerk", "kapel", "gemeente", "gemeentehuis", "stadhuis", "postkantoor", "kantoor", "centrum", "galerie", "park", "tuin",
+        "plein", "straat", "laan", "weg", "steeg", "gracht", "kade", "dijk", "singel", "brug", "station", "haven", "strand", "huis",
+        "hof", "dorp", "stad", "noord", "zuid", "oost", "west", "groep", "bedrijf", "diensten", "advies", "beheer", "verhuur",
+        "verkoop", "reparatie", "schoonmaak", "wasserij", "stomerij", "bloemist", "bloemen", "optiek", "opticien", "juwelier",
+        "schoenen", "kleding", "mode", "sportschool", "fitness", "sport", "zwembad", "bibliotheek", "museum", "theater", "bioscoop",
+    )
+    private val GENERIC_SV = setOf(
+        "och", "i", "pa", "vid", "av", "till", "for", "med",
+        "restaurang", "krog", "cafe", "kafe", "bar", "pub", "bageri", "konditori", "pizzeria", "grill", "kiosk", "livs", "livsmedel",
+        "butik", "affar", "handel", "varuhus", "galleria", "kopcentrum", "bokhandel", "apotek", "klinik", "mottagning", "vardcentral",
+        "tandlakare", "tandvard", "veterinar", "sjukhus", "bank", "forsakring", "forsakringar", "maklare", "maklarna", "advokat",
+        "advokatbyra", "frisor", "frisersalong", "salong", "skonhet", "hotell", "vandrarhem", "pensionat", "bensinstation", "mack",
+        "bilverkstad", "verkstad", "biltvatt", "parkering", "parkeringshus", "skola", "forskola", "gymnasium", "universitet", "hogskola",
+        "kyrka", "kapell", "forsamling", "kommun", "kommunhus", "stadshus", "posten", "kontor", "centrum", "center", "park", "tradgard",
+        "torg", "gatan", "gata", "vagen", "vag", "grand", "allen", "kajen", "bron", "station", "hamn", "strand", "hus", "gard", "by",
+        "stad", "norra", "sodra", "ostra", "vastra", "bolag", "grupp", "foretag", "tjanster", "service", "radgivning", "forvaltning",
+        "uthyrning", "forsaljning", "reparation", "stadning", "tvatt", "blomster", "blommor", "optik", "optiker", "guldsmed", "skor",
+        "klader", "mode", "gym", "sport", "badhus", "simhall", "bibliotek", "museum", "teater", "bio",
+    )
+    private val GENERIC_PL = setOf(
+        "i", "w", "we", "na", "pod", "przy", "u", "z", "ze", "do", "od",
+        "restauracja", "kawiarnia", "bar", "pub", "piekarnia", "cukiernia", "pizzeria", "kebab", "bistro", "sklep", "market",
+        "supermarket", "delikatesy", "hurtownia", "centrum", "handlowe", "galeria", "ksiegarnia", "apteka", "drogeria", "przychodnia",
+        "gabinet", "stomatologiczny", "stomatolog", "dentysta", "lekarz", "lekarski", "klinika", "szpital", "weterynarz", "laboratorium",
+        "bank", "ubezpieczenia", "nieruchomosci", "notariusz", "kancelaria", "adwokat", "radca", "prawny", "fryzjer", "salon",
+        "kosmetyczny", "uroda", "hotel", "pensjonat", "hostel", "stacja", "paliw", "benzynowa", "warsztat", "mechanika", "myjnia",
+        "parking", "szkola", "podstawowa", "liceum", "przedszkole", "uniwersytet", "kosciol", "kaplica", "parafia", "urzad", "gminy",
+        "miasta", "poczta", "biuro", "osrodek", "park", "ogrod", "plac", "ulica", "aleja", "aleje", "droga", "rynek", "most",
+        "dworzec", "przystanek", "port", "plaza", "dom", "wies", "miasto", "polnoc", "poludnie", "wschod", "zachod", "spolka",
+        "grupa", "firma", "przedsiebiorstwo", "uslugi", "doradztwo", "zarzad", "wynajem", "sprzedaz", "naprawa", "serwis", "sprzatanie",
+        "pralnia", "kwiaciarnia", "kwiaty", "optyk", "jubiler", "obuwie", "odziez", "moda", "silownia", "fitness", "sport", "basen",
+        "biblioteka", "muzeum", "teatr", "kino", "sw", "swietego", "swietej",
+    )
+    private val GENERIC_RU = setOf(
+        "и", "в", "во", "на", "у", "при", "с", "со", "от", "до", "к", "по", "для", "им", "имени",
+        "ресторан", "кафе", "кофейня", "бар", "паб", "пекарня", "кондитерская", "пиццерия", "столовая", "бистро", "шаурма", "магазин",
+        "супермаркет", "гипермаркет", "универсам", "рынок", "торговый", "центр", "тц", "трц", "галерея", "книжный", "аптека", "клиника",
+        "поликлиника", "стоматология", "стоматологическая", "медицинский", "медцентр", "больница", "ветеринарная", "ветклиника",
+        "лаборатория", "банк", "отделение", "банкомат", "страхование", "страховая", "недвижимость", "агентство", "нотариус", "адвокат",
+        "юридическая", "парикмахерская", "барбершоп", "салон", "красоты", "гостиница", "отель", "хостел", "азс", "заправка",
+        "автосервис", "сто", "шиномонтаж", "автомойка", "мойка", "парковка", "стоянка", "школа", "гимназия", "лицей", "детский",
+        "сад", "университет", "институт", "колледж", "церковь", "храм", "собор", "часовня", "мечеть", "администрация", "почта",
+        "офис", "бизнес", "парк", "сквер", "площадь", "улица", "проспект", "переулок", "бульвар", "шоссе", "набережная", "мост",
+        "вокзал", "станция", "остановка", "порт", "пляж", "дом", "село", "город", "северный", "южный", "восточный", "западный",
+        "компания", "группа", "фирма", "предприятие", "услуги", "сервис", "консалтинг", "управление", "аренда", "продажа", "ремонт",
+        "уборка", "прачечная", "химчистка", "цветы", "оптика", "ювелирный", "обувь", "одежда", "мода", "фитнес", "спорт", "бассейн",
+        "библиотека", "музей", "театр", "кинотеатр", "святого", "святой",
+    )
+    private val GENERIC_UK = setOf(
+        "і", "та", "й", "у", "в", "на", "при", "з", "із", "від", "до", "по", "для", "ім", "імені",
+        "ресторан", "кафе", "кав'ярня", "кавярня", "бар", "паб", "пекарня", "кондитерська", "піцерія", "їдальня", "бістро", "магазин",
+        "супермаркет", "гіпермаркет", "ринок", "торговий", "центр", "тц", "трц", "галерея", "книгарня", "аптека", "клініка", "поліклініка",
+        "стоматологія", "стоматологічна", "медичний", "медцентр", "лікарня", "ветеринарна", "ветклініка", "лабораторія", "банк",
+        "відділення", "банкомат", "страхування", "страхова", "нерухомість", "агентство", "нотаріус", "адвокат", "юридична",
+        "перукарня", "барбершоп", "салон", "краси", "готель", "хостел", "азс", "заправка", "автосервіс", "сто", "шиномонтаж",
+        "автомийка", "мийка", "парковка", "стоянка", "школа", "гімназія", "ліцей", "дитячий", "садок", "університет", "інститут",
+        "коледж", "церква", "храм", "собор", "каплиця", "мечеть", "адміністрація", "пошта", "офіс", "бізнес", "парк", "сквер",
+        "площа", "вулиця", "проспект", "провулок", "бульвар", "шосе", "набережна", "міст", "вокзал", "станція", "зупинка", "порт",
+        "пляж", "дім", "будинок", "село", "місто", "північний", "південний", "східний", "західний", "компанія", "група", "фірма",
+        "підприємство", "послуги", "сервіс", "консалтинг", "управління", "оренда", "продаж", "ремонт", "прибирання", "пральня",
+        "хімчистка", "квіти", "оптика", "ювелірний", "взуття", "одяг", "мода", "фітнес", "спорт", "басейн", "бібліотека", "музей",
+        "театр", "кінотеатр", "святого", "святої",
+    )
+    private val GENERIC_HU = setOf(
+        "a", "az", "es", "utcai", "teri",
+        "etterem", "vendeglo", "csarda", "kavezo", "kavehaz", "bar", "kocsma", "sorozo", "pekseg", "cukraszda", "pizzeria", "bufe",
+        "gyorsetterem", "bolt", "uzlet", "abc", "elelmiszer", "szupermarket", "hipermarket", "piac", "bevasarlokozpont", "kozpont",
+        "plaza", "konyvesbolt", "gyogyszertar", "patika", "drogeria", "rendelo", "fogaszat", "fogorvos", "orvosi", "klinika", "korhaz",
+        "allatorvos", "allatorvosi", "labor", "bank", "fiok", "biztosito", "ingatlan", "ingatlaniroda", "kozjegyzo", "ugyved",
+        "ugyvedi", "iroda", "fodrasz", "fodraszat", "szalon", "szepsegszalon", "hotel", "szallo", "szalloda", "panzio", "benzinkut",
+        "toltoallomas", "autoszerviz", "szerviz", "gumiszerviz", "automoso", "parkolo", "parkolohaz", "iskola", "altalanos",
+        "gimnazium", "ovoda", "bolcsode", "egyetem", "foiskola", "templom", "kapolna", "plebania", "onkormanyzat", "polgarmesteri",
+        "hivatal", "posta", "park", "kert", "ter", "utca", "ut", "korut", "sugarut", "koz", "sor", "hid", "palyaudvar", "allomas",
+        "megallo", "kikoto", "strand", "haz", "falu", "varos", "eszak", "eszaki", "del", "deli", "kelet", "keleti", "nyugat", "nyugati",
+        "tarsasag", "csoport", "ceg", "vallalat", "szolgaltatas", "szolgaltatasok", "tanacsadas", "kezeles", "berles", "kolcsonzo",
+        "eladas", "javitas", "takaritas", "mosoda", "patyolat", "viragbolt", "virag", "optika", "ekszer", "ekszeresz", "cipo", "ruha",
+        "divat", "edzoterem", "fitnesz", "sport", "uszoda", "konyvtar", "muzeum", "szinhaz", "mozi", "szent",
+    )
+    private val GENERIC_HE = setOf(
+        "ה", "ו", "של", "על", "ב", "ל", "עם", "בית", "בת",
+        "מסעדה", "מסעדת", "קפה", "בר", "פאב", "מאפייה", "קונדיטוריה", "פיצריה", "פיצה", "שווארמה", "פלאפל", "חומוס", "סושי", "מכולת",
+        "סופר", "סופרמרקט", "שוק", "חנות", "קניון", "מרכז", "מסחרי", "בית מרקחת", "מרקחת", "קליניקה", "מרפאה", "מרפאת", "שיניים",
+        "רופא", "וטרינר", "וטרינרית", "חולים", "מעבדה", "בנק", "סניף", "כספומט", "ביטוח", "נדלן", "תיווך", "נוטריון", "עורך", "עורכי",
+        "דין", "מספרה", "ספר", "סלון", "יופי", "מלון", "אכסניה", "צימר", "תחנת", "דלק", "מוסך", "פנצריה", "שטיפת", "רכב", "חניון",
+        "חניה", "בית ספר", "ספר", "גן", "ילדים", "תיכון", "אוניברסיטה", "מכללה", "כנסת", "כנסייה", "מסגד", "עירייה", "מועצה", "דואר",
+        "משרד", "משרדי", "פארק", "גינה", "כיכר", "רחוב", "שדרות", "שדרת", "דרך", "סמטת", "גשר", "תחנה", "רכבת", "נמל", "חוף",
+        "כפר", "עיר", "צפון", "דרום", "מזרח", "מערב", "חברה", "קבוצה", "חברת", "שירותים", "שירות", "ייעוץ", "ניהול", "השכרה",
+        "השכרת", "מכירה", "תיקון", "תיקוני", "ניקיון", "מכבסה", "פרחים", "אופטיקה", "תכשיטים", "נעליים", "בגדים", "אופנה", "חדר",
+        "כושר", "ספורט", "בריכה", "ספרייה", "מוזיאון", "תיאטרון", "קולנוע",
+    )
+    private val GENERIC_ALL: Set<String> = GENERIC_EN + GENERIC_FR + GENERIC_DE + GENERIC_ES + GENERIC_IT + GENERIC_PT + GENERIC_NL +
+        GENERIC_SV + GENERIC_PL + GENERIC_RU + GENERIC_UK + GENERIC_HU + GENERIC_HE
+
+    /**
+     * Scripts written without spaces (Han, kana, Hangul mostly, Thai) get no tokens, so a CJK
+     * name is compared as a STRING: the descriptor suffixes are stripped from both ends and the
+     * shorter has to be the whole of, or sit inside, the longer. "スターバックス 渋谷店" is
+     * "スターバックス" (VARIANT), "星巴克咖啡" is "星巴克", "セブン-イレブン渋谷駅前店" contains
+     * "セブン-イレブン" (OVERLAP, the extra is a branch name).
+     */
+    private val CJK = Regex("[\\p{IsHan}\\p{IsHiragana}\\p{IsKatakana}\\p{IsHangul}\\p{IsThai}]")
+    private val CJK_SUFFIXES = listOf(
+        // ja
+        "駅前店", "本店", "支店", "分店", "店舗", "店", "薬局", "銀行", "支行", "病院", "医院", "診療所", "歯科", "学校", "公園", "駅", "駐車場",
+        "営業所", "事務所", "株式会社", "有限会社", "合同会社", "商店", "商会", "食堂", "教室", "支社", "本社", "工場", "倉庫",
+        // zh
+        "餐厅", "餐廳", "饭店", "飯店", "酒店", "咖啡厅", "咖啡館", "咖啡", "超市", "便利店", "药店", "药房", "藥局", "藥房", "银行", "分行",
+        "医院", "醫院", "诊所", "診所", "学校", "學校", "公园", "公園", "停车场", "停車場", "有限公司", "公司", "商场", "商場", "购物中心",
+        "購物中心", "大厦", "大廈", "中心", "总店", "總店", "旗舰店", "旗艦店", "专卖店", "專賣店", "分店",
+        // ko
+        "지점", "본점", "점", "약국", "은행", "병원", "의원", "학교", "공원", "주차장", "주식회사", "카페", "식당", "마트", "편의점",
+        // th
+        "สาขา", "ธนาคาร", "โรงพยาบาล", "โรงเรียน", "ร้าน",
+    )
+
+    private fun cjkCore(s: String): String {
+        var t = s.replace(" ", "")
+        var changed = true
+        while (changed) {
+            changed = false
+            for (x in CJK_SUFFIXES) {
+                if (t.length > x.length && t.endsWith(x)) { t = t.removeSuffix(x); changed = true }
+                if (t.length > x.length && t.startsWith(x)) { t = t.removePrefix(x); changed = true }
+            }
+        }
+        return t
+    }
+
+    private fun cjkMatch(na: String, nb: String): Match {
+        val a = cjkCore(na); val b = cjkCore(nb)
+        if (a.isEmpty() || b.isEmpty()) return Match.NONE
+        if (a == b) return if (na.replace(" ", "") == nb.replace(" ", "")) Match.EXACT else Match.VARIANT
+        val (short, long) = if (a.length <= b.length) a to b else b to a
+        if (short.length < 2) return Match.NONE
+        return if (long.contains(short)) Match.OVERLAP else Match.NONE
+    }
+
     /** Accents folded, case and punctuation gone, "&" read as "and", legal suffixes, chain tails,
      *  parentheticals, a leading "the"/"dr" and a trailing store number dropped, common street
      *  abbreviations expanded, and runs of single letters joined ("u s bank" is "us bank"). */
     fun normalized(name: String?): String {
         if (name.isNullOrBlank()) return ""
         var s = Normalizer.normalize(name, Normalizer.Form.NFKD).replace(COMBINING, "").lowercase()
+        // The letters NFKD does not decompose: German, Nordic, Polish, and the Cyrillic yo, which
+        // the two sources write both ways.
+        s = s.replace("ß", "ss").replace("æ", "ae").replace("ø", "o").replace("œ", "oe").replace("ł", "l").replace("đ", "d").replace("ð", "d").replace("þ", "th").replace("ё", "е")
         s = s.replace(PAREN, " ")
         s = s.replace("&", " and ").replace("+", " and ")
         s = s.replace(POSSESSIVE, "s")
@@ -210,6 +451,7 @@ object PlaceNames {
         val na = normalized(a); val nb = normalized(b)
         if (na.isEmpty() || nb.isEmpty()) return Match.NONE
         if (na == nb) return Match.EXACT
+        if (CJK.containsMatchIn(na) || CJK.containsMatchIn(nb)) return cjkMatch(na, nb)
         // Plurals fold PAIRWISE ("Sola Salons" against "Sola Salon Studios"): a word loses its "s"
         // only when the other name carries the singular, so "Davis" and "Wells" stay themselves.
         val ra = na.split(' '); val rb = nb.split(' ')
