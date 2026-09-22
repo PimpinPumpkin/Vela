@@ -402,6 +402,10 @@ submitting:
   car's last known position (`SUGGEST_SPAN_M = 20_000` on the car side too). When the autocomplete
   answers nothing, it runs the full search instead.
 - **On submit**, or when a query row is tapped, it runs the full search.
+- **With no signal**, or when both come back empty, it reads the downloaded packs the way the
+  phone's offline search does: a typed address from the address geocoder first, then places. The
+  car service opens the packs itself, because a session started from the car never runs the
+  phone's view model, which is what opens them otherwise.
 - Up to two matching contacts lead the list when contacts search is on; six rows show in total.
   Tapping a result previews a route to it.
 
@@ -435,9 +439,6 @@ corridor-filtered like the phone's. The car chapter (planned) covers the rest.
 - **Search along a route is one window at the route's midpoint.** On a trip much longer than the
   roughly 25 km window, stops near either end are simply not in the answer; there is no per-leg
   sampling. It also has no offline path: with no signal it reports that the search failed.
-- **The car has no offline search.** `SearchCarScreen` calls the data source directly, and the
-  region packs live in the phone's view model, not the data source, so a car search with no
-  signal returns nothing (despite a code comment saying the packs answer).
 - **Google off loses categories online.** Photon has no category search, and the packs are
   consulted only when Photon returns nothing.
 - **Intents need a table.** A language without a word table gets English and plain search; Chinese

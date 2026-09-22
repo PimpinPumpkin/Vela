@@ -21,6 +21,10 @@ data class CarDeps(
     val shortcuts: PlaceShortcutStore,
     val voiceGuide: VoiceGuide,
     val routeEngine: RouteEngine, // for the speed-limit badge (offline graphs' max_speed)
+    // Offline search on the car: the same on-phone place and address stores the phone's offline
+    // search reads, so a car search with no signal still finds what the downloaded packs hold.
+    val offlinePois: app.vela.core.data.OfflinePoiStore,
+    val offlineAddresses: app.vela.core.data.OfflineAddressStore,
 ) {
     // ONE shared map renderer for the whole car session. Per-screen renderer instances DON'T work:
     // swapping the surface callback to a new instance doesn't re-deliver onSurfaceAvailable, so the

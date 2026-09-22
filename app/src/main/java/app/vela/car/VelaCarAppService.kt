@@ -37,6 +37,9 @@ class VelaCarAppService : CarAppService() {
     @Inject lateinit var voiceGuide: VoiceGuide
     @Inject lateinit var routeEngine: RouteEngine
     @Inject lateinit var piperSynth: app.vela.voice.PiperSynth
+    @Inject lateinit var offlinePois: app.vela.core.data.OfflinePoiStore
+    @Inject lateinit var offlineAddresses: app.vela.core.data.OfflineAddressStore
+    @Inject lateinit var poiPacks: app.vela.offline.PoiPackStore
 
     // Allow ANY Android Auto / AAOS host to connect. Vela is sideloaded (never on Play) and must
     // "just work" on whatever head unit / DHU a user plugs into — the
@@ -50,8 +53,11 @@ class VelaCarAppService : CarAppService() {
         // the car with the phone UI closed had no synth attached and fell back to the system TTS
         // (user 2026-09-21: "the voice that speaks is not vela voice"). Attach it here too.
         if (voiceGuide.neural == null && app.vela.core.voice.VelaPiper.isReady(this)) voiceGuide.neural = piperSynth
+        // The downloaded place packs are opened by the phone's view model at start; a car session
+        // with the phone UI never opened has to open them itself for offline car search.
+        Thread { runCatching { poiPacks.registerPacks() } }.start()
         return VelaCarSession(
-        CarDeps(navSession, locationProvider, mapDataSource, recentPlaces, savedPlaces, shortcuts, voiceGuide, routeEngine),
+        CarDeps(navSession, locationProvider, mapDataSource, recentPlaces, savedPlaces, shortcuts, voiceGuide, routeEngine, offlinePois, offlineAddresses),
         )
     }
 }
