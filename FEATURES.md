@@ -436,6 +436,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Compass kept clear of the status bar (inset-aware margins)
 - ✅ Tap a labeled POI **or a search-result pin** to open it; camera frames all results after a search. Tapping a POI also reads `name:latin`/`name:en` (not just `name`), and an **unnamed** POI icon (an apartment gym, an unnamed park/playground) **reverse-geocodes to a pin + address** instead of being a dead tap. When several Google listings share the same spot (e.g. a co-branded "SpeeDee Midas" with a sparse **Midas** *and* a rich **SpeeDee** profile), the tap now opens the **most-reviewed = canonical** one rather than whichever happens to be a few feet nearer
 - ✅ Bottom sheets (place sheet, steps) **fill to the screen edge** - content is padded off the gesture/nav bar, but the sheet background no longer stops short and lets the map peek through at the very bottom
+- ✅ **House numbers in Germany and the Netherlands (issue #257 round two, 2026-09-22).** They
+  were hidden by an Alaska bounding box that crossed the antimeridian and so "covered" every
+  point between 49.8 N and 73 N, which switched the map to the (empty there) address overlay.
+  Fixed in the live manifests, the catalogs, the bake scripts and the region-cover rule.
 - ✅ **Tap a house number or a building to open its address (2026-07-08, user request).** A single tap on a **house-number label** (the map's own `addr:housenumber` or the streamed address overlay) opens a pin + place sheet **snapped to that exact number** - tapping a numbered label opens exactly that house number, not a neighbor's. This matters because Google's reverse-geocode snaps to the nearest addressable point and routinely returns a different house (device: the raw geocode of a tapped label came back a few doors off); so the tap LEADS with the number on the label and uses the geocode only for the street/city. A tap on a plain **building footprint** (no number showing) reverse-geocodes the building to its address the same way. A real business on that spot still opens as the business. Empty land has no footprint, so a tap there does nothing and only a **long-press** drops a raw pin (below). Device-verified in a residential suburb (a tapped number opened exactly that house; a bare footprint reverse-geocoded to its own address)
 - ✅ **Long-press the map** → drop a pin, reverse-geocode it to an address (Nominatim/OSM, keyless), then get Directions - works even where no building is drawn. When the point **doesn't snap to a street address** (a bare road, open land, or a failed geocode) the sheet surfaces the **lat/lng coordinates prominently** (a `MyLocation`-iconed row, tappable to copy) beside the road name we already show - Google-style. A house-numbered snap ("1020 Olive Dr") or a real business POI shows its address instead, so no clutter; the snap is detected by the name's first token being a pure-digit house number (a numbered street like "120th St" keeps its "th", so it reads as unsnapped → coordinates)
 - ✅ Keyless **OpenFreeMap Liberty** basemap (active, loaded by URL - the setup that renders on-device, no key): **Google-style POI markers + category-colored labels**, a **clean Google-style road treatment** - white road fills on light-gray land with the **casings faded out** (minor-road casing == the land, so streets are crisp white lines with **no outline**), soft-yellow motorways, **neutralized landuse** (no tan residential/commercial blobs), and **flattened fill-patterns** (Liberty's fern-hatch wetlands + dotted pedestrian plazas → flat fills, like Google) - plus light/dark recolor, all at **runtime** (tuned live in a MapLibre GL JS harness against Google, on-device-verified light + dark)
@@ -2128,6 +2132,17 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Photon/local address hit whenever ANY Google suggestion sat within a block of it (on a
   commercial road, something always does) now only drops it when the Google entry carries
   the same house number. Address hits lead the list: local pack, then Photon, then Google.
+- ✅ **Typed suggestions are Google's own autocomplete (2026-09-22).** The keyless
+  search-as-you-type request the maps web page fires, with the viewport as the bias, so a
+  partial address finally ranks by where you are: "a house number" lists the houses numbered a house number on
+  the streets around you (it used to answer with a ZIP code in another state), and a full
+  address in another city ("459 Ralston") shows the street with its city instead of nothing.
+  Bare query rows ("Starbucks", "cvs pharmacy hours") run as a search. Pressing Enter on a
+  typed house address the results could not place now geocodes it the same way. Offline and
+  with Google off, the old local-pack + OpenStreetMap path is unchanged.
+- ✅ **The fill-in arrow on suggestions (2026-09-22).** Google's north-west arrow on every
+  suggestion row puts the row's text into the search box without searching, cursor at the
+  end, so a long address or a name can be finished by hand.
 - ✅ **Arrival speaks ONE line (2026-07-15).** "Your destination is on the right" when the
   route knows the side; "You have arrived" only as the fallback when it doesn't - they no
   longer stack.

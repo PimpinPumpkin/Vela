@@ -1591,7 +1591,18 @@ Defaults that make the safe path the easy one:
   browse-zoom footprint look; extrusion is the per-pixel-expensive part on a Pixel 5a). (2) **House
   numbers** render via the runtime `vela-housenumber` SymbolLayer (OMT `housenumber` source-layer, gated by the shared `houseNumberMinZoom()` = **a SETTING since 2026-09-13 (issue #329, `ui/HouseNumbers`, Settings > Map "House numbers": near 18.3 / normal 17.8 default / far 17.3; the level rides `styleKey`)** with a 0.6-zoom `houseNumberFade` - numbers only when close, but reachable by an ordinary zoom-in; it was a hard 19 (~50 ft) until issue #257, where people zoomed in, saw street names and no numbers, and concluded Vela had none; 17.5 still carpeted whole blocks, user 2026-07-13. The basemap layer and the `vela-addr-*` overlay MUST share the constant - they draw the same addresses from different sources, so a mismatch shows one set arriving before the other) - 
   OpenFreeMap **does** serve that source-layer (verified vs the live TileJSON + z14 tiles), so it works;
-  coverage is OSM `addr:housenumber` (partial), not a render bug. The `vela-addr-*` overlay number
+  coverage is OSM `addr:housenumber` (partial), not a render bug. **Issue #257 round two (2026-09-22,
+  "numbers show in the US, France and Spain but not Germany or the Netherlands"):** NOT data (the live
+  z14 tiles and Vela's own baked Berlin archive both carry hundreds of `housenumber` features per tile;
+  Amsterdam has more than New York). The address-overlay effect HIDES `vela-housenumber` whenever
+  `addressOverlays` is non-empty, and the Alaska catalog row's box was `[49.8, -180, 73, 180]` (the
+  extract crosses the antimeridian), which covered every point between 49.8 N and 73 N on Earth: the
+  Netherlands, Germany north of Munich, Britain, Canada. France and Spain sit below the band, which is
+  why they "worked". Three fixes: the four live manifests (address, building, maxspeed, basemap) have
+  Alaska clamped to `E = -129.9` (stable users are fixed by that alone), the catalogs and the bake
+  scripts clamp it (`scripts/clamp-bbox.py`), and `RegionPolys.boxCovers` refuses a globe-wide box
+  that is not the world row (polygons answer first anyway since #599). Never add a Germany overlay
+  "to fill the gap"; there was none. The `vela-addr-*` overlay number
   layers anchor to `CONTROLS_CLAIM_LAYER` (above basemap labels, below the ambient icons) - NOT the
   visible `CONTROLS_LAYER`, which lives at the BOTTOM of the symbol stack since 2026-07-09; anchoring
   there sank the numbers under the building extrusions and every basemap label (the "numbers under
@@ -2372,6 +2383,27 @@ architecture note.
   verb as A (`looksLikeVerb`), and `normalize` strips apostrophes and joins spelled acronyms
   ("E.T.A.", "e t a" -> "eta"). Pinned by the `dictation slips still land` and `fuzziness never
   rewrites a short word or the destination` tests.
+- **Typed suggestions come from Google's OWN autocomplete (2026-09-22):** `MapDataSource.suggest`
+  (`GoogleMapsDataSource.suggest` + `SuggestParser`) hits the keyless
+  `/s?tbm=map&gs_ri=maps&suggest=p` request the maps web page fires per keystroke, with the
+  viewport center + span in `pb` (`!1d<span>!2d<lng>!3d<lat>`) and hl/gl rewritten like every
+  other request. It honors the bias for a PARTIAL address, which the calibrated search endpoint
+  never did (device-reproduced on the 4a: "a house number" and "a house number and its street" answered only with a ZIP
+  code two time zones away; "459 Ralston" typed in another state found businesses named
+  Ralston and never the San Francisco street). The envelope is `{"c":0,"d":")]}'\n<json>"}` plus
+  a comment tail; rows carry their content at column 22 (searched, not assumed; only the FIRST object is read, the app gets a second `{"c":0,"d":"","e":token}` after the tail): primary,
+  secondary, `[_,_,lat,lng]` at 11, `[[featureId, title, _, [_,_,lat,lng], ..]]` at 13. Rows
+  without a location are bare queries ("Starbucks" + "See locations") -> `querySuggestions`
+  (state) -> a plain search row. When suggest answers, the local pack's exact hits still lead
+  (deduped by house number) and the Photon + search-endpoint race is skipped; when it throws or
+  is off (offline, NoGoogle) the old pipeline runs unchanged. `runSearch` uses it as a GEOCODER
+  too: a typed house address whose search results carry no such house number asks suggest and
+  leads with its rows that do. Fixture-backed test: `SuggestParserTest`.
+- **The fill-in arrow (2026-09-22):** every suggestion row (local, Google, query) carries
+  Google's north-west arrow (`SuggestionRow.onFill` -> `MapViewModel.fillQuery` ->
+  `onQueryChange`): the row's text goes into the box WITHOUT searching (a Google row fills
+  `name, address`). `SearchBar` now owns a `TextFieldValue` so any text set from outside (fill,
+  voice) lands with the cursor at the END; with a plain String the cursor stayed mid-text.
 - **Local suggestions (issue #180, 2026-07-19):** `onQueryChange` sets `localSuggestions` from
   `localMatches()` SYNCHRONOUSLY (recents searches + viewed places + list/saved places, substring
   match; min 2 chars) BEFORE the debounced network fetch. **+ CONTACTS (issue #243, 2026-08-08,

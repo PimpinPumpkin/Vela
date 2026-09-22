@@ -9,6 +9,7 @@ import app.vela.core.data.CategoryFilter
 import app.vela.core.data.LowDataMode
 import app.vela.core.data.LowRamMode
 import app.vela.core.data.MapDataSource
+import app.vela.core.data.SuggestResult
 import app.vela.core.data.RerouteFallback
 import app.vela.core.data.RouteBudget
 import app.vela.core.data.RouteEngine
@@ -269,6 +270,35 @@ class GoogleMapsDataSource @Inject constructor(
             )
         }
         SearchResult(query, CategoryFilter.applyIfEnabled(jsTransforms.refineSearch(places)))
+    }
+
+    /**
+     * Google's own autocomplete (see [SuggestParser]) for the typed suggestions. Not the
+     * calibrated search endpoint: that one ranks a partial address by prominence over the
+     * window and answered "a house number" with a ZIP code in another state while five houses with that
+     * number sat a mile away. The bias is the viewport center and span, the same window the
+     * search uses; hl/gl follow the app language and the phone's region like every other
+     * request. Without Google the OSM geocoder answers as before (the view model's path).
+     */
+    override suspend fun suggest(query: String, near: LatLng?, spanMeters: Double?, lang: String?): SuggestResult = io {
+        if (app.vela.core.data.NoGoogle.enabled) return@io SuggestResult(emptyList(), emptyList())
+        session.ensure()
+        val at = near ?: DEFAULT_VIEWPORT
+        val span = (spanMeters ?: SUGGEST_SPAN_M).coerceIn(2_000.0, 500_000.0).toInt()
+        val pb = "!2i5!4m12!1m3!1d$span!2d${at.lng}!3d${at.lat}!2m3!1f0!2f0!3f0!3m2!1i1080!2i2000!4f13.1" +
+            "!7i20!10b1!12m6!1m2!18b1!30b1!2m2!1i203!2i100!19m4!1m3!1i1!2i1!3i1!20m1!1e1"
+        val url = "https://www.google.com/s?tbm=map&gs_ri=maps&suggest=p&authuser=0&hl=en&gl=us&pb=${pb.enc()}&q=${query.enc()}&tch=1&ech=1".localized(lang)
+        val raw = try { get(url) } catch (e: Exception) {
+            android.util.Log.w("VelaSuggest", "\"$query\": ${e.javaClass.simpleName} ${e.message}")
+            throw e
+        }
+        val parsed = SuggestParser.parse(raw)
+        // One line per keystroke pause, like VelaUpdate/VelaWeb: what the autocomplete answered,
+        // and the head of the body when it answered nothing (a consent page, a block, a reshape).
+        android.util.Log.i("VelaSuggest", "\"$query\" span $span → ${parsed.places.size} places, ${parsed.queries.size} queries" +
+            if (parsed.places.isEmpty() && parsed.queries.isEmpty()) " body[${raw.length}]=${raw.take(120).replace('\n', ' ')}" else "")
+        diag.record("suggest", "\"$query\" near ${at.lat},${at.lng} span $span → ${parsed.places.size} places, ${parsed.queries.size} queries", url)
+        SuggestResult(parsed.places, parsed.queries)
     }
 
     /** Pages [fromPage] onward of the same query, for the results list's "More results" row
@@ -1381,6 +1411,8 @@ class GoogleMapsDataSource @Inject constructor(
     private companion object {
         // Cap on waiting for the on-device avoid route: the obf engine answers in ~200 ms, but the
         // obf engine can take many seconds on a long route, and the route chooser must not hang.
+        /** The autocomplete window when the caller has no viewport: a town, like the web page's default. */
+        const val SUGGEST_SPAN_M = 20_000.0
         const val AVOID_ONDEVICE_TIMEOUT_MS = 4_000L
         /** A mid-drive reroute waits this long for Google's traffic once the open router has answered. */
         const val URGENT_GOOGLE_GRACE_MS = 2_500L

@@ -53,6 +53,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.NorthWest
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
@@ -723,7 +724,7 @@ fun MapScreen(
                 ?.trim()?.trimEnd('.', '!', '?', ',', ';', ':')?.trim()
             if (!heard.isNullOrEmpty()) {
                 focusManager.clearFocus()
-                vm.onQueryChange(heard)
+                vm.fillQuery(heard)
                 vm.search()
             }
         }
@@ -1401,6 +1402,7 @@ fun MapScreen(
                         query = state.query,
                         searching = state.searching,
                         onQueryChange = vm::onQueryChange,
+                        fillTick = state.queryEdits,
                         onSearch = {
                             focusManager.clearFocus()
                             vm.search()
@@ -3918,6 +3920,12 @@ private fun SearchEntryHost(state: MapUiState, vm: MapViewModel, focusManager: a
             focusManager.clearFocus()
             vm.pickLocalSuggestion(it)
         },
+        querySuggestions = state.querySuggestions,
+        onPickQuery = {
+            focusManager.clearFocus()
+            vm.searchRecent(it)
+        },
+        onFillQuery = vm::fillQuery,
         onRemoveLocal = vm::removeLocalSuggestion,
         lists = state.lists,
         onAddToList = { place, listId -> vm.addPlaceToList(listId, place) },
@@ -4087,6 +4095,9 @@ private fun SearchEntryContent(
     suggestions: List<Place>,
     localSuggestions: List<app.vela.ui.map.LocalSuggestion>,
     onPickLocal: (app.vela.ui.map.LocalSuggestion) -> Unit,
+    querySuggestions: List<String> = emptyList(),
+    onPickQuery: (String) -> Unit = {},
+    onFillQuery: (String) -> Unit = {},
     onRemoveLocal: (app.vela.ui.map.LocalSuggestion) -> Unit,
     lists: List<app.vela.core.model.PlaceList> = emptyList(),
     onAddToList: (Place, String) -> Unit = { _, _ -> },
@@ -4121,7 +4132,7 @@ private fun SearchEntryContent(
 ) {
     // While typing, live place suggestions take over the page (Google-style). The user's OWN
     // history + list matches (issue #180) lead, instant and offline, then the network results.
-    if (localSuggestions.isNotEmpty() || suggestions.isNotEmpty()) {
+    if (localSuggestions.isNotEmpty() || suggestions.isNotEmpty() || querySuggestions.isNotEmpty()) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 8.dp),
         ) {
@@ -4149,6 +4160,7 @@ private fun SearchEntryContent(
                     leading = if (isContact) ({ ContactAvatar(s.photoUri) }) else null,
                     badge = if (isContact) listOfNotNull(stringResource(R.string.suggestion_contact_badge), s.badge).joinToString(" · ") else null,
                     onClick = { onPickLocal(s) },
+                    onFill = if (isContact) null else ({ onFillQuery(s.label) }),
                     onLongClick = { menuOpen = true },
                     trailing = {
                         SuggestionOverflow(
@@ -4174,6 +4186,8 @@ private fun SearchEntryContent(
                     label = p.name,
                     sublabel = p.address ?: p.category,
                     onClick = { onPickSuggestion(p) },
+                    // The full line goes in, address included, the way Google fills it.
+                    onFill = { onFillQuery(listOfNotNull(p.name, p.address).joinToString(", ")) },
                     onLongClick = { menuOpen = true },
                     trailing = {
                         SuggestionOverflow(
@@ -4188,6 +4202,18 @@ private fun SearchEntryContent(
                             onCreateWith = { name -> onCreateListWith(p, name) },
                         )
                     },
+                )
+                Divider()
+            }
+            // Bare query rows from the autocomplete ("Starbucks", "cvs pharmacy hours"): a
+            // search, not a place, so a plain search icon and no overflow menu.
+            querySuggestions.forEach { q ->
+                SuggestionRow(
+                    icon = Icons.Default.Search,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    label = q,
+                    onClick = { onPickQuery(q) },
+                    onFill = { onFillQuery(q) },
                 )
                 Divider()
             }
@@ -4264,6 +4290,7 @@ private fun SearchEntryContent(
                             label = entry.place.name,
                             sublabel = entry.place.address,
                             onClick = { onPickRecentPlace(entry.place) },
+                            onFill = { onFillQuery(entry.place.name) },
                             onLongClick = { menuOpen = true },
                             trailing = {
                                 SuggestionOverflow(
@@ -4287,6 +4314,7 @@ private fun SearchEntryContent(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             label = entry.query,
                             onClick = { onPickRecent(entry.query) },
+                            onFill = { onFillQuery(entry.query) },
                             onLongClick = { menuOpen = true },
                             trailing = {
                                 SuggestionOverflow(
@@ -4685,8 +4713,11 @@ private fun SuggestionRow(
     leading: (@Composable () -> Unit)? = null,
     /** A small chip after the label ("Contact · Home"). */
     badge: String? = null,
+    /** Google's "put it in the box" arrow: the row's text goes into the search field without
+     *  searching, so a long address or a name can be finished by hand (user 2026-09-22). */
+    onFill: (() -> Unit)? = null,
 ) {
-    val hasTrailing = onRemove != null || trailing != null
+    val hasTrailing = onRemove != null || trailing != null || onFill != null
     Row(
         Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(6.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
@@ -4731,6 +4762,15 @@ private fun SuggestionRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
+        if (onFill != null) {
+            app.vela.ui.place.HeaderCircleButton(
+                Icons.Filled.NorthWest,
+                stringResource(R.string.search_fill_cd),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                bg = MaterialTheme.colorScheme.onSurfaceVariant,
+                size = 32.dp,
+            ) { onFill() }
         }
         // A trailing slot (the ⋮ overflow + its menu) wins over the bare X when provided; both
         // are their own D-pad focus stops with a ring, reached after the row itself.

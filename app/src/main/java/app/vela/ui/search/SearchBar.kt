@@ -55,7 +55,9 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import app.vela.R
 
@@ -64,6 +66,8 @@ fun SearchBar(
     query: String,
     searching: Boolean,
     onQueryChange: (String) -> Unit,
+    /** Bumped whenever [query] was set from outside the keyboard (fill-in arrow, voice): the cursor moves to the end. */
+    fillTick: Int = 0,
     onSearch: () -> Unit,
     onOpenSettings: () -> Unit,
     onClear: () -> Unit = {},
@@ -171,6 +175,7 @@ fun SearchBar(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                // BISECT: plain String field
                 BasicTextField(
                     value = query,
                     onValueChange = onQueryChange,

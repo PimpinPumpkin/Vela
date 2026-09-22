@@ -1443,6 +1443,13 @@ host that cannot answer.
 - Typed coordinates drop a pin: `MapLinkParser.parseBareCoordinate` matches the whole string,
   requires a decimal point in both halves and range-checks, so an address with numbers still
   searches.
+- Network suggestions come from Google's own search-as-you-type request (`MapDataSource.suggest`,
+  the keyless `/s?tbm=map&suggest=p` call biased to the viewport), which honors the location
+  bias for a partial address; rows without a location are bare query rows that run as a search.
+  When it fails or Google is off, the older search-endpoint + OpenStreetMap race answers. Every
+  suggestion row carries a fill-in arrow that puts its text into the box, cursor at the end,
+  without searching. A typed house address that the search results cannot place is geocoded
+  through the same request and leads the results.
 - Local suggestions (recent queries, recent places, saved and list places, and opted-in
   contacts) are computed **synchronously** on each keystroke before the debounced network
   fetch, so they are instant and are the only thing that shows offline. Contacts are loaded into

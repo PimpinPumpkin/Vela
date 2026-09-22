@@ -18,6 +18,8 @@ import app.vela.core.model.TravelMode
  * also means a future Overture/OSM source, or a self-hosted backend (the
  * Piped-for-Vela idea), is a drop-in.
  */
+data class SuggestResult(val places: List<Place>, val queries: List<String>)
+
 interface MapDataSource {
     /** [spanMeters]: the caller's visible viewport height — widens Google's result window to
      *  match how far out the map is zoomed (the pb template's baked span is ~25 km). */
@@ -32,6 +34,11 @@ interface MapDataSource {
     /** The NEXT [pages] result pages of the same query, starting at page [fromPage] (zero-based;
      *  [search] itself covers pages 0..2). Empty when the source cannot page. */
     suspend fun searchMore(query: String, near: LatLng? = null, spanMeters: Double? = null, rankFrom: LatLng? = null, fromPage: Int, pages: Int = 3): List<Place> = emptyList()
+
+    /** Search-as-you-type: the provider's own autocomplete for a partial [query], biased to
+     *  [near] over a window [spanMeters] wide. Places carry a location; [SuggestResult.queries]
+     *  are bare query rows to run as a search. Empty when the provider has no such thing. */
+    suspend fun suggest(query: String, near: LatLng? = null, spanMeters: Double? = null, lang: String? = null): SuggestResult = SuggestResult(emptyList(), emptyList())
 
     /** Prominent places in the viewport, for the ambient map-POI overlay. [spanMeters] is the
      *  viewport's height — a SMALLER span (zoomed in) returns DENSER, more local results than the
