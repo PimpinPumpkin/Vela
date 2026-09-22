@@ -2542,6 +2542,18 @@ architecture note.
   never the bare not-planned close - the label is how the tracker shows why, and `wontfix` is for
   a request that was understood and declined. The rules themselves are in CONTRIBUTING.md under
   "Bug reports and feature requests"; both issue forms carry the matching checklist.
+- **ONE SAME-BUSINESS RULE: `core/util/PlaceNames` (2026-09-21, user: "two POIs that really should
+  be one").** `nameAgrees` (tap resolve), `namesAgree`/`normName` (Both-mode twin hiding) and the
+  bake's `snapkey` were three drifting copies; they now all read `PlaceNames.normalized` /
+  `match` / `agree` (SPEC 5.5 has the families and the fixture pairs). The rules came from a side
+  by side of Google's answers and the Davis archive: Google's keyless search works from the
+  BROWSER PANE (a real Chromium on google.com, `fetch` of the calibration `searchEndpoint` +
+  `&q=` + `&pb=`; without `&q=` it answers the empty shape, and from OkHttp/curl on the Mac it is
+  bot-degraded to empty either way), the archive decodes with `pmtiles` + `mapbox-vector-tile` in
+  a venv, the comparison script is a few dozen lines of Python. Redo it on a fixture area before
+  changing `GENERIC` or the match rules; `PlaceNamesMatchTest` pins the pairs. The bake ALSO keeps
+  one row per exact key within 60 m now (`dupleader`, checked on a DuckDB fixture); the VARIANT
+  family is left to the app until the bake grows the same rule.
 - **A CLOSED LISTING NEVER BEATS A LIVE ONE, AND ONLY HIDES A PIN WHEN NO LIVE TWIN EXISTS
   (2026-09-21).** Google keeps a moved business's old, permanently closed profile beside the live
   one for months. The tap pool now drops closed listings whenever a live candidate exists, and

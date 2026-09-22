@@ -1666,6 +1666,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   terminus), the way Google presents an intersection stop. Transit directions are unaffected: they
   already walk you to the exact boarding coordinate of the specific curb. Stops whose names carry
   the direction (NB/SB station styles) never merge.
+- ✅ **One same-business rule for taps, twins and the bake (2026-09-21).** Descriptor tails ("Circle K
+  | Gas Station", "U.S. Bank Branch", "CVS" vs "CVS Pharmacy"), spelling variants ("&"/"and",
+  "St"/"Street", accents, "DDS Inc.", "by Wyndham") and agreeing identifying words now read as one
+  business, while shared generic words ("Russell Park Apartments" vs "Orchard Park Apartments") no
+  longer do; the bake keeps one row per business (a gas station listed twice, a store and the
+  counter inside it). Derived from a Google-versus-archive study over the Davis fixture.
 - ✅ **Offline departure board (2026-09-21).** Every board fetched is kept on the phone, so a stop
   tapped with no connection shows the routes, headsigns and colors it had last time with a "last
   seen" line instead of nothing (`TransitBoardCache`).
