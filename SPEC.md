@@ -1092,7 +1092,9 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   wins ties. Chains carry OSM-syntax `hours`.
 - **OSM positions** win. The region's Geofabrik extract is filtered with `osmium tags-filter`
   to named business nodes and exported to geojsonseq (strip the 0x1e record separator before
-  jq); `osm_snap` moves a baked row onto OSM's coordinate on a whole-name match at 30-120 m.
+  jq); `osm_snap` moves a baked row onto OSM's coordinate anywhere inside the duplicate box (~150 m;
+  120 m for a chain) on the whole name or the core name (generic words removed), mutual best
+  match only, so each node and each row pair at most once.
   Order of preference: OSM, then the AllThePlaces locator, then Overture's parcel point.
   Tenants never move.
 - **Parks come from OpenStreetMap, so nothing else may filter them out.** The bake drops the park

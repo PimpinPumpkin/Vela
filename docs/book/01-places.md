@@ -141,9 +141,15 @@ Three demotions and one rename run before the ranking:
   rewritten.
 
 **Where each place sits.** The coordinate prefers OSM, then the AllThePlaces locator, then
-Overture's own point; tenants never move. Both snaps need the whole snap key to match and a
-disagreement of 30 to 120 m: under 30 m the sources agree anyway (a median 7.4 m over the
-Davis chains), and past 120 m it is a different branch. Overture also puts every tenant of a
+Overture's own point; tenants never move. The AllThePlaces snap needs the whole snap key to match
+and a disagreement of 30 to 120 m: under 30 m the sources agree anyway (a median 7.4 m over the
+Davis chains), and past 120 m it is a different branch. The OSM snap is wider on purpose, because
+OSM pins are placed more carefully and are the ones a person can fix: any distance inside the
+duplicate box (about 150 m), on the whole name or on the name with generic words removed ("Joe's
+Pizza" and "Joe's Pizza & Pasta"), with each node and each row in at most one pair and only when
+they are each other's best match. A chain (a brand, or a name the region has twice) keeps the
+120 m ceiling. On a Dover, Delaware test box it moved 123 of 141 OSM shop nodes' places onto the
+OSM pin, against 15 under the old band; every looser-name pair was the same business. Overture also puts every tenant of a
 building on one parcel point; a stacked tenant whose address names a unit is moved to Overture's
 own address point for that number and unit within about 200 m, and whatever still shares a
 point is spread on a golden-angle ring 10 to 20 m out, with the best row left in place.

@@ -276,19 +276,58 @@ fi
 OSM_SQL=""
 if [ -n "$OSM_NDJSON" ]; then
 read -r -d '' OSM_SQL <<OSMSQL || true
-CREATE TABLE osm_raw AS SELECT name, lng, lat FROM osm_src
+CREATE TABLE osm_raw AS SELECT id AS oid, name, lng, lat FROM osm_src
   WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N;
-CREATE TABLE osmkeys AS SELECT snapkey(name) AS sk, lat, lng FROM osm_raw WHERE snapkey(name) IS NOT NULL;
--- Same shape as the chain-locator snap: whole-name key, 30-120 m, nearest candidate, one per row.
+-- OSM'S PIN WINS WHEREVER THE TWO ARE THE SAME PLACE (user 2026-09-22: OSM pins are placed more
+-- carefully, and they are the ones a person can fix). It used to win only between 30 and 120 m:
+-- a node closer than 30 m was ignored, and one 120 to ~150 m away was dropped as a duplicate by the
+-- insert above without donating its position, so a fix in that band never reached the map. Now
+-- any distance inside the same box the duplicate test uses counts, on two name tiers:
+--   0 = the whole normalized name agrees (snapkey), 1 = the names agree once generic words are
+--   removed (the core key: "Joe's Pizza" and "Joe's Pizza & Pasta").
+-- Each OSM node and each row take part in at most ONE pair, and only when they are each other's
+-- best (lower tier first, then nearer): two branches of a chain a block apart, or a store and the
+-- pharmacy inside it, can never both land on one node, and a row whose best node belongs to a
+-- nearer row keeps its own point. A CHAIN (a brand, or a name the region has more than once) keeps
+-- the old 120 m ceiling: past that, the OSM node is more likely the next branch than a fix.
+-- Other fields still converge from every source (osmfill,
+-- atpfill); this decides only the coordinate.
+CREATE TABLE osmkeys AS SELECT oid, snapkey(name) AS sk, lat, lng FROM osm_raw WHERE snapkey(name) IS NOT NULL;
+CREATE TABLE rowkeys AS SELECT id, lat, lng, snapkey(name) AS sk,
+  (brand IS NOT NULL OR count(*) OVER (PARTITION BY snapkey(name)) > 1) AS chain
+FROM scored WHERE snapkey(name) IS NOT NULL;
+CREATE MACRO strongcore(k) AS NOT regexp_matches(k, '^[0-9]+(st|nd|rd|th)?$') AND (length(k) >= 5 OR k LIKE '% %');
+CREATE TABLE osmcore AS
+WITH toks AS (
+  SELECT o.oid, t.tok, t.i FROM (SELECT oid, string_split(sk, ' ') AS tl FROM osmkeys) o,
+    unnest(o.tl) WITH ORDINALITY AS t(tok, i)
+  WHERE t.tok <> '' AND t.tok NOT IN (SELECT w FROM generic)
+) SELECT oid, string_agg(tok, ' ' ORDER BY i) AS ck FROM toks GROUP BY oid HAVING strongcore(string_agg(tok, ' ' ORDER BY i));
+CREATE TABLE rowcore AS
+WITH toks AS (
+  SELECT r.id, t.tok, t.i FROM (SELECT id, string_split(sk, ' ') AS tl FROM rowkeys) r,
+    unnest(r.tl) WITH ORDINALITY AS t(tok, i)
+  WHERE t.tok <> '' AND t.tok NOT IN (SELECT w FROM generic)
+) SELECT id, string_agg(tok, ' ' ORDER BY i) AS ck FROM toks GROUP BY id HAVING strongcore(string_agg(tok, ' ' ORDER BY i));
+CREATE TABLE osmpairs AS
+SELECT id, oid, olat, olng, tier, chain, 111320 * sqrt(pow(olat - rlat, 2) + pow((olng - rlng) * cos(radians(rlat)), 2)) AS d FROM (
+  SELECT r.id, k.oid, k.lat AS olat, k.lng AS olng, r.lat AS rlat, r.lng AS rlng, 0 AS tier, r.chain
+  FROM rowkeys r JOIN osmkeys k ON k.sk = r.sk
+  WHERE abs(k.lat - r.lat) < 0.0015 AND abs(k.lng - r.lng) < 0.002
+  UNION ALL
+  SELECT r.id, k.oid, k.lat, k.lng, r.lat, r.lng, 1 AS tier, r.chain
+  FROM rowkeys r JOIN rowcore rc ON rc.id = r.id JOIN osmcore oc ON oc.ck = rc.ck JOIN osmkeys k ON k.oid = oc.oid
+  WHERE k.sk <> r.sk AND abs(k.lat - r.lat) < 0.0015 AND abs(k.lng - r.lng) < 0.002
+);
 CREATE TABLE osm_snap AS
 SELECT id, olat, olng FROM (
-  SELECT k.id, o.lat AS olat, o.lng AS olng,
-    row_number() OVER (PARTITION BY k.id ORDER BY abs(o.lat - k.lat) + abs(o.lng - k.lng)) AS rn
-  FROM (SELECT id, lat, lng, snapkey(name) AS sk FROM scored) k
-  JOIN osmkeys o ON o.sk = k.sk
-  WHERE k.sk IS NOT NULL AND abs(o.lat - k.lat) < 0.0015 AND abs(o.lng - k.lng) < 0.002
-    AND 111320 * sqrt(pow(o.lat - k.lat, 2) + pow((o.lng - k.lng) * cos(radians(k.lat)), 2)) BETWEEN 30 AND 120
-) WHERE rn = 1;
+  SELECT *, row_number() OVER (PARTITION BY id ORDER BY tier, d, oid) AS rr,
+            row_number() OVER (PARTITION BY oid ORDER BY tier, d, id) AS rn
+  FROM osmpairs WHERE d <= 120 OR NOT chain
+) WHERE rr = 1 AND rn = 1;
+SELECT (SELECT count(*) FROM osm_snap o JOIN osmpairs p USING (id) WHERE p.olat = o.olat AND p.olng = o.olng AND p.tier = 1) AS osm_snaps_core_name,
+       (SELECT count(*) FROM osm_snap o JOIN osmpairs p USING (id) WHERE p.olat = o.olat AND p.olng = o.olng AND p.d < 30) AS osm_snaps_under_30m,
+       (SELECT count(*) FROM osm_snap o JOIN osmpairs p USING (id) WHERE p.olat = o.olat AND p.olng = o.olng AND p.d > 120) AS osm_snaps_over_120m;
 SELECT (SELECT count(*) FROM osm_raw) AS osm_nodes, (SELECT count(*) FROM osm_snap) AS osm_snaps;
 OSMSQL
 fi
