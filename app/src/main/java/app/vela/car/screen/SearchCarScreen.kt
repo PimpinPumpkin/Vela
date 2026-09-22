@@ -9,18 +9,29 @@ import androidx.car.app.model.Template
 import androidx.car.app.model.SearchTemplate
 import androidx.lifecycle.lifecycleScope
 import app.vela.core.model.Place
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import app.vela.data.ContactAddresses
 
-/** Destination search on the car: debounced [app.vela.core.data.MapDataSource.search] biased to the
- *  last known location; tapping a result previews a route to it. */
+/** Destination search on the car. While typing, the provider's AUTOCOMPLETE ([app.vela.core.data.MapDataSource.suggest],
+ *  one small request) answers, biased to the last known location; the full
+ *  [app.vela.core.data.MapDataSource.search] runs only when the query is submitted or a bare
+ *  query row is picked. Tapping a result previews a route to it.
+ *
+ *  It used to run the full search on every keystroke (2026-09-22, "spinning forever" on the
+ *  head unit): three result pages plus the nearby pass per letter, and cancelling the coroutine
+ *  never aborted the HTTP calls, so a typed word queued a dozen requests behind OkHttp's
+ *  per-host limit and the spinner waited for the whole backlog. */
 class SearchCarScreen(carContext: CarContext, private val deps: CarDeps) : Screen(carContext) {
 
     private var results: List<Place> = emptyList()
+    /** Bare query rows from the autocomplete ("Starbucks"): picking one runs the full search. */
+    private var queries: List<String> = emptyList()
     // Contact rows (issue #243, opt-in Settings > Search): matched on the phone against the
     // in-memory address list, shown above the search results; picking one geocodes the
     // address and previews a route under the person's name.
@@ -30,8 +41,8 @@ class SearchCarScreen(carContext: CarContext, private val deps: CarDeps) : Scree
 
     override fun onGetTemplate(): Template {
         val callback = object : SearchTemplate.SearchCallback {
-            override fun onSearchTextChanged(searchText: String) = runSearch(searchText)
-            override fun onSearchSubmitted(searchText: String) = runSearch(searchText)
+            override fun onSearchTextChanged(searchText: String) = runSearch(searchText, submit = false)
+            override fun onSearchSubmitted(searchText: String) = runSearch(searchText, submit = true)
         }
         val builder = SearchTemplate.Builder(callback)
             .setHeaderAction(Action.BACK)
@@ -40,7 +51,7 @@ class SearchCarScreen(carContext: CarContext, private val deps: CarDeps) : Scree
             builder.setLoading(true)
         } else {
             val list = ItemList.Builder()
-            if (results.isEmpty() && contacts.isEmpty()) {
+            if (results.isEmpty() && contacts.isEmpty() && queries.isEmpty()) {
                 list.setNoItemsMessage(carContext.getString(app.vela.R.string.car_search_hint))
             } else {
                 contacts.forEach { e ->
@@ -65,28 +76,56 @@ class SearchCarScreen(carContext: CarContext, private val deps: CarDeps) : Scree
                             .build(),
                     )
                 }
+                queries.take((6 - contacts.size - results.size).coerceAtLeast(0)).forEach { q ->
+                    list.addItem(
+                        Row.Builder()
+                            .setTitle(q)
+                            .addText(carContext.getString(app.vela.R.string.car_search))
+                            .setOnClickListener { runSearch(q, submit = true) }
+                            .build(),
+                    )
+                }
             }
             builder.setItemList(list.build())
         }
         return builder.build()
     }
 
-    private fun runSearch(text: String) {
+    private fun runSearch(text: String, submit: Boolean) {
         searchJob?.cancel()
         if (text.isBlank()) {
-            results = emptyList(); contacts = emptyList(); searching = false; invalidate(); return
+            results = emptyList(); queries = emptyList(); contacts = emptyList(); searching = false; invalidate(); return
         }
-        searching = true
-        invalidate()
+        // Only a submit shows the spinner: while typing the previous rows stay up and are
+        // replaced when the next answer lands, the way the Google app's list behaves.
+        if (submit) { searching = true; invalidate() }
         searchJob = lifecycleScope.launch {
-            delay(300) // debounce
+            if (!submit) delay(300) // debounce
             val near = deps.locationProvider.lastKnown()
-            contacts = if (app.vela.ui.ContactsSearch.enabled.value && text.length >= 2) {
+            val foundContacts = if (app.vela.ui.ContactsSearch.enabled.value && text.length >= 2) {
                 withContext(Dispatchers.IO) { ContactAddresses.ensureLoaded(carContext) }
                 ContactAddresses.matches(text, 2)
             } else emptyList()
-            val found = runCatching { deps.mapDataSource.search(text, near).places }.getOrDefault(emptyList())
+            var foundQueries: List<String> = emptyList()
+            val found: List<Place> = try {
+                if (submit) {
+                    deps.mapDataSource.search(text, near).places
+                } else {
+                    val auto = deps.mapDataSource.suggest(text, near, SUGGEST_SPAN_M)
+                    foundQueries = auto.queries
+                    // Nothing from the autocomplete (Google off, offline): the search path's own
+                    // fallbacks (the OSM geocoder, the downloaded packs) answer instead.
+                    if (auto.places.isEmpty() && auto.queries.isEmpty()) deps.mapDataSource.search(text, near).places else auto.places
+                }
+            } catch (e: CancellationException) {
+                throw e // superseded by a newer keystroke: never publish its rows
+            } catch (e: Exception) {
+                emptyList()
+            }
+            ensureActive()
+            contacts = foundContacts
             results = found
+            queries = foundQueries
             searching = false
             invalidate()
         }
@@ -107,5 +146,10 @@ class SearchCarScreen(carContext: CarContext, private val deps: CarDeps) : Scree
                 invalidate()
             }
         }
+    }
+
+    private companion object {
+        /** The autocomplete window around the car: a town, like the phone's default. */
+        const val SUGGEST_SPAN_M = 20_000.0
     }
 }

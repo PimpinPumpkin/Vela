@@ -575,7 +575,11 @@ Defaults that make the safe path the easy one:
   SOURCE to Play and some units accept that, and a self-update overwrites it, so `InstallSource`
   holds the APK back and offers it as a file (see the updater notes).
   **Full car-side nav** via a `screen/` package: `MainCarScreen` (Home/Work/recent/saved,
-  `PlaceListNavigationTemplate`) → `SearchCarScreen` (`SearchTemplate`) → `RoutePreviewCarScreen`
+  `PlaceListNavigationTemplate`) → `SearchCarScreen` (`SearchTemplate`; **autocomplete while typing,
+  full search on submit, 2026-09-22**: it ran the three-page search per keystroke and coroutine
+  cancellation never aborts OkHttp, so a typed word queued a dozen requests behind the per-host
+  limit and the head unit spun "forever"; bare query rows run the full search on tap; a
+  `CancellationException` is rethrown, never swallowed into empty rows) → `RoutePreviewCarScreen`
   (`RoutePreviewNavigationTemplate`, alternates) → `ActiveNavCarScreen` (`NavigationTemplate`).
   `VelaCarSession` owns its OWN AOSP LocationManager feed into the shared `NavSession` (nav runs with
   the phone UI closed) and handles `action.NAVIGATE` geo intents (assistant "navigate to X").
@@ -649,7 +653,15 @@ Defaults that make the safe path the easy one:
   app.vela, app owners empty`, then `CAR.VALIDATOR: Package DENIED; failed all other checks
   [app.vela]`, the same for CoMaps and Organic Maps. The check is Play's own install record, not
   the installer fields, so no installer spoof and no stub package named like Google's installer
-  can pass it; the "Unknown sources" toggle did not cover it either. On a stock Pixel the
+  can pass it; the "Unknown sources" toggle did not cover it either. **But on the 4a (stock
+  Android 14, Play Store + Play services installed, NO Google account signed in) over the
+  Desktop Head Unit (2026-09-22), a plain sideloaded Vela (installer=null) WAS listed and ran**;
+  whether that is the DHU (a developer head unit) or the missing account (no owner to ask) is
+  the open question, and the account-less phone in a real car is the next test. DHU recipe: it
+  needs `-c <config>/default.ini` (with no config it drops the transport after the TLS
+  handshake, "Failed to read from transport"), stdin held open (a fifo; it exits on EOF), the
+  phone's AA overflow "Start head unit server" (developer mode = ten taps on the version row),
+  `adb forward tcp:5277 tcp:5277`, then AA's first-run consent on the phone. On a stock Pixel the
   KingInstaller "Google installer" method (Google's `com.google.android.packageinstaller`, which
   GrapheneOS does not ship) does get Vela listed. The capture recipe: `nohup logcat -f
   /data/local/tmp/aa.txt -r 32768 -n 6 &` over adb before the drive (a reboot kills it), pull
