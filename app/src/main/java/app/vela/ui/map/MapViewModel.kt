@@ -1950,10 +1950,34 @@ class MapViewModel @Inject constructor(
             // resolves keylessly to the list's places, each carrying the owner's note; they land
             // as results (title in the bar) and each is savable/openable like any search hit.
             if (MapLinkParser.isShareLink(q)) {
-                // A shared list lives on Google's servers; with "Use Vela without Google" on, say
-                // so instead of fetching it (the switch promises no request reaches Google).
-                if (app.vela.ui.GoogleFree.on.value) {
-                    _state.update { it.copy(searching = false, status = appContext.getString(R.string.map_import_needs_google)) }
+                // A short link says nothing until Google's shortener is asked where it points. A
+                // single place is then opened from the link itself (name + pin, read on the phone,
+                // searched like any deep link); only a shared LIST needs the Google import below.
+                // With "Use Vela without Google" on, the shortener is asked only while "Open shared
+                // Google Maps links" is on (the default; off = a toast, user 2026-09-22).
+                val googleOff = app.vela.ui.GoogleFree.on.value
+                fun toast(res: Int) = android.widget.Toast.makeText(appContext, res, android.widget.Toast.LENGTH_LONG).show()
+                if (googleOff && app.vela.core.data.ShortLinks.isShortener(q) && !app.vela.ui.GoogleFree.resolveLinks.value) {
+                    _state.update { it.copy(searching = false) }
+                    toast(R.string.map_link_needs_google)
+                    return@launch
+                }
+                val target = if (app.vela.core.data.ShortLinks.isShortener(q)) withContext(Dispatchers.IO) {
+                    runCatching {
+                        app.vela.core.data.ShortLinks.resolve(http, q, app.vela.core.config.CalibrationStore.latest.userAgent)
+                    }.getOrNull()
+                } else q
+                android.util.Log.i("VelaLink", "short link -> ${target?.substringBefore('?')?.substringBefore("/@")?.take(60) ?: "no redirect"}")
+                val single = target?.takeUnless { app.vela.core.data.ShortLinks.isList(it) }
+                    ?.let { MapLinkParser.parse(it) }?.takeIf { it.hasTarget }
+                if (single != null) {
+                    _state.update { it.copy(searching = false) }
+                    openDeepLink(single)
+                    return@launch
+                }
+                if (googleOff) {
+                    _state.update { it.copy(searching = false) }
+                    toast(if (target != null && app.vela.core.data.ShortLinks.isList(target)) R.string.map_import_needs_google else R.string.map_link_unreadable)
                     return@launch
                 }
                 val imported = withContext(Dispatchers.IO) { runCatching { dataSource.importList(q) }.getOrNull() }

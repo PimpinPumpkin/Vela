@@ -53,6 +53,12 @@ What you keep: the map, search by name and address, turn-by-turn navigation with
 limits, cameras, stop signs and lights, transit departure boards, saved places and offline
 routing.
 
+One exception you can turn off: a short Google Maps link someone sends you (`maps.app.goo.gl/...`)
+only says where it points when Google's link shortener is asked. Vela asks it once, with no
+cookies, then opens the place with the open sources. Switch off **"Open shared Google Maps
+links"** under the same setting to refuse those links instead. Shared lists can't open without
+Google either way.
+
 What you lose: reviews, photos, opening hours, live traffic and its arrival times, Street
 View, transit directions, the satellite close-ups, and the long tail of businesses that only
 Google knows about.

@@ -79,8 +79,11 @@ object MapLinkParser {
     }
 
     private fun parseMaps(raw: String): MapLink {
-        val lat = AT.find(raw)?.groupValues?.get(1)?.toDoubleOrNull()
-        val lng = AT.find(raw)?.groupValues?.get(2)?.toDoubleOrNull()
+        // A place link's `data=...!3d<lat>!4d<lng>` is the PLACE's own coordinate; the `@lat,lng`
+        // is where the sharer's map was centered, which can be a block or more away. Prefer it.
+        val pin = Regex("""!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)""").find(raw)
+        val lat = pin?.groupValues?.get(1)?.toDoubleOrNull() ?: AT.find(raw)?.groupValues?.get(1)?.toDoubleOrNull()
+        val lng = pin?.groupValues?.get(2)?.toDoubleOrNull() ?: AT.find(raw)?.groupValues?.get(2)?.toDoubleOrNull()
         // Google web links carry zoom after the @coords: /@38.5,-121.7,15z (sometimes fractional).
         val zoom = Regex("""@-?\d{1,3}\.\d+,-?\d{1,3}\.\d+,(\d+(?:\.\d+)?)z""")
             .find(raw)?.groupValues?.get(1)?.toDoubleOrNull()?.takeIf { it in 1.0..21.0 }

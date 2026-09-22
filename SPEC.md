@@ -126,8 +126,12 @@ setting, `:app` writes a plain flag into `:core` (`CategoryFilter.enabled`, `Low
   its own Google surfaces on the same setting: the hidden WebView fetchers return null at
   `HiddenWebView.request`, the traffic raster is not added, the satellite Google fallback draws
   no deep layer, the tap lookup and the ambient fan-out are skipped, and the Street View pill and
-  the full-screen reviews page are hidden. A pasted Google Maps share link is refused with a note saying why
-  (`importList` returns null under the switch), because resolving it asks Google.
+  the full-screen reviews page are hidden. A short Google Maps link (`maps.app.goo.gl`)
+  is resolved by ONE cookieless request to Google's shortener that reads the redirect and stops
+  (`ShortLinks.resolve`), only while "Open shared Google Maps links" (`GoogleFree.resolveLinks`, pref
+  `google_free_resolve_links`, default on) is on; off, it is refused with a toast. The target is
+  parsed on the phone and searched through the open sources. A shared list is refused under the
+  switch (`importList` returns null), because its places exist only on Google's servers.
 
 ### 2.2 Module tree
 

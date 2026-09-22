@@ -487,6 +487,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   regions, places come from Vela's data, routes come from the open router, and Street View, the
   traffic overlay, satellite close-ups, transit directions, reviews and photos are off. Replaces
   the four-toggle recipe the FAQ used to give, and reaches the surfaces those toggles could not.
+- ✅ **Shared Google Maps links open (2026-09-22).** A short `maps.app.goo.gl` link someone sends
+  now opens the place, with Google on or off: Vela asks Google's link shortener once, with no
+  cookies, reads where the link points, and searches the place from its name and pin. With "Use
+  Vela without Google" on, "Open shared Google Maps links" (on by default) can turn that one
+  request off, and a short link then shows a toast. Shared lists still need Google.
 - ✅ **Delete all offline data, and deleting actually frees space (2026-09-21, issue #601).**
   Offline maps > Storage has a "Delete all offline data" button: every saved area, every
   downloaded region (routing, places, map), the building and address overlays, the road features
