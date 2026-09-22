@@ -315,7 +315,10 @@ stays correct, just larger.
 The policy is the user's: **Update downloaded regions** is Never on its own (the default), On
 Wi-Fi, or On Wi-Fi and mobile data, where "Wi-Fi" means the system says the network is not
 metered. It is off by default because the bake only started publishing patches on 2026-09-18 and
-the path had not been watched working on a device.
+the path had not been watched working on a device. On either Wi-Fi setting the app checks a minute
+after start, at most once in 20 hours, and applies every published patch that fits an installed
+places or basemap archive or place pack, on its own and quietly; it never downloads a region whole
+by itself, and it skips a drive in progress.
 
 The catalogs are cached so a pan does not refetch them, but the cache expires, so a process that
 lives for days still sees a new revision:
@@ -342,10 +345,9 @@ MISS_MEMO_MS    =   600_000   // an unreachable manifest is not retried for ten 
 - **The Storage rows do not count everything.** The glyph pack, the road features and the small
   saved-area place and address indexes are on the phone but in none of the rows, and Delete all
   offline data leaves the glyph pack and those indexes in place.
-- **"Update downloaded regions" does not run anything on its own.** No code path starts an update
-  in the background; the setting only decides whether a tap on Update may use a patch. With it
-  on Never (the default), Update deletes the places or basemap archive first and then downloads it
-  whole, so a failed download leaves the region without that archive until the next try.
+- **Only patches are automatic.** A region whose archive has no patch from its installed
+  revision (a bake that changed too much, or a skipped revision) waits for a tap on Update, which
+  downloads it whole over the installed copy; the old copy stays until the new one is complete.
 - **Places archives change often.** Besides the monthly bake, a seventh of the places catalog is
   rebaked every night, so a downloaded region's places show Update roughly weekly.
 - **A region's edge is still a seam.** The rules above remove the flicker and the blank screen,

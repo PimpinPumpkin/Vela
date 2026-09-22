@@ -310,10 +310,14 @@ making every downloader take a few hundred MB again. On 2026-09-22 the live plac
 - **Policy is the user's, and off by default.** Settings > Offline maps > "Update downloaded
   regions": "Never on its own" (`RegionUpdates.Mode.OFF`, the default), "On Wi-Fi" (an unmetered
   network, as the system judges it) or "On Wi-Fi and mobile data". It stays off until somebody has
-  watched a patch download and apply on a real phone. In the current code the mode is read when the
-  Update button is tapped: allowed, the published patch is used; not allowed, the tap downloads the
-  archive whole, and the reason is logged. Nothing updates without the tap on any setting yet. Every
-  attempt is recorded in the diagnostics ring (kind `delta`) and in logcat under `VelaDelta`.
+  watched a patch download and apply on a real phone. On Wi-Fi or mobile, a minute after the app
+  starts and at most once in 20 hours (`AUTO_PATCH_DELAY_MS = 60_000`, `AUTO_PATCH_EVERY_MS` = 20 h),
+  every installed places or basemap archive and place pack whose manifest publishes a patch from the
+  installed revision takes it quietly; routing files publish no patches and a full re-download is
+  never automatic. The mode also decides whether a tap on Update may patch; otherwise the tap
+  downloads the archive whole, over the installed copy, which stays until the new one is complete.
+  Every attempt is recorded in the diagnostics ring (kind `delta`, `auto:` for the daily pass) and
+  in logcat under `VelaDelta`.
 - **Place packs have their own deltas.** `poipack_delta.py` publishes a row-level SQLite delta
   (`<id>.delta.zip`) only when it is under half the full pack, and the app applies it whenever the
   installed pack's rev equals `fromRev`, independent of the setting above. Basemap, obf and the

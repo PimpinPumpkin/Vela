@@ -2849,7 +2849,11 @@ architecture note.
   bytes, patch wants 3259302`), pinned by `PmtilesCompactTest`'s chain tests. The result is PROVEN before the header moves: the fingerprint (SHA-256 over sorted tile ids
   + tile hashes, phone-computable - Android has no blake2b) must equal the one the patch carries,
   which is a fresh download's; a mismatch truncates back and the caller downloads whole. Policy is
-  `ui/RegionUpdates` (pref `region_update_mode`, OFF **is the default until somebody has watched a
+  `ui/RegionUpdates` (pref `region_update_mode`; since 2026-09-22 WIFI/MOBILE also run
+  `MapViewModel.scheduleAutoRegionPatches`: a minute after start, at most once per 20 h, every
+  installed places/basemap archive and place pack with a patch FROM its installed rev takes it,
+  never a full download; Update's full download is `download(replace = true)` over the installed
+  copy instead of delete-then-download. OFF **is the default until somebody has watched a
   patch download and apply on a device** - a feature that rewrites an installed archive does not get
   to default itself on - then WIFI / MOBILE, metered judged by
   `isActiveNetworkMetered` so a metered Wi-Fi counts), Settings > Offline maps; a FULL re-download is
