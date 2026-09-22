@@ -124,6 +124,24 @@ Onboarding.openDonate(context)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         )
         GroupDivider()
+        // Who Android says installed this build. Android Auto only lists a navigation app whose
+        // install source is Play, which King Installer and AAEnabler set on purpose, and a
+        // self-update quietly resets; this row says whether that setup is still in place, so it
+        // can be checked BEFORE an update and after one (user 2026-09-22, ahead of a GrapheneOS
+        // install).
+        val installer = remember { app.vela.update.InstallSource.installingPackage(context) }
+        val installerLine = when {
+            app.vela.update.InstallSource.setForCar(context) -> stringResource(R.string.settings_installer_play, installer ?: "")
+            installer.isNullOrBlank() -> stringResource(R.string.settings_installer_none)
+            else -> stringResource(R.string.settings_installer_other, installer)
+        }
+        Text(
+            installerLine,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+        GroupDivider()
         // The release notes of this build, on demand (they also show once after an update).
         Text(
             stringResource(R.string.settings_whatsnew),

@@ -45,6 +45,9 @@ import app.vela.ui.settings.PageIntro
 import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.settings.SubHead
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import app.vela.ui.settings.SelectableRow
 import app.vela.ui.settings.ToggleRow
 import app.vela.ui.dpadFieldEscape // D-pad-only operation (docs/dpad.md)
@@ -128,32 +131,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             )
         }
         app.vela.ui.RegionUpdates.lastResult.value?.let { Hint(it) }
-        GroupDivider()
-        if (regions.isEmpty()) {
-            Hint(stringResource(R.string.settings_offline_no_areas))
-        } else {
-            regions.forEachIndexed { ri, r ->
-                if (ri > 0) GroupDivider()
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        OfflineMaps.nameOf(r),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
-                        modifier = Modifier.weight(1f),
-                    )
-                    IconButton(modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape), onClick = { OfflineMaps.delete(r) { OfflineMaps.packDatabase(context) { OfflineMaps.list(context) { regions = it } } } }) {
-                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_offline_delete_area))
-                    }
-                }
-            }
         }
-        }
-        // Nudge for areas saved before the offline address geocoder existed: they have tiles + POIs but no
-        // address data, so offline address search/routing would silently miss. One tap re-fetches the
-        // address index for every saved area. Only shown when there ARE areas and the index is still empty.
         if (regions.isNotEmpty() && offlineAddrCount == 0) {
             Surface(
                 color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
@@ -230,29 +208,56 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             Hint(stringResource(R.string.settings_delete_offline_all_hint))
         }
         Spacer(Modifier.height(8.dp))
-        SubHead(stringResource(R.string.settings_routing_regions))
+        // WHAT IS ON THE PHONE, right under the storage figures and the delete button (issue #601):
+        // the saved areas and every installed region, one list, so "what do I have" is answered in
+        // one place instead of being read out of a 450-row catalog.
+        SubHead(stringResource(R.string.settings_downloaded_title))
         LaunchedEffect(Unit) { vm.refreshRoutingRegions() }
+        val installedRegions = state.routingRegions.filter { it.id in state.routingInstalledIds }
+        val loc = state.myLocation
+        val primary = state.routingRegions.filter { r -> loc != null && r.covers(loc.lat, loc.lng) }
+            .minByOrNull { (it.n - it.s) * (it.e - it.w) }
+        SettingsGroup {
+            if (regions.isEmpty() && installedRegions.isEmpty()) {
+                Hint(stringResource(R.string.settings_downloaded_none))
+            }
+            regions.forEachIndexed { ri, r ->
+                if (ri > 0) GroupDivider()
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(OfflineMaps.nameOf(r), style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
+                        Text(stringResource(R.string.settings_downloaded_area), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    IconButton(modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape), onClick = { OfflineMaps.delete(r) { OfflineMaps.packDatabase(context) { OfflineMaps.list(context) { regions = it } } } }) {
+                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_offline_delete_area))
+                    }
+                }
+            }
+            installedRegions.sortedBy { it.name }.forEachIndexed { ri, region ->
+                if (ri > 0 || regions.isNotEmpty()) GroupDivider()
+                RegionRow(region, state, vm, primary?.id, indent = false, onConfirm = { confirmRegion = it })
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+
+        SubHead(stringResource(R.string.settings_routing_regions))
         Hint(stringResource(R.string.settings_routing_regions_hint))
         if (state.routingRegions.isEmpty()) {
             Hint(stringResource(R.string.settings_routing_no_regions))
         } else {
-            val loc = state.myLocation
-            val covers = { r: app.vela.offline.RoutingRegion ->
-                loc != null && r.covers(loc.lat, loc.lng)
-            }
-            // The region you're IN = the SMALLEST bbox that contains you. Region boxes carry a Geofabrik
-            // buffer that spills across borders (British Columbia's box dips into Sacramento), so "any box that
-            // covers you" mislabels big neighbors - the smallest covering box is the specific one. Sort:
-            // installed first (manage what you have), then that primary region, then everything by name.
-            val primary = state.routingRegions.filter(covers)
-                .minByOrNull { (it.n - it.s) * (it.e - it.w) }
-            val ordered = state.routingRegions.sortedWith(
-                compareByDescending<app.vela.offline.RoutingRegion> { it.id in state.routingInstalledIds }
-                    .thenByDescending { it.id == primary?.id }
-                    .thenBy { it.name },
-            )
-            // With a world-sized catalog, a name filter makes a region you're TRAVELING to findable
-            // without scrolling past a hundred others (the sort above handles where you are now).
+            // ONE ALPHABETICAL TREE (user 2026-09-22: the old page led with an "All of <country>"
+            // block whose United States entry held three territories, then a flat list of 450 rows
+            // with installed and nearby ones pulled to the top). The catalog's hierarchy is in the
+            // names: "Bayern (Germany)", "Alberta (Canada)", "Beijing (China)", "Alabama (state)",
+            // "Puerto Rico (US)", "Northern California (California)". A parenthetical names the
+            // parent; "(state)", "(US)" and "(California)" all sit under the United States. A
+            // parent is one row that expands to its pieces and downloads them all in one tap; a
+            // country with no pieces is a plain row. Everything sorts by name, the region you are
+            // in is marked and its parent starts open.
+            val nodes = remember(state.routingRegions) { regionTree(state.routingRegions) }
             var routeFilter by remember { mutableStateOf("") }
             if (state.routingRegions.size > 8) {
                 OutlinedTextField(
@@ -273,166 +278,244 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                     placeholder = { Text(stringResource(R.string.settings_routing_filter_placeholder, state.routingRegions.size), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
                 )
             }
-            val shown = if (routeFilter.isBlank()) ordered
-                else ordered.filter { it.name.contains(routeFilter.trim(), ignoreCase = true) }
-            if (shown.isEmpty()) {
-                Hint(stringResource(R.string.settings_routing_no_match, routeFilter.trim()))
-            }
-            // Split countries ("Bayern (Germany)", "Alsace (France)") get one row per parent with a
-            // "Download all" that queues every piece, so a whole country is one tap even though the
-            // catalog is cut by state and region. The parent is the trailing parenthetical shared by
-            // two or more rows; "(state)" and the like are not parents.
-            val groups = remember(state.routingRegions) {
-                state.routingRegions
-                    .mapNotNull { r -> Regex("\\(([^()]+)\\)\\s*$").find(r.name)?.groupValues?.get(1)?.let { it to r } }
-                    .groupBy({ it.first }, { it.second })
-                    .filter { (parent, rs) -> rs.size >= 2 && !parent.equals("state", true) }
-            }
-            val shownGroups = groups.filter { (parent, _) ->
-                routeFilter.isBlank() || parent.contains(routeFilter.trim(), ignoreCase = true)
-            }
-            if (shownGroups.isNotEmpty()) {
-                SettingsGroup {
-                shownGroups.entries.sortedBy { it.key }.forEachIndexed { gi, (parent, pieces) ->
-                    if (gi > 0) GroupDivider()
-                    val missing = pieces.filter { it.id !in state.routingInstalledIds }
-                    val batchActive = state.regionQueueTotal > 0 && pieces.any { it.id == state.routingDownloadingId }
-                    val totalMb = pieces.sumOf { p -> regionInstalledMb(p, state.poiPackRegions.firstOrNull { it.id == p.id }, state.regionExtrasMb[p.id] ?: 0) }
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.settings_region_group_title, parent), style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
-                            Text(
-                                when {
-                                    batchActive -> stringResource(R.string.settings_region_group_downloading, state.regionQueueTotal - state.regionQueueLeft, state.regionQueueTotal)
-                                    missing.isEmpty() -> stringResource(R.string.settings_region_group_installed, pieces.size)
-                                    missing.size < pieces.size -> stringResource(R.string.settings_region_group_partial, pieces.size - missing.size, pieces.size, fmtMb(totalMb))
-                                    else -> stringResource(R.string.settings_region_group_size, pieces.size, fmtMb(totalMb))
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        when {
-                            batchActive -> Row(verticalAlignment = Alignment.CenterVertically) {
-                                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                                androidx.compose.material3.TextButton(
-                                    onClick = { vm.cancelRegionDownload() },
-                                    modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
-                                ) { Text(stringResource(R.string.settings_cancel)) }
-                            }
-                            missing.isNotEmpty() -> FilledTonalButton(
-                                onClick = { vm.downloadRoutingGraphs(pieces) },
-                                enabled = state.routingDownloadingId == null,
-                                modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
-                            ) { Text(stringResource(R.string.settings_region_group_download)) }
-                        }
-                    }
+            val q = routeFilter.trim()
+            val shownNodes = if (q.isBlank()) nodes else nodes.mapNotNull { n ->
+                when {
+                    n.title.contains(q, ignoreCase = true) -> n
+                    n.pieces.size > 1 -> n.pieces.filter { it.name.contains(q, ignoreCase = true) }.takeIf { it.isNotEmpty() }?.let { n.copy(pieces = it) }
+                    else -> null
                 }
-                }
-                Spacer(Modifier.height(8.dp))
             }
+            if (shownNodes.isEmpty()) {
+                Hint(stringResource(R.string.settings_routing_no_match, q))
+            }
+            val expanded = remember { mutableStateMapOf<String, Boolean>() }
             SettingsGroup {
-            shown.forEachIndexed { regionIdx, region ->
-                if (regionIdx > 0) GroupDivider()
-                val installed = region.id in state.routingInstalledIds
-                val downloading = state.routingDownloadingId == region.id
-                val packDownloading = state.poiPackDownloadingId == region.id
-                val packInstalled = region.id in state.poiPackInstalledIds
-                // A fresher pack is published than the one installed → offer an in-place update
-                // (a small row-level delta when the manifest carries one, else a full re-download).
-                val packRegion = state.poiPackRegions.firstOrNull { it.id == region.id }
-                // A newer bake of the pack, the places, the map or the routing file: one Update.
-                val updateAvailable = (installed && packInstalled && packRegion != null &&
-                    packRegion.rev > (state.poiPackInstalledRevs[region.id] ?: 0)) ||
-                    state.regionUpdates.containsKey(region.id)
-                val here = region.id == primary?.id
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(region.name, style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
-                        Text(
-                            when {
-                                downloading -> stringResource(R.string.settings_routing_downloading, state.routingDownloadPct)
-                                packDownloading -> stringResource(R.string.settings_routing_places_downloading, state.poiPackDownloadPct)
-                                updateAvailable -> stringResource(R.string.settings_routing_update_available)
-                                installed && packInstalled -> stringResource(R.string.settings_routing_installed_places)
-                                installed -> stringResource(R.string.settings_routing_installed)
-                                here -> stringResource(R.string.settings_routing_size_installed_here, fmtMb(regionInstalledMb(region, packRegion, state.regionExtrasMb[region.id] ?: 0)))
-                                else -> stringResource(R.string.settings_routing_size_installed, fmtMb(regionInstalledMb(region, packRegion, state.regionExtrasMb[region.id] ?: 0)))
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if ((here && !installed && !downloading) || updateAvailable) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    // D-pad: same swap-in control as the voice rows (Download -> spinner ->
-                    // Get places/Delete) - the keeper re-places focus on the new variant so
-                    // the highlight doesn't teleport to the top of the page (user report).
-                    val keeper = rememberDpadFocusKeeper()
-                    when {
-                        downloading || packDownloading -> Row(verticalAlignment = Alignment.CenterVertically) {
-                            DpadFocusHandoff(keeper)
-                            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                            androidx.compose.material3.TextButton(
-                                onClick = { vm.cancelRegionDownload() },
-                                modifier = Modifier.dpadFocusKept(keeper).dpadHighlight(androidx.compose.foundation.shape.CircleShape),
-                            ) { Text(stringResource(R.string.settings_cancel)) }
-                        }
-                        updateAvailable -> Row(verticalAlignment = Alignment.CenterVertically) {
-                            DpadFocusHandoff(keeper)
-                            FilledTonalButton(
-                                onClick = { vm.updateRegion(region) },
-                                enabled = state.routingDownloadingId == null && state.poiPackDownloadingId == null,
-                                modifier = Modifier.dpadFocusKept(keeper),
-                            ) { Text(stringResource(R.string.settings_update_region)) }
-                            IconButton(onClick = { vm.deleteRoutingGraph(region.id) }) {
-                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
+                shownNodes.forEachIndexed { ni, node ->
+                    if (ni > 0) GroupDivider()
+                    if (node.pieces.size == 1 && node.whole == null) {
+                        RegionRow(node.pieces[0], state, vm, primary?.id, indent = false, onConfirm = { confirmRegion = it })
+                    } else {
+                        val open = expanded[node.title] ?: (q.isNotBlank() || node.pieces.any { it.id == primary?.id })
+                        if (node.whole != null) {
+                            // The country's own file carries the row; the chevron opens its pieces.
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(onClick = { expanded[node.title] = !open }, modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape)) {
+                                    Icon(if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                androidx.compose.foundation.layout.Box(Modifier.weight(1f)) {
+                                    RegionRow(node.whole, state, vm, primary?.id, indent = false, onConfirm = { confirmRegion = it }, subtitleSuffix = stringResource(R.string.settings_region_whole_or_pieces, node.pieces.size))
+                                }
                             }
+                        } else {
+                            ParentRow(node, state, vm, open = open, onToggle = { expanded[node.title] = !open })
                         }
-                        // Installed before place packs existed (or its pack was skipped): offer just
-                        // the pack, so offline search covers the region without a graph re-download.
-                        installed && !packInstalled -> Row(verticalAlignment = Alignment.CenterVertically) {
-                            DpadFocusHandoff(keeper)
-                            FilledTonalButton(
-                                onClick = { vm.downloadPoiPackFor(region) },
-                                enabled = state.routingDownloadingId == null && state.poiPackDownloadingId == null,
-                                modifier = Modifier.dpadFocusKept(keeper),
-                            ) { Text(stringResource(R.string.settings_get_places)) }
-                            IconButton(onClick = { vm.deleteRoutingGraph(region.id) }) {
-                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
+                        if (open) {
+                            node.pieces.forEach { piece ->
+                                GroupDivider()
+                                RegionRow(piece, state, vm, primary?.id, indent = true, onConfirm = { confirmRegion = it })
                             }
-                        }
-                        installed -> {
-                            DpadFocusHandoff(keeper)
-                            IconButton(onClick = { vm.deleteRoutingGraph(region.id) }, modifier = Modifier.dpadFocusKept(keeper)) {
-                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
-                            }
-                        }
-                        else -> {
-                            DpadFocusHandoff(keeper)
-                            FilledTonalButton(
-                                // Big regions confirm first with the real installed size (issue #214:
-                                // Germany reads 1.6 GB on the row but lands at ~8 GB on disk).
-                                onClick = {
-                                    if (regionInstalledMb(region, packRegion, state.regionExtrasMb[region.id] ?: 0) > CONFIRM_MB) confirmRegion = region
-                                    else vm.downloadRoutingGraph(region)
-                                },
-                                enabled = state.routingDownloadingId == null,
-                                modifier = Modifier.dpadFocusKept(keeper),
-                            ) { Text(stringResource(R.string.settings_download)) }
                         }
                     }
-                    LaunchedEffect(downloading, packDownloading, updateAvailable, installed, packInstalled) { keeper.retarget() }
                 }
-            }
             }
         }
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+/** A catalog entry: one region, or a parent with its pieces ("Germany" over the Laender). [whole]
+ *  is the country's own single file when the catalog has both ("Australia" beside its states). */
+internal data class RegionNode(val title: String, val pieces: List<app.vela.offline.RoutingRegion>, val whole: app.vela.offline.RoutingRegion? = null)
+
+/** The catalog as parents and leaves, by the names' trailing parentheticals, sorted by title. */
+internal fun regionTree(all: List<app.vela.offline.RoutingRegion>): List<RegionNode> {
+    val paren = Regex("""\s*\(([^()]+)\)\s*$""")
+    val byParent = LinkedHashMap<String, MutableList<app.vela.offline.RoutingRegion>>()
+    val leaves = ArrayList<app.vela.offline.RoutingRegion>()
+    for (r in all) {
+        val p = paren.find(r.name)?.groupValues?.get(1)?.trim()
+        val parent = when {
+            p == null -> null
+            p.equals("state", true) || p.equals("US", true) || p.equals("California", true) -> "United States"
+            else -> p
+        }
+        if (parent == null) leaves += r else byParent.getOrPut(parent) { ArrayList() } += r
+    }
+    val nodes = ArrayList<RegionNode>()
+    val absorbed = HashSet<String>()
+    for ((parent, rs) in byParent) {
+        if (rs.size >= 2) {
+            // A leaf named exactly like the parent is the country's own whole file: one row, not two.
+            val whole = leaves.firstOrNull { it.name.equals(parent, ignoreCase = true) }
+            if (whole != null) absorbed += whole.id
+            nodes += RegionNode(parent, rs.sortedBy { it.name }, whole)
+        } else leaves += rs
+    }
+    leaves.filter { it.id !in absorbed }.forEach { nodes += RegionNode(it.name, listOf(it)) }
+    return nodes.sortedBy { it.title.lowercase() }
+}
+
+/** A piece's own name under its parent: "Bayern (Germany)" reads "Bayern" in the tree. */
+private fun pieceName(r: app.vela.offline.RoutingRegion): String = r.name.replace(Regex("""\s*\([^()]+\)\s*$"""), "")
+
+@Composable
+private fun ParentRow(
+    node: RegionNode,
+    state: app.vela.ui.map.MapUiState,
+    vm: MapViewModel,
+    open: Boolean,
+    onToggle: () -> Unit,
+) {
+    val pieces = node.pieces
+    val missing = pieces.filter { it.id !in state.routingInstalledIds }
+    val batchActive = state.regionQueueTotal > 0 && pieces.any { it.id == state.routingDownloadingId }
+    val totalMb = pieces.sumOf { p -> regionInstalledMb(p, state.poiPackRegions.firstOrNull { it.id == p.id }, state.regionExtrasMb[p.id] ?: 0) }
+    Row(
+        Modifier.fillMaxWidth()
+            .dpadHighlight(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+            .dpadClickable(onClick = onToggle)
+            .padding(horizontal = 16.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        androidx.compose.material3.Icon(
+            if (open) androidx.compose.material.icons.Icons.Default.ExpandLess else androidx.compose.material.icons.Icons.Default.ExpandMore,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(end = 8.dp),
+        )
+        Column(Modifier.weight(1f)) {
+            Text(node.title, style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
+            Text(
+                when {
+                    batchActive -> stringResource(R.string.settings_region_group_downloading, state.regionQueueTotal - state.regionQueueLeft, state.regionQueueTotal)
+                    missing.isEmpty() -> stringResource(R.string.settings_region_group_installed, pieces.size)
+                    missing.size < pieces.size -> stringResource(R.string.settings_region_group_partial, pieces.size - missing.size, pieces.size, fmtMb(totalMb))
+                    else -> stringResource(R.string.settings_region_group_size, pieces.size, fmtMb(totalMb))
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        when {
+            batchActive -> Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                androidx.compose.material3.TextButton(
+                    onClick = { vm.cancelRegionDownload() },
+                    modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                ) { Text(stringResource(R.string.settings_cancel)) }
+            }
+            missing.isNotEmpty() -> FilledTonalButton(
+                onClick = { vm.downloadRoutingGraphs(pieces) },
+                enabled = state.routingDownloadingId == null,
+                modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+            ) { Text(stringResource(R.string.settings_region_group_download)) }
+        }
+    }
+}
+
+/** One region with its download / progress / update / delete control. */
+@Composable
+private fun RegionRow(
+    region: app.vela.offline.RoutingRegion,
+    state: app.vela.ui.map.MapUiState,
+    vm: MapViewModel,
+    primaryId: String?,
+    indent: Boolean,
+    onConfirm: (app.vela.offline.RoutingRegion) -> Unit,
+    subtitleSuffix: String? = null,
+) {
+    val installed = region.id in state.routingInstalledIds
+    val downloading = state.routingDownloadingId == region.id
+    val packDownloading = state.poiPackDownloadingId == region.id
+    val packInstalled = region.id in state.poiPackInstalledIds
+    // A fresher pack is published than the one installed → offer an in-place update
+    // (a small row-level delta when the manifest carries one, else a full re-download).
+    val packRegion = state.poiPackRegions.firstOrNull { it.id == region.id }
+    // A newer bake of the pack, the places, the map or the routing file: one Update.
+    val updateAvailable = (installed && packInstalled && packRegion != null &&
+        packRegion.rev > (state.poiPackInstalledRevs[region.id] ?: 0)) ||
+        state.regionUpdates.containsKey(region.id)
+    val here = region.id == primaryId
+    Row(
+        Modifier.fillMaxWidth().padding(start = if (indent) 40.dp else if (subtitleSuffix != null) 0.dp else 16.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(if (indent) pieceName(region) else region.name, style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
+            Text(
+                (if (subtitleSuffix != null) "$subtitleSuffix · " else "") + when {
+                    downloading -> stringResource(R.string.settings_routing_downloading, state.routingDownloadPct)
+                    packDownloading -> stringResource(R.string.settings_routing_places_downloading, state.poiPackDownloadPct)
+                    updateAvailable -> stringResource(R.string.settings_routing_update_available)
+                    installed && packInstalled -> stringResource(R.string.settings_routing_installed_places)
+                    installed -> stringResource(R.string.settings_routing_installed)
+                    here -> stringResource(R.string.settings_routing_size_installed_here, fmtMb(regionInstalledMb(region, packRegion, state.regionExtrasMb[region.id] ?: 0)))
+                    else -> stringResource(R.string.settings_routing_size_installed, fmtMb(regionInstalledMb(region, packRegion, state.regionExtrasMb[region.id] ?: 0)))
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if ((here && !installed && !downloading) || updateAvailable) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        // D-pad: same swap-in control as the voice rows (Download -> spinner ->
+        // Get places/Delete) - the keeper re-places focus on the new variant so
+        // the highlight doesn't teleport to the top of the page (user report).
+        val keeper = rememberDpadFocusKeeper()
+        when {
+            downloading || packDownloading -> Row(verticalAlignment = Alignment.CenterVertically) {
+                DpadFocusHandoff(keeper)
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                androidx.compose.material3.TextButton(
+                    onClick = { vm.cancelRegionDownload() },
+                    modifier = Modifier.dpadFocusKept(keeper).dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                ) { Text(stringResource(R.string.settings_cancel)) }
+            }
+            updateAvailable -> Row(verticalAlignment = Alignment.CenterVertically) {
+                DpadFocusHandoff(keeper)
+                FilledTonalButton(
+                    onClick = { vm.updateRegion(region) },
+                    enabled = state.routingDownloadingId == null && state.poiPackDownloadingId == null,
+                    modifier = Modifier.dpadFocusKept(keeper),
+                ) { Text(stringResource(R.string.settings_update_region)) }
+                IconButton(onClick = { vm.deleteRoutingGraph(region.id) }) {
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
+                }
+            }
+            // Installed before place packs existed (or its pack was skipped): offer just
+            // the pack, so offline search covers the region without a graph re-download.
+            installed && !packInstalled -> Row(verticalAlignment = Alignment.CenterVertically) {
+                DpadFocusHandoff(keeper)
+                FilledTonalButton(
+                    onClick = { vm.downloadPoiPackFor(region) },
+                    enabled = state.routingDownloadingId == null && state.poiPackDownloadingId == null,
+                    modifier = Modifier.dpadFocusKept(keeper),
+                ) { Text(stringResource(R.string.settings_get_places)) }
+                IconButton(onClick = { vm.deleteRoutingGraph(region.id) }) {
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
+                }
+            }
+            installed -> {
+                DpadFocusHandoff(keeper)
+                IconButton(onClick = { vm.deleteRoutingGraph(region.id) }, modifier = Modifier.dpadFocusKept(keeper)) {
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
+                }
+            }
+            else -> {
+                DpadFocusHandoff(keeper)
+                FilledTonalButton(
+                    // Big regions confirm first with the real installed size (issue #214:
+                    // Germany reads 1.6 GB on the row but lands at ~8 GB on disk).
+                    onClick = {
+                        if (regionInstalledMb(region, packRegion, state.regionExtrasMb[region.id] ?: 0) > CONFIRM_MB) onConfirm(region)
+                        else vm.downloadRoutingGraph(region)
+                    },
+                    enabled = state.routingDownloadingId == null,
+                    modifier = Modifier.dpadFocusKept(keeper),
+                ) { Text(stringResource(R.string.settings_download)) }
+            }
+        }
+        LaunchedEffect(downloading, packDownloading, updateAvailable, installed, packInstalled) { keeper.retarget() }
     }
 }
 

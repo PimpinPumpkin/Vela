@@ -693,7 +693,10 @@ Defaults that make the safe path the easy one:
   bytes=N`.** It keeps the channel's releases with a code in (installed, offered],
   and `cumulativeNotes` joins them newest first under their versions, falling back to the single
   release's notes; canary keeps its rolling list), About
-  (support, version tap-to-copy, auto-update, nightly toggle, check now). ⚠️ The vela-dpad fork
+  (support, version tap-to-copy, **an "Installed by <package>" line (2026-09-22) that says whether
+  the install source is Play, i.e. set up for Android Auto by King Installer / AAEnabler, which an
+  in-app update would undo; read before and after any update on a car-paired phone**, auto-update,
+  nightly toggle, check now). ⚠️ The vela-dpad fork
   DROPPED many mainline settings in its redesign (Material You, map colors, UI scale, POI sizing,
   parking, lists export, nightly, spoken-directions toggle, live rechecks, building overlay/debug,
   trip tools); they were all restored during the port - when cherry-picking future settings work
@@ -2781,8 +2784,20 @@ architecture note.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.
-- **Offline maps page order (2026-09-16, #518):** storage breakdown + Clear map cache sit ABOVE the
-  "Entire states & countries" catalog now.
+- **Offline maps page order (2026-09-22, #601 + user: "the way some of this is laid out is goofy").**
+  This area (save the view, places-with-downloads, automatic updates) -> Storage (breakdown, Clear
+  map cache, Delete all offline data) -> **Downloaded** (every saved area and every installed
+  region with its own controls, so "what do I have" is one list right under the storage figures,
+  the #601 ask) -> "Entire states & countries" as ONE ALPHABETICAL TREE (`regionTree` in
+  OfflineSettings): the catalog's hierarchy lives in the names' trailing parentheticals ("Bayern
+  (Germany)", "Alberta (Canada)", "Alabama (state)", "Puerto Rico (US)", "Northern California
+  (California)"); "(state)", "(US)" and "(California)" all fold under a "United States" parent, any
+  other parenthetical is its own parent, a parent is one expandable row with "Download all", a
+  country with no pieces is a plain row, everything sorts by name, and the region you are in is
+  marked and its parent starts open. The old page led with an "All of <country>" block (whose
+  United States entry held three territories) and then a flat 450-row list with installed and
+  nearby rows pulled to the top. `RegionRow` / `ParentRow` are the two row composables; the
+  filter matches a parent or a piece and opens matching parents.
 - **Route shields are Vela's own bitmaps (2026-09-15, `ui/map/RoadShields`).** The OpenFreeMap
   sprite's `us-interstate_N` / `us-highway_N` / `road_N` are white outline shapes sized for 10 pt
   text and there is NO `us-state_N`, so state routes drew as bare numbers and "80" squeezed into
@@ -4188,7 +4203,7 @@ Gotchas:
   is that historical record, not the current design.)**
 - **THE NAV NOTIFICATION IS A LIVE UPDATE ON ANDROID 16 (issue #595, 2026-09-19):**
   `NavigationService.promoteToLiveUpdate` sets a `NotificationCompat.ProgressStyle` scaled to the
-  ROUTE (meters), tracker = the maneuver glyph, segments = `route.trafficSpans` colored like the
+  ROUTE (meters), tracker = the nav puck (`navPuckBitmap`, the maneuver glyph stays the large icon, Google's layout, 2026-09-22), segments = `route.trafficSpans` colored like the
   route line, points = remaining stops, `setShortCriticalText` = distance to the next turn, then
   `setRequestPromotedOngoing(true)`. Needs androidx core 1.17 (compat class, no raw platform API)
   and compileSdk 36; targetSdk stays 35 on purpose. Guarded by `Build.VERSION.SDK_INT >= 36` and a

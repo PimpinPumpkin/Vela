@@ -1685,6 +1685,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   abbreviations per language, CJK names compared as strings, Europe's four-letter brands, glued
   names, and a tap on a label in another script (a Japanese map on an English phone) that looks
   the listing up in the label's own language when the English answer does not name it.
+- ✅ **Offline maps page: Downloaded list + alphabetical country tree (2026-09-22, #601).** What is on
+  the phone (saved areas and installed regions) sits right under the storage figures and the delete
+  button; the catalog is one A to Z list where a split country (Germany, Canada, the United States
+  with its states and territories) is a row that expands to its pieces and downloads them all in one
+  tap.
+- ✅ **About says who installed Vela (2026-09-22).** The version group shows the install source, so a
+  phone set up for Android Auto through King Installer or AAEnabler can see that the Play install
+  source is still in place before and after an update.
 - ✅ **Offline departure board (2026-09-21).** Every board fetched is kept on the phone, so a stop
   tapped with no connection shows the routes, headsigns and colors it had last time with a "last
   seen" line instead of nothing (`TransitBoardCache`).

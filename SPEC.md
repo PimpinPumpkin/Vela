@@ -2167,7 +2167,7 @@ ports it rather than inventing a fourth:
 - **The drive is an Android 16 live update** (issue #595, API 36+, `promoteToLiveUpdate`). The nav
   notification asks to be promoted, which puts the drive in the status bar chip and on the lock
   screen instead of only in the shade. The bar is the ROUTE rather than a download: its scale is the
-  route's length in meters, the tracker is the current maneuver glyph sitting where the car is, the
+  route's length in meters, the tracker is the nav puck sitting where the car is (the maneuver glyph is the large icon, Google's own layout), the
   segments are the traffic spans Vela already has (so the jam ahead is visible without unlocking the
   phone), and each remaining stop is a point on it. The chip's critical text is the distance to the
   next turn, the one number worth a glance while moving. Everything is additive and guarded: below
