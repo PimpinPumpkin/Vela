@@ -2158,6 +2158,13 @@ to `RoutePreviewCarScreen` (`RoutePreviewNavigationTemplate`) to `ActiveNavCarSc
 - The snapshotter resolves the same patched style file the phone map uses; a plain style URL
   leaves the car on Noto.
 - Android Auto has no pause control yet.
+- The car snapshotter is themed with the phone's palette through the `StyleLayers` interface
+  (`applyMapTheme(SnapshotterHost(snapshotter), dark, amoled)` on style load), draws no library
+  overlay (`QuietSnapshotter`) and its own single OpenStreetMap credit, frames the puck inside
+  the host's visible area at `PUCK_DOWN` (0.72) of its height while following in nav (meters
+  per pixel from 512 px tiles), glides the puck with `FollowEstimator`, and eases the speed-tiered
+  zoom (`ZOOM_EASE` 0.06 per 70 ms tick). A drive started from the car speaks with the Piper voice
+  when it is installed and chosen (the service attaches the synth).
 
 ### 10.7 Street View
 

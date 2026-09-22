@@ -85,6 +85,16 @@ class CarMapRenderer(
     private var targetBearing = 0.0
     private var following = true // pan turns this off in browse
     private var tickerJob: Job? = null
+    // The host's VISIBLE area of the surface (the templates cover the rest with cards); the puck is
+    // framed inside it, not inside the raw surface (user 2026-09-21: the arrow hung off the edge).
+    @Volatile private var visible: Rect? = null
+    // The phone's between-fix glide (ui/map/FollowEstimator): integrate speed along the course and
+    // fold each fix in as a correction over ~0.9 s, instead of easing 28% of the gap per tick
+    // toward a point that jumps once a second (the "camera snapping every few seconds").
+    private val estimator = app.vela.ui.map.FollowEstimator()
+    private var lastTickMs = 0L
+    private var zoomTarget = 16.5 // the speed-tiered nav zoom eases toward this; it used to step
+    @Volatile private var themed = false // Vela's palette applied to the snapshotter's style
 
     // Preview mode: draw this route framed (no puck-follow) — used by the route-preview screen.
     @Volatile private var previewRoute: Route? = null
@@ -93,8 +103,10 @@ class CarMapRenderer(
     private companion object {
         const val RECENTER_MS = 6000L // auto-recenter this long after a pan
         const val TICK_MS = 70L       // render-loop cadence (snapshots gate the real fps below this)
-        const val PUCK_EASE = 0.28    // fraction of the remaining gap closed per tick (~1 s to converge)
         const val BEARING_EASE = 0.22
+        const val ZOOM_EASE = 0.06    // per tick, so a speed tier change glides over a second or so
+        const val PUCK_DOWN = 0.72    // the puck sits this far down the VISIBLE area while following in nav
+        const val ATTRIBUTION = "\u00a9 OpenStreetMap contributors"
         const val STOPPED_MPS = 1.0   // below this, treat as parked: don't trust GPS-course noise
         const val SNAP_MAX_M = 40.0   // map-match to the route only within this distance (else off-route)
     }
@@ -189,9 +201,11 @@ class CarMapRenderer(
                 // Map-match to the route while navigating so the puck rides the road (Google/Waze do
                 // this); off-route/far falls back to the raw fix.
                 val here = if (navigating()) snapToRoute(raw) ?: raw else raw
+                speedMps = if (loc.hasSpeed()) loc.speed.toDouble() else 0.0
+                val course = if (loc.hasBearing() && speedMps > STOPPED_MPS) loc.bearing.toDouble() else routeHeading(here)
+                estimator.onFix(here.lat, here.lng, speedMps, course, android.os.SystemClock.elapsedRealtime())
                 targetPuck = here
                 if (puck == null) puck = here // first fix: snap into place, don't glide in from null
-                speedMps = if (loc.hasSpeed()) loc.speed.toDouble() else 0.0
                 // Posted speed limit (offline graph's max_speed) while navigating — null off-graph/online.
                 // The graph LocationIndex snap runs OFF the main thread (this collector is on
                 // Main.immediate; a synchronous mmap snap every fix would jank the render loop).
@@ -236,14 +250,18 @@ class CarMapRenderer(
         tickerJob = scope.launch {
             while (true) {
                 var moved = false
-                val tp = targetPuck; val p = puck
-                if (tp != null && p != null) {
-                    val nlat = p.lat + (tp.lat - p.lat) * PUCK_EASE
-                    val nlng = p.lng + (tp.lng - p.lng) * PUCK_EASE
+                val now = android.os.SystemClock.elapsedRealtime()
+                val dt = if (lastTickMs == 0L) 0.0 else ((now - lastTickMs) / 1000.0).coerceAtMost(0.5)
+                lastTickMs = now
+                estimator.step(dt, now)
+                val p = puck
+                if (!estimator.lat.isNaN() && p != null) {
+                    val nlat = estimator.lat; val nlng = estimator.lng
                     if (abs(nlat - p.lat) > 1e-7 || abs(nlng - p.lng) > 1e-7) { puck = LatLng(nlat, nlng); moved = true }
                 }
                 val db = shortestAngleDelta(bearing, targetBearing)
                 if (abs(db) > 0.2) { bearing = normalizeAngle(bearing + db * BEARING_EASE); moved = true }
+                if (abs(zoomTarget - zoom) > 0.004) { zoom += (zoomTarget - zoom) * ZOOM_EASE; moved = true }
                 if (following && previewRoute == null) puck?.let { center = it }
                 if (moved) requestRender()
                 kotlinx.coroutines.delay(TICK_MS)
@@ -307,7 +325,26 @@ class CarMapRenderer(
             .let { if (patchedJson != null) it.withStyleJson(patchedJson) else it.withStyle(MapStyle.LIBERTY.uri) }
             .withPixelRatio(1.0f)
             .withLogo(false)
-        snapshotter = runCatching { MapSnapshotter(carContext, opts) }.getOrNull()
+        themed = false
+        snapshotter = runCatching { QuietSnapshotter(carContext, opts) }.getOrNull()?.also { s2 ->
+            // Vela's own palette on the car map (the same applyMapTheme the phone runs): until
+            // 2026-09-21 the car drew stock Liberty under a darkening color filter, which read as
+            // "a weird theme that is not ours" (user). The observer fires once the style is in.
+            s2.setObserver(object : MapSnapshotter.Observer {
+                override fun onDidFinishLoadingStyle() {
+                    runCatching {
+                        app.vela.ui.map.applyMapTheme(
+                            app.vela.ui.map.SnapshotterHost(s2),
+                            dark = isNight(),
+                            amoled = isNight() && app.vela.ui.theme.AppTheme.mode.value == app.vela.ui.theme.ThemeMode.AMOLED,
+                        )
+                    }
+                    themed = true
+                    requestRender()
+                }
+                override fun onStyleImageMissing(id: String) {}
+            })
+        }
         snapWidth = width; snapHeight = height
         requestRender()
     }
@@ -321,7 +358,7 @@ class CarMapRenderer(
         rendering = false; dirty = false // the canceled snapshot's callback won't fire — unstick the flag
     }
 
-    override fun onVisibleAreaChanged(visibleArea: Rect) { requestRender() }
+    override fun onVisibleAreaChanged(visibleArea: Rect) { visible = Rect(visibleArea); requestRender() }
     override fun onStableAreaChanged(stableArea: Rect) { requestRender() }
 
     override fun onScroll(distanceX: Float, distanceY: Float) {
@@ -363,14 +400,22 @@ class CarMapRenderer(
 
         val nav = navigating()
         val follow = following // false while the user has panned (until auto-recenter)
-        if (nav && follow) zoom = navZoom()
-        // Look-ahead: while following in nav, push the camera target forward along the heading so the
-        // puck sits in the lower third (Google-style). Browse/panned keeps the plain center.
-        val target = if (nav && follow && puck != null) {
-            val mpp = 156543.03392 * cos(Math.toRadians(here.lat)) / Math.pow(2.0, zoom)
-            val aheadMeters = height * 0.22 * mpp // ~22% of the view up-screen
-            puck!!.destinationPoint(aheadMeters, bearing)
-        } else here
+        zoomTarget = if (nav && follow) navZoom() else zoom
+        // FRAME INSIDE THE VISIBLE AREA. The camera target lands at the bitmap's center, but the host
+        // covers part of the surface with its cards, so the point the driver should see (the puck,
+        // low in the view while following in nav; the center otherwise) is placed at a pixel inside
+        // the visible rect and the target is moved by that pixel offset, rotated into the map's
+        // heading. Meters per pixel use MapLibre's 512 px tiles (78271.517 at z0), not the 256 px
+        // constant that put the puck twice as far down as intended, off the bottom edge.
+        val vis = visible?.takeIf { !it.isEmpty && it.width() > 0 && it.height() > 0 } ?: Rect(0, 0, width, height)
+        val mpp = 78271.517 * cos(Math.toRadians(here.lat)) / Math.pow(2.0, zoom)
+        val wantX = vis.exactCenterX()
+        val wantY = if (nav && follow) vis.top + vis.height() * PUCK_DOWN.toFloat() else vis.exactCenterY()
+        val dx = (wantX - width / 2f).toDouble() * mpp   // the shown point right of center: target goes left
+        val dy = (wantY - height / 2f).toDouble() * mpp  // the shown point below center: target goes ahead
+        val heading = if (nav && follow) bearing else 0.0
+        val anchor = if (nav && follow) (puck ?: here) else here
+        val target = anchor.destinationPoint(dy, heading).destinationPoint(dx, heading - 90.0)
 
         val cam = CameraPosition.Builder()
             .target(MLLatLng(target.lat, target.lng))
@@ -397,7 +442,9 @@ class CarMapRenderer(
         val canvas: Canvas = try { s.lockCanvas(null) } catch (t: Throwable) { return }
         try {
             if (bmp != null) {
-                val paint = if (isNight()) nightBitmapPaint else dayBitmapPaint
+                // The darkening filter was the night look before the palette could be applied; a
+                // themed style is drawn as is.
+                val paint = if (isNight() && !themed) nightBitmapPaint else dayBitmapPaint
                 canvas.drawBitmap(bmp, Rect(0, 0, bmp.width, bmp.height), Rect(0, 0, width, height), paint)
             } else {
                 canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
@@ -414,6 +461,7 @@ class CarMapRenderer(
                 runCatching { canvas.drawPath(pathOf(snap, preview.polyline, preview.polyline.indices, sx, sy), trafficPaints[0]!!) }
             }
             runCatching { drawPuck(canvas, snap, sx, sy) } // puck always drawn
+            runCatching { drawAttribution(canvas) }
         } finally {
             runCatching { s.unlockCanvasAndPost(canvas) }
         }
@@ -467,6 +515,20 @@ class CarMapRenderer(
             if (!started) { p.moveTo(pt.x, pt.y); started = true } else p.lineTo(pt.x, pt.y)
         }
         return p
+    }
+
+    private val attributionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE; textSize = 11f; setShadowLayer(2f, 0f, 0f, Color.BLACK)
+    }
+
+    /** The ODbL credit, ours and only ours: the library's own overlay ([QuietSnapshotter]) printed
+     *  every source's attribution string, which on this basemap is a line of tile-provider names
+     *  (user 2026-09-21, "the watermark is wrong and says way more than just OpenStreetMap"). The
+     *  phone map shows the same single line. Drawn inside the visible area. */
+    private fun drawAttribution(canvas: Canvas) {
+        val vis = visible?.takeIf { !it.isEmpty } ?: Rect(0, 0, width, height)
+        attributionPaint.textSize = (minOf(width, height) / 45f).coerceIn(9f, 14f)
+        canvas.drawText(ATTRIBUTION, vis.left + 8f, vis.bottom - 8f, attributionPaint)
     }
 
     private fun drawPuck(canvas: Canvas, snap: MapSnapshot, sx: Float, sy: Float) {
@@ -589,4 +651,11 @@ class CarMapRenderer(
         val h = Math.sin(dLat / 2).let { it * it } + cos(la) * cos(lb) * Math.sin(dLng / 2).let { it * it }
         return 2 * R * Math.asin(Math.min(1.0, Math.sqrt(h)))
     }
+}
+
+/** A [MapSnapshotter] that does not stamp the library's logo and attribution overlay onto the
+ *  bitmap: `addOverlay` is the protected hook that draws both, and `withLogo(false)` only ever
+ *  removed the logo. The car renderer draws its own single-line credit instead. */
+private class QuietSnapshotter(context: android.content.Context, options: Options) : MapSnapshotter(context, options) {
+    override fun addOverlay(mapSnapshot: MapSnapshot) {}
 }

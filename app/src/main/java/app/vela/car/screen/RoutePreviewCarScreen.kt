@@ -142,13 +142,18 @@ class RoutePreviewCarScreen(
             val named = if (picked.provisional) {
                 runCatching { deps.mapDataSource.nameRoute(picked, from, dest, TravelMode.DRIVE) }.getOrDefault(picked)
             } else picked
-            // Speak through the user's chosen TTS engine, not the system default. Same
-            // stale-neural mapping as the phone's init path (a removed vela.* voice falls
-            // back to null = system TTS; the in-process neural synth is phone-side only).
+            // Speak through the user's chosen engine, the same mapping as the phone's init path:
+            // no pick or a vela.* pick means the in-process Piper voice when it is installed (the
+            // service attaches the synth), else the system TTS. Until 2026-09-21 the car always
+            // handed nav the system engine and a drive started from the car did not sound like Vela.
             val savedRaw = carContext.applicationContext
                 .getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
                 .getString("voice_engine", null)
-            val engine = if (savedRaw == null || savedRaw.startsWith("vela.")) null else savedRaw
+            val engine = when {
+                savedRaw == null || savedRaw.startsWith("vela.") ->
+                    if (app.vela.core.voice.VelaPiper.isReady(carContext.applicationContext)) app.vela.core.voice.VelaPiper.ENGINE_ID else null
+                else -> savedRaw
+            }
             deps.navSession.start(named, dest, destName, engine, emptyList(), TravelMode.DRIVE)
             runCatching { NavigationService.start(carContext.applicationContext) }
             screenManager.push(ActiveNavCarScreen(carContext, deps))

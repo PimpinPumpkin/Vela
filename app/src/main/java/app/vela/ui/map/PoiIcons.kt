@@ -477,7 +477,7 @@ object PoiIcons {
      *  and color the POI label text by category like Google — saturated in light, PASTEL TINTS in
      *  dark (Google's dark labels are lightened category colors, not the full-saturation ones,
      *  which vanish against a dark map — ground-truthed vs the Maps app; see [labelColor]). */
-    fun applyToLiberty(style: Style, dark: Boolean) {
+    fun applyToLiberty(style: StyleLayers, dark: Boolean) {
         runCatching {
             val icon = Expression.raw(match("\"vela-poi-default\"") { "\"vela-poi-$it\"" })
             val fallback = if (dark) "#C8CDD4" else "#5F6368"

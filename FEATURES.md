@@ -1799,6 +1799,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   mis-voweled "take" ("tyke") when the whole ramp sentence was phonemized in one breath; the
   spoken text now inserts a comma before "toward", so the maneuver clause and the sign
   destination are separate beats (Google pauses there too). Banner text unchanged.
+- ✅ **Car screen round two (2026-09-21, awaiting a head-unit check).** Vela's own map theme on
+  the car map, the library's multi-source watermark replaced by one OpenStreetMap credit, the puck
+  framed inside the visible area (it hung off the bottom edge), the phone's smooth between-fix
+  glide and an eased zoom instead of per-fix snaps, and Vela's voice for drives started from the car.
 - ✅ **Car-screen puck sized to the screen (2026-09-21).** A fortieth of the short side instead of a
   fixed 22 px radius, which was a fifth of a 480 px head unit's height.
 - ✅ **Android Auto, full car-side navigation (2026-07-08, PR #17 by jacobjeger; replaces the first cut).**
