@@ -107,20 +107,25 @@ class SearchCarScreen(carContext: CarContext, private val deps: CarDeps) : Scree
                 ContactAddresses.matches(text, 2)
             } else emptyList()
             var foundQueries: List<String> = emptyList()
-            val found: List<Place> = try {
+            var found: List<Place> = try {
                 if (submit) {
                     deps.mapDataSource.search(text, near).places
                 } else {
                     val auto = deps.mapDataSource.suggest(text, near, SUGGEST_SPAN_M)
                     foundQueries = auto.queries
-                    // Nothing from the autocomplete (Google off, offline): the search path's own
-                    // fallbacks (the OSM geocoder, the downloaded packs) answer instead.
+                    // Nothing from the autocomplete (Google off): the online search answers instead.
                     if (auto.places.isEmpty() && auto.queries.isEmpty()) deps.mapDataSource.search(text, near).places else auto.places
                 }
             } catch (e: CancellationException) {
                 throw e // superseded by a newer keystroke: never publish its rows
             } catch (e: Exception) {
                 emptyList()
+            }
+            // No signal, or the online answer came back empty: the downloaded packs, the way the
+            // phone's offline search reads them (a typed address leads, then places). The data
+            // source never reads the packs itself, so without this the car found nothing offline.
+            if (found.isEmpty() && foundQueries.isEmpty()) {
+                found = withContext(Dispatchers.IO) { offlineSearch(text, near) }
             }
             ensureActive()
             contacts = foundContacts
@@ -146,6 +151,13 @@ class SearchCarScreen(carContext: CarContext, private val deps: CarDeps) : Scree
                 invalidate()
             }
         }
+    }
+
+    private fun offlineSearch(text: String, near: app.vela.core.model.LatLng?): List<Place> {
+        val addrs = if (app.vela.core.data.OfflineAddressStore.looksLikeAddress(text))
+            runCatching { deps.offlineAddresses.geocode(text, near, limit = 4) }.getOrDefault(emptyList()) else emptyList()
+        val pois = runCatching { deps.offlinePois.search(text, near, limit = 12) }.getOrDefault(emptyList())
+        return (addrs + pois).distinctBy { it.id }
     }
 
     private companion object {

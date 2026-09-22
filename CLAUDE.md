@@ -579,7 +579,10 @@ Defaults that make the safe path the easy one:
   full search on submit, 2026-09-22**: it ran the three-page search per keystroke and coroutine
   cancellation never aborts OkHttp, so a typed word queued a dozen requests behind the per-host
   limit and the head unit spun "forever"; bare query rows run the full search on tap; a
-  `CancellationException` is rethrown, never swallowed into empty rows) → `RoutePreviewCarScreen`
+  `CancellationException` is rethrown, never swallowed into empty rows; with no signal or an empty
+  online answer it reads the packs through `CarDeps.offlinePois`/`offlineAddresses`, and
+  `VelaCarAppService` calls `PoiPackStore.registerPacks()` itself because a car-only session never
+  builds the phone view model that opens them) → `RoutePreviewCarScreen`
   (`RoutePreviewNavigationTemplate`, alternates) → `ActiveNavCarScreen` (`NavigationTemplate`).
   `VelaCarSession` owns its OWN AOSP LocationManager feed into the shared `NavSession` (nav runs with
   the phone UI closed) and handles `action.NAVIGATE` geo intents (assistant "navigate to X").
