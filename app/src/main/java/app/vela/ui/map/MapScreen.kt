@@ -4186,8 +4186,10 @@ private fun SearchEntryContent(
                     label = p.name,
                     sublabel = p.address ?: p.category,
                     onClick = { onPickSuggestion(p) },
-                    // The full line goes in, address included, the way Google fills it.
-                    onFill = { onFillQuery(listOfNotNull(p.name, p.address).joinToString(", ")) },
+                    // The primary line only (the name, or the street line of an address): the
+                    // arrow is for refining, and a whole "name, city, state" left nothing to
+                    // refine (user 2026-09-22). Google fills the full line; we do not.
+                    onFill = { onFillQuery(p.name) },
                     onLongClick = { menuOpen = true },
                     trailing = {
                         SuggestionOverflow(
