@@ -111,7 +111,9 @@ whole browser page load.
 ### The Google fallback board
 
 When Transitous has no board for the place (no coverage, no stop within the box, or a network
-failure), a transit stop that carries a Google feature id falls back to Google. The stop's own
+failure), a transit stop that carries a Google feature id falls back to Google. A place with no
+Google listing (an open-data or OpenStreetMap stop, or any tap with Google off) still gets the
+Transitous board, since that needs only the coordinate; only the Google fallbacks are skipped. The stop's own
 place page is loaded in a hidden browser view (`WebStopDeparturesFetcher`, the `?cid=` page with
 `hl=en&gl=us`), and the board is read out of the page's embedded state. Opening "See departure
 board" on Google fires no separate request, so the board is simply part of the place payload, and
@@ -340,10 +342,6 @@ TransitBoardCache.NEAR_M      = 40.0   // an offline tap matches a board fetched
   from Transitous' own planner (`/api/v1/plan`) when Google is off; it is listed as still wanted
   in the [roadmap](../../ROADMAP.md) under Google-off per feature, and it is **not built**. Even
   built, it would be the fallback, not the primary, for the traffic reason above.
-- **A place sheet needs a Google feature id before it tries any board.** The online board path
-  gates on it before calling Transitous, although Transitous needs only the coordinate. Stop
-  icons and hinted taps bypass that gate; a transit place reached another way without a feature
-  id shows no board.
 - **Only stops you have tapped have boards offline**, and their times are old. A per-region
   timetable bake is an open question in the roadmap, priced at tens of megabytes for a mid-size
   state and a few hundred for California, with no realtime at all.
