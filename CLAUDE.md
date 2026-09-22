@@ -655,9 +655,12 @@ Defaults that make the safe path the easy one:
   the installer fields, so no installer spoof and no stub package named like Google's installer
   can pass it; the "Unknown sources" toggle did not cover it either. **But on the 4a (stock
   Android 14, Play Store + Play services installed, NO Google account signed in) over the
-  Desktop Head Unit (2026-09-22), a plain sideloaded Vela (installer=null) WAS listed and ran**;
-  whether that is the DHU (a developer head unit) or the missing account (no owner to ask) is
-  the open question, and the account-less phone in a real car is the next test. DHU recipe: it
+  Desktop Head Unit (2026-09-22), a plain sideloaded Vela (installer=null) WAS listed and ran**,
+  and the log shows WHY it proves nothing: no `PlayGearheadService` lookup happened at all (Play
+  only logged Vela as an "untracked package"), where the car log shows the lookup running
+  before the denial. The DHU skips the ownership gate (user's call, and the log agrees), so it
+  is a UI preview tool only; the ownership experiment (`-PappId=<owned id>`) has to run in the
+  real car on the stock Pixel 9 with its Play account. DHU recipe, for previews: it
   needs `-c <config>/default.ini` (with no config it drops the transport after the TLS
   handshake, "Failed to read from transport"), stdin held open (a fifo; it exits on EOF), the
   phone's AA overflow "Start head unit server" (developer mode = ten taps on the version row),
