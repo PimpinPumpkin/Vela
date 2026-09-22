@@ -2570,7 +2570,14 @@ architecture note.
   a venv, the comparison script is a few dozen lines of Python. Redo it on a fixture area before
   changing `GENERIC` or the match rules; `PlaceNamesMatchTest` pins the pairs. The bake ALSO keeps
   one row per exact key within 60 m now (`dupleader`, checked on a DuckDB fixture); the VARIANT
-  family is left to the app until the bake grows the same rule.
+  family is left to the app until the bake grows the same rule. **Kinds (2026-09-22):** a second
+  study area showed a fuel station's lot carrying the archive's "Chevron", a second fuel row named
+  after the shop inside it, and Google's listing under the operator's name, plus a pizza place
+  sharing the station's name. So `PlaceNames.sameBusiness` takes the icon groups (an OVERLAP across
+  two known, different kinds is refused; EXACT/VARIANT still cross kinds), `sameFuelLot` calls two
+  fuel kinds within 45 m one station, both twin passes and the tap pool use them, and the bake keys
+  fuel rows by house number too. The Both-mode twin pass reads the ambient feature's `icon`
+  (`vela-poi-<group>`) and the open feature's `group`.
 - **A CLOSED LISTING NEVER BEATS A LIVE ONE, AND ONLY HIDES A PIN WHEN NO LIVE TWIN EXISTS
   (2026-09-21).** Google keeps a moved business's old, permanently closed profile beside the live
   one for months. The tap pool now drops closed listings whenever a live candidate exists, and

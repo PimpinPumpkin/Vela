@@ -317,10 +317,19 @@ $OSM_BIZ_SQL
 -- Rows with the same snap key within ~60 m collapse onto one leader: not a kiosk category, then
 -- the higher confidence, then the row that knows more (address, phone, website, hours). A hash
 -- join on the key with the box as the residual, never a correlated lookup (state-scale rule).
-CREATE TABLE dupk AS SELECT id, lat, lng, snapkey(name) AS sk, confidence,
-  (CASE WHEN category IN ('rental_kiosks','bank_equipment_service','money_transfer_services','atms','key_and_locksmith','vending_machine','photo_booth') THEN 1 ELSE 0 END) AS kiosk,
-  ((addr IS NOT NULL)::INT + (phone IS NOT NULL)::INT + (website IS NOT NULL)::INT + (hours IS NOT NULL)::INT) AS fields
-  FROM raw WHERE snapkey(name) IS NOT NULL;
+CREATE TABLE dupk AS SELECT id, lat, lng, sk, confidence, kiosk, fields FROM (
+  SELECT id, lat, lng, snapkey(name) AS sk, confidence,
+    (CASE WHEN category IN ('rental_kiosks','bank_equipment_service','money_transfer_services','atms','key_and_locksmith','vending_machine','photo_booth') THEN 1 ELSE 0 END) AS kiosk,
+    ((addr IS NOT NULL)::INT + (phone IS NOT NULL)::INT + (website IS NOT NULL)::INT + (hours IS NOT NULL)::INT) AS fields
+  FROM raw
+  UNION ALL
+  -- A FORECOURT IS ONE PER LOT: two fuel rows with one house number within the box are one station
+  -- named after different things (the brand and the shop inside it). The NUMBER, not the street
+  -- line: the two rows spell the same road three ways ("State Route 9 Se #1", "WA-9", "STATE RTE 9 SE").
+  SELECT id, lat, lng, 'fuel@' || regexp_extract(addr, '^([0-9]+)', 1) AS sk, confidence, 0 AS kiosk,
+    ((addr IS NOT NULL)::INT + (phone IS NOT NULL)::INT + (website IS NOT NULL)::INT + (hours IS NOT NULL)::INT) AS fields
+  FROM raw WHERE category = 'gas_station' AND addr IS NOT NULL AND regexp_matches(addr, '^[0-9]')
+) WHERE sk IS NOT NULL AND sk <> '';
 CREATE TABLE dupleader AS
 SELECT a.id, first(b.id ORDER BY b.kiosk, b.confidence DESC, b.fields DESC, b.id) AS leader
 FROM dupk a JOIN dupk b ON b.sk = a.sk AND abs(b.lat - a.lat) < 0.00055 AND abs(b.lng - a.lng) < 0.0007

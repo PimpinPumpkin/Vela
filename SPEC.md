@@ -1094,8 +1094,9 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   then the row that knows more (address, phone, website, hours); a hash join on the key with the
   box as the residual. The snap key mirrors `PlaceNames.normalized` (accents, parentheticals, "&",
   possessives, legal suffixes, store numbers) so a row the bake keeps is one the app can match.
-  Exact keys only; the VARIANT family ("Chevron Station Davis") is left to the app's rule, which is
-  the next step for the bake.
+  Fuel rows also key by their HOUSE NUMBER (`fuel@<number>`, within the same 60 m box): a station
+  is one per lot and its rows spell the road three ways. Otherwise exact keys only; the VARIANT
+  family ("Chevron Station Davis") is left to the app's rule, which is the next step for the bake.
 - **Whether a rebake is worth a delta is measured, not assumed.** `scripts/archive-churn.py` reads
   both archives' PMTiles directories, hashes every tile, and reports per zoom what is identical,
   changed, added and dropped plus a real `zstd --patch-from` delta; `places-churn.yml` bakes a region
@@ -1293,9 +1294,15 @@ describe a business rather than name it (category, structure and place words), a
 the town out of an address. A single shared identifying word is NOT a match ("Arroyo Park" against
 "Arroyo Pool"), a name made only of generic words matches nothing by overlap ("Hair" inside "Hair
 Studio"), and a brand's other listing is a VARIANT that `same` keeps out. Pinned by
-`PlaceNamesMatchTest` with the fixture pairs. Not yet in the rule: a department listing at the
-same point with a different name (the station's "Fast & Easy Mart" beside "Chevron"), and Google's
-own two profiles for one business.
+`PlaceNamesMatchTest` with the fixture pairs. Two rules take the places' KINDS (the icon group)
+as well: `sameBusiness(a, kindA, b, kindB)` refuses an OVERLAP between two known, different kinds
+(a fuel station and the pizza place on its lot can share their identifying words), while EXACT and
+VARIANT still cross kinds ("Safeway Pharmacy" and "Safeway" are one business in two listings);
+and `sameFuelLot(kindA, kindB, distance)` calls two fuel stations within `FUEL_LOT_M` (45 m) one
+station whatever their names, because a forecourt is one per lot and the sources name it after
+different things (the brand in the archive, the operator on Google). Not yet in the rule: a
+non-fuel department listing at the same point with a different name (the station's "Fast & Easy
+Mart" beside "Chevron"), and Google's own two profiles for one business.
 
 Sheet titles follow the app language's script: `NameScript.prefer(uiLang, google, label)` keeps
 the map's own label as the title when Google's name is not in the app language's script and the

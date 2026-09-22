@@ -3276,7 +3276,13 @@ class MapViewModel @Inject constructor(
                     // closed listing, which then hid the open pin for good). Google keeps the
                     // closed profile beside the live one for months; the live one is the answer
                     // whenever there is one.
-                    val pool = answerable.filter { nameAgrees(name, it.name, it.address) }
+                    val tappedKind = PoiIcons.groupFor(name, seed?.category ?: poiKind)
+                    val pool = answerable.filter { p ->
+                        app.vela.core.util.PlaceNames.sameBusiness(
+                            name, tappedKind, p.name, PoiIcons.groupFor(p.name, p.category),
+                            app.vela.core.util.PlaceNames.cityWords(p.address),
+                        )
+                    }
                         .ifEmpty { answerable.filter { it.location.distanceTo(location) <= NO_NAME_MATCH_M } }
                         .let { p -> p.filterNot { it.permanentlyClosed }.ifEmpty { p } }
                     // THE SAME NAME BEATS A NEARER ONE (user 2026-09-18: tapping a supermarket
