@@ -55,3 +55,10 @@ else
 fi
 gh release upload "$TAG" "$WORK/basemap-manifest.json" --clobber --repo "$REPO"
 echo "basemap manifest now lists $(jq '.regions | length' "$WORK/basemap-manifest.json") regions"
+# An archive uploaded while this ran is not in the listing; without a concurrency group a
+# merge can be overtaken by a newer upload, so run once more when the release moved.
+gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[] | select(.name | startswith("basemap-") and endswith(".pmtiles")) | "\(.name) \(.size)"' > "$WORK/assets.after"
+if ! diff -q "$WORK/assets.txt" "$WORK/assets.after" >/dev/null && [ "${VELA_REPAIR_AGAIN:-0}" = "0" ]; then
+  echo "the release changed during the merge; rebuilding once more"
+  VELA_REPAIR_AGAIN=1 exec bash "$0" "$REV" "$ENTRIES"
+fi
