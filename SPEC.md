@@ -1298,9 +1298,12 @@ Studio"), and a brand's other listing is a VARIANT that `same` keeps out. Pinned
 as well: `sameBusiness(a, kindA, b, kindB)` refuses an OVERLAP between two known, different kinds
 (a fuel station and the pizza place on its lot can share their identifying words), while EXACT and
 VARIANT still cross kinds ("Safeway Pharmacy" and "Safeway" are one business in two listings);
-and `sameFuelLot(kindA, kindB, distance)` calls two fuel stations within `FUEL_LOT_M` (45 m) one
-station whatever their names, because a forecourt is one per lot and the sources name it after
-different things (the brand in the archive, the operator on Google). Not yet in the rule: a
+and `sameFuelLot(kindA, kindB, distance, numberA, numberB)` calls two fuel stations within
+`FUEL_LOT_M` (30 m) one station whatever their names, because a forecourt is one per lot and the
+sources name it after different things (the brand in the archive, the operator on Google); two
+known house numbers that differ refuse it at any distance, which is the two-stations-across-the-
+road case, and 30 m is short of a road plus two setbacks. Ambient features carry `hn` (the
+listing's house number) for it. Not yet in the rule: a
 non-fuel department listing at the same point with a different name (the station's "Fast & Easy
 Mart" beside "Chevron"), and Google's own two profiles for one business.
 
@@ -2165,6 +2168,16 @@ to `RoutePreviewCarScreen` (`RoutePreviewNavigationTemplate`) to `ActiveNavCarSc
 - The snapshotter resolves the same patched style file the phone map uses; a plain style URL
   leaves the car on Noto.
 - Android Auto has no pause control yet.
+- The car nav screen: a paused drive shows a `MessageInfo` ("Paused") in place of the turn card
+  and the strip carries Pause/Resume; a turn farther than `CONTINUE_FAR_M` (1,500 m) leads the card
+  with "Continue on <the road you are on>" (`Maneuver.roadAt`, the phone's pill rule) and shows the
+  turn as the "then" step; a search icon opens `AlongRouteCarScreen` (the quick categories as rows,
+  a pick searches around the car, a result becomes the next stop through `NavSession.addStop`); the
+  map strip's fourth action toggles an overview of the remaining route (`toggleOverview`, exempt
+  from the pan auto-recenter). `CarBridge` (`app/car`) carries the phone controller's spoken alerts
+  (cameras, speeding, closing soon) to a `CarToast` and the route's lights, stop signs and speed
+  cameras to the renderer, which draws them as dots from z13.5 with the plate cameras along the
+  route read straight off the bundled set.
 - The car snapshotter is themed with the phone's palette through the `StyleLayers` interface
   (`applyMapTheme(SnapshotterHost(snapshotter), dark, amoled)` on style load), draws no library
   overlay (`QuietSnapshotter`) and its own single OpenStreetMap credit, frames the puck inside

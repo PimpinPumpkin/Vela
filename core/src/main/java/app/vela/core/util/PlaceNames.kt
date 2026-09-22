@@ -188,12 +188,22 @@ object PlaceNames {
     }
 
     /** Two fuel stations within [FUEL_LOT_M] are one station: a forecourt is one per lot, and the
-     *  sources name it after different things (the brand, the operator, the shop inside). */
-    fun sameFuelLot(kindA: String?, kindB: String?, distanceM: Double): Boolean =
-        kindA == FUEL_KIND && kindB == FUEL_KIND && distanceM < FUEL_LOT_M
+     *  sources name it after different things (the brand, the operator, the shop inside). Two
+     *  stations facing each other across a road are the case to refuse: when both sides carry a
+     *  house number and the numbers differ they are two lots whatever the distance, and the
+     *  distance itself is short of a road's width plus two setbacks (user 2026-09-22). */
+    fun sameFuelLot(kindA: String?, kindB: String?, distanceM: Double, numberA: String? = null, numberB: String? = null): Boolean {
+        if (kindA != FUEL_KIND || kindB != FUEL_KIND) return false
+        if (!numberA.isNullOrBlank() && !numberB.isNullOrBlank() && numberA != numberB) return false
+        return distanceM < FUEL_LOT_M
+    }
+
+    /** The house number a street address starts with ("16315 State Route 9 SE" -> "16315"). */
+    fun houseNumber(address: String?): String? =
+        address?.trimStart()?.takeWhile { it.isDigit() }?.takeIf { it.isNotEmpty() }
 
     const val FUEL_KIND = "fuel"
-    const val FUEL_LOT_M = 45.0
+    const val FUEL_LOT_M = 30.0
     private fun knownKind(k: String?) = !k.isNullOrBlank() && k != "default"
 
     /** The words of a town out of a listing's address ("239 G St, Davis, CA 95616" -> davis, ca),

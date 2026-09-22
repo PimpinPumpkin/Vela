@@ -139,6 +139,7 @@ internal class NavController(
                     lastRecordedRoute = null
                     clearNavRouteControls()
                     routeCamMeters = emptyList(); routeCamKey = null; spokenCams = emptySet()
+                    app.vela.car.CarBridge.clear()
                     clearRouteFlock()
                     speeding.reset()
                 }
@@ -293,6 +294,7 @@ internal class NavController(
         )
         host.flashStatus(msg, 15_000L)
         voice.speak(msg)
+        app.vela.car.CarBridge.toast(msg)
     }
 
     /** A minute-of-day in the user's clock format (locale + the system 12/24-hour setting). */
@@ -934,6 +936,7 @@ internal class NavController(
             }
             if (routeCamKey == key) {
                 routeCamMeters = meters
+                app.vela.car.CarBridge.speedCameras.value = cams.map { it.loc }
                 diag.record("speedcam", "${meters.size} camera(s) on route", "corridor")
             }
         }
@@ -1005,6 +1008,7 @@ internal class NavController(
         )
         if (app.vela.ui.FlockNavAlert.card.value) host.flashStatus(msg, 6000L)
         if (app.vela.ui.FlockNavAlert.voice.value) voice.speak(msg)
+        app.vela.car.CarBridge.toast(msg)
     }
 
     /** Say so when you have been over the posted limit for a few seconds (issue #404, opt-in).
@@ -1017,6 +1021,7 @@ internal class NavController(
         val speedKmh = st.mySpeed?.let { it.toDouble() * 3.6 }
         if (!speeding.update(speedKmh, limit, android.os.SystemClock.elapsedRealtime())) return
         voice.speak(appContext.getString(R.string.nav_speeding_alert))
+        app.vela.car.CarBridge.toast(appContext.getString(R.string.nav_speeding_alert))
         tripStore.note("K", "speeding alert: ${speedKmh?.toInt()} km/h, limit ${limit?.toInt()}")
     }
 
@@ -1029,6 +1034,7 @@ internal class NavController(
         ) ?: return
         spokenCams = spokenCams + i
         voice.speak(appContext.getString(R.string.nav_speed_camera_ahead))
+        app.vela.car.CarBridge.toast(appContext.getString(R.string.nav_speed_camera_ahead))
     }
 
     private fun refreshNavRouteControls(route: app.vela.core.model.Route) {
@@ -1094,6 +1100,7 @@ internal class NavController(
             host.controlsBox = null // the box cache is superseded; the post-nav viewport refresh repaints fresh
             host.cancelViewportControls() // and kill a box fetch still inside its settle, or it lands on top of this
             _state.update { it.copy(trafficControls = kept) }
+            app.vela.car.CarBridge.controls.value = kept
         }
     }
 

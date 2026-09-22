@@ -16,6 +16,7 @@ import app.vela.core.data.RouteEngine
 import app.vela.core.data.tiles.MapStyle
 import app.vela.core.location.LocationProvider
 import app.vela.core.model.LatLng
+import app.vela.core.model.distanceTo
 import app.vela.core.model.Route
 import app.vela.core.model.bearingTo
 import app.vela.core.model.destinationPoint
@@ -116,7 +117,18 @@ class CarMapRenderer(
     /** Follow the puck (browse north-up / nav heading-up) — the landing + active-nav screens. */
     fun follow() {
         previewRoute = null
+        overview = false
         following = true
+        requestRender()
+    }
+
+    // OVERVIEW: the whole remaining route framed north-up; the auto-recenter leaves it alone until
+    // the driver taps it off (or recenters). The phone has the same toggle.
+    @Volatile private var overview = false
+    fun toggleOverview() {
+        overview = !overview
+        following = !overview
+        if (!overview) lastPanMs = 0L
         requestRender()
     }
 
@@ -214,7 +226,7 @@ class CarMapRenderer(
                 else null
                 if (previewRoute != null && !navigating()) { requestRender(); return@collect } // preview owns the camera
                 // Auto-recenter a few seconds after the user pans (Google-style: pan to look around, then snap back).
-                if (!following && android.os.SystemClock.uptimeMillis() - lastPanMs > RECENTER_MS) following = true
+                if (!following && !overview && android.os.SystemClock.uptimeMillis() - lastPanMs > RECENTER_MS) following = true
                 if (following) {
                     // Heading source (the ticker eases toward this, so it never snap-rotates):
                     //  1. Moving with a TRUSTWORTHY GPS course → the actual travel direction (what the
@@ -399,6 +411,7 @@ class CarMapRenderer(
         rendering = true
 
         val nav = navigating()
+        if (nav && overview) navSession.state.value.route?.let { r -> frameRoute(remainingRoute(r)); zoomTarget = zoom }
         val follow = following // false while the user has panned (until auto-recenter)
         zoomTarget = if (nav && follow) navZoom() else zoom
         // FRAME INSIDE THE VISIBLE AREA. The camera target lands at the bitmap's center, but the host
@@ -455,6 +468,7 @@ class CarMapRenderer(
             val preview = previewRoute
             if (navigating()) {
                 runCatching { drawRoute(canvas, snap, sx, sy) }
+                runCatching { drawCorridor(canvas, snap, sx, sy) }
                 runCatching { drawSpeed(canvas) }
             } else if (preview != null && preview.polyline.size >= 2) {
                 // Preview screen: the whole route in blue, framed.
@@ -575,6 +589,51 @@ class CarMapRenderer(
     }
 
     /** Center the camera on [route] and pick a zoom that fits its bounding box (preview screen). */
+    /** The route from the puck onward (the whole route until the puck is on it). */
+    private fun remainingRoute(route: Route): Route {
+        val p = puck ?: return route
+        val poly = route.polyline
+        if (poly.size < 2) return route
+        var best = 0; var bestD = Double.MAX_VALUE
+        for (i in poly.indices) { val d = poly[i].distanceTo(p); if (d < bestD) { bestD = d; best = i } }
+        return if (bestD > 200.0 || best >= poly.size - 1) route else route.copy(polyline = listOf(p) + poly.drop(best + 1))
+    }
+
+    // Corridor furniture the phone's nav map draws, from the same data (CarBridge): lights, stop
+    // signs, speed cameras, plus the plate cameras along the route straight off the bundled set.
+    private val glyphFill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val glyphRing = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 1.5f }
+    private var flockRouteKey: Int = 0
+    private var flockAlong: List<LatLng> = emptyList()
+    private fun drawCorridor(canvas: Canvas, snap: MapSnapshot, sx: Float, sy: Float) {
+        if (zoom < 13.5) return
+        val r = (minOf(width, height) / 90f).coerceIn(4f, 9f)
+        fun dot(at: LatLng, color: Int) {
+            val pt = project(snap, at, sx, sy) ?: return
+            glyphFill.color = color
+            canvas.drawCircle(pt.x, pt.y, r, glyphFill)
+            canvas.drawCircle(pt.x, pt.y, r, glyphRing)
+        }
+        app.vela.car.CarBridge.controls.value.forEach { c ->
+            dot(c.loc, when (c.kind) {
+                app.vela.core.data.TrafficControl.Kind.SIGNAL -> Color.parseColor("#F9C74F")
+                app.vela.core.data.TrafficControl.Kind.STOP -> Color.parseColor("#D93838")
+                app.vela.core.data.TrafficControl.Kind.RAIL_CROSSING -> Color.parseColor("#37474F")
+                app.vela.core.data.TrafficControl.Kind.SPEED_HUMP -> Color.parseColor("#E8923D")
+            })
+        }
+        app.vela.car.CarBridge.speedCameras.value.forEach { dot(it, Color.parseColor("#FB8C00")) }
+        if (app.vela.ui.Flock.on.value) {
+            val route = navSession.state.value.route
+            val key = System.identityHashCode(route)
+            if (route != null && key != flockRouteKey && app.vela.data.FlockCameras.isLoaded) {
+                flockRouteKey = key
+                flockAlong = runCatching { app.vela.data.FlockCameras.along(route.polyline).map { it.loc } }.getOrDefault(emptyList())
+            }
+            flockAlong.forEach { dot(it, Color.parseColor("#8E24AA")) }
+        }
+    }
+
     private fun frameRoute(route: Route?) {
         val poly = route?.polyline ?: return
         if (poly.isEmpty()) return

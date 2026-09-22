@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.ScreenManager
+import androidx.car.app.CarToast
 import androidx.car.app.Session
 import app.vela.car.screen.RoutePreviewCarScreen
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -43,6 +44,13 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
         // GPS fixes with accuracy ≤ 50 m drive guidance; coarser fixes are ignored for nav.
         // Cancel any prior collector first so a re-delivered onCreate can't leak a second one.
         feedJob?.cancel()
+        // Spoken alerts (cameras, speeding, closing soon) as a car toast too: a muted car heard
+        // nothing of them, and the toast is the template's one transient surface.
+        scope.launch {
+            CarBridge.toasts.collect { msg ->
+                runCatching { CarToast.makeText(carContext, msg, CarToast.LENGTH_LONG).show() }
+            }
+        }
         feedJob = scope.launch {
             deps.locationProvider.updates().collect { loc ->
                 val gps = loc.provider == android.location.LocationManager.GPS_PROVIDER

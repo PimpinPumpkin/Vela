@@ -595,6 +595,13 @@ Defaults that make the safe path the easy one:
   `PiperSynth` to `VoiceGuide` when the phone UI never ran, and the car's start passes
   `VelaPiper.ENGINE_ID` when the pref is unset or `vela.*` and the voice is installed; it used to
   hand nav the system engine every time. `RECENTER_MS` (6 s after a pan) is unchanged.
+  **Round three, same day (user: "do it all"):** `CarBridge` (toasts + corridor data from
+  `NavController`), Pause/Resume and an along-route search icon on the action strip (4 actions is
+  the template's cap, so the mute slot still gives way to a faster-route offer), a `MessageInfo`
+  while paused, the far-turn "Continue on <road>" card (`ManeuverMapper.CONTINUE_FAR_M`), an
+  overview toggle on the map strip, and corridor dots on the car map. `AlongRouteCarScreen` is
+  two `ListTemplate`s (categories, then results) because the host refuses a typed search while
+  driving. Still unverified on a unit.
   **Turn card requirements (per the Android for Cars docs):** `ActiveNavCarScreen` calls
   `NavigationManager.navigationStarted()` AND `updateTrip()` - both are needed for the RoutingInfo turn
   card + the cluster/HUD nav data; `ManeuverMapper` maps Vela maneuvers → car `Maneuver`/`Step`/`Trip`.
@@ -2577,7 +2584,8 @@ architecture note.
   two known, different kinds is refused; EXACT/VARIANT still cross kinds), `sameFuelLot` calls two
   fuel kinds within 45 m one station, both twin passes and the tap pool use them, and the bake keys
   fuel rows by house number too. The Both-mode twin pass reads the ambient feature's `icon`
-  (`vela-poi-<group>`) and the open feature's `group`.
+  (`vela-poi-<group>`) and `hn`, and the open feature's `group` and `addr`. The lot rule is 30 m
+  and two different known house numbers refuse it (two stations facing each other across a road).
 - **A CLOSED LISTING NEVER BEATS A LIVE ONE, AND ONLY HIDES A PIN WHEN NO LIVE TWIN EXISTS
   (2026-09-21).** Google keeps a moved business's old, permanently closed profile beside the live
   one for months. The tap pool now drops closed listings whenever a live candidate exists, and

@@ -741,6 +741,13 @@
     <string name="car_mute">Mute</string>
     <string name="car_unmute">Unmute</string>
     <string name="car_faster_route">Faster −%1$d min</string>
+    <string name="car_pause">Pause</string>
+    <string name="car_resume">Resume</string>
+    <string name="car_paused">Paused</string>
+    <string name="car_along_route">Search along route</string>
+    <string name="car_along_none">Nothing found nearby</string>
+    <string name="car_stop_added">Added %1$s as the next stop</string>
+    <string name="car_continue_on">Continue on %1$s</string>
     <string name="car_no_route">No route available — check your location</string>
     <string name="map_parking_saved">Parking spot saved</string>
     <string name="map_parking_no_fix">Waiting for a location fix</string>

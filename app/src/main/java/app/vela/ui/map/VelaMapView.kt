@@ -338,15 +338,16 @@ private const val DEDUPE_NAME_M = 80.0 // agreeing names within this range = the
 // centroid, out in the parking lot, which put a chain's second copy past 80 m (user 2026-09-17).
 private const val DEDUPE_SAME_NAME_M = 150.0
 private fun normName(s: String) = app.vela.core.util.PlaceNames.normalized(s)
-private class Twin(val name: String, val norm: String, val at: LatLng, val kind: String? = null)
-private fun twinOf(n: String, kind: String?, ll: LatLng, set: List<Twin>): Boolean {
+private class Twin(val name: String, val norm: String, val at: LatLng, val kind: String? = null, val hn: String? = null)
+private fun twinOf(n: String, kind: String?, hn: String?, ll: LatLng, set: List<Twin>): Boolean {
     val norm = normName(n)
     return set.any { m ->
         val d = m.at.distanceTo(ll)
         (d < DEDUPE_SAME_NAME_M && norm.isNotEmpty() && norm == m.norm) ||
             // One forecourt per lot, named after different things by the two sources (a Chevron in
-            // the archive, the operator's name on Google, user 2026-09-22): the same station.
-            app.vela.core.util.PlaceNames.sameFuelLot(kind, m.kind, d) ||
+            // the archive, the operator's name on Google, user 2026-09-22): the same station. Two
+            // across the street from each other differ by house number and are left alone.
+            app.vela.core.util.PlaceNames.sameFuelLot(kind, m.kind, d, hn, m.hn) ||
             (d < DEDUPE_NAME_M && app.vela.core.util.PlaceNames.sameBusiness(n, kind, m.name, m.kind))
     }
 }
@@ -371,7 +372,8 @@ private fun hideOpenTwins(map: MapLibreMap, style: Style, pois: List<MapMarker>,
         val n = f.getStringProperty("name") ?: return@mapNotNull null
         val pt = f.geometry() as? Point ?: return@mapNotNull null
         val kind = runCatching { f.getStringProperty("icon") }.getOrNull()?.removePrefix("vela-poi-")
-        Twin(n, normName(n), LatLng(pt.latitude(), pt.longitude()), kind)
+        val hn = runCatching { f.getStringProperty("hn") }.getOrNull()
+        Twin(n, normName(n), LatLng(pt.latitude(), pt.longitude()), kind, hn)
     }
     val gone = closed.mapNotNull { c ->
         val norm = normName(c.name)
@@ -386,8 +388,9 @@ private fun hideOpenTwins(map: MapLibreMap, style: Style, pois: List<MapMarker>,
         val pt = f.geometry() as? Point ?: return@forEach
         val ll = LatLng(pt.latitude(), pt.longitude())
         val kind = runCatching { f.getStringProperty("group") }.getOrNull()
+        val hn = app.vela.core.util.PlaceNames.houseNumber(runCatching { f.getStringProperty("addr") }.getOrNull())
         if (gone.isNotEmpty() && gone.any { m -> m.at.distanceTo(ll) < DEDUPE_NAME_M && namesAgree(n, m.name) }) onClosed(id)
-        else if (twinOf(n, kind, ll, shown)) displaced += id
+        else if (twinOf(n, kind, hn, ll, shown)) displaced += id
     }
     // A twin already hidden is no longer RENDERED, so the query above cannot see it, and dropping
     // it from the set would flip it back on until the next pass. So re-check the hidden ones
@@ -404,7 +407,8 @@ private fun hideOpenTwins(map: MapLibreMap, style: Style, pois: List<MapMarker>,
                 val n = f.getStringProperty("name") ?: return@forEach
                 val pt = f.geometry() as? Point ?: return@forEach
                 val kind = runCatching { f.getStringProperty("group") }.getOrNull()
-                if (twinOf(n, kind, LatLng(pt.latitude(), pt.longitude()), shown)) displaced += id
+                val hn = app.vela.core.util.PlaceNames.houseNumber(runCatching { f.getStringProperty("addr") }.getOrNull())
+                if (twinOf(n, kind, hn, LatLng(pt.latitude(), pt.longitude()), shown)) displaced += id
             }
         }
     }
@@ -7312,6 +7316,7 @@ private fun applyData(
                         val group = PoiIcons.groupFor(m.name, m.category)
                         addStringProperty("name", m.name)
                         addStringProperty("icon", "vela-poi-$group")
+                        app.vela.core.util.PlaceNames.houseNumber(m.address)?.let { addStringProperty("hn", it) } // the fuel-lot rule's tie-break
                         addStringProperty("dotColor", PoiIcons.colorFor(group)) // mini-dot tier tint
                         addNumberProperty(AMBIENT_INDEX_PROP, i)
                         // Collision priority must be STABLE across the streamed partial paints: it used
