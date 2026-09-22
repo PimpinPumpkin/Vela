@@ -534,7 +534,11 @@ Defaults that make the safe path the easy one:
   the map's DisposableEffect), all five hidden WebViews (severe trim = immediate reap on the main
   thread), and Coil (severe trim clears the bitmap cache). `MemoryPressure.lowRam` (isLowRamDevice
   OR heap class < 128 MB; debug override `adb shell setprop debug.vela.lowram true`) drives the
-  constrained-device path: 16 MB Coil cap (vs 48), no ASR warm-up at launch, no speculative
+  constrained-device path: 16 MB Coil cap (vs 48), no ASR warm-up at launch (elsewhere the ASR and
+  Piper warm-ups run at THREAD_PRIORITY_BACKGROUND since 2026-09-22: at default priority their
+  ~8 s of CPU each shared the big cores with the map and a cold-launch pan on the 4a ran 9-40 fps;
+  background they finish ~13 s after launch on the 4a and the pan holds 36-60; a Piper prompt
+  queued behind the warm-up raises it back, `PiperSynth.boostWarm`), no speculative
   WebView warms per search, and - via `:core` `LowRamMode` (same seam as CategoryFilter) - an
   8-term ambient fan-out with a !7i30 pool instead of 15 terms at !7i60 (school/park are KEPT in
   the subset: with ambient active the OSM poi layers are hidden, so they have no second source).
@@ -2303,7 +2307,10 @@ architecture note.
   into the matrix from `tools/routing-regions.json` by id) is filtered with `osmium tags-filter` to
   NAMED business NODES, exported to geojsonseq (strip the 0x1e record separator before jq; the
   option to turn it off is not in every osmium build), and `osm_snap` moves a baked row onto OSM's
-  coordinate on a whole-name match at 30-120 m. Order of preference: OSM, then the AllThePlaces
+  coordinate on a whole-name OR core-name match anywhere in the duplicate box (~150 m, chains 120 m),
+  mutual best pair only (was whole-name at 30-120 m until 2026-09-22, which lost every OSM fix
+  in the 120-150 m band: the insert dropped the node as a duplicate and the snap ignored it).
+  Order of preference: OSM, then the AllThePlaces
   locator, then Overture's parcel point; tenants never move. Unset `OSM_PBF` and the bake behaves
   exactly as before.
 - **STOP SIGNS ARE GATED BY THE ROAD'S BEARING (2026-09-17):** `scripts/road_features_tsv.py` takes a
