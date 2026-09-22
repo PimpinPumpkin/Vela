@@ -459,7 +459,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   and store-locator hours are converted for about 98% of real listings (it was 86%), including
   comma-separated days, holidays and sunrise-to-sunset parks, so the sheet shows the week and says
   "Open" or "Closed" even with Google off. The places data also keeps OpenStreetMap's hours when
-  another source already had the same shop.
+  another source already had the same shop, and a chain's store-locator hours now survive the same
+  way. Open-data addresses carry the city, state and ZIP ("… , Davis, CA 95616") instead of the
+  street line alone.
 - ✅ **Fuel stations (and fire, police, charging stations) link again (2026-09-22).** Their open
   data category contains "station", which sent the lookup down the transit-stop path, and it
   never linked. And a fuel row named for its site rather than its brand now finds the gas
