@@ -195,7 +195,7 @@
              Everything heavy is already optional/deferrable, so the label is honest. -->
         <meta-data
             android:name="android.telephony.PROPERTY_SATELLITE_DATA_OPTIMIZED"
-            android:value="app.vela" />
+            android:value="${applicationId}" />
 
     </application>
 

@@ -26,7 +26,11 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "app.vela"
+        // `-PappId=<id>` builds the app under another package name: the Android Auto ownership
+        // experiment (2026-09-22, ROADMAP "A Google Play listing") sideloads Vela under the id of
+        // an app the account once installed from Play, to learn whether Android Auto's check is
+        // Play's library record alone or also the signing certificate. Never a shipped path.
+        applicationId = (project.findProperty("appId") as String?)?.takeIf { it.isNotBlank() } ?: "app.vela"
         minSdk = 26
         targetSdk = 35
         // Overridable from CI: -PappVersionCode / -PappVersionName (ci.yml derives
