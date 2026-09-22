@@ -578,6 +578,23 @@ Defaults that make the safe path the easy one:
   NOT the old VirtualDisplay+Presentation path). It snaps the puck to the route (map-matching), gates
   the location feed to GPS-only (drops coarse network/fused fixes that jumped the puck), and eases the
   puck/heading between the ~1 Hz fixes so the map glides rather than lurches.
+  **Car map round two (user 2026-09-21, "a bunch of the bugs vela had months ago are still in
+  this"), NOT yet checked on a head unit or the DHU:** (1) the palette functions take a
+  `StyleLayers` interface (`ui/map/StyleLayers.kt`: `StyleHost(Style)` for the phone,
+  `SnapshotterHost(MapSnapshotter)` for the car, which has `getLayer`/`getSource` but no layer
+  list), so `applyMapTheme` runs on the snapshotter from `Observer.onDidFinishLoadingStyle`; the
+  old darkening color filter is skipped once themed. (2) `QuietSnapshotter` overrides the protected
+  `addOverlay`, which is what printed every tile source's attribution as a watermark
+  (`withLogo(false)` only removed the logo); the renderer draws its own single OSM credit inside
+  the visible area. (3) The puck is framed inside the host's VISIBLE area (`onVisibleAreaChanged`),
+  at `PUCK_DOWN` (72%) of it while following in nav, and the meters-per-pixel constant is
+  MapLibre's 512 px one (78271.517): the 256 px constant put the look-ahead at twice the intended
+  offset, off the bottom edge. (4) The puck rides `FollowEstimator` (the phone's between-fix
+  glide) instead of a 28%-per-tick ease toward a point that jumped once a second, and the
+  speed-tiered nav zoom eases (`ZOOM_EASE`) instead of stepping. (5) `VelaCarAppService` attaches
+  `PiperSynth` to `VoiceGuide` when the phone UI never ran, and the car's start passes
+  `VelaPiper.ENGINE_ID` when the pref is unset or `vela.*` and the voice is installed; it used to
+  hand nav the system engine every time. `RECENTER_MS` (6 s after a pan) is unchanged.
   **Turn card requirements (per the Android for Cars docs):** `ActiveNavCarScreen` calls
   `NavigationManager.navigationStarted()` AND `updateTrip()` - both are needed for the RoutingInfo turn
   card + the cluster/HUD nav data; `ManeuverMapper` maps Vela maneuvers → car `Maneuver`/`Step`/`Trip`.

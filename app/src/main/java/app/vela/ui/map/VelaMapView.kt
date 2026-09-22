@@ -180,11 +180,13 @@ private const val LOCAL_BASEMAP_SRC = "vela-basemap" // the installed offline ba
  *  archive's id when an installed region drives the map. Every helper that reads or extends the
  *  basemap (theme, hillshade, house numbers, contrast layers, satellite roads, the road-name
  *  dictionary) goes through this, so the offline map gets the same dressing as the online one. */
-private fun basemapSrc(style: Style): String? = when {
+private fun basemapSrc(style: StyleLayers): String? = when {
     style.getSource("openmaptiles") != null -> "openmaptiles"
     style.getSource(LOCAL_BASEMAP_SRC) != null -> LOCAL_BASEMAP_SRC
     else -> null
 }
+private fun basemapSrc(style: Style): String? = basemapSrc(StyleHost(style))
+
 private val localBasemapLayerIds = HashSet<String>() // the JSON layers re-pointed at it, re-attached after load
 private const val AMBIENT_LAYER = "vela-ambient"
 private const val AMBIENT_DOT_LAYER = "vela-ambient-dots"
@@ -3735,7 +3737,7 @@ fun VelaMapView(
                 splitReset[0] = true
                 PoiIcons.satellite = satelliteOn
                 PoiIcons.addTo(context, style)
-                if (applyKeylessTheme) applyMapTheme(style, darkTheme, amoled) else tuneMapTiler(style, darkTheme)
+                if (applyKeylessTheme) applyMapTheme(StyleHost(style), darkTheme, amoled) else tuneMapTiler(style, darkTheme)
                 if (satelliteOn) applySatelliteLabels(style)
                 emphasizeShields(context, style)
                 applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, speedCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, navDriveMode, parkingSpot, savedPins, poisEnabled, svPose)
@@ -5371,7 +5373,7 @@ private val PLACE_LABEL_LAYERS = listOf(
     "label_city_capital", "label_city", "label_town", "label_village", "label_other",
 )
 
-private fun applyPlaceLabelLanguage(style: Style) {
+private fun applyPlaceLabelLanguage(style: StyleLayers) {
     val field = placeLabelTextField()
     PLACE_LABEL_LAYERS.forEach { id ->
         runCatching { style.getLayer(id)?.setProperties(PropertyFactory.textField(field)) }
@@ -6032,7 +6034,7 @@ private fun firstSymbolLayerId(style: Style): String? =
  * This costs frames - every label is glyph layout plus a collision pass over four anchors - so it
  * is the kind of change to check with `scripts/map-fps.sh` if a dense city starts feeling worse.
  */
-private fun widenStreets(style: Style) {
+private fun widenStreets(style: StyleLayers) {
     runCatching {
         // Minor streets: visible from z12.5 instead of z13.5, and about 60% fatter through the
         // town zooms, converging on the style's own 18 px by z20 so close zoom is untouched.
@@ -6059,7 +6061,7 @@ private fun widenStreets(style: Style) {
     }
 }
 
-private fun applyMapTheme(style: Style, dark: Boolean, amoled: Boolean = false) {
+internal fun applyMapTheme(style: StyleLayers, dark: Boolean, amoled: Boolean = false) {
     val basemapSource = basemapSrc(style) ?: return
     // Two compiled color sets, picked in Settings -> Appearance (MapColors): "modern" is the
     // Google-app pixel-sampled palette, "classic" the archived pre-sample look (SPEC 6.2md).
@@ -6203,7 +6205,7 @@ internal fun fragileGpuDefault(): Boolean =
  *  buildings instead of one merged blob (the palettes had shut side shading off entirely).
  *  Starting 3D later is also the cheapest frame win in exactly the dense views that lag: one less
  *  zoom level of the most fragment-expensive layer the map draws. */
-private fun applyBuilding3dGeometry(style: Style) {
+private fun applyBuilding3dGeometry(style: StyleLayers) {
     style.getLayer("building-3d")?.setMinZoom(17f)
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionVerticalGradient(true),
@@ -6224,7 +6226,7 @@ private fun applyBuilding3dGeometry(style: Style) {
     )
 }
 
-internal fun applyLight(style: Style) {
+internal fun applyLight(style: StyleLayers) {
     // Road-name labels get a wide white halo so they stay readable over the dotted walk
     // line / route line beneath them (dark path does the same; see the symbol pass there),
     // and the BOLD font stack - Google boldens street names on the map (user 2026-07-11).
@@ -6332,7 +6334,7 @@ internal fun applyLight(style: Style) {
 }
 
 /** Google-Maps-dark-ish palette applied over the OpenMapTiles layers. */
-internal fun applyDark(style: Style) {
+internal fun applyDark(style: StyleLayers) {
     // Every dark value below is PIXEL-SAMPLED from Google Maps (the app) on the attached
     // Pixel 9, 2026-07-11: land #162640, water #000d2a, vegetation #0d3847, buildings
     // #1c3b69 (alt shade #2e3d6d), minor roads #3d5a77, arterials/motorway #476789.
@@ -6435,7 +6437,7 @@ internal fun applyDark(style: Style) {
  * instead of falling back to Liberty's light defaults.
  * Called from applyMapTheme when ThemeMode.AMOLED is active.
  */
-internal fun applyAmoled(style: Style) {
+internal fun applyAmoled(style: StyleLayers) {
     applyDark(style)
 
     val black = "#000000"
@@ -6508,7 +6510,7 @@ internal fun applyAmoled(style: Style) {
  * the twin layers that arrived after the archive (trails/bike/pitch/commercial)
  * get harmonious colors so nothing renders unstyled.
  */
-internal fun applyClassicLight(style: Style) {
+internal fun applyClassicLight(style: StyleLayers) {
     listOf("highway-name-path", "highway-name-minor", "highway-name-major").forEach {
         style.getLayer(it)?.setProperties(
             PropertyFactory.textField(roadLabelTextField()), // romanize for a Latin-script UI (issue #184)
@@ -6580,7 +6582,7 @@ internal fun applyClassicLight(style: Style) {
 }
 
 /** CLASSIC dark: the archived pre-pixel-sample night palette (see applyClassicLight). */
-internal fun applyClassicDark(style: Style) {
+internal fun applyClassicDark(style: StyleLayers) {
     // Classic dark = a NEUTRAL charcoal-slate identity, deliberately UNLIKE Modern's Google-navy
     // dark (Modern pixel-samples #162640 land / #1c3b69 buildings / blue roads). The two used to
     // differ, but once Modern was re-sampled to Google's blue, classic's old #242f3e blue-gray read
