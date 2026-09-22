@@ -26,8 +26,11 @@ class StyleHost(private val style: Style) : StyleLayers {
 
 /** A snapshotter exposes layers and sources by id only; the loops over the whole list (Vela's own
  *  runtime layers, none of which exist on the car map) see nothing, which is right. */
-class SnapshotterHost(private val snapshotter: MapSnapshotter) : StyleLayers {
+class SnapshotterHost(private val snapshotter: MapSnapshotter, private val layerIds: List<String> = emptyList()) : StyleLayers {
     override fun getLayer(id: String): Layer? = runCatching { snapshotter.getLayer(id) }.getOrNull()
     override fun getSource(id: String): Source? = runCatching { snapshotter.getSource(id) }.getOrNull()
-    override val layers: List<Layer> get() = emptyList()
+    /** The snapshotter has no layer list of its own; the caller hands in the ids parsed out of
+     *  the style JSON it loaded, so the palette's blanket passes (label halos, landuse) run on the
+     *  car too. Empty ids = only the named-layer passes, which is how it was until 2026-09-22. */
+    override val layers: List<Layer> get() = layerIds.mapNotNull { getLayer(it) }
 }

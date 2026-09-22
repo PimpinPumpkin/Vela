@@ -616,7 +616,13 @@ Defaults that make the safe path the easy one:
   to the screen (it was anchored to the surface's corner, under the map action strip). The
   voice sounding "muffled, like Bluetooth" is the protocol: Android Auto's guidance audio stream
   is 16 kHz mono, so every nav voice, Google's included, is band-limited on the car; a head unit
-  set to route navigation prompts over the phone-call link makes it 8 kHz.
+  set to route navigation prompts over the phone-call link makes it 8 kHz. The light map on
+  that drive did not look like Vela's light palette (user: "some generic crap"), and the phone
+  had been dark the whole time, so the palette most likely never applied: `SnapshotterHost` now
+  takes the style's layer ids (parsed from the JSON the snapshotter loaded, or the bundled
+  Liberty asset) so `applyMapTheme`'s blanket passes run on the car, and `applyTheme` logs
+  success or the swallowed exception under `VelaCar`. Next stock-Pixel session: read that line
+  first. The car attribution is the phone's `map_osm_attribution` text verbatim.
   **THE GATE, READ OFF A REAL CAR LOG (2026-09-22, GrapheneOS Pixel 9, sandboxed Play, Android
   Auto 17.4, "Unknown sources" on, KingInstaller's Shizuku method so the install fields read
   installer=com.android.vending, requester=com.android.packageinstaller):** on connect the
