@@ -3276,7 +3276,7 @@ class MapViewModel @Inject constructor(
                     // closed listing, which then hid the open pin for good). Google keeps the
                     // closed profile beside the live one for months; the live one is the answer
                     // whenever there is one.
-                    val pool = answerable.filter { nameAgrees(name, it.name) }
+                    val pool = answerable.filter { nameAgrees(name, it.name, it.address) }
                         .ifEmpty { answerable.filter { it.location.distanceTo(location) <= NO_NAME_MATCH_M } }
                         .let { p -> p.filterNot { it.permanentlyClosed }.ifEmpty { p } }
                     // THE SAME NAME BEATS A NEARER ONE (user 2026-09-18: tapping a supermarket
@@ -3312,7 +3312,7 @@ class MapViewModel @Inject constructor(
                     val poolNearest = ranked.minByOrNull { it.location.distanceTo(location) }
                     // Which gate emptied the pool, and what the three nearest answers actually
                     // were. Counts and distances only.
-                    tapWhy = "agree=" + answerable.count { nameAgrees(name, it.name) } +
+                    tapWhy = "agree=" + answerable.count { nameAgrees(name, it.name, it.address) } +
                         " near60=" + answerable.count { it.location.distanceTo(location) <= NO_NAME_MATCH_M } +
                         " pool=" + pool.size + " exact=" + exact.size +
                         " local=" + local.size + " group=" + tappedGroup + " sameKind=" + sameKind.size +
@@ -3373,7 +3373,7 @@ class MapViewModel @Inject constructor(
             // ambient purge uses). Before this a slow session that surfaced the old profile
             // first buried a business that was open across the street.
             if (full != null && seed != null && full.permanentlyClosed &&
-                resolved.second.none { !it.permanentlyClosed && nameAgrees(name, it.name) && it.location.distanceTo(location) <= 150.0 }
+                resolved.second.none { !it.permanentlyClosed && nameAgrees(name, it.name, it.address) && it.location.distanceTo(location) <= 150.0 }
             ) hideClosedOpenPlace(seed.id)
             if (full != null && _state.value.selected == placeholder) {
                 _state.update { it.copy(selected = withListNote(full), placesHere = othersAt(full, resolved.second)) }
@@ -3437,18 +3437,11 @@ class MapViewModel @Inject constructor(
     /** Google categories that are map FURNITURE, never the answer to tapping a business. */
     private val JUNCTION_CATEGORIES = setOf("intersection", "junction", "crossroads", "road", "highway")
 
-    private fun nameAgrees(tapped: String, listing: String?): Boolean {
-        if (listing.isNullOrBlank()) return false
-        fun words(s: String) = s.lowercase()
-            .replace(Regex("[^\\p{L}\\p{N} ]"), " ")
-            .split(Regex("\\s+"))
-            .filter { it.length > 1 }
-            .toSet()
-        val a = words(tapped)
-        val b = words(listing)
-        if (a.isEmpty() || b.isEmpty()) return false
-        return a.intersect(b).size >= minOf(a.size, b.size).coerceAtMost(2)
-    }
+    /** The shared same-business rule (`core/util/PlaceNames`, 2026-09-21): descriptor tails, spelling
+     *  variants and agreeing identifying words count, shared generic words do not. The town out of
+     *  the listing's address is generic for the comparison, so "FIT House Davis" is "FIT House". */
+    private fun nameAgrees(tapped: String, listing: String?, address: String? = null): Boolean =
+        app.vela.core.util.PlaceNames.agree(tapped, listing, app.vela.core.util.PlaceNames.cityWords(address))
 
     /** Other Google listings essentially at the same spot as [place] (within ~40 m) —
      *  e.g. a co-branded shop's duplicate profile, or a different unit at the address.

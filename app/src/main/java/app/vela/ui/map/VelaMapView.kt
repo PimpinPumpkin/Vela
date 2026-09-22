@@ -335,7 +335,7 @@ private const val DEDUPE_NAME_M = 80.0 // agreeing names within this range = the
 // The SAME name (after normalizing) reaches farther: Overture often pins a store at its parcel's
 // centroid, out in the parking lot, which put a chain's second copy past 80 m (user 2026-09-17).
 private const val DEDUPE_SAME_NAME_M = 150.0
-private fun normName(s: String) = s.lowercase().replace(NAME_PUNCT, " ").split(NAME_SPACES).filter { it.isNotEmpty() }.joinToString(" ")
+private fun normName(s: String) = app.vela.core.util.PlaceNames.normalized(s)
 private class Twin(val name: String, val norm: String, val at: LatLng)
 private fun twinOf(n: String, ll: LatLng, set: List<Twin>): Boolean {
     val norm = normName(n)
@@ -5968,12 +5968,9 @@ private fun emphasizeShields(context: android.content.Context, style: Style) {
 private val NAME_PUNCT = Regex("[^\\p{L}\\p{N} ]")
 private val NAME_SPACES = Regex("\\s+")
 
-private fun namesAgree(a: String, b: String): Boolean {
-    fun words(s: String) = s.lowercase().replace(NAME_PUNCT, " ").split(NAME_SPACES).filter { it.length > 1 }.toSet()
-    val x = words(a); val y = words(b)
-    if (x.isEmpty() || y.isEmpty()) return false
-    return x.intersect(y).size >= minOf(x.size, y.size).coerceAtMost(2)
-}
+/** The shared same-business rule (`core/util/PlaceNames`): the old two-shared-words test read
+ *  "Russell Park Apartments" and "Orchard Park Apartments" as one place and hid the open twin. */
+private fun namesAgree(a: String, b: String): Boolean = app.vela.core.util.PlaceNames.agree(a, b)
 
 /** The style JSON with its `openmaptiles` vector source pointed at [archive] (a `pmtiles://file://`
  *  URI of a planetiler bake in the same OpenMapTiles schema OpenFreeMap serves), so an installed

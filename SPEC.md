@@ -1086,6 +1086,16 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   can edit, and the tile's `origin` property says `osm`. Ways and relations stay out: a building's
   centroid is the same guess as the parcel point. Measured on a small country: 766 business nodes in
   the box, 521 added after dedupe.
+- **One row per business (2026-09-21).** The source dedupes only ever compared a NEW source against
+  what was there, and Overture itself carries a business twice (a gas station under "Chevron" and
+  "Chevron Station Davis", a shop under "SpeeDee" and "SpeeDee-Midas", a store and the counter
+  inside it named after the store). After the last source is in, rows with the same snap key
+  within ~60 m collapse onto one leader: not a kiosk category first, then the higher confidence,
+  then the row that knows more (address, phone, website, hours); a hash join on the key with the
+  box as the residual. The snap key mirrors `PlaceNames.normalized` (accents, parentheticals, "&",
+  possessives, legal suffixes, store numbers) so a row the bake keeps is one the app can match.
+  Exact keys only; the VARIANT family ("Chevron Station Davis") is left to the app's rule, which is
+  the next step for the bake.
 - **Whether a rebake is worth a delta is measured, not assumed.** `scripts/archive-churn.py` reads
   both archives' PMTiles directories, hashes every tile, and reports per zoom what is identical,
   changed, added and dropped plus a real `zstd --patch-from` delta; `places-churn.yml` bakes a region
@@ -1247,8 +1257,9 @@ tenant's DOT is drawn on its own point, so a dot meters away routinely measures 
 than the icon under it. With no icon under the finger the box rules still run, so a dot stays
 tappable.
 
-The named-POI resolve is **name-agreeing first**: the pool is the listings whose name shares the
-tapped label's words (`nameAgrees`, word-set overlap needing the shorter name's tokens, cap 2).
+The named-POI resolve is **name-agreeing first**: the pool is the listings whose name is the same
+business as the tapped label under the shared rule below (`PlaceNames.agree`, with the town out of
+the listing's address as a generic word).
 Only an empty pool falls back, and the fallback is bounded twice: a non-transit tap never adopts
 a listing whose category is transit or map furniture (`JUNCTION_CATEGORIES`), and a listing that
 does not agree by name must be within `NO_NAME_MATCH_M` (60 m) rather than anywhere inside the
@@ -1258,12 +1269,33 @@ The pick must also be near the tap: a settlement label accepts a hit within 30 k
 label within 1.5 km, transit stops unbounded. A clear-dominance duplicate override
 (`canonical.reviews >= 2 * nearest.reviews + 5`) runs **within** the pool only.
 
-**A listing whose name IS the tapped name beats a nearer one.** `nameAgrees` has to be loose enough
-to match a co-branded pair, so every listing a brand owns on that lot qualifies - the store, its
-fuel station, its pharmacy, its coffee counter - and the pick was then whichever sat nearest the
-tapped point. The pool is filtered to exact normalized-name matches when any exist (lowercase, no
-punctuation, trailing store number dropped, the same rule the bake's snap key uses), and only falls
-back to the loose pool when none do.
+**A listing whose name IS the tapped name beats a nearer one.** The agree rule has to admit a
+co-branded pair, so every listing a brand owns on that lot qualifies - the store, its fuel station,
+its pharmacy, its coffee counter - and the pick was then whichever sat nearest the tapped point.
+The pool is filtered to exact normalized-name matches (`PlaceNames.same`) when any exist, and only
+falls back to the loose pool when none do.
+
+**The same-business rule (`core/util/PlaceNames`, 2026-09-21)** is ONE rule for the tap resolve,
+the Both-mode twin hiding and, mirrored in SQL, the bake's dedupe; three private copies had drifted
+and every drift was a duplicate icon or a wrong tap. It was derived from a side by side of Google's
+answers and the open archive over the Davis fixture (495 Google places in the archive's box: 290
+exact after normalization, the rest of the real twins in the three families below, and the false
+positives the old two-shared-words rule produced). `normalized` folds accents, drops parentheticals,
+reads "&" as "and", keeps a possessive on its word, drops legal suffixes (LLC, Inc, DDS Inc), chain
+tails ("by Wyndham", "an Ascend Collection Hotel"), a leading "The" or "Dr" and a trailing store
+number, expands street abbreviations (St, Ave, NY) and joins dotted initials ("U.S." is "us").
+`match(a, b, extraGeneric)` answers EXACT (normalized equal), VARIANT (one name is the other plus
+only generic words: "Circle K | Gas Station", "U.S. Bank Branch", "CVS" against "CVS Pharmacy",
+"Hilton Garden Inn Davis Downtown", "Petco Grooming"), OVERLAP (nested with non-generic extra
+words, "SpeeDee-Midas" over "SpeeDee", or not nested but two identifying words in common, "Davis
+Dental Creations" plus the dentist's surname) or NONE. `GENERIC` is the list of words that
+describe a business rather than name it (category, structure and place words), and a caller adds
+the town out of an address. A single shared identifying word is NOT a match ("Arroyo Park" against
+"Arroyo Pool"), a name made only of generic words matches nothing by overlap ("Hair" inside "Hair
+Studio"), and a brand's other listing is a VARIANT that `same` keeps out. Pinned by
+`PlaceNamesMatchTest` with the fixture pairs. Not yet in the rule: a department listing at the
+same point with a different name (the station's "Fast & Easy Mart" beside "Chevron"), and Google's
+own two profiles for one business.
 
 Sheet titles follow the app language's script: `NameScript.prefer(uiLang, google, label)` keeps
 the map's own label as the title when Google's name is not in the app language's script and the

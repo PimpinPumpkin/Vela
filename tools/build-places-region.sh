@@ -253,7 +253,16 @@ CREATE TABLE raw AS SELECT $SEL, CAST(NULL AS VARCHAR) AS hours FROM $SRC
 -- #1561" -> "safeway"): the two-word dedupe key is deliberately loose, and moving a point needs a
 -- tighter test than dropping a duplicate does (it dragged a campus onto its own outreach office,
 -- 2026-09-17).
-CREATE MACRO snapkey(n) AS nullif(trim(regexp_replace(regexp_replace(lower(coalesce(n, '')), '[^a-z0-9]+', ' ', 'g'), '[ ]+(no|num|store|#)?[ ]*[0-9]{2,6}$', '')), '');
+-- Since 2026-09-21 the key mirrors the app's core/util/PlaceNames.normalized: accents folded,
+-- parentheticals out, "&" read as "and", legal suffixes dropped, a possessive "'s" kept on its
+-- word, then punctuation, spaces and the trailing store number. "SpeeDee Oil Change & Auto
+-- Service", "Caffé Italia", "James W. Childress, DDS Inc." and "Nugget #12" key the way the tap
+-- resolve reads them, so a row the bake keeps is one the app can match.
+CREATE MACRO snapkey(n) AS nullif(trim(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(
+  strip_accents(lower(coalesce(n, ''))),
+  '\\([^)]*\\)', ' ', 'g'), '''s\\b', 's', 'g'), '&', ' and ', 'g'), '[^a-z0-9]+', ' ', 'g'),
+  '\\b(llc|inc|corp|co|ltd|company|incorporated|corporation|pc|apc|llp|pllc)\\b', ' ', 'g'),
+  '[ ]+(no|num|store|unit|#)?[ ]*[0-9]{2,6}$', '')), '');
 -- SHARED TAG MAPPING. AllThePlaces and OpenStreetMap both describe a place with OSM tags, so the
 -- tag-to-category mapping and the "is this a business" test live here as macros and both sources
 -- use them; they used to be forty lines inside the AllThePlaces block.
@@ -301,6 +310,23 @@ CREATE MACRO nkey(n) AS trim(regexp_extract(regexp_replace(lower(n), '[^a-z0-9 ]
   regexp_extract(regexp_replace(lower(n), '[^a-z0-9 ]', ' ', 'g'), '\\b[a-z0-9]{2,}\\b(?: [a-z0-9] )* +\\b([a-z0-9]{2,})\\b', 1));
 $ATP_SQL
 $OSM_BIZ_SQL
+-- ONE ROW PER BUSINESS (user 2026-09-21, "two POIs that really should be one"). Overture itself
+-- carries the same business twice (a gas station under "Chevron" and "Chevron Station Davis", a
+-- shop under "SpeeDee" and "SpeeDee-Midas", a store and the counter inside it named after the
+-- store), and the source dedupes above only ever compared a NEW source against what was there.
+-- Rows with the same snap key within ~60 m collapse onto one leader: not a kiosk category, then
+-- the higher confidence, then the row that knows more (address, phone, website, hours). A hash
+-- join on the key with the box as the residual, never a correlated lookup (state-scale rule).
+CREATE TABLE dupk AS SELECT id, lat, lng, snapkey(name) AS sk, confidence,
+  (CASE WHEN category IN ('rental_kiosks','bank_equipment_service','money_transfer_services','atms','key_and_locksmith','vending_machine','photo_booth') THEN 1 ELSE 0 END) AS kiosk,
+  ((addr IS NOT NULL)::INT + (phone IS NOT NULL)::INT + (website IS NOT NULL)::INT + (hours IS NOT NULL)::INT) AS fields
+  FROM raw WHERE snapkey(name) IS NOT NULL;
+CREATE TABLE dupleader AS
+SELECT a.id, first(b.id ORDER BY b.kiosk, b.confidence DESC, b.fields DESC, b.id) AS leader
+FROM dupk a JOIN dupk b ON b.sk = a.sk AND abs(b.lat - a.lat) < 0.00055 AND abs(b.lng - a.lng) < 0.0007
+GROUP BY a.id;
+DELETE FROM raw WHERE id IN (SELECT id FROM dupleader WHERE id <> leader);
+SELECT (SELECT count(*) FROM dupleader WHERE id <> leader) AS same_business_rows_dropped;
 CREATE TABLE scored AS
 SELECT *,
   CASE
