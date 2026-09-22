@@ -49,7 +49,7 @@ class PlaceNamesMatchTest {
         assertEquals("james w childress dds", PlaceNames.normalized("James W. Childress, DDS Inc."))
         assertEquals("us bank", PlaceNames.normalized("U.S. Bank"))
         assertEquals("nugget", PlaceNames.normalized("Nugget #12"))
-        assertEquals("keith grote dmd", PlaceNames.normalized("Dr. Keith Grote, DMD"))
+        assertEquals("doctor keith grote dmd", PlaceNames.normalized("Dr. Keith Grote, DMD"))
         assertEquals("la quinta inn and suites", PlaceNames.normalized("La Quinta Inn & Suites by Wyndham"))
     }
 
@@ -90,6 +90,40 @@ class PlaceNamesMatchTest {
         assertEquals(PlaceNames.Match.VARIANT, m("Zorpmart Fuel Station", "Zorpmart"))
         assertEquals(PlaceNames.Match.VARIANT, m("Petco Grooming", "Petco"))
         assertFalse(PlaceNames.same("Zorpmart Fuel Station", "Zorpmart"))
+    }
+
+    @Test fun `brand prefixes, phrases inside longer names, plurals and titles`() {
+        assertTrue(PlaceNames.agree("Bank of America Financial Center", "Bank of America ATM"))
+        assertTrue(PlaceNames.agree("My NYC Dentist - 23rd Street Dental", "23rd Street Dental Associates", setOf("new", "york", "ny")))
+        assertTrue(PlaceNames.agree("Sola Salons", "Sola Salon Studios"))
+        assertEquals(PlaceNames.Match.EXACT, m("Dr.'s Express Urgent Care", "Doctors Express Urgent Care"))
+        assertTrue(PlaceNames.agree("Laurenzo's Prime Rib", "Laurenzo's Restaurant"))
+        assertEquals(PlaceNames.Match.VARIANT, m("Dr. Keith Grote, DMD", "Keith Grote"))
+        // Street words are not identity.
+        assertEquals(PlaceNames.Match.NONE, m("38th st grocery deli", "Rsvp 38th Street Venture Lp", setOf("new", "york", "ny")))
+        assertEquals(PlaceNames.Match.NONE, m("Avid & Co.", "The Avid Reader Bookstore"))
+    }
+
+    @Test fun `a short lone word does not claim a longer name`() {
+        assertEquals(PlaceNames.Match.NONE, m("The Finn", "Dish Society at Finn Hall"))
+        assertEquals(PlaceNames.Match.NONE, m("Bayou Place", "Bunnies On The Bayou"))
+        assertEquals(PlaceNames.Match.NONE, m("Bryant Health Clinic", "Osteria Delbianco Bryant Park"))
+        assertEquals(PlaceNames.Match.OVERLAP, m("Nordstrom", "Nordstrom NYC Flagship", setOf("new", "york", "ny")))
+        assertEquals(PlaceNames.Match.OVERLAP, m("Patsy's Pizzeria Flatiron", "Patsy's"))
+    }
+
+    @Test fun `a neighborhood shared across the pool is generic there`() {
+        val pool = listOf("Memorial Heights Reflexology", "The Shops at Memorial Heights", "Memorial Heights Dental", "Joe's Pizza")
+        val local = PlaceNames.localGeneric(pool)
+        assertTrue(local.containsAll(setOf("memorial", "heights")))
+        assertEquals(PlaceNames.Match.NONE, PlaceNames.match("The Shops at Memorial Heights", "Memorial Heights Reflexology", local))
+        assertEquals(PlaceNames.Match.OVERLAP, PlaceNames.match("The Shops at Memorial Heights", "Memorial Heights Reflexology"))
+    }
+
+    @Test fun `a number can be the name`() {
+        assertEquals(PlaceNames.Match.VARIANT, m("Thai 5, Thai Food Express", "Thai 5"))
+        assertEquals(PlaceNames.Match.NONE, m("Thai 5", "Thai 9"))
+        assertTrue(PlaceNames.agree("Salon Vintage: Le fox Hair Care - Hairstylist", "Salon Vintage"))
     }
 
     @Test fun `an overlap across two known kinds is two businesses on one lot`() {

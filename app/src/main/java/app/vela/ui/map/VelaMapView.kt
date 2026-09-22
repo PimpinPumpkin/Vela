@@ -339,7 +339,7 @@ private const val DEDUPE_NAME_M = 80.0 // agreeing names within this range = the
 private const val DEDUPE_SAME_NAME_M = 150.0
 private fun normName(s: String) = app.vela.core.util.PlaceNames.normalized(s)
 private class Twin(val name: String, val norm: String, val at: LatLng, val kind: String? = null, val hn: String? = null)
-private fun twinOf(n: String, kind: String?, hn: String?, ll: LatLng, set: List<Twin>): Boolean {
+private fun twinOf(n: String, kind: String?, hn: String?, ll: LatLng, set: List<Twin>, localGeneric: Set<String>): Boolean {
     val norm = normName(n)
     return set.any { m ->
         val d = m.at.distanceTo(ll)
@@ -348,7 +348,7 @@ private fun twinOf(n: String, kind: String?, hn: String?, ll: LatLng, set: List<
             // the archive, the operator's name on Google, user 2026-09-22): the same station. Two
             // across the street from each other differ by house number and are left alone.
             app.vela.core.util.PlaceNames.sameFuelLot(kind, m.kind, d, hn, m.hn) ||
-            (d < DEDUPE_NAME_M && app.vela.core.util.PlaceNames.sameBusiness(n, kind, m.name, m.kind))
+            (d < DEDUPE_NAME_M && app.vela.core.util.PlaceNames.sameBusiness(n, kind, m.name, m.kind, localGeneric))
     }
 }
 
@@ -381,6 +381,9 @@ private fun hideOpenTwins(map: MapLibreMap, style: Style, pois: List<MapMarker>,
         if (pois.any { o -> normName(o.name) == norm && o.location.distanceTo(c.location) < DEDUPE_SAME_NAME_M }) null
         else Twin(c.name, norm, c.location)
     }
+    // Words shared by three or more names on screen are the neighborhood's, not a business's
+    // ("Bryant Park", "Flatiron", "Memorial Heights"): generic for these comparisons.
+    val localGeneric = app.vela.core.util.PlaceNames.localGeneric(shown.map { it.name } + rendered.mapNotNull { it.getStringProperty("name") })
     val displaced = HashSet<String>()
     rendered.forEach { f ->
         val id = f.getStringProperty("id") ?: return@forEach
@@ -390,7 +393,7 @@ private fun hideOpenTwins(map: MapLibreMap, style: Style, pois: List<MapMarker>,
         val kind = runCatching { f.getStringProperty("group") }.getOrNull()
         val hn = app.vela.core.util.PlaceNames.houseNumber(runCatching { f.getStringProperty("addr") }.getOrNull())
         if (gone.isNotEmpty() && gone.any { m -> m.at.distanceTo(ll) < DEDUPE_NAME_M && namesAgree(n, m.name) }) onClosed(id)
-        else if (twinOf(n, kind, hn, ll, shown)) displaced += id
+        else if (twinOf(n, kind, hn, ll, shown, localGeneric)) displaced += id
     }
     // A twin already hidden is no longer RENDERED, so the query above cannot see it, and dropping
     // it from the set would flip it back on until the next pass. So re-check the hidden ones
@@ -408,7 +411,7 @@ private fun hideOpenTwins(map: MapLibreMap, style: Style, pois: List<MapMarker>,
                 val pt = f.geometry() as? Point ?: return@forEach
                 val kind = runCatching { f.getStringProperty("group") }.getOrNull()
                 val hn = app.vela.core.util.PlaceNames.houseNumber(runCatching { f.getStringProperty("addr") }.getOrNull())
-                if (twinOf(n, kind, hn, LatLng(pt.latitude(), pt.longitude()), shown)) displaced += id
+                if (twinOf(n, kind, hn, LatLng(pt.latitude(), pt.longitude()), shown, localGeneric)) displaced += id
             }
         }
     }

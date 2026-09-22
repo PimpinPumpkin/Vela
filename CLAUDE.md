@@ -2586,6 +2586,15 @@ architecture note.
   fuel rows by house number too. The Both-mode twin pass reads the ambient feature's `icon`
   (`vela-poi-<group>`) and `hn`, and the open feature's `group` and `addr`. The lot rule is 30 m
   and two different known house numbers refuse it (two stations facing each other across a road).
+  **Dense cities (2026-09-22, Midtown + downtown Houston through the REAL rule, not the Python
+  approximation):** the Kotlin probe recipe is kept at the scratchpad's `ZzTmpCorrProbe.kt.txt`
+  (a throwaway core test that reads `corr.txt` = `tag|google.json|archive.json|s,w,n,e` lines
+  from the `-DvelaObf` dir and prints exact/variant/overlap/none with examples); state archives
+  decode over HTTP RANGE reads (`decode_box.py`, a pmtiles `Reader` with a `get_bytes` that sends
+  a Range header, so a 700 MB archive costs a few MB). New families and their guards are in SPEC
+  5.5; the one that matters most in a city is `localGeneric`: neighborhood and landmark words
+  ("Bryant Park", "Flatiron", "Heights") sit in a dozen names on one screen and were matching
+  each other, so both app sites hand the pool's shared words in as generic.
 - **A CLOSED LISTING NEVER BEATS A LIVE ONE, AND ONLY HIDES A PIN WHEN NO LIVE TWIN EXISTS
   (2026-09-21).** Google keeps a moved business's old, permanently closed profile beside the live
   one for months. The tap pool now drops closed listings whenever a live candidate exists, and
