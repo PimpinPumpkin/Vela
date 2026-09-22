@@ -2976,7 +2976,9 @@ fun VelaMapView(
                             name = nameOf(hit)!!,
                             location = LatLng(pt.latitude(), pt.longitude()),
                             category = prop("class"),
-                            address = prop("addr"),
+                            // The street line plus the tile's `loc` (city, region, postcode), baked
+                            // apart because the bake joins on the street line (2026-09-22).
+                            address = listOfNotNull(prop("addr"), prop("loc")).joinToString(", ").ifBlank { null },
                             phone = prop("phone"),
                             website = prop("website"),
                             // `hours` (OSM opening_hours syntax, baked from AllThePlaces for chain

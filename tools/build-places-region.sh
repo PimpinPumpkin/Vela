@@ -125,7 +125,11 @@ SELECT 'atp:' || (json_extract_string(props, '@spider')) || ':' || COALESCE(json
   json_extract_string(props, 'brand') AS brand,
   COALESCE(json_extract_string(props, 'addr:full'), json_extract_string(props, 'addr:street_address')) AS addr,
   json_extract_string(props, 'website') AS website, json_extract_string(props, 'phone') AS phone, 'open' AS operating_status,
-  json_extract_string(props, 'opening_hours') AS hours, lng, lat
+  json_extract_string(props, 'opening_hours') AS hours, lng, lat,
+  -- A locator's addr:full already names the town; only a split address gets the town appended.
+  CASE WHEN json_extract_string(props, 'addr:full') IS NULL THEN fmtloc(json_extract_string(props, 'addr:city'),
+    json_extract_string(props, 'addr:state'), json_extract_string(props, 'addr:postcode'),
+    coalesce(json_extract_string(props, 'addr:country'), (SELECT cc FROM regioncc))) END AS loc
 FROM atp_raw
 WHERE json_extract_string(props, 'name') IS NOT NULL AND json_extract_string(props, 'name') <> ''
   AND lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N
@@ -144,9 +148,26 @@ WHERE a.nk IS NOT NULL AND a.nk <> '' AND abs(o.lat - a.lat) < 0.0015 AND abs(o.
 UNION
 SELECT DISTINCT a.id FROM atpkeys a JOIN rawkeys o ON o.bk = a.bk
 WHERE a.bk IS NOT NULL AND abs(o.lat - a.lat) < 0.0015 AND abs(o.lng - a.lng) < 0.002;
+-- A locator point that duplicates an Overture row is dropped, but what it knows is not: a chain's
+-- locator carries the store's hours, which Overture never has (the same rule as the OSM fill
+-- below). Name only, never brand, so one branch's hours cannot land on another.
+CREATE TABLE atpfill AS
+SELECT rid, hours, phone, website, loc FROM (
+  SELECT o.id AS rid, a.hours, a.phone, a.website, a.loc,
+    row_number() OVER (PARTITION BY o.id ORDER BY abs(o.lat - ak.lat) + abs(o.lng - ak.lng)) AS rn
+  FROM rawkeys o JOIN atpkeys ak ON ak.nk = o.nk JOIN atp a ON a.id = ak.id
+  WHERE ak.nk IS NOT NULL AND ak.nk <> '' AND abs(o.lat - ak.lat) < 0.0015 AND abs(o.lng - ak.lng) < 0.002
+    AND (a.hours IS NOT NULL OR a.phone IS NOT NULL OR a.website IS NOT NULL OR a.loc IS NOT NULL)
+) WHERE rn = 1;
+UPDATE raw SET hours = coalesce(raw.hours, f.hours), phone = coalesce(raw.phone, f.phone),
+  website = coalesce(raw.website, f.website)
+FROM atpfill f WHERE raw.id = f.rid;
+INSERT INTO locs SELECT rid, loc FROM atpfill WHERE loc IS NOT NULL;
 INSERT INTO raw
 SELECT a.id, a.name, a.category, a.confidence, a.brand, a.addr, a.website, a.phone, a.operating_status, a.lng, a.lat, a.hours
 FROM atp a WHERE a.id NOT IN (SELECT id FROM atpdupes);
+INSERT INTO locs SELECT id, loc FROM atp WHERE id NOT IN (SELECT id FROM atpdupes) AND loc IS NOT NULL;
+SELECT (SELECT count(*) FROM atpfill WHERE hours IS NOT NULL) AS atp_hours_carried;
 CREATE TABLE atp_snap AS
 SELECT id, alat, alng FROM (
   SELECT o.id, a.lat AS alat, a.lng AS alng,
@@ -163,12 +184,12 @@ ATPSQL
 fi
 if [ -n "$LOCAL" ]; then
   SRC="read_parquet('$LOCAL')"
-  SEL="id, name, category, confidence, brand, addr, website, phone, operating_status, lng, lat"
+  SEL="id, name, category, confidence, brand, addr, website, phone, operating_status, lng, lat, CAST(NULL AS VARCHAR) AS loc, CAST(NULL AS VARCHAR) AS cc"
   # The dev extract has plain lng/lat columns and no bbox struct.
   BBOXPRED=""
 else
   SRC="read_parquet('s3://overturemaps-us-west-2/release/$RELEASE/theme=places/type=place/*', hive_partitioning=1)"
-  SEL="id, names.primary AS name, categories.primary AS category, confidence, brand.names.primary AS brand, addresses[1].freeform AS addr, websites[1] AS website, phones[1] AS phone, operating_status, ST_X(geometry) AS lng, ST_Y(geometry) AS lat"
+  SEL="id, names.primary AS name, categories.primary AS category, confidence, brand.names.primary AS brand, addresses[1].freeform AS addr, websites[1] AS website, phones[1] AS phone, operating_status, ST_X(geometry) AS lng, ST_Y(geometry) AS lat, fmtloc(addresses[1].locality, addresses[1].region, addresses[1].postcode, addresses[1].country) AS loc, addresses[1].country AS cc"
   # PRUNE ON bbox, NOT ON THE GEOMETRY (2026-09-18). The region filter below is on ST_X/ST_Y, which
   # DuckDB has to decode per row, so every place on earth was read for every region: 504 s of a
   # 570 s Kentucky bake, once per region, 414 times. Overture's own `bbox` struct is a plain column
@@ -212,7 +233,9 @@ SELECT 'osm:' || id AS id, name, osmcat(props) AS category,
   nullif(trim(coalesce(json_extract_string(props, 'addr:housenumber'), '') || ' ' || coalesce(json_extract_string(props, 'addr:street'), '')), '') AS addr,
   coalesce(json_extract_string(props, 'website'), json_extract_string(props, 'contact:website')) AS website,
   coalesce(json_extract_string(props, 'phone'), json_extract_string(props, 'contact:phone')) AS phone,
-  'open' AS operating_status, json_extract_string(props, 'opening_hours') AS hours, lng, lat
+  'open' AS operating_status, json_extract_string(props, 'opening_hours') AS hours, lng, lat,
+  fmtloc(json_extract_string(props, 'addr:city'), json_extract_string(props, 'addr:state'),
+    json_extract_string(props, 'addr:postcode'), coalesce(json_extract_string(props, 'addr:country'), (SELECT cc FROM regioncc))) AS loc
 FROM osm_src WHERE name IS NOT NULL AND name <> '' AND id <> '' AND isbiz(props);
 -- Keys are recomputed here, AFTER the AllThePlaces insert, so OSM dedupes against everything
 -- already in the table rather than against Overture alone.
@@ -231,20 +254,22 @@ WHERE o.bk IS NOT NULL AND abs(r.lat - o.lat) < 0.0015 AND abs(r.lng - o.lng) < 
 -- has (Overture's, or a chain locator's) stays. Name only, never brand, so one branch's hours
 -- cannot land on another branch of the chain a block away.
 CREATE TABLE osmfill AS
-SELECT rid, hours, phone, website FROM (
-  SELECT r.id AS rid, o.hours, o.phone, o.website,
+SELECT rid, hours, phone, website, loc FROM (
+  SELECT r.id AS rid, o.hours, o.phone, o.website, o.loc,
     row_number() OVER (PARTITION BY r.id ORDER BY abs(r.lat - ok.lat) + abs(r.lng - ok.lng)) AS rn
   FROM rawkeys2 r JOIN osmbizkeys ok ON ok.nk = r.nk JOIN osmbiz o ON o.id = ok.id
   WHERE ok.nk IS NOT NULL AND ok.nk <> '' AND abs(r.lat - ok.lat) < 0.0015 AND abs(r.lng - ok.lng) < 0.002
-    AND (o.hours IS NOT NULL OR o.phone IS NOT NULL OR o.website IS NOT NULL)
+    AND (o.hours IS NOT NULL OR o.phone IS NOT NULL OR o.website IS NOT NULL OR o.loc IS NOT NULL)
 ) WHERE rn = 1;
 UPDATE raw SET hours = coalesce(raw.hours, f.hours), phone = coalesce(raw.phone, f.phone),
   website = coalesce(raw.website, f.website)
 FROM osmfill f WHERE raw.id = f.rid;
+INSERT INTO locs SELECT rid, loc FROM osmfill WHERE loc IS NOT NULL;
 SELECT (SELECT count(*) FROM osmfill WHERE hours IS NOT NULL) AS osm_hours_carried;
 INSERT INTO raw
 SELECT o.id, o.name, o.category, o.confidence, o.brand, o.addr, o.website, o.phone, o.operating_status, o.lng, o.lat, o.hours
 FROM osmbiz o WHERE o.id NOT IN (SELECT id FROM osmdupes) AND o.category IS NOT NULL;
+INSERT INTO locs SELECT id, loc FROM osmbiz WHERE id NOT IN (SELECT id FROM osmdupes) AND category IS NOT NULL AND loc IS NOT NULL;
 SELECT (SELECT count(*) FROM osmbiz) AS osm_biz_in_box, (SELECT count(*) FROM raw WHERE id LIKE 'osm:%') AS osm_biz_added;
 OSMBIZSQL
 fi
@@ -276,8 +301,25 @@ INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial; SET s3_region='us-we
 -- all, which reads like flaky infrastructure (Australia and its states, twice, 2026-09-18). A
 -- limit under the runner's 16 GB with somewhere to spill turns that into a slower bake.
 SET memory_limit = '11GB'; SET temp_directory = '$WORK/duckdb-spill';
+-- THE REST OF THE ADDRESS (user 2026-09-22: "a lot of the places don't have the full address, no
+-- zip, city or state"). `addr` is the street line only, and it stays that way because several
+-- steps below use it as a JOIN KEY (tenant matching, the unit snap, the fuel-lot house number).
+-- The city / region / postcode travel in a side table `locs` and are exported as the tile's `loc`,
+-- which the app appends. Formatted the way the country writes an address: "Davis, CA 95616" in
+-- the US, Canada and Australia (ZIP+4 cut to the ZIP), "London SW1A 1AA" in Britain and Ireland,
+-- "10115 Berlin" everywhere else. OSM and AllThePlaces rows rarely say their country, so they
+-- take the region's own most common Overture country.
+CREATE MACRO fmtloc(city, region, postcode, country) AS nullif(trim(CASE
+  WHEN upper(coalesce(country, 'US')) IN ('US', 'CA', 'AU') THEN concat_ws(', ', nullif(trim(city), ''),
+    nullif(trim(concat_ws(' ', nullif(trim(region), ''), nullif(split_part(trim(coalesce(postcode, '')), '-', 1), ''))), ''))
+  WHEN upper(country) IN ('GB', 'IE') THEN concat_ws(' ', nullif(trim(city), ''), nullif(trim(postcode), ''))
+  ELSE concat_ws(' ', nullif(trim(postcode), ''), nullif(trim(city), '')) END), '');
 CREATE TABLE raw AS SELECT $SEL, CAST(NULL AS VARCHAR) AS hours FROM $SRC
   WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N $BBOXPRED;
+CREATE TABLE regioncc AS SELECT coalesce(mode(cc), 'US') AS cc FROM raw;
+CREATE TABLE locs AS SELECT id, loc FROM raw WHERE loc IS NOT NULL;
+ALTER TABLE raw DROP COLUMN loc;
+ALTER TABLE raw DROP COLUMN cc;
 -- The snap key is the WHOLE name, normalized, with a trailing store number dropped ("Safeway
 -- #1561" -> "safeway"): the two-word dedupe key is deliberately loose, and moving a point needs a
 -- tighter test than dropping a duplicate does (it dragged a campus onto its own outreach office,
@@ -602,10 +644,10 @@ COPY (
       'class', COALESCE(upper(substr(replace(category, '_', ' '), 1, 1)) || substr(replace(category, '_', ' '), 2), 'Place'),
       'group', grp, 'icon', 'vela-poi-' || grp, 'prominence', round(prominence, 2), 'confidence', round(COALESCE(confidence, 0.5), 2),
       'rank', rank, 'crank', crank, 'xrank', xrank, 'frank', frank, 'landmark', landmark, 'tenant', tenant,
-      'brand', brand, 'addr', addr, 'website', website, 'phone', phone, 'hours', hours,
+      'brand', brand, 'addr', addr, 'loc', loc, 'website', website, 'phone', phone, 'hours', hours,
       'src', 'overture', 'origin', CASE WHEN id LIKE 'atp:%' THEN 'atp' WHEN id LIKE 'osm:%' THEN 'osm' ELSE 'overture' END
     )
-  ) FROM ranked
+  ) FROM ranked LEFT JOIN (SELECT id, any_value(loc) AS loc FROM locs GROUP BY id) lx USING (id)
 ) TO '$WORK/places.ndjson' (FORMAT CSV, HEADER false, QUOTE '', ESCAPE '', DELIMITER '\t');
 SELECT count(*) AS features, sum(tenant) AS tenants, round(avg(prominence),2) AS prom_avg, sum(CASE WHEN landmark = 1 AND xrank <= 3 THEN 1 ELSE 0 END) AS z12, sum(CASE WHEN crank <= 2 OR prominence >= 5 THEN 1 ELSE 0 END) AS z14, sum(CASE WHEN rank <= 3 OR prominence >= 4.5 THEN 1 ELSE 0 END) AS z15, sum(CASE WHEN rank <= 12 OR prominence >= 3.5 THEN 1 ELSE 0 END) AS z16 FROM ranked;
 SQL

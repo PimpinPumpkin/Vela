@@ -2794,7 +2794,15 @@ architecture note.
   sun events as words, quoted notes shown cleaned); measure with the pack's distinct `hours`
   strings through `toDayLines` before changing it. The places bake now CARRIES an OSM duplicate's
   hours / phone / website onto the kept row (`osmfill`, same-name within the dedupe box, never by
-  brand); before, the dedupe dropped the node with its hours.
+  brand); before, the dedupe dropped the node with its hours. **Same day, second pass:** the
+  AllThePlaces dedupe does the same (`atpfill`: a chain locator's hours, phone and website go onto
+  the Overture row it duplicates; the Davis test box went from almost no hours to 60 carried), and
+  the tiles gained a `loc` property, the city / region / postcode (`fmtloc`: "Davis, CA 95616" for
+  US/CA/AU with ZIP+4 cut, "London SW1A 1AA" for GB/IE, "10115 Berlin" elsewhere; OSM and ATP rows
+  default to the region's most common Overture country via `regioncc`). It lives in a side table
+  `locs` joined in at export because `addr` is a JOIN KEY in the bake (tenants, unit snap, fuel
+  lot) and must stay the bare street line; the app appends it in the open-place seed. Every row in
+  the Davis test box got one. Place packs already built the full line from OSM's tags.
 - **A TAP THAT DOES NOT LINK LOGS WHY (`VelaTap`, 2026-09-18).** The open-place resolve prints the
   tapped label, the tile's kind, whether it was seeded, how many results Google returned, how many
   survived the transit/junction filter, what was picked and at what distance, and the distance cap.
