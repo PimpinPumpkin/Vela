@@ -376,6 +376,12 @@
     <string name="place_call">Call</string>
     <string name="place_website">Website</string>
     <string name="place_hours_not_listed">Hours not listed</string>
+    <string name="place_source_overture">Overture</string>
+    <string name="place_source_atp">AllThePlaces (%1$s)</string>
+    <string name="place_source_osm">OpenStreetMap</string>
+    <string name="place_origin_checking">From %1$s · checking Google</string>
+    <string name="place_origin_unlinked">From %1$s · not matched on Google</string>
+    <string name="place_origin_plain">From %1$s</string>
     <string name="place_loading_popular_times">Loading popular times &amp; details…</string>
     <string name="place_also_at_location">Also at this location</string>
     <string name="place_open">Open</string>

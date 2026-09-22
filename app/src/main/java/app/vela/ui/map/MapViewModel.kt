@@ -178,6 +178,9 @@ data class MapUiState(
     /** (resolved listing id, tapped placeholder id): the sheet keeps the placeholder's identity
      *  when the tap resolves to a listing, so the open sheet updates in place. */
     val sheetAlias: Pair<String, String>? = null,
+    /** Id of a tapped placeholder whose Google lookup finished without a match: the sheet says so
+     *  under the name, with where the map's row came from. */
+    val tapUnlinkedFor: String? = null,
     val placesHere: List<Place> = emptyList(), // other Google listings at the selected spot
     val reviews: List<Review> = emptyList(),
     val reviewsLoading: Boolean = false,
@@ -3253,6 +3256,7 @@ class MapViewModel @Inject constructor(
                 selected = placeholder,
                 tapResolvingFor = if (willResolve) placeholder.id else null,
                 sheetAlias = null,
+                tapUnlinkedFor = null,
                 results = emptyList(),
                 center = location,
                 placesHere = emptyList(),
@@ -3377,7 +3381,12 @@ class MapViewModel @Inject constructor(
                     // Words shared by three or more of the listings around the tap are the area's
                     // (a neighborhood, a mall, a landmark), generic for the comparison.
                     val localGeneric = app.vela.core.util.PlaceNames.localGeneric(results.map { it.name })
-                    val agreeing = answerable.filter { p ->
+                    // Only a name match within reach of the tap counts (user 2026-09-22: a pin named
+                    // for the brand on the pumps agreed with seventeen of that brand's stations
+                    // miles away, which kept every nearby fallback from running while the right
+                    // listing, under the seller's own name, sat 11 m from the pin; the far ones
+                    // were then dropped by the distance cap and the tap linked to nothing).
+                    val agreeing = answerable.filter { it.location.distanceTo(location) <= BUSINESS_TAP_CAP_M }.filter { p ->
                         app.vela.core.util.PlaceNames.sameBusiness(
                             name, tappedKind, p.name, PoiIcons.groupFor(p.name, p.category),
                             app.vela.core.util.PlaceNames.cityWords(p.address) + localGeneric,
@@ -3391,10 +3400,18 @@ class MapViewModel @Inject constructor(
                     // an open-data fuel row named for the site, "<Station> <Pizza counter>", sat
                     // out on the highway; the name search found the pizza counter inside the
                     // station and no gas listing, and the kind rule rightly refused the pizza).
-                    val kindRescue = if (agreeing.isEmpty() && crossScript.isEmpty() && tappedKind != "default")
-                        kindBesideAnchor(name, location, seed?.category ?: poiKind, tappedKind, answerable) else emptyList()
+                    // A listing of the tapped KIND on the same spot is the next best thing to a name
+                    // match, and costs nothing: it is already in the results.
+                    val sameKindNear = if (tappedKind == "default") emptyList() else answerable.filter {
+                        it.location.distanceTo(location) <= NO_NAME_MATCH_M && PoiIcons.groupFor(it.name, it.category) == tappedKind
+                    }
+                    var kindRescue: List<Place> = emptyList()
                     val pool = agreeing.ifEmpty { crossScript }
-                        .ifEmpty { kindRescue }
+                        .ifEmpty { sameKindNear }
+                        .ifEmpty {
+                            if (tappedKind != "default") kindRescue = kindBesideAnchor(name, location, seed?.category ?: poiKind, tappedKind, answerable)
+                            kindRescue
+                        }
                         .ifEmpty { answerable.filter { it.location.distanceTo(location) <= NO_NAME_MATCH_M } }
                         .let { p -> p.filterNot { it.permanentlyClosed }.ifEmpty { p } }
                     // THE SAME NAME BEATS A NEARER ONE (user 2026-09-18: tapping a supermarket
@@ -3432,7 +3449,7 @@ class MapViewModel @Inject constructor(
                     // were. Counts and distances only.
                     tapWhy = "agree=" + answerable.count { nameAgrees(name, it.name, it.address) } +
                         " near60=" + answerable.count { it.location.distanceTo(location) <= NO_NAME_MATCH_M } +
-                        " cross=" + crossScript.size + " kind=" + kindRescue.size + " pool=" + pool.size + " exact=" + exact.size +
+                        " cross=" + crossScript.size + " kindNear=" + sameKindNear.size + " kind=" + kindRescue.size + " pool=" + pool.size + " exact=" + exact.size +
                         " local=" + local.size + " group=" + tappedGroup + " sameKind=" + sameKind.size +
                         " nearest=[" + answerable.sortedBy { it.location.distanceTo(location) }.take(3)
                             .joinToString("; ") { it.name + " " + "%.0f".format(it.location.distanceTo(location)) + "m/" + (it.category ?: "-") } + "]"
@@ -3451,7 +3468,7 @@ class MapViewModel @Inject constructor(
                 val maxM = when {
                     transitHint != null -> Double.MAX_VALUE
                     poiKind?.lowercase() in SETTLEMENT_KINDS -> 30_000.0
-                    else -> 1_500.0
+                    else -> BUSINESS_TAP_CAP_M
                 }
                 val kept = pick?.takeIf { it.location.distanceTo(location) <= maxM }
                 val preCap = pick?.let { it.name + " " + "%.0f".format(it.location.distanceTo(location)) + "m" } ?: "none"
@@ -3542,6 +3559,10 @@ class MapViewModel @Inject constructor(
             }
           } finally {
             stopResolving() // nothing resolved, an error, or a cancel: the label's own data shows
+            // Still the tapped label after a real lookup: Google had nothing that matched.
+            if (willResolve) _state.update {
+                if (isPlaceholder(it.selected, placeholder)) it.copy(tapUnlinkedFor = placeholder.id) else it
+            }
           }
         }
     }
@@ -3571,6 +3592,9 @@ class MapViewModel @Inject constructor(
     /** How near a listing that does NOT agree with the tapped name may be and still become the
      *  place: the same lot, not the far side of the junction. */
     private val NO_NAME_MATCH_M = 60.0
+
+    /** How far a tapped business's listing may be from the tapped point (issue #429). */
+    private val BUSINESS_TAP_CAP_M = 1_500.0
 
     /** How far the "a listing named exactly what I tapped wins" rule may reach. It separates a
      *  store from its own forecourt, which share a lot, so it must not be able to prefer a branch

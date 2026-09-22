@@ -448,6 +448,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   OpenStreetMap or a chain's store locator has them, including from downloaded place packs), and
   Google's listing replaces it in place. The lookup itself is about three times faster: it asks
   for one page of results instead of three.
+- ✅ **"Where is this place from?" (2026-09-22).** A tapped map place that is not yet (or never
+  becomes) a Google listing says so in small gray text under its name: "From Overture",
+  "From AllThePlaces (chain)" or "From OpenStreetMap", then "checking Google" or "not matched on
+  Google". An OpenStreetMap row's line opens its node, so a wrong place can be fixed at the source.
 - ✅ **Fuel stations (and fire, police, charging stations) link again (2026-09-22).** Their open
   data category contains "station", which sent the lookup down the transit-stop path, and it
   never linked. And a fuel row named for its site rather than its brand now finds the gas

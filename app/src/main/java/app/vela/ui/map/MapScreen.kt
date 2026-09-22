@@ -2075,6 +2075,7 @@ fun MapScreen(
                 state.streetView == null && !state.streetViewLoading -> PlaceSheet(
                 place = state.selected!!,
                 resolving = state.tapResolvingFor != null && state.tapResolvingFor == state.selected?.id,
+                unlinked = state.tapUnlinkedFor != null && state.tapUnlinkedFor == state.selected?.id,
                 sheetKey = state.selected!!.id.let { id -> state.sheetAlias?.takeIf { it.first == id }?.second ?: id },
                 onExpandedChange = { placeSheetExpanded = it },
                 isSaved = state.saved.any { it.id == state.selected!!.id },

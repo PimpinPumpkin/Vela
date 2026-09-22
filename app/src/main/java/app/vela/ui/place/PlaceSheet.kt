@@ -257,6 +257,8 @@ fun PlaceSheet(
     /** The tapped label is still being looked up on Google: skeletons stand in for the details,
      *  which fade in when the listing lands. */
     resolving: Boolean = false,
+    /** The tapped label's Google lookup found nothing: the source line says "not matched". */
+    unlinked: Boolean = false,
     /** What the sheet's own state (detent, expanded, menus) is keyed on. The map screen keeps it
      *  at the tapped placeholder's id when the tap resolves to a listing with another id, so the
      *  resolve updates the open sheet instead of re-mounting it (the "flash", user 2026-09-22). */
@@ -815,6 +817,33 @@ fun PlaceSheet(
                 HeaderCircleButton(Icons.Default.Close, stringResource(R.string.place_close), dim, dim, onClick = onClose)
             }
 
+            // WHERE THIS ROW CAME FROM, for a tapped map place that is not (yet) a Google listing
+            // (user 2026-09-22): Overture, AllThePlaces (with the chain's spider) or
+            // OpenStreetMap, so a place that never links says which dataset to fix. An OSM row
+            // links to its node. Gone once the Google listing replaces the placeholder.
+            PlaceOrigin.of(place.id)?.let { origin ->
+                val src = when (origin.kind) {
+                    PlaceOrigin.Kind.OVERTURE -> stringResource(R.string.place_source_overture)
+                    PlaceOrigin.Kind.ATP -> stringResource(R.string.place_source_atp, origin.detail ?: "?")
+                    PlaceOrigin.Kind.OSM -> stringResource(R.string.place_source_osm)
+                }
+                val line = when {
+                    resolving -> stringResource(R.string.place_origin_checking, src)
+                    unlinked -> stringResource(R.string.place_origin_unlinked, src)
+                    else -> stringResource(R.string.place_origin_plain, src)
+                }
+                val url = origin.osmUrl?.takeIf { !app.vela.ui.HideExternalLinks.on.value }
+                Text(
+                    line,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = dim.copy(alpha = 0.8f),
+                    modifier = Modifier.padding(top = 2.dp).then(
+                        if (url != null) Modifier.clickable {
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                        } else Modifier,
+                    ),
+                )
+            }
             // The rating row is the other thing that lands late above the action pills, and it is
             // worth ~30dp of shove on its own. Hold its line while the details are in flight for a
             // place that will have one (user 2026-09-18); an unrated place never reaches here
