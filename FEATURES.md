@@ -2141,8 +2141,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   typed house address the results could not place now geocodes it the same way. Offline and
   with Google off, the old local-pack + OpenStreetMap path is unchanged.
 - ✅ **The fill-in arrow on suggestions (2026-09-22).** Google's north-west arrow on every
-  suggestion row puts the row's text into the search box without searching, cursor at the
-  end, so a long address or a name can be finished by hand.
+  suggestion row puts the row's primary text (the name, or an address's street line) into the
+  search box without searching, cursor at the end, so it can be refined by hand.
 - ✅ **Arrival speaks ONE line (2026-07-15).** "Your destination is on the right" when the
   route knows the side; "You have arrived" only as the fallback when it doesn't - they no
   longer stack.

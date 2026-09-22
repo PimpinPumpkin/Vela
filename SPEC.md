@@ -1447,7 +1447,7 @@ host that cannot answer.
   the keyless `/s?tbm=map&suggest=p` call biased to the viewport), which honors the location
   bias for a partial address; rows without a location are bare query rows that run as a search.
   When it fails or Google is off, the older search-endpoint + OpenStreetMap race answers. Every
-  suggestion row carries a fill-in arrow that puts its text into the box, cursor at the end,
+  suggestion row carries a fill-in arrow that puts its primary text into the box, cursor at the end,
   without searching. A typed house address that the search results cannot place is geocoded
   through the same request and leads the results.
 - Local suggestions (recent queries, recent places, saved and list places, and opted-in

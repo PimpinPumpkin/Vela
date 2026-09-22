@@ -2401,8 +2401,9 @@ architecture note.
   leads with its rows that do. Fixture-backed test: `SuggestParserTest`.
 - **The fill-in arrow (2026-09-22):** every suggestion row (local, Google, query) carries
   Google's north-west arrow (`SuggestionRow.onFill` -> `MapViewModel.fillQuery` ->
-  `onQueryChange`): the row's text goes into the box WITHOUT searching (a Google row fills
-  `name, address`). `SearchBar` now owns a `TextFieldValue` so any text set from outside (fill,
+  `onQueryChange`): the row's PRIMARY text goes into the box WITHOUT searching (a place's name,
+  an address's street line, a recent's query; user 2026-09-22 found the full "name, city, state"
+  Google fills too much to refine). `SearchBar` now owns a `TextFieldValue` so any text set from outside (fill,
   voice) lands with the cursor at the END; with a plain String the cursor stayed mid-text.
 - **Local suggestions (issue #180, 2026-07-19):** `onQueryChange` sets `localSuggestions` from
   `localMatches()` SYNCHRONOUSLY (recents searches + viewed places + list/saved places, substring
