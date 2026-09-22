@@ -426,9 +426,16 @@ on:
 What it does not touch: the calibration fetch (that is GitHub, not Google), the open basemap,
 routing, transit boards from Transitous, cameras, road features and everything offline.
 
-One Google request survives it on purpose: **pasting a Google Maps share link** into search
-still imports the shared list from google.com, because the user handed the app a Google URL and
-asked for it. The FAQ's full cost list is in [docs/FAQ.md](../FAQ.md#can-i-use-vela-without-google-at-all);
+One Google request survives it, and only by choice: **a short Google Maps link**
+(`maps.app.goo.gl/...`) says nothing about where it points until Google's link shortener is asked.
+With "Open shared Google Maps links" on (the default, shown under the switch), `core/data/ShortLinks`
+asks it once per hop with no cookies, reads the redirect's `Location` and stops before loading any
+Google page; the target's place name and its own pin (`!3d`/`!4d`, preferred over the sharer's
+`@` map center) are read on the phone by `MapLinkParser` and searched like any deep link. Turned
+off, a short link is refused with a toast. A full `google.com/maps` link never needs the request.
+A shared LIST cannot open under the switch at all, because its places exist only on Google's
+servers (toast `map_import_needs_google`); with Google on it imports as before. Logcat `VelaLink`
+prints where a short link pointed, cut before the `@` coordinates and the query. The FAQ's full cost list is in [docs/FAQ.md](../FAQ.md#can-i-use-vela-without-google-at-all);
 what still works with no network at all is [chapter 8](08-offline.md).
 
 ## Limits

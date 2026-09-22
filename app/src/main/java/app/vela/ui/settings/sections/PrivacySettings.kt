@@ -41,6 +41,17 @@ internal fun PrivacySettingsScreen(vm: app.vela.ui.map.MapViewModel, onBack: () 
                 hint = stringResource(R.string.settings_google_free_hint),
                 switchModifier = topRow,
             )
+            // Only meaningful while the switch is on: whether a shared short link may still ask
+            // Google's shortener where it points.
+            if (app.vela.ui.GoogleFree.on.value) {
+                app.vela.ui.settings.GroupDivider()
+                app.vela.ui.settings.ToggleRow(
+                    label = stringResource(R.string.settings_google_free_links),
+                    checked = app.vela.ui.GoogleFree.resolveLinks.value,
+                    onCheckedChange = { app.vela.ui.GoogleFree.setResolveLinks(context, it) },
+                    hint = stringResource(R.string.settings_google_free_links_hint),
+                )
+            }
         }
         Spacer(Modifier.height(8.dp))
         SettingsGroup {

@@ -2229,9 +2229,15 @@ architecture note.
   place (reviews, photos, popular times, transit directions, the stop-board Google fallback);
   `ensureTraffic` is off (the raster is Google's tile server); the satellite `-1` fallback draws
   no deep layer; the place sheet hides the Street View pill and the full-screen reviews page.
-  `importList` (a pasted Google Maps share link) is gated too since 2026-09-22 (it was exempt, but
-  the switch and the FAQ promise no request reaches Google; the search shows
-  `map_import_needs_google` instead). No unit test
+  `importList` (a shared LIST) is gated too since 2026-09-22 (toast `map_import_needs_google`).
+  A shared SHORT link to a single place still opens: `core/data/ShortLinks.resolve` asks Google's
+  shortener once per hop with no cookies and stops at the redirect, then `MapLinkParser` reads the
+  name and the place's own `!3d`/`!4d` pin and the open search takes over. The user wanted this ON
+  by default ("the alternative is you just don't view a link someone sends") with a way off:
+  `GoogleFree.resolveLinks` ("Open shared Google Maps links", shown under the switch; off = toast
+  `map_link_needs_google`). With Google on, a single-place short link now opens the place too (it
+  used to fall into the list importer and fail). `ShortLinksTest` pins the one-request, no-cookie
+  behavior against a local socket server. No unit test
   covers the switch itself (it is a flag read at each seam); the FAQ lists what it costs. Keep it in step when a source or a default changes; the
   fleet default for the places source lives in `calibration.json` (`defaultPlacesSource`, "open"
   today) and a change there needs `./scripts/sign-calibration.sh`.
