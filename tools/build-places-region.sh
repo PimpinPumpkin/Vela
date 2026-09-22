@@ -26,7 +26,15 @@
 # tippecanoe-decode binaries are missing); ATP_LOCAL points at a local extract for dev runs.
 set -euo pipefail
 ID="$1"; S="$2"; W="$3"; N="$4"; E="$5"; OUT="$6"; RELEASE="${7:-2026-08-19.0}"; LOCAL="${8:-}"
-ATP_RUN="${ATP_RUN:-2026-09-05-13-32-25}"
+# The AllThePlaces run: the NEWEST published one unless the caller pins ATP_RUN. It was a fixed
+# id until 2026-09-22, so every bake since 2026-09-15 carried the same week-old locator data
+# while AllThePlaces publishes weekly; the fixed id stays as the fallback when the pointer fetch
+# fails, so a bake never runs with no chain data because a JSON was unreachable.
+if [ -z "${ATP_RUN:-}" ]; then
+  ATP_RUN="$(curl -fsSL --max-time 30 https://data.alltheplaces.xyz/runs/latest.json 2>/dev/null | jq -r '.run_id // empty' 2>/dev/null || true)"
+  ATP_RUN="${ATP_RUN:-2026-09-05-13-32-25}"
+  echo "AllThePlaces run: $ATP_RUN"
+fi
 # TMPDIR decides where the scratch goes, and for a continent-sized region that matters: the
 # AllThePlaces extract, the OSM extract, DuckDB's spill and tippecanoe's temp files add up to more
 # than a CI runner's root disk holds (see the workflow, which points it at the big mount).

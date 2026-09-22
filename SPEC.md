@@ -1086,6 +1086,10 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   can edit, and the tile's `origin` property says `osm`. Ways and relations stay out: a building's
   centroid is the same guess as the parcel point. Measured on a small country: 766 business nodes in
   the box, 521 added after dedupe.
+- **AllThePlaces is the newest weekly run at bake time (2026-09-22)**: `build-places-region.sh`
+  reads `data.alltheplaces.xyz/runs/latest.json` unless `ATP_RUN` pins one, with the last pinned
+  id as the fallback when the fetch fails. It had been a fixed id, so every bake carried the same
+  week-old locator data.
 - **One row per business (2026-09-21).** The source dedupes only ever compared a NEW source against
   what was there, and Overture itself carries a business twice (a gas station under "Chevron" and
   "Chevron Station Davis", a shop under "SpeeDee" and "SpeeDee-Midas", a store and the counter
