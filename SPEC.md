@@ -126,7 +126,8 @@ setting, `:app` writes a plain flag into `:core` (`CategoryFilter.enabled`, `Low
   its own Google surfaces on the same setting: the hidden WebView fetchers return null at
   `HiddenWebView.request`, the traffic raster is not added, the satellite Google fallback draws
   no deep layer, the tap lookup and the ambient fan-out are skipped, and the Street View pill and
-  the full-screen reviews page are hidden. A pasted Google Maps share link still imports.
+  the full-screen reviews page are hidden. A pasted Google Maps share link is refused with a note saying why
+  (`importList` returns null under the switch), because resolving it asks Google.
 
 ### 2.2 Module tree
 
@@ -354,7 +355,8 @@ so a recalibrated template survives.
   in the same session return byte-identical degraded bodies. The page DOM walk replaces it.
 - Per-photo upload dates. The RPC that carries them returns zero photos to an automated
   browser even with the page's own fresh token, and the place page does not embed photo URLs
-  at walk time. The date-join plumbing stays in place and inert.
+  at walk time. The date-join plumbing stays in place and inert, and the RPC is not sent: the
+  `photoDatesRpc` tuning dial (default 0) turns it back on from the signed calibration.
 - Review "helpful" counts, which are login-gated to zero for logged-out sessions.
 - EV charger detail (type marker only), the recently-opened badge, and live incidents (Google
   serves binary vector tiles; Waze's feed is reCAPTCHA-gated).
@@ -948,7 +950,8 @@ renderer then sat at 89 percent of a core. The Developer row states the date it 
   requests per trip. A kept route leads the list with its badge and carries its waypoint plan
   (`Route.detourPlan`); a drive started on it carries the detour points as silent stops, which
   every reroute and recheck routes through and nothing speaks or lists. A mid-drive stops edit
-  rebuilds the list from the visible stops and drops the detour. Drive mode only.
+  keeps the detour: `NavSession.withSilentVias` puts the silent points still ahead back in, each
+  where it falls along the current plan route relative to the edited stops. Drive mode only.
 - **Speeding alert** (off by default): the voice fires after 4 s continuously over the posted
   limit, re-arms after 8 s back under, at most once per 45 s, with the same 5 km/h tolerance the
   badge uses so the two never contradict each other.
@@ -1060,8 +1063,9 @@ The same pass purges closures: an open icon matching a permanently-closed Google
 80 m, with no open listing of that name within 150 m, is added to the persisted closed set.
 
 **OSM basemap business POIs** (`poi_r1`, `poi_r7`, `poi_r20`) are hidden outright under an open
-places source unless "OpenStreetMap shops too" is on, because the three open datasets cover
-businesses far better. Everything else OSM draws (museums, attractions, parks, schools, civic
+places source when "OpenStreetMap shops too" (on by default) is turned off, because the three
+open datasets cover businesses far better; with it on, `osmFillIn` drops an OSM business by name
+wherever an open icon already draws it. Everything else OSM draws (museums, attractions, parks, schools, civic
 buildings, places of worship, transit) stays, and `osmFillIn` drops by name only the
 non-business OSM points an open icon of a non-business group already draws within 80 m. That
 pass is viewport-only and rendered-only on both sides, grow-only within a source set (capped at
@@ -1829,11 +1833,12 @@ applier is `app/offline/PmtilesPatch`.
   map data with nothing listed (issue #601). Settings > Offline maps > "Delete all offline data"
   (`MapViewModel.deleteAllOfflineData`, behind a confirm naming the total) removes every saved
   area, every region's routing, place pack, places and basemap archive, the building and address
-  overlays (which an area save pulls and no region row can delete), the road features and any
-  legacy graph tree, sweeps the stores' folders for files no catalog id reaches any more, clears
+  overlays (which an area save pulls and no region row can delete), the road features, the offline
+  basemap's label glyph pack (`files/glyphs`, ~200 MB) and any legacy graph tree, sweeps the stores' folders for files no catalog id reaches any more, clears
   the browsing cache and packs the database. Voices and speech models are not offline map data
   and stay.
-- **Settings > Offline maps reports the archives too.** `offlineStorageBreakdown`'s "Offline places"
+- **Settings > Offline maps reports the archives too.** The map figure counts the glyph pack
+  and the road features beside the database, overlays and basemap archives, and `offlineStorageBreakdown`'s "Offline places"
   counts `files/poipacks` AND `files/places`; the archives were absent from the only storage screen
   in the app, so a region's few hundred MB of places were invisible.
 - **The archive catalog is memoized for an hour, not forever.** `PmtilesRegionStore.manifest` runs on

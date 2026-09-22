@@ -185,10 +185,10 @@ So the merge is now a repair. `scripts/merge-places-manifest.sh` and
 `repair-basemap-manifest.sh` with today's date and the run's entry directory. Each one:
 
 1. Lists every `places-*.pmtiles` or `basemap-*.pmtiles` asset on the release, with its size.
-2. Keeps the old manifest's row for an archive that has not changed. For places, "unchanged" means
+2. Keeps the old manifest's row for an archive that has not changed. For both, "unchanged" means
    the same size in MB **and** an upload date no later than the row's `rev`, because two bakes of
-   a small state can round to the same size (Nebraska, 2026-09-22). For basemap it is the size
-   alone.
+   a small state can round to the same size (Nebraska, 2026-09-22). The basemap repair used the
+   size alone until the same day.
 3. Builds a fresh row for anything else. Places take name and bounds from `places-regions.json`
    and look for a `places-<id>.<oldrev>.vpatch` asset to carry as the delta. Basemap takes the name
    from the routing catalog and the bounds from the archive itself: one range request for the first

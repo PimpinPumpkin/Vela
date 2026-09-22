@@ -434,12 +434,13 @@ fun MapScreen(
     // on-screen zoom buttons. mapDpad is the key→camera seam into VelaMapView.
     val dpadMode = rememberDpadMode()
     val dpadFirst = rememberDpadFirstDevice()
-    // Which control the nav bar's right slot carries. The step-list button wins it whenever it was
-    // asked for (Prefer buttons, or a keypad-first phone): those people asked for a discrete target
-    // and pause has one in the right-edge stack either way. Otherwise the slot, which is an empty
-    // spacer on a touch phone, takes PAUSE and the stack keeps a plain mute button.
+    // What the nav bar's right slot carries. The step-list button shows whenever it was asked for
+    // (Prefer buttons, or a keypad-first phone). Pause takes the slot too when "Pause in the bar"
+    // is on, so someone with Prefer buttons gets BOTH and the figures shrink to fit (FitText); a
+    // silent choice between them meant the pause default never reached the people who asked for
+    // buttons. A keypad-first phone keeps pause in the right-edge stack, where the key path is.
     val navListButton = app.vela.ui.PreferButtons.on.value || dpadFirst
-    val navPauseInBar = app.vela.ui.PauseInBar.on.value && !navListButton
+    val navPauseInBar = app.vela.ui.PauseInBar.on.value && !dpadFirst
     val mapDpad = remember { MapDpadController() }
     var mapFocused by remember { mutableStateOf(false) }
     var mapEngaged by remember { mutableStateOf(false) } // arrows pan only while engaged (docs/dpad.md)

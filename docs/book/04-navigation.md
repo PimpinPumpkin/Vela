@@ -262,9 +262,9 @@ on the navigation bar", on by default). That slot is otherwise empty, there only
 End button on the left, and putting pause there leaves mute as a plain button with the other map
 controls, so neither is behind a pop-out.
 
-The step list button claims the same slot for anyone who has asked for buttons over gestures, and
-on a phone driven by keys; pause then goes back to the map controls. So does turning the setting
-off. There it shares one button with mute: the first tap slides mute out beside it for six seconds
+Anyone who has asked for buttons over gestures gets the step list button in the bar as well, and
+the trip figures shrink to fit both. On a phone driven by keys pause goes back to the map
+controls, where the key path is, and so does turning the setting off. There it shares one button with mute: the first tap slides mute out beside it for six seconds
 and the second tap, on the same target, pauses; a long press mutes on the spot. The step list is
 reachable in every layout, because the bar's chevron is a real button as well as a handle. And
 while paused, one tap resumes wherever the control lives: the glyph already says what the tap

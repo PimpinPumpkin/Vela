@@ -22,7 +22,7 @@ toggle:
    under **Customize vehicle launcher**.
 
 That is the same step OsmAnd, Organic Maps, and every other sideloaded nav app
-needs. Media apps (music, podcasts) do **not** need it, which is why a sideloaded
+needs. On many phones it is not enough on its own: see "Where the real gate is" below. Media apps (music, podcasts) do **not** need it, which is why a sideloaded
 music player shows up on Android Auto with no fuss while a nav app does not. See
 below.
 
@@ -61,58 +61,63 @@ template app:
 If Android Auto still does not list Vela after enabling Unknown sources, it is not
 because one of these is missing.
 
+
+## Where the real gate is
+
+On a real car the Unknown sources toggle is not the whole story. A car log captured in
+September 2026 (a Pixel 9 on GrapheneOS with sandboxed Play, Android Auto 17.4, Unknown sources
+on) shows what Android Auto does when the phone connects: it asks the Play Store who owns each
+template app, gets `PlayGearheadService app.vela, app owners empty`, and then logs
+`CAR.VALIDATOR: Package DENIED; failed all other checks [app.vela]`. CoMaps and Organic Maps
+were denied the same way. The check reads Play's own install record, so setting the installer
+fields on the phone does not pass it, and Unknown sources did not cover it on that phone.
+
+What has been seen to work:
+
+- **A stock Pixel with a Google account signed in to Play**, with Vela installed through King
+  Installer's "Google installer" method (Google's own package installer, which GrapheneOS does
+  not ship). Vela was listed and ran.
+- **An aftermarket head unit** (a motorcycle unit, phone on Android 16) with Vela installed
+  through King Installer and Unknown sources on. Aftermarket units often run their own receiver,
+  which can be more lenient than the one built into cars.
+
+The Desktop Head Unit (Google's car simulator) does not run the ownership check at all: on a
+stock phone with no Google account, a plain sideloaded Vela was listed and ran, and the log
+shows no ownership lookup. It is useful for trying the car screens, and proves nothing about
+whether a car will list Vela.
+
 ## If it still does not appear
 
-Enabling Unknown sources is enough for the large majority of setups. When it is
-not, work through these:
-
-1. **Confirm the toggle stuck.** Some phones have more than one Android Auto
-   surface (the built-in one under Connected devices and a standalone app). Make
-   sure Unknown sources is on for the one your car actually uses, then force stop
-   Android Auto and reconnect.
-2. **Let Android Auto rescan.** Force stop Android Auto (and Google Play services
-   on ROMs that run it sandboxed), then reopen. A plain phone reboot does not
-   always trigger a fresh scan of installed template apps.
-3. **Grab a log while opening Android Auto.** This is the one step that actually
-   tells us why. With the phone plugged in and USB debugging on:
-
-   ```
-   adb logcat -c
-   # now open Android Auto / connect to the car (or the Desktop Head Unit)
-   adb logcat | grep -iE "carapp|CAR\.|projection|Vela"
-   ```
-
-   Android Auto logs which template apps it discovered and whether it rejected any
-   (and why). If Vela is discovered but rejected, that line names the reason. If
-   Vela never appears in the scan at all, that points at the Unknown-sources gate
-   or the install source rather than anything in the app.
-4. **Worth a try: reinstall reporting Play as the installer.** A few users have
-   reported that installing with the Play Store recorded as the install source
-   nudges Android Auto into listing a sideloaded nav app:
+1. **Check how Vela was installed.** Settings > About shows "Installed by" and the package
+   that installed Vela. An installer that records the Play Store is what the workarounds above
+   rely on, and an in-app update reinstalls through the system installer and undoes it. When
+   the install source is the Play Store, Vela holds the update back and offers the APK as a file
+   so you can reinstall it the same way.
+2. **Confirm the toggle stuck.** Some phones have more than one Android Auto surface (the
+   built-in one under Connected devices and a standalone app). Make sure Unknown sources is on
+   for the one your car actually uses, then force stop Android Auto and reconnect.
+3. **Let Android Auto rescan.** Force stop Android Auto (and Google Play services on ROMs that
+   run it sandboxed), then reopen. A plain phone reboot does not always trigger a fresh scan of
+   installed template apps.
+4. **Grab a log while connecting.** This is the one step that tells us why. With the phone
+   plugged in and USB debugging on, start a log that survives the drive, connect to the car,
+   then pull it:
 
    ```
-   adb install -i com.android.vending -r vela.apk
+   adb shell 'nohup logcat -f /data/local/tmp/aa.txt -r 32768 -n 6 &'
    ```
 
-   This is not a guaranteed fix and it is not something the app can do for itself,
-   but it costs nothing to try. A Shizuku- or root-based installer that sets the
-   install source does the same thing.
-5. **Reported to work on an aftermarket head unit: King Installer.** One user
-   (September 2026, a motorcycle head unit, phone on Android 16) got Vela listed
-   by installing it through King Installer, which records an install source the
-   way step 4 does, then enabling Unknown sources in Android Auto's developer
-   settings, and connecting over adb. Aftermarket units often run their own
-   Android Auto receiver, which can be more lenient than the one built into
-   cars, so this may be why it worked there. It is a user report, not something
-   tested here: proceed with caution, and expect an in-app update to reset the
-   install source (step 4's caveat) until you reinstall the same way.
+   ```
+   adb pull /data/local/tmp/aa.txt
+   ```
+
+   Search it for `CAR.VALIDATOR` and `PlayGearheadService`. A reboot stops the capture. Scrub
+   any coordinates before attaching it to an issue.
 
 ## Known rough edge: de-Googled and sandboxed-Play ROMs
 
-Android Auto is part of Google Play services, so it works on a de-Googled ROM only
-where sandboxed Google Play is set up and Android Auto is talking to it. On those
-ROMs the discovery of sideloaded template apps and the reading of the Unknown
-sources setting have more moving parts than on a stock phone, and other nav apps
-hit the same wall. If you are on one of these and the steps above do not surface
-Vela, the logcat from step 3 is what we need to take it further. Open an issue
-with that log attached (scrub any coordinates first) and we will dig in.
+Android Auto is part of Google Play services, so it works on a de-Googled ROM only where
+sandboxed Google Play is set up and Android Auto is talking to it. The ownership check above is
+what stops sideloaded navigation apps there, Vela included, and nothing inside the app can
+answer it. A listing on Google Play, a head unit running full Android, or a car running Android
+natively are the ways around it.
