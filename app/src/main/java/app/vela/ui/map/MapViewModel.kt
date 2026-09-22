@@ -6061,7 +6061,9 @@ class MapViewModel @Inject constructor(
     private var lastBasemapSwapMs = 0L
 
     private suspend fun pickBasemapArchive(center: LatLng?) {
-        val file = basemapStore.installedFor(center)
+        val mountedNow = _state.value.basemapArchive?.removePrefix("pmtiles://file://")?.let { java.io.File(it) }
+        val corners = viewport?.let { v -> listOf(LatLng(v[0], v[1]), LatLng(v[0], v[3]), LatLng(v[2], v[1]), LatLng(v[2], v[3])) }.orEmpty()
+        val file = basemapStore.installedFor(center, mountedNow, corners)
         // A SHALLOW archive (baked a zoom level short because the full bake would pass GitHub's
         // 2 GiB asset limit) draws as a blurred version of the same map once you are past its
         // depth, so a download made the map worse than streaming (issue #552). Online, the streamed
