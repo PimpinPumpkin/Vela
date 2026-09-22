@@ -27,11 +27,11 @@ object VelaConfig {
      */
     const val USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-        "(KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36"
+        "(KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36"
 
     /** Client-hint brand list matching [USER_AGENT]'s major version. Pushed alongside it. */
     const val SEC_CH_UA =
-        "\"Chromium\";v=\"154\", \"Google Chrome\";v=\"154\", \"Not/A)Brand\";v=\"24\""
+        "\"Chromium\";v=\"153\", \"Google Chrome\";v=\"153\", \"Not/A)Brand\";v=\"24\""
 
     /**
      * HONEST identifier for COMMUNITY services (FOSSGIS OSRM, Nominatim, Photon, Overpass) — never

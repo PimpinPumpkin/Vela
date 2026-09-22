@@ -3360,13 +3360,25 @@ Two user agents, and mixing them up is the bug:
 
 Gotchas:
 
-- **DO NOT push a `userAgent` in calibration.json yet.** Six WebView scrapes in `:app`
-  (`WebReviewsFetcher`, `WebPhotoFetcher`, `WebPopularTimesFetcher`, `WebDirectionsFetcher`,
-  `WebStopDeparturesFetcher`, `ReviewsPanel`) still set `wv.settings.userAgentString =
-  VelaConfig.USER_AGENT`, the compiled const. Today that MATCHES `Calibration.DEFAULT.userAgent`, so
-  the app speaks with one voice; push a different UA and the WebView half keeps the old one - the
-  same client presenting two Chrome versions, which is worse than being merely stale. Wire those six
-  to `CalibrationStore` before using this channel.
+- **The WebViews read the calibrated UA now (2026-09-22, `app/web/WebViewIdentity`), so a pushed
+  `userAgent` is safe.** THE FINDING BEHIND IT, measured on the 4a with a header echo (a debug-only
+  ContentProvider pointing a WebView at `adb reverse` 127.0.0.1:8099; the recipe is a few lines):
+  a WebView whose `userAgentString` is overridden to desktop Chrome STILL sent
+  `X-Requested-With: app.vela` on every request, the package name in the clear, plus its own
+  client hints `sec-ch-ua: "Android WebView";v="153"`, `sec-ch-ua-mobile: ?1`,
+  `sec-ch-ua-platform: "Android"`, under the Windows Chrome UA. Every reviews, photos, popular
+  times, transit and stop-board page load carried that. `WebViewIdentity.apply(settings)` sets the
+  calibrated UA and desktop `UserAgentMetadata` from `secChUa` (verified fixed on Vanadium 153),
+  and TRIES the `X-Requested-With` allow list, which does nothing anywhere: Chromium abandoned the
+  header's removal after the origin trial, marks the androidx API disabled, and its tests assert
+  the package name is sent on every request from every WebView. That header is the one
+  deterministic Vela identifier in Google-facing traffic and it is confined to the WebView-backed
+  features; SPEC 3.6 has the reasoning and why the document-only half-measure is not taken.
+  Every new WebView calls `WebViewIdentity.apply`; never set `userAgentString` by hand again. Two more from the same pass: the compiled UA said Chrome 154
+  while Chrome's Windows stable was 153 (a browser that did not exist yet; check chromiumdash
+  before bumping), and google.com's `Accept-CH` asks for `Downlink` and `RTT`, which Chrome then
+  sends on every later request, so the XHR header set carries both. Probe recipe and residuals
+  (X-Client-Data, two cookie jars, TLS) are in SPEC 3.6.
 - **`secChUa` major version must match `userAgent`.** Separate fields pushed together for exactly
   that reason; a hint advertising a different version than the UA string is worse than sending no
   hint at all. `BrowserHeadersTest` locks the compiled pair so a careless bump of one is caught.

@@ -19,6 +19,24 @@ import org.junit.Test
  */
 class BrowserHeadersTest {
 
+    // ---- brands ----------------------------------------------------------------------------
+
+    @Test fun `the brand list parses in order and the major matches the ua`() {
+        val brands = BrowserHeaders.brands(VelaConfig.SEC_CH_UA)
+        assertEquals(listOf("Chromium", "Google Chrome", "Not/A)Brand"), brands.map { it.name })
+        assertEquals(BrowserHeaders.chromeMajor(VelaConfig.USER_AGENT), brands[0].major)
+        assertEquals(brands[0].major, brands[1].major)
+        assertTrue(BrowserHeaders.brands("garbage").isEmpty())
+    }
+
+    @Test fun `xhr headers carry the network hints google asks for and the document fetch does not`() {
+        val xhr = Request.Builder().url("https://www.google.com/x").browserXhrHeaders(VelaConfig.USER_AGENT, VelaConfig.SEC_CH_UA, "https://www.google.com/maps/").build()
+        assertEquals("10", xhr.header("Downlink"))
+        assertEquals("50", xhr.header("RTT"))
+        val doc = Request.Builder().url("https://www.google.com/maps").browserHeaders(VelaConfig.USER_AGENT, VelaConfig.SEC_CH_UA).build()
+        assertNull(doc.header("Downlink"))
+    }
+
     // ---- sanitize --------------------------------------------------------------------------
 
     @Test fun `a normal chrome ua passes through unchanged`() {
