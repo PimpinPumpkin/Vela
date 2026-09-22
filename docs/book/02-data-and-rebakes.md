@@ -70,12 +70,12 @@ All times UTC. Every one of these can also be dispatched by hand from the Action
 | What | When |
 | --- | --- |
 | Surveillance cameras | **Weekly**, Mondays 08:17 |
-| Offline place search (`poi-packs`) | **Monthly**, the 3rd at 07:15 (whole catalog; see Limits) |
-| Road features | **Monthly**, the 4th at 07:45 (whole catalog; see Limits) |
+| Offline place search (`poi-packs`) | **Monthly**, the 3rd and the 5th at 07:15: half the catalog each by sorted id (the 256-job cap) |
+| Road features | **Monthly**, the 4th and the 6th at 07:45, half the catalog each |
 | Open places, full | **Monthly**, the 6th and the 7th at 05:00: half the catalog each by sorted id, because a job matrix caps at 256 |
 | Open places, rolling | **Nightly** at 04:40: one seventh of the catalog |
 | Offline basemap | **Monthly**, the 9th and the 10th at 05:00, split in halves the same way (the 447 rows without `skip_obf`) |
-| Buildings, house numbers, speed limits | **Quarterly**, January / April / July / October, the 2nd at 04:00, dispatched by `quarterly-data-refresh` |
+| Buildings, house numbers, speed limits | **Quarterly**, January / April / July / October, the 2nd at 04:00, dispatched by `quarterly-data-refresh` (speed limits as two halves, `shard=a` then `shard=b`) |
 | Offline routing (`obf-regions`) | **Manual only** |
 | World floor | **Manual only** (`world-lowzoom.yml` with `publish: true`) |
 
@@ -339,16 +339,6 @@ hosted, unreferenced.
   is why OSM wins the coordinate in the places bake.
 - **Overture publishes monthly**, so "rebake sooner" does not mean "fresher" for the fields that
   come from Overture. It does for the AllThePlaces and OSM halves.
-- **Three scheduled runs select past the 256-job cap.** The place pack and road features crons
-  select the whole routing catalog, and the quarterly speed-limit dispatch passes `all=true`; at
-  458 rows each `plan` step refuses the matrix. The 2026-09-03 place pack cron ran when the catalog
-  was smaller; the next ones will not until those selectors are split the way places and basemap
-  are. Until then they are dispatched by group.
-- **The places repair's second listing does not yet catch a late upload.** It compares the before
-  and after listings through `grep '\.pmtiles$'`, but each listed line ends in the upload date, so
-  both sides are empty and the loop always stops after one pass. The next merge still heals it,
-  because each merge derives everything from the release. The basemap repair compares whole lines
-  and does rebuild.
 - **The basemap repair judges "unchanged" by size alone.** A same-size rebake keeps the old `rev`
   when no run entry overrides it, the way the places repair did before the upload-date check.
 - **The routing bake is manual and memory-bound.** A region whose filtered extract still does not

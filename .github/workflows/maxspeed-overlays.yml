@@ -19,9 +19,13 @@ on:
         type: string
         default: "oregon"
       all:
-        description: "Build every region in tools/routing-regions.json (ignores 'ids'). Prefer `group` (256-job cap)."
+        description: "Build every region in tools/routing-regions.json (ignores 'ids'). Past the 256-job cap: pair it with shard a, then b."
         type: boolean
         default: false
+      shard:
+        description: "Half of the selection to build, by id: a = first half, b = second half, blank = all. The whole catalog is over the 256-job matrix cap, so a full run is two dispatches."
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -38,6 +42,7 @@ jobs:
           GRP: ${{ inputs.group }}
           IDS: ${{ inputs.ids }}
           ALL: ${{ inputs.all }}
+          SHARD: ${{ inputs.shard }}
         run: |
           ids_json=$(jq -cn --arg s "$IDS" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
           sel=$(jq -c --argjson ids "$ids_json" --argjson all "${ALL:-false}" --arg grp "$GRP" '
@@ -46,6 +51,9 @@ jobs:
                         else ($all or (($ids|length) > 0 and ((.id as $rid | $ids | index($rid)) != null))) end )
               | {id, name, pbf_url} ]
           ' tools/routing-regions.json)
+          # Halve by id when asked: the whole catalog is past the 256-job matrix cap.
+          sel=$(printf '%s' "$sel" | jq -c --arg sh "${SHARD:-}" 'sort_by(.id) as $s | (($s | length) + 1) / 2 | floor as $h
+            | if $sh == "a" then $s[0:$h] elif $sh == "b" then $s[$h:] else $s end')
           n=$(printf '%s' "$sel" | jq 'length')
           echo "selected $n region(s):"; printf '%s' "$sel" | jq -r '.[].id' | paste -sd' ' -
           if [ "$n" -eq 0 ]; then echo "::error::no regions matched group='$GRP' ids='$IDS' all='$ALL'"; exit 1; fi

@@ -1763,8 +1763,8 @@ integer, collisions fail the build), never insertion counters, or a rebuild renu
 of rows and the delta balloons to pack size. `TABLE_COLUMNS` in `PoiPackStore` mirrors
 `poipack_build.py` and `poipack_delta.py`; all three must stay in step.
 
-Scheduled rebakes: ALPR cameras weekly (Monday 08:17 UTC); place packs monthly (3rd, 07:15);
-road features monthly (4th, 07:45); places (6th and 7th, 05:00, sharded); basemap (9th and 10th,
+Scheduled rebakes: ALPR cameras weekly (Monday 08:17 UTC); place packs monthly (3rd and 5th, 07:15, half the catalog each);
+road features monthly (4th and 6th, 07:45, halves); places (6th and 7th, 05:00, sharded); basemap (9th and 10th,
 05:00, split by catalog half); routing, buildings, addresses and maxspeed quarterly (January,
 April, July, October, 2nd, 04:00). The obf bake stays manual because of its runner memory limits
 and the manifest flip. A world obf bake stages into `obf-manifest-staging.json`, which the app

@@ -39,5 +39,9 @@ jobs:
       - name: Address overlays (whole catalog)
         run: gh workflow run address-overlays.yml --repo "$REPO" -f all=true
 
-      - name: Maxspeed overlays (whole catalog)
-        run: gh workflow run maxspeed-overlays.yml --repo "$REPO" -f all=true
+      # The whole routing catalog is past GitHub's 256-job matrix cap, so it goes as two halves.
+      - name: Maxspeed overlays (whole catalog, two halves)
+        run: |
+          gh workflow run maxspeed-overlays.yml --repo "$REPO" -f all=true -f shard=a
+          sleep 5
+          gh workflow run maxspeed-overlays.yml --repo "$REPO" -f all=true -f shard=b

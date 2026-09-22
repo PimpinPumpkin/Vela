@@ -5200,7 +5200,7 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   until then "Get places" reports no pack available.
   **Pack freshness (2026-07-07): rev + monthly cron + row-level deltas.** Manifest rows carry
   `rev`/`updatedAt`/`counts{poi,addr,streetpt,streetname}` and optionally `delta{fromRev,url,sizeMb}`;
-  `poi-packs.yml` has a monthly `schedule` cron (3rd, 07:15 UTC) whose prep step selects ALL catalog regions.
+  `poi-packs.yml` has two monthly `schedule` crons (3rd and 5th, 07:15 UTC); since 2026-09-22 each builds HALF the catalog by sorted id (`shard`, picked from which cron fired), because the whole 458-row catalog is past the 256-job matrix cap and the single cron refused itself at plan time. `road-features.yml` (4th and 6th) and the quarterly maxspeed dispatch (`all=true` with `shard=a`, then `b`) are split the same way.
   `build-poi-region.sh` reads the LIVE manifest for the old rev, downloads the previous zip BEFORE clobbering
   it, builds the delta (`scripts/poipack_delta.py`, SQL EXCEPT per table into del_/ins_ tables), and publishes
   it only when it is under half the full size. App: installed revs in `poipacks/revs.json`
