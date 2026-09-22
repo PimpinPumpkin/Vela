@@ -7452,10 +7452,11 @@ private fun applyData(
     style.getLayer(SPEEDCAM_LAYER)?.setMinZoom(if (route.isEmpty()) 13f else 11f)
 
     // ALPR/Flock cameras → icon features (identity-gated like the controls). Empty when the layer's
-    // off or zoomed out, which clears the source. Two uploads per change: the raw per-camera set
-    // (street-zoom detail + cones) and its 40 m-clustered twin (one badge per install below street
-    // zoom - a Flock corner mounts several single-direction heads). The route "passes N cameras"
-    // count stays on raw nodes on purpose; only the DRAWN badges merge.
+    // off or zoomed out, which clears the source. Two uploads per change, both built from the same
+    // 40 m clusters (a Flock corner mounts several single-direction heads): the street-zoom detail
+    // set (one counted badge per cluster + one cone per head) and the plain badge per cluster
+    // drawn below street zoom. The route "passes N cameras" count stays on raw nodes on purpose;
+    // only the DRAWN badges merge.
     if (flockCameras != lastAppliedFlock) {
         // ONE badge per install, at every zoom (user 2026-09-17: a junction with a head on each
         // approach drew four overlapping badges). The heads' facing cones all fan from that one

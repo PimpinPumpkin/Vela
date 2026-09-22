@@ -60,10 +60,9 @@ import javax.inject.Singleton
 /**
  * The real extractor, calibrated against maps.google.com (2026-06-15).
  *
- * Search turned out to need NO pb at all — a plain `/search?tbm=map&q=…` returns
- * the full results JSON, with viewport bias achieved by appending "near lat,lng"
- * to the query. Directions needs a pb (built by [DirectionsPb]) but no session
- * token. Both are the same endpoints google.com/maps calls from a browser, so
+ * Search is `/search?tbm=map&q=…` plus a pb built by [SearchPb] from the calibrated
+ * template, which carries the viewport (center + span) and the page offset.
+ * Directions needs a pb (built by [DirectionsPb]) but no session token. Both are the same endpoints google.com/maps calls from a browser, so
  * they work without Play Services — good for GrapheneOS.
  */
 @Singleton
@@ -201,7 +200,8 @@ class GoogleMapsDataSource @Inject constructor(
     override suspend fun search(query: String, near: LatLng?, spanMeters: Double?, rankFrom: LatLng?, lang: String?): SearchResult = io {
         // Without Google (NoGoogle): the OpenStreetMap geocoder answers, biased around the user.
         // It knows names and addresses, not categories; the downloaded place packs cover those
-        // where a region is installed (the view model's offline search runs them first).
+        // where a region is installed (the view model runs them only when offline, or when this
+        // search throws or comes back empty).
         if (app.vela.core.data.NoGoogle.enabled) {
             val bias = rankFrom ?: near
             val lang = java.util.Locale.getDefault().language
@@ -287,8 +287,8 @@ class GoogleMapsDataSource @Inject constructor(
     /**
      * Google's own autocomplete (see [SuggestParser]) for the typed suggestions. Not the
      * calibrated search endpoint: that one ranks a partial address by prominence over the
-     * window and answered "a house number" with a ZIP code in another state while five houses with that
-     * number sat a mile away. The bias is the viewport center and span, the same window the
+     * window and answered a bare five-digit house number with a same-looking ZIP code in
+     * another state while houses with that number sat a mile away. The bias is the viewport center and span, the same window the
      * search uses; hl/gl follow the app language and the phone's region like every other
      * request. Without Google the OSM geocoder answers as before (the view model's path).
      */
@@ -1204,9 +1204,6 @@ class GoogleMapsDataSource @Inject constructor(
         )
     }
 
-    /** Lighter traffic overlay for a multi-stop route: scale the ETA by Google's in-traffic ratio for a
-     *  traffic-aware time, but DON'T map the congestion spans — Google's direct origin→dest path differs
-     *  from the through-the-stops path, so its span offsets wouldn't line up. ETA only. */
     /** Free-flow calibration for a route that does NOT follow Google's course (a stops trip is
      *  routed through its stops while Google's keyless answer is the direct trip): compare average
      *  SPEEDS instead of times, so the distance difference cancels and what is left is the speed
@@ -1225,8 +1222,9 @@ class GoogleMapsDataSource @Inject constructor(
     override suspend fun nameRoute(route: Route, origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean): Route = io {
         if (!route.provisional || route.polyline.size < 3) return@io route.copy(provisional = false)
         val vias = listOf(origin) + RouteGeometry.sampleVias(route.polyline) + destination
-        // The avoid flags ride along even on a snap: the vias FORCE Google's chosen path, but
-        // exclude keeps OSRM from bridging between vias over a road class the user opted out of.
+        // The avoid flags ride along on the snap, but they add nothing on the public server:
+        // OSRM_SUPPORTS_EXCLUDE is off, so no `exclude=` is sent and the vias alone hold the
+        // snap to Google's chosen path.
         val named = RouteGeometry.routeVia(http, vias, mode, avoidTolls, avoidHighways, avoidFerries).firstOrNull()
             ?.takeIf { it.polyline.lastOrNull()?.let { p -> p.distanceTo(destination) <= SNAP_REACH_M } == true }
         // Keep the route's OWN time figures through the snap. The picker sorted and displayed this
@@ -1428,8 +1426,8 @@ class GoogleMapsDataSource @Inject constructor(
     }
 
     private companion object {
-        // Cap on waiting for the on-device avoid route: the obf engine answers in ~200 ms, but the
-        // obf engine can take many seconds on a long route, and the route chooser must not hang.
+        // Cap on waiting for the on-device avoid route: the obf engine can take many seconds on a
+        // long route, and the route chooser must not hang.
         /** The autocomplete window when the caller has no viewport: a town, like the web page's default. */
         const val SUGGEST_SPAN_M = 20_000.0
         const val AVOID_ONDEVICE_TIMEOUT_MS = 4_000L

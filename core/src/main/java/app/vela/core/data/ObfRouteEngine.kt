@@ -38,7 +38,9 @@ import java.util.concurrent.ConcurrentHashMap
  * The trade against GraphHopper CH is calc time: no precomputed shortcuts, so a cross-city route
  * costs seconds instead of ~200 ms. Offline is Vela's FALLBACK router (online OSRM is primary), so
  * download size wins over calc speed here (user call, 2026-07-23). OsmAnd's HH precomputed mode is
- * the follow-up if long routes measure too slow on-device.
+ * a prerequisite for long offline routes, not an optimization: without it a long route can exceed
+ * [MEMORY_MB] and fail outright, so until the bake generates HH, offline obf routing is a
+ * city/metro feature.
  */
 class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
 

@@ -21,7 +21,8 @@ import kotlin.math.roundToInt
 
 /** The active-guidance car screen: renders [NavSession] state into a [NavigationTemplate]
  *  (route map surface + next-maneuver card + destination ETA). Voice already speaks from NavSession.
- *  "End" stops the session; "Mute" toggles the voice; a faster-route offer is a tappable action. */
+ *  The action strip is icon-only: mute/unmute (its slot goes to a titled "Faster -N min" offer when
+ *  one is pending), pause/resume, along-route search, and a red end button that stops the session. */
 class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
     Screen(carContext), DefaultLifecycleObserver {
 

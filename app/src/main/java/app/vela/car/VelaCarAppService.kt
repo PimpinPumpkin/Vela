@@ -22,8 +22,11 @@ import javax.inject.Inject
  * no routing/nav/voice logic of its own (voice already speaks from [NavSession] events).
  *
  * NB projected Android Auto requires Google Play Services on the phone, and Google allowlists
- * NAVIGATION apps for production AA — so on a degoogled phone the car UI is reachable only via
- * Android Auto developer mode. The realistic GMS-free target is embedded AAOS. See the plan/ROADMAP.
+ * NAVIGATION apps for production AA. Developer mode and "Unknown sources" are not enough in a real
+ * car: on connect Android Auto asks Play who owns the app, and a sideloaded Vela has no owner, so
+ * the validator denies it (car log, 2026-09-22). The Desktop Head Unit skips that lookup, so it
+ * previews the UI but proves nothing about a car. The realistic GMS-free target is embedded AAOS.
+ * See CLAUDE.md and the ROADMAP.
  */
 @AndroidEntryPoint
 class VelaCarAppService : CarAppService() {

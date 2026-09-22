@@ -35,9 +35,11 @@ object CoreModule {
             .callTimeout(12, TimeUnit.SECONDS) // bound a single hung scrape so it can't stall a fan-out
             .dispatcher(
                 Dispatcher().apply {
-                    // The ambient-POI load fires ~13 parallel google.com requests; OkHttp's default
-                    // 5-per-host serializes them into ~3 rounds — the "POIs take ~10 s to load" report
-                    // (3 rounds × a slow connection). Let them all go at once → one round.
+                    // The ambient-POI load fans out 15 google.com searches (8 on the lean path,
+                    // GoogleMapsDataSource.nearbyPlaces), plus search, suggest and place fetches on
+                    // the same host. OkHttp's default 5-per-host queued them behind each other - the
+                    // "POIs take ~10 s to load" report. The fan-out's own concurrency is set by its
+                    // semaphore (ambientFanoutPermits), not by this cap.
                     maxRequestsPerHost = 24
                     maxRequests = 64
                 },

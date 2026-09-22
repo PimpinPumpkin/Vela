@@ -49,7 +49,9 @@ import kotlin.math.roundToInt
  *    live traffic, and a current-speed badge shows.
  *  - **Browse** — north-up, centered on you, NO route (so a finished trip's line doesn't linger).
  *
- * At night the snapshot is tinted dark (a real dark vector style via the snapshotter is a follow-up).
+ * Vela's own palette goes on the snapshotter's style ([applyTheme], the phone's applyMapTheme), dark at
+ * night by the host's day/night signal; the old darkening color filter only covers a frame drawn
+ * before the palette is applied.
  */
 class CarMapRenderer(
     private val carContext: CarContext,
@@ -364,7 +366,9 @@ class CarMapRenderer(
         snapshotter = runCatching { QuietSnapshotter(carContext, opts) }.getOrNull()?.also { s2 ->
             // Vela's own palette on the car map (the same applyMapTheme the phone runs): until
             // 2026-09-21 the car drew stock Liberty under a darkening color filter, which read as
-            // "a weird theme that is not ours" (user). The observer fires once the style is in.
+            // "a weird theme that is not ours" (user). This observer is a backstop: for a JSON style
+            // it never fires (the style parses before setObserver runs), so the palette actually
+            // goes on from the first snapshot callback in requestRender.
             s2.setObserver(object : MapSnapshotter.Observer {
                 override fun onDidFinishLoadingStyle() {
                     applyTheme(s2)
@@ -596,7 +600,8 @@ class CarMapRenderer(
     /** The ODbL credit, ours and only ours: the library's own overlay ([QuietSnapshotter]) printed
      *  every source's attribution string, which on this basemap is a line of tile-provider names
      *  (user 2026-09-21, "the watermark is wrong and says way more than just OpenStreetMap"). The
-     *  phone map shows the same single line. Drawn inside the visible area. */
+     *  phone map shows the same single line. Drawn inside [safeArea]: the host's stable area first,
+     *  the visible area only when no usable stable area was reported. */
     private fun drawAttribution(canvas: Canvas) {
         val vis = safeArea()
         attributionPaint.textSize = (minOf(width, height) / 45f).coerceIn(9f, 14f)
@@ -633,9 +638,9 @@ class CarMapRenderer(
         val v = if (imperial) speedMps * 2.236936 else speedMps * 3.6
         val num = v.roundToInt().coerceAtLeast(0)
         val unit = if (imperial) "mph" else "km/h"
-        // Inside the host's VISIBLE area, not the surface's corner: the template's map action
-        // strip (overview, zoom) sits over the surface's bottom right, and the badge drew under
-        // it (user 2026-09-22, stock Pixel 9). Scaled like the puck so a small unit keeps room.
+        // Inside [safeArea] (the host's STABLE area first, then the visible area), not the
+        // surface's corner: the template's map action strip (overview, zoom) sits over the
+        // surface's bottom right, and the badge drew under it (user 2026-09-22, stock Pixel 9). Scaled like the puck so a small unit keeps room.
         val vis = safeArea()
         val rad = (minOf(width, height) / 12f).coerceIn(30f, 46f)
         val cx = vis.right - rad - 16f; val cy = vis.bottom - rad - 20f

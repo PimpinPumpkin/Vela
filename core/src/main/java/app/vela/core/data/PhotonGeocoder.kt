@@ -11,11 +11,12 @@ import java.net.URLEncoder
 
 /**
  * **Photon** (photon.komoot.io) - komoot's community OSM geocoder, keyless with a fair-use policy,
- * built exactly for search-as-you-type. Vela uses it for ADDRESS suggestions only: Google's keyless
- * ranking is great for businesses but barely honors the location bias for a partial house address
- * ("123 main st" led with matches states away). Photon takes a lat/lon bias and ranks around it,
- * which is the polished-feeling piece the suggest dropdown was missing. One small call per typed
- * pause, only when the query LOOKS like an address (digits leading) - business queries never hit it.
+ * built exactly for search-as-you-type. Two roles: with Google on it answers ADDRESS suggestions,
+ * because Google's keyless ranking is great for businesses but barely honors the location bias for
+ * a partial house address ("123 main st" led with matches states away), while Photon takes a
+ * lat/lon bias and ranks around it; that is one small call per typed pause, only when the query
+ * LOOKS like an address (digits leading). With "Use Vela without Google" on ([NoGoogle]) it answers
+ * EVERY search (GoogleMapsDataSource.search), names and addresses alike.
  */
 object PhotonGeocoder {
     private const val BASE = "https://photon.komoot.io/api/"

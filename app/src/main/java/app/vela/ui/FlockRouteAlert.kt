@@ -6,7 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 /**
  * Whether the route picker warns when a route passes ALPR ("Flock") cameras. Separate from [Flock]
  * (the map layer) on purpose - you might want the cameras drawn but not the routing alert, or the
- * alert without the clutter of the layer. **OFF by default**; flipped from Settings > Map and
+ * alert without the clutter of the layer. **OFF by default**; flipped from Settings > Navigation > Cameras and
  * persisted. When on, [app.vela.ui.map.MapViewModel] counts the cameras near each computed route
  * (bundled dataset, `FlockCameras.along`, direction-aware) and the directions panel badges the count.
  */

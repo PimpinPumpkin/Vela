@@ -21,8 +21,9 @@ import app.vela.core.model.ShortcutKind
  * Car landing screen: Home/Work shortcuts + recent + saved destinations, and a Search action.
  * Tapping a row previews a route to it ([RoutePreviewCarScreen]). Reuses [CarDeps] stores.
  *
- * Owns a [CarMapRenderer] so the landing map is a LIVE, clean browse map centered on you — otherwise
- * the surface keeps the previous nav screen's final frame and the finished trip's route lingers here.
+ * Claims the session's SHARED [CarMapRenderer] (`deps.mapRenderer`) in browse mode on start, so the
+ * landing map is a LIVE, clean browse map centered on you; otherwise the surface keeps the previous
+ * nav screen's final frame and the finished trip's route lingers here.
  */
 class MainCarScreen(carContext: CarContext, private val deps: CarDeps) :
     Screen(carContext), DefaultLifecycleObserver {

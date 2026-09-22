@@ -430,9 +430,9 @@ One line each, so nobody re-chases them; the full probes are in the history file
   one region at a time. Congestion coloring covers "where is it slow".
 - **EV charger detail (price, kW, availability)**: stripped from every keyless response; only the
   type marker arrives. OpenChargeMap would be the open source for it.
-- **Popular times, Q&A, photo dates, photo contributor names, per-review photos via the RPC,
-  menu photo dates**: each proven login-gated or bot-gated; the reviews and photos the app shows
-  come from the WebView DOM walk. Do not re-probe.
+- **Q&A, photo dates, photo contributor names, per-review photos via the RPC, menu photo
+  dates**: each proven login-gated or bot-gated; the reviews and photos the app shows come from
+  the WebView DOM walk. Do not re-probe.
 - **Gallery videos**: rare in the data and would need a gated source plus a player dependency.
 - **Clean always-snap (Google picks the road, an on-device engine names the turns)**: the
   serverless dense-via version loses ~1 in 10 named turns, the public matchers cap at 10 points.
@@ -446,7 +446,7 @@ One line each, so nobody re-chases them; the full probes are in the history file
 ## Resilience (built - extend as needed)
 
 The signed `calibration.json` channel can already hot-push **config, field paths,
-user notices, and sandboxed JS parse-logic** with no app update (see SPEC section 5). Future
+user notices, and sandboxed JS parse-logic** with no app update (see SPEC section 11). Future
 breakages should be fixed there first.
 
 ## Not going to happen (accounts and backends)
