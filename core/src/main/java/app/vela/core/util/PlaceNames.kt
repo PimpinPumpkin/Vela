@@ -88,6 +88,28 @@ object PlaceNames {
         // Street types: "38th st grocery deli" and "Rsvp 38th Street Venture" share "38th street"
         // and are not one business; the ordinal alone must not carry it.
         "street", "avenue", "boulevard", "road", "lane", "court", "way", "highway", "parkway", "terrace", "alley", "route",
+        // Trade and category words that a dense archive shares across unrelated businesses (Chelsea,
+        // 2026-09-22: "Richard Phibbs Fine Art" and "Priska C. Juschka Fine Art" are two galleries,
+        // "Murdock Young Architects" and "Murdock Solon Architects" two firms, one Amazon locker is
+        // not the next one).
+        "art", "fine", "gallery", "galleries", "contemporary", "modern", "design", "designs", "designer", "photography", "photo",
+        "custom", "creative", "media", "productions", "entertainment", "events", "event", "advisor", "advisors", "capital",
+        "investments", "wealth", "planning", "construction", "contractor", "contractors", "plumbing", "electric", "electrical",
+        "roofing", "painting", "cleaning", "maintenance", "installation", "landscaping", "lawn", "moving", "movers", "transport",
+        "logistics", "trucking", "printing", "signs", "sign", "locker", "lockers", "vending", "kiosk", "garage", "lot", "tours",
+        "tour", "cruises", "ministries", "ministry", "fellowship", "temple", "mosque", "synagogue", "institute", "foundation",
+        "association", "society", "council", "authority", "district", "state", "global", "worldwide", "united", "enterprises",
+        "industries", "distributors", "distribution", "imports", "trading", "depot", "warehouse", "factory", "works", "labs", "lab",
+        "laboratory", "research", "technology", "tech", "software", "digital", "online", "wireless", "communications", "network",
+        "networks", "security", "protection", "safety", "surgery", "surgical", "surgeon", "surgeons", "pediatric", "pediatrics",
+        "dermatology", "cardiology", "orthopedic", "orthopedics", "urgent", "primary", "specialists", "specialist", "lawyer",
+        "lawyers", "firm", "cpa", "accounting", "accountants", "residences", "residence", "towers", "tower", "lofts", "loft",
+        "condos", "condominiums", "estates", "villas", "manor", "gardens", "architects", "architect", "engineering", "engineers",
+        "management", "marketing", "staffing", "recruiting", "consultants", "studios", "cafe", "cafes", "grille", "eats", "kitchens",
+        "market", "shoppe", "emporium", "collective", "co-op", "coop", "gourmet", "organic", "natural", "fresh", "healthy", "urban",
+        "downtown", "uptown", "midtown", "central", "metro", "metropolitan", "heights", "hills", "valley", "lake", "river", "bay",
+        "harbor", "beach", "coast", "mountain", "creek", "grove", "oaks", "pines", "meadow", "meadows", "springs", "falls", "point",
+        "landing", "station", "junction", "terminal", "campus", "annex", "wing", "suite", "floor", "level", "unit", "bldg",
     )
 
     /** Accents folded, case and punctuation gone, "&" read as "and", legal suffixes, chain tails,

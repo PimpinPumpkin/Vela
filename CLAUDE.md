@@ -2594,7 +2594,13 @@ architecture note.
   a Range header, so a 700 MB archive costs a few MB). New families and their guards are in SPEC
   5.5; the one that matters most in a city is `localGeneric`: neighborhood and landmark words
   ("Bryant Park", "Flatiron", "Heights") sit in a dozen names on one screen and were matching
-  each other, so both app sites hand the pool's shared words in as generic.
+  each other, so both app sites hand the pool's shared words in as generic. The bake folds the
+  VARIANT family now too (core key = snap key minus `tools/place-generic-words.txt`, which a unit
+  test keeps equal to `PlaceNames.GENERIC`; regenerate the file from the Kotlin set when the list
+  changes, comments excluded). Measured within the archives themselves (same-business twins within
+  60 m through the real rule, pool words applied): downtown Houston 42 exact + 56 variant + 122
+  overlap of 10,795 rows; the corridor 19 + 12 + 41 of 3,123. The exact and variant ones are what
+  the bake drops; the overlap ones are the app's to merge on screen.
 - **A CLOSED LISTING NEVER BEATS A LIVE ONE, AND ONLY HIDES A PIN WHEN NO LIVE TWIN EXISTS
   (2026-09-21).** Google keeps a moved business's old, permanently closed profile beside the live
   one for months. The tap pool now drops closed listings whenever a live candidate exists, and
