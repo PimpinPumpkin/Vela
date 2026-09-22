@@ -226,8 +226,10 @@ jobs:
     needs: bake
     if: always()
     runs-on: ubuntu-latest
-    concurrency:
-      group: places-overlays-manifest-merge
+    # No concurrency group: a pending job in one is CANCELLED when a newer run joins, which
+    # emailed a failure for 34 of the 54 runs of a state-wide wave (2026-09-22) and, while the
+    # merge still folded entries, dropped their revisions. The merge derives the manifest from
+    # the release and re-lists it after uploading, so parallel merges are safe.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -239,5 +241,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ls entries/*.json >/dev/null 2>&1 || { echo "no entries"; exit 0; }
+          mkdir -p entries
           bash scripts/merge-places-manifest.sh entries

@@ -4593,7 +4593,13 @@ Gotchas:
   (2,335 features, 728 KB). **Regions (same day):** the `places-overlays` release hosts the archives +
   `places-overlay-manifest.json` (`{regions:[{id,name,url,sizeMb,bbox}]}`), baked by
   `.github/workflows/places-overlays.yml` from `tools/places-regions.json` (manual dispatch while beta,
-  `scripts/merge-places-manifest.sh` folds entries); `PlacesTileStore.download` (index.json by bbox,
+  `scripts/merge-places-manifest.sh`, which since 2026-09-22 DERIVES the manifest from the archives on
+  the release through `scripts/repair-places-manifest.sh` and re-lists the release after uploading,
+  the basemap merge's shape; it used to fold the run's own entries into the old manifest, and the
+  merge job sat in a concurrency group, where a PENDING job is cancelled when a newer run joins: a
+  54-state wave lost 34 merges that way and mailed a failure for each. Neither bake workflow has a
+  concurrency group on its merge now. Run the repair by hand after any wave to be sure:
+  `bash scripts/repair-places-manifest.sh`); `PlacesTileStore.download` (index.json by bbox,
   PMTiles magic check) rides along with a region download (`downloadPlacesForArea`, next to the building
   overlay), `deleteRoutingGraph` removes archives whose bbox center sits in the region; manifest misses are
   memoised 10 min (the lookup runs on every camera idle). Labels use `PoiIcons.ambientLabelColor(dark)` off
