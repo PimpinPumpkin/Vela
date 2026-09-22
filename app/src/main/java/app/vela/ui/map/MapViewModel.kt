@@ -3272,6 +3272,24 @@ class MapViewModel @Inject constructor(
                 directionsOpen = false,
             )
         }
+        // What the map's own data knows, shown while Google is asked (user 2026-09-22): a matching
+        // OSM row from a downloaded place pack fills the fields the tap did not bring (a basemap
+        // label brings only its name; an open-data row may lack hours the OSM row has). Google's
+        // listing replaces the whole sheet when it lands; offline, this is what stays.
+        viewModelScope.launch {
+            val twin = offlineTwin(name, location) ?: return@launch
+            _state.update { st ->
+                val cur = st.selected
+                if (!isPlaceholder(cur, placeholder) || cur == null) st
+                else st.copy(selected = cur.copy(
+                    category = cur.category ?: twin.category,
+                    address = cur.address ?: twin.address,
+                    phone = cur.phone ?: twin.phone,
+                    website = cur.website ?: twin.website,
+                    hours = cur.hours.ifEmpty { twin.hours },
+                ))
+            }
+        }
         // "Look up tapped places on Google" off (Settings > Map): an open place stays on what the
         // tile carries, nothing about the tap reaches Google. Basemap taps have no seed and still
         // resolve (they have nothing else to show).
@@ -3284,7 +3302,7 @@ class MapViewModel @Inject constructor(
         // its name.
         if (googleOff()) {
             val remembered = seed?.let { synchronized(openPlaceCache) { openPlaceCache[it.id] } }
-            if (remembered != null && _state.value.selected == placeholder) {
+            if (remembered != null && isPlaceholder(_state.value.selected, placeholder)) {
                 _state.update { it.copy(selected = withListNote(remembered)) }
             }
             rememberRecentPlace(SavedPlace.of(remembered ?: placeholder))
@@ -3298,8 +3316,11 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
           try {
             val remembered = seed?.let { synchronized(openPlaceCache) { openPlaceCache[it.id] } }
+            val tTap = android.os.SystemClock.elapsedRealtime()
+            var tSearch = 0L
             val resolved = if (remembered != null) (remembered to emptyList<Place>()) else runCatching {
-                val results = dataSource.search(searchQuery, location).places
+                val results = dataSource.searchOnce(searchQuery, location)
+                tSearch = android.os.SystemClock.elapsedRealtime() - tTap
                 var tapWhy = "" // filled by the business branch below, printed with the tap line
                 val pick = if (transitHint != null) {
                     // Transit tap: pick the OPERATING stop, not the nearest/most-reviewed thing at the
@@ -3317,7 +3338,7 @@ class MapViewModel @Inject constructor(
                     // proximity query - OSM and Google often name the same stop differently, so the
                     // name-keyed search can miss a listing that's right at the icon.
                     nearestLiveStop(results, location)
-                        ?: runCatching { dataSource.search(transitHint, location).places }.getOrNull()
+                        ?: runCatching { dataSource.searchOnce(transitHint, location) }.getOrNull()
                             ?.let { nearestLiveStop(it, location) }
                 } else {
                     // NAME AGREEMENT with the tapped label comes FIRST (user 2026-07-14: tapping a
@@ -3450,7 +3471,8 @@ class MapViewModel @Inject constructor(
                         " " + tapWhy + " beforeCap=" + preCap +
                         " picked=" + (kept?.name ?: "NOTHING") +
                         " at=" + (kept?.let { "%.0f".format(it.location.distanceTo(location)) + "m" } ?: "-") +
-                        " cap=" + maxM.toInt() + "m"
+                        " cap=" + maxM.toInt() + "m" +
+                        " ms=" + tSearch + "/" + (android.os.SystemClock.elapsedRealtime() - tTap)
                 )
                 kept to results
             }.getOrNull()
@@ -3471,7 +3493,7 @@ class MapViewModel @Inject constructor(
             if (full != null && seed != null && full.permanentlyClosed &&
                 resolved.second.none { !it.permanentlyClosed && nameAgrees(name, it.name, it.address) && it.location.distanceTo(location) <= 150.0 }
             ) hideClosedOpenPlace(seed.id)
-            if (full != null && _state.value.selected == placeholder) {
+            if (full != null && isPlaceholder(_state.value.selected, placeholder)) {
                 // One update: the listing, the end of loading and the sheet identity together, so
                 // the open sheet recomposes once, in place.
                 _state.update {
@@ -3491,14 +3513,14 @@ class MapViewModel @Inject constructor(
                     fetchPlaceDetails(full) // popular times + editorial/owner, like a search-result tap
                 }
                 rememberRecentPlace(SavedPlace.of(full))
-            } else if (transitHint != null && _state.value.selected == placeholder) {
+            } else if (transitHint != null && isPlaceholder(_state.value.selected, placeholder)) {
                 // Issue #71 (Jerusalem): a tapped stop with NO resolvable Google stop listing used to
                 // dead-end as a name-only sheet - no category, no board, nothing to swipe to. The TAP
                 // ITSELF says this is a transit stop (the basemap class, language-independent), and
                 // Transitous needs only the coordinate - so fetch the board by proximity regardless
                 // of what Google resolution did. The Google-page fallback is impossible here anyway
                 // (no feature id), so this is Transitous-or-nothing, which is correct.
-                _state.update { if (it.selected == placeholder) it.copy(stopDeparturesLoading = true, stopDeparturesFor = placeholder.id) else it }
+                _state.update { if (isPlaceholder(it.selected, placeholder)) it.copy(stopDeparturesLoading = true, stopDeparturesFor = placeholder.id) else it }
                 val board = withContext(Dispatchers.IO) {
                     runCatching {
                         app.vela.core.data.transit.Transitous.board(http, location.lat, location.lng)
@@ -3506,7 +3528,7 @@ class MapViewModel @Inject constructor(
                 }
                 android.util.Log.i("VelaDepartures", "hinted-tap fallback lines=${board?.lines?.size ?: -1}")
                 _state.update {
-                    if (it.selected == placeholder) {
+                    if (isPlaceholder(it.selected, placeholder)) {
                         it.copy(
                             stopDepartures = board?.takeIf { b -> b.lines.isNotEmpty() },
                             stopDeparturesLoading = false,
@@ -3522,6 +3544,18 @@ class MapViewModel @Inject constructor(
             stopResolving() // nothing resolved, an error, or a cancel: the label's own data shows
           }
         }
+    }
+
+    /** Whether [cur] is still the tapped [placeholder]: the same id at the same point. Not full
+     *  equality, because the sheet's placeholder is filled in from the offline packs while the
+     *  lookup runs, and the filled-in copy is still the tap's own place. */
+    private fun isPlaceholder(cur: Place?, placeholder: Place): Boolean =
+        cur != null && cur.id == placeholder.id && cur.location == placeholder.location
+
+    /** The downloaded place packs' row for a tapped label: within 80 m and agreeing by name. */
+    private suspend fun offlineTwin(name: String, at: LatLng): Place? = withContext(Dispatchers.IO) {
+        runCatching { offlinePoiStore.near(at, 80.0, limit = 12) }.getOrDefault(emptyList())
+            .firstOrNull { app.vela.core.util.PlaceNames.same(name, it.name) || nameAgrees(name, it.name, it.address) }
     }
 
     /** How long a tapped place's sheet may show its loading skeleton before the label's own data
@@ -3562,7 +3596,7 @@ class MapViewModel @Inject constructor(
             .filter { nameAgrees(name, it.name, it.address) && it.location.distanceTo(location) <= SAME_LOT_M }
             .minByOrNull { it.location.distanceTo(location) }
         val center = anchor?.location ?: location
-        val hits = runCatching { dataSource.search(q, center).places }.getOrDefault(emptyList())
+        val hits = runCatching { dataSource.searchOnce(q, center) }.getOrDefault(emptyList())
         return hits
             .filter { p ->
                 !p.permanentlyClosed && p.location.distanceTo(center) <= NO_NAME_MATCH_M &&
@@ -3593,7 +3627,7 @@ class MapViewModel @Inject constructor(
     private suspend fun crossScriptCandidates(name: String, location: LatLng, query: String, tappedKind: String?, localGeneric: Set<String>, uiLang: String): List<Place> {
         val hl = app.vela.core.util.NameScript.scriptLanguage(name, location.lat, location.lng) ?: return emptyList()
         if (app.vela.core.util.NameScript.sameLanguage(hl, uiLang)) return emptyList()
-        val foreign = runCatching { dataSource.search(query, location, lang = hl).places }.getOrDefault(emptyList())
+        val foreign = runCatching { dataSource.searchOnce(query, location, lang = hl) }.getOrDefault(emptyList())
         val agreeing = foreign.filter { p ->
             p.category?.let { isTransitCategory(it) || it.lowercase() in JUNCTION_CATEGORIES } != true &&
                 app.vela.core.util.PlaceNames.sameBusiness(
@@ -3603,7 +3637,7 @@ class MapViewModel @Inject constructor(
         }
         if (agreeing.isEmpty()) return emptyList()
         val best = agreeing.minByOrNull { it.location.distanceTo(location) }!!
-        val localized = runCatching { dataSource.search(best.name, best.location).places }.getOrDefault(emptyList())
+        val localized = runCatching { dataSource.searchOnce(best.name, best.location) }.getOrDefault(emptyList())
         return agreeing.map { f -> localized.firstOrNull { it.featureId != null && it.featureId == f.featureId } ?: f }
     }
 

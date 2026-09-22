@@ -298,14 +298,16 @@ fun PlaceSheet(
     val containingLists = lists.filter { l -> l.places.any { it.matches(place.id, place.featureId) } }
     val inAnyList = containingLists.isNotEmpty()
     // The listing's details fade in when a tap resolves, instead of popping in all at once.
-    val reveal = remember(sheetKey) { Animatable(if (resolving) 0f else 1f) }
-    LaunchedEffect(sheetKey, resolving) {
-        if (resolving) reveal.snapTo(0f) else if (reveal.value < 1f) reveal.animateTo(1f, tween(280))
-    }
-    val revealMod = Modifier.graphicsLayer {
-        alpha = reveal.value
-        compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.ModulateAlpha
-    }
+    // While the tap is looked up, whatever the map's own data already knows shows at once (the
+    // open-data category, address, phone, website and hours; user 2026-09-22) and Google's
+    // listing replaces it in place. Only a section with NOTHING to show yet is a skeleton, and
+    // only a section that was a skeleton fades in: text already on screen just updates.
+    val detailsSkeleton = resolving && place.category.isNullOrBlank() && place.hours.isEmpty()
+    val bodySkeleton = resolving && place.address.isNullOrBlank() && place.phone.isNullOrBlank() &&
+        place.website.isNullOrBlank() && place.hours.isEmpty()
+    val ratingReveal = rememberReveal(sheetKey, resolving)
+    val detailsReveal = rememberReveal(sheetKey, detailsSkeleton)
+    val bodyReveal = rememberReveal(sheetKey, bodySkeleton)
     var showListChooser by remember(sheetKey) { mutableStateOf(false) }
     var showNoteEditor by remember(sheetKey) { mutableStateOf(false) }
     // A tapped photo opens the full-screen gallery; resets when the sheet switches place.
@@ -823,7 +825,7 @@ fun PlaceSheet(
                 Spacer(Modifier.height(RATING_ROW_DP.dp))
             }
             if (place.rating != null && !resolving) {
-                Row(Modifier.padding(top = 6.dp).then(revealMod), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.padding(top = 6.dp).then(ratingReveal), verticalAlignment = Alignment.CenterVertically) {
                     // Google leads with a bold rating number; keep it prominent.
                     Text(
                         String.format(Locale.US, "%.1f", place.rating),
@@ -838,8 +840,8 @@ fun PlaceSheet(
                 }
             }
             app.vela.ui.SheetFold(extrasComposed, extrasFraction) {
-            if (resolving) SheetSkeleton(dim, listOf(196.dp, 150.dp), top = 8.dp)
-            else Column(revealMod) {
+            if (detailsSkeleton) SheetSkeleton(dim, listOf(196.dp, 150.dp), top = 8.dp)
+            else Column(detailsReveal) {
             // Distance (when the place came from a located search) + price +
             // category on their own line so a long category ("Hamburger restaurant")
             // doesn't wrap mid-word next to the stars; ellipsized if huge.
@@ -1011,8 +1013,8 @@ fun PlaceSheet(
             // While the tap is still being looked up on Google the body is a skeleton, so the
             // sheet reads as "loading the listing" instead of showing the bare label's half-empty
             // body and then jumping when the listing lands (user 2026-09-22).
-            if (resolving) SheetSkeleton(dim, listOf(260.dp, 220.dp, 240.dp, 180.dp), gap = 18.dp, top = 18.dp)
-            else Column(revealMod) {
+            if (bodySkeleton) SheetSkeleton(dim, listOf(260.dp, 220.dp, 240.dp, 180.dp), gap = 18.dp, top = 18.dp)
+            else Column(bodyReveal) {
             // Live departure board for a transit stop, FIRST in the body (user 2026-07-13: the schedule
             // is what you open a stop for - Google leads with it too). Renders nothing for non-transit
             // places, so the unconditional position is safe.
@@ -1063,7 +1065,9 @@ fun PlaceSheet(
                 HoursSection(place.hours, ink, dim, departments = if (showDepartments) place.departments else emptyList())
             } else if (showDepartments) {
                 DepartmentsSection(place.departments, ink, dim)
-            } else if (place.category != null && !place.permanentlyClosed && !isTransitStop) {
+            } else if (place.category != null && !place.permanentlyClosed && !isTransitStop && !resolving) {
+                // Not while the listing is still being looked up: the map's data lacking hours
+                // says nothing about Google's, which usually has them.
                 Text(stringResource(R.string.place_hours_not_listed), style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
             }
 
@@ -1230,7 +1234,10 @@ fun PlaceSheet(
                 }
             }
 
-            PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onPanelOverscroll, onPanelOverscrollEnd, onPanelEngaged, reviewsEngaged.value)
+            // The reviews tabs wait for the listing (the map's data has no reviews to show, and an
+            // empty tab row would read as "no reviews"); pulse bars hold their place.
+            if (resolving) SheetSkeleton(dim, listOf(260.dp, 220.dp, 240.dp), gap = 18.dp, top = 18.dp)
+            else PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onPanelOverscroll, onPanelOverscrollEnd, onPanelEngaged, reviewsEngaged.value)
             }
             }
             }
@@ -2920,6 +2927,20 @@ private fun parseHexColor(hex: String?): Color? {
             else -> null
         }
     }.getOrNull()
+}
+
+/** A fade-in for a sheet section that was a loading skeleton: transparent while [skeleton], then
+ *  280 ms to opaque when the listing lands. A section that never was a skeleton stays opaque. */
+@Composable
+private fun rememberReveal(key: String, skeleton: Boolean): Modifier {
+    val a = remember(key) { Animatable(if (skeleton) 0f else 1f) }
+    LaunchedEffect(key, skeleton) {
+        if (skeleton) a.snapTo(0f) else if (a.value < 1f) a.animateTo(1f, tween(280))
+    }
+    return Modifier.graphicsLayer {
+        alpha = a.value
+        compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.ModulateAlpha
+    }
 }
 
 /** Pulsing placeholder bars for the rows a tapped place is still loading (rating, details, body). */

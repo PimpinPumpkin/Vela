@@ -2762,6 +2762,17 @@ architecture note.
   resolves to a listing with another id: every `remember(place.id)` in the sheet re-keyed on the
   swap, which re-mounted it (the "flash"). Watchdog: 6 s, then the label's own data shows and a
   late listing still fades in. Transit taps do not skeleton (their board has its own loading).
+  **Round two (same day, "faster, and show what the map knows while it loads"):** the resolve's
+  searches use `MapDataSource.searchOnce` (page one only; a chain name filled page one and the
+  full `search` then fetched pages two and three, 4.3 s of a 4.7 s tap on the 4a; now ~1.3 s,
+  `ms=search/total` in `VelaTap`). The sheet shows the seed's own category, address, phone,
+  website and hours during the lookup and skeletons only a section with nothing to show
+  (`detailsSkeleton`/`bodySkeleton`, each with its own `rememberReveal` fade); the reviews tabs
+  and "Hours not listed" wait for the listing. A basemap tap (name only) and an open-data seed
+  missing fields are filled from the downloaded place packs (`offlineTwin`: `OfflinePoiStore.near`
+  within 80 m, agreeing by name), which is also what an offline tap now shows. The resolve's
+  "still this tap" gates compare id + point (`isPlaceholder`), not the whole Place, because the
+  placeholder is filled in while the lookup runs.
 - **A TAP THAT DOES NOT LINK LOGS WHY (`VelaTap`, 2026-09-18).** The open-place resolve prints the
   tapped label, the tile's kind, whether it was seeded, how many results Google returned, how many
   survived the transit/junction filter, what was picked and at what distance, and the distance cap.
