@@ -298,7 +298,7 @@ private const val TRAFFIC_TILES =
 
 /** A tappable search-result pin on the map. [prominence] (0 = unknown/low) drives the ambient dot's
  *  size + keep-distance so anchor stores read bigger and show from farther, Google-style. */
-data class MapMarker(val name: String, val location: LatLng, val category: String? = null, val prominence: Double = 0.0, val rating: Double? = null, val fuelPrice: String? = null)
+data class MapMarker(val name: String, val location: LatLng, val category: String? = null, val prominence: Double = 0.0, val rating: Double? = null, val fuelPrice: String? = null, val houseNumber: String? = null)
 
 // Last marker/ambient lists actually pushed to the GeoJSON sources, so applyData can skip a redundant
 // setGeoJson (a full symbol re-tessellation) when they're unchanged. Nulled on style reload (the fresh
@@ -7316,7 +7316,7 @@ private fun applyData(
                         val group = PoiIcons.groupFor(m.name, m.category)
                         addStringProperty("name", m.name)
                         addStringProperty("icon", "vela-poi-$group")
-                        app.vela.core.util.PlaceNames.houseNumber(m.address)?.let { addStringProperty("hn", it) } // the fuel-lot rule's tie-break
+                        m.houseNumber?.let { addStringProperty("hn", it) } // the fuel-lot rule's tie-break
                         addStringProperty("dotColor", PoiIcons.colorFor(group)) // mini-dot tier tint
                         addNumberProperty(AMBIENT_INDEX_PROP, i)
                         // Collision priority must be STABLE across the streamed partial paints: it used

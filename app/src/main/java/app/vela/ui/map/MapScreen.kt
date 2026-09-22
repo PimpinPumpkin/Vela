@@ -2922,7 +2922,7 @@ private fun ambientShownOf(state: MapUiState): List<Place> =
 // same value the view model ranked and capped on (AmbientStability), so a refined pool cannot
 // resize or reorder what is already on screen.
 private fun ambientMarkersOf(state: MapUiState): List<MapMarker> =
-    ambientShownOf(state).map { MapMarker(it.name, it.location, it.category, AmbientStability.prominenceOf(it)) }
+    ambientShownOf(state).map { MapMarker(it.name, it.location, it.category, AmbientStability.prominenceOf(it), houseNumber = app.vela.core.util.PlaceNames.houseNumber(it.address)) }
 
 private fun markersOf(state: MapUiState, filteredIds: Set<String>?): List<MapMarker> =
     displayedPlaces(state)
