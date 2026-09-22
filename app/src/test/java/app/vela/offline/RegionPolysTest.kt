@@ -51,6 +51,24 @@ class RegionPolysTest {
         assertTrue(covers("china", 22.32, 114.17))
     }
 
+    @Test fun `alaska stays in alaska`() {
+        // Alaska's extract crosses the antimeridian, so its box runs -180..180 and, read literally,
+        // covered everything between 49.8 N and 73 N: the Alaska address overlay claimed Germany
+        // and the Netherlands and hid the basemap house numbers there (issue #257). The polygon
+        // answers first, and a globe-wide box never covers by itself.
+        assertTrue(covers("alaska", 61.22, -149.90)) // Anchorage
+        assertFalse(covers("alaska", 52.52, 13.40)) // Berlin
+        assertFalse(covers("alaska", 52.37, 4.90)) // Amsterdam
+        assertFalse(RegionPolys.boxCovers(49.809, -180.0, 72.988, 180.0, 52.52, 13.40))
+        assertFalse(RegionPolys.boxCovers(49.809, -180.0, 72.988, 180.0, 61.22, -149.90))
+        assertTrue(RegionPolys.boxCovers(49.809, -180.0, 72.988, -129.9, 61.22, -149.90))
+        assertFalse(RegionPolys.boxCovers(49.809, -180.0, 72.988, -129.9, 52.52, 13.40))
+        assertTrue(RegionPolys.boxCovers(47.0, 5.8, 55.1, 15.1, 52.52, 13.40)) // an ordinary box still works
+        assertTrue(RegionPolys.boxCovers(-85.0, -180.0, 85.0, 180.0, 52.52, 13.40)) // the world basemap row
+        assertFalse(RegionPolys.boxCovers(-56.75, -179.99, -28.49, 179.99, -33.9, -70.7)) // New Zealand's box vs Santiago
+        assertTrue(covers("new-zealand", -41.29, 174.78)) // Wellington, by polygon
+    }
+
     @Test fun `a river border is honored where boxes overlap`() {
         // Kansas's box crosses the Missouri River into Kansas City, Missouri.
         assertTrue(covers("missouri", 39.10, -94.58))

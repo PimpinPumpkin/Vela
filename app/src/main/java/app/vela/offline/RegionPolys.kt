@@ -45,6 +45,23 @@ object RegionPolys {
 
     val loaded: Boolean get() = table != null
 
+    /**
+     * The box fallback for a region with no polygon. A box that spans the whole globe in
+     * longitude is an extract that crosses the antimeridian (Alaska's Aleutians reach past 180),
+     * and its true footprint is unknowable from the box: taken literally it "covered" every point
+     * in its latitude band, so the Alaska address overlay claimed Germany and the Netherlands and
+     * hid the basemap house numbers there (issue #257, 2026-09-22). Such a box never covers by
+     * itself; only a polygon can answer for it. A box that also spans (nearly) all latitudes is
+     * a real whole-world row (the low-zoom world basemap), not a crossing, and still covers.
+     */
+    fun boxCovers(s: Double, w: Double, n: Double, e: Double, lat: Double, lng: Double): Boolean =
+        (e - w < WORLD_SPAN || n - s >= WORLD_BAND) && lat in s..n && lng in w..e
+
+    /** A longitude span this wide is the antimeridian, not a region... */
+    const val WORLD_SPAN = 350.0
+    /** ...unless the box is this tall too, which is the whole world on purpose. */
+    const val WORLD_BAND = 120.0
+
     internal fun parse(json: String): Map<String, Entry> {
         val root = JSONObject(json)
         val out = HashMap<String, Entry>(root.length() * 2)

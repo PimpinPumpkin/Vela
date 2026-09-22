@@ -30,7 +30,7 @@ data class RoutingRegion(
     /** Whether this region holds the point: its real boundary where [RegionPolys] has one, else
      *  the box. Every "which region is this point in" decision goes through here (issue #599). */
     fun covers(lat: Double, lng: Double): Boolean =
-        RegionPolys.covers(id, lat, lng) ?: (lat in s..n && lng in w..e)
+        RegionPolys.covers(id, lat, lng) ?: RegionPolys.boxCovers(s, w, n, e, lat, lng)
 
     /** The box's area in square degrees, the tie-break among covering regions: the smallest one is
      *  the specific region for a point where boxes overlap at a border. */

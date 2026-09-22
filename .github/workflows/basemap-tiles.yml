@@ -138,7 +138,7 @@ jobs:
           # Bounds from the archive header (the routing catalog carries none): the PMTiles v3 header
           # stores them as int32 E7 at bytes 102..117 (min lon, min lat, max lon, max lat). No CLI
           # needed; the pmtiles CLI download was rate-limited on shared runners and lost entries.
-          BBOX=$(python3 scripts/pmtiles-bbox.py "basemap-${{ matrix.id }}.pmtiles")
+          BBOX=$(python3 scripts/pmtiles-bbox.py "basemap-${{ matrix.id }}.pmtiles" | python3 scripts/clamp-bbox.py "${{ matrix.id }}")
           jq -n --arg id "${{ matrix.id }}" --arg name "${{ matrix.name }}" \
             --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/basemap-tiles/basemap-${{ matrix.id }}.pmtiles" \
             --argjson sizeMb "$(echo "scale=2; $SIZE/1000000" | bc)" --argjson bbox "$BBOX" --argjson rev "$(date -u +%Y%m%d)" \

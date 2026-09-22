@@ -35,7 +35,7 @@ while read -r NAME SIZE; do
     printf '%s\n' "$OLD" >> "$WORK/entries.ndjson"; continue
   fi
   curl -sL -r 0-126 "$URL" -o "$WORK/head.bin"
-  BBOX=$(python3 "$HERE/pmtiles-bbox.py" "$WORK/head.bin") || { echo "skip $ID (no header)"; continue; }
+  BBOX=$(python3 "$HERE/pmtiles-bbox.py" "$WORK/head.bin" | python3 "$HERE/clamp-bbox.py" "$ID") || { echo "skip $ID (no header)"; continue; }
   REGION_NAME=$(jq -r --arg id "$ID" '.regions[] | select(.id == $id) | .name' tools/routing-regions.json)
   jq -nc --arg id "$ID" --arg name "${REGION_NAME:-$ID}" --arg url "$URL" \
     --argjson sizeMb "$(echo "scale=2; $SIZE/1000000" | bc)" --argjson bbox "$BBOX" --argjson rev "$REV" \
