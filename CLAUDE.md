@@ -653,7 +653,14 @@ Defaults that make the safe path the easy one:
   KingInstaller "Google installer" method (Google's `com.google.android.packageinstaller`, which
   GrapheneOS does not ship) does get Vela listed. The capture recipe: `nohup logcat -f
   /data/local/tmp/aa.txt -r 32768 -n 6 &` over adb before the drive (a reboot kills it), pull
-  the files after, grep `CAR.VALIDATOR` and `PlayGearheadService`.
+  the files after, grep `CAR.VALIDATOR` and `PlayGearheadService`. **The Desktop Head Unit does the
+  same without a car** (`sdkmanager "extras;google;auto"`, binary under `extras/google/auto/`;
+  the phone needs Android Auto's developer "Start head unit server" and `adb forward tcp:5277
+  tcp:5277`): the phone's own Android Auto app runs the same validator against it. **Ownership
+  experiment (planned, ROADMAP):** `-PappId=<id>` builds Vela under another package name so it can
+  be sideloaded under the id of an app the account once installed from Play, which tells whether
+  the check is Play's library record alone (a sideload under an owned id passes) or the signing
+  certificate too (it fails). The manifest's satellite meta-data reads `${applicationId}` for it.
   **Turn card requirements (per the Android for Cars docs):** `ActiveNavCarScreen` calls
   `NavigationManager.navigationStarted()` AND `updateTrip()` - both are needed for the RoutingInfo turn
   card + the cluster/HUD nav data; `ManeuverMapper` maps Vela maneuvers → car `Maneuver`/`Step`/`Trip`.
