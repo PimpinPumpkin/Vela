@@ -293,7 +293,7 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             SettingsGroup {
                 shownNodes.forEachIndexed { ni, node ->
                     if (ni > 0) GroupDivider()
-                    if (node.pieces.size == 1 && node.whole == null) {
+                    if (!node.parent) {
                         RegionRow(node.pieces[0], state, vm, primary?.id, indent = false, onConfirm = { confirmRegion = it })
                     } else {
                         val open = expanded[node.title] ?: (q.isNotBlank() || node.pieces.any { it.id == primary?.id })
@@ -326,7 +326,10 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
 
 /** A catalog entry: one region, or a parent with its pieces ("Germany" over the Laender). [whole]
  *  is the country's own single file when the catalog has both ("Australia" beside its states). */
-internal data class RegionNode(val title: String, val pieces: List<app.vela.offline.RoutingRegion>, val whole: app.vela.offline.RoutingRegion? = null)
+internal data class RegionNode(val title: String, val pieces: List<app.vela.offline.RoutingRegion>, val whole: app.vela.offline.RoutingRegion? = null) {
+    /** A parent stays a parent when the filter leaves it one piece ("Pennsylvania" under United States). */
+    val parent: Boolean get() = whole != null || pieces.size > 1 || (pieces.size == 1 && pieces[0].name != title)
+}
 
 /** The catalog as parents and leaves, by the names' trailing parentheticals, sorted by title. */
 internal fun regionTree(all: List<app.vela.offline.RoutingRegion>): List<RegionNode> {
