@@ -153,35 +153,27 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
                     .build(),
             )
         } else {
+            // ICONS, NOT TITLES (a real head unit, 2026-09-22): a titled action is drawn as a text
+            // pill ("Mute", "Pause", "End" across the top of the map); every template nav app and
+            // Google's own car UI use round icon buttons, and the icon says what the text said.
             val muted = deps.voiceGuide.muted
             strip.addAction(
-                Action.Builder()
-                    .setTitle(carContext.getString(if (muted) app.vela.R.string.car_unmute else app.vela.R.string.car_mute))
-                    .setOnClickListener { deps.voiceGuide.muted = !deps.voiceGuide.muted; invalidate() }
-                    .build(),
+                carAction(if (muted) app.vela.R.drawable.ic_car_mute else app.vela.R.drawable.ic_car_unmute) {
+                    deps.voiceGuide.muted = !deps.voiceGuide.muted; invalidate()
+                },
             )
         }
         // Hold the drive (the phone's pause): the route and the figures stay, the guidance stops.
         strip.addAction(
-            Action.Builder()
-                .setTitle(carContext.getString(if (s.paused) app.vela.R.string.car_resume else app.vela.R.string.car_pause))
-                .setOnClickListener { deps.navSession.setPaused(!deps.navSession.state.value.paused); invalidate() }
-                .build(),
+            carAction(if (s.paused) app.vela.R.drawable.ic_car_play else app.vela.R.drawable.ic_car_pause) {
+                deps.navSession.setPaused(!deps.navSession.state.value.paused); invalidate()
+            },
         )
         // Fuel, food, coffee along the drive; a pick becomes the next stop.
+        strip.addAction(carAction(app.vela.R.drawable.ic_car_search) { screenManager.push(AlongRouteCarScreen(carContext, deps)) })
         strip.addAction(
             Action.Builder()
-                .setIcon(
-                    androidx.car.app.model.CarIcon.Builder(
-                        androidx.core.graphics.drawable.IconCompat.createWithResource(carContext, android.R.drawable.ic_menu_search),
-                    ).build(),
-                )
-                .setOnClickListener { screenManager.push(AlongRouteCarScreen(carContext, deps)) }
-                .build(),
-        )
-        strip.addAction(
-            Action.Builder()
-                .setTitle(carContext.getString(app.vela.R.string.car_end))
+                .setIcon(carIcon(app.vela.R.drawable.ic_car_close))
                 // A background color is ONLY allowed on a PRIMARY action — without FLAG_PRIMARY the
                 // host throws "Background color can only be set for primary actions" building the strip.
                 .setFlags(Action.FLAG_PRIMARY)
@@ -192,11 +184,11 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
 
         // Google-style map controls: recenter (re-follow the puck) + zoom in/out.
         val mapStrip = ActionStrip.Builder()
-            .addAction(carAction(android.R.drawable.ic_menu_mylocation) { deps.mapRenderer(carContext).follow() })
-            .addAction(carAction(android.R.drawable.ic_menu_add) { deps.mapRenderer(carContext).zoomBy(1.0) })
-            .addAction(carAction(android.R.drawable.ic_menu_revert) { deps.mapRenderer(carContext).zoomBy(-1.0) })
+            .addAction(carAction(app.vela.R.drawable.ic_car_recenter) { deps.mapRenderer(carContext).follow() })
+            .addAction(carAction(app.vela.R.drawable.ic_car_zoom_in) { deps.mapRenderer(carContext).zoomBy(1.0) })
+            .addAction(carAction(app.vela.R.drawable.ic_car_zoom_out) { deps.mapRenderer(carContext).zoomBy(-1.0) })
             // Overview: the whole remaining route framed, tap again (or recenter) to follow again.
-            .addAction(carAction(android.R.drawable.ic_menu_mapmode) { deps.mapRenderer(carContext).toggleOverview() })
+            .addAction(carAction(app.vela.R.drawable.ic_car_overview) { deps.mapRenderer(carContext).toggleOverview() })
             .build()
 
         return NavigationTemplate.Builder()
@@ -207,15 +199,13 @@ class ActiveNavCarScreen(carContext: CarContext, private val deps: CarDeps) :
             .build()
     }
 
+    private fun carIcon(iconRes: Int): androidx.car.app.model.CarIcon =
+        androidx.car.app.model.CarIcon.Builder(
+            androidx.core.graphics.drawable.IconCompat.createWithResource(carContext, iconRes),
+        ).build()
+
     private fun carAction(iconRes: Int, onClick: () -> Unit): Action =
-        Action.Builder()
-            .setIcon(
-                androidx.car.app.model.CarIcon.Builder(
-                    androidx.core.graphics.drawable.IconCompat.createWithResource(carContext, iconRes),
-                ).build(),
-            )
-            .setOnClickListener(onClick)
-            .build()
+        Action.Builder().setIcon(carIcon(iconRes)).setOnClickListener(onClick).build()
 
     private fun stopNav() {
         // Only stop — the state collector observes navigating=false and pops once (no double-pop).
