@@ -1240,7 +1240,7 @@ entries missing counts) and refetches the fan-out once about 1.2 s later, prepen
 places so `distinctBy` keeps the rich copy. Before diagnosing a flat-looking ambient layer,
 check whether the pool's counts are null.
 
-**Fan-out discipline.** `nearbyPlaces` fires about 13 category requests, each parsed whole into
+**Fan-out discipline.** `nearbyPlaces` fires 15 category requests (8 on the lean path), each parsed whole into
 a JsonElement tree of roughly 30 MB in a dense area. The fan-out is bounded by a `Semaphore(4)`
 (`ambientFanoutPermits`, read at construction), which took a fresh-launch burst from about
 400 MB of transient parse trees to about 64 MB and 13 percent janky frames to 2.3 percent. Do
@@ -1675,17 +1675,22 @@ features, and the building and address overlays where they exist. `MapPoiPrefs.p
 | TTS runtime, ASR models | vendored builds | `tts-runtime`, `asr-models` | catalog in `:core` |
 
 **A manifest merge derives the manifest from the release, never from the run's own fragments.**
-The bake matrix uploads one archive per region and the merge job publishes the manifest, so the
-merge is a read-modify-write on one shared asset and is serialized by a concurrency group. GitHub
-cancels a job that is PENDING in such a group when a newer one joins it, so in a wave of runs the
-middle merges are killed after their archives have already been uploaded: on 2026-09-18 that left
-99 of 414 basemap regions in the manifest, invisible except as regions the app could not find a
-map for. `scripts/repair-basemap-manifest.sh` (which `merge-basemap-manifest.sh` now calls) builds
-the list from the archives published on the release, reusing an existing row when the size is
-unchanged and reading the bbox out of the first 127 bytes otherwise, then lets the run's own entry
-files win for the regions it baked. The manifest is then a function of what is published: running
-it after the last upload is enough, running it twice changes nothing, and a merge that never ran
-costs nothing. Dispatch a catalog as a couple of sharded runs rather than one per group, so few
+The bake matrix uploads one archive per region and the merge job publishes the manifest, a
+read-modify-write on one shared asset. The basemap and places merges carry no concurrency group:
+GitHub cancels a job that is PENDING in such a group when a newer one joins it, so in a wave of
+runs the middle merges were killed after their archives had already been uploaded, which on
+2026-09-18 left 99 of 414 basemap regions in the manifest. Instead
+`scripts/repair-basemap-manifest.sh` (called by `merge-basemap-manifest.sh`) and
+`scripts/repair-places-manifest.sh` (called by `merge-places-manifest.sh`) build the list from the
+archives published on the release, reusing an existing row only when the size is unchanged AND the
+asset was not uploaded after the row's rev (size alone kept a stale rev when a rebake landed on the
+same byte count), then let the run's own entry files win for the regions it baked. The basemap
+script reads a new archive's bbox out of its first 127 bytes; the places script takes it from
+`tools/places-regions.json`. Parallel merges race only on the upload, which retries, and each script
+lists the release again after uploading and rebuilds once more when an archive landed meanwhile.
+The manifest is then a function of what is published: running it after the last upload is enough,
+running it twice changes nothing, and a merge that never ran costs nothing. The building, address
+and maxspeed merges still fold entries and are serialized by their own concurrency groups. Dispatch a catalog as a couple of sharded runs rather than one per group, so few
 merges can queue behind each other in the first place.
 
 **Infrastructure releases are not app releases.** Every non-`v0.*` tag is file hosting whose
@@ -1755,8 +1760,11 @@ Selection rules on the phone:
 
 ### 7.3 Freshness
 
-Every manifest row carries `rev` as a `YYYYMMDD` integer; installed revs live beside the files
-(`revs.json`) and `MapViewModel.refreshRegionUpdates` turns a newer rev into an Update button.
+A manifest row's `rev` is an integer that only grows. The obf, basemap and places bakes stamp the
+bake date as `YYYYMMDD`; place packs count up instead, one past the live manifest's rev for that
+region (`scripts/build-poi-region.sh`), which is the `fromRev` their row deltas key on. Installed
+revs live beside the files (`revs.json`) and `MapViewModel.refreshRegionUpdates` turns a newer rev
+into an Update button.
 Place packs additionally publish **row-level deltas**: `poipack_delta.py` emits one SQL EXCEPT
 per table into `del_`/`ins_` tables, published only when the delta is under half the full size.
 `PoiPackStore.applyDelta` runs when the installed rev equals the delta's `fromRev`, in one
@@ -1769,8 +1777,9 @@ of rows and the delta balloons to pack size. `TABLE_COLUMNS` in `PoiPackStore` m
 
 Scheduled rebakes: ALPR cameras weekly (Monday 08:17 UTC); place packs monthly (3rd and 5th, 07:15, half the catalog each);
 road features monthly (4th and 6th, 07:45, halves); places (6th and 7th, 05:00, sharded); basemap (9th and 10th,
-05:00, split by catalog half); routing, buildings, addresses and maxspeed quarterly (January,
-April, July, October, 2nd, 04:00). The obf bake stays manual because of its runner memory limits
+05:00, split by catalog half); buildings (three groups), addresses and maxspeed (two shards)
+quarterly (January, April, July, October, 2nd, 04:00, `quarterly-data-refresh.yml`). Routing is not
+scheduled: the obf bake stays manual because of its runner memory limits
 and the manifest flip. A world obf bake stages into `obf-manifest-staging.json`, which the app
 never reads; copying staging over the live name flips the whole catalog atomically.
 
@@ -2280,7 +2289,9 @@ owners empty` then `CAR.VALIDATOR: Package DENIED`), whatever the install fields
 "Unknown sources" toggle does not cover it; on a stock Pixel an install routed through Google's
 own package installer passes. The car map re-applies the palette whenever the car's day/night
 changes, draws the phone's puck bitmap rotated by heading minus camera bearing, and keeps the
-speed badge inside the host's visible area. The guidance voice is band-limited by the protocol
+speed badge and the attribution inside the host's stable area (the part no template UI ever
+covers), falling back to the visible area when the host reports no usable stable area. The
+guidance voice is band-limited by the protocol
 (the Android Auto guidance stream is 16 kHz mono).
 
 Screens: `MainCarScreen` (`PlaceListNavigationTemplate`) to `SearchCarScreen` (`SearchTemplate`)
@@ -2298,7 +2309,6 @@ to `RoutePreviewCarScreen` (`RoutePreviewNavigationTemplate`) to `ActiveNavCarSc
   direction and exit number from the route's own geometry rather than assuming.
 - The snapshotter resolves the same patched style file the phone map uses; a plain style URL
   leaves the car on Noto.
-- Android Auto has no pause control yet.
 - The car nav screen: a paused drive shows a `MessageInfo` ("Paused") in place of the turn card
   and the strip carries Pause/Resume; a turn farther than `CONTINUE_FAR_M` (1,500 m) leads the card
   with "Continue on <the road you are on>" (`Maneuver.roadAt`, the phone's pill rule) and shows the
@@ -2310,7 +2320,9 @@ to `RoutePreviewCarScreen` (`RoutePreviewNavigationTemplate`) to `ActiveNavCarSc
   cameras to the renderer, which draws them as dots from z13.5 with the plate cameras along the
   route read straight off the bundled set.
 - The car snapshotter is themed with the phone's palette through the `StyleLayers` interface
-  (`applyMapTheme(SnapshotterHost(snapshotter), dark, amoled)` on style load), draws no library
+  (`applyMapTheme(SnapshotterHost(snapshotter), dark, amoled)`), applied from the first snapshot
+  callback because the style observer never fires for a style handed over as JSON; that first
+  frame is discarded for a themed one. The renderer draws no library
   overlay (`QuietSnapshotter`) and its own single OpenStreetMap credit, frames the puck inside
   the host's visible area at `PUCK_DOWN` (0.72) of its height while following in nav (meters
   per pixel from 512 px tiles), glides the puck with `FollowEstimator`, and eases the speed-tiered

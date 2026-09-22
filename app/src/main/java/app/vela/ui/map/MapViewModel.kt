@@ -984,8 +984,10 @@ class MapViewModel @Inject constructor(
 
     /** As the user types, fetch live place suggestions (debounced) so the search
      *  page shows real matches — name + address — to tap, like Google's
-     *  autocomplete. Reuses the calibrated search endpoint (no separate suggest
-     *  RPC); best-effort, and a stale response is dropped if the query moved on. */
+     *  autocomplete. Google's own autocomplete (`dataSource.suggest`) answers
+     *  first; only when it fails or comes back empty does the older race run
+     *  (the calibrated search endpoint plus Photon and the local address pack).
+     *  Best-effort, and a stale response is dropped if the query moved on. */
     fun onQueryChange(q: String) {
         _state.update { it.copy(query = q) }
         suggestJob?.cancel()
@@ -1026,10 +1028,10 @@ class MapViewModel @Inject constructor(
                 }
             } else null
             // Google's OWN autocomplete leads (2026-09-22): it honors the location bias for a
-            // partial address, which the search endpoint below never did. "a house number" typed at home
-            // answered with a ZIP code two time zones away and "459 Ralston" typed in another
-            // state found nothing, while the Google app lists the five houses numbered a house number
-            // on the next streets and the San Francisco street with its city. When it answers,
+            // partial address, which the search endpoint below never did. A bare five-digit house
+            // number answered with a same-looking ZIP code in another state and "459 Ralston"
+            // typed far from San Francisco found nothing, while the Google app lists the houses
+            // with that number on the nearby streets and the San Francisco street with its city. When it answers,
             // its rows are the suggestions (the local pack's exact hits still lead, deduped by
             // house number) and the Photon + search-endpoint race below is skipped; when it
             // fails or is off (offline, Google off), the old pipeline runs unchanged.
@@ -4542,8 +4544,8 @@ class MapViewModel @Inject constructor(
     private var flockRouteJob: kotlinx.coroutines.Job? = null
     private var routesEpoch = 0 // bumped on each fresh route(); stales an in-flight flock count if a newer route set lands
 
-    /** When "Avoid surveillance cameras" is on, count the ALPR cameras near each route option (keyless
-     *  Overpass, index-aligned with [routes]) so the picker can badge "passes N cameras" AND auto-prefer
+    /** When "Avoid surveillance cameras" is on, count the ALPR cameras near each route option (the bundled
+     *  FlockCameras set; keyless Overpass only until it loads; index-aligned with [routes]) so the picker can badge "passes N cameras" AND auto-prefer
      *  the fewest-camera alternate - but only for a MODEST detour (never send you an hour around a camera
      *  on a 15-minute trip). Off the hot path; a failure just shows no badge and no reroute. */
     private fun refreshFlockOnRoute(

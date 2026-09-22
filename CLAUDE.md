@@ -469,8 +469,8 @@ Defaults that make the safe path the easy one:
   Load such data with `produceState { withContext(Dispatchers.IO) { … } }`;
   `VoiceGuide.availableEngines()` also caches the system-engine enumeration per process.
 - **The ambient category fan-out is CONCURRENCY-BOUNDED (2026-07-17, `GoogleMapsDataSource.ambientFanout`,
-  a `Semaphore(4)`).** `nearbyPlaces` fires ~13 category requests, each loaded WHOLE and built into a
-  JsonElement tree (~30 MB for a dense area). Firing all 13 in parallel allocated ~400 MB of transient
+  a `Semaphore(4)`).** `nearbyPlaces` fires 15 category requests (8 on the lean path), each loaded WHOLE and built into a
+  JsonElement tree (~30 MB for a dense area). Firing them all in parallel allocated ~400 MB of transient
   parse trees in a burst on a fresh launch / fast far pan, filled the 512 MB largeHeap, and stalled EVERY
   allocation on a blocking GC (P9-measured: 401 MB live, dozens of 80-86 ms `WaitForGcToComplete blocked
   Alloc`, 13% janky frames, 400 ms 99th-percentile - the "horrible at fresh launch / fast pan" report).
@@ -674,7 +674,9 @@ Defaults that make the safe path the easy one:
   the files after, grep `CAR.VALIDATOR` and `PlayGearheadService`. **The Desktop Head Unit does the
   same without a car** (`sdkmanager "extras;google;auto"`, binary under `extras/google/auto/`;
   the phone needs Android Auto's developer "Start head unit server" and `adb forward tcp:5277
-  tcp:5277`): the phone's own Android Auto app runs the same validator against it. **Ownership
+  tcp:5277`), but only for the UI: the phone's Android Auto app does NOT run the Play ownership
+  lookup against the DHU (no `PlayGearheadService` line in its log), so a DHU pass says nothing
+  about the car's gate. **Ownership
   experiment (planned, ROADMAP):** `-PappId=<id>` builds Vela under another package name so it can
   be sideloaded under the id of an app the account once installed from Play, which tells whether
   the check is Play's library record alone (a sideload under an owned id passes) or the signing
@@ -682,7 +684,8 @@ Defaults that make the safe path the easy one:
   **Turn card requirements (per the Android for Cars docs):** `ActiveNavCarScreen` calls
   `NavigationManager.navigationStarted()` AND `updateTrip()` - both are needed for the RoutingInfo turn
   card + the cluster/HUD nav data; `ManeuverMapper` maps Vela maneuvers → car `Maneuver`/`Step`/`Trip`.
-  Manifest also declares `FEATURE_CLUSTER` (instrument-cluster nav) and `CAR_INFO` (AAOS car speed).
+  Manifest also declares `FEATURE_CLUSTER` (instrument-cluster nav) and `CAR_INFO`, which is
+  declared but unused: nothing reads `CarHardware`, so the car speed badge is GPS speed everywhere.
   The PHONE also feeds NavSession when not projecting; the car and phone share the one nav loop.
 - **Picture-in-picture nav (2026-07-25):** MainActivity carries `supportsPictureInPicture` +
   autoEnter params kept in lockstep with `vm.state.navigating` (Android 12+; pre-12 enters in
@@ -963,8 +966,8 @@ Defaults that make the safe path the easy one:
   that detent (restarting would zero the coast velocity). A swipe still never CLOSES the sheet.
 - **In-nav search along route (2026-07-13, map-FAB layout 2026-07-14):** a right-edge FAB STACK
   on the nav map (recenter-when-detached + volume + search - the bottom bar was cramming four
-  controls, and Google floats these) arms `NavSearchChips` (a free-text field + Gas/Food/Coffee/
-  Groceries chips, `NavOverlays.kt`) above the bar; the bar itself is ETA + Steps + End only; a pick runs the normal
+  controls, and Google floats these) arms `NavSearchChips` (a free-text field + the full
+  `QuickCategories.all()` chip row, the same set and order as the search page, `NavOverlays.kt`) above the bar; the bar itself is ETA + Steps + End only; a pick runs the normal
   `searchAlongRoute` (which skips stashing `alongRouteDest` while navigating), the nav branch of
   MapScreen's bottom `when` steps aside while `state.results` is non-empty so the results sheet
   shows, and `selectPlace` gates on `navigating` -> `addStopDuringNav` -> `NavSession.addStop`
@@ -1445,7 +1448,7 @@ Defaults that make the safe path the easy one:
 - **POI-speed trio (2026-07-11):** (1) `nearbyPlaces` STREAMS its category fan-out via an
   `onPartial` callback (paints throttled to >=10 new places + 500 ms apart; the final
   return is still the complete ranked pool) so first dots stop waiting on the SLOWEST of
-  ~13 requests; (2) `prefetchAmbientNeighbors` warms the 4 view-sized neighbor areas
+  15 requests; (2) `prefetchAmbientNeighbors` warms the 4 view-sized neighbor areas
   into the ambient LRU after each idle fetch - UNMETERED network only (4 extra fan-outs),
   sequential with 700 ms gaps, skips cached areas, bails on any non-bare-map state; (3)
   the ambient LRU PERSISTS to `ambient_cache.json` (newest 8 areas x 200 slim places via
@@ -2238,7 +2241,7 @@ architecture note.
   you're viewing" from Hong Kong announced "Downloading Vietnam". Kansas's box across the Missouri
   River was the same fact, handled there by streaming three candidates. `scripts/region-polys.py`
   fetches the `.poly` Geofabrik publishes beside every extract in `tools/routing-regions.json`
-  (all 425), simplifies each to ~5 km and writes `app/src/main/assets/region_polys.json` (about
+  (458 rows today, and the asset carries a polygon for all 458), simplifies each to ~5 km and writes `app/src/main/assets/region_polys.json` (about
   300 KB, 20k points); `offline/RegionPolys` loads it once at app start (beside the flock data) and
   answers `covers(id, lat, lng)`, NULL when it has no polygon for the id. `RoutingRegion.covers` and
   `PmtilesRegionStore.Region.covers` ask it first and fall back to the box, so a catalog whose ids
@@ -2408,8 +2411,8 @@ architecture note.
   `/s?tbm=map&gs_ri=maps&suggest=p` request the maps web page fires per keystroke, with the
   viewport center + span in `pb` (`!1d<span>!2d<lng>!3d<lat>`) and hl/gl rewritten like every
   other request. It honors the bias for a PARTIAL address, which the calibrated search endpoint
-  never did (device-reproduced on the 4a: "a house number" and "a house number and its street" answered only with a ZIP
-  code two time zones away; "459 Ralston" typed in another state found businesses named
+  never did (device-reproduced on the 4a: a bare five-digit house number, and the same number with its
+  street, answered only with a same-looking ZIP code in another state; "459 Ralston" typed in another state found businesses named
   Ralston and never the San Francisco street). The envelope is `{"c":0,"d":")]}'\n<json>"}` plus
   a comment tail; rows carry their content at column 22 (searched, not assumed; only the FIRST object is read, the app gets a second `{"c":0,"d":"","e":token}` after the tail): primary,
   secondary, `[_,_,lat,lng]` at 11, `[[featureId, title, _, [_,_,lat,lng], ..]]` at 13. Rows
@@ -4456,7 +4459,7 @@ Gotchas:
   off the route sets `autoResumeArmed`, and only then do `AUTO_RESUME_HITS` (3) consecutive moving,
   on-route fixes resume it. Without the arming step, pausing while still rolling down the route
   resumed itself three fixes later - a pause button that does not pause (device, the day it was
-  built). Android Auto has no pause control yet.
+  built). Android Auto has Pause/Resume on its action strip (`ActiveNavCarScreen`).
 - Nav feedback: spoken guidance (`VoiceGuide`) + **direction-coded haptic turn cues**
   (`core/feedback/Haptics`, `NavEvent.Haptic`); toggle in Settings → Navigation. **Reroute buzzes
   too (2026-07-10):** `Haptics.reroute(mode)` (three ticks + a long buzz, distinct from every turn
@@ -5008,8 +5011,7 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   calibration, the plain OSRM route kept its free-flow fiction and sorted as "Fastest" ahead of
   Google's honest alternates; and the snap's ETA-margin gate compared Google's live ETA against
   the RAW free-flow, so a jam-avoiding snap lost to the fiction every time. The gate now uses the
-  calibrated free-flow, and the `directions` diag logs `cal=`. Multi-stop trips still take the
-  ratio-only `applyTrafficRatio` path (open, #227 for stops). **Multi-stop trips are calibrated too (same review):** Google's keyless answer USED TO BE the DIRECT trip, so `speedCal` compared average SPEEDS (the distance difference cancels) and the via route went through `applyTraffic` with `withSpans = false`; `applyTrafficRatio` is gone, and the recheck's `etaScale` no longer jumps when the last stop is passed. **SINCE 2026-09-21 GOOGLE IS ASKED FOR THE TRIP THROUGH THE STOPS (issue #600 made the gap visible: "why are we hitting open source routers when google supports stops").** `DirectionsPb.withWaypoints` adds one top-level `!1m4!3m2!3d<lat>!4d<lng>!6e2` group per stop between the origin and destination groups (a repeated field; no enclosing count moves; verified live from a plain client on the Davis fixture: direct 15.3 mi / 21 min with three alternates, through Woodland ONE route at 45 min with per-leg distances). The multi-stop branch then mirrors the single-destination one: same course = the open via route with Google's real through-the-stops time and spans (`freeFlowCal` from durations, like a single trip); Google left the course = the open router is snapped along Google's line LEG BY LEG (`RouteGeometry.sampleViasThrough`: the samples of each leg with the real stop between them), kept on the same reach / length / spur / ETA-margin rules, with the stops passed as `routeVia(looseVias=)` so a stop set back in a lot does not trip the strict via-snap refusal that exists for sampled points; avoid on and the snap failed = Google's own abbreviated route through the stops (it honors the avoid) rather than a plain route that ignores it. **THE GUARD:** `RouteGeometry.stopsOnLine` (250 m to the nearest vertex of Google's line, in trip order) decides whether Google actually called at the stops; a template drift that dropped the waypoint groups would otherwise hand back the direct trip and read as a valid route, so a reply that misses a stop takes the OLD direct-trip handling (`speedCal`, spans off) and the diag line says `googleStops=IGNORED`. The `directions` multi-stop line is mirrored to logcat as `VelaDirections` (no coordinates). `speedCal` stays for exactly that fallback. NB `DirectionsParser`'s `start`/`end` paths (`[7][3][2]`, `[7][3][3]`) are the route's BOUNDING-BOX corners, not its endpoints; they only coincide on a southwest-to-northeast trip like Davis to Sacramento (found reading the via reply, where the "start" mixed Davis's latitude with Woodland's longitude). They feed only the no-geometry fallback line, so nothing shipped wrong, but do not build on them. A same-course primary also carries Google's `typicalLow/High` range (distance-scaled), so the depart-time chooser shows "usually X-Y" for it, not only for provisional alternates. **Per-alternate re-rank (2026-07-01):** each Google route in `root[0][1]` carries its
+  calibrated free-flow, and the `directions` diag logs `cal=`. **Multi-stop trips are calibrated too (same review):** Google's keyless answer USED TO BE the DIRECT trip, so `speedCal` compared average SPEEDS (the distance difference cancels) and the via route went through `applyTraffic` with `withSpans = false`; `applyTrafficRatio` is gone, and the recheck's `etaScale` no longer jumps when the last stop is passed. **SINCE 2026-09-21 GOOGLE IS ASKED FOR THE TRIP THROUGH THE STOPS (issue #600 made the gap visible: "why are we hitting open source routers when google supports stops").** `DirectionsPb.withWaypoints` adds one top-level `!1m4!3m2!3d<lat>!4d<lng>!6e2` group per stop between the origin and destination groups (a repeated field; no enclosing count moves; verified live from a plain client on the Davis fixture: direct 15.3 mi / 21 min with three alternates, through Woodland ONE route at 45 min with per-leg distances). The multi-stop branch then mirrors the single-destination one: same course = the open via route with Google's real through-the-stops time and spans (`freeFlowCal` from durations, like a single trip); Google left the course = the open router is snapped along Google's line LEG BY LEG (`RouteGeometry.sampleViasThrough`: the samples of each leg with the real stop between them), kept on the same reach / length / spur / ETA-margin rules, with the stops passed as `routeVia(looseVias=)` so a stop set back in a lot does not trip the strict via-snap refusal that exists for sampled points; avoid on and the snap failed = Google's own abbreviated route through the stops (it honors the avoid) rather than a plain route that ignores it. **THE GUARD:** `RouteGeometry.stopsOnLine` (250 m to the nearest vertex of Google's line, in trip order) decides whether Google actually called at the stops; a template drift that dropped the waypoint groups would otherwise hand back the direct trip and read as a valid route, so a reply that misses a stop takes the OLD direct-trip handling (`speedCal`, spans off) and the diag line says `googleStops=IGNORED`. The `directions` multi-stop line is mirrored to logcat as `VelaDirections` (no coordinates). `speedCal` stays for exactly that fallback. NB `DirectionsParser`'s `start`/`end` paths (`[7][3][2]`, `[7][3][3]`) are the route's BOUNDING-BOX corners, not its endpoints; they only coincide on a southwest-to-northeast trip like Davis to Sacramento (found reading the via reply, where the "start" mixed Davis's latitude with Woodland's longitude). They feed only the no-geometry fallback line, so nothing shipped wrong, but do not build on them. A same-course primary also carries Google's `typicalLow/High` range (distance-scaled), so the depart-time chooser shows "usually X-Y" for it, not only for provisional alternates. **Per-alternate re-rank (2026-07-01):** each Google route in `root[0][1]` carries its
   OWN `duration_in_traffic` (`parseRoute` reads `summary[10][0][0]` per route), so the returned list is now
   **sorted by live in-traffic ETA - fastest leads, Google-style.** (Earlier note that this was "impossible"
   was wrong: it's only true for the OSRM-only alts, which share `gTop`'s ratio; Google's alts carry real
@@ -5109,8 +5111,9 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   (`OBF_MANIFEST_URL`, `-PobfManifestUrl=` override) whenever obf-manifest.json has entries, else
   the legacy graph catalog - dispatching the obf-regions workflow IS the switch, no app release.
   The trade: no precomputed shortcuts, so a cross-city route costs seconds not ~200 ms (offline is
-  the FALLBACK router, so size beats speed - user call); OsmAnd's HH precomputed mode is the
-  follow-up if long routes measure slow on-device. **4a canary numbers (2026-07-23, release build,
+  the FALLBACK router, so size beats speed - user call); OsmAnd's HH precomputed mode is a
+  PREREQUISITE for long offline routes (see the WITHOUT HH paragraph above), not a speed
+  follow-up. **4a canary numbers (2026-07-23, release build,
   airplane mode, Berlin obf):** 1.6 km drive = 288 ms; 21 km cross-city drive = 9.1 s (252
   segments); same trip walking = 15.9 s. Steps carry names + B-road shields + sign destinations;
   delete via Settings removes the region and the engine drops its readers. **THREE ANDROID
@@ -5544,9 +5547,10 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   route counts `[10,10,11]`, AND the hosted refresh downloaded a newer version (20260714) + hot-swapped +
   is idempotent on relaunch. **DRAWN badges cluster below street zoom (2026-07-25):** a Flock corner mounts several
   single-direction heads, so `vela-flock-cluster` (own source, 40 m `MapDeclutter` merge computed
-  at upload time in VelaMapView) draws ONE badge per install from z11/13 up to z16, where the raw
-  per-camera layer + facing cones take over; the browse-13/route-11 minZoom gate now lives on the
-  cluster layer. Route camera COUNTS stay per-head on purpose. NB "avoid" still only RE-RANKS the alternates Google/OSRM offer (fewest-camera
+  at upload time in VelaMapView, `FLOCK_CLUSTER_M`) draws ONE badge per install from z11/13 up to z16.
+  From z16 the detail layer takes over, and since 2026-09-17 it is clustered too: still one badge
+  per cluster (an "xN" count past one head) with every head's facing cone fanned from that point,
+  never a raw badge per camera; the browse-13/route-11 minZoom gate lives on the cluster layer. Route camera COUNTS stay per-head on purpose. NB "avoid" still only RE-RANKS the alternates Google/OSRM offer (fewest-camera
   within a small detour); it does NOT graph-route around cameras. **To publish the first hosted copy, dispatch
   Actions -> "Flock cameras" once** (until then every install just uses the bundled floor).
 - **Transitous is the PRIMARY departure-board source (2026-07-13, phase 1 of the GTFS adoption).**

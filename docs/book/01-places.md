@@ -218,7 +218,7 @@ consequence of 512 px tiles. Compare the two by matching the area on screen, nev
 
 ### Google's own ranking, when Google is drawing
 
-In Google or Both mode the pins come from a fan-out of about 13 per-category searches, each
+In Google or Both mode the pins come from a fan-out of 15 per-category searches (8 on a low-RAM or low-data device), each
 ordered by its own relevance. There is no global ranking in that answer, so Vela computes one:
 
 ```

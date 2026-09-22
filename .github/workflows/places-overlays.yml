@@ -185,9 +185,9 @@ jobs:
           REV=$(date -u +%Y%m%d)
           [ -n "${{ github.event.inputs.rev }}" ] && REV="${{ github.event.inputs.rev }}"
           DELTA=null
-          # A PATCH AGAINST WHAT IS PUBLISHED. A week of edits moves about 1% of a region's tiles,
-          # so a phone that already has the old archive can take a few MB instead of a few hundred
-          # (see ROADMAP). The patch is BUILT AND PROVEN here or it is not published: it is applied
+          # A PATCH AGAINST WHAT IS PUBLISHED. A week of edits moves about 1.3% of a region's tiles
+          # (3.2% of its bytes; Kentucky over 7 days), so a phone that already has the old archive
+          # can take a few MB instead of a few hundred (see ROADMAP). The patch is BUILT AND PROVEN here or it is not published: it is applied
           # to a copy of the old archive and the result has to carry the new one's fingerprint, so a
           # patch that would leave somebody with a subtly wrong map never reaches them.
           if [ -f "prev.pmtiles" ] && [ -n "$PREV_REV" ] && [ "$PREV_REV" != "0" ] && [ "$PREV_REV" != "$REV" ]; then

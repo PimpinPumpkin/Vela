@@ -8,8 +8,9 @@ import androidx.compose.runtime.mutableStateOf
  * When a downloaded region may update itself (user 2026-09-18).
  *
  * A rebaked region used to mean a fresh few-hundred-MB download, so updating was always a
- * deliberate act. Deltas change the economics (a week of edits is about 3% of a state's tiles), but
- * bytes are still bytes on a phone plan, so the choice stays the user's, and the default is OFF
+ * deliberate act. Deltas change the economics (measured on Kentucky, a week of edits moved 1.3% of
+ * the tiles and 3.2% of the bytes), but bytes are still bytes on a phone plan, so the choice stays
+ * the user's, and the default is OFF
  * (see [mode]). On Wi-Fi or mobile, MapViewModel.scheduleAutoRegionPatches applies published
  * patches on its own once a day; the setting also decides whether the Update button may patch.
  *

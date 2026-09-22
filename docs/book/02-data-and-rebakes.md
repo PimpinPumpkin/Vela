@@ -343,8 +343,6 @@ hosted, unreferenced.
   is why OSM wins the coordinate in the places bake.
 - **Overture publishes monthly**, so "rebake sooner" does not mean "fresher" for the fields that
   come from Overture. It does for the AllThePlaces and OSM halves.
-- **The basemap repair judges "unchanged" by size alone.** A same-size rebake keeps the old `rev`
-  when no run entry overrides it, the way the places repair did before the upload-date check.
 - **The routing bake is manual and memory-bound.** A region whose filtered extract still does not
   fit 12 GB of heap has no routing file, and the obf catalog changes only when someone dispatches it
   and copies staging over live. If a region's roads have changed materially, dispatching that one

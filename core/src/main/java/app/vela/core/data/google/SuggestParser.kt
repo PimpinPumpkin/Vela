@@ -14,9 +14,9 @@ import kotlinx.serialization.json.jsonPrimitive
  * Google Maps' own search-as-you-type answer, keyless (`/s?tbm=map&gs_ri=maps&suggest=p`,
  * the request the maps web page fires on every keystroke). It is the autocomplete the Google
  * app shows, and it honors the location bias for a partial address, which the calibrated
- * search endpoint never did: "a house number" near the phone lists the five houses numbered a house number in
- * the next few streets, where the search endpoint answered with a ZIP code two time zones
- * away (2026-09-22). A house address far from the phone ("459 Ralston" typed in another
+ * search endpoint never did: a bare house number near the phone lists the houses with that
+ * number on the next few streets, where the search endpoint answered with a same-looking ZIP
+ * code in another state (2026-09-22). A house address far from the phone ("459 Ralston" typed in another
  * state) still comes back, ranked after the nearby ones.
  *
  * The response shape is described above [parse]; the column index is searched, not assumed,

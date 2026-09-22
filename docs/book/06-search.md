@@ -173,8 +173,8 @@ It fills the row's **primary text only**: a place's name, an address's street li
 query. Google fills the whole "name, city, state" line; that turned out to leave nothing to
 refine, so Vela does not.
 
-The design is that the cursor lands at the **end** of the filled text, through a
-`TextFieldValue` owned by `SearchBar`. See Limits: the shipped field does not do that yet.
+The cursor lands at the **end** of the filled text: `SearchBar` owns a `TextFieldValue` and resets
+it, with the selection at the end, whenever `fillTick` (`queryEdits`) moves.
 
 ### Search on Enter
 
@@ -422,18 +422,11 @@ corridor-filtered like the phone's. The car chapter (planned) covers the rest.
 
 ## Limits
 
-- **The fill-in arrow does not move the cursor to the end yet.** SPEC, CLAUDE and FEATURES
-  describe a `TextFieldValue` in `SearchBar` that puts the cursor at the end of filled text. The
-  shipped `BasicTextField` still takes a plain `String`, and the `fillTick` parameter that carries
-  `queryEdits` is accepted but unused. A plain String field keeps the old cursor position across
-  an outside change, which is exactly the "cursor stayed mid-text" behavior the design was meant
-  to fix.
 - **Photon hears address-shaped typing even when Google answers.** Its request starts in parallel
   with the autocomplete and is only canceled afterwards, so the query has already been sent.
-- **Offline address fill is inverted.** The code's intent is to fill the blank addresses of the
-  first 20 offline rows. The condition skips rows 0 to 19 and fills rows 20 onward instead, so the
-  rows you see first read as bare names until you open one (opening a place backfills its address
-  from the index).
+- **Offline address fill covers the first rows only.** With no connection, the blank addresses of
+  the first 20 place rows (`OFFLINE_ADDR_FILL`) are filled from the address index; rows past that
+  read as bare names until you open one (opening a place backfills its address).
 - **The offline fallback after a failed online search is thinner** than the straight offline path:
   it has no address fill and no "businesses at this address" step.
 - **Search along a route is one window at the route's midpoint.** On a trip much longer than the

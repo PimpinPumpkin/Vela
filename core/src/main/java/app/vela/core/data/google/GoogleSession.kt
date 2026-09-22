@@ -19,9 +19,10 @@ import javax.inject.Singleton
  * logged-out browser. No API key, no extracted token — that's what keeps Vela
  * on the NewPipe footing.
  *
- * CALIBRATE: in consent-gated regions (much of the EU) this GET may redirect to
- * a consent wall; handling that (posting the consent form to obtain SOCS) is the
- * follow-up for non-US locales.
+ * In consent-gated regions (much of the EU) a cookieless GET would redirect to a
+ * consent wall; the shared cookie jar (CoreModule's InMemoryCookieJar) pre-seeds
+ * SOCS + CONSENT so it does not. Posting the consent form is left for the case
+ * where reports show the wall persisting anyway.
  */
 @Singleton
 class GoogleSession @Inject constructor(

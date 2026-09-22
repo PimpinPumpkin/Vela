@@ -32,8 +32,8 @@
          car screen's surface. Both are car-library permissions, not runtime ones. -->
     <uses-permission android:name="androidx.car.app.NAVIGATION_TEMPLATES" />
     <uses-permission android:name="androidx.car.app.ACCESS_SURFACE" />
-    <!-- AAOS only: read the vehicle's own speed via CarHardware instead of GPS-derived speed.
-         No-op on projected Android Auto. -->
+    <!-- AAOS vehicle info (the car's own speed via CarHardware). Declared but unused: nothing
+         reads CarHardware yet, so the speed shown is GPS-derived everywhere. -->
     <uses-permission android:name="android.car.permission.CAR_INFO" />
 
     <!-- So a phone with NO text-to-speech engine (common on degoogled ROMs) can be

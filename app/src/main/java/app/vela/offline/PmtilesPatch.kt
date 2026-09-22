@@ -8,9 +8,10 @@ import java.security.MessageDigest
 /**
  * Applying a delta update to an installed archive, IN PLACE.
  *
- * A rebaked region changes about one tile in a hundred (measured: a week of OpenStreetMap edits
- * moved 1.3% of a state's tiles), so offering a fresh 180 MB download every week is most of a
- * gigabyte a month to say the same thing. A patch carries only the tiles that changed.
+ * A rebaked region changes about one tile in a hundred (measured on Kentucky: 7 days of
+ * OpenStreetMap edits moved 1.3% of its tiles, 3.2% of its bytes, a 4.4 MB delta against a 183 MB
+ * archive), so offering a fresh download every week is most of a gigabyte a month to say the same
+ * thing. A patch carries only the tiles that changed.
  *
  * The write order IS the safety: tile blobs, then the rebuilt directory, then the 127-byte header
  * LAST. Everything before that write is appended past the end of what the old header describes, so
