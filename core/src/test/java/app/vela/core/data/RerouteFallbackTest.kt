@@ -45,13 +45,16 @@ class RerouteFallbackTest {
             google,
             onDevice = {
                 google.complete(listOf(route(RouteSource.GOOGLE_NAMED)))
-                Thread.sleep(3_000) // a native compute that ignores cancellation
+                Thread.sleep(6_000) // a native compute that ignores cancellation
                 listOf(route(RouteSource.OBF))
             },
             budgetMs = 10_000,
         )
         assertEquals(RerouteFallback.Source.GOOGLE, out.source)
-        assertTrue("waited ${out.waitedMs} ms for a compute it did not need", out.waitedMs < 2_500)
+        // Well under the compute's own duration: the point is that Google's answer was not held
+        // behind it. The margin is wide on purpose; a loaded CI runner failed a 2.5 s bound against
+        // a 3 s sleep once (2026-09-22) with nothing wrong.
+        assertTrue("waited ${out.waitedMs} ms for a compute it did not need", out.waitedMs < 4_500)
     }
 
     @Test fun `an empty google answer falls through to the region`() = runBlocking {

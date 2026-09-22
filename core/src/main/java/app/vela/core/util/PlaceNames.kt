@@ -173,6 +173,29 @@ object PlaceNames {
     fun agree(a: String?, b: String?, extraGeneric: Set<String> = emptySet()): Boolean =
         match(a, b, extraGeneric) != Match.NONE
 
+    /**
+     * [agree] with the two places' KINDS (the icon group, "fuel", "food", "shop"...; null or
+     * "default" = unknown) in hand: an OVERLAP between two known, different kinds is not a match.
+     * "Cathcart Station Alfy's" (a fuel station) and "Cathcart Station LLC" (a pizza place) share
+     * their identifying words and are two businesses on one lot; a VARIANT or EXACT still counts
+     * across kinds, because "Safeway Pharmacy" and "Safeway" ARE one business in two listings.
+     */
+    fun sameBusiness(a: String?, kindA: String?, b: String?, kindB: String?, extraGeneric: Set<String> = emptySet()): Boolean {
+        val m = match(a, b, extraGeneric)
+        if (m == Match.NONE) return false
+        if (m == Match.OVERLAP && knownKind(kindA) && knownKind(kindB) && kindA != kindB) return false
+        return true
+    }
+
+    /** Two fuel stations within [FUEL_LOT_M] are one station: a forecourt is one per lot, and the
+     *  sources name it after different things (the brand, the operator, the shop inside). */
+    fun sameFuelLot(kindA: String?, kindB: String?, distanceM: Double): Boolean =
+        kindA == FUEL_KIND && kindB == FUEL_KIND && distanceM < FUEL_LOT_M
+
+    const val FUEL_KIND = "fuel"
+    const val FUEL_LOT_M = 45.0
+    private fun knownKind(k: String?) = !k.isNullOrBlank() && k != "default"
+
     /** The words of a town out of a listing's address ("239 G St, Davis, CA 95616" -> davis, ca),
      *  to pass as [extraGeneric]: a name that ends in its own town is the name. */
     fun cityWords(address: String?): Set<String> {

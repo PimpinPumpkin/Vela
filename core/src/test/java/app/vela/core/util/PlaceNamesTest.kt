@@ -92,6 +92,15 @@ class PlaceNamesMatchTest {
         assertFalse(PlaceNames.same("Zorpmart Fuel Station", "Zorpmart"))
     }
 
+    @Test fun `an overlap across two known kinds is two businesses on one lot`() {
+        assertFalse(PlaceNames.sameBusiness("Cathcart Station Alfy's", "fuel", "Cathcart Station LLC", "food"))
+        assertTrue(PlaceNames.sameBusiness("Cathcart Station Alfy's", "fuel", "Cathcart Station LLC", null))
+        assertTrue(PlaceNames.sameBusiness("Safeway Pharmacy", "health", "Safeway", "shop")) // a VARIANT crosses kinds
+        assertTrue(PlaceNames.sameFuelLot("fuel", "fuel", 11.0))
+        assertFalse(PlaceNames.sameFuelLot("fuel", "food", 11.0))
+        assertFalse(PlaceNames.sameFuelLot("fuel", "fuel", 80.0))
+    }
+
     @Test fun `city words come out of an address`() {
         assertEquals(setOf("davis", "ca"), PlaceNames.cityWords("239 G St, Davis, CA 95616"))
         assertTrue(PlaceNames.cityWords("239 G St").isEmpty())
