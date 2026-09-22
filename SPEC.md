@@ -1701,7 +1701,10 @@ Selection rules on the phone:
   left the screen. Swaps also keep a `BASEMAP_SWAP_COOLDOWN_MS` (2 s) floor. Offline the eager
   unmount is replaced (`keepMounted`): the archive in use stays while its roads reach the center
   tile, the ring or any viewport corner, because nothing streams in its place and letting go
-  blanked the whole screen, the downloaded half included, on a pan across a state line.
+  blanked the whole screen, the downloaded half included, on a pan across a state line. Online
+  the mounted archive is no longer kept until the center leaves its data: it is in use exactly
+  while the ring and the corners are all inside it, so a border on screen means streaming and a
+  pan along the border reloads nothing.
 - **A global low-zoom archive is the floor under the pick** (`BasemapTileStore.WORLD_ID`, baked by
   `world-lowzoom.yml`, about 11 MB at z0-7, pulled once alongside the first offline download). It is
   kept OUT of the per-region candidate list: it covers every point on earth, and it carries no
