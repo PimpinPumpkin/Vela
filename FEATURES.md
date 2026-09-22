@@ -1666,6 +1666,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   terminus), the way Google presents an intersection stop. Transit directions are unaffected: they
   already walk you to the exact boarding coordinate of the specific curb. Stops whose names carry
   the direction (NB/SB station styles) never merge.
+- ✅ **Same-business rule in every app language (2026-09-22).** Descriptor words, legal forms and
+  street abbreviations for all 13 languages are read as descriptors whatever the phone's language,
+  accents fold across scripts, and Chinese, Japanese, Korean and Thai names compare as strings with
+  their suffixes (店, 薬局, 銀行, 지점) stripped. The bake's word list carries the same union.
 - ✅ **Same-business rule, city pass (2026-09-22).** Brand prefixes ("Bank of America Financial
   Center" / "Bank of America ATM"), phrases inside longer names ("23rd Street Dental"), plurals,
   "Dr."/"Doctors", street words no longer counting as identity, and neighborhood words shared

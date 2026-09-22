@@ -1317,7 +1317,21 @@ and a nested or subset match needs a strong core (two identifying words, or one 
 that is not an ordinal): "The Finn" is not "Dish Society at Finn Hall", "Bayou Place" is not
 "Bunnies On The Bayou". Measured through the real rule over the four areas: Davis 72% of Google's
 places linked, a suburban corridor 68%, Midtown 81%, downtown Houston 83%; the rest are mostly
-places the archive does not have. A single shared identifying word is NOT a match ("Arroyo Park" against
+places the archive does not have.
+
+**Other languages (2026-09-22).** The generic list is the UNION of one table per app language
+(en fr de es it pt nl sv pl ru uk hu he, about 1,800 words after folding): the names on a map
+belong to the region, not to the phone, so no language is picked; "Boulangerie Paul" is "Paul",
+"Aral Tankstelle" is "Aral", "Аптека Ригла" is "Ригла" whatever the UI language, and a word that
+is a descriptor in one language and a name in another is accepted as rare. Legal forms (GmbH,
+SARL, S.r.l., S.L., Lda, B.V., AB, Sp. z o.o., ООО, Kft, בע"מ) and street abbreviations (Str.,
+Av., Bd, ул., просп.) join the English ones, and the letters NFKD leaves alone fold too (ß, æ, ø,
+œ, ł, đ, ё). Names in scripts written without spaces (Han, kana, Hangul, Thai) get no tokens and
+are compared as strings by `cjkMatch`: descriptor suffixes and prefixes (店, 支店, 薬局, 銀行,
+餐厅, 超市, 有限公司, 지점, 약국, สาขา...) are stripped from both ends, equal cores are a
+VARIANT ("星巴克咖啡" and "星巴克"), a core inside the other is an OVERLAP (the extra is a branch
+name: "スターバックス 渋谷店"), and a core shorter than two characters matches nothing. The bake's
+word file carries the same union. A single shared identifying word is NOT a match ("Arroyo Park" against
 "Arroyo Pool"), a name made only of generic words matches nothing by overlap ("Hair" inside "Hair
 Studio"), and a brand's other listing is a VARIANT that `same` keeps out. Pinned by
 `PlaceNamesMatchTest` with the fixture pairs. Two rules take the places' KINDS (the icon group)

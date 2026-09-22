@@ -2600,7 +2600,15 @@ architecture note.
   changes, comments excluded). Measured within the archives themselves (same-business twins within
   60 m through the real rule, pool words applied): downtown Houston 42 exact + 56 variant + 122
   overlap of 10,795 rows; the corridor 19 + 12 + 41 of 3,123. The exact and variant ones are what
-  the bake drops; the overlap ones are the app's to merge on screen.
+  the bake drops; the overlap ones are the app's to merge on screen. **Other languages
+  (2026-09-22, user: "make the rules work for non-English"):** one generic table per app language
+  unioned into `GENERIC` (the phone's language is irrelevant, the region's is unknown, so all of
+  them apply), legal forms and street abbreviations per language, the accent folds NFKD skips,
+  and `cjkMatch` for Han/kana/Hangul/Thai (string containment after stripping suffixes like 店 /
+  薬局 / 銀行 / 지점). `PlaceNamesI18nTest` pins a pair per language. The four English study
+  areas moved by one or two matches either way under the union. Regenerate
+  `tools/place-generic-words.txt` from ALL the `GENERIC_xx` tables (the generator has to accept
+  both `private val X = setOf(` and the typed form; comment lines excluded).
 - **A CLOSED LISTING NEVER BEATS A LIVE ONE, AND ONLY HIDES A PIN WHEN NO LIVE TWIN EXISTS
   (2026-09-21).** Google keeps a moved business's old, permanently closed profile beside the live
   one for months. The tap pool now drops closed listings whenever a live candidate exists, and
