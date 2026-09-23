@@ -1094,7 +1094,11 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   to named business nodes and exported to geojsonseq (strip the 0x1e record separator before
   jq); `osm_snap` moves a baked row onto OSM's coordinate anywhere inside the duplicate box (~150 m;
   120 m for a chain) on the whole name or the core name (generic words removed), mutual best
-  match only, so each node and each row pair at most once.
+  match only, so each node and each row pair at most once. The name keys keep letters of EVERY
+  script (`[^\p{L}\p{N}]` is the separator, like `PlaceNames.PUNCT`); a Latin-only key made every
+  name rule a no-op in non-Latin regions. A non-Latin place carries `name_en` (side table
+  `names_en`: the OSM row's own tags, its name pair, or the chain dictionary `endict`), shown for
+  a Latin-script UI on the places layer and the sheet, and used by the Both-mode twin test.
   Order of preference: OSM, then the AllThePlaces locator, then Overture's parcel point.
   Tenants never move.
 - **Parks come from OpenStreetMap, so nothing else may filter them out.** The bake drops the park
