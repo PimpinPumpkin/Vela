@@ -67,6 +67,15 @@ upload_manifest() {
     echo "manifest upload lost a race (try $try); retrying"
     sleep $((RANDOM % 15 + 5))
   done
+  # Every try can 404 on the SAME asset id when a parallel run replaced the manifest first: the
+  # release listing keeps naming the deleted asset for a while (seen 2026-09-23, five tries over a
+  # minute). If the live manifest already says what this run meant to write, that is a success.
+  local live="$f.live"
+  if gh release download "$TAG" --repo "$REPO" -p "$(basename "$f")" -O "$live" --clobber 2>/dev/null \
+     && cmp -s "$f" "$live"; then
+    echo "the live manifest already matches; another run uploaded it"
+    return 0
+  fi
   return 1
 }
 upload_manifest "$WORK/basemap-manifest.json"
