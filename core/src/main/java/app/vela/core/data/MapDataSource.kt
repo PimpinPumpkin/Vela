@@ -103,6 +103,13 @@ interface MapDataSource {
      *  empty (→ keep the preview) on failure. */
     suspend fun placePhotos(featureId: String): List<app.vela.core.model.Photo> = emptyList()
 
+    /** One gallery page (10 photos) and the cursor for the next; [pageToken] "" = the first page. */
+    /** The place's full details in ONE plain request: the focused "name address" search the details
+     *  page runs inside a WebView, parsed the same way. Null on failure. */
+    suspend fun placeDetails(place: app.vela.core.model.Place): app.vela.core.model.PlaceDetails? = null
+
+    suspend fun placePhotoPage(featureId: String, pageToken: String = ""): app.vela.core.data.google.parse.PhotoPage? = null
+
     suspend fun directions(
         origin: LatLng,
         destination: LatLng,

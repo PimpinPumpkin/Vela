@@ -473,7 +473,11 @@ is tried first only when popular times are already present, because sent plainly
 without them. "More photos" runs the full walk (Menu tab) with the dates join. No hidden page is
 warmed after a search, and the ambient neighbor prefetch runs in Google-only mode. Settings >
 Performance "Load all photos and reviews" (`FullPlaceLoad`) restores the full walk and 50 reviews.
-Remote switches: calibration `tuning` `nativePlacePhotos` and `nativeReviewFeed` (1 = on; 0 = the
+Details use ONE plain request of the details page's own search (`MapDataSource.placeDetails`,
+parsed by `PopularTimesParser`) with up to three tries while popular times are missing, the page
+only as a last resort (`nativeDetails`). "More photos" pages `hspqX` natively: 10 per request, the
+cursor is reply payload[5] and goes back at request `[4][2][2]`; payload[1] is the place's photo
+total. The RPC tags no category, so the Menu tab comes only from the page walk. Remote switches: calibration `tuning` `nativePlacePhotos` and `nativeReviewFeed` (1 = on; 0 = the
 page paths). A per-place cache keeps photos and the feed 6 hours and details 15 minutes. "More
 reviews" requests the feed's next page when a reply carries a token at payload[1] (assumed; not
 yet seen in a capture). The method table with the rollback order is in

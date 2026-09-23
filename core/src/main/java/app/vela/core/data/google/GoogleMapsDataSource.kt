@@ -37,6 +37,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -541,6 +542,42 @@ class GoogleMapsDataSource @Inject constructor(
             .onFailure { diag.record("reviews", "feed failed: ${it.javaClass.simpleName} ${it.message}") }
             .getOrNull()
             ?.also { diag.record("reviews", "feed${if (token.isNotEmpty()) " page" else ""}: ${it.reviews.size} review(s)${if (it.end) ", end of list" else ""}${if (it.nextToken != null) ", more to come" else ""}") }
+    }
+
+    override suspend fun placeDetails(place: app.vela.core.model.Place): app.vela.core.model.PlaceDetails? = io {
+        if (app.vela.core.data.NoGoogle.enabled || place.name.isBlank()) return@io null
+        session.ensure()
+        val cal = calibration.current()
+        // Same query the WebView details fetch builds (WebPopularTimesFetcher.specificQuery): name +
+        // comma-less address, so the reply is the single focused result that carries [84].
+        val addr = place.address?.replace(',', ' ')?.replace(Regex("\\s+"), " ")?.trim()
+        val query = if (addr.isNullOrBlank()) place.name else "${place.name} $addr"
+        val url = "${cal.searchEndpoint}&q=${query.enc()}&pb=${SearchPb.build(query, place.location, cal.searchPb).enc()}".localized()
+        runCatching { app.vela.core.data.google.parse.PopularTimesParser.parse(get(url), place.featureId, cal.paths) }.getOrNull()
+    }
+
+    override suspend fun placePhotoPage(featureId: String, pageToken: String): app.vela.core.data.google.parse.PhotoPage? = io {
+        if (app.vela.core.data.NoGoogle.enabled || !featureId.contains(":")) return@io null
+        session.ensure()
+        val cal = calibration.current()
+        var inner = cal.photosProto.replace("{FID}", featureId).replace("{COUNT}", PHOTO_COUNT.toString())
+            .replace("[1200,1000]", "[${BrowserViewport.width},${BrowserViewport.height}]")
+        if (pageToken.isNotEmpty()) {
+            // The cursor goes at [4][2][2], beside the page size (found by trying each slot against a
+            // live reply, 2026-09-23). A template of another shape gets no paging rather than a
+            // malformed request.
+            inner = runCatching {
+                val root = kotlinx.serialization.json.Json.parseToJsonElement(inner).jsonArray
+                val paging = root[4].jsonArray[2].jsonArray
+                val newPaging = kotlinx.serialization.json.JsonArray(paging.toMutableList().also { it[2] = JsonPrimitive(pageToken) })
+                val new4 = kotlinx.serialization.json.JsonArray(root[4].jsonArray.toMutableList().also { it[2] = newPaging })
+                kotlinx.serialization.json.JsonArray(root.toMutableList().also { it[4] = new4 }).toString()
+            }.getOrNull() ?: return@io null
+        }
+        val freq = "[[[\"hspqX\",${JsonPrimitive(inner)},null,\"generic\"]]]"
+        runCatching { app.vela.core.data.google.parse.PhotosParser.parsePage(post(cal.photosEndpoint, "f.req=${freq.enc()}")) }
+            .onFailure { diag.record("photos", "gallery page failed: ${it.javaClass.simpleName}") }
+            .getOrNull()
     }
 
     override suspend fun placePhotos(featureId: String): List<app.vela.core.model.Photo> = io {
