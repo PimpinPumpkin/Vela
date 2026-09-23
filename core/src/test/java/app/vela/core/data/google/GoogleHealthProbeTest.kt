@@ -38,6 +38,8 @@ import java.util.concurrent.TimeUnit
 class GoogleHealthProbeTest {
     private val live = System.getProperty("velaLive") == "true"
 
+    @org.junit.After fun resetViewport() { BrowserViewport.set(1024, 768) }
+
     private val davis = LatLng(38.5449, -121.7405)
     private val sacramento = LatLng(38.5816, -121.4944)
 
@@ -98,6 +100,7 @@ class GoogleHealthProbeTest {
     fun googleEndpointsAnswerInTheShapeTheParsersRead() {
         assumeTrue("set -DvelaLive=true to reach Google", live)
         val cal = calibration()
+        BrowserViewport.set(1920, 945) // what a phone sends now: a real desktop window, not the captured 1024x768
         println("HEALTH|calibration|OK|version ${cal.version}, ${cal.userAgent.substringAfter("Chrome/").substringBefore(' ')}")
         // The session warm the app does first (GoogleSession): a document navigation to Maps.
         runCatching {
@@ -138,7 +141,7 @@ class GoogleHealthProbeTest {
 
         check("suggest", results) {
             val q = "1451 W Covell"
-            val pb = "!2i5!4m12!1m3!1d20000!2d${davis.lng}!3d${davis.lat}!2m3!1f0!2f0!3f0!3m2!1i1080!2i2000!4f13.1" +
+            val pb = "!2i5!4m12!1m3!1d20000!2d${davis.lng}!3d${davis.lat}!2m3!1f0!2f0!3f0!3m2!1i${BrowserViewport.width}!2i${BrowserViewport.height}!4f13.1" +
                 "!7i20!10b1!12m6!1m2!18b1!30b1!2m2!1i203!2i100!19m4!1m3!1i1!2i1!3i1!20m1!1e1"
             val url = "https://www.google.com/s?tbm=map&gs_ri=maps&suggest=p&authuser=0&hl=en&gl=us&pb=${enc(pb)}&q=${enc(q)}&tch=1&ech=1"
             val r = SuggestParser.parse(get(cal, url))

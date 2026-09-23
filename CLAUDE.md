@@ -3613,6 +3613,10 @@ architecture note.
   candidate UA or pb in `calibration.json` BEFORE pushing a calibration change: it is the cheap way
   to know the fleet will still parse. **Timed Google requests go through `core/util/Jitter`**
   (recheck +/-25% redrawn each time, retries +/-50%); never add a fixed-interval Google request.
+  **And the window size is per install (`BrowserViewport`):** every search, directions and
+  autocomplete request used to claim the SAME 1024x768 window (autocomplete 1080x2000, a portrait
+  phone under a desktop UA); a new pb template must go through `BrowserViewport.apply` or carry no
+  window at all. The hidden WebViews are still fixed at 1200x1000 / 1200x3200 CSS (open item).
 - **Fleet tuning dials (2026-07-18): `tuning` in `calibration.json`** - a flat name->number map
   read through `Calibration.tune(key, compiledDefault)`; a missing key means the compiled
   default and a non-numeric value is skipped, so old/new bundles and apps never break each

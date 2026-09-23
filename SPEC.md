@@ -444,6 +444,13 @@ Constraints:
   `cronet-embedded` on Maven; the 500.x artifacts carry the SDK license) matches Chromium 153
   except for three signature algorithms newer Chromium offers (0x0904-0x0906, ML-DSA), which moves
   its `ja4` to `..._d8a2da3f94cd`.
+- The browser window a request describes is per install (`BrowserViewport`, 2026-09-23): the search
+  and directions `pb` carry the map's pixel size (`!3m2!1i<w>!2i<h>`) and four rectangles the page
+  chrome covers (under `!30m28` in search, `!20m28` in directions), captured from one 1024x768
+  window, and autocomplete claimed 1080x2000. Each install picks one common maximized desktop
+  Chrome viewport once (`browser_viewport` pref, weighted toward 1920x945) and `SearchPb.build`,
+  `DirectionsPb.build` and `suggest` rewrite those fields to it; a recalibrated template without the
+  captured shapes is left untouched. The health probe runs at 1920x945.
 - Every fixed wait before a Google request is drawn through `core/util/Jitter` (+/-25% by
   default, +/-50% on retry backoffs): the nav recheck, the directions retries, the slim-pool heal,
   the neighbor prefetch gaps, the photo-load stagger and the review retry. An exact 120 000 ms beat

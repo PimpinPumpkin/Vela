@@ -48,7 +48,7 @@ object DirectionsPb {
             TravelMode.TRANSIT -> 3
         }
         val drive = mode == TravelMode.DRIVE
-        return withWaypoints(withAvoid(template, avoidTolls && drive, avoidHighways && drive, avoidFerries && drive), waypoints)
+        return BrowserViewport.apply(withWaypoints(withAvoid(template, avoidTolls && drive, avoidHighways && drive, avoidFerries && drive), waypoints))
             .replace("{OLAT}", origin.lat.toString())
             .replace("{OLNG}", origin.lng.toString())
             .replace("{DLAT}", destination.lat.toString())

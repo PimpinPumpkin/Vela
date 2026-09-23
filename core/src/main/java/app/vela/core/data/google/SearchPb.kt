@@ -71,7 +71,7 @@ object SearchPb {
         if (offset > 0) {
             pb = pb.replaceFirst(PAGE_SIZE_RX, "\$0!8i$offset")
         }
-        return pb
+        return BrowserViewport.apply(pb)
     }
 
     private val PAGE_SIZE_RX = Regex("!7i\\d+")

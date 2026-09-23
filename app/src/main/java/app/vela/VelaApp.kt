@@ -66,6 +66,15 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         // CategoryFilter.enabled). Gates the ambient POI fan-out in GoogleMapsDataSource.
         app.vela.core.data.LowRamMode.enabled = app.vela.ui.MemoryPressure.lowRam
         Units.init(this)
+        // The desktop window size Google's requests describe: picked once per install, then kept
+        // (a size that changed per launch would be its own oddity). See BrowserViewport.
+        run {
+            val p = getSharedPreferences("vela_settings", MODE_PRIVATE)
+            val idx = p.getInt("browser_viewport", -1).takeIf { it >= 0 }
+                ?: kotlin.random.Random.nextInt(app.vela.core.data.google.BrowserViewport.CHOICES.size).also { p.edit().putInt("browser_viewport", it).apply() }
+            val (w, h) = app.vela.core.data.google.BrowserViewport.choice(idx)
+            app.vela.core.data.google.BrowserViewport.set(w, h)
+        }
         app.vela.ui.Clock24.refresh(this) // the 12/24-hour clock setting (issue #357); MainActivity refreshes it on resume
         AppTheme.init(this)
         DynamicColor.init(this)

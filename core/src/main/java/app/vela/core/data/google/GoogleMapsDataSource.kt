@@ -297,7 +297,7 @@ class GoogleMapsDataSource @Inject constructor(
         session.ensure()
         val at = near ?: DEFAULT_VIEWPORT
         val span = (spanMeters ?: SUGGEST_SPAN_M).coerceIn(2_000.0, 500_000.0).toInt()
-        val pb = "!2i5!4m12!1m3!1d$span!2d${at.lng}!3d${at.lat}!2m3!1f0!2f0!3f0!3m2!1i1080!2i2000!4f13.1" +
+        val pb = "!2i5!4m12!1m3!1d$span!2d${at.lng}!3d${at.lat}!2m3!1f0!2f0!3f0!3m2!1i${BrowserViewport.width}!2i${BrowserViewport.height}!4f13.1" +
             "!7i20!10b1!12m6!1m2!18b1!30b1!2m2!1i203!2i100!19m4!1m3!1i1!2i1!3i1!20m1!1e1"
         val url = "https://www.google.com/s?tbm=map&gs_ri=maps&suggest=p&authuser=0&hl=en&gl=us&pb=${pb.enc()}&q=${query.enc()}&tch=1&ech=1".localized(lang)
         val raw = try { get(url) } catch (e: Exception) {
