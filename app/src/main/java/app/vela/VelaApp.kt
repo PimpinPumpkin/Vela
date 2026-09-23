@@ -62,6 +62,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         // Device memory class first: the Coil cap and the eager-warm decisions read it.
         app.vela.ui.MemoryPressure.init(this)
         app.vela.ui.SpeechPreload.init(this) // after MemoryPressure: its default reads the RAM tier
+        app.vela.ui.FullPlaceLoad.init(this)
         // Push the device class down to :core, which cannot read an :app holder (same seam as
         // CategoryFilter.enabled). Gates the ambient POI fan-out in GoogleMapsDataSource.
         app.vela.core.data.LowRamMode.enabled = app.vela.ui.MemoryPressure.lowRam

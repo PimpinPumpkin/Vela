@@ -66,6 +66,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material3.Surface
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -252,6 +253,9 @@ fun PlaceSheet(
     reviewsLoading: Boolean = false,
     reviewsFound: Int = 0,
     photosLoading: Boolean = false,
+    /** The strip holds the first batch only: end it with a "More photos" tile. */
+    morePhotos: Boolean = false,
+    onMorePhotos: () -> Unit = {},
     detailsLoading: Boolean = false,
     placesHere: List<Place> = emptyList(),
     /** The tapped label is still being looked up on Google: skeletons stand in for the details,
@@ -728,6 +732,27 @@ fun PlaceSheet(
                                 .dpadHighlight(RoundedCornerShape(12.dp))
                                 .clickable { galleryStart = i },
                         )
+                    }
+                    // First batch only (a place tap stops the gallery walk at a handful): the rest is
+                    // one tap away, and costs Google contact only when someone wants it.
+                    if (morePhotos && !photosLoading && place.photoUrls.isNotEmpty()) {
+                        item(key = "more") {
+                            Box(
+                                Modifier
+                                    .size(width = 110.dp, height = 110.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(dim.copy(alpha = 0.12f))
+                                    .dpadHighlight(RoundedCornerShape(12.dp))
+                                    .clickable(onClick = onMorePhotos),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = dim)
+                                    Spacer(Modifier.height(6.dp))
+                                    Text(stringResource(R.string.place_more_photos), style = MaterialTheme.typography.labelLarge, color = ink)
+                                }
+                            }
+                        }
                     }
                     // The full gallery scrapes in the background a beat after the sheet opens —
                     // pulse placeholder tiles so it reads as "more photos loading", not "done".

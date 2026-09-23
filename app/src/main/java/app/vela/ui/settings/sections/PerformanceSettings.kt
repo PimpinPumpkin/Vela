@@ -36,6 +36,13 @@ internal fun PerformanceSettingsScreen(onBack: () -> Unit) {
             switchModifier = topRow,
         )
         GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_full_place_load),
+            checked = app.vela.ui.FullPlaceLoad.on.value,
+            onCheckedChange = { app.vela.ui.FullPlaceLoad.set(context, it) },
+            hint = stringResource(R.string.settings_full_place_load_hint),
+        )
+        GroupDivider()
         // Compatibility (TextureView) rendering - a hardware escape hatch (port of upstream
         // PimpinPumpkin/Vela 261156e2 + df2b8570). Writes the "texture_render" pref that
         // VelaMapView reads when it creates the map; needs an app restart to apply. Also flips

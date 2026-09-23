@@ -445,6 +445,7 @@
         <item quantity="other">%1$d reviews</item>
     </plurals>
     <string name="place_all_n_reviews">All %1$d reviews · sort &amp; search</string> <!-- format -->
+    <string name="place_more_photos">More photos</string>
     <string name="place_all_reviews">All reviews · sort &amp; search</string>
     <string name="place_reviews_progress">Reviews · %1$d of about %2$d</string> <!-- format -->
     <string name="place_reviews_so_far">Reviews · %1$d so far</string> <!-- format -->
@@ -779,6 +780,8 @@
     <string name="settings_performance">Performance</string>
     <string name="settings_hub_performance_sub">What loads ahead of time, map drawing</string>
     <string name="settings_performance_intro">Loading things ahead of time makes them instant when you need them, and costs memory until then. The defaults follow how much memory this phone has.</string>
+    <string name="settings_full_place_load">Load all photos and reviews</string>
+    <string name="settings_full_place_load_hint">Off, a place loads its first few photos and first page of reviews, and More photos or All reviews fetch the rest. On, every place you open walks its whole photo gallery and up to 50 reviews, which is slower and sends Google many more requests.</string>
     <string name="settings_speech_preload">Load voice search at startup</string>
     <string name="settings_speech_preload_hint">Loads the voice search model when Vela opens, so the mic listens at once. It uses about 300 MB until two quiet minutes pass. Off, it loads when you tap into the search box. On by default on phones with about 8 GB of memory or more.</string>
     <string name="settings_google_free_links">Open shared Google Maps links</string>

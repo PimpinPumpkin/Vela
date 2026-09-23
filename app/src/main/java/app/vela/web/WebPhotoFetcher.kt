@@ -50,6 +50,7 @@ class WebPhotoFetcher @Inject constructor(
     // to inject it, and only the first may.
     private val injected = java.util.Collections.synchronizedSet(HashSet<String>())
     private val caps = ConcurrentHashMap<String, Int>()
+    private val earlies = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
     @Volatile private var warming: CompletableDeferred<Unit>? = null
     @Volatile private var warmed = false
 
@@ -142,6 +143,10 @@ class WebPhotoFetcher @Inject constructor(
     suspend fun fetch(
         featureId: String,
         count: Int = 80,
+        // FIRST BATCH (2026-09-23): stop the walk as soon as [count] photos are in, instead of
+        // visiting every gallery tab. A place tap takes the first few; "More photos" asks again
+        // without it. A first batch is never cached as the gallery (it is not the gallery).
+        early: Boolean = false,
         onPartial: ((List<Photo>) -> Unit)? = null,
         onHistogram: ((List<Int>) -> Unit)? = null,
         onPhotoDates: ((List<Pair<String, String>>) -> Unit)? = null,
@@ -163,6 +168,7 @@ class WebPhotoFetcher @Inject constructor(
                 request(TOTAL_TIMEOUT_MS) { id ->
                     reqId = id
                     caps[id] = count
+                    if (early) earlies.add(id)
                     if (onPartial != null) partials[id] = { raw -> onPartial(parseLines(raw)) }
                     hists[id] = { counts -> histCache[featureId] = counts; onHistogram?.invoke(counts) }
                     dateCbs[id] = { pairs -> dateCache[featureId] = pairs; onPhotoDates?.invoke(pairs) }
@@ -180,9 +186,10 @@ class WebPhotoFetcher @Inject constructor(
                 dateCbs.remove(reqId)
                 injected.remove(reqId)
                 caps.remove(reqId)
+                earlies.remove(reqId)
             }
             val out = raw?.let { parseLines(it) } ?: emptyList()
-            if (out.isNotEmpty()) synchronized(cache) { cache[featureId] = out } // cache only real results
+            if (out.isNotEmpty() && !early) synchronized(cache) { cache[featureId] = out } // cache only real, whole galleries
             out
         }
     }
@@ -214,7 +221,7 @@ class WebPhotoFetcher @Inject constructor(
      *  this, and a request that is gone (timed out, superseded) gets nothing injected. */
     private fun inject(id: String, count: Int) {
         if (!isPending(id) || !injected.add(id)) return
-        webView?.evaluateJavascript(extractScript(id, count), null)
+        webView?.evaluateJavascript(extractScript(id, count, id in earlies), null)
     }
 
     /** Each line is "category\turl" (category "" = uncategorized/All), shared by the final result
@@ -241,11 +248,11 @@ class WebPhotoFetcher @Inject constructor(
      *  category - then sweep the "All" view for the rest (uncategorized). Bridges "category\turl" lines
      *  back, de-duped by image id (first category a photo appears under wins). Avatars + Street View
      *  excluded. Google keeps these tabs in the DOM (verified on-device), so this is keyless. */
-    private fun extractScript(id: String, cap: Int): String {
+    private fun extractScript(id: String, cap: Int, early: Boolean = false): String {
         val idj = "\"" + id.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         return """
             (function(){
-              var ID=$idj, CAP=$cap, acc={}, tries=0, phase=0, cats=[], ci=0, sub=0, opened=false, pre={}, openedAt=0, rescued=0;
+              var ID=$idj, CAP=$cap, EARLY=${if (early) "true" else "false"}, acc={}, tries=0, phase=0, cats=[], ci=0, sub=0, opened=false, pre={}, openedAt=0, rescued=0;
               // The gallery tabs worth tagging (skip All/Latest/Videos/Street View - All is the fallback
               // sweep). Menu names cover the app's 11 languages (tabs arrive localized).
               var CATRE=/^(menu|menú|menù|speisekarte|cardápio|menukaart|меню|meny|food|drink|vibe|by owner)/i;
@@ -388,6 +395,9 @@ class WebPhotoFetcher @Inject constructor(
                 }
                 if(tries>84){ collect(''); finish(); return; }
                 partial();
+                // First batch: done as soon as the cap is reached (a place tap needs a handful, not
+                // every tab), so the page stops making requests.
+                if(EARLY){ var have=0; for(var k0 in acc) have++; if(have>=CAP){ finish(); return; } }
                 setTimeout(tick, 500);
               }
               tick();
