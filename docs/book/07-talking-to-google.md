@@ -471,12 +471,21 @@ without a release. This table is the record to revert from.
 | First photos | `hspqX` RPC, one request of 10 (`placePhotoPage`), dated, with the place's photo total | two more tries; then the sheet keeps the search's hero photo and "More photos" walks the page | `nativePlacePhotos` 0 | the full page walk (every gallery tab) on every tap |
 | More photos | the next `hspqX` page, one request per 10 (cursor at `[4][2][2]` of the request, payload[5] of the reply) | one retry, then the full page walk | `nativePlacePhotos` 0 | the same walk |
 | Menu tab | only from the page walk: "Load all photos and reviews" on, or "More photos" after native paging fails. The RPC carries no category per photo | none | none | the walk on every tap |
-| First reviews | `qv9Egd` feed, one request (`reviewFeed`), first page | two more tries, then the page scrape stopped at 10 | `nativeReviewFeed` 0 | the page scrape to 50 on every tap |
+| First reviews | the page scrape, stopped at 10 (DEFAULT). The one-request `qv9Egd` feed (`reviewFeed`) is built but OFF: it rides the app's own session, which is new every launch, and Google limits new sessions to 5 reviews | the page scrape | `nativeReviewFeed` 1 turns the feed on (compiled default 0) | the page scrape to 50 on every tap |
 | More reviews (inline) | the feed's next page, when a reply carries a token (UNVERIFIED: no captured reply has one yet) | the All reviews page | follows `nativeReviewFeed` | the scrape already held up to 50 |
 | All reviews | Google's own page, full screen, on tap | none | none | the same |
 | Details (popular times, blurb, count, hours) | the search reply when it has them; else ONE plain request of the details page's own search (`placeDetails`, same parser), up to three tries while popular times are missing | the details page, only when every try came back stripped | `nativeDetails` 0 | the details page on nearly every tap |
 | Page warm-ups after a search | none | none | none | google.com + Maps loaded in two hidden views per search |
 | Neighbor prefetch (ambient) | Google-only mode | none | none | every mode, ~60 requests per map settle |
+
+**Google limits NEW anonymous sessions** (measured 2026-09-23 on a healthy Pixel 9): the same phone's
+weeks-old WebView session loads the full review feed, while a brand-new WebView session there, and
+the app's own native session (its cookies live in memory, so it is new every launch), get the
+limited view: five reviews, no more pages, no Reviews tab. Clearing cookies therefore never
+escapes the limited view; it throws away the aged session that works. Photos and details answered
+in full on fresh sessions, so they stay on the one-request path. Making the native feed useful
+means giving the app ONE persistent session shared with the WebView (a privacy trade-off: one
+long-lived anonymous Google identity per install instead of a new one per launch), which is open.
 
 What the one-request methods depend on:
 

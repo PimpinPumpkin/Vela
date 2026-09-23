@@ -465,8 +465,10 @@ Constraints:
 **What a place tap loads (2026-09-23).** Photos: one `hspqX` request (`MapDataSource.placePhotos`,
 each photo dated), one jittered ~2.5 s retry when it answers empty (a new Google session's first
 seconds are stripped), and only then the page walk capped at `FIRST_PHOTOS` (6, `early = true`).
-Reviews: one `qv9Egd` request (`reviewFeed`, first page, in the reviews language), same retry, then
-the scrape capped at `FIRST_REVIEWS` (10); a limited-view reply sets `reviewsLimited`. Both RPCs need
+Reviews: the page scrape capped at `FIRST_REVIEWS` (10). The one-request `qv9Egd` feed
+(`reviewFeed`) is behind `nativeReviewFeed` (compiled default 0): Google limits NEW anonymous
+sessions to five reviews and no paging, and the app's native session is new every launch (its
+cookies are in memory), while the WebView's persisted session ages into the full feed. Both RPCs need
 `Calibration.rpcContext` as `x-maps-diversion-context-bin`. The details page loads only when the
 search reply lacks popular times, a review count, an address or weekly hours; a plain focused search
 is tried first only when popular times are already present, because sent plainly it comes back

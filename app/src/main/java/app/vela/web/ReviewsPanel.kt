@@ -353,31 +353,17 @@ private fun buildPanelWebView(
         false
     }
     var loaded = false
-    // Recovery for a page whose review feed Google withheld (issue #359): a plain reload first,
-    // then a reload on a FRESH anonymous session (all WebView cookies dropped, the consent
-    // cookies re-seeded), and only then the failure toast. The feed decision is per page load
+    // Recovery for a page whose review feed Google withheld (issue #359): two plain reloads, then
+    // the failure toast. (Until 2026-09-23 the second step dropped every WebView cookie for a fresh
+    // session; Google limits NEW anonymous sessions, so that threw away the aged one that works.) The feed decision is per page load
     // (five opens in a row on 2026-09-13 alternated between layouts), so a retry is not a long
     // shot, and a new session gets a new allotment.
     var stuckRetries = 0
-    // Issue #602: a signed-out session Google has put on its LIMITED view shows a few cards and a
-    // "More reviews (N)" button that fetches nothing (reproduced on Google's own page in desktop
-    // Chromium, 2026-09-23). The decision rides the session's cookies, and every WebView shares
-    // one cookie store, so one limited session starves the inline scrape too. One fresh anonymous
-    // session per panel open; the log says whether it helped.
+    // Issue #602: a signed-out session in Google's LIMITED view shows a few cards and a "More
+    // reviews (N)" button that fetches nothing (reproduced on Google's own page). Google limits NEW
+    // anonymous sessions (and ones it has flagged); an aged session gets the full feed. Logged once
+    // per open, nothing else: a fresh session would only be limited again.
     var limitedRetried = false
-    fun freshSession(reason: String) {
-        android.util.Log.w("VelaPanel", "$reason: fresh session + reload")
-        val cm = android.webkit.CookieManager.getInstance()
-        cm.removeAllCookies { _ ->
-            // Re-seed the EU consent cookies the anonymous session needs (else Google bounces
-            // the page to consent.google.com), then load fresh.
-            cm.setCookie("https://www.google.com", "SOCS=CAESHAgBEhIaAB; path=/; domain=.google.com")
-            cm.setCookie("https://www.google.com", "CONSENT=YES+; path=/; domain=.google.com")
-            cm.flush()
-            loaded = false
-            wv.post { wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=${WebReviewsFetcher.reviewsHl()}&gl=us") }
-        }
-    }
     val bridge = object {
         @JavascriptInterface
         fun ready() { wv.post { onReady() } }
@@ -441,13 +427,13 @@ private fun buildPanelWebView(
         @JavascriptInterface
         fun moreStalled(cards: Int, claimed: Int) {
             val calls = feedCalls.get()
+            // Log only (2026-09-23). A fresh session does NOT escape the limited view: Google limits
+            // NEW anonymous sessions (a Pixel 9's brand-new WebView got it while the same phone's
+            // weeks-old one did not), so clearing cookies throws away the aged session that works.
             wv.post {
                 if (!limitedRetried) {
                     limitedRetried = true
-                    panelDiag("limited view: More reviews loaded nothing", "cards $cards of ${if (claimed >= 0) claimed else "?"}, feed requests $calls; retrying on a fresh session")
-                    freshSession("limited view")
-                } else {
-                    panelDiag("still limited after a fresh session", "cards $cards of ${if (claimed >= 0) claimed else "?"}, feed requests $calls")
+                    panelDiag("limited view: More reviews loaded nothing", "cards $cards of ${if (claimed >= 0) claimed else "?"}, feed requests $calls")
                 }
             }
         }
@@ -462,7 +448,9 @@ private fun buildPanelWebView(
             wv.post {
                 when (stuckRetries++) {
                     0 -> { android.util.Log.w("VelaPanel", "feed withheld: reloading"); panelDiag("feed withheld: reloading"); loaded = false; wv.reload() }
-                    1 -> { panelDiag("feed withheld again: fresh session"); freshSession("feed withheld again") }
+                    // A second plain reload, not a cookie wipe: Google limits NEW anonymous sessions, so
+                    // a fresh one is the least likely to get the feed (measured 2026-09-23).
+                    1 -> { android.util.Log.w("VelaPanel", "feed withheld again: reloading"); panelDiag("feed withheld again: reloading"); loaded = false; wv.reload() }
                     else -> { panelDiag("feed withheld three times: giving up"); onFail() }
                 }
             }

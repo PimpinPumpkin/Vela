@@ -3164,7 +3164,8 @@ class MapViewModel @Inject constructor(
 
     /** A remote kill switch in calibration `tuning` (1 = on, the compiled default; 0 = the old
      *  hidden-page path). The rollback lever for the one-request place loads. */
-    private fun tuneOn(key: String) = app.vela.core.config.CalibrationStore.latest.tune(key, 1.0) >= 0.5
+    private fun tuneOn(key: String, default: Boolean = true) =
+        app.vela.core.config.CalibrationStore.latest.tune(key, if (default) 1.0 else 0.0) >= 0.5
 
     /** "More reviews": the next page of the native feed, appended. */
     fun loadMoreReviews() {
@@ -3256,7 +3257,12 @@ class MapViewModel @Inject constructor(
             // FIRST PAGE = ONE REQUEST (2026-09-23): the feed RPC the place page's Reviews tab makes
             // answers a plain request with Calibration.rpcContext. The hidden page scrape (a whole
             // Google web app plus a feed request per scroll) is the fallback, and the full load.
-            if (!fullLoad && tuneOn("nativeReviewFeed")) {
+            // OFF by default (2026-09-23, measured on a healthy Pixel 9): Google serves NEW anonymous
+            // sessions its limited view, and the app's own session is new every launch (in-memory
+            // cookies), so the feed answered 5 reviews there while the same phone's weeks-old WebView
+            // session gets the full list. The page scrape (capped at 10) rides that aged session.
+            // `nativeReviewFeed` 1 turns this one-request path on once the app's session persists.
+            if (!fullLoad && tuneOn("nativeReviewFeed", default = false)) {
                 val cached = placeCacheGet(feedCache, fid, REVIEWS_CACHE_MS)
                 var feed = cached ?: runCatching { dataSource.reviewFeed(fid, app.vela.web.WebReviewsFetcher.reviewsHl()) }.getOrNull()
                 // Same fresh-session retry as the photos. Unless the count is KNOWN to be 0: a stripped

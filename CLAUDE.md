@@ -1422,8 +1422,11 @@ Defaults that make the safe path the easy one:
 - **A PLACE TAP IS A FEW REQUESTS, NOT A FEW HUNDRED (2026-09-23).** First photos: ONE `hspqX`
   request (`placePhotos`, dated), retried once after ~2.5 s when empty (a fresh Google session's
   first seconds answer stripped: seen 0, then 10), then the capped page walk as fallback. First
-  reviews: ONE `qv9Egd` request (`reviewFeed`, `ReviewFeedParser`, in `reviewsHl()`), same retry,
-  then the capped scrape; `reviewsLimited` shows "Google is showing a shorter list" in the tab.
+  reviews: the capped page scrape BY DEFAULT; the ONE-request `qv9Egd` feed (`reviewFeed`,
+  `ReviewFeedParser`) is behind `nativeReviewFeed` (compiled default 0) because it rides the app's
+  in-memory session, new every launch, and Google limits new sessions to 5 reviews (measured on a
+  healthy Pixel 9 whose aged WebView got the full list). `reviewsLimited` shows "Google is showing a
+  shorter list" in the tab when the feed path is on.
   Details: when the search reply lacks popular times, a count, an address or hours, ONE plain
   request of the details page's own search (`placeDetails`, `PopularTimesParser`), up to three tries
   while popular times are missing (Google answers a place's first request stripped, then complete
@@ -3252,7 +3255,9 @@ architecture note.
   `VelaPanel.moreStalled` when a More-reviews tap adds no cards in 5 s: once per open it logs
   `limited view: More reviews loaded nothing` (cards, the total the button names, feed requests so
   far) and reloads on a fresh anonymous session (`freshSession`, the same step as the withheld
-  ladder); a second stall logs `still limited after a fresh session`. Both the panel's `open` line
+  ladder); SUPERSEDED the same day: it only logs now, and the withheld ladder's second step is a
+  second plain reload, because Google limits NEW anonymous sessions and a cookie wipe throws away
+  the aged session that works (a Pixel 9: weeks-old WebView = full feed, brand-new WebView = limited). Both the panel's `open` line
   and the inline scrape's `load` line carry `region=` (`DiagRegion`: network country, SIM, locale;
   never a coordinate), so a report says which country without asking. Whether a fresh session
   actually escapes the limited view is NOT verified yet: the next report's log will say.
