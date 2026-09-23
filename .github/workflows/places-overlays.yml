@@ -165,7 +165,9 @@ jobs:
         run: |
           B='${{ toJson(matrix.bbox) }}'
           S=$(echo "$B" | jq '.[0]'); W=$(echo "$B" | jq '.[1]'); N=$(echo "$B" | jq '.[2]'); E=$(echo "$B" | jq '.[3]')
-          TMPDIR=/mnt/vela-work OSM_PBF="${{ matrix.pbf_url }}" bash tools/build-places-region.sh "${{ matrix.id }}" "$S" "$W" "$N" "$E" "places-${{ matrix.id }}.pmtiles" "${{ needs.plan.outputs.release }}"
+          TMPDIR=/mnt/vela-work OSM_PBF="${{ matrix.pbf_url }}" bash tools/build-places-region.sh "${{ matrix.id }}" "$S" "$W" "$N" "$E" "places-${{ matrix.id }}.pmtiles" "${{ needs.plan.outputs.release }}" 2>&1 | tee bake.log
+          # The landmark report (tools/build-places-region.sh) on the run's summary page.
+          { echo "### ${{ matrix.id }} landmarks"; echo '```'; grep -E '^(LANDMARKS|LATE)\|' bake.log || true; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload archive + emit manifest entry
         env:
           GH_TOKEN: ${{ github.token }}

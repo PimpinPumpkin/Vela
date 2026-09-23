@@ -231,6 +231,13 @@ credit to the Overture row it merges into. Measured on test boxes (4a, pan fps; 
 | Davis downtown | 43 to 59 | 52 to 59 | +4.6% |
 
 Bryant Park, Grand Central, the Empire State Building and Davis's Central Park arrive at z14-15.
+
+**The landmark report.** Every bake prints how its landmarks fared (`LANDMARKS|count|by z15|%`)
+and the ten most notable that only arrive at z16 or later (`LATE|zoom|name|category|notability`);
+the places workflow copies both onto the run's summary page, one block per region. Nobody can look
+at every city, so this is how a misfiring budget or notability order shows up after a world
+rebake. The Midtown test box: 361 landmarks, 81 (22%) by z15; the late ones were Broadway theaters,
+churches and pocket parks.
 At the widest street zooms in Midtown the dense bus-stop layer can still win the space.
 
 **Names in every script, and English names** (2026-09-22). The name keys (`snapkey`, `nkey`) keep

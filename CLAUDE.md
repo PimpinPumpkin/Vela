@@ -2324,6 +2324,8 @@ architecture note.
   `rev` >= `tuning.placesOneSetRev` (default 99999999 = off): flip it in calibration.json once the
   world rebake with this bake has run, or every older archive loses its parks. Test boxes on the
   4a: Shinjuku 20-45 -> 35-58 fps, Midtown 20-37 -> 36-58, Davis 43-59 -> 52-59; size +0.3 to 4.6%.
+  Each bake prints a LANDMARK REPORT (`LANDMARKS|...` and the top ten `LATE|...` rows), which the
+  places workflow copies onto the run summary: read it after a world rebake.
 - **THE PLACES CELL BUDGET IS A CAP (2026-09-22).** Prominence used to bypass the per-cell rank in
   the minzoom CASE; a Shinjuku z16 tile carried 963 places and panned at 10-14 fps on the 4a. Now
   prominence buys a bounded extra (crank 6 / rank 8 / rank 24 at z14 / z15 / z16), z17 keeps
