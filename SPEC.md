@@ -388,8 +388,14 @@ Two user agents, and confusing them is a bug.
 
 Constraints:
 
-- `secChUa`'s major version must match `userAgent`. `BrowserHeadersTest` locks the compiled
-  pair so bumping one alone fails the build.
+- `secChUa` is DERIVED from `userAgent`'s major (`BrowserHeaders.secChUaFor`, Chromium's own rule
+  from `user_agent_utils.cc`: the GREASE brand's two characters, its version and the brand order
+  are all picked by the major modulo the table sizes). `parseBundle` ignores a pushed `secChUa`
+  whenever the UA names a major; builds from before 2026-09-23 still send the pushed one, so the
+  bundle carries the exact derived string too. `BrowserHeadersTest` pins the rule against real
+  Chrome 120, 124 and 130 headers and the compiled pair against the rule. The hand-edited 153
+  hint carried Chrome 137's GREASE brand (`"Not/A)Brand";v="24"`) where 153 sends
+  `"Not_A Brand";v="8"` in a different order.
 - Both fields are sanitized on parse (`BrowserHeaders.sanitize`): surrounding whitespace is
   trimmed, interior control characters and non-ASCII are rejected back to the compiled
   default. OkHttp throws on a control character at request-build time inside a `runCatching`,

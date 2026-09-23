@@ -22,6 +22,20 @@ GRACE_DAYS = 7
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def sec_ch_ua(major):
+    """The Sec-CH-UA desktop Chrome `major` sends (BrowserHeaders.secChUaFor, from Chromium's
+    user_agent_utils.cc)."""
+    chars = [" ", "(", ":", "-", ".", "/", ")", ";", "=", "?", "_"]
+    versions = ["8", "99", "24"]
+    items = [(f"Not{chars[major % 11]}A{chars[(major + 1) % 11]}Brand", versions[major % 3]),
+             ("Chromium", str(major)), ("Google Chrome", str(major))]
+    orders = [(0, 1, 2), (0, 2, 1), (1, 0, 2), (1, 2, 0), (2, 0, 1), (2, 1, 0)]
+    out = [None] * 3
+    for i, pos in enumerate(orders[major % 6]):
+        out[pos] = items[i]
+    return ", ".join(f'"{n}";v="{v}"' for n, v in out)
+
+
 def claimed():
     cal = json.loads((ROOT / "calibration.json").read_text())
     ua = cal.get("userAgent")
@@ -48,6 +62,12 @@ def stable():
 def main():
     have, src = claimed()
     latest, since = stable()
+    pushed = json.loads((ROOT / "calibration.json").read_text()).get("secChUa")
+    rc = 0
+    if pushed and pushed != sec_ch_ua(have):
+        # Builds from before 2026-09-23 send the pushed hint as-is; newer ones derive it.
+        print(f"**calibration.json secChUa is not what Chrome {have} sends.** Use: `{sec_ch_ua(have)}`\n")
+        rc = 1
     age = (time.time() - since) / 86400
     day = time.strftime("%Y-%m-%d", time.gmtime(since))
     print("## Chrome version Vela claims\n")
@@ -57,15 +77,16 @@ def main():
         print(f"**Ahead of stable**: Chrome {have} does not exist yet. Lower `userAgent` and `secChUa` to {latest}.")
         return 1
     if have < latest and age >= GRACE_DAYS:
-        print(f"**Behind stable**: move `userAgent` and `secChUa` to {latest} (same major in both), bump "
-              "`version`, re-sign with ./scripts/sign-calibration.sh, commit to main; update "
-              "VelaConfig's compiled pair at the next release.")
+        print(f"**Behind stable**: set, bump `version`, re-sign with ./scripts/sign-calibration.sh, commit to main:\n")
+        print(f"- `userAgent`: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{latest}.0.0.0 Safari/537.36`")
+        print(f"- `secChUa`: `{sec_ch_ua(latest)}`\n")
+        print("and move VelaConfig's compiled pair at the next release.")
         return 1
     if have < latest:
         print(f"Chrome {latest} is still rolling out ({age:.0f} of {GRACE_DAYS} days); no action yet.")
     else:
         print("Current.")
-    return 0
+    return rc
 
 
 if __name__ == "__main__":

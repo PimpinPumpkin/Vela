@@ -116,6 +116,11 @@ class CalibrationStore @Inject constructor(
                 (o[k] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } ?: fallback
             val version = (o["version"] as? JsonPrimitive)?.content?.toIntOrNull() ?: return@runCatching null
             val d = Calibration.DEFAULT
+        // SANITIZED, not merely defaulted: an unsendable value (a control character, an absurd
+        // length) must fall back to the compiled UA rather than reach OkHttp, which throws at
+        // request-build time inside a runCatching that swallows it: one stray newline in a
+        // pushed bundle would otherwise kill every scrape with no crash and no log.
+        val ua = BrowserHeaders.sanitize((o["userAgent"] as? JsonPrimitive)?.content) ?: d.userAgent
             // Field-index paths: each value is a JSON array of ints; merge the remote
             // ones over the bundled defaults so a file can override just one path.
             val remotePaths = (o["paths"] as? JsonObject)?.mapNotNull { (k, v) ->
@@ -171,13 +176,12 @@ class CalibrationStore @Inject constructor(
                 reviewsEndpoint = str("reviewsEndpoint", d.reviewsEndpoint),
                 reviewsPb = str("reviewsPb", d.reviewsPb),
                 sessionWarmUrl = str("sessionWarmUrl", d.sessionWarmUrl),
-                // SANITIZED, not merely defaulted: an unsendable value (a control character, an absurd
-                // length) must fall back to the compiled UA rather than reach OkHttp, which throws at
-                // request-build time inside a runCatching that swallows it: one stray newline in a
-                // pushed bundle would otherwise kill every scrape with no crash and no log.
-                userAgent = BrowserHeaders.sanitize((o["userAgent"] as? JsonPrimitive)?.content)
-                    ?: d.userAgent,
-                secChUa = BrowserHeaders.sanitize((o["secChUa"] as? JsonPrimitive)?.content)
+                userAgent = ua,
+                // DERIVED from the UA's major whenever it can be read, so the pair can never disagree
+                // (Chrome computes the whole header from the major; see BrowserHeaders.secChUaFor).
+                // The pushed field only matters for a UA that names no Chrome major.
+                secChUa = BrowserHeaders.chromeMajor(ua)?.toIntOrNull()?.let { BrowserHeaders.secChUaFor(it) }
+                    ?: BrowserHeaders.sanitize((o["secChUa"] as? JsonPrimitive)?.content)
                     ?: d.secChUa,
                 photosEndpoint = str("photosEndpoint", d.photosEndpoint),
                 photosProto = str("photosProto", d.photosProto),

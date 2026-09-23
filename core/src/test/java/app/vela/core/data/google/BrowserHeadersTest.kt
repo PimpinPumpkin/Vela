@@ -23,10 +23,22 @@ class BrowserHeadersTest {
 
     @Test fun `the brand list parses in order and the major matches the ua`() {
         val brands = BrowserHeaders.brands(VelaConfig.SEC_CH_UA)
-        assertEquals(listOf("Chromium", "Google Chrome", "Not/A)Brand"), brands.map { it.name })
+        assertEquals(listOf("Chromium", "Google Chrome", "Not A(Brand"), brands.map { it.name })
         assertEquals(BrowserHeaders.chromeMajor(VelaConfig.USER_AGENT), brands[0].major)
         assertEquals(brands[0].major, brands[1].major)
         assertTrue(BrowserHeaders.brands("garbage").isEmpty())
+    }
+
+    @Test fun `secChUaFor reproduces real chrome headers`() {
+        // Captured from real Chrome releases.
+        assertEquals("\"Not_A Brand\";v=\"8\", \"Chromium\";v=\"120\", \"Google Chrome\";v=\"120\"", BrowserHeaders.secChUaFor(120))
+        assertEquals("\"Chromium\";v=\"124\", \"Google Chrome\";v=\"124\", \"Not-A.Brand\";v=\"99\"", BrowserHeaders.secChUaFor(124))
+        assertEquals("\"Chromium\";v=\"130\", \"Google Chrome\";v=\"130\", \"Not?A_Brand\";v=\"99\"", BrowserHeaders.secChUaFor(130))
+    }
+
+    @Test fun `the compiled hint is the one chrome sends for the compiled ua`() {
+        val major = BrowserHeaders.chromeMajor(VelaConfig.USER_AGENT)!!.toInt()
+        assertEquals(BrowserHeaders.secChUaFor(major), VelaConfig.SEC_CH_UA)
     }
 
     @Test fun `xhr headers carry the network hints google asks for and the document fetch does not`() {
