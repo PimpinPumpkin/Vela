@@ -487,6 +487,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   regions, places come from Vela's data, routes come from the open router, and Street View, the
   traffic overlay, satellite close-ups, transit directions, reviews and photos are off. Replaces
   the four-toggle recipe the FAQ used to give, and reaches the surfaces those toggles could not.
+- ✅ **Lighter launch, and a Performance page (2026-09-22).** Vela uses about half the memory in its
+  first minute: the voice search model loads when you tap into search, the spoken-directions voice
+  when you open directions, and Google's pages when a search lands. Settings > Performance can load
+  voice search at startup again (on by default on phones with about 8 GB of memory or more) and
+  holds Compatibility rendering.
 - ✅ **English names on the map in Japan and other non-Latin countries (2026-09-22).** With the
   app in a Latin-script language, Vela's places show their English or romanized name where
   OpenStreetMap has one, including every branch of a chain it names once, and the map's own shop

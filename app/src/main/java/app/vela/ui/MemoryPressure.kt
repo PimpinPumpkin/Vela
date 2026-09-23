@@ -42,6 +42,11 @@ object MemoryPressure {
     @Volatile var modest: Boolean = false
         private set
 
+    /** About 8 GB of RAM or more: roomy enough to keep speculative loads (the speech model at
+     *  startup) on by default. The Pixel 4a (6 GB) is not. */
+    @Volatile var strong: Boolean = false
+        private set
+
     /** The device's normal (non-large) heap class in MB. 0 until [init]. */
     @Volatile var heapClassMb: Int = 0
         private set
@@ -53,6 +58,7 @@ object MemoryPressure {
         lowRam = forced ?: ((am?.isLowRamDevice == true) || (heapClassMb in 1..127))
         val totalMb = am?.let { m -> ActivityManager.MemoryInfo().also { m.getMemoryInfo(it) }.totalMem / (1024 * 1024) } ?: 0L
         modest = lowRam || totalMb in 1..4_300L
+        strong = !modest && totalMb >= 7_300L
         android.util.Log.i("MemoryPressure", "init lowRam=$lowRam heapClassMb=$heapClassMb forced=${forced?.toString() ?: "no"}")
     }
 
