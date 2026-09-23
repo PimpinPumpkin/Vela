@@ -887,10 +887,8 @@ FROM (
     ) GROUP BY id
   ) nb USING (id)
 );
-COPY (
-  SELECT json_object(
-    'type', 'Feature',
-    'tippecanoe', json_object('minzoom', CASE
+-- The minzoom rule, computed once so the tiles and the landmark report below read the same value.
+CREATE TABLE zooms AS SELECT id, CASE
       -- A counter or a department inside a shop belongs to that shop until you are right on top
       -- of it; it never competes with its own store for the block's icon.
       -- ...except a fuel station, which is a destination of its own while driving.
@@ -907,7 +905,22 @@ COPY (
       WHEN crank <= 2 OR (prominence >= 5 AND crank <= 6) THEN 14
       WHEN rank <= 3 OR (prominence >= 4.5 AND rank <= 8) THEN 15
       WHEN rank <= 12 OR (prominence >= 3.5 AND rank <= 24) THEN 16
-      ELSE 17 END),
+      ELSE 17 END AS mz FROM ranked;
+-- LANDMARK REPORT (2026-09-22): nobody can look at every city, so each bake says how its landmarks
+-- fared. A landmark with a Wikidata link (or an outline of a hectare or more) that only reaches
+-- the map at z16 or later is a sign the budget or the notability order misfired somewhere.
+.mode list
+SELECT 'LANDMARKS', count(*) AS landmarks,
+  count(*) FILTER (WHERE z.mz <= 15) AS by_z15,
+  round(100.0 * count(*) FILTER (WHERE z.mz <= 15) / greatest(count(*), 1), 1) AS pct_by_z15
+FROM ranked r JOIN zooms z USING (id) WHERE r.landmark = 1;
+SELECT 'LATE', z.mz, r.name, r.category, round(coalesce(r.notab, 0), 1) FROM ranked r JOIN zooms z USING (id)
+WHERE r.landmark = 1 AND z.mz > 15 ORDER BY coalesce(r.notab, 0) DESC, r.prominence DESC LIMIT 10;
+.mode duckbox
+COPY (
+  SELECT json_object(
+    'type', 'Feature',
+    'tippecanoe', json_object('minzoom', mz),
     'geometry', json_object('type', 'Point', 'coordinates', [lng, lat]),
     'properties', json_object(
       'id', id, 'name', name, 'name_en', name_en,
@@ -917,7 +930,7 @@ COPY (
       'brand', brand, 'addr', addr, 'loc', loc, 'website', website, 'phone', phone, 'hours', hours,
       'src', 'overture', 'origin', CASE WHEN id LIKE 'atp:%' THEN 'atp' WHEN id LIKE 'osm:%' THEN 'osm' ELSE 'overture' END
     )
-  ) FROM ranked LEFT JOIN (SELECT id, any_value(loc) AS loc FROM locs GROUP BY id) lx USING (id)
+  ) FROM ranked JOIN zooms USING (id) LEFT JOIN (SELECT id, any_value(loc) AS loc FROM locs GROUP BY id) lx USING (id)
     LEFT JOIN (SELECT id, any_value(en) AS name_en FROM names_en GROUP BY id) nx USING (id)
 ) TO '$WORK/places.ndjson' (FORMAT CSV, HEADER false, QUOTE '', ESCAPE '', DELIMITER '\t');
 SELECT count(*) AS features, sum(tenant) AS tenants, round(avg(prominence),2) AS prom_avg, sum(CASE WHEN landmark = 1 AND xrank <= 3 THEN 1 ELSE 0 END) AS z12, sum(CASE WHEN crank <= 2 OR (prominence >= 5 AND crank <= 6) THEN 1 ELSE 0 END) AS z14, sum(CASE WHEN rank <= 3 OR (prominence >= 4.5 AND rank <= 8) THEN 1 ELSE 0 END) AS z15, sum(CASE WHEN rank <= 12 OR (prominence >= 3.5 AND rank <= 24) THEN 1 ELSE 0 END) AS z16 FROM ranked;
