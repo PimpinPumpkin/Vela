@@ -6779,7 +6779,7 @@ class MapViewModel @Inject constructor(
             // carries OSM's landmarks, so the basemap's copy of them hides. A calibration dial, off
             // until the world rebake has run (an older archive has no landmarks, and hiding the
             // basemap points over it would lose every park and temple).
-            val oneSetRev = app.vela.core.config.CalibrationStore.latest.tune("placesOneSetRev", 99_999_999.0).toInt()
+            val oneSetRev = app.vela.ui.AppTune.value("placesOneSetRev", 99_999_999.0).toInt()
             val oneSet = uris.isNotEmpty() && pick.rev >= oneSetRev
             if (uris != _state.value.placesOverlays || _state.value.placesPending || oneSet != _state.value.placesOneSet) {
                 _state.update { it.copy(placesOverlays = uris, placesPending = false, placesOneSet = oneSet) }

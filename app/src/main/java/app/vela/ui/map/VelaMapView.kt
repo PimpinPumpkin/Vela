@@ -39,6 +39,7 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
+import org.maplibre.android.style.layers.FillExtrusionLayer
 import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.HillshadeLayer
 import org.maplibre.android.style.layers.LineLayer
@@ -3356,6 +3357,42 @@ fun VelaMapView(
                             since = now
                         }
                     }
+                    // LAYER BISECT (2026-09-23), same opt-in as the probe: `adb shell setprop
+                    // debug.vela.hide "<tokens>"` hides every layer whose id starts with a token, or
+                    // whose TYPE is named as `type:symbol` / `type:fill-extrusion` / `type:line` ...;
+                    // an empty value restores them. Polled every 2 s; restores on change.
+                    val bisectHandler = android.os.Handler(android.os.Looper.getMainLooper())
+                    val hidden = mutableListOf<String>()
+                    var lastSpec = ""
+                    val poll = object : Runnable {
+                        override fun run() {
+                            val spec = runCatching {
+                                @Suppress("PrivateApi")
+                                val m = Class.forName("android.os.SystemProperties").getMethod("get", String::class.java)
+                                (m.invoke(null, "debug.vela.hide") as? String).orEmpty().trim()
+                            }.getOrDefault("")
+                            val st = map.style
+                            if (spec != lastSpec && st != null && st.isFullyLoaded) {
+                                hidden.forEach { id -> st.getLayer(id)?.setProperties(PropertyFactory.visibility(Property.VISIBLE)) }
+                                hidden.clear()
+                                val tokens = spec.split(',', ' ').map { it.trim() }.filter { it.isNotEmpty() }
+                                if (tokens.isNotEmpty()) for (layer in st.layers) {
+                                    val type = when (layer) {
+                                        is SymbolLayer -> "symbol"; is FillExtrusionLayer -> "fill-extrusion"; is FillLayer -> "fill"
+                                        is LineLayer -> "line"; is CircleLayer -> "circle"; is RasterLayer -> "raster"; else -> "other"
+                                    }
+                                    val hit = tokens.any { t -> if (t.startsWith("type:")) t.removePrefix("type:") == type else layer.id.startsWith(t) }
+                                    if (hit && layer.visibility.value != Property.NONE) {
+                                        layer.setProperties(PropertyFactory.visibility(Property.NONE)); hidden += layer.id
+                                    }
+                                }
+                                android.util.Log.d("VelaFps", "hide '$spec': ${hidden.size} layers")
+                                lastSpec = spec
+                            }
+                            bisectHandler.postDelayed(this, 2000)
+                        }
+                    }
+                    bisectHandler.postDelayed(poll, 2000)
                 }
                 mv.addOnDidBecomeIdleListener {
                     // First finished render = the GL surface survived init: clear the crash

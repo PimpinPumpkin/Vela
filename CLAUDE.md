@@ -2957,6 +2957,17 @@ architecture note.
   same escape-hatch style as `debug.vela.lowram`). `scripts/map-fps.sh [serial] [label]` does the
   whole loop: setprop, restart, wait for a warm map, a fixed pan pattern, then min/p10/median/max.
   Measured that way the 4a holds 40-55 fps panning a suburb at browse zoom.
+- **BISECT MAP COST BY HIDING LAYERS (2026-09-23, `debug.vela.hide`).** With `debug.vela.fps`
+  on, `adb shell setprop debug.vela.hide "<tokens>"` hides every layer whose id starts with a token
+  or whose type is named (`type:symbol`, `type:fill-extrusion`, `type:line` ...), polled every 2 s;
+  an empty value restores. Found with it on a Pixel 9 (user report, "great till I pan NYC at 200 ft
+  or below"): Midtown at ~200 ft panned at 3 fps and 59 at 1000 ft, symbols were the whole cost,
+  and one layer, Liberty's `poi_r20` (OSM's lowest-rank points, thousands in Manhattan with OSM
+  businesses shown), took it to 60 when hidden. The one-set dial hides it: the live calibration was
+  v20 without `placesOneSetRev`, v22 carries it, and with the dial forced (`debug.vela.tune.
+  placesOneSetRev`, which `AppTune` now reads) Midtown pans at 60 fps at 250 and 125 ft. Anywhere
+  `poi_r20` still draws with OSM businesses on (an archive older than the dial, places off) a dense
+  city will crawl the same way; why one symbol layer costs that much is not isolated yet.
 - **A DENSE GeoJSON SOURCE NEEDS A HIGH maxzoom (2026-09-18, the ambient lesson generalized):**
   past a source's maxzoom every visible overscaled tile lays out ALL of its parent tile's features.
   `AMBIENT_SRC` cost 22 -> 51 fps when it went 12 -> 18 (2026-09-16); the same shape was still in
