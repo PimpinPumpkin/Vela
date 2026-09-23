@@ -1439,9 +1439,10 @@ Defaults that make the safe path the easy one:
   (`WebProxy.SHIM`, XHR/fetch/sendBeacon tag the URL with a one-time id and hand the body to a JS
   interface whose NAME and tag parameter are random per process, because a fixed "VelaPost" would be
   readable by Google's own page script) and (b) answers the telemetry locally with a CORS-friendly
-  200 (`webProxyBlockLogs`; an intercepted 204 lost its CORS headers on a 4a). Log lines: `carries:` / `answers locally:` / `passes through:`. NB the
-  older `VelaBridge` / `VelaPanel` interfaces the scrapers use are fixed names Google's page script
-  can read; renaming them per process is an open item.
+  200 (`webProxyBlockLogs`; an intercepted 204 lost its CORS headers on a 4a). Log lines: `carries:` / `answers locally:` / `passes through:`. The scrapers'
+  own bridges are random per process too since 2026-09-23 (`web/JsNames`): scripts keep writing
+  `VelaBridge` / `VelaPanel` and `JsNames.of` swaps the real names in at every
+  `evaluateJavascript`, so a new script call must go through `JsNames.of` or its bridge calls fail.
 - **A PLACE TAP IS A FEW REQUESTS, NOT A FEW HUNDRED (2026-09-23).** First photos: ONE `hspqX`
   request (`placePhotos`, dated), retried once after ~2.5 s when empty (a fresh Google session's
   first seconds answer stripped: seen 0, then 10), then the capped page walk as fallback. First
