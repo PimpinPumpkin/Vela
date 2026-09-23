@@ -157,6 +157,13 @@ Roughly in the order they are worth doing. Each one is small enough for a single
   154 and the handshake differs by three signature algorithms. `cronet-build.yml` builds Cronet from
   source at the Android stable tag (untested on a runner; runs once the file is on main). Also open:
   turn `webProxy` on by default once it has run on real sessions for a while.
+- **One APK per chip type, Cronet everywhere (2026-09-23).** Today one APK carries all four ABIs and
+  leaves out Cronet's x86 and x86_64 libraries to save ~14 MB (108.4 MB vs 121.9 MB), so emulators
+  and x86 Chromebooks send Google requests over OkHttp. Splitting the release into per-ABI APKs
+  (Gradle `splits.abi`, same build, no new runners) would put an ARM phone near 75 MB and give every
+  chip Cronet. The cost is the release pipeline: CI uploads several APKs, the in-app updater picks
+  the one for the device's ABI, Obtainium users set an APK filter, and the F-Droid repo needs
+  per-ABI version codes. Do this when size or x86 Cronet starts to matter.
 - **Review feed paging and the Menu tab without a page (2026-09-23).** Confirm the review feed's
   next-page token (assumed at payload[1]) from a reply on a phone that is not in the limited view;
   find whether `hspqX` can filter by gallery category, so the Menu tab needs no page walk either.
