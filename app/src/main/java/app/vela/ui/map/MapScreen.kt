@@ -3748,6 +3748,7 @@ private fun MapSurface(
         placesPending = state.placesPending,
         placesOneSet = state.placesOneSet,
         osmBusinesses = app.vela.ui.MapPoiPrefs.osmBusinesses.value,
+        hideCivic = !app.vela.ui.MapPoiPrefs.showCivic.value,
         // The exit you are taking, for the green callout on the map: only a numbered exit off
         // a ramp or a fork, and only while its own step is the one being guided.
         navTapPlaces = app.vela.ui.MapPoiPrefs.navTapPlaces.value,

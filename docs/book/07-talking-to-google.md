@@ -493,6 +493,8 @@ What the one-request methods depend on:
   2.5 s, then 3.5 to 4 s apart) before any page load. Some replies still come back without
   popular times after three tries; the sheet then shows none and the next open after the 15-minute
   details cache tries again.
+- **Retry timing is remote too:** `placeRetryMs` (2500, the wait before the second try),
+  `placeRetryStepMs` (1000 more per later try) and `placeTries` (3, then the page fallback).
 - **Per-place cache:** photos and the feed are kept 6 hours, details 15 minutes (popular times
   carry the live "busy right now"), 80 places each, for the life of the process.
 

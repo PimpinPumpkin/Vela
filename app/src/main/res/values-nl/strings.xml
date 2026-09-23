@@ -734,8 +734,6 @@
     <string name="settings_places_source_both_hint">Vela\'s gegevens tekenen de kaart, en zodra je stopt met pannen vult één Google-verzoek aan wat er ontbreekt. Die extra\'s verschijnen alleen online.</string>
     <string name="settings_places_source_more">Meer info</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
-    <string name="settings_osm_businesses">Ook OpenStreetMap-winkels</string>
-    <string name="settings_osm_businesses_hint">Toont ook winkels, restaurants en andere bedrijven uit OpenStreetMap die in Vela\'s gegevens ontbreken. Wijzigingen in OpenStreetMap verschijnen zodra de kaarttegels opnieuw zijn gebouwd, meestal binnen een week. Standaard aan.</string>
     <string name="settings_places_lookup">Aangetikte plaatsen opzoeken bij Google</string>
     <string name="settings_places_lookup_hint">Op een plaats tikken haalt de openingstijden, recensies en foto\'s bij Google op, en Vela onthoudt de koppeling zodat de volgende tik direct is. Uit = een aangetikte plaats toont alleen wat Vela\'s eigen gegevens hebben (naam, type, adres, telefoon, website) en er bereikt niets over die tik Google. Zoeken en routes gebruiken nog steeds Google.</string>
     <string name="settings_places_source_more_title">Waar Vela\'s plaatsgegevens vandaan komen</string>

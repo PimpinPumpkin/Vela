@@ -735,8 +735,6 @@
     <string name="settings_places_source_both_hint">הנתונים של Vela משרטטים את המפה, וכשתפסיק לגלול בקשה אחת ל-Google מוסיפה את מה שחסר. התוספות מוצגות רק כשיש חיבור.</string>
     <string name="settings_places_source_more">מידע נוסף</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
-    <string name="settings_osm_businesses">גם עסקים מ-OpenStreetMap</string>
-    <string name="settings_osm_businesses_hint">מציג גם חנויות, מסעדות ועסקים אחרים שממופים ב-OpenStreetMap וחסרים בנתונים של Vela. עריכות ב-OpenStreetMap מופיעות אחרי שאריחי המפה נבנים מחדש, בדרך כלל תוך שבוע. מופעל כברירת מחדל.</string>
     <string name="settings_places_lookup">בדוק ב-Google מקומות שהקשת עליהם</string>
     <string name="settings_places_lookup_hint">הקשה על מקום מביאה את השעות, הביקורות והתמונות שלו מ-Google, ו-Vela זוכר את ההתאמה כך שההקשה הבאה מיידית. כבוי = מקום שהקשת עליו מציג רק את מה שיש בנתונים של Vela (שם, סוג, כתובת, טלפון, אתר) ושום דבר על ההקשה לא מגיע ל-Google. חיפוש ומסלולים עדיין משתמשים ב-Google.</string>
     <string name="settings_places_source_more_title">מאיפה מגיעים נתוני המקומות של Vela</string>

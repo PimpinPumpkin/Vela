@@ -241,17 +241,10 @@ internal fun PlacesSourceGroup(topRow: Modifier = Modifier) {
                     dismissLowEmphasis = true,
                 )
             }
-            // OSM's own businesses (off by default): already in the streamed basemap, so an edit
-            // on openstreetmap.org reaches the map when the basemap rebuilds, no Vela bake needed.
-            if (app.vela.ui.MapPoiPrefs.openPlaces) {
-                GroupDivider()
-                ToggleRow(
-                    label = stringResource(R.string.settings_osm_businesses),
-                    checked = app.vela.ui.MapPoiPrefs.osmBusinesses.value,
-                    onCheckedChange = { app.vela.ui.MapPoiPrefs.setOsmBusinesses(context, it) },
-                    hint = stringResource(R.string.settings_osm_businesses_hint),
-                )
-            }
+            // ("OpenStreetMap shops too" is gone, 2026-09-23: the places bake carries OSM's
+            // businesses and landmarks itself now, and the basemap's own point layers are hidden
+            // over every archive baked with them. An older archive still gets OSM's shops drawn
+            // under it, deduped by name, the switch's old default.)
         }
 }
 

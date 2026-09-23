@@ -734,8 +734,6 @@
     <string name="settings_places_source_both_hint">Velas data ritar kartan, och när du slutat panorera fyller en enda Google-förfrågan på med det som saknas. Tilläggen visas bara online.</string>
     <string name="settings_places_source_more">Läs mer</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
-    <string name="settings_osm_businesses">Även butiker från OpenStreetMap</string>
-    <string name="settings_osm_businesses_hint">Visar även butiker, restauranger och andra företag från OpenStreetMap som saknas i Velas data. Ändringar i OpenStreetMap syns när kartbrickorna byggs om, oftast inom en vecka. På som standard.</string>
     <string name="settings_places_lookup">Slå upp platser du trycker på hos Google</string>
     <string name="settings_places_lookup_hint">Att trycka på en plats hämtar dess öppettider, recensioner och foton från Google, och Vela kommer ihåg matchningen så att nästa tryck går direkt. Av = en plats du trycker på visar bara det som finns i Velas data (namn, typ, adress, telefon, webbplats) och inget om trycket når Google. Sökning och vägbeskrivningar använder fortfarande Google.</string>
     <string name="settings_places_source_more_title">Varifrån Velas platsdata kommer</string>

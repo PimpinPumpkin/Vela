@@ -436,14 +436,21 @@ private const val NAV_DRIVE_BLOCK_TOP = 2 // best two per ~100 m block while dri
 /** ROUTE PREVIEW (the chooser is open, not navigating): only landmark-grade places draw, no dots,
  *  like Google's route overview, so the route reads before Start (user 2026-09-16). */
 private var placesPreviewLandmarks = false
+// "Parks, schools and civic places" off: the open layer drops those groups too (2026-09-23). They
+// used to reach the map only through Google's pool and the basemap, which the switch covered; the
+// places bake carries them now.
+private var placesHideCivic = false
 private const val PREVIEW_LANDMARK_PROMINENCE = 5.5
 
 /** Re-apply the id exclusions (and the drive-nav fuel-only rule) to the open places layers
  *  (icons + dots) without rebuilding them. */
 private fun applyOpenPlacesHidden(style: Style) {
     val ids = openHiddenIds + openDisplacedIds
-    val idFilter: Expression? = if (ids.isEmpty()) null
+    val byId: Expression? = if (ids.isEmpty()) null
     else Expression.not(Expression.`in`(Expression.get("id"), Expression.literal(ids.toTypedArray<Any>())))
+    val civic: Expression? = if (!placesHideCivic) null
+    else Expression.not(Expression.`in`(Expression.coalesce(Expression.get("group"), Expression.literal("")), Expression.literal(MapViewModel.CIVIC_GROUPS.toTypedArray<Any>())))
+    val idFilter: Expression? = listOfNotNull(byId, civic).let { if (it.isEmpty()) null else if (it.size == 1) it[0] else Expression.all(*it.toTypedArray()) }
     val fuel = Expression.eq(Expression.get("group"), Expression.literal("fuel"))
     val landmark = Expression.gte(Expression.get("prominence"), Expression.literal(PREVIEW_LANDMARK_PROMINENCE))
     val modeFilter = when {
@@ -665,6 +672,7 @@ fun VelaMapView(
     placesPending: Boolean = false, // the open places source is on but its lookup has not answered yet
     placesOneSet: Boolean = false, // the covering places archive carries OSM's landmarks: hide the basemap's point layers
     osmBusinesses: Boolean = false, // draw OSM's businesses under the open places layer too (deduped by name)
+    hideCivic: Boolean = false, // "Parks, schools and civic places" off: the open layer drops those groups
     navExitCallout: Pair<LatLng, String>? = null, // the exit you are taking: green bubble with its number
     navTapPlaces: Boolean = false, // drive nav: show the divert-worthy places and let a tap offer one as a stop
     placesOverlays: List<String> = emptyList(),   // pmtiles:// URIs of the open-data places layer (Overture), file:// or streamed
@@ -1439,6 +1447,10 @@ fun VelaMapView(
                 ),
             ),
         )
+    }
+    LaunchedEffect(hideCivic, styleRef) {
+        placesHideCivic = hideCivic
+        styleRef?.let { runCatching { applyOpenPlacesHidden(it) } }
     }
     LaunchedEffect(placesOneSet, styleRef) {
         osmOneSet = placesOneSet

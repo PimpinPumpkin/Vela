@@ -321,7 +321,6 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_places_source_google to SettingsSection.PLACES,
     R.string.settings_places_source_both to SettingsSection.PLACES,
     R.string.settings_places_lookup to SettingsSection.PLACES,
-    R.string.settings_osm_businesses to SettingsSection.PLACES,
     R.string.settings_show_civic to SettingsSection.PLACES,
     R.string.settings_show_transit_stops to SettingsSection.PLACES,
     R.string.settings_poi_icon_size to SettingsSection.PLACES,
