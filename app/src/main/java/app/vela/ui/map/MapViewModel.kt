@@ -3072,7 +3072,7 @@ class MapViewModel @Inject constructor(
             // retry succeeds), so auto-retry across a ~3 s window before falling back to the
             // manual retry — most flakes self-heal without the user touching anything.
             while (tooFew(revs) && expected > 0 && attempt <= 2) {
-                delay(500L * attempt) // the WebView fetch is thorough (internal polling) — one retry covers a page-load miss
+                delay(app.vela.core.util.Jitter.around(500L * attempt)) // the WebView fetch is thorough (internal polling); one retry covers a page-load miss
                 if (_state.value.selected?.featureId != fid) return@launch // user moved on
                 // The dead attempt's last count would otherwise sit frozen on the bar through the
                 // retry's page-load window, then visibly snap backward when its first tick lands.
@@ -3666,7 +3666,7 @@ class MapViewModel @Inject constructor(
                 // Photos and popular times are two more Chromium page loads; a beat later, so they
                 // do not land under the sheet's open animation together with the reviews scrape.
                 launch {
-                    kotlinx.coroutines.delay(700)
+                    kotlinx.coroutines.delay(app.vela.core.util.Jitter.around(700))
                     if (_state.value.selected?.id != full.id) return@launch
                     fetchPhotos(full)
                     fetchPlaceDetails(full) // popular times + editorial/owner, like a search-result tap
@@ -5901,7 +5901,7 @@ class MapViewModel @Inject constructor(
                 LatLng(center.lat, center.lng + dLng), LatLng(center.lat, center.lng - dLng),
             )
             for (n in neighbors) {
-                delay(700) // spread the extra load; a real pan cancels via ambientJob's own churn
+                delay(app.vela.core.util.Jitter.around(700)) // spread the extra load; a real pan cancels via ambientJob's own churn
                 val cur = _state.value
                 if (cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null) return@launch
                 if (cachedAmbientNear(n) != null) continue

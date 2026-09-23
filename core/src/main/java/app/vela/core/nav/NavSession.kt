@@ -77,6 +77,7 @@ class NavSession @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var destination: LatLng? = null
     private var lastRecheckMs = 0L
+    private var recheckSpread = app.vela.core.util.Jitter.factor()
     // Fast-heal pacing for a DEGRADED route (abbreviated steps / no live traffic): reference of
     // the route the counter was armed for + how many short-interval rechecks it has spent.
     private var degradedRouteRef: Route? = null
@@ -602,7 +603,9 @@ class NavSession @Inject constructor(
         }
         val degraded = currentRoute != null && (!currentRoute.hasRealSteps || !currentRoute.hasLiveTraffic)
         val fastHeal = degraded && degradedFastRechecks < DEGRADED_FAST_TRIES
-        val interval = if (fastHeal) DEGRADED_RECHECK_INTERVAL_MS else RECHECK_INTERVAL_MS
+        // Spread by +/-25%, redrawn after every recheck: an exact 120 s beat is a rhythm every
+        // install shares (see Jitter).
+        val interval = ((if (fastHeal) DEGRADED_RECHECK_INTERVAL_MS else RECHECK_INTERVAL_MS) * recheckSpread).toLong()
         if (now - lastRecheckMs < interval) return
         if (nav.offRoute || nav.remainingDistance < MIN_RECHECK_DISTANCE_M) return
         if (recheckJob?.isActive == true) return
@@ -610,6 +613,7 @@ class NavSession @Inject constructor(
         if (_state.value.fasterRoute != null) return
         val dest = destination ?: return
         lastRecheckMs = now
+        recheckSpread = app.vela.core.util.Jitter.factor()
         if (fastHeal) degradedFastRechecks++
         // Named remainingStops (not `remaining`) — the launch body below declares `remaining` for the
         // remaining DURATION, which would shadow this and hand a future edit seconds instead of stops.

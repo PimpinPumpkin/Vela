@@ -1,0 +1,63 @@
+name: Google health
+
+# Daily: (1) the app's own request builders + parsers against Google from the Davis fixture, with the
+# repo's calibration.json (GoogleHealthProbeTest), and (2) whether the Chrome version Vela claims is
+# still current (scripts/check-chrome-ua.py). A failed run mails the maintainer, which is the alert.
+# Google refusing a datacenter IP outright is reported as BLOCKED and is a warning, not a failure:
+# it says nothing about the calibration. Nothing here publishes anything.
+
+on:
+  schedule:
+    - cron: '20 14 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chrome-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare the claimed Chrome with stable
+        run: python3 scripts/check-chrome-ua.py | tee -a "$GITHUB_STEP_SUMMARY"
+
+  endpoints:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Fetch obf routing runtime jars
+        # :core compiles against them (see ci.yml); the probe itself never routes offline.
+        run: |
+          mkdir -p core/libs
+          for f in osmand-java.jar osmand-shared-jvm.jar gnu-trove-osmand.jar kxml2-vela.jar; do
+            curl -fSL -o "core/libs/$f" "https://github.com/${{ github.repository }}/releases/download/obf-runtime/$f"
+          done
+
+      - name: Probe Google
+        run: ./gradlew :core:testDebugUnitTest --tests '*GoogleHealthProbeTest' -DvelaLive=true --rerun-tasks --no-daemon
+
+      - name: Report
+        if: always()
+        run: |
+          f=$(ls core/build/test-results/testDebugUnitTest/*GoogleHealthProbeTest*.xml 2>/dev/null | head -1)
+          { echo "## Google endpoints"; echo; echo '```'; grep -ho 'HEALTH|[^<]*' "$f" 2>/dev/null || echo "no report (the test did not run)"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          grep -ho 'HEALTH|[^|]*|BLOCKED|[^<]*' "$f" 2>/dev/null | while read -r l; do echo "::warning::$l"; done
+          grep -ho 'HEALTH|[^|]*|DRIFT|[^<]*' "$f" 2>/dev/null | while read -r l; do echo "::error::$l"; done
+          true

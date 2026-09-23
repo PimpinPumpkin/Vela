@@ -429,6 +429,19 @@ Constraints:
   variations proto) to Google origins and neither client here does; the WebView and OkHttp keep
   separate cookie jars, so one phone is two sessions from one IP; the two clients differ in the
   TLS and HTTP/2 fingerprints below.
+- Measured 2026-09-23 (tls.peet.ws, `ja4` / `peetprint` / HTTP/2 `akamai_fingerprint`):
+  desktop Chromium 152 on macOS and the Android WebView (Chromium 153) send the SAME ClientHello
+  and the same HTTP/2 settings (`t13d1516h2_8daaf6152771_806a8c22fdea`,
+  `1:65536;2:0;4:6291456;6:262144|15663105|0|m,a,s,p`), so a desktop UA over a Chromium stack is
+  coherent. OkHttp is unmistakable: `t13d1513h2_8daaf6152771_eca864cca44a`, no GREASE, no ECH
+  or ALPS, HTTP/2 `4:16777216|16711681|0|m,p,a,s`. Cronet 143 (the newest Chromium-licensed
+  `cronet-embedded` on Maven; the 500.x artifacts carry the SDK license) matches Chromium 153
+  except for three signature algorithms newer Chromium offers (0x0904-0x0906, ML-DSA), which moves
+  its `ja4` to `..._d8a2da3f94cd`.
+- Every fixed wait before a Google request is drawn through `core/util/Jitter` (+/-25% by
+  default, +/-50% on retry backoffs): the nav recheck, the directions retries, the slim-pool heal,
+  the neighbor prefetch gaps, the photo-load stagger and the review retry. An exact 120 000 ms beat
+  is a rhythm every install would share. OSRM's retry backoff takes the same spread.
 - Do not chase a TLS fingerprint. Matching Chrome's JA3/JA4 and HTTP/2 frame ordering needs a
   custom TLS stack, permanent maintenance and native dependencies, and it breaks reproducible
   F-Droid builds. The defense is diffusion (every user on their own IP), not disguise.
@@ -754,8 +767,8 @@ BACK_ON_COURSE_HITS             2   consecutive on-route fixes that discard a st
 **Rechecks and faster routes.**
 
 ```
-RECHECK_INTERVAL_MS          120_000
-DEGRADED_RECHECK_INTERVAL_MS  20_000   while the adopted route is degraded
+RECHECK_INTERVAL_MS          120_000   each wait drawn +/-25% (Jitter), redrawn per recheck
+DEGRADED_RECHECK_INTERVAL_MS  20_000   while the adopted route is degraded, same spread
 DEGRADED_FAST_TRIES                6   then back to the normal cadence
 MIN_RECHECK_DISTANCE_M         1_500   stop rechecking near the destination
 FASTER_THRESHOLD_S                90   minimum saving before an alternate is offered
@@ -2444,9 +2457,19 @@ What the bundle can carry, in increasing power:
 a missing key means the compiled default and adding a dial is a configuration edit. View-layer
 consumers read `CalibrationStore.latest`.
 
+**Daily health check** (`.github/workflows/google-health.yml`, 14:20 UTC and on dispatch):
+`GoogleHealthProbeTest` runs the app's request builders and parsers with the repo's
+`calibration.json` from the Davis fixture (search, directions, directions with avoid-highways,
+autocomplete) and prints `HEALTH|check|OK|BLOCKED|DRIFT|detail`. DRIFT (an answer the parsers
+cannot read, or the avoid flag ignored) fails the run; BLOCKED (403, 429, the sorry page, a
+consent wall: a datacenter IP's treatment) is a warning. `scripts/check-chrome-ua.py` fails the
+same workflow when the Chrome major Vela claims is behind a Windows stable major that has been out
+7 days, or ahead of stable. A failed scheduled run mails the maintainer; nothing is posted.
+Locally: `./gradlew :core:testDebugUnitTest --tests '*GoogleHealthProbeTest' -DvelaLive=true --rerun-tasks`.
+
 Two procedural rules:
 
-- **Adding a `Calibration` field requires wiring `CalibrationStore.parse()` separately.** Fields
+- **Adding a `Calibration` field requires wiring `CalibrationStore.parseBundle()` separately.** Fields
   have shipped unread because only the data class was updated; grep for the field name in
   `CalibrationStore` before assuming a push will land.
 - A fix that needs genuinely new parsing **logic** still ships as a release, unless it can be

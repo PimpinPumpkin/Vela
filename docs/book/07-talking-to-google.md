@@ -110,7 +110,10 @@ document. A request that carries them looks like one that saw the page. The phot
 adds `X-Same-Domain: 1`, which the `batchexecute` endpoint expects from a same-origin caller,
 and Street View tile fetches present themselves as a cross-site image load.
 
-**Why desktop.** A mobile string would match the phone's TLS stack and carrier IP better. But
+**Why desktop.** A mobile string would match the carrier IP better. It would not match the TLS
+handshake any better: measured on 2026-09-23, desktop Chromium and the Android WebView send the
+identical ClientHello and HTTP/2 settings, so Chrome's handshake does not say which platform it
+runs on. (OkHttp's handshake matches neither; it looks like OkHttp.) But
 mobile web Maps serves different markup and different endpoints, and every parser in the app
 was calibrated against the desktop responses. Switching to a mobile UA is a recalibration of
 every parser, not a header edit, and the `?0` and `"Windows"` hints would have to move with it.
@@ -125,6 +128,19 @@ can be reading a legacy code path that gets retired without warning, which from 
 looks exactly like ordinary calibration drift. The compiled value tracks Chrome's current
 Windows stable major, and not the next one: for a week in September 2026 it named a Chrome that
 had not shipped yet.
+
+**Checked every day.** `.github/workflows/google-health.yml` runs the app's own request builders
+and parsers against Google from the Davis fixture with the repo's `calibration.json`: search,
+directions, directions with avoid-highways (which proves the avoid flag still bites), and
+autocomplete. A reply the parsers cannot read fails the run and mails the maintainer; Google
+refusing a datacenter IP outright is only a warning, because it says nothing about the
+calibration. The same workflow fails when Chrome stable has moved a major past the one Vela claims
+for a week. The first run flagged exactly that: Chrome 154 went stable on 2026-09-09 while Vela
+still said 153 (the probe passed with a 154 UA).
+
+**No clockwork.** Every fixed wait before a Google request (the two-minute live-traffic recheck,
+retry backoffs, the stagger between a place's page loads) is drawn with a random spread through
+`Jitter`, so no two installs, and no two rechecks, keep the same beat.
 
 **Community services get the honest one.**
 
@@ -200,7 +216,7 @@ What the bundle can carry, from least to most powerful:
   the review scrape's words and CSS selectors (`reviewWords`, `reviewSelectors`). A word missing
   in some language, or a CSS class Google rotated, is a config edit rather than an app release.
   These tables were in the data class from day one but not read by the parser until 2026-07-19,
-  which is why adding a bundle field is two steps: the class, and `CalibrationStore.parse()`.
+  which is why adding a bundle field is two steps: the class, and `CalibrationStore.parseBundle()`.
 - **Fleet defaults**: the default voice, speaker and speed, the map palette, the places source,
   and the classic route picker switch. A user's own setting always wins over these.
 - **Tuning dials**, a flat name-to-number map read through `Calibration.tune(key, default)`. A
