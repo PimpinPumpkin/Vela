@@ -125,8 +125,10 @@ object Transitous {
         // same-named sibling nearby - the two curbs of a directional pair - so one board carries
         // both directions, told apart by their headsigns (Google's treatment).
         val nearest = stops.first()
+        val key = stopKey(nearest.name)
         val ids = stops
-            .filter { it.name == nearest.name && distM(nearest.lat, nearest.lon, it.lat, it.lon) < PAIR_MERGE_M }
+            .filter { (stopKey(it.name) == key && distM(nearest.lat, nearest.lon, it.lat, it.lon) < PAIR_MERGE_M) ||
+                distM(nearest.lat, nearest.lon, it.lat, it.lon) < COLOCATED_M }
             .map { it.parentId ?: it.stopId }
             .distinct()
         val times = ids.flatMap { stopTimes(http, it) }.ifEmpty { return null }
@@ -138,7 +140,7 @@ object Transitous {
      *  Google's POI, and the merged board's headsigns tell the directions apart. Distinct names
      *  (a "NB Station"/"SB Station" pair) and far-apart same names both stay separate. */
     fun mergeDirectionalPairs(stops: List<MapStop>, radiusM: Double = PAIR_MERGE_M): List<MapStop> =
-        stops.groupBy { it.name }.flatMap { (_, group) ->
+        mergeColocated(stops).groupBy { stopKey(it.name) }.flatMap { (_, group) ->
             if (group.size < 2) return@flatMap group
             val clusters = mutableListOf<MutableList<MapStop>>()
             for (st in group) {
@@ -150,14 +152,75 @@ object Transitous {
             clusters.map { cl ->
                 if (cl.size == 1) cl.first()
                 else cl.first().copy(
+                    name = displayName(cl.map { it.name }),
                     lat = cl.sumOf { it.lat } / cl.size,
                     lon = cl.sumOf { it.lon } / cl.size,
-                    siblingIds = cl.drop(1).map { it.stopId },
+                    siblingIds = (cl.drop(1).map { it.stopId } + cl.flatMap { it.siblingIds }).distinct(),
                 )
             }
+        }.map { if (it.name == it.name.uppercase() && it.name.any(Char::isLetter)) it.copy(name = displayName(listOf(it.name))) else it }
+
+    /**
+     * ONE PHYSICAL STOP, SEVERAL FEEDS (2026-09-22, user: "bus icons right next to each other on the
+     * same side of the same block" in Midtown). MTA publishes a GTFS feed per borough plus MTA Bus
+     * Company, and a Manhattan corner served by an express route appears in two or three of them at
+     * the SAME coordinate; NY Waterway lists it again under "E 42nd St & Madison Ave", and Times
+     * Square is four subway stations on one point. Stops within [COLOCATED_M] fold whatever their
+     * names (132 stops around Bryant Park, 107 pairs within 30 m). The radius stays tiny on purpose:
+     * a BRT's NB and SB platforms ~11 m apart are separate stops with separate names.
+     */
+    fun mergeColocated(stops: List<MapStop>): List<MapStop> {
+        val clusters = mutableListOf<MutableList<MapStop>>()
+        for (st in stops) {
+            val home = clusters.firstOrNull { cl -> cl.any { distM(it.lat, it.lon, st.lat, st.lon) < COLOCATED_M } }
+            if (home != null) home.add(st) else clusters.add(mutableListOf(st))
         }
+        return clusters.map { cl ->
+            if (cl.size == 1) cl.first()
+            else cl.first().copy(
+                name = displayName(cl.map { it.name }),
+                siblingIds = (cl.drop(1).map { it.stopId } + cl.flatMap { it.siblingIds }).distinct(),
+            )
+        }
+    }
+
+    /** The comparison key for a stop name: case, "42nd" / "42", "&" / "/" / "at", street-type and
+     *  compass abbreviations, and the ORDER of the two cross streets all stop mattering, so
+     *  "E 42nd St & Madison Ave" and "MADISON AV/E 42 ST" are one corner. Direction suffixes
+     *  ("NB", "SB") are kept, so a directional pair with distinct names stays two stops. */
+    fun stopKey(name: String): String {
+        var s = java.text.Normalizer.normalize(name, java.text.Normalizer.Form.NFKD).replace(MARKS, "").lowercase()
+        s = s.replace(JOINERS, "/")
+        s = s.replace(ORDINAL, "$1")
+        return s.split('/').map { part ->
+            part.replace(NON_WORD, " ").split(SPACES).filter { it.isNotEmpty() }
+                .joinToString(" ") { STOP_ABBREV[it] ?: it }
+        }.filter { it.isNotEmpty() }.sorted().joinToString("|")
+    }
+
+    private val MARKS = Regex("\\p{M}+")
+    private val JOINERS = Regex("\\s*(&|@|/|\\+)\\s*|\\s+(and|at)\\s+")
+    private val ORDINAL = Regex("\\b(\\d+)(st|nd|rd|th)\\b")
+    private val NON_WORD = Regex("[^\\p{L}\\p{N} ]")
+    private val SPACES = Regex("\\s+")
+    private val AFTER_SLASH = Regex("/(\\p{Ll})")
+    private val STOP_ABBREV = mapOf(
+        "street" to "st", "avenue" to "av", "ave" to "av", "boulevard" to "blvd", "road" to "rd", "place" to "pl",
+        "drive" to "dr", "parkway" to "pkwy", "square" to "sq", "east" to "e", "west" to "w", "north" to "n", "south" to "s",
+    )
+
+    /** The name to show for a merged stop: a mixed-case name when any feed has one (the MTA's bus
+     *  feeds are ALL CAPS), else the first name in title case ("W 42 ST/5 AV" -> "W 42 St/5 Av"). */
+    fun displayName(names: List<String>): String {
+        val mixed = names.firstOrNull { n -> n != n.uppercase() && n.any(Char::isLetter) }
+        if (mixed != null) return mixed
+        val n = names.first()
+        return n.lowercase().split(' ').joinToString(" ") { w -> w.replaceFirstChar { it.titlecase() } }
+            .replace(AFTER_SLASH) { "/" + it.groupValues[1].uppercase() }
+    }
 
     private const val PAIR_MERGE_M = 160.0
+    private const val COLOCATED_M = 3.0
 
     /** Pure grouping of raw stop times into the board model (unit-tested; no network). */
     internal fun buildBoard(times: List<StopTime>, stationName: String?, nowMs: Long = System.currentTimeMillis()): StopDepartures? {

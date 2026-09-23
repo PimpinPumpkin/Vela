@@ -5633,6 +5633,13 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   back to the OSM basemap icons (filter restored). A fetch blip never blanks drawn stops.
   Regional GTFS stop packs (whole-state stops baked into the poi-pack pipeline) are the future
   hard-offline version - see task/ROADMAP.
+- **One corner from several feeds is one stop icon (2026-09-22).** MTA publishes per-borough bus
+  feeds and one Midtown corner appears in several at the SAME coordinate (NY Waterway adds it again
+  as "E 42nd St & Madison Ave"; Times Square is four subway parents on one point). `mergeColocated`
+  folds stops within 3 m regardless of name, then `mergeDirectionalPairs` groups by `stopKey`
+  (normalized, street order ignored) instead of the exact name; ALL-CAPS names show title-cased.
+  The 3 m radius is deliberate: NB/SB BRT platforms ~11 m apart stay two stops (tested). Bryant
+  Park box: 78 icons -> 55.
 - **Directional curb pairs merge into ONE icon (2026-07-13, device-verified).** US GTFS names both
   curbs of an intersection identically and carries NO direction field (verified against the raw
   `map/stops` JSON), so the map drew two overlapping same-named badges and each tap showed only
