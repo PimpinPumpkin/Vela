@@ -30,6 +30,9 @@ object CoreModule {
     fun okHttpClient(): OkHttpClient =
         OkHttpClient.Builder()
             .cookieJar(InMemoryCookieJar())
+            // Google-host requests over Chrome's network stack when the app installs it (Cronet);
+            // everything else, and any transport failure, stays on OkHttp. See GoogleTransport.
+            .addInterceptor(app.vela.core.net.GoogleTransport.hook)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .callTimeout(12, TimeUnit.SECONDS) // bound a single hung scrape so it can't stall a fan-out

@@ -221,6 +221,12 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.webkit)
+    // Cronet, Chromium's own network stack, for Google-host requests (app/net/CronetTransport,
+    // calibration `useCronet`) and the WebView proxy (`webProxy`). cronet-embedded 143 is published
+    // under the Chromium license (BSD) plus its dependencies' licenses; NOT the 500.x line, whose
+    // embedded artifact is deprecated and carries the Android SDK license. Its protobuf-javalite sits
+    // beside OsmAnd's old protobuf because :osmand-shaded relocates OsmAnd's copy.
+    implementation("org.chromium.net:cronet-embedded:143.7445.0")
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

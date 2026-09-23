@@ -491,7 +491,7 @@ private fun buildPanelWebView(
             if (request != null && blocked(request)) {
                 return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)))
             }
-            return null
+            return WebProxy.intercept(request) // null unless calibration `webProxy` is on
         }
 
         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {

@@ -144,6 +144,10 @@ abstract class HiddenWebView(
             }
         }
         wv.webViewClient = object : WebViewClient() {
+            // Null unless calibration `webProxy` is on: then GETs go out over Cronet with this
+            // WebView's own cookies, without the X-Requested-With header (WebProxy).
+            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): android.webkit.WebResourceResponse? =
+                WebProxy.intercept(request)
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val u = request?.url ?: return false
                 val scheme = u.scheme

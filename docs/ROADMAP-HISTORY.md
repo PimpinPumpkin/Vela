@@ -12,6 +12,9 @@ Headings and dates are the originals; entries are in the order they were written
 roughly the order they were worked on.
 
 ## Recently shipped
+- **Cronet for Google requests (2026-09-23).** Search, directions, place data and the batchexecute
+  RPCs go over Chromium's network stack (HTTP/2 and HTTP/3 like Chrome) instead of OkHttp, behind
+  calibration `useCronet`; OsmAnd's bundled protobuf is relocated at build time so both coexist.
 - **A place tap without hidden pages (2026-09-23).** Photos, reviews and details (popular times
   included) come from one plain request each, with retries; the whole gallery pages at 10 per
   request. Cronet turned out not to be needed for popular times: Google answers a place's first
