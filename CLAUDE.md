@@ -2197,7 +2197,7 @@ architecture note.
 
 - **Calibration word-table overrides were DEAD until 2026-07-19:** `Calibration` had
   statusClosedWords/statusOpenWords/transitCategoryWords/transitExcludeWords/stopBoardIndices
-  and the app pushed them into the parsers, but `CalibrationStore.parse()` never read them from
+  and the app pushed them into the parsers, but `CalibrationStore.parse()` (now `parseBundle`) never read them from
   JSON, so every remote bundle silently dropped them. Wired now (lenient like tuning), BUT any
   build released before this date cannot take a word-table override - a keyword fix for the
   installed fleet still needs an app release until those builds age out. When adding a new
@@ -3583,6 +3583,15 @@ architecture note.
   `DEFAULT_*_SEL` consts). Null / missing keys = compiled. Still compiled-only: the transit
   itinerary parser, the photo walk, the Street View parser, and the full-screen review page's
   carve (`ReviewsPanel`, its own script).
+- **Daily Google health check (2026-09-23, `.github/workflows/google-health.yml`).** Two jobs:
+  `GoogleHealthProbeTest` (core, skipped unless `-DvelaLive=true`, forwarded by
+  core/build.gradle.kts) runs the real builders + parsers against the repo's `calibration.json`
+  (parsed through `CalibrationStore.parseBundle`, now in the companion for exactly this) and fails
+  only on DRIFT, never on BLOCKED; `scripts/check-chrome-ua.py` fails when the claimed Chrome major
+  trails a Windows stable major that is 7+ days old, or is ahead of stable. Run the probe with a
+  candidate UA or pb in `calibration.json` BEFORE pushing a calibration change: it is the cheap way
+  to know the fleet will still parse. **Timed Google requests go through `core/util/Jitter`**
+  (recheck +/-25% redrawn each time, retries +/-50%); never add a fixed-interval Google request.
 - **Fleet tuning dials (2026-07-18): `tuning` in `calibration.json`** - a flat name->number map
   read through `Calibration.tune(key, compiledDefault)`; a missing key means the compiled
   default and a non-numeric value is skipped, so old/new bundles and apps never break each

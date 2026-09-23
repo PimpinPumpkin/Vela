@@ -467,7 +467,7 @@ class GoogleMapsDataSource @Inject constructor(
         // Majority (not all-slim): the session can warm MID-burst, leaving a mixed pool.
         val rated = all.count { it.rating != null }
         if (rated >= 3 && all.count { it.rating != null && it.reviewCount == null } > rated / 2) {
-            delay(1200)
+            delay(app.vela.core.util.Jitter.around(1200))
             val healed = coroutineScope { terms.map { term -> async { fetchTerm(term) } }.awaitAll().flatten() }
             if (healed.any { it.reviewCount != null }) {
                 diag.record("ambient", "slim cold-start pool healed: ${all.size} -> ${healed.size} places with counts")
@@ -1255,7 +1255,7 @@ class GoogleMapsDataSource @Inject constructor(
     private suspend fun googleDirectionsRetried(origin: LatLng, destination: LatLng, mode: TravelMode, tries: Int = 3, avoidTolls: Boolean = false, avoidHighways: Boolean = false, avoidFerries: Boolean = false, waypoints: List<LatLng> = emptyList()): List<Route> {
         var routes: List<Route> = emptyList()
         for (attempt in 0 until tries) {
-            if (attempt > 0) kotlinx.coroutines.delay(300L * attempt)
+            if (attempt > 0) kotlinx.coroutines.delay(app.vela.core.util.Jitter.around(300L * attempt, 0.5))
             routes = runCatching { googleDirections(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, waypoints) }.getOrNull().orEmpty()
             if (routes.isNotEmpty()) return routes
         }

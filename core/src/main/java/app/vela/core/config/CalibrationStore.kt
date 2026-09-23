@@ -41,7 +41,6 @@ class CalibrationStore @Inject constructor(
     @ApplicationContext context: Context,
     private val http: OkHttpClient,
 ) {
-    private val json = Json { ignoreUnknownKeys = true }
     private val cacheFile = File(context.filesDir, "calibration.json")
     private val sigFile = File(context.filesDir, "calibration.json.sig")
 
@@ -63,7 +62,7 @@ class CalibrationStore @Inject constructor(
                 val sig = fetch(SIG_URL) ?: return@runCatching
                 // Reject anything we didn't sign — this is what makes pushing CODE safe.
                 if (!verifySignature(body.toByteArray(Charsets.UTF_8), sig)) return@runCatching
-                val remote = parse(body) ?: return@runCatching
+                val remote = parseBundle(body) ?: return@runCatching
                 if (remote.version > active.version && isAllowed(remote)) {
                     runCatching {
                         cacheFile.writeText(body)
@@ -90,110 +89,13 @@ class CalibrationStore @Inject constructor(
         // Re-verify the cache too — a cache written by an older (unsigned) build, or
         // tampered on disk, falls back to the bundled DEFAULT for one launch.
         if (!verifySignature(body.toByteArray(Charsets.UTF_8), sigFile.readText())) return null
-        parse(body)?.takeIf { it.version >= Calibration.DEFAULT.version && isAllowed(it) }
+        parseBundle(body)?.takeIf { it.version >= Calibration.DEFAULT.version && isAllowed(it) }
     }.getOrNull()
 
     /** ECDSA-P256/SHA-256 verify against the detached [sigBase64] using the pinned key. */
     private fun verifySignature(content: ByteArray, sigBase64: String): Boolean =
         BundleSignature.verify(content, sigBase64, PINNED_PUBLIC_KEY)
 
-    /** Lenient JSON → Calibration: any missing field falls back to [DEFAULT], so
-     *  a remote file can override just the one thing that drifted. */
-    private fun parse(body: String): Calibration? = runCatching {
-        val o = json.parseToJsonElement(body).jsonObject
-        fun str(k: String, fallback: String): String =
-            (o[k] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } ?: fallback
-        val version = (o["version"] as? JsonPrimitive)?.content?.toIntOrNull() ?: return@runCatching null
-        val d = Calibration.DEFAULT
-        // Field-index paths: each value is a JSON array of ints; merge the remote
-        // ones over the bundled defaults so a file can override just one path.
-        val remotePaths = (o["paths"] as? JsonObject)?.mapNotNull { (k, v) ->
-            val list = (v as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content?.toIntOrNull() }
-            if (!list.isNullOrEmpty()) k to list else null
-        }?.toMap().orEmpty()
-        val remoteDirPaths = (o["directionsPaths"] as? JsonObject)?.mapNotNull { (k, v) ->
-            val list = (v as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content?.toIntOrNull() }
-            if (!list.isNullOrEmpty()) k to list else null
-        }?.toMap().orEmpty()
-        // Plain string maps (review words / selectors): blank values skipped, empty map = absent.
-        fun strMap(k: String): Map<String, String>? =
-            (o[k] as? JsonObject)?.mapNotNull { (key, v) ->
-                (v as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }?.let { key to it }
-            }?.toMap()?.takeIf { it.isNotEmpty() }
-        val notices = (o["notices"] as? JsonArray)?.mapNotNull { el ->
-            val n = el as? JsonObject ?: return@mapNotNull null
-            fun s(k: String): String? = (n[k] as? JsonPrimitive)?.content
-            val id = s("id") ?: return@mapNotNull null
-            val title = s("title") ?: return@mapNotNull null
-            Notice(
-                id = id,
-                level = s("level") ?: Notice.LEVEL_INFO,
-                title = title,
-                body = s("body") ?: "",
-                url = s("url"),
-            )
-        }.orEmpty()
-        val transformsJs = (o["transformsJs"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
-        // Word-table overrides, lenient like tuning: bad entries are skipped, an empty result
-        // reads as absent (null = compiled tables) so a malformed block can't blank a language.
-        // These fields existed in Calibration from day one but were never parsed here - every
-        // remote bundle silently dropped them (found chasing the Hebrew openNow bug, 2026-07-19).
-        fun wordMap(k: String): Map<String, List<String>>? =
-            (o[k] as? JsonObject)?.mapNotNull { (lang, v) ->
-                val words = (v as? JsonArray)
-                    ?.mapNotNull { w -> (w as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } }
-                if (!words.isNullOrEmpty()) lang to words else null
-            }?.toMap()?.takeIf { it.isNotEmpty() }
-        fun wordList(k: String): List<String>? =
-            (o[k] as? JsonArray)
-                ?.mapNotNull { w -> (w as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } }
-                ?.takeIf { it.isNotEmpty() }
-        val stopBoardIndices = (o["stopBoardIndices"] as? JsonObject)?.mapNotNull { (k, v) ->
-            (v as? JsonPrimitive)?.content?.toIntOrNull()?.let { k to it }
-        }?.toMap()?.takeIf { it.isNotEmpty() }
-        Calibration(
-            version = version,
-            searchEndpoint = str("searchEndpoint", d.searchEndpoint),
-            searchPb = str("searchPb", d.searchPb),
-            directionsEndpoint = str("directionsEndpoint", d.directionsEndpoint),
-            directionsPb = str("directionsPb", d.directionsPb),
-            reviewsEndpoint = str("reviewsEndpoint", d.reviewsEndpoint),
-            reviewsPb = str("reviewsPb", d.reviewsPb),
-            sessionWarmUrl = str("sessionWarmUrl", d.sessionWarmUrl),
-            // SANITIZED, not merely defaulted: an unsendable value (a control character, an absurd
-            // length) must fall back to the compiled UA rather than reach OkHttp, which throws at
-            // request-build time inside a runCatching that swallows it — one stray newline in a
-            // pushed bundle would otherwise kill every scrape with no crash and no log.
-            userAgent = BrowserHeaders.sanitize((o["userAgent"] as? JsonPrimitive)?.content)
-                ?: d.userAgent,
-            secChUa = BrowserHeaders.sanitize((o["secChUa"] as? JsonPrimitive)?.content)
-                ?: d.secChUa,
-            photosEndpoint = str("photosEndpoint", d.photosEndpoint),
-            photosProto = str("photosProto", d.photosProto),
-            paths = Calibration.DEFAULT_PATHS + remotePaths,
-            notices = notices,
-            transformsJs = transformsJs,
-            defaultVoiceSpeaker = (o["defaultVoiceSpeaker"] as? JsonPrimitive)?.content?.toIntOrNull() ?: d.defaultVoiceSpeaker,
-            defaultVoiceSpeed = (o["defaultVoiceSpeed"] as? JsonPrimitive)?.content?.toFloatOrNull() ?: d.defaultVoiceSpeed,
-            defaultVoiceId = (o["defaultVoiceId"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } ?: d.defaultVoiceId,
-            defaultMapPalette = (o["defaultMapPalette"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } ?: d.defaultMapPalette,
-            defaultPlacesSource = (o["defaultPlacesSource"] as? JsonPrimitive)?.content?.takeIf { it == "open" || it == "both" || it == "google" } ?: d.defaultPlacesSource,
-            classicRoutePicker = (o["classicRoutePicker"] as? JsonPrimitive)?.content?.toBooleanStrictOrNull() ?: d.classicRoutePicker,
-            // Numbers only, leniently: a non-numeric value is skipped rather than failing the
-            // bundle, so one bad dial can never take down the whole calibration.
-            tuning = (o["tuning"] as? JsonObject)?.mapNotNull { (k, v) ->
-                (v as? JsonPrimitive)?.content?.toDoubleOrNull()?.let { k to it }
-            }?.toMap() ?: d.tuning,
-            statusClosedWords = wordMap("statusClosedWords"),
-            statusOpenWords = wordMap("statusOpenWords"),
-            transitCategoryWords = wordList("transitCategoryWords"),
-            transitExcludeWords = wordList("transitExcludeWords"),
-            stopBoardIndices = stopBoardIndices,
-            directionsPaths = Calibration.DEFAULT_DIRECTIONS_PATHS + remoteDirPaths,
-            reviewWords = strMap("reviewWords"),
-            reviewSelectors = strMap("reviewSelectors"),
-        )
-    }.getOrNull()
 
     /** Security gate: every endpoint must point at an allow-listed host, so a
      *  compromised config can never exfiltrate requests to an attacker's server. */
@@ -204,6 +106,106 @@ class CalibrationStore @Inject constructor(
     }
 
     companion object {
+        private val BUNDLE_JSON = Json { ignoreUnknownKeys = true }
+
+        /** Lenient JSON → Calibration: any missing field falls back to [DEFAULT], so
+         *  a remote file can override just the one thing that drifted. */
+        fun parseBundle(body: String): Calibration? = runCatching {
+            val o = BUNDLE_JSON.parseToJsonElement(body).jsonObject
+            fun str(k: String, fallback: String): String =
+                (o[k] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } ?: fallback
+            val version = (o["version"] as? JsonPrimitive)?.content?.toIntOrNull() ?: return@runCatching null
+            val d = Calibration.DEFAULT
+            // Field-index paths: each value is a JSON array of ints; merge the remote
+            // ones over the bundled defaults so a file can override just one path.
+            val remotePaths = (o["paths"] as? JsonObject)?.mapNotNull { (k, v) ->
+                val list = (v as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content?.toIntOrNull() }
+                if (!list.isNullOrEmpty()) k to list else null
+            }?.toMap().orEmpty()
+            val remoteDirPaths = (o["directionsPaths"] as? JsonObject)?.mapNotNull { (k, v) ->
+                val list = (v as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content?.toIntOrNull() }
+                if (!list.isNullOrEmpty()) k to list else null
+            }?.toMap().orEmpty()
+            // Plain string maps (review words / selectors): blank values skipped, empty map = absent.
+            fun strMap(k: String): Map<String, String>? =
+                (o[k] as? JsonObject)?.mapNotNull { (key, v) ->
+                    (v as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }?.let { key to it }
+                }?.toMap()?.takeIf { it.isNotEmpty() }
+            val notices = (o["notices"] as? JsonArray)?.mapNotNull { el ->
+                val n = el as? JsonObject ?: return@mapNotNull null
+                fun s(k: String): String? = (n[k] as? JsonPrimitive)?.content
+                val id = s("id") ?: return@mapNotNull null
+                val title = s("title") ?: return@mapNotNull null
+                Notice(
+                    id = id,
+                    level = s("level") ?: Notice.LEVEL_INFO,
+                    title = title,
+                    body = s("body") ?: "",
+                    url = s("url"),
+                )
+            }.orEmpty()
+            val transformsJs = (o["transformsJs"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
+            // Word-table overrides, lenient like tuning: bad entries are skipped, an empty result
+            // reads as absent (null = compiled tables) so a malformed block can't blank a language.
+            // These fields existed in Calibration from day one but were never parsed here - every
+            // remote bundle silently dropped them (found chasing the Hebrew openNow bug, 2026-07-19).
+            fun wordMap(k: String): Map<String, List<String>>? =
+                (o[k] as? JsonObject)?.mapNotNull { (lang, v) ->
+                    val words = (v as? JsonArray)
+                        ?.mapNotNull { w -> (w as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } }
+                    if (!words.isNullOrEmpty()) lang to words else null
+                }?.toMap()?.takeIf { it.isNotEmpty() }
+            fun wordList(k: String): List<String>? =
+                (o[k] as? JsonArray)
+                    ?.mapNotNull { w -> (w as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } }
+                    ?.takeIf { it.isNotEmpty() }
+            val stopBoardIndices = (o["stopBoardIndices"] as? JsonObject)?.mapNotNull { (k, v) ->
+                (v as? JsonPrimitive)?.content?.toIntOrNull()?.let { k to it }
+            }?.toMap()?.takeIf { it.isNotEmpty() }
+            Calibration(
+                version = version,
+                searchEndpoint = str("searchEndpoint", d.searchEndpoint),
+                searchPb = str("searchPb", d.searchPb),
+                directionsEndpoint = str("directionsEndpoint", d.directionsEndpoint),
+                directionsPb = str("directionsPb", d.directionsPb),
+                reviewsEndpoint = str("reviewsEndpoint", d.reviewsEndpoint),
+                reviewsPb = str("reviewsPb", d.reviewsPb),
+                sessionWarmUrl = str("sessionWarmUrl", d.sessionWarmUrl),
+                // SANITIZED, not merely defaulted: an unsendable value (a control character, an absurd
+                // length) must fall back to the compiled UA rather than reach OkHttp, which throws at
+                // request-build time inside a runCatching that swallows it: one stray newline in a
+                // pushed bundle would otherwise kill every scrape with no crash and no log.
+                userAgent = BrowserHeaders.sanitize((o["userAgent"] as? JsonPrimitive)?.content)
+                    ?: d.userAgent,
+                secChUa = BrowserHeaders.sanitize((o["secChUa"] as? JsonPrimitive)?.content)
+                    ?: d.secChUa,
+                photosEndpoint = str("photosEndpoint", d.photosEndpoint),
+                photosProto = str("photosProto", d.photosProto),
+                paths = Calibration.DEFAULT_PATHS + remotePaths,
+                notices = notices,
+                transformsJs = transformsJs,
+                defaultVoiceSpeaker = (o["defaultVoiceSpeaker"] as? JsonPrimitive)?.content?.toIntOrNull() ?: d.defaultVoiceSpeaker,
+                defaultVoiceSpeed = (o["defaultVoiceSpeed"] as? JsonPrimitive)?.content?.toFloatOrNull() ?: d.defaultVoiceSpeed,
+                defaultVoiceId = (o["defaultVoiceId"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } ?: d.defaultVoiceId,
+                defaultMapPalette = (o["defaultMapPalette"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } ?: d.defaultMapPalette,
+                defaultPlacesSource = (o["defaultPlacesSource"] as? JsonPrimitive)?.content?.takeIf { it == "open" || it == "both" || it == "google" } ?: d.defaultPlacesSource,
+                classicRoutePicker = (o["classicRoutePicker"] as? JsonPrimitive)?.content?.toBooleanStrictOrNull() ?: d.classicRoutePicker,
+                // Numbers only, leniently: a non-numeric value is skipped rather than failing the
+                // bundle, so one bad dial can never take down the whole calibration.
+                tuning = (o["tuning"] as? JsonObject)?.mapNotNull { (k, v) ->
+                    (v as? JsonPrimitive)?.content?.toDoubleOrNull()?.let { k to it }
+                }?.toMap() ?: d.tuning,
+                statusClosedWords = wordMap("statusClosedWords"),
+                statusOpenWords = wordMap("statusOpenWords"),
+                transitCategoryWords = wordList("transitCategoryWords"),
+                transitExcludeWords = wordList("transitExcludeWords"),
+                stopBoardIndices = stopBoardIndices,
+                directionsPaths = Calibration.DEFAULT_DIRECTIONS_PATHS + remoteDirPaths,
+                reviewWords = strMap("reviewWords"),
+                reviewSelectors = strMap("reviewSelectors"),
+            )
+        }.getOrNull()
+
         /** The last applied bundle, readable WITHOUT an injected store - the view layer's
          *  tuning dials (zoom defaults, overlay threshold) live too deep in composables to
          *  plumb the store into. Set at init (cached bundle or compiled default) and on every

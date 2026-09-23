@@ -311,7 +311,7 @@ object RouteGeometry {
                 lastFailure = if (e is java.io.InterruptedIOException) "timeout" else e.javaClass.simpleName
             }
             if (attempt < tries - 1) {
-                val backoff = 200L * (attempt + 1)
+                val backoff = app.vela.core.util.Jitter.around(200L * (attempt + 1), 0.5)
                 val after = budget.remainingMs()
                 if (after != null && after - backoff < RouteBudget.MIN_TRY_MS) {
                     onFailure?.invoke("$lastFailure x${attempt + 1}; budget spent after ${budget.elapsedMs()} ms")
