@@ -663,6 +663,7 @@ fun VelaMapView(
     ambientClosed: List<MapMarker> = emptyList(), // permanently closed places in Google's last nearby answer (Both mode purge)
     onOpenPlaceClosed: (id: String) -> Unit = {}, // an open place matched one of [ambientClosed]: hide it for good
     placesPending: Boolean = false, // the open places source is on but its lookup has not answered yet
+    placesOneSet: Boolean = false, // the covering places archive carries OSM's landmarks: hide the basemap's point layers
     osmBusinesses: Boolean = false, // draw OSM's businesses under the open places layer too (deduped by name)
     navExitCallout: Pair<LatLng, String>? = null, // the exit you are taking: green bubble with its number
     navTapPlaces: Boolean = false, // drive nav: show the divert-worthy places and let a tap offer one as a stop
@@ -1439,6 +1440,11 @@ fun VelaMapView(
             ),
         )
     }
+    LaunchedEffect(placesOneSet, styleRef) {
+        osmOneSet = placesOneSet
+        lastOsmPoiVis = null // applyData re-decides the basemap point layers' visibility
+        styleRef?.let { st -> if (placesOneSet) OSM_POI_LAYERS.forEach { id -> st.getLayer(id)?.setProperties(PropertyFactory.visibility(Property.NONE)) } }
+    }
     LaunchedEffect(placesPending, styleRef, osmBusinesses) {
         val style = styleRef ?: return@LaunchedEffect
         val hide = (placesOverlays.isNotEmpty() || placesPending) && !osmBusinesses
@@ -1477,6 +1483,9 @@ fun VelaMapView(
                     Expression.any(
                         Expression.lte(Expression.coalesce(Expression.get(rankProp), Expression.literal(0)), Expression.literal(n)),
                         Expression.gte(Expression.get("prominence"), Expression.literal(prom)),
+                        // A LANDMARK the bake admitted (its own per-cell budget: Bryant Park, Grand
+                        // Central, a hospital) always gets its icon and name at the zoom it arrives.
+                        Expression.eq(Expression.coalesce(Expression.get("landmark"), Expression.literal(0)), Expression.literal(1)),
                     ),
                     value, Expression.literal(""),
                 )
@@ -5152,6 +5161,10 @@ private val OSM_BUSINESS_CLASSES = arrayOf(
 // small runtime dedupe that remains).
 private val OPEN_NONBUSINESS_GROUPS = arrayOf("culture", "civic", "edu", "sport", "health", "park", "default")
 private var osmHideBusiness = false
+/** The covering places archive is a ONE-SET bake (its tiles carry OSM's parks, temples, schools and
+ *  museums, ranked and budgeted with the shops): the basemap's own copy of those points (Liberty's
+ *  poi_r*) hides outright. In Shinjuku those layers were half the frame cost of a pan on a 4a. */
+private var osmOneSet = false
 private var osmBusinessesOn = false // the "OpenStreetMap shops too" setting, read by osmFillIn
 private var ambientClosedNow: List<MapMarker> = emptyList() // latest composition's ambientClosed, read by the twin pass
 private var openPlaceClosedCb: (String) -> Unit = {}
@@ -7414,7 +7427,7 @@ private fun applyData(
         placesPreviewLandmarks = previewing
         applyOpenPlacesHidden(style)
     }
-    val osmPoiVis = if (!poisEnabled || previewing || (!navMode && (ambientCoversView || markers.size > 1))) Property.NONE else Property.VISIBLE
+    val osmPoiVis = if (!poisEnabled || previewing || osmOneSet || (!navMode && (ambientCoversView || markers.size > 1))) Property.NONE else Property.VISIBLE
     if (osmPoiVis != lastOsmPoiVis) {
         listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
             style.getLayer(id)?.setProperties(PropertyFactory.visibility(osmPoiVis))

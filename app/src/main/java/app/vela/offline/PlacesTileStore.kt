@@ -285,17 +285,24 @@ abstract class PmtilesRegionStore(
      *  manifest region covering it. One, not every match: regions nest (a city test box inside its
      *  state), and two archives on the style drew every business in the overlap twice. An installed
      *  archive with no index entry (a dropped-in test file) counts as covering everything. */
+    /** The bake date (`rev`, YYYYMMDD) of the archive [sourcesFor] last picked, 0 when unknown. The
+     *  app hides the basemap's own points only over an archive baked with the one-set bake. */
+    @Volatile var lastPickRev: Int = 0
+        private set
+
     suspend fun sourcesFor(center: LatLng?, manifestUrl: String): List<String> {
         val local = installed()
-        val c = center ?: return local.values.take(1).map { "pmtiles://file://${it.absolutePath}" }
+        lastPickRev = 0
+        val c = center ?: return local.entries.take(1).map { (id, f) -> lastPickRev = installedRev(id); "pmtiles://file://${f.absolutePath}" }
         val index = readIndex()
         val localPick = local.entries
             .filter { (id, _) -> index[id]?.let { b -> c.lat in b[0]..b[2] && c.lng in b[1]..b[3] } ?: true }
             .minByOrNull { (id, _) -> index[id]?.let { b -> (b[2] - b[0]) * (b[3] - b[1]) } ?: Double.MAX_VALUE }
-        if (localPick != null) return listOf("pmtiles://file://${localPick.value.absolutePath}")
+        if (localPick != null) { lastPickRev = installedRev(localPick.key); return listOf("pmtiles://file://${localPick.value.absolutePath}") }
         val streamed = runCatching { manifest(manifestUrl) }.getOrDefault(emptyList())
             .filter { it.covers(c) }
             .minByOrNull { it.area() } ?: return emptyList()
+        lastPickRev = streamed.rev
         return listOf("pmtiles://${streamed.url}")
     }
 

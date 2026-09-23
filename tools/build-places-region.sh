@@ -81,6 +81,7 @@ fi
 # centroid in a bulk dataset. Needs osmium; OSM_PBF is a Geofabrik URL or a local file, and with it
 # unset the bake behaves exactly as before.
 OSM_NDJSON=""
+MARKS_NDJSON=""
 if [ -n "${OSM_PBF:-}" ] && command -v osmium >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
   OSM_SRC="$OSM_PBF"
   if [ "${OSM_PBF#http}" != "$OSM_PBF" ]; then
@@ -106,6 +107,36 @@ if [ -n "${OSM_PBF:-}" ] && command -v osmium >/dev/null 2>&1 && command -v jq >
       fi
     fi
     [ -n "$OSM_NDJSON" ] && echo "osm: $(wc -l < "$OSM_NDJSON") named business nodes" || echo "osm: no usable nodes"
+    # ONE SET OF MAP POINTS (2026-09-22). The basemap's own point layers (Liberty's poi_r*, built
+    # by OpenFreeMap from the same OSM) drew parks, temples, schools and museums as a second,
+    # separately ranked set the app had to reconcile on the device, and in Tokyo those layers cost
+    # half the frame rate. They come into THIS bake now, ranked and budgeted with everything else,
+    # and the app hides the basemap's copy wherever a places archive covers the view. Outlines
+    # count here (a park or a campus is mapped as an area), placed at the average of the outer
+    # ring's vertices; references are kept (no -R) so the ways have their nodes.
+    osmium tags-filter --overwrite -o "$WORK/marks.osm.pbf" "$OSM_SRC" \
+      nwr/tourism=museum,attraction,gallery,zoo,theme_park,aquarium,viewpoint \
+      nwr/amenity=place_of_worship,school,college,university,library,hospital,townhall,community_centre,theatre,arts_centre,courthouse,police,fire_station \
+      nwr/leisure=park,stadium,sports_centre,water_park,garden,nature_reserve \
+      nwr/historic=monument,memorial,castle,ruins,archaeological_site >/dev/null 2>&1 || true
+    if [ -s "$WORK/marks.osm.pbf" ]; then
+      # Points and areas only: a closed way is otherwise exported twice, as a line and as an area.
+      osmium export -f geojsonseq --add-unique-id=type_id --geometry-types=point,polygon --overwrite -o "$WORK/marks.geojsonseq" "$WORK/marks.osm.pbf" >/dev/null 2>&1 || true
+      if [ -s "$WORK/marks.geojsonseq" ]; then
+        tr -d '\036' < "$WORK/marks.geojsonseq" \
+          | jq -c 'def pts: if .type == "Point" then [.coordinates] elif .type == "LineString" then .coordinates
+                     elif .type == "Polygon" then .coordinates[0] elif .type == "MultiPolygon" then [.coordinates[][0][]] else [] end;
+                   select((.properties.name // "") != "") | (.geometry | pts) as $p | select(($p | length) > 0)
+                   | ($p | map(.[0])) as $xs | ($p | map(.[1])) as $ys
+                   | {id: (.id // ""), name: .properties.name, props: .properties,
+                      lng: ($xs | add / length), lat: ($ys | add / length),
+                      area: ((($xs | max) - ($xs | min)) * 111320 * ((($ys | add / length) * 3.14159265 / 180) | cos)
+                             * (($ys | max) - ($ys | min)) * 111320)}' \
+          > "$WORK/marks.ndjson" 2>/dev/null || true
+        [ -s "$WORK/marks.ndjson" ] && MARKS_NDJSON="$WORK/marks.ndjson"
+      fi
+    fi
+    [ -n "$MARKS_NDJSON" ] && echo "osm: $(wc -l < "$MARKS_NDJSON") named landmarks (parks, schools, temples, museums...)"
   fi
 fi
 
@@ -284,6 +315,88 @@ INSERT INTO locs SELECT id, loc FROM osmbiz WHERE id NOT IN (SELECT id FROM osmd
 INSERT INTO names_en SELECT 'osm:' || oid, en FROM osmen WHERE 'osm:' || oid IN (SELECT id FROM raw);
 SELECT (SELECT count(*) FROM osmbiz) AS osm_biz_in_box, (SELECT count(*) FROM raw WHERE id LIKE 'osm:%') AS osm_biz_added;
 OSMBIZSQL
+fi
+MARKS_SQL=""
+if [ -n "$MARKS_NDJSON" ]; then
+read -r -d '' MARKS_SQL <<MARKSSQL || true
+CREATE MACRO markcat(props) AS (CASE
+    -- A park that is also tagged an attraction is a park (Bryant Park carries both).
+    WHEN json_extract_string(props, 'leisure') IN ('park', 'garden', 'nature_reserve', 'water_park') THEN json_extract_string(props, 'leisure')
+    WHEN json_extract_string(props, 'tourism') = 'museum' THEN 'museum'
+    WHEN json_extract_string(props, 'tourism') = 'gallery' THEN 'art_gallery'
+    WHEN json_extract_string(props, 'tourism') = 'zoo' THEN 'zoo'
+    WHEN json_extract_string(props, 'tourism') = 'theme_park' THEN 'amusement_park'
+    WHEN json_extract_string(props, 'tourism') = 'aquarium' THEN 'aquarium'
+    WHEN json_extract_string(props, 'tourism') = 'viewpoint' THEN 'viewpoint'
+    WHEN json_extract_string(props, 'tourism') = 'attraction' THEN 'attraction'
+    WHEN json_extract_string(props, 'amenity') IN ('college', 'university') THEN 'college_university'
+    WHEN json_extract_string(props, 'amenity') = 'townhall' THEN 'city_hall'
+    WHEN json_extract_string(props, 'amenity') = 'community_centre' THEN 'community_center'
+    WHEN json_extract_string(props, 'amenity') = 'arts_centre' THEN 'cultural_center'
+    WHEN json_extract_string(props, 'amenity') = 'police' THEN 'police_station'
+    WHEN json_extract_string(props, 'amenity') = 'theatre' THEN 'theater'
+    WHEN json_extract_string(props, 'amenity') IN ('place_of_worship', 'school', 'library', 'hospital', 'courthouse', 'fire_station') THEN json_extract_string(props, 'amenity')
+    WHEN json_extract_string(props, 'leisure') = 'stadium' THEN 'stadium_arena'
+    WHEN json_extract_string(props, 'leisure') = 'sports_centre' THEN 'sports_club'
+    WHEN json_extract_string(props, 'historic') IS NOT NULL THEN 'landmark_and_historical_building'
+    ELSE NULL END);
+CREATE TABLE marks_src AS SELECT id, name, props, lng, lat, area FROM read_json('$MARKS_NDJSON', format = 'newline_delimited',
+  columns = {id: 'VARCHAR', name: 'VARCHAR', props: 'JSON', lng: 'DOUBLE', lat: 'DOUBLE', area: 'DOUBLE'})
+  WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N;
+-- osmium names an area "a<2 x way id>" or "a<2 x relation id + 1>"; turn it back into the OSM
+-- object a person can open and edit.
+CREATE TABLE marks_all AS
+SELECT 'osm:' || CASE WHEN id LIKE 'a%' THEN
+    CASE WHEN CAST(substr(id, 2) AS BIGINT) % 2 = 0 THEN 'w' || (CAST(substr(id, 2) AS BIGINT) // 2)
+         ELSE 'r' || ((CAST(substr(id, 2) AS BIGINT) - 1) // 2) END
+  ELSE id END AS id, name, markcat(props) AS category, 0.8 AS confidence,
+  json_extract_string(props, 'brand') AS brand,
+  nullif(trim(coalesce(json_extract_string(props, 'addr:housenumber'), '') || ' ' || coalesce(json_extract_string(props, 'addr:street'), '')), '') AS addr,
+  coalesce(json_extract_string(props, 'website'), json_extract_string(props, 'contact:website')) AS website,
+  coalesce(json_extract_string(props, 'phone'), json_extract_string(props, 'contact:phone')) AS phone,
+  'open' AS operating_status, json_extract_string(props, 'opening_hours') AS hours, lng, lat,
+  coalesce(json_extract_string(props, 'name:en'), json_extract_string(props, 'name:ja-Latn'), json_extract_string(props, 'name:latin')) AS en,
+  (json_extract_string(props, 'wikidata') IS NOT NULL) AS wiki,
+  -- SIZE is the notability signal among landmarks: Midtown has ~80 Wikidata-linked landmarks per
+  -- 1.6 km, mostly statues and chapels, and a four-hectare park or a station concourse should
+  -- outrank them. Bounding-box area of the outline, 0 for a mapped point.
+  coalesce(area, 0) AS area
+FROM marks_src WHERE id <> '' AND markcat(props) IS NOT NULL;
+-- One row per landmark: a campus mapped as a relation AND its main way, or a node inside its own
+-- outline, share a name; the first by id stands for all.
+DROP TABLE marks;
+CREATE TABLE marks AS SELECT * FROM marks_all WHERE id IN (
+  SELECT first(a.id ORDER BY a.id) FROM marks_all a JOIN marks_all b ON snapkey(a.name) = snapkey(b.name)
+    AND abs(a.lat - b.lat) < 0.003 AND abs(a.lng - b.lng) < 0.004
+  GROUP BY b.id
+) OR snapkey(name) IS NULL;
+-- A landmark Overture or an OSM shop node already has (a hospital, a museum, a library) keeps the
+-- existing row: the outline's centroid is a worse point than a mapped entrance.
+CREATE TABLE markdupes AS
+SELECT DISTINCT m.id, r.id AS rid, m.wiki FROM marks m JOIN raw r ON snapkey(r.name) = snapkey(m.name)
+WHERE snapkey(m.name) IS NOT NULL AND abs(r.lat - m.lat) < 0.003 AND abs(r.lng - m.lng) < 0.004
+  -- ...but never against an Overture row the scoring below throws out (its parks and schools):
+  -- that dropped Bryant Park itself, whose OSM outline matched an Overture "park" row that the
+  -- category filter then removed, leaving neither.
+  AND (r.category IS NULL OR r.category NOT IN ('park','campus_building','apartments','housing_development','real_estate','transportation','bus_station','train_station','public_transportation','school','elementary_school','middle_school','high_school'));
+INSERT INTO raw
+SELECT id, name, category, confidence, brand, addr, website, phone, operating_status, lng, lat, hours
+FROM marks WHERE id NOT IN (SELECT id FROM markdupes) AND id NOT IN (SELECT id FROM raw);
+INSERT INTO names_en SELECT id, en FROM marks WHERE en IS NOT NULL AND nonlatin(name) AND NOT nonlatin(en)
+  AND id IN (SELECT id FROM raw);
+-- A landmark merged into the row that already had it gives that row its English name
+-- ("花園神社" -> "Hanazono Jinja Shrine" onto Overture's row for the same shrine).
+INSERT INTO names_en SELECT DISTINCT d.rid, m.en FROM markdupes d JOIN marks m ON m.id = d.id JOIN raw r ON r.id = d.rid
+  WHERE m.en IS NOT NULL AND nonlatin(r.name) AND NOT nonlatin(m.en);
+-- Size bonus: log10 of the outline's area in square meters, less 2, capped at 3 (1 ha = +2).
+CREATE TABLE marksize AS SELECT id, least(3.0, greatest(0.0, log10(greatest(area, 1)) - 2)) AS b FROM marks WHERE id NOT IN (SELECT id FROM markdupes)
+  UNION ALL SELECT d.rid, least(3.0, greatest(0.0, log10(greatest(m.area, 1)) - 2)) FROM markdupes d JOIN marks m ON m.id = d.id;
+-- The Wikidata credit goes to whichever row stands for the landmark: its own, or the Overture row
+-- it merged into (the Empire State Building's OSM outline carries the link, Overture's row not).
+CREATE TABLE markwiki AS SELECT id FROM marks WHERE wiki AND id NOT IN (SELECT id FROM markdupes)
+  UNION SELECT rid FROM markdupes WHERE wiki;
+SELECT (SELECT count(*) FROM marks) AS landmarks_in_box, (SELECT count(*) FROM raw WHERE id IN (SELECT id FROM marks)) AS landmarks_added;
+MARKSSQL
 fi
 OSM_SQL=""
 if [ -n "$OSM_NDJSON" ]; then
@@ -474,6 +587,11 @@ CREATE MACRO nkey(n) AS CASE WHEN NOT regexp_matches(lower(coalesce(n, '')), '[a
   regexp_extract(regexp_replace(lower(n), '[^a-z0-9 ]', ' ', 'g'), '\\b[a-z0-9]{2,}\\b(?: [a-z0-9] )* +\\b([a-z0-9]{2,})\\b', 1)) END;
 $ATP_SQL
 $OSM_BIZ_SQL
+CREATE TABLE marks (id VARCHAR);
+$MARKS_SQL
+CREATE TABLE IF NOT EXISTS markwiki (id VARCHAR);
+CREATE TABLE IF NOT EXISTS marksize (id VARCHAR, b DOUBLE);
+CREATE TABLE IF NOT EXISTS markdupes (id VARCHAR, rid VARCHAR, wiki BOOLEAN);
 -- ONE ROW PER BUSINESS (user 2026-09-21, "two POIs that really should be one"). Overture itself
 -- carries the same business twice (a gas station under "Chevron" and "Chevron Station Davis", a
 -- shop under "SpeeDee" and "SpeeDee-Midas", a store and the counter inside it named after the
@@ -485,7 +603,9 @@ CREATE TABLE dupk AS SELECT id, lat, lng, sk, confidence, kiosk, fields FROM (
   SELECT id, lat, lng, snapkey(name) AS sk, confidence,
     (CASE WHEN category IN ('rental_kiosks','bank_equipment_service','money_transfer_services','atms','key_and_locksmith','vending_machine','photo_booth') THEN 1 ELSE 0 END) AS kiosk,
     ((addr IS NOT NULL)::INT + (phone IS NOT NULL)::INT + (website IS NOT NULL)::INT + (hours IS NOT NULL)::INT) AS fields
-  FROM raw
+  -- OSM landmarks are already deduplicated against everything (markdupes): the name key strips
+  -- "Corporation", so Bryant Park folded into "Bryant Park Corporation", a charity office, and lost.
+  FROM raw WHERE id NOT IN (SELECT id FROM marks)
   UNION ALL
   -- A FORECOURT IS ONE PER LOT: two fuel rows with one house number within the box are one station
   -- named after different things (the brand and the shop inside it). The NUMBER, not the street
@@ -513,7 +633,7 @@ CREATE TABLE generic AS SELECT w FROM read_csv('$ROOT/tools/place-generic-words.
 CREATE TABLE corek AS
 WITH toks AS (
   SELECT r.id, r.lat, r.lng, r.confidence, r.category, r.addr, r.phone, r.website, r.hours, t.tok, t.i
-  FROM (SELECT *, string_split(snapkey(name), ' ') AS tl FROM raw WHERE snapkey(name) IS NOT NULL) r,
+  FROM (SELECT *, string_split(snapkey(name), ' ') AS tl FROM raw WHERE snapkey(name) IS NOT NULL AND id NOT IN (SELECT id FROM marks)) r,
        unnest(r.tl) WITH ORDINALITY AS t(tok, i)
   WHERE t.tok <> '' AND t.tok NOT IN (SELECT w FROM generic)
 )
@@ -535,6 +655,10 @@ SELECT *,
     WHEN category IN ('hospital','university','college_university','airport','stadium_arena','museum','zoo','amusement_park','shopping_center','supermarket','department_store','grocery_store','convention_center','casino','aquarium') THEN 4.5
     WHEN category IN ('hotel','accommodation','pharmacy','bank','movie_theater','gym','library','church_cathedral','bowling_alley','hardware_store','car_dealer','furniture_store','electronics','sporting_goods','home_improvement_store','wholesale_store','discount_store') THEN 3.2
     WHEN category IS NULL THEN 1.6
+    -- OSM landmarks (the one-set bake): an attraction or a town hall is a place people navigate
+    -- by; a park, a school, a place of worship sits with the everyday services.
+    WHEN category IN ('attraction','viewpoint','landmark_and_historical_building','city_hall','courthouse','theater','art_gallery','cultural_center') THEN 3.2
+    WHEN category IN ('park','garden','nature_reserve','water_park','place_of_worship','school','police_station','fire_station','community_center','sports_club') THEN 2.2
     -- FOOD above the other everyday services, OFFICES at the bottom (user 2026-09-22): on a
     -- crowded block the budget goes to places people walk into, not the tenant list upstairs.
     WHEN category LIKE '%restaurant%' OR category IN ('coffee_shop','cafe','bar','pub','fast_food_restaurant','bakery','ice_cream_shop','brewery','food_court','deli','sandwich_shop','dessert_shop','juice_bar','tea_room') THEN 2.6
@@ -553,8 +677,9 @@ SELECT *,
     WHEN category IN ('hotel','accommodation','motel','bed_and_breakfast','hostel','resort') THEN 'lodging'
     WHEN category IN ('hospital','pharmacy','dentist','veterinarian','optometrist','urgent_care_clinic','doctor','health_and_medical','diagnostic_services','physical_therapy','chiropractor','medical_center') OR category LIKE '%clinic%' OR category LIKE '%medical%' THEN 'health'
     WHEN category LIKE '%parking%' THEN 'parking'
+    WHEN category IN ('park','garden','nature_reserve','water_park') THEN 'park'
     WHEN category IN ('university','college_university','library','school','preschool','tutoring_center') OR category LIKE '%school%' THEN 'edu'
-    WHEN category IN ('museum','movie_theater','art_gallery','performing_arts','theater','zoo','aquarium','landmark_and_historical_building','cultural_center') THEN 'culture'
+    WHEN category IN ('museum','movie_theater','art_gallery','performing_arts','theater','zoo','aquarium','landmark_and_historical_building','cultural_center','attraction','viewpoint','amusement_park') THEN 'culture'
     WHEN category IN ('gym','stadium_arena','bowling_alley','yoga_studio','sports_club','golf_course','climbing_gym','ice_skating_rink','martial_arts_club','swimming_pool') OR category LIKE '%fitness%' OR category LIKE '%sport%' THEN 'sport'
     WHEN category IN ('bank','atms','post_office','police_station','fire_station','city_hall','courthouse','church_cathedral','mosque','synagogue','temple','place_of_worship','community_center','cemetery','government_office') OR category LIKE '%religious%' THEN 'civic'
     WHEN category LIKE '%store%' OR category LIKE '%shop%' OR category IN ('supermarket','grocery_store','shopping_center','florist','laundromat','dry_cleaner','barber','hair_salon','beauty_salon','nail_salon','spa','car_dealer','automotive_repair','car_wash','hardware_store','electronics','furniture_store','tattoo','jewelry','retail','boutique','market') OR category LIKE '%salon%' THEN 'shop'
@@ -564,7 +689,7 @@ FROM raw
 WHERE name IS NOT NULL AND name <> ''
   AND COALESCE(operating_status, 'open') <> 'permanently_closed'
   AND COALESCE(confidence, 0.5) >= 0.4
-  AND (category IS NULL OR category NOT IN ('park','campus_building','apartments','housing_development','real_estate','transportation','bus_station','train_station','public_transportation','school','elementary_school','middle_school','high_school'))
+  AND (category IS NULL OR id LIKE 'osm:%' OR category NOT IN ('park','campus_building','apartments','housing_development','real_estate','transportation','bus_station','train_station','public_transportation','school','elementary_school','middle_school','high_school'))
   AND NOT (category IS NULL AND website IS NULL);
 -- Rank by prominence inside a fine (~400 m) and a coarse (~1.6 km) cell. Longitude cells are
 -- widened by 1/cos(lat) so the cells stay roughly square away from the equator.
@@ -644,14 +769,16 @@ WHERE s.id <> a.id AND abs(s.lat - a.lat) < 0.0025 AND abs(s.lng - a.lng) < 0.00
   AND s.category IN ('gas_station', 'convenience_store', 'ev_charging_station');
 CREATE TABLE anchored AS
 SELECT s.* REPLACE (
-    CASE WHEN t.id IS NOT NULL THEN s.prominence - 2.0 ELSE s.prominence END AS prominence,
+    CASE WHEN t.id IS NOT NULL AND s.id NOT IN (SELECT id FROM marks) AND s.id NOT IN (SELECT id FROM markwiki) THEN s.prominence - 2.0 ELSE s.prominence END AS prominence,
     CASE
       WHEN b.id IS NULL THEN s.name
       WHEN b.category = 'gas_station' THEN s.name || ' Fuel'
       WHEN b.category = 'ev_charging_station' THEN s.name || ' Charging'
       ELSE s.name || ' Market'
     END AS name),
-  CASE WHEN t.id IS NOT NULL OR iskiosk(s.category, s.name) THEN 1 ELSE 0 END AS tenant
+  -- A landmark is never a tenant: Grand Central and the Empire State Building shared addresses
+  -- with the anchors inside them and were held back to z17 as their "departments".
+  CASE WHEN (t.id IS NOT NULL OR iskiosk(s.category, s.name)) AND s.id NOT IN (SELECT id FROM marks) AND s.id NOT IN (SELECT id FROM markwiki) THEN 1 ELSE 0 END AS tenant
 FROM scored s LEFT JOIN tenants t ON t.id = s.id LEFT JOIN brandsame b ON b.id = s.id;
 -- STACKED POINTS (2026-09-15): Overture puts every tenant of a building on the same parcel point
 -- (17% of Davis rows share their point with another: medical suites, strip-mall tenants), and
@@ -683,11 +810,16 @@ CREATE TABLE IF NOT EXISTS osm_snap (id VARCHAR, olat DOUBLE, olng DOUBLE);
 CREATE TABLE IF NOT EXISTS osmpairs (id VARCHAR, oid VARCHAR, olat DOUBLE, olng DOUBLE, tier INTEGER, chain BOOLEAN, d DOUBLE);
 CREATE TABLE IF NOT EXISTS osmwiki (oid VARCHAR);
 CREATE TABLE IF NOT EXISTS atpfill (rid VARCHAR);
+CREATE TABLE IF NOT EXISTS markwiki (id VARCHAR);
+CREATE TABLE IF NOT EXISTS marksize (id VARCHAR, b DOUBLE);
 CREATE TABLE srcbonus AS
 SELECT id, 0.6 * max(osm) + 0.6 * max(atp) + 0.8 * max(wiki) AS b FROM (
   SELECT id, 1 AS osm, 0 AS atp, 0 AS wiki FROM osmpairs WHERE d <= 120 OR NOT chain
   UNION ALL SELECT p.id, 0, 0, 1 FROM osmpairs p JOIN osmwiki w ON w.oid = p.oid
   UNION ALL SELECT s.id, 0, 0, 1 FROM scored s JOIN osmwiki w ON s.id = 'osm:' || w.oid
+  -- A landmark OSM links to Wikidata (Bryant Park, Grand Central, a city hall) is exactly what a
+  -- crowded view should keep: without this Midtown's shops took every slot and those arrived at z17.
+  UNION ALL SELECT id, 0, 0, 2.5 FROM markwiki
   UNION ALL SELECT rid, 0, 1, 0 FROM atpfill
   UNION ALL SELECT id, 0, 1, 0 FROM atp_snap
 ) GROUP BY id;
@@ -725,6 +857,7 @@ SELECT * EXCLUDE (in_stack) REPLACE (
   SELECT *, row_number() OVER (PARTITION BY round(lat, 5), round(lng, 5) ORDER BY prominence DESC, id) - 1 AS dup FROM snapped
 );
 UPDATE spread SET prominence = spread.prominence + sb.b FROM srcbonus sb WHERE spread.id = sb.id;
+UPDATE spread SET prominence = spread.prominence + ms.b FROM (SELECT id, max(b) AS b FROM marksize GROUP BY id) ms WHERE spread.id = ms.id;
 CREATE TABLE ranked AS
 SELECT * EXCLUDE (dup),
   -- ~100 m cell: the high-zoom icon budget. rank's 400 m cell is the whole screen at z17.5, so a
@@ -732,10 +865,27 @@ SELECT * EXCLUDE (dup),
   row_number() OVER (PARTITION BY floor(lat / 0.0009), floor(lng * cos(radians(lat)) / 0.0009) ORDER BY prominence DESC, id) AS frank,
   row_number() OVER (PARTITION BY floor(lat / 0.0036), floor(lng * cos(radians(lat)) / 0.0036) ORDER BY prominence DESC, id) AS rank,
   row_number() OVER (PARTITION BY floor(lat / 0.0144), floor(lng * cos(radians(lat)) / 0.0144) ORDER BY prominence DESC, id) AS crank,
-  row_number() OVER (PARTITION BY floor(lat / 0.058), floor(lng * cos(radians(lat)) / 0.058) ORDER BY landmark DESC, prominence DESC, id) AS xrank
+  row_number() OVER (PARTITION BY floor(lat / 0.058), floor(lng * cos(radians(lat)) / 0.058) ORDER BY landmark DESC, prominence DESC, id) AS xrank,
+  -- Landmarks get their OWN budget per ~1.6 km cell: in Midtown every slot of the shared one went to
+  -- shops, and Bryant Park, Grand Central and the Empire State Building arrived at z17.
+  -- ...ordered by NOTABILITY (outline size, Wikidata), not the category prior: downtown Davis has
+  -- ~30 landmarks per cell, and the campus buildings' "university" prior put the town's central park
+  -- 29th.
+  row_number() OVER (PARTITION BY landmark, floor(lat / 0.0144), floor(lng * cos(radians(lat)) / 0.0144) ORDER BY coalesce(notab, 1.0) DESC, prominence DESC, id) AS lrank
 FROM (
-  SELECT *, CASE WHEN category IN ('airport','hospital','university','college_university','stadium_arena','shopping_center','zoo','amusement_park','convention_center','casino','aquarium','museum') THEN 1 ELSE 0 END AS landmark
-  FROM spread
+  SELECT *, CASE WHEN category IN ('airport','hospital','university','college_university','stadium_arena','shopping_center','zoo','amusement_park','convention_center','casino','aquarium','museum') THEN 1
+    -- Linked to Wikidata, or an outline of a hectare or more (a town's central park has no
+    -- Wikidata link and still anchors the map).
+    WHEN (id IN (SELECT id FROM markwiki) OR id IN (SELECT id FROM marksize WHERE b >= 2.0))
+      AND category IN ('park','garden','nature_reserve','attraction','landmark_and_historical_building','city_hall','place_of_worship','theater','viewpoint',
+        'church_cathedral','temple','mosque','synagogue','shrine','government_office','museum','art_gallery','library','stadium_arena') THEN 1
+    ELSE 0 END AS landmark
+  FROM spread LEFT JOIN (
+    SELECT id, max(n) AS notab FROM (
+      SELECT id, b AS n FROM marksize UNION ALL SELECT id, 1.5 AS n FROM markwiki
+      UNION ALL SELECT s.id, coalesce(z.b, 0) + 1.5 FROM markwiki s LEFT JOIN marksize z USING (id)
+    ) GROUP BY id
+  ) nb USING (id)
 );
 COPY (
   SELECT json_object(
@@ -747,6 +897,8 @@ COPY (
       WHEN tenant = 1 AND grp <> 'fuel' THEN 17
       WHEN landmark = 1 AND xrank = 1 THEN 11
       WHEN landmark = 1 AND xrank <= 3 THEN 12
+      WHEN landmark = 1 AND lrank <= 4 THEN 14
+      WHEN landmark = 1 AND lrank <= 10 THEN 15
       WHEN crank = 1 AND prominence >= 6 THEN 13
       -- THE CELL BUDGET IS A CAP (2026-09-22). "Important" used to skip the budget outright, and in
       -- a dense city nearly every shop scores important: a Shinjuku z16 tile carried 963 places

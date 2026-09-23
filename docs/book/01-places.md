@@ -212,6 +212,27 @@ with the place, +0.6 when a chain's own locator matched it, +0.8 when OSM links 
 (`srcbonus`, added to prominence before the cells are ranked). The rest of the Tokyo cost is the
 basemap's own OSM point layers (`poi_r*`): hiding them on top of the cap measured 46 to 60 fps.
 
+**One set of map points** (2026-09-22, branch `places-one-set`, behind the `placesOneSetRev`
+calibration dial). The basemap's own point layers (Liberty's `poi_r1`/`poi_r7`/`poi_r20`, built by
+OpenFreeMap from OSM) drew parks, temples, schools and museums as a second set that the phone had
+to reconcile with Vela's places and that cost half the frame rate in Tokyo. The bake now takes
+those from the region's OSM extract (points and outlines; an outline sits at the average of its
+outer ring), so one archive holds every map point, ranked and budgeted together, and the app hides
+the basemap's copy over any archive baked on or after the dial's date. Landmarks get their own
+budget per ~1.6 km cell (4 at z14, 10 at z15), ordered by notability: outline size (log10 of the
+area, a hectare = +2) and a Wikidata link (+1.5 there, +2.0 on prominence). A landmark is never a
+tenant, never folds into a business of the same name key, and gives its English name and Wikidata
+credit to the Overture row it merges into. Measured on test boxes (4a, pan fps; archive size):
+
+| | Current bake | One set | Size change |
+|---|---|---|---|
+| Shinjuku | 20 to 45 | 35 to 58 | +0.5% |
+| Midtown | 20 to 37 | 36 to 58 | +0.3% |
+| Davis downtown | 43 to 59 | 52 to 59 | +4.6% |
+
+Bryant Park, Grand Central, the Empire State Building and Davis's Central Park arrive at z14-15.
+At the widest street zooms in Midtown the dense bus-stop layer can still win the space.
+
 **Names in every script, and English names** (2026-09-22). The name keys (`snapkey`, `nkey`) keep
 letters of every script, as the app's `PlaceNames` does. They used to keep only `a-z0-9`, so a
 Japanese, Chinese, Korean, Cyrillic, Greek, Hebrew, Arabic or Thai name keyed to nothing. In

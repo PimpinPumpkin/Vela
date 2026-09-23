@@ -131,6 +131,9 @@ data class MapUiState(
     val hiddenOpenPlaceIds: Set<String> = emptySet(), // open places whose Google listing is permanently closed (persisted)
     val ambientClosed: List<Place> = emptyList(), // permanently closed places in the last nearby answer; Both mode hides their open twins
     val placesPending: Boolean = false, // the open places source is on and its first lookup has not answered
+    // The covering places archive was baked with the one-set bake (parks, temples, schools and
+    // museums inside it, ranked with the shops): the basemap's own point layers then hide.
+    val placesOneSet: Boolean = false,
     val speedLimitOverlayKmh: Double? = null,
     val speedLimitKmh: Double? = null, // posted limit of the current road (OSM maxspeed via the obf engine),
                                        // km/h; null = unknown/untagged/no offline graph → badge hidden.
@@ -6538,7 +6541,15 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             val uris = runCatching { placesStore.sourcesFor(center, app.vela.BuildConfig.PLACES_MANIFEST_URL) }.getOrDefault(emptyList())
             placesLookedUp = true
-            if (uris != _state.value.placesOverlays || _state.value.placesPending) _state.update { it.copy(placesOverlays = uris, placesPending = false) }
+            // ONE SET OF MAP POINTS (2026-09-22): an archive baked on or after `placesOneSetRev`
+            // carries OSM's landmarks, so the basemap's copy of them hides. A calibration dial, off
+            // until the world rebake has run (an older archive has no landmarks, and hiding the
+            // basemap points over it would lose every park and temple).
+            val oneSetRev = app.vela.core.config.CalibrationStore.latest.tune("placesOneSetRev", 99_999_999.0).toInt()
+            val oneSet = uris.isNotEmpty() && placesStore.lastPickRev >= oneSetRev
+            if (uris != _state.value.placesOverlays || _state.value.placesPending || oneSet != _state.value.placesOneSet) {
+                _state.update { it.copy(placesOverlays = uris, placesPending = false, placesOneSet = oneSet) }
+            }
         }
     }
 
