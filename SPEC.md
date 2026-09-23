@@ -2721,13 +2721,27 @@ tooling default that claims otherwise. Before pushing, `git log origin/main..HEA
   Compose, Hilt, a version catalog, R8 in the `release` build type.
 - **Channels.** A push to `main` or `canary` builds and tests only; a push can never mint a
   release. The nightly prerelease `v0.4.<run>` (versionName `0.4.<run>`, versionCode
-  `2000 + run`) is cut by a daily cron that skips when `main` has not moved, or on demand. Its
+  `(2000 + run) * 10`, `2000 + run` before 2026-09-23) is cut by a daily cron that skips when `main` has not moved, or on demand. Its
   title is `Vela <version> nightly` and its notes open with "Nightly build."; the promotion
   retitles to `Vela <version>` and regenerates the notes, so the channel is readable on the
   release page and in the in-app What's new dialog.
   `canary` is the working branch and also a real update channel: each push replaces the single
   APK on a fixed-tag rolling release whose tag is deliberately not `v0.*`. A weekly workflow
   promotes the newest nightly to stable: same tag, same signed APK, no rebuild.
+- **One APK per chip type (2026-09-23, behind the `ABI_SPLITS` repository variable).** With the
+  variable `true`, CI builds with `-PabiSplits` and a release carries `<prefix>-arm64.apk`,
+  `-armv7.apk`, `-x86.apk`, `-x86_64.apk` and the all-in-one `<prefix>-all.apk` (prefix
+  `vela-maps` or `vela-maps-canary`, `scripts/stage-apks.sh`); without it, the single APK under
+  its old name. Each chip APK adds its digit to the versionCode (armv7 1, arm64 2, x86 3, x86_64
+  4, all-in-one 0), so the F-Droid repo sees distinct codes and moving from the all-in-one APK to a
+  chip APK of the same build is an upgrade. The all-in-one name sorts first because GitHub lists
+  assets by name and updaters older than `update/ApkChoice` take the first `.apk`. The updater
+  picks the file for `Build.SUPPORTED_ABIS` and compares on the legacy `2000 + run` scale
+  (`legacyCode` folds a code of 20000 or more by dividing by ten). The F-Droid workflow renames
+  each release's files by tag, drops the all-in-one APK where chip APKs exist, and pins
+  `CurrentVersionCode` to the stable's highest versionCode read off its APKs. The all-in-one APK
+  leaves Cronet's x86 libraries out (108.4 MB); the per-chip build keeps them (arm64 74.3 MB,
+  armv7 35.4, x86 41.2, x86_64 41.5, all-in-one 121.9).
 - **The run number must stay in `ci.yml`.** A separate workflow would reset the counter and
   regress versionCode. Never name a release `v0.4.0`: the updater's regex takes the run number
   for the version code, so it would read as 2000 and never be offered. Keep local development

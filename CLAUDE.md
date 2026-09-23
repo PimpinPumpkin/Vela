@@ -347,7 +347,7 @@ Defaults that make the safe path the easy one:
   `.github/workflows/ci.yml`: pushes to `main` AND `canary` build + test only (APK as a
   workflow artifact, no release) - a push can never mint a release anymore, which retires the
   "flurry of updates" complaint structurally (#214 feedback). The NIGHTLY prerelease
-  `v0.4.<run>` (versionName `0.4.<run>`, versionCode `2000+run`, run = ci.yml's own monotonic
+  `v0.4.<run>` (versionName `0.4.<run>`, versionCode `(2000+run)*10` since 2026-09-23, was `2000+run`, run = ci.yml's own monotonic
   run number - releases MUST stay in ci.yml, a separate workflow would reset the counter and
   regress versionCode) is cut by a DAILY CRON (10:30 UTC) that skips when main has not moved
   since the last v0.* tag, or on demand via `gh workflow run ci.yml` (`-f force=true` recuts
@@ -356,7 +356,7 @@ Defaults that make the safe path the easy one:
   canary to main is the deliberate release-worthy act. Obtainium nightly users opt in with
   "include prereleases". **Canary is ALSO a real update channel (2026-08-07):** every canary
   push replaces the single APK on the rolling `canary` release (versionName
-  `0.4.<run>-canary`, same monotonic `2000+run` versionCode line as every channel so switching
+  `0.4.<run>-canary`, same monotonic `(2000+run)*10` versionCode line as every channel so switching
   channels is always an upgrade; the tag is deliberately NOT v0.* so the nightly/stable
   queries, the prune and F-Droid never see it). **Since 2026-09-22 the release is DELETED AND
   RECREATED per push (`--cleanup-tag`, `--target` the pushed commit, title "Vela 0.4.<run>-canary"):
@@ -1486,8 +1486,19 @@ Defaults that make the safe path the easy one:
   same package + signature. Launch check ~daily behind `self_update_check` (Settings → Version,
   default on); manual Check-for-updates button there too. "Not now" stores `update_dismissed_code`
   (only a NEWER release re-offers). The tag parse is **minor-agnostic** (`^v0\.\d+\.(\d+)$` - it
-  survived the 0.2→0.3 bump untouched), taking only the run number for the versionCode; it still
-  assumes the `2000+run` base, so update `SelfUpdater.check` if the versionCode base ever changes.
+  survived the 0.2→0.3 bump untouched), taking only the run number for the versionCode. **Every
+  comparison is on the LEGACY `2000+run` scale (2026-09-23):** CI's versionCode became
+  `(2000+run)*10 + chip digit`, and `update/ApkChoice.legacyCode` folds the installed code and the
+  canary notes' code back (a code of 20000+ divided by ten), so the tag math and the dismissed pref
+  never changed. **ONE APK PER CHIP TYPE is built but OFF until the repo variable `ABI_SPLITS` is
+  set to `true`** (SPEC 15): `-PabiSplits`, `scripts/stage-apks.sh` names the files
+  (`vela-maps[-canary]-arm64/-armv7/-x86/-x86_64/-all.apk`), `ApkChoice.pick` takes the one for
+  `Build.SUPPORTED_ABIS` and falls back to the all-in-one. The all-in-one name sorts FIRST on
+  purpose: GitHub lists assets alphabetically and every updater before ApkChoice takes the first
+  `.apk`, so a 32-bit phone on an old build still gets a file that installs. Flip the variable only
+  once a build with ApkChoice has been the stable for a few weeks. Test recipe (P9, device-checked
+  2026-09-23): `-PappId=app.vela.dev -PappVersionCode=37000`, Settings > About > Check for updates,
+  logcat `VelaUpdate` shows `installed=3700`.
 - **POI-speed trio (2026-07-11):** (1) `nearbyPlaces` STREAMS its category fan-out via an
   `onPartial` callback (paints throttled to >=10 new places + 500 ms apart; the final
   return is still the complete ranked pool) so first dots stop waiting on the SLOWEST of
