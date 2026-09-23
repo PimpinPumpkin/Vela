@@ -248,6 +248,21 @@ Two small rules decide which point a search is about.
   are sorts from you; browsing a city elsewhere does not reshuffle around wherever the screen
   happens to be centered.
 
+**A name typed while looking far away** (2026-09-22). When the search window is more than 50 km
+from you, and nothing in the window carries the typed name, one extra request goes out around
+you:
+
+- **On Enter** (`homeNameHits`): a near-you result whose name matches the query exactly or up to
+  generic words (`PlaceNames` EXACT or VARIANT) replaces the far results. A category chip's query,
+  an address, and anything under four characters never trigger it, so "coffee" over Tokyo still
+  means Tokyo's coffee.
+- **While typing** (`homeSuggestions`): when no suggestion's normalized name starts with what you
+  typed, up to three near-you autocomplete rows that do lead the list.
+
+The case it exists for: a local restaurant's name typed with the map over another country, where
+Google's window search answered with a loosely similar place over there. `VelaSearch` logs each
+replacement.
+
 The suggest fetch, `runSearch`, "More results" and "A to B" use both. Search along a route uses
 neither (below). "Search this area", offered when you pan while results show, re-runs the query
 over the new viewport.
