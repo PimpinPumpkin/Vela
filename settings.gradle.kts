@@ -33,3 +33,6 @@ rootProject.name = "Vela"
 include(":app")
 include(":baselineprofile")
 include(":core")
+// OsmAnd's router jar with its bundled protobuf moved to a private package, so Cronet's protobuf can
+// sit beside it (see osmand-shaded/build.gradle.kts).
+include(":osmand-shaded")

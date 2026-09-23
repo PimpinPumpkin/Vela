@@ -44,7 +44,9 @@ dependencies {
     // Maven jar duplicates the platform's XmlPullParser interfaces and R8 hard-fails on the
     // library/program split ("Library class android.content.res.XmlResourceParser implements
     // program class org.xmlpull.v1.XmlPullParser").
-    implementation(files("libs/osmand-java.jar", "libs/osmand-shared-jvm.jar", "libs/gnu-trove-osmand.jar", "libs/kxml2-vela.jar"))
+    // osmand-java.jar comes through :osmand-shaded (its protobuf relocated, so Cronet's can coexist).
+    implementation(project(mapOf("path" to ":osmand-shaded", "configuration" to "shadow")))
+    implementation(files("libs/osmand-shared-jvm.jar", "libs/gnu-trove-osmand.jar", "libs/kxml2-vela.jar"))
     implementation("commons-logging:commons-logging:1.2")
 
     implementation(libs.hilt.android)

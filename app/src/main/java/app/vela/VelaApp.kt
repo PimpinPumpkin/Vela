@@ -20,6 +20,7 @@ import javax.inject.Inject
 @HiltAndroidApp
 class VelaApp : Application(), coil.ImageLoaderFactory {
     @Inject lateinit var diag: DiagLog
+    @Inject lateinit var http: okhttp3.OkHttpClient
 
     /** Coil with a HARD memory-cache cap. The default budget is ~25% of the app's heap CLASS,
      *  and largeHeap makes that class huge - on a 512 MB large heap Coil happily retains up to
@@ -63,6 +64,10 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.MemoryPressure.init(this)
         app.vela.ui.SpeechPreload.init(this) // after MemoryPressure: its default reads the RAM tier
         app.vela.ui.FullPlaceLoad.init(this)
+        // Google-host requests over Chrome's network stack (Cronet), built lazily on the first one.
+        // Calibration `useCronet` 0, or an engine that fails to build, leaves them on OkHttp.
+        app.vela.net.CronetHolder.init(this)
+        app.vela.core.net.GoogleTransport.interceptor = app.vela.net.CronetTransport(http.cookieJar)
         // Push the device class down to :core, which cannot read an :app holder (same seam as
         // CategoryFilter.enabled). Gates the ambient POI fan-out in GoogleMapsDataSource.
         app.vela.core.data.LowRamMode.enabled = app.vela.ui.MemoryPressure.lowRam

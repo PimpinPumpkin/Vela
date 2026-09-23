@@ -3155,17 +3155,15 @@ class MapViewModel @Inject constructor(
      *  2500, plus `placeRetryStepMs` (1000) per later try), jittered. Google answers a place's first
      *  request stripped and the repeat in full; how long it takes to warm is Google's to change. */
     private fun placeRetryWait(n: Int): Long {
-        val cal = app.vela.core.config.CalibrationStore.latest
-        return app.vela.core.util.Jitter.around((cal.tune("placeRetryMs", 2500.0) + (n - 1) * cal.tune("placeRetryStepMs", 1000.0)).toLong().coerceIn(0L, 20_000L))
+        return app.vela.core.util.Jitter.around((app.vela.ui.AppTune.value("placeRetryMs", 2500.0) + (n - 1) * app.vela.ui.AppTune.value("placeRetryStepMs", 1000.0)).toLong().coerceIn(0L, 20_000L))
     }
 
     /** How many tries a one-request place load gets before the page fallback (`placeTries`, 3). */
-    private fun placeTries(): Int = app.vela.core.config.CalibrationStore.latest.tune("placeTries", 3.0).toInt().coerceIn(1, 5)
+    private fun placeTries(): Int = app.vela.ui.AppTune.value("placeTries", 3.0).toInt().coerceIn(1, 5)
 
     /** A remote kill switch in calibration `tuning` (1 = on, the compiled default; 0 = the old
      *  hidden-page path). The rollback lever for the one-request place loads. */
-    private fun tuneOn(key: String, default: Boolean = true) =
-        app.vela.core.config.CalibrationStore.latest.tune(key, if (default) 1.0 else 0.0) >= 0.5
+    private fun tuneOn(key: String, default: Boolean = true) = app.vela.ui.AppTune.on(key, default)
 
     /** "More reviews": the next page of the native feed, appended. */
     fun loadMoreReviews() {

@@ -456,9 +456,21 @@ Constraints:
   default, +/-50% on retry backoffs): the nav recheck, the directions retries, the slim-pool heal,
   the neighbor prefetch gaps, the photo-load stagger and the review retry. An exact 120 000 ms beat
   is a rhythm every install would share. OSRM's retry backoff takes the same spread.
-- Do not chase a TLS fingerprint. Matching Chrome's JA3/JA4 and HTTP/2 frame ordering needs a
-  custom TLS stack, permanent maintenance and native dependencies, and it breaks reproducible
-  F-Droid builds. The defense is diffusion (every user on their own IP), not disguise.
+- **Google-host requests go over Cronet (2026-09-23),** Chromium's own network stack, not a
+  custom TLS stack: `core/net/GoogleTransport` hands only google.com hosts to the interceptor the
+  app installs (`app/net/CronetTransport`, calibration `useCronet`, default on); everything else,
+  and any Cronet failure, stays on OkHttp. `cronet-embedded` 143 (Chromium license) for every ABI,
+  +24 MB on the APK (98.0 to 121.9 MB). Its protobuf-javalite sits beside OsmAnd's old bundled
+  protobuf because `:osmand-shaded` relocates OsmAnd's copy to `net.osmand.shaded.protobuf` at build
+  time (the jar on the `obf-runtime` release is untouched). On a Pixel 9 Google answers it over
+  HTTP/3. Its handshake is Chrome's minus the three newest signature algorithms until the Cronet
+  build tracks Chrome's major (`cronet-build.yml`).
+- **The WebView proxy** (`app/web/WebProxy`, calibration `webProxy`, default OFF): a Google WebView's
+  GETs go out over Cronet, streamed, with the WebView's OWN cookies (`WebViewCookieJar`, so the page
+  keeps its aged session), which removes `X-Requested-With: app.vela`. POSTs cannot be intercepted
+  and still carry it. Measured neutral on page timing once the response streams.
+- Every dial can be overridden on a device with `adb shell setprop debug.vela.tune.<key> <n>`
+  (`ui/AppTune`), for testing without a calibration push.
 
 ### 3.7 Hidden WebView scrapes
 

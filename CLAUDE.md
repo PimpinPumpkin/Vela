@@ -3748,24 +3748,15 @@ Gotchas:
   CORRECTNESS risk before a fingerprinting one: Google serves different response shapes to different
   browser generations, so an old UA can pin the scrape to a legacy code path that gets retired with
   no warning, arriving as indistinguishable-from-ordinary calibration drift.
-- **Do not chase the TLS fingerprint.** Matching Chrome JA3/JA4 and HTTP/2 frame ordering needs a
-  custom TLS stack: permanent maintenance, native deps, and trouble for reproducible F-Droid builds.
-  Vela's defense is diffusion (every user on their own carrier IP, nothing central to block), not
-  disguise. A current, coherent UA is ordinary client hygiene; a bespoke TLS stack is an arms race
-  on a solo budget, and a worse posture if it ever mattered.
-
-## Degoogled constraints (hard rules)
-
-- Location: AOSP `LocationManager` only - never `FusedLocationProviderClient`. **Fix discipline
-  (2026-07-04 audit, don't regress):** NETWORK (BeaconDB) fixes are DROPPED during nav and used in
-  browse only when GPS has been quiet ≥12 s (`NETWORK_FIX_QUIET_MS`, OsmAnd's `useOnlyGPS` pattern) - 
-  they're 100-1000 m off and teleported the dot/reroutes; inter-fix `dt` comes from
-  `loc.elapsedRealtimeNanos` (monotonic - `loc.time` mixes GNSS UTC with the network system clock and
-  a negative dt bypassed the outlier gate); fixes with accuracy >50 m never feed `NavSession`; the
-  `minDistanceM=0f` registration MUST stay 0 (a distance filter starves fixes at a standstill - the
-  frozen-speedo/creeping-puck bug). Measured speeds pass a SYMMETRIC accel-bounded gate against the
-  last ACCEPTED value (`gateMeasuredSpeed`, 2-fix persistence escape, shared with replay) - one-sided
-  spike filters self-latch (a down-glitch to 0 then rejects every real speed as an up-spike forever).
+- **Google requests ride Cronet now (2026-09-23), a stock Chromium library, not a custom TLS stack.**
+  `core/net/GoogleTransport.hook` (in CoreModule's client) hands google.com hosts to
+  `app/net/CronetTransport` (`useCronet`, default on; OkHttp on any failure, a GoogleTransport
+  IOException falls back). `:osmand-shaded` relocates OsmAnd's bundled protobuf at build time so
+  Cronet's can coexist (one runtime for both is NOT an option: each was compiled against its own).
+  APK 98.0 -> 121.9 MB (every ABI, user's call: storage is not the constraint). The WebView proxy
+  (`webProxy`, default off) must use `WebViewCookieJar`, never the app's jar: the app's session is new
+  every launch and Google limits new sessions, the WebView's is aged. Test dials on a device with
+  `setprop debug.vela.tune.<key>` (`ui/AppTune`); side-install test builds as `-PappId=app.vela.dev`.
 - **Avoids reach the nav session (2026-09-16).** `RoutingPrefs.avoidTolls/Highways/Ferries` mirror
   the chooser's sticky toggles (seeded in VelaApp, kept in step by `MapViewModel.syncRoutingAvoid`),
   and NavSession passes them on every fetch it makes itself (reroute, recheck, added stop,
