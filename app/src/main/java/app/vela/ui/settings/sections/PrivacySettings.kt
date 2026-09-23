@@ -53,6 +53,36 @@ internal fun PrivacySettingsScreen(vm: app.vela.ui.map.MapViewModel, onBack: () 
                 )
             }
         }
+        // How long one Google session lives (2026-09-23, web/SessionRotation): a saved cookie is a
+        // pseudonymous history, a new one gets Google's limited view. Pointless with Google off.
+        if (!app.vela.ui.GoogleFree.on.value) {
+            Spacer(Modifier.height(8.dp))
+            SettingsGroup {
+                app.vela.ui.settings.SubHead(stringResource(R.string.settings_google_session))
+                app.vela.ui.settings.Hint(stringResource(R.string.settings_google_session_hint))
+                val rot = app.vela.web.SessionRotation
+                listOf(
+                    rot.WEEK to R.string.settings_google_session_week,
+                    rot.DAY to R.string.settings_google_session_day,
+                    rot.LAUNCH to R.string.settings_google_session_launch,
+                ).forEach { (key, label) ->
+                    app.vela.ui.settings.SelectableRow(
+                        label = stringResource(label),
+                        selected = rot.mode.value == key,
+                        onClick = { rot.setMode(context, key) },
+                    )
+                }
+                androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    FilledTonalButton(
+                        modifier = Modifier.dpadHighlight(androidx.compose.material3.ButtonDefaults.filledTonalShape),
+                        onClick = {
+                            rot.startNewNow(context)
+                            android.widget.Toast.makeText(context, context.getString(R.string.settings_google_session_done), android.widget.Toast.LENGTH_SHORT).show()
+                        },
+                    ) { Text(stringResource(R.string.settings_google_session_now)) }
+                }
+            }
+        }
         Spacer(Modifier.height(8.dp))
         SettingsGroup {
         androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {

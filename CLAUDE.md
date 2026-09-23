@@ -1443,6 +1443,17 @@ Defaults that make the safe path the easy one:
   own bridges are random per process too since 2026-09-23 (`web/JsNames`): scripts keep writing
   `VelaBridge` / `VelaPanel` and `JsNames.of` swaps the real names in at every
   `evaluateJavascript`, so a new script call must go through `JsNames.of` or its bridge calls fail.
+- **THE GOOGLE SESSION ROTATES (2026-09-23, `web/SessionRotation`, Settings > Privacy "Google
+  session", pref `google_session_rotate` week/day/launch, default week).** User: a saved cookie is
+  history. `SessionRotation.init` runs in VelaApp BEFORE `CronetHolder.init` (a due rotation deletes
+  `cacheDir/cronet`, which is only safe before the engine opens it); cookies are cleared on a
+  background thread (CookieManager loads the WebView library), WebStorage on a main-thread idle,
+  the WebView HTTP cache by the next Google WebView (`consumeCacheClear`, called beside
+  `WebProxy.install`). First run just stamps the start. A new WebView-built fetcher must call
+  `consumeCacheClear` too. Device-checked on the 4a: button and every-launch both log
+  `VelaSession: new Google session`. Also found: the 4a's weeks-old session was in Google's LIMITED
+  view anyway (Google's banner on the full reviews page) while the P9's was full, so session
+  standing, not age alone, decides it.
 - **A PLACE TAP IS A FEW REQUESTS, NOT A FEW HUNDRED (2026-09-23).** First photos: ONE `hspqX`
   request (`placePhotos`, dated), retried once after ~2.5 s when empty (a fresh Google session's
   first seconds answer stripped: seen 0, then 10), then the capped page walk as fallback. First

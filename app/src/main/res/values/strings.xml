@@ -256,6 +256,13 @@
     <string name="settings_poi_icon_size_hint">Small suits low-resolution screens like car head units, where the default icons render oversized.</string>
     <string name="settings_live_rechecks">Live traffic re-checks while navigating</string>
     <string name="settings_live_rechecks_hint">Every couple of minutes during a drive, Vela asks Google for fresh traffic from your current position. That powers faster-route offers and the live arrival time, but it also tells Google where along the route you are. Off: your route still recalculates when you leave it.</string>
+    <string name="settings_google_session">Google session</string>
+    <string name="settings_google_session_hint">Google remembers this phone by a cookie, so what Vela looks up while it lasts can be linked together, without any name or account. Starting a new one caps that. A new session gets a shorter view from Google for a while (fewer reviews, popular times missing on some places).</string>
+    <string name="settings_google_session_week">Start a new one every week (recommended)</string>
+    <string name="settings_google_session_day">Start a new one every day</string>
+    <string name="settings_google_session_launch">Start a new one every time Vela opens (most private)</string>
+    <string name="settings_google_session_now">Start a new session now</string>
+    <string name="settings_google_session_done">New Google session started</string>
     <string name="settings_clear_history">Clear history</string>
     <string name="settings_clear_history_hint">Recent searches, recent places, parking history and recorded trips. Saved places and lists stay.</string>
     <string name="settings_clear_history_action">Clear</string>

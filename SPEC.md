@@ -497,7 +497,13 @@ total. The RPC tags no category, so the Menu tab comes only from the page walk. 
 (details, the photo pages, the review feed) carry the `AgedSession` tag, and the Cronet transport
 sends them with the WebView's cookies (`WebViewCookieJar`) instead of the app's (`agedSession`,
 default 1): on the app's new-every-launch session a big-box store's details came back three times
-with a review count and no popular times, which read as "this place has none". Remote switches: calibration `tuning` `nativePlacePhotos` and `nativeReviewFeed` (1 = on; 0 = the
+with a review count and no popular times, which read as "this place has none". That saved session
+is a pseudonymous history, so it is ROTATED (`web/SessionRotation`, Settings > Privacy, pref
+`google_session_rotate`): every week by default, every day, or at every process start, plus a
+"start a new session now" button. A rotation clears the WebView's cookies (off the main thread) and
+site storage (main-thread idle), the Cronet disk cache when the engine has not opened it yet, and
+the WebView HTTP cache when the next Google WebView is built; the button also empties the app's
+in-memory jar (`ResettableCookieJar`). Logcat `VelaSession`. Remote switches: calibration `tuning` `nativePlacePhotos` and `nativeReviewFeed` (1 = on; 0 = the
 page paths). A per-place cache keeps photos and the feed 6 hours and details 15 minutes. "More
 reviews" requests the feed's next page when a reply carries a token at payload[1] (assumed; not
 yet seen in a capture). The method table with the rollback order is in
