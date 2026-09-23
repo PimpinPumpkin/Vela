@@ -1051,7 +1051,10 @@ class MapViewModel @Inject constructor(
                     val localPlaces = _state.value.localSuggestions.mapNotNull { it.place }
                     val localNameLoc = localPlaces.map { nameLocKey(it) }.toHashSet()
                     val localFids = localPlaces.mapNotNull { it.featureId }.toHashSet()
-                    val deduped = (addrLead + auto.places).filterNot {
+                    // Looking far away and nothing here starts with the typed name: the place you
+                    // mean is probably near you (user 2026-09-22), so its rows lead.
+                    val home = homeSuggestions(term, near, auto.places)
+                    val deduped = (addrLead + home + auto.places.filterNot { a -> home.any { h -> h.featureId != null && h.featureId == a.featureId } }).filterNot {
                         nameLocKey(it) in localNameLoc || (it.featureId != null && it.featureId in localFids)
                     }
                     _state.update { it.copy(suggestions = deduped.take(8), querySuggestions = auto.queries.take(3)) }
@@ -1723,6 +1726,36 @@ class MapViewModel @Inject constructor(
         return me.takeIf { near == null || it.distanceTo(near) < 50_000.0 }
     }
 
+    /** Autocomplete rows near the user whose name starts with [term], when [near] is far from the
+     *  user and none of [far] does. One extra suggest request, only in that case. */
+    private suspend fun homeSuggestions(term: String, near: LatLng?, far: List<Place>): List<Place> {
+        val me = plausibleBias(_state.value.myLocation) ?: return emptyList()
+        if (near == null || me.distanceTo(near) < 50_000.0) return emptyList()
+        val t = app.vela.core.util.PlaceNames.normalized(term)
+        if (t.length < 4 || app.vela.core.data.OfflineAddressStore.looksLikeAddress(term)) return emptyList()
+        fun starts(p: Place) = app.vela.core.util.PlaceNames.normalized(p.name).startsWith(t)
+        if (far.any(::starts)) return emptyList()
+        val home = runCatching { dataSource.suggest(term, me, 20_000.0) }.getOrNull()?.places.orEmpty()
+        return home.filter(::starts).take(3)
+    }
+
+    /** Places near the user whose name matches [q] (exact or generic-word variant), when the search
+     *  window [near] is far from the user and none of [far] already matches. Empty otherwise, so
+     *  it costs one extra request only in that case. */
+    private suspend fun homeNameHits(q: String, near: LatLng?, far: List<Place>): List<Place> {
+        val me = plausibleBias(_state.value.myLocation) ?: return emptyList()
+        if (near == null || me.distanceTo(near) < 50_000.0) return emptyList()
+        val query = q.trim()
+        if (query.length < 4 || app.vela.core.data.OfflineAddressStore.looksLikeAddress(query)) return emptyList()
+        if (app.vela.ui.QuickCategories.all().any { it.query.equals(query, ignoreCase = true) }) return emptyList()
+        fun named(p: Place) = app.vela.core.util.PlaceNames.match(p.name, query).let {
+            it == app.vela.core.util.PlaceNames.Match.EXACT || it == app.vela.core.util.PlaceNames.Match.VARIANT
+        }
+        if (far.any(::named)) return emptyList()
+        val home = runCatching { withContext(Dispatchers.IO) { dataSource.searchOnce(query, me) } }.getOrDefault(emptyList())
+        return home.filter(::named).sortedBy { it.location.distanceTo(me) }.take(5)
+    }
+
     /** Re-run the current query biased to the area the user has panned to. */
     fun searchThisArea() = runSearch(_state.value.query.trim(), plausibleBias(mapCenter))
 
@@ -2056,6 +2089,28 @@ class MapViewModel @Inject constructor(
                 val geocoded = if (houseNo != null && res.places.none(::carries)) {
                     runCatching { dataSource.suggest(q, near, spanM).places.filter(::carries).take(3) }.getOrDefault(emptyList())
                 } else emptyList()
+                // A NAME TYPED WHILE LOOKING FAR AWAY (user 2026-09-22: a local restaurant's name
+                // typed with the map over another country opened a fuzzy match over there). When
+                // the view is more than RANK_NEAR_M from you and nothing in it carries the typed
+                // name, ask once around YOU; a close name match there replaces the far results.
+                // Category words never trigger it ("coffee" over Tokyo means Tokyo's coffee).
+                val homeHits = homeNameHits(q, near, res.places)
+                if (homeHits.isNotEmpty()) {
+                    android.util.Log.i("VelaSearch", "far view: ${homeHits.size} name match(es) near you replace ${res.places.size} far result(s)")
+                    _state.update {
+                        it.copy(
+                            results = homeHits, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null,
+                            status = null, searching = false, offline = false, resultsMoreQuery = null, resultsLoadingMore = false,
+                        )
+                    }
+                    moreSearch = null
+                    warmPlaceWebViews()
+                    if (openDirectionsOnResult) {
+                        openDirectionsOnResult = false
+                        homeHits.first().let { top -> selectPlace(top); routeToSelected() }
+                    }
+                    return@launch
+                }
                 if (res.places.isNotEmpty() || geocoded.isNotEmpty()) {
                     // ADDRESS queries: the on-device geocoder's exact house-number hits lead even
                     // when Google returned results (user 2026-07-15) - Google's keyless ranking
