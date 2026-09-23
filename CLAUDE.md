@@ -2306,6 +2306,19 @@ architecture note.
   plurals, `exp_chooser_alts_none`). `routeBubblesFor(..., detailed = altsOpen)` fills `RouteBubble.sub`
   with distance + delta and the bubble layer renders it as a second line. Only the fastest route is
   labeled "fastest"; a near-tie says "about the same time".
+- **THE BAKE'S NAME KEYS WERE LATIN-ONLY UNTIL 2026-09-22.** `snapkey`/`nkey` used `[^a-z0-9]` as
+  the separator, so every non-Latin name keyed to nothing and in Japan, China, Korea, Russia,
+  Greece, Israel, the Arab world, Thailand... NO name rule ran: no OSM or ATP snap, no duplicate
+  test (OSM copies went in as second pins), no same-business fold. The separator is `\p{L}\p{N}`
+  now, like `PlaceNames.PUNCT`, and `nkey` falls back to the whole snap key for a name with no
+  two-letter Latin word. Same day: `name_en` (side table `names_en`, joined at export like `locs`)
+  from OSM's `name:en` / `name:*-Latn` / `name:latin` / `brand:en` via the OSM row itself, the
+  name pair, or the chain dictionary `endict` (whole key, or a 4+ character chain key that
+  starts the name). The app uses it for Latin-script UIs (places label, the tapped sheet's name,
+  the Both twin test) and Liberty's `poi_r*` / `poi_transit` joined `PLACE_LABEL_LAYERS`. A
+  Shinjuku test box: 1,021 places named, 453 -> 1,566 OSM pins used. Search: `homeNameHits` /
+  `homeSuggestions` ask around the user once when the window is 50+ km away and nothing in it
+  carries the typed name (categories, addresses, <4 chars excluded).
 - **OSM POSITIONS IN THE PLACES BAKE (2026-09-17):** `OSM_PBF` (the region's Geofabrik extract, joined
   into the matrix from `tools/routing-regions.json` by id) is filtered with `osmium tags-filter` to
   NAMED business NODES, exported to geojsonseq (strip the 0x1e record separator before jq; the

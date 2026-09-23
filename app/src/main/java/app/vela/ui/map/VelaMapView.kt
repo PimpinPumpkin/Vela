@@ -392,8 +392,11 @@ private fun hideOpenTwins(map: MapLibreMap, style: Style, pois: List<MapMarker>,
         val ll = LatLng(pt.latitude(), pt.longitude())
         val kind = runCatching { f.getStringProperty("group") }.getOrNull()
         val hn = app.vela.core.util.PlaceNames.houseNumber(runCatching { f.getStringProperty("addr") }.getOrNull())
-        if (gone.isNotEmpty() && gone.any { m -> m.at.distanceTo(ll) < DEDUPE_NAME_M && namesAgree(n, m.name) }) onClosed(id)
-        else if (twinOf(n, kind, hn, ll, shown, localGeneric)) displaced += id
+        // The baked English name too: Google answers in English under hl=en, so a Japanese tile
+        // name never agreed with its own Google twin (2026-09-22).
+        val en = runCatching { f.getStringProperty("name_en") }.getOrNull()?.takeIf { it.isNotBlank() }
+        if (gone.isNotEmpty() && gone.any { m -> m.at.distanceTo(ll) < DEDUPE_NAME_M && (namesAgree(n, m.name) || (en != null && namesAgree(en, m.name))) }) onClosed(id)
+        else if (twinOf(n, kind, hn, ll, shown, localGeneric) || (en != null && twinOf(en, kind, hn, ll, shown, localGeneric))) displaced += id
     }
     // A twin already hidden is no longer RENDERED, so the query above cannot see it, and dropping
     // it from the set would flip it back on until the next pass. So re-check the hidden ones
@@ -411,7 +414,9 @@ private fun hideOpenTwins(map: MapLibreMap, style: Style, pois: List<MapMarker>,
                 val pt = f.geometry() as? Point ?: return@forEach
                 val kind = runCatching { f.getStringProperty("group") }.getOrNull()
                 val hn = app.vela.core.util.PlaceNames.houseNumber(runCatching { f.getStringProperty("addr") }.getOrNull())
-                if (twinOf(n, kind, hn, LatLng(pt.latitude(), pt.longitude()), shown, localGeneric)) displaced += id
+                val en = runCatching { f.getStringProperty("name_en") }.getOrNull()?.takeIf { it.isNotBlank() }
+                val at = LatLng(pt.latitude(), pt.longitude())
+                if (twinOf(n, kind, hn, at, shown, localGeneric) || (en != null && twinOf(en, kind, hn, at, shown, localGeneric))) displaced += id
             }
         }
     }
@@ -1476,7 +1481,10 @@ fun VelaMapView(
                     value, Expression.literal(""),
                 )
                 val icon = Expression.get("icon") // "vela-poi-<group>", baked
-                val name = Expression.get("name")
+                // A Latin-script UI reads the baked English name where the place has one (name_en,
+                // carried from OSM for a non-Latin name, 2026-09-22), else the local name.
+                val name = if (uiWantsLatinLabels()) Expression.coalesce(Expression.get("name_en"), Expression.get("name"))
+                    else Expression.get("name")
                 // The per-block icon budget. `frank` is the ~100 m rank; an archive baked before it
                 // existed falls back to the 400 m `rank` with a 4x looser cut (it used to pass every
                 // place, so a pre-frank city drew every tenant from z17.5, measured in Midtown).
@@ -2973,7 +2981,9 @@ fun VelaMapView(
                         fun prop(k: String) = if (hit.hasProperty(k)) hit.getStringProperty(k)?.takeIf { it.isNotBlank() && it != "null" } else null
                         val place = app.vela.core.model.Place(
                             id = "overture:" + (prop("id") ?: nameOf(hit)!!.hashCode().toString()),
-                            name = nameOf(hit)!!,
+                            // The baked English name for a Latin-script UI (what the label showed);
+                            // it is also what Google answers with under hl=en, so the lookup agrees.
+                            name = (if (uiWantsLatinLabels()) prop("name_en") else null) ?: nameOf(hit)!!,
                             location = LatLng(pt.latitude(), pt.longitude()),
                             category = prop("class"),
                             // The street line plus the tile's `loc` (city, region, postcode), baked
@@ -5383,10 +5393,13 @@ private fun placeLabelTextField(): Expression {
     return Expression.coalesce(*(own + rest).toTypedArray())
 }
 
-/** Liberty's `place` source-layer labels, coarsest first. */
+/** Liberty's `place` source-layer labels, coarsest first, plus its shop and transit labels
+ *  (2026-09-22): those stacked name:latin over name:nonlatin, two lines per shop in Tokyo, the
+ *  local line unreadable to an English reader and twice the text to place in the densest views. */
 private val PLACE_LABEL_LAYERS = listOf(
     "label_country_1", "label_country_2", "label_country_3", "label_state",
     "label_city_capital", "label_city", "label_town", "label_village", "label_other",
+    "poi_r1", "poi_r7", "poi_r20", "poi_transit",
 )
 
 private fun applyPlaceLabelLanguage(style: StyleLayers) {

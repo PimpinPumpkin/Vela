@@ -191,6 +191,30 @@ A seventh of the catalog rebakes every night, so an OSM edit reaches the map wit
 its own, and a single region can be rebaked on demand in about two minutes. See
 [chapter 2](02-data-and-rebakes.md) for the schedule and how a phone picks up the new archive.
 
+**Names in every script, and English names** (2026-09-22). The name keys (`snapkey`, `nkey`) keep
+letters of every script, as the app's `PlaceNames` does. They used to keep only `a-z0-9`, so a
+Japanese, Chinese, Korean, Cyrillic, Greek, Hebrew, Arabic or Thai name keyed to nothing. In
+those regions no name rule ran at all: OSM's copy of a shop Overture already had went in as a
+second pin, and no OSM or chain-locator position was ever used. Measured on a small Shinjuku box
+with the old and new keys:
+
+| Shinjuku test box | Old keys | New keys |
+|---|---|---|
+| OSM shops added as extra pins | 1,501 | 1,176 |
+| Places moved onto an OSM pin | 453 | 1,566 |
+| Places with an English name | none | 1,021 |
+
+A place whose own name is not Latin carries `name_en` in the tile. It comes from OSM
+(`name:en`, then a romanized `name:*-Latn`, `name:latin` or `brand:en`): the place's own OSM row,
+the OSM node it pairs with by name, or a region-wide chain dictionary. The dictionary maps a
+chain name to its English form when OSM agrees on the spelling, and applies to a name that
+starts with a dictionary key of at least four characters that is itself a chain ("ローソン西新宿1丁目店"
+reads "Lawson"). Overture itself carries no English name there (0 of 14,718 places in a central
+Tokyo box). The app shows `name_en` on the places layer and the sheet for a Latin-script UI
+(`uiWantsLatinLabels`), and the Both-mode twin test compares it too, because Google answers in
+English. The basemap's own shop and transit labels (`poi_r*`, `poi_transit`) follow the same
+one-line rule as place names now, instead of stacking the romanized name over the local one.
+
 ### Which of the places in a tile get an icon, a label, or a dot
 
 The tile can hold more than the map should draw, so the app decides per zoom, by rank rather

@@ -224,6 +224,14 @@ read -r -d '' OSM_BIZ_SQL <<OSMBIZSQL || true
 CREATE TABLE osm_src AS SELECT id, name, props, lng, lat FROM read_json('$OSM_NDJSON', format = 'newline_delimited',
   columns = {id: 'VARCHAR', name: 'VARCHAR', props: 'JSON', lng: 'DOUBLE', lat: 'DOUBLE'})
   WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N;
+CREATE TABLE osmen AS
+SELECT id AS oid, en FROM (
+  SELECT id, name, coalesce(json_extract_string(props, 'name:en'), json_extract_string(props, 'name:ja-Latn'),
+    json_extract_string(props, 'name:ja_rm'), json_extract_string(props, 'name:zh-Latn-pinyin'),
+    json_extract_string(props, 'name:ko-Latn'), json_extract_string(props, 'name:latin'),
+    json_extract_string(props, 'brand:en')) AS en
+  FROM osm_src
+) WHERE en IS NOT NULL AND trim(en) <> '' AND nonlatin(name) AND NOT nonlatin(en);
 CREATE TABLE osmbiz AS
 SELECT 'osm:' || id AS id, name, osmcat(props) AS category,
   -- Under AllThePlaces' 0.85 and Overture's own scores: an OSM node is as good as its last editor,
@@ -270,6 +278,7 @@ INSERT INTO raw
 SELECT o.id, o.name, o.category, o.confidence, o.brand, o.addr, o.website, o.phone, o.operating_status, o.lng, o.lat, o.hours
 FROM osmbiz o WHERE o.id NOT IN (SELECT id FROM osmdupes) AND o.category IS NOT NULL;
 INSERT INTO locs SELECT id, loc FROM osmbiz WHERE id NOT IN (SELECT id FROM osmdupes) AND category IS NOT NULL AND loc IS NOT NULL;
+INSERT INTO names_en SELECT 'osm:' || oid, en FROM osmen WHERE 'osm:' || oid IN (SELECT id FROM raw);
 SELECT (SELECT count(*) FROM osmbiz) AS osm_biz_in_box, (SELECT count(*) FROM raw WHERE id LIKE 'osm:%') AS osm_biz_added;
 OSMBIZSQL
 fi
@@ -328,7 +337,34 @@ SELECT id, olat, olng FROM (
 SELECT (SELECT count(*) FROM osm_snap o JOIN osmpairs p USING (id) WHERE p.olat = o.olat AND p.olng = o.olng AND p.tier = 1) AS osm_snaps_core_name,
        (SELECT count(*) FROM osm_snap o JOIN osmpairs p USING (id) WHERE p.olat = o.olat AND p.olng = o.olng AND p.d < 30) AS osm_snaps_under_30m,
        (SELECT count(*) FROM osm_snap o JOIN osmpairs p USING (id) WHERE p.olat = o.olat AND p.olng = o.olng AND p.d > 120) AS osm_snaps_over_120m;
-SELECT (SELECT count(*) FROM osm_raw) AS osm_nodes, (SELECT count(*) FROM osm_snap) AS osm_snaps;
+-- English names travel with the NAME pairing, nearest pair per row (no mutual-best needed: a name
+-- is not a position, and two branches of one chain share their English name anyway).
+INSERT INTO names_en
+SELECT id, en FROM (
+  SELECT p.id, e.en, row_number() OVER (PARTITION BY p.id ORDER BY p.tier, p.d) AS rn
+  FROM osmpairs p JOIN osmen e ON e.oid = p.oid
+) WHERE rn = 1 AND id NOT IN (SELECT id FROM names_en);
+-- CHAINS SHARE THEIR NAME: one OSM node tagging "ドトールコーヒーショップ" as "Doutor Coffee Shop"
+-- names every branch in the region. The dictionary keeps a name only when OSM agrees on its
+-- English form (the most common spelling holds at least two thirds of its nodes). A row takes it
+-- on its whole snap key, or on a dictionary key that STARTS its name ("ファミリーマート新宿三丁目店"),
+-- when that key is at least 4 characters and is itself a chain name (2+ OSM nodes), so a short
+-- generic word like "カフェ" can never name everything that begins with it.
+CREATE TABLE endict AS
+SELECT sk, en, n FROM (
+  SELECT k.sk, e.en, count(*) AS c, sum(count(*)) OVER (PARTITION BY k.sk) AS n,
+    row_number() OVER (PARTITION BY k.sk ORDER BY count(*) DESC, e.en) AS rn
+  FROM osmen e JOIN osmkeys k ON k.oid = e.oid GROUP BY k.sk, e.en
+) WHERE rn = 1 AND c * 3 >= n * 2;
+INSERT INTO names_en
+SELECT id, en FROM (
+  SELECT r.id, d.en, row_number() OVER (PARTITION BY r.id ORDER BY (d.sk = r.sk) DESC, length(d.sk) DESC) AS rn
+  FROM rowkeys r JOIN scored s ON s.id = r.id JOIN endict d
+    ON d.sk = r.sk OR (length(d.sk) >= 4 AND d.n >= 2 AND starts_with(r.sk, d.sk))
+  WHERE nonlatin(s.name)
+) WHERE rn = 1 AND id NOT IN (SELECT id FROM names_en);
+SELECT (SELECT count(*) FROM osm_raw) AS osm_nodes, (SELECT count(*) FROM osm_snap) AS osm_snaps,
+  (SELECT count(DISTINCT id) FROM names_en) AS names_en, (SELECT count(*) FROM endict) AS en_dictionary;
 OSMSQL
 fi
 
@@ -357,6 +393,14 @@ CREATE TABLE raw AS SELECT $SEL, CAST(NULL AS VARCHAR) AS hours FROM $SRC
   WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N $BBOXPRED;
 CREATE TABLE regioncc AS SELECT coalesce(mode(cc), 'US') AS cc FROM raw;
 CREATE TABLE locs AS SELECT id, loc FROM raw WHERE loc IS NOT NULL;
+-- ENGLISH NAMES (2026-09-22, user: a map of Japan read in Japanese with the app set to English).
+-- Overture carries no English name for a Japanese place (0 of 14,718 rows in central Tokyo); OSM
+-- has name:en or a romanized name on over half of them. A row whose own name is NOT Latin gets
+-- one here: an OSM row from its own tags, any other row from the OSM node it pairs with by name
+-- (the osm_snap pairs). Exported as the tile property `name_en`, which the app shows for a
+-- Latin-script UI. Nothing is stored for a name that is already Latin.
+CREATE TABLE names_en (id VARCHAR, en VARCHAR);
+CREATE MACRO nonlatin(n) AS regexp_matches(coalesce(n, ''), '[^\\x{0000}-\\x{024F}\\x{1E00}-\\x{1EFF}\\x{2000}-\\x{206F}\\x{20A0}-\\x{20CF}\\x{2100}-\\x{214F}]');
 ALTER TABLE raw DROP COLUMN loc;
 ALTER TABLE raw DROP COLUMN cc;
 -- The snap key is the WHOLE name, normalized, with a trailing store number dropped ("Safeway
@@ -368,9 +412,14 @@ ALTER TABLE raw DROP COLUMN cc;
 -- word, then punctuation, spaces and the trailing store number. "SpeeDee Oil Change & Auto
 -- Service", "Caffé Italia", "James W. Childress, DDS Inc." and "Nugget #12" key the way the tap
 -- resolve reads them, so a row the bake keeps is one the app can match.
+-- LETTERS OF EVERY SCRIPT (2026-09-22): the separator class was [^a-z0-9], so a Japanese, Chinese,
+-- Korean, Cyrillic, Greek, Hebrew, Arabic or Thai name keyed to NOTHING, and in every such region
+-- the OSM and chain-locator snaps, the same-business folds and the OSM duplicate test silently did
+-- nothing: OSM's copy of a shop Overture already had went in as a second pin (Shinjuku's tiles
+-- carried 6-10x Davis's features). The app's PlaceNames.PUNCT is [^\p{L}\p{N} ]; this matches it.
 CREATE MACRO snapkey(n) AS nullif(trim(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(
   strip_accents(lower(coalesce(n, ''))),
-  '\\([^)]*\\)', ' ', 'g'), '''s\\b', 's', 'g'), '&', ' and ', 'g'), '[^a-z0-9]+', ' ', 'g'),
+  '\\([^)]*\\)', ' ', 'g'), '''s\\b', 's', 'g'), '&', ' and ', 'g'), '[^\\p{L}\\p{N}]+', ' ', 'g'),
   '\\b(llc|inc|corp|co|ltd|company|incorporated|corporation|pc|apc|llp|pllc)\\b', ' ', 'g'),
   '[ ]+(no|num|store|unit|#)?[ ]*[0-9]{2,6}$', '')), '');
 -- SHARED TAG MAPPING. AllThePlaces and OpenStreetMap both describe a place with OSM tags, so the
@@ -416,8 +465,10 @@ CREATE MACRO isbiz(props) AS ((json_extract_string(props, 'shop') IS NOT NULL
       'coworking_space', 'theatre', 'nightclub', 'food_court', 'bureau_de_change', 'money_transfer', 'driving_school', 'language_school',
       'music_school', 'dancing_school', 'library', 'marketplace', 'bicycle_rental')));
 -- The first two significant words of a name, the app's own namesAgree rule in SQL form.
-CREATE MACRO nkey(n) AS trim(regexp_extract(regexp_replace(lower(n), '[^a-z0-9 ]', ' ', 'g'), '\\b([a-z0-9]{2,})\\b', 1) || ' ' ||
-  regexp_extract(regexp_replace(lower(n), '[^a-z0-9 ]', ' ', 'g'), '\\b[a-z0-9]{2,}\\b(?: [a-z0-9] )* +\\b([a-z0-9]{2,})\\b', 1));
+-- A name with no two-letter Latin word (Japanese, Cyrillic, ...) keys on its whole snap key: the
+-- two-word rule below only ever saw [a-z0-9], so those names used to key to '' and never deduped.
+CREATE MACRO nkey(n) AS CASE WHEN NOT regexp_matches(lower(coalesce(n, '')), '[a-z0-9]{2,}') THEN coalesce(snapkey(n), '') ELSE trim(regexp_extract(regexp_replace(lower(n), '[^a-z0-9 ]', ' ', 'g'), '\\b([a-z0-9]{2,})\\b', 1) || ' ' ||
+  regexp_extract(regexp_replace(lower(n), '[^a-z0-9 ]', ' ', 'g'), '\\b[a-z0-9]{2,}\\b(?: [a-z0-9] )* +\\b([a-z0-9]{2,})\\b', 1)) END;
 $ATP_SQL
 $OSM_BIZ_SQL
 -- ONE ROW PER BUSINESS (user 2026-09-21, "two POIs that really should be one"). Overture itself
@@ -679,7 +730,7 @@ COPY (
       ELSE 17 END),
     'geometry', json_object('type', 'Point', 'coordinates', [lng, lat]),
     'properties', json_object(
-      'id', id, 'name', name,
+      'id', id, 'name', name, 'name_en', name_en,
       'class', COALESCE(upper(substr(replace(category, '_', ' '), 1, 1)) || substr(replace(category, '_', ' '), 2), 'Place'),
       'group', grp, 'icon', 'vela-poi-' || grp, 'prominence', round(prominence, 2), 'confidence', round(COALESCE(confidence, 0.5), 2),
       'rank', rank, 'crank', crank, 'xrank', xrank, 'frank', frank, 'landmark', landmark, 'tenant', tenant,
@@ -687,6 +738,7 @@ COPY (
       'src', 'overture', 'origin', CASE WHEN id LIKE 'atp:%' THEN 'atp' WHEN id LIKE 'osm:%' THEN 'osm' ELSE 'overture' END
     )
   ) FROM ranked LEFT JOIN (SELECT id, any_value(loc) AS loc FROM locs GROUP BY id) lx USING (id)
+    LEFT JOIN (SELECT id, any_value(en) AS name_en FROM names_en GROUP BY id) nx USING (id)
 ) TO '$WORK/places.ndjson' (FORMAT CSV, HEADER false, QUOTE '', ESCAPE '', DELIMITER '\t');
 SELECT count(*) AS features, sum(tenant) AS tenants, round(avg(prominence),2) AS prom_avg, sum(CASE WHEN landmark = 1 AND xrank <= 3 THEN 1 ELSE 0 END) AS z12, sum(CASE WHEN crank <= 2 OR prominence >= 5 THEN 1 ELSE 0 END) AS z14, sum(CASE WHEN rank <= 3 OR prominence >= 4.5 THEN 1 ELSE 0 END) AS z15, sum(CASE WHEN rank <= 12 OR prominence >= 3.5 THEN 1 ELSE 0 END) AS z16 FROM ranked;
 SQL

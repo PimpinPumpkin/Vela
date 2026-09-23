@@ -487,6 +487,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   regions, places come from Vela's data, routes come from the open router, and Street View, the
   traffic overlay, satellite close-ups, transit directions, reviews and photos are off. Replaces
   the four-toggle recipe the FAQ used to give, and reaches the surfaces those toggles could not.
+- ✅ **English names on the map in Japan and other non-Latin countries (2026-09-22).** With the
+  app in a Latin-script language, Vela's places show their English or romanized name where
+  OpenStreetMap has one, including every branch of a chain it names once, and the map's own shop
+  labels show one readable line instead of two. The places bake also stopped adding OSM
+  duplicates of shops it already had in those countries, and uses OSM's pin for them.
+- ✅ **A name typed while looking far away finds the place near you (2026-09-22).** When the map
+  is over another city and nothing there carries the name you typed, Vela also looks around you
+  and shows the match.
 - ✅ **Shared Google Maps links open (2026-09-22).** A short `maps.app.goo.gl` link someone sends
   now opens the place, with Google on or off: Vela asks Google's link shortener once, with no
   cookies, reads where the link points, and searches the place from its name and pin. With "Use
