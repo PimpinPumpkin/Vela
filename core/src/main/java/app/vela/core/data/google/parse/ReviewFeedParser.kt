@@ -8,14 +8,16 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 
-/** One page of Google's review feed. [limited] = Google's limited view for this session or network:
- *  a short list (5 in every capture) and no further pages. */
-data class ReviewFeed(val reviews: List<Review>, val limited: Boolean)
+/** One page of Google's review feed. [end] = Google says there is nothing after this page
+ *  (payload[5] = true). The empty answer carries it too, and so does the LIMITED view: a place with
+ *  hundreds of reviews answering 5 and "end" is Google limiting the session, which only the caller
+ *  can judge against the place's own review count. */
+data class ReviewFeed(val reviews: List<Review>, val end: Boolean)
 
 /**
  * The review feed RPC (`batchexecute?rpcids=qv9Egd`), the request Google's own place page makes
  * for its Reviews tab. Envelope `)]}'` + chunked `[["wrb.fr","qv9Egd","<payload json>",...]]`.
- * Payload (captured 2026-09-23): [2] the reviews, [5] true + [6] [true] in the limited view.
+ * Payload (captured 2026-09-23): [2] the reviews, [5] true when no page follows.
  * Each review: [0][0] id, [0][1][4][5][0] author, [0][1][4][5][1] avatar, [0][1][6] "7 months ago",
  * [0][2][0][0] stars, [0][2][15][0][0] text, [0][2][2][k][1][6][0] the review's photos.
  * An empty payload (`[null,null,null,null,null,true]`) is what a request WITHOUT the
@@ -29,8 +31,8 @@ object ReviewFeedParser {
         val row = runCatching { json.parseToJsonElement(line) as JsonArray }.getOrNull()?.getOrNull(0) as? JsonArray ?: return null
         val payloadStr = (row.getOrNull(2) as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return null
         val payload = runCatching { json.parseToJsonElement(payloadStr) as JsonArray }.getOrNull() ?: return null
-        val limited = (payload.getOrNull(5) as? JsonPrimitive)?.booleanOrNull == true
-        val list = payload.getOrNull(2) as? JsonArray ?: return ReviewFeed(emptyList(), limited)
+        val end = (payload.getOrNull(5) as? JsonPrimitive)?.booleanOrNull == true
+        val list = payload.getOrNull(2) as? JsonArray ?: return ReviewFeed(emptyList(), end)
         val reviews = list.mapNotNull { entry ->
             val r = (entry as? JsonArray)?.getOrNull(0) as? JsonArray ?: return@mapNotNull null
             val who = r.at(1, 4, 5)
@@ -48,7 +50,7 @@ object ReviewFeedParser {
                 photos = photos,
             )
         }
-        return ReviewFeed(reviews, limited)
+        return ReviewFeed(reviews, end)
     }
 
     private fun JsonElement?.at(vararg path: Int): JsonElement? {
