@@ -189,6 +189,8 @@ data class MapUiState(
     val reviewsLoading: Boolean = false,
     val reviewsFound: Int = 0, // live count streamed by the scrape while reviewsLoading (progress, not final)
     val photosLoading: Boolean = false, // the lazy WebView gallery scrape is in flight (more photos coming)
+    /** Feature id whose photo strip holds only the FIRST BATCH: the sheet offers "More photos". */
+    val morePhotosFor: String? = null,
     val loadingDetails: Boolean = false, // the lazy WebView detail fetch (popular times etc.) is in flight
     val routes: List<Route> = emptyList(),
     val activeRoute: Route? = null,
@@ -2866,8 +2868,10 @@ class MapViewModel @Inject constructor(
         // Fetch unless the place already looks complete. Beyond the three rich fields, a
         // missing review count / full weekly hours / address means this is a sparse summary
         // node (a suite/multi-tenant address snap) worth enriching from the focused re-fetch.
-        val complete = p.popularTimes != null && p.editorialSummary != null && p.ownerDescription != null &&
-            p.reviewCount != null && !p.address.isNullOrBlank() && p.hours.size >= 2
+        // 2026-09-23: the editorial blurb and owner description used to be required too, and most
+        // businesses have no owner description, so this hidden page loaded on nearly every tap.
+        // The search reply already carries both when Google has them.
+        val complete = p.popularTimes != null && p.reviewCount != null && !p.address.isNullOrBlank() && p.hours.size >= 2
         if (complete) return
         _state.update { if (it.selected?.id == p.id) it.copy(loadingDetails = true) else it }
         viewModelScope.launch {
@@ -2903,7 +2907,14 @@ class MapViewModel @Inject constructor(
      *  ([WebPhotoFetcher]) and swap it in for the search response's ~1-photo preview.
      *  Sets [MapState.photosLoading] while in flight so the sheet can show "more coming".
      *  Best-effort: an empty/failed scrape leaves the preview untouched (no regression). */
-    private fun fetchPhotos(p: Place) {
+    /** "More photos": walk the whole gallery for the open place (a tap only takes the first batch). */
+    fun loadAllPhotos() {
+        val p = _state.value.selected ?: return
+        _state.update { it.copy(morePhotosFor = null) }
+        fetchPhotos(p, full = true)
+    }
+
+    private fun fetchPhotos(p: Place, full: Boolean = app.vela.ui.FullPlaceLoad.on.value) {
         // "Load photos" off: never start the gallery scrape (it's the heaviest per-place
         // request); the sheet also hides the photo strip, so no loading flag either.
         if (!app.vela.ui.LoadPhotos.on.value || googleOff()) return
@@ -2958,8 +2969,8 @@ class MapViewModel @Inject constructor(
             // shrinks the strip below the search preview) + feature-id/loading gated (a stale
             // partial can't touch the next place; the final result clears the flag in the same
             // atomic copy, so a straggler can't overwrite it — same pattern as review streaming).
-            val full = runCatching {
-                webPhotos.fetch(fid, onPhotoDates = { pairs ->
+            val gallery = runCatching {
+                webPhotos.fetch(fid, count = if (full) 80 else FIRST_PHOTOS, early = !full, onPhotoDates = { pairs ->
                     // The walk mined per-photo dates from the place page itself (the dead RPC's
                     // replacement). Absolute Y-M-D entries get a localized short date; relative
                     // "N ago" strings pass through. Merged INTO the join map - the final apply
@@ -2997,8 +3008,10 @@ class MapViewModel @Inject constructor(
             _state.update { st ->
                 val sel = st.selected
                 if (sel?.featureId == fid) st.copy(
-                    selected = if (full.isNotEmpty()) sel.copy(photoUrls = full.map { it.url }, photoDates = datesFor(full), photoCategories = full.map { it.category }) else sel,
+                    selected = if (gallery.isNotEmpty()) sel.copy(photoUrls = gallery.map { it.url }, photoDates = datesFor(gallery), photoCategories = gallery.map { it.category }) else sel,
                     photosLoading = false,
+                    // A first batch that filled up means there is more to walk.
+                    morePhotosFor = if (!full && gallery.size >= FIRST_PHOTOS) fid else null,
                 ) else st
             }
         }
@@ -3065,7 +3078,10 @@ class MapViewModel @Inject constructor(
             // final list AND disable both recovery paths at once (this loop, and the tap-to-retry
             // row, which only shows for an EMPTY list).
             fun tooFew(r: List<Review>) = r.size < minOf(4, expected)
-            var revs = settle(runCatching { webReviews.fetch(fid, onProgress, onPartial) }.getOrDefault(emptyList()))
+            // First page only unless the full-load setting is on: every page past the first is
+            // another feed request, and the All reviews page has the rest.
+            val reviewCap = if (app.vela.ui.FullPlaceLoad.on.value || force) 50 else FIRST_REVIEWS
+            var revs = settle(runCatching { webReviews.fetch(fid, onProgress, onPartial, reviewCap) }.getOrDefault(emptyList()))
             coroutineContext.ensureActive() // superseded by a newer fetch — don't touch state below
             var attempt = 1
             // A fresh fetch clears the flake within a few seconds (confirmed: a manual tap-to-
@@ -3077,7 +3093,7 @@ class MapViewModel @Inject constructor(
                 // The dead attempt's last count would otherwise sit frozen on the bar through the
                 // retry's page-load window, then visibly snap backward when its first tick lands.
                 _state.update { it.copy(reviewsFound = 0) }
-                revs = settle(runCatching { webReviews.fetch(fid, onProgress, onPartial) }.getOrDefault(emptyList()))
+                revs = settle(runCatching { webReviews.fetch(fid, onProgress, onPartial, reviewCap) }.getOrDefault(emptyList()))
                 coroutineContext.ensureActive()
                 attempt++
             }
@@ -7398,6 +7414,9 @@ class MapViewModel @Inject constructor(
     }
 
     companion object {
+        /** What a place tap loads before "More photos" / All reviews (2026-09-23, FullPlaceLoad off). */
+        const val FIRST_PHOTOS = 6
+        const val FIRST_REVIEWS = 10
         /** How long the in-drive stop card waits for its detour figure. The card is already on
          *  screen; past this the offer simply carries no minutes rather than holding a stale
          *  spinner over a drive. */

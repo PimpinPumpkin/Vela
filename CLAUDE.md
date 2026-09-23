@@ -1419,6 +1419,18 @@ Defaults that make the safe path the easy one:
   complaint. A real business sitting on the point still wins (if the geocode has a rating/category it's
   shown as-is). Device-verified: tapping a numbered house label opens exactly that number, not the
   neighbor the raw geocode returned; a bare footprint resolves to the building's own address.
+- **A PLACE TAP LOADS A FIRST BATCH, NOT EVERYTHING (2026-09-23).** Photos stop at 6 (`WebPhotoFetcher
+  .fetch(early = true)`: the walk script finishes at the cap, and an early result is never cached,
+  since a later full walk must not get the 6 back from cache), reviews at 10 (`WebReviewsFetcher
+  .fetch(cap =)`), and the details page is skipped when the search reply already has popular times,
+  a review count, an address and weekly hours. "More photos" (`loadAllPhotos`, `morePhotosFor` in
+  state) and the All reviews page fetch the rest; Settings > Performance "Load all photos and
+  reviews" (`FullPlaceLoad`) restores the old full load. Why: every hidden page is Google's whole web
+  app (hundreds of requests), a tap used to open three of them, and an afternoon of heavy traffic
+  from one IP put it into Google's limited view (5 reviews, no paging). The search reply carries ONE
+  photo only; "the sheet shows a few instantly" was the walk, not the search. The cheap 1-request
+  review feed (`qv9Egd` with `x-maps-diversion-context-bin: CAE=`, probed on branch cronet-probe) is
+  the next step once a full reply's page token is captured on a network that is not limited.
 - **Place-content toggles (2026-07-08):** `ShowReviews` / `LoadPhotos` reactive holders
   (`ui/PlaceContent.kt`, same shape as `LiveReviews`, init in VelaApp, rows in Settings → Map).
   They gate BOTH fetch (`fetchReviews`/`fetchPhotos` first line) and render (PlaceSheet `hasReviews`

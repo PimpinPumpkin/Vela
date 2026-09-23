@@ -35,6 +35,7 @@ class WebReviewsFetcher @Inject constructor(
 ) : HiddenWebView(context, "reviews") {
     private val progress = ConcurrentHashMap<String, (Int) -> Unit>()
     private val partial = ConcurrentHashMap<String, (List<Review>) -> Unit>()
+    private val caps = java.util.concurrent.ConcurrentHashMap<String, Int>()
     // Request ids whose scraper is already in the page: the settle timer and the load cap race
     // to inject it, and only the first may.
     private val injected = java.util.Collections.synchronizedSet(HashSet<String>())
@@ -81,6 +82,10 @@ class WebReviewsFetcher @Inject constructor(
         featureId: String,
         onProgress: (Int) -> Unit = {},
         onPartial: (List<Review>) -> Unit = {},
+        // How many to scrape before stopping: a place tap takes the first page (FIRST_REVIEWS in
+        // MapViewModel), the full-load setting keeps the old 50. Each page past the first is
+        // another feed request to Google.
+        cap: Int = 50,
     ): List<Review> {
         val cid = cidOf(featureId) ?: return emptyList()
         return session {
@@ -90,6 +95,7 @@ class WebReviewsFetcher @Inject constructor(
                     reqId = id
                     progress[id] = onProgress
                     partial[id] = onPartial
+                    caps[id] = cap
                     // Blank the PREVIOUS place's DOM before navigating: a slow load could otherwise
                     // let the MAX_LOAD cap inject the scraper into the old page and return the
                     // previous place's reviews for THIS featureId (empty > wrong).
@@ -103,6 +109,7 @@ class WebReviewsFetcher @Inject constructor(
             } finally {
                 progress.remove(reqId)
                 partial.remove(reqId)
+                caps.remove(reqId)
                 injected.remove(reqId)
             }
             val parsed = if (raw.isNullOrEmpty()) emptyList() else runCatching { ReviewsWebParser.parse(raw) }.getOrDefault(emptyList())
@@ -170,7 +177,7 @@ class WebReviewsFetcher @Inject constructor(
      *  this, and a request that is gone (timed out, superseded) gets nothing injected. */
     private fun inject(id: String) {
         if (!isPending(id) || !injected.add(id)) return
-        webView?.evaluateJavascript(extractScript(id), null)
+        webView?.evaluateJavascript(extractScript(id, caps[id] ?: 50), null)
     }
 
     /** The Google "cid" = the LOW half of the `0xHIGH:0xLOW` feature id as an unsigned decimal, the
@@ -205,7 +212,7 @@ class WebReviewsFetcher @Inject constructor(
     private fun jsString(v: String): String =
         "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
-    private fun extractScript(id: String): String {
+    private fun extractScript(id: String, cap: Int = 50): String {
         val idj = "\"" + id.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         return """
             (function(){
@@ -213,7 +220,7 @@ class WebReviewsFetcher @Inject constructor(
               try{ VelaBridge.onInfo(ID, JSON.stringify({start:1,title:(document.title||'').slice(0,40),url:location.pathname.split('/@')[0].slice(0,60),ready:document.readyState,w:window.innerWidth,h:window.innerHeight})); }catch(e){}
               window.onerror=function(m,src,l){ try{ VelaBridge.onInfo(ID,'jserror '+m+' @'+l); }catch(e){} };
               var openedAt=-1, lastRep=-1, openedBy='', sawEntry=false, everCards=false, btnReclicks=0, allClicked=false;
-              var CAP=50;
+              var CAP=$cap;
               // The rating sits at the FRONT of the star widget's aria-label in every language
               // ("5 stars", "5 顆星", "5 étoiles"), so read the leading number rather than looking
               // for the English word - that match returned 0 for every review the moment the page

@@ -461,6 +461,20 @@ Constraints:
 
 ### 3.7 Hidden WebView scrapes
 
+**What a place tap loads (2026-09-23).** The tap's search reply already carries popular times, the
+review count, hours, the editorial blurb, the owner description and ONE hero photo. The details page
+(`WebPopularTimesFetcher`) loads only when that reply lacks popular times, the review count, an
+address or a weekly hours list; it used to also require an owner description, which most businesses
+lack, so it loaded on nearly every tap. The photo walk stops at `FIRST_PHOTOS` (6, `early = true`:
+the script finishes as soon as it holds that many, the result is never cached as the gallery) and
+the strip ends in a "More photos" tile (`MapViewModel.loadAllPhotos`, the full walk); the review
+scrape stops at `FIRST_REVIEWS` (10) and the All reviews page holds the rest. Settings >
+Performance "Load all photos and reviews" (`FullPlaceLoad`, pref `place_full_load`, off) restores
+the whole walk and 50 reviews. Each hidden page is Google's full web app, a few hundred requests per
+load, and request volume from one network is what puts it into Google's limited view (the 5-review
+feed, issue #602). Measured on the 4a: the first-batch walk finishes at about 3 s, where the full one
+takes about 14 s; "More photos" then walked 80.
+
 Five fetchers plus the visible reviews panel run Google's own JS anonymously, because a
 rendered page is served data a bare request is not. They share `app/web/HiddenWebView`, which
 owns the view (JS, DOM storage, desktop UA, the `VelaBridge` result channel), a request id per
