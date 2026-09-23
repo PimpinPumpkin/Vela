@@ -4849,7 +4849,11 @@ private fun ensureLayers(style: Style) {
         )
         style.addLayer(
             SymbolLayer(TRANSIT_STOPS_LAYER, TRANSIT_STOPS_SRC).apply {
-                setMinZoom(15f)
+                // One step closer than the stops are FETCHED (user 2026-09-22, Midtown at 1000 ft was
+                // a carpet of bus badges; Google holds them back too). The fetch still starts at
+                // TRANSIT_STOPS_MIN_ZOOM (15) on purpose: while stops are loaded the basemap's own
+                // OSM bus icons stay hidden, so z15 shows neither instead of the basemap's.
+                setMinZoom(16f)
                 setProperties(
                     PropertyFactory.iconImage(TRANSIT_STOP_IMG),
                     PropertyFactory.iconSize(stopSize),

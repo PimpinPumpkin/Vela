@@ -5615,7 +5615,8 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   from the Google-off and lookup-off tap paths (a basemap stop passes its transit hint as the
   category). Verified on the 4a: Davis station, Google off, 27 lines.
 - **Canonical GTFS stops drawn on the map (2026-07-13, phase 2 of the Transitous adoption,
-  device-verified).** At z >= 15 (`TRANSIT_STOPS_MIN_ZOOM`) the viewport's transit stops come from
+  device-verified).** At z >= 15 (`TRANSIT_STOPS_MIN_ZOOM`; the badges DRAW from z16 since
+  2026-09-22, one step after the fetch, which keeps OSM's bus icons hidden at z15) the viewport's transit stops come from
   `Transitous.stopsInBox` (`map/stops`) and draw as a blue bus badge + stop-name label
   (`TRANSIT_STOPS_LAYER` in VelaMapView, sibling of the flock layer: area-cached box in the VM,
   350 ms settle, identity-gated source upload). One icon per STATION - bays dedupe onto their
