@@ -1426,7 +1426,14 @@ Defaults that make the safe path the easy one:
   Target and Nugget in Davis came back three times with a count and NO popular times on the app's
   fresh session, so the sheet decided "no popular times at this place"; the old details page had
   them because it ran in the WebView's aged session. No page load and no `X-Requested-With`, so it
-  is also less of a Vela tell than the page it replaces.
+  is also less of a Vela tell than the page it replaces. On a fresh install the WebView store is
+  empty, so the first requests are a new session like the app's; CookieManager keeps it on disk, so
+  it ages across restarts where the app's in-memory jar never did. `WebViewCookieJar` seeds the
+  SOCS/CONSENT consent cookies (an EU request without them bounces to consent.google.com), refuses a
+  CONSENT downgrade and flushes after saving. The review FEED returned 0 reviews on the aged session
+  on the P9 (the app's session gave 5), so `nativeReviewFeed` stays 0; capture a reply before
+  trying again, and not from the maintainer's own connection. With `webProxy` on, `VelaWebProxy`
+  logs each Google POST path the proxy cannot carry (they still go out with `X-Requested-With`).
 - **A PLACE TAP IS A FEW REQUESTS, NOT A FEW HUNDRED (2026-09-23).** First photos: ONE `hspqX`
   request (`placePhotos`, dated), retried once after ~2.5 s when empty (a fresh Google session's
   first seconds answer stripped: seen 0, then 10), then the capped page walk as fallback. First
