@@ -16,11 +16,21 @@ import app.vela.ui.AppTune
 object WebProxy {
     private val jar = WebViewCookieJar()
     @Volatile private var stream: WebStreamProxy? = null
+    private val passed = java.util.Collections.synchronizedSet(HashSet<String>())
 
     fun intercept(request: WebResourceRequest?): WebResourceResponse? {
         val req = request ?: return null
-        if (!req.method.equals("GET", true) || req.url?.scheme != "https") return null
+        if (req.url?.scheme != "https") return null
         if (!AppTune.on("webProxy", false)) return null
+        if (!req.method.equals("GET", true)) {
+            // What still leaves from the WebView itself (with X-Requested-With), once per path.
+            val host = req.url?.host.orEmpty()
+            val path = req.url?.path.orEmpty()
+            if ((host == "google.com" || host.endsWith(".google.com")) && passed.add("${req.method} $path")) {
+                android.util.Log.i("VelaWebProxy", "passes through: ${req.method} $host$path")
+            }
+            return null
+        }
         val s = stream ?: CronetHolder.engine()?.let { WebStreamProxy(it, jar).also { p -> stream = p } } ?: return null
         return runCatching { s.fetch(req) }.getOrNull()
     }
