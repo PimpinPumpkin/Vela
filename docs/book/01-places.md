@@ -212,8 +212,8 @@ with the place, +0.6 when a chain's own locator matched it, +0.8 when OSM links 
 (`srcbonus`, added to prominence before the cells are ranked). The rest of the Tokyo cost is the
 basemap's own OSM point layers (`poi_r*`): hiding them on top of the cap measured 46 to 60 fps.
 
-**One set of map points** (2026-09-22, branch `places-one-set`, behind the `placesOneSetRev`
-calibration dial). The basemap's own point layers (Liberty's `poi_r1`/`poi_r7`/`poi_r20`, built by
+**One set of map points** (2026-09-22, behind the `placesOneSetRev` calibration dial, which
+calibration v21 set to 20260923 once the world rebake had run). The basemap's own point layers (Liberty's `poi_r1`/`poi_r7`/`poi_r20`, built by
 OpenFreeMap from OSM) drew parks, temples, schools and museums as a second set that the phone had
 to reconcile with Vela's places and that cost half the frame rate in Tokyo. The bake now takes
 those from the region's OSM extract (points and outlines; an outline sits at the average of its
@@ -238,6 +238,15 @@ the places workflow copies both onto the run's summary page, one block per regio
 at every city, so this is how a misfiring budget or notability order shows up after a world
 rebake. The Midtown test box: 361 landmarks, 81 (22%) by z15; the late ones were Broadway theaters,
 churches and pocket parks.
+The first world bake with the landmarks (2026-09-23, 448 archives) put 91% of about 3.6 million
+landmarks on the map by z15. For scale: the basemap's own point layers start at z15, so before this
+nothing of the kind showed below it anywhere. The lowest regions are dense historic capitals: Macau 53%, Hong Kong
+57%, Prague 62%, Berlin 64%, Washington DC 72%, Ile-de-France 78%, then Taiwan and Guangdong near
+80%. Their late rows are mostly pocket parks, side churches and palaces, which Google also keeps for
+close zoom. The one real miss is a famous landmark with a small footprint: the Berliner Fernsehturm
+scores 2.5 (Wikidata 1.5 plus a 1,000 m2 outline) and loses its cell's ten z15 slots to larger
+parks and museum buildings, so it arrives at z16. Outline size is the wrong measure of fame for a
+tower; see the roadmap.
 At the widest street zooms in Midtown the dense bus-stop layer can still win the space.
 
 **Names in every script, and English names** (2026-09-22). The name keys (`snapkey`, `nkey`) keep

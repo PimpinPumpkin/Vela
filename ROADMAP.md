@@ -153,6 +153,14 @@ Roughly in the order they are worth doing. Each one is small enough for a single
   the region's language when the phone's differs and keep the English copy for the sheet, or
   bake a romanized name into the archive where Overture carries none (it has no alternate names
   in Japan). Needs a device in the region; not chased blind.
+- **Landmark fame beyond outline size (2026-09-23).** The places bake orders landmarks inside a
+  cell by notability = log10 of the outline area plus a Wikidata link, so a famous POINT landmark
+  with a small footprint loses to bigger parks and museum buildings: the Berliner Fernsehturm
+  scores 2.5 and arrives at z16 in the first world bake, which otherwise put 91% of landmarks on
+  the map by z15. A keyless fame signal that OSM already carries is the number of `name:<lang>`
+  translations (a world-famous place has dozens, a pocket park has none); `osmium export` keeps
+  those tags, so it is a bake change plus a rebake. Check the capitals' `LANDMARKS|` lines
+  (Berlin 64%, Prague 62%, Hong Kong 57%) before and after.
 - **iOS (2026-09-13, not started).** `:core` is plain Kotlin and would move to Kotlin
   Multiplatform with the Android-only bits (SQLite stores, WebView bridges, LocationManager)
   behind expect/actual seams; MapLibre has an iOS SDK, sherpa-onnx ships iOS builds, the hidden
