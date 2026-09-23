@@ -207,6 +207,7 @@ private fun buildPanelWebView(
     // Desktop UA: the desktop place panel is ~408 px wide — phone-width, and it's the layout the
     // scrapers are calibrated against. (A mobile UA deep-links to intent:// — non-starter.)
     WebViewIdentity.apply(wv.settings)
+    WebProxy.install(wv) // the POST shim, when the proxy is on (WebProxy)
     // Match Vela's SheetPalette exactly (Dark #1F1F1F / Light #FFFFFF) so the WebView surface
     // behind the page is the sheet color before the page even paints.
     wv.setBackgroundColor(if (dark) 0xFF1F1F1F.toInt() else 0xFFFFFFFF.toInt())

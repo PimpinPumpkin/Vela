@@ -478,7 +478,7 @@ without a release. This table is the record to revert from.
 | Page warm-ups after a search | none | none | none | google.com + Maps loaded in two hidden views per search |
 | Transport for every Google request | Cronet (Chrome's network stack, HTTP/2 or HTTP/3) | OkHttp on any Cronet failure | `useCronet` 0 | OkHttp |
 | Session for per-place requests (details, photo pages, the review feed) | the WebView's aged Google session, sent over Cronet (`AgedSession` tag, `WebViewCookieJar`): the app's own session is new every launch and Google gives it a limited view, which dropped popular times on busy places | the app's session when Cronet is off | `agedSession` 0 | the app's session |
-| WebView page loads | the WebView itself; the Cronet proxy (no `X-Requested-With`, the WebView's own cookies) when on | the WebView itself | `webProxy` 1 turns it ON (default 0) | the WebView itself |
+| WebView page loads | the WebView itself; the Cronet proxy (no `X-Requested-With`, the WebView's own cookies) when on: GETs directly, Google POSTs through a document-start shim that hands their bodies to a randomly named bridge (`webProxyPosts`), and the page's telemetry (`play.google.com/log`, `gen_204`, the account bar's `ogads-pa`) answered locally with a 204 (`webProxyBlockLogs`) | the WebView itself | `webProxy` 1 turns it ON (default 0); `webProxyPosts` / `webProxyBlockLogs` 0 turn the parts off | the WebView itself |
 | Neighbor prefetch (ambient) | Google-only mode | none | none | every mode, ~60 requests per map settle |
 
 **Google limits NEW anonymous sessions** (measured 2026-09-23 on a healthy Pixel 9): the same phone's

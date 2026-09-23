@@ -134,6 +134,7 @@ abstract class HiddenWebView(
         wv.settings.javaScriptEnabled = true
         wv.settings.domStorageEnabled = true
         WebViewIdentity.apply(wv.settings) // desktop UA -> desktop web Maps (mobile deep-links to intent://) + desktop client hints; X-Requested-With still goes out (unremovable, see WebViewIdentity)
+        WebProxy.install(wv) // the POST shim, when the proxy is on (WebProxy)
         wv.addJavascriptInterface(bridge(), "VelaBridge")
         wv.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(m: ConsoleMessage): Boolean {

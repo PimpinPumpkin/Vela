@@ -45,8 +45,15 @@ class WebStreamProxy(private val engine: CronetEngine, private val cookies: okht
         }
     }
 
-    fun fetch(req: WebResourceRequest): WebResourceResponse? {
-        val url = req.url.toString()
+    /** A GET as the WebView asked for it, or a POST whose [postBody] the page shim handed over (the
+     *  WebView never passes a POST body to shouldInterceptRequest), sent to [target]. */
+    fun fetch(
+        req: WebResourceRequest,
+        target: String = req.url.toString(),
+        postBody: ByteArray? = null,
+        postType: String? = null,
+    ): WebResourceResponse? {
+        val url = target
         val headersReady = CountDownLatch(1)
         var info: UrlResponseInfo? = null
         val body = Body(req.url.host + req.url.path?.take(50))
@@ -62,8 +69,14 @@ class WebStreamProxy(private val engine: CronetEngine, private val cookies: okht
             override fun onFailed(r: UrlRequest, i: UrlResponseInfo?, e: CronetException) { body.failed = true; body.q.put(ByteArray(0)); headersReady.countDown() }
             override fun onCanceled(r: UrlRequest, i: UrlResponseInfo?) { body.q.put(ByteArray(0)); headersReady.countDown() }
         }
-        val b = engine.newUrlRequestBuilder(url, cb, executor).setHttpMethod("GET")
-        req.requestHeaders.forEach { (k, v) -> if (!k.equals("X-Requested-With", true)) b.addHeader(k, v) }
+        val b = engine.newUrlRequestBuilder(url, cb, executor).setHttpMethod(if (postBody != null) "POST" else "GET")
+        req.requestHeaders.forEach { (k, v) ->
+            if (!k.equals("X-Requested-With", true) && !(postBody != null && k.equals("Content-Type", true))) b.addHeader(k, v)
+        }
+        if (postBody != null) {
+            b.addHeader("Content-Type", postType ?: "application/x-www-form-urlencoded;charset=UTF-8")
+            b.setUploadDataProvider(org.chromium.net.UploadDataProviders.create(postBody), executor)
+        }
         val hu = url.toHttpUrlOrNull()
         if (hu != null) cookies.loadForRequest(hu).takeIf { it.isNotEmpty() }?.let { jar -> b.addHeader("Cookie", jar.joinToString("; ") { "${it.name}=${it.value}" }) }
         b.build().start()

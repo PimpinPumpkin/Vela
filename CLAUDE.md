@@ -1434,6 +1434,14 @@ Defaults that make the safe path the easy one:
   on the P9 (the app's session gave 5), so `nativeReviewFeed` stays 0; capture a reply before
   trying again, and not from the maintainer's own connection. With `webProxy` on, `VelaWebProxy`
   logs each Google POST path the proxy cannot carry (they still go out with `X-Requested-With`).
+  Measured on the P9: the review page's `batchexecute`, `play.google.com/log` and the account bar's
+  `ogads-pa`. So the proxy now (a) carries Google POSTs through a document-start shim
+  (`WebProxy.SHIM`, XHR/fetch/sendBeacon tag the URL with a one-time id and hand the body to a JS
+  interface whose NAME and tag parameter are random per process, because a fixed "VelaPost" would be
+  readable by Google's own page script) and (b) answers the telemetry locally with a CORS-friendly
+  204 (`webProxyBlockLogs`). Log lines: `carries:` / `answers locally:` / `passes through:`. NB the
+  older `VelaBridge` / `VelaPanel` interfaces the scrapers use are fixed names Google's page script
+  can read; renaming them per process is an open item.
 - **A PLACE TAP IS A FEW REQUESTS, NOT A FEW HUNDRED (2026-09-23).** First photos: ONE `hspqX`
   request (`placePhotos`, dated), retried once after ~2.5 s when empty (a fresh Google session's
   first seconds answer stripped: seen 0, then 10), then the capped page walk as fallback. First
