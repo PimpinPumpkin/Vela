@@ -1935,7 +1935,12 @@ Details:
   `PAIR_MERGE_M` (160 m) to the pair's midpoint, carrying the other ids as siblings; boards
   merge stoptimes across the representative and its siblings, and the `(route, headsign)`
   grouping shows both directions as separate rows. Direction-suffixed names differ as strings
-  and never merge.
+  and never merge. "Same name" is `Transitous.stopKey` (case, ordinals, "&" / "/" / "at",
+  street-type and compass abbreviations, and the order of the cross streets do not count), and
+  before that pass stops within `COLOCATED_M` (3 m) fold whatever their names: one corner
+  published by several feeds (the MTA's per-borough bus feeds, NY Waterway) or a station
+  complex's several parents. An ALL-CAPS merged name shows in title case
+  (`Transitous.displayName`). Around Bryant Park: 78 icons became 55.
 - Where the Transitous layer has coverage, the basemap's OSM bus icons hide by filter (rail and
   airport stay), so a stop cannot draw twice.
 - Every successful viewport fetch overwrites its area in a 24-area on-disk LRU

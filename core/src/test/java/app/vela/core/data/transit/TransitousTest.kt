@@ -179,4 +179,27 @@ class TransitousTest {
         assertTrue(merged.any { it.stopId == "b1" && it.siblingIds.isEmpty() })
         assertTrue(merged.any { it.stopId == "c1" } && merged.any { it.stopId == "c2" })
     }
+
+    // One corner published by several feeds (the MTA's per-borough bus feeds at the same point, NY
+    // Waterway spelling it its own way) is ONE icon; streets in the other order are the same corner;
+    // the ALL-CAPS feed name reads in normal case; NB and SB platforms 11 m apart stay two stops.
+    @Test fun `one corner from several feeds is one stop`() {
+        fun stop(id: String, name: String, lat: Double, lng: Double) = Transitous.MapStop(name = name, stopId = id, lat = lat, lon = lng)
+        val merged = Transitous.mergeDirectionalPairs(
+            listOf(
+                stop("m1", "W 42 ST/5 AV", 40.7530, -73.9810),
+                stop("s1", "W 42 ST/5 AV", 40.7530, -73.9810),
+                stop("w1", "W 42nd St & 5th Ave", 40.7530, -73.9810),
+                stop("m2", "5 AV/W 42 ST", 40.7532, -73.9812),
+                stop("c1", "Hub NB Station", 40.7600, -73.9800),
+                stop("c2", "Hub SB Station", 40.7601, -73.9800),
+            ),
+        )
+        assertEquals(3, merged.size)
+        val corner = merged.first { it.stopId in setOf("m1", "s1", "w1", "m2") }
+        assertEquals(setOf("m1", "s1", "w1", "m2"), (listOf(corner.stopId) + corner.siblingIds).toSet())
+        assertEquals("W 42nd St & 5th Ave", corner.name)
+        assertEquals(Transitous.stopKey("E 42nd St & Madison Ave"), Transitous.stopKey("MADISON AV/E 42 ST"))
+        assertEquals("E 42 St/Madison Av", Transitous.displayName(listOf("E 42 ST/MADISON AV")))
+    }
 }

@@ -168,7 +168,12 @@ both **identically** and carries **no direction field** (checked against the raw
 drew two overlapping badges with the same name, and each tap showed only half the departures.
 
 `Transitous.mergeDirectionalPairs` folds stops with the **same name** that sit close together into
-one icon at the pair's midpoint, carrying the other stop ids as siblings:
+one icon at the pair's midpoint, carrying the other stop ids as siblings. Since 2026-09-22 "same
+name" is compared by `stopKey`, so "E 42nd St & Madison Ave" and "MADISON AV/E 42 ST" are one
+corner, and any stops within 3 m (`COLOCATED_M`) fold first whatever their names: in Midtown the
+MTA publishes a feed per borough and one corner appears in two or three of them at the same
+coordinate, and Times Square is four subway stations on one point. An ALL-CAPS name shows in title
+case. Around Bryant Park that took 78 stop icons down to 55:
 
 ```
 PAIR_MERGE_M = 160.0   // same-named stops closer than this become one icon
