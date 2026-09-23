@@ -196,6 +196,8 @@ data class MapUiState(
     val photosLoading: Boolean = false, // the lazy WebView gallery scrape is in flight (more photos coming)
     /** Feature id whose photo strip holds only the FIRST BATCH: the sheet offers "More photos". */
     val morePhotosFor: String? = null,
+    /** Cursor for the next native gallery page ("More photos" = one request of 10). */
+    val photosNextToken: String? = null,
     val loadingDetails: Boolean = false, // the lazy WebView detail fetch (popular times etc.) is in flight
     val routes: List<Route> = emptyList(),
     val activeRoute: Route? = null,
@@ -2872,32 +2874,39 @@ class MapViewModel @Inject constructor(
         if (complete) return
         _state.update { if (it.selected?.id == p.id) it.copy(loadingDetails = true) else it }
         viewModelScope.launch {
-            // The details page is a search for "name address" run inside a warmed Google page: the
-            // first one in a session loads google.com and Maps, later ones are one request from the
-            // warm page. Sent plainly, the same search comes back WITHOUT popular times (measured
-            // on the 4a, 2026-09-23), so it is only worth trying when popular times are already in
-            // hand and a count, address or hours list is what is missing.
+            // The details page is a search for "name address" run inside a warmed Google page. Sent
+            // plainly the SAME search answers in full too, just not the first time: Google answers a
+            // place's first request stripped (no review count, no popular times, one hours line) and
+            // the same request seconds later complete (4a, 2026-09-23: 45 KB stripped, then 93 KB
+            // with popular times, count and 7 hours lines, through OkHttp and Cronet alike). So: one
+            // plain request, one retry if the reply is the stripped kind, and the page only when
+            // both come back stripped. A complete reply without popular times means the place has
+            // none; the page would not find any either.
             val missing = listOfNotNull(
                 "popularTimes".takeIf { p.popularTimes == null }, "reviewCount".takeIf { p.reviewCount == null },
                 "address".takeIf { p.address.isNullOrBlank() }, "hours".takeIf { p.hours.size < 2 },
             )
-            val focused = if (p.popularTimes == null) null else runCatching {
-                val q = listOfNotNull(p.name, p.address?.replace(',', ' ')?.replace(Regex("\\s+"), " ")?.trim()?.ifBlank { null }).joinToString(" ")
-                withContext(Dispatchers.IO) { dataSource.searchOnce(q, p.location) }
-                    .firstOrNull { c -> (p.featureId != null && c.featureId == p.featureId) || (c.name == p.name && c.location.distanceTo(p.location) < 60.0) }
-            }.getOrNull()
-            val native = focused?.let { f ->
-                app.vela.core.model.PlaceDetails(
-                    popularTimes = f.popularTimes, editorialSummary = f.editorialSummary, ownerDescription = f.ownerDescription,
-                    rating = f.rating, reviewCount = f.reviewCount, hours = f.hours, address = f.address, phone = f.phone,
-                    website = f.website, statusText = f.statusText, openNow = f.openNow, priceText = f.priceText,
-                    priceLevel = f.priceLevel, about = f.about, featuredReview = null,
-                )
-            }
+            suspend fun focusedSearch() = runCatching { dataSource.placeDetails(p) }.getOrNull()
+            // A reply can carry the count and still lack popular times the place has (seen on the 4a),
+            // so retry whenever popular times are missing; after the retry a reply with a count is
+            // taken as "this place has none".
+            fun complete(f: app.vela.core.model.PlaceDetails?) = f != null && (f.popularTimes != null || f.reviewCount != null)
             val fidKey = p.featureId
             val cachedDetails = fidKey?.let { placeCacheGet(detailsCache, it, DETAILS_CACHE_MS) }
-            android.util.Log.i("VelaPlaceLoad", "details: missing $missing; ${when { native != null -> "one focused search"; cachedDetails != null -> "cache"; else -> "details page" }}")
-            val d = native ?: cachedDetails ?: runCatching { webPopularTimes.fetch(p) }.getOrNull()
+            var focused = if (cachedDetails == null && tuneOn("nativeDetails")) focusedSearch() else null
+            if (cachedDetails == null && tuneOn("nativeDetails") && focused?.popularTimes == null) {
+                delay(app.vela.core.util.Jitter.around(3_000L))
+                if (_state.value.selected?.id != p.id) return@launch
+                focused = focusedSearch()
+            }
+            if (cachedDetails == null && tuneOn("nativeDetails") && focused?.popularTimes == null) { // third and last
+                delay(app.vela.core.util.Jitter.around(4_000L))
+                if (_state.value.selected?.id != p.id) return@launch
+                focused = focusedSearch()
+            }
+            val native = focused?.takeIf { complete(it) }
+            android.util.Log.i("VelaPlaceLoad", "details: missing $missing; ${when { cachedDetails != null -> "cache"; native != null -> "plain search${if (native.popularTimes == null) " (no popular times at this place)" else ""}"; else -> "details page" }}")
+            val d = cachedDetails ?: (native ?: runCatching { webPopularTimes.fetch(p) }.getOrNull())
                 ?.also { if (fidKey != null) placeCachePut(detailsCache, fidKey, it) }
             _state.update { st ->
                 val sel = st.selected
@@ -2930,11 +2939,53 @@ class MapViewModel @Inject constructor(
      *  ([WebPhotoFetcher]) and swap it in for the search response's ~1-photo preview.
      *  Sets [MapState.photosLoading] while in flight so the sheet can show "more coming".
      *  Best-effort: an empty/failed scrape leaves the preview untouched (no regression). */
-    /** "More photos": walk the whole gallery for the open place (a tap only takes the first batch). */
+    /** "More photos": the next gallery page, one request of 10 (2026-09-23). When the first batch
+     *  came from the page walk instead (the RPC gave nothing), it walks the whole gallery. */
     fun loadAllPhotos() {
-        val p = _state.value.selected ?: return
-        _state.update { it.copy(morePhotosFor = null) }
-        fetchPhotos(p, full = true)
+        val st = _state.value
+        val p = st.selected ?: return
+        val fid = p.featureId ?: return
+        val token = st.photosNextToken
+        if (token == null) {
+            _state.update { it.copy(morePhotosFor = null) }
+            fetchPhotos(p, full = true)
+            return
+        }
+        if (st.photosLoading) return
+        _state.update { it.copy(photosLoading = true) }
+        viewModelScope.launch {
+            var page = runCatching { dataSource.placePhotoPage(fid, token) }.getOrNull()
+            if (page?.photos.isNullOrEmpty()) { // the same first-answer emptiness as the first page
+                delay(app.vela.core.util.Jitter.around(2_500L))
+                if (_state.value.selected?.featureId != fid) { _state.update { it.copy(photosLoading = false) }; return@launch }
+                page = runCatching { dataSource.placePhotoPage(fid, token) }.getOrNull()
+            }
+            android.util.Log.i("VelaPlaceLoad", "photos: next page ${page?.photos?.size ?: -1}${if (page?.photos.isNullOrEmpty()) ", walking the page" else ""}")
+            if (page?.photos.isNullOrEmpty()) {
+                // Asked for more and the RPC will not page: the page walk it is (a tap, not unasked).
+                _state.update { it.copy(photosLoading = false, photosNextToken = null, morePhotosFor = null) }
+                if (_state.value.selected?.featureId == fid) fetchPhotos(p, full = true)
+                return@launch
+            }
+            _state.update {
+                val sel = it.selected
+                if (sel?.featureId != fid) it.copy(photosLoading = false)
+                else {
+                    val have = sel.photoUrls.toSet()
+                    val add = page?.photos.orEmpty().filter { ph -> ph.url !in have }
+                    it.copy(
+                        selected = sel.copy(
+                            photoUrls = sel.photoUrls + add.map { ph -> ph.url },
+                            photoDates = sel.photoDates + add.map { ph -> ph.postedText },
+                            photoCategories = sel.photoCategories + add.map { null },
+                        ),
+                        photosLoading = false,
+                        photosNextToken = page?.nextToken,
+                        morePhotosFor = if (page?.nextToken != null) fid else null,
+                    )
+                }
+            }
+        }
     }
 
     private fun fetchPhotos(p: Place, full: Boolean = app.vela.ui.FullPlaceLoad.on.value) {
@@ -2952,6 +3003,7 @@ class MapViewModel @Inject constructor(
         // preview) shouldn't show a photo placeholder for a gallery it'll never have. We still
         // run the scrape silently in case it surprises us; we just don't promise photos.
         val photoWorthy = p.rating != null || p.reviewCount != null || p.photoUrls.isNotEmpty()
+        _state.update { it.copy(photosNextToken = null) } // never page place B with place A's cursor
         if (photoWorthy) _state.update { if (it.selected?.featureId == fid) it.copy(photosLoading = true) else it }
         viewModelScope.launch {
             // FIRST BATCH = ONE REQUEST (2026-09-23): the gallery RPC (hspqX) answers a plain request
@@ -2963,21 +3015,34 @@ class MapViewModel @Inject constructor(
                 // nearbyPlaces heals too): one short, jittered retry of the ONE request beats
                 // falling through to a whole page load (seen on the 4a: 0 photos, then 10).
                 val cached = placeCacheGet(photoCache, fid, PHOTOS_CACHE_MS)
-                var native = cached ?: runCatching { dataSource.placePhotos(fid) }.getOrDefault(emptyList())
-                if (native.isEmpty()) {
+                var page = cached ?: runCatching { dataSource.placePhotoPage(fid) }.getOrNull()
+                if (page?.photos.isNullOrEmpty()) {
                     delay(app.vela.core.util.Jitter.around(2_500L))
                     if (_state.value.selected?.featureId != fid) return@launch
-                    native = runCatching { dataSource.placePhotos(fid) }.getOrDefault(emptyList())
+                    page = runCatching { dataSource.placePhotoPage(fid) }.getOrNull()
                 }
-                android.util.Log.i("VelaPlaceLoad", "photos: ${if (cached != null) "cache" else "rpc"} ${native.size}${if (native.isEmpty()) ", walking the page" else ""}")
-                if (native.isNotEmpty()) {
-                    if (cached == null) placeCachePut(photoCache, fid, native)
+                if (page?.photos.isNullOrEmpty()) { // a third try, later, before any page load
+                    delay(app.vela.core.util.Jitter.around(3_500L))
+                    if (_state.value.selected?.featureId != fid) return@launch
+                    page = runCatching { dataSource.placePhotoPage(fid) }.getOrNull()
+                }
+                val native = page?.photos.orEmpty()
+                android.util.Log.i("VelaPlaceLoad", "photos: ${if (cached != null) "cache" else "rpc"} ${native.size} of ${page?.total}${if (native.isEmpty()) ", nothing yet (More photos walks the page)" else ""}")
+                if (native.isEmpty()) {
+                    // Three empty answers: keep the search's hero photo and leave the page walk (a whole
+                    // Google web app) to a tap on "More photos" rather than loading it unasked.
+                    _state.update { st -> if (st.selected?.featureId == fid) st.copy(photosLoading = false, morePhotosFor = fid, photosNextToken = null) else st }
+                    return@launch
+                }
+                if (page != null && native.isNotEmpty()) {
+                    if (cached == null) placeCachePut(photoCache, fid, page)
                     _state.update { st ->
                         val sel = st.selected
                         if (sel?.featureId == fid) st.copy(
                             selected = sel.copy(photoUrls = native.map { it.url }, photoDates = native.map { it.postedText }, photoCategories = native.map { null }),
                             photosLoading = false,
-                            morePhotosFor = fid,
+                            morePhotosFor = if (page.nextToken != null) fid else null,
+                            photosNextToken = page.nextToken,
                         ) else st
                     }
                     return@launch
@@ -3076,7 +3141,7 @@ class MapViewModel @Inject constructor(
     private fun <T> lru() = object : LinkedHashMap<String, PlaceCacheEntry<T>>(96, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, PlaceCacheEntry<T>>?) = size > 80
     }
-    private val photoCache = lru<List<app.vela.core.model.Photo>>()
+    private val photoCache = lru<app.vela.core.data.google.parse.PhotoPage>()
     private val feedCache = lru<app.vela.core.data.google.parse.ReviewFeed>()
     private val detailsCache = lru<app.vela.core.model.PlaceDetails>()
     private fun <T> placeCacheGet(m: LinkedHashMap<String, PlaceCacheEntry<T>>, key: String, ttlMs: Long): T? = synchronized(m) {
@@ -3187,6 +3252,11 @@ class MapViewModel @Inject constructor(
                 // search reply (the same fresh-session window) has no count at all.
                 if (feed?.reviews.isNullOrEmpty() && p.reviewCount != 0) {
                     delay(app.vela.core.util.Jitter.around(2_500L))
+                    if (_state.value.selected?.featureId != fid) return@launch
+                    feed = runCatching { dataSource.reviewFeed(fid, app.vela.web.WebReviewsFetcher.reviewsHl()) }.getOrNull()
+                }
+                if (feed?.reviews.isNullOrEmpty() && p.reviewCount != 0) { // a third try, later, before the page scrape
+                    delay(app.vela.core.util.Jitter.around(3_500L))
                     if (_state.value.selected?.featureId != fid) return@launch
                     feed = runCatching { dataSource.reviewFeed(fid, app.vela.web.WebReviewsFetcher.reviewsHl()) }.getOrNull()
                 }

@@ -12,6 +12,10 @@ Headings and dates are the originals; entries are in the order they were written
 roughly the order they were worked on.
 
 ## Recently shipped
+- **A place tap without hidden pages (2026-09-23).** Photos, reviews and details (popular times
+  included) come from one plain request each, with retries; the whole gallery pages at 10 per
+  request. Cronet turned out not to be needed for popular times: Google answers a place's first
+  request stripped and the repeat in full, through OkHttp as well.
 - **Landmark fame by language count (2026-09-23).** The places bake adds how many languages OSM
   names a landmark in to its notability, so a famous small-footprint landmark (the Berliner
   Fernsehturm) no longer loses its cell's slots to big parks; the widest zooms' anchors use the same

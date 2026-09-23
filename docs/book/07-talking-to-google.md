@@ -468,12 +468,13 @@ without a release. This table is the record to revert from.
 
 | Piece | Now | Falls back to | Remote switch (calibration `tuning`) | Before 2026-09-23 |
 |---|---|---|---|---|
-| First photos | `hspqX` RPC, one request (`placePhotos`), dated | the page walk, stopped at 6 photos | `nativePlacePhotos` 0 | the full page walk (every gallery tab) on every tap |
-| More photos | the full page walk (adds the Menu tab), with the photo dates joined from `hspqX` | none needed | `photoDatesRpc` 0 drops the dates join | the same walk, dates join off |
-| First reviews | `qv9Egd` feed, one request (`reviewFeed`), first page | the page scrape, stopped at 10 | `nativeReviewFeed` 0 | the page scrape to 50 on every tap |
+| First photos | `hspqX` RPC, one request of 10 (`placePhotoPage`), dated, with the place's photo total | two more tries; then the sheet keeps the search's hero photo and "More photos" walks the page | `nativePlacePhotos` 0 | the full page walk (every gallery tab) on every tap |
+| More photos | the next `hspqX` page, one request per 10 (cursor at `[4][2][2]` of the request, payload[5] of the reply) | one retry, then the full page walk | `nativePlacePhotos` 0 | the same walk |
+| Menu tab | only from the page walk: "Load all photos and reviews" on, or "More photos" after native paging fails. The RPC carries no category per photo | none | none | the walk on every tap |
+| First reviews | `qv9Egd` feed, one request (`reviewFeed`), first page | two more tries, then the page scrape stopped at 10 | `nativeReviewFeed` 0 | the page scrape to 50 on every tap |
 | More reviews (inline) | the feed's next page, when a reply carries a token (UNVERIFIED: no captured reply has one yet) | the All reviews page | follows `nativeReviewFeed` | the scrape already held up to 50 |
 | All reviews | Google's own page, full screen, on tap | none | none | the same |
-| Popular times, blurb, count, hours | the search reply when it has them; else the details page (warmed once per session, then one request) | none | none | the details page on nearly every tap |
+| Details (popular times, blurb, count, hours) | the search reply when it has them; else ONE plain request of the details page's own search (`placeDetails`, same parser), up to three tries while popular times are missing | the details page, only when every try came back stripped | `nativeDetails` 0 | the details page on nearly every tap |
 | Page warm-ups after a search | none | none | none | google.com + Maps loaded in two hidden views per search |
 | Neighbor prefetch (ambient) | Google-only mode | none | none | every mode, ~60 requests per map settle |
 
@@ -486,8 +487,12 @@ What the one-request methods depend on:
   requests both RPCs, so a change shows as DRIFT the next morning.
 - **The feed's proto** (`Calibration.reviewFeedProto`, `{FID}` and `{TOKEN}`) and the photo
   proto (`photosProto`), both remote.
-- **A fresh Google session answers its first seconds empty.** Both requests retry once after
-  about 2.5 s before falling back to a page.
+- **Google answers a place's FIRST request stripped** and the same request seconds later in full
+  (the details search on the 4a: 45 KB without popular times, then 93 KB with them, through OkHttp
+  and Cronet alike, so it is not the TLS handshake). Every piece tries up to three times (about
+  2.5 s, then 3.5 to 4 s apart) before any page load. Some replies still come back without
+  popular times after three tries; the sheet then shows none and the next open after the 15-minute
+  details cache tries again.
 - **Per-place cache:** photos and the feed are kept 6 hours, details 15 minutes (popular times
   carry the live "busy right now"), 80 places each, for the life of the process.
 
@@ -507,8 +512,13 @@ Order to reach for when something breaks:
 on a given tap ("photos: rpc 10", "photos: cache 10", "reviews: feed 5 (limited view)",
 "reviews: feed 0, scraping the page", "details: missing [popularTimes]; details page").
 
-Speed on the 4a (fresh start, three taps): all photos in 2.8 to 3.4 s against a 13 to 15 s page
-walk; reviews at 0.4 s when the first request answers and about 3.3 s when it needs the retry.
+Cost, like for like. A tap used to load up to three Google web apps (several hundred requests)
+and walk the whole gallery in 13 to 15 s. Now it is the resolve search (Vela-data and basemap
+taps only) plus one to three plain requests each for photos, reviews and details, and no page in
+the usual case; each piece lands 0.3 to 4 s after the tap (up to about 9 s when details use all
+three tries). The whole gallery is still there: one request per 10 photos ("More photos"), about
+20 requests for a 200-photo place against one walk of several hundred, and it streams while the
+walk made you wait for everything.
 
 ## Limits
 

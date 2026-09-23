@@ -1424,9 +1424,12 @@ Defaults that make the safe path the easy one:
   first seconds answer stripped: seen 0, then 10), then the capped page walk as fallback. First
   reviews: ONE `qv9Egd` request (`reviewFeed`, `ReviewFeedParser`, in `reviewsHl()`), same retry,
   then the capped scrape; `reviewsLimited` shows "Google is showing a shorter list" in the tab.
-  Details page only when the search reply lacks popular times, a review count, an address or hours
-  (the plain focused search comes back WITHOUT popular times, so it is only tried when they are
-  already present); after its first warm in a session it is one request from the warm page.
+  Details: when the search reply lacks popular times, a count, an address or hours, ONE plain
+  request of the details page's own search (`placeDetails`, `PopularTimesParser`), up to three tries
+  while popular times are missing (Google answers a place's first request stripped, then complete
+  seconds later: NOT a TLS/Cronet thing, OkHttp gets them on the retry). The details page is the
+  last resort. "More photos" pages the RPC natively (10 per request, cursor at request `[4][2][2]` /
+  reply payload[5], `photosNextToken`); the Menu tab only comes from the walk now.
   "More photos" (`loadAllPhotos`) runs the full walk (Menu tab), with the photo-dates join on again
   (`photoDatesRpc` default 1). `warmPlaceWebViews` is GONE (two Google page loads per search), and
   the ambient neighbor prefetch (~60 requests per settle) runs in Google-only mode only. Settings >
