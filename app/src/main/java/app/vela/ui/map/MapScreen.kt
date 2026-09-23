@@ -2702,7 +2702,7 @@ fun MapScreen(
         // whose height VARIES (lanes, "then" row) — so it hangs off the banner's MEASURED bottom
         // edge, the same navBannerBottomPx the compass uses, and slides with it.
         val downloadingVoiceId = state.voiceDownloadingId
-        val downloadingRegion = state.routingDownloadingId != null || state.poiPackDownloadingId != null
+        val downloadingRegion = state.routingDownloadingId != null || state.poiPackDownloadingId != null || state.regionFileStep != null
         val bareMap = gates.bareMap
         val fasterOffer = state.navigating && state.fasterRoute != null
         if (state.status != null || fasterOffer ||
@@ -2798,7 +2798,12 @@ fun MapScreen(
                         RegionDownloadCard(
                             name = state.regionDownloadName ?: "",
                             places = state.poiPackDownloadingId != null,
-                            pct = if (state.poiPackDownloadingId != null) state.poiPackDownloadPct else state.routingDownloadPct,
+                            fileStep = state.regionFileStep,
+                            pct = when {
+                                state.poiPackDownloadingId != null -> state.poiPackDownloadPct
+                                state.regionFileStep != null -> state.regionFilePct
+                                else -> state.routingDownloadPct
+                            },
                             onCancel = { vm.cancelRegionDownload() },
                         )
                     }
@@ -4940,7 +4945,7 @@ private fun VoiceDownloadCard(installing: Boolean, pct: Float, onCancel: (() -> 
  *  region's place pack. Mirrors [VoiceDownloadCard] so a Settings-started download stays visible
  *  on the map. */
 @Composable
-private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, area: Boolean = false, onCancel: (() -> Unit)? = null, modifier: Modifier = Modifier) {
+private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, area: Boolean = false, fileStep: Int? = null, onCancel: (() -> Unit)? = null, modifier: Modifier = Modifier) {
     Card(
         modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -4954,6 +4959,8 @@ private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, area: Bo
                     when {
                         area -> stringResource(R.string.map_area_downloading, pct)
                         places -> stringResource(R.string.map_region_places_downloading, name, pct)
+                        fileStep == 1 -> stringResource(R.string.map_region_placesfile_downloading, name, pct)
+                        fileStep == 2 -> stringResource(R.string.map_region_map_downloading, name, pct)
                         else -> stringResource(R.string.map_region_downloading, name, pct)
                     },
                     fontWeight = FontWeight.SemiBold,

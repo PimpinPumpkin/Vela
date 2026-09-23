@@ -3125,6 +3125,16 @@ architecture note.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.
+- **A REGION DOWNLOAD IS ONE FLOW UNDER ONE CARD (2026-09-23, user report).** `downloadRoutingGraph`
+  runs obf, then the place pack (`downloadPoiPack(chained = true)`, which neither clears the card nor
+  says "ready"), then the places file and the map (`fetchRegionArchives`, step 1 / 2, percent on
+  `regionFileStep` / `regionFilePct`, canceled by `regionCancel` like the rest), and says ready ONCE
+  at the end (`mapvm_region_ready`, or `mapvm_region_incomplete` when a piece failed). Before, the
+  places file and the map ran as separate SILENT jobs after the pack's "places are searchable" line:
+  a user turned Wi-Fi off there and got places on a gray map. A piece that never arrived now counts
+  as an update (`refreshRegionUpdates` adds "places"/"map" for missing archives, `updateRegion`
+  fetches them), and the routing catalog is kept on disk (`RegionCatalog`, `catalog-<hash>.json`):
+  offline, the fetch failed and the Offline maps page listed NOTHING, installed regions included.
 - **Offline maps page order (2026-09-22, #601 + user: "the way some of this is laid out is goofy").**
   This area (save the view, places-with-downloads, automatic updates) -> Storage (breakdown, Clear
   map cache, Delete all offline data) -> **Downloaded** (every saved area and every installed
