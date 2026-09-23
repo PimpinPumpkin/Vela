@@ -6535,21 +6535,27 @@ class MapViewModel @Inject constructor(
         // the OSM business icons; once the open source became the fleet default, turning the
         // switch off left the very places it is meant to hide still drawn.
         if (!app.vela.ui.MapPoiPrefs.openPlaces || !app.vela.ui.MapPoiPrefs.showPois.value) {
-            if (_state.value.placesOverlays.isNotEmpty() || _state.value.placesPending) _state.update { it.copy(placesOverlays = emptyList(), placesPending = false) }
+            // placesOneSet goes too: it hides the basemap's parks and temples, and with the open layer
+            // off nothing else draws them (a switch to Google places mid-session left them hidden).
+            if (_state.value.placesOverlays.isNotEmpty() || _state.value.placesPending || _state.value.placesOneSet) {
+                _state.update { it.copy(placesOverlays = emptyList(), placesPending = false, placesOneSet = false) }
+            }
             return
         }
         // Only the very first lookup is "pending": the manifest is memoized after it, so later
         // lookups answer at once and a pan never flips the OSM business icons back and forth.
         if (!placesLookedUp) _state.update { it.copy(placesPending = true) }
         viewModelScope.launch {
-            val uris = runCatching { placesStore.sourcesFor(center, app.vela.BuildConfig.PLACES_MANIFEST_URL) }.getOrDefault(emptyList())
+            val pick = runCatching { placesStore.sourcesFor(center, app.vela.BuildConfig.PLACES_MANIFEST_URL) }
+                .getOrDefault(app.vela.offline.PmtilesRegionStore.Pick(emptyList(), 0))
+            val uris = pick.uris
             placesLookedUp = true
             // ONE SET OF MAP POINTS (2026-09-22): an archive baked on or after `placesOneSetRev`
             // carries OSM's landmarks, so the basemap's copy of them hides. A calibration dial, off
             // until the world rebake has run (an older archive has no landmarks, and hiding the
             // basemap points over it would lose every park and temple).
             val oneSetRev = app.vela.core.config.CalibrationStore.latest.tune("placesOneSetRev", 99_999_999.0).toInt()
-            val oneSet = uris.isNotEmpty() && placesStore.lastPickRev >= oneSetRev
+            val oneSet = uris.isNotEmpty() && pick.rev >= oneSetRev
             if (uris != _state.value.placesOverlays || _state.value.placesPending || oneSet != _state.value.placesOneSet) {
                 _state.update { it.copy(placesOverlays = uris, placesPending = false, placesOneSet = oneSet) }
             }
