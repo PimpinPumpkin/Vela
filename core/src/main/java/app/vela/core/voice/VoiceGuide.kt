@@ -72,7 +72,14 @@ class VoiceGuide @Inject constructor(
      *  part of the voice channel, not a notification. Fire-and-forget; any failure is swallowed
      *  (a missing chime must never break rerouting).
      */
-    fun reroutingChime() {
+    fun reroutingChime() = chime(listOf(659.25 to 140, 440.0 to 190)) // falling: something went wrong
+
+    /** Two rising notes before "a faster route is available" (user 2026-09-23): the opposite shape
+     *  of the reroute chime, so an offer never sounds like an error. Muted with the voice. */
+    fun fasterRouteChime() = chime(listOf(587.33 to 120, 880.0 to 200))
+
+    /** Plays [notes] (hertz to milliseconds, 30 ms apart) on the navigation-guidance stream. */
+    private fun chime(notes: List<Pair<Double, Int>>) {
         if (muted) return
         Thread {
             runCatching {
@@ -85,7 +92,8 @@ class VoiceGuide @Inject constructor(
                         (kotlin.math.sin(2.0 * Math.PI * hz * i / sr) * 9500 * fade).toInt().toShort()
                     }
                 }
-                val pcm = tone(659.25, 140) + ShortArray(sr * 30 / 1000) + tone(440.0, 190)
+                val gap = ShortArray(sr * 30 / 1000)
+                val pcm = notes.map { (hz, ms) -> tone(hz, ms) }.reduce { a, b -> a + gap + b }
                 val track = android.media.AudioTrack.Builder()
                     .setAudioAttributes(
                         AudioAttributes.Builder()
