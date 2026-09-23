@@ -160,6 +160,11 @@ Roughly in the order they are worth doing. Each one is small enough for a single
   Android stable tag (arm64 only, untested on a runner yet). Open: whether a public runner fits the
   build, the OsmAnd protobuf relocation (the jar must live on a release, not in git), size (~6 MB
   arm64), and keeping the POST shim out (it broke the review feed).
+- **The last hidden page on a place tap: popular times (2026-09-23).** Everything else on the sheet
+  is one request now; popular times still need the details page, because a plain search comes back
+  without them (with or without the rpcContext header, measured on the 4a). Try the focused search
+  through Cronet, whose handshake is Chrome's, once Cronet ships. Also open: confirm the review
+  feed's next-page token (payload[1]) from a reply on a phone that is not in the limited view.
 - **iOS (2026-09-13, not started).** `:core` is plain Kotlin and would move to Kotlin
   Multiplatform with the Android-only bits (SQLite stores, WebView bridges, LocationManager)
   behind expect/actual seams; MapLibre has an iOS SDK, sherpa-onnx ships iOS builds, the hidden

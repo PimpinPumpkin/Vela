@@ -48,6 +48,13 @@ class ReviewFeedParserTest {
         assertNull(feed.reviews[1].text)
     }
 
+    @Test fun `a continuing page carries its next token`() {
+        val payload = JsonArray(listOf(JsonNull, JsonPrimitive("CAESY0NBRVFB_next-token"), JsonArray(listOf(review("Alex Example", 4, "a week ago", "Fine.", emptyList())))))
+        val feed = ReviewFeedParser.parse(envelope(payload))!!
+        assertEquals("CAESY0NBRVFB_next-token", feed.nextToken)
+        assertFalse(feed.end)
+    }
+
     @Test fun `the end of the list is flagged`() {
         val payload = JsonArray(listOf(JsonNull, JsonNull, JsonArray(listOf(review("Alex Example", 4, "a week ago", "Fine.", emptyList()))),
             JsonNull, JsonNull, JsonPrimitive(true), buildJsonArray { add(true) }))

@@ -254,6 +254,9 @@ fun PlaceSheet(
     reviewsFound: Int = 0,
     /** Google served its limited view (a short review list): the tab says so. */
     reviewsLimited: Boolean = false,
+    /** The native feed has a next page: the list ends in "More reviews". Null = no button. */
+    onMoreReviews: (() -> Unit)? = null,
+    reviewsMoreLoading: Boolean = false,
     photosLoading: Boolean = false,
     /** The strip holds the first batch only: end it with a "More photos" tile. */
     morePhotos: Boolean = false,
@@ -1293,7 +1296,7 @@ fun PlaceSheet(
             // The reviews tabs wait for the listing (the map's data has no reviews to show, and an
             // empty tab row would read as "no reviews"); pulse bars hold their place.
             if (resolving) SheetSkeleton(dim, listOf(260.dp, 220.dp, 240.dp), gap = 18.dp, top = 18.dp)
-            else PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onPanelOverscroll, onPanelOverscrollEnd, onPanelEngaged, reviewsEngaged.value, reviewsLimited = reviewsLimited)
+            else PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onPanelOverscroll, onPanelOverscrollEnd, onPanelEngaged, reviewsEngaged.value, reviewsLimited = reviewsLimited, onMoreReviews = onMoreReviews, reviewsMoreLoading = reviewsMoreLoading)
             }
             }
             }
@@ -3472,6 +3475,8 @@ private fun PlaceTabs(
     onPanelEngaged: () -> Unit = {},
     panelEngaged: Boolean = false,
     reviewsLimited: Boolean = false,
+    onMoreReviews: (() -> Unit)? = null,
+    reviewsMoreLoading: Boolean = false,
 ) {
     // A BARE bus stop (transit-category AND no rating, i.e. no real review content) shows only its
     // departure board + stop timeline - Reviews/About are noise there. But a RATED transit CENTER
@@ -3553,6 +3558,8 @@ private fun PlaceTabs(
                             { showFullPanel = true }
                         } else null,
                         limited = reviewsLimited,
+                        onMoreReviews = onMoreReviews,
+                        moreLoading = reviewsMoreLoading,
                     )
                     reviewPhotos?.let { (urls, caps, start) ->
                         PhotoGallery(urls, caps, start) { reviewPhotos = null }
@@ -3669,6 +3676,8 @@ private fun ReviewsTab(
     onPhotoTap: (List<String>, Int, String?) -> Unit = { _, _, _ -> },
     onReadAll: (() -> Unit)? = null,
     limited: Boolean = false,
+    onMoreReviews: (() -> Unit)? = null,
+    moreLoading: Boolean = false,
 ) {
     // Search within the loaded reviews (author or text, case-insensitive). Resets per place.
     var reviewQuery by remember(place.id) { mutableStateOf("") }
@@ -3868,6 +3877,16 @@ private fun ReviewsTab(
                     )
                 } else {
                     shown.forEach { ReviewRow(it, ink, dim, onPhotoTap, q) }
+                    // The feed said there is a next page: one request, appended (no page load).
+                    if (onMoreReviews != null && q.isEmpty()) {
+                        if (moreLoading) {
+                            LinearProgressIndicator(Modifier.fillMaxWidth().padding(vertical = 12.dp))
+                        } else {
+                            TextButton(onClick = onMoreReviews, modifier = Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(8.dp))) {
+                                Text(stringResource(R.string.place_more_reviews))
+                            }
+                        }
+                    }
                 }
             }
         }

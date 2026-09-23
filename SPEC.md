@@ -473,7 +473,11 @@ is tried first only when popular times are already present, because sent plainly
 without them. "More photos" runs the full walk (Menu tab) with the dates join. No hidden page is
 warmed after a search, and the ambient neighbor prefetch runs in Google-only mode. Settings >
 Performance "Load all photos and reviews" (`FullPlaceLoad`) restores the full walk and 50 reviews.
-Per tap after the session's first details warm: at most the resolve search, one or two photo
+Remote switches: calibration `tuning` `nativePlacePhotos` and `nativeReviewFeed` (1 = on; 0 = the
+page paths). A per-place cache keeps photos and the feed 6 hours and details 15 minutes. "More
+reviews" requests the feed's next page when a reply carries a token at payload[1] (assumed; not
+yet seen in a capture). The method table with the rollback order is in
+`docs/book/07-talking-to-google.md`. Per tap after the session's first details warm: at most the resolve search, one or two photo
 requests, one or two feed requests and one details request, against several hundred before.
 
 Five fetchers plus the visible reviews panel run Google's own JS anonymously, because a

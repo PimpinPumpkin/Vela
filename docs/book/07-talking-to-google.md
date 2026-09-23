@@ -458,6 +458,58 @@ servers (toast `map_import_needs_google`); with Google on it imports as before. 
 prints where a short link pointed, cut before the `@` coordinates and the query. The FAQ's full cost list is in [docs/FAQ.md](../FAQ.md#can-i-use-vela-without-google-at-all);
 what still works with no network at all is [chapter 8](08-offline.md).
 
+## Place data: the methods, and how to roll each one back
+
+Since 2026-09-23 a place tap asks Google for each piece of its sheet with ONE plain request,
+where it used to load Google's whole web app in up to three hidden WebViews (several hundred
+requests per tap, which is the kind of volume that puts a session into Google's limited view).
+Every new method keeps the old one behind it as the fallback, and each can be switched back
+without a release. This table is the record to revert from.
+
+| Piece | Now | Falls back to | Remote switch (calibration `tuning`) | Before 2026-09-23 |
+|---|---|---|---|---|
+| First photos | `hspqX` RPC, one request (`placePhotos`), dated | the page walk, stopped at 6 photos | `nativePlacePhotos` 0 | the full page walk (every gallery tab) on every tap |
+| More photos | the full page walk (adds the Menu tab), with the photo dates joined from `hspqX` | none needed | `photoDatesRpc` 0 drops the dates join | the same walk, dates join off |
+| First reviews | `qv9Egd` feed, one request (`reviewFeed`), first page | the page scrape, stopped at 10 | `nativeReviewFeed` 0 | the page scrape to 50 on every tap |
+| More reviews (inline) | the feed's next page, when a reply carries a token (UNVERIFIED: no captured reply has one yet) | the All reviews page | follows `nativeReviewFeed` | the scrape already held up to 50 |
+| All reviews | Google's own page, full screen, on tap | none | none | the same |
+| Popular times, blurb, count, hours | the search reply when it has them; else the details page (warmed once per session, then one request) | none | none | the details page on nearly every tap |
+| Page warm-ups after a search | none | none | none | google.com + Maps loaded in two hidden views per search |
+| Neighbor prefetch (ambient) | Google-only mode | none | none | every mode, ~60 requests per map settle |
+
+What the one-request methods depend on:
+
+- **The `x-maps-diversion-context-bin` header** (`Calibration.rpcContext`, `CAE=` today) on every
+  batchexecute POST. Without it the feed answers empty and the gallery answers zero photos,
+  which is what "bot-gated since July" really was. If Google changes the value, push the new
+  one in `rpcContext`; blank stops sending it. The daily health check (`google-health.yml`)
+  requests both RPCs, so a change shows as DRIFT the next morning.
+- **The feed's proto** (`Calibration.reviewFeedProto`, `{FID}` and `{TOKEN}`) and the photo
+  proto (`photosProto`), both remote.
+- **A fresh Google session answers its first seconds empty.** Both requests retry once after
+  about 2.5 s before falling back to a page.
+- **Per-place cache:** photos and the feed are kept 6 hours, details 15 minutes (popular times
+  carry the live "busy right now"), 80 places each, for the life of the process.
+
+Order to reach for when something breaks:
+
+1. **A calibration push** (no release): set `nativePlacePhotos` or `nativeReviewFeed` to 0 to put
+   everyone back on the page paths, or fix `rpcContext` / the protos. Installed builds pick it up
+   within about five minutes of the commit to main.
+2. **Per user:** Settings > Performance > "Load all photos and reviews" restores the full walk
+   and 50 reviews on that phone.
+3. **Code:** the commits on main are titled "Opening a place asks Google for its photos and
+   reviews in one request each...", "Review and photo requests retry once...", "Opening a place
+   loads its first photos and reviews instead of everything...", and the cache and More reviews
+   commit after them. Reverting them restores the page loads.
+
+`VelaPlaceLoad` logcat lines and the `reviews` diagnostics events say which path each piece took
+on a given tap ("photos: rpc 10", "photos: cache 10", "reviews: feed 5 (limited view)",
+"reviews: feed 0, scraping the page", "details: missing [popularTimes]; details page").
+
+Speed on the 4a (fresh start, three taps): all photos in 2.8 to 3.4 s against a 13 to 15 s page
+walk; reviews at 0.4 s when the first request answers and about 3.3 s when it needs the retry.
+
 ## Limits
 
 - **The TLS fingerprint is Android's, not Chrome's.** Matching Chrome's JA3/JA4 and HTTP/2 frame
