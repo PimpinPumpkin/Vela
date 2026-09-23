@@ -123,7 +123,10 @@ jobs:
       - name: Derive build version
         id: ver
         # versionName is plain semver (0.4.<run>) so Obtainium can compare it;
-        # versionCode is 2000+run — monotonic and safely above earlier builds.
+        # versionCode is (2000+run)*10 since 2026-09-23 (was 2000+run): the last digit is the chip
+        # type in a per-chip build (app/build.gradle.kts `splits`, the ABI_SPLITS repo variable),
+        # 0 for the all-in-one APK. The jump is one-way and every build is still an upgrade; the
+        # in-app updater folds both scales onto 2000+run (update/ApkChoice.kt, legacyCode).
         # NOTE: bumped from 0.1.<run> / 1000+run on 2026-06-18 — local dev builds
         # had been hand-set with -PappVersionCode in the 1000s (up to 1117) and got
         # installed on a test phone, leaving it *ahead* of the release line so
@@ -132,14 +135,14 @@ jobs:
         # builds BELOW 1000 (e.g. -PappVersionCode=1) so this can't recur.
         run: |
           # Canary builds carry a -canary suffix in the NAME so About/version screens read
-          # honestly; the CODE stays on the one monotonic 2000+run line for every channel, so
+          # honestly; the CODE stays on the one monotonic (2000+run)*10 line for every channel, so
           # moving between canary/nightly/stable is always a plain upgrade for the installer.
           if [ "${{ github.ref }}" = "refs/heads/canary" ]; then
             echo "name=0.4.${{ github.run_number }}-canary" >> "$GITHUB_OUTPUT"
           else
             echo "name=0.4.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
           fi
-          echo "code=$(( 2000 + ${{ github.run_number }} ))" >> "$GITHUB_OUTPUT"
+          echo "code=$(( (2000 + ${{ github.run_number }}) * 10 ))" >> "$GITHUB_OUTPUT"
 
       - name: Fetch TTS runtime AAR
         # sherpa-onnx neural-TTS runtime (the Piper voices). It's a 57 MB prebuilt AAR (no Maven
@@ -166,12 +169,13 @@ jobs:
           -PappVersionName=${{ steps.ver.outputs.name }}
           -PappVersionCode=${{ steps.ver.outputs.code }}
           -PmaptilerKey=${{ secrets.MAPTILER_KEY }}
+          ${{ vars.ABI_SPLITS == 'true' && '-PabiSplits' || '' }}
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: vela-maps-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
       - name: Publish canary build (rolling release)
@@ -185,7 +189,7 @@ jobs:
         run: |
           VER="${{ steps.ver.outputs.name }}"
           CODE="${{ steps.ver.outputs.code }}"
-          cp app/build/outputs/apk/release/app-release.apk vela-maps-canary.apk
+          mapfile -t APKS < <(bash scripts/stage-apks.sh vela-maps-canary vela-maps-canary.apk)
           # The newest change a USER can see (docs-only and comment-only commits are skipped,
           # scripts/changelog.sh), falling back to the plain subject when nothing qualifies.
           SUBJ="$(bash scripts/changelog.sh --latest HEAD)"
@@ -201,7 +205,7 @@ jobs:
           # updater's releases/tags/canary lookup are unchanged, with a few seconds of 404
           # during the swap that the updater reads as "nothing newer".
           gh release delete canary --yes --cleanup-tag 2>/dev/null || true
-          gh release create canary --prerelease --target "$GITHUB_SHA" --title "Vela $VER" --notes "$NOTES" vela-maps-canary.apk
+          gh release create canary --prerelease --target "$GITHUB_SHA" --title "Vela $VER" --notes "$NOTES" "${APKS[@]}"
 
       - name: Publish nightly (prerelease)
         # The nightly channel: ONE prerelease per day from the cron (or an on-demand
@@ -223,7 +227,7 @@ jobs:
             exit 0
           fi
           VER="0.4.${{ github.run_number }}"
-          cp app/build/outputs/apk/release/app-release.apk "vela-maps-v${VER}.apk"
+          mapfile -t APKS < <(bash scripts/stage-apks.sh vela-maps "vela-maps-v${VER}.apk")
           # Build the changelog from the commit subjects since the previous release. Our commit
           # subjects are written as plain-language changelog lines, so this reads as real release
           # notes (what Obtainium shows people), not a raw hash dump.
@@ -246,7 +250,7 @@ jobs:
             --target "$GITHUB_SHA" \
             --prerelease \
             --notes "$NOTES" \
-            "vela-maps-v${VER}.apk"
+            "${APKS[@]}"
 
       - name: Prune old nightlies (stables are kept for good)
         # STABLES ARE NEVER DELETED. They are the changelog, they are what somebody bisecting a

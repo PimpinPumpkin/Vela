@@ -22,9 +22,13 @@ import javax.inject.Singleton
  * accept as an update of the installed app. Obtainium users can keep using Obtainium; the
  * launch check is a Settings toggle.
  *
- * Version scheme (see CI): release tag `v0.<minor>.<run>` = versionCode `2000 + run` (the run
- * number is global and monotonic across minor bumps), so the tag alone tells us if the release
- * is newer. The APK asset is the single `.apk` on the release.
+ * Version scheme (see CI): release tag `v0.<minor>.<run>`; the run number is global and
+ * monotonic across minor bumps, so the tag alone tells us if the release is newer. Everything
+ * here compares on the LEGACY scale `2000 + run`. Builds from 2026-09-23 on carry the versionCode
+ * `(2000 + run) * 10 + chip digit` (one APK per chip type, [ApkChoice]); [legacyCode] folds such a
+ * code back to `2000 + run`, so the dismissed-update pref and the tag math never changed.
+ * A release carries one APK for every chip type or a single all-in-one APK; [ApkChoice.pick]
+ * takes the one for this phone.
  */
 @Singleton
 class SelfUpdater @Inject constructor(
@@ -66,7 +70,8 @@ class SelfUpdater @Inject constructor(
      *  fixed-tag `canary` release (versionCode read from its notes, since the tag never
      *  changes), falling back to the newest nightly when that is ahead so a stale canary
      *  never strands its users behind the fleet. */
-    suspend fun check(currentVersionCode: Int, channel: String = CHANNEL_STABLE): UpdateInfo? = withContext(Dispatchers.IO) {
+    suspend fun check(installedVersionCode: Int, channel: String = CHANNEL_STABLE): UpdateInfo? = withContext(Dispatchers.IO) {
+        val currentVersionCode = legacyCode(installedVersionCode)
         runCatching {
             fun releaseToInfo(o: JSONObject): UpdateInfo? {
                 val tag = o.getString("tag_name") // v0.<minor>.<run>
@@ -74,10 +79,7 @@ class SelfUpdater @Inject constructor(
                 // prefix-pinned parse would have silently stopped updating anyone on the old parse.
                 val run = Regex("""^v0\.\d+\.(\d+)$""").find(tag)?.groupValues?.get(1)?.toIntOrNull() ?: return null
                 val code = 2000 + run
-                val assets = o.getJSONArray("assets")
-                val apk = (0 until assets.length())
-                    .map { assets.getJSONObject(it) }
-                    .firstOrNull { it.getString("name").endsWith(".apk") } ?: return null
+                val apk = pickApk(o.getJSONArray("assets")) ?: return null
                 return UpdateInfo(tag.removePrefix("v"), code, apk.getString("browser_download_url"), apk.optLong("size"), o.optString("body"))
             }
             var requests = 0; var bytes = 0L
@@ -99,12 +101,9 @@ class SelfUpdater @Inject constructor(
             fun canaryInfo(): UpdateInfo? = runCatching {
                 val o = JSONObject(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/releases/tags/canary"))
                 val body = o.optString("body")
-                val code = Regex("""versionCode:\s*(\d+)""").find(body)?.groupValues?.get(1)?.toIntOrNull() ?: return null
+                val code = Regex("""versionCode:\s*(\d+)""").find(body)?.groupValues?.get(1)?.toIntOrNull()?.let(::legacyCode) ?: return null
                 val name = Regex("""versionName:\s*(\S+)""").find(body)?.groupValues?.get(1) ?: "canary"
-                val assets = o.getJSONArray("assets")
-                val apk = (0 until assets.length())
-                    .map { assets.getJSONObject(it) }
-                    .firstOrNull { it.getString("name").endsWith(".apk") } ?: return null
+                val apk = pickApk(o.getJSONArray("assets")) ?: return null
                 UpdateInfo(name, code, apk.getString("browser_download_url"), apk.optLong("size"), body)
             }.getOrNull()
             // THE RELEASES LIST IS NEVER FETCHED (2026-09-22). The repository's data releases
@@ -166,6 +165,13 @@ class SelfUpdater @Inject constructor(
         }.onFailure { android.util.Log.w("VelaUpdate", "check failed: $it") }.getOrNull()
     }
 
+
+    /** The release asset for this phone's chip type, else the all-in-one APK. */
+    private fun pickApk(assets: JSONArray): JSONObject? {
+        val all = (0 until assets.length()).map { assets.getJSONObject(it) }
+        val name = ApkChoice.pick(all.map { it.getString("name") }, android.os.Build.SUPPORTED_ABIS.toList()) ?: return null
+        return all.first { it.getString("name") == name }
+    }
 
     /** Download [info]'s APK to filesDir/updates/. 0..100 progress. Null on failure or when
      *  [active] flips false (user cancel - the partial file is deleted by the failure path). */

@@ -90,18 +90,38 @@ jobs:
           # stable, so default F-Droid users only ever see weekly releases; the newer nightly
           # in the index is treated as unstable and shown only to users who opt into
           # unstable/beta updates for Vela in their client.
-          run_no="${stable_tag##*.}"
+          # Each release is fetched into its own folder and renamed by tag: per-chip releases
+          # (2026-09-23) use the same file names every time (vela-maps-arm64.apk), which would
+          # collide between the stable and the nightly. Where a release has per-chip APKs the
+          # all-in-one one is left out: F-Droid clients pick the APK for their chip themselves,
+          # and GitHub Pages has a 1 GB budget.
+          fetch() {
+            local tag="$1" dir; dir="$(mktemp -d)"
+            gh release download "$tag" -p '*.apk' -D "$dir" --repo "$GITHUB_REPOSITORY" || true
+            if ls "$dir"/*-arm64.apk >/dev/null 2>&1; then rm -f "$dir"/*-all.apk; fi
+            for f in "$dir"/*.apk; do
+              if [ -e "$f" ]; then mv "$f" "fdroid/repo/${tag}-$(basename "$f")"; fi
+            done
+          }
+          fetch "$stable_tag"
+          # The pin is the stable's highest versionCode, read off its APKs: the scale changed from
+          # 2000+run to (2000+run)*10 + chip digit on 2026-09-23, and reading the files is right on
+          # either side of that.
+          AAPT2="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/aapt2"
+          STABLE_CODE=0
+          for f in fdroid/repo/"${stable_tag}"-*.apk; do
+            c=$("$AAPT2" dump badging "$f" | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p" | head -1)
+            if [ "${c:-0}" -gt "$STABLE_CODE" ]; then STABLE_CODE="$c"; fi
+          done
+          [ "$STABLE_CODE" -gt 0 ] || { echo "could not read the stable's versionCode"; exit 1; }
           echo "STABLE_NAME=${stable_tag#v}" >> "$GITHUB_ENV"
-          echo "STABLE_CODE=$((2000 + run_no))" >> "$GITHUB_ENV"
-          # Both downloads are best-effort (a release can have no APK asset, e.g. right
-          # after the tag is cut); the guard below is what actually fails the job.
-          gh release download "$stable_tag" -p '*.apk' -D fdroid/repo --repo "$GITHUB_REPOSITORY" || true
+          echo "STABLE_CODE=$STABLE_CODE" >> "$GITHUB_ENV"
           newest_tag=$(gh release list --limit 100 --json tagName \
             --jq '[.[] | select(.tagName | test("^v0\\.[0-9]+\\.[0-9]+$"))][0].tagName // empty' \
             --repo "$GITHUB_REPOSITORY")
           echo "newest: $newest_tag"
           if [ "$newest_tag" != "$stable_tag" ]; then
-            gh release download "$newest_tag" -p '*.apk' -D fdroid/repo --repo "$GITHUB_REPOSITORY" || true
+            fetch "$newest_tag"
           fi
           ls -la fdroid/repo
           ls fdroid/repo/*.apk >/dev/null 2>&1 || { echo "no APKs to serve"; exit 1; }

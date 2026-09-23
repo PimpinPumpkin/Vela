@@ -157,13 +157,14 @@ Roughly in the order they are worth doing. Each one is small enough for a single
   154 and the handshake differs by three signature algorithms. `cronet-build.yml` builds Cronet from
   source at the Android stable tag (untested on a runner; runs once the file is on main). Also open:
   turn `webProxy` on by default once it has run on real sessions for a while.
-- **One APK per chip type, Cronet everywhere (2026-09-23).** Today one APK carries all four ABIs and
-  leaves out Cronet's x86 and x86_64 libraries to save ~14 MB (108.4 MB vs 121.9 MB), so emulators
-  and x86 Chromebooks send Google requests over OkHttp. Splitting the release into per-ABI APKs
-  (Gradle `splits.abi`, same build, no new runners) would put an ARM phone near 75 MB and give every
-  chip Cronet. The cost is the release pipeline: CI uploads several APKs, the in-app updater picks
-  the one for the device's ABI, Obtainium users set an APK filter, and the F-Droid repo needs
-  per-ABI version codes. Do this when size or x86 Cronet starts to matter.
+- **One APK per chip type: flip the switch (2026-09-23).** Built and off: the updater picks the
+  APK for the phone's chip type (`update/ApkChoice`), the versionCode is `(2000+run)*10 + chip
+  digit`, CI and the F-Droid workflow handle per-chip releases (SPEC 15). What is left: once a
+  build with ApkChoice has been the stable for about three weeks, set the repository variable
+  `ABI_SPLITS` to `true`; then point README's install button at
+  `releases/latest/download/vela-maps-arm64.apk` and open each release's notes with "Most phones:
+  vela-maps-arm64.apk. Old 32-bit and keypad phones: armv7." An ARM phone then downloads 74 MB
+  instead of 108, and x86 gets Cronet.
 - **Review feed paging and the Menu tab without a page (2026-09-23).** Confirm the review feed's
   next-page token (assumed at payload[1]) from a reply on a phone that is not in the limited view;
   find whether `hspqX` can filter by gallery category, so the Menu tab needs no page walk either.

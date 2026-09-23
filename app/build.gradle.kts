@@ -33,8 +33,9 @@ android {
         applicationId = (project.findProperty("appId") as String?)?.takeIf { it.isNotBlank() } ?: "app.vela"
         minSdk = 26
         targetSdk = 35
-        // Overridable from CI: -PappVersionCode / -PappVersionName (ci.yml derives
-        // them from the run number → 0.3.<run> / 2000+run). Defaults are local/dev only.
+        // Overridable from CI: -PappVersionCode / -PappVersionName (ci.yml derives them from the
+        // run number: 0.4.<run> / (2000+run)*10 since 2026-09-23, the last digit being the chip
+        // type in a per-chip build, see `splits` below). Defaults are local/dev only.
         versionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 1
         versionName = (project.findProperty("appVersionName") as String?) ?: "0.3.0"
 
@@ -163,6 +164,19 @@ android {
         }
     }
 
+    // One APK per chip type (2026-09-23, `-PabiSplits`, turned on in CI by the ABI_SPLITS repo
+    // variable). Each output adds its chip's digit to the versionCode (ApkChoice.TAGS order:
+    // armv7 1, arm64 2, x86 3, x86_64 4; the all-in-one APK keeps 0), so the F-Droid repo sees
+    // distinct codes and moving from the all-in-one APK to a chip APK of the same build is an
+    // upgrade. Without the flag the build is the single all-in-one APK, as before.
+    splits {
+        abi {
+            isEnable = project.hasProperty("abiSplits")
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            isUniversalApk = true
+        }
+    }
     buildTypes {
         release {
             // Always ship release: R8 here is what keeps map scroll/nav smooth
@@ -198,11 +212,14 @@ android {
                 "**/armeabi-v7a/libonnxruntime.so", "**/armeabi-v7a/libsherpa-onnx*.so",
                 "**/x86/libonnxruntime.so", "**/x86/libsherpa-onnx*.so",
                 "**/x86_64/libonnxruntime.so", "**/x86_64/libsherpa-onnx*.so",
-                // Cronet ships ARM only (2026-09-23): x86 emulators and Chromebooks still install
-                // and run, and their Google requests stay on OkHttp (CronetHolder fails to load the
-                // library and GoogleTransport falls back). Saves ~14 MB of a four-ABI APK.
-                "**/x86/libcronet*.so", "**/x86_64/libcronet*.so",
             )
+            // The all-in-one APK carries Cronet for ARM only (2026-09-23): x86 emulators and
+            // Chromebooks still install and run it, and their Google requests stay on OkHttp
+            // (CronetHolder fails to load the library and GoogleTransport falls back). Saves
+            // ~14 MB. A per-chip build keeps it: there the x86 APKs carry their own Cronet.
+            if (!project.hasProperty("abiSplits")) {
+                excludes += listOf("**/x86/libcronet*.so", "**/x86_64/libcronet*.so")
+            }
         }
     }
 }
@@ -266,5 +283,19 @@ dependencies {
 tasks.withType<Test>().configureEach {
     listOf("velaPmtiles", "velaLat", "velaLng", "velaArchive", "velaPatch", "velaFingerprint").forEach { k ->
         System.getProperty(k)?.let { systemProperty(k, it) }
+    }
+}
+
+// The chip digit on each per-chip APK's versionCode (see `splits` in android {}).
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            val abi = output.filters
+                .firstOrNull { it.filterType == com.android.build.api.variant.FilterConfiguration.FilterType.ABI }
+                ?.identifier ?: return@forEach
+            val digit = listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64").indexOf(abi) + 1
+            val base = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 1
+            output.versionCode.set(base + digit)
+        }
     }
 }
