@@ -232,6 +232,9 @@ SELECT id AS oid, en FROM (
     json_extract_string(props, 'brand:en')) AS en
   FROM osm_src
 ) WHERE en IS NOT NULL AND trim(en) <> '' AND nonlatin(name) AND NOT nonlatin(en);
+-- Notability: an OSM node linked to Wikidata (its own or its brand's) is a known place.
+CREATE TABLE osmwiki AS SELECT id AS oid FROM osm_src
+  WHERE json_extract_string(props, 'wikidata') IS NOT NULL OR json_extract_string(props, 'brand:wikidata') IS NOT NULL;
 CREATE TABLE osmbiz AS
 SELECT 'osm:' || id AS id, name, osmcat(props) AS category,
   -- Under AllThePlaces' 0.85 and Overture's own scores: an OSM node is as good as its last editor,
@@ -532,7 +535,11 @@ SELECT *,
     WHEN category IN ('hospital','university','college_university','airport','stadium_arena','museum','zoo','amusement_park','shopping_center','supermarket','department_store','grocery_store','convention_center','casino','aquarium') THEN 4.5
     WHEN category IN ('hotel','accommodation','pharmacy','bank','movie_theater','gym','library','church_cathedral','bowling_alley','hardware_store','car_dealer','furniture_store','electronics','sporting_goods','home_improvement_store','wholesale_store','discount_store') THEN 3.2
     WHEN category IS NULL THEN 1.6
-    WHEN category LIKE '%restaurant%' OR category IN ('coffee_shop','cafe','bar','pub','fast_food_restaurant','bakery','ice_cream_shop','brewery','winery','gas_station','ev_charging_station','automotive_repair','car_wash','pet_store','bookstore','clothing_store','shoe_store','jewelry_store','florist','liquor_store','tobacco_shop','toy_store','bicycle_shop','dentist','veterinarian','optometrist','urgent_care_clinic','post_office','atms','laundromat','dry_cleaner','barber','hair_salon','beauty_salon','nail_salon','spa','tattoo') THEN 2.2
+    -- FOOD above the other everyday services, OFFICES at the bottom (user 2026-09-22): on a
+    -- crowded block the budget goes to places people walk into, not the tenant list upstairs.
+    WHEN category LIKE '%restaurant%' OR category IN ('coffee_shop','cafe','bar','pub','fast_food_restaurant','bakery','ice_cream_shop','brewery','food_court','deli','sandwich_shop','dessert_shop','juice_bar','tea_room') THEN 2.6
+    WHEN category LIKE '%office%' OR category LIKE '%agency%' OR category LIKE '%consult%' OR category IN ('lawyer','attorney','accountant','professional_services','insurance_agency','real_estate_agent','real_estate','financial_service','financial_advising','corporate_office','business','it_service_and_computer_repair','employment_agencies','marketing_agency','advertising_agency','notary_public','tax_services','business_management_services') THEN 0.5
+    WHEN category IN ('winery','gas_station','ev_charging_station','automotive_repair','car_wash','pet_store','bookstore','clothing_store','shoe_store','jewelry_store','florist','liquor_store','tobacco_shop','toy_store','bicycle_shop','dentist','veterinarian','optometrist','urgent_care_clinic','post_office','atms','laundromat','dry_cleaner','barber','hair_salon','beauty_salon','nail_salon','spa','tattoo') THEN 2.2
     ELSE 1.0
   END
   + CASE WHEN brand IS NOT NULL AND brand <> '' THEN 1.6 ELSE 0 END
@@ -668,6 +675,22 @@ $ADDR_SQL
 CREATE TABLE IF NOT EXISTS atp_snap (id VARCHAR, alat DOUBLE, alng DOUBLE);
 $OSM_SQL
 CREATE TABLE IF NOT EXISTS osm_snap (id VARCHAR, olat DOUBLE, olng DOUBLE);
+-- RANKING WITHOUT REVIEWS (user 2026-09-22). The density cap below needs a consistent order among
+-- the places competing for one cell, not a universal score, so agreement is the signal: a place
+-- that a second source ALSO lists (OSM's node pairs with it by name, or a chain's own locator
+-- matched it) is more likely real, current and worth the icon; one that OSM links to Wikidata is
+-- known. Added to prominence before the cells are ranked.
+CREATE TABLE IF NOT EXISTS osmpairs (id VARCHAR, oid VARCHAR, olat DOUBLE, olng DOUBLE, tier INTEGER, chain BOOLEAN, d DOUBLE);
+CREATE TABLE IF NOT EXISTS osmwiki (oid VARCHAR);
+CREATE TABLE IF NOT EXISTS atpfill (rid VARCHAR);
+CREATE TABLE srcbonus AS
+SELECT id, 0.6 * max(osm) + 0.6 * max(atp) + 0.8 * max(wiki) AS b FROM (
+  SELECT id, 1 AS osm, 0 AS atp, 0 AS wiki FROM osmpairs WHERE d <= 120 OR NOT chain
+  UNION ALL SELECT p.id, 0, 0, 1 FROM osmpairs p JOIN osmwiki w ON w.oid = p.oid
+  UNION ALL SELECT s.id, 0, 0, 1 FROM scored s JOIN osmwiki w ON s.id = 'osm:' || w.oid
+  UNION ALL SELECT rid, 0, 1, 0 FROM atpfill
+  UNION ALL SELECT id, 0, 1, 0 FROM atp_snap
+) GROUP BY id;
 -- OSM first, then the chain locator, then Overture's own point.
 CREATE TABLE located AS
 SELECT a.* REPLACE (
@@ -701,6 +724,7 @@ SELECT * EXCLUDE (in_stack) REPLACE (
 ) FROM (
   SELECT *, row_number() OVER (PARTITION BY round(lat, 5), round(lng, 5) ORDER BY prominence DESC, id) - 1 AS dup FROM snapped
 );
+UPDATE spread SET prominence = spread.prominence + sb.b FROM srcbonus sb WHERE spread.id = sb.id;
 CREATE TABLE ranked AS
 SELECT * EXCLUDE (dup),
   -- ~100 m cell: the high-zoom icon budget. rank's 400 m cell is the whole screen at z17.5, so a
@@ -724,9 +748,13 @@ COPY (
       WHEN landmark = 1 AND xrank = 1 THEN 11
       WHEN landmark = 1 AND xrank <= 3 THEN 12
       WHEN crank = 1 AND prominence >= 6 THEN 13
-      WHEN crank <= 2 OR prominence >= 5 THEN 14
-      WHEN rank <= 3 OR prominence >= 4.5 THEN 15
-      WHEN rank <= 12 OR prominence >= 3.5 THEN 16
+      -- THE CELL BUDGET IS A CAP (2026-09-22). "Important" used to skip the budget outright, and in
+      -- a dense city nearly every shop scores important: a Shinjuku z16 tile carried 963 places
+      -- (Davis: 86) and a pan over it ran 10-14 fps on a 4a. Importance now buys a few places
+      -- MORE per cell, never an unlimited number; everything still arrives by z17 (dots).
+      WHEN crank <= 2 OR (prominence >= 5 AND crank <= 6) THEN 14
+      WHEN rank <= 3 OR (prominence >= 4.5 AND rank <= 8) THEN 15
+      WHEN rank <= 12 OR (prominence >= 3.5 AND rank <= 24) THEN 16
       ELSE 17 END),
     'geometry', json_object('type', 'Point', 'coordinates', [lng, lat]),
     'properties', json_object(
@@ -740,7 +768,7 @@ COPY (
   ) FROM ranked LEFT JOIN (SELECT id, any_value(loc) AS loc FROM locs GROUP BY id) lx USING (id)
     LEFT JOIN (SELECT id, any_value(en) AS name_en FROM names_en GROUP BY id) nx USING (id)
 ) TO '$WORK/places.ndjson' (FORMAT CSV, HEADER false, QUOTE '', ESCAPE '', DELIMITER '\t');
-SELECT count(*) AS features, sum(tenant) AS tenants, round(avg(prominence),2) AS prom_avg, sum(CASE WHEN landmark = 1 AND xrank <= 3 THEN 1 ELSE 0 END) AS z12, sum(CASE WHEN crank <= 2 OR prominence >= 5 THEN 1 ELSE 0 END) AS z14, sum(CASE WHEN rank <= 3 OR prominence >= 4.5 THEN 1 ELSE 0 END) AS z15, sum(CASE WHEN rank <= 12 OR prominence >= 3.5 THEN 1 ELSE 0 END) AS z16 FROM ranked;
+SELECT count(*) AS features, sum(tenant) AS tenants, round(avg(prominence),2) AS prom_avg, sum(CASE WHEN landmark = 1 AND xrank <= 3 THEN 1 ELSE 0 END) AS z12, sum(CASE WHEN crank <= 2 OR (prominence >= 5 AND crank <= 6) THEN 1 ELSE 0 END) AS z14, sum(CASE WHEN rank <= 3 OR (prominence >= 4.5 AND rank <= 8) THEN 1 ELSE 0 END) AS z15, sum(CASE WHEN rank <= 12 OR (prominence >= 3.5 AND rank <= 24) THEN 1 ELSE 0 END) AS z16 FROM ranked;
 SQL
 # Uninhabited rows (Ashmore and Cartier, coral-sea specks) have no businesses at all; tippecanoe
 # refuses an empty input, so leave no archive and let the workflow skip the upload.
