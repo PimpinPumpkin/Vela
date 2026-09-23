@@ -1127,7 +1127,9 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   community_centre/theatre/arts_centre/courthouse/police/fire_station, leisure park/stadium/
   sports_centre/water_park/garden/nature_reserve, historic monument/memorial/castle/ruins/
   archaeological_site; points and polygons) are baked in; `landmark` rows have their own `lrank`
-  budget per 1.6 km cell ordered by notability (size, Wikidata); the app hides `poi_r*` over an
+  budget per 1.6 km cell ordered by notability (outline size, Wikidata, and the number of languages
+  OSM names it in: 0.6 x log2(1 + languages), capped at 3), which also picks each ~6.5 km cell's
+  z11/z12 anchors; the app hides `poi_r*` over an
   archive whose `rev` >= calibration `tuning.placesOneSetRev` (compiled default 99999999 = off; the
   bundle sets 20260923, the first world bake that carries the landmarks, 448 archives). An archive
   older than the dial keeps the basemap's points, or its parks would vanish.

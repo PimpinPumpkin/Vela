@@ -129,6 +129,7 @@ if [ -n "${OSM_PBF:-}" ] && command -v osmium >/dev/null 2>&1 && command -v jq >
                    select((.properties.name // "") != "") | (.geometry | pts) as $p | select(($p | length) > 0)
                    | ($p | map(.[0])) as $xs | ($p | map(.[1])) as $ys
                    | {id: (.id // ""), name: .properties.name, props: .properties,
+                      langs: ([.properties | keys[] | select(test("^name:[a-z]{2,3}(-[A-Za-z]{2,8})?$"))] | length),
                       lng: ($xs | add / length), lat: ($ys | add / length),
                       area: ((($xs | max) - ($xs | min)) * 111320 * ((($ys | add / length) * 3.14159265 / 180) | cos)
                              * (($ys | max) - ($ys | min)) * 111320)}' \
@@ -340,8 +341,8 @@ CREATE MACRO markcat(props) AS (CASE
     WHEN json_extract_string(props, 'leisure') = 'sports_centre' THEN 'sports_club'
     WHEN json_extract_string(props, 'historic') IS NOT NULL THEN 'landmark_and_historical_building'
     ELSE NULL END);
-CREATE TABLE marks_src AS SELECT id, name, props, lng, lat, area FROM read_json('$MARKS_NDJSON', format = 'newline_delimited',
-  columns = {id: 'VARCHAR', name: 'VARCHAR', props: 'JSON', lng: 'DOUBLE', lat: 'DOUBLE', area: 'DOUBLE'})
+CREATE TABLE marks_src AS SELECT id, name, props, lng, lat, area, langs FROM read_json('$MARKS_NDJSON', format = 'newline_delimited',
+  columns = {id: 'VARCHAR', name: 'VARCHAR', props: 'JSON', lng: 'DOUBLE', lat: 'DOUBLE', area: 'DOUBLE', langs: 'INTEGER'})
   WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N;
 -- osmium names an area "a<2 x way id>" or "a<2 x relation id + 1>"; turn it back into the OSM
 -- object a person can open and edit.
@@ -360,7 +361,8 @@ SELECT 'osm:' || CASE WHEN id LIKE 'a%' THEN
   -- SIZE is the notability signal among landmarks: Midtown has ~80 Wikidata-linked landmarks per
   -- 1.6 km, mostly statues and chapels, and a four-hectare park or a station concourse should
   -- outrank them. Bounding-box area of the outline, 0 for a mapped point.
-  coalesce(area, 0) AS area
+  coalesce(area, 0) AS area,
+  coalesce(langs, 0) AS langs
 FROM marks_src WHERE id <> '' AND markcat(props) IS NOT NULL;
 -- One row per landmark: a campus mapped as a relation AND its main way, or a node inside its own
 -- outline, share a name; the first by id stands for all.
@@ -395,6 +397,12 @@ CREATE TABLE marksize AS SELECT id, least(3.0, greatest(0.0, log10(greatest(area
 -- it merged into (the Empire State Building's OSM outline carries the link, Overture's row not).
 CREATE TABLE markwiki AS SELECT id FROM marks WHERE wiki AND id NOT IN (SELECT id FROM markdupes)
   UNION SELECT rid FROM markdupes WHERE wiki;
+-- FAME: how many languages OSM names it in (name:<lang> tags). A world-famous place carries dozens
+-- and a pocket park none, which outline size cannot see: the Berliner Fernsehturm (a small
+-- footprint) scored 2.5 on size + Wikidata and lost its cell's z15 slots to large parks. 0.6 x
+-- log2(1 + languages), capped at 3: 1 language = +0.6, 5 = +1.6, 30+ = +3.
+CREATE TABLE markfame AS SELECT id, least(3.0, 0.6 * log2(1 + langs)) AS f FROM marks WHERE langs > 0 AND id NOT IN (SELECT id FROM markdupes)
+  UNION ALL SELECT d.rid, least(3.0, 0.6 * log2(1 + m.langs)) FROM markdupes d JOIN marks m ON m.id = d.id WHERE m.langs > 0;
 SELECT (SELECT count(*) FROM marks) AS landmarks_in_box, (SELECT count(*) FROM raw WHERE id IN (SELECT id FROM marks)) AS landmarks_added;
 MARKSSQL
 fi
@@ -591,6 +599,7 @@ CREATE TABLE marks (id VARCHAR);
 $MARKS_SQL
 CREATE TABLE IF NOT EXISTS markwiki (id VARCHAR);
 CREATE TABLE IF NOT EXISTS marksize (id VARCHAR, b DOUBLE);
+CREATE TABLE IF NOT EXISTS markfame (id VARCHAR, f DOUBLE);
 CREATE TABLE IF NOT EXISTS markdupes (id VARCHAR, rid VARCHAR, wiki BOOLEAN);
 -- ONE ROW PER BUSINESS (user 2026-09-21, "two POIs that really should be one"). Overture itself
 -- carries the same business twice (a gas station under "Chevron" and "Chevron Station Davis", a
@@ -812,6 +821,7 @@ CREATE TABLE IF NOT EXISTS osmwiki (oid VARCHAR);
 CREATE TABLE IF NOT EXISTS atpfill (rid VARCHAR);
 CREATE TABLE IF NOT EXISTS markwiki (id VARCHAR);
 CREATE TABLE IF NOT EXISTS marksize (id VARCHAR, b DOUBLE);
+CREATE TABLE IF NOT EXISTS markfame (id VARCHAR, f DOUBLE);
 CREATE TABLE srcbonus AS
 SELECT id, 0.6 * max(osm) + 0.6 * max(atp) + 0.8 * max(wiki) AS b FROM (
   SELECT id, 1 AS osm, 0 AS atp, 0 AS wiki FROM osmpairs WHERE d <= 120 OR NOT chain
@@ -865,18 +875,20 @@ SELECT * EXCLUDE (dup),
   row_number() OVER (PARTITION BY floor(lat / 0.0009), floor(lng * cos(radians(lat)) / 0.0009) ORDER BY prominence DESC, id) AS frank,
   row_number() OVER (PARTITION BY floor(lat / 0.0036), floor(lng * cos(radians(lat)) / 0.0036) ORDER BY prominence DESC, id) AS rank,
   row_number() OVER (PARTITION BY floor(lat / 0.0144), floor(lng * cos(radians(lat)) / 0.0144) ORDER BY prominence DESC, id) AS crank,
-  row_number() OVER (PARTITION BY floor(lat / 0.058), floor(lng * cos(radians(lat)) / 0.058) ORDER BY landmark DESC, prominence DESC, id) AS xrank,
+  -- The ~6.5 km cell's anchors (z11/z12) go to the most FAMOUS landmarks, not the highest category
+  -- prior: the prior made a university campus and a library Berlin Mitte's widest-zoom points.
+  row_number() OVER (PARTITION BY floor(lat / 0.058), floor(lng * cos(radians(lat)) / 0.058) ORDER BY landmark DESC, coalesce(notab, 1.0) + coalesce(fame, 0) DESC, prominence DESC, id) AS xrank,
   -- Landmarks get their OWN budget per ~1.6 km cell: in Midtown every slot of the shared one went to
   -- shops, and Bryant Park, Grand Central and the Empire State Building arrived at z17.
-  -- ...ordered by NOTABILITY (outline size, Wikidata), not the category prior: downtown Davis has
+  -- ...ordered by NOTABILITY (outline size, Wikidata, languages named in), not the category prior: downtown Davis has
   -- ~30 landmarks per cell, and the campus buildings' "university" prior put the town's central park
   -- 29th.
-  row_number() OVER (PARTITION BY landmark, floor(lat / 0.0144), floor(lng * cos(radians(lat)) / 0.0144) ORDER BY coalesce(notab, 1.0) DESC, prominence DESC, id) AS lrank
+  row_number() OVER (PARTITION BY landmark, floor(lat / 0.0144), floor(lng * cos(radians(lat)) / 0.0144) ORDER BY coalesce(notab, 1.0) + coalesce(fame, 0) DESC, prominence DESC, id) AS lrank
 FROM (
   SELECT *, CASE WHEN category IN ('airport','hospital','university','college_university','stadium_arena','shopping_center','zoo','amusement_park','convention_center','casino','aquarium','museum') THEN 1
     -- Linked to Wikidata, or an outline of a hectare or more (a town's central park has no
     -- Wikidata link and still anchors the map).
-    WHEN (id IN (SELECT id FROM markwiki) OR id IN (SELECT id FROM marksize WHERE b >= 2.0))
+    WHEN (id IN (SELECT id FROM markwiki) OR id IN (SELECT id FROM marksize WHERE b >= 2.0) OR id IN (SELECT id FROM markfame WHERE f >= 1.5))
       AND category IN ('park','garden','nature_reserve','attraction','landmark_and_historical_building','city_hall','place_of_worship','theater','viewpoint',
         'church_cathedral','temple','mosque','synagogue','shrine','government_office','museum','art_gallery','library','stadium_arena') THEN 1
     ELSE 0 END AS landmark
@@ -886,6 +898,7 @@ FROM (
       UNION ALL SELECT s.id, coalesce(z.b, 0) + 1.5 FROM markwiki s LEFT JOIN marksize z USING (id)
     ) GROUP BY id
   ) nb USING (id)
+  LEFT JOIN (SELECT id, max(f) AS fame FROM markfame GROUP BY id) fm USING (id)
 );
 -- The minzoom rule, computed once so the tiles and the landmark report below read the same value.
 CREATE TABLE zooms AS SELECT id, CASE
@@ -914,8 +927,8 @@ SELECT 'LANDMARKS', count(*) AS landmarks,
   count(*) FILTER (WHERE z.mz <= 15) AS by_z15,
   round(100.0 * count(*) FILTER (WHERE z.mz <= 15) / greatest(count(*), 1), 1) AS pct_by_z15
 FROM ranked r JOIN zooms z USING (id) WHERE r.landmark = 1;
-SELECT 'LATE', z.mz, r.name, r.category, round(coalesce(r.notab, 0), 1) FROM ranked r JOIN zooms z USING (id)
-WHERE r.landmark = 1 AND z.mz > 15 ORDER BY coalesce(r.notab, 0) DESC, r.prominence DESC LIMIT 10;
+SELECT 'LATE', z.mz, r.name, r.category, round(coalesce(r.notab, 0) + coalesce(r.fame, 0), 1) FROM ranked r JOIN zooms z USING (id)
+WHERE r.landmark = 1 AND z.mz > 15 ORDER BY coalesce(r.notab, 0) + coalesce(r.fame, 0) DESC, r.prominence DESC LIMIT 10;
 .mode duckbox
 COPY (
   SELECT json_object(

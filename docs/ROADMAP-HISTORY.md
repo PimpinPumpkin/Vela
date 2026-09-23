@@ -12,6 +12,10 @@ Headings and dates are the originals; entries are in the order they were written
 roughly the order they were worked on.
 
 ## Recently shipped
+- **Landmark fame by language count (2026-09-23).** The places bake adds how many languages OSM
+  names a landmark in to its notability, so a famous small-footprint landmark (the Berliner
+  Fernsehturm) no longer loses its cell's slots to big parks; the widest zooms' anchors use the same
+  score. Was the roadmap's "Landmark fame beyond outline size".
 - **Transit on open GTFS (2026-07-12/13).** Transitous (community MOTIS) is the primary source for
   departure boards, canonical stop icons on the map (offline-cached per area), and the tap-through
   stop timeline, which now reads the actual GTFS run: passed stops gray out, moved times show
