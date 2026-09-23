@@ -54,9 +54,10 @@ Overture never has.
 Geofabrik extract go in beside the other two, because OSM is the one dataset in the stack that
 anyone can correct and see corrected in the next bake. It is the **first choice for a place's
 coordinate**: OSM maps the shop where the shop is, not at a parcel centroid. And on the phone,
-**Settings > Places > "OpenStreetMap shops too"** (on by default) also draws the businesses
-already present in the basemap tiles, for what the baked layer lacks; doubles are dropped by
-name.
+OSM's businesses and landmarks are baked into the archive itself now (with the world rebake of
+2026-09-23), so the basemap's own point layers hide over it and the old "OpenStreetMap shops too"
+switch is gone; an archive older than that still gets OSM's shops drawn under it, deduped by name.
+"Parks, schools and civic places" off hides the park, school and civic groups in the archive too.
 
 The result is one PMTiles archive per region on the `places-overlays` release, streamed by HTTP
 range requests as you pan, or downloaded whole with a region for offline use.

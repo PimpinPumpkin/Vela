@@ -51,7 +51,7 @@ object MapPoiPrefs {
      *  the baked places cover businesses better). Doubles of a Vela place are dropped by name.
      *  ON by default since 2026-09-17: what OSM adds is what nothing else has, and a double is
      *  dropped anyway, so the only cost is OSM's own stale rows. */
-    val osmBusinesses = mutableStateOf(true)
+    val osmBusinesses = mutableStateOf(true) // no longer a setting (2026-09-23): always on for older archives
 
     fun init(context: Context) {
         val p = prefs(context)
@@ -63,7 +63,6 @@ object MapPoiPrefs {
         placesSource.value = explicitSource ?: remoteDefault
         placesWithDownloads.value = p.getBoolean(KEY_PLACES_WITH_DOWNLOADS, true)
         lookupTappedPlaces.value = p.getBoolean(KEY_LOOKUP_TAPPED, true)
-        osmBusinesses.value = p.getBoolean(KEY_OSM_BUSINESSES, true)
         navTapPlaces.value = p.getBoolean(KEY_NAV_TAP_PLACES, false)
     }
 
@@ -90,11 +89,6 @@ object MapPoiPrefs {
             e.putBoolean(KEY_POIS, false).putBoolean(KEY_NAV_TAP_FORCED_POIS, false)
         }
         e.apply()
-    }
-
-    fun setOsmBusinesses(context: Context, value: Boolean) {
-        osmBusinesses.value = value
-        prefs(context).edit().putBoolean(KEY_OSM_BUSINESSES, value).apply()
     }
 
     fun setPlacesWithDownloads(context: Context, value: Boolean) {
@@ -143,7 +137,6 @@ object MapPoiPrefs {
     private const val KEY_PLACES_SOURCE = "map_places_source"
     private const val KEY_PLACES_WITH_DOWNLOADS = "offline_places_with_downloads"
     private const val KEY_LOOKUP_TAPPED = "map_places_google_lookup"
-    private const val KEY_OSM_BUSINESSES = "map_places_osm_businesses"
     private const val KEY_NAV_TAP_PLACES = "map_places_nav_tap"
     private const val KEY_NAV_TAP_FORCED_POIS = "map_places_nav_tap_forced_pois"
     const val SOURCE_OPEN = "open"

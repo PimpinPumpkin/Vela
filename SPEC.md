@@ -1115,10 +1115,13 @@ counts rather than a category prior. Offline nothing is hidden.
 The same pass purges closures: an open icon matching a permanently-closed Google listing within
 80 m, with no open listing of that name within 150 m, is added to the persisted closed set.
 
-**OSM basemap business POIs** (`poi_r1`, `poi_r7`, `poi_r20`) are hidden outright under an open
-places source when "OpenStreetMap shops too" (on by default) is turned off, because the three
-open datasets cover businesses far better; with it on, `osmFillIn` drops an OSM business by name
-wherever an open icon already draws it. Everything else OSM draws (museums, attractions, parks, schools, civic
+**OSM basemap business POIs** (`poi_r1`, `poi_r7`, `poi_r20`) are hidden entirely over an archive
+baked with the landmarks (the `placesOneSetRev` dial); over an older archive they still draw, and
+`osmFillIn` drops an OSM business by name wherever an open icon already draws it. The "OpenStreetMap
+shops too" switch that chose between the two was removed on 2026-09-23 (always on for older
+archives): the bake carries OSM's businesses itself. "Parks, schools and civic places" off now also
+drops the `park`, `edu` and `civic` groups from the open layer, which carries them since the
+landmark bake. Everything else OSM draws (museums, attractions, parks, schools, civic
 buildings, places of worship, transit) stays, and `osmFillIn` drops by name only the
 non-business OSM points an open icon of a non-business group already draws within 80 m. That
 pass is viewport-only and rendered-only on both sides, grow-only within a source set (capped at

@@ -2894,13 +2894,13 @@ class MapViewModel @Inject constructor(
             val fidKey = p.featureId
             val cachedDetails = fidKey?.let { placeCacheGet(detailsCache, it, DETAILS_CACHE_MS) }
             var focused = if (cachedDetails == null && tuneOn("nativeDetails")) focusedSearch() else null
-            if (cachedDetails == null && tuneOn("nativeDetails") && focused?.popularTimes == null) {
-                delay(app.vela.core.util.Jitter.around(3_000L))
+            if (placeTries() >= 2 && cachedDetails == null && tuneOn("nativeDetails") && focused?.popularTimes == null) {
+                delay(placeRetryWait(1))
                 if (_state.value.selected?.id != p.id) return@launch
                 focused = focusedSearch()
             }
-            if (cachedDetails == null && tuneOn("nativeDetails") && focused?.popularTimes == null) { // third and last
-                delay(app.vela.core.util.Jitter.around(4_000L))
+            if (placeTries() >= 3 && cachedDetails == null && tuneOn("nativeDetails") && focused?.popularTimes == null) { // third and last
+                delay(placeRetryWait(2))
                 if (_state.value.selected?.id != p.id) return@launch
                 focused = focusedSearch()
             }
@@ -2956,7 +2956,7 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             var page = runCatching { dataSource.placePhotoPage(fid, token) }.getOrNull()
             if (page?.photos.isNullOrEmpty()) { // the same first-answer emptiness as the first page
-                delay(app.vela.core.util.Jitter.around(2_500L))
+                delay(placeRetryWait(1))
                 if (_state.value.selected?.featureId != fid) { _state.update { it.copy(photosLoading = false) }; return@launch }
                 page = runCatching { dataSource.placePhotoPage(fid, token) }.getOrNull()
             }
@@ -3016,13 +3016,13 @@ class MapViewModel @Inject constructor(
                 // falling through to a whole page load (seen on the 4a: 0 photos, then 10).
                 val cached = placeCacheGet(photoCache, fid, PHOTOS_CACHE_MS)
                 var page = cached ?: runCatching { dataSource.placePhotoPage(fid) }.getOrNull()
-                if (page?.photos.isNullOrEmpty()) {
-                    delay(app.vela.core.util.Jitter.around(2_500L))
+                if (placeTries() >= 2 && page?.photos.isNullOrEmpty()) {
+                    delay(placeRetryWait(1))
                     if (_state.value.selected?.featureId != fid) return@launch
                     page = runCatching { dataSource.placePhotoPage(fid) }.getOrNull()
                 }
-                if (page?.photos.isNullOrEmpty()) { // a third try, later, before any page load
-                    delay(app.vela.core.util.Jitter.around(3_500L))
+                if (placeTries() >= 3 && page?.photos.isNullOrEmpty()) { // a third try, later, before any page load
+                    delay(placeRetryWait(2))
                     if (_state.value.selected?.featureId != fid) return@launch
                     page = runCatching { dataSource.placePhotoPage(fid) }.getOrNull()
                 }
@@ -3151,6 +3151,17 @@ class MapViewModel @Inject constructor(
         m[key] = PlaceCacheEntry(v, System.currentTimeMillis())
     }
 
+    /** Wait before retry [n] of a one-request place load (calibration `placeRetryMs`, default
+     *  2500, plus `placeRetryStepMs` (1000) per later try), jittered. Google answers a place's first
+     *  request stripped and the repeat in full; how long it takes to warm is Google's to change. */
+    private fun placeRetryWait(n: Int): Long {
+        val cal = app.vela.core.config.CalibrationStore.latest
+        return app.vela.core.util.Jitter.around((cal.tune("placeRetryMs", 2500.0) + (n - 1) * cal.tune("placeRetryStepMs", 1000.0)).toLong().coerceIn(0L, 20_000L))
+    }
+
+    /** How many tries a one-request place load gets before the page fallback (`placeTries`, 3). */
+    private fun placeTries(): Int = app.vela.core.config.CalibrationStore.latest.tune("placeTries", 3.0).toInt().coerceIn(1, 5)
+
     /** A remote kill switch in calibration `tuning` (1 = on, the compiled default; 0 = the old
      *  hidden-page path). The rollback lever for the one-request place loads. */
     private fun tuneOn(key: String) = app.vela.core.config.CalibrationStore.latest.tune(key, 1.0) >= 0.5
@@ -3250,13 +3261,13 @@ class MapViewModel @Inject constructor(
                 var feed = cached ?: runCatching { dataSource.reviewFeed(fid, app.vela.web.WebReviewsFetcher.reviewsHl()) }.getOrNull()
                 // Same fresh-session retry as the photos. Unless the count is KNOWN to be 0: a stripped
                 // search reply (the same fresh-session window) has no count at all.
-                if (feed?.reviews.isNullOrEmpty() && p.reviewCount != 0) {
-                    delay(app.vela.core.util.Jitter.around(2_500L))
+                if (placeTries() >= 2 && feed?.reviews.isNullOrEmpty() && p.reviewCount != 0) {
+                    delay(placeRetryWait(1))
                     if (_state.value.selected?.featureId != fid) return@launch
                     feed = runCatching { dataSource.reviewFeed(fid, app.vela.web.WebReviewsFetcher.reviewsHl()) }.getOrNull()
                 }
-                if (feed?.reviews.isNullOrEmpty() && p.reviewCount != 0) { // a third try, later, before the page scrape
-                    delay(app.vela.core.util.Jitter.around(3_500L))
+                if (placeTries() >= 3 && feed?.reviews.isNullOrEmpty() && p.reviewCount != 0) { // a third try, later, before the page scrape
+                    delay(placeRetryWait(2))
                     if (_state.value.selected?.featureId != fid) return@launch
                     feed = runCatching { dataSource.reviewFeed(fid, app.vela.web.WebReviewsFetcher.reviewsHl()) }.getOrNull()
                 }

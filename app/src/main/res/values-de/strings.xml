@@ -734,8 +734,6 @@
     <string name="settings_places_source_both_hint">Velas Daten zeichnen die Karte, und sobald Sie aufhören zu verschieben, ergänzt eine einzelne Google-Anfrage, was fehlt. Die Ergänzungen erscheinen nur online.</string>
     <string name="settings_places_source_more">Mehr erfahren</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
-    <string name="settings_osm_businesses">Auch OpenStreetMap-Geschäfte</string>
-    <string name="settings_osm_businesses_hint">Zeigt zusätzlich Geschäfte, Restaurants und andere Betriebe aus OpenStreetMap, die in Velas Daten fehlen. Änderungen in OpenStreetMap erscheinen, sobald die Kartenkacheln neu erstellt sind, meist innerhalb einer Woche. Standardmäßig an.</string>
     <string name="settings_places_lookup">Angetippte Orte bei Google nachschlagen</string>
     <string name="settings_places_lookup_hint">Beim Antippen eines Ortes werden Öffnungszeiten, Rezensionen und Fotos von Google geladen, und Vela merkt sich die Zuordnung, sodass das nächste Antippen sofort geht. Aus = ein angetippter Ort zeigt nur das, was Velas Daten hergeben (Name, Art, Adresse, Telefon, Website), und nichts über das Antippen erreicht Google. Suche und Routen nutzen weiterhin Google.</string>
     <string name="settings_places_source_more_title">Woher Velas Ortsdaten stammen</string>

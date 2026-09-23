@@ -738,8 +738,6 @@
     <string name="settings_places_source_both_hint">Карту рисуют данные Vela, а когда вы перестаёте двигать карту, один запрос к Google добавляет то, чего в них не хватает. Эти дополнения видны только онлайн.</string>
     <string name="settings_places_source_more">Подробнее</string>
     <string name="settings_places_source_more_credit">Overture Maps</string>
-    <string name="settings_osm_businesses">Заведения из OpenStreetMap</string>
-    <string name="settings_osm_businesses_hint">Показывает также магазины, рестораны и другие заведения из OpenStreetMap, которых нет в данных Vela. Правки в OpenStreetMap появляются после пересборки тайлов карты, обычно в течение недели. По умолчанию включено.</string>
     <string name="settings_places_lookup">Искать нажатые места в Google</string>
     <string name="settings_places_lookup_hint">Нажатие на место подгружает его часы работы, отзывы и фото из Google, а Vela запоминает соответствие, чтобы следующее нажатие было мгновенным. Выкл. = при нажатии показывается только то, что есть в данных Vela (название, тип, адрес, телефон, сайт), и о нажатии в Google ничего не уходит. Поиск и маршруты по-прежнему работают через Google.</string>
     <string name="settings_places_source_more_title">Откуда Vela берёт данные о местах</string>
