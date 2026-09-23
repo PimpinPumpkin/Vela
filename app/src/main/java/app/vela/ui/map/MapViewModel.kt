@@ -587,7 +587,9 @@ class MapViewModel @Inject constructor(
                 ?: voice.availableEngines().firstOrNull { it.packageName == savedEngine }?.label ?: savedEngine
             _state.update { it.copy(selectedEngine = VoiceEngine(savedEngine, label)) }
         }
-        neuralSynthFor(savedEngine)?.warmUp()
+        // The neural voice loads when the route chooser opens (warmVoiceForRoute), not at launch: it
+        // holds its model for the whole session, and a drive always passes through the chooser a few
+        // seconds before the first spoken prompt.
         val voicePrefs = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
         val savedSpeed = voicePrefs.getFloat("voice_speed", calibration.current().defaultVoiceSpeed)
         voice.setRate(savedSpeed) // relay the saved rate to the AOSP TTS engine at startup
@@ -1820,8 +1822,13 @@ class MapViewModel @Inject constructor(
                 kotlinx.coroutines.delay(4_000)
                 val st = _state.value
                 if (!st.navigating && st.selected == null && st.results.isEmpty()) {
-                    android.util.Log.i("VelaWarm", "webviews: warming at a quiet moment")
-                    warmPlaceWebViews()
+                    // ENGINE ONLY (2026-09-22): this used to load google.com and Google Maps in two
+                    // hidden views at every launch, ~300 MB of renderer for pages nobody asked for
+                    // (and a Google contact carrying the app's package name). The expensive part
+                    // for the first tap is Chromium's own start, which a throwaway view pays here;
+                    // the Google pages load when a search lands (warmPlaceWebViews).
+                    android.util.Log.i("VelaWarm", "webviews: booting the engine at a quiet moment")
+                    runCatching { android.webkit.WebView(appContext).destroy() }
                     return@launch
                 }
             }
@@ -1932,7 +1939,7 @@ class MapViewModel @Inject constructor(
     /** Prime the hidden WebViews behind the place sheet's popular times and photos, once results
      *  are on screen. Low-RAM phones skip it and build the WebView on first real use. */
     private fun warmPlaceWebViews() {
-        if (app.vela.ui.MemoryPressure.lowRam || app.vela.ui.GoogleFree.on.value) return
+        if (app.vela.ui.MemoryPressure.modest || app.vela.ui.GoogleFree.on.value) return
         viewModelScope.launch { runCatching { webPopularTimes.prewarm() } }
         viewModelScope.launch { runCatching { webPhotos.warm() } }
     }
@@ -4022,6 +4029,9 @@ class MapViewModel @Inject constructor(
 
     fun routeToSelected() {
         val sel = _state.value.selected ?: return
+        // The chooser opens seconds before Start: load the neural voice now (it no longer loads at
+        // launch), so the "Starting navigation" opener is not waiting on it.
+        voice.neural?.warmUp()
         // Start each directions session clean — don't inherit a custom origin, stops, or
         // pick-mode left over from a previous place's directions.
         _state.update { it.copy(directionsOpen = true, directionsReversed = false, directionsOrigin = null, pickingOrigin = false, pickingDest = false, directionsWaypoints = emptyList(), pickingStop = false) }
@@ -5487,8 +5497,14 @@ class MapViewModel @Inject constructor(
                 asrActiveId = app.vela.voice.AsrEngine.active(appContext).id,
             )
         }
-        // Pre-build the active recognizer when the mic would actually use it, so the first dictation
-        // listens immediately instead of showing a "Getting ready" beat while the ONNX model loads.
+    }
+
+    /** Pre-build the recognizer when the user REACHES for search (the search box gains focus), not
+     *  at launch (2026-09-22): the model is ~290 MB of native memory for two minutes on the chance
+     *  of a mic tap, and at launch it stacked with the web view warm-up into a full swap on the 4a.
+     *  Focus comes a second or two before a spoken query, which is most of the load; a mic tapped
+     *  straight from the bare map shows the "Getting ready" beat instead. */
+    fun warmAsrForSearch() {
         if (app.vela.ui.VoiceSearch.enabled.value &&
             app.vela.ui.VoiceSearch.engine.value != app.vela.ui.VoiceSearch.Engine.SYSTEM
         ) {

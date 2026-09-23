@@ -1412,6 +1412,7 @@ fun MapScreen(
                         onClear = vm::clearSearch,
                         onFocusChange = {
                             searchFocused = it
+                            if (it) vm.warmAsrForSearch() // the speech model loads when you reach for search, not at launch
                             // Focus opens the entry page; a touch blur closes it. Under
                             // D-pad, blur must NOT close (focus walks the rows) — BACK /
                             // a run search / a pick close it instead.

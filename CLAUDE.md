@@ -190,7 +190,11 @@ Defaults that make the safe path the easy one:
   main thread + a sandbox process) used to land at the first place tap of a fresh app, under the
   sheet's open animation. `warmWebViewsWhenQuiet` (first camera idle + 4 s, main-thread idle
   handler, skipped while navigating or with a sheet up) boots it early; searching still warms
-  after results. On a resolved tap the photos and popular-times loads start 700 ms after the
+  after results. **Since 2026-09-22 that launch warm boots the ENGINE ONLY** (a throwaway
+  `WebView(appContext).destroy()`): it used to load google.com and Google Maps in two hidden views
+  at every launch, ~300 MB of renderer (the web view process measured 635 MB at 15 s on the 4a,
+  155 MB after) plus a Google contact carrying the package name, for pages nobody asked for. The
+  Google pages load in `warmPlaceWebViews` when a search lands, and never on a `modest` phone. On a resolved tap the photos and popular-times loads start 700 ms after the
   reviews scrape, so three page loads do not hit the 4a together under the animation.
 - `./gradlew :core:test` runs the pure-logic unit tests (polyline, nav engine).
 - **MapScreen is at the JVM 64 KB method limit (2026-09-13).** CI builds release only; the
@@ -537,7 +541,12 @@ Defaults that make the safe path the easy one:
   the map's DisposableEffect), all five hidden WebViews (severe trim = immediate reap on the main
   thread), and Coil (severe trim clears the bitmap cache). `MemoryPressure.lowRam` (isLowRamDevice
   OR heap class < 128 MB; debug override `adb shell setprop debug.vela.lowram true`) drives the
-  constrained-device path: 16 MB Coil cap (vs 48), no ASR warm-up at launch (elsewhere the ASR and
+  constrained-device path: 16 MB Coil cap (vs 48), no ASR warm-up (and since 2026-09-22 NOBODY
+  warms at launch: the recognizer loads when the search box gains focus, `warmAsrForSearch`, and the
+  Piper voice when the route chooser opens, `routeToSelected`; with the web view change a cold
+  launch went from ~1.5 GB across Vela and its web view process to ~720 MB on the 4a, where the
+  old total filled swap. `MemoryPressure.modest` = lowRam or <= ~4 GB of RAM: no speculative Google
+  page warms at all. Earlier the same day the ASR and
   Piper warm-ups run at THREAD_PRIORITY_BACKGROUND since 2026-09-22: at default priority their
   ~8 s of CPU each shared the big cores with the map and a cold-launch pan on the 4a ran 9-40 fps;
   background they finish ~13 s after launch on the 4a and the pan holds 36-60; a Piper prompt

@@ -36,6 +36,12 @@ object MemoryPressure {
     @Volatile var lowRam: Boolean = false
         private set
 
+    /** 4 GB of RAM or less (2026-09-22). Not low-RAM (those phones take the lean data paths too),
+     *  but too tight to hold speculative Google pages in a web view: a warmed search pair costs the
+     *  renderer process ~300 MB, and the 4a (6 GB) already hit a full swap with everything warm. */
+    @Volatile var modest: Boolean = false
+        private set
+
     /** The device's normal (non-large) heap class in MB. 0 until [init]. */
     @Volatile var heapClassMb: Int = 0
         private set
@@ -45,6 +51,8 @@ object MemoryPressure {
         heapClassMb = am?.memoryClass ?: 0
         val forced = forcedLowRam()
         lowRam = forced ?: ((am?.isLowRamDevice == true) || (heapClassMb in 1..127))
+        val totalMb = am?.let { m -> ActivityManager.MemoryInfo().also { m.getMemoryInfo(it) }.totalMem / (1024 * 1024) } ?: 0L
+        modest = lowRam || totalMb in 1..4_300L
         android.util.Log.i("MemoryPressure", "init lowRam=$lowRam heapClassMb=$heapClassMb forced=${forced?.toString() ?: "no"}")
     }
 
