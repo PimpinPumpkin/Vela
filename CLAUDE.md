@@ -1439,7 +1439,7 @@ Defaults that make the safe path the easy one:
   (`WebProxy.SHIM`, XHR/fetch/sendBeacon tag the URL with a one-time id and hand the body to a JS
   interface whose NAME and tag parameter are random per process, because a fixed "VelaPost" would be
   readable by Google's own page script) and (b) answers the telemetry locally with a CORS-friendly
-  204 (`webProxyBlockLogs`). Log lines: `carries:` / `answers locally:` / `passes through:`. NB the
+  200 (`webProxyBlockLogs`; an intercepted 204 lost its CORS headers on a 4a). Log lines: `carries:` / `answers locally:` / `passes through:`. NB the
   older `VelaBridge` / `VelaPanel` interfaces the scrapers use are fixed names Google's page script
   can read; renaming them per process is an open item.
 - **A PLACE TAP IS A FEW REQUESTS, NOT A FEW HUNDRED (2026-09-23).** First photos: ONE `hspqX`

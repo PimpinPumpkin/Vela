@@ -48,7 +48,7 @@ class WebStopDeparturesFetcher @Inject constructor(
     }
 
     override fun onPageFinished(view: WebView, url: String?, requestId: String) {
-        main.postDelayed({ view.evaluateJavascript(extract(requestId), null) }, SETTLE_MS)
+        main.postDelayed({ view.evaluateJavascript(JsNames.of(extract(requestId)), null) }, SETTLE_MS)
     }
 
     /** cid = LOW half of the `0xHIGH:0xLOW` feature id as unsigned decimal (the `?cid=` deep-link). */

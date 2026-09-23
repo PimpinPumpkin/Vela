@@ -81,7 +81,7 @@ abstract class HiddenWebView(
     protected open fun onReaped() {}
 
     /** Run [js] in the current page on the main thread (no-op when there is no view). */
-    protected suspend fun evaluate(js: String) = withContext(Dispatchers.Main) { webView?.evaluateJavascript(js, null) }
+    protected suspend fun evaluate(js: String) = withContext(Dispatchers.Main) { webView?.evaluateJavascript(JsNames.of(js), null) }
 
     /** A page finished loading for the request [requestId]: evaluate the extractor for it. */
     protected abstract fun onPageFinished(view: WebView, url: String?, requestId: String)
@@ -135,7 +135,7 @@ abstract class HiddenWebView(
         wv.settings.domStorageEnabled = true
         WebViewIdentity.apply(wv.settings) // desktop UA -> desktop web Maps (mobile deep-links to intent://) + desktop client hints; X-Requested-With still goes out (unremovable, see WebViewIdentity)
         WebProxy.install(wv) // the POST shim, when the proxy is on (WebProxy)
-        wv.addJavascriptInterface(bridge(), "VelaBridge")
+        wv.addJavascriptInterface(bridge(), JsNames.bridge)
         wv.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(m: ConsoleMessage): Boolean {
                 if (m.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {

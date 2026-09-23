@@ -221,7 +221,7 @@ class WebPhotoFetcher @Inject constructor(
      *  this, and a request that is gone (timed out, superseded) gets nothing injected. */
     private fun inject(id: String, count: Int) {
         if (!isPending(id) || !injected.add(id)) return
-        webView?.evaluateJavascript(extractScript(id, count, id in earlies), null)
+        webView?.evaluateJavascript(JsNames.of(extractScript(id, count, id in earlies)), null)
     }
 
     /** Each line is "category\turl" (category "" = uncategorized/All), shared by the final result

@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap
  * `play.google.com/log` and the account bar's `ogads-pa` calls were the POSTs left.
  *
  * Google's page telemetry (`play.google.com/log`, `gen_204` pings, the account bar's async data)
- * is answered locally with an empty 204 and never sent (`webProxyBlockLogs`, default 1): nothing
+ * is answered locally with an empty 200 and never sent (`webProxyBlockLogs`, default 1): nothing
  * Vela reads depends on it, and it is the page reporting on itself. Ad blockers commonly do the same.
  */
 object WebProxy {
@@ -98,7 +98,7 @@ object WebProxy {
             host.startsWith("ogads-pa.") ||
             path.endsWith("/gen_204")
 
-    /** An empty 204 the page's script accepts, preflight included. */
+    /** An empty answer the page's script accepts, preflight included. */
     private fun empty(req: WebResourceRequest): WebResourceResponse {
         val origin = req.requestHeaders.entries.firstOrNull { it.key.equals("Origin", true) }?.value ?: "https://www.google.com"
         val headers = mapOf(
@@ -107,7 +107,9 @@ object WebProxy {
             "Access-Control-Allow-Methods" to "GET, POST, OPTIONS",
             "Access-Control-Allow-Headers" to (req.requestHeaders.entries.firstOrNull { it.key.equals("Access-Control-Request-Headers", true) }?.value ?: "*"),
         )
-        return WebResourceResponse("text/plain", "utf-8", 204, "No Content", headers, ByteArrayInputStream(ByteArray(0)))
+        // 200, not 204: an intercepted 204 reached the page WITHOUT these headers on a 4a (WebView
+        // 153), so every blocked log call became a CORS error in the console.
+        return WebResourceResponse("text/plain", "utf-8", 200, "OK", headers, ByteArrayInputStream(ByteArray(0)))
     }
 
     /** Wraps XHR, fetch and sendBeacon so a POST to a Google host carries a tag the proxy can pair

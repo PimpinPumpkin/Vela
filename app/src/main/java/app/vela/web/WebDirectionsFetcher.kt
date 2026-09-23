@@ -81,7 +81,7 @@ class WebDirectionsFetcher @Inject constructor(
     }
 
     override fun onPageFinished(view: WebView, url: String?, requestId: String) {
-        main.postDelayed({ view.evaluateJavascript(extract(requestId), null) }, SETTLE_MS)
+        main.postDelayed({ view.evaluateJavascript(JsNames.of(extract(requestId)), null) }, SETTLE_MS)
     }
 
     private companion object {
