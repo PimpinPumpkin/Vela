@@ -1103,6 +1103,13 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   24 at z16 (it used to bypass the budget entirely); z17 carries every place. Prominence gains
   `srcbonus` (+0.6 OSM pair, +0.6 chain-locator match, +0.8 Wikidata) and the category prior puts
   food at 2.6 and offices at 0.5.
+  ONE SET (branch places-one-set): OSM landmarks (tourism museum/attraction/gallery/zoo/theme park/
+  aquarium/viewpoint, amenity place_of_worship/school/college/university/library/hospital/townhall/
+  community_centre/theatre/arts_centre/courthouse/police/fire_station, leisure park/stadium/
+  sports_centre/water_park/garden/nature_reserve, historic monument/memorial/castle/ruins/
+  archaeological_site; points and polygons) are baked in; `landmark` rows have their own `lrank`
+  budget per 1.6 km cell ordered by notability (size, Wikidata); the app hides `poi_r*` over an
+  archive whose `rev` >= calibration `tuning.placesOneSetRev` (default off).
   Order of preference: OSM, then the AllThePlaces locator, then Overture's parcel point.
   Tenants never move.
 - **Parks come from OpenStreetMap, so nothing else may filter them out.** The bake drops the park

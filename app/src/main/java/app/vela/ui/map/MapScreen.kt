@@ -3741,6 +3741,7 @@ private fun MapSurface(
         ambientClosed = if (state.navigating) emptyList() else state.ambientClosed.map { MapMarker(it.name, it.location, it.category) },
         onOpenPlaceClosed = vm::onOpenPlaceClosed,
         placesPending = state.placesPending,
+        placesOneSet = state.placesOneSet,
         osmBusinesses = app.vela.ui.MapPoiPrefs.osmBusinesses.value,
         // The exit you are taking, for the green callout on the map: only a numbered exit off
         // a ramp or a fork, and only while its own step is the one being guided.

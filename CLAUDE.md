@@ -2315,6 +2315,15 @@ architecture note.
   plurals, `exp_chooser_alts_none`). `routeBubblesFor(..., detailed = altsOpen)` fills `RouteBubble.sub`
   with distance + delta and the bubble layer renders it as a second line. Only the fastest route is
   labeled "fastest"; a near-tie says "about the same time".
+- **ONE SET OF MAP POINTS (2026-09-22, branch `places-one-set`).** The places bake also takes OSM's
+  landmarks (parks, temples, schools, museums, attractions, civic; points AND outlines via
+  `osmium export --geometry-types=point,polygon`, area ids turned back into w/r ids), ranked with
+  the shops; landmarks get their own per-cell budget (`lrank`, ordered by outline size + Wikidata)
+  and are never tenants or folded into a business with the same name key (Bryant Park lost to
+  "Bryant Park Corporation" that way). The app hides Liberty's `poi_r*` over an archive whose
+  `rev` >= `tuning.placesOneSetRev` (default 99999999 = off): flip it in calibration.json once the
+  world rebake with this bake has run, or every older archive loses its parks. Test boxes on the
+  4a: Shinjuku 20-45 -> 35-58 fps, Midtown 20-37 -> 36-58, Davis 43-59 -> 52-59; size +0.3 to 4.6%.
 - **THE PLACES CELL BUDGET IS A CAP (2026-09-22).** Prominence used to bypass the per-cell rank in
   the minzoom CASE; a Shinjuku z16 tile carried 963 places and panned at 10-14 fps on the 4a. Now
   prominence buys a bounded extra (crank 6 / rank 8 / rank 24 at z14 / z15 / z16), z17 keeps
