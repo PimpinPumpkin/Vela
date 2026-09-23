@@ -63,10 +63,18 @@ the EU consent wall doesn't block you - they carry no identity).
 What Google does **not** get from Vela:
 - **No Google account / sign-in.** Vela never logs in. There is no Gmail, no profile,
   no "your timeline."
-- **No shared API key.** Requests aren't stamped as coming from an app called "Vela";
-  they look like an ordinary logged-out browser hitting `maps.google.com`.
-- **No persistent identity from Vela.** The session cookies are in-memory and
-  per-session; Vela doesn't attach a device id or a stable user id.
+- **No shared API key.** Vela's own requests aren't stamped as coming from an app called
+  "Vela"; they look like an ordinary logged-out browser hitting `maps.google.com`. The one
+  exception is the hidden WebView below: Android's WebView adds the app's package name
+  (`X-Requested-With: app.vela`) to every request it makes, and apps cannot turn that off.
+- **No device id or account id from Vela.** What Google does keep is its own **session
+  cookie**, the same thing any logged-out browser gets. While one session lasts, Google can
+  link the lookups made under it (which places you opened) into one history with no name
+  attached. Vela caps that: **Settings > Privacy > Google session** starts a new session
+  every week by default, every day, or every time Vela opens, and has a button to start one
+  now. A new session gets a shorter view from Google for a while (fewer reviews, popular
+  times missing on some places), which is why the default is a week rather than every
+  launch. "Use Vela without Google" avoids Google altogether.
 
 **Versus the official Google Maps app:** there, you're normally signed in, so Google
 ties every search, route, and stop to your account and builds your Maps history and
