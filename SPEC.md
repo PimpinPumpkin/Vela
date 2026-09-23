@@ -1099,6 +1099,10 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   name rule a no-op in non-Latin regions. A non-Latin place carries `name_en` (side table
   `names_en`: the OSM row's own tags, its name pair, or the chain dictionary `endict`), shown for
   a Latin-script UI on the places layer and the sheet, and used by the Both-mode twin test.
+  The minzoom cell budgets are CAPS: prominence buys at most crank 6 at z14, rank 8 at z15, rank
+  24 at z16 (it used to bypass the budget entirely); z17 carries every place. Prominence gains
+  `srcbonus` (+0.6 OSM pair, +0.6 chain-locator match, +0.8 Wikidata) and the category prior puts
+  food at 2.6 and offices at 0.5.
   Order of preference: OSM, then the AllThePlaces locator, then Overture's parcel point.
   Tenants never move.
 - **Parks come from OpenStreetMap, so nothing else may filter them out.** The bake drops the park

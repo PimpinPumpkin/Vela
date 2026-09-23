@@ -2306,6 +2306,14 @@ architecture note.
   plurals, `exp_chooser_alts_none`). `routeBubblesFor(..., detailed = altsOpen)` fills `RouteBubble.sub`
   with distance + delta and the bubble layer renders it as a second line. Only the fastest route is
   labeled "fastest"; a near-tie says "about the same time".
+- **THE PLACES CELL BUDGET IS A CAP (2026-09-22).** Prominence used to bypass the per-cell rank in
+  the minzoom CASE; a Shinjuku z16 tile carried 963 places and panned at 10-14 fps on the 4a. Now
+  prominence buys a bounded extra (crank 6 / rank 8 / rank 24 at z14 / z15 / z16), z17 keeps
+  everything (so past-budget places are still dots up close), and prominence adds `srcbonus`
+  (second source +0.6 each for an OSM pair and a chain-locator match, Wikidata +0.8); food 2.6,
+  offices 0.5 in the category prior (user: rank food above offices). Shinjuku test box: pans
+  22-40 fps (was 13-23). The remaining Tokyo cost is Liberty's `poi_r*` layers (hidden: 46-60).
+  Needs a rebake to reach a region (the nightly slices do it within a week once on main).
 - **THE BAKE'S NAME KEYS WERE LATIN-ONLY UNTIL 2026-09-22.** `snapkey`/`nkey` used `[^a-z0-9]` as
   the separator, so every non-Latin name keyed to nothing and in Japan, China, Korea, Russia,
   Greece, Israel, the Arab world, Thailand... NO name rule ran: no OSM or ATP snap, no duplicate

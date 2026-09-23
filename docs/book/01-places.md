@@ -191,6 +191,27 @@ A seventh of the catalog rebakes every night, so an OSM edit reaches the map wit
 its own, and a single region can be rebaked on demand in about two minutes. See
 [chapter 2](02-data-and-rebakes.md) for the schedule and how a phone picks up the new archive.
 
+**The cell budget is a cap** (2026-09-22). A place used to skip its cell's budget outright once
+its prominence was high enough, and in a dense city nearly every shop is: a Shinjuku zoom-16 tile
+carried 963 places against Davis's 86, and a pan over it ran 10 to 14 fps on a 4a. Importance now
+buys a few more places per cell (zoom 14: 2, or 6 at prominence 5; zoom 15: 3, or 8 at 4.5; zoom
+16: 12, or 24 at 3.5), and zoom 17 still carries everything, so a place past the budget comes back
+as a dot when you zoom in. Measured with the Shinjuku test box:
+
+| | z14 | z15 | z16 | z17 | Pan fps on a 4a |
+|---|---|---|---|---|---|
+| Shinjuku before | 418 | 480 | 885 | 474 | 13 to 23 |
+| Shinjuku after | 5 | 53 | 55 | 474 | 22 to 40 |
+| Davis downtown before | 87 | 63 | 83 | 117 | |
+| Davis downtown after | 12 | 47 | 56 | 117 | |
+
+What decides the order inside a cell, with no reviews to go on: the category prior (food 2.6
+above the other everyday services at 2.2, offices, agencies and consultants lowest at 0.5), brand,
+contact details, Overture's confidence, and since the same day AGREEMENT: +0.6 when OSM's node pairs
+with the place, +0.6 when a chain's own locator matched it, +0.8 when OSM links it to Wikidata
+(`srcbonus`, added to prominence before the cells are ranked). The rest of the Tokyo cost is the
+basemap's own OSM point layers (`poi_r*`): hiding them on top of the cap measured 46 to 60 fps.
+
 **Names in every script, and English names** (2026-09-22). The name keys (`snapkey`, `nkey`) keep
 letters of every script, as the app's `PlaceNames` does. They used to keep only `a-z0-9`, so a
 Japanese, Chinese, Korean, Cyrillic, Greek, Hebrew, Arabic or Thai name keyed to nothing. In
