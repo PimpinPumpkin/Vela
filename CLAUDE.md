@@ -2327,7 +2327,12 @@ architecture note.
   `rev` >= `tuning.placesOneSetRev` (compiled default 99999999 = off). Calibration v21 sets it to
   20260923, the world rebake that carries the landmarks (all 448 archives at that rev); a region
   downloaded before it keeps its old archive and the basemap's points until it updates, which is
-  exactly what the dial is for. Never lower it below the oldest archive that has the landmarks. Test boxes on the
+  exactly what the dial is for. Never lower it below the oldest archive that has the landmarks.
+  `placesOneSet` is cleared whenever the open layer is off (places source Google, or places off):
+  it hides the basemap's parks and temples, and nothing else draws them then. The pick's `rev`
+  comes back WITH its URIs (`PmtilesRegionStore.Pick`); a shared "last picked" field let two
+  overlapping camera-idle lookups read each other's answer. Liberty's own point layers start at
+  z15 (`poi_r1`), so before the flip NO landmark showed below z15 anywhere. Test boxes on the
   4a: Shinjuku 20-45 -> 35-58 fps, Midtown 20-37 -> 36-58, Davis 43-59 -> 52-59; size +0.3 to 4.6%.
   Each bake prints a LANDMARK REPORT (`LANDMARKS|...` and the top ten `LATE|...` rows), which the
   places workflow copies onto the run summary: read it after a world rebake. The 2026-09-23 world
