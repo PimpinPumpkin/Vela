@@ -546,7 +546,10 @@ Defaults that make the safe path the easy one:
   Piper voice when the route chooser opens, `routeToSelected`; with the web view change a cold
   launch went from ~1.5 GB across Vela and its web view process to ~720 MB on the 4a, where the
   old total filled swap. `MemoryPressure.modest` = lowRam or <= ~4 GB of RAM: no speculative Google
-  page warms at all. Earlier the same day the ASR and
+  page warms at all. **Settings > Performance** (new page, `PerformanceSettings`, between Privacy
+  and Diagnostics) holds "Load voice search at startup" (`ui/SpeechPreload`, pref `speech_preload`,
+  default ON only when `MemoryPressure.strong`, ~8 GB of RAM or more; ON = the old launch warm) and
+  Compatibility rendering, moved out of Diagnostics. Earlier the same day the ASR and
   Piper warm-ups run at THREAD_PRIORITY_BACKGROUND since 2026-09-22: at default priority their
   ~8 s of CPU each shared the big cores with the map and a cold-launch pan on the 4a ran 9-40 fps;
   background they finish ~13 s after launch on the 4a and the pan holds 36-60; a Piper prompt
