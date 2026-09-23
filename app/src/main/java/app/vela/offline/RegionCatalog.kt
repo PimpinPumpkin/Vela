@@ -1,5 +1,7 @@
 package app.vela.offline
 
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -46,11 +48,20 @@ data class RoutingRegion(
 @Singleton
 class RegionCatalog @Inject constructor(
     private val http: OkHttpClient,
+    @ApplicationContext private val context: Context,
 ) {
+    /** The catalog as last fetched, kept on disk (2026-09-23): with no signal the fetch failed and
+     *  the Offline maps page listed nothing, installed regions included, so a user who had just
+     *  downloaded a state read it as "nothing is downloaded". */
+    private fun cacheFile(url: String) = java.io.File(context.filesDir, "catalog-${url.hashCode().toUInt()}.json")
+
     suspend fun manifest(manifestUrl: String): List<RoutingRegion> = withContext(Dispatchers.IO) {
         runCatching {
-            val json = http.newCall(Request.Builder().url(manifestUrl).build()).execute()
-                .use { r -> if (!r.isSuccessful) error("HTTP ${r.code}"); r.body!!.string() }
+            val json = runCatching {
+                http.newCall(Request.Builder().url(manifestUrl).build()).execute()
+                    .use { r -> if (!r.isSuccessful) error("HTTP ${r.code}"); r.body!!.string() }
+                    .also { fresh -> runCatching { cacheFile(manifestUrl).writeText(fresh) } }
+            }.getOrElse { cacheFile(manifestUrl).takeIf { it.exists() }?.readText() ?: throw it }
             val arr = JSONObject(json).getJSONArray("regions")
             (0 until arr.length()).map { i ->
                 val o = arr.getJSONObject(i)

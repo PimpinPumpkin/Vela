@@ -72,6 +72,11 @@ internal fun PrivacySettingsScreen(vm: app.vela.ui.map.MapViewModel, onBack: () 
                         onClick = { rot.setMode(context, key) },
                     )
                 }
+                // What "every time" costs, shown once it is picked, so nobody wonders why the most
+                // private option is not the default (user 2026-09-23).
+                if (rot.mode.value == rot.LAUNCH) {
+                    app.vela.ui.settings.Hint(stringResource(R.string.settings_google_session_launch_hint))
+                }
                 androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     FilledTonalButton(
                         modifier = Modifier.dpadHighlight(androidx.compose.material3.ButtonDefaults.filledTonalShape),

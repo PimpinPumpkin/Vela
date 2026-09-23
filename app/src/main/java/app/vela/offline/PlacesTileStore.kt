@@ -310,7 +310,7 @@ abstract class PmtilesRegionStore(
     /** [replace] downloads a fresh copy over an installed archive: the new file lands in `.tmp` and
      *  is renamed over the old one only when complete and verified, so a failed or canceled update
      *  leaves the region as it was (the Update button used to delete first, 2026-09-22). */
-    suspend fun download(region: Region, replace: Boolean = false, onProgress: (Int) -> Unit): Boolean = withContext(Dispatchers.IO) {
+    suspend fun download(region: Region, replace: Boolean = false, active: () -> Boolean = { true }, onProgress: (Int) -> Unit): Boolean = withContext(Dispatchers.IO) {
         downloadMutex.withLock {
             if (!replace && fileFor(region.id).exists()) { onProgress(100); return@withLock true }
             root.mkdirs()
@@ -326,6 +326,7 @@ abstract class PmtilesRegionStore(
                         tmp.outputStream().use { out ->
                             val buf = ByteArray(64 * 1024)
                             while (true) {
+                                if (!active()) error("canceled")
                                 val n = input.read(buf)
                                 if (n < 0) break
                                 out.write(buf, 0, n)

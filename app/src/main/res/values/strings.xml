@@ -84,6 +84,10 @@
     <string name="map_voice_installing">Installing Vela Voice…</string>
     <string name="map_region_downloading">Downloading %1$s routing · %2$d%%</string> <!-- format -->
     <string name="map_region_places_downloading">Saving %1$s places for offline search · %2$d%%</string> <!-- format -->
+    <string name="map_region_placesfile_downloading">Saving %1$s places for the map · %2$d%%</string> <!-- format -->
+    <string name="map_region_map_downloading">Downloading the %1$s map · %2$d%%</string> <!-- format -->
+    <string name="mapvm_region_ready">%1$s is downloaded: map, routes and places work offline</string> <!-- format -->
+    <string name="mapvm_region_incomplete">%1$s is only partly downloaded. Connect and tap Update in Settings, Offline maps to finish it</string> <!-- format -->
     <string name="mapvm_poipack_ready">Places in %1$s are now searchable offline</string> <!-- format -->
     <string name="mapvm_poipack_unavailable">No place pack for %1$s yet. It\'ll appear here once it\'s published.</string> <!-- format -->
     <string name="settings_demo_drive">Simulate driving (demo)</string>
@@ -261,6 +265,7 @@
     <string name="settings_google_session_week">Start a new one every week (recommended)</string>
     <string name="settings_google_session_day">Start a new one every day</string>
     <string name="settings_google_session_launch">Start a new one every time Vela opens (most private)</string>
+    <string name="settings_google_session_launch_hint">What this costs: Google treats every session as a new visitor, so you mostly get its shorter view (about five reviews, popular times often missing). Places load a little slower and use more data, because a new session\'s first answers come back trimmed and are asked again. Android restarts apps in the background, so this can mean several new sessions a day, and many new visitors from one connection can draw more of Google\'s bot checks. Google still sees your IP address, which links sessions from one connection over a short time anyway.</string>
     <string name="settings_google_session_now">Start a new session now</string>
     <string name="settings_google_session_done">New Google session started</string>
     <string name="settings_clear_history">Clear history</string>
