@@ -102,6 +102,30 @@ object BrowserHeaders {
     fun brands(secChUa: String): List<Brand> =
         Regex(""""([^"]+)";v="(\d+)"""").findAll(secChUa).map { Brand(it.groupValues[1], it.groupValues[2]) }.toList()
 
+    /**
+     * The `Sec-CH-UA` value desktop Chrome [major] actually sends. Chrome derives all of it from the
+     * major version (components/embedder_support/user_agent_utils.cc): a GREASE brand
+     * "Not<c1>A<c2>Brand" whose two characters, version and position in the list are picked by
+     * `major` modulo the table sizes, so each release has one exact header. Checked against real
+     * headers: 120 `"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"`, 124 and 130
+     * (BrowserHeadersTest). Until 2026-09-23 the compiled hint was hand-edited from an older release
+     * and carried Chrome 137's GREASE brand under a 153 version number.
+     */
+    fun secChUaFor(major: Int): String {
+        val chars = listOf(" ", "(", ":", "-", ".", "/", ")", ";", "=", "?", "_")
+        val greaseVersions = listOf("8", "99", "24")
+        val list = listOf(
+            "Not${chars[major % chars.size]}A${chars[(major + 1) % chars.size]}Brand" to greaseVersions[major % greaseVersions.size],
+            "Chromium" to "$major",
+            "Google Chrome" to "$major",
+        )
+        val orders = listOf(listOf(0, 1, 2), listOf(0, 2, 1), listOf(1, 0, 2), listOf(1, 2, 0), listOf(2, 0, 1), listOf(2, 1, 0))
+        val order = orders[major % orders.size]
+        val out = arrayOfNulls<Pair<String, String>>(3)
+        for (i in list.indices) out[order[i]] = list[i]
+        return out.joinToString(", ") { "\"${it!!.first}\";v=\"${it.second}\"" }
+    }
+
     /** The major version in a Chrome user-agent string, or null. */
     fun chromeMajor(ua: String): String? = Regex("""Chrome/(\d+)\.""").find(ua)?.groupValues?.get(1)
 

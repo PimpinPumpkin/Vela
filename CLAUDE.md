@@ -3683,9 +3683,11 @@ Gotchas:
   before bumping), and google.com's `Accept-CH` asks for `Downlink` and `RTT`, which Chrome then
   sends on every later request, so the XHR header set carries both. Probe recipe and residuals
   (X-Client-Data, two cookie jars, TLS) are in SPEC 3.6.
-- **`secChUa` major version must match `userAgent`.** Separate fields pushed together for exactly
-  that reason; a hint advertising a different version than the UA string is worse than sending no
-  hint at all. `BrowserHeadersTest` locks the compiled pair so a careless bump of one is caught.
+- **`secChUa` is COMPUTED from the UA's major (2026-09-23, `BrowserHeaders.secChUaFor`).** Chrome
+  derives the whole header (GREASE brand, its version, the order) from the major, so a hand-edited
+  hint is a guess; the 153 one was Chrome 137's pattern with the number changed. `parseBundle`
+  derives it from the effective UA; the bundle still carries the exact string for older builds that
+  read it raw (`scripts/check-chrome-ua.py` prints both and flags a pushed one that differs).
 - **Both are sanitized on parse** (`BrowserHeaders.sanitize`). OkHttp throws on a control character
   at request-BUILD time, inside `runCatching` blocks that swallow it - one stray newline in a pushed
   bundle would kill every scrape with no crash and no log, the same silent-failure class as the 12 s

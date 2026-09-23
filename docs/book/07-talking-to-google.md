@@ -82,11 +82,15 @@ There are two user agents in the app, and mixing them up is a bug.
 fallback, used only when the bundle does not carry one:
 
 ```
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36"
-SEC_CH_UA  = "\"Chromium\";v=\"153\", \"Google Chrome\";v=\"153\", \"Not/A)Brand\";v=\"24\""
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36"
+SEC_CH_UA  = "\"Chromium\";v=\"154\", \"Google Chrome\";v=\"154\", \"Not A(Brand\";v=\"99\""
 ```
 
-Code reads the live pair from `CalibrationStore.current()`, never from the constants.
+Code reads the live pair from `CalibrationStore.current()`, never from the constants. The hint is
+not typed by hand anymore: Chrome computes the whole `Sec-CH-UA` value from its major version (a
+made-up "GREASE" brand whose punctuation, version and position rotate per release), and
+`BrowserHeaders.secChUaFor` does the same. The hand-typed 153 hint had kept an older release's
+GREASE brand under the new number, a combination no real Chrome sends.
 
 A user agent alone is not enough. Real Chrome sends a cluster of headers alongside it, and a
 Chrome UA with that cluster missing is a sharper inconsistency than an old version number. So
