@@ -168,7 +168,7 @@ class WebReviewsFetcher @Inject constructor(
         // reader whose reviews stay English while the app asks for zh-TW; the export says which
         // side to blame).
         view.evaluateJavascript(
-            "location.host+location.pathname.split('/@')[0].slice(0,40)+' lang='+document.documentElement.lang+' nav='+navigator.language",
+            JsNames.of("location.host+location.pathname.split('/@')[0].slice(0,40)+' lang='+document.documentElement.lang+' nav='+navigator.language"),
         ) { v -> diag.record("reviews", "page loaded", v?.trim('"')) }
         main.postDelayed({ inject(requestId) }, SETTLE_MS)
     }
@@ -177,7 +177,7 @@ class WebReviewsFetcher @Inject constructor(
      *  this, and a request that is gone (timed out, superseded) gets nothing injected. */
     private fun inject(id: String) {
         if (!isPending(id) || !injected.add(id)) return
-        webView?.evaluateJavascript(extractScript(id, caps[id] ?: 50), null)
+        webView?.evaluateJavascript(JsNames.of(extractScript(id, caps[id] ?: 50)), null)
     }
 
     /** The Google "cid" = the LOW half of the `0xHIGH:0xLOW` feature id as an unsigned decimal, the

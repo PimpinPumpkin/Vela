@@ -56,7 +56,7 @@ class ReviewsPanelController {
     internal var webView: WebView? = null
     private fun js(code: String) {
         val wv = webView ?: return
-        wv.post { runCatching { wv.evaluateJavascript(code, null) } }
+        wv.post { runCatching { wv.evaluateJavascript(JsNames.of(code), null) } }
     }
     /** Server-side search across ALL reviews (empty = clear). */
     fun search(q: String) = js("try{window.velaSearch(" + org.json.JSONObject.quote(q) + ")}catch(e){}")
@@ -475,7 +475,7 @@ private fun buildPanelWebView(
             wv.post { onPhotos(urls, captions, index) }
         }
     }
-    wv.addJavascriptInterface(bridge, "VelaPanel")
+    wv.addJavascriptInterface(bridge, JsNames.panel)
     wv.webViewClient = object : WebViewClient() {
         override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
             // The review feed is a batchexecute RPC (rpcids=qv9Egd, 2026-09-13); one line per call
@@ -513,7 +513,7 @@ private fun buildPanelWebView(
             // listener above receives events (harmless under touch — it's the only interactive
             // thing in the full-screen dialog besides the back arrow, which BACK still reaches).
             if (fullScreen) view?.requestFocus()
-            view?.evaluateJavascript(carveScript(dark, fullScreen), null)
+            view?.evaluateJavascript(JsNames.of(carveScript(dark, fullScreen)), null)
         }
     }
     // Follows the app's language like the inline scraper (issue #278; the full page caught up on
