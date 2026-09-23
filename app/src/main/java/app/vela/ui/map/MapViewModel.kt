@@ -7338,6 +7338,7 @@ class MapViewModel @Inject constructor(
                 val placesOk = !app.vela.ui.MapPoiPrefs.placesWithDownloads.value ||
                     (!regionCancel.get() && fetchRegionArchives(region, placesStore, app.vela.BuildConfig.PLACES_MANIFEST_URL, 1).also { if (it) refreshPlacesOverlays() })
                 val mapOk = !regionCancel.get() && fetchRegionArchives(region, basemapStore, app.vela.BuildConfig.BASEMAP_MANIFEST_URL, 2)
+                android.util.Log.i("VelaRegion", "${region.id}: pack=$packOk places=$placesOk map=$mapOk canceled=${regionCancel.get()}")
                 if (mapOk) {
                     app.vela.offline.GlyphPackStore.ensureInstalled(appContext, http)
                     ensureWorldBasemap()
@@ -7367,7 +7368,7 @@ class MapViewModel @Inject constructor(
         val installed = region.id in poiPackStore.installedIds()
         if (pack == null || (installed && !update)) {
             if (!chained) _state.update { it.copy(regionDownloadName = null) }
-            return installed
+            return true // nothing published for this region, or already here: nothing missing
         }
         _state.update { it.copy(poiPackDownloadingId = pack.id, poiPackDownloadPct = 0, regionDownloadName = region.name) }
         val canDelta = installed && pack.deltaUrl != null && poiPackStore.installedRev(pack.id) == pack.deltaFromRev
@@ -7409,7 +7410,7 @@ class MapViewModel @Inject constructor(
             if (!got) ok = false
         }
         _state.update { it.copy(regionFileStep = null) }
-        return ok && picks.isNotEmpty()
+        return ok // no archive published for the region counts as complete: there is nothing to finish
     }
 
     /** Settings "Get places" / "Update places" on an installed routing region — pulls or refreshes just
