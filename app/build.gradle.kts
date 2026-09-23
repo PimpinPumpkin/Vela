@@ -198,6 +198,10 @@ android {
                 "**/armeabi-v7a/libonnxruntime.so", "**/armeabi-v7a/libsherpa-onnx*.so",
                 "**/x86/libonnxruntime.so", "**/x86/libsherpa-onnx*.so",
                 "**/x86_64/libonnxruntime.so", "**/x86_64/libsherpa-onnx*.so",
+                // Cronet ships ARM only (2026-09-23): x86 emulators and Chromebooks still install
+                // and run, and their Google requests stay on OkHttp (CronetHolder fails to load the
+                // library and GoogleTransport falls back). Saves ~14 MB of a four-ABI APK.
+                "**/x86/libcronet*.so", "**/x86_64/libcronet*.so",
             )
         }
     }

@@ -459,8 +459,10 @@ Constraints:
 - **Google-host requests go over Cronet (2026-09-23),** Chromium's own network stack, not a
   custom TLS stack: `core/net/GoogleTransport` hands only google.com hosts to the interceptor the
   app installs (`app/net/CronetTransport`, calibration `useCronet`, default on); everything else,
-  and any Cronet failure, stays on OkHttp. `cronet-embedded` 143 (Chromium license) for every ABI,
-  +24 MB on the APK (98.0 to 121.9 MB). Its protobuf-javalite sits beside OsmAnd's old bundled
+  and any Cronet failure, stays on OkHttp. `cronet-embedded` 143 (Chromium license). Cronet's native
+  library is packaged for arm64-v8a and armeabi-v7a only; on x86 and x86_64 (emulators, a few
+  Chromebooks) the engine fails to load once and Google requests stay on OkHttp. The APK keeps all
+  four ABIs at 108.4 MB, against 98.0 MB before Cronet and 121.9 MB with it on every ABI. Its protobuf-javalite sits beside OsmAnd's old bundled
   protobuf because `:osmand-shaded` relocates OsmAnd's copy to `net.osmand.shaded.protobuf` at build
   time (the jar on the `obf-runtime` release is untouched). On a Pixel 9 Google answers it over
   HTTP/3. Its handshake is Chrome's minus the three newest signature algorithms until the Cronet
