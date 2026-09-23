@@ -3753,7 +3753,11 @@ Gotchas:
   `app/net/CronetTransport` (`useCronet`, default on; OkHttp on any failure, a GoogleTransport
   IOException falls back). `:osmand-shaded` relocates OsmAnd's bundled protobuf at build time so
   Cronet's can coexist (one runtime for both is NOT an option: each was compiled against its own).
-  APK 98.0 -> 121.9 MB (every ABI, user's call: storage is not the constraint). The WebView proxy
+  Cronet's native library ships for ARM only (`packaging.jniLibs` excludes `x86*/libcronet*.so`):
+  the APK keeps all four ABIs, so emulators and x86 Chromebooks install and run, and there
+  `CronetHolder` fails to load the library once and every Google request stays on OkHttp. 108.4 MB,
+  against 98.0 MB before Cronet and 121.9 MB with Cronet on every ABI. Never add an `abiFilters`
+  to shed size: it drops the x86 emulator (and the baseline-profile job runs on one). The WebView proxy
   (`webProxy`, default off) must use `WebViewCookieJar`, never the app's jar: the app's session is new
   every launch and Google limits new sessions, the WebView's is aged. Test dials on a device with
   `setprop debug.vela.tune.<key>` (`ui/AppTune`); side-install test builds as `-PappId=app.vela.dev`.
