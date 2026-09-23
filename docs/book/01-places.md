@@ -220,7 +220,10 @@ those from the region's OSM extract (points and outlines; an outline sits at the
 outer ring), so one archive holds every map point, ranked and budgeted together, and the app hides
 the basemap's copy over any archive baked on or after the dial's date. Landmarks get their own
 budget per ~1.6 km cell (4 at z14, 10 at z15), ordered by notability: outline size (log10 of the
-area, a hectare = +2) and a Wikidata link (+1.5 there, +2.0 on prominence). A landmark is never a
+area, a hectare = +2), a Wikidata link (+1.5 there, +2.0 on prominence) and, since 2026-09-23,
+FAME: how many languages OSM names it in (0.6 x log2(1 + languages), capped at +3; a world-famous
+tower carries dozens of `name:<lang>` tags, a pocket park none). The same score picks the anchor of
+each ~6.5 km cell for z11 and z12. A landmark is never a
 tenant, never folds into a business of the same name key, and gives its English name and Wikidata
 credit to the Overture row it merges into. Measured on test boxes (4a, pan fps; archive size):
 
@@ -246,7 +249,10 @@ nothing of the kind showed below it anywhere. The lowest regions are dense histo
 close zoom. The one real miss is a famous landmark with a small footprint: the Berliner Fernsehturm
 scores 2.5 (Wikidata 1.5 plus a 1,000 m2 outline) and loses its cell's ten z15 slots to larger
 parks and museum buildings, so it arrives at z16. Outline size is the wrong measure of fame for a
-tower; see the roadmap.
+tower, which is what the languages term fixes. A Berlin Mitte test box before and after it: the
+Brandenburger Tor, Berliner Dom, Pergamonmuseum and Neue Synagoge move from z15 to z14, the
+Fernsehturm from z16 to z15, and the z11/z12 anchors become Museumsinsel and the Reichstag instead
+of a university campus and a library. It reaches the fleet with the next places rebake.
 At the widest street zooms in Midtown the dense bus-stop layer can still win the space.
 
 **Names in every script, and English names** (2026-09-22). The name keys (`snapkey`, `nkey`) keep

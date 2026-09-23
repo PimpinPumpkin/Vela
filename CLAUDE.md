@@ -2341,7 +2341,15 @@ architecture note.
   Hong Kong 57%, Prague 62%, Berlin 64%, Washington DC 72%, Ile-de-France 78%), where the late ones
   are mostly pocket parks, side churches and palaces, but also a famous POINT landmark with a small
   footprint (the Berliner Fernsehturm, notability 2.5, at z16) because outline size is half the
-  notability score. Read the reports with `gh api repos/PimpinPumpkin/Vela/actions/jobs/<id>/logs`
+  notability score. FIXED 2026-09-23 with a FAME term, the number of languages OSM names it in
+  (`langs`, counted in the jq export from `name:<xx>` / `name:<xx>-<Script>` keys, `markfame` =
+  0.6 x log2(1 + langs) capped at 3), added to the notability that orders `lrank` AND `xrank` (the
+  z11/z12 anchors) and admitting a 5+-language place as a landmark. Mitte test box: Fernsehturm
+  z16 -> z15, Brandenburger Tor / Dom / Pergamon z15 -> z14, z11/z12 anchors Museumsinsel +
+  Reichstag instead of a campus + a library. Needs a places rebake to reach the fleet; the dial
+  does not move (the older rebake already has the landmarks). TRAP hit writing it: MARKS_SQL is an
+  UNQUOTED heredoc, so a backtick in a SQL comment runs as a shell command.
+  Read the reports with `gh api repos/PimpinPumpkin/Vela/actions/jobs/<id>/logs`
   and grep `LANDMARKS|` / `LATE|`; the step summary is not in the API.
 - **THE PLACES CELL BUDGET IS A CAP (2026-09-22).** Prominence used to bypass the per-cell rank in
   the minzoom CASE; a Shinjuku z16 tile carried 963 places and panned at 10-14 fps on the 4a. Now
