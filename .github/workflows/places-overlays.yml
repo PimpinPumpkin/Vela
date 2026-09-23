@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: Region id to bake (blank = every region in tools/places-regions.json)
+        description: Region id, or several comma-separated, to bake (blank = every region in tools/places-regions.json)
         required: false
         default: ""
       release:
@@ -56,7 +56,7 @@ jobs:
             "40 4 * * *") NIGHTLY="$(( $(date -u +%u) - 1 ))" ;;
           esac
           if [ -n "${{ github.event.inputs.only }}" ]; then
-            jq -c --arg id "${{ github.event.inputs.only }}" '{include: [.regions[] | select(.id == $id)]}' tools/places-regions.json > m.json
+            jq -c --arg ids "${{ github.event.inputs.only }}" '($ids | split(",") | map(gsub("^ +| +$"; ""))) as $want | {include: [.regions[] | select(.id as $x | $want | index($x))]}' tools/places-regions.json > m.json
           elif [ -n "$NIGHTLY" ]; then
             # Tonight's seventh, by position in the sorted catalog: every region comes round once a
             # week, and the same region always falls on the same night.
