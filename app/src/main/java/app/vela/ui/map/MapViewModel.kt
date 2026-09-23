@@ -187,6 +187,8 @@ data class MapUiState(
     val placesHere: List<Place> = emptyList(), // other Google listings at the selected spot
     val reviews: List<Review> = emptyList(),
     val reviewsLoading: Boolean = false,
+    /** Google answered the review feed with its limited view (a short list, no more pages). */
+    val reviewsLimited: Boolean = false,
     val reviewsFound: Int = 0, // live count streamed by the scrape while reviewsLoading (progress, not final)
     val photosLoading: Boolean = false, // the lazy WebView gallery scrape is in flight (more photos coming)
     /** Feature id whose photo strip holds only the FIRST BATCH: the sheet offers "More photos". */
@@ -1831,7 +1833,7 @@ class MapViewModel @Inject constructor(
                     // hidden views at every launch, ~300 MB of renderer for pages nobody asked for
                     // (and a Google contact carrying the app's package name). The expensive part
                     // for the first tap is Chromium's own start, which a throwaway view pays here;
-                    // the Google pages load when a search lands (warmPlaceWebViews).
+                    // the Google pages load only when a place actually needs one (2026-09-23).
                     android.util.Log.i("VelaWarm", "webviews: booting the engine at a quiet moment")
                     runCatching { android.webkit.WebView(appContext).destroy() }
                     return@launch
@@ -1941,13 +1943,9 @@ class MapViewModel @Inject constructor(
         return false
     }
 
-    /** Prime the hidden WebViews behind the place sheet's popular times and photos, once results
-     *  are on screen. Low-RAM phones skip it and build the WebView on first real use. */
-    private fun warmPlaceWebViews() {
-        if (app.vela.ui.MemoryPressure.modest || app.vela.ui.GoogleFree.on.value) return
-        viewModelScope.launch { runCatching { webPopularTimes.prewarm() } }
-        viewModelScope.launch { runCatching { webPhotos.warm() } }
-    }
+    // (warmPlaceWebViews is gone, 2026-09-23: after every search it loaded google.com and Google
+    // Maps in two hidden views on the chance a place got tapped, two whole web apps per search.
+    // A tap's photos and reviews are single RPCs now; the pages load only when actually needed.)
 
     private fun runSearch(q: String, near: LatLng?) {
         if (q.isEmpty()) return
@@ -1982,11 +1980,9 @@ class MapViewModel @Inject constructor(
         // the guess that a search predicts a place tap. When memory is the scarce resource that
         // trade is backwards - two renderers paid on every search whether or not a place opens
         // (ported from vela-dpad, 2026-07-23). Those phones build the WebView on first real use.
-        // Since 2026-09-14 the warm-up runs AFTER the results land (warmPlaceWebViews): two
-        // Chromium instances built on the main thread and loading google.com while the search
-        // ran held a cold-start search (a geo: deep link into a fresh process) at 13 s against
-        // 4 s warm, with the map blank the whole time. Nothing there is needed until a result
-        // is opened.
+        // Since 2026-09-23 there is no page warm-up at all: a tap's photos and reviews are single
+        // RPCs, and the hidden pages load only for "More photos", the All reviews page or a
+        // details fetch the search reply could not answer.
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             // A fresh typed search leaves any along-route browse: picks open places normally again.
@@ -2116,7 +2112,6 @@ class MapViewModel @Inject constructor(
                         )
                     }
                     moreSearch = null
-                    warmPlaceWebViews()
                     if (openDirectionsOnResult) {
                         openDirectionsOnResult = false
                         homeHits.first().let { top -> selectPlace(top); routeToSelected() }
@@ -2173,7 +2168,6 @@ class MapViewModel @Inject constructor(
                         )
                     }
                     moreSearch = Triple(q, near, spanM); moreFromPage = 3
-                    warmPlaceWebViews()
                     // "Navigate to X": the top hit is the destination, straight into the chooser.
                     if (openDirectionsOnResult) {
                         openDirectionsOnResult = false
@@ -2875,7 +2869,30 @@ class MapViewModel @Inject constructor(
         if (complete) return
         _state.update { if (it.selected?.id == p.id) it.copy(loadingDetails = true) else it }
         viewModelScope.launch {
-            val d = runCatching { webPopularTimes.fetch(p) }.getOrNull()
+            // The details page is a search for "name address" run inside a warmed Google page: the
+            // first one in a session loads google.com and Maps, later ones are one request from the
+            // warm page. Sent plainly, the same search comes back WITHOUT popular times (measured
+            // on the 4a, 2026-09-23), so it is only worth trying when popular times are already in
+            // hand and a count, address or hours list is what is missing.
+            val missing = listOfNotNull(
+                "popularTimes".takeIf { p.popularTimes == null }, "reviewCount".takeIf { p.reviewCount == null },
+                "address".takeIf { p.address.isNullOrBlank() }, "hours".takeIf { p.hours.size < 2 },
+            )
+            val focused = if (p.popularTimes == null) null else runCatching {
+                val q = listOfNotNull(p.name, p.address?.replace(',', ' ')?.replace(Regex("\\s+"), " ")?.trim()?.ifBlank { null }).joinToString(" ")
+                withContext(Dispatchers.IO) { dataSource.searchOnce(q, p.location) }
+                    .firstOrNull { c -> (p.featureId != null && c.featureId == p.featureId) || (c.name == p.name && c.location.distanceTo(p.location) < 60.0) }
+            }.getOrNull()
+            val native = focused?.let { f ->
+                app.vela.core.model.PlaceDetails(
+                    popularTimes = f.popularTimes, editorialSummary = f.editorialSummary, ownerDescription = f.ownerDescription,
+                    rating = f.rating, reviewCount = f.reviewCount, hours = f.hours, address = f.address, phone = f.phone,
+                    website = f.website, statusText = f.statusText, openNow = f.openNow, priceText = f.priceText,
+                    priceLevel = f.priceLevel, about = f.about, featuredReview = null,
+                )
+            }
+            android.util.Log.i("VelaPlaceLoad", "details: missing $missing; ${if (native == null) "details page" else "one focused search"}")
+            val d = native ?: runCatching { webPopularTimes.fetch(p) }.getOrNull()
             _state.update { st ->
                 val sel = st.selected
                 if (sel?.id != p.id) st else st.copy(
@@ -2931,6 +2948,33 @@ class MapViewModel @Inject constructor(
         val photoWorthy = p.rating != null || p.reviewCount != null || p.photoUrls.isNotEmpty()
         if (photoWorthy) _state.update { if (it.selected?.featureId == fid) it.copy(photosLoading = true) else it }
         viewModelScope.launch {
+            // FIRST BATCH = ONE REQUEST (2026-09-23): the gallery RPC (hspqX) answers a plain request
+            // once it carries Calibration.rpcContext, with each photo's date. The page walk (a whole
+            // Google web app) runs only for "More photos" (it adds the Menu tab), or when the RPC
+            // gives nothing.
+            if (!full) {
+                // A brand-new Google session answers its first seconds stripped (the slim flavor
+                // nearbyPlaces heals too): one short, jittered retry of the ONE request beats
+                // falling through to a whole page load (seen on the 4a: 0 photos, then 10).
+                var native = runCatching { dataSource.placePhotos(fid) }.getOrDefault(emptyList())
+                if (native.isEmpty()) {
+                    delay(app.vela.core.util.Jitter.around(1_500L))
+                    if (_state.value.selected?.featureId != fid) return@launch
+                    native = runCatching { dataSource.placePhotos(fid) }.getOrDefault(emptyList())
+                }
+                android.util.Log.i("VelaPlaceLoad", "photos: rpc ${native.size}${if (native.isEmpty()) ", walking the page" else ""}")
+                if (native.isNotEmpty()) {
+                    _state.update { st ->
+                        val sel = st.selected
+                        if (sel?.featureId == fid) st.copy(
+                            selected = sel.copy(photoUrls = native.map { it.url }, photoDates = native.map { it.postedText }, photoCategories = native.map { null }),
+                            photosLoading = false,
+                            morePhotosFor = fid,
+                        ) else st
+                    }
+                    return@launch
+                }
+            }
             // The gallery has TWO keyless sources with complementary halves: the WebView page
             // walk carries the CATEGORY tags (the Menu tab) but no per-photo dates, while the
             // hspqX RPC carries each photo's POSTED DATE but no categories. Fire the cheap RPC
@@ -2944,7 +2988,7 @@ class MapViewModel @Inject constructor(
             // not drifted), so it is NOT sent by default: a request per place tap that can only
             // come back empty is Google contact for nothing. The `photoDatesRpc` tuning dial (1 =
             // on) revives it from the signed calibration if Google ever answers again.
-            val datesJob = if (app.vela.core.config.CalibrationStore.latest.tune("photoDatesRpc", 0.0) < 0.5) null else launch {
+            val datesJob = if (app.vela.core.config.CalibrationStore.latest.tune("photoDatesRpc", 1.0) < 0.5) null else launch {
                 val rpc = runCatching { dataSource.placePhotos(fid) }.getOrDefault(emptyList())
                 rpcDates = rpc.mapNotNull { ph -> ph.postedText?.let { ph.url.substringBefore('=') to it } }.toMap()
                 // Join diagnostics (menu dates weren't showing, user 2026-07-11): how many photos
@@ -3044,7 +3088,7 @@ class MapViewModel @Inject constructor(
             _state.update { it.copy(reviews = emptyList(), reviewsLoading = false, reviewsFound = 0) }
             return
         }
-        _state.update { it.copy(reviewsLoading = true, reviewsFound = 0) }
+        _state.update { it.copy(reviewsLoading = true, reviewsFound = 0, reviewsLimited = false) }
         // Live progress off the scrape (arrives on a WebView thread — StateFlow.update is
         // thread-safe). Feature-id-gated so a slow scrape can't tick a different place's counter.
         val onProgress: (Int) -> Unit = { n ->
@@ -3080,7 +3124,26 @@ class MapViewModel @Inject constructor(
             fun tooFew(r: List<Review>) = r.size < minOf(4, expected)
             // First page only unless the full-load setting is on: every page past the first is
             // another feed request, and the All reviews page has the rest.
-            val reviewCap = if (app.vela.ui.FullPlaceLoad.on.value || force) 50 else FIRST_REVIEWS
+            val fullLoad = app.vela.ui.FullPlaceLoad.on.value || force
+            val reviewCap = if (fullLoad) 50 else FIRST_REVIEWS
+            // FIRST PAGE = ONE REQUEST (2026-09-23): the feed RPC the place page's Reviews tab makes
+            // answers a plain request with Calibration.rpcContext. The hidden page scrape (a whole
+            // Google web app plus a feed request per scroll) is the fallback, and the full load.
+            if (!fullLoad) {
+                var feed = runCatching { dataSource.reviewFeed(fid, app.vela.web.WebReviewsFetcher.reviewsHl()) }.getOrNull()
+                if (feed?.reviews.isNullOrEmpty() && expected > 0) { // same fresh-session retry as the photos
+                    delay(app.vela.core.util.Jitter.around(1_500L))
+                    if (_state.value.selected?.featureId != fid) return@launch
+                    feed = runCatching { dataSource.reviewFeed(fid, app.vela.web.WebReviewsFetcher.reviewsHl()) }.getOrNull()
+                }
+                android.util.Log.i("VelaPlaceLoad", "reviews: feed ${feed?.reviews?.size ?: -1}${if (feed?.limited == true) " limited" else ""}${if (feed?.reviews.isNullOrEmpty()) ", scraping the page" else ""}")
+                if (feed != null && feed.reviews.isNotEmpty()) {
+                    if (_state.value.selected?.featureId == fid) {
+                        _state.update { it.copy(reviews = feed.reviews, reviewsLoading = false, reviewsFound = 0, reviewsLimited = feed.limited) }
+                    }
+                    return@launch
+                }
+            }
             var revs = settle(runCatching { webReviews.fetch(fid, onProgress, onPartial, reviewCap) }.getOrDefault(emptyList()))
             coroutineContext.ensureActive() // superseded by a newer fetch — don't touch state below
             var attempt = 1
@@ -5905,6 +5968,10 @@ class MapViewModel @Inject constructor(
     private var prefetchJob: Job? = null
     private fun prefetchAmbientNeighbors(center: LatLng, span: Double, zoom: Double) {
         if (zoom < 14.5) return // wide views cover the neighbors already
+        // Google-only mode only (2026-09-23): four neighbors x the category fan-out is ~60 requests
+        // to Google per settle for areas nobody has panned to yet. With Vela's own places layer
+        // drawing (Vela data, Both) the neighbors already paint instantly from the archive.
+        if (app.vela.ui.MapPoiPrefs.openPlaces) return
         val cm = appContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return
         val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return
         if (!caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)) return

@@ -185,6 +185,8 @@ class CalibrationStore @Inject constructor(
                     ?: d.secChUa,
                 photosEndpoint = str("photosEndpoint", d.photosEndpoint),
                 photosProto = str("photosProto", d.photosProto),
+                rpcContext = (o["rpcContext"] as? JsonPrimitive)?.content?.let { BrowserHeaders.sanitize(it) ?: "" } ?: d.rpcContext,
+                reviewFeedProto = str("reviewFeedProto", d.reviewFeedProto),
                 paths = Calibration.DEFAULT_PATHS + remotePaths,
                 notices = notices,
                 transformsJs = transformsJs,

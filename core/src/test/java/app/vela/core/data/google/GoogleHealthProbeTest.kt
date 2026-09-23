@@ -149,6 +149,36 @@ class GoogleHealthProbeTest {
             "${r.places.size} places, first: ${r.places.first().name.take(40)}"
         }
 
+        // The batchexecute RPCs a place tap uses: the review feed and the photo gallery. Both need
+        // Calibration.rpcContext; a changed value shows up here as an empty answer.
+        val coop = "0x8085299fd6f41a23:0x10d37b4cae550f0" // Davis Food Co-op, the fixture business
+        fun rpc(id: String, inner: String): String {
+            val freq = "[[[\"$id\",${kotlinx.serialization.json.JsonPrimitive(inner)},null,\"generic\"]]]"
+            val req = Request.Builder()
+                .url("https://www.google.com/maps/_/MapsWizUi/data/batchexecute?rpcids=$id&source-path=%2Fmaps&hl=en&gl=us&_reqid=${(1000..99999).random()}&rt=c")
+                .post(okhttp3.RequestBody.Companion.run { "f.req=${enc(freq)}&".toRequestBody(okhttp3.MediaType.Companion.run { "application/x-www-form-urlencoded;charset=UTF-8".toMediaType() }) })
+                .browserXhrHeaders(cal.userAgent, cal.secChUa, MAPS_REFERER)
+                .header("X-Same-Domain", "1")
+                .apply { if (cal.rpcContext.isNotBlank()) header("x-maps-diversion-context-bin", cal.rpcContext) }
+                .build()
+            http.newCall(req).execute().use { r ->
+                if (r.code == 403 || r.code == 429) throw Blocked("HTTP ${r.code} $id")
+                if (!r.isSuccessful) throw IllegalStateException("HTTP ${r.code} $id")
+                return r.body?.string().orEmpty()
+            }
+        }
+        check("review-feed", results) {
+            val feed = app.vela.core.data.google.parse.ReviewFeedParser.parse(rpc("qv9Egd", cal.reviewFeedProto.replace("{FID}", coop).replace("{TOKEN}", "")))
+                ?: error("unreadable reply")
+            check(feed.reviews.isNotEmpty()) { "empty feed (rpcContext no longer opens it?)" }
+            "${feed.reviews.size} reviews${if (feed.limited) " (Google's limited view)" else ""}"
+        }
+        check("photos", results) {
+            val photos = app.vela.core.data.google.parse.PhotosParser.parse(rpc("hspqX", cal.photosProto.replace("{FID}", coop).replace("{COUNT}", "20")))
+            check(photos.isNotEmpty()) { "no photos (rpcContext no longer opens it?)" }
+            "${photos.size} photos, ${photos.count { it.postedText != null }} dated"
+        }
+
         val drift = results.filter { "|DRIFT|" in it }
         assertTrue("Google answered in a shape the parsers could not read:\n" + drift.joinToString("\n"), drift.isEmpty())
     }

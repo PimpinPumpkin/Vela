@@ -29,6 +29,13 @@ data class Calibration(
     // preview's ~10. (Calibrated live 2026-06-17.)
     val photosEndpoint: String = DEFAULT_PHOTOS_ENDPOINT,
     val photosProto: String = DEFAULT_PHOTOS_PROTO,
+    // The ONE header Google's Maps web app sends on its batchexecute RPCs that a bare request
+    // lacked (found 2026-09-23): without `x-maps-diversion-context-bin` the review feed answers
+    // empty and the photo RPC answers zero photos; with it both answer a plain request, no page,
+    // no BotGuard token. Blank = don't send. Remote so a changed value is a config push.
+    val rpcContext: String = DEFAULT_RPC_CONTEXT,
+    /** The review feed (`qv9Egd`) inner proto: {FID} the feature id, {TOKEN} the page token. */
+    val reviewFeedProto: String = DEFAULT_REVIEW_FEED_PROTO,
     // Street View metadata: the keyless `GeoPhotoService.SingleImageSearch` the JS Maps API uses
     // (no API key - authorized by referer, like the rest of the scrape). `{LAT}`/`{LNG}` are the
     // query point; the response carries the nearest pano's id, tile pyramid, and true heading.
@@ -167,6 +174,10 @@ data class Calibration(
                 "!1m3!1e1!2b0!3e3!1m3!1e4!2b0!3e3!1m3!1e10!2b1!3e2!1m3!1e10!2b0!3e3"
 
         // hspqX request proto: feature id at [2][0], page size at [4][2][1].
+        const val DEFAULT_RPC_CONTEXT = "CAE="
+        const val DEFAULT_REVIEW_FEED_PROTO = "[[[\"{FID}\"],null,null,null,null,[null,null,null,[[1],[3]]]],[10,\"{TOKEN}\"],null,null," +
+            "[null,null,null,null,null,null,81],null,null,[null,1,1,null,1,null,1,null,null,null,null,[1,1,null,[[1]]]],null,null," +
+            "[3,1,null,null,null,[2]],null,[1]]"
         const val DEFAULT_PHOTOS_PROTO =
             "[2,null,[\"{FID}\",null,null,null,null,null,null,null,0],null," +
                 "[null,[1200,1000],[null,{COUNT},null,null,1],null,null,null," +

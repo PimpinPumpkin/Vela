@@ -446,6 +446,7 @@
     </plurals>
     <string name="place_all_n_reviews">All %1$d reviews · sort &amp; search</string> <!-- format -->
     <string name="place_more_photos">More photos</string>
+    <string name="place_reviews_limited">Google is showing a shorter list of reviews right now.</string>
     <string name="place_all_reviews">All reviews · sort &amp; search</string>
     <string name="place_reviews_progress">Reviews · %1$d of about %2$d</string> <!-- format -->
     <string name="place_reviews_so_far">Reviews · %1$d so far</string> <!-- format -->
