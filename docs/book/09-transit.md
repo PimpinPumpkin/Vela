@@ -142,10 +142,12 @@ never found one.
 
 ### Canonical stops on the map
 
-From zoom 15, the stops in view come from Transitous and draw as their own layer:
+From zoom 15, the stops in view come from Transitous, and from zoom 16 they draw as their own
+layer (one step later than the fetch since 2026-09-22: Midtown at the widest street zoom was a
+carpet of badges). Fetching from 15 keeps the basemap's own OSM bus icons hidden at that zoom too.
 
 ```
-TRANSIT_STOPS_MIN_ZOOM = 15.0   // badges from here; names appear at zoom 17
+TRANSIT_STOPS_MIN_ZOOM = 15.0   // fetch from here; badges draw from 16, names from 17
 ```
 
 The fetch covers the view padded by half its size on every side, waits **350 ms** for the map to
