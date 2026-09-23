@@ -95,7 +95,7 @@ class WebReviewsFetcher @Inject constructor(
                     // previous place's reviews for THIS featureId (empty > wrong).
                     evaluate("try{document.documentElement.innerHTML=''}catch(e){}")
                     val hl = reviewsHl()
-                    diag.record("reviews", "load hl=$hl app=${app.vela.ui.AppLocale.language.value.ifBlank { "system" }}", "cid=$cid")
+                    diag.record("reviews", "load hl=$hl app=${app.vela.ui.AppLocale.language.value.ifBlank { "system" }} region=${DiagRegion.of(context)}", "cid=$cid")
                     load("https://www.google.com/maps?cid=$cid&hl=$hl&gl=us", id)
                     // Proceed even if the SPA's onPageFinished is slow.
                     main.postDelayed({ inject(id) }, MAX_LOAD_MS)
