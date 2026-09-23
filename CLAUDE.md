@@ -1432,7 +1432,11 @@ Defaults that make the safe path the easy one:
   the ambient neighbor prefetch (~60 requests per settle) runs in Google-only mode only. Settings >
   Performance "Load all photos and reviews" (`FullPlaceLoad`) restores the old full load. The
   health probe checks both RPCs, so a changed header value fails the daily run. `VelaPlaceLoad`
-  logcat lines say which path each piece took.
+  logcat lines say which path each piece took. **Rollback levers** (`docs/book/07-talking-to-google.md`,
+  "Place data: the methods"): calibration `tuning` `nativePlacePhotos` / `nativeReviewFeed` = 0 put the
+  fleet back on the page paths with no release; a per-place cache (photos + feed 6 h, details 15 min)
+  makes a re-tap free; "More reviews" follows the feed's next-page token, which is ASSUMED to sit at
+  payload[1] and has not been seen in a capture yet (every capture was an end-of-list reply).
 - **Place-content toggles (2026-07-08):** `ShowReviews` / `LoadPhotos` reactive holders
   (`ui/PlaceContent.kt`, same shape as `LiveReviews`, init in VelaApp, rows in Settings → Map).
   They gate BOTH fetch (`fetchReviews`/`fetchPhotos` first line) and render (PlaceSheet `hasReviews`

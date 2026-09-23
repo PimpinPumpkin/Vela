@@ -88,7 +88,7 @@ interface MapDataSource {
     /** The first page of the place's review feed in ONE request (the RPC the Reviews tab of Google's
      *  own place page makes), in [hl]'s language. Null on failure; `limited` when Google is serving
      *  its limited view. */
-    suspend fun reviewFeed(featureId: String, hl: String? = null): app.vela.core.data.google.parse.ReviewFeed? = null
+    suspend fun reviewFeed(featureId: String, hl: String? = null, pageToken: String = ""): app.vela.core.data.google.parse.ReviewFeed? = null
 
     /** Imports a Google Maps SHARED LIST from its share link (maps.app.goo.gl/…):
      *  title, description and every place with the owner's note (issue #1).

@@ -189,6 +189,9 @@ data class MapUiState(
     val reviewsLoading: Boolean = false,
     /** Google answered the review feed with its limited view (a short list, no more pages). */
     val reviewsLimited: Boolean = false,
+    /** Next page of the native review feed, when Google said there is one: "More reviews". */
+    val reviewsNextToken: String? = null,
+    val reviewsMoreLoading: Boolean = false,
     val reviewsFound: Int = 0, // live count streamed by the scrape while reviewsLoading (progress, not final)
     val photosLoading: Boolean = false, // the lazy WebView gallery scrape is in flight (more photos coming)
     /** Feature id whose photo strip holds only the FIRST BATCH: the sheet offers "More photos". */
@@ -2891,8 +2894,11 @@ class MapViewModel @Inject constructor(
                     priceLevel = f.priceLevel, about = f.about, featuredReview = null,
                 )
             }
-            android.util.Log.i("VelaPlaceLoad", "details: missing $missing; ${if (native == null) "details page" else "one focused search"}")
-            val d = native ?: runCatching { webPopularTimes.fetch(p) }.getOrNull()
+            val fidKey = p.featureId
+            val cachedDetails = fidKey?.let { placeCacheGet(detailsCache, it, DETAILS_CACHE_MS) }
+            android.util.Log.i("VelaPlaceLoad", "details: missing $missing; ${when { native != null -> "one focused search"; cachedDetails != null -> "cache"; else -> "details page" }}")
+            val d = native ?: cachedDetails ?: runCatching { webPopularTimes.fetch(p) }.getOrNull()
+                ?.also { if (fidKey != null) placeCachePut(detailsCache, fidKey, it) }
             _state.update { st ->
                 val sel = st.selected
                 if (sel?.id != p.id) st else st.copy(
@@ -2952,18 +2958,20 @@ class MapViewModel @Inject constructor(
             // once it carries Calibration.rpcContext, with each photo's date. The page walk (a whole
             // Google web app) runs only for "More photos" (it adds the Menu tab), or when the RPC
             // gives nothing.
-            if (!full) {
+            if (!full && tuneOn("nativePlacePhotos")) {
                 // A brand-new Google session answers its first seconds stripped (the slim flavor
                 // nearbyPlaces heals too): one short, jittered retry of the ONE request beats
                 // falling through to a whole page load (seen on the 4a: 0 photos, then 10).
-                var native = runCatching { dataSource.placePhotos(fid) }.getOrDefault(emptyList())
+                val cached = placeCacheGet(photoCache, fid, PHOTOS_CACHE_MS)
+                var native = cached ?: runCatching { dataSource.placePhotos(fid) }.getOrDefault(emptyList())
                 if (native.isEmpty()) {
                     delay(app.vela.core.util.Jitter.around(2_500L))
                     if (_state.value.selected?.featureId != fid) return@launch
                     native = runCatching { dataSource.placePhotos(fid) }.getOrDefault(emptyList())
                 }
-                android.util.Log.i("VelaPlaceLoad", "photos: rpc ${native.size}${if (native.isEmpty()) ", walking the page" else ""}")
+                android.util.Log.i("VelaPlaceLoad", "photos: ${if (cached != null) "cache" else "rpc"} ${native.size}${if (native.isEmpty()) ", walking the page" else ""}")
                 if (native.isNotEmpty()) {
+                    if (cached == null) placeCachePut(photoCache, fid, native)
                     _state.update { st ->
                         val sel = st.selected
                         if (sel?.featureId == fid) st.copy(
@@ -3061,6 +3069,49 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    // PER-PLACE CACHE (2026-09-23): reopening a place within a few hours costs Google nothing.
+    // Photos and the review feed keep 6 h; details 15 min, because popular times carry the live
+    // "busy right now". Process lifetime only, 80 places each, access order.
+    private class PlaceCacheEntry<T>(val value: T, val at: Long)
+    private fun <T> lru() = object : LinkedHashMap<String, PlaceCacheEntry<T>>(96, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, PlaceCacheEntry<T>>?) = size > 80
+    }
+    private val photoCache = lru<List<app.vela.core.model.Photo>>()
+    private val feedCache = lru<app.vela.core.data.google.parse.ReviewFeed>()
+    private val detailsCache = lru<app.vela.core.model.PlaceDetails>()
+    private fun <T> placeCacheGet(m: LinkedHashMap<String, PlaceCacheEntry<T>>, key: String, ttlMs: Long): T? = synchronized(m) {
+        m[key]?.takeIf { System.currentTimeMillis() - it.at < ttlMs }?.value
+    }
+    private fun <T> placeCachePut(m: LinkedHashMap<String, PlaceCacheEntry<T>>, key: String, v: T) = synchronized(m) {
+        m[key] = PlaceCacheEntry(v, System.currentTimeMillis())
+    }
+
+    /** A remote kill switch in calibration `tuning` (1 = on, the compiled default; 0 = the old
+     *  hidden-page path). The rollback lever for the one-request place loads. */
+    private fun tuneOn(key: String) = app.vela.core.config.CalibrationStore.latest.tune(key, 1.0) >= 0.5
+
+    /** "More reviews": the next page of the native feed, appended. */
+    fun loadMoreReviews() {
+        val st = _state.value
+        val p = st.selected ?: return
+        val fid = p.featureId ?: return
+        val token = st.reviewsNextToken ?: return
+        if (st.reviewsMoreLoading) return
+        _state.update { it.copy(reviewsMoreLoading = true) }
+        viewModelScope.launch {
+            val page = runCatching { dataSource.reviewFeed(fid, app.vela.web.WebReviewsFetcher.reviewsHl(), token) }.getOrNull()
+            android.util.Log.i("VelaPlaceLoad", "reviews: next page ${page?.reviews?.size ?: -1}")
+            _state.update {
+                if (it.selected?.featureId != fid) it.copy(reviewsMoreLoading = false)
+                else it.copy(
+                    reviews = (it.reviews + page?.reviews.orEmpty()).distinctBy { r -> r.author to r.text },
+                    reviewsNextToken = page?.nextToken,
+                    reviewsMoreLoading = false,
+                )
+            }
+        }
+    }
+
     /** Pull full reviews for a place by its Google feature id (best-effort,
      *  applied only if it's still the selected place when they arrive). */
     private var reviewsJob: Job? = null
@@ -3088,7 +3139,7 @@ class MapViewModel @Inject constructor(
             _state.update { it.copy(reviews = emptyList(), reviewsLoading = false, reviewsFound = 0) }
             return
         }
-        _state.update { it.copy(reviewsLoading = true, reviewsFound = 0, reviewsLimited = false) }
+        _state.update { it.copy(reviewsLoading = true, reviewsFound = 0, reviewsLimited = false, reviewsNextToken = null, reviewsMoreLoading = false) }
         // Live progress off the scrape (arrives on a WebView thread — StateFlow.update is
         // thread-safe). Feature-id-gated so a slow scrape can't tick a different place's counter.
         val onProgress: (Int) -> Unit = { n ->
@@ -3129,8 +3180,9 @@ class MapViewModel @Inject constructor(
             // FIRST PAGE = ONE REQUEST (2026-09-23): the feed RPC the place page's Reviews tab makes
             // answers a plain request with Calibration.rpcContext. The hidden page scrape (a whole
             // Google web app plus a feed request per scroll) is the fallback, and the full load.
-            if (!fullLoad) {
-                var feed = runCatching { dataSource.reviewFeed(fid, app.vela.web.WebReviewsFetcher.reviewsHl()) }.getOrNull()
+            if (!fullLoad && tuneOn("nativeReviewFeed")) {
+                val cached = placeCacheGet(feedCache, fid, REVIEWS_CACHE_MS)
+                var feed = cached ?: runCatching { dataSource.reviewFeed(fid, app.vela.web.WebReviewsFetcher.reviewsHl()) }.getOrNull()
                 // Same fresh-session retry as the photos. Unless the count is KNOWN to be 0: a stripped
                 // search reply (the same fresh-session window) has no count at all.
                 if (feed?.reviews.isNullOrEmpty() && p.reviewCount != 0) {
@@ -3140,10 +3192,11 @@ class MapViewModel @Inject constructor(
                 }
                 // Limited view = the feed ends after a short list for a place that has more.
                 val limited = feed != null && feed.end && feed.reviews.isNotEmpty() && feed.reviews.size < minOf(FIRST_REVIEWS, expected)
-                android.util.Log.i("VelaPlaceLoad", "reviews: feed ${feed?.reviews?.size ?: -1}${if (limited) " (limited view)" else ""}${if (feed?.reviews.isNullOrEmpty()) ", scraping the page" else ""}")
+                android.util.Log.i("VelaPlaceLoad", "reviews: ${if (cached != null) "cache" else "feed"} ${feed?.reviews?.size ?: -1}${if (limited) " (limited view)" else ""}${if (feed?.reviews.isNullOrEmpty()) ", scraping the page" else ""}")
                 if (feed != null && feed.reviews.isNotEmpty()) {
+                    if (cached == null) placeCachePut(feedCache, fid, feed)
                     if (_state.value.selected?.featureId == fid) {
-                        _state.update { it.copy(reviews = feed.reviews, reviewsLoading = false, reviewsFound = 0, reviewsLimited = limited) }
+                        _state.update { it.copy(reviews = feed.reviews, reviewsLoading = false, reviewsFound = 0, reviewsLimited = limited, reviewsNextToken = feed.nextToken) }
                     }
                     return@launch
                 }
@@ -7488,6 +7541,9 @@ class MapViewModel @Inject constructor(
         /** What a place tap loads before "More photos" / All reviews (2026-09-23, FullPlaceLoad off). */
         const val FIRST_PHOTOS = 6
         const val FIRST_REVIEWS = 10
+        const val PHOTOS_CACHE_MS = 6 * 3_600_000L
+        const val REVIEWS_CACHE_MS = 6 * 3_600_000L
+        const val DETAILS_CACHE_MS = 15 * 60_000L
         /** How long the in-drive stop card waits for its detour figure. The card is already on
          *  screen; past this the offer simply carries no minutes rather than holding a stale
          *  spinner over a drive. */

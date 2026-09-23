@@ -2085,6 +2085,8 @@ fun MapScreen(
                 reviewsLoading = state.reviewsLoading,
                 reviewsFound = state.reviewsFound,
                 reviewsLimited = state.reviewsLimited,
+                onMoreReviews = if (state.reviewsNextToken != null) vm::loadMoreReviews else null,
+                reviewsMoreLoading = state.reviewsMoreLoading,
                 photosLoading = state.photosLoading,
                 morePhotos = state.morePhotosFor != null && state.morePhotosFor == state.selected?.featureId,
                 onMorePhotos = vm::loadAllPhotos,

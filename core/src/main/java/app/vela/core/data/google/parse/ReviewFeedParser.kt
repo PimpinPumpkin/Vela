@@ -12,12 +12,13 @@ import kotlinx.serialization.json.intOrNull
  *  (payload[5] = true). The empty answer carries it too, and so does the LIMITED view: a place with
  *  hundreds of reviews answering 5 and "end" is Google limiting the session, which only the caller
  *  can judge against the place's own review count. */
-data class ReviewFeed(val reviews: List<Review>, val end: Boolean)
+data class ReviewFeed(val reviews: List<Review>, val end: Boolean, val nextToken: String? = null)
 
 /**
  * The review feed RPC (`batchexecute?rpcids=qv9Egd`), the request Google's own place page makes
  * for its Reviews tab. Envelope `)]}'` + chunked `[["wrb.fr","qv9Egd","<payload json>",...]]`.
- * Payload (captured 2026-09-23): [2] the reviews, [5] true when no page follows.
+ * Payload (captured 2026-09-23): [1] the next page token (assumed, see below), [2] the reviews,
+ * [5] true when no page follows.
  * Each review: [0][0] id, [0][1][4][5][0] author, [0][1][4][5][1] avatar, [0][1][6] "7 months ago",
  * [0][2][0][0] stars, [0][2][15][0][0] text, [0][2][2][k][1][6][0] the review's photos.
  * An empty payload (`[null,null,null,null,null,true]`) is what a request WITHOUT the
@@ -32,6 +33,11 @@ object ReviewFeedParser {
         val payloadStr = (row.getOrNull(2) as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return null
         val payload = runCatching { json.parseToJsonElement(payloadStr) as JsonArray }.getOrNull() ?: return null
         val end = (payload.getOrNull(5) as? JsonPrimitive)?.booleanOrNull == true
+        // The page token. UNVERIFIED (2026-09-23): every capture so far was an end-of-list reply
+        // with payload[1] null; a continuing reply is assumed to carry the next token there, the
+        // slot before the list, as Google's other paged RPCs do. A non-string leaves it null, so a
+        // wrong guess only means no "More reviews" button.
+        val token = (payload.getOrNull(1) as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf { it.isNotBlank() && !end }
         val list = payload.getOrNull(2) as? JsonArray ?: return ReviewFeed(emptyList(), end)
         val reviews = list.mapNotNull { entry ->
             val r = (entry as? JsonArray)?.getOrNull(0) as? JsonArray ?: return@mapNotNull null
@@ -50,7 +56,7 @@ object ReviewFeedParser {
                 photos = photos,
             )
         }
-        return ReviewFeed(reviews, end)
+        return ReviewFeed(reviews, end, token)
     }
 
     private fun JsonElement?.at(vararg path: Int): JsonElement? {

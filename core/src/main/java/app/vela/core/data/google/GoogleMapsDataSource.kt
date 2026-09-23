@@ -526,19 +526,21 @@ class GoogleMapsDataSource @Inject constructor(
         runCatching { ReviewsParser.parse(GoogleResponse.parse(get(url))) }.getOrDefault(emptyList())
     }
 
-    override suspend fun reviewFeed(featureId: String, hl: String?): app.vela.core.data.google.parse.ReviewFeed? = io {
+    override suspend fun reviewFeed(featureId: String, hl: String?, pageToken: String): app.vela.core.data.google.parse.ReviewFeed? = io {
         if (app.vela.core.data.NoGoogle.enabled) return@io null
         if (!featureId.contains(":")) return@io null
         session.ensure()
         val cal = calibration.current()
-        val inner = cal.reviewFeedProto.replace("{FID}", featureId).replace("{TOKEN}", "")
+        // The token rides inside a JSON string inside the proto: keep it to the base64url alphabet.
+        val token = pageToken.filter { it.isLetterOrDigit() || it == '-' || it == '_' || it == '=' }
+        val inner = cal.reviewFeedProto.replace("{FID}", featureId).replace("{TOKEN}", token)
         val freq = "[[[\"qv9Egd\",${JsonPrimitive(inner)},null,\"generic\"]]]"
         val url = "https://www.google.com/maps/_/MapsWizUi/data/batchexecute?rpcids=qv9Egd&source-path=%2Fmaps&hl=en&gl=us" +
             "&_reqid=${(1000..99999).random()}&rt=c"
         runCatching { app.vela.core.data.google.parse.ReviewFeedParser.parse(post(url.localized(hl), "f.req=${freq.enc()}&")) }
             .onFailure { diag.record("reviews", "feed failed: ${it.javaClass.simpleName} ${it.message}") }
             .getOrNull()
-            ?.also { diag.record("reviews", "feed: ${it.reviews.size} review(s)${if (it.end) ", end of list" else ""}") }
+            ?.also { diag.record("reviews", "feed${if (token.isNotEmpty()) " page" else ""}: ${it.reviews.size} review(s)${if (it.end) ", end of list" else ""}${if (it.nextToken != null) ", more to come" else ""}") }
     }
 
     override suspend fun placePhotos(featureId: String): List<app.vela.core.model.Photo> = io {
