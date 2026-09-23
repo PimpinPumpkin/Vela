@@ -1419,18 +1419,20 @@ Defaults that make the safe path the easy one:
   complaint. A real business sitting on the point still wins (if the geocode has a rating/category it's
   shown as-is). Device-verified: tapping a numbered house label opens exactly that number, not the
   neighbor the raw geocode returned; a bare footprint resolves to the building's own address.
-- **A PLACE TAP LOADS A FIRST BATCH, NOT EVERYTHING (2026-09-23).** Photos stop at 6 (`WebPhotoFetcher
-  .fetch(early = true)`: the walk script finishes at the cap, and an early result is never cached,
-  since a later full walk must not get the 6 back from cache), reviews at 10 (`WebReviewsFetcher
-  .fetch(cap =)`), and the details page is skipped when the search reply already has popular times,
-  a review count, an address and weekly hours. "More photos" (`loadAllPhotos`, `morePhotosFor` in
-  state) and the All reviews page fetch the rest; Settings > Performance "Load all photos and
-  reviews" (`FullPlaceLoad`) restores the old full load. Why: every hidden page is Google's whole web
-  app (hundreds of requests), a tap used to open three of them, and an afternoon of heavy traffic
-  from one IP put it into Google's limited view (5 reviews, no paging). The search reply carries ONE
-  photo only; "the sheet shows a few instantly" was the walk, not the search. The cheap 1-request
-  review feed (`qv9Egd` with `x-maps-diversion-context-bin: CAE=`, probed on branch cronet-probe) is
-  the next step once a full reply's page token is captured on a network that is not limited.
+- **A PLACE TAP IS A FEW REQUESTS, NOT A FEW HUNDRED (2026-09-23).** First photos: ONE `hspqX`
+  request (`placePhotos`, dated), retried once after ~1.5 s when empty (a fresh Google session's
+  first seconds answer stripped: seen 0, then 10), then the capped page walk as fallback. First
+  reviews: ONE `qv9Egd` request (`reviewFeed`, `ReviewFeedParser`, in `reviewsHl()`), same retry,
+  then the capped scrape; `reviewsLimited` shows "Google is showing a shorter list" in the tab.
+  Details page only when the search reply lacks popular times, a review count, an address or hours
+  (the plain focused search comes back WITHOUT popular times, so it is only tried when they are
+  already present); after its first warm in a session it is one request from the warm page.
+  "More photos" (`loadAllPhotos`) runs the full walk (Menu tab), with the photo-dates join on again
+  (`photoDatesRpc` default 1). `warmPlaceWebViews` is GONE (two Google page loads per search), and
+  the ambient neighbor prefetch (~60 requests per settle) runs in Google-only mode only. Settings >
+  Performance "Load all photos and reviews" (`FullPlaceLoad`) restores the old full load. The
+  health probe checks both RPCs, so a changed header value fails the daily run. `VelaPlaceLoad`
+  logcat lines say which path each piece took.
 - **Place-content toggles (2026-07-08):** `ShowReviews` / `LoadPhotos` reactive holders
   (`ui/PlaceContent.kt`, same shape as `LiveReviews`, init in VelaApp, rows in Settings → Map).
   They gate BOTH fetch (`fetchReviews`/`fetchPhotos` first line) and render (PlaceSheet `hasReviews`
@@ -3147,6 +3149,12 @@ architecture note.
   consume `SheetPalette.bg(dark, amoled)` with `SheetPalette.BorderAmoled`, while `ManeuverBanner`
   keeps its distinct teal container accent for instruction hierarchy.
 
+- **2026-09-23: the listentitiesreviews RPC is still dead, but the REVIEW FEED (`qv9Egd`) and the
+  PHOTO GALLERY (`hspqX`) answer plain requests with `x-maps-diversion-context-bin: CAE=`
+  (`Calibration.rpcContext`, sent by `GoogleMapsDataSource.post`).** A place tap's first page of
+  reviews (`reviewFeed`, `ReviewFeedParser`) and first photos (`placePhotos`, with dates) are one
+  request each now; the WebView scrape and walk are fallbacks and "More photos". The notes below
+  that call the photo RPC and photo dates bot-gated were a missing header, not bot detection.
 - **The reviews RPC is DEAD, do not re-calibrate it (proven 2026-07-19):** the
   `listentitiesreviews` endpoint 404s for EVERYONE now - verified with a valid live feature id
   from both a raw client and a real logged-out Chromium session. Nothing calls
@@ -3291,7 +3299,8 @@ architecture note.
   forests read as flat green like Google, not icon confetti. Nav mute/steps/End are 54dp.
   The search bar hides while an expanded place sheet covers it (its sliver still took taps).
 
-- **Photo DATES: every keyless in-page route is DEAD (probed exhaustively 2026-07-11).** The
+- **(SUPERSEDED 2026-09-23: the hspqX RPC answers with dates once it carries the rpcContext
+  header, see the review feed note.) Photo DATES: every keyless in-page route is DEAD (probed exhaustively 2026-07-11).** The
   place page's APP_INITIALIZATION_STATE carries NO photo urls at walk time (census: one big
   string leaf, zero googleusercontent, zero "ago") - photos are id-referenced and urls come
   from lazy responses. The walk's `aisDates()`/`onDates` plumbing stays (inert, one-shot,

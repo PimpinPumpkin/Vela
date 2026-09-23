@@ -355,12 +355,13 @@ so a recalibrated template survives.
   byte-identical to the live web client's, injected time fields are ignored or rejected. The
   honest stand-in is the typical spread `[10][4]`.
 - The `listentitiesreviews` RPC. It 404s for everyone and only ever served avatars.
-- The `hspqX` photo RPC. It is bot-degraded per session to a Street-View-only reply; retries
-  in the same session return byte-identical degraded bodies. The page DOM walk replaces it.
-- Per-photo upload dates. The RPC that carries them returns zero photos to an automated
-  browser even with the page's own fresh token, and the place page does not embed photo URLs
-  at walk time. The date-join plumbing stays in place and inert, and the RPC is not sent: the
-  `photoDatesRpc` tuning dial (default 0) turns it back on from the signed calibration.
+- (Revived 2026-09-23) The `hspqX` photo RPC and the `qv9Egd` review feed. Both answer a plain
+  request that carries `x-maps-diversion-context-bin: CAE=` (`Calibration.rpcContext`), the one
+  header the Maps web app sends on its RPCs; without it the feed answers empty and the gallery
+  answers zero photos, which read for months as bot-gating. See 3.7.
+- (Revived 2026-09-23) Per-photo upload dates come with the `hspqX` reply once it carries the
+  rpcContext header; the `photoDatesRpc` dial now defaults to 1 (0 stops the extra request the
+  full walk makes for the dates join).
 - Review "helpful" counts, which are login-gated to zero for logged-out sessions.
 - EV charger detail (type marker only), the recently-opened badge, and live incidents (Google
   serves binary vector tiles; Waze's feed is reCAPTCHA-gated).
@@ -461,19 +462,19 @@ Constraints:
 
 ### 3.7 Hidden WebView scrapes
 
-**What a place tap loads (2026-09-23).** The tap's search reply already carries popular times, the
-review count, hours, the editorial blurb, the owner description and ONE hero photo. The details page
-(`WebPopularTimesFetcher`) loads only when that reply lacks popular times, the review count, an
-address or a weekly hours list; it used to also require an owner description, which most businesses
-lack, so it loaded on nearly every tap. The photo walk stops at `FIRST_PHOTOS` (6, `early = true`:
-the script finishes as soon as it holds that many, the result is never cached as the gallery) and
-the strip ends in a "More photos" tile (`MapViewModel.loadAllPhotos`, the full walk); the review
-scrape stops at `FIRST_REVIEWS` (10) and the All reviews page holds the rest. Settings >
-Performance "Load all photos and reviews" (`FullPlaceLoad`, pref `place_full_load`, off) restores
-the whole walk and 50 reviews. Each hidden page is Google's full web app, a few hundred requests per
-load, and request volume from one network is what puts it into Google's limited view (the 5-review
-feed, issue #602). Measured on the 4a: the first-batch walk finishes at about 3 s, where the full one
-takes about 14 s; "More photos" then walked 80.
+**What a place tap loads (2026-09-23).** Photos: one `hspqX` request (`MapDataSource.placePhotos`,
+each photo dated), one jittered ~1.5 s retry when it answers empty (a new Google session's first
+seconds are stripped), and only then the page walk capped at `FIRST_PHOTOS` (6, `early = true`).
+Reviews: one `qv9Egd` request (`reviewFeed`, first page, in the reviews language), same retry, then
+the scrape capped at `FIRST_REVIEWS` (10); a limited-view reply sets `reviewsLimited`. Both RPCs need
+`Calibration.rpcContext` as `x-maps-diversion-context-bin`. The details page loads only when the
+search reply lacks popular times, a review count, an address or weekly hours; a plain focused search
+is tried first only when popular times are already present, because sent plainly it comes back
+without them. "More photos" runs the full walk (Menu tab) with the dates join. No hidden page is
+warmed after a search, and the ambient neighbor prefetch runs in Google-only mode. Settings >
+Performance "Load all photos and reviews" (`FullPlaceLoad`) restores the full walk and 50 reviews.
+Per tap after the session's first details warm: at most the resolve search, one or two photo
+requests, one or two feed requests and one details request, against several hundred before.
 
 Five fetchers plus the visible reviews panel run Google's own JS anonymously, because a
 rendered page is served data a bare request is not. They share `app/web/HiddenWebView`, which

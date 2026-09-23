@@ -526,6 +526,21 @@ class GoogleMapsDataSource @Inject constructor(
         runCatching { ReviewsParser.parse(GoogleResponse.parse(get(url))) }.getOrDefault(emptyList())
     }
 
+    override suspend fun reviewFeed(featureId: String, hl: String?): app.vela.core.data.google.parse.ReviewFeed? = io {
+        if (app.vela.core.data.NoGoogle.enabled) return@io null
+        if (!featureId.contains(":")) return@io null
+        session.ensure()
+        val cal = calibration.current()
+        val inner = cal.reviewFeedProto.replace("{FID}", featureId).replace("{TOKEN}", "")
+        val freq = "[[[\"qv9Egd\",${JsonPrimitive(inner)},null,\"generic\"]]]"
+        val url = "https://www.google.com/maps/_/MapsWizUi/data/batchexecute?rpcids=qv9Egd&source-path=%2Fmaps&hl=en&gl=us" +
+            "&_reqid=${(1000..99999).random()}&rt=c"
+        runCatching { app.vela.core.data.google.parse.ReviewFeedParser.parse(post(url.localized(hl), "f.req=${freq.enc()}&")) }
+            .onFailure { diag.record("reviews", "feed failed: ${it.javaClass.simpleName} ${it.message}") }
+            .getOrNull()
+            ?.also { diag.record("reviews", "feed: ${it.reviews.size} review(s)${if (it.limited) ", limited view" else ""}") }
+    }
+
     override suspend fun placePhotos(featureId: String): List<app.vela.core.model.Photo> = io {
         if (app.vela.core.data.NoGoogle.enabled) return@io emptyList()
         // batchexecute `hspqX` (/MapsPhotoService.ListEntityPhotos) — a keyless POST
@@ -537,6 +552,7 @@ class GoogleMapsDataSource @Inject constructor(
         session.ensure()
         val cal = calibration.current()
         val inner = cal.photosProto.replace("{FID}", featureId).replace("{COUNT}", PHOTO_COUNT.toString())
+            .replace("[1200,1000]", "[${BrowserViewport.width},${BrowserViewport.height}]") // this install's window, not one shared size
         // JsonPrimitive(...).toString() = the proto as a properly-escaped JSON string literal.
         val freq = "[[[\"hspqX\",${JsonPrimitive(inner)},null,\"generic\"]]]"
         runCatching { PhotosParser.parse(post(cal.photosEndpoint, "f.req=${freq.enc()}")) }.getOrDefault(emptyList())
@@ -1335,6 +1351,7 @@ class GoogleMapsDataSource @Inject constructor(
             .post(body.toRequestBody(media))
             .browserXhrHeaders(cal.userAgent, cal.secChUa, MAPS_REFERER)
             .header("X-Same-Domain", "1") // batchexecute expects this from a same-origin caller
+            .apply { if (cal.rpcContext.isNotBlank()) header("x-maps-diversion-context-bin", cal.rpcContext) } // the gate; see Calibration.rpcContext
             .build()
         http.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) {

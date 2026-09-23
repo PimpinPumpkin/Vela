@@ -252,6 +252,8 @@ fun PlaceSheet(
     reviews: List<Review> = emptyList(),
     reviewsLoading: Boolean = false,
     reviewsFound: Int = 0,
+    /** Google served its limited view (a short review list): the tab says so. */
+    reviewsLimited: Boolean = false,
     photosLoading: Boolean = false,
     /** The strip holds the first batch only: end it with a "More photos" tile. */
     morePhotos: Boolean = false,
@@ -1291,7 +1293,7 @@ fun PlaceSheet(
             // The reviews tabs wait for the listing (the map's data has no reviews to show, and an
             // empty tab row would read as "no reviews"); pulse bars hold their place.
             if (resolving) SheetSkeleton(dim, listOf(260.dp, 220.dp, 240.dp), gap = 18.dp, top = 18.dp)
-            else PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onPanelOverscroll, onPanelOverscrollEnd, onPanelEngaged, reviewsEngaged.value)
+            else PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onPanelOverscroll, onPanelOverscrollEnd, onPanelEngaged, reviewsEngaged.value, reviewsLimited = reviewsLimited)
             }
             }
             }
@@ -3469,6 +3471,7 @@ private fun PlaceTabs(
     onPanelOverscrollEnd: (Float) -> Unit = {},
     onPanelEngaged: () -> Unit = {},
     panelEngaged: Boolean = false,
+    reviewsLimited: Boolean = false,
 ) {
     // A BARE bus stop (transit-category AND no rating, i.e. no real review content) shows only its
     // departure board + stop timeline - Reviews/About are noise there. But a RATED transit CENTER
@@ -3549,6 +3552,7 @@ private fun PlaceTabs(
                         onReadAll = if (app.vela.ui.LiveReviews.on.value && !app.vela.ui.GoogleFree.on.value && fid != null && fid.contains(":")) {
                             { showFullPanel = true }
                         } else null,
+                        limited = reviewsLimited,
                     )
                     reviewPhotos?.let { (urls, caps, start) ->
                         PhotoGallery(urls, caps, start) { reviewPhotos = null }
@@ -3664,6 +3668,7 @@ private fun ReviewsTab(
     dim: Color,
     onPhotoTap: (List<String>, Int, String?) -> Unit = { _, _, _ -> },
     onReadAll: (() -> Unit)? = null,
+    limited: Boolean = false,
 ) {
     // Search within the loaded reviews (author or text, case-insensitive). Resets per place.
     var reviewQuery by remember(place.id) { mutableStateOf("") }
@@ -3708,6 +3713,16 @@ private fun ReviewsTab(
         }
         // Entry to the full-screen live Google reviews — all of them, plus Google's own SORT and
         // server-side search. The label says so (the button used to just say "Read all").
+        // Google's limited view (issue #602): a short list and no more pages for this session or
+        // network. Say so, so a short list does not read as a broken sheet.
+        if (limited && !loading) {
+            Text(
+                stringResource(R.string.place_reviews_limited),
+                style = MaterialTheme.typography.bodySmall,
+                color = dim,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
         onReadAll?.let { open ->
             // Tonal pill, matching the sheet's action language, with the LOCAL search folded
             // into a circled magnifier beside it (progressive disclosure — see reviewSearchOpen).
