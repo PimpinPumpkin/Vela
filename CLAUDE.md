@@ -1419,6 +1419,14 @@ Defaults that make the safe path the easy one:
   complaint. A real business sitting on the point still wins (if the geocode has a rating/category it's
   shown as-is). Device-verified: tapping a numbered house label opens exactly that number, not the
   neighbor the raw geocode returned; a bare footprint resolves to the building's own address.
+- **PER-PLACE REQUESTS RIDE THE WEBVIEW'S AGED SESSION (2026-09-23, `core/net/AgedSession`, dial
+  `agedSession` default 1).** Details, photo pages and the review feed are tagged in
+  `GoogleMapsDataSource` (`get/post(aged = true)`), and `CronetTransport` sends a tagged request with
+  the WebView's cookies (`WebViewCookieJar`) instead of the app's in-memory jar. Found on the P9:
+  Target and Nugget in Davis came back three times with a count and NO popular times on the app's
+  fresh session, so the sheet decided "no popular times at this place"; the old details page had
+  them because it ran in the WebView's aged session. No page load and no `X-Requested-With`, so it
+  is also less of a Vela tell than the page it replaces.
 - **A PLACE TAP IS A FEW REQUESTS, NOT A FEW HUNDRED (2026-09-23).** First photos: ONE `hspqX`
   request (`placePhotos`, dated), retried once after ~2.5 s when empty (a fresh Google session's
   first seconds answer stripped: seen 0, then 10), then the capped page walk as fallback. First

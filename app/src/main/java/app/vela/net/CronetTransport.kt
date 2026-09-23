@@ -64,8 +64,13 @@ object CronetHolder {
  *  `GoogleTransport.interceptor` (google.com hosts only). Cookies stay in OkHttp's jar, redirects
  *  are followed like OkHttp does, Cronet decodes gzip/brotli. Throws IOException before answering
  *  when Cronet is off or broken, which GoogleTransport turns into a plain OkHttp request. */
-class CronetTransport(private val cookies: CookieJar) : Interceptor {
+class CronetTransport(
+    private val appCookies: CookieJar,
+    /** The WebView's Google session, for requests tagged [app.vela.core.net.AgedSession]. */
+    private val agedCookies: CookieJar? = null,
+) : Interceptor {
     private val logged = java.util.concurrent.atomic.AtomicInteger()
+    private val agedLogged = java.util.concurrent.atomic.AtomicInteger()
     private val executor = Executors.newCachedThreadPool { r -> Thread(r, "cronet-cb").apply { isDaemon = true } }
 
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -88,6 +93,8 @@ class CronetTransport(private val cookies: CookieJar) : Interceptor {
         }
         val b = engine.newUrlRequestBuilder(req.url.toString(), callback, executor).setHttpMethod(req.method)
         req.headers.forEach { (k, v) -> b.addHeader(k, v) }
+        val aged = agedCookies != null && req.tag(app.vela.core.net.AgedSession::class.java) != null
+        val cookies = if (aged) agedCookies!! else appCookies
         val jar = cookies.loadForRequest(req.url)
         if (jar.isNotEmpty() && req.header("Cookie") == null) b.addHeader("Cookie", jar.joinToString("; ") { "${it.name}=${it.value}" })
         req.body?.let { body ->
@@ -110,7 +117,7 @@ class CronetTransport(private val cookies: CookieJar) : Interceptor {
             i.allHeadersAsList.forEach { (k, v) -> if (!k.equals("content-encoding", true) && !k.equals("content-length", true)) add(k, v) }
         }.build()
         okhttp3.Cookie.parseAll(req.url, headers).takeIf { it.isNotEmpty() }?.let { cookies.saveFromResponse(req.url, it) }
-        if (logged.getAndIncrement() < 5) Log.i("VelaCronet", "google over cronet: ${req.url.encodedPath.take(40)} ${i.negotiatedProtocol} ${i.httpStatusCode}")
+        if ((if (aged) agedLogged else logged).getAndIncrement() < 5) Log.i("VelaCronet", "google over cronet: ${req.url.encodedPath.take(40)} ${i.negotiatedProtocol} ${i.httpStatusCode}${if (aged) " (aged session)" else ""}")
         val proto = when {
             i.negotiatedProtocol.startsWith("h3") || i.negotiatedProtocol.contains("quic") -> Protocol.QUIC
             i.negotiatedProtocol == "h2" -> Protocol.HTTP_2

@@ -538,7 +538,7 @@ class GoogleMapsDataSource @Inject constructor(
         val freq = "[[[\"qv9Egd\",${JsonPrimitive(inner)},null,\"generic\"]]]"
         val url = "https://www.google.com/maps/_/MapsWizUi/data/batchexecute?rpcids=qv9Egd&source-path=%2Fmaps&hl=en&gl=us" +
             "&_reqid=${(1000..99999).random()}&rt=c"
-        runCatching { app.vela.core.data.google.parse.ReviewFeedParser.parse(post(url.localized(hl), "f.req=${freq.enc()}&")) }
+        runCatching { app.vela.core.data.google.parse.ReviewFeedParser.parse(post(url.localized(hl), "f.req=${freq.enc()}&", aged = true)) }
             .onFailure { diag.record("reviews", "feed failed: ${it.javaClass.simpleName} ${it.message}") }
             .getOrNull()
             ?.also { diag.record("reviews", "feed${if (token.isNotEmpty()) " page" else ""}: ${it.reviews.size} review(s)${if (it.end) ", end of list" else ""}${if (it.nextToken != null) ", more to come" else ""}") }
@@ -553,7 +553,7 @@ class GoogleMapsDataSource @Inject constructor(
         val addr = place.address?.replace(',', ' ')?.replace(Regex("\\s+"), " ")?.trim()
         val query = if (addr.isNullOrBlank()) place.name else "${place.name} $addr"
         val url = "${cal.searchEndpoint}&q=${query.enc()}&pb=${SearchPb.build(query, place.location, cal.searchPb).enc()}".localized()
-        runCatching { app.vela.core.data.google.parse.PopularTimesParser.parse(get(url), place.featureId, cal.paths) }.getOrNull()
+        runCatching { app.vela.core.data.google.parse.PopularTimesParser.parse(get(url, aged = true), place.featureId, cal.paths) }.getOrNull()
     }
 
     override suspend fun placePhotoPage(featureId: String, pageToken: String): app.vela.core.data.google.parse.PhotoPage? = io {
@@ -575,7 +575,7 @@ class GoogleMapsDataSource @Inject constructor(
             }.getOrNull() ?: return@io null
         }
         val freq = "[[[\"hspqX\",${JsonPrimitive(inner)},null,\"generic\"]]]"
-        runCatching { app.vela.core.data.google.parse.PhotosParser.parsePage(post(cal.photosEndpoint, "f.req=${freq.enc()}")) }
+        runCatching { app.vela.core.data.google.parse.PhotosParser.parsePage(post(cal.photosEndpoint, "f.req=${freq.enc()}", aged = true)) }
             .onFailure { diag.record("photos", "gallery page failed: ${it.javaClass.simpleName}") }
             .getOrNull()
     }
@@ -594,7 +594,7 @@ class GoogleMapsDataSource @Inject constructor(
             .replace("[1200,1000]", "[${BrowserViewport.width},${BrowserViewport.height}]") // this install's window, not one shared size
         // JsonPrimitive(...).toString() = the proto as a properly-escaped JSON string literal.
         val freq = "[[[\"hspqX\",${JsonPrimitive(inner)},null,\"generic\"]]]"
-        runCatching { PhotosParser.parse(post(cal.photosEndpoint, "f.req=${freq.enc()}")) }.getOrDefault(emptyList())
+        runCatching { PhotosParser.parse(post(cal.photosEndpoint, "f.req=${freq.enc()}", aged = true)) }.getOrDefault(emptyList())
     }
 
     override suspend fun streetView(location: LatLng, preferStreet: String?): app.vela.core.model.StreetViewPano? = io {
@@ -1368,11 +1368,17 @@ class GoogleMapsDataSource @Inject constructor(
 
     // --- plumbing -----------------------------------------------------------
 
-    private fun get(url: String): String {
+    /** [aged]: a per-place request (details, photos, the review feed) that rides the WebView's aged
+     *  Google session when calibration `agedSession` is on (default 1), see [AgedSession]. */
+    private fun agedTag(b: Request.Builder, aged: Boolean): Request.Builder =
+        if (aged && calibration.current().tune("agedSession", 1.0) >= 0.5) b.tag(app.vela.core.net.AgedSession::class.java, app.vela.core.net.AgedSession) else b
+
+    private fun get(url: String, aged: Boolean = false): String {
         val cal = calibration.current()
         val req = Request.Builder()
             .url(url)
             .browserXhrHeaders(cal.userAgent, cal.secChUa, MAPS_REFERER)
+            .let { agedTag(it, aged) }
             .build()
         http.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) {
@@ -1382,7 +1388,7 @@ class GoogleMapsDataSource @Inject constructor(
         }
     }
 
-    private fun post(url: String, body: String): String {
+    private fun post(url: String, body: String, aged: Boolean = false): String {
         val cal = calibration.current()
         val media = "application/x-www-form-urlencoded;charset=UTF-8".toMediaType()
         val req = Request.Builder()
@@ -1391,6 +1397,7 @@ class GoogleMapsDataSource @Inject constructor(
             .browserXhrHeaders(cal.userAgent, cal.secChUa, MAPS_REFERER)
             .header("X-Same-Domain", "1") // batchexecute expects this from a same-origin caller
             .apply { if (cal.rpcContext.isNotBlank()) header("x-maps-diversion-context-bin", cal.rpcContext) } // the gate; see Calibration.rpcContext
+            .let { agedTag(it, aged) }
             .build()
         http.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) {
