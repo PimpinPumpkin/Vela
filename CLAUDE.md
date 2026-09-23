@@ -1420,7 +1420,7 @@ Defaults that make the safe path the easy one:
   shown as-is). Device-verified: tapping a numbered house label opens exactly that number, not the
   neighbor the raw geocode returned; a bare footprint resolves to the building's own address.
 - **A PLACE TAP IS A FEW REQUESTS, NOT A FEW HUNDRED (2026-09-23).** First photos: ONE `hspqX`
-  request (`placePhotos`, dated), retried once after ~1.5 s when empty (a fresh Google session's
+  request (`placePhotos`, dated), retried once after ~2.5 s when empty (a fresh Google session's
   first seconds answer stripped: seen 0, then 10), then the capped page walk as fallback. First
   reviews: ONE `qv9Egd` request (`reviewFeed`, `ReviewFeedParser`, in `reviewsHl()`), same retry,
   then the capped scrape; `reviewsLimited` shows "Google is showing a shorter list" in the tab.

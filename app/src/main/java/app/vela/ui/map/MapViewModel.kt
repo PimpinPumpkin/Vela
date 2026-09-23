@@ -2958,7 +2958,7 @@ class MapViewModel @Inject constructor(
                 // falling through to a whole page load (seen on the 4a: 0 photos, then 10).
                 var native = runCatching { dataSource.placePhotos(fid) }.getOrDefault(emptyList())
                 if (native.isEmpty()) {
-                    delay(app.vela.core.util.Jitter.around(1_500L))
+                    delay(app.vela.core.util.Jitter.around(2_500L))
                     if (_state.value.selected?.featureId != fid) return@launch
                     native = runCatching { dataSource.placePhotos(fid) }.getOrDefault(emptyList())
                 }
@@ -3131,15 +3131,19 @@ class MapViewModel @Inject constructor(
             // Google web app plus a feed request per scroll) is the fallback, and the full load.
             if (!fullLoad) {
                 var feed = runCatching { dataSource.reviewFeed(fid, app.vela.web.WebReviewsFetcher.reviewsHl()) }.getOrNull()
-                if (feed?.reviews.isNullOrEmpty() && expected > 0) { // same fresh-session retry as the photos
-                    delay(app.vela.core.util.Jitter.around(1_500L))
+                // Same fresh-session retry as the photos. Unless the count is KNOWN to be 0: a stripped
+                // search reply (the same fresh-session window) has no count at all.
+                if (feed?.reviews.isNullOrEmpty() && p.reviewCount != 0) {
+                    delay(app.vela.core.util.Jitter.around(2_500L))
                     if (_state.value.selected?.featureId != fid) return@launch
                     feed = runCatching { dataSource.reviewFeed(fid, app.vela.web.WebReviewsFetcher.reviewsHl()) }.getOrNull()
                 }
-                android.util.Log.i("VelaPlaceLoad", "reviews: feed ${feed?.reviews?.size ?: -1}${if (feed?.limited == true) " limited" else ""}${if (feed?.reviews.isNullOrEmpty()) ", scraping the page" else ""}")
+                // Limited view = the feed ends after a short list for a place that has more.
+                val limited = feed != null && feed.end && feed.reviews.isNotEmpty() && feed.reviews.size < minOf(FIRST_REVIEWS, expected)
+                android.util.Log.i("VelaPlaceLoad", "reviews: feed ${feed?.reviews?.size ?: -1}${if (limited) " (limited view)" else ""}${if (feed?.reviews.isNullOrEmpty()) ", scraping the page" else ""}")
                 if (feed != null && feed.reviews.isNotEmpty()) {
                     if (_state.value.selected?.featureId == fid) {
-                        _state.update { it.copy(reviews = feed.reviews, reviewsLoading = false, reviewsFound = 0, reviewsLimited = feed.limited) }
+                        _state.update { it.copy(reviews = feed.reviews, reviewsLoading = false, reviewsFound = 0, reviewsLimited = limited) }
                     }
                     return@launch
                 }

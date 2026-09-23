@@ -171,7 +171,7 @@ class GoogleHealthProbeTest {
             val feed = app.vela.core.data.google.parse.ReviewFeedParser.parse(rpc("qv9Egd", cal.reviewFeedProto.replace("{FID}", coop).replace("{TOKEN}", "")))
                 ?: error("unreadable reply")
             check(feed.reviews.isNotEmpty()) { "empty feed (rpcContext no longer opens it?)" }
-            "${feed.reviews.size} reviews${if (feed.limited) " (Google's limited view)" else ""}"
+            "${feed.reviews.size} reviews${if (feed.end && feed.reviews.size < 10) " (end after a short list: Google's limited view)" else ""}"
         }
         check("photos", results) {
             val photos = app.vela.core.data.google.parse.PhotosParser.parse(rpc("hspqX", cal.photosProto.replace("{FID}", coop).replace("{COUNT}", "20")))

@@ -36,7 +36,7 @@ class ReviewFeedParserTest {
             review("Sam Sample", 2, "2 years ago", null, emptyList()),
         )), JsonNull, JsonNull))
         val feed = ReviewFeedParser.parse(envelope(payload))!!
-        assertFalse(feed.limited)
+        assertFalse(feed.end)
         assertEquals(2, feed.reviews.size)
         val a = feed.reviews[0]
         assertEquals("Alex Example", a.author)
@@ -48,11 +48,11 @@ class ReviewFeedParserTest {
         assertNull(feed.reviews[1].text)
     }
 
-    @Test fun `the limited view is flagged`() {
+    @Test fun `the end of the list is flagged`() {
         val payload = JsonArray(listOf(JsonNull, JsonNull, JsonArray(listOf(review("Alex Example", 4, "a week ago", "Fine.", emptyList()))),
             JsonNull, JsonNull, JsonPrimitive(true), buildJsonArray { add(true) }))
         val feed = ReviewFeedParser.parse(envelope(payload))!!
-        assertTrue(feed.limited)
+        assertTrue(feed.end)
         assertEquals(1, feed.reviews.size)
     }
 

@@ -463,7 +463,7 @@ Constraints:
 ### 3.7 Hidden WebView scrapes
 
 **What a place tap loads (2026-09-23).** Photos: one `hspqX` request (`MapDataSource.placePhotos`,
-each photo dated), one jittered ~1.5 s retry when it answers empty (a new Google session's first
+each photo dated), one jittered ~2.5 s retry when it answers empty (a new Google session's first
 seconds are stripped), and only then the page walk capped at `FIRST_PHOTOS` (6, `early = true`).
 Reviews: one `qv9Egd` request (`reviewFeed`, first page, in the reviews language), same retry, then
 the scrape capped at `FIRST_REVIEWS` (10); a limited-view reply sets `reviewsLimited`. Both RPCs need

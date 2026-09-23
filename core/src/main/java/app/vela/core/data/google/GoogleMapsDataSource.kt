@@ -538,7 +538,7 @@ class GoogleMapsDataSource @Inject constructor(
         runCatching { app.vela.core.data.google.parse.ReviewFeedParser.parse(post(url.localized(hl), "f.req=${freq.enc()}&")) }
             .onFailure { diag.record("reviews", "feed failed: ${it.javaClass.simpleName} ${it.message}") }
             .getOrNull()
-            ?.also { diag.record("reviews", "feed: ${it.reviews.size} review(s)${if (it.limited) ", limited view" else ""}") }
+            ?.also { diag.record("reviews", "feed: ${it.reviews.size} review(s)${if (it.end) ", end of list" else ""}") }
     }
 
     override suspend fun placePhotos(featureId: String): List<app.vela.core.model.Photo> = io {
