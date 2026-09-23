@@ -153,6 +153,13 @@ Roughly in the order they are worth doing. Each one is small enough for a single
   the region's language when the phone's differs and keep the English copy for the sheet, or
   bake a romanized name into the archive where Overture carries none (it has no alternate names
   in Japan). Needs a device in the region; not chased blind.
+- **Cronet instead of OkHttp for Google requests (2026-09-23, trial on branch cronet-probe).** OkHttp's
+  TLS handshake and HTTP/2 settings are unmistakably OkHttp while the UA claims Chrome; Cronet is
+  Chromium's own stack and matched desktop and Android Chromium exactly except for three
+  signature algorithms newer than Maven's 143. `cronet-build.yml` builds it from source at the
+  Android stable tag (arm64 only, untested on a runner yet). Open: whether a public runner fits the
+  build, the OsmAnd protobuf relocation (the jar must live on a release, not in git), size (~6 MB
+  arm64), and keeping the POST shim out (it broke the review feed).
 - **iOS (2026-09-13, not started).** `:core` is plain Kotlin and would move to Kotlin
   Multiplatform with the Android-only bits (SQLite stores, WebView bridges, LocationManager)
   behind expect/actual seams; MapLibre has an iOS SDK, sherpa-onnx ships iOS builds, the hidden
