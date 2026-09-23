@@ -3125,6 +3125,19 @@ architecture note.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.
+- **Drive papercuts (2026-09-23, user reports).** (1) The ROUTE LINE FLICKERED because
+  `applyData` gated the route upload on IDENTITY while the nav ticker keys on the polyline's
+  CONTENT: a recheck that adopts a same-geometry route (traffic or steps upgrade) re-seeded the
+  line (tail cleared and hidden, ahead reset) and the un-restarted ticker left it wrong until its
+  next ~300 m slide. Equal geometry now skips the re-seed, and a `routeTrafficSpans` change sets
+  `splitReset` so new traffic repaints in place. (2) The road PILL vanished on ramps (the ramp leg
+  has no name or ref): `navRoadLabel` falls back to the road the next instruction names. (3) A
+  plate camera on a signal mast stacked its badge on the stoplight: badges within
+  `FLOCK_NUDGE_M` (25 m) of a drawn light or stop sign get `FLOCK_NUDGE_PROP` and a screen-space
+  `iconOffset` up and to the right (cones stay on the point). (4) The faster-route offer plays
+  `VoiceGuide.fasterRouteChime` (two RISING notes, the reroute chime falls) `FASTER_CHIME_LEAD_MS`
+  before the spoken line, and the card wears `secondaryContainer` with a primary pill like the
+  update card and its own countdown bar (it was the one tertiary card in the stack).
 - **A REGION DOWNLOAD IS ONE FLOW UNDER ONE CARD (2026-09-23, user report).** `downloadRoutingGraph`
   runs obf, then the place pack (`downloadPoiPack(chained = true)`, which neither clears the card nor
   says "ready"), then the places file and the map (`fetchRegionArchives`, step 1 / 2, percent on

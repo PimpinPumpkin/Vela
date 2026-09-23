@@ -1257,13 +1257,7 @@ fun MapScreen(
         // and until the ticker has reported a puck position.
         val roadLabelMode = app.vela.ui.RoadLabel.mode.value
         if (state.navigating && !pipUi && state.previewStepIndex == null && roadLabelMode != app.vela.ui.RoadLabel.OFF && roadLabelMode != app.vela.ui.RoadLabel.IN_BAR) {
-            val liveIdx = state.nav.stepIndex
-            // The road you are ON right now: the leg's road, or the last silent rename already
-            // passed on it (traveled = leg length minus what is left to the next turn).
-            val onRoad = state.activeRoute?.maneuvers?.getOrNull(liveIdx - 1)?.let { m ->
-                val (name, ref) = m.roadAt(m.distanceMeters - state.nav.distanceToNextManeuver)
-                ref?.takeIf { r -> r.isNotBlank() } ?: name?.takeIf { r -> r.isNotBlank() }
-            }
+            val onRoad = navRoadLabel(state)
             // Composition reads only "do we have a position"; the value itself is read in layout.
             val havePuck = puckScreen.value != null
             if (onRoad != null && (havePuck || roadLabelMode == app.vela.ui.RoadLabel.BAR)) {
@@ -5136,9 +5130,13 @@ private fun FasterRouteCard(
         modifier
             .fillMaxWidth()
             .onFocusChanged { held = it.hasFocus },
+        // The same dress as every other card in the stack (update, downloads, notices) and the
+        // same pair as its own countdown bar (primary on secondaryContainer): it used to be the one
+        // tertiary card with a primary bar inside, which read as a different kind of thing
+        // (user 2026-09-23).
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         ),
     ) {
         Row(
@@ -5153,22 +5151,19 @@ private fun FasterRouteCard(
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-            // Explicit contrast pairs, not the button defaults: under Material You the default
-            // TextButton primary and this card's tertiaryContainer both derive from the wallpaper
-            // and routinely land on near-identical pastels - the "No" all but vanished and the
-            // "Switch" fill could blend into the card (user 2026-07-14). onTertiaryContainer is
-            // contrast-guaranteed against tertiaryContainer in every scheme, so the dismiss reads
-            // everywhere, and the confirm wears the inverse fill for the same guarantee.
+            // The dismiss keeps an explicit contrast pair: under Material You a default primary
+            // TextButton can land on the same pastel as the card (the "No" all but vanished,
+            // user 2026-07-14); onSecondaryContainer is guaranteed against secondaryContainer. The
+            // confirm is the app's filled primary pill, like the update card's, in the same color
+            // as the countdown bar under it.
             TextButton(
                 onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onTertiaryContainer),
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSecondaryContainer),
             ) { Text(stringResource(R.string.mapscreen_no)) }
             Button(
                 onClick = onSwitch,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.tertiaryContainer,
-                ),
+                shape = CircleShape,
+                modifier = Modifier.dpadHighlight(CircleShape),
             ) { Text(stringResource(R.string.mapscreen_switch)) }
         }
         // INSIDE the card, where every other progress bar in the app sits (user 2026-09-18: the
@@ -5698,15 +5693,28 @@ private fun routeBubblesFor(
     }
 }
 
+/** The road the pill names while navigating: the one you are ON (the leg's road, or the last
+ *  silent rename already passed on it, ref first), else, on an unnamed stretch such as an on- or
+ *  off-ramp, the road it leads onto, the one the next instruction names. The pill used to vanish
+ *  the moment a ramp began (user 2026-09-23), which is exactly when the driver wants to know where
+ *  the lane is taking them. */
+private fun navRoadLabel(state: MapUiState): String? {
+    val mans = state.activeRoute?.maneuvers ?: return null
+    val i = state.nav.stepIndex
+    mans.getOrNull(i - 1)?.let { m ->
+        val (name, ref) = m.roadAt(m.distanceMeters - state.nav.distanceToNextManeuver)
+        (ref?.takeIf { it.isNotBlank() } ?: name?.takeIf { it.isNotBlank() })?.let { return it }
+    }
+    return mans.getOrNull(i)?.let { next -> next.ref?.takeIf { it.isNotBlank() } ?: next.road?.takeIf { it.isNotBlank() } }
+}
+
 /** The road you are on, for the "Inside the bottom bar" road-name placement (issue #553), or null
  *  when that placement is not chosen or there is nothing to show. Same source as the floating
  *  pill: the leg's road, or the last silent rename already passed on it, ref first. */
 private fun barRoadName(state: MapUiState): String? {
     if (app.vela.ui.RoadLabel.mode.value != app.vela.ui.RoadLabel.IN_BAR) return null
     if (!state.navigating || state.previewStepIndex != null) return null
-    val m = state.activeRoute?.maneuvers?.getOrNull(state.nav.stepIndex - 1) ?: return null
-    val (name, ref) = m.roadAt(m.distanceMeters - state.nav.distanceToNextManeuver)
-    val road = ref?.takeIf { it.isNotBlank() } ?: name?.takeIf { it.isNotBlank() } ?: return null
+    val road = navRoadLabel(state) ?: return null
     if (state.roadNameLatin.isEmpty()) return road
     return app.vela.core.voice.SpokenScript.forDisplay(road, app.vela.ui.AppLocale.effective().language, state.roadNameLatin)
 }

@@ -714,6 +714,8 @@ class NavSession @Inject constructor(
             if (trafficAware && candidate.hasRealSteps && saving > FASTER_THRESHOLD_S && plausible) {
                 note("recheck: offering faster route, saves ${saving.toInt()} s (${candidate.maneuvers.size} steps)")
                 _state.update { it.copy(fasterRoute = candidate, fasterSavingSeconds = saving) }
+                voice.fasterRouteChime()
+                kotlinx.coroutines.delay(FASTER_CHIME_LEAD_MS) // let the chime finish before the voice
                 voice.speak(
                     app.vela.core.i18n.NavStringsRegistry.current()
                         .fasterRouteAvailable((saving / 60).toInt().coerceAtLeast(1)),
@@ -1003,6 +1005,7 @@ class NavSession @Inject constructor(
         const val SAME_COURSE_M = 250.0
         const val MIN_RECHECK_DISTANCE_M = 1_500.0 // don't bother near the destination
         const val FASTER_THRESHOLD_S = 90.0        // only offer if it saves real time
+        const val FASTER_CHIME_LEAD_MS = 450L       // the faster-route chime, then the spoken offer
         const val REROUTE_COOLDOWN_MS = 10_000L    // min gap between ADOPTED reroutes (no reroute storms)
         // Deadline on one reroute FETCH: generous next to Google's 1-3 s but far under the retry
         // ladders' worst case; past it the position the request was computed from is stale anyway.

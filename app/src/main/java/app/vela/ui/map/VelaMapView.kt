@@ -227,6 +227,11 @@ private const val FLOCK_DIR_LAYER = "vela-flock-dir" // facing cone under the ba
 private const val FLOCK_DIR_IMG = "vela-flock-cone"
 private const val FLOCK_DIR_PROP = "dir"
 private const val FLOCK_COUNT_PROP = "cams" // heads on one corner; the badge shows "xN" past 1
+// A plate camera is usually mounted on a signal mast, so its badge sat squarely on the stoplight
+// icon (user 2026-09-23). Badges with a drawn control this close are nudged up and to the right in
+// SCREEN pixels, which keeps the two apart at every zoom; the cones stay on the real point.
+private const val FLOCK_NUDGE_PROP = "nudge"
+private const val FLOCK_NUDGE_M = 25.0
 private const val TRANSIT_STOPS_SRC = "vela-transit-stops-src" // canonical GTFS stops (Transitous)
 private const val TRANSIT_STOPS_LAYER = "vela-transit-stops"
 private const val TRANSIT_STOP_IMG = "vela-transit-stop"
@@ -313,6 +318,7 @@ private var lastAccuracyM: Float? = null
 private var parkingApplied = false // distinguishes "never applied" from "applied null"
 private var lastAppliedSvPose: DoubleArray? = null // Street View pose identity-gate (same pattern)
 private var lastAppliedControls: List<app.vela.core.data.TrafficControl>? = null
+private var lastFlockControls: List<app.vela.core.data.TrafficControl>? = null
 private var lastAppliedFlock: List<app.vela.core.data.AlprCamera>? = null
 private var lastAppliedSpeedCams: List<app.vela.core.data.SpeedCamera>? = null
 private var lastAppliedTransitStops: List<app.vela.core.data.transit.Transitous.MapStop>? = null
@@ -845,6 +851,9 @@ fun VelaMapView(
     // ahead line's gradient is only re-uploaded when the cut piece slides, so without this only
     // the 400 m around the arrow changed color and the rest stayed blue (4a, 2026-09-21).
     LaunchedEffect(routeColor) { splitReset[0] = true; lastGradM[0] = -1e9 }
+    // New traffic on the SAME line (the recheck's upgrade) repaints the same way, without the
+    // clear-and-reseed a real route swap gets (user 2026-09-23: that reseed was the flicker).
+    LaunchedEffect(routeTrafficSpans) { splitReset[0] = true; lastGradM[0] = -1e9 }
     val mPerPxHolder = remember { doubleArrayOf(10.0) } // meters/pixel at the camera (scale-bar feed) —
                                                         // sizes the split-update throttle to sub-pixel
     val lastScaleReport = remember { doubleArrayOf(-1.0) } // last mpp PUSHED to compose (gate, see reportScale)
@@ -4789,6 +4798,12 @@ private fun ensureLayers(style: Style) {
                 setProperties(
                     PropertyFactory.iconImage(FLOCK_IMG),
                     PropertyFactory.iconSize(flockSize),
+                    PropertyFactory.iconOffset(
+                        Expression.switchCase(
+                            Expression.has(FLOCK_NUDGE_PROP), Expression.literal(arrayOf(11f, -11f)),
+                            Expression.literal(arrayOf(0f, 0f)),
+                        ),
+                    ),
                     PropertyFactory.iconAllowOverlap(true), // never yields itself...
                     PropertyFactory.iconIgnorePlacement(false), // ...and later symbols (street names) dodge it
                     PropertyFactory.iconPadding(2f),
@@ -4831,6 +4846,12 @@ private fun ensureLayers(style: Style) {
                 setProperties(
                     PropertyFactory.iconImage(FLOCK_IMG),
                     PropertyFactory.iconSize(flockSize),
+                    PropertyFactory.iconOffset(
+                        Expression.switchCase(
+                            Expression.has(FLOCK_NUDGE_PROP), Expression.literal(arrayOf(11f, -11f)),
+                            Expression.literal(arrayOf(0f, 0f)),
+                        ),
+                    ),
                     PropertyFactory.iconAllowOverlap(true),
                     PropertyFactory.iconIgnorePlacement(false),
                     PropertyFactory.iconPadding(2f),
@@ -7236,6 +7257,15 @@ private fun applyData(
     // runs on EVERY recomposition — during nav that's each fix/speedo tick — and re-tessellating
     // a thousands-of-vertices linestring that hasn't changed burned frame budget exactly while
     // the 60 fps ticker eased the camera.
+    // SAME LINE, NEW OBJECT (user 2026-09-23, "the blue line flickers off for a second"): the
+    // two-minute recheck adopts a route with identical geometry when it only upgrades traffic or
+    // steps, and this gate compared IDENTITY, so it re-seeded the whole route: cleared and hid the
+    // far tail and reset the ahead line to "everything ahead", while the ticker (keyed on the
+    // polyline's CONTENT, so not restarted) never repaired it until its next ~300 m slide. Equal
+    // geometry now skips the re-seed; only a real swap redraws.
+    if (route !== lastAppliedRouteLine && lastAppliedRouteLine?.let { it.size == route.size && it == route } == true) {
+        lastAppliedRouteLine = route
+    }
     if (route !== lastAppliedRouteLine) {
         val routeFc = if (route.size >= 2) {
             FeatureCollection.fromFeature(
@@ -7536,16 +7566,21 @@ private fun applyData(
     // set (one counted badge per cluster + one cone per head) and the plain badge per cluster
     // drawn below street zoom. The route "passes N cameras" count stays on raw nodes on purpose;
     // only the DRAWN badges merge.
-    if (flockCameras != lastAppliedFlock) {
+    if (flockCameras != lastAppliedFlock || trafficControls !== lastFlockControls) {
         // ONE badge per install, at every zoom (user 2026-09-17: a junction with a head on each
         // approach drew four overlapping badges). The heads' facing cones all fan from that one
         // point, so the beams still say which ways it watches, and a small "x4" says how many
         // heads are there. The route "passes N cameras" count still runs on the raw nodes.
         val clusters = app.vela.core.data.MapDeclutter.cluster(flockCameras, FLOCK_CLUSTER_M) { it.loc }
+        val lights = trafficControls.filter {
+            it.kind == app.vela.core.data.TrafficControl.Kind.SIGNAL || it.kind == app.vela.core.data.TrafficControl.Kind.STOP
+        }
+        val nudged = clusters.map { c -> lights.any { it.loc.distanceTo(c.centroid) < FLOCK_NUDGE_M } }
         val feats = ArrayList<Feature>(clusters.size * 2)
-        for (c in clusters) {
+        for ((ci, c) in clusters.withIndex()) {
             feats += Feature.fromGeometry(Point.fromLngLat(c.centroid.lng, c.centroid.lat)).apply {
                 addNumberProperty(FLOCK_COUNT_PROP, c.members.size)
+                if (nudged[ci]) addBooleanProperty(FLOCK_NUDGE_PROP, true)
             }
             // One cone per head that carries a direction, all anchored on the badge's point.
             for (cam in c.members) {
@@ -7557,10 +7592,15 @@ private fun applyData(
         }
         style.getSourceAs<GeoJsonSource>(FLOCK_SRC)?.setGeoJson(FeatureCollection.fromFeatures(feats))
         val clusteredFc = FeatureCollection.fromFeatures(
-            clusters.map { c -> Feature.fromGeometry(Point.fromLngLat(c.centroid.lng, c.centroid.lat)) },
+            clusters.mapIndexed { ci, c ->
+                Feature.fromGeometry(Point.fromLngLat(c.centroid.lng, c.centroid.lat)).apply {
+                    if (nudged[ci]) addBooleanProperty(FLOCK_NUDGE_PROP, true)
+                }
+            },
         )
         style.getSourceAs<GeoJsonSource>(FLOCK_CLUSTER_SRC)?.setGeoJson(clusteredFc)
         lastAppliedFlock = flockCameras
+        lastFlockControls = trafficControls
     }
 
     // Fixed radar cameras -> icon features (identity-gated like the rest). Empty clears the source.
