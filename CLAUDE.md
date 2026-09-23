@@ -2318,17 +2318,26 @@ architecture note.
   plurals, `exp_chooser_alts_none`). `routeBubblesFor(..., detailed = altsOpen)` fills `RouteBubble.sub`
   with distance + delta and the bubble layer renders it as a second line. Only the fastest route is
   labeled "fastest"; a near-tie says "about the same time".
-- **ONE SET OF MAP POINTS (2026-09-22, branch `places-one-set`).** The places bake also takes OSM's
+- **ONE SET OF MAP POINTS (2026-09-22, ON FOR THE FLEET 2026-09-23).** The places bake also takes OSM's
   landmarks (parks, temples, schools, museums, attractions, civic; points AND outlines via
   `osmium export --geometry-types=point,polygon`, area ids turned back into w/r ids), ranked with
   the shops; landmarks get their own per-cell budget (`lrank`, ordered by outline size + Wikidata)
   and are never tenants or folded into a business with the same name key (Bryant Park lost to
   "Bryant Park Corporation" that way). The app hides Liberty's `poi_r*` over an archive whose
-  `rev` >= `tuning.placesOneSetRev` (default 99999999 = off): flip it in calibration.json once the
-  world rebake with this bake has run, or every older archive loses its parks. Test boxes on the
+  `rev` >= `tuning.placesOneSetRev` (compiled default 99999999 = off). Calibration v21 sets it to
+  20260923, the world rebake that carries the landmarks (all 448 archives at that rev); a region
+  downloaded before it keeps its old archive and the basemap's points until it updates, which is
+  exactly what the dial is for. Never lower it below the oldest archive that has the landmarks. Test boxes on the
   4a: Shinjuku 20-45 -> 35-58 fps, Midtown 20-37 -> 36-58, Davis 43-59 -> 52-59; size +0.3 to 4.6%.
   Each bake prints a LANDMARK REPORT (`LANDMARKS|...` and the top ten `LATE|...` rows), which the
-  places workflow copies onto the run summary: read it after a world rebake.
+  places workflow copies onto the run summary: read it after a world rebake. The 2026-09-23 world
+  bake: 91% of about 3.6 M landmarks arrive by z15 (Liberty's own point layers start at z15, so
+  before the flip that figure was 0%); the weak spots are dense historic capitals (Macau 53%,
+  Hong Kong 57%, Prague 62%, Berlin 64%, Washington DC 72%, Ile-de-France 78%), where the late ones
+  are mostly pocket parks, side churches and palaces, but also a famous POINT landmark with a small
+  footprint (the Berliner Fernsehturm, notability 2.5, at z16) because outline size is half the
+  notability score. Read the reports with `gh api repos/PimpinPumpkin/Vela/actions/jobs/<id>/logs`
+  and grep `LANDMARKS|` / `LATE|`; the step summary is not in the API.
 - **THE PLACES CELL BUDGET IS A CAP (2026-09-22).** Prominence used to bypass the per-cell rank in
   the minzoom CASE; a Shinjuku z16 tile carried 963 places and panned at 10-14 fps on the 4a. Now
   prominence buys a bounded extra (crank 6 / rank 8 / rank 24 at z14 / z15 / z16), z17 keeps
