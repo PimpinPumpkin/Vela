@@ -114,6 +114,37 @@ whether a car will list Vela.
    Search it for `CAR.VALIDATOR` and `PlayGearheadService`. A reboot stops the capture. Scrub
    any coordinates before attaching it to an issue.
 
+## Why Vela will not bundle the old Android Auto SDK
+
+Some sideloaded car apps (Fermata, and projects built on it) appear on Android
+Auto without any of the above, because they bundle `aauto.aar`, Google's
+pre-template Android Auto SDK from the projection era. It is worth saying plainly
+why Vela does not and will not go that route.
+
+**It is proprietary Google code.** The AAR carries
+`com.google.android.apps.auto.sdk` and `com.google.android.gms.car`, partly
+obfuscated. It went to early-access partners, was never published and never
+open-sourced. Shipping it inside Vela would breach Vela's own GPLv3, not just
+Google's terms, and that is not a call one contributor can make for everyone
+else.
+
+**There is no newer version to find.** Every circulating copy is stamped January
+2019. Google did not supersede that SDK; it removed the entire "draw your own
+surface" API and replaced it with the open `androidx.car.app` templates Vela
+already uses. The 2019 build is the last one that exists, which is why every
+project doing this ships the identical file.
+
+**It is decaying, and the decay is on the car side.** Tested with one phone
+across two cars: a 2018 head unit accepts it, a newer one does not. The variable
+is the head unit's protocol negotiation, not anything on the phone, so no newer
+blob, install trick or app-side change can recover it, and the set of cars where
+it works shrinks every model year. Upstream shows the same rot from the other
+direction (Fermata disabled full-screen mirroring when Android Auto 17.3 broke
+it).
+
+The routes above have the opposite shape: an install that Play records as its own, a
+lenient aftermarket unit, or a Play listing all need no proprietary code at all.
+
 ## Known rough edge: de-Googled and sandboxed-Play ROMs
 
 Android Auto is part of Google Play services, so it works on a de-Googled ROM only where
