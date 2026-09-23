@@ -3208,6 +3208,19 @@ architecture note.
   DiagScrub only rounds it) carried the user's own area. Every probe now logs
   `location.pathname.split('/@')[0]`. Any new page probe does the same: log the path up to `/@`,
   never the whole thing.
+- **"MORE REVIEWS" DOING NOTHING IS GOOGLE'S LIMITED VIEW (issue #602, 2026-09-23).** Reproduced on
+  Google's own page in desktop Chromium, signed out: the Overview layout, a "More reviews (1,091)"
+  button that sends no `qv9Egd` request and loads nothing, and a footer that in zh-TW reads
+  "充分運用 Google 地圖 · 登入" (easy to miss as the limited-view notice). The same connection gave
+  the 4a's WebView the full feed an hour earlier, so the decision is PER SESSION (cookies), not per
+  country or language, and all our WebViews share one cookie store. The panel now calls
+  `VelaPanel.moreStalled` when a More-reviews tap adds no cards in 5 s: once per open it logs
+  `limited view: More reviews loaded nothing` (cards, the total the button names, feed requests so
+  far) and reloads on a fresh anonymous session (`freshSession`, the same step as the withheld
+  ladder); a second stall logs `still limited after a fresh session`. Both the panel's `open` line
+  and the inline scrape's `load` line carry `region=` (`DiagRegion`: network country, SIM, locale;
+  never a coordinate), so a report says which country without asking. Whether a fresh session
+  actually escapes the limited view is NOT verified yet: the next report's log will say.
 - **REVIEW LABELS ARE TESTED WITH THE PLACE NAME CUT OUT (issue #535, 2026-09-16).** Google's
   tab and button labels embed the place name ("Overview of Davis Food Co-op", 「X」總覽), and the
   review pattern carries the word in every language, so "D-avis" matched the French "avis": the

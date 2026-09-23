@@ -359,6 +359,25 @@ private fun buildPanelWebView(
     // (five opens in a row on 2026-09-13 alternated between layouts), so a retry is not a long
     // shot, and a new session gets a new allotment.
     var stuckRetries = 0
+    // Issue #602: a signed-out session Google has put on its LIMITED view shows a few cards and a
+    // "More reviews (N)" button that fetches nothing (reproduced on Google's own page in desktop
+    // Chromium, 2026-09-23). The decision rides the session's cookies, and every WebView shares
+    // one cookie store, so one limited session starves the inline scrape too. One fresh anonymous
+    // session per panel open; the log says whether it helped.
+    var limitedRetried = false
+    fun freshSession(reason: String) {
+        android.util.Log.w("VelaPanel", "$reason: fresh session + reload")
+        val cm = android.webkit.CookieManager.getInstance()
+        cm.removeAllCookies { _ ->
+            // Re-seed the EU consent cookies the anonymous session needs (else Google bounces
+            // the page to consent.google.com), then load fresh.
+            cm.setCookie("https://www.google.com", "SOCS=CAESHAgBEhIaAB; path=/; domain=.google.com")
+            cm.setCookie("https://www.google.com", "CONSENT=YES+; path=/; domain=.google.com")
+            cm.flush()
+            loaded = false
+            wv.post { wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=${WebReviewsFetcher.reviewsHl()}&gl=us") }
+        }
+    }
     val bridge = object {
         @JavascriptInterface
         fun ready() { wv.post { onReady() } }
@@ -417,6 +436,22 @@ private fun buildPanelWebView(
         @JavascriptInterface
         fun fail() { panelDiag("failed: page never showed the reviews"); wv.post { onFail() } }
 
+        /** "More reviews" added nothing in 5 s. [claimed] is the total in the button's label (-1 when
+         *  it carries none), [calls] the feed requests the page had made by then. */
+        @JavascriptInterface
+        fun moreStalled(cards: Int, claimed: Int) {
+            val calls = feedCalls.get()
+            wv.post {
+                if (!limitedRetried) {
+                    limitedRetried = true
+                    panelDiag("limited view: More reviews loaded nothing", "cards $cards of ${if (claimed >= 0) claimed else "?"}, feed requests $calls; retrying on a fresh session")
+                    freshSession("limited view")
+                } else {
+                    panelDiag("still limited after a fresh session", "cards $cards of ${if (claimed >= 0) claimed else "?"}, feed requests $calls")
+                }
+            }
+        }
+
         /** A breadcrumb from the carve script (the See more reviews tap and what it loaded). */
         @JavascriptInterface
         fun note(summary: String, detail: String?) { panelDiag(summary.take(120), detail?.take(300)) }
@@ -427,20 +462,7 @@ private fun buildPanelWebView(
             wv.post {
                 when (stuckRetries++) {
                     0 -> { android.util.Log.w("VelaPanel", "feed withheld: reloading"); panelDiag("feed withheld: reloading"); loaded = false; wv.reload() }
-                    1 -> {
-                        android.util.Log.w("VelaPanel", "feed withheld again: fresh session + reload")
-                        panelDiag("feed withheld again: fresh session")
-                        val cm = android.webkit.CookieManager.getInstance()
-                        cm.removeAllCookies { _ ->
-                            // Re-seed the EU consent cookies the anonymous session needs (else Google
-                            // bounces the page to consent.google.com), then load fresh.
-                            cm.setCookie("https://www.google.com", "SOCS=CAESHAgBEhIaAB; path=/; domain=.google.com")
-                            cm.setCookie("https://www.google.com", "CONSENT=YES+; path=/; domain=.google.com")
-                            cm.flush()
-                            loaded = false
-                            wv.post { wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=${WebReviewsFetcher.reviewsHl()}&gl=us") }
-                        }
-                    }
+                    1 -> { panelDiag("feed withheld again: fresh session"); freshSession("feed withheld again") }
                     else -> { panelDiag("feed withheld three times: giving up"); onFail() }
                 }
             }
@@ -527,7 +549,7 @@ private fun buildPanelWebView(
             return true
         }
     }
-    panelDiag("open hl=${WebReviewsFetcher.reviewsHl()} full=$fullScreen", "cid=$cid")
+    panelDiag("open hl=${WebReviewsFetcher.reviewsHl()} region=${DiagRegion.of(ctx)} full=$fullScreen webview=${androidx.webkit.WebViewCompat.getCurrentWebViewPackage(ctx)?.versionName}", "cid=$cid")
     wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=${WebReviewsFetcher.reviewsHl()}&gl=us")
     return wv
 }
@@ -592,8 +614,11 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
               var l=velaNoName(((b.getAttribute('aria-label')||'')+' '+(b.textContent||'')).trim());
               if(!(VW.more && VW.more.test(l) && VW.review && VW.review.test(l))) return;
               var before=velaCardCount();
-              VelaPanel.note('more reviews tapped', 'cards '+before);
-              setTimeout(function(){ try{ VelaPanel.note('more reviews after 5 s', 'cards '+before+' -> '+velaCardCount()); }catch(e){} }, 5000);
+              // The total the button names, "More reviews (1,091)": digits only, any separator.
+              var m=l.match(/[(（]\s*([\d.,\s\u00a0\u202f]+)\s*[)）]/); var claimed=m?parseInt(m[1].replace(/\D/g,''),10):-1;
+              VelaPanel.note('more reviews tapped', 'cards '+before+(claimed>=0?' of '+claimed:''));
+              setTimeout(function(){ try{ var now=velaCardCount(); VelaPanel.note('more reviews after 5 s', 'cards '+before+' -> '+now);
+                if(now<=before) VelaPanel.moreStalled(now, isNaN(claimed)?-1:claimed); }catch(e){} }, 5000);
             }catch(e){}
           }, true); }
           // A star widget in any language: its aria-label leads with the rating and names a star.
