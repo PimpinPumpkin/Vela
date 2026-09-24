@@ -3132,7 +3132,13 @@ architecture note.
   it to a bare street line, or extends a bare town it starts with, and never swaps one town for
   another (`OfflineLocalityTest`). Applied to the first `OFFLINE_ADDR_FILL` offline search rows and
   in `backfillOfflineAddress` for the sheet. No rebake needed; a pack whose neighborhood has no
-  full address anywhere stays as it was.
+  full address anywhere stays as it was. **The places bake does the same for the map's own
+  places** (`LOCFILL` step before the export: a row with no `loc` borrows the nearest row's within
+  ~300 m, postcode-bearing first, grid join over 0.004-degree cells; the bake log prints
+  `LOCFILL|<without>|<filled>`). Andorra test bake: 737 rows without, 625 filled, OSM rows 655 of
+  676 now carry "AD400 La Massana"-style locality. Reaches a region at its next places rebake.
+  Same commit removed three backticks from comments inside the unquoted `duckdb <<SQL` heredoc,
+  which the shell was running as commands ("addr: command not found" in every bake log).
 - **Drive papercuts (2026-09-23, user reports).** (1) The ROUTE LINE FLICKERED because
   `applyData` gated the route upload on IDENTITY while the nav ticker keys on the polyline's
   CONTENT: a recheck that adopts a same-geometry route (traffic or steps upgrade) re-seeded the
