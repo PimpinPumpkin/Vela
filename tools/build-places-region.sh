@@ -501,9 +501,9 @@ INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial; SET s3_region='us-we
 -- limit under the runner's 16 GB with somewhere to spill turns that into a slower bake.
 SET memory_limit = '11GB'; SET temp_directory = '$WORK/duckdb-spill';
 -- THE REST OF THE ADDRESS (user 2026-09-22: "a lot of the places don't have the full address, no
--- zip, city or state"). `addr` is the street line only, and it stays that way because several
+-- zip, city or state"). 'addr' is the street line only, and it stays that way because several
 -- steps below use it as a JOIN KEY (tenant matching, the unit snap, the fuel-lot house number).
--- The city / region / postcode travel in a side table `locs` and are exported as the tile's `loc`,
+-- The city / region / postcode travel in a side table 'locs' and are exported as the tile's 'loc',
 -- which the app appends. Formatted the way the country writes an address: "Davis, CA 95616" in
 -- the US, Canada and Australia (ZIP+4 cut to the ZIP), "London SW1A 1AA" in Britain and Ireland,
 -- "10115 Berlin" everywhere else. OSM and AllThePlaces rows rarely say their country, so they
@@ -521,7 +521,7 @@ CREATE TABLE locs AS SELECT id, loc FROM raw WHERE loc IS NOT NULL;
 -- Overture carries no English name for a Japanese place (0 of 14,718 rows in central Tokyo); OSM
 -- has name:en or a romanized name on over half of them. A row whose own name is NOT Latin gets
 -- one here: an OSM row from its own tags, any other row from the OSM node it pairs with by name
--- (the osm_snap pairs). Exported as the tile property `name_en`, which the app shows for a
+-- (the osm_snap pairs). Exported as the tile property 'name_en', which the app shows for a
 -- Latin-script UI. Nothing is stored for a name that is already Latin.
 CREATE TABLE names_en (id VARCHAR, en VARCHAR);
 CREATE MACRO nonlatin(n) AS regexp_matches(coalesce(n, ''), '[^\\x{0000}-\\x{024F}\\x{1E00}-\\x{1EFF}\\x{2000}-\\x{206F}\\x{20A0}-\\x{20CF}\\x{2100}-\\x{214F}]');
@@ -929,6 +929,33 @@ SELECT 'LANDMARKS', count(*) AS landmarks,
 FROM ranked r JOIN zooms z USING (id) WHERE r.landmark = 1;
 SELECT 'LATE', z.mz, r.name, r.category, round(coalesce(r.notab, 0) + coalesce(r.fame, 0), 1) FROM ranked r JOIN zooms z USING (id)
 WHERE r.landmark = 1 AND z.mz > 15 ORDER BY coalesce(r.notab, 0) + coalesce(r.fame, 0) DESC, r.prominence DESC LIMIT 10;
+.mode duckbox
+-- NEIGHBOR LOCALITY (2026-09-23, user: offline, OSM places showed "123 Main St" and no city,
+-- state or ZIP). OSM tags many places with only the number and street, and the rows that come
+-- from it (and a few locator rows) reach here with no loc. Such a row borrows the loc of the
+-- nearest row that has one within ~300 m, a postcode-bearing one first, so a street line reads
+-- as a full address. A grid join (0.004 degree cells and their neighbors), never a correlated
+-- lookup: see "Bake joins must be HASH joins". Rows with nothing nearby stay as they were.
+CREATE TABLE lxall AS SELECT id, any_value(loc) AS loc FROM locs GROUP BY id;
+CREATE TABLE haveloc AS SELECT r.id, r.lat, r.lng, x.loc,
+    CAST(floor(r.lat / 0.004) AS BIGINT) AS cy, CAST(floor(r.lng / 0.004) AS BIGINT) AS cx,
+    regexp_matches(x.loc, '[0-9]') AS zip
+  FROM ranked r JOIN lxall x USING (id);
+CREATE TABLE needloc AS SELECT r.id, r.lat, r.lng,
+    CAST(floor(r.lat / 0.004) AS BIGINT) AS cy, CAST(floor(r.lng / 0.004) AS BIGINT) AS cx
+  FROM ranked r LEFT JOIN lxall x USING (id) WHERE x.id IS NULL;
+CREATE TABLE cellofs AS SELECT * FROM (VALUES (-1), (0), (1)) t(d);
+CREATE TABLE needkeys AS SELECT n.id, n.lat, n.lng, n.cy + a.d AS ky, n.cx + b.d AS kx
+  FROM needloc n CROSS JOIN cellofs a CROSS JOIN cellofs b;
+CREATE TABLE locfill AS SELECT id, loc FROM (
+  SELECT k.id, h.loc, row_number() OVER (PARTITION BY k.id ORDER BY h.zip DESC,
+      pow(k.lat - h.lat, 2) + pow((k.lng - h.lng) * cos(radians(k.lat)), 2)) AS rn
+  FROM needkeys k JOIN haveloc h ON h.cy = k.ky AND h.cx = k.kx
+  WHERE pow(k.lat - h.lat, 2) + pow((k.lng - h.lng) * cos(radians(k.lat)), 2) < pow(0.0027, 2)
+) WHERE rn = 1;
+INSERT INTO locs SELECT id, loc FROM locfill;
+.mode list
+SELECT 'LOCFILL', (SELECT count(*) FROM needloc) AS without_loc, (SELECT count(*) FROM locfill) AS filled;
 .mode duckbox
 COPY (
   SELECT json_object(
