@@ -113,6 +113,51 @@ class OfflineAddressStore @Inject constructor(
      * name within [REV_STREET_M] ("on W Covell Blvd"), else null. Bounded by a small lat/lng box so it
      * scans only nearby rows, not the whole index.
      */
+    /**
+     * The "City, ST 12345" that the places around [loc] carry, from the downloaded packs
+     * (2026-09-23, user: offline results showed "123 Main St" with no city, state or ZIP). OSM
+     * tags many places with only the number and street, but a neighborhood's other places usually
+     * carry the rest; this votes among the nearest [LOCALITY_VOTERS] within ~650 m and prefers
+     * an answer with a postcode. Null when nothing nearby has one. Cached per ~550 m cell, so a
+     * results list costs one or two scans.
+     */
+    fun localityNear(loc: LatLng): String? {
+        val key = "${(loc.lat / LOCALITY_CELL_DEG).toInt()}:${(loc.lng / LOCALITY_CELL_DEG).toInt()}"
+        localityCache[key]?.let { return it.ifEmpty { null } }
+        val box = arrayOf(
+            (loc.lat - LOCALITY_BOX_DEG).toString(), (loc.lat + LOCALITY_BOX_DEG).toString(),
+            (loc.lng - LOCALITY_BOX_DEG).toString(), (loc.lng + LOCALITY_BOX_DEG).toString(),
+        )
+        val seen = ArrayList<Pair<Double, String>>()
+        for (pack in OfflinePacks.dbs) {
+            runCatching {
+                pack.rawQuery(
+                    "SELECT address, lat, lng FROM poi WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ? " +
+                        "AND address LIKE '%, %' LIMIT 400",
+                    box,
+                ).use { c ->
+                    while (c.moveToNext()) {
+                        val loc2 = localityOf(c.getString(0)) ?: continue
+                        seen += loc.distanceTo(LatLng(c.getDouble(1), c.getDouble(2))) to loc2
+                    }
+                }
+            }
+        }
+        val best = pickLocality(seen)
+        if (localityCache.size > 256) localityCache.clear()
+        localityCache[key] = best.orEmpty()
+        return best
+    }
+
+    private val localityCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    /** [address] with the locality filled in from [localityNear] when it has none, or only a bare
+     *  city name the nearby answer extends ("Davis" -> "Davis, CA 95616"). Anything else as is. */
+    fun completeAddress(address: String?, loc: LatLng): String? {
+        if (address.isNullOrBlank() || !needsLocality(address)) return address
+        return withLocality(address, localityNear(loc))
+    }
+
     fun reverseGeocode(loc: LatLng): String? {
         val box = arrayOf(
             (loc.lat - REV_BOX_DEG).toString(), (loc.lat + REV_BOX_DEG).toString(),
@@ -359,6 +404,44 @@ class OfflineAddressStore @Inject constructor(
         )
 
     companion object {
+        private const val LOCALITY_BOX_DEG = 0.006  // ~650 m box the locality vote reads
+        private const val LOCALITY_CELL_DEG = 0.005 // cache cell, ~550 m
+        private const val LOCALITY_VOTERS = 7
+
+        /** The part of a formatted address after the street line ("Davis, CA 95616"), or null. */
+        fun localityOf(address: String?): String? =
+            address?.substringAfter(", ", "")?.trim()?.takeIf { it.isNotEmpty() }
+
+        /** True when [address] lacks a postcode-bearing locality: just a street line, or a street
+         *  line and a bare place name. */
+        fun needsLocality(address: String): Boolean {
+            val parts = address.split(", ")
+            return parts.size == 1 || (parts.size == 2 && parts[1].none { it.isDigit() })
+        }
+
+        /** The most common locality among the nearest voters, answers with a postcode first;
+         *  ties go to the nearest. */
+        fun pickLocality(seen: List<Pair<Double, String>>): String? {
+            if (seen.isEmpty()) return null
+            val withZip = seen.filter { (_, l) -> l.any { it.isDigit() } }
+            val pool = (withZip.ifEmpty { seen }).sortedBy { it.first }.take(LOCALITY_VOTERS)
+            val counts = pool.groupingBy { it.second }.eachCount()
+            val top = counts.values.maxOrNull() ?: return null
+            return pool.first { counts[it.second] == top }.second
+        }
+
+        /** Joins [address] and [locality] the way the packs format addresses. A bare trailing
+         *  place name is replaced only when the locality starts with it (never a different town). */
+        fun withLocality(address: String, locality: String?): String {
+            if (locality == null) return address
+            val parts = address.split(", ")
+            return when {
+                parts.size == 1 -> "$address, $locality"
+                parts.size == 2 && locality.startsWith(parts[1], ignoreCase = true) -> "${parts[0]}, $locality"
+                else -> address
+            }
+        }
+
         private const val REV_BOX_DEG = 0.0016 // ~180 m lat/lng box for the reverse-geocode nearest scan
         private const val REV_ADDR_M = 60.0    // accept a mapped house this close as the POI's address
         private const val REV_STREET_M = 150.0 // else fall back to a street name this close

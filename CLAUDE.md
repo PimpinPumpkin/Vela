@@ -3125,6 +3125,14 @@ architecture note.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.
+- **OFFLINE ADDRESSES GET THEIR CITY, STATE AND ZIP FROM THE NEIGHBORS (2026-09-23, user report).**
+  OSM tags many places with only the number and street, so offline results read "123 Main St".
+  `OfflineAddressStore.localityNear` votes among the nearest pack POIs (~650 m box) whose address
+  has a locality, postcode-bearing answers first, cached per ~550 m cell; `completeAddress` appends
+  it to a bare street line, or extends a bare town it starts with, and never swaps one town for
+  another (`OfflineLocalityTest`). Applied to the first `OFFLINE_ADDR_FILL` offline search rows and
+  in `backfillOfflineAddress` for the sheet. No rebake needed; a pack whose neighborhood has no
+  full address anywhere stays as it was.
 - **Drive papercuts (2026-09-23, user reports).** (1) The ROUTE LINE FLICKERED because
   `applyData` gated the route upload on IDENTITY while the nav ticker keys on the polyline's
   CONTENT: a recheck that adopts a same-geometry route (traffic or steps upgrade) re-seeded the

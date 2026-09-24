@@ -2058,9 +2058,13 @@ class MapViewModel @Inject constructor(
                     // read as bare names; fill the shown ones from the address index, the same
                     // lookup the sheet runs on select (user 2026-09-19, "does not show the POI
                     // address"). Bounded to what the list shows first.
+                    // Then the city, state and ZIP a bare "123 Main St" lacks, from the places around it
+                    // (user 2026-09-23: OSM rows read as a street line only).
                     val pois = rawPois.mapIndexed { i, p ->
-                        if (i >= OFFLINE_ADDR_FILL || !p.address.isNullOrBlank()) p // fill only the first rows, the ones on screen
-                        else p.copy(address = runCatching { addressStore.reverseGeocode(p.location) }.getOrNull() ?: p.address)
+                        if (i >= OFFLINE_ADDR_FILL) return@mapIndexed p // fill only the first rows, the ones on screen
+                        val street = if (!p.address.isNullOrBlank()) p.address
+                        else runCatching { addressStore.reverseGeocode(p.location) }.getOrNull() ?: p.address
+                        p.copy(address = runCatching { addressStore.completeAddress(street, p.location) }.getOrNull() ?: street)
                     }
                     // If it looks like a street address, geocode it too and lead with the address matches,
                     // and with the BUSINESSES standing at that address ahead of the bare house point:
@@ -2834,15 +2838,18 @@ class MapViewModel @Inject constructor(
         // Fire when there's no real street line, not only when address is fully blank: OSM often tags a POI
         // with just `addr:state`/`addr:city` (a chain came back as bare state initials), which is useless. Treat an
         // address with no digit (no house number) as "needs a street".
-        if (isOnline() || (!p.address.isNullOrBlank() && p.address!!.any { it.isDigit() })) return
+        // A street line with no city, state or ZIP gets those from the places around it too.
+        val hasStreet = !p.address.isNullOrBlank() && p.address!!.any { it.isDigit() }
+        if (isOnline() || (hasStreet && !app.vela.core.data.OfflineAddressStore.needsLocality(p.address!!))) return
         viewModelScope.launch {
             val addr = withContext(Dispatchers.IO) {
-                runCatching { addressStore.reverseGeocode(p.location) }.getOrNull()
+                val street = if (hasStreet) p.address else runCatching { addressStore.reverseGeocode(p.location) }.getOrNull()
+                runCatching { addressStore.completeAddress(street, p.location) }.getOrNull() ?: street
             } ?: return@launch
+            if (addr == p.address) return@launch
             _state.update { st ->
                 val sel = st.selected
-                val stillNeeds = sel?.id == p.id && (sel.address.isNullOrBlank() || sel.address!!.none { it.isDigit() })
-                if (stillNeeds) st.copy(selected = sel!!.copy(address = addr)) else st
+                if (sel?.id == p.id && sel.address == p.address) st.copy(selected = sel.copy(address = addr)) else st
             }
         }
     }
