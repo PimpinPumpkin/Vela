@@ -2988,6 +2988,12 @@ architecture note.
   placesOneSetRev`, which `AppTune` now reads) Midtown pans at 60 fps at 250 and 125 ft. Anywhere
   `poi_r20` still draws with OSM businesses on (an archive older than the dial, places off) a dense
   city will crawl the same way; why one symbol layer costs that much is not isolated yet.
+  **2026-09-24: the dial's COMPILED default is now 20260923** (`MapViewModel`, the world rebake's
+  rev), because the calibration that carries it only reaches phones from `main` and a canary build
+  crawled under 1 fps below 200 ft in Manhattan (user report). 4a, Midtown at 100 ft: 0-25 fps with
+  the dial off, 59 with it on. Swapping the `osmPoiExclude` `in` filter for a `match` lookup was
+  measured and changed nothing (still 0-2 fps with the dial off), so it was not kept: the cost is
+  the layer itself, not the filter.
 - **A DENSE GeoJSON SOURCE NEEDS A HIGH maxzoom (2026-09-18, the ambient lesson generalized):**
   past a source's maxzoom every visible overscaled tile lays out ALL of its parent tile's features.
   `AMBIENT_SRC` cost 22 -> 51 fps when it went 12 -> 18 (2026-09-16); the same shape was still in

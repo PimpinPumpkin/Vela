@@ -6758,7 +6758,10 @@ class MapViewModel @Inject constructor(
             // carries OSM's landmarks, so the basemap's copy of them hides. A calibration dial, off
             // until the world rebake has run (an older archive has no landmarks, and hiding the
             // basemap points over it would lose every park and temple).
-            val oneSetRev = app.vela.ui.AppTune.value("placesOneSetRev", 99_999_999.0).toInt()
+            // Compiled default = the world rebake's rev (2026-09-24): the calibration that carries it
+            // only reaches phones from main, so a build ahead of main kept the basemap's dense OSM
+            // points under Manhattan and crawled below 200 ft. Older archives are still protected.
+            val oneSetRev = app.vela.ui.AppTune.value("placesOneSetRev", 20_260_923.0).toInt()
             val oneSet = uris.isNotEmpty() && pick.rev >= oneSetRev
             if (uris != _state.value.placesOverlays || _state.value.placesPending || oneSet != _state.value.placesOneSet) {
                 _state.update { it.copy(placesOverlays = uris, placesPending = false, placesOneSet = oneSet) }
