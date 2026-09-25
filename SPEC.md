@@ -469,8 +469,11 @@ Constraints:
   build tracks Chrome's major (`cronet-build.yml`).
 - **The WebView proxy** (`app/web/WebProxy`, calibration `webProxy`, default OFF): a Google WebView's
   GETs go out over Cronet, streamed, with the WebView's OWN cookies (`WebViewCookieJar`, so the page
-  keeps its aged session), which removes `X-Requested-With: app.vela`. POSTs cannot be intercepted
-  and still carry it. Measured neutral on page timing once the response streams.
+  keeps its aged session), which removes `X-Requested-With: app.vela`. POSTs reach the proxy through
+  a document-start shim (`WebProxy.SHIM`) that tags each XHR, fetch or sendBeacon with a one-time id
+  and hands its body over a randomly named JS interface; a body that is not plain text (FormData,
+  Blob) still goes out from the WebView with the header. Page telemetry is answered locally with an
+  empty 200. Measured neutral on page timing once the response streams.
 - Every dial can be overridden on a device with `adb shell setprop debug.vela.tune.<key> <n>`
   (`ui/AppTune`), for testing without a calibration push.
 
@@ -1125,8 +1128,8 @@ widens from fuel-only to `NAV_DRIVE_GROUPS`, and a tap on a place does not selec
   keyed on `navTapOfferTick`, which every offer bumps, because a second tap on the same place
   leaves the state equal and would otherwise leave the first clock running.
 - **A place that is already a stop offers removal.** When the candidate lies within
-  `NAV_STOP_MATCH_M` (60 m) of a stop ahead, the card's button reads "Remove stop" and drops the
-  nearest-ahead occurrence of it through `applyStops`.
+  `NAV_STOP_MATCH_M` (60 m) of a stop ahead, the card adds a "Remove stop" button beside "Add stop" (adding the same place again stays
+  possible), which drops the nearest-ahead occurrence of it through `applyStops`.
 - **The offer is drawn on the map**, as a red "+" teardrop (`PoiIcons.CANDIDATE_PIN`) through the
   same effect that draws numbered stops and the destination flag, so the driver can see where the
   offer is before accepting it.
@@ -1213,8 +1216,8 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   budget per 1.6 km cell ordered by notability (outline size, Wikidata, and the number of languages
   OSM names it in: 0.6 x log2(1 + languages), capped at 3), which also picks each ~6.5 km cell's
   z11/z12 anchors; the app hides `poi_r*` over an
-  archive whose `rev` >= calibration `tuning.placesOneSetRev` (compiled default 99999999 = off; the
-  bundle sets 20260923, the first world bake that carries the landmarks, 448 archives). An archive
+  archive whose `rev` >= calibration `tuning.placesOneSetRev` (compiled default 20260923 since 2026-09-24, the first world bake that carries the landmarks, 448
+  archives; the bundle sets the same value). An archive
   older than the dial keeps the basemap's points, or its parks would vanish.
   Order of preference: OSM, then the AllThePlaces locator, then Overture's parcel point.
   Tenants never move.

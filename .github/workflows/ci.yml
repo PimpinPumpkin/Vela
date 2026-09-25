@@ -212,7 +212,7 @@ jobs:
         # dispatch for an urgent fix), never per push. Obtainium users who want nightlies
         # turn on "include prereleases"; everyone else keeps tracking the latest stable
         # release, which the weekly promote-stable workflow produces by flipping the
-        # newest healthy nightly to a full release (same APK, no rebuild).
+        # newest nightly to a full release (same APK, no rebuild; nothing checks its health).
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}

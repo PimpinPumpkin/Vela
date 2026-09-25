@@ -207,6 +207,21 @@ still ahead, never straight to the destination. A reroute that could not include
 anyway (being guided beats being lost), says so, and keeps them in the plan for the next attempt;
 a faster-route offer that skips one is never made.
 
+**Removing the next stop.** The step list carries an "Edit route" row on every drive, and with
+stops ahead it has a "Remove next" button. It asks first ("Remove <stop> from this drive?"), then
+`removeNextStop` replans once through the rest (`applyStops(stops.drop(1))`), the same path as the
+stops editor's Done. How that replan runs is in [chapter 5](05-routing.md#stops).
+
+**Closing soon, per stop.** When the drive starts (`NavController.maybeWarnClosingSoon`), each stop
+still ahead is checked at its own arrival, the route's legs added up to it, and then the
+destination. A place that closes within an hour of that arrival, or before it, gets one warning:
+"<place> closes at 9:00 PM and you arrive around 8:40 PM" (or "closes at ..., before you arrive
+around ..." when it will already be shut), flashed for 15 seconds, spoken, and sent to the car
+screen. Only the first problem is warned about. A stop added during the drive
+(`warnClosingForAddedStop`) waits up to 20 seconds for the replanned route and checks its first
+leg, which is the way to that stop. The closing time is read from the place's own status text; a
+place with none is never warned about.
+
 **Silent stops.** When "Try side streets around cameras" builds a detour
 ([chapter 3](03-cameras.md)), the drive starts with the detour points as `NavStop.silent` stops:
 routed through by every reroute and recheck like any stop, but never spoken, never listed, never
@@ -235,6 +250,16 @@ Pause holds the drive where it is. Precisely:
 - the bar says "Paused", and the line ahead turns from traffic blue to a muted lavender
   (`ROUTE_PAUSED_COLOR = #9C8AD6`), so the hold shows on the map and not only in the bar. A slate
   gray was tried first and vanished into the dark map's road fill.
+
+**The color change repaints in place.** The line is drawn in pieces (the stretch ahead, a short
+piece around the arrow that carries the moving cut, and the tail), and a color change has to
+reach all of them, or only the piece around the arrow changes and the rest stays blue. It does so
+through `paintReset`: new gradients on the pieces where they already are, nothing re-uploaded. The
+same path handles the driven-trail setting and new traffic on the same line. It used to re-anchor
+instead, uploading new pieces from new starting points; the new gradients applied at once while the
+new geometry landed a few frames later, so for those frames the new colors were stretched over the
+old, longer pieces, and a strip of blue or lavender showed behind the arrow on every pause and
+resume. Re-anchoring is kept for a style reload, where the layers come back empty.
 
 **Resuming** does what you would want after a stop: if the stop took you off the route, it
 reroutes once from where you are; if you are still on the route, it carries on and speaks the
@@ -290,6 +315,26 @@ are never written into a recorded trip.
 The "Searching for GPS" chip is pinned just **above the arrow**, because the arrow's dot is what
 has gone gray; the road-name pill takes the space under it, so the two never meet. Before the
 arrow has a screen position the chip falls back to bottom center.
+
+### Standing still costs nothing
+
+A drive left running in a parked car (at a long stop, or with the phone forgotten in the cradle)
+used to redraw the map at 59 frames a second and hold about a whole core of a Pixel 4a, which is a
+phone that runs hot. Nothing on screen was changing: the loop that moves the arrow and the camera
+simply wrote both every frame. Now it writes only what changed.
+
+- **The dot** (`writeMe`) is uploaded only when its point or bearing moved. Before the arrow
+  engages, which in a parked car it never does, the same point went into the map every frame.
+- **The camera** is written only when some part of it moved past a tolerance: about a centimeter
+  of target, a hundredth of a degree of bearing or tilt, a few ten-thousandths of a zoom level,
+  half a pixel of side inset.
+- **The loop slows down** once more than 60 frames in a row have written nothing and the puck is
+  under 0.3 m/s: it then waits `NAV_IDLE_TICK_MS = 120` between checks instead of running every
+  frame. Any movement puts it straight back on every frame.
+
+Measured on the 4a: 0 map frames and about 15% CPU parked with a route up, against 59 fps before,
+and still 59 fps on a demo drive. A new per-frame write in that loop has to be gated the same way,
+or this comes back.
 
 ### Resuming after the app was killed
 

@@ -302,7 +302,7 @@ through the same path (`setStops`), and an unchanged list fetches nothing.
 **Removing a stop mid-drive** runs the same way. The step list always has an "Edit route" row, even
 on a drive with no stops, and with stops ahead it carries "Remove next", which asks first and then
 replans without that stop (`applyStops(stops.drop(1))`). Tapping a place that is already a stop
-(within 60 m) with tap-to-stop on offers "Remove stop" instead of "Add stop". Before the drive
+(within 60 m) with tap-to-stop on offers "Remove stop" beside "Add stop". Before the drive
 starts, and again for a stop added on the way, each stop is checked against its closing time at its
 own arrival (the route's legs added up to it), not just the destination.
 

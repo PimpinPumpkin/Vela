@@ -1,6 +1,6 @@
 name: Promote weekly stable
 
-# Every push to main publishes a PRERELEASE nightly (see ci.yml). Once a week this
+# A daily cron in ci.yml cuts a PRERELEASE nightly when main has moved. Once a week this
 # workflow promotes the newest nightly to the stable channel by flipping its
 # prerelease flag and marking it Latest. Same tag, same signed APK, no rebuild:
 # the stable release is a bits-identical nightly that has been out in the wild.

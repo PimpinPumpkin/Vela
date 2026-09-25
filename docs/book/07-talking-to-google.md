@@ -326,7 +326,87 @@ autocomplete and the map's place fan-out go through OkHttp and do not. `WebViewI
 makes the allow-list call, gated, in case a WebView build ever honors it, and logs one
 `VelaWeb identity:` line per view saying which switches took. Overriding the header on the
 document load alone was considered and not done: the page's own script requests would still
-carry it.
+carry it. The one way around it is not to let the WebView send the request at all, which is what
+the proxy below does, off by default.
+
+**Bridge names are random.** A scrape reports back through a JavaScript interface, and
+`addJavascriptInterface` puts that object on the page's `window`, where Google's own scripts can
+enumerate it. A fixed `VelaBridge` or `VelaPanel` sitting there named the app to anyone who
+looked. Since 2026-09-23 `web/JsNames` draws both names once per process (an underscore and ten
+random letters). The scripts are still written with the readable names, and `JsNames.of` swaps the
+real ones in right before every `evaluateJavascript`, so a new script call has to go through
+`JsNames.of` or its bridge calls go nowhere. The proxy's own bridge and the parameter it tags
+requests with are drawn the same way.
+
+### The WebView proxy
+
+Behind the calibration dial `webProxy` (default 0, off), `web/WebProxy.kt` takes a Google
+WebView's requests away from the WebView and sends them from the app over Cronet, with the
+WebView's own cookies (`WebViewCookieJar`) so the page keeps its session. A request the app sends
+carries no `X-Requested-With`. Any failure returns null and the WebView loads that request itself,
+exactly as before.
+
+- **GETs** are intercepted directly and streamed.
+- **POSTs** cannot be: `shouldInterceptRequest` never sees a request body. So a document-start
+  script (`WebProxy.SHIM`, dial `webProxyPosts`, default 1 when the proxy is on) wraps XHR, `fetch`
+  and `sendBeacon` on google.com pages. A POST to a Google host gets a one-time id appended to its
+  URL and its body handed to the bridge first; when the tagged request reaches the interceptor, the
+  body is waiting for it, the tag is stripped and the app sends it. Only plain-text bodies (a
+  string or URL parameters) are carried; FormData, a Blob or a Request object goes out from the
+  WebView as before. Measured on a Pixel 9 before the shim, the POSTs left were the review page's
+  `batchexecute`, `play.google.com/log` and the account bar's `ogads-pa` calls.
+- **Telemetry is answered locally** (dial `webProxyBlockLogs`, default 1 when the proxy is on):
+  `play.google.com/log`, any `gen_204` ping and the account bar's `ogads-pa` get an empty 200 from
+  the app and never leave the phone. Nothing Vela reads depends on them; they are the page
+  reporting on itself, and ad blockers drop them too. The answer carries CORS headers that echo
+  the page's origin, and it is a 200 on purpose: an intercepted 204 reached the page without those
+  headers on a Pixel 4a, so every blocked call turned into a console error.
+
+Logcat `VelaWebProxy` prints each path once, as `carries:`, `answers locally:` or
+`passes through:` (still sent by the WebView, with the header). The dial is read on every request,
+but the POST shim is installed only when a view is built, so turning the proxy on reaches POSTs
+from the next view.
+
+### Which Google session, and how long it lives
+
+**Google limits new anonymous sessions** (the measurement is under
+[Place data](#place-data-the-methods-and-how-to-roll-each-one-back)): a session that has only just
+started gets about five reviews, no paging, and on a busy place no popular times. The app's own
+cookie jar lives in memory, so its session is new every launch; the WebView's cookies are on disk
+and age. So the per-place requests (details, the photo pages, the review feed) are tagged
+`AgedSession` in `GoogleMapsDataSource`, and the Cronet transport sends a tagged request with the
+WebView's cookies instead of the app's (dial `agedSession`, default 1). It needs no page load and
+sends no `X-Requested-With`. Without Cronet the tag does nothing and the request keeps the app's
+session. On a fresh install the WebView store is empty too, so the first requests are a new
+session either way.
+
+**A saved cookie is a history.** It carries no name or account, but everything an install asks
+Google for while one cookie lasts can be linked together. So the session is thrown away on a
+schedule (`web/SessionRotation`, Settings > Privacy > "Google session", pref
+`google_session_rotate`):
+
+| Setting | A new session | What it costs |
+| --- | --- | --- |
+| Every week (default) | when the last one is 7 days old | at most a week of linkable history; a stretch of the limited view after each reset |
+| Every day | when the last one is 24 hours old | at most a day |
+| Every time Vela opens | at every process start | the limited view is the normal state, first answers come back trimmed and are asked again, and Android restarting the app in the background can mean several new sessions a day |
+
+The check runs once per process start, in `VelaApp` before the Cronet engine opens. The first run
+only records when the session began. **A rotation clears** the WebView's cookies (on a background
+thread, because the cookie manager loads the WebView library), its site storage (on the next idle
+moment of the main thread), Cronet's disk cache (only at process start, since it is not safe to
+delete once the engine has it open) and, the first time a Google WebView is built afterwards, that
+WebView's HTTP cache (`consumeCacheClear`, which every WebView-built fetcher calls). "Start a new
+session now" does the same by hand and also empties the app's in-memory jar. The WebView store
+holds only Google: no other site is loaded in a WebView. Logcat `VelaSession` says when a rotation
+happened.
+
+This is the trade-off, not a fix for it. Keeping one session for good gives the full view and one
+long pseudonymous history; a new one every launch gives the least history and mostly the limited
+view. Session standing, not age alone, decides which view Google gives: on 2026-09-23 a Pixel 4a
+whose WebView session was weeks old was already in the limited view while a Pixel 9's was not.
+Whichever it is, Google still sees the IP address, which links sessions from one connection over
+a short time anyway.
 
 ### The slim early-session answer
 
@@ -541,12 +621,16 @@ walk made you wait for everything.
   break reproducible F-Droid builds. Vela does not try. It is the reason the WebViews exist, and
   the reason the photo RPC and live popular times are closed.
 - **Smaller residual tells, left alone:** Chrome sends `X-Client-Data` to Google origins and
-  neither client here does; the WebViews and OkHttp keep separate cookie jars, so one phone is
-  two sessions from one IP; `Accept-Language` stays `en-US,en;q=0.9` even when `hl` asks for
-  another language.
-- **`X-Requested-With: app.vela`** names the app on every WebView request, and no app can stop
-  it. It is confined to the WebView-backed features; turning those off (or the whole switch)
-  is the only way to avoid it.
+  neither client here does; search, directions and autocomplete use the app's own in-memory
+  jar while the per-place requests use the WebView's, so one phone is two sessions from one IP;
+  `Accept-Language` stays `en-US,en;q=0.9` even when `hl` asks for another language.
+- **`X-Requested-With: app.vela`** names the app on every request the WebView sends itself, and
+  nothing in the WebView can stop it. It is confined to the WebView-backed features. The proxy
+  keeps it off whatever the app sends instead, but the proxy is off by default and a POST body it
+  cannot read still goes out from the WebView; turning those features off (or the whole switch)
+  is the only certain way.
+- **Rotation is checked only at process start.** A process that lives past the week keeps its
+  session until the next start or the button.
 - **The map's own Google tiles** (the traffic overlay and the satellite fallback) go through
   the map engine's HTTP stack, not `BrowserHeaders`, so they do not carry the Chrome identity.
 - **The live bundle carries no `userAgent` today**, so every installed copy presents the UA
