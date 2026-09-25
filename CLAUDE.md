@@ -2476,7 +2476,14 @@ architecture note.
   means carrying that through `TrafficControl` from both the Overpass parse and the road-features
   bake. Nav callouts carry `atM` and `applyNavLabelProgress` filters out the ones the puck has
   passed, re-filtering only when the NEXT callout is actually passed (a setFilter re-runs the
-  layer's placement: every-25 m cost a 126 ms main-thread message on a 4a).
+  layer's placement: every-25 m cost a 126 ms main-thread message on a 4a). **Fixed 2026-09-25
+  (user: bubbles vanished too early and all at once):** the filter kept `atM > progress + 12`,
+  which dropped each bubble 12 m BEFORE its crossing, and it ran on the 2 s label loop. The cut is
+  now `atM > progress - NAV_XLABEL_DROP_BEHIND_M` (25 m PAST the crossing) on its own 80 ms tick,
+  and a dropped callout is handed to `NAV_ROADLABEL_FADE_LAYER` (its own tiny source, no
+  collision), whose CONSTANT opacity falls to 0 over `NAV_XLABEL_FADE_MS` (1.2 s). Never fade the
+  main layers with a data-driven opacity keyed on progress: a data-driven paint change re-runs
+  placement like a filter does. Device-checked on a Davis demo drive (frame strip).
 
 - **EXIT CALLOUT + CAMERA CLUSTER (2026-09-17):** `core/nav/ExitLabel.of(instruction)` pulls the exit
   NUMBER out of a maneuver (word table per language, plus the CJK number-before-word form; a bare

@@ -1056,6 +1056,11 @@ renderer then sat at 89 percent of a core. The Developer row states the date it 
   a missing street name. The pass
   runs once per 400 m quantum of progress or when the upcoming turn targets change, never on a
   short timer, and a quantum is only marked done once something was placed.
+  A callout stays on screen until the puck is `NAV_XLABEL_DROP_BEHIND_M` (25 m) past its
+  crossing (`atM`, its distance along the route), checked on an `NAV_XLABEL_TICK_MS` (80 ms)
+  tick, then moves to `NAV_ROADLABEL_FADE_LAYER`, a collision-free layer whose constant opacity
+  falls to 0 over `NAV_XLABEL_FADE_MS` (1.2 s). The fade is a constant paint value on that small
+  layer because a data-driven opacity on the main layers would re-run their placement every tick.
 
 - **A region covers a point by its boundary polygon, not its bounding box.** `assets/region_polys.json`
   (baked by `scripts/region-polys.py` from the Geofabrik `.poly` beside each catalog extract,
