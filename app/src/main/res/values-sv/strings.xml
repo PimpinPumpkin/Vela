@@ -890,4 +890,9 @@
     <string name="settings_nav_tap_places">Tryck på platser under körning (experimentell)</string>
     <string name="settings_nav_tap_places_hint">Under navigering ligger bensin, mat och laddning kvar på kartan; ett tryck föreslår platsen som stopp och ett andra lägger till den. Av som standard, eftersom navigering döljer platser för att kartan ska gå att läsa. Att slå på detta slår även på Visa platser.</string>
     <string name="mapvm_start_from_here">Startar där du är</string>
+    <string name="place_busy_not">Inte mycket folk</string>
+    <string name="place_busy_not_too">Inte så mycket folk</string>
+    <string name="place_busy_little">Lite folk</string>
+    <string name="place_busy_usually">Brukar vara mycket folk</string>
+    <string name="place_busy_very">Mycket folk</string>
 </resources>

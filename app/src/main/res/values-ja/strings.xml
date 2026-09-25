@@ -913,4 +913,9 @@
     <string name="settings_nav_tap_places">運転中に場所をタップ (試験機能)</string>
     <string name="settings_nav_tap_places_hint">案内中もガソリン、飲食、充電の場所を地図に残し、タップすると経由地として提案します。もう一度タップで追加します。地図を読みやすくするため案内中は通常スポットを隠すので、初期設定はオフです。オンにすると「スポットを表示」もオンになります。</string>
     <string name="mapvm_start_from_here">現在地から案内します</string>
+    <string name="place_busy_not">空いている</string>
+    <string name="place_busy_not_too">あまり混んでいない</string>
+    <string name="place_busy_little">やや混んでいる</string>
+    <string name="place_busy_usually">通常は混んでいる</string>
+    <string name="place_busy_very">非常に混んでいる</string>
 </resources>

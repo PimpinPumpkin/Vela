@@ -891,4 +891,9 @@
     <string name="settings_nav_tap_places">הקשה על מקומות בנהיגה (ניסיוני)</string>
     <string name="settings_nav_tap_places_hint">בזמן ניווט תחנות דלק, אוכל ועמדות טעינה נשארים במפה; הקשה מציעה את המקום כעצירה והקשה שנייה מוסיפה אותה. כבוי כברירת מחדל, כי הניווט מסתיר מקומות כדי שהמפה תישאר קריאה. הפעלה כאן מפעילה גם הצגת מקומות.</string>
     <string name="mapvm_start_from_here">מתחילים מהמיקום שלך</string>
+    <string name="place_busy_not">לא עמוס</string>
+    <string name="place_busy_not_too">לא עמוס במיוחד</string>
+    <string name="place_busy_little">קצת עמוס</string>
+    <string name="place_busy_usually">בדרך כלל עמוס</string>
+    <string name="place_busy_very">עמוס מאוד</string>
 </resources>

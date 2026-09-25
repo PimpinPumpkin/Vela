@@ -4245,13 +4245,16 @@ private fun PopularTimesSection(pt: app.vela.core.model.PopularTimes, ink: Color
     }
 }
 
-private fun busynessLabel(occ: Int): String = when {
-    occ < 20 -> "Not busy"
-    occ < 40 -> "Not too busy"
-    occ < 60 -> "A little busy"
-    occ < 85 -> "Usually busy"
-    else -> "Very busy"
-}
+@Composable
+private fun busynessLabel(occ: Int): String = stringResource(
+    when {
+        occ < 20 -> R.string.place_busy_not
+        occ < 40 -> R.string.place_busy_not_too
+        occ < 60 -> R.string.place_busy_little
+        occ < 85 -> R.string.place_busy_usually
+        else -> R.string.place_busy_very
+    },
+)
 
 private fun hourLabel(h: Int): String = when {
     h == 0 -> "12a"

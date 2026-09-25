@@ -890,4 +890,9 @@
     <string name="settings_nav_tap_places">Orte beim Fahren antippen (experimentell)</string>
     <string name="settings_nav_tap_places_hint">Während der Navigation bleiben Tankstellen, Essen und Ladesäulen auf der Karte; ein Tippen schlägt den Ort als Stopp vor, ein zweites fügt ihn hinzu. Standardmäßig aus, denn die Navigation blendet Orte aus, damit die Karte lesbar bleibt. Das Einschalten aktiviert auch Orte anzeigen.</string>
     <string name="mapvm_start_from_here">Start von deinem Standort</string>
+    <string name="place_busy_not">wenig los</string>
+    <string name="place_busy_not_too">nicht allzu viel los</string>
+    <string name="place_busy_little">etwas los</string>
+    <string name="place_busy_usually">meist viel los</string>
+    <string name="place_busy_very">sehr viel los</string>
 </resources>
