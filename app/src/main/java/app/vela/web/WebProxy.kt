@@ -25,8 +25,9 @@ import java.util.concurrent.ConcurrentHashMap
  * `play.google.com/log` and the account bar's `ogads-pa` calls were the POSTs left.
  *
  * Google's page telemetry (`play.google.com/log`, `gen_204` pings, the account bar's async data)
- * is answered locally with an empty 200 and never sent (`webProxyBlockLogs`, default 1): nothing
- * Vela reads depends on it, and it is the page reporting on itself. Ad blockers commonly do the same.
+ * can be answered locally with an empty 200 and never sent: Settings > Privacy "Block Google's page
+ * telemetry" ([GoogleTelemetry], default OFF since 2026-09-25, was always on with the proxy).
+ * Nothing Vela reads depends on it, but a browser that never sends it looks less like one.
  */
 object WebProxy {
     private val jar = WebViewCookieJar()
@@ -66,13 +67,16 @@ object WebProxy {
     fun intercept(request: WebResourceRequest?): WebResourceResponse? {
         val req = request ?: return null
         val url = req.url ?: return null
-        if (url.scheme != "https" || !on()) return null
+        if (url.scheme != "https") return null
         val host = url.host.orEmpty()
         val path = url.path.orEmpty()
-        if (isGoogle(host) && AppTune.on("webProxyBlockLogs", true) && isTelemetry(host, path)) {
+        // Telemetry blocking is its own choice (GoogleTelemetry, default off) and works with the
+        // proxy off too; the dial overrides it when set.
+        if (isGoogle(host) && blockTelemetry() && isTelemetry(host, path)) {
             if (passed.add("blocked $path")) android.util.Log.i("VelaWebProxy", "answers locally: ${req.method} $host$path")
             return empty(req)
         }
+        if (!on()) return null
         val s = stream ?: CronetHolder.engine()?.let { WebStreamProxy(it, jar).also { p -> stream = p } } ?: return null
         if (req.method.equals("GET", true)) return runCatching { s.fetch(req) }.getOrNull()
         if (req.method.equals("POST", true)) {
@@ -91,6 +95,11 @@ object WebProxy {
             android.util.Log.i("VelaWebProxy", "passes through: ${req.method} $host$path")
         }
         return null
+    }
+
+    private fun blockTelemetry(): Boolean {
+        val dial = AppTune.value("webProxyBlockLogs", -1.0)
+        return if (dial >= 0.0) dial >= 0.5 else GoogleTelemetry.block.value
     }
 
     private fun isTelemetry(host: String, path: String): Boolean =

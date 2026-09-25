@@ -89,6 +89,12 @@ internal fun PrivacySettingsScreen(vm: app.vela.ui.map.MapViewModel, onBack: () 
                         },
                     ) { Text(stringResource(R.string.settings_google_session_now)) }
                 }
+                app.vela.ui.settings.ToggleRow(
+                    label = stringResource(R.string.settings_block_google_telemetry),
+                    checked = app.vela.web.GoogleTelemetry.block.value,
+                    onCheckedChange = { app.vela.web.GoogleTelemetry.set(context, it) },
+                    hint = stringResource(R.string.settings_block_google_telemetry_hint),
+                )
             }
         }
         Spacer(Modifier.height(8.dp))
