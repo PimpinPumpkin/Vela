@@ -284,7 +284,9 @@ class NavSession @Inject constructor(
      *  IMMEDIATELY (marks null until the new route lands), so even a failed fetch keeps it -
      *  the next reroute/recheck routes through it once the network recovers. */
     fun addStop(stop: NavStop, loc: LatLng) {
-        val remaining = synchronized(stopLock) { stops.drop(passedStops) }
+        // VISIBLE stops only: setStops puts the silent detour vias back itself (withSilentVias), so
+        // passing them here routed through every detour point twice.
+        val remaining = synchronized(stopLock) { stops.drop(passedStops).filter { !it.silent } }
         setStops(listOf(stop) + remaining, loc, "add stop mid-nav → ${stop.label}", "stop-added")
     }
 

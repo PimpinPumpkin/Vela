@@ -835,7 +835,6 @@
     <string name="settings_voice_volume_louder">Högre</string>
     <string name="settings_voice_volume_loudest">Högst</string>
     <string name="settings_voice_volume_hint">Hur högt talade vägbeskrivningar spelas över din media. De högre nivåerna gäller Vela-rösten; systemröster går bara att göra tystare.</string>
-    <string name="place_avoid_not_honored">De här rutterna kan ändå använda vägtullar, motorvägar eller färjor. Vela kan undvika dem på en direkt resa online, eller offline i ett hämtat område, men ännu inte på en resa med stopp.</string>
     <string name="settings_asr_engines_title">Igenkänningsmotor på enheten</string>
     <string name="voice_capture_examples_title">Saker du kan säga</string>
     <string name="voice_capture_example_home">\"Ta mig hem\" eller \"kör mig till jobbet\"</string>

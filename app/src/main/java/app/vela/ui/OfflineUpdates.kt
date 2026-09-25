@@ -21,10 +21,9 @@ import androidx.compose.runtime.mutableStateOf
 object RegionUpdates {
     enum class Mode { OFF, WIFI, MOBILE }
 
-    // OFF until the whole path has been proven on a device: the bake only started publishing
-    // patches on 2026-09-18 and nothing has yet downloaded and applied one in the wild. A feature
-    // that rewrites an installed archive does not get to default itself on before somebody has
-    // watched it work. Flip to WIFI once it has.
+    // OFF by default. The whole path was watched working on a Pixel 9 on 2026-09-19 (a published
+    // patch downloaded, applied and fingerprint-checked), so flipping this to WIFI is now the
+    // maintainer's call rather than a missing test.
     val mode = mutableStateOf(Mode.OFF)
 
     fun init(context: Context) {

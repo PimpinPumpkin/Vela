@@ -4,11 +4,10 @@ Vela ships in 15 languages (the canonical layer-by-layer table is in
 [LANGUAGES.md](LANGUAGES.md)). Translations are community-maintained, and today
 they come in as ordinary pull requests.
 
-> **Weblate is not up yet.** Hosted Weblate is free for open-source projects, but
-> a project has to be at least three months old to qualify. Vela passed that mark on
-> 2026-09-15 and has not applied yet, so it is not there
-> yet. Until it is, there is no Weblate project to sign in to, so please use the
-> pull-request flow below. This page gets rewritten the day it is running.
+> **Weblate is not up yet.** Hosted Weblate is free for open-source projects once a
+> project is at least three months old. Vela passed that mark on 2026-09-15, but the
+> application has not been made, so there is no Weblate project to sign in to. Please
+> use the pull-request flow below. This page gets rewritten the day Weblate is running.
 
 ## Translate by pull request
 
@@ -28,7 +27,8 @@ Missing your language entirely? Open an issue and say which one, or copy
 `values/strings.xml` to a new `values-<lang>/` folder and translate what you
 can. A new language needs the UI strings first; spoken directions and the
 open/closed keyword table are separate layers a maintainer wires up afterwards
-(see below).
+(see below, and the full checklist under "Adding a language" in
+[LANGUAGES.md](LANGUAGES.md)).
 
 ## What lives where
 
@@ -37,17 +37,21 @@ or config and changes through pull requests too, but needs a maintainer:
 
 | Layer | Where | How to change |
 |---|---|---|
-| App UI strings (~350) | `app/src/main/res/values-<lang>/strings.xml` | PR (the flow above) |
-| Spoken turn-by-turn | `core/src/main/java/app/vela/core/i18n/` (a `NavStrings` table per language) | PR, needs native review |
-| Open/closed status keywords | `calibration.json` (`statusClosedWords`/`statusOpenWords`) + compiled tables in `SearchParser` | PR or a signed calibration push |
+| App UI strings (about 990) | `app/src/main/res/values-<lang>/strings.xml` | PR (the flow above) |
+| Spoken turn-by-turn | `core/src/main/java/app/vela/core/i18n/NavStrings.kt` (one table per language) | PR, needs native review |
+| Open/closed status keywords | compiled tables in `SearchParser`; `calibration.json` can override them (`statusClosedWords`/`statusOpenWords`) | PR, or a signed calibration push for a hot fix |
+| Transit-category words | `calibration.json` (`transitCategoryWords`, `transitExcludeWords`), with a compiled fallback | PR plus a signed calibration push |
+| Voice commands ("take me home") | `core/.../search/QueryIntent.kt`, with the phrases Settings shows in `VoiceCommandExamples.kt` | PR, needs native review |
+| Review page labels | `core/.../data/ReviewWords.kt` (captured from Google's own page in that language) | PR |
 | Neural voice | Piper voice catalog (`PiperCatalog`) | depends on an upstream Piper voice existing |
 
 ## Rules that keep translations shippable
 
-- **Placeholders must match the English type.** `%1$s` stays a string,
-  `%1$d` stays a number, in the same order. A mismatch makes Android fall
-  back to English for that one string (never a crash), so your translation
-  silently doesn't show.
+- **Placeholders must match the English set.** `%1$s` stays a string and
+  `%1$d` stays a number; you may move them around the sentence, but keep every
+  one. A `%d` handed a word crashes the app the moment that string is shown, so
+  CI (`tools/check-translations.py`) fails any pull request whose placeholders
+  differ from English.
 - **Plurals need the right CLDR categories for your language.** Russian,
   Ukrainian and Polish need `one`/`few`/`many`/`other`; Hebrew needs
   `one`/`two`/`many`/`other`; Chinese and Japanese only `other`. Copy the
@@ -62,11 +66,13 @@ or config and changes through pull requests too, but needs a maintainer:
   buttons; when in doubt, prefer the shorter phrasing.
 
 Some English literals are deliberately NOT translatable: strings that double
-as logic keys (the category chips are also the search query, "Open"/"Closed"
-feed the status parser). They stay inline in code until display text is
-split from the key, so don't be surprised if you can't find one on Weblate.
+as logic keys (the "Open"/"Closed" word on a status line Vela works out from
+the hours itself feeds the status coloring). They stay inline in code until
+display text is split from the key, so don't be surprised if one is missing
+from strings.xml. The category chips used to be in this group; their labels
+are translatable now.
 
-## For maintainers: the Weblate component
+## For maintainers: the Weblate component (once the project is accepted)
 
 One component covers the app:
 
@@ -83,8 +89,9 @@ One component covers the app:
   component is first created.
 
 Adding a new string to the app: add it to the English base
-(`values/strings.xml`) only, in the same commit as the feature. Weblate
-picks it up on the next push and translators fill the locales; untranslated
-strings fall back to English in the meantime. Hand-editing a
-`values-<lang>` file directly is still fine (it merges like any other
-change), just expect Weblate to own those files over time.
+(`values/strings.xml`) only, in the same commit as the feature. Translators
+fill the locales by pull request today (by Weblate once it runs);
+untranslated strings fall back to English in the meantime, and
+`python3 tools/check-translations.py` prints what each language is missing.
+Hand-editing a `values-<lang>` file directly is still fine (it merges like
+any other change), just expect Weblate to own those files once it is set up.

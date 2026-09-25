@@ -354,6 +354,10 @@ The road name sits above the bar, inside it, under the arrow or nowhere ("Curren
   box on screen, which costs a projection per callout per pass.
 - **The exit callout needs a numbered exit in the words.** A ramp whose instruction names no
   exit, or phrases it in a way the word table does not know, gets no bubble.
+- **Offline, a region needs its road-features file already on the phone.** The file comes down
+  the first time a drive or a street-zoom view needs it while online, not with the region
+  download, so offline in a region never visited that way the drive shows no lights or signs at
+  all ([chapter 8](08-offline.md#limits)).
 - **The stop-sign gate needs a baked bearing.** Regions baked before the bearing column, and every
   sign from the Overpass fallback, keep every sign. Lights are never gated. Signs on a road that
   bends at the junction can fall outside the 40 degrees.

@@ -836,7 +836,6 @@
     <string name="settings_voice_volume_louder">חזק יותר</string>
     <string name="settings_voice_volume_loudest">הכי חזק</string>
     <string name="settings_voice_volume_hint">כמה חזק ההוראות המדוברות מושמעות מעל המדיה שלך. הרמות החזקות יותר חלות על Vela Voice; קולות מערכת אפשר רק להחליש.</string>
-    <string name="place_avoid_not_honored">המסלולים האלה עדיין עשויים לכלול כבישי אגרה, כבישים מהירים או מעבורות. Vela יכול להימנע מהם בנסיעה ישירה כשיש חיבור, או ללא חיבור באזור שהורדת, אבל עדיין לא בנסיעה עם עצירות.</string>
     <string name="settings_asr_engines_title">מנוע זיהוי במכשיר</string>
     <string name="voice_capture_examples_title">דברים שאפשר להגיד</string>
     <string name="voice_capture_example_home">\"קח אותי הביתה\" או \"קח אותי לעבודה\"</string>

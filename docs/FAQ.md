@@ -12,15 +12,17 @@ Not by default. Settings > Places > "Places come from" has three choices:
 
 - **Vela data** (the default): the businesses on the map come from open data baked into
   Vela's own map files, plus the shops mapped in OpenStreetMap. Panning around asks Google
-  nothing and works with no connection.
+  nothing, and in a downloaded region it works with no connection.
 - **Google**: the map's businesses come from Google, fetched once each time you stop panning.
 - **Both**: Vela's data draws the map and one Google request tops it up with whatever it
   lacks. Where the two describe the same shop, Google's pin wins, because its coordinate is
   usually the storefront.
 
 Whichever you pick, **searching** and **tapping a place for its hours, reviews and photos**
-still go to Google, unless you are offline in a downloaded region. The switch under
-"Look up tapped places on Google" turns the tap lookup off on its own.
+still go to Google, unless you are offline in a downloaded region or have turned on "Use Vela
+without Google" (below). Settings > Places > "Look up tapped places on Google" turns off the
+lookup for places tapped on the map on its own: the sheet then shows what the open data
+carries (name, type, address, and often phone and hours).
 
 ## What does each part of the app actually use?
 
@@ -28,17 +30,23 @@ still go to Google, unless you are offline in a downloaded region. The switch un
 | --- | --- | --- | --- |
 | The map itself: roads, buildings, labels, house numbers | OpenStreetMap, served as vector tiles by OpenFreeMap, or from a downloaded region | Never | With a downloaded region |
 | Businesses on the map | Vela's baked open data (Overture, AllThePlaces, OpenStreetMap), or Google, or both: your choice | Only in Google or Both mode | Vela data mode, in a downloaded region |
-| A place's hours, reviews, photos, phone | Google, when you tap the place | Yes | No; the tile's own name, type and address still show |
-| Search | Google; offline, Vela's own place and address data for the region | Yes when online | Yes, within a downloaded region |
-| Turn-by-turn routes | The open OSRM router, or OsmAnd-format files on your phone when a region is downloaded | No | Yes, with a downloaded region |
+| A place's hours, reviews, photos, phone | Google, when you tap the place | Yes | No; the tile's own name, type and address still show, and often its phone and hours |
+| Suggestions while you type | Google's own autocomplete; the open Photon geocoder too for text that starts with a house number; your recents, saved places and downloaded regions on the phone | Yes (the typed text), when online | Your own history, and addresses in downloaded regions |
+| Search | Google, when you submit it; offline, Vela's own place and address data for the region | Yes when online | Yes, within a downloaded region |
+| Dropping a pin, tapping a house number or a building | OpenStreetMap's Nominatim names the spot | Never | The pin still drops, without a street name |
+| Turn-by-turn routes | The open OSRM router, or OsmAnd-format files on your phone when a region is downloaded; Google's own route only when the open router is down | The route itself, no; planning one also asks Google for traffic (next row) | Yes, with a downloaded region |
 | Live traffic and arrival times | Google | Yes | No; you still get a route and a free-flow estimate |
-| Re-routes while driving | The open router first; Google's route as the fallback, and the phone's own data when there is no signal | Yes, unless the phone answers first | Yes |
+| Re-routes while driving | The open router, with Google asked in parallel for traffic; the phone's own data when there is no signal | Yes, your current position (as long as Google is on) | Yes |
 | Speed limits, traffic lights, stop signs, level crossings | OpenStreetMap, baked per region | Never | Yes |
 | Surveillance and speed cameras | OpenStreetMap and DeFlock, bundled or baked | Never | Yes |
-| Transit departures | Transitous, an open GTFS service | Never | Cached areas only |
+| Transit departures | Transitous, an open GTFS service; the stop's Google page where Transitous has no coverage | Only for that fallback | The last board seen at a stop, marked with its time |
+| Transit directions | Google | Yes | No |
+| Satellite view (off by default) | Esri World Imagery; Google's imagery for close zoom where Esri has none | Only those close-ups | No |
+| Traffic overlay (off by default) | Google's traffic tiles | Yes, while it is on | No |
 | Street View | Google | Yes | No |
 
-There is no Vela server anywhere in that table, no account and no telemetry.
+There is no Vela server anywhere in that table, no account and no telemetry of Vela's own.
+The exact requests, service by service, are in [PRIVACY.md](../PRIVACY.md).
 
 ## Can I use Vela without Google at all?
 
@@ -50,8 +58,8 @@ directions, no reviews or photos). Download the region you live in under Setting
 maps and the map, search, addresses, routing and navigation all work with no signal too.
 
 What you keep: the map, search by name and address, turn-by-turn navigation with voice, speed
-limits, cameras, stop signs and lights, transit departure boards, saved places and offline
-routing.
+limits, cameras, stop signs and lights, transit departure boards wherever Transitous covers the
+stop, saved places and offline routing.
 
 One exception you can turn off: a short Google Maps link someone sends you (`maps.app.goo.gl/...`)
 only says where it points when Google's link shortener is asked. Vela asks it once, with no
@@ -101,5 +109,6 @@ Android, with no Play Services and no microG.
 ## Where do updates come from?
 
 GitHub releases, through Obtainium, the F-Droid repo or a manual APK. There is a weekly
-stable channel and a nightly one; the in-app updater follows whichever you pick under
-Settings > About.
+stable channel and a nightly one (plus a canary channel for testers, in the in-app updater
+only); the in-app updater follows whichever you pick under Settings > About > "Update
+channel". Every channel is signed with the same key, so switching never needs a reinstall.

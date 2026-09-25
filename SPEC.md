@@ -86,16 +86,16 @@ GrapheneOS and other no-GMS ROMs.
 | Basemap | OpenFreeMap Liberty vector tiles, or a downloaded PMTiles region | No | With a downloaded region |
 | Place pins while browsing | Vela's own places bake (Overture + AllThePlaces positioned with OSM), or Google ambient places, or both (section 5.1) | Only in Google or Both mode | Vela data mode, with a downloaded region |
 | Opening a place | Google listing, correlated to the tapped feature | Yes, unless the lookup toggle is off | Tile data only |
-| Search | Google `search?tbm=map`; offline falls back to the on-device pack index | Yes | Region packs |
-| Reviews, photos, popular times, About | Hidden WebView scrapes of Google's own pages | Yes | No |
+| Search | Google autocomplete per typing pause (`suggest`), Google `search?tbm=map` on submit, Photon beside them for house-number text; offline, the on-device pack index | Yes | Region packs |
+| Reviews, photos, popular times, About | Photos: one `hspqX` request; popular times and details: the search reply or a plain focused search; first reviews: a hidden WebView scrape of Google's page; the page walk only as fallback or for More photos | Yes | No |
 | Turn-by-turn routing | FOSSGIS OSRM primary, Google as traffic and fallback, on-device obf offline | Yes for traffic | Downloaded obf region |
 | Traffic and live ETA | Google directions | Yes | No |
 | Traffic controls (lights, stops, crossings, humps) | Per-region road-features bake, Overpass only where no region exists | No | Yes |
 | Surveillance and speed cameras | Bundled and hosted DeFlock dataset; OSM speed cameras | No | Yes |
-| Transit boards and stop icons | Transitous (open GTFS + GTFS-Realtime) | No | Cached areas only |
+| Transit boards and stop icons | Transitous (open GTFS + GTFS-Realtime); a Google-listed stop Transitous does not cover falls back to the stop's Google page | Only as the fallback | Last board seen, cached areas |
 | Transit directions | Google directions page | Yes | No |
 | Street View | Google keyless pano metadata and tiles, rendered in-app | Yes | No |
-| Reverse geocoding | Nominatim | No | Region packs |
+| Reverse geocoding (pins, house-number and building taps) | Nominatim | No | No (the pin reads "Dropped pin"); a typed address geocodes offline from the region packs |
 
 ---
 
@@ -116,11 +116,12 @@ Two Gradle modules with a strict boundary.
 
 The `:app` module may read `:core`; `:core` may not read `:app`. Where `:core` needs a user
 setting, `:app` writes a plain flag into `:core` (`CategoryFilter.enabled`, `LowRamMode`,
-`LowDataMode`, `NoGoogle`, `RoutingPrefs`) rather than `:core` reading a Compose holder.
+`LowDataMode`, `NoGoogle`, `RoutingPrefs`, `SpokenRoadNames`) rather than `:core` reading a
+Compose holder.
 
 - **Use Vela without Google** (`NoGoogle.enabled`, set from Settings > Privacy) is enforced at
-  the data source: search answers from the OpenStreetMap geocoder (Photon, 20 results, biased
-  around the user), the page-2 search, the ambient fan-out, reviews and photos answer empty,
+  the data source: search answers from the OpenStreetMap geocoder (Photon: 20 results softly
+  biased toward the user, then 10 inside a hard box around the view for partial addresses), the page-2 search, the ambient fan-out, reviews and photos answer empty,
   Street View answers null, and the Google directions call answers empty, so every route is the
   open router's with no traffic, no Google alternates and no abbreviated fallback. The app gates
   its own Google surfaces on the same setting: the hidden WebView fetchers return null at
@@ -159,24 +160,30 @@ setting, `:app` writes a plain flag into `:core` (`CategoryFilter.enabled`, `Low
     transit/Transitous    MOTIS client: stops, boards, trips
     CategoryFilter        content gating inside :core
     tiles/                map style catalog
+  net/            GoogleTransport (the Cronet hook), AgedSession
   location/       LocationProvider (AOSP), HeadingProvider, MotionProvider, SpeedKalman,
-                  AlongRouteFilter
-  nav/            NavEngine (pure), NavSession, RouteProjection, RouteBar, CameraAlerts,
-                  CameraFacing, SpeedingAlerts, ExitLabel
+                  AlongRouteFilter, DemoTrace
+  nav/            NavEngine (pure), NavSession, NavReplay, RouteProjection, RouteBar,
+                  CameraAlerts, CameraFacing, CameraDetour, DetourEstimate, SpeedingAlerts,
+                  ExitLabel
   voice/          VoiceGuide, NeuralSynth seam, SpokenScript, SpeechText
   feedback/       Haptics
   config/         Calibration, CalibrationStore, BundleSignature, JsSandbox, JsTransforms
   search/         QueryIntents, VoiceCommandExamples
-  replay/         TripLog, TripScrub, NavReplay, DemoTrace
+  replay/         TripLog, TripScrub, TripShareBatch
   i18n/           NavStrings tables and registry
-  util/           SunTimes, NameScript, OsmHours (OSM opening_hours to the sheet's day lines; `lines()` is the one entry point for every open source), ClockFormat
-  diag/           DiagLog, DiagScrub
+  util/           SunTimes, NameScript, PlaceNames, OpeningHours, Jitter, OsmHours (OSM
+                  opening_hours to the sheet's day lines; `lines()` is the one entry point for
+                  every open source)
+  diag/           DiagLog, DiagEvent
 
 :app
   MainActivity, VelaApp, VelaConfig
   ui/map/         MapScreen, VelaMapView, MapViewModel, NavController, SearchGates,
-                  PoiIcons, AmbientStability, MapDpadController
-  ui/place/       PlaceSheet, GoogleChooser, DirectionsPanel, StopsEditor, StreetViewScreen
+                  PoiIcons, AmbientStability, FollowEstimator, RoadShields, MapFonts,
+                  StyleLayers, MapDpadController
+  ui/place/       PlaceSheet, GoogleChooser, DirectionsPanel, RouteTopCard, StopsEditor,
+                  PlaceOrigin, StreetViewScreen
   ui/nav/         ManeuverBanner, NavControls, NavOverlays, StepsSheet, RouteBarStrip,
                   RoundaboutGlyph, RouteShield
   ui/search/      SearchBar
@@ -184,16 +191,22 @@ setting, `:app` writes a plain flag into `:core` (`CategoryFilter.enabled`, `Low
   ui/theme/       AppTheme, Theme
   ui/             process-wide holders (section 2.3), SheetPalette, Format, Units, VelaMenu,
                   VelaDialog, DpadFocus, AdaptiveDensity, AppFont, QuickCategories
-  web/            HiddenWebView base plus the five scrapes and ReviewsPanel
-  offline/        ObfStore, RegionCatalog, PoiPackStore, PmtilesRegionStore, PlacesTileStore,
-                  BasemapTileStore, OverlayTileStore, GlyphPackStore, OfflineMaps
-  car/            VelaCarAppService, CarMapRenderer, ManeuverMapper, screen/
-  data/           RoadFeatures, FlockCameras, ContactAddresses
+  web/            HiddenWebView base plus the five scrapes and ReviewsPanel; WebViewIdentity,
+                  WebViewCookieJar, WebProxy, SessionRotation, GoogleStanding, GoogleTelemetry
+  net/            CronetTransport
+  offline/        ObfStore, RegionCatalog, RegionPolys, PoiPackStore, PmtilesRegionStore,
+                  PlacesTileStore, BasemapTileStore, PmtilesReader, PmtilesPatch,
+                  PmtilesCompact, OverlayTileStore, MaxspeedOverlayStore, GlyphPackStore,
+                  OfflineMaps, LegacyGraphs
+  car/            VelaCarAppService, VelaCarSession, CarMapRenderer, CarBridge,
+                  ManeuverMapper, screen/
+  data/           RoadFeatures, FlockCameras, ContactAddresses, TransitStopCache,
+                  TransitBoardCache
   voice/          AsrRecognizer, AsrEngine, PiperSynth, VoiceInstaller, KokoroInstaller
   service/        NavigationService, NavGlyphs
   download/       DownloadService, DownloadWork
-  update/         SelfUpdater
-  diag/           DiagExporter, NavTrace
+  update/         SelfUpdater, ApkChoice, InstallSource
+  diag/           DiagExporter, DiagScrub, NavTrace, CrashCatcher
   replay/         TripStore
   streetview/     PanoramaView, StreetViewTiles
 ```
@@ -213,7 +226,9 @@ setting, `:app` writes a plain flag into `:core` (`CategoryFilter.enabled`, `Low
   `LiveReviews`, `PlaceContent` (`ShowReviews`, `LoadPhotos`, `HideAdult`,
   `HideExternalLinks`), `RoutePicker`, `RouteTrail`, `RoadLabel`, `PreferButtons`,
   `PuckStyle`, `VoiceSearch`, `ContactsSearch`, `LayersButton`, `Onboarding`, `PipMode`,
-  `MemoryPressure`, `ConstrainedNetwork`.
+  `MemoryPressure`, `ConstrainedNetwork`, `GoogleFree`, `BikeSafe`, `FlockRouteAlert`,
+  `FlockDetour`, `FasterRouteAuto`, `PauseInBar`, `SpokenRoadNames`, `FullPlaceLoad`,
+  `SpeechPreload`, `RegionUpdates`, `Topography`, `SatelliteLayer`, `SimLocation`, `WhatsNew`.
 - **One view model.** `MapViewModel` owns `MapUiState` and delegates navigation to
   `NavController` through a `Host` interface. Nav code never reaches into the view model.
   **Anything an init-time collector touches must be declared above `init`**: `viewModelScope`
@@ -246,13 +261,14 @@ All Google endpoints are keyless and host-allowlisted to `google.com` and `www.g
 | --- | --- |
 | Search | `GET /search?tbm=map&q=<q>&pb=<SearchPb>` |
 | Ambient places | the same search endpoint, fanned out over category terms |
+| Autocomplete | `GET /s?tbm=map&gs_ri=maps&suggest=p&q=<q>&pb=<viewport>` (`suggest`, `SuggestParser`) |
 | Directions (traffic, fallback router) | `GET /maps/preview/directions?pb=<DirectionsPb>` |
 | Turn-by-turn (primary) | FOSSGIS OSRM `route/v1/<profile>` with `steps=true`, `geometries=polyline6` |
 | Bicycle, safety-weighted | FOSSGIS Valhalla `/route`, costing `bicycle`, `use_roads` 0.1 |
 | Shared-list import | `/maps/preview/entitylist/getlist`, URL lifted verbatim from the share page |
-| Photos | hidden WebView DOM walk of the place's `?cid=` page |
-| Reviews | hidden WebView DOM scrape of the same page, or the visible carve panel |
-| Popular times, About, owner blurb | hidden WebView search for name plus address |
+| Photos | `POST .../batchexecute?rpcids=hspqX` (`placePhotos`, dated, paged); the hidden WebView DOM walk of the place's `?cid=` page as fallback and for the Menu tab |
+| Reviews | hidden WebView DOM scrape of the same page, or the visible carve panel; the `qv9Egd` feed behind `nativeReviewFeed` (default off) |
+| Popular times, About, owner blurb | the search endpoint with name plus address (`placeDetails`); the hidden WebView search as last resort |
 | Transit directions | hidden WebView on `/maps/dir/<o>/<d>/data=!4m2!4m1!3e3` |
 | Street View metadata | `GeoPhotoService.SingleImageSearch` and `photometa/v1` |
 | Street View imagery | `streetviewpixels-pa.googleapis.com/v1/tile` |
@@ -459,8 +475,9 @@ Constraints:
 - **Google-host requests go over Cronet (2026-09-23),** Chromium's own network stack, not a
   custom TLS stack: `core/net/GoogleTransport` hands only google.com hosts to the interceptor the
   app installs (`app/net/CronetTransport`, calibration `useCronet`, default on); everything else,
-  and any Cronet failure, stays on OkHttp. `cronet-embedded` 143 (Chromium license). Cronet's native
-  library is packaged for arm64-v8a and armeabi-v7a only; on x86 and x86_64 (emulators, a few
+  and any Cronet failure, stays on OkHttp. `cronet-embedded` 143 (Chromium license). In the
+  all-in-one APK Cronet's native library is packaged for arm64-v8a and armeabi-v7a only (the
+  per-chip x86 APKs carry their own); on x86 and x86_64 (emulators, a few
   Chromebooks) the engine fails to load once and Google requests stay on OkHttp. The APK keeps all
   four ABIs at 108.4 MB, against 98.0 MB before Cronet and 121.9 MB with it on every ABI. Its protobuf-javalite sits beside OsmAnd's old bundled
   protobuf because `:osmand-shaded` relocates OsmAnd's copy to `net.osmand.shaded.protobuf` at build
@@ -491,20 +508,20 @@ Constraints:
 
 **What a place tap loads (2026-09-23).** Photos: one `hspqX` request (`MapDataSource.placePhotos`,
 each photo dated), one jittered ~2.5 s retry when it answers empty (a new Google session's first
-seconds are stripped), and only then the page walk capped at `FIRST_PHOTOS` (6, `early = true`).
+seconds are stripped), up to three tries; after three empty answers the sheet keeps the search's hero
+photo and the page walk waits for a tap on "More photos".
 Reviews: the page scrape capped at `FIRST_REVIEWS` (10). The one-request `qv9Egd` feed
 (`reviewFeed`) is behind `nativeReviewFeed` (compiled default 0): Google limits NEW anonymous
-sessions to five reviews and no paging, and the app's native session is new every launch (its
-cookies are in memory), while the WebView's persisted session ages into the full feed. Both RPCs need
-`Calibration.rpcContext` as `x-maps-diversion-context-bin`. The details page loads only when the
-search reply lacks popular times, a review count, an address or weekly hours; a plain focused search
-is tried first only when popular times are already present, because sent plainly it comes back
-without them. "More photos" runs the full walk (Menu tab) with the dates join. No hidden page is
+sessions to five reviews and no paging, and the feed returned 0 reviews even on the aged WebView
+session it now rides (`aged = true`), while the page scrape on that session gets the full list. Both RPCs need
+`Calibration.rpcContext` as `x-maps-diversion-context-bin`. Details are fetched only when the
+search reply lacks popular times, a review count, an address or weekly hours. "More photos" runs the full walk (Menu tab) with the dates join. No hidden page is
 warmed after a search, and the ambient neighbor prefetch runs in Google-only mode. Settings >
 Performance "Load all photos and reviews" (`FullPlaceLoad`) restores the full walk and 50 reviews.
 Details use ONE plain request of the details page's own search (`MapDataSource.placeDetails`,
 parsed by `PopularTimesParser`) with up to three tries while popular times are missing, the page
-only as a last resort (`nativeDetails`). "More photos" pages `hspqX` natively: 10 per request, the
+only as a last resort (`nativeDetails`). "More photos" pages `hspqX` natively: 50 are asked for
+(`PHOTO_COUNT`; a full session answers 50, a limited one 10, see limited-view detection), the
 cursor is reply payload[5] and goes back at request `[4][2][2]`; payload[1] is not the photo total
 (it reads the same for unrelated places) and is not read. The RPC tags no category, so the Menu tab comes only from the page walk. The per-place requests
 (details, the photo pages, the review feed) carry the `AgedSession` tag, and the Cronet transport
@@ -695,10 +712,10 @@ through what the plan avoided.
   public FOSSGIS OSRM rejects `exclude=` for every value, so `OSRM_SUPPORTS_EXCLUDE` is false
   and the parameter is never sent; with an avoid on, the unrestricted OSRM routes are not
   offered as alternates.
-- Offline: the obf car profile takes `avoid_toll`, `avoid_highway` and `avoid_ferries` as
-  dynamic routing.xml parameters, so no baked profiles are needed. The vendored routing.xml
-  declares `avoid_motorway` for the car profile and `avoid_highway` for horse riding, so the
-  offline highway avoid is unverified on a device.
+- Offline: the obf car profile takes `avoid_toll`, `avoid_motorway` and `avoid_ferries` as
+  dynamic routing.xml parameters, so no baked profiles are needed. "Avoid highways" sends
+  `avoid_motorway`, the car profile's id in the vendored routing.xml; `avoid_highway` there
+  belongs to the horse-riding profile, and sending it made the offline highway avoid a no-op.
 - The on-device avoid attempt is bounded (`AVOID_ONDEVICE_TIMEOUT_MS`, 4 s planning) and is
   deliberately **unstructured**: a structured child would pin the scope open until the
   non-cancellable native compute finished and defeat the timeout. The orphan finishes and is
@@ -740,9 +757,11 @@ opens the stops editor; with stops it also carries "Remove next", which after a 
 confirm calls `applyStops(stops.drop(1))`, the same single replan as the editor's Done.
 
 The closing-soon warning (`NavController.maybeWarnClosingSoon`, at nav start) checks each stop
-ahead at its own arrival, the sum of `route.legs` durations up to it, before the destination, and
-speaks only the first place that closes within `60` min of arrival or before it. A stop added
-during the drive is checked against the first leg of the replanned route, waited for up to 20 s.
+ahead at its own arrival before the destination, and speaks only the first place that closes within
+`60` min of arrival or before it. Routes with stops arrive as ONE leg from every router, so a stop's
+arrival is the trip's time scaled by the stop's along-route fraction (`stopArrivals`, from
+`NavEngine.stopMarks`); summing per-leg times never reached a stop. A stop added during the drive is
+checked the same way on the replanned route, waited for up to 20 s.
 
 ### 4.5 Offline routing
 
@@ -814,6 +833,9 @@ projection, never a global nearest, so a route that passes near itself cannot cl
 ```
 REROUTE_COOLDOWN_MS        10_000   minimum gap between adopted reroutes
 REROUTE_FETCH_TIMEOUT_MS   20_000   one urgent attempt's deadline
+REROUTE_LADDER_TIMEOUT_MS  40_000   one escalated attempt's deadline
+REROUTE_ESCALATE_AFTER          2   urgent attempts before the full ladder
+REROUTE_STUCK_GRACE_MS      5_000   past deadline plus this, the single-flight guard lets go
 REROUTE_FINISH_RESERVE_MS   4_000   deadline headroom left for adoption
 URGENT_OSRM_TIMEOUT_MS      6_000   connect, read and call for the single urgent OSRM try
 URGENT_GOOGLE_GRACE_MS      2_500   how long an urgent fetch waits for Google once OSRM answered
@@ -941,7 +963,8 @@ motion are filtered.
 - **Cosmetic eases take a capped time step** (`dtEase` at most 65 ms). A main-thread hitch
   otherwise delivers one frame whose exponential eases jump 45-70 percent of their error at
   once. Integration keeps the real dt.
-- Navigation zoom range is 18.0 to 15.5. Free-drive follow engages once per session and eases
+- Navigation zoom is speed-scaled from 18.5 at a standstill to 15.8 at 30 m/s, eased over 0.6 s; a
+  pinch sets an override that Re-center clears. Free-drive follow engages once per session and eases
   its bearing toward the GPS course with a speed-scaled look-ahead (`FREE_LOOKAHEAD_TAU_S`
   2.5 s); the follow target is a continuously integrated estimate (`FollowEstimator`) fed the
   **raw** accepted fix, not the low-passed one, with half of each residual spread over 0.9 s.
@@ -1012,7 +1035,7 @@ renderer then sat at 89 percent of a core. The Developer row states the date it 
   on in the next few seconds (0.98 at z15.5 rising to 1.95 at z19). The browse layer draws from the
   same zoom its viewport FETCH uses, so the gate that decides whether to ask for them is the gate
   that decides whether to draw them; during navigation the corridor set draws from z15.4, just under
-  the camera's 15.5 floor. What appears is bounded by OSM, which maps signals more consistently than
+  the camera's 15.8 floor. What appears is bounded by OSM, which maps signals more consistently than
   stop signs, and unevenly between places: Delaware's bake holds 2,331 signals against 2,144 stops,
   while a western state's runs nearer three to one. A residential area can therefore show lights and
   no signs at all, whatever the layer is willing to draw. The corridor fetch is keyed per driven route so a
@@ -1030,10 +1053,11 @@ renderer then sat at 89 percent of a core. The Developer row states the date it 
   line to 3 m and buckets segments into 0.01-degree cells. A whole-region parse reads the
   inflated bytes once and parses decimals by hand into primitive arrays.
 - **Surveillance (ALPR) cameras** ship as a bundled floor plus a hosted update
-  (`FlockCameras`): a gzipped `lat, lon, operator, direction` TSV, about 124,000 points, loaded
+  (`FlockCameras`): a gzipped `lat, lon, operator, direction` TSV, about 129,000 points in the bundled July 2026 snapshot, loaded
   into flat arrays with a 0.1-degree grid index off the main thread. The loader compares
   versions and prefers the higher, deleting a download the bundled floor has passed. Route
-  counts use a 45 m corridor. Badges cluster at 40 m below street zoom.
+  counts use a 45 m corridor. Badges cluster at 40 m at every zoom: below street zoom one badge per cluster, from z16 one
+  badge with an "xN" count and a facing cone per head.
 - **Direction rule** (`CameraFacing`): for a camera inside the distance gate, take the nearest
   non-degenerate route segment's bearing and compare as undirected lines, `min(d, 180 - d) <=
   50` degrees. A camera with no facing counts. Applied to route counts, the avoid re-rank, the
@@ -1084,7 +1108,8 @@ renderer then sat at 89 percent of a core. The Developer row states the date it 
 
 - **A region covers a point by its boundary polygon, not its bounding box.** `assets/region_polys.json`
   (baked by `scripts/region-polys.py` from the Geofabrik `.poly` beside each catalog extract,
-  simplified to about 5 km, 425 regions, about 300 KB) is loaded once at app start into
+  simplified to about 5 km, one polygon for each of the catalog's 458 regions, about 340 KB) is
+  loaded once at app start into
   `RegionPolys`. `RoutingRegion.covers(lat, lng)` and `PmtilesRegionStore.Region.covers(lat, lng)`
   test the polygon when one exists and the box otherwise, and every region-for-a-point decision
   (the viewport download's routing, places, basemap and overlay picks, the streaming unions, the
@@ -1150,7 +1175,7 @@ widens from fuel-only to `NAV_DRIVE_GROUPS`, and a tap on a place does not selec
 
 ### 5.1 Sources
 
-Settings > Data and privacy > "Places come from" (`MapPoiPrefs.placesSource`, pref
+Settings > Places > "Places come from" (`MapPoiPrefs.placesSource`, pref
 `map_places_source`) has three values:
 
 - **`open`** - Vela's own bake. The compiled default, and the fleet default through
@@ -1199,7 +1224,9 @@ a dense city.
 `tools/build-places-region.sh <id> S W N E out.pmtiles [release] [local.parquet]` runs DuckDB
 over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
 
-- Business POIs only. Parks, schools, civic and transit are excluded; OSM covers those.
+- Overture contributes business POIs only: its own park, school, campus, housing and transit rows
+  are dropped at scoring. Parks, schools, civic places and landmarks come from OSM (the one-set
+  landmark rows below).
 - **AllThePlaces** rows are pulled from the world PMTiles for the region (`pmtiles extract
   --bbox`, decoded with tippecanoe-decode and jq), filtered to business tags, mapped onto
   Overture's category names, and inserted where no Overture row of the same brand or the same
@@ -1318,13 +1345,18 @@ Per-feature properties: `name`, `class`, `group`, `prominence`, `confidence`, `b
 (about 400 m), `crank` (about 1.6 km) and `xrank` (about 6.5 km). `src` stays `overture` for
 every row because the tap gate keys on it; use `origin` to tell the datasets apart.
 
-**Prominence** is a category prior (4.5 landmark / 3.2 / 2.2 / 1.6 / 1.0) plus 1.6 for a brand,
-0.5 for a website, 0.4 for a phone, 0.2 for an address, plus confidence.
+**Prominence** is a category prior (4.5 for anchors such as hospitals, universities, supermarkets
+and museums; 3.2 for hotels, pharmacies, banks and attraction-type landmarks; 2.6 for food;
+2.2 for everyday services, parks, schools and places of worship; 1.6 with no category; 1.0
+otherwise; 0.5 for offices) plus 1.6 for a brand, 0.5 for a website, 0.4 for a phone, 0.2 for an
+address, plus `(confidence - 0.5) * 1.6`, plus `srcbonus`.
 
-**Baked minzoom** comes from the ranks: landmark categories and `xrank` 1 at z11, landmark
-`xrank` at most 3 at z12, `crank` 1 or prominence at least 6 at z13, `crank` at most 2 or
-prominence at least 5 at z14, `rank` at most 3 or at least 4.5 at z15, `rank` at most 12 or at
-least 3.5 at z16, else z17; tippecanoe runs at `-Z11`.
+**Baked minzoom** comes from the ranks, first match wins: a tenant (other than fuel) z17; a
+landmark with `xrank` 1 z11, `xrank` at most 3 z12, `lrank` at most 4 z14, `lrank` at most 10
+z15; `crank` 1 with prominence at least 6 z13; `crank` at most 2, or prominence at least 5 with
+`crank` at most 6, z14; `rank` at most 3, or prominence at least 4.5 with `rank` at most 8, z15;
+`rank` at most 12, or prominence at least 3.5 with `rank` at most 24, z16; else z17. tippecanoe
+runs at `-Z11 -z17`.
 
 ### 5.3 What draws, by zoom
 
@@ -1396,7 +1428,7 @@ next camera idle.
 
 **Offline the fan-out does not run at all.** `maybeLoadAmbientPois` returns before launching when
 `offlineNow()`, placed AFTER the cache repaint so an area visited earlier keeps its dots and only
-the network is skipped. Thirteen requests that cannot succeed are cheap with the radio cleanly off
+the network is skipped. Fifteen requests (eight on the lean path) that cannot succeed are cheap with the radio cleanly off
 and expensive on a FLAKY link, where each one hangs to the call timeout; that is the case the gate
 is for. Measured with the network off: 0.8% of CPU over thirty seconds of panning, four MapLibre
 HTTP lines in the whole window, no retry storm.
@@ -1427,7 +1459,7 @@ in screen pixels**, never render-stack order:
    landed on an icon, and it made a corner fuel station open the transit stop beside it;
 5. a house-number label, which resolves through the reverse-geocode but **keeps the tapped
    number**: the geocode supplies street and city, and a regex replaces whatever house number it
-   led with. Google's reverse geocode snaps to the nearest addressable point, which for a tapped
+   led with. The reverse geocode (Nominatim) snaps to the nearest addressable point, which for a tapped
    label is routinely the neighbor. The tile's road name vetoes a mismatched geocode street
    unless the geocode's house number is exact;
 6. an unnamed POI icon, reverse-geocoded at the tap;
@@ -1460,7 +1492,7 @@ listing on the lot, nearest same-kind hit within 60 m of that anchor), then anyt
 **The house number gates it.** Distance cannot tell a fuel station from the one across the
 junction, 40 to 80 m apart. When the tapped row has an address with a leading house number and a
 candidate does too, a different number rules the candidate out of every fallback without a name
-match and out of name matches beyond `SAME_LOT_M`; on the lot a mismatch is tolerated (open data
+match and out of name matches beyond `SAME_LOT_M` (120 m); on the lot a mismatch is tolerated (open data
 numbers are sometimes wrong) and an agreeing number wins. Either side without a number decides
 nothing.
 
@@ -1572,7 +1604,8 @@ host that cannot answer.
 ### 5.6 Search and results
 
 - A query runs three pages of 20 over the viewport window. When the user's location is inside
-  that window and the window is wider than about 2.5 km, one extra page runs over a 2.5 km
+  that window and the window is more than 1.5 times `NEARBY_SPAN_M` (so wider than about 3.75 km),
+  or no window size is known, one extra page runs over a 2.5 km
   window around the user and **leads** the list, because Google's own app weights distance the
   same way and the outlet next to you otherwise loses its slot to better-known places across a
   town-zoom window. Over another neighborhood no nearby pass runs.
@@ -1603,15 +1636,16 @@ host that cannot answer.
 - Network suggestions come from Google's own search-as-you-type request (`MapDataSource.suggest`,
   the keyless `/s?tbm=map&suggest=p` call biased to the viewport), which honors the location
   bias for a partial address; rows without a location are bare query rows that run as a search.
-  When it fails or Google is off, the older search-endpoint + OpenStreetMap race answers. Every
-  suggestion row carries a fill-in arrow that puts its primary text into the box, cursor at the end,
+  When it fails or answers empty, or Google is off, the older search-endpoint + OpenStreetMap race
+  answers. Every suggestion row except a contact carries a fill-in arrow that puts its primary text into the box, cursor at the end,
   without searching. A typed house address that the search results cannot place is geocoded
   through the same request and leads the results.
 - Local suggestions (recent queries, recent places, saved and list places, and opted-in
   contacts) are computed **synchronously** on each keystroke before the debounced network
   fetch, so they are instant and are the only thing that shows offline. Contacts are loaded into
   memory once, because a provider query per keystroke janks. Dedupe against network rows by name
-  plus coarse location, not by feature id, which local rows lack.
+  plus coarse location AND by feature id where both sides have one (saved and list places often
+  carry none, so the name key is the one that always works).
 - One quick-category list (`ui/QuickCategories`) serves the map chips, search along route and
   in-nav search. Every query must be one the offline store expands, or the chip is dead offline.
 
@@ -1730,8 +1764,11 @@ zoom gates or extrusion opacity; those belong in `ensureLayers` and `applyDark`.
 - **An invisible-but-queryable layer needs `lineOpacity(0.004)`**, not opacity 0: MapLibre skips
   fully transparent features at render time and `queryRenderedFeatures` only sees rendered ones.
   An 8-digit hex color string is rejected by the color parser and falls back to opaque black.
-- Point GeoJSON sources take an explicit maxzoom (18 for ambient, 12 for the sparse ones); line
-  sources keep their defaults for line metrics.
+- Point GeoJSON sources take an explicit maxzoom: 18 for the dense ones (ambient, markers,
+  traffic controls, transit stops), 16 for the camera sources (plate cameras, their clusters,
+  speed cameras), 14 for the accuracy disc, 12 for the sparse ones (me, parking, saved, Street
+  View). Past a source's maxzoom every overscaled tile lays out all of its parent tile's
+  features. Line sources keep their defaults for line metrics.
 - Every `setGeoJson` and every `setProperties` is identity-gated by a `lastApplied` holder, and
   **every such holder must be reset in the style-reload block**, or a theme, palette or
   satellite flip leaves sources invisible.
@@ -1916,7 +1953,7 @@ of rows and the delta balloons to pack size. `TABLE_COLUMNS` in `PoiPackStore` m
 `poipack_build.py` and `poipack_delta.py`; all three must stay in step.
 
 Scheduled rebakes: ALPR cameras weekly (Monday 08:17 UTC); place packs monthly (3rd and 5th, 07:15, half the catalog each);
-road features monthly (4th and 6th, 07:45, halves); places (6th and 7th, 05:00, sharded); basemap (9th and 10th,
+road features monthly (4th and 6th, 07:45, halves); places (6th and 7th, 05:00, sharded, plus a seventh of the catalog nightly at 04:40); basemap (9th and 10th,
 05:00, split by catalog half); buildings (three groups), addresses and maxspeed (two shards)
 quarterly (January, April, July, October, 2nd, 04:00, `quarterly-data-refresh.yml`). Routing is not
 scheduled: the obf bake stays manual because of its runner memory limits
@@ -1953,9 +1990,11 @@ applier is `app/offline/PmtilesPatch`.
   `delta: {fromRev, url, sizeMb}` to the manifest row. Over a third of the archive, it is not worth
   a second code path and is skipped. Two bakes on the same UTC day share a revision and so skip the
   patch entirely; the workflow's `rev` input overrides the stamp, which is how the path is exercised
-  on demand instead of waiting a night. A rebake that also carries a BAKE CHANGE is not a delta
-  candidate: Guernsey and Jersey re-baked a day after the OSM-business source landed carried 2506 of
-  4586 tiles (2.17 MB against a 3.3 MB archive) and was correctly refused. The number that matters is
+  on demand instead of waiting a night. A rebake that also carries a BAKE CHANGE usually fails
+  the one-third size test and gets no patch (there is no separate check for script changes): Guernsey
+  and Jersey re-baked a day after the OSM-business source landed carried 2506 of 4586 tiles (2.17 MB
+  against a 3.3 MB archive) and was refused. A later same-script rebake of the same region did get
+  a patch, the one used below. The number that matters is
   two bakes of the SAME script, and that is what `scripts/archive-churn.py` measures.
 - **Dead space is reclaimed on the phone, not re-downloaded.** A patch appends and leaves the tiles
   it replaced behind, which is the ONLY way a patched archive differs from a freshly downloaded one:
@@ -1995,7 +2034,7 @@ applier is `app/offline/PmtilesPatch`.
   new revision while the app is running, and a process that lives for days would otherwise never
   offer the update or take the delta. Found on a device: a rebake published four minutes before the
   Offline maps screen was opened, and the row still said there was nothing to update.
-- **Policy is the user's**: `ui/RegionUpdates` (never, the default until the path has been proven
+- **Policy is the user's**: `RegionUpdates` (`ui/OfflineUpdates.kt`, pref `region_update_mode`: never, the default until the path has been proven
   on a device / on Wi-Fi / on mobile data too),
   metered judged by the system rather than by which radio it is. On Wi-Fi or mobile the app applies
   every published patch that fits an installed archive or pack on its own, a minute after start and
@@ -2010,7 +2049,8 @@ applier is `app/offline/PmtilesPatch`.
   runs on the app-lifetime `DownloadWork.scope` and a refcounted `dataSync` foreground service
   holds the process alive. `viewModelScope` is canceled the moment the task is swiped, and
   without the service an aggressive background killer reaps the process seconds after Home.
-- **Every large download must use a derived `callTimeout(0)` client** with a 60 s read timeout.
+- **Every large download must use a derived `callTimeout(0)` client** with a 60 s read timeout
+  (120 s for the offline Overpass address body).
   The shared scrape client caps a call at 12 s; a big body blows through it, `runCatching`
   swallows the abort, and the asset silently never installs. Manifest fetches stay on the short
   client.
@@ -2020,8 +2060,8 @@ applier is `app/offline/PmtilesPatch`.
   region inactive and deleting the partial. Any UI that shows progress must show a cancel.
 - Whole-parent downloads queue their pieces (`regionQueue`), popping the next at the end of each
   download; cancel clears the queue.
-- Sizes shown are **installed** sizes: manifests carry `installedMb`, with fallbacks of the zip
-  times 1.8 for graphs and times 2.35 for packs. Regions over 1 GB installed confirm first.
+- Sizes shown are **installed** sizes: manifests carry `installedMb`; without it an obf counts
+  its download size (it installs as-is) and a pack its zip times 2.35. Regions over 1 GB installed confirm first.
 
 ### 7.5 Offline basemap rules
 
@@ -2522,7 +2562,9 @@ renders black on ANGLE; do not retry the embed.
 traffic rather than hidden UI. `HideAdult` flips the `:core CategoryFilter` flag, which filters
 at the `search` and `nearbyPlaces` seam on **category only, never name**, with multilingual
 keyword lists, and drops the bars chip from the quick categories because the filter would empty
-it. `HideExternalLinks` hides the website row, the Street View pill and the book/order action.
+it. `HideExternalLinks` hides the website pill and row, the OpenStreetMap link on the source line and
+the book/order action. The Street View pill is not an external link (the panorama renders in-app)
+and is hidden only when Google is off.
 Any new review, photo or external-link surface goes behind the matching holder.
 
 
@@ -2544,7 +2586,8 @@ What the bundle can carry, in increasing power:
 - **Configuration**: pb templates, endpoint URLs, the photo proto, the search parser's
   positional `paths`, `directionsPaths`, the language keyword tables (`statusClosedWords`,
   `statusOpenWords`, `transitCategoryWords`, `transitExcludeWords`, `reviewWords`), the review
-  scrape's CSS selectors, the browser identity fields, the fleet defaults (`defaultVoiceId`,
+  scrape's CSS selectors, the browser identity fields, the RPC header value `rpcContext`, the
+  stop-board indices (`stopBoardIndices`), the fleet defaults (`defaultVoiceId`,
   `defaultVoiceSpeaker`, `defaultVoiceSpeed`, `defaultMapPalette`, `defaultPlacesSource`,
   `classicRoutePicker`) and the `tuning` dials.
 - **Notices**: an array of `id`, `level`, `title`, `body`, `url`. Level `urgent` renders as a
@@ -2680,7 +2723,8 @@ tile lays out ALL of its parent tile's features, so a source holding hundreds of
 several zooms above its maxzoom re-places the lot every frame. The ambient places source cost
 22 fps against 51 until it went from 12 to 18; the traffic controls (up to 800 along a route),
 transit stops and result markers are 18 for the same reason, the camera layers 16, and genuinely
-sparse sources (the puck, parking, saved places, Street View, the accuracy circle) stay at 12.
+sparse sources (the puck, parking, saved places, Street View) stay at 12 and the accuracy circle
+at 14.
 
 ## 14. Privacy, diagnostics and location hygiene
 
@@ -2764,7 +2808,8 @@ tooling default that claims otherwise. Before pushing, `git log origin/main..HEA
 
 ## 15. Build, release and distribution
 
-- **Toolchain**: AGP 8.7.3, Kotlin 2.1.0, Gradle 8.11.1, compileSdk 35, minSdk 26, Java 17,
+- **Toolchain**: AGP 8.10.1, Kotlin 2.1.0, Gradle 8.11.1, compileSdk 36, targetSdk 35, minSdk 26,
+  Java 17,
   Compose, Hilt, a version catalog, R8 in the `release` build type.
 - **Channels.** A push to `main` or `canary` builds and tests only; a push can never mint a
   release. The nightly prerelease `v0.4.<run>` (versionName `0.4.<run>`, versionCode

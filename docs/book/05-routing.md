@@ -46,10 +46,15 @@ A planning request (you tapping Directions) fires both at once, so the traffic r
 nothing extra:
 
 ```
-OSRM_TRIES = 3            // FOSSGIS blips on mobile; backoff 200 ms, 400 ms
-Google tries = 3          // googleDirectionsRetried; backoff 300 ms, 600 ms
+OSRM_TRIES = 3            // FOSSGIS blips on mobile; backoff about 200 ms, then 400 ms
+Google tries = 3          // googleDirectionsRetried; backoff about 300 ms, then 600 ms
 OSRM_PRECISION = 6        // polyline6: a 0.11 m grid instead of polyline's 1.11 m
 ```
+
+Each backoff is drawn up to 50% either side of its nominal value (`Jitter`), so the retries do not
+land on a fixed rhythm. OSRM gives up at once on a 4xx, because that answer is deterministic (the
+`exclude=` refusal below is one) and a retry cannot change it; and inside a reroute's budget it
+never sleeps into a backoff that would leave less than `RouteBudget.MIN_TRY_MS` for the next try.
 
 Google got the same retry ladder on 2026-07-14. With one shot, a single empty keyless reply cost
 the whole fetch its traffic, its jam avoidance and its alternates, and the picker led with
@@ -60,7 +65,8 @@ trafficless routes that read minutes faster than anything real.
 For a driving trip with no stops:
 
 1. **OSRM** answers, and Google answered too: the OSRM route, with Google's traffic laid over it
-   (below). If Google's course went elsewhere, OSRM is led along Google's line instead.
+   (below). If Google's course went elsewhere, OSRM is also led along Google's line, and that
+   snapped route joins the list when it earns it.
 2. **OSRM** answers, Google did not: the OSRM route alone, trafficless. The drive's recheck heals
    it later ([chapter 4](04-navigation.md)).
 3. **OSRM is down**, a downloaded region covers both ends: the on-phone route. Complete named
@@ -69,9 +75,18 @@ For a driving trip with no stops:
    swap in full steps the moment OSRM is back.
 5. Nothing: no route.
 
-Every route carries a `RouteSource` saying which of these produced it (`OSRM`, `OSRM_VIA_SNAP`,
-`GOOGLE_ABBREVIATED`, `GOOGLE_PROVISIONAL`, `OBF`, `VALHALLA`, and a few for old trip files), and
-the trip log records it, so a replay says which router drew the line.
+Every route carries a `RouteSource` saying which of these produced it, and the trip log records
+it, so a replay says which router drew the line:
+
+| Source | Meaning |
+| --- | --- |
+| `OSRM` | the open router's own route, and today also a route snapped along Google's line (see Limits) |
+| `OSRM_VIA_SNAP` | a Google alternate named on pick by snapping its line through OSRM |
+| `GOOGLE_ABBREVIATED` | Google's own route with its shortened step list, driven because nothing better answered |
+| `GOOGLE_PROVISIONAL` | a Google alternate in the picker, not named yet |
+| `GOOGLE_NAMED` | the parser's raw tag for a Google route; replaced by one of the two above before it leaves the fetch |
+| `OBF`, `VALHALLA` | the on-phone router and the bike router |
+| `GRAPHHOPPER`, `UNKNOWN` | only so old trip files read back |
 
 The on-phone router also takes over in two cases that are not about the network: an avoid with no
 Google answer (see avoids below), and a bike trip in a downloaded area (see bikes below).
@@ -95,8 +110,12 @@ When the open router comes back empty inside a bounded fetch, `RerouteFallback.p
 Google's answer if it is already in, otherwise races Google against the on-phone router and takes
 whichever produces a route first. Both run on unstructured scopes on purpose: the native router
 and a blocking HTTP read ignore cancellation, and a structured child would hold the reroute open
-until they finished, which is the wait the deadline exists to remove. (A diagnostics export showed
-reroutes taking 18 to 40 seconds while OSRM had answered in seconds; this is the fix.)
+until they finished, which is the wait the deadline exists to remove. Two diagnostics exports are
+behind this: one (issue #397) showed reroutes taking 18 to 40 seconds while OSRM had answered in
+seconds, because the fetch waited out Google's empty replies and their backoff, which is what
+`URGENT_GOOGLE_GRACE_MS` ends; the other (issue #557) showed urgent attempts failing at exactly
+20 seconds while the FOSSGIS car router never answered at all, which is what the budget and
+`RerouteFallback` end.
 
 An urgent reroute skips the divergence snap below, unless an avoid is on. The lean route lands in
 seconds, and the two-minute recheck upgrades it.
@@ -198,11 +217,15 @@ SPUR_TURN_NEAR_M       = 150    // refused only if a turn or U-turn sits within 
 The last rule exists because a loop ramp that OSM draws in full and Google's line cuts across has
 the same shape, but carries a merge, never a turn.
 
-Then the snap has to **earn the top slot**:
+Then the snap has to **earn its place in the list**:
 
 ```
-SNAP_ETA_MARGIN = 1.2    // Google's live ETA <= calibrated OSRM best x 1.2, or OSRM's route leads
+SNAP_ETA_MARGIN = 1.2    // Google's live ETA <= calibrated OSRM best x 1.2, or the snap is dropped
 ```
+
+A snap that passes is offered beside OSRM's own routes and sorted with them by arrival time, so it
+leads only when it is actually faster; with an avoid on, OSRM's unrestricted routes are left out
+and the snap stands alone.
 
 Before 2026-06-30 any divergence put the snap first, and a longer, wobblier path could lead
 without being faster. The comparison uses the *calibrated* OSRM time: against OSRM's raw
@@ -211,8 +234,9 @@ skipped, because Google's avoiding course is slower than the unrestricted one by
 
 ### Google's alternates, named when you pick one
 
-The picker's alternates are **Google's own**, because those are the traffic-aware choices worth
-having. They arrive **provisional** (`GOOGLE_PROVISIONAL`): Google's line and Google's per-route
+The picker's alternates are **mostly Google's own**, because those are the traffic-aware choices
+worth having; OSRM's own alternates compete with them in the same dedupe and sort, except while an
+avoid is on. They arrive **provisional** (`GOOGLE_PROVISIONAL`): Google's line and Google's per-route
 in-traffic time are real, but the turns are placeholders. Nothing is spent naming a route you
 never drive. When you pick one, `nameRoute` snaps its line through OSRM with the same 12 vias,
 checks it reaches within `SNAP_REACH_M` of the destination, and remaps the congestion spans onto
@@ -299,12 +323,12 @@ gets the full retry ladder and the divergence snap. When it lands, the ETA calib
 old route is reset, because the fresh route carries fresh traffic. The stops editor's Done goes
 through the same path (`setStops`), and an unchanged list fetches nothing.
 
-**Removing a stop mid-drive** runs the same way. The step list always has an "Edit route" row, even
-on a drive with no stops, and with stops ahead it carries "Remove next", which asks first and then
-replans without that stop (`applyStops(stops.drop(1))`). Tapping a place that is already a stop
-(within 60 m) with tap-to-stop on offers "Remove stop" beside "Add stop". Before the drive
-starts, and again for a stop added on the way, each stop is checked against its closing time at its
-own arrival (the route's legs added up to it), not just the destination.
+**Removing a stop mid-drive** runs the same way. The top of the step list is a stops row on every
+drive: "Edit route" when there are no stops, "Stops" with the list once there are, and then a
+"Remove next" button, which asks first and then replans without that stop
+(`applyStops(stops.drop(1))`). Tapping a place that is already a stop (within 60 m) with
+tap-to-stop on offers "Remove stop" beside "Add stop". The closing-time warning checks each stop at its own
+arrival, estimated from where the stop sits along the line; see [chapter 4](04-navigation.md#stops).
 
 What it does to the plan: it becomes one route through every remaining stop. Passed stops are
 dropped from every later reroute and recheck (`stops.drop(passedStops)`), and each stop gets an
@@ -357,8 +381,9 @@ AVOID_ONDEVICE_TIMEOUT_MS = 4_000
 
 Past that, the online chain answers and the result is tagged `avoidNotHonored`. The chooser shows
 the "may still use tolls, highways, or ferries" note only when **every** route carries that tag,
-so a toggled avoid is never ignored silently. Today it shows mainly on a trip with stops whose
-open-router route could not be led along Google's avoiding course. The open router's own
+so a toggled avoid is never ignored silently. Today it shows when Google did not answer (or, on
+a trip with stops, did not route through them) and no downloaded region answered within those 4
+seconds. The open router's own
 alternates are never offered while an avoid is on: they were computed without it. When its top
 route already follows Google's avoiding course, that single route is kept and the rest dropped.
 
@@ -387,10 +412,12 @@ With **Settings > Navigation > Bike routes prefer bike lanes and quiet streets**
    Probed on the Davis fixture: the same trip came back as 26 maneuvers along a cycleway corridor
    at 0.1 and as four turns down a county road at 0.9. Valhalla's maneuvers are translated into
    the OSRM grammar, so the banner, voice and step list read exactly as they do for any route.
-3. If neither answers, the plain OSRM bike route.
+3. If neither answers, the normal fastest-route chain in bike mode: OSRM, with Google's bike
+   alternates and its line as the fallback, and no traffic.
 
-No Google traffic on bike routes: bikes do not sit in car traffic, and Google's bike time models a
-different route. Turn the setting off to get OSRM's fastest bike route.
+No Google traffic on bike routes: bikes do not sit in car traffic, and Google's bike reply carries
+no in-traffic figure to apply. Turn the setting off to go straight to that fastest-route chain.
+Valhalla gets one try on an urgent reroute and two when planning.
 
 ### The on-phone router
 
@@ -458,5 +485,14 @@ optimistic on signalized roads.
   stretch over local streets. Google snaps it correctly, which is why its alternate can lead then.
 - **Offline is metro-scale** until the bake generates HH, and a trip that leaves the installed
   regions has no offline route at all.
-- **No departure-time planning.** The keyless request cannot ask for a future departure; the
-  "usually X to Y" range is the stand-in.
+- **No departure-time planning for driving, walking or cycling.** The keyless request has no
+  departure field, so "Depart at" and "Arrive by" only move the arrival clock the chooser works
+  out (transit alone is refetched for the chosen time, [chapter 9](09-transit.md)); the "usually X
+  to Y" range is the stand-in.
+- **A jam snap is recorded as `OSRM`.** Only a Google alternate named on pick is stamped
+  `OSRM_VIA_SNAP`; the route snapped along Google's line around a jam, with or without stops,
+  keeps the plain `OSRM` tag from the parser, so a trip log cannot tell the two apart.
+- **A named alternate gets fewer checks than a jam snap.** `nameRoute` only checks that the snapped
+  line reaches the destination; the 40 m via refusal, the length slack and the spur test are not
+  run on it, so a picked Google alternate can carry the out-and-back "appendix" the jam snap
+  would have refused.

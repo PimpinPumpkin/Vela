@@ -25,7 +25,7 @@ up, the chips and the free-text field search along it instead of around the map.
   It is not the search endpoint, and it answers a partial address far better.
 - **Results after Enter** come from Google's calibrated map search (`/search?tbm=map`), the same
   keyless scrape that opens a place. How that request is dressed and kept current is the subject
-  of the "Talking to Google" chapter (planned).
+  of [chapter 7](07-talking-to-google.md).
 - **Address help** comes from two more places. Photon (photon.komoot.io, komoot's community
   OpenStreetMap geocoder, keyless under a fair-use policy) is asked about any query that starts
   with a house number, and answers every search when Google is turned off. The on-device
@@ -62,9 +62,12 @@ up, the chips and the free-text field search along it instead of around the map.
 A reply that lands after the text has changed is dropped, so a slow answer to "sta" can never
 overwrite the rows for "starb".
 
-So the honest answer to "where does my typing go" is: to Google's autocomplete on every pause;
-also to Photon when it starts with a house number; and to the search endpoint only when the
-autocomplete did not answer. Recent searches, saved places and contacts are matched on the
+So the honest answer to "where does my typing go" is: to Google's autocomplete on every pause,
+plus a second autocomplete request centered on you when you are looking 50 km or more away and no
+row starts with what you typed; also to Photon when it starts with a house number; and to the full
+search (up to four requests: the first page, the nearby pass and pages two and three) only when the
+autocomplete did not answer. Tapping a house number or long-pressing the map asks none of these:
+that is a reverse geocode, and it goes to OpenStreetMap's Nominatim alone. Recent searches, saved places and contacts are matched on the
 phone.
 
 ### Google's autocomplete
@@ -182,8 +185,10 @@ it, with the selection at the end, whenever `fillTick` (`queryEdits`) moves.
 back to your position before the map has settled. It then offers the text to the query-intent
 parser (next section), and only if that declines does `runSearch` run. Before the network,
 `runSearch` handles two special shapes: pasted coordinates drop a pin (strict whole-string
-match, so an address with numbers still searches), and a pasted Google Maps share link imports
-the shared list as results with a Save offer.
+match, so an address with numbers still searches), and a pasted Google Maps share link opens
+the single place it points to, or imports a shared list as results with a Save offer (with Google
+off, the list import is refused and a single-place short link is resolved only while "Open shared
+Google Maps links" is on).
 
 Online, one search is several requests:
 
@@ -216,7 +221,7 @@ SearchPb.MIN_SPAN_M = 1_000 // the window floor; the ceiling is 500_000
 **A typed house address the results cannot place.** When the text starts with a number followed
 by a word and not one result carries that number in its name or address, the search asks the
 autocomplete as a geocoder and puts up to three of its rows that do carry the number at the top.
-The on-device geocoder's exact hits lead even above those, unless a Google or geocoded row within
+The on-device geocoder's hits (up to three, from whichever of its four layers answers) lead even above those, unless a Google or geocoded row within
 120 m already carries the same number (Google's entry is richer, so it wins the tie).
 
 The final list is:
@@ -226,9 +231,9 @@ on-device address hits + autocomplete-geocoded rows + Google's pages (nearby pas
 ```
 
 Two filters then apply to what Google returned: "Hide adult categories" when it is on, and any
-refinement shipped in the signed remote transforms. The detail WebViews are warmed only
-**after** the results land, because building them before the fetch held a cold search at 13
-seconds against 4.
+refinement shipped in the signed remote transforms. No WebView is warmed for a search any more
+(2026-09-23): a tap's photos and details are single requests, and a hidden page loads only when a
+place needs one.
 
 If Google answers but finds nothing, the on-device index is tried before showing "No results",
 because it may hold a small local place Google missed. If the request throws, the same on-device
@@ -263,7 +268,8 @@ The case it exists for: a local restaurant's name typed with the map over anothe
 Google's window search answered with a loosely similar place over there. `VelaSearch` logs each
 replacement.
 
-The suggest fetch, `runSearch`, "More results" and "A to B" use both. Search along a route uses
+`runSearch`, "More results", "A to B" and the typing fallback's search use both; the
+autocomplete request takes only the bias point. Search along a route uses
 neither (below). "Search this area", offered when you pan while results show, re-runs the query
 over the new viewport.
 
@@ -295,7 +301,7 @@ The guards are what keep it from being clever at the wrong moment:
   a listing's name contains it ("Road to Hana"), it shows those results instead of routing
   between the halves. Then it resolves the origin first and searches the destination around it,
   preferring an exact name match (the nearest one to the other end when several share a name, so
-  a city and its province are not confused), then a result with no rating (a town or an address),
+  a city and its province are not confused), then a result with no rating and no category (a town or an address),
   then Google's first row. A miss on either end says so rather than routing from the wrong
   place.
 
@@ -324,7 +330,7 @@ OFFLINE_AT_ADDR_M  = 40.0   // a place this close to a typed address is "at" it
 
 - **Places** come from `OfflinePoiStore.search`: the small area-save index plus every installed
   region pack, same SQL. It matches the whole phrase and, for several words, each word of three
-  letters or more, against name, category and address, and expands category words to the
+  letters or more, against name and category, and the whole phrase against the address too, and expands category words to the
   OpenStreetMap values actually stored ("gas" is `Fuel`, "coffee" is `Cafe`). Whole-phrase name
   matches are ordered first **before** the 400-row cap, so a state pack's thousands of cafes
   cannot push out the one exact name. Ranking: transit stops last unless the query asks for
@@ -397,7 +403,8 @@ cancel each other rather than landing out of order.
 One list, `ui/QuickCategories`, feeds the map's chip row, the route chooser's along-route row, the
 in-nav search and the Android Auto along-route list, in this order: Restaurants, Coffee, Gas,
 Groceries, Things to do, Hotels, Bars, EV charging, Parking, Pharmacy, ATMs, Parks, Hospitals,
-Banks, Post office, Campgrounds.
+Banks, Post offices, Campgrounds (a chip's label and its query can differ: "Post offices" sends
+"Post office", "EV charging" sends "EV charging station").
 
 Each chip sends a **stable English query**, which Google understands in any locale and the
 offline store expands; only the label is translated. Two exceptions: the fuel chip sends "Petrol
@@ -415,7 +422,7 @@ submitting:
 
 - **While typing**, after a 300 ms pause, it asks the autocomplete over a 20 km window around the
   car's last known position (`SUGGEST_SPAN_M = 20_000` on the car side too). When the autocomplete
-  answers nothing, it runs the full search instead.
+  answers empty, it runs the full search instead; when it fails, the downloaded packs answer.
 - **On submit**, or when a query row is tapped, it runs the full search.
 - **With no signal**, or when both come back empty, it reads the downloaded packs the way the
   phone's offline search does: a typed address from the address geocoder first, then places. The
@@ -433,7 +440,7 @@ never published.
 
 Mid-drive, the car does not offer typing. Its along-route list is the quick categories; a pick
 searches **around the car**, sorts by distance, and adds the result as the next stop. It is not
-corridor-filtered like the phone's. The car chapter (planned) covers the rest.
+corridor-filtered like the phone's. [Chapter 10](10-android-auto.md) covers the rest.
 
 ## Limits
 
@@ -450,6 +457,6 @@ corridor-filtered like the phone's. The car chapter (planned) covers the rest.
 - **Google off loses categories online.** Photon has no category search, and the packs are
   consulted only when Photon returns nothing.
 - **Intents need a table.** A language without a word table gets English and plain search; Chinese
-  and Japanese get no fuzzy pass.
+  and Japanese get no fuzzy pass over their own words, only over the English fallback.
 - **Your saved places do not enter the results list**, only the suggestions. A search for the name
   of a saved place relies on the provider finding it again.
