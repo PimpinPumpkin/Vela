@@ -87,6 +87,12 @@ object WebProxy {
                     url.queryParameterNames.filter { it != tagParam }.forEach { k -> url.getQueryParameters(k).forEach { v -> appendQueryParameter(k, v) } }
                 }.build().toString()
                 if (passed.add("proxied POST $path")) android.util.Log.i("VelaWebProxy", "carries: POST $host$path")
+                // The page's own review-feed request, saved beside the app's replies when the adb-only
+                // feedDump switch is on, so the two can be compared byte for byte.
+                if (clean.contains("rpcids=qv9Egd")) app.vela.core.data.google.ReviewFeedDebug.sink?.invoke(
+                    "PAGE REQUEST\n$clean\n" + req.requestHeaders.entries.joinToString("\n") { "${it.key}: ${it.value}" } +
+                        "\ncontent-type: ${body.first}\n\n${body.second}",
+                )
                 return runCatching { s.fetch(req, clean, body.second.toByteArray(), body.first) }.getOrNull()
             }
         }

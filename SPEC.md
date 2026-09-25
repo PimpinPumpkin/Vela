@@ -512,8 +512,10 @@ seconds are stripped), up to three tries; after three empty answers the sheet ke
 photo and the page walk waits for a tap on "More photos".
 Reviews: the page scrape capped at `FIRST_REVIEWS` (10). The one-request `qv9Egd` feed
 (`reviewFeed`) is behind `nativeReviewFeed` (compiled default 0): Google limits NEW anonymous
-sessions to five reviews and no paging, and the feed returned 0 reviews even on the aged WebView
-session it now rides (`aged = true`), while the page scrape on that session gets the full list. Both RPCs need
+sessions to five reviews and no paging, and a full (aged) session answers a plain request with an
+empty list and a `[6] = [true]` flag: it requires the `X-maps-bgkey` BotGuard token that Google's
+page script mints per request (single use), which a native request cannot produce. The page scrape
+on that session sends the token and gets the full list. Both RPCs need
 `Calibration.rpcContext` as `x-maps-diversion-context-bin`. Details are fetched only when the
 search reply lacks popular times, a review count, an address or weekly hours. "More photos" runs the full walk (Menu tab) with the dates join. No hidden page is
 warmed after a search, and the ambient neighbor prefetch runs in Google-only mode. Settings >

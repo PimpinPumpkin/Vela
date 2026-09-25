@@ -1471,6 +1471,13 @@ Defaults that make the safe path the easy one:
   app sends and with a null one, and prints `FEEDPROBE|...|parsed=N|rawIds=M` per reply: rawIds
   counts review ids in the raw text without the parser, so rawIds > parsed is a parse miss. The raw
   replies are uploaded as an artifact. Never probe this from the maintainer's phones or network.
+  **Result (2026-09-25):** the clean machine got 5 reviews parsed from 5 (no parse miss); a full
+  session on a Pixel 9 got `[null,null,null,null,null,true,[true]]` over Cronet. The page's own
+  request, captured through the proxy (`debug.vela.tune.feedDump` 1 also saves it, `WebProxy`),
+  is the same body plus an `X-maps-bgkey` BotGuard token minted per request by Google's script;
+  the `[true]` flag is the answer a missing or spent token gets. The transport is fine. A full
+  session's feed needs Google's page, so the scrape stays the default. Replies land in
+  `files/feeddump/` on the phone; `adb shell setprop debug.vela.tune.feedDump ''` turns it off.
 - **VELA SAYS WHEN GOOGLE LIMITS IT (2026-09-25, `web/GoogleStanding`).** The limited view made the
   app look broken (#602: More reviews does nothing). `GoogleStanding.limited` is set only on strong
   evidence: the FIRST photo page returns at most `LIMITED_PHOTO_PAGE_MAX` (20) photos while a next

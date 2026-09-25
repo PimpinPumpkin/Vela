@@ -181,7 +181,8 @@ Roughly in the order they are worth doing. Each one is small enough for a single
   (a first photo page of 20 or fewer with more to come, or a More reviews tap that loads nothing)
   and Settings > Privacy > Google session says so. The limit is per session, not per IP, so a
   second phone on the same connection can still be the full one. The feed itself stays off
-  (`nativeReviewFeed` 0) until a capture shows it answering more than a new session's five.
+  (`nativeReviewFeed` 0): a full session answers it only with a BotGuard token (`X-maps-bgkey`)
+  that Google's page mints per request, so natively it can never beat a new session's five.
 - **iOS (2026-09-13, not started).** `:core` is plain Kotlin and would move to Kotlin
   Multiplatform with the Android-only bits (SQLite stores, WebView bridges, LocationManager)
   behind expect/actual seams; MapLibre has an iOS SDK, sherpa-onnx ships iOS builds, the hidden
