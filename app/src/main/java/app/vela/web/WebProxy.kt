@@ -93,7 +93,15 @@ object WebProxy {
                     "PAGE REQUEST\n$clean\n" + req.requestHeaders.entries.joinToString("\n") { "${it.key}: ${it.value}" } +
                         "\ncontent-type: ${body.first}\n\n${body.second}",
                 )
-                return runCatching { s.fetch(req, clean, body.second.toByteArray(), body.first) }.getOrNull()
+                val resp = runCatching { s.fetch(req, clean, body.second.toByteArray(), body.first) }.getOrNull()
+                val sink = app.vela.core.data.google.ReviewFeedDebug.sink
+                if (resp != null && sink != null && clean.contains("rpcids=qv9Egd")) {
+                    // Debug only: read the reply through so it can be saved, then hand the page a copy.
+                    val bytes = runCatching { resp.data?.readBytes() }.getOrNull() ?: ByteArray(0)
+                    sink("PAGE REPLY (status ${resp.statusCode})\n" + String(bytes))
+                    resp.data = ByteArrayInputStream(bytes)
+                }
+                return resp
             }
         }
         // What still leaves from the WebView itself (with X-Requested-With), once per path.
