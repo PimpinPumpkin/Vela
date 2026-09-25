@@ -488,8 +488,11 @@ Constraints:
   GETs go out over Cronet, streamed, with the WebView's OWN cookies (`WebViewCookieJar`, so the page
   keeps its aged session), which removes `X-Requested-With: app.vela`. POSTs reach the proxy through
   a document-start shim (`WebProxy.SHIM`) that tags each XHR, fetch or sendBeacon with a one-time id
-  and hands its body over a randomly named JS interface; a body that is not plain text (FormData,
-  Blob) still goes out from the WebView with the header. Page telemetry is answered locally with an
+  and hands its body over a randomly named JS interface: plain text as is, a Blob, ArrayBuffer, typed
+  array or `Request` as base64 (`putB64`). CORS preflights (`OPTIONS`) to a Google host go out over
+  Cronet too, a 204 answered to the page as 200. What the shim cannot read (FormData) still goes out
+  from the WebView with the header and is logged `untagged POST body:`. Measured on a Pixel 9 place
+  tap, the proxy adds ~0.2 s to the review page's load (about 2.15 s against 1.92 s, three each). Page telemetry is answered locally with an
   empty 200 only when the user turns on Settings > Privacy "Block Google's page telemetry"
   (`web/GoogleTelemetry`, default off, works with the proxy on or off; the `webProxyBlockLogs` dial
   overrides when set), because a browser that never sends it looks less like one. Measured neutral on page timing once the response streams.

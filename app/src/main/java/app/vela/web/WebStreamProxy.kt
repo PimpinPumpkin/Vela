@@ -45,13 +45,15 @@ class WebStreamProxy(private val engine: CronetEngine, private val cookies: okht
         }
     }
 
-    /** A GET as the WebView asked for it, or a POST whose [postBody] the page shim handed over (the
-     *  WebView never passes a POST body to shouldInterceptRequest), sent to [target]. */
+    /** A GET as the WebView asked for it, a POST whose [postBody] the page shim handed over (the
+     *  WebView never passes a POST body to shouldInterceptRequest), or a CORS preflight ([method]
+     *  OPTIONS), sent to [target]. */
     fun fetch(
         req: WebResourceRequest,
         target: String = req.url.toString(),
         postBody: ByteArray? = null,
         postType: String? = null,
+        method: String? = null,
     ): WebResourceResponse? {
         val url = target
         val headersReady = CountDownLatch(1)
@@ -69,7 +71,7 @@ class WebStreamProxy(private val engine: CronetEngine, private val cookies: okht
             override fun onFailed(r: UrlRequest, i: UrlResponseInfo?, e: CronetException) { body.failed = true; body.q.put(ByteArray(0)); headersReady.countDown() }
             override fun onCanceled(r: UrlRequest, i: UrlResponseInfo?) { body.q.put(ByteArray(0)); headersReady.countDown() }
         }
-        val b = engine.newUrlRequestBuilder(url, cb, executor).setHttpMethod(if (postBody != null) "POST" else "GET")
+        val b = engine.newUrlRequestBuilder(url, cb, executor).setHttpMethod(method ?: if (postBody != null) "POST" else "GET")
         req.requestHeaders.forEach { (k, v) ->
             if (!k.equals("X-Requested-With", true) && !(postBody != null && k.equals("Content-Type", true))) b.addHeader(k, v)
         }
