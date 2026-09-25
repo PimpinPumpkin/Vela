@@ -136,6 +136,8 @@ data class Calibration(
     // swallows it, so one stray newline in a pushed bundle would silently kill every scrape.
     val userAgent: String = DEFAULT_USER_AGENT,
     val secChUa: String = DEFAULT_SEC_CH_UA,
+    /** Full Chrome build for the client hints; see VelaConfig.CHROME_FULL_VERSION. */
+    val chromeFullVersion: String = app.vela.core.VelaConfig.CHROME_FULL_VERSION,
 ) {
     /** A fleet tuning dial: the remote value when the bundle carries [key], else [def]. */
     fun tune(key: String, def: Double): Double = tuning[key] ?: def

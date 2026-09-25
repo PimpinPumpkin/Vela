@@ -116,13 +116,13 @@ Chrome UA with that cluster missing is a sharper inconsistency than an old versi
 | --- | --- | --- |
 | `User-Agent` | calibrated UA | calibrated UA |
 | `Accept` | `text/html,...` | `*/*` |
-| `Accept-Language` | `en-US,en;q=0.9` | `en-US,en;q=0.9` |
+| `Accept-Language` | the app's language list, Chrome's form (`en-US,en;q=0.9` on an American phone) | same |
 | `Sec-CH-UA` | calibrated brand list | calibrated brand list |
 | `Sec-CH-UA-Mobile` | `?0` | `?0` |
 | `Sec-CH-UA-Platform` | `"Windows"` | `"Windows"` |
 | `Sec-Fetch-Dest` / `-Mode` / `-Site` | `document` / `navigate` / `none` | `empty` / `cors` / `same-origin` |
 | `Referer` | none, as on a real first visit | `https://www.google.com/maps/` |
-| `Downlink` / `RTT` | not sent | `10` / `50` |
+| `Downlink` / `RTT` | not sent | Cronet's own estimate, rounded like Chrome's (`10` / `50` until it has one) |
 
 The last row exists because google.com's `Accept-CH` asks for exactly those two network hints
 (checked 2026-09-22), and Chrome sends them, rounded, on every request after the first
@@ -399,6 +399,13 @@ exactly as before.
   `ogads-pa` calls; with the text-only shim, one binary `play.google.com/log` POST and the two
   preflights were left (2026-09-25); with binary bodies and preflights carried, a place tap sends
   nothing from the WebView itself.
+- **Missing headers are filled in.** The WebView hands `shouldInterceptRequest` only some of its
+  headers; captured on 2026-09-25, proxied tiles, icons, scripts and log calls went out with no
+  `Sec-Fetch-*` at all and many without `Sec-CH-UA`. The proxy now adds what is missing the way
+  Chrome derives it (`BrowserHeaders.fetchMetadata`): the main frame is a navigation, an `image/`
+  or `text/css` Accept is an image or a stylesheet, a `.js` or `/js/` path is a script, a POST or
+  anything else is a fetch; the site is judged against the page's host. Stylesheets go at the
+  highest priority and images at the lowest, as Chrome loads them.
 - **CORS preflights** (`OPTIONS`) to a Google host go out over Cronet like the GETs, so the WebView
   never asks Google anything itself. A 204 answer is handed to the page as a 200, the same 4a
   finding as the telemetry answer below.

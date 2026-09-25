@@ -90,10 +90,12 @@ object AppLocale {
         val lang = prefs(base).getString(KEY, "").orEmpty()
         if (lang.isBlank()) {
             systemDefault?.let { if (Locale.getDefault() != it) Locale.setDefault(it) }
+            syncAcceptLanguage()
             return base
         }
         val locale = Locale.forLanguageTag(lang) // handles hyphenated tags like zh-TW
         Locale.setDefault(locale)
+        syncAcceptLanguage()
         val config = Configuration(base.resources.configuration)
         config.setLocale(locale)
         // Force the RTL/LTR direction from the chosen locale. setLocale only auto-updates
@@ -102,6 +104,13 @@ object AppLocale {
         // flipped the layout without this (found + fixed in the vela-dpad fork).
         config.setLayoutDirection(locale)
         return base.createConfigurationContext(config)
+    }
+
+    /** Native Google requests name the same languages the WebViews do: both read the default locale
+     *  list (the picked language first, then the system's), through Chrome's own expansion. */
+    private fun syncAcceptLanguage() {
+        app.vela.core.data.google.BrowserHeaders.acceptLanguage = app.vela.core.data.google.BrowserHeaders
+            .acceptLanguageFor(android.os.LocaleList.getDefault().toLanguageTags().split(','))
     }
 
     /** Push the resolved locale into the app's locale-aware subsystems. */

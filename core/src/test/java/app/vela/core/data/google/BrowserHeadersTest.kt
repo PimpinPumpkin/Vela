@@ -174,4 +174,45 @@ class BrowserHeadersTest {
         assertTrue(VelaConfig.VELA_UA.contains("github.com/PimpinPumpkin/Vela"))
         assertTrue("must not masquerade as a browser", !VelaConfig.VELA_UA.contains("Mozilla"))
     }
+
+    @Test fun `accept-language follows Chrome's expansion`() {
+        assertEquals("en-US,en;q=0.9", BrowserHeaders.acceptLanguageFor(listOf("en-US")))
+        // A picked bare language ahead of the system one: what the WebView sent on the 4a.
+        assertEquals("en,en-US;q=0.9", BrowserHeaders.acceptLanguageFor(listOf("en", "en-US")))
+        assertEquals("zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7", BrowserHeaders.acceptLanguageFor(listOf("zh-TW", "en-US")))
+        assertEquals("en-US,en-GB;q=0.9,en;q=0.8", BrowserHeaders.acceptLanguageFor(listOf("en-US", "en-GB")))
+        assertEquals("en-US,en;q=0.9", BrowserHeaders.acceptLanguageFor(emptyList()))
+    }
+
+    @Test fun `network hints round like Chrome's`() {
+        assertEquals("1.55", BrowserHeaders.downlinkHint(1550, 1.0))
+        assertEquals("10", BrowserHeaders.downlinkHint(80_000, 1.0))
+        assertEquals("1.5", BrowserHeaders.downlinkHint(1510, 1.0))
+        assertEquals("50", BrowserHeaders.rttHint(62, 1.0))
+        assertEquals("3000", BrowserHeaders.rttHint(9000, 1.0))
+    }
+
+    @Test fun `full version only when it is a build of the claimed major`() {
+        val ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
+        assertEquals("155.0.8059.12", BrowserHeaders.fullVersionFor(ua, "155.0.8059.12"))
+        assertEquals("155.0.0.0", BrowserHeaders.fullVersionFor(ua, "154.0.8037.58"))
+        assertEquals("155.0.0.0", BrowserHeaders.fullVersionFor(ua, "garbage"))
+        assertEquals(null, BrowserHeaders.fullVersionFor("curl/8", "155.0.8059.12"))
+    }
+
+    @Test fun `fetch metadata matches what Chrome sends per request kind`() {
+        val page = "https://www.google.com/maps/place/x"
+        fun m(url: String, accept: String = "*/*", main: Boolean = false, method: String = "GET", ref: String? = page) =
+            BrowserHeaders.fetchMetadata(url, ref, accept, main, method)
+        assertEquals(mapOf("Sec-Fetch-Site" to "none", "Sec-Fetch-Mode" to "navigate", "Sec-Fetch-Dest" to "document", "Upgrade-Insecure-Requests" to "1"),
+            m("https://www.google.com/maps?cid=1", "text/html", main = true, ref = null))
+        assertEquals("image", m("https://www.google.com/maps/vt/pb=!1m4", "image/avif,image/webp,*/*;q=0.8")["Sec-Fetch-Dest"])
+        assertEquals("style", m("https://www.google.com/maps/_/ss/k=x", "text/css,*/*;q=0.1")["Sec-Fetch-Dest"])
+        assertEquals("script", m("https://www.google.com/maps/_/js/k=maps.m.en")["Sec-Fetch-Dest"])
+        assertEquals("cors", m("https://www.google.com/maps/vt/proto?pb=1")["Sec-Fetch-Mode"])
+        assertEquals("cors", m("https://www.google.com/maps/_/MapsWizUi/data/batchexecute", method = "POST")["Sec-Fetch-Mode"])
+        assertEquals("same-origin", m("https://www.google.com/gen_204")["Sec-Fetch-Site"])
+        assertEquals("same-site", m("https://play.google.com/log?format=json")["Sec-Fetch-Site"])
+        assertEquals("cross-site", m("https://www.gstatic.com/x.png", "image/png")["Sec-Fetch-Site"])
+    }
 }

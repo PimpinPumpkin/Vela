@@ -56,13 +56,27 @@ def stable():
     rows = json.load(urllib.request.urlopen(url, timeout=30))
     latest = max(r["milestone"] for r in rows)
     first_ms = min(r["time"] for r in rows if r["milestone"] == latest)
-    return latest, first_ms / 1000.0
+    return latest, first_ms / 1000.0, rows
+
+
+def newest_build(rows, milestone):
+    """The newest Windows stable build of a milestone, e.g. 155.0.8059.12, or None."""
+    builds = [r for r in rows if r["milestone"] == milestone]
+    return max(builds, key=lambda r: r["time"])["version"] if builds else None
 
 
 def main():
     have, src = claimed()
-    latest, since = stable()
+    latest, since, rows = stable()
     pushed = json.loads((ROOT / "calibration.json").read_text()).get("secChUa")
+    full = json.loads((ROOT / "calibration.json").read_text()).get("chromeFullVersion")
+    build = newest_build(rows, have)
+    if not full or not full.startswith(f"{have}.0."):
+        # The client hints would fall back to "<major>.0.0.0", a version no real Chrome reports.
+        print(f"**calibration.json chromeFullVersion is `{full}`, not a Chrome {have} build.** Use: `{build}`\n")
+        rc = 1
+    elif build and full != build:
+        print(f"- chromeFullVersion `{full}`; the newest Chrome {have} build is `{build}` (either is a real build, no action needed)\n")
     rc = 0
     if pushed and pushed != sec_ch_ua(have):
         # Builds from before 2026-09-23 send the pushed hint as-is; newer ones derive it.
@@ -79,7 +93,8 @@ def main():
     if have < latest and age >= GRACE_DAYS:
         print(f"**Behind stable**: set, bump `version`, re-sign with ./scripts/sign-calibration.sh, commit to main:\n")
         print(f"- `userAgent`: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{latest}.0.0.0 Safari/537.36`")
-        print(f"- `secChUa`: `{sec_ch_ua(latest)}`\n")
+        print(f"- `secChUa`: `{sec_ch_ua(latest)}`")
+        print(f"- `chromeFullVersion`: `{newest_build(rows, latest)}`\n")
         print("and move VelaConfig's compiled pair at the next release.")
         return 1
     if have < latest:

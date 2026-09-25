@@ -443,15 +443,32 @@ Constraints:
 - The compiled UA tracks Chrome's CURRENT stable on Windows (chromiumdash `fetch_releases`,
   channel Stable, platform Windows); it was one major ahead of stable for a week, which is a
   browser that does not exist. Recalibrate it to the shipping major, not the next one.
-- google.com's `Accept-CH` asks for `Downlink` and `RTT` only (checked 2026-09-22), so the XHR
-  header set carries both (`Downlink: 10`, `RTT: 50`, Chrome's rounded values on a good link) and
-  the document fetch does not, the order a real session has. The high-entropy UA hints are not
-  requested there, so only the low-entropy three matter and the WebView metadata's full version,
-  platform version and architecture are plausible rather than load-bearing.
-- Residuals that are not fixed and not worth chasing: Chrome sends `X-Client-Data` (its
-  variations proto) to Google origins and neither client here does; the WebView and OkHttp keep
-  separate cookie jars, so one phone is two sessions from one IP; the two clients differ in the
-  TLS and HTTP/2 fingerprints below.
+- google.com's `Accept-CH` asks for `Downlink` and `RTT` on documents (checked 2026-09-22), so the
+  XHR header set carries both and the document fetch does not, the order a real session has. Over
+  Cronet the values come from its network-quality estimator (enabled on the engine), scaled by a
+  per-host noise factor of 0.9 to 1.1 and rounded as Chrome rounds them (`BrowserHeaders.rttHint`:
+  50 ms steps, capped at 3000; `downlinkHint`: 50 kbps steps in Mbps, capped at 10); `10` / `50`
+  remain until the estimator has a value and on the OkHttp fallback. Data-call responses also send
+  an `Accept-CH` for the high-entropy set, which Chrome ignores on a subresource, so data calls
+  carry the low-entropy three only; Chrome 154 was captured doing exactly that (2026-09-25).
+- The WebView's high-entropy hints carry the real Chrome build (`Calibration.chromeFullVersion`,
+  `155.0.8059.12`, checked by `check-chrome-ua.py`; `BrowserHeaders.fullVersionFor` falls back to
+  `<major>.0.0.0` when the pushed value is not a build of the UA's major), the GREASE brand keeps
+  `<n>.0.0.0`, and form factors say `Desktop`, as Chrome 154 sent them.
+- `Accept-Language` is one value for both clients: the app sets `BrowserHeaders.acceptLanguage` from
+  `LocaleList.getDefault()` (the list the WebView reads) through `acceptLanguageFor`, Chrome's
+  expansion (each tag, then its bare language unless the next tag shares it, q from 0.9 down by 0.1).
+  Before, native requests always said `en-US` while a WebView in another language said its own.
+- Cronet sends a navigation at `REQUEST_PRIORITY_HIGHEST` (`Priority: u=0, i`, Chrome's document
+  value). It cannot send `zstd`: Chrome 155 offers `gzip, deflate, br, zstd` and Cronet 143 strips
+  `zstd` from a caller's `Accept-Encoding`, so that difference stays until the engine is newer.
+- Residuals that are not fixed: Chrome sends `X-Client-Data` (its variations proto) and four
+  `x-browser-*` headers (`channel`, `copyright`, `year` and `validation`, a hash of the Chrome
+  build) on every Google request, a fresh profile included, and neither client here sends any of
+  them. A shared fake `X-Client-Data` would be a fleet-wide fingerprint, and `x-browser-validation`
+  cannot be produced without Chrome's own key, so both stay absent (incognito Chrome omits
+  `X-Client-Data` too). The WebView and OkHttp keep separate cookie jars, so one phone is two
+  sessions from one IP; the two clients differ in the TLS and HTTP/2 fingerprints below.
 - Measured 2026-09-23 (tls.peet.ws, `ja4` / `peetprint` / HTTP/2 `akamai_fingerprint`):
   desktop Chromium 152 on macOS and the Android WebView (Chromium 153) send the SAME ClientHello
   and the same HTTP/2 settings (`t13d1516h2_8daaf6152771_806a8c22fdea`,
