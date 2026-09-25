@@ -970,9 +970,11 @@ renderer then sat at 89 percent of a core. The Developer row states the date it 
 - **A paused drive draws the ahead line in `ROUTE_PAUSED_COLOR` (`#9C8AD6`, a muted lavender)**
   and the live traffic color returns on resume. Distinct from the live blue, the congestion amber
   and red and the driven gray, and visible on both themes; a slate gray was tried first and
-  vanished into the dark map's road fill. A route color change re-anchors the split
-  (`splitReset`) the way the trail toggle does, because the ahead line's gradient is only
-  re-uploaded when the cut piece slides; without that only the 400 m around the arrow changed.
+  vanished into the dark map's road fill. A route color change repaints every piece in
+  place (`paintReset`, shared with the trail toggle and new traffic spans), because the ahead
+  line's gradient is otherwise only re-uploaded when the cut piece slides. It never re-anchors the
+  geometry: a paint change applies at once and a GeoJSON upload a few frames later, so new
+  fractions on old pieces paint a strip of the new color behind the arrow.
 
 - The line is inserted **above all road and bridge geometry and below labels**: anchor to the
   first symbol layer after the last `bridge_*` layer, not simply the first symbol layer, which

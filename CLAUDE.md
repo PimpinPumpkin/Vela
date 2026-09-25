@@ -4777,8 +4777,12 @@ Gotchas:
   test JVM; read inputs from a file beside the obf) and a temporary println of
   `turn.toString()`, `turnAngle`, `isSkipToSpeak` and `lanes` inside `toRoute`. (7) A PAUSED
   drive draws its line lavender (`ROUTE_PAUSED_COLOR` in MapScreen, SPEC 4.8); `VelaMapView`
-  re-anchors the split on any `routeColor` change, or only the cut piece recolors (4a, demo
-  drive). (8) Offline search puts transit stops last unless the query asks for transit
+  REPAINTS every piece (ahead, cut, tail) on any `routeColor` change, or only the cut piece
+  recolors (4a, demo drive). A repaint (`paintReset`, also for the trail toggle and new traffic
+  spans) never re-anchors the geometry: re-anchoring uploaded new cut/ahead pieces while their new
+  gradients applied at once, so for a few frames the new fractions painted the old, longer pieces
+  and a strip of blue or lavender showed behind the arrow on every pause and resume (user
+  2026-09-25, checked frame by frame at 20 fps after the fix). `splitReset` is for a style reload. (8) Offline search puts transit stops last unless the query asks for transit
   (`OfflinePoiStore.TRANSIT_STOP_CATS`).
 - **Offline taps stay on the phone (2026-09-14).** `MapViewModel.offlineNow()` (latched `offline` or the
   system says no internet) gates `fetchReviews`, `fetchPhotos`, `fetchPlaceDetails`, `fetchStopDepartures`
