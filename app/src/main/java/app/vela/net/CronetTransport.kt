@@ -45,7 +45,9 @@ object CronetHolder {
         return synchronized(this) {
             engine ?: runCatching {
                 val cache = File(appContext.cacheDir, "cronet").apply { mkdirs() }
-                CronetEngine.Builder(appContext)
+                org.chromium.net.ExperimentalCronetEngine.Builder(appContext)
+                    // Its estimates feed the Downlink / RTT client hints the way Chrome's own do.
+                    .enableNetworkQualityEstimator(true)
                     .enableHttp2(true).enableQuic(true).enableBrotli(true)
                     .setStoragePath(cache.absolutePath)
                     .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, 64L * 1024 * 1024)
@@ -68,6 +70,28 @@ object CronetHolder {
             Log.i(TAG, "netlog -> ${f.name}")
             Thread { Thread.sleep(90_000); runCatching { e.stopNetLog() }; Log.i(TAG, "netlog stopped") }.apply { isDaemon = true }.start()
         }
+    }
+
+    private val hintNoise = java.util.concurrent.ConcurrentHashMap<String, Double>()
+
+    /**
+     * Chrome-shaped request details that Cronet does not produce by itself (captured against Chrome
+     * 154, 2026-09-25): a navigation at the highest priority (`u=0`); Downlink / RTT come from
+     * [netHints]. NOT zstd: Chrome offers `zstd` in Accept-Encoding and this Cronet (143) strips it
+     * from a caller's header, so it cannot be sent until the engine itself supports it.
+     */
+    fun shape(b: org.chromium.net.UrlRequest.Builder, mainFrame: Boolean) {
+        if (mainFrame) b.setPriority(org.chromium.net.UrlRequest.Builder.REQUEST_PRIORITY_HIGHEST)
+    }
+
+    /** Downlink and RTT for [host] from the estimator, or null while it has no estimate. */
+    fun netHints(host: String): Pair<String?, String?> {
+        val e = engine ?: return null to null
+        val noise = hintNoise.getOrPut(host) { 0.9 + kotlin.random.Random.nextDouble() * 0.2 }
+        val kbps = runCatching { e.downstreamThroughputKbps }.getOrDefault(-1)
+        val rtt = runCatching { e.httpRttMs }.getOrDefault(-1)
+        return (if (kbps > 0) app.vela.core.data.google.BrowserHeaders.downlinkHint(kbps, noise) else null) to
+            (if (rtt > 0) app.vela.core.data.google.BrowserHeaders.rttHint(rtt, noise) else null)
     }
 
     private const val TAG = "VelaCronet"
@@ -105,7 +129,16 @@ class CronetTransport(
             override fun onCanceled(request: UrlRequest, i: UrlResponseInfo?) { done.countDown() }
         }
         val b = engine.newUrlRequestBuilder(req.url.toString(), callback, executor).setHttpMethod(req.method)
-        req.headers.forEach { (k, v) -> b.addHeader(k, v) }
+        val (downlink, rtt) = CronetHolder.netHints(req.url.host)
+        req.headers.forEach { (k, v) ->
+            val value = when {
+                k.equals("Downlink", true) -> downlink ?: v
+                k.equals("RTT", true) -> rtt ?: v
+                else -> v
+            }
+            b.addHeader(k, value)
+        }
+        CronetHolder.shape(b, mainFrame = req.header("Sec-Fetch-Mode") == "navigate")
         val aged = agedCookies != null && req.tag(app.vela.core.net.AgedSession::class.java) != null
         val cookies = if (aged) agedCookies!! else appCookies
         val jar = cookies.loadForRequest(req.url)

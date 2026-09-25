@@ -72,7 +72,7 @@ object BrowserHeaders {
     ): Request.Builder {
         header("User-Agent", ua)
         header("Accept", accept)
-        header("Accept-Language", "en-US,en;q=0.9")
+        header("Accept-Language", acceptLanguage)
         // Client hints. `?0` and `"Windows"` track the DEFAULT desktop UA; if the calibrated UA is
         // ever switched to a mobile string these must move with it (see CLAUDE.md — a mobile UA
         // also changes the response shape Google serves, so that swap is a recalibration, not a
@@ -94,6 +94,97 @@ object BrowserHeaders {
         }
         return this
     }
+
+    /**
+     * The `Accept-Language` every Google request carries. The app sets it from the same locale list
+     * its WebViews read (`LocaleList.getDefault()`), through [acceptLanguageFor], so a native request
+     * and a page load in one session name the same languages (checked 2026-09-25: they differed, and
+     * a Chinese-language install sent `en-US` natively beside a Chinese WebView).
+     */
+    @Volatile var acceptLanguage: String = "en-US,en;q=0.9"
+
+    /**
+     * Chrome's `Accept-Language` for a language list, as net::HttpUtil builds it: each tag, then its
+     * bare language unless the next tag shares it (`en-US` -> `en-US,en`; `en,en-US` stays), no
+     * duplicates, then q-values falling from 0.9 by 0.1 to a floor of 0.1.
+     */
+    fun acceptLanguageFor(tags: List<String>): String {
+        val langs = tags.map { it.trim() }.filter { it.isNotEmpty() }
+        if (langs.isEmpty()) return "en-US,en;q=0.9"
+        val out = LinkedHashSet<String>()
+        for ((i, lang) in langs.withIndex()) {
+            out += lang
+            val base = lang.substringBefore('-')
+            if (base == lang) continue
+            if (i < langs.size - 1 && langs[i + 1].substringBefore('-') == base) continue
+            out += base
+        }
+        return out.mapIndexed { i, l -> if (i == 0) l else "$l;q=0.${(10 - i).coerceAtLeast(1)}" }.joinToString(",")
+    }
+
+    /** Chrome's `RTT` hint: the estimate times a per-host noise factor, capped at 3000 ms, rounded
+     *  to 50 ms (content/common/client_hints). */
+    fun rttHint(ms: Int, noise: Double): String =
+        (Math.round((ms * noise).coerceIn(0.0, 3000.0) / 50.0) * 50).toString()
+
+    /** Chrome's `Downlink` hint: kbps times the noise factor, capped at 10 Mbps, rounded to 50 kbps,
+     *  printed in Mbps the way Chrome prints a double ("10", "1.5", "1.55"). */
+    fun downlinkHint(kbps: Int, noise: Double): String {
+        val k = Math.round((kbps * noise).coerceIn(0.0, 10_000.0) / 50.0) * 50
+        return java.math.BigDecimal(k).movePointLeft(3).stripTrailingZeros().toPlainString()
+    }
+
+    /** The full version for the client hints: [candidate] when it is a real build of [ua]'s major
+     *  (`155.0.8059.12`), else `<major>.0.0.0`, else null when [ua] names no Chrome major. */
+    fun fullVersionFor(ua: String, candidate: String?): String? {
+        val major = chromeMajor(ua) ?: return null
+        return candidate?.takeIf { Regex("""$major\.0\.\d+\.\d+""").matches(it) } ?: "$major.0.0.0"
+    }
+
+    /**
+     * The fetch-metadata headers Chrome puts on a request, for the WebView proxy: the WebView hands
+     * `shouldInterceptRequest` only some of its headers, and without these a proxied request looks
+     * like no browser at all (captured 2026-09-25: every proxied tile, icon, script and log call went
+     * out with no `Sec-Fetch-*`). The kind comes from what the request is: the main frame is a
+     * navigation, an `image/` or `text/css` Accept is an image or a stylesheet, a `.js` or `/js/`
+     * path is a script, anything else is a fetch or XHR. The site is judged against [referer]'s host
+     * (the page), by registrable domain (the last two labels, which is right for the Google hosts
+     * the proxy carries).
+     */
+    fun fetchMetadata(url: String, referer: String?, accept: String, mainFrame: Boolean, method: String): Map<String, String> {
+        val host = hostOf(url) ?: return emptyMap()
+        val site = when {
+            mainFrame && referer == null -> "none"
+            else -> {
+                val page = referer?.let { hostOf(it) } ?: host
+                when {
+                    page == host -> "same-origin"
+                    siteOf(page) == siteOf(host) -> "same-site"
+                    else -> "cross-site"
+                }
+            }
+        }
+        val path = url.substringAfter("://").substringAfter('/', "").substringBefore('?')
+        val (mode, dest) = when {
+            mainFrame -> "navigate" to "document"
+            method.equals("POST", true) -> "cors" to "empty"
+            accept.startsWith("image/") -> "no-cors" to "image"
+            accept.startsWith("text/css") -> "no-cors" to "style"
+            path.endsWith(".js") || path.contains("/js/") -> "no-cors" to "script"
+            else -> "cors" to "empty"
+        }
+        return buildMap {
+            put("Sec-Fetch-Site", site)
+            put("Sec-Fetch-Mode", mode)
+            put("Sec-Fetch-Dest", dest)
+            if (mainFrame) put("Upgrade-Insecure-Requests", "1")
+        }
+    }
+
+    private fun hostOf(url: String): String? =
+        url.substringAfter("://", "").substringBefore('/').substringBefore(':').lowercase().takeIf { it.isNotEmpty() }
+
+    private fun siteOf(host: String): String = host.split('.').takeLast(2).joinToString(".")
 
     /** One brand out of a `Sec-CH-UA` list: `"Google Chrome";v="153"`. */
     data class Brand(val name: String, val major: String)

@@ -34,6 +34,12 @@ object VelaConfig {
     const val SEC_CH_UA =
         "\"Google Chrome\";v=\"155\", \"Chromium\";v=\"155\", \"Not(A:Brand\";v=\"24\""
 
+    /** The full Chrome build of [USER_AGENT]'s major (chromiumdash, Windows stable), for the
+     *  high-entropy client hints the WebView sends when a page asks for them. Real Chrome sends the
+     *  real build there; "155.0.0.0" is a version no Chrome ever reports. Calibration
+     *  `chromeFullVersion` replaces it; a value whose major does not match the UA is ignored. */
+    const val CHROME_FULL_VERSION = "155.0.8059.12"
+
     /**
      * HONEST identifier for COMMUNITY services (FOSSGIS OSRM, Nominatim, Photon, Overpass) — never
      * the Chrome string. Their usage policies ask for a contactable UA so they can reach an abusive

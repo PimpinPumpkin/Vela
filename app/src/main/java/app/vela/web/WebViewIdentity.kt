@@ -48,14 +48,18 @@ object WebViewIdentity {
         if (WebViewFeature.isFeatureSupported(WebViewFeature.USER_AGENT_METADATA)) {
             runCatching {
                 val major = BrowserHeaders.chromeMajor(cal.userAgent) ?: return
+                // Real Chrome sends its real build here ("155.0.8059.12"), the GREASE brand keeps
+                // "<n>.0.0.0" (captured from Chrome 154, 2026-09-25).
+                val full = BrowserHeaders.fullVersionFor(cal.userAgent, cal.chromeFullVersion) ?: return
                 val brands = BrowserHeaders.brands(cal.secChUa).map { b ->
                     UserAgentMetadata.BrandVersion.Builder()
-                        .setBrand(b.name).setMajorVersion(b.major).setFullVersion("${b.major}.0.0.0").build()
+                        .setBrand(b.name).setMajorVersion(b.major).setFullVersion(if (b.major == major) full else "${b.major}.0.0.0").build()
                 }
                 if (brands.isEmpty()) return
                 val meta = UserAgentMetadata.Builder()
                     .setBrandVersionList(brands)
-                    .setFullVersion("$major.0.0.0")
+                    .setFullVersion(full)
+                    .setFormFactors(listOf("Desktop"))
                     .setPlatform("Windows")
                     .setPlatformVersion("15.0.0")
                     .setArchitecture("x86")

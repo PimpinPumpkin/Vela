@@ -3920,6 +3920,16 @@ Gotchas:
   on a throwaway profile (`--user-data-dir`, `--remote-debugging-port`, run once so it fetches its
   variations seed). Strip `/@lat,lng` from any page URL before printing: Google puts the session's
   location there. Clear the switch after.
+- **Header fidelity pass against a real Chrome (2026-09-25, SPEC 3.6):** real Chrome 154 was captured
+  beside our Cronet and WebView. Fixed: one `Accept-Language` for both clients
+  (`BrowserHeaders.acceptLanguage`, set in `AppLocale.wrap` from `LocaleList.getDefault()`), live
+  `Downlink`/`RTT` from Cronet's network-quality estimator, navigations at `u=0`, the WebView's real
+  full version (`Calibration.chromeFullVersion`, checked daily by `check-chrome-ua.py`) and `Desktop`
+  form factor, and the proxy filling in `Sec-Fetch-*` and `Sec-CH-UA` that the WebView never hands
+  it (`BrowserHeaders.fetchMetadata`). NOT fixable honestly: `X-Client-Data` and
+  `x-browser-validation`, both sent by every real Chrome to Google and by neither of our clients;
+  and `zstd`, which Cronet 143 strips. When a new Chrome ships, bump `chromeFullVersion` with
+  `userAgent` (the script prints both).
 - **`secChUa` is COMPUTED from the UA's major (2026-09-23, `BrowserHeaders.secChUaFor`).** Chrome
   derives the whole header (GREASE brand, its version, the order) from the major, so a hand-edited
   hint is a guess; the 153 one was Chrome 137's pattern with the number changed. `parseBundle`

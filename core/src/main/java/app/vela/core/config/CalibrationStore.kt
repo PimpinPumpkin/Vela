@@ -183,6 +183,7 @@ class CalibrationStore @Inject constructor(
                 secChUa = BrowserHeaders.chromeMajor(ua)?.toIntOrNull()?.let { BrowserHeaders.secChUaFor(it) }
                     ?: BrowserHeaders.sanitize((o["secChUa"] as? JsonPrimitive)?.content)
                     ?: d.secChUa,
+                chromeFullVersion = BrowserHeaders.sanitize((o["chromeFullVersion"] as? JsonPrimitive)?.content) ?: d.chromeFullVersion,
                 photosEndpoint = str("photosEndpoint", d.photosEndpoint),
                 photosProto = str("photosProto", d.photosProto),
                 rpcContext = (o["rpcContext"] as? JsonPrimitive)?.content?.let { BrowserHeaders.sanitize(it) ?: "" } ?: d.rpcContext,
