@@ -50,7 +50,7 @@ standing instruction from the repo's owner.
 
 **All three rules are CHECKED now (2026-09-18):** `scripts/check-writing.sh [range]` fails on AI
 attribution in a commit message, on a British spelling in a commit message or in what the change
-adds (the both-spellings keyword lists and values-en-rGB are excluded), and on an em dash in what
+adds (the both-spellings keyword lists and every translation folder, `values-*`, are excluded: a French or German word is not a British spelling), and on an em dash in what
 the change ADDS (added lines only, so the
 repo's older ones do not fail every edit), and the Location guard workflow runs it on every push and
 PR. The em-dash half covers issue comments, PR bodies and release notes too, which no workflow can
