@@ -158,11 +158,7 @@ Roughly in the order they are worth doing. Each one is small enough for a single
   the region's language when the phone's differs and keep the English copy for the sheet, or
   bake a romanized name into the archive where Overture carries none (it has no alternate names
   in Japan). Needs a device in the region; not chased blind.
-- **Cronet at Chrome's version (2026-09-23).** Google traffic rides Cronet 143 from Maven; Chrome is at
-  154 and the handshake differs by three signature algorithms. `cronet-build.yml` builds Cronet from
-  source at the Android stable tag; it is on main as a manual dispatch and has not been run yet, and
-  its own header expects the first runs to need work (a Chromium checkout is tens of GB against a
-  public runner's disk and 6 h cap). Also open: turn `webProxy` on by default once it has run on
+- **The WebView proxy by default.** Turn `webProxy` on by default once it has run on
   real sessions for a while (a device A/B is running). The proxy's other half, answering Google's
   page telemetry on the phone, already shipped on its own as Settings > Privacy "Block Google's
   page telemetry" (2026-09-25, off by default, works with the proxy on or off).

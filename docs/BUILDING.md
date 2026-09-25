@@ -9,7 +9,7 @@ building from source.
 
 Standard Android toolchain (JDK 17; the Gradle wrapper fetches Gradle 8.11.1 and AGP 8.10.1).
 
-Two pieces are not in git and have to be fetched once before the first build, the same way
+Three pieces are not in git and have to be fetched once before the first build, the same way
 CI does it. They are prebuilt binaries with no Maven artifact, hosted on this repo's own
 infrastructure releases:
 
@@ -18,6 +18,12 @@ infrastructure releases:
 mkdir -p app/libs
 curl -fSL -o app/libs/sherpa-onnx-1.13.3.aar \
   https://github.com/PimpinPumpkin/Vela/releases/download/tts-runtime/sherpa-onnx-1.13.3.aar
+
+# Cronet, Chromium's network stack, for the version gradle.properties pins (about 15 MB); or run
+# scripts/build-cronet-aar.sh, which packs the same AAR from Chromium's own published build
+v=$(sed -n 's/^vela.cronetVersion=//p' gradle.properties)
+curl -fSL -o "app/libs/cronet-$v.aar" \
+  "https://github.com/PimpinPumpkin/Vela/releases/download/cronet-runtime/cronet-$v.aar"
 
 # OsmAnd's router and obf reader, for offline routing
 mkdir -p core/libs

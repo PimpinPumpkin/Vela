@@ -703,9 +703,9 @@ several hundred, and it streams while the walk made you wait for everything.
 ## Limits
 
 - **The handshake is Chrome's only while Cronet carries the request.** The Cronet build is
-  Chromium 143 and offers three fewer signature algorithms than current Chrome, so its `ja4`
-  differs until the build catches up (SPEC 3.6). The APK ships Cronet's native library for ARM
-  only, so on an x86 emulator or Chromebook, and after any Cronet failure, Google requests go
+  Chromium's own prebuilt Release build of the Chrome for Android stable Vela claims (155 since
+  2026-09-25, pinned in `gradle.properties`, SPEC 3.6); it was Maven's 143 before, three signature
+  algorithms short of current Chrome. The APK ships Cronet's native library for ARM only, so on an x86 emulator or Chromebook, and after any Cronet failure, Google requests go
   over OkHttp, whose handshake says OkHttp. A TLS stack of Vela's own would need native
   dependencies and permanent maintenance and would break reproducible F-Droid builds, so there
   is none.

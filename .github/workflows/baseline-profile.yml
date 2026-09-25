@@ -49,6 +49,19 @@ jobs:
               "https://github.com/PimpinPumpkin/Vela/releases/download/obf-runtime/$f"
           done
 
+      - name: Fetch Cronet runtime AAR
+        # Chromium's own prebuilt Cronet for the version pinned in gradle.properties, packed as one
+        # AAR (gitignored). From the `cronet-runtime` infra release, else the upstream repo's, else
+        # packed right here from Chromium's bucket by the same script the release uses.
+        run: |
+          v=$(sed -n 's/^vela.cronetVersion=//p' gradle.properties)
+          f="app/libs/cronet-$v.aar"
+          mkdir -p app/libs
+          curl -fsSL -o "$f" "https://github.com/${{ github.repository }}/releases/download/cronet-runtime/cronet-$v.aar" \
+          || curl -fsSL -o "$f" "https://github.com/PimpinPumpkin/Vela/releases/download/cronet-runtime/cronet-$v.aar" \
+          || bash scripts/build-cronet-aar.sh "$v" app/libs
+          test "$(stat -c%s "$f")" -gt 10000000
+
       - name: Fetch the TTS runtime AAR
         # Same fetch as ci.yml: the sherpa-onnx AAR is gitignored and hosted on the tts-runtime
         # release, and :app does not build without it (the Aug 2026 cron failed exactly here).
