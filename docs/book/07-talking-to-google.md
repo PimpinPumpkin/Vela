@@ -98,8 +98,8 @@ There are two user agents in the app, and mixing them up is a bug.
 fallback, used only when the bundle does not carry one:
 
 ```
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36"
-SEC_CH_UA  = "\"Chromium\";v=\"154\", \"Google Chrome\";v=\"154\", \"Not A(Brand\";v=\"99\""
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
+SEC_CH_UA  = "\"Google Chrome\";v=\"155\", \"Chromium\";v=\"155\", \"Not(A:Brand\";v=\"24\""
 ```
 
 Code reads the live pair from `CalibrationStore.current()`, never from the constants. The hint is
@@ -160,7 +160,9 @@ warning, because it says nothing about the calibration. A second job compares th
 Vela claims with Chrome's Windows stable and says so on the run summary when stable has been a
 major ahead for a week (`GRACE_DAYS = 7`, since a new major reaches people in stages), or when
 Vela claims a Chrome that has not shipped. The first run flagged exactly that: Chrome 154 went
-stable on 2026-09-09 while Vela still said 153 (the probe passed with a 154 UA).
+stable on 2026-09-09 while Vela still said 153 (the probe passed with a 154 UA). Chrome 155 went
+stable on 2026-09-23 and the bundle moved to it two days later (calibration v23), before the
+grace week ran out.
 
 **No clockwork.** Every fixed wait before a Google request (the two-minute live-traffic recheck,
 retry backoffs, the stagger between a place's page loads) is drawn with a random spread through
@@ -706,7 +708,7 @@ several hundred, and it streams while the walk made you wait for everything.
   session until the next start or the button.
 - **The map's own Google tiles** (the traffic overlay and the satellite fallback) go through
   the map engine's HTTP stack, not `BrowserHeaders`, so they do not carry the Chrome identity.
-- **The UA only moves when someone pushes it.** The live bundle carries Chrome 154, the same as
+- **The UA only moves when someone pushes it.** The live bundle carries Chrome 155 (v23), the same as
   the compiled default, and nothing updates it on its own: the daily check says when it is due,
   and a person edits, re-signs and commits. A build older than 2026-09-23 also sends the pushed
   `secChUa` as-is, so a bundle that moves `userAgent` without the matching hint is wrong on those
