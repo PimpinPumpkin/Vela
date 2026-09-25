@@ -1449,7 +1449,12 @@ Defaults that make the safe path the easy one:
   default: Settings > Privacy "Block Google's page telemetry" (`web/GoogleTelemetry`, pref
   `block_google_telemetry`, works with the proxy on or off; the `webProxyBlockLogs` dial still
   overrides when set). Telemetry flows by default because a browser that never sends it looks less
-  like one, and session standing is what decides the limited view. Log lines: `carries:` / `answers locally:` / `passes through:`. The scrapers'
+  like one, and session standing is what decides the limited view. Log lines: `carries:` / `answers locally:` / `passes through:` / `untagged POST body:`.
+  Since 2026-09-25 the shim also carries BINARY bodies (Blob, ArrayBuffer, typed arrays, `Request`
+  objects, base64 over `putB64`) and CORS preflights go over Cronet (`OPTIONS`, 204 answered as
+  200): before that a place tap still leaked three header-carrying requests, all telemetry (a
+  binary `play.google.com/log` POST and the preflights for it and `ogads-pa`); after, zero on the
+  P9. The proxy costs ~0.2 s per review page load there (2.15 s vs 1.92 s). The scrapers'
   own bridges are random per process too since 2026-09-23 (`web/JsNames`): scripts keep writing
   `VelaBridge` / `VelaPanel` and `JsNames.of` swaps the real names in at every
   `evaluateJavascript`, so a new script call must go through `JsNames.of` or its bridge calls fail.

@@ -391,10 +391,17 @@ exactly as before.
   script (`WebProxy.SHIM`, dial `webProxyPosts`, default 1 when the proxy is on) wraps XHR, `fetch`
   and `sendBeacon` on google.com pages. A POST to a Google host gets a one-time id appended to its
   URL and its body handed to the bridge first; when the tagged request reaches the interceptor, the
-  body is waiting for it, the tag is stripped and the app sends it. Only plain-text bodies (a
-  string or URL parameters) are carried; FormData, a Blob or a Request object goes out from the
-  WebView as before. Measured on a Pixel 9 before the shim, the POSTs left were the review page's
-  `batchexecute`, `play.google.com/log` and the account bar's `ogads-pa` calls.
+  body is waiting for it, the tag is stripped and the app sends it. A string or URL parameters go
+  over as text; a Blob, ArrayBuffer, typed array or a `Request` object goes over as base64
+  (`putB64`), read asynchronously where the type needs it. Only FormData is left, and a Google POST
+  the shim cannot read logs `untagged POST body: <type>`. Measured on a Pixel 9 before the shim, the
+  POSTs left were the review page's `batchexecute`, `play.google.com/log` and the account bar's
+  `ogads-pa` calls; with the text-only shim, one binary `play.google.com/log` POST and the two
+  preflights were left (2026-09-25); with binary bodies and preflights carried, a place tap sends
+  nothing from the WebView itself.
+- **CORS preflights** (`OPTIONS`) to a Google host go out over Cronet like the GETs, so the WebView
+  never asks Google anything itself. A 204 answer is handed to the page as a 200, the same 4a
+  finding as the telemetry answer below.
 - **Telemetry can be answered locally**, and since 2026-09-25 that is the user's choice: Settings >
   Privacy "Block Google's page telemetry" (`web/GoogleTelemetry`, default OFF; the dial
   `webProxyBlockLogs` still overrides when set). Blocked, `play.google.com/log`, any `gen_204` ping

@@ -33,7 +33,7 @@ object WebProxy {
     private val jar = WebViewCookieJar()
     @Volatile private var stream: WebStreamProxy? = null
     private val passed = java.util.Collections.synchronizedSet(HashSet<String>())
-    private val stash = ConcurrentHashMap<String, Pair<String?, String>>()
+    private val stash = ConcurrentHashMap<String, Pair<String?, ByteArray>>()
 
     /** The shim's bridge name: random for each process, so the page cannot look for a known one. */
     private val bridgeName: String = "_" + (1..10).map { "abcdefghijklmnopqrstuvwxyz"[kotlin.random.Random.nextInt(26)] }.joinToString("")
@@ -42,7 +42,21 @@ object WebProxy {
 
     private class Bridge {
         @JavascriptInterface
-        fun put(id: String, contentType: String?, body: String) {
+        fun put(id: String, contentType: String?, body: String) = keep(id, contentType, body.toByteArray())
+
+        /** A binary body (Blob, ArrayBuffer, typed array), base64 over the bridge. */
+        @JavascriptInterface
+        fun putB64(id: String, contentType: String?, b64: String) {
+            runCatching { android.util.Base64.decode(b64, android.util.Base64.NO_WRAP) }.getOrNull()?.let { keep(id, contentType, it) }
+        }
+
+        /** A Google POST the shim could not hand over (a body type it does not read). */
+        @JavascriptInterface
+        fun miss(what: String) {
+            if (passed.add("miss $what")) android.util.Log.i("VelaWebProxy", "untagged POST body: ${what.take(120)}")
+        }
+
+        private fun keep(id: String, contentType: String?, body: ByteArray) {
             if (stash.size > 200) stash.clear() // a page that never sent what it stashed
             stash[id] = contentType to body
         }
@@ -79,6 +93,16 @@ object WebProxy {
         if (!on()) return null
         val s = stream ?: CronetHolder.engine()?.let { WebStreamProxy(it, jar).also { p -> stream = p } } ?: return null
         if (req.method.equals("GET", true)) return runCatching { s.fetch(req) }.getOrNull()
+        // CORS preflights go out the same way, so the WebView never asks Google anything itself.
+        if (req.method.equals("OPTIONS", true) && isGoogle(host)) {
+            val r = runCatching { s.fetch(req, method = "OPTIONS") }.getOrNull()
+            if (r != null) {
+                if (passed.add("proxied OPTIONS $path")) android.util.Log.i("VelaWebProxy", "carries: OPTIONS $host$path")
+                // An intercepted 204 lost its CORS headers on a 4a (see empty()), so answer 200.
+                if (r.statusCode == 204) r.setStatusCodeAndReasonPhrase(200, "OK")
+                return r
+            }
+        }
         if (req.method.equals("POST", true)) {
             val id = url.getQueryParameter(tagParam)
             val body = id?.let { stash.remove(it) }
@@ -91,9 +115,9 @@ object WebProxy {
                 // feedDump switch is on, so the two can be compared byte for byte.
                 if (clean.contains("rpcids=qv9Egd")) app.vela.core.data.google.ReviewFeedDebug.sink?.invoke(
                     "PAGE REQUEST\n$clean\n" + req.requestHeaders.entries.joinToString("\n") { "${it.key}: ${it.value}" } +
-                        "\ncontent-type: ${body.first}\n\n${body.second}",
+                        "\ncontent-type: ${body.first}\n\n${String(body.second)}",
                 )
-                val resp = runCatching { s.fetch(req, clean, body.second.toByteArray(), body.first) }.getOrNull()
+                val resp = runCatching { s.fetch(req, clean, body.second, body.first) }.getOrNull()
                 val sink = app.vela.core.data.google.ReviewFeedDebug.sink
                 if (resp != null && sink != null && clean.contains("rpcids=qv9Egd")) {
                     // Debug only: read the reply through so it can be saved, then hand the page a copy.
@@ -144,17 +168,40 @@ var P=window.__B__; if(!P) return; var n=0;
 function g(u){ try{ var h=new URL(u, location.href).hostname; return h==='google.com'||/\.google\.com${'$'}/.test(h); }catch(e){ return false; } }
 function body(b){ if(typeof b==='string') return b; if(b instanceof URLSearchParams) return b.toString(); return null; }
 function tag(u,ct,b){ var id='v'+(++n)+'x'+Date.now(); P.put(id,ct||null,b); var s=String(u); return s+(s.indexOf('?')<0?'?':'&')+'__T__='+id; }
+function b64(buf){ var a=new Uint8Array(buf), s='', k=0x8000; for(var i=0;i<a.length;i+=k) s+=String.fromCharCode.apply(null,a.subarray(i,i+k)); return btoa(s); }
+function tagB(u,ct,buf){ var id='v'+(++n)+'x'+Date.now(); P.putB64(id,ct||null,b64(buf)); var s=String(u); return s+(s.indexOf('?')<0?'?':'&')+'__T__='+id; }
+function bytes(b){ if(b instanceof ArrayBuffer) return b; if(ArrayBuffer.isView(b)) return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength); return null; }
+function kind(b){ try{ return Object.prototype.toString.call(b); }catch(e){ return typeof b; } }
 var X=XMLHttpRequest.prototype, o=X.open, sh=X.setRequestHeader, sd=X.send;
 X.open=function(m,u,a){ this.__vm=String(m).toUpperCase(); this.__vu=u; this.__va=(a===undefined?true:a); this.__vh=[]; return o.apply(this,arguments); };
 X.setRequestHeader=function(k,v){ if(this.__vh) this.__vh.push([k,v]); return sh.apply(this,arguments); };
-X.send=function(b){ var s=(this.__vm==='POST'&&g(this.__vu))?body(b):null;
-  if(s!==null){ var ct=null,h=this.__vh; for(var i=0;i<h.length;i++) if(String(h[i][0]).toLowerCase()==='content-type') ct=h[i][1];
-    o.call(this,'POST',tag(this.__vu,ct,s),this.__va); for(var j=0;j<h.length;j++) sh.call(this,h[j][0],h[j][1]); }
-  return sd.apply(this,arguments); };
-var F=window.fetch; if(F) window.fetch=function(i,init){ try{ if(typeof i==='string'&&g(i)&&init&&String(init.method||'').toUpperCase()==='POST'){ var s=body(init.body);
-  if(s!==null){ var ct=null,hd=init.headers; if(hd){ if(hd instanceof Headers) ct=hd.get('content-type'); else for(var k in hd) if(k.toLowerCase()==='content-type') ct=hd[k]; }
-  i=tag(i,ct||'text/plain;charset=UTF-8',s); } } }catch(e){} return F.apply(this,[i,init]); };
-var B=navigator.sendBeacon; if(B) navigator.sendBeacon=function(u,d){ if(g(u)){ var s=(d===undefined||d===null)?'':body(d); if(s!==null) u=tag(u,'text/plain;charset=UTF-8',s); } return B.call(navigator,u,d); };
+X.send=function(b){ var x=this, post=(x.__vm==='POST'&&g(x.__vu)), s=post?body(b):null;
+  var ct=null,h=x.__vh||[]; for(var i=0;i<h.length;i++) if(String(h[i][0]).toLowerCase()==='content-type') ct=h[i][1];
+  function reopen(u){ o.call(x,'POST',u,x.__va); for(var j=0;j<h.length;j++) sh.call(x,h[j][0],h[j][1]); }
+  if(s!==null){ reopen(tag(x.__vu,ct,s)); return sd.apply(x,arguments); }
+  if(post&&b!=null){ var buf=bytes(b);
+    if(buf){ reopen(tagB(x.__vu,ct,buf)); return sd.apply(x,arguments); }
+    if(b instanceof Blob&&x.__va){ b.arrayBuffer().then(function(ab){ reopen(tagB(x.__vu,ct||b.type,ab)); sd.call(x,b); },function(){ sd.call(x,b); }); return; }
+    try{ P.miss('xhr '+kind(b)); }catch(e){} }
+  return sd.apply(x,arguments); };
+var F=window.fetch; if(F) window.fetch=function(i,init){ var self=this; try{
+  if(typeof i!=='string'&&i instanceof URL) i=i.href;
+  if(i instanceof Request&&g(i.url)&&i.method==='POST'&&!init){ var rq=i;
+    return rq.clone().arrayBuffer().then(function(ab){ return F.call(self,tagB(rq.url,rq.headers.get('content-type'),ab),{method:'POST',headers:rq.headers,body:ab,credentials:rq.credentials,mode:rq.mode,keepalive:rq.keepalive}); },function(){ return F.call(self,rq); }); }
+  if(typeof i==='string'&&g(i)&&init&&String(init.method||'').toUpperCase()==='POST'){
+  var ct=null,hd=init.headers; if(hd){ if(hd instanceof Headers) ct=hd.get('content-type'); else for(var k in hd) if(k.toLowerCase()==='content-type') ct=hd[k]; }
+  var s=body(init.body);
+  if(s!==null){ i=tag(i,ct||'text/plain;charset=UTF-8',s); }
+  else if(init.body!=null){ var buf=bytes(init.body);
+    if(buf){ i=tagB(i,ct,buf); }
+    else if(init.body instanceof Blob){ var u=i, bl=init.body; return bl.arrayBuffer().then(function(ab){ return F.call(self,tagB(u,ct||bl.type,ab),init); },function(){ return F.call(self,u,init); }); }
+    else { try{ P.miss('fetch '+kind(init.body)); }catch(e){} } } } }catch(e){} return F.apply(self,[i,init]); };
+var B=navigator.sendBeacon; if(B) navigator.sendBeacon=function(u,d){ if(g(u)){ var s=(d===undefined||d===null)?'':body(d);
+  if(s!==null) u=tag(u,'text/plain;charset=UTF-8',s);
+  else { var buf=bytes(d); if(buf) u=tagB(u,'application/octet-stream',buf);
+    else if(d instanceof Blob){ var uu=u; d.arrayBuffer().then(function(ab){ B.call(navigator,tagB(uu,d.type||'application/octet-stream',ab),d); },function(){ B.call(navigator,uu,d); }); return true; }
+    else { try{ P.miss('beacon '+kind(d)); }catch(e){} } } }
+  return B.call(navigator,u,d); };
 })();
 """.trimIndent()
 }
