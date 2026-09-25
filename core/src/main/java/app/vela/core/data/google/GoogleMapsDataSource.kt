@@ -538,7 +538,11 @@ class GoogleMapsDataSource @Inject constructor(
         val freq = "[[[\"qv9Egd\",${JsonPrimitive(inner)},null,\"generic\"]]]"
         val url = "https://www.google.com/maps/_/MapsWizUi/data/batchexecute?rpcids=qv9Egd&source-path=%2Fmaps&hl=en&gl=us" +
             "&_reqid=${(1000..99999).random()}&rt=c"
-        runCatching { app.vela.core.data.google.parse.ReviewFeedParser.parse(post(url.localized(hl), "f.req=${freq.enc()}&", aged = true)) }
+        runCatching {
+            val raw = post(url.localized(hl), "f.req=${freq.enc()}&", aged = true)
+            ReviewFeedDebug.sink?.let { sink -> runCatching { sink(raw) } }
+            app.vela.core.data.google.parse.ReviewFeedParser.parse(raw)
+        }
             .onFailure { diag.record("reviews", "feed failed: ${it.javaClass.simpleName} ${it.message}") }
             .getOrNull()
             ?.also { diag.record("reviews", "feed${if (token.isNotEmpty()) " page" else ""}: ${it.reviews.size} review(s)${if (it.end) ", end of list" else ""}${if (it.nextToken != null) ", more to come" else ""}") }

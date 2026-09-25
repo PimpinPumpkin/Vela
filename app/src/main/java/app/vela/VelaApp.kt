@@ -70,6 +70,14 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.web.SessionRotation.init(this)
         app.vela.web.GoogleStanding.init(this)
         app.vela.web.GoogleTelemetry.init(this)
+        // adb-only: `setprop debug.vela.tune.feedDump 1` saves raw review-feed replies to
+        // Android/data/app.vela/files/feeddump/ (ReviewFeedDebug). Never on otherwise.
+        if (app.vela.ui.AppTune.on("feedDump", false)) {
+            val dir = getExternalFilesDir("feeddump")
+            app.vela.core.data.google.ReviewFeedDebug.sink = { raw ->
+                dir?.let { java.io.File(it, "qv9Egd-${System.currentTimeMillis()}.txt").writeText(raw) }
+            }
+        }
         app.vela.web.SessionRotation.appJar = http.cookieJar as? app.vela.core.di.ResettableCookieJar
         app.vela.net.CronetHolder.init(this)
         app.vela.core.net.GoogleTransport.interceptor = app.vela.net.CronetTransport(http.cookieJar, app.vela.web.WebViewCookieJar())
