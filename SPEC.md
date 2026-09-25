@@ -2034,8 +2034,8 @@ applier is `app/offline/PmtilesPatch`.
   new revision while the app is running, and a process that lives for days would otherwise never
   offer the update or take the delta. Found on a device: a rebake published four minutes before the
   Offline maps screen was opened, and the row still said there was nothing to update.
-- **Policy is the user's**: `RegionUpdates` (`ui/OfflineUpdates.kt`, pref `region_update_mode`: never, the default until the path has been proven
-  on a device / on Wi-Fi / on mobile data too),
+- **Policy is the user's**: `RegionUpdates` (`ui/OfflineUpdates.kt`, pref `region_update_mode`: never / on Wi-Fi,
+  the default since 2026-09-25 (an explicit "never" is kept) / on mobile data too),
   metered judged by the system rather than by which radio it is. On Wi-Fi or mobile the app applies
   every published patch that fits an installed archive or pack on its own, a minute after start and
   at most once in 20 hours, skipping a drive in progress. A FULL re-download is never automatic on

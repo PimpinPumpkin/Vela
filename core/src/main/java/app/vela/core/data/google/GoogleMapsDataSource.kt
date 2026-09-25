@@ -785,7 +785,7 @@ class GoogleMapsDataSource @Inject constructor(
                                 snapped = RouteGeometry.routeVia(
                                     http, all, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg,
                                     strictVias = true, looseVias = loose, tries = tries, callTimeoutMs = osrmTryMs, budget = budget,
-                                ).firstOrNull()?.takeIf { r ->
+                                ).firstOrNull()?.copy(source = RouteSource.OSRM_VIA_SNAP)?.takeIf { r ->
                                     r.polyline.lastOrNull()?.let { it.distanceTo(destination) <= SNAP_REACH_M } == true &&
                                         r.distanceMeters <= gStops.distanceMeters * SNAP_LENGTH_SLACK + SNAP_LENGTH_SLACK_M &&
                                         !spurWithTurn(r, gStops.polyline)
@@ -958,7 +958,7 @@ class GoogleMapsDataSource @Inject constructor(
                     http, listOf(origin) + RouteGeometry.sampleVias(gTop!!.polyline) + destination, mode,
                     avoidTolls, avoidHighways, avoidFerries, departBearingDeg, strictVias = true,
                     tries = tries, callTimeoutMs = osrmTryMs, budget = budget,
-                ).firstOrNull()
+                ).firstOrNull()?.copy(source = RouteSource.OSRM_VIA_SNAP) // a trip log can tell a jam snap from a plain route
             } else null
             // Cheap checks first, the shape test last (it walks the whole route): the via route
             // must reach the destination and not be markedly LONGER than the course it followed

@@ -932,3 +932,13 @@ done so it *earns* trust rather than spends it:
   (`placePhotos`). The date join
   for the page walk runs again (`photoDatesRpc`, default 1). Q&A, contributor names and
   per-review photos stay on the dead list.
+
+## 2026-09-25: delta updates on by default
+
+- **Turn delta updates on by default.** Done: `RegionUpdates` defaults to WIFI. The append-in-place
+  PMTiles patch shipped 2026-09-18 and was proven on a Pixel 9 the next day (a 94 KB patch against
+  a 3.3 MB archive, fingerprint checked, dead space reclaimed locally). The roadmap had asked for a
+  second device on a state-sized archive first; the maintainer made the call without it. The flip
+  starts `scheduleAutoRegionPatches` for every install that never touched the setting (a minute
+  after start, at most once per 20 h, patches only, never a full download); anyone who picked
+  "Never on its own" keeps it.

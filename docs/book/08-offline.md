@@ -368,13 +368,14 @@ DEAD_LIMIT_DIVISOR = 5   // compact once dead bytes pass a fifth of the file
 Compaction needs room for a second copy while it runs; without it, it is refused and the archive
 stays correct, just larger.
 
-The policy is the user's: **Update downloaded regions** is Never on its own (the default), On
-Wi-Fi, or On Wi-Fi and mobile data, where "Wi-Fi" means the system says the network is not
-metered. It is off by default because a feature that rewrites an installed archive was not to
-switch itself on before someone had watched it work. That has since happened: on 2026-09-19 a
+The policy is the user's: **Update downloaded regions** is Never on its own, On Wi-Fi (the
+default since 2026-09-25), or On Wi-Fi and mobile data, where "Wi-Fi" means the system says the network is not
+metered. It was off by default until then because a feature that rewrites an installed archive was not
+to switch itself on before someone had watched it work. That happened on 2026-09-19 a
 Pixel 9 took a published patch end to end, and the same run found and fixed two bugs (the catalog
 cached for the life of the process, so no update was ever offered, and dead bytes never bounded).
-The default was left at Never. On either Wi-Fi setting the app checks a minute after start, at
+The default became On Wi-Fi on 2026-09-25; anyone who had picked Never keeps it. On either
+Wi-Fi setting the app checks a minute after start, at
 most once in 20 hours, and applies every published patch that fits an installed places or
 basemap archive or place pack, on its own and quietly; it never downloads a region whole by
 itself, and it skips a drive in progress.

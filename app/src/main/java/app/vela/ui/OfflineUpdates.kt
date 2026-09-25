@@ -21,13 +21,13 @@ import androidx.compose.runtime.mutableStateOf
 object RegionUpdates {
     enum class Mode { OFF, WIFI, MOBILE }
 
-    // OFF by default. The whole path was watched working on a Pixel 9 on 2026-09-19 (a published
-    // patch downloaded, applied and fingerprint-checked), so flipping this to WIFI is now the
-    // maintainer's call rather than a missing test.
-    val mode = mutableStateOf(Mode.OFF)
+    // WIFI by default since 2026-09-25: the whole path was watched working on a Pixel 9 on
+    // 2026-09-19 (a published patch downloaded, applied and fingerprint-checked). Someone who
+    // picked "Never" keeps it; only an untouched setting follows the default.
+    val mode = mutableStateOf(Mode.WIFI)
 
     fun init(context: Context) {
-        mode.value = when (prefs(context).getString(KEY, "off")) {
+        mode.value = when (prefs(context).getString(KEY, "wifi")) {
             "off" -> Mode.OFF
             "mobile" -> Mode.MOBILE
             else -> Mode.WIFI

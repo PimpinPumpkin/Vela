@@ -81,7 +81,7 @@ it, so a replay says which router drew the line:
 | Source | Meaning |
 | --- | --- |
 | `OSRM` | the open router's own route, and today also a route snapped along Google's line (see Limits) |
-| `OSRM_VIA_SNAP` | a Google alternate named on pick by snapping its line through OSRM |
+| `OSRM_VIA_SNAP` | OSRM forced along Google's line: the jam snap (with or without stops, since 2026-09-25) and a Google alternate named on pick |
 | `GOOGLE_ABBREVIATED` | Google's own route with its shortened step list, driven because nothing better answered |
 | `GOOGLE_PROVISIONAL` | a Google alternate in the picker, not named yet |
 | `GOOGLE_NAMED` | the parser's raw tag for a Google route; replaced by one of the two above before it leaves the fetch |
@@ -489,9 +489,6 @@ optimistic on signalized roads.
   departure field, so "Depart at" and "Arrive by" only move the arrival clock the chooser works
   out (transit alone is refetched for the chosen time, [chapter 9](09-transit.md)); the "usually X
   to Y" range is the stand-in.
-- **A jam snap is recorded as `OSRM`.** Only a Google alternate named on pick is stamped
-  `OSRM_VIA_SNAP`; the route snapped along Google's line around a jam, with or without stops,
-  keeps the plain `OSRM` tag from the parser, so a trip log cannot tell the two apart.
 - **A named alternate gets fewer checks than a jam snap.** `nameRoute` only checks that the snapped
   line reaches the destination; the 40 m via refusal, the length slack and the spur test are not
   run on it, so a picked Google alternate can carry the out-and-back "appendix" the jam snap
