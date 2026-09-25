@@ -27,12 +27,12 @@ object VelaConfig {
      */
     const val USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-        "(KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36"
+        "(KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
 
     /** The exact client-hint brand list Chrome [USER_AGENT]'s major sends, which Chrome derives from
      *  the major (BrowserHeaders.secChUaFor; BrowserHeadersTest pins the two equal). */
     const val SEC_CH_UA =
-        "\"Chromium\";v=\"154\", \"Google Chrome\";v=\"154\", \"Not A(Brand\";v=\"99\""
+        "\"Google Chrome\";v=\"155\", \"Chromium\";v=\"155\", \"Not(A:Brand\";v=\"24\""
 
     /**
      * HONEST identifier for COMMUNITY services (FOSSGIS OSRM, Nominatim, Photon, Overpass) — never

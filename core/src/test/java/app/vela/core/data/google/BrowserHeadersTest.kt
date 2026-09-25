@@ -23,9 +23,13 @@ class BrowserHeadersTest {
 
     @Test fun `the brand list parses in order and the major matches the ua`() {
         val brands = BrowserHeaders.brands(VelaConfig.SEC_CH_UA)
-        assertEquals(listOf("Chromium", "Google Chrome", "Not A(Brand"), brands.map { it.name })
-        assertEquals(BrowserHeaders.chromeMajor(VelaConfig.USER_AGENT), brands[0].major)
-        assertEquals(brands[0].major, brands[1].major)
+        // Three brands, the two real ones on the UA's major; their ORDER moves with the major
+        // (Chrome derives it), so it is checked against secChUaFor, not a list pinned to one release.
+        assertEquals(3, brands.size)
+        assertEquals(setOf("Chromium", "Google Chrome"), brands.map { it.name }.filter { !it.startsWith("Not") }.toSet())
+        val major = BrowserHeaders.chromeMajor(VelaConfig.USER_AGENT)
+        brands.filter { !it.name.startsWith("Not") }.forEach { assertEquals(major, it.major) }
+        assertEquals(BrowserHeaders.secChUaFor(major!!.toInt()), VelaConfig.SEC_CH_UA)
         assertTrue(BrowserHeaders.brands("garbage").isEmpty())
     }
 
