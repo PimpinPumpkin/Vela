@@ -3156,7 +3156,7 @@ architecture note.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.
-- **A PARKED DRIVE DRAWS NOTHING (issue #605, 2026-09-25, "device runs very hot").** The nav
+- **A PARKED DRIVE DRAWS NOTHING (2026-09-25, a "device runs very hot" report).** The nav
   ticker re-uploaded the location dot's GeoJSON every frame before the arrow engaged (a parked car
   never engages) and called `moveCamera` every frame after, so a route left up while stationary
   redrew the map at 59 fps and held ~93-100% of a core on the 4a. `writeMe` uploads the dot only
