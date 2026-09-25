@@ -4567,6 +4567,29 @@ class MapViewModel @Inject constructor(
     /** The stops still ahead on the drive, as the editor's rows: the chooser's Place where the
      *  session's stop came from one (same coordinates), else a bare Place carrying the label. */
     fun navStopsForEditor(): List<Place> = nav.navStopsForEditor()
+
+    /** Issue #604: take the NEXT stop out of the drive (the step sheet's "Remove next"). One
+     *  replan from here, the same path as the stops editor's Done. */
+    fun removeNextStop() {
+        val stops = navStopsForEditor()
+        if (stops.isNotEmpty()) applyStops(stops.drop(1))
+    }
+
+    /** True when the place offered by a tap during the drive is already one of the stops ahead. */
+    fun navTapCandidateIsStop(): Boolean {
+        val c = _state.value.navTapCandidate ?: return false
+        return navStopsForEditor().any { it.location.distanceTo(c.location) < NAV_STOP_MATCH_M }
+    }
+
+    /** Issue #604: the tap card's "Remove stop" on a place that is already a stop. The next
+     *  occurrence goes (the same place added twice keeps its later visit); the editor reorders. */
+    fun removeNavTapStop() {
+        val c = _state.value.navTapCandidate ?: return
+        clearNavTapStop()
+        val stops = navStopsForEditor()
+        val i = stops.indexOfFirst { it.location.distanceTo(c.location) < NAV_STOP_MATCH_M }
+        if (i >= 0) applyStops(stops.filterIndexed { j, _ -> j != i })
+    }
     fun navRemainingStopLabels(): List<String> = nav.navRemainingStopLabels()
     fun navRemainingStops(): List<app.vela.core.nav.NavSession.NavStop> = nav.navRemainingStops()
 
@@ -7723,6 +7746,7 @@ class MapViewModel @Inject constructor(
         const val DR_MAX_M = 3_000.0      // hard cap on blind travel - longer than any common tunnel, short enough to bound a wrong guess
         const val SPEED_LIMIT_FORGET_M = 300.0 // drive this far past the last KNOWN limit with only
                                                // untagged snaps → clear the badge (don't show a stale limit)
+        const val NAV_STOP_MATCH_M = 60.0   // a tapped place this close to a stop IS that stop (issue #604)
         const val OFFLINE_ADDR_FILL = 20      // offline search rows whose blank address is filled from the index
         const val OFFLINE_AT_ADDR_M = 40.0    // a POI this close to a typed address is "at" it
         const val RESUME_MAX_AGE_MS = 60 * 60 * 1000L // a persisted nav older than this = that drive is long

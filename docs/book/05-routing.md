@@ -299,6 +299,13 @@ gets the full retry ladder and the divergence snap. When it lands, the ETA calib
 old route is reset, because the fresh route carries fresh traffic. The stops editor's Done goes
 through the same path (`setStops`), and an unchanged list fetches nothing.
 
+**Removing a stop mid-drive** runs the same way. The step list always has an "Edit route" row, even
+on a drive with no stops, and with stops ahead it carries "Remove next", which asks first and then
+replans without that stop (`applyStops(stops.drop(1))`). Tapping a place that is already a stop
+(within 60 m) with tap-to-stop on offers "Remove stop" instead of "Add stop". Before the drive
+starts, and again for a stop added on the way, each stop is checked against its closing time at its
+own arrival (the route's legs added up to it), not just the destination.
+
 What it does to the plan: it becomes one route through every remaining stop. Passed stops are
 dropped from every later reroute and recheck (`stops.drop(passedStops)`), and each stop gets an
 along-route mark so its cue is spoken once, in order (`STOP_ON_ROUTE_M = 150`: a stop farther than

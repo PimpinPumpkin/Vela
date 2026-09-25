@@ -1759,7 +1759,7 @@ fun MapScreen(
                 maxListHeight = if (state.navigating) stepsListMax else null,
                 stopsRow = if (state.navigating) {
                     val labels = vm.navRemainingStopLabels()
-                    if (labels.isEmpty()) null else ({ app.vela.ui.nav.NavStopsRow(labels, onEdit = vm::openStopsEditor) })
+                    ({ app.vela.ui.nav.NavStopsRow(labels, onEdit = vm::openStopsEditor, onRemoveNext = vm::removeNextStop) })
                 } else null,
                 // During nav the sheet wears the bar's own top, so bar -> sheet -> bar is one
                 // surface changing height; the chevron points down and closes.
@@ -1845,6 +1845,7 @@ fun MapScreen(
                     ).joinToString(" · "),
                     onAdd = vm::confirmNavTapStop,
                     onDismiss = vm::dismissNavTapStop,
+                    onRemove = if (vm.navTapCandidateIsStop()) vm::removeNavTapStop else null,
                     // Reaching the button takes more presses on a key-driven phone than a thumb
                     // needs, so the offer waits longer there.
                     autoDismissMs = if (dpadMode) 25_000L else 10_000L,
@@ -1906,7 +1907,7 @@ fun MapScreen(
                                 val stops = vm.navRemainingStops().map { it.location to it.label }
                                 if (r == null || stops.isEmpty()) emptyList() else app.vela.core.nav.RouteStops.legStarts(r, stops)
                             },
-                            stopsRow = if (stopLabels.isEmpty()) null else ({ app.vela.ui.nav.NavStopsRow(stopLabels, onEdit = vm::openStopsEditor) }),
+                            stopsRow = { app.vela.ui.nav.NavStopsRow(stopLabels, onEdit = vm::openStopsEditor, onRemoveNext = vm::removeNextStop) },
                         )
                     },
                     trafficRatio = state.activeRoute?.trafficRatio,

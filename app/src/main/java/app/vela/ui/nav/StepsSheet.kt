@@ -438,10 +438,17 @@ fun NavStepsPreview(
  *  add; one replan on Done). Same padding grammar as [StepRow] so it reads as part of the list;
  *  drawn by the sheet AND the bar's drag preview. */
 @Composable
-fun NavStopsRow(stops: List<String>, onEdit: () -> Unit, modifier: Modifier = Modifier) {
+fun NavStopsRow(
+    stops: List<String>,
+    onEdit: () -> Unit,
+    modifier: Modifier = Modifier,
+    // Issue #604: "Remove next" beside Edit, behind a confirm. Null hides it (no stops ahead).
+    onRemoveNext: (() -> Unit)? = null,
+) {
     val dark = isAppInDarkTheme()
     val ink = SheetPalette.ink(dark)
     val dim = SheetPalette.dim(dark)
+    var confirmRemove by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     Column(modifier.fillMaxWidth()) {
         Row(
             Modifier
@@ -458,15 +465,17 @@ fun NavStopsRow(stops: List<String>, onEdit: () -> Unit, modifier: Modifier = Mo
                 modifier = Modifier.size(28.dp),
             )
             Spacer(Modifier.width(14.dp))
+            // Issue #607: shown on every drive. With no stops it is the way into the editor to add
+            // one, so changing a two-point trip never means ending navigation.
             Column(Modifier.weight(1f)) {
                 Text(
-                    stringResource(R.string.stops_editor_title),
+                    stringResource(if (stops.isEmpty()) R.string.nav_edit_route else R.string.stops_editor_title),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = ink,
                 )
                 Text(
-                    stops.joinToString(" · "),
+                    if (stops.isEmpty()) stringResource(R.string.nav_edit_route_hint) else stops.joinToString(" · "),
                     style = MaterialTheme.typography.bodyMedium,
                     color = dim,
                     maxLines = 2,
@@ -474,6 +483,12 @@ fun NavStopsRow(stops: List<String>, onEdit: () -> Unit, modifier: Modifier = Mo
                 )
             }
             Spacer(Modifier.width(8.dp))
+            if (onRemoveNext != null && stops.isNotEmpty()) {
+                androidx.compose.material3.TextButton(
+                    onClick = { confirmRemove = true },
+                    modifier = Modifier.dpadHighlight(RoundedCornerShape(12.dp)),
+                ) { Text(stringResource(R.string.nav_stops_remove_next), style = MaterialTheme.typography.labelLarge) }
+            }
             Text(
                 stringResource(R.string.stops_edit),
                 style = MaterialTheme.typography.labelLarge,
@@ -481,6 +496,16 @@ fun NavStopsRow(stops: List<String>, onEdit: () -> Unit, modifier: Modifier = Mo
             )
         }
         HorizontalDivider(color = dim.copy(alpha = 0.25f))
+    }
+    if (confirmRemove && onRemoveNext != null && stops.isNotEmpty()) {
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { confirmRemove = false },
+            title = stringResource(R.string.nav_stops_remove_confirm, stops.first()),
+            confirmText = stringResource(R.string.nav_stops_remove_action),
+            onConfirm = { confirmRemove = false; onRemoveNext() },
+            dismissText = stringResource(android.R.string.cancel),
+            onDismiss = { confirmRemove = false },
+        ) {}
     }
 }
 

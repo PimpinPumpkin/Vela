@@ -1058,6 +1058,8 @@ fun NavStopOffer(
     onAdd: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    // Issue #604: the tapped place is already a stop, so the card also offers to take it out.
+    onRemove: (() -> Unit)? = null,
     autoDismissMs: Long = 10_000L,
     // Changes on every offer, so a second tap on the same place restarts the clock.
     offerKey: Any = name,
@@ -1107,6 +1109,12 @@ fun NavStopOffer(
                 }
             }
             Spacer(Modifier.width(10.dp))
+            if (onRemove != null) {
+                androidx.compose.material3.TextButton(
+                    onClick = onRemove,
+                    modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp)),
+                ) { Text(stringResource(R.string.nav_stop_offer_remove)) }
+            }
             androidx.compose.material3.Button(
                 onClick = onAdd,
                 modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp)),

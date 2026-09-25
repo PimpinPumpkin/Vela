@@ -722,6 +722,15 @@ counter and speaks one cue per stop in order. Reroutes and rechecks fetch with
 `NavSession.setStops` is the one replan entry (`addStop` delegates to it): an unchanged list
 fetches nothing.
 
+The nav step sheet always leads with `NavStopsRow`: with no stops ahead it reads "Edit route" and
+opens the stops editor; with stops it also carries "Remove next", which after a `VelaDialog`
+confirm calls `applyStops(stops.drop(1))`, the same single replan as the editor's Done.
+
+The closing-soon warning (`NavController.maybeWarnClosingSoon`, at nav start) checks each stop
+ahead at its own arrival, the sum of `route.legs` durations up to it, before the destination, and
+speaks only the first place that closes within `60` min of arrival or before it. A stop added
+during the drive is checked against the first leg of the replanned route, waited for up to 20 s.
+
 ### 4.5 Offline routing
 
 `ObfRouteEngine` runs OsmAnd's pure-Java router and binary reader over `.obf` region files.
@@ -1103,6 +1112,9 @@ widens from fuel-only to `NAV_DRIVE_GROUPS`, and a tap on a place does not selec
   under `dpadMode` where reaching the button takes more presses, and dismisses at zero. It is
   keyed on `navTapOfferTick`, which every offer bumps, because a second tap on the same place
   leaves the state equal and would otherwise leave the first clock running.
+- **A place that is already a stop offers removal.** When the candidate lies within
+  `NAV_STOP_MATCH_M` (60 m) of a stop ahead, the card's button reads "Remove stop" and drops the
+  nearest-ahead occurrence of it through `applyStops`.
 - **The offer is drawn on the map**, as a red "+" teardrop (`PoiIcons.CANDIDATE_PIN`) through the
   same effect that draws numbered stops and the destination flag, so the driver can see where the
   offer is before accepting it.
