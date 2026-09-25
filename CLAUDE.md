@@ -3912,6 +3912,14 @@ Gotchas:
   before bumping), and google.com's `Accept-CH` asks for `Downlink` and `RTT`, which Chrome then
   sends on every later request, so the XHR header set carries both. Probe recipe and residuals
   (X-Client-Data, two cookie jars, TLS) are in SPEC 3.6.
+- **Reading what actually goes on the wire (2026-09-25):** `adb shell setprop debug.vela.tune.netLog 1`
+  (read at app start) makes Cronet write a NetLog of its first 90 s to `files/netlog/` (cookies
+  stripped; request AND response headers, including every `Accept-CH` Google sends) and opens the
+  WebViews to the remote inspector (`adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>`,
+  CDP `Network.requestWillBeSentExtraInfo` gives the real headers). The reference is a real Chrome
+  on a throwaway profile (`--user-data-dir`, `--remote-debugging-port`, run once so it fetches its
+  variations seed). Strip `/@lat,lng` from any page URL before printing: Google puts the session's
+  location there. Clear the switch after.
 - **`secChUa` is COMPUTED from the UA's major (2026-09-23, `BrowserHeaders.secChUaFor`).** Chrome
   derives the whole header (GREASE brand, its version, the order) from the major, so a hand-edited
   hint is a guess; the 153 one was Chrome 137's pattern with the number changed. `parseBundle`

@@ -50,10 +50,23 @@ object CronetHolder {
                     .setStoragePath(cache.absolutePath)
                     .enableHttpCache(CronetEngine.Builder.HTTP_CACHE_DISK, 64L * 1024 * 1024)
                     .build()
-            }.onSuccess { Log.i(TAG, "engine ${it.versionString}") }
+            }.onSuccess { Log.i(TAG, "engine ${it.versionString}"); maybeNetLog(it) }
                 .onFailure { failed = true; Log.w(TAG, "engine unavailable, staying on OkHttp", it) }
                 .getOrNull()
                 .also { engine = it }
+        }
+    }
+
+    /** Debug only (`adb shell setprop debug.vela.tune.netLog 1`, read when the engine is built):
+     *  Cronet's own NetLog of the next 90 s into `files/netlog/`, cookies stripped, so the exact
+     *  headers Cronet puts on a Google request can be read off the phone. */
+    private fun maybeNetLog(e: CronetEngine) {
+        if (!app.vela.ui.AppTune.on("netLog", false)) return
+        val dir = appContext.getExternalFilesDir("netlog") ?: return
+        val f = File(dir, "cronet-${System.currentTimeMillis()}.json")
+        runCatching { e.startNetLogToFile(f.absolutePath, false) }.onSuccess {
+            Log.i(TAG, "netlog -> ${f.name}")
+            Thread { Thread.sleep(90_000); runCatching { e.stopNetLog() }; Log.i(TAG, "netlog stopped") }.apply { isDaemon = true }.start()
         }
     }
 

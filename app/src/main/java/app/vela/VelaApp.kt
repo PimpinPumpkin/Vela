@@ -78,6 +78,9 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
                 dir?.let { java.io.File(it, "qv9Egd-${System.currentTimeMillis()}.txt").writeText(raw) }
             }
         }
+        // adb-only: `setprop debug.vela.tune.netLog 1` also opens the WebViews to Chrome's remote
+        // inspector (adb forward to webview_devtools_remote_<pid>), for reading their real headers.
+        if (app.vela.ui.AppTune.on("netLog", false)) android.webkit.WebView.setWebContentsDebuggingEnabled(true)
         app.vela.web.SessionRotation.appJar = http.cookieJar as? app.vela.core.di.ResettableCookieJar
         app.vela.net.CronetHolder.init(this)
         app.vela.core.net.GoogleTransport.interceptor = app.vela.net.CronetTransport(http.cookieJar, app.vela.web.WebViewCookieJar())
