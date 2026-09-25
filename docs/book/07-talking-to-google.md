@@ -408,6 +408,17 @@ whose WebView session was weeks old was already in the limited view while a Pixe
 Whichever it is, Google still sees the IP address, which links sessions from one connection over
 a short time anyway.
 
+**Telling the user.** In the limited view the place sheet gets quietly thinner, which reads as a
+broken app. So Vela watches for it (`web/GoogleStanding`). The first photo request asks for 50
+photos: a full session gets 50, a limited one gets 10 with more pages waiting. On 2026-09-25 two
+phones on one connection, running the same query in the same minute, split exactly that way, and
+only the one that got 10 was missing popular times. So a first page of 20 or fewer with a next page
+marks the session limited, and so does "More reviews" loading nothing on the full reviews page; a
+first page of 40 or more clears it. A missing popular-times chart on its own proves nothing (many
+places have none), so it never marks anything. While marked, a Google place with no chart shows one
+dim line where the chart would be ("Google is showing a limited view right now..."), and Settings >
+Privacy > Google session says the same. The mark belongs to the session: any rotation clears it.
+
 ### The slim early-session answer
 
 For roughly the first three seconds of a fresh session, Google's search answers with a stripped

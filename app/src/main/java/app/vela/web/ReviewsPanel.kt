@@ -436,6 +436,7 @@ private fun buildPanelWebView(
                 if (!limitedRetried) {
                     limitedRetried = true
                     panelDiag("limited view: More reviews loaded nothing", "cards $cards of ${if (claimed >= 0) claimed else "?"}, feed requests $calls")
+                    GoogleStanding.markLimited(wv.context.applicationContext, "More reviews loaded nothing")
                 }
             }
         }

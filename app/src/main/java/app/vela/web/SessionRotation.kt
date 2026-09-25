@@ -60,6 +60,9 @@ object SessionRotation {
         }
     }
 
+    /** When the current session began (0 before the first run stamps it). */
+    fun sessionStarted(context: Context): Long = prefs(context).getLong(KEY_STARTED, 0L)
+
     fun setMode(context: Context, value: String) {
         mode.value = value
         prefs(context).edit().putString(KEY_MODE, value).apply()
@@ -82,6 +85,7 @@ object SessionRotation {
 
     private fun rotate(context: Context, engineStarted: Boolean) {
         cacheClearPending = true
+        GoogleStanding.reset(context)
         // Cronet's cache (cacheDir/cronet) is only safe to delete before the engine opens it.
         if (!engineStarted) runCatching { File(context.cacheDir, "cronet").deleteRecursively() }
         // CookieManager loads the WebView library the first time it is touched, which is not

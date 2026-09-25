@@ -1460,6 +1460,18 @@ Defaults that make the safe path the easy one:
   `VelaSession: new Google session`. Also found: the 4a's weeks-old session was in Google's LIMITED
   view anyway (Google's banner on the full reviews page) while the P9's was full, so session
   standing, not age alone, decides it.
+- **VELA SAYS WHEN GOOGLE LIMITS IT (2026-09-25, `web/GoogleStanding`).** The limited view made the
+  app look broken (#602: More reviews does nothing). `GoogleStanding.limited` is set only on strong
+  evidence: the FIRST photo page returns at most `LIMITED_PHOTO_PAGE_MAX` (20) photos while a next
+  page exists (we ask for 50; a full session answers 50, a limited one 10, measured on two phones on
+  one connection, same query, same minute), or "More reviews" on the full reviews page loads
+  nothing. A first page of `FULL_PHOTO_PAGE_MIN` (40) or more clears it. A missing popular-times
+  chart alone is never evidence (many places have none). The mark is stored against
+  `SessionRotation.sessionStarted`, and any rotation resets it. Shown as one dim line where the
+  chart would be on a Google place (`place_limited_view`) and a status hint in Settings > Privacy >
+  Google session (`settings_google_session_limited`). Logcat `VelaSession: limited view: <why>`.
+  The earlier note that the photo RPC returns "10 per page whatever COUNT says" was measured while
+  this network was limited; it is the limited-view answer, not the RPC's rule.
 - **A PLACE TAP IS A FEW REQUESTS, NOT A FEW HUNDRED (2026-09-23).** First photos: ONE `hspqX`
   request (`placePhotos`, dated), retried once after ~2.5 s when empty (a fresh Google session's
   first seconds answer stripped: seen 0, then 10), then the capped page walk as fallback. First

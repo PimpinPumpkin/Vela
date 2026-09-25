@@ -68,6 +68,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         // Calibration `useCronet` 0, or an engine that fails to build, leaves them on OkHttp.
         // Before Cronet opens its cache: a due rotation deletes it (Settings > Privacy).
         app.vela.web.SessionRotation.init(this)
+        app.vela.web.GoogleStanding.init(this)
         app.vela.web.SessionRotation.appJar = http.cookieJar as? app.vela.core.di.ResettableCookieJar
         app.vela.net.CronetHolder.init(this)
         app.vela.core.net.GoogleTransport.interceptor = app.vela.net.CronetTransport(http.cookieJar, app.vela.web.WebViewCookieJar())

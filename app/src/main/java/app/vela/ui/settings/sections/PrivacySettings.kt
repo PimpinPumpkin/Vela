@@ -60,6 +60,9 @@ internal fun PrivacySettingsScreen(vm: app.vela.ui.map.MapViewModel, onBack: () 
             SettingsGroup {
                 app.vela.ui.settings.SubHead(stringResource(R.string.settings_google_session))
                 app.vela.ui.settings.Hint(stringResource(R.string.settings_google_session_hint))
+                if (app.vela.web.GoogleStanding.limited.value) {
+                    app.vela.ui.settings.Hint(stringResource(R.string.settings_google_session_limited))
+                }
                 val rot = app.vela.web.SessionRotation
                 listOf(
                     rot.WEEK to R.string.settings_google_session_week,
