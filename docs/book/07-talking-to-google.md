@@ -548,7 +548,7 @@ without a release. This table is the record to revert from.
 
 | Piece | Now | Falls back to | Remote switch (calibration `tuning`) | Before 2026-09-23 |
 |---|---|---|---|---|
-| First photos | `hspqX` RPC, one request of 10 (`placePhotoPage`), dated, with the place's photo total | two more tries; then the sheet keeps the search's hero photo and "More photos" walks the page | `nativePlacePhotos` 0 | the full page walk (every gallery tab) on every tap |
+| First photos | `hspqX` RPC, one request of 10 (`placePhotoPage`), dated | two more tries; then the sheet keeps the search's hero photo and "More photos" walks the page | `nativePlacePhotos` 0 | the full page walk (every gallery tab) on every tap |
 | More photos | the next `hspqX` page, one request per 10 (cursor at `[4][2][2]` of the request, payload[5] of the reply) | one retry, then the full page walk | `nativePlacePhotos` 0 | the same walk |
 | Menu tab | only from the page walk: "Load all photos and reviews" on, or "More photos" after native paging fails. The RPC carries no category per photo | none | none | the walk on every tap |
 | First reviews | the page scrape, stopped at 10 (DEFAULT). The one-request `qv9Egd` feed (`reviewFeed`) is built but OFF: it rides the app's own session, which is new every launch, and Google limits new sessions to 5 reviews | the page scrape | `nativeReviewFeed` 1 turns the feed on (compiled default 0) | the page scrape to 50 on every tap |

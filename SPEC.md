@@ -495,8 +495,8 @@ Performance "Load all photos and reviews" (`FullPlaceLoad`) restores the full wa
 Details use ONE plain request of the details page's own search (`MapDataSource.placeDetails`,
 parsed by `PopularTimesParser`) with up to three tries while popular times are missing, the page
 only as a last resort (`nativeDetails`). "More photos" pages `hspqX` natively: 10 per request, the
-cursor is reply payload[5] and goes back at request `[4][2][2]`; payload[1] is the place's photo
-total. The RPC tags no category, so the Menu tab comes only from the page walk. The per-place requests
+cursor is reply payload[5] and goes back at request `[4][2][2]`; payload[1] is not the photo total
+(it reads the same for unrelated places) and is not read. The RPC tags no category, so the Menu tab comes only from the page walk. The per-place requests
 (details, the photo pages, the review feed) carry the `AgedSession` tag, and the Cronet transport
 sends them with the WebView's cookies (`WebViewCookieJar`) instead of the app's (`agedSession`,
 default 1): on the app's new-every-launch session a big-box store's details came back three times
