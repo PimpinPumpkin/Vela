@@ -1152,10 +1152,10 @@ fun NavStopOffer(
  * The drive's two "hold something" controls behind ONE button (user 2026-09-18).
  *
  * Pause and mute used to sit as a two-target pill in the nav stack, which is 112 dp of a small
- * phone's right edge for two things you touch rarely. Now there is one 56 dp button and the tap
- * PAUSES - the control you reach for at speed costs one touch and never opens a menu first - while
- * the other one slides out beside it for [OPEN_MS] so it is there if you want it. A LONG PRESS
- * mutes outright, for people who know where it is. The button carries both states - the glyph is
+ * phone's right edge for two things you touch rarely. Now there is one 56 dp button: on a running
+ * drive the FIRST tap slides mute out beside it for [OPEN_MS] and a second tap on the same button
+ * pauses (pausing on the first tap made holding the drive the only way to reach mute); while
+ * paused, one tap resumes. A LONG PRESS mutes outright, for people who know where it is. The button carries both states - the glyph is
  * pause or resume, the accent fill says the drive is held, and a muted drive wears a small crossed
  * speaker - because one control standing for two states has to show both.
  *

@@ -665,7 +665,8 @@ to every OSRM-derived route in it, because the alternates share the speed-model 
 is whichever route follows Google's course: the top OSRM route when it does, otherwise the
 via-snap. A multi-stop trip whose Google reply went through the stops is calibrated the same
 way; only a reply that missed a stop (the direct trip) compares average speeds instead, so the
-distance difference cancels, and goes through the same function with spans off.
+distance difference cancels, and goes through the same function; its congestion spans are carried
+over geometrically like any divergent route's (`transferSpans`), where the lines coincide.
 
 **The divergence snap.** When Google's route strays more than 700 meters from OSRM's line
 (`RouteGeometry.divergent`), Google is routing around a jam. `sampleVias` takes about 12
@@ -681,10 +682,14 @@ Google's path with full OSRM steps. Constraints:
   Google route is the avoiding one and this gate is skipped.
 - Refuse a via route when any interior via snapped more than `VIA_SNAP_MAX_M` (40 m) from the
   requested point, or when the via route is longer than Google's course times 1.05 plus 400 m.
-- Refuse a via route with a **spur**: project it onto Google's line and flag any stretch of at
-  least 250 m that advances less than 35 percent of the distance traveled, with the first and
-  last 300 m exempt. The per-fix variant resets a stretch only on normal progress (at least 80
-  percent of distance traveled) and flags at 80 m traveled with under 45 percent progress. A
+- Refuse a via route with a **spur** (`RouteGeometry.spurAt`): project it onto Google's line
+  (windowed, the whole course past `SPUR_LOCAL_M` 200 m) and flag a stretch of at least
+  `SPUR_MIN_M` (80 m) of route that advances less than `SPUR_PROGRESS_FRACTION` (45 percent) of the
+  distance traveled; a stretch resets only on normal progress (`SPUR_NORMAL_FRACTION`, 80 percent),
+  and the first and last `SPUR_END_SLACK_M` (300 m) are exempt. The data source refuses the route
+  only when a turn or U-turn maneuver sits within `SPUR_TURN_NEAR_M` (150 m) of the spur
+  (`spurWithTurn`): a loop ramp that OSM draws in full and Google's line chords has the same shape
+  without one. A
   via landing on an off-ramp snaps only a few meters, so the distance and length guards miss it.
 
 **Congestion bands.** Google's spans are `[level, startMeters, lengthMeters]` on its own line.
@@ -749,8 +754,9 @@ router offers alternates for one.
 pass mark (null past 150 m off the line); `NavSession` holds the stops, the marks and a passed
 counter and speaks one cue per stop in order. Reroutes and rechecks fetch with
 `stops.drop(passedStops)`, so going off route keeps the stops still ahead.
-`NavSession.setStops` is the one replan entry (`addStop` delegates to it): an unchanged list
-fetches nothing.
+`NavSession.setStops` is the one replan entry (`addStop` delegates to it); the stops editor's Done
+calls it only when the list changed (`MapViewModel.applyStops` compares with
+`NavSession.remainingStops()`), so an unchanged list fetches nothing.
 
 The nav step sheet always leads with `NavStopsRow`: with no stops ahead it reads "Edit route" and
 opens the stops editor; with stops it also carries "Remove next", which after a `VelaDialog`
@@ -818,15 +824,18 @@ escape; a one-sided spike filter self-latches.
 
 **Off route.** The corridor is accuracy-scaled and mode-relative:
 `NavEngine.offRouteCorridor(mode, accuracyM)` returns `base + K * accuracy` clamped per mode,
-with foot tighter than bike tighter than drive. Defaults without an accuracy figure are
-`OFF_ROUTE_M` 40 m and `FAR_OFF_M` 90 m, with `OFF_ROUTE_HITS` 3. A fix beyond the far
+with foot tighter than bike tighter than drive. A fix with no accuracy figure is taken as
+`DEFAULT_ACC_M` (12 m), which gives a driving corridor of 42 m and a far distance of 84 m
+(`farOffDistance`, twice the corridor, capped at 110 / 75 / 60 m for drive / bike / walk);
+`OFF_ROUTE_M` 40 m and `FAR_OFF_M` 90 m are only the `NavEngine.update` defaults the tests and
+replays use. `OFF_ROUTE_HITS` is 3. A fix beyond the far
 distance counts at any speed (parking-lot creep sits under the moving floor forever) and counts
 double while moving. A moving fix whose course diverges by more than `HEADING_OFF_DEG` (60
 degrees) from the route's local bearing counts as an off-route hit even inside the corridor,
 and counts double when it is also a quarter-corridor off the line; a heading-diverged fix never
 counts toward the on-route streak. Off-route distance is measured on the windowed, anchored
 projection, never a global nearest, so a route that passes near itself cannot claim the puck.
-`movingFloorMps` is 2.0.
+`movingFloorMps` is mode-relative (`NavSession`): 2.0 m/s driving, 1.0 cycling, 0.6 walking.
 
 **Rerouting.**
 
@@ -904,8 +913,10 @@ abbreviated one and a traffic-carrying candidate replaces a trafficless one, nev
 **Guidance.** Prompt and turn-now distances scale with speed, `max(fixed, v * T)` with T of 35
 and 10 seconds; `spoken` stores band slots, not meters, so each prompt speaks the true
 distance. A step's non-first prompts speak `NavStrings.repeatShort`, and a merge skips the far
-band entirely. Maneuvers more than 75 m behind are caught up silently. Arrival is proximity
-based (within 40 m crow-flight); no rerouting within 150 m of the destination or while
+band entirely. Maneuvers more than 75 m behind are caught up silently. Arrival fires on any of three
+rules: within `ARRIVE_RADIUS_M` (25 m) along the route of the arrive maneuver, within
+`ARRIVE_PROX_M` (40 m) crow-flight of the destination, or under 50 m of route left while stopped
+and within 60 m crow-flight; no rerouting within 150 m of the destination or while
 stationary except for the far-off rule. The DEPART maneuver is spoken once by
 `NavSession.start` and skipped by the engine. ETA sums remaining step durations times the
 traffic ratio, never remaining distance over average speed.
@@ -1266,7 +1277,7 @@ over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
   address names a unit is snapped to the matching Overture address point (house number plus
   unit within about 200 m, street name ignored: a number plus a unit is unique that close and
   the two themes abbreviate streets differently). What is still stacked is spread on a golden-
-  angle ring of 8 to 20 m with the best row left in place.
+  angle ring of 10 to 20 m (8 m plus 2 m per stacked row, capped at six) with the best row left in place.
 - **Tenants and kiosks** are flagged: a department of a nearby anchor (address, brand or
   name-head match), a kiosk category or name, or an anchor brand's fuel station or convenience
   shop within about 275 m. A tenant loses 2 prominence points and bakes at minzoom 17, except

@@ -489,9 +489,9 @@ class MapViewModel @Inject constructor(
 
     init {
         loadAmbientCacheFromDisk() // ambient LRU survives restarts (paint-then-refine)
-        warmWebViewsWhenQuiet() // boot the hidden WebViews at a quiet moment, not at the first place tap
+        warmWebViewsWhenQuiet() // boot the WebView ENGINE at a quiet moment (no Google page), not at the first place tap
         loadOpenPlaceLinks() // Overture -> Google links remembered from earlier sessions
-        // Privacy toggle (Settings -> Data & privacy): periodic in-drive traffic re-checks send
+        // Privacy toggle (Settings -> Navigation, live re-checks): periodic in-drive traffic re-checks send
         // the CURRENT position to Google; the opt-out lives on the session so :core enforces it.
         // (Raw prefs read: the settingsPrefs property is declared below this init block.)
         navSession.liveRechecks = appContext
@@ -4168,9 +4168,8 @@ class MapViewModel @Inject constructor(
      *  `number`). Unlike a long-press we KNOW the number the user aimed at, so we LEAD the pin with
      *  that exact number and use the reverse geocode (Nominatim) only for the street/city, since a
      *  reverse geocode can snap to a neighbor (tapped 1020, got 1040), which is exactly the "doesn't
-     *  snap to the house number" complaint. The "real business wins" branch below dates from Google's
-     *  reverse geocode; a Nominatim answer carries no rating or category, so it no longer fires, and
-     *  nothing here asks Google. */
+     *  snap to the house number" complaint. Nothing here asks Google (the old "a real business at
+     *  the spot wins" branch dated from Google's reverse geocode and was removed 2026-09-25). */
     fun onAddressLabelTap(number: String, location: LatLng, tileStreet: String? = null) {
         if (_state.value.navigating) return // dead during a live drive, like onPoiTap
         if (_state.value.pickOnMap != null) { onMapLongPress(location); return } // pick-mode reuses the endpoint flow
@@ -4204,8 +4203,6 @@ class MapViewModel @Inject constructor(
             val geo = runCatching { dataSource.reverseGeocode(location) }.getOrNull()
             val place = when {
                 geo == null -> immediate.copy(address = number)
-                // A real POI (has a rating/category) at that spot — show it, the user gets the business.
-                geo.rating != null || geo.category != null -> geo
                 else -> {
                     val base = geo.address ?: geo.name
                     if (base.any { it.isLetter() }) {

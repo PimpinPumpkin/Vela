@@ -132,7 +132,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload basemap-tiles "basemap-${{ matrix.id }}.pmtiles" --clobber --repo "$GITHUB_REPOSITORY"
+          # GitHub's asset upload answers 500 on big archives often enough to fail a run on its own;
+          # retry with a backoff like the places bake (the bake itself is the expensive part).
+          for try in 1 2 3 4; do
+            if gh release upload basemap-tiles "basemap-${{ matrix.id }}.pmtiles" --clobber --repo "$GITHUB_REPOSITORY"; then break; fi
+            if [ "$try" = 4 ]; then echo "upload failed after $try tries"; exit 1; fi
+            echo "upload attempt $try failed; retrying in $((try * 30))s"
+            sleep $((try * 30))
+          done
           mkdir -p entries
           SIZE=$(stat -c %s "basemap-${{ matrix.id }}.pmtiles")
           # Bounds from the archive header (the routing catalog carries none): the PMTiles v3 header

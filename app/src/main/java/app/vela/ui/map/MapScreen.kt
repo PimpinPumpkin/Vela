@@ -2734,9 +2734,8 @@ fun MapScreen(
                         savingSeconds = state.fasterSavingSeconds,
                         onSwitch = vm::acceptFasterRoute,
                         onDismiss = vm::dismissFasterRoute,
-                        // Longer on a key-driven phone, where reaching either button is several
-                        // presses - the same allowance the tap-to-stop offer makes.
-                        // The same ten seconds however you drive the UI: focus stops the clock.
+                        // The same ten seconds however you drive the UI: focus on the card stops
+                        // the clock, so a key-driven phone has all the time it needs.
                         autoMs = 10_000L,
                         autoAccept = app.vela.ui.FasterRouteAuto.accept.value,
                         offerKey = state.fasterRoute ?: state.fasterSavingSeconds,

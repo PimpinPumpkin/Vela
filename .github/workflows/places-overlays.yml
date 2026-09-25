@@ -23,9 +23,9 @@ on:
         required: false
         default: ""
       release:
-        description: Overture release
+        description: "Overture release to pin (blank = the newest in the public bucket, like the scheduled runs)"
         required: false
-        default: "2026-08-19.0"
+        default: ""
       shard:
         description: "Which half of the catalog to bake when `only` is blank: a = first half by id, b = second half, blank = all (fails past 256 regions, the matrix cap)"
         required: false
