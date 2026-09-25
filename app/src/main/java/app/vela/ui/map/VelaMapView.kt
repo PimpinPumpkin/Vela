@@ -1047,8 +1047,6 @@ fun VelaMapView(
         var emptyPassTicks = 0 // consecutive quantum passes that placed no label (tiles still loading)
         while (true) {
             val quantum = (navPuck.progressM / 400.0).toLong()
-            // Drop the callouts the puck is past, every tick (cheap: a filter swap, gated on a 25 m step).
-            runCatching { applyNavLabelProgress(style, navPuck.progressM) }
             val upcomingNow = upcomingRoadsHolder.value
             val quantumChanged = quantum != lastQuantum || upcomingNow != lastUpcoming
             if (quantumChanged) { dictStaleTicks = 0; emptyPassTicks = 0 } // new area: re-warm the dict as its tiles land
@@ -1135,12 +1133,15 @@ fun VelaMapView(
                             navLabelAts = points.values.mapNotNull { f ->
                                 if (f.hasProperty(NAV_XLABEL_AT_PROP)) f.getNumberProperty(NAV_XLABEL_AT_PROP).toDouble() else null
                             }.sorted()
-                            navLabelNextAt = navLabelAts.firstOrNull { it > navPuck.progressM + NAV_XLABEL_DROP_BEHIND_M } ?: Double.MAX_VALUE
+                            navLabelFeatures = points.values.toList()
                             if (names != lastApplied) {
                                 lastApplied = names
                                 runCatching {
                                     style.getSourceAs<GeoJsonSource>(NAV_XLABEL_SRC)
                                         ?.setGeoJson(FeatureCollection.fromFeatures(points.values.toList()))
+                                    // The new set's window starts behind the car: move the cut up to
+                                    // the puck with it, so nothing already passed shows for a beat.
+                                    resetNavLabelCut(style, navPuck.progressM)
                                 }
                             }
                             // Mark the quantum done only after a usable pass, so an early empty
@@ -1166,6 +1167,20 @@ fun VelaMapView(
     // Accelerometer feed for the puck's speed Kalman — collected only during nav, written into a
     // PLAIN array (not compose state: sensor-rate updates through MutableState would recompose
     // the world 60×/s; the frame ticker below reads it directly instead).
+    // The passed-callout cut and the fade-out run on their own short tick (2026-09-25): on the 2 s
+    // label loop a bubble could hang up to two seconds past its cut, then vanish in one frame.
+    LaunchedEffect(navMode, routePolyline, styleRef) {
+        val style = styleRef ?: return@LaunchedEffect
+        if (!navMode || routePolyline.size < 2) return@LaunchedEffect
+        while (true) {
+            runCatching {
+                applyNavLabelProgress(style, navPuck.progressM, android.os.SystemClock.uptimeMillis()) {
+                    mapRef?.cameraPosition?.zoom ?: 17.0
+                }
+            }
+            kotlinx.coroutines.delay(NAV_XLABEL_TICK_MS)
+        }
+    }
     val motionProvider = remember { app.vela.core.location.MotionProvider(context) }
     val worldAccel = remember { floatArrayOf(0f, 0f) }
     // NOT during a replay (2026-07-16): the trace's fixes are synthetic, but this feed is the
@@ -5101,7 +5116,17 @@ private const val NAV_XLABEL_SRC = "vela-nav-xlabels-src"
 private const val NAV_XLABEL_AT_PROP = "atM" // the callout's distance along the route; passed ones are filtered out
 private var lastPassedFilterM = -1.0
 private var navLabelAts: List<Double> = emptyList() // the uploaded callouts' distances along the route, ascending
-private const val NAV_XLABEL_DROP_BEHIND_M = 12.0 // a callout is gone once the puck is this far past it
+// A callout stays up until the puck is this far PAST the crossing, then fades over NAV_XLABEL_FADE_MS
+// (2026-09-25, user: bubbles vanished too early and all at once). The old filter kept
+// atM > progress + 12, which dropped each bubble 12 m BEFORE the crossing, on a 2 s tick.
+private const val NAV_XLABEL_DROP_BEHIND_M = 25.0
+private const val NAV_XLABEL_FADE_MS = 1_200L
+private const val NAV_XLABEL_TICK_MS = 80L
+private const val NAV_XLABEL_FADE_SRC = "vela-nav-xlabels-fade-src"
+private const val NAV_ROADLABEL_FADE_LAYER = "vela-nav-roadlabels-fade"
+private var navLabelFeatures: List<Feature> = emptyList() // the uploaded callouts, for the fade hand-off
+private val navLabelFading = ArrayList<Pair<Feature, Long>>() // callouts fading out, with their start time
+private var navLabelFadeAlpha = -1f
 private const val NAV_XLABEL_OFFSET_M = 35.0
 // Tried in turn until the bubble clears the route. The rungs are close together on purpose: the
 // clearance a given step buys depends on the angle the street crosses at, and a coarse ladder
@@ -5529,25 +5554,64 @@ private fun navLabelPassedFilter(tier: Expression): Expression = Expression.all(
     tier,
     Expression.gt(
         Expression.coalesce(Expression.get(NAV_XLABEL_AT_PROP), Expression.literal(Double.MAX_VALUE)),
-        Expression.literal(navLabelPassed + NAV_XLABEL_DROP_BEHIND_M),
+        Expression.literal(navLabelPassed - NAV_XLABEL_DROP_BEHIND_M),
     ),
 )
 
 /** Re-apply the passed-callout filter, but only when the puck has actually passed the NEXT callout:
  *  a setFilter re-runs that layer's placement, and doing it every 25 m cost measurable main-thread
  *  time on a 4a (126 ms worst message vs 37 ms without it, 2026-09-17). [navLabelNextAt] is the
- *  nearest callout ahead, recorded when the set is uploaded. */
+ *  nearest callout ahead of the cut, recorded when the set is uploaded. A callout the cut drops is
+ *  handed to [NAV_ROADLABEL_FADE_LAYER], a one-or-two-feature layer whose opacity is a CONSTANT
+ *  paint value: changing it is a paint-only update, where a data-driven fade on the main layers
+ *  would re-run their placement every tick. */
 private var navLabelNextAt = Double.MAX_VALUE
-private fun applyNavLabelProgress(style: Style, progressM: Double) {
-    if (progressM + NAV_XLABEL_DROP_BEHIND_M < navLabelNextAt) return
-    if (kotlin.math.abs(progressM - lastPassedFilterM) < 25.0) return
+private fun applyNavLabelProgress(style: Style, progressM: Double, nowMs: Long, zoom: () -> Double) {
+    val cut = progressM - NAV_XLABEL_DROP_BEHIND_M
+    if (cut >= navLabelNextAt && progressM - lastPassedFilterM >= 10.0) {
+        setNavLabelCut(style, progressM)
+        // Only callouts that JUST crossed the cut fade; a minor one only if its tier was showing.
+        val z = zoom()
+        val gone = navLabelFeatures.filter { f ->
+            val a = if (f.hasProperty(NAV_XLABEL_AT_PROP)) f.getNumberProperty(NAV_XLABEL_AT_PROP).toDouble() else null
+            a != null && a <= cut && a > cut - 60.0 &&
+                (z >= 15.5 || f.getStringProperty("tier") == "major") &&
+                navLabelFading.none { it.first === f }
+        }
+        if (gone.isNotEmpty()) {
+            gone.forEach { navLabelFading.add(it to nowMs) }
+            uploadNavLabelFade(style)
+        }
+    }
+    if (navLabelFading.isEmpty()) return
+    if (navLabelFading.removeAll { nowMs - it.second >= NAV_XLABEL_FADE_MS }) uploadNavLabelFade(style)
+    val newest = navLabelFading.maxOfOrNull { it.second } ?: return
+    val alpha = (1f - (nowMs - newest).toFloat() / NAV_XLABEL_FADE_MS).coerceIn(0f, 1f)
+    if (kotlin.math.abs(alpha - navLabelFadeAlpha) < 0.03f) return
+    navLabelFadeAlpha = alpha
+    (style.getLayer(NAV_ROADLABEL_FADE_LAYER) as? SymbolLayer)?.setProperties(
+        PropertyFactory.textOpacity(alpha), PropertyFactory.iconOpacity(alpha),
+    )
+}
+
+private fun setNavLabelCut(style: Style, progressM: Double) {
     lastPassedFilterM = progressM
     navLabelPassed = progressM
-    navLabelNextAt = navLabelAts.firstOrNull { it > progressM + NAV_XLABEL_DROP_BEHIND_M } ?: Double.MAX_VALUE
+    navLabelNextAt = navLabelAts.firstOrNull { it > progressM - NAV_XLABEL_DROP_BEHIND_M } ?: Double.MAX_VALUE
     (style.getLayer(NAV_ROADLABEL_LAYER) as? SymbolLayer)
         ?.setFilter(navLabelPassedFilter(Expression.eq(Expression.get("tier"), Expression.literal("major"))))
     (style.getLayer(NAV_ROADLABEL_MINOR_LAYER) as? SymbolLayer)
         ?.setFilter(navLabelPassedFilter(Expression.eq(Expression.get("tier"), Expression.literal("minor"))))
+}
+
+/** A freshly uploaded set: move the cut to the puck without fading anything (the set's own
+ *  window reaches back behind the car, and those were never on screen). */
+private fun resetNavLabelCut(style: Style, progressM: Double) = setNavLabelCut(style, progressM)
+
+private fun uploadNavLabelFade(style: Style) {
+    navLabelFadeAlpha = -1f
+    style.getSourceAs<GeoJsonSource>(NAV_XLABEL_FADE_SRC)
+        ?.setGeoJson(FeatureCollection.fromFeatures(navLabelFading.map { it.first }))
 }
 
 private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, density: Float, exclude: List<String>) {
@@ -5562,7 +5626,10 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
     lastPassedFilterM = -1.0
     navLabelAts = emptyList()
     navLabelNextAt = Double.MAX_VALUE
-    val ids = listOf(NAV_ROADLABEL_LAYER, NAV_ROADLABEL_MINOR_LAYER)
+    navLabelFeatures = emptyList()
+    navLabelFading.clear()
+    navLabelFadeAlpha = -1f
+    val ids = listOf(NAV_ROADLABEL_LAYER, NAV_ROADLABEL_MINOR_LAYER, NAV_ROADLABEL_FADE_LAYER)
     // The bubbles REPLACE the basemap's line-following road names during nav - both drawing is a
     // doubled label ("2nd Street" along the road right under its own bubble, device-caught
     // 2026-07-17), and hiding the basemap set is placement work saved every frame (Google hides
@@ -5574,6 +5641,7 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
     if (!on) {
         ids.forEach { (style.getLayer(it) as? SymbolLayer)?.setProperties(PropertyFactory.visibility(Property.NONE)) }
         style.getSourceAs<GeoJsonSource>(NAV_XLABEL_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+        style.getSourceAs<GeoJsonSource>(NAV_XLABEL_FADE_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
         return
     }
     if (style.getSource(NAV_XLABEL_SRC) == null) style.addSource(GeoJsonSource(NAV_XLABEL_SRC))
@@ -5691,6 +5759,35 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
     // kept minors invisible above ~town speed. The include-list filter (<= 60 crossing names) and
     // the fat textPadding keep placement bounded, so the per-frame collision cost stays tame.
     layer(NAV_ROADLABEL_MINOR_LAYER, "minor", 15f, fade = 15.2f to 15.7f)
+    // Passed callouts fade out here (see applyNavLabelProgress). It never takes part in collision:
+    // a bubble on its way out must not push away the ones ahead.
+    if (style.getSource(NAV_XLABEL_FADE_SRC) == null) style.addSource(GeoJsonSource(NAV_XLABEL_FADE_SRC))
+    style.getSourceAs<GeoJsonSource>(NAV_XLABEL_FADE_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+    if (style.getLayer(NAV_ROADLABEL_FADE_LAYER) == null) {
+        style.addLayer(
+            SymbolLayer(NAV_ROADLABEL_FADE_LAYER, NAV_XLABEL_FADE_SRC).withProperties(
+                PropertyFactory.textField(roadLabelTextField()),
+                PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                PropertyFactory.textSize(12.5f),
+                PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_POINT),
+                PropertyFactory.textRotationAlignment(Property.TEXT_ROTATION_ALIGNMENT_VIEWPORT),
+                PropertyFactory.textPitchAlignment(Property.TEXT_PITCH_ALIGNMENT_VIEWPORT),
+                PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_VIEWPORT),
+                PropertyFactory.iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_VIEWPORT),
+                PropertyFactory.iconImage(NAV_BUBBLE_IMG),
+                PropertyFactory.iconTextFit(Property.ICON_TEXT_FIT_BOTH),
+                PropertyFactory.textAnchor(Property.TEXT_ANCHOR_BOTTOM),
+                PropertyFactory.textOffset(arrayOf(0f, -0.9f)),
+                PropertyFactory.textHaloWidth(0f),
+                PropertyFactory.iconAllowOverlap(true),
+                PropertyFactory.textAllowOverlap(true),
+                PropertyFactory.iconIgnorePlacement(true),
+                PropertyFactory.textIgnorePlacement(true),
+                PropertyFactory.textOpacity(0f),
+                PropertyFactory.iconOpacity(0f),
+            ),
+        )
+    }
     ids.forEach {
         (style.getLayer(it) as? SymbolLayer)?.setProperties(
             PropertyFactory.visibility(Property.VISIBLE),
