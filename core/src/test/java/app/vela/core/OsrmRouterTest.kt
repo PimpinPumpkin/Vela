@@ -233,4 +233,13 @@ class OsrmRouterTest {
             man(ManeuverType.FORK_LEFT, 100.0), man(ManeuverType.TURN_RIGHT, 50.0),
         )).size)
     }
+
+    @Test fun `a uturn modifier on a continue or turn step reads as a U-turn`() {
+        assertEquals("Make a U-turn onto West Covell Boulevard",
+            app.vela.core.data.RouteGeometry.osrmPhrase("continue", "uturn", "West Covell Boulevard", null, null, null))
+        assertEquals("Make a U-turn onto Main Street",
+            app.vela.core.data.RouteGeometry.osrmPhrase("turn", "uturn", "Main Street", null, null, null))
+        assertEquals("Bear left onto Main Street",
+            app.vela.core.data.RouteGeometry.osrmPhrase("continue", "left", "Main Street", null, null, null))
+    }
 }

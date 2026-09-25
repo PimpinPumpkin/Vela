@@ -753,6 +753,12 @@ object RouteGeometry {
             if (mod.contains("left")) return strings.destinationSide(left = true)
             if (mod.contains("right")) return strings.destinationSide(left = false)
         }
+        // A U-turn is a U-turn whatever step type OSRM wraps it in: a "continue" or "turn" carrying
+        // the uturn modifier read "Bear uturn onto ..." / "Turn uturn onto ..." (2026-09-25, seen on
+        // a route that began facing away from the destination). Every language has a real phrase.
+        if (mod?.trim() == "uturn" && type in setOf("continue", "new name", "turn", "end of road")) {
+            return strings.phrase("uturn", null, road, dest, exitNo, rbExit)
+        }
         return strings.phrase(type, mod, road, dest, exitNo, rbExit)
     }
 

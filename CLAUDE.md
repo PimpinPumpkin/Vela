@@ -3131,6 +3131,16 @@ architecture note.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.
+- **A PARKED DRIVE DRAWS NOTHING (issue #605, 2026-09-25, "device runs very hot").** The nav
+  ticker re-uploaded the location dot's GeoJSON every frame before the arrow engaged (a parked car
+  never engages) and called `moveCamera` every frame after, so a route left up while stationary
+  redrew the map at 59 fps and held ~93-100% of a core on the 4a. `writeMe` uploads the dot only
+  when it moved; the follow camera is written only past sub-centimeter/sub-degree tolerances;
+  after 60 idle frames with the puck under 0.3 m/s the loop waits `NAV_IDLE_TICK_MS` (120 ms)
+  between checks. Measured: 0 map frames and ~15% CPU parked, 59 fps unchanged on a demo drive.
+  Any new per-frame write in the ticker must be change-gated too, or this comes back. Same day:
+  a "continue"/"turn" step with the `uturn` modifier read "Bear uturn onto X"; `osrmPhrase` now
+  phrases any uturn modifier as the language's U-turn line (`OsrmRouterTest`).
 - **OFFLINE ADDRESSES GET THEIR CITY, STATE AND ZIP FROM THE NEIGHBORS (2026-09-23, user report).**
   OSM tags many places with only the number and street, so offline results read "123 Main St".
   `OfflineAddressStore.localityNear` votes among the nearest pack POIs (~650 m box) whose address
