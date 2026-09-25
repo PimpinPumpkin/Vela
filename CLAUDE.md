@@ -1464,6 +1464,13 @@ Defaults that make the safe path the easy one:
   `VelaSession: new Google session`. Also found: the 4a's weeks-old session was in Google's LIMITED
   view anyway (Google's banner on the full reviews page) while the P9's was full, so session
   standing, not age alone, decides it.
+- **REVIEW FEED PROBE (2026-09-25, `ReviewFeedProbeTest` + `.github/workflows/review-feed-probe.yml`).**
+  The feed (`qv9Egd`) stays off because it answered 0 reviews on the one full session tried, and its
+  parser was built only from limited-view replies. The probe sends the app's request from a clean
+  GitHub machine (push to the `feed-probe` branch, or dispatch), with the empty first-page token the
+  app sends and with a null one, and prints `FEEDPROBE|...|parsed=N|rawIds=M` per reply: rawIds
+  counts review ids in the raw text without the parser, so rawIds > parsed is a parse miss. The raw
+  replies are uploaded as an artifact. Never probe this from the maintainer's phones or network.
 - **VELA SAYS WHEN GOOGLE LIMITS IT (2026-09-25, `web/GoogleStanding`).** The limited view made the
   app look broken (#602: More reviews does nothing). `GoogleStanding.limited` is set only on strong
   evidence: the FIRST photo page returns at most `LIMITED_PHOTO_PAGE_MAX` (20) photos while a next
