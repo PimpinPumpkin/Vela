@@ -17,6 +17,8 @@ open a normal issue), the community OSRM server being down, or OSM data being wr
 
 ## What updates look like
 
-There is no backend. Fixes ship as a new signed release within minutes of the fix
-landing on `main`; scraper-shape fixes can also ship instantly through the signed
-remote calibration file without an app update.
+There is no backend. A fix that lands on `main` ships in the next nightly (cut daily,
+or at once for an urgent fix) and reaches the weekly stable at the next promotion, or
+sooner through an early one. Every build is signed with the same key. Scraper-shape
+fixes can also ship to every install within minutes through the signed remote
+calibration file, without an app update.

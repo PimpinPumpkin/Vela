@@ -8,12 +8,12 @@ import org.json.JSONObject
  * extract was cut with and not by its bounding box (issue #599).
  *
  * A box is not coverage. Vietnam's Geofabrik extract carries the island claims, so its box reaches
- * 114.6 E and swallows Hong Kong; with China absent from the routing catalog nothing smaller
+ * 114.6 E and swallows Hong Kong; while China was absent from the routing catalog nothing smaller
  * competed, and "download the area you're viewing" from Hong Kong announced "Downloading Vietnam".
  * Kansas's box crossing the Missouri River is the same fact in another place, handled there by
  * streaming three candidates. Geofabrik publishes the polygon beside every extract, so
  * `scripts/region-polys.py` bakes all of them, simplified to a few kilometers, into
- * `assets/region_polys.json` (about 300 KB, 20k points for 425 regions).
+ * `assets/region_polys.json` (about 340 KB for 458 regions).
  *
  * [covers] answers null for a region it has no polygon for (a catalog whose ids are not the
  * routing catalog's, such as the building overlays, or a row added since the last bake), and every

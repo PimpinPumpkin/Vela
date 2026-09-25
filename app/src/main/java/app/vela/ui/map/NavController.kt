@@ -271,19 +271,12 @@ internal class NavController(
 
     /** Warn at nav start when the trip reaches a place within an hour of its closing, or after it,
      *  so nobody drives forty minutes to a place that locks its doors on arrival. Checks every stop
-     *  still ahead (issue #606: a stop's arrival is the route's legs summed up to it), then the
-     *  destination; one warning, the earliest problem first, flashed, spoken and sent to the car.
-     *  Closing time comes from the place's own localized status text
-     *  ([app.vela.core.data.ClosingTime]); no parsable status, no warning. */
+     *  still ahead (issue #606), then the destination; one warning, the earliest problem first,
+     *  flashed, spoken and sent to the car. Closing time comes from the place's own localized status
+     *  text ([app.vela.core.data.ClosingTime]); no parsable status, no warning. */
     private fun maybeWarnClosingSoon(route: app.vela.core.model.Route) {
-        fun legSeconds(l: app.vela.core.model.RouteLeg) = l.durationInTrafficSeconds ?: l.durationSeconds
-        val stops = _state.value.directionsWaypoints
-        if (route.legs.size > stops.size) {
-            var acc = 0.0
-            for ((i, stop) in stops.withIndex()) {
-                acc += legSeconds(route.legs[i])
-                closingMessage(stop, acc)?.let { warnClosing(it); return }
-            }
+        for ((stop, eta) in stopArrivals(route, _state.value.directionsWaypoints)) {
+            closingMessage(stop, eta)?.let { warnClosing(it); return }
         }
         val sel = _state.value.selected ?: return
         val end = route.polyline.lastOrNull() ?: return
@@ -291,8 +284,21 @@ internal class NavController(
         closingMessage(sel, route.durationInTrafficSeconds ?: route.durationSeconds)?.let { warnClosing(it) }
     }
 
-    /** A stop added during the drive (issue #606): once the replanned route is in, its first leg is
-     *  the way to that stop, so the same check runs on it. Waits up to 20 s for the new route. */
+    /** Seconds from now to each of [stops] along [route]. Every router returns a trip with stops as
+     *  ONE leg (the per-leg times are not kept), so a stop's arrival is the trip's time scaled by
+     *  how far along the line the stop sits ([app.vela.core.nav.NavEngine.stopMarks]). A stop the
+     *  line does not pass near is skipped. The first cut summed per-leg times and never fired. */
+    private fun stopArrivals(route: app.vela.core.model.Route, stops: List<Place>): List<Pair<Place, Double>> {
+        if (stops.isEmpty() || route.polyline.size < 2) return emptyList()
+        val total = route.durationInTrafficSeconds ?: route.durationSeconds
+        val marks = app.vela.core.nav.NavEngine.stopMarks(route, stops.map { it.location })
+        val length = route.polyline.zipWithNext { x, y -> x.distanceTo(y) }.sum()
+        if (length <= 0.0) return emptyList()
+        return stops.indices.mapNotNull { i -> marks[i]?.let { m -> stops[i] to total * (m / length).coerceIn(0.0, 1.0) } }
+    }
+
+    /** A stop added during the drive (issue #606): once the replanned route is in, the stop's place
+     *  along it gives its arrival, and the same check runs on it. Waits up to 20 s for the new route. */
     private fun warnClosingForAddedStop(p: Place) {
         if (p.statusText.isNullOrBlank()) return
         val before = navSession.state.value.route
@@ -300,8 +306,8 @@ internal class NavController(
             val fresh = kotlinx.coroutines.withTimeoutOrNull(20_000L) {
                 navSession.state.first { it.route != null && it.route !== before }.route
             } ?: return@launch
-            val leg = fresh.legs.firstOrNull() ?: return@launch
-            closingMessage(p, leg.durationInTrafficSeconds ?: leg.durationSeconds)?.let { warnClosing(it) }
+            val eta = stopArrivals(fresh, listOf(p)).firstOrNull()?.second ?: return@launch
+            closingMessage(p, eta)?.let { warnClosing(it) }
         }
     }
 

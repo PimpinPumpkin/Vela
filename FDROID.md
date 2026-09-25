@@ -64,6 +64,7 @@ never asks you to uninstall first.
 
 The main F-Droid catalog builds every app from source on their own servers,
 which requires all dependencies to be free of prebuilt binaries. Vela bundles
-the sherpa-onnx voice runtime and downloads voice models and routing graphs at
-runtime, which does not fit that pipeline today. A self-hosted repo has no such
+prebuilt libraries (the sherpa-onnx voice runtime and OsmAnd's offline router)
+and downloads voice models and offline map regions at runtime, which does not
+fit that pipeline today. A self-hosted repo has no such
 constraints and updates the moment a release is cut.

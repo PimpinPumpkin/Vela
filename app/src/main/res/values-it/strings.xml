@@ -833,7 +833,6 @@
     <string name="settings_voice_volume_louder">Più alto</string>
     <string name="settings_voice_volume_loudest">Massimo</string>
     <string name="settings_voice_volume_hint">Quanto forte si sentono le indicazioni vocali sopra la tua musica. I livelli più alti valgono per la voce Vela; le voci di sistema si possono solo abbassare.</string>
-    <string name="place_avoid_not_honored">Questi percorsi potrebbero comunque usare pedaggi, autostrade o traghetti. Vela può evitarli in un viaggio diretto online, oppure offline in un\'area scaricata, ma non ancora in un viaggio con tappe.</string>
     <string name="settings_asr_engines_title">Motore di riconoscimento sul dispositivo</string>
     <string name="voice_capture_examples_title">Cosa puoi dire</string>
     <string name="voice_capture_example_home">\"Portami a casa\" o \"portami al lavoro\"</string>

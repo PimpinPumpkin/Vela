@@ -237,9 +237,10 @@ timetable's.
 
 **Why a hidden browser view:** Google serves a real transit itinerary set only to a genuine browser
 engine. A plain HTTP request for the transit mode is silently answered with a **driving** reply;
-the detection is on the connection fingerprint, not the headers, so no header set fixes it. A
-WebView is Chromium, so Vela loads the desktop directions page anonymously, the way a logged-out
-browser would, and reads the itinerary payload out of the page's embedded state.
+measured from OkHttp and curl, no header set tried changed that, and it was put down to the
+connection fingerprint. A WebView is Chromium, so Vela loads the desktop directions page
+anonymously, the way a logged-out browser would, and reads the itinerary payload out of the
+page's embedded state.
 
 ```
 https://www.google.com/maps/dir/<origin>/<destination>/data=!4m2!4m1!3e3?hl=en&gl=us
@@ -353,6 +354,11 @@ TransitBoardCache.NEAR_M      = 40.0   // an offline tap matches a board fetched
   timetable bake is an open question in the roadmap, priced at tens of megabytes for a mid-size
   state and a few hundred for California, with no realtime at all.
 - **Transit directions do not work offline**, and there is no on-phone transit router.
+- **The plain-request downgrade has not been re-tested.** It was measured before Google requests
+  moved to Cronet (a Chrome handshake) and before the photo gallery's "bot-gating" turned out to
+  be a missing header ([chapter 7](07-talking-to-google.md#what-is-dead-and-not-to-be-re-chased)).
+  Until someone tries the transit request again over Cronet, with the page's own headers, the
+  page load stays the only path.
 - **Google boards do not refresh**, and on those boards the countdown runs from the timetable
   epoch when Google sends one.
 - **The Google fallback reads an English, US-shaped page** (`hl=en&gl=us`) whatever the app

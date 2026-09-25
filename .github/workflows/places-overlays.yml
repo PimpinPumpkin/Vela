@@ -2,7 +2,7 @@ name: Open places overlays
 
 # Bakes the open places layer (Overture Maps Places -> PMTiles) per region from tools/places-regions.json
 # and publishes the archives + places-overlay-manifest.json on the `places-overlays` release. ADDITIVE and
-# reversible: its own release + manifest; delete the release to revert. Manual only while the layer is beta.
+# reversible: its own release + manifest; delete the release to revert. Monthly crons (shards a and b) plus a nightly seventh of the catalog; manual dispatch still works.
 
 on:
   schedule:

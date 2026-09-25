@@ -839,7 +839,6 @@
     <string name="settings_voice_volume_louder">Громче</string>
     <string name="settings_voice_volume_loudest">Максимальная</string>
     <string name="settings_voice_volume_hint">Насколько громко голосовые подсказки звучат поверх вашей музыки. Уровни выше обычного работают с голосом Vela, системные голоса можно только приглушить.</string>
-    <string name="place_avoid_not_honored">Эти маршруты всё равно могут проходить по платным дорогам, автомагистралям и паромным переправам. Vela умеет их избегать в поездке без остановок онлайн или офлайн в загруженной области, но пока не в поездке с остановками.</string>
     <string name="settings_asr_engines_title">Движок распознавания на устройстве</string>
     <string name="voice_capture_examples_title">Что можно сказать</string>
     <string name="voice_capture_example_home">«Отвези меня домой» или «поехали на работу»</string>

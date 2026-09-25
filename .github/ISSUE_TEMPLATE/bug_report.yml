@@ -12,7 +12,7 @@ body:
     id: version
     attributes:
       label: Vela version
-      description: Open Vela, go to Settings, and scroll to the bottom. Use the exact number.
+      description: Open Vela, go to Settings, then About. Use the exact number.
       placeholder: "0.4.827"
     validations:
       required: true
@@ -33,7 +33,7 @@ body:
     attributes:
       label: Before you report
       options:
-        - label: I updated to the newest version and the problem still happens
+        - label: I am on the current stable or newer, and the problem still happens
           required: true
         - label: I searched open and closed issues and did not find a duplicate
           required: true
@@ -70,7 +70,7 @@ body:
     id: steps
     attributes:
       label: Steps to reproduce
-      description: What you did, in order, so a maintainer can do the same thing and see it. For anything about routes, places or the map, name the start, the destination or the place, or use the built-in location simulator (Settings, Navigation) with the Davis, CA test area and say so. "It happens sometimes" is not reproducible.
+      description: What you did, in order, so a maintainer can do the same thing and see it. For anything about routes, places or the map, name the start, the destination or the place, or use the built-in location simulator (Settings, Diagnostics) with the Davis, CA test area and say so. For heat, battery or lag, give a number (battery percentage used over a stated time, how long it ran, or a screen recording). "It happens sometimes" is not reproducible.
       placeholder: |
         1. Search "Mikuni Davis", open the result
         2. Tap Directions, pick the second route

@@ -7,7 +7,7 @@
 > this file is pruned to what somebody could pick up today. Add ideas here the moment they come
 > up; when one ships, move its entry to the history file in the same commit.
 
-Last updated: 2026-09-21.
+Last updated: 2026-09-25.
 
 ## North star
 
@@ -41,7 +41,10 @@ Roughly in the order they are worth doing. Each one is small enough for a single
 - **Turn delta updates on by default.** The append-in-place PMTiles patch shipped 2026-09-18 and
   was proven on a Pixel 9 the next day (a 94 KB patch against a 3.3 MB archive, fingerprint
   checked, dead space reclaimed locally). `RegionUpdates` still defaults to OFF; flip it to WIFI
-  once a second device has taken a patch on a real state-sized archive.
+  once a second device has taken a patch on a real state-sized archive. The flip does more than
+  change a label: since 2026-09-22 WIFI and MOBILE also run `scheduleAutoRegionPatches` (a minute
+  after start, at most once per 20 h, patches only, never a full download), so every install
+  would start patching its regions on its own.
 - **A name index for the downloaded places archive (2026-09-21).** Offline search reads the OSM
   place pack, and OSM is missing whole chains in places (the parts store that started this was
   on the map from the Overture archive and absent from search). The places PMTiles is spatial
@@ -74,10 +77,14 @@ Roughly in the order they are worth doing. Each one is small enough for a single
   whose front end normalizes its own input, or training one. Whatever is chosen keeps the
   constraints: in-process, no network, arm64, fast enough on a Pixel 4a. Until then any new spoken
   string with numbers, units or punctuation gets a `SpeechTextTest` case.
-- **Dense-city frame rate (2026-09-16).** Cool, the biggest single cost in Midtown was the Google
-  places layer (fixed with a higher GeoJSON maxzoom). What remains one zoom step in is label
-  placement (43 fps; 60 with every symbol layer hidden). Next levers: fewer Google labels at
-  street zoom, fewer basemap labels. Benchmark with the map's own frame callback
+- **Why one basemap symbol layer can stall a dense city (2026-09-23).** The dense-city frame
+  rate item from 2026-09-16 is mostly closed (history has it): the one-set dial hides Liberty's
+  `poi_r*` layers over a region archive baked at rev 20260923 or later, and Midtown on the 4a
+  now pans at 36-58 fps. What is still not understood is why `poi_r20` alone cost that much:
+  bisected with `debug.vela.hide`, hiding that one layer took Midtown at about 200 ft from 3 fps
+  to 60 on a Pixel 9, and swapping its `in` filter for a `match` lookup changed nothing. Anywhere
+  it still draws with OSM businesses on (an archive older than the dial, or the places layer
+  off), a dense city will crawl the same way. Benchmark with the map's own frame callback
   (`scripts/map-fps.sh`), with cool-downs; the 4a throttles after minutes of scrubbing.
 - **More places sources for the open bake.** AllThePlaces and OSM business nodes are in the bake
   (2026-09-15 and 2026-09-18). The long tail with no web presence at all is next:
@@ -96,17 +103,20 @@ Roughly in the order they are worth doing. Each one is small enough for a single
   date rather than topic. One pass to state what the app does today in one place, move the
   history into a changelog, and group CLAUDE.md by subsystem.
 - **Place-page parity, what is left.** "Mentioned in reviews" topic chips render logged-out on
-  the place page, so they are feasible from the reviews scrape. A menu LINK button is parked:
+  the place page, so they are feasible from the reviews scrape. The full-screen reviews page
+  already shows Google's own topic chips (`PanelControls` in PlaceSheet.kt); the inline Reviews
+  tab on the sheet is the part without them. A menu LINK button is parked:
   the menu URL appears in Google's response inconsistently and its path will not pin; the photo
   gallery's Menu tab covers the need. Similar-places only rides focused searches; showing it on
   address-snap and list-tap opens means a focused name lookup on open.
 - **Nav polish, small items.** Highlight the CONTINUING lanes for a compound maneuver (OSRM gives
   no cross-step lane linkage, so it needs a careful heuristic rather than a guess); per-state
-  and per-province shield SHAPES from the OpenStreetMap Americana set (today a spade for
-  interstates, a plain badge for state routes); a "download this region to use avoid offline"
-  nudge when a toggle is on with no covering region; parking follow-ups (offer to save the spot
-  automatically when a drive ends, distance and age on the chip, a note or photo); a share-TO-Vela
-  intent so a Google Maps list link never needs copying.
+  and per-province shield SHAPES from the OpenStreetMap Americana set (today `ui/map/RoadShields`
+  draws one interstate shield, one US-route shield and the same plain rounded badge for every
+  state route); a "download this region to use avoid offline" nudge when a toggle is on with no
+  covering region (smaller than it was: Google honors the avoids online since 2026-09-06, so the
+  nudge only matters when Google cannot be reached); parking follow-ups (offer to save the spot
+  automatically when a drive ends, distance and age on the chip, a note or photo).
 - **On-street bike lanes.** Dedicated cycleways render in Google's teal; painted lanes
   (`cycleway=lane` on a road way) are not in the keyless OMT tile schema and would need a baked
   layer beside the road features (never per-viewport Overpass, see issue #304).
@@ -122,7 +132,9 @@ Roughly in the order they are worth doing. Each one is small enough for a single
 - **D-pad hardware pass.** A real keypad-phone session to tune the pan step, the OK-hold
   threshold, focus-ring visibility and traversal order; pixel-verify the full-screen reviews
   page's page-scroll on an unfiltered network; consider an on-screen key-hint pill while the map
-  target is focused.
+  target is focused. Also give the Google-style route chooser (`GoogleStyleDirectionsPanel`, the
+  default since 2026-09-18) an initial focus target: the classic `DirectionsPanel` focuses its
+  Drive tab on open, the new one has no `rememberDpadAutoFocus` of its own.
 - **Explore (nearby things to do).** A Google-Explore-style surface: nearby restaurants, things to
   do, events as cards on a bottom sheet from the bare map. The category search already returns
   what "Nearby" needs; events have no keyless source. Plan, not now.
@@ -155,8 +167,12 @@ Roughly in the order they are worth doing. Each one is small enough for a single
   in Japan). Needs a device in the region; not chased blind.
 - **Cronet at Chrome's version (2026-09-23).** Google traffic rides Cronet 143 from Maven; Chrome is at
   154 and the handshake differs by three signature algorithms. `cronet-build.yml` builds Cronet from
-  source at the Android stable tag (untested on a runner; runs once the file is on main). Also open:
-  turn `webProxy` on by default once it has run on real sessions for a while.
+  source at the Android stable tag; it is on main as a manual dispatch and has not been run yet, and
+  its own header expects the first runs to need work (a Chromium checkout is tens of GB against a
+  public runner's disk and 6 h cap). Also open: turn `webProxy` on by default once it has run on
+  real sessions for a while (a device A/B is running). The proxy's other half, answering Google's
+  page telemetry on the phone, already shipped on its own as Settings > Privacy "Block Google's
+  page telemetry" (2026-09-25, off by default, works with the proxy on or off).
 - **One APK per chip type: flip the switch (2026-09-23).** Built and off: the updater picks the
   APK for the phone's chip type (`update/ApkChoice`), the versionCode is `(2000+run)*10 + chip
   digit`, CI and the F-Droid workflow handle per-chip releases (SPEC 15). What is left: once a
@@ -168,6 +184,11 @@ Roughly in the order they are worth doing. Each one is small enough for a single
 - **Review feed paging and the Menu tab without a page (2026-09-23).** Confirm the review feed's
   next-page token (assumed at payload[1]) from a reply on a phone that is not in the limited view;
   find whether `hspqX` can filter by gallery category, so the Menu tab needs no page walk either.
+  Picking the phone is easier now: since 2026-09-25 `web/GoogleStanding` marks a session limited
+  (a first photo page of 20 or fewer with more to come, or a More reviews tap that loads nothing)
+  and Settings > Privacy > Google session says so. The limit is per session, not per IP, so a
+  second phone on the same connection can still be the full one. The feed itself stays off
+  (`nativeReviewFeed` 0) until a capture shows it answering more than a new session's five.
 - **iOS (2026-09-13, not started).** `:core` is plain Kotlin and would move to Kotlin
   Multiplatform with the Android-only bits (SQLite stores, WebView bridges, LocationManager)
   behind expect/actual seams; MapLibre has an iOS SDK, sherpa-onnx ships iOS builds, the hidden
@@ -178,9 +199,10 @@ Roughly in the order they are worth doing. Each one is small enough for a single
 
 ### Serving our own map tiles  *(only if the project gets bigger and is ready to run infrastructure)*
 
-**Not now, and not a code problem.** Vela already bakes the whole world's basemap: 414 PMTiles
-archives, about 88 GB, on the `basemap-tiles` release, and the app already renders from them
-whenever a downloaded region covers the view, online or off. What it has never done is STREAM them.
+**Not now, and not a code problem.** Vela already bakes the whole world's basemap: 448 PMTiles
+archives, about 93 GB (counted on the `basemap-tiles` release on 2026-09-25), and the app already
+renders from them whenever a downloaded region covers the view, online or off. What it has never
+done is STREAM them.
 Online, with nothing downloaded, the basemap is OpenFreeMap's.
 
 Streaming ours is mechanically almost free, since the app already reads two other datasets from
@@ -288,6 +310,13 @@ the publishing account under Google's enforcement for server-side scraping inste
 scraping, which is not better); and installing the Play edition and then sideloading the full
 build over it to inherit Play's record (Play App Signing re-signs, so the two cannot replace each
 other, as the signing note below already says).
+
+**The ownership experiment (planned, the build side landed 2026-09-22).** `-PappId=<id>` builds
+Vela under another package name, so it can be sideloaded under the id of an app the phone's Play
+account once installed from Play. That answers whether the check is Play's library record alone
+(a sideload under an owned id passes) or the signing certificate too (it fails). The manifest's
+satellite meta-data reads `${applicationId}`, since its value has to be the package name. It has to run
+in a real car on a stock phone signed in to Play, for the Desktop Head Unit reason above.
 
 **The other route worth a test is a dongle.** Not the wireless Android Auto adapters, which still
 run the phone's Android Auto app and hit the same gate, but the Android "AI box" class
@@ -445,9 +474,9 @@ One line each, so nobody re-chases them; the full probes are in the history file
   one region at a time. Congestion coloring covers "where is it slow".
 - **EV charger detail (price, kW, availability)**: stripped from every keyless response; only the
   type marker arrives. OpenChargeMap would be the open source for it.
-- **Q&A, photo dates, photo contributor names, per-review photos via the RPC, menu photo
-  dates**: each proven login-gated or bot-gated; the reviews and photos the app shows come from
-  the WebView DOM walk. Do not re-probe.
+- **Q&A, photo contributor names, per-review photos via the RPC**: each proven login-gated or
+  bot-gated. Do not re-probe. (Photo dates used to be on this line; they were a missing request
+  header, not a gate, and ship since 2026-09-23. The history file has the correction.)
 - **Gallery videos**: rare in the data and would need a gated source plus a player dependency.
 - **Clean always-snap (Google picks the road, an on-device engine names the turns)**: the
   serverless dense-via version loses ~1 in 10 named turns, the public matchers cap at 10 points.
@@ -492,8 +521,9 @@ project's core promise is that neither exists:
 
 ## Architecture work
 
-Carried over from the architecture review; the finished items (route provenance as one field,
-the shared hidden-WebView base, `NavController`) are in FEATURES.
+Carried over from the architecture review (issue #417); the finished items (route provenance as
+one field, the shared hidden-WebView base, `NavController`, the `SearchGates` function) are
+described in SPEC section 2.
 
 - **Finish carving the three large files.** `NavCamera` in `VelaMapView` (the follow ticker, the
   puck overlay, the padding and zoom eases as one class with one `frame()` entry point) and

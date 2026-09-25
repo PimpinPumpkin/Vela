@@ -835,7 +835,6 @@
     <string name="settings_voice_volume_louder">Mais alto</string>
     <string name="settings_voice_volume_loudest">Máximo</string>
     <string name="settings_voice_volume_hint">Com que volume as indicações faladas tocam por cima do que está a ouvir. Os níveis mais altos aplicam-se à voz Vela; as vozes do sistema só podem ficar mais baixas.</string>
-    <string name="place_avoid_not_honored">Estas rotas podem continuar a usar pedágios, rodovias ou balsas. A Vela consegue evitá-los num trajeto direto online, ou offline numa área transferida, mas ainda não num trajeto com paragens.</string>
     <string name="settings_asr_engines_title">Motor de reconhecimento no dispositivo</string>
     <string name="voice_capture_examples_title">Coisas que pode dizer</string>
     <string name="voice_capture_example_home">“Leva-me a casa” ou “leva-me para o trabalho”</string>

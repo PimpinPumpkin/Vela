@@ -31,7 +31,7 @@ whose assets exist nowhere else, so any cleanup that deletes releases selects by
 | Buildings | `building-overlays` | `building-overlay-manifest.json` | Microsoft building footprints (ODbL) | Filling OSM's suburban building gaps |
 | House numbers | `address-overlays` | `address-overlay-manifest.json` | OpenAddresses | House numbers where OSM has no `addr:housenumber` |
 | Speed limits | `maxspeed-overlays` | `maxspeed-overlay-manifest.json` | OpenStreetMap `maxspeed` | The posted limit without a routing download |
-| Voices and speech | `tts-runtime`, `asr-models` | catalog in `:core` | Piper, Kokoro, sherpa-onnx | On-device speaking and listening |
+| Voices and speech | `asr-models` (speech recognition); Piper voices come from sherpa-onnx's own `tts-models` release; `tts-runtime` holds the build-time sherpa-onnx AAR | Piper catalog in `:core` | Piper, sherpa-onnx | On-device speaking and listening |
 | Map fonts | `map-fonts` | none (one zip) | Roboto over Noto | Label glyphs for the offline style; online they come from GitHub Pages |
 
 Every manifest URL is a build constant with a Gradle override for local testing, so a dev build
@@ -39,8 +39,10 @@ can point at a manifest served from the laptop through `adb reverse`:
 `-PplacesManifestUrl`, `-PbasemapManifestUrl`, `-PworldBasemapUrl`, `-PobfManifestUrl`,
 `-PpoiPackManifestUrl`, `-ProadFeaturesManifestUrl`, `-PflockManifestUrl`,
 `-PoverlayManifestUrl` (buildings), `-PaddressManifestUrl`, `-PmaxspeedManifestUrl` and
-`-PmapFontsUrl`. Without one, the app reads
-`https://github.com/PimpinPumpkin/Vela/releases/download/<tag>/<manifest>`.
+`-PmapFontsUrl`. Without one, each reads
+`https://github.com/PimpinPumpkin/Vela/releases/download/<tag>/<file>`, except `-PmapFontsUrl`,
+which overrides the online glyph base on GitHub Pages; the offline font zip's URL is fixed in
+`GlyphPackStore`.
 
 **The catalogs.** Rows come from four files in `tools/`, and the ids are shared wherever the
 extract is shared:
@@ -93,8 +95,8 @@ night. A seventh rather than everything because every rebake republishes the arc
 who downloaded the region is offered it again; streaming users pick it up with no prompt at all.
 
 **The quarterly group.** `quarterly-data-refresh` fires three building dispatches (groups `us`,
-`world`, `chunk`, five seconds apart), one house-number dispatch with `all=true` and one
-speed-limit dispatch with `all=true`, and exits; each workflow then runs on its own clock. It no
+`world`, `chunk`, five seconds apart), one house-number dispatch with `all=true` and two
+speed-limit dispatches (`all=true`, `shard=a` then `shard=b`), and exits; each workflow then runs on its own clock. It no
 longer touches routing: the obf bake stays manual on purpose, because runner memory limits and the
 staging-to-live manifest copy are human steps.
 
@@ -203,7 +205,7 @@ So the merge is now a repair. `scripts/merge-places-manifest.sh` and
 6. Lists the release again, and if an archive landed meanwhile, rebuilds (basemap once more; places
    up to three attempts).
 
-The concurrency groups are gone from both merge jobs, and the places merge runs `if: always()`. The
+The concurrency groups are gone from both merge jobs, and both merges run `if: always()`. The
 manifest is now a function of what is published: running it twice changes nothing, a merge that
 never ran costs nothing, and the next one puts everything back. A run with no entries of its own
 still runs the repair and heals whatever an earlier run left out.
@@ -244,7 +246,8 @@ box. `scripts/region-polys.py` fetches the `.poly` Geofabrik publishes beside ev
 routing catalog, simplifies each to `TOL_DEG = 0.05` (about 5 km), and writes
 `app/src/main/assets/region_polys.json` (458 regions, about 340 KB). `RegionPolys.covers(id, lat,
 lng)` answers from it, or null for an id it has no polygon for (the building catalog, or a row added
-since the last run of the script), and every caller then falls back to `boxCovers`. The tie-break
+since the last run of the script), and the region stores and catalogs then fall back to `boxCovers` (road features uses a plain
+box test). The tie-break
 among covering regions is still the smallest box. The trigger: Vietnam's extract carries the island
 claims, so its box reaches 114.6 E and swallows Hong Kong, and "download the area you're viewing"
 from Hong Kong announced Vietnam. `RegionPolysTest` fails if a catalog id is missing from the asset,
@@ -252,7 +255,8 @@ so the script has to be rerun whenever a row is added.
 
 ### How your phone picks up a new build
 
-**Streamed data** (places, basemap, buildings, house numbers and speed limits while online) is read
+**Streamed data** (places, buildings, house numbers and speed limits while online; the basemap
+archive is never streamed, since online the map comes from OpenFreeMap) is read
 by HTTP range requests against the same URL, so a rebuilt archive is picked up as soon as the cache
 lets go of the old bytes. Forcing it is a matter of clearing the map cache from Settings > Offline
 maps. The places and basemap stores cache each manifest for `MANIFEST_TTL_MS = 60 min` and remember
@@ -263,9 +267,11 @@ would otherwise never offer the Update (found on a device, a rebake four minutes
 **Downloaded data** stays exactly as downloaded, which is the point of downloading it. Each
 installed file's revision is recorded beside it (`revs.json` per store), and
 `MapViewModel.refreshRegionUpdates` compares each downloaded region's pieces against the
-manifests when Offline maps opens: the obf by the routing row's `rev` (only when an installed rev
+manifests when Offline maps opens and again after any download or update: the obf by the routing row's `rev` (only when an installed rev
 is known), and every places and basemap archive whose box center falls inside the region's polygon.
-A region with anything newer gets an **Update** button. One tap refreshes, in order, the place pack,
+A region with anything newer, or with a places or map archive that never finished downloading,
+gets an **Update** button (a newer place pack alone does not show it; Update refreshes the pack
+when it is there). One tap refreshes, in order, the place pack,
 the places archives, the basemap archives and the routing file.
 
 - **Revisions.** Places, basemap and obf rows carry `rev` as the bake date, `YYYYMMDD`. Place packs
@@ -289,8 +295,9 @@ making every downloader take a few hundred MB again. On 2026-09-22 the live plac
   `pmtiles-apply-patch.py --verify`, and publishes only if the result carries the new archive's
   fingerprint and the patch is under a third of the archive. It is uploaded as
   `places-<id>.<fromRev>.vpatch` and the row gains `delta: {fromRev, url, sizeMb}`. A rebake that
-  also carries a change to the bake script is not a delta candidate (Guernsey and Jersey the day
-  after the OSM source landed: 2506 of 4586 tiles, 2.17 MB against 3.3 MB, correctly refused).
+  also carries a change to the bake script usually fails the one-third test and gets no patch
+  (Guernsey and Jersey the day after the OSM source landed: 2506 of 4586 tiles, 2.17 MB against
+  3.3 MB, refused); nothing checks for script changes as such.
   `places-churn.yml` measures real churn by baking one region twice against OSM extracts N days
   apart (Andorra, six days: 11% of tiles, 25% of bytes, a delta at 22% of a full download).
 - **Applied in place.** `PmtilesPatch` (format `VELAPTCH`, `VERSION = 2`) appends the changed tile
@@ -354,5 +361,5 @@ hosted, unreferenced.
 - **The data releases are huge to list.** Each of `obf-regions`, `places-overlays`, `basemap-tiles`
   and `road-features` holds about 450 assets, about 780 KB of release JSON apiece, and they sort to
   the top of the release list because they are republished constantly. The app updater therefore
-  reads app tags from the refs endpoint and never lists releases (a check is three requests,
-  208 KB); anything else that lists releases has to paginate or bound by tag.
+  reads app tags from the refs endpoint and never lists releases (a canary check measured three
+  requests, 208 KB); anything else that lists releases has to paginate or bound by tag.

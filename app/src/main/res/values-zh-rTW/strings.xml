@@ -852,7 +852,6 @@
     <string name="settings_voice_volume_louder">較大聲</string>
     <string name="settings_voice_volume_loudest">最大聲</string>
     <string name="settings_voice_volume_hint">語音指引蓋過媒體播放時的音量。較大的音量層級只適用於 Vela 語音；系統語音只能調小。</string>
-    <string name="place_avoid_not_honored">這些路線仍可能經過收費道路、高速公路或渡輪。Vela 可以在連線的直達行程中，或在已下載區域的離線行程中避開，但含中途停靠點的行程目前還不行。</string>
     <string name="settings_asr_engines_title">裝置端辨識引擎</string>
     <string name="voice_capture_examples_title">你可以這樣說</string>
     <string name="voice_capture_example_home">「帶我回家」或「帶我去公司」</string>

@@ -291,7 +291,7 @@ fun GoogleStyleDirectionsPanel(
                         val idx = routes.indexOf(route).coerceAtLeast(0)
                         val cams = flockOnRoute.getOrElse(idx) { 0 }
                         if (cams > 0) {
-                            Text(stringResource(R.string.dir_cameras_on_route, cams), style = MaterialTheme.typography.bodyMedium, color = SheetPalette.TrafficAmber)
+                            Text(androidx.compose.ui.res.pluralStringResource(R.plurals.dir_cameras_on_route, cams, cams), style = MaterialTheme.typography.bodyMedium, color = SheetPalette.TrafficAmber)
                         }
                         // The alternates affordance sits with the ETA, not down in the button row: it is
                         // about THIS number ("29 min ... and what else?"). Always there, so its absence
@@ -384,7 +384,7 @@ fun GoogleStyleDirectionsPanel(
                                         listOfNotNull(
                                             formatDistance(r.distanceMeters),
                                             r.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) },
-                                            if (cams > 0) stringResource(R.string.dir_cameras_on_route, cams) else null,
+                                            if (cams > 0) androidx.compose.ui.res.pluralStringResource(R.plurals.dir_cameras_on_route, cams, cams) else null,
                                             if (i == fewestCamIdx) stringResource(R.string.exp_chooser_fewest_cams) else null,
                                         ).joinToString(" · "),
                                         style = MaterialTheme.typography.bodyMedium,

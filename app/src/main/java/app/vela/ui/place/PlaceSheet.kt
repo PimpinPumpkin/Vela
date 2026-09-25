@@ -2165,7 +2165,7 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Icon(Icons.Default.Videocam, contentDescription = null, tint = SheetPalette.TrafficAmber, modifier = Modifier.size(14.dp))
                     Text(
-                        stringResource(R.string.dir_cameras_on_route, flockCount),
+                        pluralStringResource(R.plurals.dir_cameras_on_route, flockCount, flockCount),
                         style = MaterialTheme.typography.labelSmall,
                         color = SheetPalette.TrafficAmber,
                     )

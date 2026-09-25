@@ -3,11 +3,12 @@
 ## What you see
 
 Mapped license-plate readers (ALPR, of which Flock is the best known brand) draw on the map out
-of the box, as a purple badge. A corner that mounts several heads draws one badge with a small
-"x3" beside it, and from street zoom each head that has a known facing fans a cone out of that
+of the box, as a purple badge. A corner that mounts several heads draws one badge, and from street
+zoom a small "x3" beside it, while each head that has a known facing fans a cone out of that
 badge, so you can see which ways the corner watches.
 
-Everything else lives in **Settings > Navigation > Cameras**, and all of it is off by default:
+Its switch (**Surveillance cameras**, on) sits in **Settings > Navigation > Cameras** with
+everything else, all of which is off by default:
 
 - **Avoid surveillance cameras.** Each route in the picker shows how many cameras it passes
   ("3 cameras on this route"), the alternates pane names the route with the fewest, and Vela
@@ -24,13 +25,16 @@ Everything else lives in **Settings > Navigation > Cameras**, and all of it is o
 
 With the road-ahead bar on, cameras on your route also show up as marks on the bar. On Android
 Auto the same warnings arrive as a toast on the car screen, and the car map draws the plate
-cameras along the route.
+cameras along the route (with the camera layer on, from zoom 13.5). A plate badge within 25 m of
+a drawn light or stop sign is nudged a few pixels up and to the right so the two icons do not sit
+on top of each other; its cones stay on the true point.
 
 ## Where the data comes from
 
 The plate camera positions are OpenStreetMap data, largely surveyed by the community
 [DeFlock](https://deflock.me) project, which maps ALPR installations and pushes them to OSM as
-`surveillance:type=ALPR` nodes. The whole world is about 124,000 points, small enough to keep on
+`surveillance:type=ALPR` nodes. The whole world is about 129,000 points in the bundled July 2026 snapshot, 93% of them with a
+facing, small enough to keep on
 the phone: a gzipped TSV of latitude, longitude, operator and facing in degrees (empty when the
 node has no direction tag). Vela ships a bundled snapshot in the APK so the layer works on first
 launch with no downloads, and refreshes it from the `flock-cameras` release **weekly** (Mondays
@@ -42,8 +46,10 @@ Speed cameras are OSM `highway=speed_camera` nodes. They ride along in the per-r
 `road-features` bake, rebuilt monthly (half the catalog on the 4th, half on the 6th, 07:45 UTC); the phone downloads the file for the
 region you are in once and answers from memory. Only a place no region covers still asks Overpass.
 
-No request is made to any camera service while you drive. The one thing in this chapter that
-costs network requests is the side-street pass: each try is an ordinary directions request, to the
+Plate-camera alerts make no request while you drive. The speed-camera warning asks Overpass once
+per route, and only where no region file covers it; the data refreshes download their files.
+Apart from those, the one thing in this chapter that costs network requests is the side-street
+pass: each try is an ordinary directions request, to the
 same open router and to Google, as any trip you plan. That is why it is opt-in and capped.
 
 ## How it is decided
@@ -68,8 +74,9 @@ oncoming lanes of your road is still reading your road. A camera at a junction y
 down the cross street, does not count. A camera with no direction tag counts, since there is
 nothing to rule it out.
 
-The same rule decides the route counts, the avoid re-rank, the side-street pass, the warnings and
-the route bar marks. The map layer still draws every camera.
+The same facing rule decides the route counts, the avoid re-rank, the side-street pass, the
+warnings and the route bar marks (the route bar gates at 40 m rather than 45, and the brief
+Overpass stand-in used before the dataset loads at startup still uses the old 120 m corridor). The map layer still draws every camera.
 
 Counts are per head. The map merges a corner into one badge, but a corner with three heads that
 all see your road is three cameras on your route.
@@ -135,7 +142,8 @@ turns the detour points into **silent stops**: every reroute and traffic recheck
 them, so a wrong turn does not send you straight back past the cameras, but passing one is never
 spoken, and the stops row, the stops editor and the leg dividers never show them. Editing the stops
 mid-drive keeps the detour: the silent points still ahead are put back in route order around the
-edited list. A stop added from search along the route goes first, ahead of them.
+edited list. A stop added from search along the route is placed where it falls along the route (first, if
+it is off the current line).
 
 ### The warnings
 
@@ -174,7 +182,7 @@ it.
 FLOCK_MIN_ZOOM        = 11     // below this nothing is fetched or drawn (plate and speed cameras)
 FLOCK_CLUSTER_M       = 40     // heads merged into one badge
 FLOCK_DETAIL_ZOOM     = 16     // from here: the "xN" count and the facing cones
-CONTROLS_ONSCREEN_CAP = 400    // badges handed to the map, nearest the center first
+CONTROLS_ONSCREEN_CAP = 400    // plate camera heads handed to the map, nearest the center first (speed cameras: 600)
 ```
 
 Below street zoom the clustered badges draw from z13 while browsing and from z11 while a route is
@@ -207,7 +215,9 @@ it says more.
   which is why it is nested and off by default.
 - **The route bar reads what the map has loaded.** Its plate camera marks come from the map
   layer's current set, so with the Surveillance cameras layer off, or zoomed out past its floor,
-  the bar shows no plate cameras. The card and voice alerts do not have this gap.
+  the bar shows no plate cameras. Speed-camera marks need the Speed cameras layer the same way,
+  and a camera past the map's padded view box is not on the bar until the view reaches it. The
+  card and voice alerts do not have this gap.
 - **Nothing here is legal advice** and nothing here defeats a camera you drive past. The feature
   tells you where they are and prefers a road with fewer of them. Warning about speed cameras
   while driving is restricted in some countries, which is why the spoken half is its own switch.

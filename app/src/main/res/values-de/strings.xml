@@ -835,7 +835,6 @@
     <string name="settings_voice_volume_louder">Lauter</string>
     <string name="settings_voice_volume_loudest">Am lautesten</string>
     <string name="settings_voice_volume_hint">Wie laut die Sprachansagen über Ihre Medien wiedergegeben werden. Die lauteren Stufen gelten für die Vela-Stimme; Systemstimmen lassen sich nur leiser stellen.</string>
-    <string name="place_avoid_not_honored">Diese Routen können weiterhin Mautstraßen, Autobahnen oder Fähren nutzen. Vela kann sie bei einer direkten Fahrt online vermeiden, oder offline in einem heruntergeladenen Bereich, aber noch nicht bei einer Fahrt mit Zwischenstopps.</string>
     <string name="settings_asr_engines_title">Erkennungs-Engine auf dem Gerät</string>
     <string name="voice_capture_examples_title">Das können Sie sagen</string>
     <string name="voice_capture_example_home">\"Bring mich nach Hause\" oder \"bring mich zur Arbeit\"</string>

@@ -460,7 +460,7 @@
         <div class="step-inner">
           <span class="num">3</span>
           <h3>Bus stops that tell the truth</h3>
-          <p>Tap any stop for a <b>live departure board</b> built from open GTFS feeds: every route, real-time countdowns, official line colors. No more guessing whether the bus already left.</p>
+          <p>Tap any stop for a <b>live departure board</b> built from open GTFS feeds: every route, real-time countdowns, official line colors, with the stop's Google page as the fallback where the open feeds have no coverage. No more guessing whether the bus already left.</p>
           <img class="step-shot-mobile" src="assets/07-bus-stop.webp" alt="" loading="lazy">
         </div>
       </div>
@@ -525,7 +525,7 @@
     <div class="cell reveal d2">
       <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3.5 9h17M3.5 15h17M12 3c-2.5 2.5-2.5 15.5 0 18M12 3c2.5 2.5 2.5 15.5 0 18"/></svg></div>
       <h3>15 languages</h3>
-      <p>Interface, spoken guidance and place data localized end to end, with downloadable voices to match.</p>
+      <p>Interface, spoken guidance and place data localized end to end, with downloadable voices for every language but Japanese and Hebrew.</p>
     </div>
     <div class="cell reveal">
       <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M10 6h4M10 9.5h4M10 13h4M12 17.5h.01"/></svg></div>
@@ -553,8 +553,8 @@
       </a>
     </div>
     <div class="stat-stack">
-      <div class="stat"><div class="n">0</div><div class="l">accounts, trackers and ad networks</div></div>
-      <div class="stat"><div class="n">100%</div><div class="l">of navigation runs on your phone, voice included</div></div>
+      <div class="stat"><div class="n">0</div><div class="l">accounts, analytics SDKs and ad networks</div></div>
+      <div class="stat"><div class="n">100%</div><div class="l">of turn-by-turn guidance runs on your phone, voice included</div></div>
       <div class="stat"><div class="n">GPLv3</div><div class="l">every line of source in the open, forever</div></div>
     </div>
   </div>
@@ -615,7 +615,7 @@
     <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/PimpinPumpkin/Vela"><img src="assets/badge-obtainium.png" alt="Get it on Obtainium" width="646" height="250"></a>
     <a href="https://github.com/PimpinPumpkin/Vela/blob/main/FDROID.md"><img src="assets/badge-fdroid.png" alt="Get it on F-Droid, through Vela's own repo" width="646" height="250"></a>
   </div>
-  <p class="dl-note">Prefer to build it yourself? It is a standard Gradle project with no secrets required: <code>git clone</code>, <code>./gradlew :app:assembleRelease</code>, done. See the <a href="https://github.com/PimpinPumpkin/Vela#building" style="color:var(--teal)">build docs</a>.</p>
+  <p class="dl-note">Prefer to build it yourself? It is a standard Gradle project with no secrets required: <code>git clone</code>, drop the prebuilt runtime libraries from the <code>tts-runtime</code> and <code>obf-runtime</code> releases into <code>app/libs</code> and <code>core/libs</code>, then <code>./gradlew :app:assembleRelease</code>. See the <a href="https://github.com/PimpinPumpkin/Vela/blob/main/docs/BUILDING.md" style="color:var(--teal)">build docs</a>.</p>
 
   <div class="support reveal">
     <div class="s-text">

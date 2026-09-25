@@ -20,7 +20,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Compare the claimed Chrome with stable
-        run: python3 scripts/check-chrome-ua.py | tee -a "$GITHUB_STEP_SUMMARY"
+        # pipefail: without it the step's status is tee's, so a stale UA never failed the run.
+        run: set -o pipefail; python3 scripts/check-chrome-ua.py | tee -a "$GITHUB_STEP_SUMMARY"
 
   endpoints:
     runs-on: ubuntu-latest

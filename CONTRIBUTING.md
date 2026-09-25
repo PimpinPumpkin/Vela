@@ -29,9 +29,11 @@ too).
    NewPipeExtractor pattern); `:app` is the Compose UI. MapLibre and Android UI types
    never leak into `:core`. The one seam between them is `core/data/MapDataSource`.
 5. **Docs move with code, in the same commit.** When behavior changes, update
-   `README.md`, `FEATURES.md`, `SPEC.md` and `CLAUDE.md` as the change needs. Stale
-   docs are treated as a bug. If a change genuinely needs no doc edit, say why in the
-   commit message.
+   `README.md`, `FEATURES.md`, `SPEC.md`, `CLAUDE.md` and the matching chapter of
+   `docs/book/` as the change needs. When something on `ROADMAP.md` ships or turns out
+   to be impossible, move its entry to `docs/ROADMAP-HISTORY.md` in the same commit
+   rather than striking it through. Stale docs are treated as a bug. If a change
+   genuinely needs no doc edit, say why in the commit message.
 6. **Every user-facing string is translatable** (the 15-language matrix is in
    [docs/LANGUAGES.md](docs/LANGUAGES.md)). Add new strings to the English base
    `res/values/strings.xml`; translations come in as pull requests against `values-<lang>/strings.xml` (see
@@ -57,7 +59,12 @@ too).
   scraper, verify against a real response, not memory or docs.
 - **Commit subjects are the user-facing changelog.** Releases publish the commit
   subjects since the last tag as release notes. Write plain-language subjects a user
-  can read, not terse internals.
+  can read, not terse internals. A subject that starts with "Docs:" is left out of the
+  in-app notes, so use that prefix for documentation-only commits.
+- **Install the writing hook once: `bash scripts/install-hooks.sh`.** CI fails a push
+  whose added text has an em dash, a British spelling, or an AI attribution line in a
+  commit message (`scripts/check-writing.sh`). The pre-push hook runs the same check
+  before anything is public, when it can still be fixed.
 
 ## Bug reports and feature requests
 
@@ -67,13 +74,16 @@ every open issue is something that can actually be acted on.
 - **One problem or one request per issue.** A report that bundles several things is
   closed and you are asked to split it.
 - **A bug report must be reproducible from what is written in it.** Steps in order,
-  the version, and for anything about routes, places or the map, the start, the
-  destination or the place. If you would rather not name where you were, use the
-  built-in location simulator (Settings, Navigation) with the project's Davis, CA
-  test area and say so. A report the maintainer cannot reproduce from the text is
-  closed, not investigated.
-- **Diagnostics beat descriptions.** Settings, Diagnostics, Export debug session.
-  Turn on "Redact places in exports" if the file must be safe to post.
+  the version (Settings, About), and for anything about routes, places or the map,
+  the start, the destination or the place. If you would rather not name where you
+  were, use the built-in location simulator (Settings, Diagnostics, Simulate my
+  location) with the project's Davis, CA test area and say so. A report the
+  maintainer cannot reproduce from the text is closed, not investigated.
+- **Diagnostics beat descriptions.** In Settings, Diagnostics, turn on "Share
+  diagnostics", make the problem happen again, then tap "Export debug session". The
+  log is kept on the phone only while that switch is on, so switch it on before you
+  reproduce, not after. Turn on "Redact places in exports" if the file must be safe to
+  post.
 - **Heat, battery and lag reports need a number.** "It runs hot" or "it feels slow" cannot
   be checked against a fix. Give at least one measurement: the battery percentage Vela used
   (Android Settings, Battery) over a stated time, how long the drive or route ran, the phone's
@@ -120,9 +130,10 @@ AI help is welcome, for code and for reports, as long as a person stands behind 
 - Keep them small and focused; one change per PR.
 - Say what changed and why in the description. If it touches UI or navigation, note
   what device you verified on.
-- CI builds and tests every push to `main`. A nightly release is cut from `main` once a
-  day and promoted to stable weekly, so anything merged reaches real phones within a day.
-  Treat merges accordingly.
+- CI builds and tests every push to `main` and to the `canary` working branch. A nightly
+  release is cut from `main` once a day (only when `main` has moved) and the newest nightly
+  is promoted to stable every Monday, so anything merged reaches nightly users within a day
+  and everyone else within about a week. Treat merges accordingly.
 
 ## Conduct
 

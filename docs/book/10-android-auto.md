@@ -208,8 +208,9 @@ north-up and stays put until you press it again or recenter.
 - **Corridor dots** from zoom 13.5: lights, stop signs, level crossings and speed humps from the
   phone's corridor fetch, speed cameras, and plate cameras along the route when the camera layer
   is on.
-- **The speed badge**, in your units, with a round limit sign beside it when the offline graph has
-  the road's limit.
+- **The speed badge**, in your units, with a round limit sign beside it while navigating when a
+  downloaded region's routing file has the road's limit (the same `currentRoadLimit` lookup the
+  phone uses, [chapter 8](08-offline.md#routing-with-no-signal)).
 
 The spoken alerts the phone raises (a camera ahead, speeding, a destination closing before you
 arrive) also arrive as a car toast, the template's one transient surface, because a muted car
@@ -237,7 +238,7 @@ SUGGEST_SPAN_M = 20_000.0   // the autocomplete's window around the car, a town
 It used to run the full search on every keystroke: three result pages plus the nearby pass per
 letter. Canceling a coroutine does not abort an HTTP call already on the wire, so a typed word
 queued a dozen requests behind OkHttp's per-host limit and the spinner waited for all of them.
-Now a superseded keystroke's request is canceled for real (the cancellation is rethrown, never
+Now a superseded keystroke's result is never published (the call already on the wire still runs out; the cancellation is rethrown, never
 turned into an empty list), and only a submit shows the spinner; while typing the previous rows
 stay up until the next answer replaces them.
 

@@ -13,7 +13,7 @@ Live traffic, real place data and turn-by-turn navigation, with zero Google on y
 [![License: GPL v3](https://img.shields.io/github/license/PimpinPumpkin/Vela?color=blue)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/PimpinPumpkin/Vela?style=flat&color=ffd43b)](https://github.com/PimpinPumpkin/Vela/stargazers)
 
-[Install](#install) · [What you get](#what-you-get) · [FAQ](docs/FAQ.md) · [The book](docs/book/README.md) · [Privacy](#privacy) · [How it works](SPEC.md) · [Build](#build) · [Discussions](https://github.com/PimpinPumpkin/Vela/discussions) · [Translate](docs/TRANSLATING.md)
+[Install](#install) · [What you get](#what-you-get) · [FAQ](docs/FAQ.md) · [The book](docs/book/README.md) · [Privacy](#privacy) · [How it works](SPEC.md) · [Build](docs/BUILDING.md) · [Discussions](https://github.com/PimpinPumpkin/Vela/discussions) · [Translate](docs/TRANSLATING.md)
 
 [<img src="https://img.shields.io/badge/VISIT%20THE%20WEBSITE-149387?style=for-the-badge" alt="Visit the website">](https://pimpinpumpkin.github.io/Vela/)
 
@@ -27,11 +27,12 @@ A degoogled maps & navigation client for Android - *what NewPipe is to YouTube,
 for Google Maps.* The map itself is open data: open vector tiles for the
 basemap, and **Vela data** for the places on it - Overture Maps and
 AllThePlaces, positioned with OpenStreetMap, baked into tiles in this repo and
-streamed from its releases - so browsing around never asks Google anything. Tap
-a place or ask for a route and the device itself scrapes Google's public web
-endpoints (per-user, no backend) for the things only Google does well: hours,
-reviews and photos, routing, and **traffic-aware ETAs**. Built to run on
-GrapheneOS and other no-GMS ROMs.
+streamed from its releases - so browsing around never asks Google anything.
+Routes come from the open OSRM router. Search, tap a place or ask for a route
+and the device itself scrapes Google's public web endpoints (per-user, no
+backend) for the things only Google does well: search, hours, reviews and
+photos, and **traffic-aware ETAs**. Built to run on GrapheneOS and other no-GMS
+ROMs.
 
 ## What reaches Google, by default
 
@@ -43,14 +44,18 @@ to. It looks like Google Maps because that is the point; underneath, almost none
 | --- | --- |
 | Pan, zoom, browse the map | **Nothing.** Tiles from OpenFreeMap, streets and labels from OpenStreetMap |
 | The places drawn on the map | **Nothing, by default.** Open data baked in this repo: Overture Maps and AllThePlaces, positioned with OpenStreetMap |
-| Look up an address, read a departure board | **Nothing.** OpenStreetMap addresses, Transitous boards |
-| Ask for directions | **The traffic, and only the traffic.** The route itself is computed by open OSRM, or on the phone from an OsmAnd-format region file; Google is asked anonymously for the live ETA on top of it, which is switchable off |
-| Tap a place, type a search | **An anonymous request, when you ask for it** - no account, no app key, like a logged-out browser. Hours, reviews and photos are the things only Google does well |
-| Everything you save | **Nothing, ever.** No account, no Vela backend, no telemetry; saved places, history and settings stay on the phone |
+| Drop a pin, tap a house number | **Nothing.** OpenStreetMap's Nominatim names the spot |
+| Read a departure board | **Nothing, for the stops Vela draws from open transit data:** the board comes from Transitous. Where Transitous has no coverage, Vela falls back to the stop's Google page |
+| Ask for directions | **The traffic, and only the traffic.** The route itself is computed by open OSRM, or on the phone from an OsmAnd-format region file (Google's own route only if the open router is down); Google is asked anonymously for the live ETA on top of it, and every couple of minutes while you drive, which Settings → Navigation turns off |
+| Type a search | **Your text, anonymously**, like a logged-out browser. Typing sends Google's own autocomplete each time you pause; submitting sends a Google search. Text that starts with a house number also goes to the open Photon geocoder |
+| Tap a place | **An anonymous lookup of that place** - no account, no app key. Hours, reviews and photos are the things only Google does well. Settings → Places can stop the lookup for places tapped on the map |
+| Everything you save | **Nothing, ever.** No account, no Vela backend, no Vela telemetry; saved places, history and settings stay on the phone |
 
-Download a region and the answer becomes *nothing at all*: the map, search, routing and
-turn-by-turn navigation work with no network. Reviews and photos are the one place Vela loads a
-Google page, in an offscreen WebView, anonymously, only when you open a place.
+Download a region and it keeps working with no network: the map, search, routing and
+turn-by-turn navigation. Offline, or with **Settings → Privacy → Use Vela without Google**, the
+answer becomes *nothing at all*. A few things only a real browser engine gets, the first page of
+a place's reviews among them, are read from a Google page in an offscreen WebView, anonymously;
+the full list is in [PRIVACY.md](PRIVACY.md#the-hidden-webviews).
 
 **[The full comparison against the Google Maps app and Google Maps web is below](#privacy)**, and
 the per-request detail is in [PRIVACY.md](PRIVACY.md).
@@ -149,9 +154,11 @@ There's also a one-page tour at
   [FAQ](docs/FAQ.md) has the per-feature breakdown of what uses what.
 - **Zero Google on your phone, and almost zero in your life.** No Play Services,
   no account, no app key, no ads, no GCM/FCM, no Play Integrity. Google never sees
-  your map browsing, your saved places, or who you are; your GPS trail stays on the
-  phone, with only anonymous re-route and traffic checks carrying a position while
-  you navigate. The full breakdown is in the [Privacy](#privacy) section below.
+  your map browsing, your saved places, or your account; your GPS trail stays on the
+  phone. A position reaches Google only in a few specific requests: a route from your
+  location, a search that ranks places near you first, and the anonymous re-route and
+  traffic checks while you navigate. The full breakdown is in the [Privacy](#privacy)
+  section below.
 - **Flock cameras, on the map.** Mapped ALPR surveillance cameras (the
   community DeFlock project's OpenStreetMap data) draw out of the box, and the
   optional **Settings → Navigation → Avoid surveillance cameras** counts the cameras on
@@ -181,8 +188,8 @@ There's also a one-page tour at
 - **Live public transit.** Departure boards and station-by-station stop timelines
   come from open GTFS feeds (the schedules and realtime updates transit agencies
   publish, served by the community Transitous project), supplemented with Google
-  for traffic-aware transit directions. Tap a stop for live times, tap a route
-  for every stop it makes.
+  for traffic-aware transit directions and for boards where the open feeds have
+  no coverage. Tap a stop for live times, tap a route for every stop it makes.
 - **Satellite imagery map**: See the world from a birds-eye view, powered by Esri.
 - **Street View**: real panoramas in-app, keyless - open on a place, look around, walk the street with arrows, and go back in time through older captures; half-screen over the live map or full screen.
 - **Lists**: the bookmark button next to the category chips opens **Your lists**.
@@ -200,7 +207,8 @@ There's also a one-page tour at
   those as actions, spoken through the mic or typed, in every language the app speaks, with
   English understood everywhere too, and a slip in the command words ("navigat to the
   station") still lands. Dictation is a small on-device speech model; the understanding is
-  plain rules on the phone. Nothing leaves it.
+  plain rules on the phone. Neither step leaves it; only the search or route that comes out
+  of them does.
 - **The rest.** Android Auto, 15 languages,
   in-app light/dark, full D-pad operation for keypad phones, place lists, and a
   built-in updater with weekly-stable or nightly channels.
@@ -218,44 +226,47 @@ traffic.
 ## Why a degoogled app uses Google
 
 A phone without Google Play Services cannot run Google Maps, and the open map
-datasets fall well short on search, reviews, hours, and live traffic. So Vela is
-a thin client over Google's public web endpoints. It asks them the same way a
-logged-out browser does, once per user, with no account, no shared API key, and
-no server in the middle. NewPipe does the same for YouTube. There are no ads, and
-your searches, saved places, and history stay on the phone. If you run GrapheneOS
-or another no-GMS ROM, this gets you working maps back.
+datasets fall well short on search, reviews, hours, and live traffic. So for those,
+Vela is a client of Google's public web endpoints. It asks them the same way a
+logged-out browser does, from each user's own phone, with no account, no shared API
+key, and no server in the middle. NewPipe does the same for YouTube. There are no
+ads, and your search history, saved places, and settings stay on the phone. If you
+run GrapheneOS or another no-GMS ROM, this gets you working maps back.
 
-The map itself, the streets, the labels, and the house numbers all come from OpenStreetMap. Google is only used for places, search, routing, and traffic. So street names and house numbers can differ from what Google Maps shows, and how much detail you see offline depends on how well OpenStreetMap covers your area. I'm thinking of ways to improve OSM and fill the gaps in the data. Stay tuned.
+The map itself, the streets, the labels, and house numbers come from OpenStreetMap (in much of the US the house numbers come from OpenAddresses instead), and routes come from the open OSRM router. Google is only used for place details, search, and live traffic, plus extras you open yourself such as Street View and transit directions. So street names and house numbers can differ from what Google Maps shows, and how much detail you see offline depends on how well OpenStreetMap covers your area. I'm thinking of ways to improve OSM and fill the gaps in the data. Stay tuned.
 
 ## Privacy
 
-There is **no Vela backend, no account, and no telemetry**. Vela fetches from Google
+There is **no Vela backend, no account, and no Vela telemetry**. Vela fetches from Google
 directly from your phone like a logged-out browser - Google sees your IP, query, and
 map area, but **not a Google account or any app key**, much like using
-`google.com/maps` in an incognito window. Your saved places, history, and settings
-never leave the device. **[Read the full breakdown of exactly what each service
-receives → `PRIVACY.md`](PRIVACY.md).**
+`google.com/maps` in an incognito window. Google does keep its own logged-out session
+cookie; Vela starts a new one every week by default (**Settings → Privacy → Google
+session**: weekly, daily, or every launch, plus a button to start one now). Your saved
+places, history, and settings never leave the device. **[Read the full breakdown of
+exactly what each service receives → `PRIVACY.md`](PRIVACY.md).**
 
 The short version: Google shrinks from *knowing who you are and everywhere you go* to
-*occasionally answering an anonymous question*. Your map browsing never reaches Google
-at all, and your GPS trace is never uploaded anywhere. While you're actively navigating,
-Vela does ask Google for fresh traffic from your current position every couple of
-minutes - that's what powers the faster-route offers and the live arrival time - and
-that re-check can be turned off in **Settings → Navigation** ("Live traffic
-re-checks"); off-course re-routes remain, since turn-by-turn can't work without them.
+*occasionally answering an anonymous question*. With the default place source your map
+browsing never reaches Google at all, and your GPS trace is never uploaded anywhere.
+While you're actively navigating, Vela does ask Google for fresh traffic from your current
+position every couple of minutes - that's what powers the faster-route offers and the live
+arrival time - and that re-check can be turned off in **Settings → Navigation** ("Live
+traffic re-checks while navigating"); off-course re-routes remain, since turn-by-turn can't
+work without them.
 
 | What Google gets | Google Maps app | Google Maps web | Vela |
 | --- | --- | --- | --- |
 | Tied to your Google account | Yes, always signed in | Yes unless incognito | Never - there is no login |
-| A persistent device identifier | Yes (device + ad IDs via Play Services) | Browser cookies | No account, no app key; just an IP like any website visitor |
-| Your precise GPS position | Continuously while open, plus Location History if enabled | While the tab is open | Never while browsing - position stays on the phone; searches send the map area you are looking at. While navigating, anonymous re-routes and the optional live-traffic re-check send your current position (toggleable in Settings → Navigation) |
-| Every pan and zoom of the map | Yes - their servers render the map | Yes | No - map tiles come from OpenFreeMap, so Google never sees you browse |
-| Your searches | Yes, saved to your account history | Yes | The query text reaches Google anonymously, only when you search |
-| Place pages you open | Yes | Yes | The place lookup reaches Google anonymously |
+| A persistent device identifier | Yes (device + ad IDs via Play Services) | Browser cookies | No account, no app key; a logged-out Google session cookie that Vela replaces weekly by default, and an IP like any website visitor |
+| Your precise GPS position | Continuously while open, plus Location History if enabled | While the tab is open | Never while browsing - position stays on the phone. Searches send the map area you are looking at and, to rank places near you first, can ask about a small area around you; a route from your location sends that point as the start. While navigating, anonymous re-routes and the optional live-traffic re-check send your current position (toggleable in Settings → Navigation) |
+| Every pan and zoom of the map | Yes - their servers render the map | Yes | No, by default - map tiles come from OpenFreeMap and the places on them from Vela's own data, so Google never sees you browse |
+| Your searches | Yes, saved to your account history | Yes | The text reaches Google anonymously, as you type (autocomplete) and when you search |
+| Place pages you open | Yes | Yes | The place lookup reaches Google anonymously, under that logged-out session cookie |
 | Turn-by-turn routes | Yes, full trip telemetry | Yes | Routing runs on open OSRM, or OsmAnd-format region files on the phone; Google answers anonymous traffic checks - at planning, and during the drive for re-routes and the optional faster-route scanning |
 | Saved places, home, work | Stored on their servers | Stored on their servers | Stored only on your phone |
 | Ad profile building | Feeds your ads profile | Feeds your ads profile | Nothing to attach it to |
-| Works with no Google contact at all | No | No | Yes - downloaded regions show the map, search, route, and navigate fully offline |
+| Works with no Google contact at all | No | No | Yes - one switch (Settings → Privacy → Use Vela without Google), and downloaded regions show the map, search, route, and navigate fully offline |
 
 Full per-request detail is in [PRIVACY.md](PRIVACY.md).
 
@@ -279,7 +290,7 @@ remote-repair channel.
 | [`CLAUDE.md`](CLAUDE.md) | Build rules, module layout, and the hard-won gotchas - for contributors (human or AI) |
 | [`docs/dpad.md`](docs/dpad.md) | D-pad / no-touchscreen operation - design, findings, per-surface audit, and the merge-with-upstream policy |
 | [`docs/book/`](docs/book/README.md) | Subsystem explainers: how places rank, when data is rebaked, what the camera rules are |
-| [`docs/FAQ.md`](docs/FAQ.md) | The ten questions people ask first |
+| [`docs/FAQ.md`](docs/FAQ.md) | The questions people ask first, including what each feature sends to Google |
 
 ## Degoogled / GrapheneOS notes
 
@@ -329,8 +340,10 @@ The map itself is [OpenStreetMap](https://www.openstreetmap.org/copyright) data,
 contributors, available under the Open Database License, served as vector tiles by
 [OpenFreeMap](https://openfreemap.org). Offline routing regions, place packs, house-number and
 building overlays are built from OpenStreetMap, OpenAddresses and Microsoft Building Footprints
-extracts and carry their licenses in the release notes of the hosting release. Satellite imagery
-is Esri World Imagery, with Google imagery where Esri has none at close zoom.
+extracts and carry their licenses in the release notes of the hosting release. The places on the
+map are Overture Maps (CDLA-Permissive 2.0) and AllThePlaces data, positioned with OpenStreetMap.
+Transit boards come from Transitous and the agencies' own GTFS feeds. Satellite imagery is Esri
+World Imagery, with Google imagery where Esri has none at close zoom.
 
 ## License
 

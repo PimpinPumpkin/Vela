@@ -57,7 +57,8 @@ but practically unusable.
   and on any other device the instant Compose sees a non-touch key event (affordances appear
   on the first key press, melt away on the next tap). This is what carries hybrid/keypad
   phones now that `dpadFirst` no longer trusts the virtual device.
-- `Modifier.dpadHighlight(shape)` - a 2 dp primary-color focus ring, drawn only while the
+- `Modifier.dpadHighlight(shape)` - a 3 dp focus ring (fixed orange since the 2026-07-23
+  Settings redesign, see the last section; it was the teal primary before), drawn only while the
   element (or a descendant - Material buttons host their own focus node, and
   `onFocusEvent.hasFocus` covers both) holds focus **and** the UI is key-driven (honors
   `dpadFirst` directly, since a D-pad-first phone may still read `inputMode == Touch` until
@@ -173,11 +174,14 @@ there the arrows already pan and OK *confirms* rather than *enters* map control,
 would be a lie - and the crosshair/pin + "Move the map to set…" banner come from the existing
 `ChooseOnMapOverlay` instead.
 
-**Zoom buttons**: pinch has no 5-key equivalent, so a D-pad-mode `+`/`−` pair sits mid-right.
-Shown **only while browsing the bare map** (not during search / results / place sheet /
-directions / nav) - mid-right they sit in the vertical focus path of those panels and
-intercepted DOWN into their rows (measured). Behind a panel the map is covered anyway; zoom
-it via the engaged crosshair after closing the panel.
+**Zoom buttons**: pinch has no 5-key equivalent, so a D-pad-mode `+`/`−` pair shows on the
+map. Shown **only while browsing the bare map** (not during search / results / place sheet /
+directions / nav) - in their first spot, mid-right, they sat in the vertical focus path of those
+panels and intercepted DOWN into their rows (measured). Behind a panel the map is covered
+anyway; zoom it via the engaged crosshair after closing the panel. Since 2026-09-14 (issue #393)
+the pair is one pill in the bottom-right stack, above the parking button, and touch phones get
+it too when Settings > Navigation > "Prefer buttons over swipes" is on
+(`dpadMode || PreferButtons.on` in MapScreen).
 
 ### Initial focus on every screen (D-pad-first, hard rule - sweep 2026-07-07)
 
@@ -198,7 +202,7 @@ helpers) attached to each surface's primary element:
 | **Settings** | back button (top of screen) | **nothing focused** - confirmed + fixed |
 | **Welcome** | Get-started button | fixed |
 | **Place sheet** | drag handle | focus leaked to the search bar behind it - fixed |
-| **Directions panel** | first travel-mode tab (Drive) | fixed |
+| **Directions panel** | first travel-mode tab (Drive) | fixed (classic panel; the Google-style chooser, the default since 2026-09-18, has no auto-focus target yet, see ROADMAP "D-pad hardware pass") |
 | **Route steps sheet** | first step row (preview); the current step row while navigating | fixed |
 | **Reviews WebView** (full-screen) | back arrow (until the WebView loads + grabs focus) | fixed |
 | Photo gallery | (pre-existing `galleryFocus`) | already OK |
@@ -257,7 +261,7 @@ Settings toggles used to be a bare `Row` + focusable `Switch`: traversal stopped
 whose only focus indication is Material's faint state-layer halo, invisible against the dark
 theme. From the Map section to the updater (nine sections, 15 toggles) a D-pad user lost the
 cursor completely and the screen read as "not D-pad compatible". Fix: **`ToggleRow`**
-(SettingsScreen.kt) mirrors `SelectableRow` - `dpadHighlight` ring + `clickable` on the ROW,
+(now in `ui/settings/SettingsComponents.kt`) mirrors `SelectableRow` - `dpadHighlight` ring + `clickable` on the ROW,
 `Switch(onCheckedChange = null)` display-only. Bonus for touch: the whole row is now tappable,
 like every platform settings app. Don't add a bare focusable `Switch`/`Checkbox` anywhere; wrap
 it in a ringed row.
@@ -334,23 +338,38 @@ Touch phones are unaffected: all of the above is gated on `dpadMode`.
   list + depart options pushed the **Start** button off the bottom of the screen with no
   way to reach it - a real layout bug that affects **touch too**, not just D-pad. The
   `AnimatedVisibility` body is now a `verticalScroll` Column capped at ~58% of screen
-  height (`heightIn(max = screenHeightDp * 0.58)`), so the From/To header stays visible
-  above and focusing (or tapping) Start scrolls it into view.
+  height (`heightIn(max = screenHeightDp * 0.58)`), so focusing (or tapping) Start scrolls
+  it into view. (Since 2026-07-13 the From/To rows live in `RouteTopCard` at the top of the
+  screen, and since 2026-09-13 Start is a footer under the route list that stays put while
+  the list scrolls.)
 - **Photo viewer** (`PlaceSheet.kt` `PhotoGallery`): grabs focus on open (it's a
   `Dialog`, its own focus scope); ←/→ page through photos; BACK dismisses (Dialog
   default). Pinch-zoom has no key equivalent (accepted - see limitations).
 - **Text fields** (Settings + reviews search): `Modifier.dpadFieldEscape()` so UP/DOWN
   leave the field instead of being trapped in it (see Core helpers, and Trap C for the
   search bar's inline equivalent).
-- **Results list / sheets**: expand/collapse already had focusable buttons (chevron,
-  "Hide results" bar); they gained rings. Scroll happens implicitly as focus walks the
-  rows (`LazyColumn`/`verticalScroll` bring-into-view).
+- **Results list / sheets**: expand/collapse already had focusable buttons; they gained
+  rings. Scroll happens implicitly as focus walks the rows (`LazyColumn`/`verticalScroll`
+  bring-into-view). The results list became a BOTTOM sheet on 2026-07-08: OK on its handle
+  opens it from the minimized bar and toggles peek and expanded, and BACK steps it down
+  (expanded, peek, the minimized bar, then cleared), so no drag is ever required. There is no "Hide results" button any more.
+- **Nav bottom bar** (`NavOverlays.kt`, 2026-09-04): dragging the bar up opens the step
+  list, and that gesture is touch-only on purpose. The key path is the chevron handle above
+  the figures, a focusable `clickable` with a ring that opens the same sheet, plus a list
+  button in the bar whenever "Prefer buttons over swipes" is on or the device is
+  D-pad-first.
+- **Pause and mute** (`NavHoldControls`, used when Settings > Navigation "Pause button on
+  the navigation bar" is off): a long press mutes, which a D-pad cannot do, so the first OK
+  on the button slides mute out beside it for a few seconds as its own target, and a second
+  OK on the same button pauses.
 
 ### Focus visibility pass
 
 `dpadHighlight` applied to: search bar card, suggestion/shortcut/saved rows, search
-result rows, "Hide results" bar, category chips, both re-center FABs, the zoom
-buttons, steps-sheet rows, both sheet handles, the maneuver banner. Material
+result rows, the results sheet's handle, category chips, both re-center FABs, the
+zoom buttons, steps-sheet rows, both sheet handles, the maneuver banner. Since then
+`dpad_test_suite/audit_static.sh` fails on any `clickable`/`toggleable`/`selectable`
+without a ring, so the list is complete by construction rather than by this paragraph. Material
 buttons/switches/dialogs keep their built-in focus indication (adequate on those
 components; extend the pass if a spot proves hard to see).
 
@@ -364,10 +383,10 @@ keypad-phone search.
 | Surface | Verdict |
 |---|---|
 | `WelcomeScreen` | **made scrollable** - its fixed `weight(1f)`-spacer layout pushed the Get-started button off the bottom of a small (480×640) screen with no way to scroll to it, so a D-pad user couldn't SEE it (focusable-when-clipped, but invisible). Now `verticalScroll` + `heightIn(min = screen)`; button reveals + activates on-device. |
-| Onboarding prompts (`VelaRoot`) | AlertDialogs + buttons - natively focusable (proven: "Offline maps" dismissed via D-pad) |
+| Onboarding prompts (`VelaRoot`) | dialogs + buttons - natively focusable (proven: "Offline maps" dismissed via D-pad; that prompt was cut from onboarding on 2026-07-10, and every dialog is a `VelaDialog` now) |
 | `SearchBar` | armed-field design + BACK-out + DOWN-escape into the entry rows (Traps A/B/C above) |
 | Search entry page (shortcut/saved/recent rows, menus) | `clickable` rows + `DropdownMenu`s - operable natively; rings added |
-| Search results list | rows/chips/chevron operable; top-sheet drag has button equivalents; rings added |
+| Search results list | rows/chips operable; the sheet's drag has key equivalents (handle tap, BACK); rings added. It was a top sheet when this pass ran and is a bottom sheet since 2026-07-08 |
 | Map | `MapDpadController` + center target (above) |
 | Place sheet | handle fixed; action buttons/tabs/rows are Material or `clickable` - operable; Reviews tab search field got `dpadFieldEscape` (proven UP-escapes + dismisses the IME) |
 | Live reviews WebView (`ReviewsPanel`, "Read all reviews") | reachable (OK on the button) + exitable (BACK) proven; ↑/↓ now page-scroll the WebView (sweep fix); visual scroll not confirmable on the test network - see limitations |
@@ -386,6 +405,8 @@ assumed: `touchscreen=finger` (lies), `SOURCE_DPAD` only on the Virtual device,
 `deviceHasKey=false`, keypad center = `KEYCODE_DPAD_CENTER` (scancode 232), `BACK` = 158.
 
 - **Launch**: crosshair + zoom buttons + engaged edge-ring appear immediately (dpad-first).
+  Superseded on 2026-07-08: the bare map now opens with nothing focused and the first arrow
+  lands on the search bar (see "The bare map is the ONE intentional exception").
 - **Map**: ← ↑ → ↓ pan (crosshair fixed, map slides under it); BACK disengages to the "OK:
   move the map" pill; arrows then traverse the chrome.
 - **Traversal + rings**: map → category chip → search bar → results rows → place-sheet rows,
@@ -432,11 +453,12 @@ content filter otherwise leaves routing without a usable fix on this device.)
     `Dialog` + Material-matched Surface) that **auto-focuses the dismiss/safe button** on open;
     buttons are a directly-`.focusable()` Text (the only node `requestFocus` lands on in a Dialog)
     with OK via `.onKeyEvent` and touch via `pointerInput` (not `.clickable`, which adds a 2nd
-    focus target). All 7 `AlertDialog`s use it; looks identical under touch.
+    focus target). Every dialog in the app uses it (there is no bare `AlertDialog` left, and
+    `audit_static.sh` fails on a new one); looks identical under touch.
   - **`VelaMenu`** (`ui/VelaMenu.kt`) - drop-in `DropdownMenu` replacement. **Under touch it renders
     the ordinary anchored `DropdownMenu` byte-identical**; under D-pad a raw-`Dialog` chooser whose
     **first item is focused on open**. `VelaMenu(expanded, onDismissRequest){ item("A"){…}; item("B"){…} }`.
-    All 6 menus use it.
+    Every menu in the app uses it; a bare `DropdownMenu` fails `audit_static.sh`.
 
   **Proven on-device:** onboarding dialogs auto-focus "Not now"; the place-sheet ⋮ auto-focuses
   "Set as Home"; the share menu auto-focuses "Google Maps link"; OK selects, DOWN/UP walk, arrows
@@ -449,9 +471,11 @@ content filter otherwise leaves routing without a usable fix on this device.)
   reveal + focus it. Force-scrolling it into view on open was tried and reverted - it hides the
   welcome intro on a once-seen screen, a worse tradeoff. `rememberDpadAutoFocus()` (the simpler
   requester) is fine for on-screen targets; use `dpadAutoFocus()` when a target may be off-screen.
-- **Platform dialogs are AOSP, not Vela UI.** "Depart at / Arrive by" opens
-  `android.app.TimePickerDialog`, and confirmations use platform `AlertDialog`s - these take
-  window focus and are D-pad-navigable by Android itself, outside Vela's Compose focus system.
+- **Time and date pickers (fixed 2026-07-11).** "Depart at / Arrive by" used to open the
+  platform `android.app.TimePickerDialog`, outside Vela's Compose focus system. It is now the
+  Material 3 time and date picker inside `PickerDialog` (PlaceSheet.kt), a raw `Dialog` with
+  the `VelaDialog` button grammar whose confirm pill auto-focuses on open. Confirmations were
+  already `VelaDialog`s (above).
 - **Text entry relies on hardware keys.** In `dpadMode` Vela focuses the field but does
   NOT raise the soft IME - the keypad's physical keys type straight into the focused field
   (verified). A device with neither a hardware keyboard nor a D-pad-navigable IME would have

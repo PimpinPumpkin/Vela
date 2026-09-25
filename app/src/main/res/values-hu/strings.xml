@@ -575,7 +575,6 @@
     <string name="settings_voice_volume_louder">Hangosabb</string>
     <string name="settings_voice_volume_loudest">Leghangosabb</string>
     <string name="settings_voice_volume_hint">Milyen hangosan szól a hangos útvonalvezetés a médialejátszás felett. A hangosabb szintek csak a Vela hangra vonatkoznak; a rendszerhangok csak halkíthatók.</string>
-    <string name="place_avoid_not_honored">A díjköteles utak, autópályák és kompok elkerüléséhez offline régió szükséges ehhez az úthoz. Ezek az útvonalak még használhatják őket.</string>
     <string name="settings_lists_export_hint">Mentsd el a listáidat egy fájlba, vagy állítsd vissza egy másik eszközön.</string>
     <string name="settings_lists_imported">%1$d lista importálva</string>
     <string name="settings_places_imported">%1$d hely importálva</string>

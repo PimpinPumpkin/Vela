@@ -117,10 +117,10 @@ GEOCODE_PAD_DEG = 0.09   // about 10 km of latitude either side, so addresses ac
 
 "The smallest box that covers the point" is wrong at borders, because a region's box is a
 rectangle and the region is not. Vela ships the real boundary of every catalog region (the
-polygon Geofabrik cut the extract with, simplified to a few kilometers, about 300 KB for 425
-regions) and asks it first; the box is the fallback only for a region with no polygon. A box that
-spans the whole globe in longitude is an extract crossing the antimeridian, and it never covers
-anything by itself:
+polygon Geofabrik cut the extract with, simplified to a few kilometers, about 340 KB for all
+458 catalog regions) and asks it first; the box is the fallback only for a region with no
+polygon. A box that spans the whole globe in longitude is an extract crossing the antimeridian,
+and it never covers anything by itself:
 
 ```
 WORLD_SPAN = 350.0   // degrees of longitude: this wide is the antimeridian, not a region
@@ -307,7 +307,7 @@ The Storage rows are measured from the folders:
 
 | Row | Counts |
 | --- | --- |
-| Saved areas & map cache | MapLibre's database, the building and address overlays, the basemap archives |
+| Saved areas & map cache | MapLibre's database, the building and address overlays, the basemap archives (the world floor included), the label glyph pack, the road features |
 | Offline routing | `files/obf` |
 | Offline places | the place packs and the places archives |
 | Voices & speech models | managed on the Voice page |
@@ -370,11 +370,14 @@ stays correct, just larger.
 
 The policy is the user's: **Update downloaded regions** is Never on its own (the default), On
 Wi-Fi, or On Wi-Fi and mobile data, where "Wi-Fi" means the system says the network is not
-metered. It is off by default because the bake only started publishing patches on 2026-09-18 and
-the path had not been watched working on a device. On either Wi-Fi setting the app checks a minute
-after start, at most once in 20 hours, and applies every published patch that fits an installed
-places or basemap archive or place pack, on its own and quietly; it never downloads a region whole
-by itself, and it skips a drive in progress.
+metered. It is off by default because a feature that rewrites an installed archive was not to
+switch itself on before someone had watched it work. That has since happened: on 2026-09-19 a
+Pixel 9 took a published patch end to end, and the same run found and fixed two bugs (the catalog
+cached for the life of the process, so no update was ever offered, and dead bytes never bounded).
+The default was left at Never. On either Wi-Fi setting the app checks a minute after start, at
+most once in 20 hours, and applies every published patch that fits an installed places or
+basemap archive or place pack, on its own and quietly; it never downloads a region whole by
+itself, and it skips a drive in progress.
 
 The catalogs are cached so a pan does not refetch them, but the cache expires, so a process that
 lives for days still sees a new revision:
@@ -408,9 +411,10 @@ phone that has never fetched the catalog still gets an empty page offline.
 - **A borrowed locality is a vote, not a lookup.** A place with no city or ZIP of its own takes the
   most common one within about 650 m, so a place just across a town or ZIP line from most of its
   neighbors can be given theirs. A place that names its own town is never changed.
-- **The Storage rows do not count everything.** The glyph pack, the road features and the small
-  saved-area place and address indexes are on the phone but in none of the rows, and Delete all
-  offline data leaves the glyph pack and those indexes in place.
+- **The Storage rows do not count everything.** The small place and address indexes an area save
+  fills where no pack exists live in the app's databases, not the folders above, so they are in
+  none of the rows, and Delete all offline data leaves them in place. The sprite copy (about
+  230 KB) is uncounted too.
 - **Only patches are automatic.** A region whose archive has no patch from its installed
   revision (a bake that changed too much, or a skipped revision) waits for a tap on Update, which
   downloads it whole over the installed copy; the old copy stays until the new one is complete.
