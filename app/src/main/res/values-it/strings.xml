@@ -890,4 +890,9 @@
     <string name="settings_nav_tap_places">Toccare i luoghi alla guida (sperimentale)</string>
     <string name="settings_nav_tap_places_hint">Durante la navigazione restano sulla mappa distributori, ristoranti e colonnine, e toccandone uno viene proposto come tappa; un secondo tocco la aggiunge. Disattivato di default, perché la navigazione nasconde i luoghi per tenere la mappa leggibile. Attivarlo attiva anche Mostra luoghi.</string>
     <string name="mapvm_start_from_here">Si parte dalla tua posizione</string>
+    <string name="place_busy_not">Poco affollato</string>
+    <string name="place_busy_not_too">Non troppo affollato</string>
+    <string name="place_busy_little">Un po\' affollato</string>
+    <string name="place_busy_usually">Di solito affollato</string>
+    <string name="place_busy_very">Molto affollato</string>
 </resources>

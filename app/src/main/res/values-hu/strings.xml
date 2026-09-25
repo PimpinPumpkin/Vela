@@ -892,4 +892,9 @@
     <string name="settings_nav_tap_places">Helyek érintése vezetés közben (kísérleti)</string>
     <string name="settings_nav_tap_places_hint">Navigálás közben a benzinkutak, éttermek és töltők a térképen maradnak; egy érintés megállóként ajánlja fel a helyet, a második hozzáadja. Alapból ki van kapcsolva, mert a navigáció elrejti a helyeket az olvashatóságért. A bekapcsolása a Helyek megjelenítését is bekapcsolja.</string>
     <string name="mapvm_start_from_here">Indulás a jelenlegi helyedről</string>
+    <string name="place_busy_not">Nincs nagy forgalom</string>
+    <string name="place_busy_not_too">Nem túl zsúfolt</string>
+    <string name="place_busy_little">Kicsit zsúfolt</string>
+    <string name="place_busy_usually">Általában zsúfolt</string>
+    <string name="place_busy_very">Nagyon zsúfolt</string>
 </resources>

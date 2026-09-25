@@ -907,4 +907,9 @@
     <string name="settings_nav_tap_places">驾驶时点按地点 (实验功能)</string>
     <string name="settings_nav_tap_places_hint">导航时仍在地图上显示加油、餐饮和充电地点,点按会将其作为途经点提示,再点一次即可添加。默认关闭,因为导航会隐藏地点以保持地图清晰。开启此项也会开启“显示地点”。</string>
     <string name="mapvm_start_from_here">从你的位置开始导航</string>
+    <string name="place_busy_not">不忙</string>
+    <string name="place_busy_not_too">不太忙</string>
+    <string name="place_busy_little">有点忙</string>
+    <string name="place_busy_usually">通常较忙</string>
+    <string name="place_busy_very">非常忙</string>
 </resources>

@@ -890,4 +890,9 @@
     <string name="settings_nav_tap_places">Plaatsen aantikken tijdens het rijden (experimenteel)</string>
     <string name="settings_nav_tap_places_hint">Tijdens navigatie blijven tankstations, eten en laadpunten op de kaart staan; tikken biedt de plaats als tussenstop aan, een tweede tik voegt hem toe. Standaard uit, omdat navigatie plaatsen verbergt om de kaart leesbaar te houden. Dit aanzetten zet ook Plaatsen tonen aan.</string>
     <string name="mapvm_start_from_here">Start vanaf je locatie</string>
+    <string name="place_busy_not">Niet druk</string>
+    <string name="place_busy_not_too">Niet al te druk</string>
+    <string name="place_busy_little">Een beetje druk</string>
+    <string name="place_busy_usually">Meestal druk</string>
+    <string name="place_busy_very">Erg druk</string>
 </resources>

@@ -892,4 +892,9 @@
     <string name="settings_nav_tap_places">Tocar em locais ao conduzir (experimental)</string>
     <string name="settings_nav_tap_places_hint">Durante a navegação, combustível, comida e carregadores ficam no mapa e tocar num deles propõe-no como paragem; um segundo toque adiciona-a. Desligado por predefinição, já que a navegação esconde os locais para manter o mapa legível. Ligar isto liga também Mostrar locais.</string>
     <string name="mapvm_start_from_here">A começar onde está</string>
+    <string name="place_busy_not">Pouco movimentado</string>
+    <string name="place_busy_not_too">Não muito movimentado</string>
+    <string name="place_busy_little">Um pouco movimentado</string>
+    <string name="place_busy_usually">Normalmente movimentado</string>
+    <string name="place_busy_very">Muito movimentado</string>
 </resources>
