@@ -477,6 +477,14 @@ Constraints:
 - Every dial can be overridden on a device with `adb shell setprop debug.vela.tune.<key> <n>`
   (`ui/AppTune`), for testing without a calibration push.
 
+- **Limited-view detection** (`web/GoogleStanding`): the session is marked limited when the first
+  `hspqX` photo page returns at most 20 photos with a next page waiting (50 are asked for; a full
+  session answers 50, a limited one 10), or when "More reviews" on the full reviews page loads
+  nothing; a first page of 40 or more clears it. The mark is keyed to the session's start stamp and
+  reset by any rotation. A missing popular-times chart is not evidence. While marked, a Google place
+  without a chart shows `place_limited_view` where the chart would be, and Settings > Privacy >
+  Google session shows `settings_google_session_limited`.
+
 ### 3.7 Hidden WebView scrapes
 
 **What a place tap loads (2026-09-23).** Photos: one `hspqX` request (`MapDataSource.placePhotos`,

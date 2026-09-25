@@ -1240,6 +1240,18 @@ fun PlaceSheet(
                     Text(stringResource(R.string.place_loading_popular_times), style = MaterialTheme.typography.bodySmall, color = dim)
                 }
             }
+            // Google is giving this session its limited view (web/GoogleStanding): say so where the
+            // chart would be, so a missing chart reads as Google's doing and not a broken app.
+            if (place.popularTimes == null && !detailsLoading && place.featureId != null && app.vela.web.GoogleStanding.limited.value) {
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 12.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Icon(androidx.compose.material.icons.Icons.Default.Info, contentDescription = null, tint = dim, modifier = Modifier.size(16.dp).padding(top = 2.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.place_limited_view), style = MaterialTheme.typography.bodySmall, color = dim)
+                }
+            }
             // (The editorial summary + "From the owner" blurb live in the About tab.)
 
             // Other Google listings at the same spot (a co-branded shop's duplicate

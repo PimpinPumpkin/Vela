@@ -3039,6 +3039,7 @@ class MapViewModel @Inject constructor(
                     page = runCatching { dataSource.placePhotoPage(fid) }.getOrNull()
                 }
                 val native = page?.photos.orEmpty()
+                if (cached == null && page != null) app.vela.web.GoogleStanding.onPhotoPage(appContext, native.size, page.nextToken != null)
                 android.util.Log.i("VelaPlaceLoad", "photos: ${if (cached != null) "cache" else "rpc"} ${native.size}${if (native.isEmpty()) ", nothing yet (More photos walks the page)" else ""}")
                 if (native.isEmpty()) {
                     // Three empty answers: keep the search's hero photo and leave the page walk (a whole
