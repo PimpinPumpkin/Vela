@@ -243,11 +243,14 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.webkit)
     // Cronet, Chromium's own network stack, for Google-host requests (app/net/CronetTransport,
-    // calibration `useCronet`) and the WebView proxy (`webProxy`). cronet-embedded 143 is published
-    // under the Chromium license (BSD) plus its dependencies' licenses; NOT the 500.x line, whose
-    // embedded artifact is deprecated and carries the Android SDK license. Its protobuf-javalite sits
-    // beside OsmAnd's old protobuf because :osmand-shaded relocates OsmAnd's copy.
-    implementation("org.chromium.net:cronet-embedded:143.7445.0")
+    // calibration `useCronet`) and the WebView proxy (`webProxy`). Chromium's OWN prebuilt Release
+    // build for the Chrome for Android version in gradle.properties `vela.cronetVersion`, packed into
+    // one AAR by scripts/build-cronet-aar.sh (gitignored; CI fetches it from the `cronet-runtime`
+    // infra release). Chromium license (BSD) plus third-party licenses, LICENSE inside the AAR.
+    // Maven's cronet-embedded stopped at 143 while Vela claims a current Chrome. Its protobuf is
+    // shaded inside (org.chromium.net.internal), so nothing clashes with OsmAnd's.
+    val cronetVersion = providers.gradleProperty("vela.cronetVersion").get()
+    implementation(files("libs/cronet-$cronetVersion.aar"))
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

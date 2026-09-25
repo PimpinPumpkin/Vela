@@ -144,6 +144,19 @@ jobs:
           fi
           echo "code=$(( (2000 + ${{ github.run_number }}) * 10 ))" >> "$GITHUB_OUTPUT"
 
+      - name: Fetch Cronet runtime AAR
+        # Chromium's own prebuilt Cronet for the version pinned in gradle.properties, packed as one
+        # AAR (gitignored). From the `cronet-runtime` infra release, else the upstream repo's, else
+        # packed right here from Chromium's bucket by the same script the release uses.
+        run: |
+          v=$(sed -n 's/^vela.cronetVersion=//p' gradle.properties)
+          f="app/libs/cronet-$v.aar"
+          mkdir -p app/libs
+          curl -fsSL -o "$f" "https://github.com/${{ github.repository }}/releases/download/cronet-runtime/cronet-$v.aar" \
+          || curl -fsSL -o "$f" "https://github.com/PimpinPumpkin/Vela/releases/download/cronet-runtime/cronet-$v.aar" \
+          || bash scripts/build-cronet-aar.sh "$v" app/libs
+          test "$(stat -c%s "$f")" -gt 10000000
+
       - name: Fetch TTS runtime AAR
         # sherpa-onnx neural-TTS runtime (the Piper voices). It's a 57 MB prebuilt AAR (no Maven
         # artifact) hosted on the fixed-tag `tts-runtime` release, gitignored out of the repo —

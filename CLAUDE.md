@@ -326,8 +326,10 @@ Defaults that make the safe path the easy one:
   for real navigation.**
 - **GitHub releases are TWO different things - check the tag before touching one (2026-07-09).**
   `v0.*` tags are app releases (nightly prereleases, weekly stables). Every OTHER tag is
-  **infrastructure file hosting** (9 as of 2026-07-13): `tts-runtime` (the sherpa-onnx AAR CI
-  fetches at build time), `asr-models` (the on-device dictation engines: Whisper/SenseVoice/Moonshine), `routing-graphs` (region
+  **infrastructure file hosting** (9 as of 2026-07-13, plus `cronet-runtime` since 2026-09-25):
+  `tts-runtime` (the sherpa-onnx AAR CI fetches at build time), `cronet-runtime` (Chromium's own
+  prebuilt Cronet, one AAR per Chrome for Android version, CI fetches the one `gradle.properties`
+  pins), `asr-models` (the on-device dictation engines: Whisper/SenseVoice/Moonshine), `routing-graphs` (region
   graph zips + manifest), `poi-packs` (state place packs + manifest), `address-overlays`,
   `building-overlays` and `maxspeed-overlays` (PMTiles + manifests), `map-fonts` (Roboto glyph
   zip), `flock-cameras` (the ALPR/DeFlock camera dataset `.bin` + manifest, weekly-refreshed).
@@ -3928,7 +3930,7 @@ Gotchas:
   form factor, and the proxy filling in `Sec-Fetch-*` and `Sec-CH-UA` that the WebView never hands
   it (`BrowserHeaders.fetchMetadata`). NOT fixable honestly: `X-Client-Data` and
   `x-browser-validation`, both sent by every real Chrome to Google and by neither of our clients;
-  and `zstd`, which Cronet 143 strips. When a new Chrome ships, bump `chromeFullVersion` with
+  and `zstd`, which Cronet strips (143 and 155 alike). When a new Chrome ships, bump `chromeFullVersion` with
   `userAgent` (the script prints both).
 - **`secChUa` is COMPUTED from the UA's major (2026-09-23, `BrowserHeaders.secChUaFor`).** Chrome
   derives the whole header (GREASE brand, its version, the order) from the major, so a hand-edited
@@ -3953,8 +3955,15 @@ Gotchas:
 - **Google requests ride Cronet now (2026-09-23), a stock Chromium library, not a custom TLS stack.**
   `core/net/GoogleTransport.hook` (in CoreModule's client) hands google.com hosts to
   `app/net/CronetTransport` (`useCronet`, default on; OkHttp on any failure, a GoogleTransport
-  IOException falls back). `:osmand-shaded` relocates OsmAnd's bundled protobuf at build time so
-  Cronet's can coexist (one runtime for both is NOT an option: each was compiled against its own).
+  IOException falls back). **Since 2026-09-25 the Cronet is Chromium's OWN prebuilt build of the
+  Chrome for Android stable Vela claims** (`gradle.properties` `vela.cronetVersion`, 155.0.8059.16),
+  packed by `scripts/build-cronet-aar.sh` from the public `chromium-cronet` bucket into
+  `app/libs/cronet-<v>.aar` (gitignored; `cronet-build.yml` publishes it weekly to `cronet-runtime`,
+  CI fetches it or packs it on the spot). Bump `vela.cronetVersion` when the UA's major moves; a
+  local build needs the AAR first (docs/BUILDING.md). Its jars are Java 25 class files, so the root
+  build pins R8 9.4.26 (`buildscript` classpath): AGP 8.10's bundled R8 rejects class major 69.
+  Never go back to Maven's `cronet-embedded` (frozen at 143). Its protobuf is shaded inside the jars;
+  `:osmand-shaded` still relocates OsmAnd's own copy, which the Maven 143 needed.
   Cronet's native library ships for ARM only (`packaging.jniLibs` excludes `x86*/libcronet*.so`):
   the APK keeps all four ABIs, so emulators and x86 Chromebooks install and run, and there
   `CronetHolder` fails to load the library once and every Google request stays on OkHttp. 108.4 MB,

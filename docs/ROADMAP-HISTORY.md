@@ -942,3 +942,15 @@ done so it *earns* trust rather than spends it:
   starts `scheduleAutoRegionPatches` for every install that never touched the setting (a minute
   after start, at most once per 20 h, patches only, never a full download); anyone who picked
   "Never on its own" keeps it.
+
+## 2026-09-25: Cronet at Chrome's version
+
+- **Cronet at Chrome's version.** Done, without building anything: Chromium's official Cronet
+  builders publish a Release build of every Chrome for Android version to the public
+  `chromium-cronet` bucket, so the app now ships the build for the Android stable it claims
+  (155.0.8059.16), packed into one AAR by `scripts/build-cronet-aar.sh` and hosted on the
+  `cronet-runtime` release. The from-source `cronet-build.yml` (a Chromium checkout of tens of GB
+  on a public runner) never ran and was rewritten into the weekly packer. Maven had stopped at 143,
+  three signature algorithms short of current Chrome. The new jars are Java 25 class files, which
+  needed a newer R8 pinned on the buildscript classpath. `zstd` is still not offered: Cronet keeps
+  it behind a feature only a system flags file can turn on.

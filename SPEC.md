@@ -460,8 +460,10 @@ Constraints:
   expansion (each tag, then its bare language unless the next tag shares it, q from 0.9 down by 0.1).
   Before, native requests always said `en-US` while a WebView in another language said its own.
 - Cronet sends a navigation at `REQUEST_PRIORITY_HIGHEST` (`Priority: u=0, i`, Chrome's document
-  value). It cannot send `zstd`: Chrome 155 offers `gzip, deflate, br, zstd` and Cronet 143 strips
-  `zstd` from a caller's `Accept-Encoding`, so that difference stays until the engine is newer.
+  value). It cannot send `zstd`: Chrome 155 offers `gzip, deflate, br, zstd`, and Cronet (143 and
+  155 alike) advertises only `gzip, deflate, br` and strips `zstd` from a caller's `Accept-Encoding`.
+  Its zstd decoder is compiled in but behind a Chromium feature that Cronet only takes from a
+  system-provided flags file, not from the app.
 - Residuals that are not fixed: Chrome sends `X-Client-Data` (its variations proto) and four
   `x-browser-*` headers (`channel`, `copyright`, `year` and `validation`, a hash of the Chrome
   build) on every Google request, a fresh profile included, and neither client here sends any of
@@ -474,10 +476,10 @@ Constraints:
   and the same HTTP/2 settings (`t13d1516h2_8daaf6152771_806a8c22fdea`,
   `1:65536;2:0;4:6291456;6:262144|15663105|0|m,a,s,p`), so a desktop UA over a Chromium stack is
   coherent. OkHttp is unmistakable: `t13d1513h2_8daaf6152771_eca864cca44a`, no GREASE, no ECH
-  or ALPS, HTTP/2 `4:16777216|16711681|0|m,p,a,s`. Cronet 143 (the newest Chromium-licensed
-  `cronet-embedded` on Maven; the 500.x artifacts carry the SDK license) matches Chromium 153
-  except for three signature algorithms newer Chromium offers (0x0904-0x0906, ML-DSA), which moves
-  its `ja4` to `..._d8a2da3f94cd`.
+  or ALPS, HTTP/2 `4:16777216|16711681|0|m,p,a,s`. Cronet 143 (Maven's last Chromium-licensed
+  `cronet-embedded`) matched Chromium 153 except for three signature algorithms newer Chromium
+  offers (0x0904-0x0906, ML-DSA), which moved its `ja4` to `..._d8a2da3f94cd`; that was the reason
+  to ship the current Cronet (below).
 - The browser window a request describes is per install (`BrowserViewport`, 2026-09-23): the search
   and directions `pb` carry the map's pixel size (`!3m2!1i<w>!2i<h>`) and four rectangles the page
   chrome covers (under `!30m28` in search, `!20m28` in directions), captured from one 1024x768
@@ -492,15 +494,25 @@ Constraints:
 - **Google-host requests go over Cronet (2026-09-23),** Chromium's own network stack, not a
   custom TLS stack: `core/net/GoogleTransport` hands only google.com hosts to the interceptor the
   app installs (`app/net/CronetTransport`, calibration `useCronet`, default on); everything else,
-  and any Cronet failure, stays on OkHttp. `cronet-embedded` 143 (Chromium license). In the
-  all-in-one APK Cronet's native library is packaged for arm64-v8a and armeabi-v7a only (the
-  per-chip x86 APKs carry their own); on x86 and x86_64 (emulators, a few
-  Chromebooks) the engine fails to load once and Google requests stay on OkHttp. The APK keeps all
-  four ABIs at 108.4 MB, against 98.0 MB before Cronet and 121.9 MB with it on every ABI. Its protobuf-javalite sits beside OsmAnd's old bundled
-  protobuf because `:osmand-shaded` relocates OsmAnd's copy to `net.osmand.shaded.protobuf` at build
-  time (the jar on the `obf-runtime` release is untouched). On a Pixel 9 Google answers it over
-  HTTP/3. Its handshake is Chrome's minus the three newest signature algorithms until the Cronet
-  build tracks Chrome's major (`cronet-build.yml`).
+  and any Cronet failure, stays on OkHttp. **The Cronet is Chromium's own prebuilt Release build for
+  the Chrome for Android stable version pinned in `gradle.properties` `vela.cronetVersion`
+  (155.0.8059.16 since 2026-09-25), the same major the UA claims.** Chromium's official Cronet
+  builders publish every version to the public `chromium-cronet` bucket
+  (`storage.googleapis.com/chromium-cronet/android/<v>/Release/cronet/`);
+  `scripts/build-cronet-aar.sh` packs the API, common, native, sentinel, shared and HttpEngine-provider
+  jars, the four ABIs' `libcronet.<v>.so`, Chromium's ProGuard rules and its LICENSE into one AAR
+  (`app/libs/cronet-<v>.aar`, gitignored); `cronet-build.yml` publishes it weekly to the
+  `cronet-runtime` infra release and CI fetches the pinned one from there (falling back to packing it
+  from the bucket). Maven's `cronet-embedded` stopped at 143. Chromium compiles these jars as Java 25
+  class files (major 69), which AGP 8.10's bundled R8 refuses, so the root build pins R8 9.4.26 on the
+  buildscript classpath. Protobuf is shaded inside the jars (`org.chromium.net.internal`), so there is
+  no clash with OsmAnd's. In the all-in-one APK Cronet's native library is packaged for arm64-v8a and
+  armeabi-v7a only (the per-chip x86 APKs carry their own); on x86 and x86_64 (emulators, a few
+  Chromebooks) the engine fails to load once and Google requests stay on OkHttp. Checked on a
+  Pixel 4a: `Cronet/155.0.8059.16` loads under R8, Google answers over HTTP/3, the proxy and the
+  place sheet behave as before; the APK grew 0.7 MB. The engine is an `ExperimentalCronetEngine`
+  with the network-quality estimator on (its estimates feed `Downlink` / `RTT`). Bump
+  `vela.cronetVersion` with the claimed Chrome major.
 - **The WebView proxy** (`app/web/WebProxy`, calibration `webProxy`, default OFF): a Google WebView's
   GETs go out over Cronet, streamed, with the WebView's OWN cookies (`WebViewCookieJar`, so the page
   keeps its aged session), which removes `X-Requested-With: app.vela`. POSTs reach the proxy through
