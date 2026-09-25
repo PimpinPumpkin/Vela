@@ -843,19 +843,25 @@ fun VelaMapView(
     val speedupHolder = rememberUpdatedState(replaySpeedup)
     val lastGradM = remember { doubleArrayOf(-1e9) } // progressM the route split was last set at
     val splitReset = remember { booleanArrayOf(false) } // style reload: re-anchor the window + coarse cut (layers came back hidden)
+    // Paint-only changes (trail, color, traffic) repaint the pieces where they are. They used to set
+    // splitReset, which re-uploaded the cut piece and the ahead window from new anchors: the new
+    // gradients applied at once, the new geometry a few frames later (GeoJSON is parsed off the
+    // main thread), so the new fractions painted the OLD, longer pieces and a strip of blue or
+    // slate showed behind the arrow on every pause and resume (user 2026-09-25).
+    val paintReset = remember { booleanArrayOf(false) }
     // "Road behind you": the driven part of the route stays gray (on) or disappears (off, the
     // default). Read per frame by the ticker through a holder; a flip mid-drive re-anchors the
     // split so the gradients and the full line's visibility are re-applied at once.
     val trailOn = app.vela.ui.RouteTrail.on.value
     val trailHolder = rememberUpdatedState(trailOn)
-    LaunchedEffect(trailOn) { splitReset[0] = true; lastGradM[0] = -1e9 } // -1e9 so the block runs even while stopped
+    LaunchedEffect(trailOn) { paintReset[0] = true; lastGradM[0] = -1e9 } // -1e9 so the block runs even while stopped
     // A route COLOR change (pause turns the line slate, resume turns it back) re-anchors too: the
     // ahead line's gradient is only re-uploaded when the cut piece slides, so without this only
     // the 400 m around the arrow changed color and the rest stayed blue (4a, 2026-09-21).
-    LaunchedEffect(routeColor) { splitReset[0] = true; lastGradM[0] = -1e9 }
+    LaunchedEffect(routeColor) { paintReset[0] = true; lastGradM[0] = -1e9 }
     // New traffic on the SAME line (the recheck's upgrade) repaints the same way, without the
     // clear-and-reseed a real route swap gets (user 2026-09-23: that reseed was the flicker).
-    LaunchedEffect(routeTrafficSpans) { splitReset[0] = true; lastGradM[0] = -1e9 }
+    LaunchedEffect(routeTrafficSpans) { paintReset[0] = true; lastGradM[0] = -1e9 }
     val mPerPxHolder = remember { doubleArrayOf(10.0) } // meters/pixel at the camera (scale-bar feed) —
                                                         // sizes the split-update throttle to sub-pixel
     val lastScaleReport = remember { doubleArrayOf(-1.0) } // last mpp PUSHED to compose (gate, see reportScale)
@@ -2803,7 +2809,16 @@ fun VelaMapView(
                     // The leading window re-anchors when the arrow nears its seam with the tail; the
                     // ahead line is uploaded from the cut piece's start (the gray behind it is the
                     // full line's).
-                    var aheadDirty = slide
+                    val repaint = paintReset[0]
+                    paintReset[0] = false
+                    var aheadDirty = slide || repaint
+                    // A repaint also recolors the far tail in place (its geometry only moves with
+                    // the window below).
+                    if (repaint && !navWin[0].isNaN() && navWin[0] < total - 1.0) {
+                        style.getLayer(ROUTE_TAIL_LAYER)?.setProperties(
+                            PropertyFactory.lineGradient(routeGradient(0f, gInt, remap(navWin[0], total))),
+                        )
+                    }
                     if (navWin[0].isNaN() || prog > navWin[0] - NAV_WINDOW_SLACK_M || navWin[0] > total) {
                         navWin[0] = (prog + NAV_WINDOW_M).coerceAtMost(total)
                         val tw = navWin[0]
