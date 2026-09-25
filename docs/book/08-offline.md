@@ -5,7 +5,8 @@
 Settings > Offline maps has two ways in. **Download the area you're viewing** saves the screen
 you are looking at, and quietly pulls the whole region around it too. **Entire states &
 countries** is the catalog: one tap on a state, a province or a country downloads everything
-Vela needs to work there with no signal.
+Vela needs to work there with no signal. One card on the map follows the whole download piece by
+piece, and one message at the end says whether the region is ready or only partly there.
 
 With a region on the phone and no connection, the map still draws streets, names and buildings,
 the businesses still show as pins, search still finds places and typed addresses, a route can
@@ -49,15 +50,37 @@ Two more things arrive by other paths:
 
 ### What one tap pulls
 
-A catalog row downloads in a chain, each step starting when the one before it finishes:
+A catalog row is **one download under one progress card** (`MapViewModel.downloadRoutingGraph`),
+each piece starting when the one before it finishes:
 
-1. the routing `.obf`;
-2. then the place pack with the same region id;
-3. then the places archives, if **Include places with downloads** is on (it is by default);
-4. then the basemap archives, and with the first of those, the glyph pack and the world floor.
+1. the routing `.obf` ("Downloading <region> routing");
+2. then the place pack with the same region id ("Saving <region> places for offline search");
+3. then the places archives, if **Include places with downloads** is on (it is by default):
+   step 1 of `fetchRegionArchives`, "Saving <region> places for the map";
+4. then the basemap archives, step 2, "Downloading the <region> map", and once those are in, the
+   glyph pack and the world floor.
 
-If the routing file fails, the chain stops there. A parent row ("Germany", "United States")
-queues its pieces and downloads them one after another; cancel clears the queue.
+The card names the piece it is on (`regionFileStep` is 1 for the places file, 2 for the map) and
+shows that piece's own percent, which starts again at zero for each file. The place pack runs
+chained (`downloadPoiPack(chained = true)`), so it neither clears the card nor announces itself.
+Nothing says "ready" until the last piece is done, and then exactly one line does:
+
+- `mapvm_region_ready`: "<region> is downloaded: map, routes and places work offline", when every
+  piece arrived;
+- `mapvm_region_incomplete`: "<region> is only partly downloaded. Connect and tap Update in
+  Settings, Offline maps to finish it", when any piece failed.
+
+A piece the catalog has nothing published for counts as complete (there is nothing to finish), and
+so do the places archives when the include setting is off. A cancel stops at the next file and
+says nothing. If the routing file fails, the chain stops there with the routing-failed message. A
+parent row ("Germany", "United States") queues its pieces and downloads them one after another;
+cancel clears the queue.
+
+**Why one card.** Until 2026-09-23 only the routing file and the pack ran under the card. The pack
+ended with its own "places are searchable" line and the card went away, while the places file and
+the map, the biggest piece, carried on as separate silent jobs. A user read that line as done,
+turned Wi-Fi off, and had searchable places drawn on a gray map. Now the card stays up until the
+map is in, and the one message at the end is the only thing that says the region is ready.
 
 The places and basemap catalogs are cut differently from the routing catalog, so the chain has to
 decide which archives "belong" to a region (`archivesFor`): the archive with the region's own id
@@ -182,6 +205,30 @@ REV_ADDR_M   = 60.0    // a mapped house this close is the place's address
 REV_STREET_M = 150.0   // else "on <street>" for a street this close
 ```
 
+**The city, state and ZIP come from the neighbors.** OpenStreetMap often tags a place with only its
+number and street, so an offline row used to read "123 Main St" and nothing else. The places
+around it usually do carry the rest, so `OfflineAddressStore.localityNear` asks them: it reads the
+pack places in a box around the point whose address has a locality after the street line, keeps
+the ones with a postcode if there are any, takes the nearest seven, and returns the most common
+answer, the nearest one breaking a tie.
+
+```
+LOCALITY_BOX_DEG  = 0.006   // about 650 m either way: the box the vote reads
+LOCALITY_VOTERS   = 7       // nearest addresses that vote
+LOCALITY_CELL_DEG = 0.005   // answers cached per cell of about 550 m, so a list costs a scan or two
+OFFLINE_ADDR_FILL = 20      // offline search rows filled; the ones on screen
+```
+
+`completeAddress` only touches an address that needs it (`needsLocality`): a bare street line, or
+a street line plus a place name with no postcode. `withLocality` then appends the answer to a bare
+street line, or replaces a bare trailing place name **only when the answer starts with that same
+name** ("Davis" becomes "Davis, CA 95616"). It never swaps one town for another: a row that says
+it is in one town keeps that town even if every neighbor votes for the next one. Nothing nearby with
+a locality means the address stays as it was. It runs on the first `OFFLINE_ADDR_FILL` rows of an
+offline search and on the sheet of a place selected offline, after the street line itself has been
+filled from the nearest house. It needs no rebake; the places layer's own tiles get the same fill at
+bake time ([chapter 1](01-places.md#which-places-exist-in-a-tile-and-at-what-zoom)).
+
 ### Tapping a place with no signal
 
 A pin from the open places layer carries its own data in the tile, so offline the sheet shows its
@@ -281,9 +328,17 @@ database. Voices and speech models stay.
 ### Updates: patches and compaction
 
 Every manifest row carries a revision (`YYYYMMDD`), and the phone records the revision each file
-came from. Opening Offline maps compares the two and puts **Update** on a region whose routing,
-places or map has moved on. One tap refreshes, in order: the place pack, the places archives, the
-basemap archives, then the routing file.
+came from. Opening Offline maps compares the two (`refreshRegionUpdates`) and puts **Update** on a
+region whose routing, places or map has moved on. One tap (`updateRegion`) refreshes, in order:
+the place pack, the places archives, the basemap archives, then the routing file.
+
+**A piece that never arrived counts as an update too.** For an installed region, a places archive
+the region should have and does not (checked only while Include places with downloads is on) marks
+it "places", and a missing basemap archive marks it "map", exactly as a newer revision would.
+Update then fetches the missing archives (`fetchRegionArchives`, the same steps as the first
+download) after refreshing any that are installed. Without this, a download cut short before its
+map (Wi-Fi off, the app killed) left a gray map and no button anywhere that would fetch it; the
+incomplete message tells the user to tap exactly this.
 
 - **The place pack** takes a row-level delta when the manifest has one for exactly the installed
   revision: a small SQLite of deleted and inserted rows, applied in one transaction and checked
@@ -329,6 +384,13 @@ MANIFEST_TTL_MS = 3_600_000   // an hour
 MISS_MEMO_MS    =   600_000   // an unreachable manifest is not retried for ten minutes
 ```
 
+**The routing catalog is kept on disk** (`app/offline/RegionCatalog.kt`). It is the list the
+Offline maps page is built from, installed regions included, and every successful fetch writes it
+to `files/catalog-<hash>.json` (the hash is of the manifest URL). When the fetch fails, the page
+reads that copy instead. Before 2026-09-23 a failed fetch meant an empty list, so a user who had
+just downloaded a state and opened the page with no signal read it as "nothing is downloaded". A
+phone that has never fetched the catalog still gets an empty page offline.
+
 ## Limits
 
 - **Offline routing is a city and metro feature.** Long routes fail on memory, not just time,
@@ -343,6 +405,9 @@ MISS_MEMO_MS    =   600_000   // an unreachable manifest is not retried for ten 
 - **The address interpolation does not know which town it is in.** A state pack can hold a street
   of the same name in several towns, and the interpolation layer brackets the typed number with
   the nearest numbers from any of them. The exact-number layer, which runs first, is unaffected.
+- **A borrowed locality is a vote, not a lookup.** A place with no city or ZIP of its own takes the
+  most common one within about 650 m, so a place just across a town or ZIP line from most of its
+  neighbors can be given theirs. A place that names its own town is never changed.
 - **The Storage rows do not count everything.** The glyph pack, the road features and the small
   saved-area place and address indexes are on the phone but in none of the rows, and Delete all
   offline data leaves the glyph pack and those indexes in place.

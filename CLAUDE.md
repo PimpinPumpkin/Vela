@@ -1004,8 +1004,8 @@ Defaults that make the safe path the easy one:
   (2026-09-25):** `NavStopsRow` is shown on EVERY drive now; with no stops it reads "Edit route /
   Add a stop along the way" (the editor used to be reachable only once a stop existed). With stops
   it adds a "Remove next" button behind a `VelaDialog` confirm (`MapViewModel.removeNextStop` =
-  `applyStops(stops.drop(1))`, one replan). The tap-to-stop card (`NavStopOffer`) offers "Remove
-  stop" instead when the tapped place is already a stop within `NAV_STOP_MATCH_M` (60 m)
+  `applyStops(stops.drop(1))`, one replan). The tap-to-stop card (`NavStopOffer`) adds a "Remove
+  stop" button beside Add stop when the tapped place is already a stop within `NAV_STOP_MATCH_M` (60 m)
   (`navTapCandidateIsStop` / `removeNavTapStop`, the nearest-ahead occurrence goes). FAB stack and speed
   widget hide under the editor like under the step sheet. BACK order: results list, then the
   chip row, then end-nav - browsing gas stations
@@ -2405,7 +2405,7 @@ architecture note.
   the shops; landmarks get their own per-cell budget (`lrank`, ordered by outline size + Wikidata)
   and are never tenants or folded into a business with the same name key (Bryant Park lost to
   "Bryant Park Corporation" that way). The app hides Liberty's `poi_r*` over an archive whose
-  `rev` >= `tuning.placesOneSetRev` (compiled default 99999999 = off). Calibration v21 sets it to
+  `rev` >= `tuning.placesOneSetRev` (compiled default 20260923 since 2026-09-24, was 99999999 = off). Calibration v21 sets it to
   20260923, the world rebake that carries the landmarks (all 448 archives at that rev); a region
   downloaded before it keeps its old archive and the basemap's points until it updates, which is
   exactly what the dial is for. Never lower it below the oldest archive that has the landmarks.
@@ -5918,7 +5918,7 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   corridor (lights, stops, level crossings, speed humps, ALPR cameras). Model is pure + tested in
   `:core` `nav/RouteBar` (`RouteBarTest`); the strip is `app/ui/nav/RouteBarStrip`.
   **It shows a 5 km WINDOW, not the whole route (`RouteBar.WINDOW_M`) - the first cut scaled to
-  the entire remaining trip and was device-proven useless:** on a 769 mi demo drive every nearby
+  the entire remaining trip and was device-proven useless:** on a long interstate demo drive every nearby
   mark collapsed into the bottom pixel and the bar read as a plain gray stick. Near the end the
   window shrinks to the destination (`reachesDestination`). TomTom's original also carries live
   HAZARDS; ours deliberately cannot (every keyless incident source is a proven dead end), so it

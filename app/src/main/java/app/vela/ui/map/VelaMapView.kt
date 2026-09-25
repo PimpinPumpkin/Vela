@@ -1011,10 +1011,9 @@ fun VelaMapView(
     val routeCum = remember(routePolyline) { cumLengths(routePolyline) }
 
     // CROSS-STREET-ONLY nav labels (user 2026-07-16: "only show roads we are on or that we
-    // directly cross"). Every ~4 s during nav, take the loaded transportation_name features and
-    // keep only the names whose geometry geometrically CROSSES the route within a window around
-    // the puck (300 m behind to 4 km ahead), then tighten the label layers' filter to that
-    // include-list. This is what kills both the parallel-street callouts AND the "ghosts": the
+    // directly cross"). Once per 400 m quantum of progress (the loop ticks every 2 s), take the loaded
+    // transportation_name features, keep the streets that CROSS or T into the route within a window
+    // of 200 m behind to 2,200 m past the quantum, and upload one callout point per street. This is what kills both the parallel-street callouts AND the "ghosts": the
     // include set only changes as the drive progresses, so symbols stop churning through
     // MapLibre's placement fade. The query runs at most once per tick on the main thread (cheap,
     // loaded tiles only); the geometry math runs off it. An empty QUERY (tiles not loaded yet)
@@ -5404,8 +5403,8 @@ private val NAV_LABEL_MAJOR_CLASSES = arrayOf("motorway", "trunk", "primary", "s
 private val NAV_LABEL_SLOW_CLASSES = arrayOf("tertiary", "minor")
 
 /** Where [line] meets the route [window] (the first proper crossing in route order, else a
- *  T-junction endpoint within [touchM]), moved [NAV_XLABEL_OFFSET_M] along the street to the side
- *  that ends farther from the route, as (lng, lat). Null when the street does not meet the window.
+ *  T-junction endpoint within [touchM]), moved along the street by a rung of [NAV_XLABEL_OFFSETS] x
+ *  [NAV_XLABEL_OFFSET_M], on whichever side gives the most clearance from the route, as (lng, lat). Null when the street does not meet the window.
  *  Planar maths at the window's latitude: at a few hundred meters the error is centimeters. */
 private fun crossLabelPoint(line: List<Pair<Double, Double>>, window: List<LatLng>, touchM: Double = 25.0): Pair<Double, Double>? {
     if (line.size < 2 || window.size < 2) return null

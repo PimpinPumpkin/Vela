@@ -164,6 +164,18 @@ then postcode in Britain and Ireland, postcode then city everywhere else. OSM an
 rows rarely say their country, so they take the region's most common Overture country
 (`regioncc`). Every row in the Davis test box got one.
 
+**A row without a locality borrows its neighbor's** (the `LOCFILL` step, 2026-09-23, run just before
+the export). OpenStreetMap rows, and a few locator rows, often arrive with only a number and a
+street, so the tile would say "123 Main St" and stop. Such a row takes the `loc` of the nearest row
+that has one within about 300 m (0.0027 degrees, the longitude scaled by latitude), a
+postcode-bearing `loc` ahead of any nearer one without, and a row with nothing in reach stays as it
+was. It is a grid join over 0.004 degree cells and their eight neighbors, never a correlated
+lookup, because a per-row lookup is what made earlier rules quadratic over a whole state. The bake
+log prints `LOCFILL|<rows without>|<rows filled>`. On the Andorra test bake, 737 rows had no
+`loc` and 625 were filled, and 655 of the 676 OSM rows now carry an "AD400 <town>" line. It
+reaches a region at its next places rebake. The offline search does the same thing on the phone
+for place-pack rows ([chapter 8](08-offline.md#searching-with-no-signal)).
+
 **The ranks.** Each place is then ranked by prominence inside four nested grid cells: `frank`
 (about 100 m), `rank` (about 400 m), `crank` (about 1.6 km) and `xrank` (about 6.5 km, and only
 for landmark categories). The minimum zoom follows:
@@ -213,8 +225,7 @@ with the place, +0.6 when a chain's own locator matched it, +0.8 when OSM links 
 (`srcbonus`, added to prominence before the cells are ranked). The rest of the Tokyo cost is the
 basemap's own OSM point layers (`poi_r*`): hiding them on top of the cap measured 46 to 60 fps.
 
-**One set of map points** (2026-09-22, behind the `placesOneSetRev` calibration dial, which
-calibration v21 set to 20260923 once the world rebake had run). The basemap's own point layers (Liberty's `poi_r1`/`poi_r7`/`poi_r20`, built by
+**One set of map points** (2026-09-22, behind the `placesOneSetRev` dial). The basemap's own point layers (Liberty's `poi_r1`/`poi_r7`/`poi_r20`, built by
 OpenFreeMap from OSM) drew parks, temples, schools and museums as a second set that the phone had
 to reconcile with Vela's places and that cost half the frame rate in Tokyo. The bake now takes
 those from the region's OSM extract (points and outlines; an outline sits at the average of its
@@ -255,6 +266,29 @@ Brandenburger Tor, Berliner Dom, Pergamonmuseum and Neue Synagoge move from z15 
 Fernsehturm from z16 to z15, and the z11/z12 anchors become Museumsinsel and the Reichstag instead
 of a university campus and a library. It reaches the fleet with the next places rebake.
 At the widest street zooms in Midtown the dense bus-stop layer can still win the space.
+
+**The dial.** The app hides the basemap's point layers over a places archive whose `rev` is at
+least `placesOneSetRev`, read through `AppTune`:
+
+```
+placesOneSetRev = 20260923   // compiled default since 2026-09-24: the world rebake's rev
+                             // a debug.vela.tune.placesOneSetRev property wins, then the signed
+                             // calibration bundle's tuning value, then this default
+```
+
+An archive baked before that date has no landmarks, so over it the basemap's points still draw
+and nothing is lost; that is what the dial protects, and it must never go below the oldest archive
+that carries the landmarks. The default was a "never" value (99999999) until 2026-09-24, with the
+real date arriving only in the calibration bundle. That bundle reaches phones from `main`, so a
+canary build ahead of it kept `poi_r20` on in Manhattan and panned at under 1 fps below 200 ft.
+The cause was found by hiding layers one at a time with the `debug.vela.hide` property while the
+map's frame counter ran: on a Pixel 9, Midtown at about 200 ft panned at 3 fps against 59 at
+1000 ft, symbol layers were the whole cost, and hiding `poi_r20` alone (OpenStreetMap's
+lowest-rank points, thousands of them in Manhattan) brought it back to 60. On a Pixel 4a at 100 ft
+it is 0 to 25 fps with the dial off and 59 with it on. Swapping the layer's exclusion filter for a
+`match` lookup measured no better, so the cost is the layer itself, not its filter. The dial is
+still in the calibration bundle, so the fleet can be moved without a release; the compiled value
+only decides what a build does before that bundle arrives.
 
 **Names in every script, and English names** (2026-09-22). The name keys (`snapkey`, `nkey`) keep
 letters of every script, as the app's `PlaceNames` does. They used to keep only `a-z0-9`, so a
