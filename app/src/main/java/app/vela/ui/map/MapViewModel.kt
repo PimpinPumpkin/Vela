@@ -3039,7 +3039,7 @@ class MapViewModel @Inject constructor(
                     page = runCatching { dataSource.placePhotoPage(fid) }.getOrNull()
                 }
                 val native = page?.photos.orEmpty()
-                android.util.Log.i("VelaPlaceLoad", "photos: ${if (cached != null) "cache" else "rpc"} ${native.size} of ${page?.total}${if (native.isEmpty()) ", nothing yet (More photos walks the page)" else ""}")
+                android.util.Log.i("VelaPlaceLoad", "photos: ${if (cached != null) "cache" else "rpc"} ${native.size}${if (native.isEmpty()) ", nothing yet (More photos walks the page)" else ""}")
                 if (native.isEmpty()) {
                     // Three empty answers: keep the search's hero photo and leave the page walk (a whole
                     // Google web app) to a tap on "More photos" rather than loading it unasked.

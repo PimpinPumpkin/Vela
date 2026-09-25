@@ -30,14 +30,15 @@ import kotlinx.serialization.json.jsonArray
  */
 /** One page of the gallery: the photos, Google's total for the place, and the cursor for the next
  *  page (null on the last). Pages are 10 whatever count the request asks for (measured 2026-09-23). */
-data class PhotoPage(val photos: List<Photo>, val total: Int?, val nextToken: String?)
+data class PhotoPage(val photos: List<Photo>, val nextToken: String?)
 
 object PhotosParser {
     private val json = Json { ignoreUnknownKeys = true }
     private val SIZE_SUFFIX = Regex("=w\\d+-h\\d+.*$")
 
-    /** [parse] plus the paging fields: payload[1] = the place's photo total, payload[5] = the next
-     *  page's cursor (it goes back in the request at [4][2][2], see GoogleMapsDataSource). */
+    /** [parse] plus the next page's cursor, payload[5] (it goes back in the request at [4][2][2], see
+     *  GoogleMapsDataSource). payload[1] is NOT the place's photo total: it read 201 for a 70-review
+     *  convenience store and a department store alike (2026-09-25), so nothing reads it. */
     fun parsePage(rawBody: String): PhotoPage {
         val photos = parse(rawBody)
         val start = rawBody.indexOf("[[\"wrb.fr\"")
@@ -47,9 +48,8 @@ object PhotosParser {
                 ?.let { row -> ((row as JsonArray).getOrNull(2) as? JsonPrimitive)?.content }
                 ?.let { runCatching { json.parseToJsonElement(it).jsonArray }.getOrNull() }
         }
-        val total = (payload?.getOrNull(1) as? JsonPrimitive)?.content?.toIntOrNull()
         val next = (payload?.getOrNull(5) as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf { it.isNotBlank() && photos.isNotEmpty() }
-        return PhotoPage(photos, total, next)
+        return PhotoPage(photos, next)
     }
 
     fun parse(rawBody: String): List<Photo> {
