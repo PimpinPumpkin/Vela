@@ -6,7 +6,7 @@
 // net.osmand.shaded.protobuf. The jar on the release is untouched; :core depends on this output.
 plugins {
     java
-    id("com.gradleup.shadow") version "8.3.5"
+    id("com.gradleup.shadow") version "9.6.1"
 }
 
 java {

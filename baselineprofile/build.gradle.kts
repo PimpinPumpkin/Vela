@@ -11,13 +11,12 @@
 //     ./gradlew :app:generateBaselineProfile
 plugins {
     alias(libs.plugins.android.test)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.baselineprofile)
 }
 
 android {
     namespace = "app.vela.baselineprofile"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         minSdk = 28
         targetSdk = 35
@@ -27,7 +26,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
     targetProjectPath = ":app"
 
     testOptions.managedDevices.localDevices.create("pixel6Api34") {
