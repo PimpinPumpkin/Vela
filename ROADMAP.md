@@ -38,13 +38,6 @@ Roughly in the order they are worth doing. Each one is small enough for a single
   #258 reports the same pattern in cities. Since 2026-09-17 the on-device engine is a bounded
   FALLBACK inside a reroute; the "phone first, heal later" order is still open, held back because
   every latch back onto the online route is new bug surface.
-- **Turn delta updates on by default.** The append-in-place PMTiles patch shipped 2026-09-18 and
-  was proven on a Pixel 9 the next day (a 94 KB patch against a 3.3 MB archive, fingerprint
-  checked, dead space reclaimed locally). `RegionUpdates` still defaults to OFF; flip it to WIFI
-  once a second device has taken a patch on a real state-sized archive. The flip does more than
-  change a label: since 2026-09-22 WIFI and MOBILE also run `scheduleAutoRegionPatches` (a minute
-  after start, at most once per 20 h, patches only, never a full download), so every install
-  would start patching its regions on its own.
 - **A name index for the downloaded places archive (2026-09-21).** Offline search reads the OSM
   place pack, and OSM is missing whole chains in places (the parts store that started this was
   on the map from the Overture archive and absent from search). The places PMTiles is spatial

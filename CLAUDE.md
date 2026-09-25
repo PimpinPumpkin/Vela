@@ -3078,9 +3078,9 @@ architecture note.
   `MapViewModel.scheduleAutoRegionPatches`: a minute after start, at most once per 20 h, every
   installed places/basemap archive and place pack with a patch FROM its installed rev takes it,
   never a full download; Update's full download is `download(replace = true)` over the installed
-  copy instead of delete-then-download. OFF **is the default until somebody has watched a
-  patch download and apply on a device** - a feature that rewrites an installed archive does not get
-  to default itself on - then WIFI / MOBILE, metered judged by
+  copy instead of delete-then-download. WIFI **is the default since 2026-09-25** (it was OFF
+  until a patch had been watched downloading and applying on a device, which happened 2026-09-19;
+  an explicit "Never" is kept) - then MOBILE, metered judged by
   `isActiveNetworkMetered` so a metered Wi-Fi counts), Settings > Offline maps; a FULL re-download is
   never automatic on any setting. Every attempt is logged (`diag.record("delta")` + logcat
   `VelaDelta`) with the bytes and the reason for a fallback, because the failure worth seeing is a

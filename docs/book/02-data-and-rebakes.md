@@ -314,10 +314,10 @@ making every downloader take a few hundred MB again. On 2026-09-22 the live plac
   checks the fingerprint and swaps it in. Past half the file in dead bytes, the delta is refused
   and the region comes down whole. `adb shell setprop debug.vela.compact true` compacts after every
   patch.
-- **Policy is the user's, and off by default.** Settings > Offline maps > "Update downloaded
-  regions": "Never on its own" (`RegionUpdates.Mode.OFF`, the default), "On Wi-Fi" (an unmetered
-  network, as the system judges it) or "On Wi-Fi and mobile data". It stays off until somebody has
-  watched a patch download and apply on a real phone. On Wi-Fi or mobile, a minute after the app
+- **Policy is the user's, and on Wi-Fi by default.** Settings > Offline maps > "Update downloaded
+  regions": "Never on its own" (`RegionUpdates.Mode.OFF`), "On Wi-Fi" (an unmetered network, as the
+  system judges it; the default since 2026-09-25) or "On Wi-Fi and mobile data". It was off until
+  somebody had watched a patch download and apply on a real phone, which happened on 2026-09-19. On Wi-Fi or mobile, a minute after the app
   starts and at most once in 20 hours (`AUTO_PATCH_DELAY_MS = 60_000`, `AUTO_PATCH_EVERY_MS` = 20 h),
   every installed places or basemap archive and place pack whose manifest publishes a patch from the
   installed revision takes it quietly; routing files publish no patches and a full re-download is
