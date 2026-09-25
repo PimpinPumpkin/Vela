@@ -1444,8 +1444,12 @@ Defaults that make the safe path the easy one:
   `ogads-pa`. So the proxy now (a) carries Google POSTs through a document-start shim
   (`WebProxy.SHIM`, XHR/fetch/sendBeacon tag the URL with a one-time id and hand the body to a JS
   interface whose NAME and tag parameter are random per process, because a fixed "VelaPost" would be
-  readable by Google's own page script) and (b) answers the telemetry locally with a CORS-friendly
-  200 (`webProxyBlockLogs`; an intercepted 204 lost its CORS headers on a 4a). Log lines: `carries:` / `answers locally:` / `passes through:`. The scrapers'
+  readable by Google's own page script) and (b) can answer the telemetry locally with a CORS-friendly
+  200 (an intercepted 204 lost its CORS headers on a 4a). Since 2026-09-25 (b) is a SETTING, off by
+  default: Settings > Privacy "Block Google's page telemetry" (`web/GoogleTelemetry`, pref
+  `block_google_telemetry`, works with the proxy on or off; the `webProxyBlockLogs` dial still
+  overrides when set). Telemetry flows by default because a browser that never sends it looks less
+  like one, and session standing is what decides the limited view. Log lines: `carries:` / `answers locally:` / `passes through:`. The scrapers'
   own bridges are random per process too since 2026-09-23 (`web/JsNames`): scripts keep writing
   `VelaBridge` / `VelaPanel` and `JsNames.of` swaps the real names in at every
   `evaluateJavascript`, so a new script call must go through `JsNames.of` or its bridge calls fail.

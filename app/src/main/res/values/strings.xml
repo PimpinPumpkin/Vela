@@ -267,6 +267,8 @@
     <string name="nav_stops_remove_action">Remove</string>
     <string name="nav_stop_offer_remove">Remove stop</string>
     <string name="settings_google_session">Google session</string>
+    <string name="settings_block_google_telemetry">Block Google\'s page telemetry</string>
+    <string name="settings_block_google_telemetry_hint">Google\'s pages report on themselves: logging pings and the account bar\'s background calls. Nothing Vela shows needs them. They go out by default because a browser that never sends them looks less like a person to Google, and that is part of what decides whether your session gets the limited view. Turn this on to answer them on the phone instead.</string>
     <string name="settings_google_session_limited">Right now Google is giving this phone a limited view: fewer photos per page, no popular times on some places, and More reviews loads nothing. It usually lifts on its own after a while. A brand-new session starts out limited too, so starting one rarely helps.</string>
     <string name="place_limited_view">Google is showing a limited view right now, so popular times and more reviews may be missing here.</string>
     <string name="settings_google_session_hint">Google remembers this phone by a cookie, so what Vela looks up while it lasts can be linked together, without any name or account. Starting a new one caps that. A new session gets a shorter view from Google for a while (fewer reviews, popular times missing on some places).</string>

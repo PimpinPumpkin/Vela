@@ -146,8 +146,9 @@ abstract class HiddenWebView(
             }
         }
         wv.webViewClient = object : WebViewClient() {
-            // Null unless calibration `webProxy` is on: then GETs go out over Cronet with this
-            // WebView's own cookies, without the X-Requested-With header (WebProxy).
+            // Google's page telemetry is answered locally when the user blocks it (GoogleTelemetry);
+            // with calibration `webProxy` on, GETs go out over Cronet with this WebView's own
+            // cookies, without the X-Requested-With header (WebProxy). Null otherwise.
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): android.webkit.WebResourceResponse? =
                 WebProxy.intercept(request)
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {

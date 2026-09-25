@@ -473,7 +473,9 @@ Constraints:
   a document-start shim (`WebProxy.SHIM`) that tags each XHR, fetch or sendBeacon with a one-time id
   and hands its body over a randomly named JS interface; a body that is not plain text (FormData,
   Blob) still goes out from the WebView with the header. Page telemetry is answered locally with an
-  empty 200. Measured neutral on page timing once the response streams.
+  empty 200 only when the user turns on Settings > Privacy "Block Google's page telemetry"
+  (`web/GoogleTelemetry`, default off, works with the proxy on or off; the `webProxyBlockLogs` dial
+  overrides when set), because a browser that never sends it looks less like one. Measured neutral on page timing once the response streams.
 - Every dial can be overridden on a device with `adb shell setprop debug.vela.tune.<key> <n>`
   (`ui/AppTune`), for testing without a calibration push.
 

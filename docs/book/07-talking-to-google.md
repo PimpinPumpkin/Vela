@@ -355,10 +355,13 @@ exactly as before.
   string or URL parameters) are carried; FormData, a Blob or a Request object goes out from the
   WebView as before. Measured on a Pixel 9 before the shim, the POSTs left were the review page's
   `batchexecute`, `play.google.com/log` and the account bar's `ogads-pa` calls.
-- **Telemetry is answered locally** (dial `webProxyBlockLogs`, default 1 when the proxy is on):
-  `play.google.com/log`, any `gen_204` ping and the account bar's `ogads-pa` get an empty 200 from
-  the app and never leave the phone. Nothing Vela reads depends on them; they are the page
-  reporting on itself, and ad blockers drop them too. The answer carries CORS headers that echo
+- **Telemetry can be answered locally**, and since 2026-09-25 that is the user's choice: Settings >
+  Privacy "Block Google's page telemetry" (`web/GoogleTelemetry`, default OFF; the dial
+  `webProxyBlockLogs` still overrides when set). Blocked, `play.google.com/log`, any `gen_204` ping
+  and the account bar's `ogads-pa` get an empty 200 from the app and never leave the phone, with the
+  proxy on or off. Nothing Vela reads depends on them; they are the page reporting on itself, and ad
+  blockers drop them too. They flow by default because a browser that never sends them looks less
+  like a person to Google's traffic scoring, which is what hands a session the limited view. The answer carries CORS headers that echo
   the page's origin, and it is a 200 on purpose: an intercepted 204 reached the page without those
   headers on a Pixel 4a, so every blocked call turned into a console error.
 
@@ -569,7 +572,7 @@ without a release. This table is the record to revert from.
 | Page warm-ups after a search | none | none | none | google.com + Maps loaded in two hidden views per search |
 | Transport for every Google request | Cronet (Chrome's network stack, HTTP/2 or HTTP/3) | OkHttp on any Cronet failure | `useCronet` 0 | OkHttp |
 | Session for per-place requests (details, photo pages, the review feed) | the WebView's aged Google session, sent over Cronet (`AgedSession` tag, `WebViewCookieJar`): the app's own session is new every launch and Google gives it a limited view, which dropped popular times on busy places | the app's session when Cronet is off | `agedSession` 0 | the app's session |
-| WebView page loads | the WebView itself; the Cronet proxy (no `X-Requested-With`, the WebView's own cookies) when on: GETs directly, Google POSTs through a document-start shim that hands their bodies to a randomly named bridge (`webProxyPosts`), and the page's telemetry (`play.google.com/log`, `gen_204`, the account bar's `ogads-pa`) answered locally with an empty 200 (`webProxyBlockLogs`) | the WebView itself | `webProxy` 1 turns it ON (default 0); `webProxyPosts` / `webProxyBlockLogs` 0 turn the parts off | the WebView itself |
+| WebView page loads | the WebView itself; the Cronet proxy (no `X-Requested-With`, the WebView's own cookies) when on: GETs directly, Google POSTs through a document-start shim that hands their bodies to a randomly named bridge (`webProxyPosts`), and, when the user blocks it, the page's telemetry (`play.google.com/log`, `gen_204`, the account bar's `ogads-pa`) answered locally with an empty 200 | the WebView itself | `webProxy` 1 turns it ON (default 0); `webProxyPosts` / `webProxyBlockLogs` 0 turn the parts off | the WebView itself |
 | Neighbor prefetch (ambient) | Google-only mode | none | none | every mode, ~60 requests per map settle |
 
 **Google limits NEW anonymous sessions** (measured 2026-09-23 on a healthy Pixel 9): the same phone's
