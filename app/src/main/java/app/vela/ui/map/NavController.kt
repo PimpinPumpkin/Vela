@@ -269,29 +269,62 @@ internal class NavController(
         }
     }
 
-    /** Warn at nav start when the drive arrives within an hour of the host.destination closing, or after
-     *  it - a heads-up card plus the nav voice, so nobody drives forty minutes to a place that locks
-     *  its doors on arrival. Closing time comes from the place's own localized status text
+    /** Warn at nav start when the trip reaches a place within an hour of its closing, or after it,
+     *  so nobody drives forty minutes to a place that locks its doors on arrival. Checks every stop
+     *  still ahead (issue #606: a stop's arrival is the route's legs summed up to it), then the
+     *  destination; one warning, the earliest problem first, flashed, spoken and sent to the car.
+     *  Closing time comes from the place's own localized status text
      *  ([app.vela.core.data.ClosingTime]); no parsable status, no warning. */
     private fun maybeWarnClosingSoon(route: app.vela.core.model.Route) {
+        fun legSeconds(l: app.vela.core.model.RouteLeg) = l.durationInTrafficSeconds ?: l.durationSeconds
+        val stops = _state.value.directionsWaypoints
+        if (route.legs.size > stops.size) {
+            var acc = 0.0
+            for ((i, stop) in stops.withIndex()) {
+                acc += legSeconds(route.legs[i])
+                closingMessage(stop, acc)?.let { warnClosing(it); return }
+            }
+        }
         val sel = _state.value.selected ?: return
         val end = route.polyline.lastOrNull() ?: return
         if (sel.location.distanceTo(end) > 200.0) return // the selected place isn't this trip's host.destination
-        val closing = app.vela.core.data.ClosingTime.closingMinuteOfDay(sel.statusText, sel.openNow) ?: return
+        closingMessage(sel, route.durationInTrafficSeconds ?: route.durationSeconds)?.let { warnClosing(it) }
+    }
+
+    /** A stop added during the drive (issue #606): once the replanned route is in, its first leg is
+     *  the way to that stop, so the same check runs on it. Waits up to 20 s for the new route. */
+    private fun warnClosingForAddedStop(p: Place) {
+        if (p.statusText.isNullOrBlank()) return
+        val before = navSession.state.value.route
+        scope.launch {
+            val fresh = kotlinx.coroutines.withTimeoutOrNull(20_000L) {
+                navSession.state.first { it.route != null && it.route !== before }.route
+            } ?: return@launch
+            val leg = fresh.legs.firstOrNull() ?: return@launch
+            closingMessage(p, leg.durationInTrafficSeconds ?: leg.durationSeconds)?.let { warnClosing(it) }
+        }
+    }
+
+    /** "X closes at 9:00 PM and you arrive around 8:40 PM" when [p] closes within an hour of an
+     *  arrival [etaSec] from now, or before it; null otherwise or when its hours are unknown. */
+    private fun closingMessage(p: Place, etaSec: Double): String? {
+        val closing = app.vela.core.data.ClosingTime.closingMinuteOfDay(p.statusText, p.openNow) ?: return null
         val cal = java.util.Calendar.getInstance()
         val nowMin = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)
         // A closing that reads EARLIER than now is past midnight ("Closes 1 AM" seen at 11 PM).
         val closeAbs = if (closing < nowMin) closing + 24 * 60 else closing
-        val etaSec = route.durationInTrafficSeconds ?: route.durationSeconds
         val arriveMin = nowMin + (etaSec / 60.0).toInt()
         val gap = closeAbs - arriveMin
-        if (gap >= 60) return
-        val msg = appContext.getString(
+        if (gap >= 60) return null
+        return appContext.getString(
             if (gap < 0) R.string.mapvm_closing_before_arrival else R.string.mapvm_closing_soon,
-            sel.name,
+            p.name,
             formatMinuteOfDay(closeAbs % 1440),
             formatMinuteOfDay(arriveMin % 1440),
         )
+    }
+
+    private fun warnClosing(msg: String) {
         host.flashStatus(msg, 15_000L)
         voice.speak(msg)
         app.vela.car.CarBridge.toast(msg)
@@ -505,6 +538,7 @@ internal class NavController(
      *  list gains it too, so ending nav back into the panel shows the real trip. */
     fun addStopDuringNav(p: Place) {
         val loc = _state.value.myLocation ?: return
+        warnClosingForAddedStop(p)
         navSession.addStop(app.vela.core.nav.NavSession.NavStop(p.location, p.name), loc)
         _state.update {
             it.copy(

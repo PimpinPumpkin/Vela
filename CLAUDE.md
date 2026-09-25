@@ -1000,7 +1000,13 @@ Defaults that make the safe path the easy one:
   `navStopsForEditor()` (the chooser Place where the coordinates match, else a bare Place from
   the label); Done -> `applyStops` -> `NavSession.setStops(newRemaining, loc)` which `addStop`
   now delegates to: ONE user-ordered replan through the new list, unchanged list = no fetch,
-  and the chooser's `directionsWaypoints` becomes the remaining stops. FAB stack and speed
+  and the chooser's `directionsWaypoints` becomes the remaining stops. **Issues #604/#607
+  (2026-09-25):** `NavStopsRow` is shown on EVERY drive now; with no stops it reads "Edit route /
+  Add a stop along the way" (the editor used to be reachable only once a stop existed). With stops
+  it adds a "Remove next" button behind a `VelaDialog` confirm (`MapViewModel.removeNextStop` =
+  `applyStops(stops.drop(1))`, one replan). The tap-to-stop card (`NavStopOffer`) offers "Remove
+  stop" instead when the tapped place is already a stop within `NAV_STOP_MATCH_M` (60 m)
+  (`navTapCandidateIsStop` / `removeNavTapStop`, the nearest-ahead occurrence goes). FAB stack and speed
   widget hide under the editor like under the step sheet. BACK order: results list, then the
   chip row, then end-nav - browsing gas stations
   must never end the drive. **Only a RESULTS pick adds a stop (2026-07-14):** every map tap
@@ -1894,6 +1900,11 @@ Defaults that make the safe path the easy one:
   within 200 m of the route end (multi-stop trips whose last stop isn't the selected place skip
   the warning). NB on a device with NO TTS voice the later "no voice engine" hint overwrites the
   flash (single status slot) - with any voice installed the warning shows and is spoken.
+  **Stops are checked too (issue #606, 2026-09-25, now in `NavController`):** every stop still
+  ahead is tested first against its arrival (the route's `legs` summed up to it), then the
+  destination; the first problem is the one warning. A stop added DURING the drive
+  (`addStopDuringNav` -> `warnClosingForAddedStop`) waits up to 20 s for the replanned route and
+  checks its first leg, which is the way to that stop.
 - **Location-permission UX gates (2026-07-10).** Turn-by-turn REQUIRES precise location (coarse
   fixes are ~2 km; the nav fix discipline correctly refuses non-GPS and >50 m fixes, so nav on
   coarse sat at "Searching for GPS" forever with no explanation). `onStartNav` in MapScreen now
