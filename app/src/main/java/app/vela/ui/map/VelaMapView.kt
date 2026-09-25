@@ -850,12 +850,12 @@ fun VelaMapView(
     // slate showed behind the arrow on every pause and resume (user 2026-09-25).
     val paintReset = remember { booleanArrayOf(false) }
     // "Road behind you": the driven part of the route stays gray (on) or disappears (off, the
-    // default). Read per frame by the ticker through a holder; a flip mid-drive re-anchors the
-    // split so the gradients and the full line's visibility are re-applied at once.
+    // default). Read per frame by the ticker through a holder; a flip mid-drive repaints the
+    // pieces in place (paintReset), so the gradients and the full line's visibility are re-applied.
     val trailOn = app.vela.ui.RouteTrail.on.value
     val trailHolder = rememberUpdatedState(trailOn)
     LaunchedEffect(trailOn) { paintReset[0] = true; lastGradM[0] = -1e9 } // -1e9 so the block runs even while stopped
-    // A route COLOR change (pause turns the line slate, resume turns it back) re-anchors too: the
+    // A route COLOR change (pause turns the line lavender, resume turns it back) repaints too: the
     // ahead line's gradient is only re-uploaded when the cut piece slides, so without this only
     // the 400 m around the arrow changed color and the rest stayed blue (4a, 2026-09-21).
     LaunchedEffect(routeColor) { paintReset[0] = true; lastGradM[0] = -1e9 }
