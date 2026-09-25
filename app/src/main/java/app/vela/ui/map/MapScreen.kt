@@ -583,6 +583,7 @@ fun MapScreen(
     // left the speedo half-covered by the bar (GitHub issue #2). Falls back to the old constant until
     // the first layout pass measures it.
     var navBarHeightPx by remember { mutableStateOf(0) }
+    var navBarTopPx by remember { mutableStateOf(0f) } // the bar's top edge in window px; passed street bubbles fade out above it
     // The step sheet is the nav bar with its list well open: a committing drag hands over the
     // lift (how far the well is already open) and the sheet grows the rest of the way; closing
     // shrinks the well to nothing before the bar takes over again.
@@ -1070,6 +1071,7 @@ fun MapScreen(
             cameraLeftInset = cameraLeftInset,
             topCardBottomPx = topCardBottomPx,
             navBannerBottomPx = navBannerBottomPx,
+            navBarTopPx = navBarTopPx,
             navOverviewTick = navOverviewTick,
             navRecenterTick = navRecenterTick,
             screenHeightPx = screenHeightPx,
@@ -1915,7 +1917,10 @@ fun MapScreen(
                     onPause = if (navPauseInBar) vm::toggleNavPause else null,
                     // Measured AFTER the padding → the bar surface itself; navBarClearance adds the
                     // padding + gap back. Everything stacked above the bar keys off this.
-                    modifier = Modifier.onGloballyPositioned { navBarHeightPx = it.size.height },
+                    modifier = Modifier.onGloballyPositioned {
+                        navBarHeightPx = it.size.height
+                        navBarTopPx = it.boundsInWindow().top
+                    },
                 )
             }
 
@@ -3522,6 +3527,7 @@ private fun MapSurface(
     cameraLeftInset: Int,
     topCardBottomPx: Int,
     navBannerBottomPx: Int,
+    navBarTopPx: Float,
     navOverviewTick: Int,
     navRecenterTick: Int,
     screenHeightPx: Float,
@@ -3788,6 +3794,7 @@ private fun MapSurface(
         transitStops = state.transitStops.filterNot { st -> state.selected?.id == "gtfs:${st.stopId}" },
         onTransitStopTap = vm::onTransitStopTap,
         navBannerBottomPx = if (state.navigating) navBannerBottomPx else 0,
+        navBarTopPx = navBarTopPx,
         // Index into the SHOWN list (the same one ambientMarkersOf uploads), not the raw
         // pool - while a place is open the shown list drops the selected place's copy, so
         // raw-pool indices would be off by one past it.

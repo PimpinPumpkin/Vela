@@ -2478,12 +2478,19 @@ architecture note.
   passed, re-filtering only when the NEXT callout is actually passed (a setFilter re-runs the
   layer's placement: every-25 m cost a 126 ms main-thread message on a 4a). **Fixed 2026-09-25
   (user: bubbles vanished too early and all at once):** the filter kept `atM > progress + 12`,
-  which dropped each bubble 12 m BEFORE its crossing, and it ran on the 2 s label loop. The cut is
-  now `atM > progress - NAV_XLABEL_DROP_BEHIND_M` (25 m PAST the crossing) on its own 80 ms tick,
-  and a dropped callout is handed to `NAV_ROADLABEL_FADE_LAYER` (its own tiny source, no
-  collision), whose CONSTANT opacity falls to 0 over `NAV_XLABEL_FADE_MS` (1.2 s). Never fade the
-  main layers with a data-driven opacity keyed on progress: a data-driven paint change re-runs
-  placement like a filter does. Device-checked on a Davis demo drive (frame strip).
+  which dropped each bubble 12 m BEFORE its crossing, and it ran on the 2 s label loop. Now a
+  passed callout rides the map DOWN THE SCREEN (user: "just run them off screen") and is let go
+  only when its tail reaches 28 dp above the nav bar's measured top (`navBarTopPx`, MapScreen ->
+  MapSurface -> VelaMapView) or leaves the side of the screen, checked every 80 ms by projecting
+  just the passed callouts; `NAV_XLABEL_DROP_BEHIND_M` (600 m) is only a backstop. A let-go
+  callout goes to `NAV_ROADLABEL_FADE_LAYER` (its own tiny source, no collision), whose CONSTANT
+  opacity falls to 0 over `NAV_XLABEL_FADE_MS` (1.2 s). The fade layer is filled
+  `NAV_XLABEL_HANDOFF_MS` (250 ms) BEFORE the main layers' cut moves, because the first cut did it
+  the other way round and the bubble vanished and came back a few frames later (user saw the
+  flicker). A re-uploaded set recomputes every `atM`, so `resetNavLabelCut` lifts the cut over any
+  callout whose street was already handed off within 60 m. Never fade the main layers with a
+  data-driven opacity keyed on progress: a data-driven paint change re-runs placement like a
+  filter does. Device-checked on a Davis demo drive at 10 fps: no gap, no flicker.
 
 - **EXIT CALLOUT + CAMERA CLUSTER (2026-09-17):** `core/nav/ExitLabel.of(instruction)` pulls the exit
   NUMBER out of a maneuver (word table per language, plus the CJK number-before-word form; a bare

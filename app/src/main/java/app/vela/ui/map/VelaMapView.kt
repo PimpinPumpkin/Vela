@@ -693,6 +693,7 @@ fun VelaMapView(
     speedCameras: List<app.vela.core.data.SpeedCamera> = emptyList(), // fixed radar cameras (issue #229)
     transitStops: List<app.vela.core.data.transit.Transitous.MapStop> = emptyList(), // canonical GTFS stops at street zoom
     navBannerBottomPx: Int = 0, // measured screen-Y of the maneuver banner's bottom edge; drops the compass below it during nav
+    navBarTopPx: Float = 0f, // the nav bar's top edge in window px (0 = unknown); passed street bubbles fade out above it
     // Compass tap: return true to CONSUME (nav uses it to toggle heading-up/north-up); false runs
     // the default reorient-to-north animation.
     onCompassTap: () -> Boolean = { false },
@@ -1130,9 +1131,6 @@ fun VelaMapView(
                                 out
                             }
                             val names = points.keys.toList()
-                            navLabelAts = points.values.mapNotNull { f ->
-                                if (f.hasProperty(NAV_XLABEL_AT_PROP)) f.getNumberProperty(NAV_XLABEL_AT_PROP).toDouble() else null
-                            }.sorted()
                             navLabelFeatures = points.values.toList()
                             if (names != lastApplied) {
                                 lastApplied = names
@@ -1169,14 +1167,25 @@ fun VelaMapView(
     // the world 60×/s; the frame ticker below reads it directly instead).
     // The passed-callout cut and the fade-out run on their own short tick (2026-09-25): on the 2 s
     // label loop a bubble could hang up to two seconds past its cut, then vanish in one frame.
+    val navBarTopHolder = rememberUpdatedState(navBarTopPx)
     LaunchedEffect(navMode, routePolyline, styleRef) {
         val style = styleRef ?: return@LaunchedEffect
         if (!navMode || routePolyline.size < 2) return@LaunchedEffect
+        val margin = 28f * context.resources.displayMetrics.density
         while (true) {
             runCatching {
-                applyNavLabelProgress(style, navPuck.progressM, android.os.SystemClock.uptimeMillis()) {
-                    mapRef?.cameraPosition?.zoom ?: 17.0
-                }
+                val map = mapRef
+                val w = mapView.width.toFloat()
+                val h = mapView.height.toFloat()
+                val barTop = navBarTopHolder.value.takeIf { it > 0f } ?: h
+                applyNavLabelProgress(
+                    style, navPuck.progressM, android.os.SystemClock.uptimeMillis(),
+                    zoom = { map?.cameraPosition?.zoom ?: 17.0 },
+                    offScreen = { lat, lng ->
+                        val p = map?.projection?.toScreenLocation(org.maplibre.android.geometry.LatLng(lat, lng))
+                        p == null || p.y > barTop - margin || p.y > h || p.x < -margin || p.x > w + margin
+                    },
+                )
             }
             kotlinx.coroutines.delay(NAV_XLABEL_TICK_MS)
         }
@@ -5114,19 +5123,26 @@ private const val NAV_ROADLABEL_MINOR_LAYER = "vela-nav-roadlabels-minor"
 // more from the route ("I want them near our actual path", user drive 2026-09-16).
 private const val NAV_XLABEL_SRC = "vela-nav-xlabels-src"
 private const val NAV_XLABEL_AT_PROP = "atM" // the callout's distance along the route; passed ones are filtered out
-private var lastPassedFilterM = -1.0
-private var navLabelAts: List<Double> = emptyList() // the uploaded callouts' distances along the route, ascending
-// A callout stays up until the puck is this far PAST the crossing, then fades over NAV_XLABEL_FADE_MS
-// (2026-09-25, user: bubbles vanished too early and all at once). The old filter kept
-// atM > progress + 12, which dropped each bubble 12 m BEFORE the crossing, on a 2 s tick.
-private const val NAV_XLABEL_DROP_BEHIND_M = 25.0
+// A passed callout rides the map down the screen until its tail reaches the nav bar (or it leaves
+// the side of the screen), then fades over NAV_XLABEL_FADE_MS (2026-09-25, user: bubbles vanished
+// too early and all at once; the old filter dropped each one 12 m BEFORE its crossing, on a 2 s
+// tick). NAV_XLABEL_DROP_BEHIND_M is only the backstop for a callout the projection never judges
+// off screen. The fade layer is filled NAV_XLABEL_HANDOFF_MS before the main layer lets go, so the
+// two overlap for a beat instead of leaving a gap (the first cut flickered: the main layer dropped
+// the bubble, then the fade layer drew it again a few frames later).
+private const val NAV_XLABEL_DROP_BEHIND_M = 600.0
 private const val NAV_XLABEL_FADE_MS = 1_200L
+private const val NAV_XLABEL_HANDOFF_MS = 250L
 private const val NAV_XLABEL_TICK_MS = 80L
 private const val NAV_XLABEL_FADE_SRC = "vela-nav-xlabels-fade-src"
 private const val NAV_ROADLABEL_FADE_LAYER = "vela-nav-roadlabels-fade"
 private var navLabelFeatures: List<Feature> = emptyList() // the uploaded callouts, for the fade hand-off
 private val navLabelFading = ArrayList<Pair<Feature, Long>>() // callouts fading out, with their start time
 private var navLabelFadeAlpha = -1f
+private var navLabelCutAt = -1e12 // the main layers show callouts with atM above this
+private var navLabelPendingCut = -1e12 // handed to the fade layer, main layer lets go at [navLabelPendingAt]
+private var navLabelPendingAt = 0L
+private val navLabelHanded = ArrayList<Pair<String, Double>>() // (name, atM) already handed off this drive
 private const val NAV_XLABEL_OFFSET_M = 35.0
 // Tried in turn until the bubble clears the route. The rungs are close together on purpose: the
 // clearance a given step buys depends on the angle the street crosses at, and a coarse ladder
@@ -5547,46 +5563,65 @@ private fun applyPlaceLabelLanguage(style: StyleLayers) {
 }
 
 /** The tier filter plus "not behind the puck": every callout carries its own distance along the
- *  route, and [navLabelPassed] is how far the puck has come. Callouts used to hang behind the car
+ *  route, and [navLabelCutAt] is the last one handed to the fade layer. Callouts used to hang behind the car
  *  and slide under the ETA bar (user 2026-09-17). */
-private var navLabelPassed = 0.0
 private fun navLabelPassedFilter(tier: Expression): Expression = Expression.all(
     tier,
     Expression.gt(
         Expression.coalesce(Expression.get(NAV_XLABEL_AT_PROP), Expression.literal(Double.MAX_VALUE)),
-        Expression.literal(navLabelPassed - NAV_XLABEL_DROP_BEHIND_M),
+        Expression.literal(navLabelCutAt),
     ),
 )
 
-/** Re-apply the passed-callout filter, but only when the puck has actually passed the NEXT callout:
- *  a setFilter re-runs that layer's placement, and doing it every 25 m cost measurable main-thread
- *  time on a 4a (126 ms worst message vs 37 ms without it, 2026-09-17). [navLabelNextAt] is the
- *  nearest callout ahead of the cut, recorded when the set is uploaded. A callout the cut drops is
- *  handed to [NAV_ROADLABEL_FADE_LAYER], a one-or-two-feature layer whose opacity is a CONSTANT
- *  paint value: changing it is a paint-only update, where a data-driven fade on the main layers
- *  would re-run their placement every tick. */
-private var navLabelNextAt = Double.MAX_VALUE
-private fun applyNavLabelProgress(style: Style, progressM: Double, nowMs: Long, zoom: () -> Double) {
-    val cut = progressM - NAV_XLABEL_DROP_BEHIND_M
-    if (cut >= navLabelNextAt && progressM - lastPassedFilterM >= 10.0) {
-        setNavLabelCut(style, progressM)
-        // Only callouts that JUST crossed the cut fade; a minor one only if its tier was showing.
+/** Moves passed callouts off the main layers once they have ridden down to the nav bar. The main
+ *  layers are only re-filtered when a callout is actually let go (a setFilter re-runs that layer's
+ *  placement: doing it every 25 m cost measurable main-thread time on a 4a, 126 ms worst message vs
+ *  37 ms, 2026-09-17). The fade itself is a CONSTANT opacity on [NAV_ROADLABEL_FADE_LAYER], a
+ *  paint-only change; a data-driven fade on the main layers would re-run their placement every
+ *  tick. Only callouts the puck has passed are projected, usually none to two per tick. */
+private fun applyNavLabelProgress(
+    style: Style,
+    progressM: Double,
+    nowMs: Long,
+    zoom: () -> Double,
+    offScreen: (lat: Double, lng: Double) -> Boolean,
+) {
+    // Second half of a hand-off: the fade layer has had time to draw it, so the main layer lets go.
+    if (navLabelPendingCut > navLabelCutAt && nowMs >= navLabelPendingAt) {
+        setNavLabelCut(style, navLabelPendingCut)
+    }
+    val handoffFrom = maxOf(navLabelCutAt, navLabelPendingCut)
+    var newest = Double.NEGATIVE_INFINITY
+    val gone = ArrayList<Feature>()
+    for (f in navLabelFeatures) {
+        val a = navLabelAt(f) ?: continue
+        if (a <= handoffFrom || a > progressM) continue
+        val pt = f.geometry() as? Point ?: continue
+        if (a < progressM - NAV_XLABEL_DROP_BEHIND_M || offScreen(pt.latitude(), pt.longitude())) {
+            newest = maxOf(newest, a)
+            gone += f
+        }
+    }
+    if (gone.isNotEmpty()) {
+        // Everything at or behind the newest one goes with it (the filter is a single threshold).
         val z = zoom()
-        val gone = navLabelFeatures.filter { f ->
-            val a = if (f.hasProperty(NAV_XLABEL_AT_PROP)) f.getNumberProperty(NAV_XLABEL_AT_PROP).toDouble() else null
-            a != null && a <= cut && a > cut - 60.0 &&
+        navLabelFeatures.filter { f ->
+            val a = navLabelAt(f)
+            a != null && a > handoffFrom && a <= newest &&
                 (z >= 15.5 || f.getStringProperty("tier") == "major") &&
                 navLabelFading.none { it.first === f }
+        }.forEach { f ->
+            navLabelFading.add(f to nowMs + NAV_XLABEL_HANDOFF_MS)
+            navLabelHanded.add((f.getStringProperty("name") ?: "") to (navLabelAt(f) ?: 0.0))
         }
-        if (gone.isNotEmpty()) {
-            gone.forEach { navLabelFading.add(it to nowMs) }
-            uploadNavLabelFade(style)
-        }
+        uploadNavLabelFade(style)
+        navLabelPendingCut = newest
+        navLabelPendingAt = nowMs + NAV_XLABEL_HANDOFF_MS
     }
     if (navLabelFading.isEmpty()) return
     if (navLabelFading.removeAll { nowMs - it.second >= NAV_XLABEL_FADE_MS }) uploadNavLabelFade(style)
-    val newest = navLabelFading.maxOfOrNull { it.second } ?: return
-    val alpha = (1f - (nowMs - newest).toFloat() / NAV_XLABEL_FADE_MS).coerceIn(0f, 1f)
+    val newestStart = navLabelFading.maxOfOrNull { it.second } ?: return
+    val alpha = (1f - (nowMs - newestStart).toFloat() / NAV_XLABEL_FADE_MS).coerceIn(0f, 1f)
     if (kotlin.math.abs(alpha - navLabelFadeAlpha) < 0.03f) return
     navLabelFadeAlpha = alpha
     (style.getLayer(NAV_ROADLABEL_FADE_LAYER) as? SymbolLayer)?.setProperties(
@@ -5594,24 +5629,40 @@ private fun applyNavLabelProgress(style: Style, progressM: Double, nowMs: Long, 
     )
 }
 
-private fun setNavLabelCut(style: Style, progressM: Double) {
-    lastPassedFilterM = progressM
-    navLabelPassed = progressM
-    navLabelNextAt = navLabelAts.firstOrNull { it > progressM - NAV_XLABEL_DROP_BEHIND_M } ?: Double.MAX_VALUE
+private fun navLabelAt(f: Feature): Double? =
+    if (f.hasProperty(NAV_XLABEL_AT_PROP)) f.getNumberProperty(NAV_XLABEL_AT_PROP).toDouble() else null
+
+private fun setNavLabelCut(style: Style, cutAt: Double) {
+    navLabelCutAt = cutAt
     (style.getLayer(NAV_ROADLABEL_LAYER) as? SymbolLayer)
         ?.setFilter(navLabelPassedFilter(Expression.eq(Expression.get("tier"), Expression.literal("major"))))
     (style.getLayer(NAV_ROADLABEL_MINOR_LAYER) as? SymbolLayer)
         ?.setFilter(navLabelPassedFilter(Expression.eq(Expression.get("tier"), Expression.literal("minor"))))
 }
 
-/** A freshly uploaded set: move the cut to the puck without fading anything (the set's own
- *  window reaches back behind the car, and those were never on screen). */
-private fun resetNavLabelCut(style: Style, progressM: Double) = setNavLabelCut(style, progressM)
+/** A freshly uploaded set recomputes every callout's atM, so a street already handed off can come
+ *  back a meter or two above the old cut: lift the cut over any callout whose street was handed
+ *  off within 60 m of it. Without this a passed bubble reappeared for a beat at each re-upload. */
+private fun resetNavLabelCut(style: Style, @Suppress("UNUSED_PARAMETER") progressM: Double) {
+    var cut = maxOf(navLabelCutAt, navLabelPendingCut)
+    for (f in navLabelFeatures) {
+        val a = navLabelAt(f) ?: continue
+        val name = f.getStringProperty("name") ?: continue
+        if (a > cut && navLabelHanded.any { it.first == name && kotlin.math.abs(it.second - a) < 60.0 }) cut = a
+    }
+    if (cut != navLabelCutAt) {
+        navLabelPendingCut = maxOf(navLabelPendingCut, cut)
+        setNavLabelCut(style, cut)
+    }
+}
 
 private fun uploadNavLabelFade(style: Style) {
     navLabelFadeAlpha = -1f
     style.getSourceAs<GeoJsonSource>(NAV_XLABEL_FADE_SRC)
         ?.setGeoJson(FeatureCollection.fromFeatures(navLabelFading.map { it.first }))
+    (style.getLayer(NAV_ROADLABEL_FADE_LAYER) as? SymbolLayer)?.setProperties(
+        PropertyFactory.textOpacity(1f), PropertyFactory.iconOpacity(1f),
+    )
 }
 
 private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, density: Float, exclude: List<String>) {
@@ -5622,13 +5673,12 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
     lastNavLabelKey = key
     // A fresh drive starts at zero: without this the last drive's progress stayed in the filter and
     // the first callouts of the new one were treated as already passed.
-    navLabelPassed = 0.0
-    lastPassedFilterM = -1.0
-    navLabelAts = emptyList()
-    navLabelNextAt = Double.MAX_VALUE
     navLabelFeatures = emptyList()
     navLabelFading.clear()
     navLabelFadeAlpha = -1f
+    navLabelCutAt = -1e12
+    navLabelPendingCut = -1e12
+    navLabelHanded.clear()
     val ids = listOf(NAV_ROADLABEL_LAYER, NAV_ROADLABEL_MINOR_LAYER, NAV_ROADLABEL_FADE_LAYER)
     // The bubbles REPLACE the basemap's line-following road names during nav - both drawing is a
     // doubled label ("2nd Street" along the road right under its own bubble, device-caught
