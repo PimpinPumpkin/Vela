@@ -6472,11 +6472,11 @@ class MapViewModel @Inject constructor(
             }
             (routeEngine as? app.vela.core.data.ObfRouteEngine)?.shutdown()
             kotlinx.coroutines.suspendCancellableCoroutine<Unit> { cont ->
-                app.vela.offline.OfflineMaps.deleteAll(appContext) { if (cont.isActive) cont.resume(Unit) { _, _, _ -> } }
+                app.vela.offline.OfflineMaps.deleteAll(appContext) { if (cont.isActive) cont.resumeWith(Result.success(Unit)) }
             }
             clearMapCache(flash = false)
             kotlinx.coroutines.suspendCancellableCoroutine<Unit> { cont ->
-                app.vela.offline.OfflineMaps.packDatabase(appContext) { if (cont.isActive) cont.resume(Unit) { _, _, _ -> } }
+                app.vela.offline.OfflineMaps.packDatabase(appContext) { if (cont.isActive) cont.resumeWith(Result.success(Unit)) }
             }
             _state.update {
                 it.copy(
@@ -6497,14 +6497,14 @@ class MapViewModel @Inject constructor(
             runCatching {
                 org.maplibre.android.offline.OfflineManager.getInstance(appContext).clearAmbientCache(
                     object : org.maplibre.android.offline.OfflineManager.FileSourceCallback {
-                        override fun onSuccess() { if (cont.isActive) cont.resume(Unit) { _, _, _ -> } }
-                        override fun onError(message: String) { if (cont.isActive) cont.resume(Unit) { _, _, _ -> } }
+                        override fun onSuccess() { if (cont.isActive) cont.resumeWith(Result.success(Unit)) }
+                        override fun onError(message: String) { if (cont.isActive) cont.resumeWith(Result.success(Unit)) }
                     },
                 )
-            }.onFailure { if (cont.isActive) cont.resume(Unit) { _, _, _ -> } }
+            }.onFailure { if (cont.isActive) cont.resumeWith(Result.success(Unit)) }
         }
         kotlinx.coroutines.suspendCancellableCoroutine { cont ->
-            app.vela.offline.OfflineMaps.packDatabase(appContext) { if (cont.isActive) cont.resume(Unit) { _, _, _ -> } }
+            app.vela.offline.OfflineMaps.packDatabase(appContext) { if (cont.isActive) cont.resumeWith(Result.success(Unit)) }
         }
         if (flash) flashStatus(appContext.getString(R.string.settings_map_cache_cleared))
     }

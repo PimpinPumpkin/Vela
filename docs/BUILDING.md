@@ -7,7 +7,7 @@ building from source.
 
 ## Build & run
 
-Standard Android toolchain (JDK 17; the Gradle wrapper fetches Gradle 8.11.1 and AGP 8.10.1).
+Standard Android toolchain (JDK 17; the Gradle wrapper fetches Gradle 9.8.0 and AGP 9.4.1).
 
 Three pieces are not in git and have to be fetched once before the first build, the same way
 CI does it. They are prebuilt binaries with no Maven artifact, hosted on this repo's own
@@ -67,7 +67,7 @@ offline fallback.
 
 ## Architecture
 
-Two Gradle modules with a strict boundary (AGP 8.10.1, Kotlin 2.1, Compose, Hilt,
+Two Gradle modules with a strict boundary (AGP 9.4.1, Kotlin 2.4, Compose, Hilt,
 R8 release builds; `:app` compiles against SDK 36 and targets 35, minimum 26):
 **`:core`** is the UI-agnostic "extractor" in the NewPipeExtractor mold - models,
 the Google scraper and parsers, the open routers and the on-device obf engine, the

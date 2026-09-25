@@ -467,8 +467,17 @@ Defaults that make the safe path the easy one:
   when it finishes, which on a real phone wipes saved places, trips and permission grants (it did
   once, 2026-07-16, on the wired test phone). `.github/workflows/baseline-profile.yml` (monthly cron
   + dispatch) regenerates on a KVM emulator and opens a PR when the profile drifts.
-- Toolchain: AGP 8.10.1, Kotlin 2.1.0, Gradle
-  8.11.1, compileSdk 36 (`:app`; `:core` 35), targetSdk 35, minSdk 26, Java 17, Compose + Hilt + version catalog.
+- Toolchain: AGP 9.4.1, Kotlin 2.4.20, Gradle 9.8.0, KSP 2.3.12, Hilt 2.60.1, compileSdk 36 (every
+  module), targetSdk 35, minSdk 26, Java 17, Compose + Hilt + version catalog. **AGP 9 builds Kotlin
+  in (2026-09-25 upgrade):** there is no `org.jetbrains.kotlin.android` plugin and no `kotlinOptions`
+  block; Kotlin's JVM target follows `compileOptions` (17), and the Kotlin version is the one the
+  `kotlin.compose` / `kotlin.serialization` plugins put on the classpath. Two things the upgrade
+  shook out: AGP 9 checks AAR metadata for library modules too, so `:core` had to move to
+  compileSdk 36 (androidx.core 1.17 requires it; compileSdk changes no runtime behavior); and
+  Kotlin 2.4 no longer picks the three-argument `CancellableContinuation.resume(value) { _, _, _ -> }`
+  overload, so a resume whose cancellation handler does nothing is written
+  `cont.resumeWith(Result.success(Unit))`. Unit tests run for the debug variant only
+  (`:app:testDebugUnitTest`, `:core:testDebugUnitTest`).
 - Release signing from env: `VELA_KEYSTORE_PATH` / `VELA_KEYSTORE_PASSWORD` /
   `VELA_KEY_ALIAS` (default alias `vela`); falls back to debug keystore locally.
 - **No blocking IPC/IO from a composable body.** `SettingsScreen` used to call
@@ -3960,8 +3969,8 @@ Gotchas:
   packed by `scripts/build-cronet-aar.sh` from the public `chromium-cronet` bucket into
   `app/libs/cronet-<v>.aar` (gitignored; `cronet-build.yml` publishes it weekly to `cronet-runtime`,
   CI fetches it or packs it on the spot). Bump `vela.cronetVersion` when the UA's major moves; a
-  local build needs the AAR first (docs/BUILDING.md). Its jars are Java 25 class files, so the root
-  build pins R8 9.4.26 (`buildscript` classpath): AGP 8.10's bundled R8 rejects class major 69.
+  local build needs the AAR first (docs/BUILDING.md). Its jars are Java 25 class files (major 69);
+  AGP 9.4's R8 reads them (AGP 8.10's could not, and needed a pinned R8 for the one day in between).
   Never go back to Maven's `cronet-embedded` (frozen at 143). Its protobuf is shaded inside the jars;
   `:osmand-shaded` still relocates OsmAnd's own copy, which the Maven 143 needed.
   Cronet's native library ships for ARM only (`packaging.jniLibs` excludes `x86*/libcronet*.so`):

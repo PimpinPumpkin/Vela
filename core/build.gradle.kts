@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.ksp)
     alias(libs.plugins.hilt)
@@ -13,7 +12,7 @@ android {
         // engine on the JVM, and its android.util.Log lines would otherwise throw "not mocked".
         unitTests.isReturnDefaultValues = true
     }
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         minSdk = 26
         consumerProguardFiles("consumer-rules.pro")
@@ -22,7 +21,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
 }
 
 dependencies {

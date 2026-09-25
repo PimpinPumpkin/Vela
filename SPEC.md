@@ -504,8 +504,7 @@ Constraints:
   (`app/libs/cronet-<v>.aar`, gitignored); `cronet-build.yml` publishes it weekly to the
   `cronet-runtime` infra release and CI fetches the pinned one from there (falling back to packing it
   from the bucket). Maven's `cronet-embedded` stopped at 143. Chromium compiles these jars as Java 25
-  class files (major 69), which AGP 8.10's bundled R8 refuses, so the root build pins R8 9.4.26 on the
-  buildscript classpath. Protobuf is shaded inside the jars (`org.chromium.net.internal`), so there is
+  class files (major 69), which AGP 9.4's R8 reads (AGP 8.10's refused them). Protobuf is shaded inside the jars (`org.chromium.net.internal`), so there is
   no clash with OsmAnd's. In the all-in-one APK Cronet's native library is packaged for arm64-v8a and
   armeabi-v7a only (the per-chip x86 APKs carry their own); on x86 and x86_64 (emulators, a few
   Chromebooks) the engine fails to load once and Google requests stay on OkHttp. Checked on a
@@ -2853,8 +2852,8 @@ tooling default that claims otherwise. Before pushing, `git log origin/main..HEA
 
 ## 15. Build, release and distribution
 
-- **Toolchain**: AGP 8.10.1, Kotlin 2.1.0, Gradle 8.11.1, compileSdk 36, targetSdk 35, minSdk 26,
-  Java 17,
+- **Toolchain**: AGP 9.4.1 (Kotlin built in, no `kotlin-android` plugin), Kotlin 2.4.20, Gradle 9.8.0,
+  KSP 2.3.12, Hilt 2.60.1, compileSdk 36 in every module, targetSdk 35, minSdk 26, Java 17,
   Compose, Hilt, a version catalog, R8 in the `release` build type.
 - **Channels.** A push to `main` or `canary` builds and tests only; a push can never mint a
   release. The nightly prerelease `v0.4.<run>` (versionName `0.4.<run>`, versionCode
