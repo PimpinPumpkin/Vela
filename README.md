@@ -19,6 +19,10 @@ Live traffic, real place data and turn-by-turn navigation, with zero Google on y
 
 </div>
 
+> [!warning]
+> **Vela is in beta, so you may run into bugs.** If you do, open an issue and fill out the
+> template. Nightlies and canary builds are newer still and less tested than the weekly stable.
+
 A degoogled maps & navigation client for Android - *what NewPipe is to YouTube,
 for Google Maps.* The map itself is open data: open vector tiles for the
 basemap, and **Vela data** for the places on it - Overture Maps and
