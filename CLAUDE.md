@@ -1471,7 +1471,14 @@ Defaults that make the safe path the easy one:
   chart would be on a Google place (`place_limited_view`) and a status hint in Settings > Privacy >
   Google session (`settings_google_session_limited`). Logcat `VelaSession: limited view: <why>`.
   The earlier note that the photo RPC returns "10 per page whatever COUNT says" was measured while
-  this network was limited; it is the limited-view answer, not the RPC's rule.
+  this network was limited; it is the limited-view answer, not the RPC's rule. **The limit is per
+  SESSION, not per IP (checked 2026-09-25, three phones on one public IPv4, no IPv6):** one Pixel 9
+  got 50 photos and a full reviews page; another Pixel 9 and the 4a got 10, and that Pixel 9's full
+  reviews page showed Google's Overview layout ending in "Get the most out of Google Maps · Sign
+  in" (the English form of the limited-view footer). A limited session can still get popular times
+  from the plain search, which is why a missing chart is never used as evidence. A freshly
+  installed build on the 4a was limited from its first request, so wiping or rotating the session
+  does not lift it.
 - **A PLACE TAP IS A FEW REQUESTS, NOT A FEW HUNDRED (2026-09-23).** First photos: ONE `hspqX`
   request (`placePhotos`, dated), retried once after ~2.5 s when empty (a fresh Google session's
   first seconds answer stripped: seen 0, then 10), then the capped page walk as fallback. First
