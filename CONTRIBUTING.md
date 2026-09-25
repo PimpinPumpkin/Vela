@@ -78,8 +78,8 @@ every open issue is something that can actually be acted on.
   be checked against a fix. Give at least one measurement: the battery percentage Vela used
   (Android Settings, Battery) over a stated time, how long the drive or route ran, the phone's
   temperature if you have a way to read it, or a screen recording of the lag. Add the
-  diagnostics export, and say whether it happens on the newest nightly. A report on an old
-  build is closed; update first.
+  diagnostics export, and the version you are on. The current stable is fine; a report on a
+  build older than that is closed, so update first.
 - **Feature requests are read, not voted on.** The maintainer decides. A request that
   does not fit the project is closed as not planned, without a debate, and stays
   closed; reopening it or filing it again under another title is not a discussion.
