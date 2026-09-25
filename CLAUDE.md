@@ -1476,7 +1476,11 @@ Defaults that make the safe path the easy one:
   request, captured through the proxy (`debug.vela.tune.feedDump` 1 also saves it, `WebProxy`),
   is the same body plus an `X-maps-bgkey` BotGuard token minted per request by Google's script;
   the `[true]` flag is the answer a missing or spent token gets. The transport is fine. A full
-  session's feed needs Google's page, so the scrape stays the default. Replies land in
+  session's feed needs Google's page, so the scrape stays the default. With `webProxy` on, the
+  page's own feed request (token included) went out through Cronet with NO `X-Requested-With` and
+  came back full: 10 reviews, a next-page token at payload[1], payload[6] `[false]`, and
+  `ReviewFeedParser` read all 10 with text and the token. The proxy also saves that reply under
+  `feedDump`. Replies land in
   `files/feeddump/` on the phone; `adb shell setprop debug.vela.tune.feedDump ''` turns it off.
 - **VELA SAYS WHEN GOOGLE LIMITS IT (2026-09-25, `web/GoogleStanding`).** The limited view made the
   app look broken (#602: More reviews does nothing). `GoogleStanding.limited` is set only on strong
@@ -1519,8 +1523,8 @@ Defaults that make the safe path the easy one:
   logcat lines say which path each piece took. **Rollback levers** (`docs/book/07-talking-to-google.md`,
   "Place data: the methods"): calibration `tuning` `nativePlacePhotos` / `nativeReviewFeed` = 0 put the
   fleet back on the page paths with no release; a per-place cache (photos + feed 6 h, details 15 min)
-  makes a re-tap free; "More reviews" follows the feed's next-page token, which is ASSUMED to sit at
-  payload[1] and has not been seen in a capture yet (every capture was an end-of-list reply).
+  makes a re-tap free; "More reviews" follows the feed's next-page token, which sits at payload[1]
+  (seen in a full-session reply 2026-09-25: `"<base64>:10"`, payload[5] null, payload[6] `[false]`).
 - **Place-content toggles (2026-07-08):** `ShowReviews` / `LoadPhotos` reactive holders
   (`ui/PlaceContent.kt`, same shape as `LiveReviews`, init in VelaApp, rows in Settings → Places).
   They gate BOTH fetch (`fetchReviews`/`fetchPhotos` first line) and render (PlaceSheet `hasReviews`
