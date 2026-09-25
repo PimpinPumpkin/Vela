@@ -251,6 +251,7 @@ private const val PREVIEW_SRC = "vela-preview-src"
 private const val PREVIEW_LAYER = "vela-preview"
 /** Camera-bearing damping (issue #251). Heavy while the camera is essentially tracking a straight
  *  road, so digitization wiggle does not rotate the map; quick once the error is turn-sized. */
+private const val NAV_IDLE_TICK_MS = 120L // the nav loop's pace while parked and settled (issue #605)
 private const val CAM_BRG_TAU_STILL = 1.6
 private const val CAM_BRG_TAU_TURN = 0.35
 /** Error at which the damping is fully in "this is a real turn" mode. Well above the few degrees
@@ -2389,7 +2390,26 @@ fun VelaMapView(
         val cutEnd = doubleArrayOf(Double.NaN)
         val aheadAnchor = doubleArrayOf(Double.NaN) // where the uploaded ahead line begins (m)
         var lastNanos = 0L
+        // STANDING STILL COSTS NOTHING (issue #605, 2026-09-25): the loop used to redraw the map at
+        // 60 fps whatever happened, so a route left up in a parked car held a core at ~93% and ran
+        // the phone hot (4a: 59 fps and 93% CPU while stationary). The camera write below is now
+        // skipped when it would not change anything, and once the puck is stopped and nothing has
+        // been written for a second the loop checks 8 times a second instead of every frame. Any
+        // movement brings it straight back to full rate.
+        val lastCamWrite = DoubleArray(7) { Double.NaN }
+        var idleFrames = 0
+        // The dot's source only when it moved: a GeoJSON upload is a re-render, and before the arrow
+        // engages (a parked car) this ran on every frame with the same point.
+        val lastMe = DoubleArray(3) { Double.NaN }
+        fun writeMe(style: Style, p: LatLng, bearing: Float): Boolean {
+            if (kotlin.math.abs(p.lat - lastMe[0]) < 1e-8 && kotlin.math.abs(p.lng - lastMe[1]) < 1e-8 &&
+                kotlin.math.abs(bearing - lastMe[2]) < 0.1) return false
+            lastMe[0] = p.lat; lastMe[1] = p.lng; lastMe[2] = bearing.toDouble()
+            setMeSource(style, p, bearing)
+            return true
+        }
         while (true) {
+            if (idleFrames > 60 && navPuck.speed < 0.3) kotlinx.coroutines.delay(NAV_IDLE_TICK_MS)
             val now = withFrameNanos { it }
             // Two frame deltas: dtRaw (true wall-clock, for the PHYSICS — a janky 150 ms frame
             // must integrate 150 ms of travel, else the puck loses distance and lurches at each
@@ -2550,7 +2570,7 @@ fun VelaMapView(
                 // While the Compose overlay draws the puck the symbol layer is hidden, so the
                 // per-frame source upload is pure waste (review 2026-09-06); dropPuckOverlay
                 // re-feeds it once before the symbol comes back.
-                if (!puckOverlayHidLayer[0]) setMeSource(style, pt, navPuck.displayBearing)
+                if (!puckOverlayHidLayer[0] && writeMe(style, pt, navPuck.displayBearing)) idleFrames = 0
                 // Drive the follow-camera HERE, per frame (60 fps) with a continuous ease, instead
                 // of the recomposition-driven block below (which re-pointed only ~1-3×/s in
                 // throttled 550 ms eases — the "stiff" feel). Ease the camera toward the smooth
@@ -2624,7 +2644,11 @@ fun VelaMapView(
                     navTiltEase[0] += (tiltTgt - navTiltEase[0]) * kBrg
                     navPadEase[0] += (0.45 - navPadEase[0]) * kPos
                     if (kotlin.math.abs(0.45 - navPadEase[0]) < 0.002) navPadEase[0] = 0.45 // terminate exactly
-                    cam.moveCamera(
+                    val camNow = doubleArrayOf(camState[0], camState[1], camState[2], camState[3], navTiltEase[0], navPadEase[0], cameraLeftInsetPx.toDouble())
+                    val camTol = doubleArrayOf(1e-7, 1e-7, 0.01, 0.0005, 0.01, 0.0005, 0.5)
+                    val camSettled = camNow.indices.all { k -> kotlin.math.abs(camNow[k] - lastCamWrite[k]).let { d -> !d.isNaN() && d < camTol[k] } }
+                    if (camSettled) idleFrames++ else { idleFrames = 0; camNow.copyInto(lastCamWrite) }
+                    if (!camSettled) cam.moveCamera(
                         CameraUpdateFactory.newCameraPosition(
                             CameraPosition.Builder()
                                 .target(MLLatLng(camState[0], camState[1]))
@@ -2819,7 +2843,8 @@ fun VelaMapView(
                 }
             } else {
                 dropPuckOverlay()
-                navPuck.raw?.let { setMeSource(style, it, navPuck.rawBearing ?: 0f) }
+                val moved = navPuck.raw?.let { writeMe(style, it, navPuck.rawBearing ?: 0f) } == true
+                if (moved) idleFrames = 0 else idleFrames++
             }
         }
     }
