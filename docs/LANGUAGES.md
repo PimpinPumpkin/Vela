@@ -29,9 +29,9 @@ language instead; if the system has no such voice either, nav stays silent rathe
 mangling it, and a hint points at the voice settings.
 
 The App UI column means the language has its own string file, not that every string in it is
-translated. New features land in English first, and as of late September 2026 each of the
-fifteen files trails English by roughly 115 of the ~990 translatable strings; those show in
-English until someone fills them in. `python3 tools/check-translations.py` lists the missing
+translated. New features land in English first and show in English until someone fills them in; all
+fifteen files were brought fully up to date with English on 2026-09-25 (about 115 strings each,
+translated per language to match each file's own register and terms). `python3 tools/check-translations.py` lists the missing
 keys per language (and fails only on placeholder drift).
 
 Some context on the columns:
