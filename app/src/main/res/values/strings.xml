@@ -170,7 +170,12 @@
     <string name="settings_region_updates_mobile">On Wi-Fi and mobile data</string>
     <string name="settings_offline_places_with_downloads">Include places with downloads</string>
     <string name="settings_offline_places_with_downloads_hint">A region download also brings Vela\'s place data for it, so the businesses on the map show with no signal. Around half a gigabyte for a big state. Off = places only stream while online.</string>
-    <string name="settings_offline_download_viewport_hint">Saves the whole map you\'re looking at, its streets, house numbers and buildings, plus turn-by-turn directions for the region around it. Everything here keeps working with no signal.</string>
+    <string name="settings_offline_download_viewport_hint">Saves the map you\'re looking at, with its streets, house numbers and buildings. Zoom and pan to the part you want first. You\'ll see the size before it starts, and you can also get the whole region around it for offline directions and places.</string>
+    <string name="settings_area_confirm_title">Download this area?</string>
+    <string name="settings_area_confirm_view">Map of the area on screen: about %1$s</string>
+    <string name="settings_area_confirm_region">Also get %1$s for offline directions, places and the map beyond this area: about %2$s. These only come as a whole region.</string>
+    <string name="settings_area_confirm_region_have">Offline directions and places for %1$s are already downloaded.</string>
+    <string name="settings_area_confirm_total">Total: about %1$s</string>
     <string name="settings_offline_no_areas">No areas saved yet.</string>
     <string name="settings_offline_addresses_missing">Areas you saved before this update don\'t include address data. Update them to search and route to addresses offline.</string>
     <string name="settings_offline_addresses_update">Update saved areas</string>
