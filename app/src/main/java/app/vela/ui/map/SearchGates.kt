@@ -46,7 +46,7 @@ internal data class SearchGates(
                     searchOpen || s.selected != null || s.directionsOpen || s.showSteps || s.arrived ||
                         (s.results.isNotEmpty() && !s.resultsCollapsed && s.selected == null)
                     ),
-                fabChromeOk = !s.navigating && !searchOpen && s.resumeNavLabel == null &&
+                fabChromeOk = !s.navigating && !searchOpen && s.resumeNavLabel == null && !s.areaPicking &&
                     !s.directionsOpen && !s.showSteps && s.transitNav == null && !streetViewUp,
                 bareMap = s.selected == null && !searchOpen,
             )

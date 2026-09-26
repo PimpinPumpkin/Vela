@@ -238,6 +238,8 @@ data class MapUiState(
     // the place's own sheet, and closing the results returns to the directions panel.
     val alongRouteDest: Place? = null,
     val pickOnMap: MapPick? = null,          // "Choose on map" crosshair mode is active for this endpoint
+    val areaPicking: Boolean = false,        // the offline area picker's frame is over the map (issue #609)
+    val areaPick: MapViewModel.AreaPlan? = null, // its live estimate for the framed area
     val travelMode: TravelMode = TravelMode.DRIVE,
     // Depart/arrive time for directions: 0 = leave now, 1 = depart at, 2 = arrive by, 3 = last available;
     // [directionsTimeEpochSec] is the chosen wall-clock (null when "now"). Drives the transit re-fetch at
@@ -6024,6 +6026,7 @@ class MapViewModel @Inject constructor(
 
     fun onViewport(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
         viewport = doubleArrayOf(south, west, north, east, zoom)
+        refreshAreaPick()
         val center = LatLng((south + north) / 2, (west + east) / 2)
         // onViewport fires on EVERY camera idle (unlike onCameraIdle, which is gesture-gated and can
         // miss a pan due to a camera-reason race). Keep the "Search this area" center = the live
@@ -6539,32 +6542,83 @@ class MapViewModel @Inject constructor(
     }
 
     /**
-     * What "Download the area you're viewing" would fetch, estimated before it starts (issue #609).
-     * Two very different parts: the map tiles of the view itself (from one zoom level out to three
-     * in, the same range [downloadViewport] saves), and the region the view sits in (offline routing,
-     * its place pack, the places file, the region's map and building outlines), which only come whole.
-     * The tile part is an estimate: tiles are counted per zoom and priced at [AREA_TILE_KB], sampled
-     * from OpenFreeMap (26 to 170 KB a tile, dense cities at the top, 2026-09-25). The region part is
-     * the catalogs' own sizes; 0 when its routing is already installed.
+     * The area picker (issue #609, reworked 2026-09-25 to Google's shape): Settings > Offline maps >
+     * "Download an area" drops the user on the map with a frame over it ([MapUiState.areaPicking]);
+     * panning and pinching choose what the frame covers, and the card under it shows [AreaPlan], the
+     * live estimate. The frame's inset fractions are [AREA_FRAME_L]..[AREA_FRAME_B], shared with the
+     * overlay MapScreen draws, so the bounds saved are exactly what the frame shows.
+     *
+     * Two very different parts: the map of the framed area, saved at FULL street detail whatever the
+     * framing zoom (from two levels above it down to the vector tiles' last zoom, 14; a zoomed-out
+     * frame used to save only a few coarse levels), and the region around it (routing, place pack,
+     * places file, the region's map, building outlines), which only comes whole and is a checkbox.
+     * The map part is an estimate: tiles counted per zoom, priced at the region's own density where
+     * Vela has its map archive (its size over its box's tiles, rural tiles being far smaller than
+     * city ones), else [AREA_TILE_KB]. More than [AREA_MAX_TILES] tiles is too large to save as one
+     * area.
      */
-    data class AreaPlan(val viewMb: Int, val region: app.vela.offline.RoutingRegion?, val regionMb: Int, val regionInstalled: Boolean)
+    data class AreaPlan(
+        val viewMb: Int,
+        val region: app.vela.offline.RoutingRegion?,
+        val regionMb: Int,
+        val regionInstalled: Boolean,
+        val tiles: Int = 0,
+        val tooLarge: Boolean = false,
+        val bounds: DoubleArray = DoubleArray(4), // s, w, n, e
+        val minZ: Double = 0.0,
+    )
+
+    private var areaPickJob: Job? = null
+    private val tileKbByRegion = HashMap<String, Double>()
+
+    fun startAreaPick() {
+        _state.update { it.copy(areaPicking = true, areaPick = null) }
+        refreshAreaPick()
+    }
+
+    fun cancelAreaPick() {
+        areaPickJob?.cancel()
+        _state.update { it.copy(areaPicking = false, areaPick = null) }
+    }
+
+    /** Re-estimate for the frame over the current view (called on every camera idle while picking). */
+    private fun refreshAreaPick() {
+        if (!_state.value.areaPicking) return
+        areaPickJob?.cancel()
+        areaPickJob = viewModelScope.launch { areaDownloadPlan()?.let { p -> _state.update { if (it.areaPicking) it.copy(areaPick = p) else it } } }
+    }
+
+    /** The frame's bounds inside the visible map ([viewport]): longitude is linear across the
+     *  screen, latitude linear in Mercator y. */
+    private fun framedBounds(v: DoubleArray): DoubleArray {
+        val (s, w, n, e) = listOf(v[0], v[1], v[2], v[3])
+        fun my(lat: Double) = Math.log(Math.tan(Math.PI / 4 + Math.toRadians(lat.coerceIn(-85.0511, 85.0511)) / 2))
+        fun lat(y: Double) = Math.toDegrees(2 * Math.atan(Math.exp(y)) - Math.PI / 2)
+        val ys = my(s); val yn = my(n)
+        return doubleArrayOf(
+            lat(ys + (yn - ys) * AREA_FRAME_B), w + (e - w) * AREA_FRAME_L,
+            lat(yn - (yn - ys) * AREA_FRAME_T), e - (e - w) * AREA_FRAME_R,
+        )
+    }
 
     suspend fun areaDownloadPlan(): AreaPlan? {
         val v = viewport ?: return null
-        val (s, w, n, e, zoom) = listOf(v[0], v[1], v[2], v[3], v[4])
-        val minZ = (zoom - 1).coerceIn(0.0, 15.0).toInt()
-        val maxZ = (zoom + 3).coerceIn(minZ.toDouble(), 16.0).toInt()
-        // The vector tiles stop at z14; closer zooms draw from those, so nothing past 14 is fetched.
-        val tiles = (minZ..minOf(maxZ, 14)).sumOf { z -> tileCount(s, w, n, e, z) }
-        val viewMb = maxOf(1, Math.round(tiles * AREA_TILE_KB / 1024.0).toInt())
+        val b = framedBounds(v)
+        val (s, w, n, e) = listOf(b[0], b[1], b[2], b[3])
+        val minZ = (Math.floor(v[4]) - 2).coerceIn(0.0, 14.0)
+        // Street detail at any frame size: every zoom down to the vector tiles' last (14); closer
+        // zooms draw from those, so nothing past 14 is fetched.
+        val tiles = (minZ.toInt()..14).sumOf { z -> tileCount(s, w, n, e, z) }
         val lat = (s + n) / 2; val lng = (w + e) / 2
+        val kb = areaTileKb(lat, lng)
+        val viewMb = maxOf(1, Math.round(tiles * kb / 1024.0).toInt())
+        val base = AreaPlan(viewMb, null, 0, false, tiles, tiles > AREA_MAX_TILES, b, minZ)
         val regions = _state.value.routingRegions.ifEmpty {
             runCatching { regionCatalog.manifest(app.vela.BuildConfig.OBF_MANIFEST_URL) }.getOrDefault(emptyList())
                 .also { rs -> if (rs.isNotEmpty()) _state.update { it.copy(routingRegions = rs) } }
         }
-        val region = regions.filter { it.covers(lat, lng) }.minByOrNull { it.boxArea() }
-            ?: return AreaPlan(viewMb, null, 0, false)
-        if (region.id in obfStore.installedIds()) return AreaPlan(viewMb, region, 0, true)
+        val region = regions.filter { it.covers(lat, lng) }.minByOrNull { it.boxArea() } ?: return base
+        if (region.id in obfStore.installedIds()) return base.copy(region = region, regionInstalled = true)
         if (_state.value.poiPackRegions.isEmpty()) {
             val packs = runCatching { poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL) }.getOrDefault(emptyList())
             _state.update { it.copy(poiPackRegions = packs) }
@@ -6576,7 +6630,18 @@ class MapViewModel @Inject constructor(
                 .filter { it.covers(lat, lng) }.minByOrNull { it.boxArea() }
                 ?.takeIf { it.id !in overlayStore.installedIds() }?.sizeMb ?: 0
         }.getOrDefault(0)
-        return AreaPlan(viewMb, region, app.vela.ui.settings.sections.regionInstalledMb(region, pack, extras) + overlayMb, false)
+        return base.copy(region = region, regionMb = app.vela.ui.settings.sections.regionInstalledMb(region, pack, extras) + overlayMb)
+    }
+
+    /** KB per saved tile around ([lat],[lng]): the covering map archive's size over the tiles in its
+     *  box (z0-14), within 10-170 KB; [AREA_TILE_KB] where Vela has no archive for the place. */
+    private suspend fun areaTileKb(lat: Double, lng: Double): Double {
+        val archive = runCatching { basemapStore.manifest(app.vela.BuildConfig.BASEMAP_MANIFEST_URL) }.getOrDefault(emptyList())
+            .filter { it.covers(lat, lng) }.minByOrNull { it.area() } ?: return AREA_TILE_KB
+        return tileKbByRegion.getOrPut(archive.id) {
+            val t = (0..14).sumOf { z -> tileCount(archive.s, archive.w, archive.n, archive.e, z).toLong() }
+            if (t <= 0) AREA_TILE_KB else (archive.sizeMb * 1024.0 / t).coerceIn(10.0, 170.0)
+        }
     }
 
     /** Web-mercator tiles covering the box at zoom [z]. */
@@ -6590,12 +6655,12 @@ class MapViewModel @Inject constructor(
         return (x(e) - x(w) + 1) * (y(s) - y(n) + 1)
     }
 
-    fun downloadViewport(withRegion: Boolean = true) {
-        val v = viewport ?: run { showStatus(appContext.getString(R.string.mapvm_pan_to_area_first)); return }
-        if (_state.value.areaDownloadPct != null) return // one area at a time
-        val (s, w, n, e, zoom) = listOf(v[0], v[1], v[2], v[3], v[4])
-        val minZ = (zoom - 1).coerceIn(0.0, 15.0)
-        val maxZ = (zoom + 3).coerceIn(minZ, 16.0)
+    /** Save the framed area ([MapUiState.areaPick]), plus the region around it when [withRegion]. */
+    fun downloadPickedArea(withRegion: Boolean) {
+        val plan = _state.value.areaPick ?: return
+        if (plan.tooLarge || _state.value.areaDownloadPct != null) return // one area at a time
+        cancelAreaPick()
+        val (s, w, n, e) = listOf(plan.bounds[0], plan.bounds[1], plan.bounds[2], plan.bounds[3])
         val bounds = org.maplibre.android.geometry.LatLngBounds.from(n, e, s, w)
         // The coordinate name is STORED metadata (it is what tells two saved areas apart in the
         // Settings list) - it is deliberately NOT shown in any banner (user 2026-07-23: the raw
@@ -6607,7 +6672,7 @@ class MapViewModel @Inject constructor(
         // background-download keeper directly for their duration (issue #212).
         app.vela.download.DownloadService.begin(appContext, label)
         app.vela.offline.OfflineMaps.download(
-            appContext, _state.value.styleUri, bounds, minZ, maxZ, name,
+            appContext, _state.value.styleUri, bounds, plan.minZ, 16.0, name,
             onCreated = { areaRegion = it },
             onProgress = { pct -> _state.update { st -> st.copy(areaDownloadPct = pct) } },
         ) { reason ->
@@ -6624,8 +6689,8 @@ class MapViewModel @Inject constructor(
                 ),
             )
         }
-        // The region part (issue #609): routing, places, the region's map and building outlines
-        // only come whole, so it is the user's choice in the confirmation, not a silent extra.
+        // The region part: routing, places, the region's map and building outlines only come
+        // whole, so it is the user's choice on the picker's card, not a silent extra.
         if (withRegion) {
             downloadOfflinePois(s, w, n, e)
             downloadRoutingForArea((s + n) / 2, (w + e) / 2)
@@ -7770,6 +7835,15 @@ class MapViewModel @Inject constructor(
         /** Average size of one saved map tile, for the area-download estimate ([areaDownloadPlan]):
          *  OpenFreeMap tiles sampled at 26 to 170 KB, plus the terrain layer that rides along. */
         const val AREA_TILE_KB = 110.0
+        /** The area picker frame's insets, as fractions of the map (shared with MapScreen's overlay). */
+        const val AREA_FRAME_L = 0.07
+        const val AREA_FRAME_R = 0.07
+        const val AREA_FRAME_T = 0.18
+        const val AREA_FRAME_B = 0.34
+        /** More tiles than this is too large to save as one area: about half of a large US state at
+         *  full detail (~41k tiles), a few hundred MB outside cities (Woodland to Dixon, 509 tiles,
+         *  measured at 5.9 MB against the estimate's 5). */
+        const val AREA_MAX_TILES = 60_000
         /** What a place tap loads before "More photos" / All reviews (2026-09-23, FullPlaceLoad off). */
         const val FIRST_PHOTOS = 6
         const val FIRST_REVIEWS = 10
