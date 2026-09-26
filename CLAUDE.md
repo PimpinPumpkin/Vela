@@ -3941,6 +3941,14 @@ Gotchas:
   `x-browser-validation`, both sent by every real Chrome to Google and by neither of our clients;
   and `zstd`, which Cronet strips (143 and 155 alike). When a new Chrome ships, bump `chromeFullVersion` with
   `userAgent` (the script prints both).
+- **Never add a Google request value that every install sends identically (2026-09-25,
+  `core/data/google/RequestShape`, SPEC 3.6).** A marker audit found five: `_reqid=1` on photo
+  requests, `ech=1` on every autocomplete keystroke, `callback=cb` on Street View, the captured span
+  `25229.167291701906` on the ambient/details/popular-times searches (and whole-number spans
+  elsewhere), and a directions viewport frozen on Davis for every trip anywhere. Each now comes from
+  `RequestShape` (per-session counters, random names, `span()`, `fitDirections()`). When a new
+  template is captured, look at every number and token in it and ask whether the page would send
+  the same one from another machine; if not, derive it per request.
 - **`secChUa` is COMPUTED from the UA's major (2026-09-23, `BrowserHeaders.secChUaFor`).** Chrome
   derives the whole header (GREASE brand, its version, the order) from the major, so a hand-edited
   hint is a guess; the 153 one was Chrome 137's pattern with the number changed. `parseBundle`
