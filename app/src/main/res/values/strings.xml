@@ -163,19 +163,21 @@
     <string name="settings_offline">Offline maps</string>
     <string name="settings_offline_hint">Saving the area around you is usually all you need: the full map, addresses and places nearby, plus routing. Whole states and countries are for long trips with no signal, and they are large.</string>
     <string name="settings_offline_map_area">This area (full map)</string>
-    <string name="settings_offline_download_viewport">Download the area you\'re viewing</string>
+    <string name="settings_offline_download_viewport">Download an area</string>
     <string name="settings_region_updates">Update downloaded regions</string>
     <string name="settings_region_updates_off">Never on its own</string>
     <string name="settings_region_updates_wifi">On Wi-Fi</string>
     <string name="settings_region_updates_mobile">On Wi-Fi and mobile data</string>
     <string name="settings_offline_places_with_downloads">Include places with downloads</string>
     <string name="settings_offline_places_with_downloads_hint">A region download also brings Vela\'s place data for it, so the businesses on the map show with no signal. Around half a gigabyte for a big state. Off = places only stream while online.</string>
-    <string name="settings_offline_download_viewport_hint">Saves the map you\'re looking at, with its streets, house numbers and buildings. Zoom and pan to the part you want first. You\'ll see the size before it starts, and you can also get the whole region around it for offline directions and places.</string>
-    <string name="settings_area_confirm_title">Download this area?</string>
-    <string name="settings_area_confirm_view">Map of the area on screen: about %1$s</string>
+    <string name="settings_offline_download_viewport_hint">Opens the map with a frame over it. Move and zoom until the frame covers the area you want, from a neighborhood to half a state; you\'ll see the size before anything downloads. Everything in the frame is saved at full street detail.</string>
+    <string name="area_pick_hint">Move and zoom the map until the frame covers the area to download</string>
+    <string name="area_pick_estimate">About %1$s at full street detail</string>
+    <string name="area_pick_estimating">Working out the size…</string>
+    <string name="area_pick_too_large">Too large to save as one area. Zoom in, or download all of %1$s below.</string>
+    <string name="area_pick_too_large_plain">Too large to save as one area. Zoom in a little.</string>
     <string name="settings_area_confirm_region">Also get %1$s for offline directions, places and the map beyond this area: about %2$s. These only come as a whole region.</string>
     <string name="settings_area_confirm_region_have">Offline directions and places for %1$s are already downloaded.</string>
-    <string name="settings_area_confirm_total">Total: about %1$s</string>
     <string name="settings_offline_no_areas">No areas saved yet.</string>
     <string name="settings_offline_addresses_missing">Areas you saved before this update don\'t include address data. Update them to search and route to addresses offline.</string>
     <string name="settings_offline_addresses_update">Update saved areas</string>

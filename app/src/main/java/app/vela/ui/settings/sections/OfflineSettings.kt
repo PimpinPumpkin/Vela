@@ -31,7 +31,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -89,53 +88,6 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             onDismiss = { confirmRegion = null },
         )
     }
-    // "Download the area you're viewing" asks first (issue #609): what the view itself costs, and the
-    // region around it as a separate, optional part, since routing and places only come whole.
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
-    var areaPlan by remember { mutableStateOf<MapViewModel.AreaPlan?>(null) }
-    var areaWithRegion by remember { mutableStateOf(true) }
-    areaPlan?.let { plan ->
-        val region = plan.region
-        val regionPart = region != null && !plan.regionInstalled && areaWithRegion
-        app.vela.ui.VelaDialog(
-            onDismissRequest = { areaPlan = null },
-            title = stringResource(R.string.settings_area_confirm_title),
-            text = {
-                androidx.compose.foundation.layout.Column {
-                    Text(stringResource(R.string.settings_area_confirm_view, fmtMb(plan.viewMb)))
-                    if (region != null && plan.regionInstalled) {
-                        Text(stringResource(R.string.settings_area_confirm_region_have, region.name), modifier = Modifier.padding(top = 8.dp))
-                    } else if (region != null) {
-                        androidx.compose.foundation.layout.Row(
-                            Modifier.padding(top = 8.dp)
-                                .dpadHighlight(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
-                                .toggleable(value = areaWithRegion, onValueChange = { areaWithRegion = it }),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            androidx.compose.material3.Checkbox(checked = areaWithRegion, onCheckedChange = null)
-                            Text(
-                                stringResource(R.string.settings_area_confirm_region, region.name, fmtMb(plan.regionMb)),
-                                modifier = Modifier.padding(start = 8.dp),
-                            )
-                        }
-                    }
-                    Text(
-                        stringResource(R.string.settings_area_confirm_total, fmtMb(plan.viewMb + if (regionPart) plan.regionMb else 0)),
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.padding(top = 12.dp),
-                    )
-                }
-            },
-            confirmText = stringResource(R.string.settings_download),
-            onConfirm = {
-                areaPlan = null
-                vm.downloadViewport(withRegion = regionPart)
-                onCloseSettings() // back to the map so the user sees the download progress
-            },
-            dismissText = stringResource(R.string.settings_cancel),
-            onDismiss = { areaPlan = null },
-        )
-    }
     SettingsScaffold(stringResource(R.string.settings_offline), onBack) { topRow ->
         Spacer(Modifier.height(4.dp))
         PageIntro(stringResource(R.string.settings_offline_hint))
@@ -149,10 +101,10 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             // The top focusable control: Back routes its DOWN here, UP from here goes back to Back.
             modifier = topRow.padding(start = 16.dp, top = 4.dp).dpadHighlight(androidx.compose.foundation.shape.CircleShape),
             onClick = {
-                scope.launch {
-                    val plan = vm.areaDownloadPlan()
-                    if (plan == null) vm.downloadViewport() else { areaWithRegion = true; areaPlan = plan }
-                }
+                // Google's shape (issue #609): back to the map with a frame over it; pan and pinch
+                // choose the area, the card under it shows the size and downloads.
+                vm.startAreaPick()
+                onCloseSettings()
             },
             enabled = vm.hasViewport(),
         ) { Text(stringResource(R.string.settings_offline_download_viewport)) }

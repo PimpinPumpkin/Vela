@@ -32,6 +32,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.Column
@@ -611,12 +612,13 @@ fun MapScreen(
     // search overlay is up over an engaged map. Order: cancel map-pick → disengage map →
     // close search → peel nav/route/place/results.
     BackHandler(
-        enabled = mapEngaged || searchOpen || state.showSteps || state.navigating || state.transitNav != null ||
+        enabled = mapEngaged || searchOpen || state.showSteps || state.navigating || state.transitNav != null || state.areaPicking ||
             state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
             state.selected != null ||
             state.results.isNotEmpty(),
     ) {
         when {
+            state.areaPicking -> vm.cancelAreaPick()
             state.transitNav != null -> vm.endTransitNav()
             state.pickOnMap != null -> vm.cancelChooseOnMap()
             altsOpen && state.directionsOpen && !searchOpen && !state.navigating && !state.showSteps && !state.editingStops -> altsOpen = false
@@ -1319,7 +1321,7 @@ fun MapScreen(
         }
         if (state.navigating) {
             NavTurnBanner(state, vm, landscapeChrome, sidePanelWidthDp) { navBannerBottomPx = it }
-        } else if (state.pickOnMap == null && state.transitNav == null) {
+        } else if (state.pickOnMap == null && state.transitNav == null && !state.areaPicking) {
             // (Hidden during transit step-by-step guidance too — its bottom pane owns the screen
             // with the map above it, and a floating search bar over the guided map read as
             // browse-mode clutter once the pane stopped being full-screen, issue #232.)
@@ -2624,7 +2626,7 @@ fun MapScreen(
             // the search bar and never reaches this corner at ANY detent.
             // Not over the route chooser either (issue #405): the endpoints card owns that corner
             // and a map-style button beside a route list is noise.
-            if (app.vela.ui.LayersButton.on.value && !searchOpen && !state.directionsOpen &&
+            if (app.vela.ui.LayersButton.on.value && !searchOpen && !state.directionsOpen && !state.areaPicking &&
                 !state.navigating && !state.replaying &&
                 (!resultsShown || landscapeChrome) &&
                 clearOfPlaceSheet
@@ -2829,6 +2831,9 @@ fun MapScreen(
                 }
             }
         }
+        }
+        if (state.areaPicking && !pipUi) {
+            AreaPickOverlay(state, vm, zoomButtons = dpadMode || app.vela.ui.PreferButtons.on.value) { mapDpad.zoomBy(it) }
         }
         if (pipUi && state.navigating && state.maneuverText.isNotEmpty()) {
             // The one PiP overlay, Google's shape: the turn card's own green with the glyph, the
@@ -5750,4 +5755,111 @@ private fun barRoadName(state: MapUiState): String? {
     val road = navRoadLabel(state) ?: return null
     if (state.roadNameLatin.isEmpty()) return road
     return app.vela.core.voice.SpokenScript.forDisplay(road, app.vela.ui.AppLocale.effective().language, state.roadNameLatin)
+}
+
+/**
+ * The offline area picker (issue #609, Google's shape): the map dimmed outside a frame, a hint
+ * above it and a card below with the live size, the whole-region choice and Download. The frame's
+ * insets are MapViewModel.AREA_FRAME_*, the same fractions the view model turns into the saved
+ * bounds, so what the frame shows is what gets saved. Pan and pinch reach the map through the
+ * frame (nothing here takes the gesture); the cards take their own taps.
+ */
+@Composable
+private fun BoxScope.AreaPickOverlay(state: MapUiState, vm: MapViewModel, zoomButtons: Boolean, onZoom: (Double) -> Unit) {
+    val plan = state.areaPick
+    var withRegion by remember { mutableStateOf(true) }
+    val scrim = Color.Black.copy(alpha = 0.45f)
+    val edge = MaterialTheme.colorScheme.primary
+    androidx.compose.foundation.Canvas(Modifier.matchParentSize()) {
+        val l = size.width * MapViewModel.AREA_FRAME_L.toFloat()
+        val r = size.width * (1 - MapViewModel.AREA_FRAME_R.toFloat())
+        val t = size.height * MapViewModel.AREA_FRAME_T.toFloat()
+        val b = size.height * (1 - MapViewModel.AREA_FRAME_B.toFloat())
+        drawRect(scrim, androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Size(size.width, t))
+        drawRect(scrim, androidx.compose.ui.geometry.Offset(0f, b), androidx.compose.ui.geometry.Size(size.width, size.height - b))
+        drawRect(scrim, androidx.compose.ui.geometry.Offset(0f, t), androidx.compose.ui.geometry.Size(l, b - t))
+        drawRect(scrim, androidx.compose.ui.geometry.Offset(r, t), androidx.compose.ui.geometry.Size(size.width - r, b - t))
+        drawRoundRect(
+            edge, androidx.compose.ui.geometry.Offset(l, t), androidx.compose.ui.geometry.Size(r - l, b - t),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(12.dp.toPx()),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.dp.toPx()),
+        )
+    }
+    Surface(
+        modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Text(
+            stringResource(R.string.area_pick_hint),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+        )
+    }
+    Surface(
+        modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(12.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+            val region = plan?.region
+            Text(
+                when {
+                    plan == null -> stringResource(R.string.area_pick_estimating)
+                    plan.tooLarge && region != null && !plan.regionInstalled -> stringResource(R.string.area_pick_too_large, region.name)
+                    plan.tooLarge -> stringResource(R.string.area_pick_too_large_plain)
+                    else -> stringResource(R.string.area_pick_estimate, app.vela.ui.settings.sections.fmtMb(plan.viewMb))
+                },
+                style = MaterialTheme.typography.titleMedium,
+                color = if (plan?.tooLarge == true) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+            )
+            if (plan != null && region != null && plan.regionInstalled) {
+                Text(
+                    stringResource(R.string.settings_area_confirm_region_have, region.name),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            } else if (plan != null && region != null) {
+                Row(
+                    Modifier.padding(top = 8.dp)
+                        .dpadHighlight(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                        .toggleable(value = withRegion, onValueChange = { v -> withRegion = v }),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    androidx.compose.material3.Checkbox(checked = withRegion, onCheckedChange = null)
+                    Text(
+                        stringResource(R.string.settings_area_confirm_region, region.name, app.vela.ui.settings.sections.fmtMb(plan.regionMb)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+            }
+            Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                // The key path for keypad phones and "Prefer buttons over swipes": touch pinches.
+                if (zoomButtons) {
+                    androidx.compose.material3.FilledTonalIconButton(
+                        onClick = { onZoom(-1.0) },
+                        modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                    ) { Icon(Icons.Default.Remove, contentDescription = stringResource(R.string.mapscreen_zoom_out)) }
+                    androidx.compose.material3.FilledTonalIconButton(
+                        onClick = { onZoom(1.0) },
+                        modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                    ) { Icon(Icons.Default.Add, contentDescription = stringResource(R.string.mapscreen_zoom_in)) }
+                }
+                Spacer(Modifier.weight(1f))
+                TextButton(
+                    onClick = { vm.cancelAreaPick() },
+                    modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                ) { Text(stringResource(R.string.settings_cancel)) }
+                Spacer(Modifier.width(8.dp))
+                Button(
+                    onClick = { vm.downloadPickedArea(withRegion && region != null && plan?.regionInstalled == false) },
+                    enabled = plan != null && !plan.tooLarge,
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                ) { Text(stringResource(R.string.settings_download)) }
+            }
+        }
+    }
 }

@@ -2,13 +2,20 @@
 
 ## What you see
 
-Settings > Offline maps has two ways in. **Download the area you're viewing** saves the screen
-you are looking at (map tiles from one zoom level out to three in), and it asks first (issue #609,
-2026-09-25): a dialog prices the view itself (tiles counted per zoom at about 110 KB each,
-`MapViewModel.AREA_TILE_KB`, sampled from OpenFreeMap at 26 to 170 KB) and, as a separate,
-ticked-by-default choice, the region around it (routing, place pack, places file, the region's map
-and building outlines, from the catalogs' own sizes), which only comes whole. For a view of Davis
-that was about 1 MB against 1.4 GB for Northern California. It used to pull the region silently. **Entire states &
+Settings > Offline maps has two ways in. **Download an area** is Google's picker (issue #609,
+2026-09-25): it drops you on the map with a frame over it (`MapUiState.areaPicking`, the insets
+`MapViewModel.AREA_FRAME_*`, shared by the overlay and the bounds math), and panning and pinching
+choose what the frame covers, from a neighborhood to half a state. Whatever the framing zoom, the
+area is saved at full street detail: every zoom from two above the framing one down to the vector
+tiles' last (14). The card under the frame prices it live: tiles counted per zoom, times the
+region's own density where Vela has its map archive (the archive's size over its box's tiles; the
+Woodland to Dixon frame, mostly farmland, estimated 5 MB and measured 5.9 MB from 509 sampled
+tiles at about 12 KB), else `AREA_TILE_KB` (110 KB). Over `AREA_MAX_TILES` (60,000, about half of a
+large US state) it says to zoom in or take the whole region. The region around the frame (routing,
+place pack, places file, the region's map and building outlines) only comes whole and is a
+checkbox on the same card. Before 2026-09-25 the button lived in Settings, saved whatever the map
+last showed at only a few zoom levels around the current one (so a zoomed-out view was saved with no
+street detail) and pulled the whole region silently. **Entire states &
 countries** is the catalog: one tap on a state, a province or a country downloads everything
 Vela needs to work there with no signal. One card on the map follows the whole download piece by
 piece, and one message at the end says whether the region is ready or only partly there.

@@ -3961,6 +3961,12 @@ Gotchas:
   `x-browser-validation`, both sent by every real Chrome to Google and by neither of our clients;
   and `zstd`, which Cronet strips (143 and 155 alike). When a new Chrome ships, bump `chromeFullVersion` with
   `userAgent` (the script prints both).
+- **The offline area picker (2026-09-25, issue #609, book chapter 8):** `startAreaPick` /
+  `AreaPickOverlay` / `downloadPickedArea`. The frame's insets (`AREA_FRAME_*`) are shared by the
+  overlay and `framedBounds`, so change them together. Full detail at any framing zoom (floor(zoom)-2
+  to 16, the vector tiles stop at 14); estimate from the region archive's density; cap
+  `AREA_MAX_TILES`. The `geo:` intent ignores `z`, so test zoom with the picker's own -/+ buttons
+  (shown for D-pad and "Prefer buttons over swipes").
 - **Every Google request goes through the shared OkHttp client (2026-09-25).** That client's
   `GoogleTransport.hook` counts it (Settings > Privacy > Requests to Google, `core/net/GoogleUsage`)
   and hands it to Cronet. Coil's image loader used a default client of its own and fetched every
