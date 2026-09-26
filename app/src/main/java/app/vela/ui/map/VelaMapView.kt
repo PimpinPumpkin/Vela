@@ -4890,7 +4890,12 @@ private fun ensureLayers(style: Style) {
                     PropertyFactory.textIgnorePlacement(true),
                 )
             }
+        val topBubble = topNavBubbleLayer(style)
         when {
+            // Above the nav street bubbles when they exist (user drive 2026-09-25: a bubble sat on
+            // a camera): the higher layer claims its space first and draws on top, so the bubble
+            // now steps aside for the camera instead of covering it.
+            topBubble != null -> style.addLayerAbove(flockLayer, topBubble)
             style.getLayer(AMBIENT_LAYER) != null -> style.addLayerBelow(flockLayer, AMBIENT_LAYER)
             style.getLayer(CONTROLS_CLAIM_LAYER) != null -> style.addLayerBelow(flockLayer, CONTROLS_CLAIM_LAYER)
             else -> style.addLayer(flockLayer)
@@ -4968,8 +4973,10 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.iconPadding(2f),
             )
         }
+        val topBubble = topNavBubbleLayer(style)
         when {
             style.getLayer(FLOCK_LAYER) != null -> style.addLayerBelow(camLayer, FLOCK_LAYER)
+            topBubble != null -> style.addLayerAbove(camLayer, topBubble) // same rule as the Flock badges
             style.getLayer(AMBIENT_LAYER) != null -> style.addLayerBelow(camLayer, AMBIENT_LAYER)
             else -> style.addLayer(camLayer)
         }
@@ -5130,6 +5137,12 @@ private fun ensureTopography(style: Style, on: Boolean) {
 /** Toggle Google's live-traffic raster overlay. Inserted below the route line +
  *  labels so they stay on top; keyless public tiles, removed cleanly when off. */
 private const val NAV_ROADLABEL_LAYER = "vela-nav-roadlabels"
+/** Camera badges the nav street bubbles must never cover (see topNavBubbleLayer). */
+private val CAMERA_BADGE_LAYERS = setOf(FLOCK_LAYER, FLOCK_CLUSTER_LAYER, SPEEDCAM_LAYER)
+
+/** The highest nav street-bubble layer on the map, or null; camera badges are added above it. */
+private fun topNavBubbleLayer(style: Style): String? =
+    style.layers.lastOrNull { it.id == NAV_ROADLABEL_LAYER || it.id == NAV_ROADLABEL_MINOR_LAYER }?.id
 private const val NAV_ROADLABEL_MINOR_LAYER = "vela-nav-roadlabels-minor"
 // The cross-street bubbles are POINTS we compute (2026-09-16): one per crossing street, placed a
 // short way up that street from where it meets the route. Line-center placement on the basemap's
@@ -5766,8 +5779,11 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
         val filter = Expression.eq(Expression.get("tier"), Expression.literal(tier))
         (style.getLayer(id) as? SymbolLayer)?.let { it.setFilter(navLabelPassedFilter(filter)); return }
         run {
-            style.addLayer(
-                SymbolLayer(id, NAV_XLABEL_SRC)
+            // Under any camera badge already on the map (Flock, fixed speed cameras), so the badge
+            // is placed first and the bubble dodges it; the camera layers do the same in reverse
+            // when they arrive second (topNavBubbleLayer).
+            val underCamera = style.layers.firstOrNull { it.id in CAMERA_BADGE_LAYERS }?.id
+            val bubble = SymbolLayer(id, NAV_XLABEL_SRC)
                     .withFilter(navLabelPassedFilter(filter))
                     .withProperties(
                         PropertyFactory.textField(roadLabelTextField()),
@@ -5791,8 +5807,8 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean, densit
                         // 2026-07-16, "thin out the bubbles for rendering/efficiency").
                         PropertyFactory.textPadding(26f),
                         PropertyFactory.textHaloWidth(0f), // the bubble IS the backing now
-                    ).apply { minZoom = minZ },
-            )
+                    ).apply { minZoom = minZ }
+            if (underCamera != null) style.addLayerBelow(bubble, underCamera) else style.addLayer(bubble)
         }
         // The nav camera's zoom is SPEED-SCALED (z18 crawling -> z15.5 at highway speed), so a
         // hard minZoom cut made the whole cross-street tier pop in/out at once as speed crossed
