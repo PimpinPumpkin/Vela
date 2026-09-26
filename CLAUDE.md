@@ -3281,6 +3281,12 @@ architecture note.
   The basemap pick now uses `offline || !isValidated()`, a validation change re-runs it, and the
   decision (offline, validated, shallow, glyphs) is recorded as a `basemap` diagnostics event.
   Everything else still keys on `isOnline()`.
+  **The same report's real cause was the fresh mount (fixed the same day):** offline, a
+  `installedFor` with nothing but the world archive mounted still ran the online test (roads at the
+  ring AND every viewport corner), so one corner over a lake or forest mounted the WORLD archive
+  (states and borders, no roads) and the keep rule, which skips the world archive, never let the
+  state back. Offline now mounts the smallest installed archive whose roads touch the view at all.
+  Reproduced and verified on the 4a in airplane mode at a lakeshore downtown.
 - **A region's Update marks its row for the WHOLE update (2026-09-25, head unit report):**
   `MapUiState.regionUpdatingId`, set in `updateRegion` and cleared in its `finally`. The row's
   spinner used to key only on a routing or place-pack download, so an update that was only the

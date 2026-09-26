@@ -73,12 +73,36 @@ class BasemapTileStore @Inject constructor(
         // The WORLD archive is never a normal candidate: it covers every point on earth, so the
         // area sort would rank it last anyway, and the roads probe below would reject it outright
         // (it carries no transportation layer at any zoom). It is the explicit last resort instead.
+        val boxArea = { id: String -> index[id]?.let { b -> (b[2] - b[0]) * (b[3] - b[1]) } ?: Double.MAX_VALUE }
+        val (tx, ty) = PmtilesReader.tileOf(c.lat, c.lng, COVERAGE_PROBE_Z)
+        // OFFLINE A FRESH MOUNT NEEDS ONLY ROADS SOMEWHERE IN VIEW (2026-09-26, a head unit with a
+        // whole state downloaded: roads for a moment at start, then the world archive's bare
+        // states and nothing else). The online rule below wants roads at the center, in the whole
+        // ring and under every viewport corner; one corner over a lake, a forest or the sea is a
+        // definite no, and offline that no fell through to the world archive. Worse, the mounted
+        // archive was then the world one, which the keep rule above skips, so the strict test ran
+        // again on every idle and the state never came back. With nothing to stream, any
+        // downloaded archive whose roads reach the view beats the world archive, and its box only
+        // has to hold the center or a corner (a wide car screen centered just over a state line
+        // still shows the state it can).
+        if (keepMounted) {
+            val points = listOf(c) + view
+            val inView = installed().entries
+                .filter { (id, _) -> id != WORLD_ID }
+                .filter { (id, _) -> index[id]?.let { b -> points.any { p -> p.lat in b[0]..b[2] && p.lng in b[1]..b[3] } } ?: true }
+                .sortedBy { (id, _) -> boxArea(id) }
+            var unreadable: File? = null
+            for ((_, f) in inView) {
+                if (viewTouches(f, tx, ty, view)) return f
+                if (unreadable == null && coverage(f, tx, ty) == null) unreadable = f
+            }
+            return unreadable ?: worldArchive()
+        }
         val covering = installed().entries
             .filter { (id, _) -> id != WORLD_ID }
             .filter { (id, _) -> index[id]?.let { b -> c.lat in b[0]..b[2] && c.lng in b[1]..b[3] } ?: true }
-            .sortedBy { (id, _) -> index[id]?.let { b -> (b[2] - b[0]) * (b[3] - b[1]) } ?: Double.MAX_VALUE }
+            .sortedBy { (id, _) -> boxArea(id) }
         if (covering.isEmpty()) return worldArchive()
-        val (tx, ty) = PmtilesReader.tileOf(c.lat, c.lng, COVERAGE_PROBE_Z)
         // "Cannot tell" and "definitely no roads here" are NOT the same answer, and collapsing them
         // was the second half of issue #552: past a region's real data but still inside its
         // bounding box, every probe said a definite no and the pick mounted the archive regardless,

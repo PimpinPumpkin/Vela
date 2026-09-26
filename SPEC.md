@@ -1987,6 +1987,13 @@ Selection rules on the phone:
   the mounted archive is no longer kept until the center leaves its data: it is in use exactly
   while the ring and the corners are all inside it, so a border on screen means streaming and a
   pan along the border reloads nothing.
+  Offline a FRESH mount follows the same loose rule: the smallest installed archive whose box
+  holds the center or a viewport corner and whose roads reach the center tile, the ring or a
+  corner is mounted, and the world archive is used only when none does. The strict online test
+  (roads at the ring and every corner) used to run for offline fresh mounts too, so one corner over
+  a lake, a forest or the sea mounted the world archive, and with the world archive mounted the
+  keep rule never applied again: a whole state downloaded, and the map showed only borders and
+  places, for the whole drive. "Offline" here is `offline || !isValidated()`.
 - **A global low-zoom archive is the floor under the pick** (`BasemapTileStore.WORLD_ID`, baked by
   `world-lowzoom.yml`, about 11 MB at z0-7, pulled once alongside the first offline download). It is
   kept OUT of the per-region candidate list: it covers every point on earth, and it carries no
