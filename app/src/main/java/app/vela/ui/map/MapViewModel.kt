@@ -1865,6 +1865,8 @@ class MapViewModel @Inject constructor(
      *  updates on every network change; fails safe to "online" so a quirk never falsely grays the app. */
     private var offlineLatchJob: Job? = null
 
+    private var lastValidated: Boolean? = null
+
     private fun observeConnectivity() {
         val cm = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return
         fun refresh() {
@@ -1876,6 +1878,10 @@ class MapViewModel @Inject constructor(
                 _state.update { it.copy(lowData = constrained) }
             }
             val off = !isOnline()
+            // A network that starts or stops reaching the internet re-decides the map picture
+            // (refreshBasemapArchive treats an unvalidated network as offline).
+            val validated = isValidated()
+            if (validated != lastValidated) { lastValidated = validated; refreshBasemapArchive() }
             if (!off) {
                 // Online applies IMMEDIATELY (and cancels a pending offline latch).
                 offlineLatchJob?.cancel()
@@ -1939,6 +1945,14 @@ class MapViewModel @Inject constructor(
      *  the same "nothing to ask" path either way. NOT [offlineNow] itself: that one also decides
      *  routing and basemap fallbacks, which must keep using the open services while online. */
     private fun googleOff(): Boolean = offlineNow() || app.vela.ui.GoogleFree.on.value
+
+    /** The default network has actually reached the internet (Android's VALIDATED). A head unit on
+     *  a car Wi-Fi or a hotspot with no data has INTERNET capability without it. */
+    private fun isValidated(): Boolean = runCatching {
+        val cm = appContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
+        caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }.getOrDefault(true)
 
     private fun isOnline(): Boolean = runCatching {
         val cm = appContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
@@ -6875,15 +6889,22 @@ class MapViewModel @Inject constructor(
         val mountedNow = _state.value.basemapArchive?.removePrefix("pmtiles://file://")?.let { java.io.File(it) }
         val corners = viewport?.let { v -> listOf(LatLng(v[0], v[1]), LatLng(v[0], v[3]), LatLng(v[2], v[1]), LatLng(v[2], v[3])) }.orEmpty()
         // Offline the archive in use is kept while any of the view is still inside it: there is
-        // nothing to stream in its place (issue #552, fourth round).
-        val file = basemapStore.installedFor(center, mountedNow, corners, keepMounted = _state.value.offline)
+        // nothing to stream in its place (issue #552, fourth round). "Offline" here also means a
+        // network that never reached the internet (not VALIDATED): a car head unit joined to a car
+        // Wi-Fi or a phone hotspot with no data reports INTERNET capability, Vela called that
+        // online, dropped the downloaded map for streamed tiles that could not load, and drew gray
+        // with the places on top (user's stereo, 2026-09-26: roads for a moment at start, then
+        // gray, the whole state downloaded).
+        val validated = isValidated()
+        val cantStream = _state.value.offline || !validated
+        val file = basemapStore.installedFor(center, mountedNow, corners, keepMounted = cantStream)
         // A SHALLOW archive (baked a zoom level short because the full bake would pass GitHub's
         // 2 GiB asset limit) draws as a blurred version of the same map once you are past its
         // depth, so a download made the map worse than streaming (issue #552). Online, the streamed
         // tiles win; offline it is still far better than an empty screen.
         val shallow = file != null &&
             (basemapStore.maxZoomOf(file) ?: app.vela.offline.BasemapTileStore.FULL_MAP_ZOOM) < app.vela.offline.BasemapTileStore.FULL_MAP_ZOOM
-        val usable = file?.takeUnless { shallow && !_state.value.offline }
+        val usable = file?.takeUnless { shallow && !cantStream }
         if (shallow) android.util.Log.i("VelaBasemap", "installed basemap is shallow (max zoom < ${app.vela.offline.BasemapTileStore.FULL_MAP_ZOOM}); using it only offline")
         val uri = usable?.let { "pmtiles://file://${it.absolutePath}" }
         if (uri != _state.value.basemapArchive) {
@@ -6897,7 +6918,10 @@ class MapViewModel @Inject constructor(
             if (since < BASEMAP_SWAP_COOLDOWN_MS) kotlinx.coroutines.delay(BASEMAP_SWAP_COOLDOWN_MS - since)
             lastBasemapSwapMs = android.os.SystemClock.elapsedRealtime()
             val fonts = app.vela.offline.GlyphPackStore.installed(appContext)
-            android.util.Log.i("VelaBasemap", "offline basemap for the view: ${uri?.substringAfterLast('/') ?: "none"} (glyph pack installed=$fonts)")
+            val why = "offline basemap for the view: ${uri?.substringAfterLast('/') ?: "none"} " +
+                "(offline=${_state.value.offline} validated=$validated shallow=$shallow glyphs=$fonts)"
+            android.util.Log.i("VelaBasemap", why)
+            diag.record("basemap", why) // so a Diagnostics export says why a map went gray
             _state.update { it.copy(basemapArchive = uri) }
             // An archive without the glyph pack (an interrupted first download) heals itself the
             // next time there is a connection: labels need the pack, and without it the tiles
