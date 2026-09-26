@@ -10,6 +10,10 @@ mkdir -p "$OUT"
 apk=$(ls app/build/outputs/apk/release/*x86_64*.apk | head -1)
 echo "API $API, installing $apk"
 adb install -r "$apk" || { echo "install failed"; exit 1; }
+# Location granted up front (an emulator; nothing real): Android 8.0's emulator System UI crashes
+# when the permission dialog covers the keyguard (NavigationBarFragment NPE), which stalls onboarding.
+adb shell pm grant app.vela android.permission.ACCESS_FINE_LOCATION 2>/dev/null
+adb shell pm grant app.vela android.permission.ACCESS_COARSE_LOCATION 2>/dev/null
 adb logcat -c
 
 # A fresh install opens on onboarding: walk it (Get started, decline the permission prompts, skip
@@ -33,10 +37,15 @@ for i in $(seq 1 10); do
 done
 
 adb shell am start -a android.intent.action.VIEW -d "'geo:0,0?q=Davis Food Co-op 620 G St Davis CA'" app.vela
-sleep 40
-adb shell uiautomator dump /sdcard/u.xml >/dev/null 2>&1
-adb shell cat /sdcard/u.xml > "$OUT/results.xml" 2>/dev/null
-row=$(grep -o 'text="Davis Food[^"]*"[^>]*bounds="\[[0-9]*,[0-9]*\]' "$OUT/results.xml" | grep -o '[0-9]*,[0-9]*\]$' | tr -d ']' | tail -1)
+row=""
+for i in $(seq 1 12); do
+  sleep 5
+  adb shell uiautomator dump /sdcard/u.xml >/dev/null 2>&1
+  adb shell cat /sdcard/u.xml > "$OUT/results.xml" 2>/dev/null
+  # The result row, not the search box: the listing's own name is exactly "Davis Food Co-op".
+  row=$(grep -o '<node[^>]*text="Davis Food Co-op"[^>]*>' "$OUT/results.xml" | grep -o 'bounds="\[[0-9]*,[0-9]*\]' | grep -o '[0-9]*,[0-9]*' | tail -1)
+  [ -n "$row" ] && break
+done
 if [ -n "$row" ]; then
   adb shell input tap $(( ${row%,*} + 20 )) $(( ${row#*,} + 20 ))
   sleep 30
@@ -49,12 +58,15 @@ adb logcat -d > "$OUT/logcat.txt"
 fail=0
 pid=$(adb shell pidof app.vela | tr -d '\r')
 [ -n "$pid" ] || { echo "FAIL: app.vela is not running"; fail=1; }
-if grep -E "FATAL EXCEPTION|Process: app.vela" "$OUT/logcat.txt" | grep -q .; then
-  echo "FAIL: crash"; grep -A20 "FATAL EXCEPTION" "$OUT/logcat.txt" | head -40; fail=1
+# Only our crash counts: the Android 8.0 emulator's System UI crashes on its own (see above).
+if grep -q "Process: app.vela" "$OUT/logcat.txt"; then
+  echo "FAIL: app.vela crashed"; grep -B2 -A20 "Process: app.vela" "$OUT/logcat.txt" | head -40; fail=1
 fi
+grep -q "Process: com.android.systemui" "$OUT/logcat.txt" && echo "note: the emulator's System UI crashed (not Vela)"
 grep -E "VelaCronet: engine|VelaCronet: google over|engine unavailable" "$OUT/logcat.txt" | head -5
 grep -q "VelaCronet: engine Cronet/" "$OUT/logcat.txt" || echo "WARN: Cronet engine line not seen"
 grep -q "UnsatisfiedLinkError" "$OUT/logcat.txt" && { echo "FAIL: native library did not load"; fail=1; }
-[ -n "$row" ] && echo "search row found" || echo "WARN: no search result row (network or UI)"
+[ -n "$row" ] && echo "search row found at $row" || echo "WARN: no search result row (network or UI)"
+grep -q 'text="Directions"' "$OUT/sheet.xml" && echo "place sheet open" || echo "WARN: place sheet not seen"
 grep -o 'text="[^"]\+"' "$OUT/sheet.xml" | head -12
 exit $fail
