@@ -149,6 +149,11 @@ own state and city, not only street-level terms** (2026-09-26: the state was mis
 naming it went out on canary, and canary had to be rewritten). After editing the file, sync the
 secret: `gh secret set LOCATION_TERMS < ~/.vela-location-terms`.
 
+**Operational footprint is location data too.** Workflow dispatch inputs, run names, bake order,
+test regions, device-test areas and release notes are public. Never single out the maintainer's
+region or its neighbors: bake and re-bake whole countries or the whole catalog, test on the fixture
+regions, and never describe a region by its relation to the maintainer.
+
 Defaults that make the safe path the easy one:
 
 - **Fixture default: Davis / Sacramento, CA.** Bounding box `38.30,-122.00` to
