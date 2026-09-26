@@ -142,7 +142,12 @@ push whose diff or commit messages contain a term from a private list kept OUTSI
 `~/.vela-location-terms` (override with `VELA_LOCATION_TERMS`). The list is never committed, never
 pasted into an issue, and never read back into a commit message; the check reports that a term
 matched, never which one. CI's Location guard is the same test with the `LOCATION_TERMS` secret,
-one push too late.
+one push too late. Both skip the same files, the region catalogs (`tools/*regions*.json`),
+`region_polys.json`, `docs/stats/` and `*.pmtiles`, which name every state and country on
+purpose; the two exclusion lists must stay in step. **The private list must carry the maintainer's
+own state and city, not only street-level terms** (2026-09-26: the state was missing, a comment
+naming it went out on canary, and canary had to be rewritten). After editing the file, sync the
+secret: `gh secret set LOCATION_TERMS < ~/.vela-location-terms`.
 
 Defaults that make the safe path the easy one:
 
