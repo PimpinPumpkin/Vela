@@ -149,6 +149,11 @@ own state and city, not only street-level terms** (2026-09-26: the state was mis
 naming it went out on canary, and canary had to be rewritten). After editing the file, sync the
 secret: `gh secret set LOCATION_TERMS < ~/.vela-location-terms`.
 
+**Operational footprint is location data too.** Workflow dispatch inputs, run names, bake order,
+test regions, device-test areas and release notes are public. Never single out the maintainer's
+region or its neighbors: bake and re-bake whole countries or the whole catalog, test on the fixture
+regions, and never describe a region by its relation to the maintainer.
+
 Defaults that make the safe path the easy one:
 
 - **Fixture default: Davis / Sacramento, CA.** Bounding box `38.30,-122.00` to
@@ -3195,7 +3200,7 @@ architecture note.
 - **Bake joins must be HASH joins (2026-09-16).** Two correlated lookups that were free on the
   Davis box went effectively quadratic over a whole state: the tenant check (one EXISTS with three
   OR-ed tests) and the unit snap (a LATERAL lookup per stacked row). A world bake did 19 regions in
-  2.5 hours on them, and four west-coast state bakes were still running after an hour. Both are
+  2.5 hours on them, and four state bakes were still running after an hour. Both are
   now equi-joins with the ~200 m box as a residual: `tenants` is three joins (normalized address,
   lower(brand), `nhead` first word) UNIONed and DISTINCT, and the snap joins on (number, unit)
   and keeps the nearest by row_number. The AllThePlaces dedupe (#515) had the same shape - a
