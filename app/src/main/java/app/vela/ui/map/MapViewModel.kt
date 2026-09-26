@@ -1621,7 +1621,7 @@ class MapViewModel @Inject constructor(
             if (full != null && _state.value.selected?.id == sp.id) {
                 val enriched = full.copy(id = sp.id)
                 _state.update { it.copy(selected = enriched) }
-                fetchReviews(enriched)
+                requestReviews(enriched)
                 fetchPhotos(enriched)
                 // The enriched place now has an address, so the WebView detail fetch can
                 // do its specific name+address query — without this, popular times +
@@ -2380,7 +2380,7 @@ class MapViewModel @Inject constructor(
                 stopDepartures = null, stopDeparturesLoading = false, stopDeparturesFor = null,
             )
         }
-        fetchReviews(p)
+        requestReviews(p)
         fetchPhotos(p)
         fetchPlaceDetails(p)
         fetchStopDepartures(p)
@@ -3204,6 +3204,35 @@ class MapViewModel @Inject constructor(
      *  applied only if it's still the selected place when they arrive). */
     private var reviewsJob: Job? = null
 
+    /**
+     * The reviews for [p], loaded only once the Reviews tab is on screen (2026-09-25). The inline
+     * reviews come from a hidden Google page, and the Google request counter measured that page at
+     * about 137 requests per place tap, around 90% of Vela's Google traffic, while most taps never
+     * scroll down to the reviews. So a tap arms it ([reviewsPendingFor], shown as loading) and
+     * [ensureReviews], called when the tab's area comes into view, starts it. Settings >
+     * Performance "Load all photos and reviews" ([app.vela.ui.FullPlaceLoad]) keeps the old eager load.
+     */
+    private fun requestReviews(p: Place) {
+        if (app.vela.ui.FullPlaceLoad.on.value) { reviewsPendingFor = null; fetchReviews(p); return }
+        if (!app.vela.ui.ShowReviews.on.value || googleOff()) return
+        reviewsJob?.cancel()
+        reviewsPendingFor = p
+        // Loading, not empty: the tab must never flash "no reviews" before it has asked.
+        _state.update { it.copy(reviews = emptyList(), reviewsLoading = !p.featureId.isNullOrBlank(), reviewsFound = 0, reviewsLimited = false, reviewsNextToken = null, reviewsMoreLoading = false) }
+    }
+
+    /** The Reviews tab is on screen: start the reviews armed by [requestReviews] for the place still
+     *  open. Idempotent; a place that changed in between is dropped. */
+    fun ensureReviews() {
+        val p = reviewsPendingFor ?: return
+        val sel = _state.value.selected
+        reviewsPendingFor = null
+        if (sel == null || (sel.id != p.id && sel.featureId != p.featureId)) return
+        fetchReviews(sel)
+    }
+
+    private var reviewsPendingFor: Place? = null
+
     private fun fetchReviews(p: Place, force: Boolean = false) {
         // "Show reviews" off: no review section is rendered, so don't scrape either.
         if (!app.vela.ui.ShowReviews.on.value || googleOff()) return
@@ -3895,7 +3924,7 @@ class MapViewModel @Inject constructor(
                         tapResolvingFor = null, sheetAlias = full.id to placeholder.id,
                     )
                 }
-                fetchReviews(full)
+                requestReviews(full)
                 fetchStopDepartures(full) // issue #71: a bus stop / station tapped on the MAP gets its board too
                 // Photos and popular times are two more Chromium page loads; a beat later, so they
                 // do not land under the sheet's open animation together with the reviews scrape.

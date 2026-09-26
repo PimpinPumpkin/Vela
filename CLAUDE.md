@@ -1528,7 +1528,11 @@ Defaults that make the safe path the easy one:
 - **A PLACE TAP IS A FEW REQUESTS, NOT A FEW HUNDRED (2026-09-23).** First photos: ONE `hspqX`
   request (`placePhotos`, dated), retried once after ~2.5 s when empty (a fresh Google session's
   first seconds answer stripped: seen 0, then 10), then the capped page walk as fallback. First
-  reviews: the capped page scrape BY DEFAULT; the ONE-request `qv9Egd` feed (`reviewFeed`,
+  reviews: the capped page scrape BY DEFAULT, and since 2026-09-25 only once the Reviews tab's area
+  is on screen (`MapViewModel.requestReviews` arms it, `ensureReviews` starts it from the tab's
+  clipped window bounds; the Google request counter measured that page at about 137 requests per
+  tap, some 90% of Vela's Google traffic, and most taps never scroll down to reviews; "Load all
+  photos and reviews" keeps the eager load); the ONE-request `qv9Egd` feed (`reviewFeed`,
   `ReviewFeedParser`) is behind `nativeReviewFeed` (compiled default 0) because it rides the app's
   in-memory session, new every launch, and Google limits new sessions to 5 reviews (measured on a
   healthy Pixel 9 whose aged WebView got the full list). `reviewsLimited` shows "Google is showing a

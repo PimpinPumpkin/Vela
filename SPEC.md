@@ -570,7 +570,10 @@ Constraints:
 each photo dated), one jittered ~2.5 s retry when it answers empty (a new Google session's first
 seconds are stripped), up to three tries; after three empty answers the sheet keeps the search's hero
 photo and the page walk waits for a tap on "More photos".
-Reviews: the page scrape capped at `FIRST_REVIEWS` (10). The one-request `qv9Egd` feed
+Reviews: the page scrape capped at `FIRST_REVIEWS` (10), started only when the Reviews tab's area is
+on screen (`requestReviews` / `ensureReviews`, its clipped window bounds, 2026-09-25): that page
+costs about 137 Google requests, most taps never reach the reviews, and until then the tab shows its
+loading state. `FullPlaceLoad` keeps the eager load. The one-request `qv9Egd` feed
 (`reviewFeed`) is behind `nativeReviewFeed` (compiled default 0): Google limits NEW anonymous
 sessions to five reviews and no paging, and a full (aged) session answers a plain request with an
 empty list and a `[6] = [true]` flag: it requires the `X-maps-bgkey` BotGuard token that Google's

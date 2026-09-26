@@ -163,6 +163,8 @@ import app.vela.ui.VelaMenu // D-pad-first menu (docs/dpad.md)
 import app.vela.ui.item
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
@@ -286,6 +288,7 @@ fun PlaceSheet(
     onOpenSimilar: (app.vela.core.model.SimilarPlace) -> Unit = {},
     onSetShortcut: (ShortcutKind) -> Unit = {},
     onRetryReviews: () -> Unit = {},
+    onNeedReviews: () -> Unit = {},
     onClearParking: () -> Unit = {},
     lists: List<app.vela.core.model.PlaceList> = emptyList(),
     onAddToList: (listId: String) -> Unit = {},
@@ -1308,7 +1311,7 @@ fun PlaceSheet(
             // The reviews tabs wait for the listing (the map's data has no reviews to show, and an
             // empty tab row would read as "no reviews"); pulse bars hold their place.
             if (resolving) SheetSkeleton(dim, listOf(260.dp, 220.dp, 240.dp), gap = 18.dp, top = 18.dp)
-            else PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onPanelOverscroll, onPanelOverscrollEnd, onPanelEngaged, reviewsEngaged.value, reviewsLimited = reviewsLimited, onMoreReviews = onMoreReviews, reviewsMoreLoading = reviewsMoreLoading)
+            else PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onNeedReviews = onNeedReviews, onPanelOverscroll = onPanelOverscroll, onPanelOverscrollEnd, onPanelEngaged, reviewsEngaged.value, reviewsLimited = reviewsLimited, onMoreReviews = onMoreReviews, reviewsMoreLoading = reviewsMoreLoading)
             }
             }
             }
@@ -3482,6 +3485,7 @@ private fun PlaceTabs(
     onRetryReviews: () -> Unit,
     ink: Color,
     dim: Color,
+    onNeedReviews: () -> Unit = {},
     onPanelOverscroll: (Float) -> Unit = {},
     onPanelOverscrollEnd: (Float) -> Unit = {},
     onPanelEngaged: () -> Unit = {},
@@ -3561,6 +3565,16 @@ private fun PlaceTabs(
                     val fid = place.featureId
                     var reviewPhotos by remember(place.id) { mutableStateOf<Triple<List<String>, List<String?>, Int>?>(null) }
                     var showFullPanel by remember(place.id) { mutableStateOf(false) }
+                    // The reviews load once this area is actually on screen (MapViewModel.
+                    // requestReviews): its CLIPPED window bounds are empty while it sits below the
+                    // sheet's fold, and re-measured on every scroll and sheet move.
+                    val density = androidx.compose.ui.platform.LocalDensity.current
+                    val minVisiblePx = with(density) { 24.dp.toPx() }
+                    androidx.compose.foundation.layout.Box(
+                        Modifier.onGloballyPositioned { c ->
+                            if (c.isAttached && c.boundsInWindow().height > minVisiblePx) onNeedReviews()
+                        },
+                    ) {
                     ReviewsTab(
                         place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim,
                         onPhotoTap = { urls, start, caption ->
@@ -3573,6 +3587,7 @@ private fun PlaceTabs(
                         onMoreReviews = onMoreReviews,
                         moreLoading = reviewsMoreLoading,
                     )
+                    }
                     reviewPhotos?.let { (urls, caps, start) ->
                         PhotoGallery(urls, caps, start) { reviewPhotos = null }
                     }
