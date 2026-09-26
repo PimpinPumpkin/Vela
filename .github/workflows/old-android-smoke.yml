@@ -1,0 +1,75 @@
+name: Old Android smoke test
+
+# Installs a release build on Android 8.0 (API 26, the app's minimum) and Android 9 (API 28)
+# emulators and checks that it starts, loads Cronet, runs a search and opens a place without a
+# crash. Built 2026-09-25 after the move to AGP 9, Kotlin 2.4 and Chromium's own Cronet 155: none of
+# them change minSdk, but nothing had run on a phone that old since.
+#
+# The emulators are x86_64 (hardware-accelerated on GitHub's runners), so the build is the
+# per-chip one and the x86_64 APK is installed: it carries Cronet's x86_64 library, which the
+# all-in-one APK leaves out. Run it by pushing to the `old-android-smoke` branch or, once this file
+# is on main, from the Actions tab.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [old-android-smoke]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [26, 28]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Fetch the runtimes CI fetches
+        run: |
+          mkdir -p core/libs app/libs
+          for f in osmand-java.jar osmand-shared-jvm.jar gnu-trove-osmand.jar kxml2-vela.jar; do
+            curl -fSL -o "core/libs/$f" "https://github.com/PimpinPumpkin/Vela/releases/download/obf-runtime/$f"
+          done
+          curl -fSL -o app/libs/sherpa-onnx-1.13.3.aar \
+            "https://github.com/PimpinPumpkin/Vela/releases/download/tts-runtime/sherpa-onnx-1.13.3.aar"
+          v=$(sed -n 's/^vela.cronetVersion=//p' gradle.properties)
+          curl -fSL -o "app/libs/cronet-$v.aar" "https://github.com/PimpinPumpkin/Vela/releases/download/cronet-runtime/cronet-$v.aar" \
+            || bash scripts/build-cronet-aar.sh "$v" app/libs
+
+      - name: Build the per-chip release APKs
+        run: ./gradlew :app:assembleRelease -PabiSplits -PappVersionCode=100 -PappVersionName=smoke --no-daemon
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+
+      - name: Install, launch, search, open a place
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          arch: x86_64
+          target: default
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: bash scripts/old-android-smoke.sh ${{ matrix.api }}
+
+      - name: Keep the evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-api${{ matrix.api }}
+          path: smoke-out/
