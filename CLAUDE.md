@@ -3273,6 +3273,11 @@ architecture note.
   `VoiceGuide.fasterRouteChime` (two RISING notes, the reroute chime falls) `FASTER_CHIME_LEAD_MS`
   before the spoken line, and the card wears `secondaryContainer` with a primary pill like the
   update card and its own countdown bar (it was the one tertiary card in the stack).
+- **A region's Update marks its row for the WHOLE update (2026-09-25, head unit report):**
+  `MapUiState.regionUpdatingId`, set in `updateRegion` and cleared in its `finally`. The row's
+  spinner used to key only on a routing or place-pack download, so an update that was only the
+  places file or the map ran with the Update button still showing and nothing moving until the map
+  card noticed. `refreshArchive` reports its progress (step 1 places, 2 map) and honors Cancel now.
 - **A REGION DOWNLOAD IS ONE FLOW UNDER ONE CARD (2026-09-23, user report).** `downloadRoutingGraph`
   runs obf, then the place pack (`downloadPoiPack(chained = true)`, which neither clears the card nor
   says "ready"), then the places file and the map (`fetchRegionArchives`, step 1 / 2, percent on
