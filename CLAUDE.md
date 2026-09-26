@@ -3949,6 +3949,13 @@ Gotchas:
   `x-browser-validation`, both sent by every real Chrome to Google and by neither of our clients;
   and `zstd`, which Cronet strips (143 and 155 alike). When a new Chrome ships, bump `chromeFullVersion` with
   `userAgent` (the script prints both).
+- **Every Google request goes through the shared OkHttp client (2026-09-25).** That client's
+  `GoogleTransport.hook` counts it (Settings > Privacy > Requests to Google, `core/net/GoogleUsage`)
+  and hands it to Cronet. Coil's image loader used a default client of its own and fetched every
+  Google photo as `okhttp/4.12.0`; it now takes the shared client with
+  `GoogleTransport.imageHeaders` in front. A new HTTP client that can reach Google breaks both the
+  count and the browser identity: derive it from the shared one. The first reading showed the hidden
+  reviews page as about 90% of Google traffic (about 137 requests per place tap).
 - **Never add a Google request value that every install sends identically (2026-09-25,
   `core/data/google/RequestShape`, SPEC 3.6).** A marker audit found five: `_reqid=1` on photo
   requests, `ech=1` on every autocomplete keystroke, `callback=cb` on Street View, the captured span

@@ -164,6 +164,11 @@ header, which names the app. It's an explicit, scoped tradeoff for data a plain 
 can't get; if you never open a Google place, transit directions or a board outside
 Transitous's coverage, no hidden page loads.
 
+**You can see the numbers.** Settings > Privacy > "Requests to Google" counts every request Vela
+sends to Google, today and over the last week, by purpose, including everything the hidden pages
+load after they open. It is counted on your phone and never sent anywhere. The only Google traffic
+it cannot see is map tiles the map draws itself (the live-traffic layer and some satellite imagery).
+
 ## What stays on your device
 
 Stored locally only (SharedPreferences / SQLite / MapLibre's offline store), never

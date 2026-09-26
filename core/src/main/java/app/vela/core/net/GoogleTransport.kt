@@ -24,11 +24,46 @@ object GoogleTransport {
     @Volatile var interceptor: Interceptor? = null
 
     /** The hosts the transport carries. */
-    fun carries(host: String): Boolean = host == "google.com" || host.endsWith(".google.com")
+    fun carries(host: String): Boolean = GoogleUsage.isGoogle(host)
+
+    /**
+     * Chrome's image-load headers on a Google image host (photos on googleusercontent.com, ggpht.com,
+     * gstatic.com), for the image loader's requests (2026-09-25). Coil used a default OkHttp client
+     * of its own: every place photo went out as `okhttp/4.12.0` with no browser headers at all, the
+     * most frequent Google request a place sheet makes. Installed ahead of [hook], so the request
+     * carries the headers before the transport sends it.
+     */
+    val imageHeaders = Interceptor { chain ->
+        val r = chain.request()
+        val h = r.url.host.lowercase()
+        val image = h.endsWith("googleusercontent.com") || h.endsWith("ggpht.com") || h.endsWith("gstatic.com")
+        if (!image || r.header("Sec-Fetch-Dest") != null) return@Interceptor chain.proceed(r)
+        val cal = app.vela.core.config.CalibrationStore.latest
+        chain.proceed(
+            with(app.vela.core.data.google.BrowserHeaders) {
+                r.newBuilder().browserHeaders(
+                    ua = cal.userAgent,
+                    secChUa = cal.secChUa,
+                    referer = "https://www.google.com/",
+                    accept = "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+                    fetchDest = "image",
+                    fetchMode = "no-cors",
+                    fetchSite = "cross-site",
+                    networkHints = false,
+                )
+            }.tag(GoogleUsage.Kind::class.java, GoogleUsage.Kind("images")).build(),
+        )
+    }
 
     val hook = Interceptor { chain ->
         val t = interceptor
         val request = chain.request()
+        if (GoogleUsage.isGoogle(request.url.host)) {
+            GoogleUsage.record(
+                request.tag(GoogleUsage.Kind::class.java)?.name
+                    ?: GoogleUsage.kindOf(request.url.host, request.url.encodedPath, request.url.encodedQuery),
+            )
+        }
         if (t == null || !carries(request.url.host)) return@Interceptor chain.proceed(request)
         try {
             t.intercept(chain)

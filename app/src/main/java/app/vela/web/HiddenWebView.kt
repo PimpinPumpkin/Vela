@@ -104,6 +104,7 @@ abstract class HiddenWebView(
         // "Use Vela without Google": every one of these pages is google.com. A null result is the
         // fetcher's ordinary failure path, so nothing above needs to know why.
         if (app.vela.ui.GoogleFree.on.value) return null
+        app.vela.core.net.GoogleUsage.record("page: $tag")
         val id = seq.incrementAndGet().toString()
         val deferred = CompletableDeferred<String>()
         pending[id] = deferred

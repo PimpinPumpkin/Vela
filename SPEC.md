@@ -464,6 +464,22 @@ Constraints:
   155 alike) advertises only `gzip, deflate, br` and strips `zstd` from a caller's `Accept-Encoding`.
   Its zstd decoder is compiled in but behind a Chromium feature that Cronet only takes from a
   system-provided flags file, not from the app.
+- **Every Google request is counted on the phone** (`core/net/GoogleUsage`, 2026-09-25): the shared
+  client's `GoogleTransport.hook` records each request to a Google host (google.com, googleapis.com,
+  gstatic.com, googleusercontent.com, ggpht.com) by purpose, from the caller's `GoogleUsage.Kind`
+  tag or `kindOf(url)`; hidden page loads count at `HiddenWebView.request` / `ReviewsPanel`, and
+  everything a Google page loads after that at `WebProxy.intercept` (called with the proxy on or
+  off). `app/diag/GoogleUsageStore` keeps 14 days in its own prefs, Settings > Privacy shows today
+  and the week, and the diagnostics export carries `googleRequests`. Not counted: MapLibre's own
+  tile fetches (traffic raster, the satellite fallback). First reading on a Pixel 9, a few searches
+  and two place taps: 309 requests, 274 of them loaded by the hidden reviews page (about 137 per
+  tap), against about 35 of Vela's own.
+- **Photos load over the shared client** (2026-09-25): Coil used its own default OkHttp client, so
+  every Google photo went out as `okhttp/4.12.0` with no browser headers over OkHttp's handshake.
+  The image loader now takes the shared client with `GoogleTransport.imageHeaders` in front (Chrome's
+  image-load headers on googleusercontent.com / ggpht.com / gstatic.com: `Sec-Fetch-Dest: image`,
+  cross-site, Referer `https://www.google.com/`, no network hints), and `GoogleTransport.carries`
+  covers every Google host, so those images ride Cronet too.
 - **No value that every install sends identically** (marker audit 2026-09-25, `RequestShape`): a
   constant shared by all of Vela is a filter that catches Vela and nothing else, which is worse than
   any "not quite Chrome" difference. Fixed: batchexecute `_reqid` starts random per process and adds

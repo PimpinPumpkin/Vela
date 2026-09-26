@@ -29,6 +29,9 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
      *  Dalvik heap 14 -> 94 MB). 48 MB still holds a couple of screens of thumbnails + a hero
      *  or two; everything else re-decodes from Coil's disk cache, which is untouched. */
     override fun newImageLoader(): coil.ImageLoader = coil.ImageLoader.Builder(this)
+        // The shared client (Google hosts go over Cronet and are counted), with Chrome's image
+        // headers put on Google image requests first; Coil's own client said "okhttp/4.12.0".
+        .okHttpClient { http.newBuilder().apply { interceptors().add(0, app.vela.core.net.GoogleTransport.imageHeaders) }.build() }
         .memoryCache {
             coil.memory.MemoryCache.Builder(this)
                 .maxSizeBytes(if (app.vela.ui.MemoryPressure.lowRam) 16 * 1024 * 1024 else 48 * 1024 * 1024)
@@ -70,6 +73,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.web.SessionRotation.init(this)
         app.vela.web.GoogleStanding.init(this)
         app.vela.web.GoogleTelemetry.init(this)
+        app.vela.diag.GoogleUsageStore.init(this) // Settings > Privacy > Requests to Google
         // adb-only: `setprop debug.vela.tune.feedDump 1` saves raw review-feed replies to
         // Android/data/app.vela/files/feeddump/ (ReviewFeedDebug). Never on otherwise.
         if (app.vela.ui.AppTune.on("feedDump", false)) {

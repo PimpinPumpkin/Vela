@@ -69,6 +69,8 @@ object BrowserHeaders {
         fetchDest: String = "document",
         fetchMode: String = "navigate",
         fetchSite: String = "none",
+        // Downlink / RTT go only where google.com's Accept-CH asked for them, never to an image CDN.
+        networkHints: Boolean = referer != null,
     ): Request.Builder {
         header("User-Agent", ua)
         header("Accept", accept)
@@ -88,7 +90,7 @@ object BrowserHeaders {
         // 2026-09-22): Chrome sends them on every later request to the origin, rounded (Mbps
         // capped at 10, RTT to 25 ms steps), so a request without them is one that never saw
         // the document. The session warm-up is the document; the XHRs that follow carry them.
-        if (referer != null) {
+        if (networkHints) {
             header("Downlink", "10")
             header("RTT", "50")
         }
