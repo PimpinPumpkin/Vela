@@ -3273,6 +3273,14 @@ architecture note.
   `VoiceGuide.fasterRouteChime` (two RISING notes, the reroute chime falls) `FASTER_CHIME_LEAD_MS`
   before the spoken line, and the card wears `secondaryContainer` with a primary pill like the
   update card and its own countdown bar (it was the one tertiary card in the stack).
+- **"Can't stream" means offline OR a network that never VALIDATED (2026-09-26, user's head unit:
+  roads for a moment at start, then gray with places on top, a whole state downloaded).** A head
+  unit on a car Wi-Fi or a hotspot with no data reports INTERNET capability, `isOnline()` called
+  that online, and `pickBasemapArchive` applied the online rules (drop a shallow archive, keep an
+  archive only while the whole view is inside it) in favor of streamed tiles that could not load.
+  The basemap pick now uses `offline || !isValidated()`, a validation change re-runs it, and the
+  decision (offline, validated, shallow, glyphs) is recorded as a `basemap` diagnostics event.
+  Everything else still keys on `isOnline()`.
 - **A region's Update marks its row for the WHOLE update (2026-09-25, head unit report):**
   `MapUiState.regionUpdatingId`, set in `updateRegion` and cleared in its `finally`. The row's
   spinner used to key only on a routing or place-pack download, so an update that was only the
