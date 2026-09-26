@@ -2873,6 +2873,31 @@ fun MapScreen(
                     }
                 }
             }
+            // The trip's own figures along the bottom, as Google's mini map shows them (user
+            // 2026-09-25): time left and arrival, the same numbers the nav bar shows. Distance is
+            // left out: at the mini window's width it only ever showed as a trailing "...".
+            androidx.compose.material3.Surface(
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(4.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ) {
+                val secs = state.nav.remainingDuration
+                Row(Modifier.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        formatDuration(secs),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                    Text(
+                        " · " + app.vela.ui.formatArrivalClock(secs),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
     }
 }

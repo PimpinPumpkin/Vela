@@ -731,7 +731,9 @@ Defaults that make the safe path the easy one:
   and MapScreen wraps EVERYTHING after the VelaMapView call in one `if (!pipUi)` gate, plus a
   banner for the small window in Google's shape (2026-09-13, was a one-line dark caption the user
   found hard to parse): the turn card's own `primaryContainer` green across the top with the
-  maneuver glyph, the distance as a bold headline and the turn text under it. NB the 4a
+  maneuver glyph, the distance as a bold headline and the turn text under it. Since 2026-09-25 a
+  second strip along the bottom carries the time left and the arrival clock, like Google's mini map
+  (distance was tried too and only ever showed as a trailing "..." at PiP width). NB the 4a
   (GrapheneOS, Android 14) never entered PiP under adb (Home key, home gesture, the window key,
   app-op "default"). Device-verified later the same day once the app-op was set to `allow` by hand
   (`adb shell appops set app.vela PICTURE_IN_PICTURE allow`; "default" did NOT enter PiP on that
@@ -1104,6 +1106,12 @@ Defaults that make the safe path the easy one:
   Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
   name, FilledTonalIconButton for mute/steps. Keep new nav chrome on this treatment (no flat
   default-radius cards, no OutlinedIconButton circles - that was the "dated" look).
+  **Camera badges sit ABOVE the bubbles (2026-09-25, user drive: a bubble covered a Flock
+  camera).** The bubble layers used to be added at the very top of the style, so they were placed
+  first and drawn over the camera badges below them. The Flock, Flock-cluster and speed-camera
+  layers keep `iconIgnorePlacement(false)` and now go above the highest bubble layer
+  (`topNavBubbleLayer`), and a bubble layer created later goes below the lowest camera layer
+  (`CAMERA_BADGE_LAYERS`), so a camera claims its space first and a bubble dodges it.
   **2026-09-16: the bubbles are POINTS placed at the crossing.** The labels used to be the basemap
   `transportation_name` lines with `line-center` placement and an include-list filter, which put a
   bubble at the middle of the street's piece in the tile, often a block or more from the route
