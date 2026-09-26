@@ -78,7 +78,16 @@ jobs:
           ./gradlew :app:generateBaselineProfile \
             -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect
 
+      - name: Keep the generated profile
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-profile
+          path: app/src/release/generated/baselineProfiles/
+
       - name: Open a PR if the profile changed
+        # main only: from another branch (a toolchain check on canary) the PR would carry every
+        # commit that branch has and main does not. There the artifact above is the result.
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

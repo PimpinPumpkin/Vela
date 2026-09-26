@@ -168,7 +168,10 @@ class GoogleHealthProbeTest {
             }
         }
         check("review-feed", results) {
-            val feed = app.vela.core.data.google.parse.ReviewFeedParser.parse(rpc("qv9Egd", cal.reviewFeedProto.replace("{FID}", coop).replace("{TOKEN}", "")))
+            // A new session's first answer is often stripped (the app retries for the same reason), so
+            // one empty reply is not drift: it failed the daily run once, 2026-09-25, and passed on rerun.
+            fun ask() = app.vela.core.data.google.parse.ReviewFeedParser.parse(rpc("qv9Egd", cal.reviewFeedProto.replace("{FID}", coop).replace("{TOKEN}", "")))
+            val feed = ask()?.takeIf { it.reviews.isNotEmpty() } ?: run { Thread.sleep(3_000); ask() }
                 ?: error("unreadable reply")
             check(feed.reviews.isNotEmpty()) { "empty feed (rpcContext no longer opens it?)" }
             "${feed.reviews.size} reviews${if (feed.end && feed.reviews.size < 10) " (end after a short list: Google's limited view)" else ""}"
