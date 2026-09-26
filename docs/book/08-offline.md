@@ -292,6 +292,11 @@ direction and by connection:
   roads reach the center, the ring or any corner (`keepMounted`). Before this rule, panning from
   Pennsylvania across the New York line with only Pennsylvania installed blanked the whole screen,
   the Pennsylvania half included, for twelve seconds (issue #552).
+  The same loose rule picks an archive to mount in the first place: offline, any installed
+  archive whose roads reach the view beats the world floor. Until 2026-09-26 a fresh offline mount
+  still had to pass the online test, so a screen with one corner over a lake mounted the world
+  floor instead and never recovered (reproduced on a lakeshore downtown with the whole state
+  installed: places on an empty map; after the fix, the state's streets).
 - Either way, swaps are at least `BASEMAP_SWAP_COOLDOWN_MS = 2_000` apart, and a newer camera idle
   cancels a pending one.
 - Where nothing installed holds the map, the world floor draws: coastlines, water, borders and
