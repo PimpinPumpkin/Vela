@@ -18,7 +18,11 @@ RANGE="${1:-origin/main..HEAD}"
 TERMS_FILE="${VELA_LOCATION_TERMS:-$HOME/.vela-location-terms}"
 [ -f "$TERMS_FILE" ] || { echo "no local location-term list at $TERMS_FILE; skipping"; exit 0; }
 FAIL=0
-DIFF="$(git diff "$RANGE" -U0 2>/dev/null | grep '^+' | grep -v '^+++' || true)"
+# The region catalogs list every state and country by design, so a term that is a region name
+# would otherwise block every catalog edit; they are data, not prose, and are the only exclusions.
+DIFF="$(git diff "$RANGE" -U0 -- . \
+  ':(exclude)tools/*regions*.json' ':(exclude)app/src/main/assets/region_polys.json' \
+  ':(exclude)docs/stats/*' ':(exclude)*.pmtiles' 2>/dev/null | grep '^+' | grep -v '^+++' || true)"
 MSGS="$(git log "$RANGE" --format='%B' 2>/dev/null || true)"
 while IFS= read -r term; do
   term="$(echo "$term" | sed 's/#.*//' | xargs || true)"
