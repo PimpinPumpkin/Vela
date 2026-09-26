@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * Bakes a Vela obf. Default: the ROUTING section only, with the indexing passes routing does not
  * need switched off (multipolygons, route relations, proximity, country regions). Measured
- * 2026-09-04 on the same 345 MB Washington extract: the full routing+address+POI bake dies in
+ * 2026-09-04 on the same mid-sized US-state extract: the full routing+address+POI bake dies in
  * MapCreator's first pass at a 12 GB heap (as does routing-only with the default passes on), the
  * lean routing-only bake completes at 12 GB in 48 minutes and produces a 111 MB obf, against
  * 595 MB for OsmAnd's own roads-only file of the same state. That is what lets a free 16 GB
@@ -34,8 +34,8 @@ public class VelaObfShim {
             settings.indexCountryRegions = false;
             // Route relations stay ON even in the lean bake (2026-09-12): they carry the signed
             // cycle-route membership OsmAnd's bicycle profile prefers, and with the roads-only
-            // pre-filter they cost 13% of the bake time and 0.4 MB on a US state (Washington:
-            // 300 s / 87.4 MB -> 339 s / 87.8 MB). VELA_OBF_ROUTE_RELATIONS=false turns them off.
+            // pre-filter they cost about 13% more bake time and under half a MB on a US state.
+            // VELA_OBF_ROUTE_RELATIONS=false turns them off.
             settings.indexRouteRelations = !"false".equals(System.getenv("VELA_OBF_ROUTE_RELATIONS"));
         }
         System.out.println("vela obf: sections=" + sections + " lean=" + lean);

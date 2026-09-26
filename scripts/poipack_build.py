@@ -3,8 +3,8 @@
 
 Usage: poipack_build.py <features.geojsonl | -> <out.db>   ("-" reads the export from stdin)
 
-Big regions MUST stream: the geojsonseq export is ~12x the filtered PBF (Washington: 161 MB PBF ->
-1.9 GB of JSON), so a country-sized export written to disk blows a CI runner. build-poi-region.sh
+Big regions MUST stream: the geojsonseq export is ~12x the filtered PBF (a mid-sized US state's
+extract became nearly 2 GB of JSON), so a country-sized export written to disk blows a CI runner. build-poi-region.sh
 pipes `osmium export -o -` straight into this script.
 
 The pack holds a whole region's named POIs, address points and street centerline samples so the
