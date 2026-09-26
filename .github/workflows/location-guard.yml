@@ -78,7 +78,12 @@ jobs:
 
           # Added lines only, plus the commit messages in the range: a term that is being REMOVED
           # must not fail the commit that removes it.
-          git diff --unified=0 "$BASE" "$HEAD" > /tmp/range.diff
+          # The region catalogs, the boundary asset, the stats pages and baked archives name every
+          # state and country on purpose, so they are skipped, the same list as
+          # scripts/check-location.sh (keep the two in step).
+          git diff --unified=0 "$BASE" "$HEAD" -- . \
+            ':(exclude)tools/*regions*.json' ':(exclude)app/src/main/assets/region_polys.json' \
+            ':(exclude)docs/stats/*' ':(exclude)*.pmtiles' > /tmp/range.diff
           git log --format='%B' "$BASE..$HEAD" > /tmp/range.msgs
 
           fail=0
