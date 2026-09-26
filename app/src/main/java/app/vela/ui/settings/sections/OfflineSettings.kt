@@ -473,6 +473,7 @@ private fun RegionRow(
     val installed = region.id in state.routingInstalledIds
     val downloading = state.routingDownloadingId == region.id
     val packDownloading = state.poiPackDownloadingId == region.id
+    val updating = state.regionUpdatingId == region.id && !downloading && !packDownloading
     val packInstalled = region.id in state.poiPackInstalledIds
     // A fresher pack is published than the one installed → offer an in-place update
     // (a small row-level delta when the manifest carries one, else a full re-download).
@@ -492,6 +493,7 @@ private fun RegionRow(
                 (if (subtitleSuffix != null) "$subtitleSuffix · " else "") + when {
                     downloading -> stringResource(R.string.settings_routing_downloading, state.routingDownloadPct)
                     packDownloading -> stringResource(R.string.settings_routing_places_downloading, state.poiPackDownloadPct)
+                    updating -> stringResource(R.string.settings_routing_updating, state.regionFilePct)
                     updateAvailable -> stringResource(R.string.settings_routing_update_available)
                     installed && packInstalled -> stringResource(R.string.settings_routing_installed_places)
                     installed -> stringResource(R.string.settings_routing_installed)
@@ -508,7 +510,7 @@ private fun RegionRow(
         // the highlight doesn't teleport to the top of the page (user report).
         val keeper = rememberDpadFocusKeeper()
         when {
-            downloading || packDownloading -> Row(verticalAlignment = Alignment.CenterVertically) {
+            downloading || packDownloading || updating -> Row(verticalAlignment = Alignment.CenterVertically) {
                 DpadFocusHandoff(keeper)
                 CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                 androidx.compose.material3.TextButton(
@@ -520,7 +522,7 @@ private fun RegionRow(
                 DpadFocusHandoff(keeper)
                 FilledTonalButton(
                     onClick = { vm.updateRegion(region) },
-                    enabled = state.routingDownloadingId == null && state.poiPackDownloadingId == null,
+                    enabled = state.routingDownloadingId == null && state.poiPackDownloadingId == null && state.regionUpdatingId == null,
                     modifier = Modifier.dpadFocusKept(keeper),
                 ) { Text(stringResource(R.string.settings_update_region)) }
                 IconButton(onClick = { vm.deleteRoutingGraph(region.id) }) {

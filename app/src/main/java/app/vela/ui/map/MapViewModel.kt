@@ -384,6 +384,11 @@ data class MapUiState(
     // with its percent. Non-null keeps the region card up; the card used to vanish after the place
     // pack while the map (the biggest piece) kept downloading unseen.
     val regionFileStep: Int? = null,
+    /** The region whose Update is running, whatever it contains (its row shows a spinner, Cancel
+     *  and progress). Before this only a routing file or place pack download marked the row, so a
+     *  places-only or map-only update left the Update button sitting there (user's head unit,
+     *  2026-09-25). */
+    val regionUpdatingId: String? = null,
     val regionFilePct: Int = 0,
     val poiPackInstalledIds: Set<String> = emptySet(),
     val poiPackRegions: List<app.vela.offline.RoutingRegion> = emptyList(), // the pack catalog (revs/deltas)
@@ -7640,28 +7645,32 @@ class MapViewModel @Inject constructor(
     private suspend fun refreshArchive(
         store: app.vela.offline.PmtilesRegionStore,
         region: app.vela.offline.PmtilesRegionStore.Region,
+        step: Int? = null, // 1 = places, 2 = map: shown on the map card and the region's row
     ) {
+        val progress: (Int) -> Unit = { pct -> _state.update { it.copy(regionFileStep = step ?: it.regionFileStep, regionFilePct = pct) } }
         val note: (String) -> Unit = { line ->
             app.vela.ui.RegionUpdates.lastResult.value = line
             diag.record("delta", line)
             android.util.Log.d("VelaDelta", line)
         }
         if (region.delta != null && app.vela.ui.RegionUpdates.allowedNow(appContext)) {
-            if (store.updateWithDelta(region, onProgress = { }, log = note)) { forgetOpenPlaceLinks("${region.id} updated"); return }
+            if (store.updateWithDelta(region, onProgress = progress, log = note)) { forgetOpenPlaceLinks("${region.id} updated"); return }
         } else if (region.delta != null) {
             note("${region.id}: delta available but updates are ${app.vela.ui.RegionUpdates.mode.value.name.lowercase()} on this connection")
         }
         val size = region.sizeMb
         // Over the installed copy, never after deleting it: a failed download keeps the region.
-        val ok = store.download(region, replace = true) { }
+        val ok = store.download(region, replace = true, active = { !regionCancel.get() }, onProgress = progress)
         if (ok) forgetOpenPlaceLinks("${region.id} redownloaded")
         note("${region.id}: full download of ${"%.0f".format(size)} MB ${if (ok) "done" else "FAILED"}")
     }
 
     fun updateRegion(region: app.vela.offline.RoutingRegion) {
-        if (_state.value.poiPackDownloadingId != null || _state.value.routingDownloadingId != null) return
+        if (_state.value.poiPackDownloadingId != null || _state.value.routingDownloadingId != null || _state.value.regionUpdatingId != null) return
         regionCancel.set(false)
+        _state.update { it.copy(regionUpdatingId = region.id, regionDownloadName = region.name, regionFilePct = 0) }
         downloadLaunch(region.name) {
+          try {
             val kinds = _state.value.regionUpdates[region.id].orEmpty()
             val packRegion = _state.value.poiPackRegions.firstOrNull { it.id == region.id }
             if (packRegion != null && region.id in poiPackStore.installedIds() && packRegion.rev > poiPackStore.installedRev(region.id)) {
@@ -7671,7 +7680,7 @@ class MapViewModel @Inject constructor(
             if ("places" in kinds) {
                 placesStore.updatable(placesStore.manifest(app.vela.BuildConfig.PLACES_MANIFEST_URL))
                     .filter { inside(it.s, it.w, it.n, it.e) }
-                    .forEach { if (!regionCancel.get()) refreshArchive(placesStore, it) }
+                    .forEach { if (!regionCancel.get()) refreshArchive(placesStore, it, step = 1) }
                 if (app.vela.ui.MapPoiPrefs.placesWithDownloads.value && !regionCancel.get()) {
                     fetchRegionArchives(region, placesStore, app.vela.BuildConfig.PLACES_MANIFEST_URL, 1)
                 }
@@ -7680,7 +7689,7 @@ class MapViewModel @Inject constructor(
             if ("map" in kinds) {
                 basemapStore.updatable(basemapStore.manifest(app.vela.BuildConfig.BASEMAP_MANIFEST_URL))
                     .filter { inside(it.s, it.w, it.n, it.e) }
-                    .forEach { if (!regionCancel.get()) refreshArchive(basemapStore, it) }
+                    .forEach { if (!regionCancel.get()) refreshArchive(basemapStore, it, step = 2) }
                 if (!regionCancel.get() && fetchRegionArchives(region, basemapStore, app.vela.BuildConfig.BASEMAP_MANIFEST_URL, 2)) {
                     app.vela.offline.GlyphPackStore.ensureInstalled(appContext, http)
                     ensureWorldBasemap()
@@ -7693,8 +7702,10 @@ class MapViewModel @Inject constructor(
                 if (ok) obfStore.writeRev(region.id, region.rev)
                 _state.update { it.copy(routingDownloadingId = null, routingInstalledIds = obfStore.installedIds()) }
             }
-            _state.update { it.copy(regionDownloadName = null, regionFileStep = null) }
+          } finally {
+            _state.update { it.copy(regionDownloadName = null, regionFileStep = null, regionUpdatingId = null) }
             refreshRegionUpdates()
+          }
         }
     }
 

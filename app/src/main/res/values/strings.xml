@@ -189,6 +189,7 @@
     <string name="settings_routing_filter_placeholder">Search</string>
     <string name="settings_routing_no_match">No regions match “%1$s”.</string> <!-- format -->
     <string name="settings_routing_downloading">Downloading… %1$d%%</string> <!-- format -->
+    <string name="settings_routing_updating">Updating… %1$d%%</string> <!-- format -->
     <string name="settings_routing_installed">Installed · routes offline here</string>
     <string name="settings_routing_installed_places">Installed · places searchable offline</string>
     <string name="settings_routing_places_downloading">Saving places · %1$d%%</string> <!-- format -->
