@@ -197,6 +197,14 @@ Defaults that make the safe path the easy one:
   search-time page warm (`warmPlaceWebViews`) is gone too since 2026-09-23: a tap's photos and
   details are single requests, and a hidden page loads only when a place needs one.
 - `./gradlew :core:test` runs the pure-logic unit tests (polyline, nav engine).
+- **Old-Android smoke test (2026-09-25, `old-android-smoke.yml` + `scripts/old-android-smoke.sh`):**
+  builds the per-chip release, installs the x86_64 APK (it carries Cronet's x86_64 library) on
+  Android 8.0 (API 26, minSdk) and Android 9 emulators, walks onboarding, runs a Davis search and
+  opens the place, and fails only on an `app.vela` crash or a native-library load failure. Run it
+  after any toolchain or native-dependency change by pushing to the `old-android-smoke` branch (or
+  from the Actions tab once it is on main). Android 8.0's emulator System UI crashes by itself when a
+  permission dialog covers the keyguard, so the script grants location up front; its crashes are
+  printed as a note, not a failure. First run: both pass on AGP 9.4, Kotlin 2.4 and Cronet 155.
 - **MapScreen is at the JVM 64 KB method limit (2026-09-13).** CI builds release only; the
   DEBUG variant (what the 4a runs) carries Compose source info and failed with "Method too
   large: MapScreenKt.MapScreen" while main built green. Four blocks are split out (same file,
