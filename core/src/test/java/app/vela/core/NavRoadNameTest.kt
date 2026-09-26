@@ -25,20 +25,20 @@ import org.junit.Test
 class NavRoadNameTest {
 
     // Verbatim raw markup from the live feed (whitespace compacted only).
-    private val MARSH  = "<step maneuver='STRAIGHT' meters='900'>Continue straight onto <roadlist><road lang='en'>Marsh Rd</road></roadlist></step>"
-    private val AVE_C  = "<step maneuver='TURN' meters='220'>Turn <turn side='LEFT'>left</turn> onto <roadlist><road lang='en'>Ave C</road></roadlist></step>"
-    private val ST_13  = "<step maneuver='TURN' meters='240'>Turn <turn side='RIGHT'>right</turn> onto <roadlist><road lang='en'>13th St SE</road></roadlist></step>"
+    private val MARSH  = "<step maneuver='STRAIGHT' meters='900'>Continue straight onto <roadlist><road lang='en'>Russell Blvd</road></roadlist></step>"
+    private val AVE_C  = "<step maneuver='TURN' meters='220'>Turn <turn side='LEFT'>left</turn> onto <roadlist><road lang='en'>B St</road></roadlist></step>"
+    private val ST_13  = "<step maneuver='TURN' meters='240'>Turn <turn side='RIGHT'>right</turn> onto <roadlist><road lang='en'>5th St</road></roadlist></step>"
     private val BARE   = "<step maneuver='TURN' meters='160'>Turn <turn side='LEFT'>left</turn></step>" // feed carries NO <road> here
     private val ARRIVE = "<step maneuver='DESTINATION' meters='90'>Arrive at your destination</step>"
 
     @Test
     fun parserKeepsRoadNamesInTheInstruction() {
         DirectionsParser.parseStep(AVE_C).let {
-            assertEquals("Turn left onto Ave C", it.instruction)
+            assertEquals("Turn left onto B St", it.instruction)
             assertEquals(ManeuverType.TURN_LEFT, it.type)
         }
         DirectionsParser.parseStep(ST_13).let {
-            assertEquals("Turn right onto 13th St SE", it.instruction)
+            assertEquals("Turn right onto 5th St", it.instruction)
             assertEquals(ManeuverType.TURN_RIGHT, it.type)
         }
         // Google's feed has no <road> for this turn, so the honest keyless text is the bare turn
@@ -77,7 +77,7 @@ class NavRoadNameTest {
         println("MOCK DRIVE — spoken announcements:\n  " + spoken.joinToString("\n  "))
 
         // The road-bearing turns MUST be announced with the street (the user's ask).
-        assertTrue("expected an 'onto Ave C' announcement, got $spoken", spoken.any { it.contains("onto Ave C") })
-        assertTrue("expected an 'onto 13th St SE' announcement, got $spoken", spoken.any { it.contains("onto 13th St SE") })
+        assertTrue("expected an 'onto B St' announcement, got $spoken", spoken.any { it.contains("onto B St") })
+        assertTrue("expected an 'onto 5th St' announcement, got $spoken", spoken.any { it.contains("onto 5th St") })
     }
 }

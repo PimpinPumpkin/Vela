@@ -931,17 +931,17 @@ class DirectionsManeuverTest {
     fun mapsRealKeylessTurnTokensAndKeepsRoadName() {
         val left = DirectionsParser.parseStep(
             "<step maneuver='TURN' meters='420'>Turn <turn side='LEFT'>left</turn> onto " +
-                "<roadlist><road lang='en'>124th Ave NE</road></roadlist></step>",
+                "<roadlist><road lang='en'>Covell Blvd</road></roadlist></step>",
         )
         assertEquals("a plain TURN must resolve its side, not fall to UNKNOWN", ManeuverType.TURN_LEFT, left.type)
-        assertEquals("Turn left onto 124th Ave NE", left.instruction)
+        assertEquals("Turn left onto Covell Blvd", left.instruction)
 
         val ramp = DirectionsParser.parseStep(
             "<step maneuver='ON_RAMP' meters='2246'>Slight <turn side='RIGHT' type='SLIGHT'>right</turn> " +
-                "onto the ramp to <signlist><sign lang='en'>Arlington</sign></signlist></step>",
+                "onto the ramp to <signlist><sign lang='en'>Sacramento</sign></signlist></step>",
         )
         assertEquals(ManeuverType.RAMP_RIGHT, ramp.type)
-        assertTrue("ramp instruction kept", ramp.instruction.contains("ramp to Arlington"))
+        assertTrue("ramp instruction kept", ramp.instruction.contains("ramp to Sacramento"))
 
         val roundabout = DirectionsParser.parseStep(
             "<step maneuver='ROUNDABOUT_ENTER_AND_EXIT' meters='4557'>At the traffic circle, take the " +
