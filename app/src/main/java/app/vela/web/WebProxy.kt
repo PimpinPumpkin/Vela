@@ -84,6 +84,11 @@ object WebProxy {
         if (url.scheme != "https") return null
         val host = url.host.orEmpty()
         val path = url.path.orEmpty()
+        // Every request a Google page makes after it loads, proxy on or off (Settings > Privacy >
+        // Requests to Google). Preflights are the browser's own and not counted.
+        if (app.vela.core.net.GoogleUsage.isGoogle(host) && !req.method.equals("OPTIONS", true)) {
+            app.vela.core.net.GoogleUsage.record("page resources")
+        }
         // Telemetry blocking is its own choice (GoogleTelemetry, default off) and works with the
         // proxy off too; the dial overrides it when set.
         if (isGoogle(host) && blockTelemetry() && isTelemetry(host, path)) {

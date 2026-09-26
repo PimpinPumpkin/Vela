@@ -541,6 +541,7 @@ private fun buildPanelWebView(
         }
     }
     panelDiag("open hl=${WebReviewsFetcher.reviewsHl()} region=${DiagRegion.of(ctx)} full=$fullScreen webview=${androidx.webkit.WebViewCompat.getCurrentWebViewPackage(ctx)?.versionName}", "cid=$cid")
+    app.vela.core.net.GoogleUsage.record("page: all reviews")
     wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=${WebReviewsFetcher.reviewsHl()}&gl=us")
     return wv
 }

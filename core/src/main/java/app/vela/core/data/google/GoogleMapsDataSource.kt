@@ -389,7 +389,7 @@ class GoogleMapsDataSource @Inject constructor(
                         if (LowRamMode.enabled || LowDataMode.enabled) "!7i30" else "!7i60",
                     )
                 val url = "${cal.searchEndpoint}&q=${term.enc()}&pb=${pb.enc()}".localized()
-                SearchParser.parse(term, GoogleResponse.parse(get(url)), center, cal.paths).places
+                SearchParser.parse(term, GoogleResponse.parse(get(url, kind = "nearby places")), center, cal.paths).places
             }.getOrDefault(emptyList())
         }
         // Dedup by feature id (same place returned under several terms); fall back to name+coords,
@@ -557,7 +557,7 @@ class GoogleMapsDataSource @Inject constructor(
         val addr = place.address?.replace(',', ' ')?.replace(Regex("\\s+"), " ")?.trim()
         val query = if (addr.isNullOrBlank()) place.name else "${place.name} $addr"
         val url = "${cal.searchEndpoint}&q=${query.enc()}&pb=${SearchPb.build(query, place.location, cal.searchPb).enc()}".localized()
-        runCatching { app.vela.core.data.google.parse.PopularTimesParser.parse(get(url, aged = true), place.featureId, cal.paths) }.getOrNull()
+        runCatching { app.vela.core.data.google.parse.PopularTimesParser.parse(get(url, aged = true, kind = "place details"), place.featureId, cal.paths) }.getOrNull()
     }
 
     override suspend fun placePhotoPage(featureId: String, pageToken: String): app.vela.core.data.google.parse.PhotoPage? = io {
@@ -1362,12 +1362,12 @@ class GoogleMapsDataSource @Inject constructor(
         if (app.vela.core.data.NoGoogle.enabled) return@io null
         runCatching {
             session.ensure()
-            val html = get(shareUrl.trim())
+            val html = get(shareUrl.trim(), kind = "shared list")
             val href = Regex("""(/maps/preview/entitylist/getlist\?[^"'\s]+)""")
                 .find(html)?.groupValues?.get(1)
                 ?.replace("&amp;", "&")
                 ?: return@runCatching null
-            EntityListParser.parse(get("https://www.google.com$href"))
+            EntityListParser.parse(get("https://www.google.com$href", kind = "shared list"))
         }.getOrNull()
     }
 
@@ -1378,10 +1378,11 @@ class GoogleMapsDataSource @Inject constructor(
     private fun agedTag(b: Request.Builder, aged: Boolean): Request.Builder =
         if (aged && calibration.current().tune("agedSession", 1.0) >= 0.5) b.tag(app.vela.core.net.AgedSession::class.java, app.vela.core.net.AgedSession) else b
 
-    private fun get(url: String, aged: Boolean = false): String {
+    private fun get(url: String, aged: Boolean = false, kind: String? = null): String {
         val cal = calibration.current()
         val req = Request.Builder()
             .url(url)
+            .apply { kind?.let { tag(app.vela.core.net.GoogleUsage.Kind::class.java, app.vela.core.net.GoogleUsage.Kind(it)) } }
             .browserXhrHeaders(cal.userAgent, cal.secChUa, MAPS_REFERER)
             .let { agedTag(it, aged) }
             .build()
@@ -1426,6 +1427,7 @@ class GoogleMapsDataSource @Inject constructor(
                 fetchDest = "image",
                 fetchMode = "no-cors",
                 fetchSite = "cross-site",
+                networkHints = false,
             )
             .build()
         http.newCall(req).execute().use { resp ->

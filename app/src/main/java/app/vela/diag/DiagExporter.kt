@@ -36,6 +36,8 @@ class DiagExporter @Inject constructor(
             append(",\"version\":").append(quote("${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"))
             append(",\"android\":").append(quote("API ${Build.VERSION.SDK_INT} — ${Build.MANUFACTURER} ${Build.MODEL}"))
             append(",\"note\":").append(quote(DiagScrub.note(redact)))
+            // Requests to Google per day and purpose (counts only, no URLs), Settings > Privacy.
+            append(",\"googleRequests\":").append(GoogleUsageStore.exportJson())
             append(",\"count\":").append(events.size).append(",\"events\":[")
             events.forEachIndexed { i, e ->
                 if (i > 0) append(',')
