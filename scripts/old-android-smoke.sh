@@ -12,6 +12,26 @@ echo "API $API, installing $apk"
 adb install -r "$apk" || { echo "install failed"; exit 1; }
 adb logcat -c
 
+# A fresh install opens on onboarding: walk it (Get started, decline the permission prompts, skip
+# the voice offer) until the map's own Settings button is on screen.
+adb shell am start -n app.vela/.MainActivity
+sleep 15
+for i in $(seq 1 10); do
+  adb shell uiautomator dump /sdcard/u.xml >/dev/null 2>&1
+  x=$(adb shell cat /sdcard/u.xml 2>/dev/null)
+  echo "$x" | grep -q 'content-desc="Settings"' && { echo "onboarding done after $i step(s)"; break; }
+  hit=""
+  for label in "Get started" "DENY" "Deny" "Don't allow" "Skip" "Not now" "Later" "No thanks" "Use system voice" "OK"; do
+    b=$(echo "$x" | grep -o "<node[^>]*text=\"$label\"[^>]*>" | grep -o 'bounds="\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]"' | head -1)
+    if [ -n "$b" ]; then
+      set -- $(echo "$b" | tr -c '0-9' ' ')
+      adb shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 )); hit="$label"; break
+    fi
+  done
+  [ -n "$hit" ] && echo "tapped: $hit" || { echo "no known button, BACK"; adb shell input keyevent KEYCODE_BACK; }
+  sleep 4
+done
+
 adb shell am start -a android.intent.action.VIEW -d "'geo:0,0?q=Davis Food Co-op 620 G St Davis CA'" app.vela
 sleep 40
 adb shell uiautomator dump /sdcard/u.xml >/dev/null 2>&1
