@@ -297,10 +297,10 @@ class GoogleMapsDataSource @Inject constructor(
         if (app.vela.core.data.NoGoogle.enabled) return@io SuggestResult(emptyList(), emptyList())
         session.ensure()
         val at = near ?: DEFAULT_VIEWPORT
-        val span = (spanMeters ?: SUGGEST_SPAN_M).coerceIn(2_000.0, 500_000.0).toInt()
+        val span = RequestShape.span((spanMeters ?: SUGGEST_SPAN_M).coerceIn(2_000.0, 500_000.0))
         val pb = "!2i5!4m12!1m3!1d$span!2d${at.lng}!3d${at.lat}!2m3!1f0!2f0!3f0!3m2!1i${BrowserViewport.width}!2i${BrowserViewport.height}!4f13.1" +
             "!7i20!10b1!12m6!1m2!18b1!30b1!2m2!1i203!2i100!19m4!1m3!1i1!2i1!3i1!20m1!1e1"
-        val url = "https://www.google.com/s?tbm=map&gs_ri=maps&suggest=p&authuser=0&hl=en&gl=us&pb=${pb.enc()}&q=${query.enc()}&tch=1&ech=1".localized(lang)
+        val url = "https://www.google.com/s?tbm=map&gs_ri=maps&suggest=p&authuser=0&hl=en&gl=us&pb=${pb.enc()}&q=${query.enc()}&tch=1&ech=${RequestShape.nextEch()}".localized(lang)
         val raw = try { get(url) } catch (e: Exception) {
             android.util.Log.w("VelaSuggest", "\"$query\": ${e.javaClass.simpleName} ${e.message}")
             throw e
@@ -537,7 +537,7 @@ class GoogleMapsDataSource @Inject constructor(
         val inner = cal.reviewFeedProto.replace("{FID}", featureId).replace("{TOKEN}", token)
         val freq = "[[[\"qv9Egd\",${JsonPrimitive(inner)},null,\"generic\"]]]"
         val url = "https://www.google.com/maps/_/MapsWizUi/data/batchexecute?rpcids=qv9Egd&source-path=%2Fmaps&hl=en&gl=us" +
-            "&_reqid=${(1000..99999).random()}&rt=c"
+            "&_reqid=${RequestShape.nextReqId()}&rt=c"
         runCatching {
             val raw = post(url.localized(hl), "f.req=${freq.enc()}&", aged = true)
             ReviewFeedDebug.sink?.let { sink -> runCatching { sink(raw) } }
@@ -579,7 +579,7 @@ class GoogleMapsDataSource @Inject constructor(
             }.getOrNull() ?: return@io null
         }
         val freq = "[[[\"hspqX\",${JsonPrimitive(inner)},null,\"generic\"]]]"
-        runCatching { app.vela.core.data.google.parse.PhotosParser.parsePage(post(cal.photosEndpoint, "f.req=${freq.enc()}", aged = true)) }
+        runCatching { app.vela.core.data.google.parse.PhotosParser.parsePage(post(RequestShape.batchUrl(cal.photosEndpoint).localized(), "f.req=${freq.enc()}&", aged = true)) }
             .onFailure { diag.record("photos", "gallery page failed: ${it.javaClass.simpleName}") }
             .getOrNull()
     }
@@ -598,7 +598,7 @@ class GoogleMapsDataSource @Inject constructor(
             .replace("[1200,1000]", "[${BrowserViewport.width},${BrowserViewport.height}]") // this install's window, not one shared size
         // JsonPrimitive(...).toString() = the proto as a properly-escaped JSON string literal.
         val freq = "[[[\"hspqX\",${JsonPrimitive(inner)},null,\"generic\"]]]"
-        runCatching { PhotosParser.parse(post(cal.photosEndpoint, "f.req=${freq.enc()}", aged = true)) }.getOrDefault(emptyList())
+        runCatching { PhotosParser.parse(post(RequestShape.batchUrl(cal.photosEndpoint).localized(), "f.req=${freq.enc()}&", aged = true)) }.getOrDefault(emptyList())
     }
 
     override suspend fun streetView(location: LatLng, preferStreet: String?): app.vela.core.model.StreetViewPano? = io {
@@ -640,6 +640,7 @@ class GoogleMapsDataSource @Inject constructor(
 
     private suspend fun streetViewNearest(metaUrl: String, lat: Double, lng: Double): app.vela.core.model.StreetViewPano? {
         val url = metaUrl
+            .replace("callback=cb", "callback=${RequestShape.callbackName()}")
             .replace("{LAT}", "%.7f".format(java.util.Locale.US, lat))
             .replace("{LNG}", "%.7f".format(java.util.Locale.US, lng))
         return runCatching { StreetViewParser.parse(get(url), lat, lng) }.getOrNull()

@@ -60,8 +60,11 @@ object SearchPb {
         // The floor used to be 3 km: zoomed in to a few blocks, "food" then searched a 3 km net and the
         // result fit flew the camera out of the view the user had chosen (user 2026-09-15). 1 km keeps
         // Google's net near the view; the camera side holds the view when enough hits land inside it.
-        if (spanMeters != null) {
-            pb = pb.replaceFirst(Regex("!1d[0-9.]+"), "!1d${spanMeters.coerceIn(MIN_SPAN_M, 500_000.0).toInt()}")
+        // Always rewritten, through RequestShape.span: the template's captured float and a whole
+        // number are both values only Vela sends (marker audit 2026-09-25).
+        SPAN_RX.find(pb)?.let { m ->
+            val base = spanMeters?.coerceIn(MIN_SPAN_M, 500_000.0) ?: m.groupValues[1].toDoubleOrNull() ?: return@let
+            pb = pb.replaceRange(m.range, "!1d${RequestShape.span(base)}")
         }
         // Result offset (!8i) rides directly after the page-size token (!7iN) - the same
         // pagination the web map uses. offset 20 = Google's ranks 21-40, and so on. Keyed on the
@@ -75,6 +78,7 @@ object SearchPb {
     }
 
     private val PAGE_SIZE_RX = Regex("!7i\\d+")
+    private val SPAN_RX = Regex("!1d([0-9.]+)")
 
     /** The page size the [template] actually requests (the !7iN token), or null when a
      *  recalibrated template dropped the token - callers should then skip pagination. */

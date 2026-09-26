@@ -464,6 +464,19 @@ Constraints:
   155 alike) advertises only `gzip, deflate, br` and strips `zstd` from a caller's `Accept-Encoding`.
   Its zstd decoder is compiled in but behind a Chromium feature that Cronet only takes from a
   system-provided flags file, not from the app.
+- **No value that every install sends identically** (marker audit 2026-09-25, `RequestShape`): a
+  constant shared by all of Vela is a filter that catches Vela and nothing else, which is worse than
+  any "not quite Chrome" difference. Fixed: batchexecute `_reqid` starts random per process and adds
+  100000 per call (was `_reqid=1` on every photo request and an unrelated random number per feed
+  request); the photo request is localized, carries a `gl`, encodes `source-path` and ends its body
+  with `&` as the page's does; autocomplete's `ech` counts up per request (was `1` on every
+  keystroke); the Street View lookup's JSONP callback is `_xdc_._<6 random>` (was `cb`); every map
+  span (`!1d`) is a long decimal within 0.2% of the asked value (`RequestShape.span`; it was the
+  template's captured `25229.167291701906` on the ambient, details and popular-times requests, or a
+  whole number, which no map produces); and the directions request's map viewport is centered on the
+  trip and spans it (`RequestShape.fitDirections`; the captured template froze it on Davis, so every
+  Vela directions request anywhere claimed a map over Davis). Left alone: the dead
+  `listentitiesreviews` template still says `!1svela`, and nothing sends it.
 - Residuals that are not fixed: Chrome sends `X-Client-Data` (its variations proto) and four
   `x-browser-*` headers (`channel`, `copyright`, `year` and `validation`, a hash of the Chrome
   build) on every Google request, a fresh profile included, and neither client here sends any of
