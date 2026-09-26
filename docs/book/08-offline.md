@@ -3,7 +3,12 @@
 ## What you see
 
 Settings > Offline maps has two ways in. **Download the area you're viewing** saves the screen
-you are looking at, and quietly pulls the whole region around it too. **Entire states &
+you are looking at (map tiles from one zoom level out to three in), and it asks first (issue #609,
+2026-09-25): a dialog prices the view itself (tiles counted per zoom at about 110 KB each,
+`MapViewModel.AREA_TILE_KB`, sampled from OpenFreeMap at 26 to 170 KB) and, as a separate,
+ticked-by-default choice, the region around it (routing, place pack, places file, the region's map
+and building outlines, from the catalogs' own sizes), which only comes whole. For a view of Davis
+that was about 1 MB against 1.4 GB for Northern California. It used to pull the region silently. **Entire states &
 countries** is the catalog: one tap on a state, a province or a country downloads everything
 Vela needs to work there with no signal. One card on the map follows the whole download piece by
 piece, and one message at the end says whether the region is ready or only partly there.

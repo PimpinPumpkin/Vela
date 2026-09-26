@@ -6509,7 +6509,59 @@ class MapViewModel @Inject constructor(
         if (flash) flashStatus(appContext.getString(R.string.settings_map_cache_cleared))
     }
 
-    fun downloadViewport() {
+    /**
+     * What "Download the area you're viewing" would fetch, estimated before it starts (issue #609).
+     * Two very different parts: the map tiles of the view itself (from one zoom level out to three
+     * in, the same range [downloadViewport] saves), and the region the view sits in (offline routing,
+     * its place pack, the places file, the region's map and building outlines), which only come whole.
+     * The tile part is an estimate: tiles are counted per zoom and priced at [AREA_TILE_KB], sampled
+     * from OpenFreeMap (26 to 170 KB a tile, dense cities at the top, 2026-09-25). The region part is
+     * the catalogs' own sizes; 0 when its routing is already installed.
+     */
+    data class AreaPlan(val viewMb: Int, val region: app.vela.offline.RoutingRegion?, val regionMb: Int, val regionInstalled: Boolean)
+
+    suspend fun areaDownloadPlan(): AreaPlan? {
+        val v = viewport ?: return null
+        val (s, w, n, e, zoom) = listOf(v[0], v[1], v[2], v[3], v[4])
+        val minZ = (zoom - 1).coerceIn(0.0, 15.0).toInt()
+        val maxZ = (zoom + 3).coerceIn(minZ.toDouble(), 16.0).toInt()
+        // The vector tiles stop at z14; closer zooms draw from those, so nothing past 14 is fetched.
+        val tiles = (minZ..minOf(maxZ, 14)).sumOf { z -> tileCount(s, w, n, e, z) }
+        val viewMb = maxOf(1, Math.round(tiles * AREA_TILE_KB / 1024.0).toInt())
+        val lat = (s + n) / 2; val lng = (w + e) / 2
+        val regions = _state.value.routingRegions.ifEmpty {
+            runCatching { regionCatalog.manifest(app.vela.BuildConfig.OBF_MANIFEST_URL) }.getOrDefault(emptyList())
+                .also { rs -> if (rs.isNotEmpty()) _state.update { it.copy(routingRegions = rs) } }
+        }
+        val region = regions.filter { it.covers(lat, lng) }.minByOrNull { it.boxArea() }
+            ?: return AreaPlan(viewMb, null, 0, false)
+        if (region.id in obfStore.installedIds()) return AreaPlan(viewMb, region, 0, true)
+        if (_state.value.poiPackRegions.isEmpty()) {
+            val packs = runCatching { poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL) }.getOrDefault(emptyList())
+            _state.update { it.copy(poiPackRegions = packs) }
+        }
+        val pack = _state.value.poiPackRegions.firstOrNull { it.id == region.id }
+        val extras = regionExtrasMb(listOf(region))[region.id] ?: 0
+        val overlayMb = runCatching {
+            overlayStore.manifest(app.vela.BuildConfig.OVERLAY_MANIFEST_URL)
+                .filter { it.covers(lat, lng) }.minByOrNull { it.boxArea() }
+                ?.takeIf { it.id !in overlayStore.installedIds() }?.sizeMb ?: 0
+        }.getOrDefault(0)
+        return AreaPlan(viewMb, region, app.vela.ui.settings.sections.regionInstalledMb(region, pack, extras) + overlayMb, false)
+    }
+
+    /** Web-mercator tiles covering the box at zoom [z]. */
+    private fun tileCount(s: Double, w: Double, n: Double, e: Double, z: Int): Int {
+        val scale = 1 shl z
+        fun x(lng: Double) = ((lng + 180.0) / 360.0 * scale).toInt().coerceIn(0, scale - 1)
+        fun y(lat: Double): Int {
+            val r = Math.toRadians(lat.coerceIn(-85.0511, 85.0511))
+            return ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * scale).toInt().coerceIn(0, scale - 1)
+        }
+        return (x(e) - x(w) + 1) * (y(s) - y(n) + 1)
+    }
+
+    fun downloadViewport(withRegion: Boolean = true) {
         val v = viewport ?: run { showStatus(appContext.getString(R.string.mapvm_pan_to_area_first)); return }
         if (_state.value.areaDownloadPct != null) return // one area at a time
         val (s, w, n, e, zoom) = listOf(v[0], v[1], v[2], v[3], v[4])
@@ -6543,8 +6595,12 @@ class MapViewModel @Inject constructor(
                 ),
             )
         }
-        downloadOfflinePois(s, w, n, e)
-        downloadRoutingForArea((s + n) / 2, (w + e) / 2)
+        // The region part (issue #609): routing, places, the region's map and building outlines
+        // only come whole, so it is the user's choice in the confirmation, not a silent extra.
+        if (withRegion) {
+            downloadOfflinePois(s, w, n, e)
+            downloadRoutingForArea((s + n) / 2, (w + e) / 2)
+        }
     }
 
     /** Saving an area offline also pulls the routing graph for the region that CONTAINS it (if one is
@@ -7682,6 +7738,9 @@ class MapViewModel @Inject constructor(
     }
 
     companion object {
+        /** Average size of one saved map tile, for the area-download estimate ([areaDownloadPlan]):
+         *  OpenFreeMap tiles sampled at 26 to 170 KB, plus the terrain layer that rides along. */
+        const val AREA_TILE_KB = 110.0
         /** What a place tap loads before "More photos" / All reviews (2026-09-23, FullPlaceLoad off). */
         const val FIRST_PHOTOS = 6
         const val FIRST_REVIEWS = 10
