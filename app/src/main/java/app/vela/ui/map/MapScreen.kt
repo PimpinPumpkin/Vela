@@ -2110,6 +2110,7 @@ fun MapScreen(
                 onOpenSimilar = vm::openSimilar,
                 onSetShortcut = vm::setSelectedAsShortcut,
                 onRetryReviews = vm::retryReviews,
+                onNeedReviews = vm::ensureReviews,
                 onClearParking = {
                     vm.clearParkingSpot()
                     vm.clearSelection()
