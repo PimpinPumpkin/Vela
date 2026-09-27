@@ -412,6 +412,38 @@ reads that copy instead. Before 2026-09-23 a failed fetch meant an empty list, s
 just downloaded a state and opened the page with no signal read it as "nothing is downloaded". A
 phone that has never fetched the catalog still gets an empty page offline.
 
+### Grid cells: part of a region (bake only)
+
+A region can also be cut into cells, so a frame over one town can pull a few small bundles instead
+of the whole state. The bake exists
+(`scripts/build-cells-region.sh`, workflow `grid-cells.yml`, SPEC 7.6); the app does not read it
+yet. Cells are 0.5 degree tiles of one global grid, clipped to the region; each is one zip holding
+its routing obf, its place pack and its slice of the region's places tiles.
+
+Delaware, baked on a laptop with four cells at a time:
+
+| | Cells | Whole region |
+| --- | --- | --- |
+| Tiles touching the box / kept | 15 / 10 | |
+| Routing obf | 7.72 MB | 7.63 MB |
+| Place pack (db / zipped) | 23.8 / 10.4 MB | 23.2 / 10.4 MB |
+| Places tiles | 19.5 MB | 57.5 MB |
+| Download | 37.7 MB | 75.6 MB |
+| Largest / smallest cell | 13.7 / 0.01 MB | |
+| Bake time | 30 s (6 s split, 0 to 17 s per cell) | obf 26 s + pack 5 s |
+
+The routing and pack totals run 1 to 3% over the region's, because a road crossing a cell edge
+is kept whole in both cells. The places column is not like for like: the region's places archive
+is cut by its box, which takes in neighboring states' cities, while each cell's slice keeps only
+the tiles inside the region's boundary. Four trips across cell edges route over the cell files
+exactly as over the region file (same distance, time and steps; `ObfCellsProbeTest`).
+
+Northern California (`california-norcal`), six cells at a time: 308 tiles, 151 kept, 549 MB zipped
+(obf 136, pack 182, places 232) and 793 MB installed, in 7 min 20 s (split 160 s at 10 cells per pass; the default is now 4, see SPEC 7.6 for osmium's
+memory). Cells run from
+2 KB to 93 MB; the largest is the dense corner of the bay, whose obf alone took 118 s. The places
+slices add to 232 MB against the region archive's 247 MB.
+
 ## Limits
 
 - **Offline routing is a city and metro feature.** Long routes fail on memory, not just time,

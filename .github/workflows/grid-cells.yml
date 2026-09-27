@@ -1,0 +1,149 @@
+# Bake grid-cell offline bundles per catalog region (scripts/build-cells-region.sh): each region
+# is cut into 0.5 degree cells, each cell zipped as routing obf + place pack + places tiles on the
+# `cells-<region>` release, and cells-manifest.json on the `grid-cells` release indexes them all.
+# Manual dispatch only. Nothing is baked without an explicit selection.
+name: Build grid cells
+
+on:
+  workflow_dispatch:
+    inputs:
+      regions:
+        description: "Region ids, space or comma separated. Overrides group and all."
+        type: string
+        default: ""
+      group:
+        description: "Catalog group(s), space or comma separated, or all-sub for every <country>-sub group"
+        type: string
+        default: ""
+      all:
+        description: "Every catalog row except skip_obf ones (needs shard: the catalog is past the 256-job cap)"
+        type: boolean
+        default: false
+      shard:
+        description: "Half of the selection by id: a, b, or blank for all"
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  prep:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.sel.outputs.matrix }}
+      count: ${{ steps.sel.outputs.count }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: sel
+        env:
+          REGIONS: ${{ inputs.regions }}
+          GROUP: ${{ inputs.group }}
+          ALL: ${{ inputs.all }}
+          SHARD: ${{ inputs.shard }}
+        run: |
+          ids_json=$(jq -cn --arg s "$REGIONS" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
+          groups_json=$(jq -cn --arg s "$GROUP" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
+          if [ "$(jq 'length' <<<"$ids_json")" -eq 0 ] && [ "$(jq 'length' <<<"$groups_json")" -eq 0 ] && [ "$ALL" != "true" ]; then
+            echo "::notice::nothing selected: set regions, group or all"
+            echo "count=0" >> "$GITHUB_OUTPUT"; echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # skip_obf rows are whole countries whose sub-area rows cover them; cells of both would
+          # duplicate every cell.
+          sel=$(jq -c --argjson ids "$ids_json" --argjson groups "$groups_json" --arg all "$ALL" '
+            [ .regions[]
+              | select(
+                  if ($ids | length) > 0 then (.id as $r | $ids | index($r)) != null
+                  elif ($groups | length) > 0 then
+                    (.group as $g | ($groups | index($g)) != null or (($groups | index("all-sub")) != null and ($g | endswith("-sub"))))
+                  else $all == "true" end)
+              | select(.skip_obf != true)
+              | {id, name} ]' tools/routing-regions.json)
+          sel=$(printf '%s' "$sel" | jq -c --arg sh "$SHARD" 'sort_by(.id) as $s | (($s | length) + 1) / 2 | floor as $h
+            | if $sh == "a" then $s[0:$h] elif $sh == "b" then $s[$h:] else $s end')
+          n=$(printf '%s' "$sel" | jq 'length')
+          echo "selected $n region(s):"; printf '%s' "$sel" | jq -r '.[].id' | paste -sd' ' -
+          if [ "$n" -eq 0 ]; then echo "::error::no regions matched regions='$REGIONS' group='$GROUP'"; exit 1; fi
+          if [ "$n" -gt 256 ]; then echo "::error::$n regions > 256 matrix cap; use shard a and b"; exit 1; fi
+          echo "matrix={\"include\":$sel}" >> "$GITHUB_OUTPUT"
+          echo "count=$n" >> "$GITHUB_OUTPUT"
+
+  bake:
+    needs: prep
+    if: ${{ needs.prep.outputs.count != '0' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix: ${{ fromJSON(needs.prep.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      # pmtiles and the pinned MapCreator zip (150 MB) are cached; the key names what is pinned.
+      - name: Cache the bake toolchain
+        uses: actions/cache@v4
+        with:
+          path: ~/vela-bin
+          key: cells-tools-${{ runner.os }}-pmtiles-1.31.2-mapcreator-obf-tools
+      - name: Install tools
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool jq zip unzip
+          mkdir -p "$HOME/vela-bin"
+          if [ ! -x "$HOME/vela-bin/pmtiles" ]; then
+            curl -fsSL --retry 3 https://github.com/protomaps/go-pmtiles/releases/download/v1.31.2/go-pmtiles_1.31.2_Linux_x86_64.tar.gz | tar -xz pmtiles
+            mv pmtiles "$HOME/vela-bin/pmtiles"
+          fi
+          if ! unzip -tq "$HOME/vela-bin/mapcreator.zip" >/dev/null 2>&1; then
+            curl -fSL --retry 3 -o "$HOME/vela-bin/mapcreator.zip" "https://github.com/$GITHUB_REPOSITORY/releases/download/obf-tools/mapcreator.zip"
+          fi
+          sudo cp "$HOME/vela-bin/pmtiles" /usr/local/bin/
+          pmtiles version | head -1; osmium --version | head -1
+      - name: Scratch space on the big disk
+        run: |
+          sudo mkdir -p /mnt/vela-work && sudo chown "$(id -u):$(id -g)" /mnt/vela-work
+          df -h / /mnt | sed 's/^/  /'
+      - name: Bake + upload ${{ matrix.id }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VELA_REPO: ${{ github.repository }}
+          TMPDIR: /mnt/vela-work
+          OUT_DIR: /mnt/vela-work/out
+          MAPCREATOR_ZIP: /home/runner/vela-bin/mapcreator.zip
+          CELL_JOBS: "3"
+          CELL_HEAP: 4g
+          CELLS_UPLOAD: "1"
+        run: |
+          bash scripts/build-cells-region.sh "${{ matrix.id }}"
+          mkdir -p fragments && cp "/mnt/vela-work/out/cells-${{ matrix.id }}.json" fragments/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cells-fragment-${{ matrix.id }}
+          path: fragments/
+          retention-days: 1
+
+  manifest:
+    needs: [prep, bake]
+    if: ${{ !cancelled() && needs.prep.outputs.count != '0' }}
+    runs-on: ubuntu-latest
+    # No concurrency group: a pending job in one is canceled when a newer run joins. The merge
+    # derives the manifest from the releases and re-lists them after uploading, so parallel
+    # merges are safe.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cells-fragment-*
+          path: fragments
+          merge-multiple: true
+      - name: Merge cells-manifest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VELA_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p fragments
+          bash scripts/merge-cells-manifest.sh fragments

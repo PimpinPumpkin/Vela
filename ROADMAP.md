@@ -31,6 +31,14 @@ Roughly in the order they are worth doing. Each one is small enough for a single
   route whose cameras sit where the geometry offers no parallel road. Whether the two toggles then
   become one switch is the same decision: today "avoid" costs no requests and "side streets"
   costs a handful, which is why the second is nested and off.
+- **Grid-cell downloads, app side (2026-09-27).** The bake exists (SPEC 7.6: 0.5 degree cells,
+  one zip per cell with obf + place pack + places slice, `cells-manifest.json` on `grid-cells`);
+  no cells are published yet. Next: the Download an area picker reads the manifest, pulls the
+  cells its frame touches, installs each part into the existing stores (obf into `ObfStore` with
+  the cell's box in `index.json`, the pack into `PoiPackStore`, the slice into `PlacesTileStore`),
+  and deletes by cell. Open: how a cell pack and a whole-region pack of the same area coexist in
+  search (duplicate rows), and per-cell updates by `rev`. Before a catalog-wide dispatch,
+  promote-stable and fdroid-repo must paginate their `gh release list` (about 450 new releases).
 - **Reroute on the phone first (deferred 2026-09-16).** When a downloaded region covers the drive,
   compute the reroute with the on-device engine at once, then swap in the traffic-aware online
   route when it arrives through the existing heal path. Evidence: a shared diagnostics export

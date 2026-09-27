@@ -1925,6 +1925,7 @@ features, and the building and address overlays where they exist. `MapPoiPrefs.p
 | Address overlay | `scripts/build-address-region.sh` | `address-overlays` | `address-overlay-manifest.json` |
 | Maxspeed overlay | `maxspeed-overlays.yml` | `maxspeed-overlays` | its own manifest |
 | ALPR cameras | `scripts/build-flock-cameras.py` | `flock-cameras` | `flock-manifest.json` |
+| Grid cells (bake only, 7.6) | `scripts/build-cells-region.sh` | `cells-<region>` | `cells-manifest.json` on `grid-cells` |
 | Glyphs | `scripts/build-map-fonts.sh` | `map-fonts` | unpacked to Pages |
 | TTS runtime, ASR models | vendored builds | `tts-runtime`, `asr-models` | catalog in `:core` |
 
@@ -2161,6 +2162,80 @@ Four rules, each of which produced a blank map:
    (`refreshBasemapArchive(seed)` at init).
 4. Every helper that reads the basemap source must go through `basemapSrc(style)`, or the
    offline map comes up light and bare.
+
+### 7.6 Grid-cell downloads (bake side)
+
+A catalog region is also published as grid cells, so the app can download the part of a region a
+frame touches instead of the whole region. The app side is not built; nothing reads these assets
+yet.
+
+**Grid.** Cells are the 0.5 degree tiles of one global grid (`cells_grid.py`, `STEP` 0.5), each
+clipped to the region's header box (clamped by `clamp-bbox.py`). The key is the tile's SW corner,
+fixed width: `[ns]DD.D[ew]DDD.D`, e.g. `n38.5w075.5`. Cell id = `<region>.<key>`
+(`delaware.n38.5w075.5`); region ids hold no dot, so the first dot splits them. A cell with no road
+and no place-pack row is dropped. A region with more than `MAX_CELLS` (999) cells fails the bake:
+one release holds 1000 assets, the zips plus the fragment.
+
+**Bake** (`scripts/build-cells-region.sh <region> [local.pbf]`, shared steps in
+`scripts/bake-lib.sh`, which the obf and pack scripts also source):
+
+1. The extract is cut to the union of the obf and pack tag filters (`BAKE_OBF_EXPR`,
+   `BAKE_PACK_EXPR`), then `osmium extract -s complete_ways` writes `CELLS_BATCH` (4) cells per
+   pass. A way crossing a cell edge is whole in both cells, so cells overlap by those ways.
+   osmium's id sets are sized by the id range, about 2 GB per dense cell (Northern California: one
+   dense cell 3.7 GB peak, five 11.8 GB, ten 12.2 GB), so 4 per pass fits a 16 GB runner.
+2. Per cell, `CELL_JOBS` (2) at a time: the routing obf (`bake_obf_filter` + `VelaObfShim`,
+   `CELL_HEAP` 3g; skipped with no highway way), the place pack (`bake_pack_filter` +
+   `poipack_build.py`; skipped with no POI, address or street row) and the places slice
+   (`pmtiles extract` of the region's places archive).
+3. The places slice is cut with `--region`: the region's polygon from
+   `app/src/main/assets/region_polys.json` clipped to the cell. The places archive is baked by
+   box, so a box cut would put the neighbor's places into border cells. A region with no polygon
+   is cut by the cell box; a cell the polygon misses gets no slice. Low-zoom tiles overlap cells,
+   so slices repeat some tiles.
+4. Bundle `<cell-id>.zip`: `<cell-id>.obf`, `<cell-id>.db`, `places-<cell-id>.pmtiles`, each only
+   when present. The obf and PMTiles entries are stored, the pack deflated.
+
+**Hosting.** One release per region, tag `cells-<region>` (never `v0.*`), holding the zips and the
+fragment `cells-<region>.json`, uploaded after the zips. `cells-manifest.json` on the `grid-cells`
+release indexes every region.
+
+**Manifest:**
+
+```json
+{ "version": 1,
+  "regions": [ { "id": "delaware", "name": "Delaware (state)", "rev": 20260927,
+                 "cells": [ { "id": "delaware.n38.5w075.5", "bbox": [38.5, -75.5, 39.0, -75.0],
+                              "url": ".../releases/download/cells-delaware/delaware.n38.5w075.5.zip",
+                              "sizeMb": 10.81, "installedMb": 15.94, "rev": 20260927,
+                              "parts": ["obf", "pack", "places"] } ] } ] }
+```
+
+`bbox` is [S,W,N,E] of the clipped cell. `sizeMb` is the zip, `installedMb` the unpacked parts,
+both decimal MB rounded up to 0.01. `rev` is the bake date `YYYYMMDD`; the region's `rev` is its
+newest cell's. `parts` names what the zip holds (`obf`, `pack`, `places`). The fragment has the
+same shape as a region row.
+
+**Merge** (`scripts/merge-cells-manifest.sh [fragments-dir]`): derives the manifest from the
+releases, never folds the run's entries (7.1). Per `cells-*` release: the fragment's rows narrowed
+to cells whose zip is on the release, `sizeMb` from the listing; a zip with no fragment row gets
+its box from its key and its rev from its upload date. The run's own fragments win for their
+regions. The upload retries with a random 5 to 20 s backoff, and the merge re-lists the releases
+and rebuilds when an asset landed meanwhile. `DRY_RUN=1` writes the manifest locally.
+
+**Workflow** `grid-cells.yml`: dispatch only; `regions`, `group` (or `all-sub`) or `all` plus
+`shard` a/b; an empty selection bakes nothing. `skip_obf` rows are skipped (their sub-area rows
+cover them). No concurrency group on the merge.
+
+**Constraint:** a catalog-wide cells bake adds one release per region (about 450). Queries that
+take `gh release list --limit N` and filter by tag afterwards (promote-stable, fdroid-repo) stop
+seeing the app releases once that many newer releases exist; they must paginate before such a
+dispatch.
+
+**Routing across cells.** `ObfRouteEngine` hands the router every installed file that intersects
+the trip box, so a trip over several cell files routes like one over the region file.
+`ObfCellsProbeTest` (`-DvelaCells=<dir with cells/ and whole/>`) checks four Delaware trips across
+cell edges: identical distance, time and step count.
 
 ---
 

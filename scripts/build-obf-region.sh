@@ -22,19 +22,15 @@ TAG="obf-regions"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 
+source "$ROOT/scripts/bake-lib.sh"
+
 # The pinned bake tool (OsmAndMapCreator) lives on the obf-tools release - forks fall back upstream.
-curl -fSL -o "$WORK/mapcreator.zip" "https://github.com/$REPO/releases/download/obf-tools/mapcreator.zip" \
-  || curl -fSL -o "$WORK/mapcreator.zip" "https://github.com/PimpinPumpkin/Vela/releases/download/obf-tools/mapcreator.zip"
-unzip -q "$WORK/mapcreator.zip" -d "$WORK/mapcreator"
+bake_mapcreator "$WORK"
 
 curl -fSL --retry 3 -o "$WORK/region.osm.pbf" "$PBF_URL"
 
-# bbox [S,W,N,E] from the extract's declared HEADER box - same rule as every other region pipeline
-# (data.bbox is polluted by outlier nodes). osmium prints (minlon,minlat,maxlon,maxlat).
-read -r MINLON MINLAT MAXLON MAXLAT < <(osmium fileinfo -g header.boxes "$WORK/region.osm.pbf" | tr -d '()' | tr ',' ' ')
-BBOX="[$MINLAT,$MINLON,$MAXLAT,$MAXLON]"
-
-javac -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*" -d "$WORK" "$ROOT/scripts/VelaObfShim.java"
+# bbox [S,W,N,E] from the extract's declared HEADER box - same rule as every other region pipeline.
+BBOX="$(bake_header_bbox "$WORK/region.osm.pbf")"
 # Not processInRam (it already defaults to false): MapCreator's disk-backed pipeline is what lets a
 # region bake inside a small runner at all. The heap bound is for its indexes, not the region.
 #
@@ -59,33 +55,25 @@ javac -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*" -d "$WO
 # still the right collector here: a doomed region should fail fast.
 # 12g, not 14g: a 16 GB runner OOM-kills the JVM itself above that, and the lean routing-only
 # bake (see VelaObfShim.java) was MEASURED to complete a 345 MB US state at 12g.
-# ROUTING-ONLY bakes index a PRE-FILTERED extract: MapCreator's memory ceiling is its first
-# pass over every node in the file, and buildings, landuse and the rest of the map are most of
-# those nodes. Keeping only highway ways (with their nodes, so barriers, signals and crossings
-# come along), ferry and shuttle-train routes and turn-restriction relations cuts a US-state
-# extract to roughly a third of its bytes and a quarter of its nodes in a few seconds (route
-# relations ride along for the bicycle profile's signed-route preference), which is
-# what brings the big rows under a 16 GB runner's heap (measured on a state bake 2026-09-11, see
-# CLAUDE.md). A bake that asks for the address or POI sections needs the whole file and skips it.
+# ROUTING-ONLY bakes index a PRE-FILTERED extract (bake_obf_filter in bake-lib.sh says why).
 INDEX_PBF="region.osm.pbf"
 if [[ "${VELA_OBF_SECTIONS:-routing}" == "routing" ]]; then
-  osmium tags-filter "$WORK/region.osm.pbf" w/highway w/route=ferry,shuttle_train r/type=restriction r/type=route \
-    -o "$WORK/region-routing.osm.pbf" --overwrite
-  FULL_MB=$(( ( $(stat -f%z "$WORK/region.osm.pbf" 2>/dev/null || stat -c%s "$WORK/region.osm.pbf") + 1048575 ) / 1048576 ))
-  ROUT_MB=$(( ( $(stat -f%z "$WORK/region-routing.osm.pbf" 2>/dev/null || stat -c%s "$WORK/region-routing.osm.pbf") + 1048575 ) / 1048576 ))
+  bake_obf_filter "$WORK/region.osm.pbf" "$WORK/region-routing.osm.pbf"
+  FULL_MB=$(bake_mib "$WORK/region.osm.pbf")
+  ROUT_MB=$(bake_mib "$WORK/region-routing.osm.pbf")
   echo "→ routing-only filter: ${FULL_MB} MB extract -> ${ROUT_MB} MB of roads"
   INDEX_PBF="region-routing.osm.pbf"
 fi
 JAVA_HEAP="${JAVA_HEAP:-12g}"
 echo "→ index heap: $JAVA_HEAP"
 set +e
-( cd "$WORK" && java -Xmx"$JAVA_HEAP" -XX:+UseParallelGC -cp "$WORK/mapcreator/OsmAndMapCreator.jar:$WORK/mapcreator/lib/*:$WORK" VelaObfShim "$INDEX_PBF" )
+bake_obf_index "$WORK" "$INDEX_PBF" "$JAVA_HEAP" "$WORK"
 RC=$?
 set -e
 if [ $RC -ne 0 ]; then
   # Say WHICH region was too big and how big its source was, so a world bake reports a usable list
   # of what needs baking elsewhere instead of a wall of identical red crosses.
-  PBF_MB=$(( ( $(stat -f%z "$WORK/region.osm.pbf" 2>/dev/null || stat -c%s "$WORK/region.osm.pbf") + 1048575 ) / 1048576 ))
+  PBF_MB=$(bake_mib "$WORK/region.osm.pbf")
   echo "::error::$ID FAILED to index (exit $RC). Source PBF was ${PBF_MB} MB. If this was an" \
        "OutOfMemoryError, this region does not fit a $JAVA_HEAP heap - bake it on a bigger machine."
   exit $RC
@@ -93,7 +81,7 @@ fi
 OBF="$(ls "$WORK"/*.obf | head -1)"  # generateObf names the output from the pbf filename
 mv "$OBF" "$WORK/$ID.obf"
 
-SIZE=$(( ( $(stat -f%z "$WORK/$ID.obf" 2>/dev/null || stat -c%s "$WORK/$ID.obf") + 1048575 ) / 1048576 ))
+SIZE=$(bake_mib "$WORK/$ID.obf")
 ASSET_URL="https://github.com/$REPO/releases/download/$TAG/$ID.obf"
 echo "→ $ID: ${SIZE} MB obf (download == installed), bbox $BBOX"
 

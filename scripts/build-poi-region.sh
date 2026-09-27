@@ -16,6 +16,7 @@ REPO="${VELA_REPO:-PimpinPumpkin/Vela}"
 TAG="poi-packs"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
+source "$ROOT/scripts/bake-lib.sh"
 
 echo "→ downloading $URL"
 curl -fsSL "$URL" -o "$WORK/region.osm.pbf"
@@ -23,23 +24,15 @@ curl -fsSL "$URL" -o "$WORK/region.osm.pbf"
 # bbox first (from the header), so the source PBF can be deleted as soon as it's filtered — a big
 # country needs the disk back. [S,W,N,E] from the declared extract region, NOT data.bbox (same rule
 # as routing graphs — node extent is polluted by outlier nodes). osmium prints (minlon,minlat,...).
-read -r MINLON MINLAT MAXLON MAXLAT < <(osmium fileinfo -g header.boxes "$WORK/region.osm.pbf" | tr -d '()' | tr ',' ' ')
-BBOX="[$MINLAT,$MINLON,$MAXLAT,$MAXLON]"
+BBOX="$(bake_header_bbox "$WORK/region.osm.pbf")"
 
 echo "→ filtering POIs / addresses / named roads"
-osmium tags-filter "$WORK/region.osm.pbf" \
-  nwr/amenity nwr/shop nwr/tourism nwr/leisure nwr/public_transport nwr/boundary=national_park \
-  nwr/addr:housenumber \
-  w/highway=motorway,trunk,primary,secondary,tertiary,unclassified,residential,living_street,service,road,motorway_link,trunk_link,primary_link,secondary_link,tertiary_link \
-  -o "$WORK/filtered.osm.pbf" --overwrite
+bake_pack_filter "$WORK/region.osm.pbf" "$WORK/filtered.osm.pbf"
 rm -f "$WORK/region.osm.pbf" # reclaim disk before the build (country PBFs are GB-scale)
 
-# The export STREAMS into the pack builder — never written to disk. The geojsonseq is ~12x the
-# filtered PBF (a large state: 161 MB -> 1.9 GB), so a country-sized export on disk would blow a
-# 14 GB CI runner; piped, the peak disk is just filtered.pbf + the SQLite db.
+# The export streams into the pack builder (bake_pack_build in bake-lib.sh).
 echo "→ exporting features → building SQLite pack (streamed)"
-osmium export "$WORK/filtered.osm.pbf" -f geojsonseq --add-unique-id=type_id -o - \
-  | python3 "$ROOT/scripts/poipack_build.py" - "$WORK/$ID.db"
+bake_pack_build "$WORK/filtered.osm.pbf" "$WORK/$ID.db"
 rm -f "$WORK/filtered.osm.pbf"
 
 ( cd "$WORK" && zip -q "$WORK/$ID.zip" "$ID.db" )

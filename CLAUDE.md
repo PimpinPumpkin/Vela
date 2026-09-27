@@ -5025,6 +5025,14 @@ Gotchas:
   6th (shard a) and 7th (shard b) against the newest Overture release found in the bucket listing;
   basemap on the 9th and 10th (first/second half of the catalog by id). The obf bake stays manual (its
   runner memory limits and the user's manifest flip).
+- **Grid cells, bake only (2026-09-27, SPEC 7.6).** `scripts/build-cells-region.sh <region>
+  [local.pbf]` cuts a catalog region into 0.5 degree cells and zips obf + place pack + places slice
+  per cell; `CELLS_UPLOAD=1` publishes to `cells-<region>`, `scripts/merge-cells-manifest.sh`
+  derives `cells-manifest.json` on `grid-cells` (`DRY_RUN=1` for a local copy);
+  `grid-cells.yml` is dispatch only. Shared bake steps live in `scripts/bake-lib.sh`
+  (build-obf-region.sh and build-poi-region.sh source it). The app does not read cells yet.
+  Cross-cell routing check: `ObfCellsProbeTest -DvelaCells=<dir with cells/ and whole/>`.
+  Local runs: macOS bash is 3.2, keep the scripts 3.2-safe.
 - **Offline basemap (2026-09-14).** A region download is now routing (obf) + places (Overture) + the
   MAP PICTURE: `tools/build-basemap-region.sh` (planetiler over the same Geofabrik extract the obf
   bake uses, OpenMapTiles schema = what OpenFreeMap serves, so the same Liberty style draws it) ->
