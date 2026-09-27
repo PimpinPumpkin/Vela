@@ -2094,6 +2094,7 @@ fun MapScreen(
                 photosLoading = state.photosLoading,
                 morePhotos = state.morePhotosFor != null && state.morePhotosFor == state.selected?.featureId,
                 onMorePhotos = vm::loadAllPhotos,
+                onPhotoCategories = if (state.selected?.photoCategories?.any { it != null } == true || state.photoWalkedFor == state.selected?.featureId) null else vm::loadPhotoCategories,
                 detailsLoading = state.loadingDetails,
                 placesHere = state.placesHere,
                 // Ownership-gated: a board renders ONLY on the place it was fetched for. Writers

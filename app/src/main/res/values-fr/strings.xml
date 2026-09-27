@@ -231,9 +231,6 @@
         <item quantity="one">%1$d avis</item>
         <item quantity="other">%1$d avis</item>
     </plurals>
-    <string name="place_all_n_reviews">Tous les %1$d avis · trier et rechercher</string>
-    <string name="place_all_reviews">Tous les avis · trier et rechercher</string>
-    <string name="place_reviews_progress">Avis · %1$d sur environ %2$d</string>
     <string name="place_reviews_so_far">Avis · %1$d jusqu\'ici</string>
     <string name="place_gathering_reviews">Collecte des avis…</string>
     <string name="place_reviews_load_failed">Impossible de charger les avis. Appuyez pour réessayer.</string>
@@ -1019,4 +1016,7 @@
     <string name="place_traffic_not_loaded">Durées sans trafic en direct.</string>
     <string name="place_show_traffic">Afficher le trafic</string>
     <string name="place_tab_overview">Aperçu</string>
+    <string name="place_all_reviews_short">Tous les avis</string>
+    <string name="place_tab_photos">Photos</string>
+    <string name="place_photos_all">Toutes</string>
 </resources>

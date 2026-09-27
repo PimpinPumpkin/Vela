@@ -36,6 +36,7 @@ class WebReviewsFetcher @Inject constructor(
     private val progress = ConcurrentHashMap<String, (Int) -> Unit>()
     private val partial = ConcurrentHashMap<String, (List<Review>) -> Unit>()
     private val caps = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    private val hists = ConcurrentHashMap<String, (List<Int>) -> Unit>()
     // Request ids whose scraper is already in the page: the settle timer and the load cap race
     // to inject it, and only the first may.
     private val injected = java.util.Collections.synchronizedSet(HashSet<String>())
@@ -67,6 +68,14 @@ class WebReviewsFetcher @Inject constructor(
         // The accumulated reviews SO FAR, sent whenever the count grows: the sheet streams them
         // into the list under the progress bar instead of making the user stare at a bar for 30 s.
         // Same JavaBridge thread; parse failures are dropped (the final onResult is authoritative).
+        // The star breakdown ([5-star..1-star] counts), read off the same page in passing.
+        @JavascriptInterface
+        fun onHistogram(id: String, json: String) {
+            val cb = hists[id] ?: return
+            runCatching { org.json.JSONArray(json).let { a -> List(a.length()) { a.getInt(it) } } }.getOrNull()
+                ?.takeIf { it.size == 5 && it.sum() > 0 }?.let(cb)
+        }
+
         @JavascriptInterface
         fun onPartial(id: String, payload: String) {
             val cb = partial[id] ?: return
@@ -86,6 +95,7 @@ class WebReviewsFetcher @Inject constructor(
         // MapViewModel), the full-load setting keeps the old 50. Each page past the first is
         // another feed request to Google.
         cap: Int = 50,
+        onHistogram: (List<Int>) -> Unit = {},
     ): List<Review> {
         val cid = cidOf(featureId) ?: return emptyList()
         return session {
@@ -96,6 +106,7 @@ class WebReviewsFetcher @Inject constructor(
                     progress[id] = onProgress
                     partial[id] = onPartial
                     caps[id] = cap
+                    hists[id] = onHistogram
                     // Blank the PREVIOUS place's DOM before navigating: a slow load could otherwise
                     // let the MAX_LOAD cap inject the scraper into the old page and return the
                     // previous place's reviews for THIS featureId (empty > wrong).
@@ -110,6 +121,7 @@ class WebReviewsFetcher @Inject constructor(
                 progress.remove(reqId)
                 partial.remove(reqId)
                 caps.remove(reqId)
+                hists.remove(reqId)
                 injected.remove(reqId)
             }
             val parsed = if (raw.isNullOrEmpty()) emptyList() else runCatching { ReviewsWebParser.parse(raw) }.getOrDefault(emptyList())
@@ -357,8 +369,17 @@ class WebReviewsFetcher @Inject constructor(
                 var bs=[].slice.call(document.querySelectorAll('button'));
                 for(var i=0;i<bs.length;i++){ var l=velaNoName((bs[i].getAttribute('aria-label')||bs[i].textContent)||''); if(REVIEW_WORD.test(l)&&MORE_WORD.test(l)){ sawEntry=true; try{ bs[i].click(); }catch(e){} opened=true; openedAt=tries; openedBy='btn'; return; } }
               }
+              var histSent=false;
+              function hist(){ if(histSent) return; var c={};
+                [].slice.call(document.querySelectorAll('tr[aria-label]')).forEach(function(r){
+                  var m=(r.getAttribute('aria-label')||'').match(/^\s*([1-5])(?!\d|[.,]\d)\D+?(\d[\d.,\s\u00a0\u202f]*)/);
+                  if(m) c[m[1]]=parseInt(m[2].replace(/\D/g,''),10);
+                });
+                if(c['5']!==undefined && c['1']!==undefined){ histSent=true; try{ VelaBridge.onHistogram(ID, JSON.stringify([c['5']||0,c['4']||0,c['3']||0,c['2']||0,c['1']||0])); }catch(e){} }
+              }
               function tick(){
                 tries++;
+                hist();
                 // Let the SPA hydrate a beat before clicking the Reviews tab - clicking a not-yet-live
                 // tab on tick 1 can silently no-op, and then the list only renders much later.
                 if(tries>=2) openFull();

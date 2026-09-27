@@ -264,12 +264,9 @@
         <item quantity="many">%1$d opinii</item>
         <item quantity="other">%1$d opinii</item>
     </plurals>
-    <string name="place_all_n_reviews">Wszystkie %1$d opinii · sortuj i szukaj</string>
     <string name="place_more_photos">Więcej zdjęć</string>
     <string name="place_more_reviews">Więcej opinii</string>
     <string name="place_reviews_limited">Google pokazuje teraz krótszą listę opinii.</string>
-    <string name="place_all_reviews">Wszystkie opinie · sortuj i szukaj</string>
-    <string name="place_reviews_progress">Opinie · %1$d z około %2$d</string>
     <string name="place_reviews_so_far">Opinie · %1$d jak dotąd</string>
     <string name="place_gathering_reviews">Zbieranie opinii…</string>
     <string name="place_reviews_load_failed">Nie udało się wczytać opinii. Dotknij, aby ponowić.</string>
@@ -1030,4 +1027,7 @@
     <string name="place_traffic_not_loaded">Czasy bez ruchu na żywo.</string>
     <string name="place_show_traffic">Pokaż ruch</string>
     <string name="place_tab_overview">Przegląd</string>
+    <string name="place_all_reviews_short">Wszystkie opinie</string>
+    <string name="place_tab_photos">Zdjęcia</string>
+    <string name="place_photos_all">Wszystkie</string>
 </resources>

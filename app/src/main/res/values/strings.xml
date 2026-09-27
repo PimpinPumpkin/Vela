@@ -493,12 +493,9 @@
         <item quantity="one">%1$d review</item>
         <item quantity="other">%1$d reviews</item>
     </plurals>
-    <string name="place_all_n_reviews">All %1$d reviews · sort &amp; search</string> <!-- format -->
     <string name="place_more_photos">More photos</string>
     <string name="place_more_reviews">More reviews</string>
     <string name="place_reviews_limited">Google is showing a shorter list of reviews right now.</string>
-    <string name="place_all_reviews">All reviews · sort &amp; search</string>
-    <string name="place_reviews_progress">Reviews · %1$d of about %2$d</string> <!-- format -->
     <string name="place_reviews_so_far">Reviews · %1$d so far</string> <!-- format -->
     <string name="place_gathering_reviews">Gathering reviews…</string>
     <string name="place_reviews_throttled">Google is not serving reviews for this session right now. Try again in a few minutes.</string>
@@ -1113,4 +1110,7 @@
     <string name="place_traffic_not_loaded">Times without live traffic.</string>
     <string name="place_show_traffic">Show traffic</string>
     <string name="place_tab_overview">Overview</string>
+    <string name="place_all_reviews_short">All reviews</string>
+    <string name="place_tab_photos">Photos</string>
+    <string name="place_photos_all">All</string>
 </resources>

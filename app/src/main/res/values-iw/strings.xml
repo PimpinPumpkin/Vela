@@ -262,12 +262,9 @@
         <item quantity="two">%1$d ביקורות</item>
         <item quantity="other">%1$d ביקורות</item>
     </plurals>
-    <string name="place_all_n_reviews">כל %1$d הביקורות · מיון &amp; חיפוש</string>
     <string name="place_more_photos">תמונות נוספות</string>
     <string name="place_more_reviews">ביקורות נוספות</string>
     <string name="place_reviews_limited">Google מציגה כרגע רשימת ביקורות קצרה יותר.</string>
-    <string name="place_all_reviews">כל הביקורות · מיון &amp; חיפוש</string>
-    <string name="place_reviews_progress">ביקורות · %1$d מתוך כ-%2$d</string>
     <string name="place_reviews_so_far">ביקורות · %1$d עד כה</string>
     <string name="place_gathering_reviews">אוסף ביקורות…</string>
     <string name="place_reviews_load_failed">לא ניתן לטעון ביקורות. הקש כדי לנסות שוב.</string>
@@ -1022,4 +1019,7 @@
     <string name="place_traffic_not_loaded">זמנים ללא תנועה בזמן אמת.</string>
     <string name="place_show_traffic">הצגת תנועה</string>
     <string name="place_tab_overview">סקירה כללית</string>
+    <string name="place_all_reviews_short">כל הביקורות</string>
+    <string name="place_tab_photos">תמונות</string>
+    <string name="place_photos_all">הכול</string>
 </resources>

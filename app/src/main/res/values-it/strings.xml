@@ -262,12 +262,9 @@
         <item quantity="one">%1$d recensione</item>
         <item quantity="other">%1$d recensioni</item>
     </plurals>
-    <string name="place_all_n_reviews">Tutte le %1$d recensioni · ordina e cerca</string>
     <string name="place_more_photos">Altre foto</string>
     <string name="place_more_reviews">Altre recensioni</string>
     <string name="place_reviews_limited">Al momento Google mostra un elenco di recensioni più breve.</string>
-    <string name="place_all_reviews">Tutte le recensioni · ordina e cerca</string>
-    <string name="place_reviews_progress">Recensioni · %1$d di circa %2$d</string>
     <string name="place_reviews_so_far">Recensioni · %1$d finora</string>
     <string name="place_gathering_reviews">Raccolta recensioni…</string>
     <string name="place_reviews_load_failed">Impossibile caricare le recensioni. Tocca per riprovare.</string>
@@ -1019,4 +1016,7 @@
     <string name="place_traffic_not_loaded">Tempi senza traffico in tempo reale.</string>
     <string name="place_show_traffic">Mostra traffico</string>
     <string name="place_tab_overview">Panoramica</string>
+    <string name="place_all_reviews_short">Tutte le recensioni</string>
+    <string name="place_tab_photos">Foto</string>
+    <string name="place_photos_all">Tutte</string>
 </resources>

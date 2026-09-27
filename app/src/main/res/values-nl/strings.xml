@@ -262,12 +262,9 @@
         <item quantity="one">%1$d recensie</item>
         <item quantity="other">%1$d recensies</item>
     </plurals>
-    <string name="place_all_n_reviews">Alle %1$d recensies · sorteren en zoeken</string>
     <string name="place_more_photos">Meer foto\'s</string>
     <string name="place_more_reviews">Meer recensies</string>
     <string name="place_reviews_limited">Google toont op dit moment een kortere lijst met recensies.</string>
-    <string name="place_all_reviews">Alle recensies · sorteren en zoeken</string>
-    <string name="place_reviews_progress">Recensies · %1$d van ongeveer %2$d</string>
     <string name="place_reviews_so_far">Recensies · %1$d tot nu toe</string>
     <string name="place_gathering_reviews">Recensies verzamelen…</string>
     <string name="place_reviews_load_failed">Kon recensies niet laden. Tik om opnieuw te proberen.</string>
@@ -1019,4 +1016,7 @@
     <string name="place_traffic_not_loaded">Tijden zonder live verkeer.</string>
     <string name="place_show_traffic">Verkeer tonen</string>
     <string name="place_tab_overview">Overzicht</string>
+    <string name="place_all_reviews_short">Alle reviews</string>
+    <string name="place_tab_photos">Foto\'s</string>
+    <string name="place_photos_all">Alle</string>
 </resources>

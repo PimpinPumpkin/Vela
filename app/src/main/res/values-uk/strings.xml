@@ -230,9 +230,6 @@
         <item quantity="many">%1$d відгуків</item>
         <item quantity="other">%1$d відгуку</item>
     </plurals>
-    <string name="place_all_n_reviews">Усі %1$d відгуків · сортування й пошук</string>
-    <string name="place_all_reviews">Усі відгуки · сортування й пошук</string>
-    <string name="place_reviews_progress">Відгуки · %1$d з приблизно %2$d</string>
     <string name="place_reviews_so_far">Відгуки · поки %1$d</string>
     <string name="place_gathering_reviews">Збирання відгуків…</string>
     <string name="place_reviews_load_failed">Не вдалося завантажити відгуки. Натисніть, щоб повторити.</string>
@@ -1029,4 +1026,7 @@
     <string name="place_traffic_not_loaded">Час без урахування заторів.</string>
     <string name="place_show_traffic">Показати затори</string>
     <string name="place_tab_overview">Огляд</string>
+    <string name="place_all_reviews_short">Усі відгуки</string>
+    <string name="place_tab_photos">Фото</string>
+    <string name="place_photos_all">Усі</string>
 </resources>

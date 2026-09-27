@@ -262,12 +262,9 @@
         <item quantity="one">%1$d avaliação</item>
         <item quantity="other">%1$d avaliações</item>
     </plurals>
-    <string name="place_all_n_reviews">Todas as %1$d avaliações · ordenar e pesquisar</string>
     <string name="place_more_photos">Mais fotos</string>
     <string name="place_more_reviews">Mais avaliações</string>
     <string name="place_reviews_limited">A Google está a mostrar uma lista mais curta de avaliações neste momento.</string>
-    <string name="place_all_reviews">Todas as avaliações · ordenar e pesquisar</string>
-    <string name="place_reviews_progress">Avaliações · %1$d de cerca de %2$d</string>
     <string name="place_reviews_so_far">Avaliações · %1$d até agora</string>
     <string name="place_gathering_reviews">A recolher avaliações…</string>
     <string name="place_reviews_load_failed">Não foi possível carregar as avaliações. Toque para tentar novamente.</string>
@@ -1021,4 +1018,7 @@
     <string name="place_traffic_not_loaded">Tempos sem trânsito ao vivo.</string>
     <string name="place_show_traffic">Mostrar trânsito</string>
     <string name="place_tab_overview">Visão geral</string>
+    <string name="place_all_reviews_short">Todas as avaliações</string>
+    <string name="place_tab_photos">Fotos</string>
+    <string name="place_photos_all">Todas</string>
 </resources>

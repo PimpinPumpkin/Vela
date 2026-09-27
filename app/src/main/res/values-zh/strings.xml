@@ -244,9 +244,6 @@
     <plurals name="place_review_count"> <!-- format -->
         <item quantity="other">%1$d 条评价</item>
     </plurals>
-    <string name="place_all_n_reviews">全部 %1$d 条评价 · 排序和搜索</string> <!-- format -->
-    <string name="place_all_reviews">全部评价 · 排序和搜索</string>
-    <string name="place_reviews_progress">评价 · 已加载 %1$d 条，共约 %2$d 条</string> <!-- format -->
     <string name="place_reviews_so_far">评价 · 已加载 %1$d 条</string> <!-- format -->
     <string name="place_gathering_reviews">正在获取评价…</string>
     <string name="place_reviews_load_failed">无法加载评价。点按重试。</string>
@@ -1039,4 +1036,7 @@
     <string name="place_traffic_not_loaded">时间不含实时路况。</string>
     <string name="place_show_traffic">显示路况</string>
     <string name="place_tab_overview">概览</string>
+    <string name="place_all_reviews_short">所有评价</string>
+    <string name="place_tab_photos">照片</string>
+    <string name="place_photos_all">全部</string>
 </resources>

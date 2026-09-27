@@ -244,9 +244,6 @@
     <plurals name="place_review_count"> <!-- format -->
         <item quantity="other">クチコミ %1$d 件</item>
     </plurals>
-    <string name="place_all_n_reviews">クチコミ全 %1$d 件 · 並べ替えと検索</string> <!-- format -->
-    <string name="place_all_reviews">すべてのクチコミ · 並べ替えと検索</string>
-    <string name="place_reviews_progress">クチコミ · 約 %2$d 件中 %1$d 件</string> <!-- format -->
     <string name="place_reviews_so_far">クチコミ · ここまで %1$d 件</string> <!-- format -->
     <string name="place_gathering_reviews">クチコミを取得しています…</string>
     <string name="place_reviews_load_failed">クチコミを読み込めませんでした。タップして再試行してください。</string>
@@ -1041,4 +1038,7 @@
     <string name="place_traffic_not_loaded">リアルタイムの交通情報なしの所要時間です。</string>
     <string name="place_show_traffic">交通情報を表示</string>
     <string name="place_tab_overview">概要</string>
+    <string name="place_all_reviews_short">すべてのクチコミ</string>
+    <string name="place_tab_photos">写真</string>
+    <string name="place_photos_all">すべて</string>
 </resources>

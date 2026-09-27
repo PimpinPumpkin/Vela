@@ -193,6 +193,8 @@ data class MapUiState(
     val reviewsAwaitingTapFor: String? = null,
     /** The user asked for live traffic on this trip ([app.vela.ui.RouteTrafficOnTap]). */
     val routeTrafficRequested: Boolean = false,
+    /** Feature id whose gallery was already walked for categories from the Photos tab. */
+    val photoWalkedFor: String? = null,
     /** Next page of the native review feed, when Google said there is one: "More reviews". */
     val reviewsNextToken: String? = null,
     val reviewsMoreLoading: Boolean = false,
@@ -3031,6 +3033,14 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** The Photos tab's Menu chip: walk the gallery for its categories, on tap only. */
+    fun loadPhotoCategories() {
+        val p = _state.value.selected ?: return
+        if (_state.value.photosLoading) return
+        _state.update { it.copy(morePhotosFor = null, photoWalkedFor = p.featureId) }
+        fetchPhotos(p, full = true)
+    }
+
     private fun fetchPhotos(p: Place, full: Boolean = app.vela.ui.FullPlaceLoad.on.value) {
         // "Load photos" off: never start the gallery scrape (it's the heaviest per-place
         // request); the sheet also hides the photo strip, so no loading flag either.
@@ -3372,7 +3382,10 @@ class MapViewModel @Inject constructor(
                     return@launch
                 }
             }
-            var revs = settle(runCatching { webReviews.fetch(fid, onProgress, onPartial, reviewCap) }.getOrDefault(emptyList()))
+            val onHist: (List<Int>) -> Unit = { counts ->
+                _state.update { st -> val sel = st.selected; if (sel?.featureId == fid && sel.ratingHistogram == null) st.copy(selected = sel.copy(ratingHistogram = counts)) else st }
+            }
+            var revs = settle(runCatching { webReviews.fetch(fid, onProgress, onPartial, reviewCap, onHistogram = onHist) }.getOrDefault(emptyList()))
             coroutineContext.ensureActive() // superseded by a newer fetch — don't touch state below
             var attempt = 1
             // A fresh fetch clears the flake within a few seconds (confirmed: a manual tap-to-
@@ -3384,7 +3397,7 @@ class MapViewModel @Inject constructor(
                 // The dead attempt's last count would otherwise sit frozen on the bar through the
                 // retry's page-load window, then visibly snap backward when its first tick lands.
                 _state.update { it.copy(reviewsFound = 0) }
-                revs = settle(runCatching { webReviews.fetch(fid, onProgress, onPartial, reviewCap) }.getOrDefault(emptyList()))
+                revs = settle(runCatching { webReviews.fetch(fid, onProgress, onPartial, reviewCap, onHistogram = onHist) }.getOrDefault(emptyList()))
                 coroutineContext.ensureActive()
                 attempt++
             }

@@ -330,12 +330,9 @@
     <string name="place_sort_newest">Legújabb</string>
     <string name="place_sort_highest">Legmagasabb értékelés</string>
     <string name="place_sort_lowest">Legalacsonyabb értékelés</string>
-    <string name="place_all_n_reviews">Mind a %1$d vélemény · rendezés és keresés</string>
     <string name="place_more_photos">További fotók</string>
     <string name="place_more_reviews">További vélemények</string>
     <string name="place_reviews_limited">A Google most rövidebb véleménylistát mutat.</string>
-    <string name="place_all_reviews">Összes vélemény · rendezés és keresés</string>
-    <string name="place_reviews_progress">Vélemények · %1$d / kb. %2$d</string>
     <string name="place_reviews_so_far">Vélemények · eddig %1$d</string>
     <string name="place_gathering_reviews">Vélemények gyűjtése…</string>
     <string name="place_reviews_load_failed">Nem sikerült betölteni a véleményeket. Koppints az újrapróbálkozáshoz.</string>
@@ -1021,4 +1018,7 @@
     <string name="place_traffic_not_loaded">Idők élő forgalom nélkül.</string>
     <string name="place_show_traffic">Forgalom megjelenítése</string>
     <string name="place_tab_overview">Áttekintés</string>
+    <string name="place_all_reviews_short">Összes értékelés</string>
+    <string name="place_tab_photos">Fotók</string>
+    <string name="place_photos_all">Összes</string>
 </resources>

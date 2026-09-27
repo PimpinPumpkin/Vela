@@ -231,9 +231,6 @@
         <item quantity="one">%1$d Rezension</item>
         <item quantity="other">%1$d Rezensionen</item>
     </plurals>
-    <string name="place_all_n_reviews">Alle %1$d Rezensionen · sortieren &amp; suchen</string>
-    <string name="place_all_reviews">Alle Rezensionen · sortieren &amp; suchen</string>
-    <string name="place_reviews_progress">Rezensionen · %1$d von etwa %2$d</string>
     <string name="place_reviews_so_far">Rezensionen · bisher %1$d</string>
     <string name="place_gathering_reviews">Rezensionen werden gesammelt …</string>
     <string name="place_reviews_load_failed">Rezensionen konnten nicht geladen werden. Zum Wiederholen tippen.</string>
@@ -1019,4 +1016,7 @@
     <string name="place_traffic_not_loaded">Zeiten ohne Live-Verkehr.</string>
     <string name="place_show_traffic">Verkehr anzeigen</string>
     <string name="place_tab_overview">Überblick</string>
+    <string name="place_all_reviews_short">Alle Rezensionen</string>
+    <string name="place_tab_photos">Fotos</string>
+    <string name="place_photos_all">Alle</string>
 </resources>

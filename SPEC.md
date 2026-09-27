@@ -588,7 +588,11 @@ the scroll trigger with a Show reviews button (`reviewsAwaitingTapFor`, `loadRev
 overrides `FullPlaceLoad` for reviews. The place tabs sit under the action pills and open on Overview
 (info rows, popular times, highlights, a review summary card, About, related places); selection is
 keyed by tab name, a pinned copy of the tab row shows once the in-flow row scrolls under the sheet
-top, and reviews load when the Reviews tab is shown. Settings > Privacy "Live traffic only when I tap"
+top, and reviews load when the Reviews tab is shown. The Reviews tab sorts the loaded list
+(relevance, highest, lowest), filters it locally, and opens Google's full page for the rest; its
+star histogram arrives from the reviews scrape (`WebReviewsFetcher` `onHistogram`, localized
+`HISTOGRAM_ROW` rule). The Photos tab is a grid filtered by Google's photo categories; with none
+yet, a food place offers a Menu chip (`loadPhotoCategories`, the full walk, once per place). Settings > Privacy "Live traffic only when I tap"
 (`RouteTrafficOnTap`, pref `route_traffic_on_tap`, off) clears `RoutingPrefs.googleTraffic` for
 each new trip, so directions, reroutes and rechecks skip Google and the transit chip is not
 prefetched; the chooser's Show traffic (`requestRouteTraffic`) sets it for that trip and refetches.

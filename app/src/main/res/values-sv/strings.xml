@@ -231,9 +231,6 @@
         <item quantity="one">%1$d recension</item>
         <item quantity="other">%1$d recensioner</item>
     </plurals>
-    <string name="place_all_n_reviews">Alla %1$d recensioner · sortera &amp; sök</string>
-    <string name="place_all_reviews">Alla recensioner · sortera &amp; sök</string>
-    <string name="place_reviews_progress">Recensioner · %1$d av cirka %2$d</string>
     <string name="place_reviews_so_far">Recensioner · %1$d hittills</string>
     <string name="place_gathering_reviews">Samlar recensioner…</string>
     <string name="place_reviews_load_failed">Kunde inte läsa in recensioner. Tryck för att försöka igen.</string>
@@ -1019,4 +1016,7 @@
     <string name="place_traffic_not_loaded">Tider utan trafik i realtid.</string>
     <string name="place_show_traffic">Visa trafik</string>
     <string name="place_tab_overview">Översikt</string>
+    <string name="place_all_reviews_short">Alla recensioner</string>
+    <string name="place_tab_photos">Foton</string>
+    <string name="place_photos_all">Alla</string>
 </resources>

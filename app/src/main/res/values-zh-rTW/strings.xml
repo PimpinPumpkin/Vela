@@ -244,9 +244,6 @@
     <plurals name="place_review_count"> <!-- format -->
         <item quantity="other">%1$d 篇評論</item>
     </plurals>
-    <string name="place_all_n_reviews">全部 %1$d 篇評論 · 排序與搜尋</string> <!-- format -->
-    <string name="place_all_reviews">所有評論 · 排序與搜尋</string>
-    <string name="place_reviews_progress">評論 · %1$d／約 %2$d 篇</string> <!-- format -->
     <string name="place_reviews_so_far">評論 · 目前 %1$d 篇</string> <!-- format -->
     <string name="place_gathering_reviews">正在收集評論…</string>
     <string name="place_reviews_load_failed">無法載入評論。點按即可重試。</string>
@@ -1040,4 +1037,7 @@
     <string name="place_traffic_not_loaded">時間不含即時路況。</string>
     <string name="place_show_traffic">顯示路況</string>
     <string name="place_tab_overview">總覽</string>
+    <string name="place_all_reviews_short">所有評論</string>
+    <string name="place_tab_photos">相片</string>
+    <string name="place_photos_all">全部</string>
 </resources>
