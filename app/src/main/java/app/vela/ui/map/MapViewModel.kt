@@ -2926,45 +2926,51 @@ class MapViewModel @Inject constructor(
             fun complete(f: app.vela.core.model.PlaceDetails?) = f != null && (f.popularTimes != null || f.reviewCount != null)
             val fidKey = p.featureId
             val cachedDetails = fidKey?.let { placeCacheGet(detailsCache, it, DETAILS_CACHE_MS) }
-            var focused = if (cachedDetails == null && tuneOn("nativeDetails")) focusedSearch() else null
+            // Each reply is shown as it lands; only popular times wait on the retries.
+            var focused = if (cachedDetails == null && tuneOn("nativeDetails")) focusedSearch()?.also { mergeDetails(p, it) } else null
             if (placeTries() >= 2 && cachedDetails == null && tuneOn("nativeDetails") && focused?.popularTimes == null) {
                 delay(placeRetryWait(1))
                 if (_state.value.selected?.id != p.id) return@launch
-                focused = focusedSearch()
+                focused = focusedSearch()?.also { mergeDetails(p, it) } ?: focused
             }
             if (placeTries() >= 3 && cachedDetails == null && tuneOn("nativeDetails") && focused?.popularTimes == null) { // third and last
                 delay(placeRetryWait(2))
                 if (_state.value.selected?.id != p.id) return@launch
-                focused = focusedSearch()
+                focused = focusedSearch()?.also { mergeDetails(p, it) } ?: focused
             }
             val native = focused?.takeIf { complete(it) }
             android.util.Log.i("VelaPlaceLoad", "details: missing $missing; ${when { cachedDetails != null -> "cache"; native != null -> "plain search${if (native.popularTimes == null) " (no popular times at this place)" else ""}"; else -> "details page" }}")
             val d = cachedDetails ?: (native ?: runCatching { webPopularTimes.fetch(p) }.getOrNull())
                 ?.also { if (fidKey != null) placeCachePut(detailsCache, fidKey, it) }
-            _state.update { st ->
-                val sel = st.selected
-                if (sel?.id != p.id) st else st.copy(
-                    loadingDetails = false,
-                    selected = if (d == null) sel else sel.copy(
-                        popularTimes = sel.popularTimes ?: d.popularTimes,
-                        editorialSummary = sel.editorialSummary ?: d.editorialSummary,
-                        ownerDescription = sel.ownerDescription ?: d.ownerDescription,
-                        // Backfill only what the summary left blank; take the fuller hours list.
-                        rating = sel.rating ?: d.rating,
-                        reviewCount = sel.reviewCount ?: d.reviewCount,
-                        hours = if (d.hours.size > sel.hours.size) d.hours else sel.hours,
-                        address = sel.address?.ifBlank { null } ?: d.address,
-                        phone = sel.phone ?: d.phone,
-                        website = sel.website ?: d.website,
-                        statusText = sel.statusText ?: d.statusText,
-                        openNow = sel.openNow ?: d.openNow,
-                        priceText = sel.priceText ?: d.priceText,
-                        priceLevel = sel.priceLevel ?: d.priceLevel,
-                        about = sel.about.ifEmpty { d.about },
-                        featuredReview = sel.featuredReview ?: d.featuredReview,
-                    ),
-                )
-            }
+            if (d != null) mergeDetails(p, d)
+            _state.update { st -> if (st.selected?.id != p.id) st else st.copy(loadingDetails = false) }
+        }
+    }
+
+    /** Fill what the selected place is missing from [d]; the fuller hours list wins. */
+    private fun mergeDetails(p: Place, d: app.vela.core.model.PlaceDetails) {
+        _state.update { st ->
+            val sel = st.selected
+            if (sel?.id != p.id) st else st.copy(
+                selected = sel.copy(
+                    popularTimes = sel.popularTimes ?: d.popularTimes,
+                    editorialSummary = sel.editorialSummary ?: d.editorialSummary,
+                    ownerDescription = sel.ownerDescription ?: d.ownerDescription,
+                    // Backfill only what the summary left blank; take the fuller hours list.
+                    rating = sel.rating ?: d.rating,
+                    reviewCount = sel.reviewCount ?: d.reviewCount,
+                    hours = if (d.hours.size > sel.hours.size) d.hours else sel.hours,
+                    address = sel.address?.ifBlank { null } ?: d.address,
+                    phone = sel.phone ?: d.phone,
+                    website = sel.website ?: d.website,
+                    statusText = sel.statusText ?: d.statusText,
+                    openNow = sel.openNow ?: d.openNow,
+                    priceText = sel.priceText ?: d.priceText,
+                    priceLevel = sel.priceLevel ?: d.priceLevel,
+                    about = sel.about.ifEmpty { d.about },
+                    featuredReview = sel.featuredReview ?: d.featuredReview,
+                ),
+            )
         }
     }
 

@@ -585,7 +585,8 @@ warmed after a search, and the ambient neighbor prefetch runs in Google-only mod
 Performance "Load all photos and reviews" (`FullPlaceLoad`) restores the full walk and 50 reviews.
 Details use ONE plain request of the details page's own search (`MapDataSource.placeDetails`,
 parsed by `PopularTimesParser`) with up to three tries while popular times are missing, the page
-only as a last resort (`nativeDetails`). "More photos" pages `hspqX` natively: 50 are asked for
+only as a last resort (`nativeDetails`). Each reply is merged into the sheet as it lands (`mergeDetails`);
+only popular times wait on the retries. "More photos" pages `hspqX` natively: 50 are asked for
 (`PHOTO_COUNT`; a full session answers 50, a limited one 10, see limited-view detection), the
 cursor is reply payload[5] and goes back at request `[4][2][2]`; payload[1] is not the photo total
 (it reads the same for unrelated places) and is not read. The RPC tags no category, so the Menu tab comes only from the page walk. The per-place requests
