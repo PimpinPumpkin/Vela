@@ -178,7 +178,6 @@
     <string name="place_call">Llamar</string>
     <string name="place_website">Sitio web</string>
     <string name="place_hours_not_listed">Horario no indicado</string>
-    <string name="place_loading_popular_times">Cargando horas populares y detalles…</string>
     <string name="place_also_at_location">También en esta ubicación</string>
     <string name="place_open">Abierto</string>
     <string name="place_people_also_search">La gente también busca</string>
@@ -1019,4 +1018,5 @@
     <string name="place_show_reviews">Mostrar reseñas</string>
     <string name="place_traffic_not_loaded">Tiempos sin tráfico en directo.</string>
     <string name="place_show_traffic">Mostrar tráfico</string>
+    <string name="place_tab_overview">Descripción general</string>
 </resources>

@@ -192,7 +192,6 @@
     <string name="place_call">電話</string>
     <string name="place_website">ウェブサイト</string>
     <string name="place_hours_not_listed">営業時間の記載なし</string>
-    <string name="place_loading_popular_times">混雑する時間帯と詳細を読み込んでいます…</string>
     <string name="place_also_at_location">この場所にあるほかのスポット</string>
     <string name="place_open">開く</string>
     <string name="place_people_also_search">他の人はこちらも検索</string>
@@ -1041,4 +1040,5 @@
     <string name="place_show_reviews">クチコミを表示</string>
     <string name="place_traffic_not_loaded">リアルタイムの交通情報なしの所要時間です。</string>
     <string name="place_show_traffic">交通情報を表示</string>
+    <string name="place_tab_overview">概要</string>
 </resources>

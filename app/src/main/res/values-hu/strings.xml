@@ -274,7 +274,6 @@
     <string name="place_origin_checking">Forrás: %1$s · ellenőrzés a Google-nál</string>
     <string name="place_origin_unlinked">Forrás: %1$s · a Google-on nincs párja</string>
     <string name="place_origin_plain">Forrás: %1$s</string>
-    <string name="place_loading_popular_times">Népszerű időpontok és részletek betöltése…</string>
     <string name="place_also_at_location">Ezen a helyen is</string>
     <string name="place_open">Nyitva</string>
     <string name="place_people_also_search">Mások ezt is keresték</string>
@@ -1021,4 +1020,5 @@
     <string name="place_show_reviews">Értékelések megjelenítése</string>
     <string name="place_traffic_not_loaded">Idők élő forgalom nélkül.</string>
     <string name="place_show_traffic">Forgalom megjelenítése</string>
+    <string name="place_tab_overview">Áttekintés</string>
 </resources>

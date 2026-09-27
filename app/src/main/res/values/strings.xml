@@ -432,7 +432,6 @@
     <string name="place_origin_checking">From %1$s · checking Google</string>
     <string name="place_origin_unlinked">From %1$s · not matched on Google</string>
     <string name="place_origin_plain">From %1$s</string>
-    <string name="place_loading_popular_times">Loading popular times &amp; details…</string>
     <string name="place_also_at_location">Also at this location</string>
     <string name="place_open">Open</string>
     <string name="place_people_also_search">People also search for</string>
@@ -1113,4 +1112,5 @@
     <string name="place_show_reviews">Show reviews</string>
     <string name="place_traffic_not_loaded">Times without live traffic.</string>
     <string name="place_show_traffic">Show traffic</string>
+    <string name="place_tab_overview">Overview</string>
 </resources>

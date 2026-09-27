@@ -177,7 +177,6 @@
     <string name="place_call">Подзвонити</string>
     <string name="place_website">Вебсайт</string>
     <string name="place_hours_not_listed">Години не вказано</string>
-    <string name="place_loading_popular_times">Завантаження годин відвідуваності та деталей…</string>
     <string name="place_also_at_location">Також за цією адресою</string>
     <string name="place_open">Відкрито</string>
     <string name="place_people_also_search">Люди також шукають</string>
@@ -1029,4 +1028,5 @@
     <string name="place_show_reviews">Показати відгуки</string>
     <string name="place_traffic_not_loaded">Час без урахування заторів.</string>
     <string name="place_show_traffic">Показати затори</string>
+    <string name="place_tab_overview">Огляд</string>
 </resources>

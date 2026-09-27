@@ -178,7 +178,6 @@
     <string name="place_call">Ring</string>
     <string name="place_website">Webbplats</string>
     <string name="place_hours_not_listed">Öppettider saknas</string>
-    <string name="place_loading_popular_times">Läser in populära tider &amp; detaljer…</string>
     <string name="place_also_at_location">Även på den här platsen</string>
     <string name="place_open">Öppet</string>
     <string name="place_people_also_search">Andra söker även efter</string>
@@ -1019,4 +1018,5 @@
     <string name="place_show_reviews">Visa recensioner</string>
     <string name="place_traffic_not_loaded">Tider utan trafik i realtid.</string>
     <string name="place_show_traffic">Visa trafik</string>
+    <string name="place_tab_overview">Översikt</string>
 </resources>

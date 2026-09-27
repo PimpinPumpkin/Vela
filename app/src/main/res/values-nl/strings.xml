@@ -209,7 +209,6 @@
     <string name="place_origin_checking">Van %1$s · Google wordt gecontroleerd</string>
     <string name="place_origin_unlinked">Van %1$s · niet gevonden op Google</string>
     <string name="place_origin_plain">Van %1$s</string>
-    <string name="place_loading_popular_times">Drukke tijden en details laden…</string>
     <string name="place_also_at_location">Ook op deze locatie</string>
     <string name="place_open">Open</string>
     <string name="place_people_also_search">Mensen zoeken ook naar</string>
@@ -1019,4 +1018,5 @@
     <string name="place_show_reviews">Reviews tonen</string>
     <string name="place_traffic_not_loaded">Tijden zonder live verkeer.</string>
     <string name="place_show_traffic">Verkeer tonen</string>
+    <string name="place_tab_overview">Overzicht</string>
 </resources>

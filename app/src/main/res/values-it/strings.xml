@@ -209,7 +209,6 @@
     <string name="place_origin_checking">Da %1$s · verifica su Google</string>
     <string name="place_origin_unlinked">Da %1$s · non trovato su Google</string>
     <string name="place_origin_plain">Da %1$s</string>
-    <string name="place_loading_popular_times">Caricamento orari di affluenza e dettagli…</string>
     <string name="place_also_at_location">Anche in questa posizione</string>
     <string name="place_open">Aperto</string>
     <string name="place_people_also_search">Le persone cercano anche</string>
@@ -1019,4 +1018,5 @@
     <string name="place_show_reviews">Mostra recensioni</string>
     <string name="place_traffic_not_loaded">Tempi senza traffico in tempo reale.</string>
     <string name="place_show_traffic">Mostra traffico</string>
+    <string name="place_tab_overview">Panoramica</string>
 </resources>

@@ -192,7 +192,6 @@
     <string name="place_call">致电</string>
     <string name="place_website">网站</string>
     <string name="place_hours_not_listed">未提供营业时间</string>
-    <string name="place_loading_popular_times">正在加载热门时段和详情…</string>
     <string name="place_also_at_location">同一地点还有</string>
     <string name="place_open">打开</string>
     <string name="place_people_also_search">用户还搜索了</string>
@@ -1039,4 +1038,5 @@
     <string name="place_show_reviews">显示评价</string>
     <string name="place_traffic_not_loaded">时间不含实时路况。</string>
     <string name="place_show_traffic">显示路况</string>
+    <string name="place_tab_overview">概览</string>
 </resources>

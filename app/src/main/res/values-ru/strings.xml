@@ -177,7 +177,6 @@
     <string name="place_call">Позвонить</string>
     <string name="place_website">Сайт</string>
     <string name="place_hours_not_listed">Часы работы не указаны</string>
-    <string name="place_loading_popular_times">Загрузка популярного времени и сведений…</string>
     <string name="place_also_at_location">Также по этому адресу</string>
     <string name="place_open">Открыто</string>
     <string name="place_people_also_search">Также ищут</string>
@@ -1029,4 +1028,5 @@
     <string name="place_show_reviews">Показать отзывы</string>
     <string name="place_traffic_not_loaded">Время без учёта пробок.</string>
     <string name="place_show_traffic">Показать пробки</string>
+    <string name="place_tab_overview">Обзор</string>
 </resources>

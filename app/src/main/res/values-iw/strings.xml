@@ -208,7 +208,6 @@
     <string name="place_origin_checking">מ-%1$s · בודק ב-Google</string>
     <string name="place_origin_unlinked">מ-%1$s · לא נמצאה התאמה ב-Google</string>
     <string name="place_origin_plain">מ-%1$s</string>
-    <string name="place_loading_popular_times">טוען שעות עומס &amp; פרטים…</string>
     <string name="place_also_at_location">גם במיקום הזה</string>
     <string name="place_open">פתוח</string>
     <string name="place_people_also_search">אנשים גם מחפשים</string>
@@ -1022,4 +1021,5 @@
     <string name="place_show_reviews">הצגת ביקורות</string>
     <string name="place_traffic_not_loaded">זמנים ללא תנועה בזמן אמת.</string>
     <string name="place_show_traffic">הצגת תנועה</string>
+    <string name="place_tab_overview">סקירה כללית</string>
 </resources>

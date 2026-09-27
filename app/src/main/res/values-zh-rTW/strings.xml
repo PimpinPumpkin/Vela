@@ -192,7 +192,6 @@
     <string name="place_call">撥打電話</string>
     <string name="place_website">網站</string>
     <string name="place_hours_not_listed">未提供營業時間</string>
-    <string name="place_loading_popular_times">正在載入熱門時段和詳細資訊…</string>
     <string name="place_also_at_location">同一地點的其他商家</string>
     <string name="place_open">開啟</string>
     <string name="place_people_also_search">其他人也搜尋</string>
@@ -1040,4 +1039,5 @@
     <string name="place_show_reviews">顯示評論</string>
     <string name="place_traffic_not_loaded">時間不含即時路況。</string>
     <string name="place_show_traffic">顯示路況</string>
+    <string name="place_tab_overview">總覽</string>
 </resources>

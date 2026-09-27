@@ -1,5 +1,7 @@
 package app.vela.ui.place
 
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.foundation.gestures.scrollBy
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -498,6 +500,12 @@ fun PlaceSheet(
     // scroll handler watches the body — when it's at the top, a downward drag first
     // collapses an expanded sheet, then dismisses it. Upward / mid-list drags scroll.
     val bodyScroll = rememberScrollState()
+    // The open tab, and where its in-flow tab row sits, for the pinned copy.
+    var placeTab by remember(place.id) { mutableStateOf<String?>(null) }
+    var tabKeys by remember(place.id) { mutableStateOf(listOf("Overview")) }
+    var tabRowY by remember(place.id) { mutableStateOf(Float.MAX_VALUE) }
+    var bodyY by remember { mutableStateOf(0f) }
+    val tabScope = rememberCoroutineScope()
     // Landing minimized rescrolls the body to its top. The fold clamps most of a scrolled
     // body away as the content shrinks, but a couple of lines of residue can survive (a
     // 2-line name + pills slightly overflow the floor height) and left the name's first
@@ -677,6 +685,7 @@ fun PlaceSheet(
                         .background(dim.copy(alpha = 0.6f)),
                 )
             }
+            Box(Modifier.onGloballyPositioned { bodyY = it.positionInWindow().y }) {
             Column(
                 Modifier
                     .nestedScroll(dismissConn)
@@ -1082,6 +1091,66 @@ fun PlaceSheet(
             // Live departure board for a transit stop, FIRST in the body (user 2026-07-13: the schedule
             // is what you open a stop for - Google leads with it too). Renders nothing for non-transit
             // places, so the unconditional position is safe.
+            PlaceTabs(
+                place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim,
+                onNeedReviews = onNeedReviews, onPanelOverscroll = onPanelOverscroll, onPanelOverscrollEnd = onPanelOverscrollEnd,
+                onPanelEngaged = onPanelEngaged, panelEngaged = reviewsEngaged.value, reviewsLimited = reviewsLimited,
+                onMoreReviews = onMoreReviews, reviewsMoreLoading = reviewsMoreLoading, onShowReviews = onShowReviews,
+                resolving = resolving, selectedKey = placeTab, onSelect = { placeTab = it },
+                onTabs = { tabKeys = it }, onTabRowY = { tabRowY = it },
+                overviewTail = {
+            // Other Google listings at the same spot (a co-branded shop's duplicate
+            // profile, or a different unit at the address), like Google's "Also at
+            // this location". Tap to open one.
+            if (placesHere.isNotEmpty()) {
+                Spacer(Modifier.height(16.dp))
+                Text(stringResource(R.string.place_also_at_location), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink)
+                placesHere.forEach { other ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).dpadHighlight(RoundedCornerShape(8.dp)).clickable { onOpenPlace(other) }.padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(other.name, style = MaterialTheme.typography.bodyLarge, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            val sub = listOfNotNull(
+                                other.rating?.let { String.format(Locale.US, "%.1f★", it) + (other.reviewCount?.let { n -> " ($n)" } ?: "") },
+                                other.category,
+                            ).joinToString("  ·  ")
+                            if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodyMedium, color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = stringResource(R.string.place_open), tint = dim, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+
+            // "People also search for": related places (Google-style). Filled by the
+            // detail re-fetch (root [2][11][0]); a horizontal row of tappable cards.
+            if (place.similarPlaces.isNotEmpty()) {
+                Spacer(Modifier.height(16.dp))
+                Text(stringResource(R.string.place_people_also_search), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink)
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    place.similarPlaces.forEach { s ->
+                        Column(
+                            Modifier.width(150.dp).clip(RoundedCornerShape(12.dp))
+                                .background(dim.copy(alpha = 0.10f))
+                                .dpadHighlight(RoundedCornerShape(12.dp))
+                                .clickable { onOpenSimilar(s) }
+                                .padding(12.dp),
+                        ) {
+                            Text(s.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            s.rating?.let {
+                                Spacer(Modifier.height(4.dp))
+                                Text(String.format(Locale.US, "%.1f★", it), style = MaterialTheme.typography.bodySmall, color = dim)
+                            }
+                        }
+                    }
+                }
+            }
+                },
+            ) {
             StopDepartureBoard(stopDepartures, stopDeparturesLoading, ink, dim, dark, onTapRoute, stopDeparturesCachedAt)
             place.address?.let { addr ->
                 Row(
@@ -1126,6 +1195,7 @@ fun PlaceSheet(
                 listOf("station", "stop", "transit", "transport", "hub", "bus", "subway", "metro", "tram", "rail", "ferry", "terminal", "platform").any { it in c }
             } == true
             if (place.hours.isNotEmpty()) {
+                if (place.address != null) InfoDivider(dim)
                 HoursSection(place.hours, ink, dim, departments = if (showDepartments) place.departments else emptyList())
             } else if (showDepartments) {
                 DepartmentsSection(place.departments, ink, dim)
@@ -1139,6 +1209,7 @@ fun PlaceSheet(
             // BELOW the hours (Google's order), well clear of the Directions button up top. The pills
             // are the fast path; these are the detail for when you want to see/copy the number or URL.
             place.phone?.let { ph ->
+                InfoDivider(dim)
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).dpadHighlight(RoundedCornerShape(8.dp)).clickable {
                         val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
@@ -1152,6 +1223,7 @@ fun PlaceSheet(
                 }
             }
             place.website?.takeIf { !app.vela.ui.HideExternalLinks.on.value }?.let { site ->
+                InfoDivider(dim)
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).dpadHighlight(RoundedCornerShape(8.dp)).clickable {
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
@@ -1205,7 +1277,7 @@ fun PlaceSheet(
             // Attribute highlights (Google-style chips) — the most useful items from About
             // (service options, offerings, accessibility…), surfaced on the overview for
             // quick scanning instead of being buried in the tab. Filled by the detail fetch.
-            val highlights = remember(place.about) { attributeHighlights(place.about) }
+            val highlights = remember(place.about) { attributeHighlights(place.about).distinctBy { it.lowercase().trim() }.take(5) }
             if (highlights.isNotEmpty()) {
                 Row(
                     Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 20.dp),
@@ -1236,14 +1308,8 @@ fun PlaceSheet(
             // haven't landed yet, show a subtle indicator so it reads as "loading", not
             // "missing" — it clears to the chart, or to nothing if this place has none.
             if (place.popularTimes == null && detailsLoading) {
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp, color = dim)
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.place_loading_popular_times), style = MaterialTheme.typography.bodySmall, color = dim)
-                }
+                SheetSkeleton(dim, listOf(140.dp), height = 12.dp, top = 16.dp)
+                SheetSkeleton(dim, listOf(300.dp), height = 48.dp, top = 8.dp)
             }
             // Google is giving this session its limited view (web/GoogleStanding): say so where the
             // chart would be, so a missing chart reads as Google's doing and not a broken app.
@@ -1259,62 +1325,22 @@ fun PlaceSheet(
             }
             // (The editorial summary + "From the owner" blurb live in the About tab.)
 
-            // Other Google listings at the same spot (a co-branded shop's duplicate
-            // profile, or a different unit at the address) — like Google's "Also at
-            // this location". Tap to open one.
-            if (placesHere.isNotEmpty()) {
-                Spacer(Modifier.height(16.dp))
-                Text(stringResource(R.string.place_also_at_location), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink)
-                placesHere.forEach { other ->
-                    Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).dpadHighlight(RoundedCornerShape(8.dp)).clickable { onOpenPlace(other) }.padding(vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(other.name, style = MaterialTheme.typography.bodyLarge, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            val sub = listOfNotNull(
-                                other.rating?.let { String.format(Locale.US, "%.1f★", it) + (other.reviewCount?.let { n -> " ($n)" } ?: "") },
-                                other.category,
-                            ).joinToString("  ·  ")
-                            if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodyMedium, color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = stringResource(R.string.place_open), tint = dim, modifier = Modifier.size(18.dp))
-                    }
-                }
-            }
 
-            // "People also search for" — related places (Google-style). Filled by the
-            // detail re-fetch (root [2][11][0]); a horizontal row of tappable cards.
-            if (place.similarPlaces.isNotEmpty()) {
-                Spacer(Modifier.height(16.dp))
-                Text(stringResource(R.string.place_people_also_search), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink)
-                Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    place.similarPlaces.forEach { s ->
-                        Column(
-                            Modifier.width(150.dp).clip(RoundedCornerShape(12.dp))
-                                .background(dim.copy(alpha = 0.10f))
-                                .dpadHighlight(RoundedCornerShape(12.dp))
-                                .clickable { onOpenSimilar(s) }
-                                .padding(12.dp),
-                        ) {
-                            Text(s.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            s.rating?.let {
-                                Spacer(Modifier.height(4.dp))
-                                Text(String.format(Locale.US, "%.1f★", it), style = MaterialTheme.typography.bodySmall, color = dim)
-                            }
-                        }
-                    }
-                }
             }
-
-            // The reviews tabs wait for the listing (the map's data has no reviews to show, and an
-            // empty tab row would read as "no reviews"); pulse bars hold their place.
-            if (resolving) SheetSkeleton(dim, listOf(260.dp, 220.dp, 240.dp), gap = 18.dp, top = 18.dp)
-            else PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onNeedReviews = onNeedReviews, onPanelOverscroll = onPanelOverscroll, onPanelOverscrollEnd, onPanelEngaged, reviewsEngaged.value, reviewsLimited = reviewsLimited, onMoreReviews = onMoreReviews, reviewsMoreLoading = reviewsMoreLoading, onShowReviews = onShowReviews)
             }
+            }
+            }
+            // Pinned copy of the tab row once the in-flow one scrolls under the top edge.
+            if (extrasComposed && !minimizedState.value && !reviewsEngaged.value && tabKeys.size > 1 && tabRowY < bodyY) {
+                PlaceTabRow(
+                    tabKeys, tabKeys.indexOf(placeTab).takeIf { it >= 0 } ?: 0, menuTabNameOf(place), ink,
+                    onSelect = { k ->
+                        placeTab = k
+                        val delta = tabRowY - bodyY
+                        tabScope.launch { bodyScroll.scrollBy(delta) }
+                    },
+                    modifier = Modifier.background(if (dark) SheetDark else SheetLight).padding(horizontal = 20.dp),
+                )
             }
             }
         }
@@ -3500,6 +3526,13 @@ private fun PlaceTabs(
     onMoreReviews: (() -> Unit)? = null,
     reviewsMoreLoading: Boolean = false,
     onShowReviews: (() -> Unit)? = null,
+    resolving: Boolean = false,
+    selectedKey: String? = null,
+    onSelect: (String) -> Unit = {},
+    onTabs: (List<String>) -> Unit = {},
+    onTabRowY: (Float) -> Unit = {},
+    overviewTail: @Composable () -> Unit = {},
+    overview: @Composable () -> Unit = {},
 ) {
     // A BARE bus stop (transit-category AND no rating, i.e. no real review content) shows only its
     // departure board + stop timeline - Reviews/About are noise there. But a RATED transit CENTER
@@ -3529,43 +3562,41 @@ private fun PlaceTabs(
     val menuTabName = remember(place.photoCategories) {
         place.photoCategories.firstOrNull { cat -> cat != null && MENU_TAB_WORDS.any { cat.lowercase().contains(it) } }
     }
-    // About opens first; reviews load only once their tab is opened.
+    // Overview opens first; reviews load only once their tab is opened. Keyed by name, so a tab
+    // that arrives late never swaps the open one.
     val tabs = buildList {
-        if (hasAbout) add("About")
-        if (hasReviews) add("Reviews")
-        if (menuIndices.isNotEmpty() && app.vela.ui.LoadPhotos.on.value) add("Menu")
+        add("Overview")
+        if (!resolving && hasReviews) add("Reviews")
+        if (!resolving && menuIndices.isNotEmpty() && app.vela.ui.LoadPhotos.on.value) add("Menu")
     }
-    if (tabs.isEmpty()) return
-    // Keyed by name: a tab that arrives late (About after the details load) must not swap the open one.
-    var sel by remember(place.id) { mutableStateOf<String?>(null) }
-    val selected = tabs.indexOf(sel).takeIf { it >= 0 } ?: 0
+    androidx.compose.runtime.SideEffect { onTabs(tabs) }
+    val selected = tabs.indexOf(selectedKey).takeIf { it >= 0 } ?: 0
 
     Column(Modifier.padding(top = 12.dp)) {
-        // In engaged reviews mode the panel takes the WHOLE sheet — no floating tab bar above
-        // it (it returns when the user walks the sheet back up and disengages).
-        if (!panelEngaged) {
-            TabRow(
-                selectedTabIndex = selected,
-                containerColor = Color.Transparent,
-                contentColor = ink,
-            ) {
-                tabs.forEachIndexed { i, title ->
-                    // The list carries LOGIC KEYS ("Reviews"/"Menu"/"About" branch the `when`
-                    // below); the visible label localizes separately - the last of the
-                    // dual-purpose literals split from their keys (i18n follow-ups, 2026-07-14).
-                    // The Menu tab still prefers Google's own (already localized) gallery-tab name.
-                    val display = when (title) {
-                        "Reviews" -> stringResource(R.string.place_tab_reviews)
-                        "Menu" -> menuTabName ?: stringResource(R.string.place_tab_menu)
-                        "About" -> stringResource(R.string.place_tab_about)
-                        else -> title
-                    }
-                    Tab(selected = i == selected, onClick = { sel = title }, text = { Text(display) })
-                }
-            }
+        // In engaged reviews mode the panel takes the WHOLE sheet, so no tab bar above it.
+        if (!panelEngaged && tabs.size > 1) {
+            PlaceTabRow(
+                tabs, selected, menuTabName, ink, onSelect = onSelect,
+                modifier = Modifier.onGloballyPositioned { onTabRowY(it.positionInWindow().y) },
+            )
         }
         Column(Modifier.padding(top = 10.dp)) {
             when (tabs[selected]) {
+                "Overview" -> {
+                    overview()
+                    if ("Reviews" in tabs && place.rating != null) {
+                        ReviewSummaryCard(place, ink, dim, onOpen = { onSelect("Reviews") })
+                    }
+                    if (hasAbout) {
+                        Text(
+                            stringResource(R.string.place_tab_about),
+                            style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink,
+                            modifier = Modifier.padding(top = 20.dp, bottom = 4.dp),
+                        )
+                        AboutTab(place.about, place.editorialSummary, place.ownerDescription, ink, dim)
+                    }
+                    overviewTail()
+                }
                 "Reviews" -> {
                     // Inline = the NATIVE scraped list (smooth, no nested WebView, no scroll seam).
                     // Tapping a review photo opens the shared full-screen gallery; a "Read all
@@ -3620,7 +3651,6 @@ private fun PlaceTabs(
                         ) { menuStart = null }
                     }
                 }
-                "About" -> AboutTab(place.about, place.editorialSummary, place.ownerDescription, ink, dim)
             }
         }
     }
@@ -4543,4 +4573,68 @@ internal fun TrafficOnTapRow(onClick: () -> Unit, ink: Color, modifier: Modifier
             Text(stringResource(R.string.place_show_traffic))
         }
     }
+}
+
+/** Google's own name for the menu photo category, reused as the Menu tab title. */
+private fun menuTabNameOf(place: Place): String? =
+    place.photoCategories.firstOrNull { cat -> cat != null && MENU_TAB_WORDS.any { cat.lowercase().contains(it) } }
+
+@Composable
+private fun PlaceTabRow(
+    tabs: List<String>,
+    selected: Int,
+    menuTabName: String?,
+    ink: Color,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TabRow(selectedTabIndex = selected, containerColor = Color.Transparent, contentColor = ink, modifier = modifier) {
+        tabs.forEachIndexed { i, key ->
+            val label = when (key) {
+                "Overview" -> stringResource(R.string.place_tab_overview)
+                "Reviews" -> stringResource(R.string.place_tab_reviews)
+                "Menu" -> menuTabName ?: stringResource(R.string.place_tab_menu)
+                else -> key
+            }
+            Tab(selected = i == selected, onClick = { onSelect(key) }, text = { Text(label) })
+        }
+    }
+}
+
+/** Rating, star histogram and Google's featured snippet, with a link to the Reviews tab. */
+@Composable
+private fun ReviewSummaryCard(place: Place, ink: Color, dim: Color, onOpen: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(top = 18.dp).clip(RoundedCornerShape(12.dp))
+            .background(dim.copy(alpha = 0.08f)).padding(start = 14.dp, top = 10.dp, bottom = 10.dp, end = 4.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(String.format(Locale.US, "%.1f", place.rating ?: 0.0), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Medium, color = ink)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                app.vela.ui.RatingStars(place.rating ?: 0.0)
+                place.reviewCount?.let {
+                    Text(pluralStringResource(R.plurals.place_review_count, it, it), style = MaterialTheme.typography.bodySmall, color = dim)
+                }
+            }
+            TextButton(onClick = onOpen, modifier = Modifier.dpadHighlight(CircleShape)) {
+                Text(stringResource(R.string.place_show_reviews))
+            }
+        }
+        place.ratingHistogram?.takeIf { it.isNotEmpty() }?.let {
+            RatingHistogram(it, dim, Modifier.padding(top = 8.dp, end = 10.dp))
+        }
+        place.featuredReview?.let {
+            Text(
+                "\u201C$it\u201D", style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, color = ink,
+                maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp, end = 10.dp),
+            )
+        }
+    }
+}
+
+/** Hairline between the place's info rows, inset past the row icons. */
+@Composable
+private fun InfoDivider(dim: Color) {
+    HorizontalDivider(Modifier.padding(start = 26.dp, top = 4.dp, bottom = 4.dp), thickness = 0.5.dp, color = dim.copy(alpha = 0.25f))
 }
