@@ -195,6 +195,8 @@ data class MapUiState(
     val routeTrafficRequested: Boolean = false,
     /** Feature id whose gallery was already walked for categories from the Photos tab. */
     val photoWalkedFor: String? = null,
+    /** Feature id whose photos wait for a "Show photos" tap ([app.vela.ui.PhotosOnTap]). */
+    val photosAwaitingTapFor: String? = null,
     /** Next page of the native review feed, when Google said there is one: "More reviews". */
     val reviewsNextToken: String? = null,
     val reviewsMoreLoading: Boolean = false,
@@ -2993,7 +2995,7 @@ class MapViewModel @Inject constructor(
         val token = st.photosNextToken
         if (token == null) {
             _state.update { it.copy(morePhotosFor = null) }
-            fetchPhotos(p, full = true)
+            fetchPhotos(p, full = true, force = true)
             return
         }
         if (st.photosLoading) return
@@ -3009,7 +3011,7 @@ class MapViewModel @Inject constructor(
             if (page?.photos.isNullOrEmpty()) {
                 // Asked for more and the RPC will not page: the page walk it is (a tap, not unasked).
                 _state.update { it.copy(photosLoading = false, photosNextToken = null, morePhotosFor = null) }
-                if (_state.value.selected?.featureId == fid) fetchPhotos(p, full = true)
+                if (_state.value.selected?.featureId == fid) fetchPhotos(p, full = true, force = true)
                 return@launch
             }
             _state.update {
@@ -3038,10 +3040,16 @@ class MapViewModel @Inject constructor(
         val p = _state.value.selected ?: return
         if (_state.value.photosLoading) return
         _state.update { it.copy(morePhotosFor = null, photoWalkedFor = p.featureId) }
-        fetchPhotos(p, full = true)
+        fetchPhotos(p, full = true, force = true)
     }
 
-    private fun fetchPhotos(p: Place, full: Boolean = app.vela.ui.FullPlaceLoad.on.value) {
+    /** "Show photos" tapped ([app.vela.ui.PhotosOnTap]). */
+    fun loadPhotosNow() {
+        val p = _state.value.selected ?: return
+        fetchPhotos(p, force = true)
+    }
+
+    private fun fetchPhotos(p: Place, full: Boolean = app.vela.ui.FullPlaceLoad.on.value, force: Boolean = false) {
         // "Load photos" off: never start the gallery scrape (it's the heaviest per-place
         // request); the sheet also hides the photo strip, so no loading flag either.
         if (!app.vela.ui.LoadPhotos.on.value || googleOff()) return
@@ -3051,6 +3059,11 @@ class MapViewModel @Inject constructor(
         if (_state.value.lowData) return
         val fid = p.featureId
         if (fid.isNullOrBlank() || !fid.contains(":")) return
+        if (app.vela.ui.PhotosOnTap.on.value && !force) {
+            _state.update { if (it.selected?.featureId == fid) it.copy(photosAwaitingTapFor = fid, photosLoading = false) else it }
+            return
+        }
+        _state.update { if (it.photosAwaitingTapFor == fid) it.copy(photosAwaitingTapFor = null) else it }
         // Only flash the loading shimmer for places LIKELY to have photos — a rated/reviewed
         // business or one with a preview already. A residential address (no rating, reviews, or
         // preview) shouldn't show a photo placeholder for a gallery it'll never have. We still
@@ -3213,7 +3226,8 @@ class MapViewModel @Inject constructor(
     }
 
     /** How many tries a one-request place load gets before the page fallback (`placeTries`, 3). */
-    private fun placeTries(): Int = app.vela.ui.AppTune.value("placeTries", 3.0).toInt().coerceIn(1, 5)
+    private fun placeTries(): Int =
+        if (!app.vela.ui.DetailsRetry.on.value) 1 else app.vela.ui.AppTune.value("placeTries", 3.0).toInt().coerceIn(1, 5)
 
     /** A remote kill switch in calibration `tuning` (1 = on, the compiled default; 0 = the old
      *  hidden-page path). The rollback lever for the one-request place loads. */

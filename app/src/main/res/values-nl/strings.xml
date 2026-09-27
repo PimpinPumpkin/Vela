@@ -1019,4 +1019,10 @@
     <string name="place_all_reviews_short">Alle reviews</string>
     <string name="place_tab_photos">Foto\'s</string>
     <string name="place_photos_all">Alle</string>
+    <string name="settings_photos_on_tap">Foto\'s alleen laden als ik tik</string>
+    <string name="settings_photos_on_tap_hint">Een plaats toont een knop Foto\'s tonen in plaats van de foto\'s te laden. Scheelt één Google-verzoek per plaats.</string>
+    <string name="settings_details_retry">Wachten op drukke tijden</string>
+    <string name="settings_details_retry_hint">Google laat de drukke tijden vaak weg in het eerste antwoord, dus Vela vraagt tot twee keer opnieuw. Uit = één verzoek per plaats, en de drukke tijden kunnen ontbreken.</string>
+    <string name="place_show_photos">Foto\'s tonen</string>
+    <string name="place_no_photos">Nog geen foto\'s</string>
 </resources>

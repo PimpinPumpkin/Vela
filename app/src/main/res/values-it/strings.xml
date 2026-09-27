@@ -1019,4 +1019,10 @@
     <string name="place_all_reviews_short">Tutte le recensioni</string>
     <string name="place_tab_photos">Foto</string>
     <string name="place_photos_all">Tutte</string>
+    <string name="settings_photos_on_tap">Carica le foto solo quando tocco</string>
+    <string name="settings_photos_on_tap_hint">Un luogo mostra un pulsante Mostra foto invece di caricarle. Risparmia una richiesta a Google per luogo.</string>
+    <string name="settings_details_retry">Attendi gli orari di punta</string>
+    <string name="settings_details_retry_hint">Google spesso omette gli orari di punta nella prima risposta, quindi Vela richiede fino ad altre due volte. Disattivato = una richiesta per luogo, e gli orari di punta possono mancare.</string>
+    <string name="place_show_photos">Mostra foto</string>
+    <string name="place_no_photos">Ancora nessuna foto</string>
 </resources>

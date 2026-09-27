@@ -56,6 +56,22 @@ internal fun PlacesSettingsScreen(onBack: () -> Unit) {
             onCheckedChange = { app.vela.ui.LoadPhotos.set(context, it) },
             hint = stringResource(R.string.settings_load_photos_hint),
         )
+        if (app.vela.ui.LoadPhotos.on.value) {
+            GroupDivider()
+            ToggleRow(
+                label = stringResource(R.string.settings_photos_on_tap),
+                checked = app.vela.ui.PhotosOnTap.on.value,
+                onCheckedChange = { app.vela.ui.PhotosOnTap.set(context, it) },
+                hint = stringResource(R.string.settings_photos_on_tap_hint),
+            )
+        }
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_details_retry),
+            checked = app.vela.ui.DetailsRetry.on.value,
+            onCheckedChange = { app.vela.ui.DetailsRetry.set(context, it) },
+            hint = stringResource(R.string.settings_details_retry_hint),
+        )
         GroupDivider()
         ToggleRow(
             label = stringResource(R.string.settings_hide_adult),

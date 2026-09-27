@@ -1041,4 +1041,10 @@
     <string name="place_all_reviews_short">すべてのクチコミ</string>
     <string name="place_tab_photos">写真</string>
     <string name="place_photos_all">すべて</string>
+    <string name="settings_photos_on_tap">タップしたときだけ写真を読み込む</string>
+    <string name="settings_photos_on_tap_hint">写真を読み込む代わりに「写真を表示」ボタンを出します。場所ごとにGoogleへのリクエストが1回減ります。</string>
+    <string name="settings_details_retry">混雑する時間帯を待つ</string>
+    <string name="settings_details_retry_hint">Googleは最初の応答で混雑する時間帯を省くことが多いため、Velaは最大2回まで再度問い合わせます。オフにすると場所ごとに1回だけになり、混雑する時間帯が表示されないことがあります。</string>
+    <string name="place_show_photos">写真を表示</string>
+    <string name="place_no_photos">写真はまだありません</string>
 </resources>

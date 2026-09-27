@@ -1575,7 +1575,9 @@ Defaults that make the safe path the easy one:
   the body's info blocks are its `overview` / `overviewTail` slots; `PlaceTabRow` is also drawn pinned
   over the body (`tabRowY < bodyY`). New place-page content goes in one of those slots.
 - **On-tap privacy options (2026-09-27):** `ReviewsOnTap` (Show reviews button) and `RouteTrafficOnTap`
-  (`RoutingPrefs.googleTraffic`, reset per trip in `routeToSelected`, set by `requestRouteTraffic`). Both off by default.
+  (`RoutingPrefs.googleTraffic`, reset per trip in `routeToSelected`, set by `requestRouteTraffic`), plus
+  `PhotosOnTap` (off) and `DetailsRetry` (on; off = one details request). New place data must keep the
+  sheet still: reserve its space or decide it from the first reply.
 - **Place-content toggles (2026-07-08):** `ShowReviews` / `LoadPhotos` reactive holders
   (`ui/PlaceContent.kt`, same shape as `LiveReviews`, init in VelaApp, rows in Settings → Places).
   They gate BOTH fetch (`fetchReviews`/`fetchPhotos` first line) and render (PlaceSheet `hasReviews`

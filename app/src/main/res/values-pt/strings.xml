@@ -1021,4 +1021,10 @@
     <string name="place_all_reviews_short">Todas as avaliações</string>
     <string name="place_tab_photos">Fotos</string>
     <string name="place_photos_all">Todas</string>
+    <string name="settings_photos_on_tap">Carregar fotos só quando eu tocar</string>
+    <string name="settings_photos_on_tap_hint">O local mostra um botão Mostrar fotos em vez de carregá-las. Economiza um pedido ao Google por local.</string>
+    <string name="settings_details_retry">Esperar pelos horários de pico</string>
+    <string name="settings_details_retry_hint">O Google costuma omitir os horários de pico na primeira resposta, então o Vela pergunta de novo até duas vezes. Desligado = um pedido por local, e os horários de pico podem faltar.</string>
+    <string name="place_show_photos">Mostrar fotos</string>
+    <string name="place_no_photos">Ainda não há fotos</string>
 </resources>

@@ -1019,4 +1019,10 @@
     <string name="place_all_reviews_short">Alle Rezensionen</string>
     <string name="place_tab_photos">Fotos</string>
     <string name="place_photos_all">Alle</string>
+    <string name="settings_photos_on_tap">Fotos nur auf Tippen laden</string>
+    <string name="settings_photos_on_tap_hint">Ein Ort zeigt eine Schaltfläche Fotos anzeigen, statt die Fotos zu laden. Spart eine Google-Anfrage pro Ort.</string>
+    <string name="settings_details_retry">Auf Stoßzeiten warten</string>
+    <string name="settings_details_retry_hint">Google lässt die Stoßzeiten in der ersten Antwort oft weg, daher fragt Vela bis zu zweimal nach. Aus = eine Anfrage pro Ort, und die Stoßzeiten können fehlen.</string>
+    <string name="place_show_photos">Fotos anzeigen</string>
+    <string name="place_no_photos">Noch keine Fotos</string>
 </resources>

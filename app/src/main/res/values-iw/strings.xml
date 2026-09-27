@@ -1022,4 +1022,10 @@
     <string name="place_all_reviews_short">כל הביקורות</string>
     <string name="place_tab_photos">תמונות</string>
     <string name="place_photos_all">הכול</string>
+    <string name="settings_photos_on_tap">טעינת תמונות רק בהקשה</string>
+    <string name="settings_photos_on_tap_hint">במקום טעינת התמונות יוצג כפתור הצגת תמונות. חוסך בקשה אחת לגוגל לכל מקום.</string>
+    <string name="settings_details_retry">המתנה לשעות העומס</string>
+    <string name="settings_details_retry_hint">גוגל משמיט לעיתים קרובות את שעות העומס בתשובה הראשונה, ולכן Vela שואל עד פעמיים נוספות. כבוי = בקשה אחת לכל מקום, ושעות העומס עלולות לחסור.</string>
+    <string name="place_show_photos">הצגת תמונות</string>
+    <string name="place_no_photos">אין עדיין תמונות</string>
 </resources>

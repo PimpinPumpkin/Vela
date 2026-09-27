@@ -2094,6 +2094,7 @@ fun MapScreen(
                 photosLoading = state.photosLoading,
                 morePhotos = state.morePhotosFor != null && state.morePhotosFor == state.selected?.featureId,
                 onMorePhotos = vm::loadAllPhotos,
+                onShowPhotos = if (state.photosAwaitingTapFor != null && state.photosAwaitingTapFor == state.selected?.featureId) vm::loadPhotosNow else null,
                 onPhotoCategories = if (state.selected?.photoCategories?.any { it != null } == true || state.photoWalkedFor == state.selected?.featureId) null else vm::loadPhotoCategories,
                 detailsLoading = state.loadingDetails,
                 placesHere = state.placesHere,

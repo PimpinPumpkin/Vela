@@ -1030,4 +1030,10 @@
     <string name="place_all_reviews_short">Wszystkie opinie</string>
     <string name="place_tab_photos">Zdjęcia</string>
     <string name="place_photos_all">Wszystkie</string>
+    <string name="settings_photos_on_tap">Wczytuj zdjęcia tylko po dotknięciu</string>
+    <string name="settings_photos_on_tap_hint">Miejsce pokazuje przycisk Pokaż zdjęcia zamiast je wczytywać. Oszczędza jedno zapytanie do Google na miejsce.</string>
+    <string name="settings_details_retry">Czekaj na godziny szczytu</string>
+    <string name="settings_details_retry_hint">Google często pomija godziny szczytu w pierwszej odpowiedzi, więc Vela pyta ponownie do dwóch razy. Wyłączone = jedno zapytanie na miejsce, a godzin szczytu może zabraknąć.</string>
+    <string name="place_show_photos">Pokaż zdjęcia</string>
+    <string name="place_no_photos">Brak zdjęć</string>
 </resources>

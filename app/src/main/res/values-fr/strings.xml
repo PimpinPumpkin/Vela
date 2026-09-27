@@ -1019,4 +1019,10 @@
     <string name="place_all_reviews_short">Tous les avis</string>
     <string name="place_tab_photos">Photos</string>
     <string name="place_photos_all">Toutes</string>
+    <string name="settings_photos_on_tap">Charger les photos seulement quand je touche</string>
+    <string name="settings_photos_on_tap_hint">Un lieu affiche un bouton Afficher les photos au lieu de les charger. Économise une requête Google par lieu.</string>
+    <string name="settings_details_retry">Attendre les heures d\'affluence</string>
+    <string name="settings_details_retry_hint">Google omet souvent l\'affluence dans sa première réponse, alors Vela redemande jusqu\'à deux fois. Désactivé = une requête par lieu, et l\'affluence peut manquer.</string>
+    <string name="place_show_photos">Afficher les photos</string>
+    <string name="place_no_photos">Pas encore de photos</string>
 </resources>

@@ -1040,4 +1040,10 @@
     <string name="place_all_reviews_short">所有評論</string>
     <string name="place_tab_photos">相片</string>
     <string name="place_photos_all">全部</string>
+    <string name="settings_photos_on_tap">僅在點按時載入相片</string>
+    <string name="settings_photos_on_tap_hint">地點頁會顯示「顯示相片」按鈕，而不是直接載入相片。每個地點少發一次 Google 請求。</string>
+    <string name="settings_details_retry">等待熱門時段</string>
+    <string name="settings_details_retry_hint">Google 常在第一次回覆中省略熱門時段，因此 Vela 最多再詢問兩次。關閉後每個地點只請求一次，可能缺少熱門時段。</string>
+    <string name="place_show_photos">顯示相片</string>
+    <string name="place_no_photos">尚無相片</string>
 </resources>

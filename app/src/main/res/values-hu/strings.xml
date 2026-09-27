@@ -1021,4 +1021,10 @@
     <string name="place_all_reviews_short">Összes értékelés</string>
     <string name="place_tab_photos">Fotók</string>
     <string name="place_photos_all">Összes</string>
+    <string name="settings_photos_on_tap">Fotók betöltése csak koppintásra</string>
+    <string name="settings_photos_on_tap_hint">A helyoldalon egy Fotók megjelenítése gomb jelenik meg a betöltés helyett. Helyenként egy Google-kérést takarít meg.</string>
+    <string name="settings_details_retry">Várakozás a forgalmas időszakokra</string>
+    <string name="settings_details_retry_hint">A Google az első válaszból gyakran kihagyja a forgalmas időszakokat, ezért a Vela legfeljebb még kétszer rákérdez. Ki = helyenként egy kérés, és a forgalmas időszakok hiányozhatnak.</string>
+    <string name="place_show_photos">Fotók megjelenítése</string>
+    <string name="place_no_photos">Még nincsenek fotók</string>
 </resources>

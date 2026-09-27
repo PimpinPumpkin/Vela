@@ -1029,4 +1029,10 @@
     <string name="place_all_reviews_short">Все отзывы</string>
     <string name="place_tab_photos">Фото</string>
     <string name="place_photos_all">Все</string>
+    <string name="settings_photos_on_tap">Загружать фото только по нажатию</string>
+    <string name="settings_photos_on_tap_hint">Вместо загрузки фото на странице места появится кнопка Показать фото. Экономит один запрос к Google на место.</string>
+    <string name="settings_details_retry">Ждать данных о загруженности</string>
+    <string name="settings_details_retry_hint">Google часто не включает загруженность в первый ответ, поэтому Vela переспрашивает до двух раз. Выключено = один запрос на место, и загруженность может не показаться.</string>
+    <string name="place_show_photos">Показать фото</string>
+    <string name="place_no_photos">Фото пока нет</string>
 </resources>

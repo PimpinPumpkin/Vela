@@ -1019,4 +1019,10 @@
     <string name="place_all_reviews_short">Alla recensioner</string>
     <string name="place_tab_photos">Foton</string>
     <string name="place_photos_all">Alla</string>
+    <string name="settings_photos_on_tap">Läs in foton bara när jag trycker</string>
+    <string name="settings_photos_on_tap_hint">En plats visar knappen Visa foton i stället för att läsa in fotona. Sparar en Google-förfrågan per plats.</string>
+    <string name="settings_details_retry">Vänta på populära tider</string>
+    <string name="settings_details_retry_hint">Google utelämnar ofta populära tider i första svaret, så Vela frågar upp till två gånger till. Av = en förfrågan per plats, och populära tider kan saknas.</string>
+    <string name="place_show_photos">Visa foton</string>
+    <string name="place_no_photos">Inga foton än</string>
 </resources>

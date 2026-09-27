@@ -1113,4 +1113,10 @@
     <string name="place_all_reviews_short">All reviews</string>
     <string name="place_tab_photos">Photos</string>
     <string name="place_photos_all">All</string>
+    <string name="settings_photos_on_tap">Load photos only when I tap</string>
+    <string name="settings_photos_on_tap_hint">A place shows a Show photos button instead of loading its photos. Saves a Google request per place.</string>
+    <string name="settings_details_retry">Wait for popular times</string>
+    <string name="settings_details_retry_hint">Google often leaves popular times out of its first answer, so Vela asks up to twice more. Off = one request per place, and popular times may be missing.</string>
+    <string name="place_show_photos">Show photos</string>
+    <string name="place_no_photos">No photos yet</string>
 </resources>

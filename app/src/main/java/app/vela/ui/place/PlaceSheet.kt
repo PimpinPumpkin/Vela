@@ -270,6 +270,8 @@ fun PlaceSheet(
     onMorePhotos: () -> Unit = {},
     /** Walk the gallery for its categories (Menu and the rest). Null hides the chip. */
     onPhotoCategories: (() -> Unit)? = null,
+    /** Photos wait for a tap ([app.vela.ui.PhotosOnTap]). Null = load as usual. */
+    onShowPhotos: (() -> Unit)? = null,
     detailsLoading: Boolean = false,
     placesHere: List<Place> = emptyList(),
     /** The tapped label is still being looked up on Google: skeletons stand in for the details,
@@ -732,7 +734,13 @@ fun PlaceSheet(
             // places layer carries no Google id until the details land, which is exactly the case
             // the slot is for.
             val photosExpected = (detailsLoading && !place.category.isNullOrBlank()) || resolving
-            if (app.vela.ui.LoadPhotos.on.value &&
+            if (onShowPhotos != null) {
+                FilledTonalButton(onClick = onShowPhotos, shape = CircleShape, modifier = Modifier.padding(bottom = 12.dp).dpadHighlight(CircleShape)) {
+                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.place_show_photos))
+                }
+            } else if (app.vela.ui.LoadPhotos.on.value &&
                 (place.photoUrls.isNotEmpty() || ((photosLoading || photosExpected) && !transitNoShimmer))
             ) {
                 // (The All/Menu category chips that used to sit here are gone — the Menu TAB is
@@ -1102,6 +1110,7 @@ fun PlaceSheet(
                 resolving = resolving, selectedKey = placeTab, onSelect = { placeTab = it },
                 onTabs = { tabKeys = it }, onTabRowY = { tabRowY = it },
                 photosLoading = photosLoading, morePhotos = morePhotos, onMorePhotos = onMorePhotos, onPhotoCategories = onPhotoCategories,
+                photosHeld = onShowPhotos != null,
                 overviewTail = {
             // Other Google listings at the same spot (a co-branded shop's duplicate
             // profile, or a different unit at the address), like Google's "Also at
@@ -1312,8 +1321,10 @@ fun PlaceSheet(
             // haven't landed yet, show a subtle indicator so it reads as "loading", not
             // "missing" — it clears to the chart, or to nothing if this place has none.
             if (place.popularTimes == null && detailsLoading) {
-                SheetSkeleton(dim, listOf(140.dp), height = 12.dp, top = 16.dp)
-                SheetSkeleton(dim, listOf(300.dp), height = 48.dp, top = 8.dp)
+                // Sized like the chart (title, day chips, bars) so its arrival moves nothing.
+                SheetSkeleton(dim, listOf(120.dp), height = 14.dp, top = 22.dp)
+                SheetSkeleton(dim, listOf(260.dp), height = 24.dp, top = 12.dp)
+                SheetSkeleton(dim, listOf(300.dp), height = 80.dp, top = 12.dp)
             }
             // Google is giving this session its limited view (web/GoogleStanding): say so where the
             // chart would be, so a missing chart reads as Google's doing and not a broken app.
@@ -1335,7 +1346,11 @@ fun PlaceSheet(
             }
             }
             // Pinned copy of the tab row once the in-flow one scrolls under the top edge.
-            if (extrasComposed && !minimizedState.value && !reviewsEngaged.value && tabKeys.size > 1 && tabRowY < bodyY) {
+            androidx.compose.animation.AnimatedVisibility(
+                visible = extrasComposed && !minimizedState.value && !reviewsEngaged.value && tabKeys.size > 1 && tabRowY < bodyY,
+                enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(120)),
+                exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(120)),
+            ) {
                 PlaceTabRow(
                     tabKeys, tabKeys.indexOf(placeTab).takeIf { it >= 0 } ?: 0, menuTabNameOf(place), ink,
                     onSelect = { k ->
@@ -3539,6 +3554,7 @@ private fun PlaceTabs(
     morePhotos: Boolean = false,
     onMorePhotos: () -> Unit = {},
     onPhotoCategories: (() -> Unit)? = null,
+    photosHeld: Boolean = false,
     overviewTail: @Composable () -> Unit = {},
     overview: @Composable () -> Unit = {},
 ) {
@@ -3575,7 +3591,10 @@ private fun PlaceTabs(
     val tabs = buildList {
         add("Overview")
         if (!resolving && hasReviews) add("Reviews")
-        if (!resolving && app.vela.ui.LoadPhotos.on.value && place.photoUrls.isNotEmpty()) add("Photos")
+        // Decided from the first reply (a rated or reviewed place will have a gallery), so the tab
+        // row never re-spaces itself when the photos land.
+        val photoWorthy = place.photoUrls.isNotEmpty() || place.rating != null || place.reviewCount != null
+        if (!resolving && !photosHeld && app.vela.ui.LoadPhotos.on.value && photoWorthy) add("Photos")
         if (!resolving && menuIndices.isNotEmpty() && app.vela.ui.LoadPhotos.on.value) add("Menu")
     }
     androidx.compose.runtime.SideEffect { onTabs(tabs) }
@@ -3810,6 +3829,12 @@ private fun ReviewsTab(
                 place.ratingHistogram?.let { counts ->
                     Spacer(Modifier.width(18.dp))
                     RatingHistogram(counts, dim, Modifier.weight(1f))
+                } ?: run {
+                    // Held open while the reviews page may still send the breakdown.
+                    if (loading && (place.reviewCount ?: 0) > 0) {
+                        Spacer(Modifier.width(18.dp))
+                        Box(Modifier.weight(1f).height(92.dp))
+                    }
                 }
             }
         }
@@ -3826,13 +3851,14 @@ private fun ReviewsTab(
             )
         }
         // Sort (on the loaded list), local search, and Google's full page for everything else.
-        if (!loading && reviews.size >= 3 || onReadAll != null) {
+        val sortable = (place.reviewCount ?: 0) > 1 || reviews.size >= 3
+        if (sortable || onReadAll != null) {
             Row(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (!loading && reviews.size >= 3) {
+                if (sortable) {
                     listOf(
                         0 to R.string.place_sort_relevant,
                         1 to R.string.place_sort_highest,
@@ -3917,7 +3943,7 @@ private fun ReviewsTab(
                 // author. Held back until the scrape COMPLETES: popping a text field in above rows
                 // the user is reading mid-stream shifts everything under their finger; appearing at
                 // completion it takes the space the progress header just vacated (a near-swap).
-                if (!loading && reviews.size >= 5 && (reviewSearchOpen || onReadAll == null)) {
+                if (reviewSearchOpen && reviews.isNotEmpty()) {
                     OutlinedTextField(
                         value = reviewQuery,
                         onValueChange = { reviewQuery = it },
@@ -4678,6 +4704,9 @@ private fun PhotosTab(
             }
         }
         val idx = place.photoUrls.indices.filter { cat == null || place.photoCategories.getOrNull(it) == cat }
+        if (idx.isEmpty() && !loading) {
+            Text(stringResource(R.string.place_no_photos), style = MaterialTheme.typography.bodyMedium, color = dim, modifier = Modifier.padding(vertical = 8.dp))
+        }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             idx.chunked(3).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {

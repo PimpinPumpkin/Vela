@@ -1029,4 +1029,10 @@
     <string name="place_all_reviews_short">Усі відгуки</string>
     <string name="place_tab_photos">Фото</string>
     <string name="place_photos_all">Усі</string>
+    <string name="settings_photos_on_tap">Завантажувати фото лише за дотиком</string>
+    <string name="settings_photos_on_tap_hint">Замість завантаження фото на сторінці місця з\'явиться кнопка Показати фото. Заощаджує один запит до Google на місце.</string>
+    <string name="settings_details_retry">Чекати на дані про завантаженість</string>
+    <string name="settings_details_retry_hint">Google часто не включає завантаженість у першу відповідь, тому Vela перепитує до двох разів. Вимкнено = один запит на місце, і завантаженість може не з\'явитися.</string>
+    <string name="place_show_photos">Показати фото</string>
+    <string name="place_no_photos">Фото ще немає</string>
 </resources>

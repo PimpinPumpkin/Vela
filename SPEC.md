@@ -592,7 +592,13 @@ top, and reviews load when the Reviews tab is shown. The Reviews tab sorts the l
 (relevance, highest, lowest), filters it locally, and opens Google's full page for the rest; its
 star histogram arrives from the reviews scrape (`WebReviewsFetcher` `onHistogram`, localized
 `HISTOGRAM_ROW` rule). The Photos tab is a grid filtered by Google's photo categories; with none
-yet, a food place offers a Menu chip (`loadPhotoCategories`, the full walk, once per place). Settings > Privacy "Live traffic only when I tap"
+yet, a food place offers a Menu chip (`loadPhotoCategories`, the full walk, once per place). The tab
+set is decided from the first reply (a rated or reviewed place gets Photos up front), the chart
+placeholder is sized like the chart, the review header holds the histogram's height while the
+reviews page loads, and the pinned tab row fades in and out. Settings > Places "Load photos only
+when I tap" (`PhotosOnTap`) holds the photo request behind a Show photos button
+(`photosAwaitingTapFor`, `loadPhotosNow`); "Wait for popular times" (`DetailsRetry`, on) off
+makes `placeTries()` 1, so a place's details are one request. Settings > Privacy "Live traffic only when I tap"
 (`RouteTrafficOnTap`, pref `route_traffic_on_tap`, off) clears `RoutingPrefs.googleTraffic` for
 each new trip, so directions, reroutes and rechecks skip Google and the transit chip is not
 prefetched; the chooser's Show traffic (`requestRouteTraffic`) sets it for that trip and refetches.
