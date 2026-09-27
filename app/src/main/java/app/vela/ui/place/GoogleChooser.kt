@@ -143,6 +143,7 @@ fun GoogleStyleDirectionsPanel(
     /** Landscape: the column is short, so the card tightens up and its middle scrolls. */
     compact: Boolean = false,
     modifier: Modifier = Modifier,
+    onShowTraffic: (() -> Unit)? = null,
 ) {
     val dark = isAppInDarkTheme()
     val ink = SheetPalette.ink(dark)
@@ -317,6 +318,9 @@ fun GoogleStyleDirectionsPanel(
                         } else {
                             Spacer(Modifier.height(6.dp))
                             Text(stringResource(R.string.exp_chooser_alts_none), style = MaterialTheme.typography.bodyMedium, color = dim)
+                        }
+                        if (onShowTraffic != null && routes.isNotEmpty()) {
+                            TrafficOnTapRow(onShowTraffic, ink, Modifier.padding(top = 2.dp))
                         }
                     }
                 }

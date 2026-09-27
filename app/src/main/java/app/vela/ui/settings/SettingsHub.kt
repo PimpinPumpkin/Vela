@@ -326,6 +326,8 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_poi_icon_size to SettingsSection.PLACES,
     // Places (place pages)
     R.string.settings_show_reviews to SettingsSection.PLACES,
+    R.string.settings_reviews_on_tap to SettingsSection.PLACES,
+    R.string.settings_route_traffic_on_tap to SettingsSection.PRIVACY,
     R.string.settings_read_all_reviews to SettingsSection.PLACES,
     R.string.settings_load_photos to SettingsSection.PLACES,
     R.string.settings_hide_adult to SettingsSection.PLACES,

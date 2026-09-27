@@ -258,6 +258,8 @@ fun PlaceSheet(
     reviewsLimited: Boolean = false,
     /** The native feed has a next page: the list ends in "More reviews". Null = no button. */
     onMoreReviews: (() -> Unit)? = null,
+    /** Reviews wait for a tap ([app.vela.ui.ReviewsOnTap]). Null = load as usual. */
+    onShowReviews: (() -> Unit)? = null,
     reviewsMoreLoading: Boolean = false,
     photosLoading: Boolean = false,
     /** The strip holds the first batch only: end it with a "More photos" tile. */
@@ -1311,7 +1313,7 @@ fun PlaceSheet(
             // The reviews tabs wait for the listing (the map's data has no reviews to show, and an
             // empty tab row would read as "no reviews"); pulse bars hold their place.
             if (resolving) SheetSkeleton(dim, listOf(260.dp, 220.dp, 240.dp), gap = 18.dp, top = 18.dp)
-            else PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onNeedReviews = onNeedReviews, onPanelOverscroll = onPanelOverscroll, onPanelOverscrollEnd, onPanelEngaged, reviewsEngaged.value, reviewsLimited = reviewsLimited, onMoreReviews = onMoreReviews, reviewsMoreLoading = reviewsMoreLoading)
+            else PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onNeedReviews = onNeedReviews, onPanelOverscroll = onPanelOverscroll, onPanelOverscrollEnd, onPanelEngaged, reviewsEngaged.value, reviewsLimited = reviewsLimited, onMoreReviews = onMoreReviews, reviewsMoreLoading = reviewsMoreLoading, onShowReviews = onShowReviews)
             }
             }
             }
@@ -1519,6 +1521,7 @@ fun DirectionsPanel(
     // the 58% cap plus the card covered the whole map, so the route was chosen blind.
     bodyMaxDp: Float? = null,
     modifier: Modifier = Modifier,
+    onShowTraffic: (() -> Unit)? = null,
 ) {
     val dark = isAppInDarkTheme()
     val ink = if (dark) InkDark else InkLight
@@ -1799,6 +1802,9 @@ fun DirectionsPanel(
                         )
                     }
                 }
+            }
+            if (onShowTraffic != null && currentMode != TravelMode.TRANSIT && routes.isNotEmpty()) {
+                TrafficOnTapRow(onShowTraffic, ink, Modifier.padding(top = 8.dp))
             }
             if (currentMode == TravelMode.TRANSIT) {
                 TransitBoard(transit, transitLoading, ink, dim, dark, onWalkDirections, onStartTransit, onTransitPreview)
@@ -3493,6 +3499,7 @@ private fun PlaceTabs(
     reviewsLimited: Boolean = false,
     onMoreReviews: (() -> Unit)? = null,
     reviewsMoreLoading: Boolean = false,
+    onShowReviews: (() -> Unit)? = null,
 ) {
     // A BARE bus stop (transit-category AND no rating, i.e. no real review content) shows only its
     // departure board + stop timeline - Reviews/About are noise there. But a RATED transit CENTER
@@ -3506,7 +3513,7 @@ private fun PlaceTabs(
     // The LiveReviews clause summons a review tab for ANY Google place (valid feature id) even with
     // zero reviews - that's the ONLY clause suppressed for a bare stop; real review content still shows.
     val hasReviews = app.vela.ui.ShowReviews.on.value && (
-        place.rating != null || reviews.isNotEmpty() || reviewsLoading || place.featuredReview != null ||
+        onShowReviews != null || place.rating != null || reviews.isNotEmpty() || reviewsLoading || place.featuredReview != null ||
             (app.vela.ui.LiveReviews.on.value && place.featureId?.contains(":") == true && !isBareStop)
         )
     val hasAbout = !isBareStop && (place.about.isNotEmpty() || place.editorialSummary != null || place.ownerDescription != null)
@@ -3575,6 +3582,11 @@ private fun PlaceTabs(
                             if (c.isAttached && c.boundsInWindow().height > minVisiblePx) onNeedReviews()
                         },
                     ) {
+                    if (onShowReviews != null) {
+                        FilledTonalButton(onClick = onShowReviews, shape = CircleShape, modifier = Modifier.dpadHighlight(CircleShape)) {
+                            Text(stringResource(R.string.place_show_reviews))
+                        }
+                    } else
                     ReviewsTab(
                         place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim,
                         onPhotoTap = { urls, start, caption ->
@@ -4514,6 +4526,19 @@ private fun HoursSection(
                     DepartmentsSection(departments, ink, dim)
                 }
             }
+        }
+    }
+}
+
+/** "Times without live traffic. Show traffic" ([app.vela.ui.RouteTrafficOnTap]). */
+@Composable
+internal fun TrafficOnTapRow(onClick: () -> Unit, ink: Color, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Outlined.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(stringResource(R.string.place_traffic_not_loaded), style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.weight(1f))
+        TextButton(onClick = onClick, modifier = Modifier.dpadHighlight(CircleShape)) {
+            Text(stringResource(R.string.place_show_traffic))
         }
     }
 }

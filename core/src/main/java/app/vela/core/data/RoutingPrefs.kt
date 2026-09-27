@@ -18,4 +18,7 @@ object RoutingPrefs {
     @Volatile var avoidTolls: Boolean = false
     @Volatile var avoidHighways: Boolean = false
     @Volatile var avoidFerries: Boolean = false
+
+    /** False: directions skip Google (open router only, no live traffic). Set per trip by the app. */
+    @Volatile var googleTraffic: Boolean = true
 }

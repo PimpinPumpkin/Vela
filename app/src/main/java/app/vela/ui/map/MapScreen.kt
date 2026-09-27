@@ -1956,6 +1956,7 @@ fun MapScreen(
                         app.vela.ui.formatDuration(r.durationInTrafficSeconds ?: r.durationSeconds), app.vela.ui.formatDistance(r.distanceMeters))
                 }
                 app.vela.ui.place.GoogleStyleDirectionsPanel(
+                    onShowTraffic = if (app.vela.ui.RouteTrafficOnTap.on.value && !state.routeTrafficRequested && !app.vela.ui.GoogleFree.on.value) vm::requestRouteTraffic else null,
                     currentMode = state.travelMode,
                     routes = state.routes,
                     activeRoute = state.activeRoute,
@@ -2027,6 +2028,7 @@ fun MapScreen(
             }
 
             state.directionsOpen && !searchOpen && state.pickOnMap == null -> DirectionsPanel(
+                onShowTraffic = if (app.vela.ui.RouteTrafficOnTap.on.value && !state.routeTrafficRequested && !app.vela.ui.GoogleFree.on.value) vm::requestRouteTraffic else null,
                 destinationName = if (state.directionsReversed) (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location))
                 else (state.selected?.name ?: stringResource(R.string.mapscreen_destination)),
                 currentMode = state.travelMode,
@@ -2113,6 +2115,7 @@ fun MapScreen(
                 onSetShortcut = vm::setSelectedAsShortcut,
                 onRetryReviews = vm::retryReviews,
                 onNeedReviews = vm::ensureReviews,
+                onShowReviews = if (state.reviewsAwaitingTapFor != null && state.reviewsAwaitingTapFor == state.selected?.id) vm::loadReviewsNow else null,
                 onClearParking = {
                     vm.clearParkingSpot()
                     vm.clearSelection()

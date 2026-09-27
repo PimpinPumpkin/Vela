@@ -583,6 +583,12 @@ on that session sends the token and gets the full list. Both RPCs need
 search reply lacks popular times, a review count, an address or weekly hours. "More photos" runs the full walk (Menu tab) with the dates join. No hidden page is
 warmed after a search, and the ambient neighbor prefetch runs in Google-only mode. Settings >
 Performance "Load all photos and reviews" (`FullPlaceLoad`) restores the full walk and 50 reviews.
+Settings > Places "Load reviews only when I tap" (`ReviewsOnTap`, pref `reviews_on_tap`, off) replaces
+the scroll trigger with a Show reviews button (`reviewsAwaitingTapFor`, `loadReviewsNow`) and
+overrides `FullPlaceLoad` for reviews. Settings > Privacy "Live traffic only when I tap"
+(`RouteTrafficOnTap`, pref `route_traffic_on_tap`, off) clears `RoutingPrefs.googleTraffic` for
+each new trip, so directions, reroutes and rechecks skip Google and the transit chip is not
+prefetched; the chooser's Show traffic (`requestRouteTraffic`) sets it for that trip and refetches.
 Details use ONE plain request of the details page's own search (`MapDataSource.placeDetails`,
 parsed by `PopularTimesParser`) with up to three tries while popular times are missing, the page
 only as a last resort (`nativeDetails`). Each reply is merged into the sheet as it lands (`mergeDetails`);

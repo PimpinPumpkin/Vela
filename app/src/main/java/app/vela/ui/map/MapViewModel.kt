@@ -189,6 +189,10 @@ data class MapUiState(
     val reviewsLoading: Boolean = false,
     /** Google answered the review feed with its limited view (a short list, no more pages). */
     val reviewsLimited: Boolean = false,
+    /** Place id whose reviews wait for a "Show reviews" tap ([app.vela.ui.ReviewsOnTap]). */
+    val reviewsAwaitingTapFor: String? = null,
+    /** The user asked for live traffic on this trip ([app.vela.ui.RouteTrafficOnTap]). */
+    val routeTrafficRequested: Boolean = false,
     /** Next page of the native review feed, when Google said there is one: "More reviews". */
     val reviewsNextToken: String? = null,
     val reviewsMoreLoading: Boolean = false,
@@ -3240,17 +3244,30 @@ class MapViewModel @Inject constructor(
      * Performance "Load all photos and reviews" ([app.vela.ui.FullPlaceLoad]) keeps the old eager load.
      */
     private fun requestReviews(p: Place) {
-        if (app.vela.ui.FullPlaceLoad.on.value) { reviewsPendingFor = null; fetchReviews(p); return }
+        val onTap = app.vela.ui.ReviewsOnTap.on.value
+        if (app.vela.ui.FullPlaceLoad.on.value && !onTap) { reviewsPendingFor = null; fetchReviews(p); return }
         if (!app.vela.ui.ShowReviews.on.value || googleOff()) return
         reviewsJob?.cancel()
         reviewsPendingFor = p
+        val google = !p.featureId.isNullOrBlank()
         // Loading, not empty: the tab must never flash "no reviews" before it has asked.
-        _state.update { it.copy(reviews = emptyList(), reviewsLoading = !p.featureId.isNullOrBlank(), reviewsFound = 0, reviewsLimited = false, reviewsNextToken = null, reviewsMoreLoading = false) }
+        _state.update { it.copy(reviews = emptyList(), reviewsLoading = google && !onTap, reviewsAwaitingTapFor = p.id.takeIf { google && onTap }, reviewsFound = 0, reviewsLimited = false, reviewsNextToken = null, reviewsMoreLoading = false) }
+    }
+
+    /** "Show reviews" tapped ([app.vela.ui.ReviewsOnTap]). */
+    fun loadReviewsNow() {
+        _state.update { it.copy(reviewsAwaitingTapFor = null, reviewsLoading = true) }
+        startPendingReviews()
     }
 
     /** The Reviews tab is on screen: start the reviews armed by [requestReviews] for the place still
      *  open. Idempotent; a place that changed in between is dropped. */
     fun ensureReviews() {
+        if (app.vela.ui.ReviewsOnTap.on.value) return
+        startPendingReviews()
+    }
+
+    private fun startPendingReviews() {
         val p = reviewsPendingFor ?: return
         val sel = _state.value.selected
         reviewsPendingFor = null
@@ -4319,7 +4336,22 @@ class MapViewModel @Inject constructor(
         routeToSelected()
     }
 
+    /** Point the routing flag at this trip's traffic choice ([app.vela.ui.RouteTrafficOnTap]). */
+    fun syncRouteTraffic() {
+        app.vela.core.data.RoutingPrefs.googleTraffic = !app.vela.ui.RouteTrafficOnTap.on.value || _state.value.routeTrafficRequested
+    }
+
+    /** "Show traffic" tapped: ask Google for this trip and refetch the routes. */
+    fun requestRouteTraffic() {
+        _state.update { it.copy(routeTrafficRequested = true) }
+        syncRouteTraffic()
+        modeEtaCache.clear()
+        route(_state.value.travelMode)
+    }
+
     fun routeToSelected() {
+        _state.update { it.copy(routeTrafficRequested = false) }
+        syncRouteTraffic()
         val sel = _state.value.selected ?: return
         // The chooser opens seconds before Start: load the neural voice now (it no longer loads at
         // launch), so the "Starting navigation" opener is not waiting on it.
@@ -5171,6 +5203,7 @@ class MapViewModel @Inject constructor(
         // Cheap OSRM modes first; transit last because it is a hidden-WebView page load.
         val missing = listOf(TravelMode.DRIVE, TravelMode.WALK, TravelMode.BICYCLE, TravelMode.TRANSIT)
             .filter { it != except && it !in known }
+            .filter { it != TravelMode.TRANSIT || app.vela.core.data.RoutingPrefs.googleTraffic } // a Google page load
         if (missing.isEmpty()) return
         modeEtaJob = viewModelScope.launch {
             for (m in missing) {

@@ -33,6 +33,15 @@ internal fun PlacesSettingsScreen(onBack: () -> Unit) {
             onCheckedChange = { app.vela.ui.ShowReviews.set(context, it) },
             hint = stringResource(R.string.settings_show_reviews_hint),
         )
+        if (app.vela.ui.ShowReviews.on.value) {
+            GroupDivider()
+            ToggleRow(
+                label = stringResource(R.string.settings_reviews_on_tap),
+                checked = app.vela.ui.ReviewsOnTap.on.value,
+                onCheckedChange = { app.vela.ui.ReviewsOnTap.set(context, it) },
+                hint = stringResource(R.string.settings_reviews_on_tap_hint),
+            )
+        }
         GroupDivider()
         ToggleRow(
             label = stringResource(R.string.settings_read_all_reviews),

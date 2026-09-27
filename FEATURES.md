@@ -303,6 +303,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   **Redact places in exports** is now always shown in Settings > Diagnostics and also starts
   every trip share on the largest trim distance (the middle of a drive is still never rounded).
   `core/replay/TripShareBatch`, `TripShareBatchTest`.
+- ✅ **Reviews and route traffic on tap (2026-09-27).** Settings > Places "Load reviews only when I tap" shows a Show reviews button instead of loading them; Settings > Privacy "Live traffic only when I tap" plans routes on the open router alone until Show traffic is tapped on the route list.
 - ✅ **The route picker says when a route was computed offline (2026-09-12, issue #350).** A route from a downloaded region shows "offline route, no live traffic" where an online route shows its traffic word, so you always know which kind you are looking at. Downloaded regions remain the fallback: with signal, routes still come with Google's live traffic.
 - ✅ **On foot or by bike the arrow lets go of the route sooner (2026-09-12).** The arrow used to stay glued to the planned line until you were 22 m off it, the car setting. Walking and cycling now use 8 m plus a share of the GPS accuracy, so cutting a corner across a crosswalk shows you where you are within a fix or two.
 - ✅ **Custom list order (2026-09-12, issue #343).** Your lists can be put in any order: up and down arrows on each row in the Your lists dialog (keypad reachable), and the order sticks everywhere lists appear, on the search page and as pins on the map.

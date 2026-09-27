@@ -1314,6 +1314,7 @@ class GoogleMapsDataSource @Inject constructor(
      *  free-flow exactly as before, just honestly rarer. */
     private suspend fun googleDirectionsRetried(origin: LatLng, destination: LatLng, mode: TravelMode, tries: Int = 3, avoidTolls: Boolean = false, avoidHighways: Boolean = false, avoidFerries: Boolean = false, waypoints: List<LatLng> = emptyList()): List<Route> {
         var routes: List<Route> = emptyList()
+        if (!app.vela.core.data.RoutingPrefs.googleTraffic) return routes
         for (attempt in 0 until tries) {
             if (attempt > 0) kotlinx.coroutines.delay(app.vela.core.util.Jitter.around(300L * attempt, 0.5))
             routes = runCatching { googleDirections(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, waypoints) }.getOrNull().orEmpty()
@@ -1330,7 +1331,7 @@ class GoogleMapsDataSource @Inject constructor(
         // Without Google the open router's answer stands alone: no traffic, no Google alternates,
         // no abbreviated fallback. Every caller already handles an empty reply as "Google did not
         // answer", which is exactly the state this is.
-        if (app.vela.core.data.NoGoogle.enabled) return emptyList()
+        if (app.vela.core.data.NoGoogle.enabled || !app.vela.core.data.RoutingPrefs.googleTraffic) return emptyList()
         session.ensure()
         val cal = calibration.current()
         val pb = DirectionsPb.build(origin, destination, mode, cal.directionsPb, avoidTolls, avoidHighways, avoidFerries, waypoints)

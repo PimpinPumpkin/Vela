@@ -1571,6 +1571,8 @@ Defaults that make the safe path the easy one:
   fleet back on the page paths with no release; a per-place cache (photos + feed 6 h, details 15 min)
   makes a re-tap free; "More reviews" follows the feed's next-page token, which sits at payload[1]
   (seen in a full-session reply 2026-09-25: `"<base64>:10"`, payload[5] null, payload[6] `[false]`).
+- **On-tap privacy options (2026-09-27):** `ReviewsOnTap` (Show reviews button) and `RouteTrafficOnTap`
+  (`RoutingPrefs.googleTraffic`, reset per trip in `routeToSelected`, set by `requestRouteTraffic`). Both off by default.
 - **Place-content toggles (2026-07-08):** `ShowReviews` / `LoadPhotos` reactive holders
   (`ui/PlaceContent.kt`, same shape as `LiveReviews`, init in VelaApp, rows in Settings → Places).
   They gate BOTH fetch (`fetchReviews`/`fetchPhotos` first line) and render (PlaceSheet `hasReviews`

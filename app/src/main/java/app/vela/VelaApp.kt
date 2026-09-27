@@ -142,6 +142,9 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         app.vela.ui.LiveReviews.init(this)
         app.vela.ui.ShowReviews.init(this)
         app.vela.ui.LoadPhotos.init(this)
+        app.vela.ui.ReviewsOnTap.init(this)
+        app.vela.ui.RouteTrafficOnTap.init(this)
+        app.vela.core.data.RoutingPrefs.googleTraffic = !app.vela.ui.RouteTrafficOnTap.on.value
         app.vela.ui.HideAdult.init(this)
         app.vela.ui.HideExternalLinks.init(this)
         app.vela.ui.GoogleFree.init(this) // "Use Vela without Google": mirrors into the :core NoGoogle flag

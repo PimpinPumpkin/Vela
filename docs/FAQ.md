@@ -35,7 +35,7 @@ carries (name, type, address, and often phone and hours).
 | Search | Google, when you submit it; offline, Vela's own place and address data for the region | Yes when online | Yes, within a downloaded region |
 | Dropping a pin, tapping a house number or a building | OpenStreetMap's Nominatim names the spot | Never | The pin still drops, without a street name |
 | Turn-by-turn routes | The open OSRM router, or OsmAnd-format files on your phone when a region is downloaded; Google's own route only when the open router is down | The route itself, no; planning one also asks Google for traffic (next row) | Yes, with a downloaded region |
-| Live traffic and arrival times | Google | Yes | No; you still get a route and a free-flow estimate |
+| Live traffic and arrival times | Google | Yes, unless Settings > Privacy "Live traffic only when I tap" is on and you have not tapped Show traffic | No; you still get a route and a free-flow estimate |
 | Re-routes while driving | The open router, with Google asked in parallel for traffic; the phone's own data when there is no signal | Yes, your current position (as long as Google is on) | Yes |
 | Speed limits, traffic lights, stop signs, level crossings | OpenStreetMap, baked per region | Never | Yes |
 | Surveillance and speed cameras | OpenStreetMap and DeFlock, bundled or baked | Never | Yes |
