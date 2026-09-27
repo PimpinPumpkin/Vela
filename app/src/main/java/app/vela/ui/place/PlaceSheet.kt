@@ -3529,14 +3529,16 @@ private fun PlaceTabs(
     val menuTabName = remember(place.photoCategories) {
         place.photoCategories.firstOrNull { cat -> cat != null && MENU_TAB_WORDS.any { cat.lowercase().contains(it) } }
     }
+    // About opens first; reviews load only once their tab is opened.
     val tabs = buildList {
+        if (hasAbout) add("About")
         if (hasReviews) add("Reviews")
         if (menuIndices.isNotEmpty() && app.vela.ui.LoadPhotos.on.value) add("Menu")
-        if (hasAbout) add("About")
     }
     if (tabs.isEmpty()) return
-    var sel by remember(place.id) { mutableIntStateOf(0) }
-    val selected = sel.coerceIn(0, tabs.lastIndex)
+    // Keyed by name: a tab that arrives late (About after the details load) must not swap the open one.
+    var sel by remember(place.id) { mutableStateOf<String?>(null) }
+    val selected = tabs.indexOf(sel).takeIf { it >= 0 } ?: 0
 
     Column(Modifier.padding(top = 12.dp)) {
         // In engaged reviews mode the panel takes the WHOLE sheet — no floating tab bar above
@@ -3558,7 +3560,7 @@ private fun PlaceTabs(
                         "About" -> stringResource(R.string.place_tab_about)
                         else -> title
                     }
-                    Tab(selected = i == selected, onClick = { sel = i }, text = { Text(display) })
+                    Tab(selected = i == selected, onClick = { sel = title }, text = { Text(display) })
                 }
             }
         }

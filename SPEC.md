@@ -585,7 +585,8 @@ warmed after a search, and the ambient neighbor prefetch runs in Google-only mod
 Performance "Load all photos and reviews" (`FullPlaceLoad`) restores the full walk and 50 reviews.
 Settings > Places "Load reviews only when I tap" (`ReviewsOnTap`, pref `reviews_on_tap`, off) replaces
 the scroll trigger with a Show reviews button (`reviewsAwaitingTapFor`, `loadReviewsNow`) and
-overrides `FullPlaceLoad` for reviews. Settings > Privacy "Live traffic only when I tap"
+overrides `FullPlaceLoad` for reviews. The place tabs open on About (selection keyed by tab name);
+reviews load when the Reviews tab is shown. Settings > Privacy "Live traffic only when I tap"
 (`RouteTrafficOnTap`, pref `route_traffic_on_tap`, off) clears `RoutingPrefs.googleTraffic` for
 each new trip, so directions, reroutes and rechecks skip Google and the transit chip is not
 prefetched; the chooser's Show traffic (`requestRouteTraffic`) sets it for that trip and refetches.
