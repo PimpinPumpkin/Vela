@@ -1036,4 +1036,7 @@
     <string name="settings_details_retry_hint">Google często pomija godziny szczytu w pierwszej odpowiedzi, więc Vela pyta ponownie do dwóch razy. Wyłączone = jedno zapytanie na miejsce, a godzin szczytu może zabraknąć.</string>
     <string name="place_show_photos">Pokaż zdjęcia</string>
     <string name="place_no_photos">Brak zdjęć</string>
+    <string name="place_all_n_reviews_open">Wszystkie opinie (%1$d)</string> <!-- format -->
+    <string name="place_updates">Aktualności</string>
+    <string name="place_updates_all">Pokaż wszystkie aktualności (%1$d)</string> <!-- format -->
 </resources>

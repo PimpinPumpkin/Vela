@@ -1025,4 +1025,7 @@
     <string name="settings_details_retry_hint">Google laat de drukke tijden vaak weg in het eerste antwoord, dus Vela vraagt tot twee keer opnieuw. Uit = één verzoek per plaats, en de drukke tijden kunnen ontbreken.</string>
     <string name="place_show_photos">Foto\'s tonen</string>
     <string name="place_no_photos">Nog geen foto\'s</string>
+    <string name="place_all_n_reviews_open">Alle %1$d reviews</string> <!-- format -->
+    <string name="place_updates">Nieuws</string>
+    <string name="place_updates_all">Alle %1$d berichten tonen</string> <!-- format -->
 </resources>

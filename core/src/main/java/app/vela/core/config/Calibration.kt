@@ -243,6 +243,9 @@ data class Calibration(
             "photos" to listOf(1, 72, 0),
             "featuredReview" to listOf(1, 142, 1, 0, 1, 0, 0),
             "about" to listOf(1, 100, 1),
+            // The business's posts: [1][122][1], each [1][0][0][0] text, [2][0] posted epoch,
+            // [4][1]/[4][2] link and label, [5][0][0] photo (captured 2026-09-27).
+            "updates" to listOf(1, 122, 1),
             // Editorial one-liner ([32][1][1] = the fuller "Classic burger chain
             // serving…"; [32][0][1] is the shorter category subtitle) and the
             // owner-written "From the owner" blurb ([154][0][0]).

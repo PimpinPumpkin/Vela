@@ -62,6 +62,8 @@ data class Place(
     val featureId: String? = null,      // Google feature id "0x..:0x.." → reviews RPC
     val placeId: String? = null,        // "ChIJ..." place id (for deep links)
     val about: List<AboutSection> = emptyList(),
+    /** The business's own posts ("From the owner" updates), newest first. */
+    val updates: List<PlaceUpdate> = emptyList(),
     val editorialSummary: String? = null,   // Google's one-line description ("Classic burger chain serving…")
     val ownerDescription: String? = null,   // "From the owner" — the business's own longer blurb
     val popularTimes: PopularTimes? = null, // Google's "popular times" histogram
@@ -108,13 +110,24 @@ data class PlaceDetails(
     val priceText: String? = null,
     val priceLevel: Int? = null,
     val about: List<AboutSection> = emptyList(),
+    /** The business's own posts ("From the owner" updates), newest first. */
+    val updates: List<PlaceUpdate> = emptyList(),
     val featuredReview: String? = null,
 ) {
     val isEmpty: Boolean get() = popularTimes == null && editorialSummary == null && ownerDescription == null &&
         rating == null && reviewCount == null && hours.isEmpty() && address == null && phone == null &&
         website == null && statusText == null && openNow == null && priceText == null && priceLevel == null &&
-        about.isEmpty() && featuredReview == null
+        about.isEmpty() && featuredReview == null && updates.isEmpty()
 }
+
+/** One business post: its text, when it was posted, an optional link and photo. */
+data class PlaceUpdate(
+    val text: String,
+    val postedEpochSec: Long? = null,
+    val url: String? = null,
+    val linkLabel: String? = null,
+    val imageUrl: String? = null,
+)
 
 /** One in-store department's schedule: [hours] shaped like [Place.hours] (7 day strings
  *  starting today), [statusText] Google's own line ("Closed · Opens 9 AM Thu"),

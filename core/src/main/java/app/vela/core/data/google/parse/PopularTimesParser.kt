@@ -71,6 +71,7 @@ object PopularTimesParser {
             priceLevel = matched?.priceLevel,
             about = matched?.about.orEmpty(),
             featuredReview = matched?.featuredReview,
+            updates = matched?.updates.orEmpty(),
         )
         return if (details.isEmpty) null else details
     }

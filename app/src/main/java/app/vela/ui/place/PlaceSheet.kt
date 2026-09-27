@@ -3615,6 +3615,7 @@ private fun PlaceTabs(
                     if ("Reviews" in tabs && place.rating != null) {
                         ReviewSummaryCard(place, ink, dim, onOpen = { onSelect("Reviews") })
                     }
+                    if (place.updates.isNotEmpty()) UpdatesSection(place.updates, ink, dim)
                     if (hasAbout) {
                         Text(
                             stringResource(R.string.place_tab_about),
@@ -3851,8 +3852,19 @@ private fun ReviewsTab(
             )
         }
         // Sort (on the loaded list), local search, and Google's full page for everything else.
+        // Google's own page has every review with its sort and search: the headline way in.
+        onReadAll?.let { open ->
+            FilledTonalButton(
+                onClick = open, shape = CircleShape,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp).dpadHighlight(CircleShape),
+            ) {
+                Text(place.reviewCount?.let { stringResource(R.string.place_all_n_reviews_open, it) } ?: stringResource(R.string.place_all_reviews_short))
+                Spacer(Modifier.width(8.dp))
+                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+            }
+        }
         val sortable = (place.reviewCount ?: 0) > 1 || reviews.size >= 3
-        if (sortable || onReadAll != null) {
+        if (sortable) {
             Row(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -3877,14 +3889,6 @@ private fun ReviewsTab(
                             if (!reviewSearchOpen) reviewQuery = "" // a hidden filter must not keep filtering
                         },
                         label = { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.place_search_reviews), modifier = Modifier.size(18.dp)) },
-                        shape = CircleShape, modifier = Modifier.dpadHighlight(CircleShape),
-                    )
-                }
-                onReadAll?.let { open ->
-                    androidx.compose.material3.AssistChip(
-                        onClick = open,
-                        label = { Text(stringResource(R.string.place_all_reviews_short)) },
-                        trailingIcon = { Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp)) },
                         shape = CircleShape, modifier = Modifier.dpadHighlight(CircleShape),
                     )
                 }
@@ -4733,6 +4737,55 @@ private fun PhotosTab(
             TextButton(onClick = onMore, modifier = Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(8.dp))) {
                 Text(stringResource(R.string.place_more_photos))
             }
+        }
+    }
+}
+
+/** The business's own posts, newest first: three shown, the rest behind one tap. */
+@Composable
+private fun UpdatesSection(updates: List<app.vela.core.model.PlaceUpdate>, ink: Color, dim: Color) {
+    val context = LocalContext.current
+    var all by remember(updates) { mutableStateOf(false) }
+    Text(
+        stringResource(R.string.place_updates),
+        style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink,
+        modifier = Modifier.padding(top = 20.dp, bottom = 4.dp),
+    )
+    (if (all) updates else updates.take(3)).forEach { u ->
+        var open by remember(u) { mutableStateOf(false) }
+        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                u.postedEpochSec?.let {
+                    Text(
+                        android.text.format.DateUtils.getRelativeTimeSpanString(it * 1000).toString(),
+                        style = MaterialTheme.typography.bodySmall, color = dim,
+                    )
+                }
+                Text(
+                    remember(u.text) { u.text.replace(Regex("\\n\\s*\\n+"), "\n") }, style = MaterialTheme.typography.bodyMedium, color = ink,
+                    maxLines = if (open) Int.MAX_VALUE else 4, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.clickable { open = !open },
+                )
+                if (u.url != null && !app.vela.ui.HideExternalLinks.on.value) {
+                    TextButton(
+                        onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u.url))) } },
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.dpadHighlight(RoundedCornerShape(8.dp)),
+                    ) { Text(u.linkLabel ?: stringResource(R.string.place_open)) }
+                }
+            }
+            if (u.imageUrl != null && app.vela.ui.LoadPhotos.on.value && !app.vela.ui.PhotosOnTap.on.value) {
+                Spacer(Modifier.width(12.dp))
+                AsyncImage(
+                    model = u.imageUrl, contentDescription = null, contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(72.dp).clip(RoundedCornerShape(10.dp)).background(dim.copy(alpha = 0.2f)),
+                )
+            }
+        }
+    }
+    if (!all && updates.size > 3) {
+        TextButton(onClick = { all = true }, modifier = Modifier.dpadHighlight(RoundedCornerShape(8.dp))) {
+            Text(stringResource(R.string.place_updates_all, updates.size))
         }
     }
 }

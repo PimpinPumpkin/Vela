@@ -1119,4 +1119,7 @@
     <string name="settings_details_retry_hint">Google often leaves popular times out of its first answer, so Vela asks up to twice more. Off = one request per place, and popular times may be missing.</string>
     <string name="place_show_photos">Show photos</string>
     <string name="place_no_photos">No photos yet</string>
+    <string name="place_all_n_reviews_open">All %1$d reviews</string> <!-- format -->
+    <string name="place_updates">Updates</string>
+    <string name="place_updates_all">Show all %1$d updates</string> <!-- format -->
 </resources>

@@ -1025,4 +1025,7 @@
     <string name="settings_details_retry_hint">Google suele omitir la afluencia en su primera respuesta, así que Vela vuelve a preguntar hasta dos veces. Desactivado = una petición por lugar, y puede faltar la afluencia.</string>
     <string name="place_show_photos">Mostrar fotos</string>
     <string name="place_no_photos">Aún no hay fotos</string>
+    <string name="place_all_n_reviews_open">Las %1$d reseñas</string> <!-- format -->
+    <string name="place_updates">Novedades</string>
+    <string name="place_updates_all">Ver las %1$d novedades</string> <!-- format -->
 </resources>

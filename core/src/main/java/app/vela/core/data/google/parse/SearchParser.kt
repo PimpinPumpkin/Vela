@@ -188,6 +188,7 @@ object SearchParser {
             featureId = field("featureId").str(),  // "0x..:0x.." → reviews RPC
             placeId = field("placeId").str(),      // "ChIJ.." → deep links
             about = parseAbout(entry, paths),
+            updates = parseUpdates(entry, paths),
             // Keyed on the LANGUAGE-NEUTRAL attribute id (the display strings arrive localized
             // via hl=, so they can't drive a filter). The search response ships only the
             // accessibility attribute family per result; the rest of the About attributes come
@@ -261,6 +262,18 @@ object SearchParser {
 
     /** "About" sections: `about` → a list, each with title `[s][1]` + items
      *  `[s][2][j][1]` (the leaf indices are stable, so kept in code). */
+    private fun parseUpdates(entry: JsonElement, paths: Map<String, List<Int>>): List<app.vela.core.model.PlaceUpdate> =
+        entry.atPath(pathOf(paths, "updates")).arr()?.mapNotNull { u ->
+            val text = u.at(1, 0, 0, 0).str()?.trim()?.ifBlank { null } ?: return@mapNotNull null
+            app.vela.core.model.PlaceUpdate(
+                text = text,
+                postedEpochSec = (u.at(2, 0) as? kotlinx.serialization.json.JsonPrimitive)?.content?.toLongOrNull(),
+                url = u.at(4, 1).str()?.takeIf { it.startsWith("http") },
+                linkLabel = u.at(4, 2).str(),
+                imageUrl = u.at(5, 0, 0).str()?.takeIf { it.contains("googleusercontent") },
+            )
+        }?.sortedByDescending { it.postedEpochSec ?: 0 }?.take(10).orEmpty()
+
     private fun parseAbout(entry: JsonElement, paths: Map<String, List<Int>>): List<AboutSection> {
         val sections = entry.atPath(pathOf(paths, "about")).arr() ?: return emptyList()
         return sections.mapNotNull { s ->

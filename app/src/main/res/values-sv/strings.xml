@@ -1025,4 +1025,7 @@
     <string name="settings_details_retry_hint">Google utelämnar ofta populära tider i första svaret, så Vela frågar upp till två gånger till. Av = en förfrågan per plats, och populära tider kan saknas.</string>
     <string name="place_show_photos">Visa foton</string>
     <string name="place_no_photos">Inga foton än</string>
+    <string name="place_all_n_reviews_open">Alla %1$d recensioner</string> <!-- format -->
+    <string name="place_updates">Nyheter</string>
+    <string name="place_updates_all">Visa alla %1$d nyheter</string> <!-- format -->
 </resources>

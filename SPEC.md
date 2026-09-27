@@ -598,7 +598,10 @@ placeholder is sized like the chart, the review header holds the histogram's hei
 reviews page loads, and the pinned tab row fades in and out. Settings > Places "Load photos only
 when I tap" (`PhotosOnTap`) holds the photo request behind a Show photos button
 (`photosAwaitingTapFor`, `loadPhotosNow`); "Wait for popular times" (`DetailsRetry`, on) off
-makes `placeTries()` 1, so a place's details are one request. Settings > Privacy "Live traffic only when I tap"
+makes `placeTries()` 1, so a place's details are one request. Business posts ride the same place node
+(`paths.updates` `[1][122][1]`: text `[1][0][0][0]`, posted epoch `[2][0]`, link `[4][1]`/`[4][2]`,
+photo `[5][0][0]`) into `Place.updates` and show on Overview as Updates (three, then all); no extra
+request. The Reviews tab leads with a full-width button to Google's full reviews page. Settings > Privacy "Live traffic only when I tap"
 (`RouteTrafficOnTap`, pref `route_traffic_on_tap`, off) clears `RoutingPrefs.googleTraffic` for
 each new trip, so directions, reroutes and rechecks skip Google and the transit chip is not
 prefetched; the chooser's Show traffic (`requestRouteTraffic`) sets it for that trip and refetches.

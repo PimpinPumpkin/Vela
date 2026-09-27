@@ -1027,4 +1027,7 @@
     <string name="settings_details_retry_hint">O Google costuma omitir os horários de pico na primeira resposta, então o Vela pergunta de novo até duas vezes. Desligado = um pedido por local, e os horários de pico podem faltar.</string>
     <string name="place_show_photos">Mostrar fotos</string>
     <string name="place_no_photos">Ainda não há fotos</string>
+    <string name="place_all_n_reviews_open">Todas as %1$d avaliações</string> <!-- format -->
+    <string name="place_updates">Novidades</string>
+    <string name="place_updates_all">Ver as %1$d novidades</string> <!-- format -->
 </resources>

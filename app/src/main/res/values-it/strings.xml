@@ -1025,4 +1025,7 @@
     <string name="settings_details_retry_hint">Google spesso omette gli orari di punta nella prima risposta, quindi Vela richiede fino ad altre due volte. Disattivato = una richiesta per luogo, e gli orari di punta possono mancare.</string>
     <string name="place_show_photos">Mostra foto</string>
     <string name="place_no_photos">Ancora nessuna foto</string>
+    <string name="place_all_n_reviews_open">Tutte le %1$d recensioni</string> <!-- format -->
+    <string name="place_updates">Novità</string>
+    <string name="place_updates_all">Mostra tutte le %1$d novità</string> <!-- format -->
 </resources>

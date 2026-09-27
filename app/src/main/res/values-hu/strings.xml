@@ -1027,4 +1027,7 @@
     <string name="settings_details_retry_hint">A Google az első válaszból gyakran kihagyja a forgalmas időszakokat, ezért a Vela legfeljebb még kétszer rákérdez. Ki = helyenként egy kérés, és a forgalmas időszakok hiányozhatnak.</string>
     <string name="place_show_photos">Fotók megjelenítése</string>
     <string name="place_no_photos">Még nincsenek fotók</string>
+    <string name="place_all_n_reviews_open">Mind a(z) %1$d értékelés</string> <!-- format -->
+    <string name="place_updates">Hírek</string>
+    <string name="place_updates_all">Mind a(z) %1$d hír megjelenítése</string> <!-- format -->
 </resources>

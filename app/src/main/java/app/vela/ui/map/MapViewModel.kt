@@ -2977,6 +2977,7 @@ class MapViewModel @Inject constructor(
                     priceLevel = sel.priceLevel ?: d.priceLevel,
                     about = sel.about.ifEmpty { d.about },
                     featuredReview = sel.featuredReview ?: d.featuredReview,
+                    updates = sel.updates.ifEmpty { d.updates },
                 ),
             )
         }

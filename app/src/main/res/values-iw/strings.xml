@@ -1028,4 +1028,7 @@
     <string name="settings_details_retry_hint">גוגל משמיט לעיתים קרובות את שעות העומס בתשובה הראשונה, ולכן Vela שואל עד פעמיים נוספות. כבוי = בקשה אחת לכל מקום, ושעות העומס עלולות לחסור.</string>
     <string name="place_show_photos">הצגת תמונות</string>
     <string name="place_no_photos">אין עדיין תמונות</string>
+    <string name="place_all_n_reviews_open">כל %1$d הביקורות</string> <!-- format -->
+    <string name="place_updates">עדכונים</string>
+    <string name="place_updates_all">הצגת כל %1$d העדכונים</string> <!-- format -->
 </resources>

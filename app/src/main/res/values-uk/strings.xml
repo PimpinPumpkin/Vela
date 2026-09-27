@@ -1035,4 +1035,7 @@
     <string name="settings_details_retry_hint">Google часто не включає завантаженість у першу відповідь, тому Vela перепитує до двох разів. Вимкнено = один запит на місце, і завантаженість може не з\'явитися.</string>
     <string name="place_show_photos">Показати фото</string>
     <string name="place_no_photos">Фото ще немає</string>
+    <string name="place_all_n_reviews_open">Усі відгуки (%1$d)</string> <!-- format -->
+    <string name="place_updates">Новини</string>
+    <string name="place_updates_all">Показати всі новини (%1$d)</string> <!-- format -->
 </resources>

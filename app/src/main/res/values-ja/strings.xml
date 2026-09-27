@@ -1047,4 +1047,7 @@
     <string name="settings_details_retry_hint">Googleは最初の応答で混雑する時間帯を省くことが多いため、Velaは最大2回まで再度問い合わせます。オフにすると場所ごとに1回だけになり、混雑する時間帯が表示されないことがあります。</string>
     <string name="place_show_photos">写真を表示</string>
     <string name="place_no_photos">写真はまだありません</string>
+    <string name="place_all_n_reviews_open">クチコミ %1$d 件をすべて表示</string> <!-- format -->
+    <string name="place_updates">最新情報</string>
+    <string name="place_updates_all">最新情報をすべて表示（%1$d 件）</string> <!-- format -->
 </resources>
