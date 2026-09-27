@@ -100,9 +100,17 @@ object Transitous {
      *  parent station when the stop has one, so a hub icon shows the whole merged board. */
     fun boardFor(http: OkHttpClient, stop: MapStop): StopDepartures? {
         val ids = (listOf(stop.parentId ?: stop.stopId) + stop.siblingIds).distinct()
-        val times = ids.flatMap { stopTimes(http, it) }.ifEmpty { return null }
+        val times = timesFor(http, ids).ifEmpty { return null }
         return buildBoard(times, stationName = stop.name)
     }
+
+    private val pool = java.util.concurrent.Executors.newCachedThreadPool { r -> Thread(r, "transitous").apply { isDaemon = true } }
+
+    /** Departures for every id, fetched in parallel, in id order. */
+    private fun timesFor(http: OkHttpClient, ids: List<String>): List<StopTime> =
+        if (ids.size <= 1) ids.flatMap { stopTimes(http, it) }
+        else ids.map { id -> pool.submit<List<StopTime>> { stopTimes(http, id) } }
+            .flatMap { runCatching { it.get() }.getOrDefault(emptyList()) }
 
     /** The next [n] departures at [stopId] (a parent-station id aggregates all its child stops). */
     fun stopTimes(http: OkHttpClient, stopId: String, n: Int = 50): List<StopTime> {
@@ -131,7 +139,7 @@ object Transitous {
                 distM(nearest.lat, nearest.lon, it.lat, it.lon) < COLOCATED_M }
             .map { it.parentId ?: it.stopId }
             .distinct()
-        val times = ids.flatMap { stopTimes(http, it) }.ifEmpty { return null }
+        val times = timesFor(http, ids).ifEmpty { return null }
         return buildBoard(times, stationName = nearest.name)
     }
 

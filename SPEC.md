@@ -2183,7 +2183,7 @@ Details:
 - **Directional curb pairs merge.** US GTFS names both curbs identically and carries no
   direction field, so `Transitous.mergeDirectionalPairs` collapses same-name stops within
   `PAIR_MERGE_M` (160 m) to the pair's midpoint, carrying the other ids as siblings; boards
-  merge stoptimes across the representative and its siblings, and the `(route, headsign)`
+  merge stoptimes across the representative and its siblings (fetched in parallel), and the `(route, headsign)`
   grouping shows both directions as separate rows. Direction-suffixed names differ as strings
   and never merge. "Same name" is `Transitous.stopKey` (case, ordinals, "&" / "/" / "at",
   street-type and compass abbreviations, and the order of the cross streets do not count), and
