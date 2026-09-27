@@ -1028,4 +1028,6 @@
     <string name="place_all_n_reviews_open">Alle %1$d Rezensionen</string> <!-- format -->
     <string name="place_updates">Neuigkeiten</string>
     <string name="place_updates_all">Alle %1$d Neuigkeiten anzeigen</string> <!-- format -->
+    <string name="settings_nav_north_up">Fahrten genordet starten</string>
+    <string name="settings_nav_north_up_hint">Die Karte bleibt beim Fahren flach und genordet. Tippe während der Fahrt auf den Kompass, um umzuschalten.</string>
 </resources>

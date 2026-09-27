@@ -1050,4 +1050,6 @@
     <string name="place_all_n_reviews_open">クチコミ %1$d 件をすべて表示</string> <!-- format -->
     <string name="place_updates">最新情報</string>
     <string name="place_updates_all">最新情報をすべて表示（%1$d 件）</string> <!-- format -->
+    <string name="settings_nav_north_up">北を上にしてナビを開始</string>
+    <string name="settings_nav_north_up_hint">運転中は地図を平面のまま北を上に表示します。ナビ中にコンパスをタップすると切り替わります。</string>
 </resources>

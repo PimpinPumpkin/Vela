@@ -1030,4 +1030,6 @@
     <string name="place_all_n_reviews_open">Todas as %1$d avaliações</string> <!-- format -->
     <string name="place_updates">Novidades</string>
     <string name="place_updates_all">Ver as %1$d novidades</string> <!-- format -->
+    <string name="settings_nav_north_up">Iniciar viagens com o norte para cima</string>
+    <string name="settings_nav_north_up_hint">O mapa fica plano e com o norte para cima enquanto você dirige. Toque na bússola durante a viagem para alternar.</string>
 </resources>

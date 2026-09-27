@@ -1049,4 +1049,6 @@
     <string name="place_all_n_reviews_open">全部 %1$d 則評論</string> <!-- format -->
     <string name="place_updates">最新動態</string>
     <string name="place_updates_all">顯示全部 %1$d 則動態</string> <!-- format -->
+    <string name="settings_nav_north_up">導航時以北為上</string>
+    <string name="settings_nav_north_up_hint">駕駛時地圖保持平面並以北為上。導航中點按指南針即可切換。</string>
 </resources>

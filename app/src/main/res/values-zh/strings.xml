@@ -1048,4 +1048,6 @@
     <string name="place_all_n_reviews_open">全部 %1$d 条评价</string> <!-- format -->
     <string name="place_updates">动态</string>
     <string name="place_updates_all">显示全部 %1$d 条动态</string> <!-- format -->
+    <string name="settings_nav_north_up">导航时以北为上</string>
+    <string name="settings_nav_north_up_hint">驾驶时地图保持平面并以北为上。导航中点按指南针即可切换。</string>
 </resources>

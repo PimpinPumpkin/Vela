@@ -1028,4 +1028,6 @@
     <string name="place_all_n_reviews_open">Alle %1$d reviews</string> <!-- format -->
     <string name="place_updates">Nieuws</string>
     <string name="place_updates_all">Alle %1$d berichten tonen</string> <!-- format -->
+    <string name="settings_nav_north_up">Ritten starten met het noorden boven</string>
+    <string name="settings_nav_north_up_hint">De kaart blijft plat met het noorden boven terwijl je rijdt. Tik tijdens de rit op het kompas om te wisselen.</string>
 </resources>

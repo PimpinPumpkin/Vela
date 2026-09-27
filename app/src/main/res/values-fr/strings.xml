@@ -1028,4 +1028,6 @@
     <string name="place_all_n_reviews_open">Les %1$d avis</string> <!-- format -->
     <string name="place_updates">Actualités</string>
     <string name="place_updates_all">Voir les %1$d actualités</string> <!-- format -->
+    <string name="settings_nav_north_up">Démarrer les trajets nord en haut</string>
+    <string name="settings_nav_north_up_hint">La carte reste à plat avec le nord en haut pendant la conduite. Touchez la boussole pendant le trajet pour basculer.</string>
 </resources>

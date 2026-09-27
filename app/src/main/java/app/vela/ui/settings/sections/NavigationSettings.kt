@@ -84,6 +84,13 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         )
         GroupDivider()
         ToggleRow(
+            label = stringResource(R.string.settings_nav_north_up),
+            checked = app.vela.ui.NavNorthUp.on.value,
+            onCheckedChange = { app.vela.ui.NavNorthUp.set(context, it) },
+            hint = stringResource(R.string.settings_nav_north_up_hint),
+        )
+        GroupDivider()
+        ToggleRow(
             label = stringResource(R.string.settings_route_trail),
             checked = app.vela.ui.RouteTrail.on.value,
             onCheckedChange = { app.vela.ui.RouteTrail.set(context, it) },

@@ -153,10 +153,9 @@ internal class NavController(
                     it.copy(
                         navigating = ns.navigating,
                         navPaused = ns.paused,
-                        // Every drive starts heading-up (Google's default). The compass toggle is
-                        // per-drive, not sticky: a north-up pick from a previous session used to
-                        // leak into the next drive's opening frames.
-                        navNorthUp = if (navStarted) false else it.navNorthUp,
+                        // Every drive starts in the chosen orientation (heading-up unless
+                        // Settings > Navigation says north-up). The compass toggle is per-drive.
+                        navNorthUp = if (navStarted) app.vela.ui.NavNorthUp.on.value else it.navNorthUp,
                         arrived = ns.arrived,
                         nav = ns.nav,
                         maneuverText = ns.maneuverText,

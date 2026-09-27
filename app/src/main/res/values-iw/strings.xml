@@ -1031,4 +1031,6 @@
     <string name="place_all_n_reviews_open">כל %1$d הביקורות</string> <!-- format -->
     <string name="place_updates">עדכונים</string>
     <string name="place_updates_all">הצגת כל %1$d העדכונים</string> <!-- format -->
+    <string name="settings_nav_north_up">התחלת נסיעות כשהצפון למעלה</string>
+    <string name="settings_nav_north_up_hint">המפה נשארת שטוחה והצפון למעלה בזמן הנהיגה. הקש על המצפן בזמן הנסיעה כדי להחליף.</string>
 </resources>

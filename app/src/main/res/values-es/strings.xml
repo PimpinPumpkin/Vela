@@ -1028,4 +1028,6 @@
     <string name="place_all_n_reviews_open">Las %1$d reseñas</string> <!-- format -->
     <string name="place_updates">Novedades</string>
     <string name="place_updates_all">Ver las %1$d novedades</string> <!-- format -->
+    <string name="settings_nav_north_up">Empezar los viajes con el norte arriba</string>
+    <string name="settings_nav_north_up_hint">El mapa se queda plano y con el norte arriba mientras conduces. Toca la brújula durante el viaje para cambiar.</string>
 </resources>

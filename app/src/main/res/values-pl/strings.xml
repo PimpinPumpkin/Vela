@@ -1039,4 +1039,6 @@
     <string name="place_all_n_reviews_open">Wszystkie opinie (%1$d)</string> <!-- format -->
     <string name="place_updates">Aktualności</string>
     <string name="place_updates_all">Pokaż wszystkie aktualności (%1$d)</string> <!-- format -->
+    <string name="settings_nav_north_up">Zaczynaj trasy z północą u góry</string>
+    <string name="settings_nav_north_up_hint">Podczas jazdy mapa pozostaje płaska, z północą u góry. Dotknij kompasu w trakcie jazdy, aby przełączyć.</string>
 </resources>

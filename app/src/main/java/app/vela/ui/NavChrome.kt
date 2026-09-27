@@ -147,3 +147,21 @@ object FasterRouteAuto {
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
     private const val KEY = "faster_route_auto"
 }
+
+/** Drives start north-up and flat instead of heading-up (issue #612, pref `nav_north_up`, off).
+ *  The map's compass still toggles it during a drive. */
+object NavNorthUp {
+    val on = mutableStateOf(false)
+
+    fun init(context: Context) {
+        on.value = prefs(context).getBoolean(KEY, false)
+    }
+
+    fun set(context: Context, value: Boolean) {
+        on.value = value
+        prefs(context).edit().putBoolean(KEY, value).apply()
+    }
+
+    private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
+    private const val KEY = "nav_north_up"
+}

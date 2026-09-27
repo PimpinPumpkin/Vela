@@ -1038,4 +1038,6 @@
     <string name="place_all_n_reviews_open">Все отзывы (%1$d)</string> <!-- format -->
     <string name="place_updates">Новости</string>
     <string name="place_updates_all">Показать все новости (%1$d)</string> <!-- format -->
+    <string name="settings_nav_north_up">Начинать поездки с севером вверху</string>
+    <string name="settings_nav_north_up_hint">Во время поездки карта остаётся плоской, север вверху. Нажмите на компас во время поездки, чтобы переключить.</string>
 </resources>

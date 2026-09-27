@@ -1038,4 +1038,6 @@
     <string name="place_all_n_reviews_open">Усі відгуки (%1$d)</string> <!-- format -->
     <string name="place_updates">Новини</string>
     <string name="place_updates_all">Показати всі новини (%1$d)</string> <!-- format -->
+    <string name="settings_nav_north_up">Починати поїздки з північчю вгорі</string>
+    <string name="settings_nav_north_up_hint">Під час поїздки мапа лишається пласкою, північ угорі. Торкніться компаса під час поїздки, щоб перемкнути.</string>
 </resources>

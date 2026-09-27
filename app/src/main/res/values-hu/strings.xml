@@ -1030,4 +1030,6 @@
     <string name="place_all_n_reviews_open">Mind a(z) %1$d értékelés</string> <!-- format -->
     <string name="place_updates">Hírek</string>
     <string name="place_updates_all">Mind a(z) %1$d hír megjelenítése</string> <!-- format -->
+    <string name="settings_nav_north_up">Útvonalak indítása északra tájolva</string>
+    <string name="settings_nav_north_up_hint">Vezetés közben a térkép lapos marad, fent az északkal. Útközben az iránytűre koppintva válthatsz.</string>
 </resources>

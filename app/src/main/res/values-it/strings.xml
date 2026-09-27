@@ -1028,4 +1028,6 @@
     <string name="place_all_n_reviews_open">Tutte le %1$d recensioni</string> <!-- format -->
     <string name="place_updates">Novità</string>
     <string name="place_updates_all">Mostra tutte le %1$d novità</string> <!-- format -->
+    <string name="settings_nav_north_up">Avvia i viaggi con il nord in alto</string>
+    <string name="settings_nav_north_up_hint">La mappa resta piatta con il nord in alto durante la guida. Tocca la bussola durante il viaggio per cambiare.</string>
 </resources>
