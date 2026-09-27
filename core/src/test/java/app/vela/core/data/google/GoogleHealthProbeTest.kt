@@ -177,7 +177,8 @@ class GoogleHealthProbeTest {
             "${feed.reviews.size} reviews${if (feed.end && feed.reviews.size < 10) " (end after a short list: Google's limited view)" else ""}"
         }
         check("photos", results) {
-            val photos = app.vela.core.data.google.parse.PhotosParser.parse(rpc("hspqX", cal.photosProto.replace("{FID}", coop).replace("{COUNT}", "20")))
+            fun ask() = app.vela.core.data.google.parse.PhotosParser.parse(rpc("hspqX", cal.photosProto.replace("{FID}", coop).replace("{COUNT}", "20")))
+            val photos = ask().ifEmpty { Thread.sleep(3_000); ask() } // a new session's first answer can be empty
             check(photos.isNotEmpty()) { "no photos (rpcContext no longer opens it?)" }
             "${photos.size} photos, ${photos.count { it.postedText != null }} dated"
         }
