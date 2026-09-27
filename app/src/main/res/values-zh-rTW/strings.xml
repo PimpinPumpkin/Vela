@@ -1033,4 +1033,11 @@
     </plurals>
     <string name="nav_hold_controls">暫停或靜音</string>
     <string name="nav_stop_offer_detour">+%1$s</string>
+    <string name="settings_reviews_on_tap">僅在點按時載入評論</string>
+    <string name="settings_reviews_on_tap_hint">地點頁會顯示「顯示評論」按鈕，而不是直接載入。評論是地點頁面向 Google 發出的最大請求。</string>
+    <string name="settings_route_traffic_on_tap">僅在點按時取得即時路況</string>
+    <string name="settings_route_traffic_on_tap_hint">在路線清單中點按「顯示路況」之前，路線只來自開放路由器，時間不含路況。</string>
+    <string name="place_show_reviews">顯示評論</string>
+    <string name="place_traffic_not_loaded">時間不含即時路況。</string>
+    <string name="place_show_traffic">顯示路況</string>
 </resources>

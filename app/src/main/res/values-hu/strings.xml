@@ -1014,4 +1014,11 @@
     <string name="place_busy_little">Kicsit zsúfolt</string>
     <string name="place_busy_usually">Általában zsúfolt</string>
     <string name="place_busy_very">Nagyon zsúfolt</string>
+    <string name="settings_reviews_on_tap">Értékelések betöltése csak koppintásra</string>
+    <string name="settings_reviews_on_tap_hint">A helyoldalon egy Értékelések megjelenítése gomb jelenik meg a betöltés helyett. Az értékelések a helyoldal legnagyobb Google-kérései.</string>
+    <string name="settings_route_traffic_on_tap">Élő forgalom csak koppintásra</string>
+    <string name="settings_route_traffic_on_tap_hint">Az útvonalak csak a nyílt útvonaltervezőből jönnek, amíg nem koppintasz a Forgalom megjelenítése gombra az útvonallistán. Addig az idők forgalom nélküliek.</string>
+    <string name="place_show_reviews">Értékelések megjelenítése</string>
+    <string name="place_traffic_not_loaded">Idők élő forgalom nélkül.</string>
+    <string name="place_show_traffic">Forgalom megjelenítése</string>
 </resources>

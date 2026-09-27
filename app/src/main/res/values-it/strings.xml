@@ -1012,4 +1012,11 @@
     <string name="place_busy_little">Un po\' affollato</string>
     <string name="place_busy_usually">Di solito affollato</string>
     <string name="place_busy_very">Molto affollato</string>
+    <string name="settings_reviews_on_tap">Carica le recensioni solo quando tocco</string>
+    <string name="settings_reviews_on_tap_hint">Un luogo mostra un pulsante Mostra recensioni invece di caricarle. Le recensioni sono la richiesta a Google più pesante della pagina di un luogo.</string>
+    <string name="settings_route_traffic_on_tap">Traffico in tempo reale solo quando tocco</string>
+    <string name="settings_route_traffic_on_tap_hint">I percorsi arrivano solo dal router aperto finché non tocchi Mostra traffico nell\'elenco dei percorsi. Fino ad allora i tempi sono senza traffico.</string>
+    <string name="place_show_reviews">Mostra recensioni</string>
+    <string name="place_traffic_not_loaded">Tempi senza traffico in tempo reale.</string>
+    <string name="place_show_traffic">Mostra traffico</string>
 </resources>

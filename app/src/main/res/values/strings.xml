@@ -1109,7 +1109,7 @@
     <string name="settings_reviews_on_tap">Load reviews only when I tap</string>
     <string name="settings_reviews_on_tap_hint">A place shows a Show reviews button instead of loading them. Reviews are the largest Google request on a place page.</string>
     <string name="settings_route_traffic_on_tap">Live traffic only when I tap</string>
-    <string name="settings_route_traffic_on_tap_hint">Routes come from the open router alone until you tap Show traffic on the route list. Times are then without traffic.</string>
+    <string name="settings_route_traffic_on_tap_hint">Routes come from the open router alone until you tap Show traffic on the route list. Until then, times are without traffic.</string>
     <string name="place_show_reviews">Show reviews</string>
     <string name="place_traffic_not_loaded">Times without live traffic.</string>
     <string name="place_show_traffic">Show traffic</string>

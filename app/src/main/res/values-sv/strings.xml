@@ -1012,4 +1012,11 @@
     </plurals>
     <string name="nav_hold_controls">Pausa eller stäng av ljud</string>
     <string name="nav_stop_offer_detour">+%1$s</string>
+    <string name="settings_reviews_on_tap">Läs in recensioner bara när jag trycker</string>
+    <string name="settings_reviews_on_tap_hint">En plats visar knappen Visa recensioner i stället för att läsa in dem. Recensioner är den största Google-förfrågan på en platssida.</string>
+    <string name="settings_route_traffic_on_tap">Trafik i realtid bara när jag trycker</string>
+    <string name="settings_route_traffic_on_tap_hint">Rutter kommer bara från den öppna routern tills du trycker på Visa trafik i ruttlistan. Till dess är tiderna utan trafik.</string>
+    <string name="place_show_reviews">Visa recensioner</string>
+    <string name="place_traffic_not_loaded">Tider utan trafik i realtid.</string>
+    <string name="place_show_traffic">Visa trafik</string>
 </resources>

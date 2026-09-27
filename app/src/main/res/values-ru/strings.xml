@@ -1022,4 +1022,11 @@
     </plurals>
     <string name="nav_hold_controls">Пауза или без звука</string>
     <string name="nav_stop_offer_detour">+%1$s</string>
+    <string name="settings_reviews_on_tap">Загружать отзывы только по нажатию</string>
+    <string name="settings_reviews_on_tap_hint">Вместо загрузки отзывов на странице места появится кнопка Показать отзывы. Отзывы это самый большой запрос к Google на странице места.</string>
+    <string name="settings_route_traffic_on_tap">Пробки только по нажатию</string>
+    <string name="settings_route_traffic_on_tap_hint">Маршруты строятся только открытым маршрутизатором, пока вы не нажмёте Показать пробки в списке маршрутов. До этого время указано без учёта пробок.</string>
+    <string name="place_show_reviews">Показать отзывы</string>
+    <string name="place_traffic_not_loaded">Время без учёта пробок.</string>
+    <string name="place_show_traffic">Показать пробки</string>
 </resources>

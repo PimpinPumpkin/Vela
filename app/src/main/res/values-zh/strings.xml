@@ -1032,4 +1032,11 @@
     </plurals>
     <string name="nav_hold_controls">暂停或静音</string>
     <string name="nav_stop_offer_detour">+%1$s</string>
+    <string name="settings_reviews_on_tap">仅在点按时加载评价</string>
+    <string name="settings_reviews_on_tap_hint">地点页显示“显示评价”按钮，而不是直接加载。评价是地点页面向 Google 发出的最大请求。</string>
+    <string name="settings_route_traffic_on_tap">仅在点按时获取实时路况</string>
+    <string name="settings_route_traffic_on_tap_hint">在路线列表中点按“显示路况”之前，路线只来自开放路由器，时间不含路况。</string>
+    <string name="place_show_reviews">显示评价</string>
+    <string name="place_traffic_not_loaded">时间不含实时路况。</string>
+    <string name="place_show_traffic">显示路况</string>
 </resources>

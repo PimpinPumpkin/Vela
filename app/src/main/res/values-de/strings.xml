@@ -1012,4 +1012,11 @@
         <item quantity="one">%1$d weitere Route</item>
         <item quantity="other">%1$d weitere Routen</item>
     </plurals>
+    <string name="settings_reviews_on_tap">Bewertungen nur auf Tippen laden</string>
+    <string name="settings_reviews_on_tap_hint">Ein Ort zeigt eine Schaltfläche Bewertungen anzeigen, statt sie zu laden. Bewertungen sind die größte Google-Anfrage auf einer Ortsseite.</string>
+    <string name="settings_route_traffic_on_tap">Live-Verkehr nur auf Tippen</string>
+    <string name="settings_route_traffic_on_tap_hint">Routen kommen allein vom offenen Router, bis du in der Routenliste auf Verkehr anzeigen tippst. Bis dahin sind die Zeiten ohne Verkehr.</string>
+    <string name="place_show_reviews">Bewertungen anzeigen</string>
+    <string name="place_traffic_not_loaded">Zeiten ohne Live-Verkehr.</string>
+    <string name="place_show_traffic">Verkehr anzeigen</string>
 </resources>

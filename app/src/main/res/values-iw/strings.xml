@@ -1015,4 +1015,11 @@
     <string name="place_busy_little">קצת עמוס</string>
     <string name="place_busy_usually">בדרך כלל עמוס</string>
     <string name="place_busy_very">עמוס מאוד</string>
+    <string name="settings_reviews_on_tap">טעינת ביקורות רק בהקשה</string>
+    <string name="settings_reviews_on_tap_hint">במקום טעינה, יוצג כפתור הצגת ביקורות. הביקורות הן הבקשה הגדולה ביותר לגוגל בדף של מקום.</string>
+    <string name="settings_route_traffic_on_tap">תנועה בזמן אמת רק בהקשה</string>
+    <string name="settings_route_traffic_on_tap_hint">המסלולים מגיעים רק מהנתב הפתוח עד שתקיש על הצגת תנועה ברשימת המסלולים. עד אז הזמנים הם ללא תנועה.</string>
+    <string name="place_show_reviews">הצגת ביקורות</string>
+    <string name="place_traffic_not_loaded">זמנים ללא תנועה בזמן אמת.</string>
+    <string name="place_show_traffic">הצגת תנועה</string>
 </resources>

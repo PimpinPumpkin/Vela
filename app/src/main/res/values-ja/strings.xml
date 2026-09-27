@@ -1034,4 +1034,11 @@
     </plurals>
     <string name="nav_hold_controls">一時停止またはミュート</string>
     <string name="nav_stop_offer_detour">+%1$s</string>
+    <string name="settings_reviews_on_tap">タップしたときだけクチコミを読み込む</string>
+    <string name="settings_reviews_on_tap_hint">クチコミを読み込む代わりに「クチコミを表示」ボタンを出します。クチコミは場所ページで最も大きなGoogleへのリクエストです。</string>
+    <string name="settings_route_traffic_on_tap">タップしたときだけリアルタイムの交通情報</string>
+    <string name="settings_route_traffic_on_tap_hint">ルート一覧で「交通情報を表示」をタップするまで、ルートはオープンなルーターだけで作ります。それまでの所要時間は交通情報なしです。</string>
+    <string name="place_show_reviews">クチコミを表示</string>
+    <string name="place_traffic_not_loaded">リアルタイムの交通情報なしの所要時間です。</string>
+    <string name="place_show_traffic">交通情報を表示</string>
 </resources>

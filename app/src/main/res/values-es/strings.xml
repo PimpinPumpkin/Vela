@@ -1012,4 +1012,11 @@
         <item quantity="one">%1$d ruta alternativa</item>
         <item quantity="other">%1$d rutas alternativas</item>
     </plurals>
+    <string name="settings_reviews_on_tap">Cargar reseñas solo al tocar</string>
+    <string name="settings_reviews_on_tap_hint">Un lugar muestra un botón Mostrar reseñas en vez de cargarlas. Las reseñas son la mayor petición a Google en la página de un lugar.</string>
+    <string name="settings_route_traffic_on_tap">Tráfico en directo solo al tocar</string>
+    <string name="settings_route_traffic_on_tap_hint">Las rutas vienen solo del enrutador abierto hasta que tocas Mostrar tráfico en la lista de rutas. Hasta entonces, los tiempos no incluyen tráfico.</string>
+    <string name="place_show_reviews">Mostrar reseñas</string>
+    <string name="place_traffic_not_loaded">Tiempos sin tráfico en directo.</string>
+    <string name="place_show_traffic">Mostrar tráfico</string>
 </resources>

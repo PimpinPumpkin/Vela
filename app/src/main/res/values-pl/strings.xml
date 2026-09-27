@@ -1023,4 +1023,11 @@
     <string name="place_busy_little">Trochę tłoczno</string>
     <string name="place_busy_usually">Zwykle tłoczno</string>
     <string name="place_busy_very">Bardzo tłoczno</string>
+    <string name="settings_reviews_on_tap">Wczytuj opinie tylko po dotknięciu</string>
+    <string name="settings_reviews_on_tap_hint">Miejsce pokazuje przycisk Pokaż opinie zamiast je wczytywać. Opinie to największe zapytanie do Google na stronie miejsca.</string>
+    <string name="settings_route_traffic_on_tap">Ruch na żywo tylko po dotknięciu</string>
+    <string name="settings_route_traffic_on_tap_hint">Trasy pochodzą wyłącznie z otwartego routera, dopóki nie dotkniesz Pokaż ruch na liście tras. Do tego czasu czasy są bez ruchu.</string>
+    <string name="place_show_reviews">Pokaż opinie</string>
+    <string name="place_traffic_not_loaded">Czasy bez ruchu na żywo.</string>
+    <string name="place_show_traffic">Pokaż ruch</string>
 </resources>

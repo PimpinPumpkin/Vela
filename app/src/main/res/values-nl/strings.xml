@@ -1012,4 +1012,11 @@
     <string name="place_busy_little">Een beetje druk</string>
     <string name="place_busy_usually">Meestal druk</string>
     <string name="place_busy_very">Erg druk</string>
+    <string name="settings_reviews_on_tap">Reviews alleen laden als ik tik</string>
+    <string name="settings_reviews_on_tap_hint">Een plaats toont een knop Reviews tonen in plaats van ze te laden. Reviews zijn het grootste Google-verzoek op een plaatspagina.</string>
+    <string name="settings_route_traffic_on_tap">Live verkeer alleen als ik tik</string>
+    <string name="settings_route_traffic_on_tap_hint">Routes komen alleen van de open router totdat je in de routelijst op Verkeer tonen tikt. Tot dan zijn de tijden zonder verkeer.</string>
+    <string name="place_show_reviews">Reviews tonen</string>
+    <string name="place_traffic_not_loaded">Tijden zonder live verkeer.</string>
+    <string name="place_show_traffic">Verkeer tonen</string>
 </resources>

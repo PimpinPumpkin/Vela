@@ -1022,4 +1022,11 @@
     </plurals>
     <string name="nav_hold_controls">Пауза або без звуку</string>
     <string name="nav_stop_offer_detour">+%1$s</string>
+    <string name="settings_reviews_on_tap">Завантажувати відгуки лише за дотиком</string>
+    <string name="settings_reviews_on_tap_hint">Замість завантаження відгуків на сторінці місця з\'явиться кнопка Показати відгуки. Відгуки це найбільший запит до Google на сторінці місця.</string>
+    <string name="settings_route_traffic_on_tap">Затори лише за дотиком</string>
+    <string name="settings_route_traffic_on_tap_hint">Маршрути будуються лише відкритим маршрутизатором, доки ви не торкнетеся Показати затори у списку маршрутів. До того час указано без заторів.</string>
+    <string name="place_show_reviews">Показати відгуки</string>
+    <string name="place_traffic_not_loaded">Час без урахування заторів.</string>
+    <string name="place_show_traffic">Показати затори</string>
 </resources>

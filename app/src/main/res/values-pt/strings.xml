@@ -1014,4 +1014,11 @@
     <string name="place_busy_little">Um pouco movimentado</string>
     <string name="place_busy_usually">Normalmente movimentado</string>
     <string name="place_busy_very">Muito movimentado</string>
+    <string name="settings_reviews_on_tap">Carregar avaliações só quando eu tocar</string>
+    <string name="settings_reviews_on_tap_hint">O local mostra um botão Mostrar avaliações em vez de carregá-las. As avaliações são o maior pedido ao Google na página de um local.</string>
+    <string name="settings_route_traffic_on_tap">Trânsito ao vivo só quando eu tocar</string>
+    <string name="settings_route_traffic_on_tap_hint">As rotas vêm só do roteador aberto até você tocar em Mostrar trânsito na lista de rotas. Até lá, os tempos são sem trânsito.</string>
+    <string name="place_show_reviews">Mostrar avaliações</string>
+    <string name="place_traffic_not_loaded">Tempos sem trânsito ao vivo.</string>
+    <string name="place_show_traffic">Mostrar trânsito</string>
 </resources>

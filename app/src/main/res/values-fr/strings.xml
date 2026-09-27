@@ -1012,4 +1012,11 @@
         <item quantity="one">%1$d autre itinéraire</item>
         <item quantity="other">%1$d autres itinéraires</item>
     </plurals>
+    <string name="settings_reviews_on_tap">Charger les avis seulement quand je touche</string>
+    <string name="settings_reviews_on_tap_hint">Un lieu affiche un bouton Afficher les avis au lieu de les charger. Les avis sont la plus grosse requête Google d\'une page de lieu.</string>
+    <string name="settings_route_traffic_on_tap">Trafic en direct seulement quand je touche</string>
+    <string name="settings_route_traffic_on_tap_hint">Les itinéraires viennent du seul routeur libre jusqu\'à ce que vous touchiez Afficher le trafic dans la liste. Jusque-là, les durées sont sans trafic.</string>
+    <string name="place_show_reviews">Afficher les avis</string>
+    <string name="place_traffic_not_loaded">Durées sans trafic en direct.</string>
+    <string name="place_show_traffic">Afficher le trafic</string>
 </resources>
