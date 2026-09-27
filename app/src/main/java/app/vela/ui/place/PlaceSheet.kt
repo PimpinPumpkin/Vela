@@ -893,7 +893,7 @@ fun PlaceSheet(
                     style = MaterialTheme.typography.labelSmall,
                     color = dim.copy(alpha = 0.8f),
                     modifier = Modifier.padding(top = 2.dp).then(
-                        if (url != null) Modifier.clickable {
+                        if (url != null) Modifier.dpadHighlight(RoundedCornerShape(4.dp)).clickable {
                             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
                         } else Modifier,
                     ),
@@ -4764,7 +4764,7 @@ private fun UpdatesSection(updates: List<app.vela.core.model.PlaceUpdate>, ink: 
                 Text(
                     remember(u.text) { u.text.replace(Regex("\\n\\s*\\n+"), "\n") }, style = MaterialTheme.typography.bodyMedium, color = ink,
                     maxLines = if (open) Int.MAX_VALUE else 4, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.clickable { open = !open },
+                    modifier = Modifier.dpadHighlight(RoundedCornerShape(4.dp)).clickable { open = !open },
                 )
                 if (u.url != null && !app.vela.ui.HideExternalLinks.on.value) {
                     TextButton(
