@@ -447,3 +447,16 @@ or if the system declines, the notification is exactly what it was before.
   device.
 - **Speed limits are only as good as OpenStreetMap.** Many roads carry no `maxspeed` tag, and
   there the badge is blank, which is the data rather than the lookup.
+
+## Testing navigation without driving
+
+Two switches in Settings > Diagnostics make every nav screen testable at a desk, anywhere:
+
+- **Simulate my location** pins the location dot to the map center at the moment it is turned on.
+  Directions start from there, recenter goes there, and no real GPS is read. Center the map on a
+  fixture area (Davis) first.
+- **Simulate driving** (`demo_drive`) makes Start drive the planned route along a synthetic trace,
+  one fix a second, through the same replay path a recorded trip uses. End stops it.
+
+Together they show the whole drive: the icon, north-up, the turn card, voice and every chrome
+state. Turn both off before a real drive; while they are on, Start never reads GPS.
