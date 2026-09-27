@@ -1041,4 +1041,12 @@
     <string name="place_updates_all">Pokaż wszystkie aktualności (%1$d)</string> <!-- format -->
     <string name="settings_nav_north_up">Zaczynaj trasy z północą u góry</string>
     <string name="settings_nav_north_up_hint">Podczas jazdy mapa pozostaje płaska, z północą u góry. Dotknij kompasu w trakcie jazdy, aby przełączyć.</string>
+    <string name="settings_puck_shape">Ikona nawigacji</string>
+    <string name="settings_puck_shape_arrow">Strzałka</string>
+    <string name="settings_puck_shape_car">Samochód</string>
+    <string name="settings_car_red">Czerwony</string>
+    <string name="settings_car_blue">Niebieski</string>
+    <string name="settings_car_white">Biały</string>
+    <string name="settings_car_green">Zielony</string>
+    <string name="settings_car_yellow">Żółty</string>
 </resources>

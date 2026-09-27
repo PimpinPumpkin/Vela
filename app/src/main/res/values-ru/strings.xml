@@ -1040,4 +1040,12 @@
     <string name="place_updates_all">Показать все новости (%1$d)</string> <!-- format -->
     <string name="settings_nav_north_up">Начинать поездки с севером вверху</string>
     <string name="settings_nav_north_up_hint">Во время поездки карта остаётся плоской, север вверху. Нажмите на компас во время поездки, чтобы переключить.</string>
+    <string name="settings_puck_shape">Значок навигации</string>
+    <string name="settings_puck_shape_arrow">Стрелка</string>
+    <string name="settings_puck_shape_car">Машина</string>
+    <string name="settings_car_red">Красная</string>
+    <string name="settings_car_blue">Синяя</string>
+    <string name="settings_car_white">Белая</string>
+    <string name="settings_car_green">Зелёная</string>
+    <string name="settings_car_yellow">Жёлтая</string>
 </resources>

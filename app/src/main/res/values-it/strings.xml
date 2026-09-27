@@ -1030,4 +1030,12 @@
     <string name="place_updates_all">Mostra tutte le %1$d novità</string> <!-- format -->
     <string name="settings_nav_north_up">Avvia i viaggi con il nord in alto</string>
     <string name="settings_nav_north_up_hint">La mappa resta piatta con il nord in alto durante la guida. Tocca la bussola durante il viaggio per cambiare.</string>
+    <string name="settings_puck_shape">Icona di navigazione</string>
+    <string name="settings_puck_shape_arrow">Freccia</string>
+    <string name="settings_puck_shape_car">Auto</string>
+    <string name="settings_car_red">Rossa</string>
+    <string name="settings_car_blue">Blu</string>
+    <string name="settings_car_white">Bianca</string>
+    <string name="settings_car_green">Verde</string>
+    <string name="settings_car_yellow">Gialla</string>
 </resources>

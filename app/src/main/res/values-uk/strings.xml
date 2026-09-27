@@ -1040,4 +1040,12 @@
     <string name="place_updates_all">Показати всі новини (%1$d)</string> <!-- format -->
     <string name="settings_nav_north_up">Починати поїздки з північчю вгорі</string>
     <string name="settings_nav_north_up_hint">Під час поїздки мапа лишається пласкою, північ угорі. Торкніться компаса під час поїздки, щоб перемкнути.</string>
+    <string name="settings_puck_shape">Значок навігації</string>
+    <string name="settings_puck_shape_arrow">Стрілка</string>
+    <string name="settings_puck_shape_car">Авто</string>
+    <string name="settings_car_red">Червоне</string>
+    <string name="settings_car_blue">Синє</string>
+    <string name="settings_car_white">Біле</string>
+    <string name="settings_car_green">Зелене</string>
+    <string name="settings_car_yellow">Жовте</string>
 </resources>

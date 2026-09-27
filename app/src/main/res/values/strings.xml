@@ -1124,4 +1124,12 @@
     <string name="place_updates_all">Show all %1$d updates</string> <!-- format -->
     <string name="settings_nav_north_up">Start drives north-up</string>
     <string name="settings_nav_north_up_hint">The map stays flat with north at the top while you drive. Tap the compass during a drive to switch.</string>
+    <string name="settings_puck_shape">Navigation icon</string>
+    <string name="settings_puck_shape_arrow">Arrow</string>
+    <string name="settings_puck_shape_car">Car</string>
+    <string name="settings_car_red">Red</string>
+    <string name="settings_car_blue">Blue</string>
+    <string name="settings_car_white">White</string>
+    <string name="settings_car_green">Green</string>
+    <string name="settings_car_yellow">Yellow</string>
 </resources>

@@ -1033,4 +1033,12 @@
     <string name="place_updates_all">הצגת כל %1$d העדכונים</string> <!-- format -->
     <string name="settings_nav_north_up">התחלת נסיעות כשהצפון למעלה</string>
     <string name="settings_nav_north_up_hint">המפה נשארת שטוחה והצפון למעלה בזמן הנהיגה. הקש על המצפן בזמן הנסיעה כדי להחליף.</string>
+    <string name="settings_puck_shape">סמל ניווט</string>
+    <string name="settings_puck_shape_arrow">חץ</string>
+    <string name="settings_puck_shape_car">מכונית</string>
+    <string name="settings_car_red">אדום</string>
+    <string name="settings_car_blue">כחול</string>
+    <string name="settings_car_white">לבן</string>
+    <string name="settings_car_green">ירוק</string>
+    <string name="settings_car_yellow">צהוב</string>
 </resources>

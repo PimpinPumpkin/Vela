@@ -1051,4 +1051,12 @@
     <string name="place_updates_all">顯示全部 %1$d 則動態</string> <!-- format -->
     <string name="settings_nav_north_up">導航時以北為上</string>
     <string name="settings_nav_north_up_hint">駕駛時地圖保持平面並以北為上。導航中點按指南針即可切換。</string>
+    <string name="settings_puck_shape">導航圖示</string>
+    <string name="settings_puck_shape_arrow">箭頭</string>
+    <string name="settings_puck_shape_car">汽車</string>
+    <string name="settings_car_red">紅色</string>
+    <string name="settings_car_blue">藍色</string>
+    <string name="settings_car_white">白色</string>
+    <string name="settings_car_green">綠色</string>
+    <string name="settings_car_yellow">黃色</string>
 </resources>

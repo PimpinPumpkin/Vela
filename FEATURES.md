@@ -303,6 +303,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   **Redact places in exports** is now always shown in Settings > Diagnostics and also starts
   every trip share on the largest trim distance (the middle of a drive is still never rounded).
   `core/replay/TripShareBatch`, `TripShareBatchTest`.
+- ✅ **Car navigation icon (2026-09-27, discussion #611).** Settings > Navigation > Navigation icon: the arrow or a car in red, blue, white, green or yellow, with a preview.
 - ✅ **North-up navigation by default (2026-09-27, issue #612).** Settings > Navigation "Start drives north-up" starts every drive flat with north at the top; the compass still switches it during a drive.
 - ✅ **Place page Overview tab (2026-09-27).** Tabs sit under the action buttons and pin while scrolling; Overview holds the info rows, popular times, highlights, a review summary card, About and related places. Reviews load only when their tab opens. The Reviews tab has sort and search chips and the star breakdown again; a Photos tab shows the gallery as a grid with category chips. Options to load photos only on tap and to skip the popular-times retries. Business updates (the owner's posts) show on Overview, from the reply Vela already fetches.
 - ✅ **Reviews and route traffic on tap (2026-09-27).** Settings > Places "Load reviews only when I tap" shows a Show reviews button instead of loading them; Settings > Privacy "Live traffic only when I tap" plans routes on the open router alone until Show traffic is tapped on the route list.

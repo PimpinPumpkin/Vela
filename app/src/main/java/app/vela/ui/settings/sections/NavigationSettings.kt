@@ -1,5 +1,9 @@
 package app.vela.ui.settings.sections
 
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
@@ -170,6 +174,7 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 onClick = { app.vela.ui.PuckStyle.setSize(context, id) },
             )
         }
+        if (!app.vela.ui.PuckStyle.isCar()) {
         GroupDivider()
         Text(
             stringResource(R.string.settings_puck_style),
@@ -185,6 +190,52 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 selected = app.vela.ui.PuckStyle.style.value == id,
                 onClick = { app.vela.ui.PuckStyle.setStyle(context, id) },
             )
+        }
+        }
+
+        // The nav icon (discussion #611): the arrow above, or a car in one of a few colors.
+        GroupDivider()
+        Text(
+            stringResource(R.string.settings_puck_shape),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
+        )
+        listOf(
+            app.vela.ui.PuckStyle.SHAPE_ARROW to stringResource(R.string.settings_puck_shape_arrow),
+            app.vela.ui.PuckStyle.SHAPE_CAR to stringResource(R.string.settings_puck_shape_car),
+        ).forEach { (id, label) ->
+            SelectableRow(
+                label = label,
+                selected = app.vela.ui.PuckStyle.shape.value == id,
+                onClick = { app.vela.ui.PuckStyle.setShape(context, id) },
+            )
+        }
+        // What the drive will show, drawn by the same code.
+        val puckKey = app.vela.ui.PuckStyle.key()
+        val puckPreview = androidx.compose.runtime.remember(puckKey) { app.vela.ui.map.navPuckBitmap().asImageBitmap() }
+        androidx.compose.foundation.Image(
+            puckPreview, contentDescription = null,
+            modifier = Modifier.padding(start = 20.dp, top = 4.dp).size(64.dp),
+        )
+        if (app.vela.ui.PuckStyle.isCar()) {
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(
+                    "red" to R.string.settings_car_red, "blue" to R.string.settings_car_blue,
+                    "white" to R.string.settings_car_white, "green" to R.string.settings_car_green,
+                    "yellow" to R.string.settings_car_yellow,
+                ).forEach { (id, label) ->
+                    FilterChip(
+                        selected = app.vela.ui.PuckStyle.carColor.value == id,
+                        onClick = { app.vela.ui.PuckStyle.setCarColor(context, id) },
+                        label = { Text(stringResource(label)) },
+                        shape = CircleShape,
+                        modifier = Modifier.dpadHighlight(CircleShape),
+                    )
+                }
+            }
         }
 
         var trafficLights by remember { mutableStateOf(prefs.getBoolean("nav_traffic_lights", false)) }

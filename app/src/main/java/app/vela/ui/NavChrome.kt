@@ -46,12 +46,32 @@ object PuckStyle {
         else -> 1f
     }
     fun whiteDisc(): Boolean = style.value == STYLE_WHITE
-    fun key(): String = "${size.value}/${style.value}"
+    fun key(): String = "${size.value}/${style.value}/${shape.value}/${carColor.value}"
+
+    /** The nav icon (discussion #611): the arrow, or a top-down car in [carColor]. */
+    const val SHAPE_ARROW = "arrow"
+    const val SHAPE_CAR = "car"
+    val CAR_COLORS = listOf("red", "blue", "white", "green", "yellow")
+    val shape = mutableStateOf(SHAPE_ARROW)
+    val carColor = mutableStateOf("red")
+    fun isCar(): Boolean = shape.value == SHAPE_CAR
+
+    fun setShape(context: Context, value: String) {
+        shape.value = value
+        prefs(context).edit().putString(KEY_SHAPE, value).apply()
+    }
+
+    fun setCarColor(context: Context, value: String) {
+        carColor.value = value
+        prefs(context).edit().putString(KEY_CAR_COLOR, value).apply()
+    }
 
     fun init(context: Context) {
         val p = prefs(context)
         size.value = p.getString(KEY_SIZE, SIZE_NORMAL) ?: SIZE_NORMAL
         style.value = p.getString(KEY_STYLE, STYLE_BLUE) ?: STYLE_BLUE
+        shape.value = p.getString(KEY_SHAPE, SHAPE_ARROW) ?: SHAPE_ARROW
+        carColor.value = p.getString(KEY_CAR_COLOR, "red")?.takeIf { it in CAR_COLORS } ?: "red"
     }
 
     fun setSize(context: Context, value: String) {
@@ -67,6 +87,8 @@ object PuckStyle {
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
     private const val KEY_SIZE = "puck_size"
     private const val KEY_STYLE = "puck_style"
+    private const val KEY_SHAPE = "puck_shape"
+    private const val KEY_CAR_COLOR = "puck_car_color"
 }
 
 /** "Prefer buttons over swipes": keeps a discrete button wherever a gesture has one (today: the

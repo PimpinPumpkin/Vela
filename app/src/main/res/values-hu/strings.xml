@@ -1032,4 +1032,12 @@
     <string name="place_updates_all">Mind a(z) %1$d hír megjelenítése</string> <!-- format -->
     <string name="settings_nav_north_up">Útvonalak indítása északra tájolva</string>
     <string name="settings_nav_north_up_hint">Vezetés közben a térkép lapos marad, fent az északkal. Útközben az iránytűre koppintva válthatsz.</string>
+    <string name="settings_puck_shape">Navigációs ikon</string>
+    <string name="settings_puck_shape_arrow">Nyíl</string>
+    <string name="settings_puck_shape_car">Autó</string>
+    <string name="settings_car_red">Piros</string>
+    <string name="settings_car_blue">Kék</string>
+    <string name="settings_car_white">Fehér</string>
+    <string name="settings_car_green">Zöld</string>
+    <string name="settings_car_yellow">Sárga</string>
 </resources>

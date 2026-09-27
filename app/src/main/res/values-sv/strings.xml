@@ -1030,4 +1030,12 @@
     <string name="place_updates_all">Visa alla %1$d nyheter</string> <!-- format -->
     <string name="settings_nav_north_up">Starta resor med norr uppåt</string>
     <string name="settings_nav_north_up_hint">Kartan förblir platt med norr uppåt medan du kör. Tryck på kompassen under resan för att växla.</string>
+    <string name="settings_puck_shape">Navigeringsikon</string>
+    <string name="settings_puck_shape_arrow">Pil</string>
+    <string name="settings_puck_shape_car">Bil</string>
+    <string name="settings_car_red">Röd</string>
+    <string name="settings_car_blue">Blå</string>
+    <string name="settings_car_white">Vit</string>
+    <string name="settings_car_green">Grön</string>
+    <string name="settings_car_yellow">Gul</string>
 </resources>

@@ -7970,6 +7970,7 @@ internal fun navPuckBitmap(
     // Drawn in the original 176-space and scaled whole, so the disc/arrow/shadow proportions the
     // user tuned in July stay byte-identical - only the rendered size grows.
     canvas.scale(size / 176f, size / 176f)
+    if (app.vela.ui.PuckStyle.isCar()) { drawCarPuck(canvas, app.vela.ui.PuckStyle.carColor.value); return bmp }
     val cx = 88f
     val cy = 88f
     val r = 65f
@@ -8015,6 +8016,56 @@ internal fun navPuckBitmap(
         },
     )
     return bmp
+}
+
+/** A top-down car pointing up, centered in the 176-space the arrow uses (discussion #611). */
+private fun drawCarPuck(canvas: Canvas, colorName: String) {
+    val body = android.graphics.Color.parseColor(
+        when (colorName) {
+            "blue" -> "#1a46e5"
+            "white" -> "#F4F5F7"
+            "green" -> "#1E9E5A"
+            "yellow" -> "#F2C230"
+            else -> "#D93025"
+        },
+    )
+    val hsv = FloatArray(3).also { android.graphics.Color.colorToHSV(body, it) }
+    val edge = android.graphics.Color.HSVToColor(floatArrayOf(hsv[0], hsv[1], hsv[2] * 0.62f))
+    val roof = android.graphics.Color.HSVToColor(floatArrayOf(hsv[0], hsv[1] * 0.85f, (hsv[2] * 1.08f).coerceAtMost(1f)))
+    val glass = android.graphics.Color.parseColor("#26303B")
+    fun paint(c: Int, stroke: Float = 0f) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = c
+        if (stroke > 0f) { style = Paint.Style.STROKE; strokeWidth = stroke } else style = Paint.Style.FILL
+    }
+    val cx = 88f
+    val shell = android.graphics.RectF(cx - 29f, 30f, cx + 29f, 146f)
+    // Soft shadow, then mirrors, then the body with a darker rim.
+    canvas.drawRoundRect(
+        android.graphics.RectF(shell.left, shell.top + 6f, shell.right, shell.bottom + 6f), 24f, 24f,
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.argb(80, 0, 0, 0)
+            maskFilter = android.graphics.BlurMaskFilter(10f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+        },
+    )
+    canvas.drawOval(android.graphics.RectF(cx - 38f, 66f, cx - 25f, 76f), paint(body))
+    canvas.drawOval(android.graphics.RectF(cx + 25f, 66f, cx + 38f, 76f), paint(body))
+    canvas.drawRoundRect(shell, 24f, 24f, paint(body))
+    canvas.drawRoundRect(shell, 24f, 24f, paint(edge, 3f))
+    // Windshield, roof, rear window.
+    canvas.drawPath(Path().apply {
+        moveTo(cx - 20f, 60f); lineTo(cx + 20f, 60f); lineTo(cx + 24f, 80f); lineTo(cx - 24f, 80f); close()
+    }, paint(glass))
+    canvas.drawRoundRect(android.graphics.RectF(cx - 22f, 82f, cx + 22f, 118f), 8f, 8f, paint(roof))
+    canvas.drawPath(Path().apply {
+        moveTo(cx - 22f, 120f); lineTo(cx + 22f, 120f); lineTo(cx + 18f, 132f); lineTo(cx - 18f, 132f); close()
+    }, paint(glass))
+    // Headlights and taillights.
+    val head = paint(android.graphics.Color.parseColor("#FFF6C8"))
+    canvas.drawOval(android.graphics.RectF(cx - 23f, 33f, cx - 11f, 40f), head)
+    canvas.drawOval(android.graphics.RectF(cx + 11f, 33f, cx + 23f, 40f), head)
+    val tail = paint(android.graphics.Color.parseColor("#B3261E"))
+    canvas.drawRoundRect(android.graphics.RectF(cx - 24f, 139f, cx - 12f, 144f), 2f, 2f, tail)
+    canvas.drawRoundRect(android.graphics.RectF(cx + 12f, 139f, cx + 24f, 144f), 2f, 2f, tail)
 }
 
 /** A Google-style red map pin with a white center dot, anchored at its bottom tip. */

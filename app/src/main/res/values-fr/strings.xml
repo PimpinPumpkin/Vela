@@ -1030,4 +1030,12 @@
     <string name="place_updates_all">Voir les %1$d actualités</string> <!-- format -->
     <string name="settings_nav_north_up">Démarrer les trajets nord en haut</string>
     <string name="settings_nav_north_up_hint">La carte reste à plat avec le nord en haut pendant la conduite. Touchez la boussole pendant le trajet pour basculer.</string>
+    <string name="settings_puck_shape">Icône de navigation</string>
+    <string name="settings_puck_shape_arrow">Flèche</string>
+    <string name="settings_puck_shape_car">Voiture</string>
+    <string name="settings_car_red">Rouge</string>
+    <string name="settings_car_blue">Bleu</string>
+    <string name="settings_car_white">Blanc</string>
+    <string name="settings_car_green">Vert</string>
+    <string name="settings_car_yellow">Jaune</string>
 </resources>

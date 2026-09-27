@@ -1030,4 +1030,12 @@
     <string name="place_updates_all">Alle %1$d berichten tonen</string> <!-- format -->
     <string name="settings_nav_north_up">Ritten starten met het noorden boven</string>
     <string name="settings_nav_north_up_hint">De kaart blijft plat met het noorden boven terwijl je rijdt. Tik tijdens de rit op het kompas om te wisselen.</string>
+    <string name="settings_puck_shape">Navigatiepictogram</string>
+    <string name="settings_puck_shape_arrow">Pijl</string>
+    <string name="settings_puck_shape_car">Auto</string>
+    <string name="settings_car_red">Rood</string>
+    <string name="settings_car_blue">Blauw</string>
+    <string name="settings_car_white">Wit</string>
+    <string name="settings_car_green">Groen</string>
+    <string name="settings_car_yellow">Geel</string>
 </resources>

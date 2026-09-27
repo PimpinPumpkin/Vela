@@ -1030,4 +1030,12 @@
     <string name="place_updates_all">Ver las %1$d novedades</string> <!-- format -->
     <string name="settings_nav_north_up">Empezar los viajes con el norte arriba</string>
     <string name="settings_nav_north_up_hint">El mapa se queda plano y con el norte arriba mientras conduces. Toca la brújula durante el viaje para cambiar.</string>
+    <string name="settings_puck_shape">Icono de navegación</string>
+    <string name="settings_puck_shape_arrow">Flecha</string>
+    <string name="settings_puck_shape_car">Coche</string>
+    <string name="settings_car_red">Rojo</string>
+    <string name="settings_car_blue">Azul</string>
+    <string name="settings_car_white">Blanco</string>
+    <string name="settings_car_green">Verde</string>
+    <string name="settings_car_yellow">Amarillo</string>
 </resources>

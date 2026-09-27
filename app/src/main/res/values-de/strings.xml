@@ -1030,4 +1030,12 @@
     <string name="place_updates_all">Alle %1$d Neuigkeiten anzeigen</string> <!-- format -->
     <string name="settings_nav_north_up">Fahrten genordet starten</string>
     <string name="settings_nav_north_up_hint">Die Karte bleibt beim Fahren flach und genordet. Tippe während der Fahrt auf den Kompass, um umzuschalten.</string>
+    <string name="settings_puck_shape">Navigationssymbol</string>
+    <string name="settings_puck_shape_arrow">Pfeil</string>
+    <string name="settings_puck_shape_car">Auto</string>
+    <string name="settings_car_red">Rot</string>
+    <string name="settings_car_blue">Blau</string>
+    <string name="settings_car_white">Weiß</string>
+    <string name="settings_car_green">Grün</string>
+    <string name="settings_car_yellow">Gelb</string>
 </resources>
