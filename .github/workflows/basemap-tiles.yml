@@ -142,14 +142,44 @@ jobs:
           done
           mkdir -p entries
           SIZE=$(stat -c %s "basemap-${{ matrix.id }}.pmtiles")
+          REV=$(date -u +%Y%m%d)
+          DELTA=null
+          # A patch against the published archive, built, applied to a copy and fingerprint-checked
+          # here or not published (same rule as the places bake). Fetched after the bake so the old
+          # archive does not share the disk with planetiler's working files.
+          PREV_REV=$(curl -sL "https://github.com/$GITHUB_REPOSITORY/releases/download/basemap-tiles/basemap-manifest.json" \
+            | jq -r --arg id "${{ matrix.id }}" '.regions[] | select(.id == $id) | .rev // 0' | head -1)
+          if [ -n "$PREV_REV" ] && [ "$PREV_REV" != "0" ] && [ "$PREV_REV" != "null" ] && [ "$PREV_REV" != "$REV" ] && \
+             curl -sfL -o prev.pmtiles "https://github.com/$GITHUB_REPOSITORY/releases/download/basemap-tiles/basemap-${{ matrix.id }}.pmtiles"; then
+            if python3 scripts/pmtiles-make-patch.py prev.pmtiles "basemap-${{ matrix.id }}.pmtiles" \
+                 patch.vpatch --rev-from "$PREV_REV" --rev-to "$REV"; then
+              PSIZE=$(stat -c %s patch.vpatch)
+              if [ "$PSIZE" -lt "$((SIZE / 3))" ] && cp prev.pmtiles check.pmtiles && \
+                 python3 scripts/pmtiles-apply-patch.py check.pmtiles patch.vpatch --verify; then
+                PNAME="basemap-${{ matrix.id }}.$PREV_REV.vpatch"
+                mv patch.vpatch "$PNAME"
+                if gh release upload basemap-tiles "$PNAME" --clobber --repo "$GITHUB_REPOSITORY"; then
+                  DELTA=$(jq -n --argjson fromRev "$PREV_REV" \
+                    --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/basemap-tiles/$PNAME" \
+                    --argjson sizeMb "$(echo "scale=2; $PSIZE/1000000" | bc)" \
+                    '{fromRev:$fromRev,url:$url,sizeMb:$sizeMb}')
+                  echo "patch $PNAME: $(echo "scale=1; $PSIZE/1000000" | bc) MB of $(echo "scale=1; $SIZE/1000000" | bc) MB"
+                fi
+              else
+                echo "patch not published: $(echo "scale=1; $PSIZE/1000000" | bc) MB against a $(echo "scale=1; $SIZE/1000000" | bc) MB archive is too big, or it did not verify"
+              fi
+            fi
+            rm -f check.pmtiles prev.pmtiles patch.vpatch
+          fi
           # Bounds from the archive header (the routing catalog carries none): the PMTiles v3 header
           # stores them as int32 E7 at bytes 102..117 (min lon, min lat, max lon, max lat). No CLI
           # needed; the pmtiles CLI download was rate-limited on shared runners and lost entries.
           BBOX=$(python3 scripts/pmtiles-bbox.py "basemap-${{ matrix.id }}.pmtiles" | python3 scripts/clamp-bbox.py "${{ matrix.id }}")
           jq -n --arg id "${{ matrix.id }}" --arg name "${{ matrix.name }}" \
             --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/basemap-tiles/basemap-${{ matrix.id }}.pmtiles" \
-            --argjson sizeMb "$(echo "scale=2; $SIZE/1000000" | bc)" --argjson bbox "$BBOX" --argjson rev "$(date -u +%Y%m%d)" \
-            '{id:$id,name:$name,url:$url,sizeMb:$sizeMb,bbox:$bbox,rev:$rev}' > "entries/${{ matrix.id }}.json"
+            --argjson sizeMb "$(echo "scale=2; $SIZE/1000000" | bc)" --argjson bbox "$BBOX" --argjson rev "$REV" \
+            --argjson delta "$DELTA" \
+            '{id:$id,name:$name,url:$url,sizeMb:$sizeMb,bbox:$bbox,rev:$rev} + (if $delta == null then {} else {delta:$delta} end)' > "entries/${{ matrix.id }}.json"
       - uses: actions/upload-artifact@v4
         with:
           name: basemap-entry-${{ matrix.id }}

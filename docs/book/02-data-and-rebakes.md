@@ -298,6 +298,9 @@ making every downloader take a few hundred MB again. On 2026-09-22 the live plac
   also carries a change to the bake script usually fails the one-third test and gets no patch
   (Guernsey and Jersey the day after the OSM source landed: 2506 of 4586 tiles, 2.17 MB against
   3.3 MB, refused); nothing checks for script changes as such.
+- **The map bake does the same since 2026-09-28** (`basemap-<id>.<fromRev>.vpatch` on
+  `basemap-tiles`), fetching the old archive after planetiler finishes so the two do not share the
+  runner's disk. `repair-basemap-manifest.sh` finds the patch by name like the places repair.
   `places-churn.yml` measures real churn by baking one region twice against OSM extracts N days
   apart (Andorra, six days: 11% of tiles, 25% of bytes, a delta at 22% of a full download).
 - **Applied in place.** `PmtilesPatch` (format `VELAPTCH`, `VERSION = 2`) appends the changed tile

@@ -2103,7 +2103,7 @@ applier is `app/offline/PmtilesPatch`.
   the patch just wrote, while the header still describes the old archive. A mismatch truncates back
   and the caller downloads the region whole. A patched archive therefore holds exactly what a fresh
   download holds, checked rather than asserted.
-- **The bake publishes a patch only if it applies.** It diffs against the archive it is replacing,
+- **The places and map bakes publish a patch only if it applies.** It diffs against the archive it is replacing,
   applies the result to a copy, checks the fingerprint, and only then uploads it and adds
   `delta: {fromRev, url, sizeMb}` to the manifest row. Over a third of the archive, it is not worth
   a second code path and is skipped. Two bakes on the same UTC day share a revision and so skip the

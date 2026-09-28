@@ -23,7 +23,8 @@ REV="${1:-$(date -u +%Y%m%d)}"
 ENTRIES="${2:-}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
-gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[] | select(.name | startswith("basemap-") and endswith(".pmtiles")) | "\(.name) \(.size) \(.updatedAt | .[0:10] | gsub("-"; ""))"' > "$WORK/assets.txt"
+gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[] | select(.name | startswith("basemap-")) | "\(.name) \(.size) \(.updatedAt | .[0:10] | gsub("-"; ""))"' > "$WORK/all.txt"
+grep -E '\.pmtiles ' "$WORK/all.txt" > "$WORK/assets.txt" || true
 gh release download "$TAG" --repo "$REPO" -p basemap-manifest.json -O "$WORK/old.json" 2>/dev/null || echo '{"regions":[]}' > "$WORK/old.json"
 : > "$WORK/entries.ndjson"
 while read -r NAME SIZE UPDATED; do
@@ -40,9 +41,17 @@ while read -r NAME SIZE UPDATED; do
   curl -sL -r 0-126 "$URL" -o "$WORK/head.bin"
   BBOX=$(python3 "$HERE/pmtiles-bbox.py" "$WORK/head.bin" | python3 "$HERE/clamp-bbox.py" "$ID") || { echo "skip $ID (no header)"; continue; }
   REGION_NAME=$(jq -r --arg id "$ID" '.regions[] | select(.id == $id) | .name' tools/routing-regions.json)
+  # a patch the bake published against the old rev
+  DELTA=null
+  OLDREV=$(jq -r '.rev // 0' <<<"${OLD:-null}")
+  PATCH=$(awk -v n="basemap-$ID.$OLDREV.vpatch" '$1 == n {print $2}' "$WORK/all.txt")
+  if [ "$OLDREV" != "0" ] && [ -n "$PATCH" ]; then
+    DELTA=$(jq -nc --argjson fromRev "$OLDREV" --arg url "https://github.com/$REPO/releases/download/$TAG/basemap-$ID.$OLDREV.vpatch" \
+      --argjson sizeMb "$(echo "scale=2; $PATCH/1000000" | bc)" '{fromRev:$fromRev,url:$url,sizeMb:$sizeMb}')
+  fi
   jq -nc --arg id "$ID" --arg name "${REGION_NAME:-$ID}" --arg url "$URL" \
-    --argjson sizeMb "$(echo "scale=2; $SIZE/1000000" | bc)" --argjson bbox "$BBOX" --argjson rev "$REV" \
-    '{id:$id,name:$name,url:$url,sizeMb:$sizeMb,bbox:$bbox,rev:$rev}' >> "$WORK/entries.ndjson"
+    --argjson sizeMb "$(echo "scale=2; $SIZE/1000000" | bc)" --argjson bbox "$BBOX" --argjson rev "$REV" --argjson delta "$DELTA" \
+    '{id:$id,name:$name,url:$url,sizeMb:$sizeMb,bbox:$bbox,rev:$rev} + (if $delta == null then {} else {delta:$delta} end)' >> "$WORK/entries.ndjson"
   echo "  $ID  $(echo "scale=1; $SIZE/1000000" | bc) MB  $BBOX"
 done < "$WORK/assets.txt"
 if [ -n "$ENTRIES" ] && ls "$ENTRIES"/*.json >/dev/null 2>&1; then
