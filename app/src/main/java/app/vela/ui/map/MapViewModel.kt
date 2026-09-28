@@ -1,5 +1,6 @@
 package app.vela.ui.map
 
+import app.vela.ui.place.isListing
 import android.content.Context
 import app.vela.R
 import androidx.lifecycle.ViewModel
@@ -3315,6 +3316,8 @@ class MapViewModel @Inject constructor(
         // people review) must KEEP its reviews (user 2026-07-13: broad category gate wrongly killed
         // them). Real buildings carry a Google rating; bare stops don't.
         if (p.rating == null && p.category?.let { isTransitCategory(it) } == true) return
+        // A bare address or dropped pin has no reviews to scrape.
+        if (!p.isListing()) return
         // Supersede any in-flight scrape: the fetcher serializes on a Mutex, so an abandoned
         // 40 s Taco Bell grind would otherwise make the NEXT place's reviews queue behind it
         // (~90 s worst case to first review). Canceling frees the mutex immediately, and this

@@ -601,7 +601,9 @@ when I tap" (`PhotosOnTap`) holds the photo request behind a Show photos button
 makes `placeTries()` 1, so a place's details are one request. Business posts ride the same place node
 (`paths.updates` `[1][122][1]`: text `[1][0][0][0]`, posted epoch `[2][0]`, link `[4][1]`/`[4][2]`,
 photo `[5][0][0]`) into `Place.updates`: Overview shows the newest with "Show all N updates", which opens the Updates
-tab (present when there are two or more); no extra request. Over three tabs the row scrolls. The Reviews tab leads with a full-width button to Google's full reviews page. Settings >
+tab (present when there are two or more); no extra request. Over three tabs the row scrolls. A place
+with no category, rating, review count or featured review (`isListing()`: an address or a pin) gets no
+Reviews tab, no review scrape and no popular-times placeholder or limited-view note. The Reviews tab leads with a full-width button to Google's full reviews page. Settings >
 Navigation "Start drives north-up" (`NavNorthUp`, pref `nav_north_up`, off, issue #612) sets
 `navNorthUp` at every drive start; the compass still toggles it per drive, and a tap while the
 camera is detached (pan, overview, step preview) also re-centers so the change shows. "Navigation icon"

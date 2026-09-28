@@ -1320,7 +1320,7 @@ fun PlaceSheet(
             // While the (slow, ~10–20 s) detail fetch is in flight and popular times
             // haven't landed yet, show a subtle indicator so it reads as "loading", not
             // "missing" — it clears to the chart, or to nothing if this place has none.
-            if (place.popularTimes == null && detailsLoading) {
+            if (place.popularTimes == null && detailsLoading && place.isListing()) {
                 // Sized like the chart (title, day chips, bars) so its arrival moves nothing.
                 SheetSkeleton(dim, listOf(120.dp), height = 14.dp, top = 22.dp)
                 SheetSkeleton(dim, listOf(260.dp), height = 24.dp, top = 12.dp)
@@ -1328,7 +1328,7 @@ fun PlaceSheet(
             }
             // Google is giving this session its limited view (web/GoogleStanding): say so where the
             // chart would be, so a missing chart reads as Google's doing and not a broken app.
-            if (place.popularTimes == null && !detailsLoading && place.featureId != null && app.vela.web.GoogleStanding.limited.value) {
+            if (place.popularTimes == null && !detailsLoading && place.featureId != null && place.isListing() && app.vela.web.GoogleStanding.limited.value) {
                 Row(
                     Modifier.fillMaxWidth().padding(top = 12.dp),
                     verticalAlignment = Alignment.Top,
@@ -3569,7 +3569,7 @@ private fun PlaceTabs(
     val isBareStop = isTransitCategory && place.rating == null && reviews.isEmpty() && place.featuredReview == null
     // The LiveReviews clause summons a review tab for ANY Google place (valid feature id) even with
     // zero reviews - that's the ONLY clause suppressed for a bare stop; real review content still shows.
-    val hasReviews = app.vela.ui.ShowReviews.on.value && (
+    val hasReviews = app.vela.ui.ShowReviews.on.value && (place.isListing() || reviews.isNotEmpty()) && (
         onShowReviews != null || place.rating != null || reviews.isNotEmpty() || reviewsLoading || place.featuredReview != null ||
             (app.vela.ui.LiveReviews.on.value && place.featureId?.contains(":") == true && !isBareStop)
         )
@@ -4805,3 +4805,8 @@ private fun UpdatesSection(updates: List<app.vela.core.model.PlaceUpdate>, ink: 
         }
     }
 }
+
+/** A business or landmark listing rather than a bare address or dropped pin: an address has no
+ *  category, rating or reviews, so it gets no Reviews tab and no popular-times space. */
+internal fun Place.isListing(): Boolean =
+    !category.isNullOrBlank() || rating != null || reviewCount != null || featuredReview != null
