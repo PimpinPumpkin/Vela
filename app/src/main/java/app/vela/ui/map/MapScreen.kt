@@ -1076,6 +1076,7 @@ fun MapScreen(
             navBarTopPx = navBarTopPx,
             navOverviewTick = navOverviewTick,
             navRecenterTick = navRecenterTick,
+            onNavRecenter = { vm.recenterNav(); navRecenterTick++ },
             screenHeightPx = screenHeightPx,
             svPose = svPose,
             metersPerPixelState = metersPerPixelState,
@@ -3565,6 +3566,7 @@ private fun MapSurface(
     navBarTopPx: Float,
     navOverviewTick: Int,
     navRecenterTick: Int,
+    onNavRecenter: () -> Unit,
     screenHeightPx: Float,
     svPose: DoubleArray?,
     metersPerPixelState: MutableState<Double>,
@@ -3727,7 +3729,16 @@ private fun MapSurface(
         navNorthUp = state.navNorthUp,
         // The compass below the nav card is the heading-up/north-up toggle during a drive
         // (a reorient-to-north tap would be overridden by the follow a frame later anyway).
-        onCompassTap = { if (state.navigating) { vm.toggleNavNorthUp(); true } else false },
+        // Detached (a pan, overview or step preview), the follow camera is not drawing, so a bare
+        // toggle showed nothing: switch the mode and re-center so the change is visible.
+        onCompassTap = {
+            if (!state.navigating) false
+            else {
+                vm.toggleNavNorthUp()
+                if (state.navCameraDetached || state.previewStepIndex != null) onNavRecenter()
+                true
+            }
+        },
         poisEnabled = app.vela.ui.MapPoiPrefs.showPois.value,
         // The POI bitmaps are fixed pixels, so below hdpi they render physically huge (a 240x320
         // phone at 120 dpi, issue #400, showed pins a fifth of the screen wide). Below 1.75x the

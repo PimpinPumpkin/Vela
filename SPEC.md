@@ -603,7 +603,8 @@ makes `placeTries()` 1, so a place's details are one request. Business posts rid
 photo `[5][0][0]`) into `Place.updates`: Overview shows the newest with "Show all N updates", which opens the Updates
 tab (present when there are two or more); no extra request. Over three tabs the row scrolls. The Reviews tab leads with a full-width button to Google's full reviews page. Settings >
 Navigation "Start drives north-up" (`NavNorthUp`, pref `nav_north_up`, off, issue #612) sets
-`navNorthUp` at every drive start; the compass still toggles it per drive. "Navigation icon"
+`navNorthUp` at every drive start; the compass still toggles it per drive, and a tap while the
+camera is detached (pan, overview, step preview) also re-centers so the change shows. "Navigation icon"
 (`PuckStyle.shape`, pref `puck_shape`, discussion #611) swaps the arrow for a top-down car
 (`drawCarPuck`, color pref `puck_car_color`: red, blue, white, green, yellow), a UFO, a pirate
 ship or a rubber duck (`drawUfoPuck` / `drawShipPuck` / `drawDuckPuck`) in the same bitmap
