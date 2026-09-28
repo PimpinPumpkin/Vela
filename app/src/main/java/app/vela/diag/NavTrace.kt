@@ -29,6 +29,9 @@ object NavTrace {
     // stretch, which is the part the reporter just watched go wrong.
     private const val CAP = 72_000
     private val rows = ArrayDeque<FloatArray>(1024)
+    // Nav decisions (reroute, faster route, silent upgrades) on the same clock as the rows. The
+    // text is NavSession's note, which never carries a coordinate (the K-line contract).
+    private val events = ArrayDeque<Pair<Float, String>>()
 
     @Volatile private var t0 = 0L
 
@@ -66,25 +69,45 @@ object NavTrace {
         }
     }
 
+    /** A nav decision, timed on the rows' clock. No-op unless recording. */
+    fun event(text: String) {
+        if (!enabled.value) return
+        synchronized(rows) {
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (t0 == 0L) t0 = now
+            if (events.size >= 2000) events.removeFirst()
+            events.addLast((now - t0) / 1000f to text.replace('\n', ' ').replace(',', ';'))
+        }
+    }
+
     fun clear() {
-        synchronized(rows) { rows.clear(); t0 = 0L }
+        synchronized(rows) { rows.clear(); events.clear(); t0 = 0L }
     }
 
     fun isEmpty(): Boolean = synchronized(rows) { rows.isEmpty() }
 
     /** Write the ring to a CSV in the cache dir and hand back a share intent, or null if empty. */
     fun shareIntent(context: Context): Intent? {
-        val snapshot = synchronized(rows) { if (rows.isEmpty()) return null else rows.toList() }
+        val (snapshot, evs) = synchronized(rows) { if (rows.isEmpty()) return null else rows.toList() to events.toList() }
         return runCatching {
             val dir = File(context.cacheDir, "export").apply { mkdirs() }
             val file = File(dir, "vela-nav-trace-${java.text.SimpleDateFormat("yyyy-MM-dd-HHmm", java.util.Locale.US).format(java.util.Date())}.csv")
             file.bufferedWriter().use { w ->
                 w.write("# Vela nav smoothness trace. No position data: bearings, along-route\n")
                 w.write("# distance, speed and frame timings only, safe to attach to an issue.\n")
+                // What a report is read against: without the build nobody can tell which camera ran.
+                w.write("# vela ${app.vela.BuildConfig.VERSION_NAME} (build ${app.vela.BuildConfig.VERSION_CODE})\n")
+                w.write("# android ${android.os.Build.VERSION.RELEASE} (sdk ${android.os.Build.VERSION.SDK_INT}), ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\n")
+                val sp = prefs(context)
+                w.write("# settings: north_up_start=${sp.getBoolean("nav_north_up", false)} texture_render=${sp.getBoolean("texture_render", false)}" +
+                    " demo_drive=${sp.getBoolean("demo_drive", false)} faster_route_auto=${sp.getBoolean("faster_route_auto", true)}\n")
+                w.write("# rows ${snapshot.size}, events ${evs.size}; events (route changes and why) are listed after the rows\n")
                 w.write("t_s,progress_m,speed_mps,window_m,chord_deg,display_deg,camera_deg,frame_dt_s\n")
                 for (r in snapshot) {
                     w.write("${r[0]},${r[1]},${r[2]},${r[3]},${r[4]},${r[5]},${r[6]},${r[7]}\n")
                 }
+                w.write("\n# events\nt_s,event\n")
+                for ((t, e) in evs) w.write("$t,$e\n")
             }
             shareFileIntent(
                 context, file, "text/csv",

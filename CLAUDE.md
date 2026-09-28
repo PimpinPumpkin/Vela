@@ -6163,6 +6163,10 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   the puck at essentially one spot and pushing it per frame would recompose the label 60x a second.
   The pill is width-capped and CLAMPED into the viewport so a long name near a screen edge cannot
   run off it.
+- **The trace header names the build (2026-09-28):** Vela version and build, Android version, device
+  model and the nav settings that change the camera, then the rows, then an `events` section: every
+  `NavSession` note (reroute, faster route, silent upgrade) timed on the rows' clock. A shared trace
+  once showed 25 route swaps in 19 minutes with no way to tell why or on which build.
 - **Nav smoothness trace (`app/diag/NavTrace`, Settings > Diagnostics, OFF by default, issue #251
   2026-08-10).** One row per nav frame - t, along-route progress, speed, bearing WINDOW, chordBrg,
   displayBearing, live camera bearing, frame dt - into a bounded 72k ring (oldest dropped), written
