@@ -112,15 +112,26 @@
                 <data android:scheme="geo" />
             </intent-filter>
 
-            <!-- Google-Maps web links → "open in maps" offers Vela too. -->
+            <!-- Google-Maps web links → "open in maps" offers Vela too. One filter per path rule:
+                 Android matches every host in a filter against every path in it, so a shared
+                 filter held maps.app.goo.gl and maps.google.com to the /maps prefix (issue #614). -->
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" />
                 <data android:scheme="http" />
-                <data android:host="www.google.com" android:pathPrefix="/maps" />
-                <data android:host="google.com" android:pathPrefix="/maps" />
+                <data android:host="www.google.com" />
+                <data android:host="google.com" />
+                <data android:host="goo.gl" />
+                <data android:pathPrefix="/maps" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:scheme="http" />
                 <data android:host="maps.google.com" />
                 <data android:host="maps.app.goo.gl" />
             </intent-filter>

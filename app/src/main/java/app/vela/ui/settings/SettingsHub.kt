@@ -376,6 +376,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_privacy_button to SettingsSection.PRIVACY,
     R.string.settings_google_free to SettingsSection.PRIVACY,
     R.string.settings_google_free_links to SettingsSection.PRIVACY,
+    R.string.settings_maps_links to SettingsSection.PRIVACY,
     R.string.settings_live_rechecks to SettingsSection.NAVIGATION,
     R.string.settings_google_session to SettingsSection.PRIVACY,
     R.string.settings_block_google_telemetry to SettingsSection.PRIVACY,

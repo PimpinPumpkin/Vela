@@ -1571,6 +1571,10 @@ Defaults that make the safe path the easy one:
   fleet back on the page paths with no release; a per-place cache (photos + feed 6 h, details 15 min)
   makes a re-tap free; "More reviews" follows the feed's next-page token, which sits at payload[1]
   (seen in a full-session reply 2026-09-25: `"<base64>:10"`, payload[5] null, payload[6] `[false]`).
+- **Link intent filters (issue #614, 2026-09-28):** every host in a filter is matched against every
+  path in it, so `/maps`-prefixed hosts (google.com, www.google.com, goo.gl) and pathless hosts
+  (maps.google.com, maps.app.goo.gl) live in separate filters. Check with
+  `adb shell pm query-activities --brief -a android.intent.action.VIEW -c android.intent.category.BROWSABLE -d <url>`.
 - **Place sheet tabs (2026-09-27):** `PlaceTabs` renders Overview / Reviews / Photos / Updates / Menu under the action pills
   (Updates with two or more posts; Overview keeps the newest; over three tabs the row scrolls). A bare
   address or pin (`Place.isListing()` false: no category, rating, count or featured review) gets no

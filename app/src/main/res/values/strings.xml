@@ -833,6 +833,11 @@
     <string name="settings_speech_preload">Load voice search at startup</string>
     <string name="settings_speech_preload_hint">Loads the voice search model when Vela opens, so the mic listens at once. It uses about 300 MB until two quiet minutes pass. Off, it loads when you tap into the search box. On by default on phones with about 8 GB of memory or more.</string>
     <string name="settings_google_free_links">Open shared Google Maps links</string>
+    <string name="settings_maps_links">Google Maps links</string>
+    <string name="settings_maps_links_on">Links to Google Maps open in Vela.</string>
+    <string name="settings_maps_links_partial">Some Google Maps links open in Vela. Add the rest under Open by default so every kind of link does.</string>
+    <string name="settings_maps_links_off">Android opens Google Maps links in the browser. To open them in Vela, turn on Open supported links and add the links under Open by default.</string>
+    <string name="settings_maps_links_open">Open by default settings</string>
     <string name="settings_google_free_links_hint">A short Google Maps link (maps.app.goo.gl) doesn\'t say where it points. With this on, Vela asks Google\'s link shortener once, with no cookies, and opens the place with the open sources. Full google.com/maps links open without asking. Shared lists still need Google.</string>
     <string name="map_import_failed">Couldn\'t import that list. Check the link and try again.</string>
     <string name="place_clear_parking">Clear parking</string>
