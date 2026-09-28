@@ -52,7 +52,10 @@ def main():
         loc = parse(locale_file)
         for name, ph in base.items():
             if name not in loc:
-                missing.append(f"{lang}: '{name}'")
+                # values-en-rGB exists to be British for a handful of words and falls back to
+                # the US base for the rest on purpose, so its 1,000 absent keys are not gaps.
+                if lang != "en-rGB":
+                    missing.append(f"{lang}: '{name}'")
             elif loc[name] != ph:
                 problems.append(f"{lang}: '{name}' placeholders {sorted(loc[name])} != default {sorted(ph)}")
     if missing:

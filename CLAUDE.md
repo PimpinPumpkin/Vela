@@ -1532,7 +1532,9 @@ Defaults that make the safe path the easy one:
   nothing. A first page of `FULL_PHOTO_PAGE_MIN` (40) or more clears it. A missing popular-times
   chart alone is never evidence (many places have none). The mark is stored against
   `SessionRotation.sessionStarted`, and any rotation resets it. Shown as one dim line where the
-  chart would be on a Google place (`place_limited_view`) and a status hint in Settings > Privacy >
+  chart would be on a Google place (`place_limited_view`), under the header of the full reviews page
+  (the same string; the More-reviews stall sets the mark, so it appears there as it happens, which
+  is where #602's reporter was looking), and a status hint in Settings > Privacy >
   Google session (`settings_google_session_limited`). Logcat `VelaSession: limited view: <why>`.
   The earlier note that the photo RPC returns "10 per page whatever COUNT says" was measured while
   this network was limited; it is the limited-view answer, not the RPC's rule. **The limit is per

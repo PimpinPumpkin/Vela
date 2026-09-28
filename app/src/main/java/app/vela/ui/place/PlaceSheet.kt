@@ -3748,6 +3748,16 @@ private fun FullScreenReviewsContent(featureId: String, place: Place, ink: Color
                         Text(stringResource(R.string.place_reviews_title), style = MaterialTheme.typography.bodySmall, color = dim)
                     }
                 }
+                // Google's limited view caps this page's feed (More reviews loads nothing) and the
+                // mark is set by that very stall, so the line appears here the moment it happens;
+                // issue #602's reporter was looking at this page, not the sheet.
+                if (app.vela.web.GoogleStanding.limited.value) {
+                    Text(
+                        stringResource(R.string.place_limited_view),
+                        style = MaterialTheme.typography.bodySmall, color = dim,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
                 val ctxForToast = androidx.compose.ui.platform.LocalContext.current
                 app.vela.web.GoogleReviewsPanel(
                     featureId = featureId,

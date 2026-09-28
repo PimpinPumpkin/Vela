@@ -34,7 +34,8 @@ translated. New features land in English first and show in English until someone
 sixteen files were brought fully up to date with English on 2026-09-28 (the 43 strings added since
 2026-09-25: the offline area picker, the Google request counter, SD card storage and the Maps links
 setting), translated per language to match each file's own register and terms. `python3 tools/check-translations.py` lists the missing
-keys per language (and fails only on placeholder drift).
+keys per language (and fails only on placeholder drift); `values-en-rGB` is left out of that list,
+since it only ever carries the few words that differ.
 
 Some context on the columns:
 
