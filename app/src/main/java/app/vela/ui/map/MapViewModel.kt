@@ -402,6 +402,7 @@ data class MapUiState(
 
     val regionFilePct: Int = 0,
     val poiPackInstalledIds: Set<String> = emptySet(),
+    val cellsInstalled: List<app.vela.offline.CellStore.Installed> = emptyList(), // grid cells on the phone (SPEC 7.6)
     val poiPackRegions: List<app.vela.offline.RoutingRegion> = emptyList(), // the pack catalog (revs/deltas)
     val poiPackInstalledRevs: Map<String, Int> = emptyMap(),                // installed pack revision per region
 )
@@ -446,6 +447,7 @@ class MapViewModel @Inject constructor(
     private val maxspeedStore: app.vela.offline.MaxspeedOverlayStore,
     private val placesStore: app.vela.offline.PlacesTileStore,
     private val basemapStore: app.vela.offline.BasemapTileStore,
+    private val cellStore: app.vela.offline.CellStore,
     private val routeEngine: app.vela.core.data.RouteEngine,
     private val http: okhttp3.OkHttpClient,
     private val selfUpdater: app.vela.update.SelfUpdater,
@@ -570,7 +572,7 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             runCatching {
                 poiPackStore.registerPacks()
-                _state.update { it.copy(poiPackInstalledIds = poiPackStore.installedIds()) }
+                _state.update { it.copy(poiPackInstalledIds = poiPackStore.installedIds(), cellsInstalled = cellStore.installed()) }
             }
         }
         // Reclaim disk from the removed Kokoro/Matcha voices (up to ~500 MB of dead model files after
@@ -6725,7 +6727,8 @@ class MapViewModel @Inject constructor(
                 runCatching { basemapStore.installedIds().forEach { basemapStore.delete(it) } }
                 runCatching { overlayStore.installedIds().forEach { overlayStore.delete(it) } }
                 val keep = setOf("index.json", "revs.json", "dead.json")
-                for (folder in listOf("obf", "poipacks", "places", "basemap", "overlays", "roadfeatures", "graphs")) {
+                runCatching { cellStore.clearIndex() }
+                for (folder in listOf("obf", "poipacks", "places", "basemap", "overlays", "roadfeatures", "graphs", "cells")) {
                     val base = if (folder in app.vela.offline.StorageLocation.FOLDERS) app.vela.offline.StorageLocation.root(appContext) else appContext.filesDir
                     java.io.File(base, folder).listFiles()?.forEach { f ->
                         if (f.name !in keep) runCatching { if (f.isDirectory) f.deleteRecursively() else f.delete() }
@@ -6746,7 +6749,7 @@ class MapViewModel @Inject constructor(
             }
             _state.update {
                 it.copy(
-                    routingInstalledIds = obfStore.installedIds(), poiPackInstalledIds = poiPackStore.installedIds(),
+                    routingInstalledIds = obfStore.installedIds(), poiPackInstalledIds = poiPackStore.installedIds(), cellsInstalled = emptyList(),
                     placesOverlays = emptyList(), basemapArchive = null, buildingOverlays = emptyList(), addressOverlays = emptyList(),
                 )
             }
@@ -6798,6 +6801,11 @@ class MapViewModel @Inject constructor(
         val regionInstalled: Boolean,
         val tiles: Int = 0,
         val tooLarge: Boolean = false,
+        // The region's grid cells the frame touches and not yet on the phone (SPEC 7.6): directions
+        // and places for the framed area alone, offered beside the whole region. Empty where the
+        // region has no cells baked or the whole region is installed.
+        val cells: List<app.vela.offline.CellStore.Cell> = emptyList(),
+        val cellsMb: Int = 0,
         val bounds: DoubleArray = DoubleArray(4), // s, w, n, e
         val minZ: Double = 0.0,
     )
@@ -6846,7 +6854,7 @@ class MapViewModel @Inject constructor(
         val lat = (s + n) / 2; val lng = (w + e) / 2
         val kb = areaTileKb(lat, lng)
         val viewMb = maxOf(1, Math.round(tiles * kb / 1024.0).toInt())
-        val base = AreaPlan(viewMb, null, 0, false, tiles, tiles > AREA_MAX_TILES, b, minZ)
+        val base = AreaPlan(viewMb, null, 0, false, tiles, tiles > AREA_MAX_TILES, bounds = b, minZ = minZ)
         val regions = _state.value.routingRegions.ifEmpty {
             runCatching { regionCatalog.manifest(app.vela.BuildConfig.OBF_MANIFEST_URL) }.getOrDefault(emptyList())
                 .also { rs -> if (rs.isNotEmpty()) _state.update { it.copy(routingRegions = rs) } }
@@ -6864,7 +6872,14 @@ class MapViewModel @Inject constructor(
                 .filter { it.covers(lat, lng) }.minByOrNull { it.boxArea() }
                 ?.takeIf { it.id !in overlayStore.installedIds() }?.sizeMb ?: 0
         }.getOrDefault(0)
-        return base.copy(region = region, regionMb = app.vela.ui.settings.sections.regionInstalledMb(region, pack, extras) + overlayMb)
+        val installedCells = cellStore.installedIds()
+        val cells = runCatching { cellStore.manifest(app.vela.BuildConfig.CELLS_MANIFEST_URL) }.getOrDefault(emptyList())
+            .filter { it.regionId == region.id && it.id !in installedCells }
+            .let { cellStore.cellsFor(it, s, w, n, e) }
+        return base.copy(
+            region = region, regionMb = app.vela.ui.settings.sections.regionInstalledMb(region, pack, extras) + overlayMb,
+            cells = cells, cellsMb = Math.round(cells.sumOf { it.installedMb }).toInt(),
+        )
     }
 
     /** KB per saved tile around ([lat],[lng]): the covering map archive's size over the tiles in its
@@ -6889,8 +6904,9 @@ class MapViewModel @Inject constructor(
         return (x(e) - x(w) + 1) * (y(s) - y(n) + 1)
     }
 
-    /** Save the framed area ([MapUiState.areaPick]), plus the region around it when [withRegion]. */
-    fun downloadPickedArea(withRegion: Boolean) {
+    /** Save the framed area ([MapUiState.areaPick]), plus the region around it when [withRegion],
+     *  or only the region's grid cells the frame touches when [withCells] (SPEC 7.6). */
+    fun downloadPickedArea(withRegion: Boolean, withCells: Boolean = false) {
         val plan = _state.value.areaPick ?: return
         if (plan.tooLarge || _state.value.areaDownloadPct != null) return // one area at a time
         cancelAreaPick()
@@ -6928,6 +6944,63 @@ class MapViewModel @Inject constructor(
         if (withRegion) {
             downloadOfflinePois(s, w, n, e)
             downloadRoutingForArea((s + n) / 2, (w + e) / 2)
+        } else if (withCells && plan.cells.isNotEmpty()) {
+            downloadCells(plan.cells)
+        }
+    }
+
+    /**
+     * Pull [cells] one after another under the region download card (SPEC 7.6): each zip installs
+     * its obf, place pack and places slice into the same stores a region download fills, so
+     * routing, offline search and the places layer pick them up with no further step. The map of
+     * the framed area is the picker's own tile save; the cells add directions and places for it.
+     * Cancel is the card's; a canceled or failed cell leaves the ones before it installed.
+     */
+    private fun downloadCells(cells: List<app.vela.offline.CellStore.Cell>) {
+        if (_state.value.routingDownloadingId != null) return
+        val name = cells.first().regionName
+        regionCancel.set(false)
+        _state.update { it.copy(routingDownloadingId = CELLS_DOWNLOAD_ID, routingDownloadPct = 0, regionDownloadName = name) }
+        downloadLaunch(name) {
+            var got = 0
+            try {
+                for ((i, cell) in cells.withIndex()) {
+                    if (regionCancel.get()) break
+                    _state.update {
+                        it.copy(routingDownloadPct = 0, regionDownloadName = appContext.getString(R.string.mapvm_cells_progress, name, i + 1, cells.size))
+                    }
+                    val ok = cellStore.download(cell, active = { !regionCancel.get() }) { pct -> _state.update { it.copy(routingDownloadPct = pct) } }
+                    if (ok) got++ else if (!regionCancel.get()) break
+                }
+            } finally {
+                poiPackStore.registerPacks()
+                (routeEngine as? app.vela.core.data.ObfRouteEngine)?.shutdown() // re-read the region index with the new cells
+                _state.update {
+                    it.copy(
+                        routingDownloadingId = null, regionDownloadName = null,
+                        routingInstalledIds = obfStore.installedIds(), poiPackInstalledIds = poiPackStore.installedIds(),
+                        cellsInstalled = cellStore.installed(),
+                    )
+                }
+                refreshPlacesOverlays()
+                android.util.Log.i("VelaRegion", "cells $name: $got of ${cells.size} canceled=${regionCancel.get()}")
+                if (!regionCancel.get()) {
+                    showStatus(appContext.getString(if (got == cells.size) R.string.mapvm_cells_ready else R.string.mapvm_cells_incomplete, name))
+                }
+            }
+        }
+    }
+
+    /** Remove every grid cell of [regionId] (Offline maps > Downloaded). */
+    fun deleteCellRegion(regionId: String) {
+        viewModelScope.launch {
+            kotlinx.coroutines.withContext(Dispatchers.IO) { cellStore.deleteRegion(regionId) }
+            (routeEngine as? app.vela.core.data.ObfRouteEngine)?.shutdown()
+            _state.update {
+                it.copy(routingInstalledIds = obfStore.installedIds(), poiPackInstalledIds = poiPackStore.installedIds(), cellsInstalled = cellStore.installed())
+            }
+            refreshPlacesOverlays()
+            showStatus(appContext.getString(R.string.mapvm_offline_routing_removed))
         }
     }
 
@@ -7968,6 +8041,7 @@ class MapViewModel @Inject constructor(
     fun deleteRoutingGraph(id: String) {
         obfStore.delete(id)
         poiPackStore.delete(id) // the place pack rides with the region — remove them together
+        runCatching { cellStore.deleteRegion(id) } // and any grid cells of it (their places slices sit inside its box anyway)
         // The open places archives that came with this region go too: any whose bbox center sits
         // inside the region's box, plus a same-id archive.
         runCatching {
@@ -7980,7 +8054,7 @@ class MapViewModel @Inject constructor(
         refreshPlacesOverlays()
         (routeEngine as? app.vela.core.data.ObfRouteEngine)?.shutdown() // drop cached readers for the removed region
         _state.update {
-            it.copy(routingInstalledIds = obfStore.installedIds(), poiPackInstalledIds = poiPackStore.installedIds())
+            it.copy(routingInstalledIds = obfStore.installedIds(), poiPackInstalledIds = poiPackStore.installedIds(), cellsInstalled = cellStore.installed())
         }
         showStatus(appContext.getString(R.string.mapvm_offline_routing_removed))
     }
@@ -8081,6 +8155,9 @@ class MapViewModel @Inject constructor(
     }
 
     companion object {
+        /** [MapUiState.routingDownloadingId] while grid cells download (no catalog row carries it). */
+        const val CELLS_DOWNLOAD_ID = "cells"
+
         /** Average size of one saved map tile, for the area-download estimate ([areaDownloadPlan]):
          *  OpenFreeMap tiles sampled at 26 to 170 KB, plus the terrain layer that rides along. */
         const val AREA_TILE_KB = 110.0

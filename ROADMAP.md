@@ -20,14 +20,12 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
 
 Roughly in the order they are worth doing. Each one is small enough for a single PR.
 
-- **Grid-cell downloads, app side (2026-09-27).** The bake exists (SPEC 7.6: 0.5 degree cells,
-  one zip per cell with obf + place pack + places slice, `cells-manifest.json` on `grid-cells`);
-  no cells are published yet. Next: the Download an area picker reads the manifest, pulls the
-  cells its frame touches, installs each part into the existing stores (obf into `ObfStore` with
-  the cell's box in `index.json`, the pack into `PoiPackStore`, the slice into `PlacesTileStore`),
-  and deletes by cell. Open: how a cell pack and a whole-region pack of the same area coexist in
-  search (duplicate rows), and per-cell updates by `rev`. Before a catalog-wide dispatch,
-  promote-stable and fdroid-repo must paginate their `gh release list` (about 450 new releases).
+- **Grid cells: the layer, the duplicate pack and updates (2026-09-28).** The picker pulls cells
+  now (SPEC 7.6.5). Left: `PmtilesRegionStore.sourcesFor` mounts one archive, so the places layer
+  shows one cell at a time (mount every installed cell touching the view, or merge slices); a cell
+  pack and a whole-region pack of the same area both answer offline search (duplicate rows); no
+  per-cell update by `rev`. Before a catalog-wide cells dispatch, promote-stable and fdroid-repo
+  must paginate their `gh release list` (about 450 new releases).
 - **A name index for the downloaded places archive (2026-09-21).** Offline search reads the OSM
   place pack, and OSM is missing whole chains in places (the parts store that started this was
   on the map from the Overture archive and absent from search). The places PMTiles is spatial

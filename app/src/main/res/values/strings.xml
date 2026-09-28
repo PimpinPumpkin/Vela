@@ -86,6 +86,9 @@
     <string name="map_region_places_downloading">Saving %1$s places for offline search · %2$d%%</string> <!-- format -->
     <string name="map_region_placesfile_downloading">Saving %1$s places for the map · %2$d%%</string> <!-- format -->
     <string name="map_region_map_downloading">Downloading the %1$s map · %2$d%%</string> <!-- format -->
+    <string name="mapvm_cells_progress">%1$s, part %2$d of %3$d</string> <!-- format -->
+    <string name="mapvm_cells_ready">Directions and places for this part of %1$s work offline</string> <!-- format -->
+    <string name="mapvm_cells_incomplete">Some pieces of %1$s did not download. Try again later.</string> <!-- format -->
     <string name="mapvm_region_ready">%1$s is downloaded: map, routes and places work offline</string> <!-- format -->
     <string name="mapvm_region_incomplete">%1$s is only partly downloaded. Connect and tap Update in Settings, Offline maps to finish it</string> <!-- format -->
     <string name="mapvm_poipack_ready">Places in %1$s are now searchable offline</string> <!-- format -->
@@ -177,6 +180,15 @@
     <string name="area_pick_too_large">Too large to save as one area. Zoom in, or download all of %1$s below.</string>
     <string name="area_pick_too_large_plain">Too large to save as one area. Zoom in a little.</string>
     <string name="settings_area_confirm_region">Also get %1$s for offline directions, places and the map beyond this area: about %2$s. These only come as a whole region.</string>
+    <plurals name="area_pick_cells">
+        <item quantity="one">Get offline directions and places for just this area: about %1$s (%2$d part of the region)</item>
+        <item quantity="other">Get offline directions and places for just this area: about %1$s (%2$d parts of the region)</item>
+    </plurals>
+    <plurals name="settings_downloaded_cells">
+        <item quantity="one">Part of the region: %1$d piece, %2$s</item>
+        <item quantity="other">Part of the region: %1$d pieces, %2$s</item>
+    </plurals>
+    <string name="settings_offline_delete_cells">Delete these pieces</string>
     <string name="settings_area_confirm_region_have">Offline directions and places for %1$s are already downloaded.</string>
     <string name="settings_offline_no_areas">No areas saved yet.</string>
     <string name="settings_offline_addresses_missing">Areas you saved before this update don\'t include address data. Update them to search and route to addresses offline.</string>

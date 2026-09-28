@@ -97,6 +97,19 @@ class ObfStore @Inject constructor(
         }.getOrElse { tmp.delete(); false }
     }
 
+    /** Install an obf already on disk (a grid cell's part, unpacked from its zip) as [id] over [box]
+     *  (`[s, w, n, e]`): moved into place, indexed, its rev recorded. False leaves nothing behind. */
+    fun installFile(id: String, tmp: File, box: DoubleArray, rev: Int): Boolean = runCatching {
+        root.mkdirs()
+        check(tmp.length() > 1024) { "obf is implausibly small" }
+        val dest = File(root, "$id.obf")
+        dest.delete()
+        if (!tmp.renameTo(dest)) { tmp.copyTo(dest, overwrite = true); tmp.delete() }
+        synchronized(indexLock) { writeIndex(readIndex() + (id to box)) }
+        writeRev(id, rev)
+        true
+    }.getOrElse { tmp.delete(); false }
+
     fun delete(id: String) {
         File(root, "$id.obf").delete()
         synchronized(indexLock) { writeIndex(readIndex() - id) }

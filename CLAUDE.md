@@ -5086,12 +5086,21 @@ Gotchas:
   6th (shard a) and 7th (shard b) against the newest Overture release found in the bucket listing;
   basemap on the 9th and 10th (first/second half of the catalog by id). The obf bake stays manual (its
   runner memory limits and the user's manifest flip).
-- **Grid cells, bake only (2026-09-27, SPEC 7.6).** `scripts/build-cells-region.sh <region>
+- **Grid cells, app side (2026-09-28, SPEC 7.6.5).** `app/offline/CellStore` (manifest from
+  `BuildConfig.CELLS_MANIFEST_URL`, `-PcellsManifestUrl`; `cells/index.json`) streams a cell zip
+  and installs each part through `ObfStore.installFile` / `PoiPackStore.installFile` /
+  `PmtilesRegionStore.installFile` under the cell's id, so nothing downstream knows about cells.
+  `AreaPlan.cells`/`cellsMb` feed the picker's cells checkbox (default, excludes the region one);
+  `downloadCells` runs under the region card with `routingDownloadingId = CELLS_DOWNLOAD_ID`;
+  `deleteCellRegion` and `deleteRoutingGraph` remove them; delete-all sweeps `cells/`. Test with
+  the published Delaware cells (`cells-manifest.json` on `grid-cells`). Open: `sourcesFor` mounts
+  one archive, duplicate pack rows, per-cell rev updates (ROADMAP).
+- **Grid cells, bake (2026-09-27, SPEC 7.6).** `scripts/build-cells-region.sh <region>
   [local.pbf]` cuts a catalog region into 0.5 degree cells and zips obf + place pack + places slice
   per cell; `CELLS_UPLOAD=1` publishes to `cells-<region>`, `scripts/merge-cells-manifest.sh`
   derives `cells-manifest.json` on `grid-cells` (`DRY_RUN=1` for a local copy);
   `grid-cells.yml` is dispatch only. Shared bake steps live in `scripts/bake-lib.sh`
-  (build-obf-region.sh and build-poi-region.sh source it). The app does not read cells yet.
+  (build-obf-region.sh and build-poi-region.sh source it).
   Cross-cell routing check: `ObfCellsProbeTest -DvelaCells=<dir with cells/ and whole/>`.
   Local runs: macOS bash is 3.2, keep the scripts 3.2-safe.
 - **Offline basemap (2026-09-14).** A region download is now routing (obf) + places (Overture) + the

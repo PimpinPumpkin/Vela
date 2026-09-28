@@ -467,6 +467,26 @@ abstract class PmtilesRegionStore(
         }
     }
 
+    /** Install an archive already on disk (a grid cell's places slice) as [id] over [box]
+     *  (`[s, w, n, e]`): the same magic check, rename, index and rev a download ends with. */
+    suspend fun installFile(id: String, tmp: File, box: DoubleArray, rev: Int): Boolean = withContext(Dispatchers.IO) {
+        downloadMutex.withLock {
+            runCatching {
+                root.mkdirs()
+                check(tmp.length() > 127 && tmp.inputStream().use { s -> ByteArray(7).let { s.read(it); String(it) } } == "PMTiles") { "not a PMTiles archive" }
+                val file = fileFor(id)
+                file.delete()
+                if (!tmp.renameTo(file)) { tmp.copyTo(file, overwrite = true); tmp.delete() }
+                synchronized(indexLock) {
+                    writeIndex(readIndex() + (id to box))
+                    writeRev(id, rev)
+                    writeDead(id, 0)
+                }
+                true
+            }.getOrElse { tmp.delete(); false }
+        }
+    }
+
     fun delete(id: String) {
         fileFor(id).delete()
         synchronized(indexLock) { writeIndex(readIndex() - id); writeRev(id, 0); writeDead(id, 0) }

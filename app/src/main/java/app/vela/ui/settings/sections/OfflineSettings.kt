@@ -257,7 +257,8 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
         val primary = state.routingRegions.filter { r -> loc != null && r.covers(loc.lat, loc.lng) }
             .minByOrNull { (it.n - it.s) * (it.e - it.w) }
         SettingsGroup {
-            if (regions.isEmpty() && installedRegions.isEmpty()) {
+            val cellGroups = state.cellsInstalled.groupBy { it.regionId }.values.sortedBy { it.first().regionName }
+            if (regions.isEmpty() && installedRegions.isEmpty() && cellGroups.isEmpty()) {
                 Hint(stringResource(R.string.settings_downloaded_none))
             }
             regions.forEachIndexed { ri, r ->
@@ -278,6 +279,27 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
             installedRegions.sortedBy { it.name }.forEachIndexed { ri, region ->
                 if (ri > 0 || regions.isNotEmpty()) GroupDivider()
                 RegionRow(region, state, vm, primary?.id, indent = false, onConfirm = { confirmRegion = it })
+            }
+            // Grid cells: part of a region pulled by the area picker (SPEC 7.6), one row per region
+            // with every cell's parts summed; delete takes all of that region's cells.
+            cellGroups.forEachIndexed { ri, cells ->
+                if (ri > 0 || regions.isNotEmpty() || installedRegions.isNotEmpty()) GroupDivider()
+                val first = cells.first()
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(first.regionName.ifBlank { first.regionId }, style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
+                        Text(
+                            androidx.compose.ui.res.pluralStringResource(R.plurals.settings_downloaded_cells, cells.size, cells.size, fmtMb(Math.round(cells.sumOf { it.mb }).toInt())),
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    IconButton(modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape), onClick = { vm.deleteCellRegion(first.regionId) }) {
+                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_offline_delete_cells))
+                    }
+                }
             }
         }
         Spacer(Modifier.height(8.dp))

@@ -91,6 +91,14 @@ android {
             "\"${(project.findProperty("placesManifestUrl") as String?)
                 ?: "https://github.com/PimpinPumpkin/Vela/releases/download/places-overlays/places-overlay-manifest.json"}\"",
         )
+        // GRID CELLS (SPEC 7.6): half-degree pieces of a region, obf + pack + places slice per cell,
+        // pulled by the area picker; same override pattern (-PcellsManifestUrl=...).
+        buildConfigField(
+            "String",
+            "CELLS_MANIFEST_URL",
+            "\"${(project.findProperty("cellsManifestUrl") as String?)
+                ?: "https://github.com/PimpinPumpkin/Vela/releases/download/grid-cells/cells-manifest.json"}\"",
+        )
         // Offline BASEMAP tiles (planetiler bakes of the Geofabrik extracts in the OpenMapTiles schema,
         // .github/workflows/basemap-tiles.yml) catalog, same override pattern (-PbasemapManifestUrl=...).
         // An installed archive replaces the style's tile source where it covers the view.

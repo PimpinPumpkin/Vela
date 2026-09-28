@@ -5783,7 +5783,10 @@ private fun barRoadName(state: MapUiState): String? {
 @Composable
 private fun BoxScope.AreaPickOverlay(state: MapUiState, vm: MapViewModel, zoomButtons: Boolean, onZoom: (Double) -> Unit) {
     val plan = state.areaPick
+    // Cells (part of the region, SPEC 7.6) are the default where the region has them baked; the
+    // whole region stays a choice. Picking one clears the other: they pull the same kind of data.
     var withRegion by remember { mutableStateOf(true) }
+    var withCells by remember { mutableStateOf(true) }
     val scrim = Color.Black.copy(alpha = 0.45f)
     val edge = MaterialTheme.colorScheme.primary
     androidx.compose.foundation.Canvas(Modifier.matchParentSize()) {
@@ -5837,13 +5840,30 @@ private fun BoxScope.AreaPickOverlay(state: MapUiState, vm: MapViewModel, zoomBu
                     modifier = Modifier.padding(top = 6.dp),
                 )
             } else if (plan != null && region != null) {
+                val cellsOffered = plan.cells.isNotEmpty()
+                if (cellsOffered) {
+                    Row(
+                        Modifier.padding(top = 8.dp)
+                            .dpadHighlight(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                            .toggleable(value = withCells, onValueChange = { v -> withCells = v; if (v) withRegion = false }),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        androidx.compose.material3.Checkbox(checked = withCells, onCheckedChange = null)
+                        Text(
+                            androidx.compose.ui.res.pluralStringResource(R.plurals.area_pick_cells, plan.cells.size, app.vela.ui.settings.sections.fmtMb(plan.cellsMb), plan.cells.size),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                    }
+                }
+                val regionOn = withRegion && !(cellsOffered && withCells)
                 Row(
                     Modifier.padding(top = 8.dp)
                         .dpadHighlight(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
-                        .toggleable(value = withRegion, onValueChange = { v -> withRegion = v }),
+                        .toggleable(value = regionOn, onValueChange = { v -> withRegion = v; if (v) withCells = false }),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    androidx.compose.material3.Checkbox(checked = withRegion, onCheckedChange = null)
+                    androidx.compose.material3.Checkbox(checked = regionOn, onCheckedChange = null)
                     Text(
                         stringResource(R.string.settings_area_confirm_region, region.name, app.vela.ui.settings.sections.fmtMb(plan.regionMb)),
                         style = MaterialTheme.typography.bodyMedium,
@@ -5870,7 +5890,14 @@ private fun BoxScope.AreaPickOverlay(state: MapUiState, vm: MapViewModel, zoomBu
                 ) { Text(stringResource(R.string.settings_cancel)) }
                 Spacer(Modifier.width(8.dp))
                 Button(
-                    onClick = { vm.downloadPickedArea(withRegion && region != null && plan?.regionInstalled == false) },
+                    onClick = {
+                        val cellsOffered = plan?.cells?.isNotEmpty() == true
+                        val cellsPick = cellsOffered && withCells
+                        vm.downloadPickedArea(
+                            withRegion = withRegion && !cellsPick && region != null && plan?.regionInstalled == false,
+                            withCells = cellsPick,
+                        )
+                    },
                     enabled = plan != null && !plan.tooLarge,
                     shape = androidx.compose.foundation.shape.CircleShape,
                     modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),

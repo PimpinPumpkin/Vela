@@ -1999,7 +1999,7 @@ features, and the building and address overlays where they exist. `MapPoiPrefs.p
 | Address overlay | `scripts/build-address-region.sh` | `address-overlays` | `address-overlay-manifest.json` |
 | Maxspeed overlay | `maxspeed-overlays.yml` | `maxspeed-overlays` | its own manifest |
 | ALPR cameras | `scripts/build-flock-cameras.py` | `flock-cameras` | `flock-manifest.json` |
-| Grid cells (bake only, 7.6) | `scripts/build-cells-region.sh` | `cells-<region>` | `cells-manifest.json` on `grid-cells` |
+| Grid cells (7.6) | `scripts/build-cells-region.sh` | `cells-<region>` | `cells-manifest.json` on `grid-cells` |
 | Glyphs | `scripts/build-map-fonts.sh` | `map-fonts` | unpacked to Pages |
 | TTS runtime, ASR models | vendored builds | `tts-runtime`, `asr-models` | catalog in `:core` |
 
@@ -2252,11 +2252,10 @@ Four rules, each of which produced a blank map:
 4. Every helper that reads the basemap source must go through `basemapSrc(style)`, or the
    offline map comes up light and bare.
 
-### 7.6 Grid-cell downloads (bake side)
+### 7.6 Grid-cell downloads
 
 A catalog region is also published as grid cells, so the app can download the part of a region a
-frame touches instead of the whole region. The app side is not built; nothing reads these assets
-yet.
+frame touches instead of the whole region. The bake is 7.6.1 to 7.6.4; the app side is 7.6.5.
 
 **Grid.** Cells are the 0.5 degree tiles of one global grid (`cells_grid.py`, `STEP` 0.5), each
 clipped to the region's header box (clamped by `clamp-bbox.py`). The key is the tile's SW corner,
@@ -2325,6 +2324,42 @@ dispatch.
 the trip box, so a trip over several cell files routes like one over the region file.
 `ObfCellsProbeTest` (`-DvelaCells=<dir with cells/ and whole/>`) checks four Delaware trips across
 cell edges: identical distance, time and step count.
+
+#### 7.6.5 App side
+
+`app/offline/CellStore` reads the manifest (`BuildConfig.CELLS_MANIFEST_URL`, override
+`-PcellsManifestUrl`; memoized 10 min like the archive catalogs, a miss memoized 10 min) and
+installs cells. A cell's parts go into the SAME stores a region download fills, under the cell's
+id: `ObfStore.installFile` (moved into `obf/<id>.obf`, box into `index.json`, rev into
+`revs.json`), `PoiPackStore.installFile` (SQLite magic check, `poipacks/<id>.db`, rev, packs
+re-registered) and `PmtilesRegionStore.installFile` (PMTiles magic check under the download
+mutex, `places/<id>.pmtiles`, index, rev, dead reset). So routing (`ObfRouteEngine.regions()`
+re-reads the index per route), offline search and the places layer read a cell with no cell-aware
+code. `cells/index.json` lists the installed cells (id, region, name, box, rev, installed MB) so
+the Downloaded group can show and delete them per region; `cells` is in `StorageLocation.FOLDERS`.
+
+**Picker.** `areaDownloadPlan` fills `AreaPlan.cells` with the region's cells whose box
+intersects the frame and are not installed, and `cellsMb` with their `installedMb` sum; empty
+where the whole region is installed or the region has no cells. The card then shows a cells
+checkbox above the whole-region one; the two exclude each other and cells are the default.
+`downloadPickedArea(withCells = true)` runs `downloadCells`: sequential, under the region
+download card (`routingDownloadingId` = `CELLS_DOWNLOAD_ID`, name "<region>, part k of n"),
+canceled by the card's Cancel; a canceled or failed cell leaves the earlier ones installed and the
+status says so (`mapvm_cells_incomplete`). The zip is streamed through `ZipInputStream`; each
+entry is staged in `cells/<id>.tmp/` and handed to its store; a part whose install fails is
+dropped, and the cell is listed as installed when at least one part landed, so it can always be
+deleted. Progress is the zip's bytes.
+
+**Delete.** `deleteCellRegion(regionId)` removes every cell of the region from all three stores;
+`deleteRoutingGraph(id)` removes the region's cells as well (their places slices sit inside the
+region's box and would go with the `idsInside` sweep regardless); "Delete all offline data" clears
+the cells index and sweeps `cells/`.
+
+**Open.** `PmtilesRegionStore.sourcesFor` mounts ONE archive, the smallest installed one covering
+the view center, so with several cells installed the places layer switches archive as the center
+crosses a cell edge and shows nothing of a neighboring cell past that edge (streaming the manifest
+region fills in online). A cell pack and a whole-region pack of the same area both answer offline
+search (duplicate rows). Per-cell updates by `rev` are not offered. Both are the next steps.
 
 ---
 

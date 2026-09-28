@@ -984,3 +984,18 @@ done so it *earns* trust rather than spends it:
   three signature algorithms short of current Chrome. The new jars are Java 25 class files, which
   needed a newer R8 pinned on the buildscript classpath. `zstd` is still not offered: Cronet keeps
   it behind a feature only a system flags file can turn on.
+
+## 2026-09-28: grid cells, app side
+
+- **Grid-cell downloads, app side (2026-09-27).** The bake exists (SPEC 7.6: 0.5 degree cells,
+  one zip per cell with obf + place pack + places slice, `cells-manifest.json` on `grid-cells`);
+  no cells are published yet. Next: the Download an area picker reads the manifest, pulls the
+  cells its frame touches, installs each part into the existing stores (obf into `ObfStore` with
+  the cell's box in `index.json`, the pack into `PoiPackStore`, the slice into `PlacesTileStore`),
+  and deletes by cell. Open: how a cell pack and a whole-region pack of the same area coexist in
+  search (duplicate rows), and per-cell updates by `rev`. Before a catalog-wide dispatch,
+  promote-stable and fdroid-repo must paginate their `gh release list` (about 450 new releases).
+  Shipped 2026-09-28: `CellStore` plus `installFile` on the three stores, the picker's cells
+  checkbox, the sequential download under the region card, per-region rows and delete in
+  Downloaded. The duplicate-pack rows, the one-archive places layer and per-cell updates stayed
+  open (ROADMAP).

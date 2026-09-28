@@ -211,6 +211,21 @@ class PoiPackStore @Inject constructor(
         }
     }
 
+    /** Install a pack SQLite already on disk (a grid cell's part) as [id]: the same magic check,
+     *  rename, rev and registration a download ends with. False leaves nothing behind. */
+    fun installFile(id: String, tmp: File, rev: Int): Boolean = runCatching {
+        packsRoot.mkdirs()
+        check(tmp.length() > 16 && tmp.inputStream().use { s ->
+            val magic = ByteArray(15); s.read(magic); String(magic) == "SQLite format 3"
+        }) { "not a SQLite db" }
+        val dest = File(packsRoot, "$id.db")
+        dest.delete()
+        if (!tmp.renameTo(dest)) { tmp.copyTo(dest, overwrite = true); tmp.delete() }
+        writeRev(id, rev)
+        registerPacks()
+        true
+    }.getOrElse { tmp.delete(); false }
+
     fun delete(id: String) {
         File(packsRoot, "$id.db").delete()
         synchronized(revsLock) {

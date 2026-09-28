@@ -412,13 +412,27 @@ reads that copy instead. Before 2026-09-23 a failed fetch meant an empty list, s
 just downloaded a state and opened the page with no signal read it as "nothing is downloaded". A
 phone that has never fetched the catalog still gets an empty page offline.
 
-### Grid cells: part of a region (bake only)
+### Grid cells: part of a region
 
 A region can also be cut into cells, so a frame over one town can pull a few small bundles instead
-of the whole state. The bake exists
-(`scripts/build-cells-region.sh`, workflow `grid-cells.yml`, SPEC 7.6); the app does not read it
-yet. Cells are 0.5 degree tiles of one global grid, clipped to the region; each is one zip holding
-its routing obf, its place pack and its slice of the region's places tiles.
+of the whole state. The bake is `scripts/build-cells-region.sh` and the workflow `grid-cells.yml`
+(SPEC 7.6). Cells are 0.5 degree tiles of one global grid, clipped to the region; each is one zip
+holding its routing obf, its place pack and its slice of the region's places tiles.
+
+Since 2026-09-28 the area picker reads them. Where the region under the frame has cells baked and
+is not installed whole, the picker's card offers "offline directions and places for just this
+area" with the size and the number of pieces, above the whole-region checkbox; picking one clears
+the other, and the pieces are the default. The pieces download one after another under the same
+card a region download uses ("Delaware, part 2 of 3"), and each one's obf, place pack and places
+slice land in the same folders a whole region fills, so directions, offline search and the places
+layer use them with nothing else to set up. Cancel keeps the pieces already down. Offline maps >
+Downloaded lists them as one row per region ("Part of the region: 3 pieces, 24 MB") with a
+delete; deleting the whole region removes its pieces too.
+
+What a piece cannot do yet: the places layer mounts one archive at a time (the smallest
+installed one under the map's center), so with two neighboring pieces installed the businesses
+of the other piece appear only once the center crosses into it; a piece and a whole-region place
+pack of the same area both answer a search; and pieces are not updated by revision.
 
 Delaware, baked on a laptop with four cells at a time:
 
