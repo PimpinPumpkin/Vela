@@ -1048,4 +1048,7 @@
     <string name="settings_car_white">Белая</string>
     <string name="settings_car_green">Зелёная</string>
     <string name="settings_car_yellow">Жёлтая</string>
+    <string name="settings_puck_shape_ufo">НЛО</string>
+    <string name="settings_puck_shape_ship">Пиратский корабль</string>
+    <string name="settings_puck_shape_duck">Резиновая уточка</string>
 </resources>

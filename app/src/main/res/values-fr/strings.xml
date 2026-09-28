@@ -1038,4 +1038,7 @@
     <string name="settings_car_white">Blanc</string>
     <string name="settings_car_green">Vert</string>
     <string name="settings_car_yellow">Jaune</string>
+    <string name="settings_puck_shape_ufo">OVNI</string>
+    <string name="settings_puck_shape_ship">Bateau pirate</string>
+    <string name="settings_puck_shape_duck">Canard en caoutchouc</string>
 </resources>

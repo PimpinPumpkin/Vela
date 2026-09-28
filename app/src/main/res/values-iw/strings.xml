@@ -1041,4 +1041,7 @@
     <string name="settings_car_white">לבן</string>
     <string name="settings_car_green">ירוק</string>
     <string name="settings_car_yellow">צהוב</string>
+    <string name="settings_puck_shape_ufo">עב\"ם</string>
+    <string name="settings_puck_shape_ship">ספינת פיראטים</string>
+    <string name="settings_puck_shape_duck">ברווז גומי</string>
 </resources>

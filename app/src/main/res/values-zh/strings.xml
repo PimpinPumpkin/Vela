@@ -1058,4 +1058,7 @@
     <string name="settings_car_white">白色</string>
     <string name="settings_car_green">绿色</string>
     <string name="settings_car_yellow">黄色</string>
+    <string name="settings_puck_shape_ufo">飞碟</string>
+    <string name="settings_puck_shape_ship">海盗船</string>
+    <string name="settings_puck_shape_duck">小黄鸭</string>
 </resources>

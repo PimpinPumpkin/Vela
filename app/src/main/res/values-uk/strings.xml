@@ -1048,4 +1048,7 @@
     <string name="settings_car_white">Біле</string>
     <string name="settings_car_green">Зелене</string>
     <string name="settings_car_yellow">Жовте</string>
+    <string name="settings_puck_shape_ufo">НЛО</string>
+    <string name="settings_puck_shape_ship">Піратський корабель</string>
+    <string name="settings_puck_shape_duck">Гумова качечка</string>
 </resources>

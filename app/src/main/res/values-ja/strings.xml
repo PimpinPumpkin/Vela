@@ -1060,4 +1060,7 @@
     <string name="settings_car_white">白</string>
     <string name="settings_car_green">緑</string>
     <string name="settings_car_yellow">黄</string>
+    <string name="settings_puck_shape_ufo">UFO</string>
+    <string name="settings_puck_shape_ship">海賊船</string>
+    <string name="settings_puck_shape_duck">ラバーダック</string>
 </resources>

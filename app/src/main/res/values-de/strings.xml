@@ -1038,4 +1038,7 @@
     <string name="settings_car_white">Weiß</string>
     <string name="settings_car_green">Grün</string>
     <string name="settings_car_yellow">Gelb</string>
+    <string name="settings_puck_shape_ufo">UFO</string>
+    <string name="settings_puck_shape_ship">Piratenschiff</string>
+    <string name="settings_puck_shape_duck">Quietscheente</string>
 </resources>

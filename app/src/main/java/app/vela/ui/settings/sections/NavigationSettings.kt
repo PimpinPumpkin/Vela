@@ -174,7 +174,7 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 onClick = { app.vela.ui.PuckStyle.setSize(context, id) },
             )
         }
-        if (!app.vela.ui.PuckStyle.isCar()) {
+        if (app.vela.ui.PuckStyle.shape.value == app.vela.ui.PuckStyle.SHAPE_ARROW) {
         GroupDivider()
         Text(
             stringResource(R.string.settings_puck_style),
@@ -203,6 +203,9 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         listOf(
             app.vela.ui.PuckStyle.SHAPE_ARROW to stringResource(R.string.settings_puck_shape_arrow),
             app.vela.ui.PuckStyle.SHAPE_CAR to stringResource(R.string.settings_puck_shape_car),
+            app.vela.ui.PuckStyle.SHAPE_UFO to stringResource(R.string.settings_puck_shape_ufo),
+            app.vela.ui.PuckStyle.SHAPE_SHIP to stringResource(R.string.settings_puck_shape_ship),
+            app.vela.ui.PuckStyle.SHAPE_DUCK to stringResource(R.string.settings_puck_shape_duck),
         ).forEach { (id, label) ->
             SelectableRow(
                 label = label,

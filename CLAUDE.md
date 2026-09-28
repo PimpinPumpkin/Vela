@@ -1571,7 +1571,8 @@ Defaults that make the safe path the easy one:
   fleet back on the page paths with no release; a per-place cache (photos + feed 6 h, details 15 min)
   makes a re-tap free; "More reviews" follows the feed's next-page token, which sits at payload[1]
   (seen in a full-session reply 2026-09-25: `"<base64>:10"`, payload[5] null, payload[6] `[false]`).
-- **Place sheet tabs (2026-09-27):** `PlaceTabs` renders Overview / Reviews / Photos / Menu under the action pills;
+- **Place sheet tabs (2026-09-27):** `PlaceTabs` renders Overview / Reviews / Photos / Updates / Menu under the action pills
+  (Updates with two or more posts; Overview keeps the newest; over three tabs the row scrolls);
   the body's info blocks are its `overview` / `overviewTail` slots; `PlaceTabRow` is also drawn pinned
   over the body (`tabRowY < bodyY`). New place-page content goes in one of those slots.
 - **On-tap privacy options (2026-09-27):** `ReviewsOnTap` (Show reviews button) and `RouteTrafficOnTap`

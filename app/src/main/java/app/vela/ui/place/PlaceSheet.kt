@@ -3595,6 +3595,7 @@ private fun PlaceTabs(
         // row never re-spaces itself when the photos land.
         val photoWorthy = place.photoUrls.isNotEmpty() || place.rating != null || place.reviewCount != null
         if (!resolving && !photosHeld && app.vela.ui.LoadPhotos.on.value && photoWorthy) add("Photos")
+        if (!resolving && place.updates.size > 1) add("Updates")
         if (!resolving && menuIndices.isNotEmpty() && app.vela.ui.LoadPhotos.on.value) add("Menu")
     }
     androidx.compose.runtime.SideEffect { onTabs(tabs) }
@@ -3615,7 +3616,15 @@ private fun PlaceTabs(
                     if ("Reviews" in tabs && place.rating != null) {
                         ReviewSummaryCard(place, ink, dim, onOpen = { onSelect("Reviews") })
                     }
-                    if (place.updates.isNotEmpty()) UpdatesSection(place.updates, ink, dim)
+                    // The newest post only; the Updates tab has them all (Google's layout).
+                    if (place.updates.isNotEmpty()) {
+                        UpdatesSection(place.updates.take(1), ink, dim, title = true)
+                        if (place.updates.size > 1) {
+                            TextButton(onClick = { onSelect("Updates") }, modifier = Modifier.dpadHighlight(RoundedCornerShape(8.dp))) {
+                                Text(stringResource(R.string.place_updates_all, place.updates.size))
+                            }
+                        }
+                    }
                     if (hasAbout) {
                         Text(
                             stringResource(R.string.place_tab_about),
@@ -3680,6 +3689,7 @@ private fun PlaceTabs(
                         ) { photoStart = null }
                     }
                 }
+                "Updates" -> UpdatesSection(place.updates, ink, dim, title = false)
                 "Menu" -> {
                     var menuStart by remember(place.id) { mutableStateOf<Int?>(null) }
                     MenuTab(place, menuIndices, dim) { i -> menuStart = i }
@@ -4624,17 +4634,27 @@ private fun PlaceTabRow(
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    TabRow(selectedTabIndex = selected, containerColor = Color.Transparent, contentColor = ink, modifier = modifier) {
+    val tabContent: @Composable () -> Unit = {
         tabs.forEachIndexed { i, key ->
             val label = when (key) {
                 "Overview" -> stringResource(R.string.place_tab_overview)
                 "Reviews" -> stringResource(R.string.place_tab_reviews)
                 "Photos" -> stringResource(R.string.place_tab_photos)
+                "Updates" -> stringResource(R.string.place_updates)
                 "Menu" -> menuTabName ?: stringResource(R.string.place_tab_menu)
                 else -> key
             }
-            Tab(selected = i == selected, onClick = { onSelect(key) }, text = { Text(label) })
+            Tab(selected = i == selected, onClick = { onSelect(key) }, text = { Text(label, maxLines = 1, softWrap = false) })
         }
+    }
+    // More than three tabs scroll sideways (Google's layout) instead of squeezing their labels.
+    if (tabs.size > 3) {
+        androidx.compose.material3.ScrollableTabRow(
+            selectedTabIndex = selected, containerColor = Color.Transparent, contentColor = ink,
+            edgePadding = 0.dp, modifier = modifier, tabs = tabContent,
+        )
+    } else {
+        TabRow(selectedTabIndex = selected, containerColor = Color.Transparent, contentColor = ink, modifier = modifier, tabs = tabContent)
     }
 }
 
@@ -4741,17 +4761,18 @@ private fun PhotosTab(
     }
 }
 
-/** The business's own posts, newest first: three shown, the rest behind one tap. */
+/** The business's own posts, newest first. */
 @Composable
-private fun UpdatesSection(updates: List<app.vela.core.model.PlaceUpdate>, ink: Color, dim: Color) {
+private fun UpdatesSection(updates: List<app.vela.core.model.PlaceUpdate>, ink: Color, dim: Color, title: Boolean) {
     val context = LocalContext.current
-    var all by remember(updates) { mutableStateOf(false) }
-    Text(
-        stringResource(R.string.place_updates),
-        style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink,
-        modifier = Modifier.padding(top = 20.dp, bottom = 4.dp),
-    )
-    (if (all) updates else updates.take(3)).forEach { u ->
+    if (title) {
+        Text(
+            stringResource(R.string.place_updates),
+            style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink,
+            modifier = Modifier.padding(top = 20.dp, bottom = 4.dp),
+        )
+    }
+    updates.forEach { u ->
         var open by remember(u) { mutableStateOf(false) }
         Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
@@ -4781,11 +4802,6 @@ private fun UpdatesSection(updates: List<app.vela.core.model.PlaceUpdate>, ink: 
                     modifier = Modifier.size(72.dp).clip(RoundedCornerShape(10.dp)).background(dim.copy(alpha = 0.2f)),
                 )
             }
-        }
-    }
-    if (!all && updates.size > 3) {
-        TextButton(onClick = { all = true }, modifier = Modifier.dpadHighlight(RoundedCornerShape(8.dp))) {
-            Text(stringResource(R.string.place_updates_all, updates.size))
         }
     }
 }

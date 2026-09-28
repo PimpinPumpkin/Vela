@@ -7970,7 +7970,12 @@ internal fun navPuckBitmap(
     // Drawn in the original 176-space and scaled whole, so the disc/arrow/shadow proportions the
     // user tuned in July stay byte-identical - only the rendered size grows.
     canvas.scale(size / 176f, size / 176f)
-    if (app.vela.ui.PuckStyle.isCar()) { drawCarPuck(canvas, app.vela.ui.PuckStyle.carColor.value); return bmp }
+    when (app.vela.ui.PuckStyle.shape.value) {
+        app.vela.ui.PuckStyle.SHAPE_CAR -> { drawCarPuck(canvas, app.vela.ui.PuckStyle.carColor.value); return bmp }
+        app.vela.ui.PuckStyle.SHAPE_UFO -> { drawUfoPuck(canvas); return bmp }
+        app.vela.ui.PuckStyle.SHAPE_SHIP -> { drawShipPuck(canvas); return bmp }
+        app.vela.ui.PuckStyle.SHAPE_DUCK -> { drawDuckPuck(canvas); return bmp }
+    }
     val cx = 88f
     val cy = 88f
     val r = 65f
@@ -8066,6 +8071,101 @@ private fun drawCarPuck(canvas: Canvas, colorName: String) {
     val tail = paint(android.graphics.Color.parseColor("#B3261E"))
     canvas.drawRoundRect(android.graphics.RectF(cx - 24f, 139f, cx - 12f, 144f), 2f, 2f, tail)
     canvas.drawRoundRect(android.graphics.RectF(cx + 12f, 139f, cx + 24f, 144f), 2f, 2f, tail)
+}
+
+private fun fill(c: Int) = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = c; style = Paint.Style.FILL }
+private fun line(c: Int, w: Float) = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = c; style = Paint.Style.STROKE; strokeWidth = w }
+private fun hex(s: String) = android.graphics.Color.parseColor(s)
+private fun softShadow(canvas: Canvas, rect: android.graphics.RectF) = canvas.drawOval(
+    android.graphics.RectF(rect.left, rect.top + 6f, rect.right, rect.bottom + 6f),
+    Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.argb(80, 0, 0, 0)
+        maskFilter = android.graphics.BlurMaskFilter(10f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+    },
+)
+
+/** A flying saucer seen from above, a yellow light marking the front (discussion #611). */
+private fun drawUfoPuck(canvas: Canvas) {
+    val cx = 88f; val cy = 90f
+    softShadow(canvas, android.graphics.RectF(cx - 56f, cy - 56f, cx + 56f, cy + 56f))
+    canvas.drawCircle(cx, cy, 55f, fill(hex("#9AA3AD")))
+    canvas.drawCircle(cx, cy, 55f, line(hex("#59616A"), 3f))
+    canvas.drawCircle(cx, cy, 41f, fill(hex("#C9CFD6")))
+    for (i in 0 until 10) {
+        val a = Math.toRadians(i * 36.0 - 90.0)
+        val lx = cx + 48f * kotlin.math.cos(a).toFloat(); val ly = cy + 48f * kotlin.math.sin(a).toFloat()
+        canvas.drawCircle(lx, ly, 4.5f, fill(if (i == 0) hex("#FFE066") else if (i % 2 == 0) hex("#4FC3F7") else hex("#FF8A80")))
+    }
+    canvas.drawPath(Path().apply { moveTo(cx, cy - 72f); lineTo(cx + 9f, cy - 57f); lineTo(cx - 9f, cy - 57f); close() }, fill(hex("#FFE066")))
+    canvas.drawCircle(cx, cy, 23f, fill(hex("#8FE3FF")))
+    canvas.drawCircle(cx, cy + 3f, 11f, fill(hex("#7ED957")))
+    canvas.drawCircle(cx - 4.5f, cy + 1f, 2.6f, fill(android.graphics.Color.BLACK))
+    canvas.drawCircle(cx + 4.5f, cy + 1f, 2.6f, fill(android.graphics.Color.BLACK))
+    canvas.drawOval(android.graphics.RectF(cx - 15f, cy - 17f, cx - 3f, cy - 10f), fill(android.graphics.Color.argb(170, 255, 255, 255)))
+    canvas.drawCircle(cx, cy, 23f, line(hex("#3A8FB0"), 2f))
+}
+
+/** A cartoon pirate ship from above, bow forward, with a black flag (discussion #611). */
+private fun drawShipPuck(canvas: Canvas) {
+    val cx = 88f
+    val hull = Path().apply {
+        moveTo(cx, 22f)
+        cubicTo(cx + 28f, 44f, cx + 32f, 90f, cx + 28f, 132f)
+        quadTo(cx, 156f, cx - 28f, 132f)
+        cubicTo(cx - 32f, 90f, cx - 28f, 44f, cx, 22f)
+        close()
+    }
+    softShadow(canvas, android.graphics.RectF(cx - 32f, 24f, cx + 32f, 152f))
+    canvas.drawPath(hull, fill(hex("#8B5A2B")))
+    canvas.drawPath(hull, line(hex("#4E3118"), 3f))
+    val deck = Path().apply {
+        moveTo(cx, 36f)
+        cubicTo(cx + 20f, 54f, cx + 23f, 90f, cx + 20f, 126f)
+        quadTo(cx, 144f, cx - 20f, 126f)
+        cubicTo(cx - 23f, 90f, cx - 20f, 54f, cx, 36f)
+        close()
+    }
+    canvas.drawPath(deck, fill(hex("#C08A55")))
+    for (y in listOf(60f, 80f, 100f, 120f)) canvas.drawLine(cx - 20f, y, cx + 20f, y, line(hex("#9C6B3C"), 1.5f))
+    // Sails across the beam, fore and aft, then the masts and the flag.
+    for (y in listOf(66f, 106f)) {
+        canvas.drawRoundRect(android.graphics.RectF(cx - 38f, y - 7f, cx + 38f, y + 7f), 7f, 7f, fill(hex("#F4EAD5")))
+        canvas.drawRoundRect(android.graphics.RectF(cx - 38f, y - 7f, cx + 38f, y + 7f), 7f, 7f, line(hex("#B9AC92"), 2f))
+        canvas.drawCircle(cx, y, 5f, fill(hex("#4E3118")))
+    }
+    canvas.drawRect(android.graphics.RectF(cx + 3f, 42f, cx + 21f, 54f), fill(hex("#1B1B1B")))
+    canvas.drawCircle(cx + 12f, 47f, 3.2f, fill(android.graphics.Color.WHITE))
+    canvas.drawLine(cx + 9f, 51.5f, cx + 15f, 51.5f, line(android.graphics.Color.WHITE, 1.4f))
+    canvas.drawLine(cx + 3f, 42f, cx + 3f, 58f, line(hex("#4E3118"), 2.2f))
+}
+
+/** A rubber duck from above, beak forward (discussion #611). */
+private fun drawDuckPuck(canvas: Canvas) {
+    val cx = 88f
+    val yellow = hex("#FFD93B"); val edge = hex("#D9A600")
+    softShadow(canvas, android.graphics.RectF(cx - 36f, 36f, cx + 36f, 150f))
+    canvas.drawPath(Path().apply { moveTo(cx - 10f, 138f); lineTo(cx, 156f); lineTo(cx + 10f, 138f); close() }, fill(yellow))
+    val body = android.graphics.RectF(cx - 35f, 60f, cx + 35f, 148f)
+    canvas.drawOval(body, fill(yellow))
+    canvas.drawOval(body, line(edge, 2.5f))
+    canvas.drawOval(android.graphics.RectF(cx - 33f, 88f, cx - 17f, 124f), fill(hex("#FFE77A")))
+    canvas.drawOval(android.graphics.RectF(cx + 17f, 88f, cx + 33f, 124f), fill(hex("#FFE77A")))
+    // A flat bill sticking out past the head, wide at the face and rounded at the tip.
+    val bill = Path().apply {
+        moveTo(cx - 13f, 42f)
+        lineTo(cx - 10f, 24f)
+        quadTo(cx, 12f, cx + 10f, 24f)
+        lineTo(cx + 13f, 42f)
+        close()
+    }
+    canvas.drawPath(bill, fill(hex("#FF8C1A")))
+    canvas.drawPath(bill, line(hex("#C85F00"), 1.5f))
+    canvas.drawCircle(cx, 58f, 25f, fill(yellow))
+    canvas.drawCircle(cx, 58f, 25f, line(edge, 2.5f))
+    for (dx in listOf(-10f, 10f)) {
+        canvas.drawCircle(cx + dx, 52f, 4.2f, fill(android.graphics.Color.BLACK))
+        canvas.drawCircle(cx + dx + 1.3f, 50.8f, 1.4f, fill(android.graphics.Color.WHITE))
+    }
 }
 
 /** A Google-style red map pin with a white center dot, anchored at its bottom tip. */

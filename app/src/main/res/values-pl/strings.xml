@@ -1049,4 +1049,7 @@
     <string name="settings_car_white">Biały</string>
     <string name="settings_car_green">Zielony</string>
     <string name="settings_car_yellow">Żółty</string>
+    <string name="settings_puck_shape_ufo">UFO</string>
+    <string name="settings_puck_shape_ship">Statek piracki</string>
+    <string name="settings_puck_shape_duck">Gumowa kaczka</string>
 </resources>

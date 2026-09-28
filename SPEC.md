@@ -600,12 +600,13 @@ when I tap" (`PhotosOnTap`) holds the photo request behind a Show photos button
 (`photosAwaitingTapFor`, `loadPhotosNow`); "Wait for popular times" (`DetailsRetry`, on) off
 makes `placeTries()` 1, so a place's details are one request. Business posts ride the same place node
 (`paths.updates` `[1][122][1]`: text `[1][0][0][0]`, posted epoch `[2][0]`, link `[4][1]`/`[4][2]`,
-photo `[5][0][0]`) into `Place.updates` and show on Overview as Updates (three, then all); no extra
-request. The Reviews tab leads with a full-width button to Google's full reviews page. Settings >
+photo `[5][0][0]`) into `Place.updates`: Overview shows the newest with "Show all N updates", which opens the Updates
+tab (present when there are two or more); no extra request. Over three tabs the row scrolls. The Reviews tab leads with a full-width button to Google's full reviews page. Settings >
 Navigation "Start drives north-up" (`NavNorthUp`, pref `nav_north_up`, off, issue #612) sets
 `navNorthUp` at every drive start; the compass still toggles it per drive. "Navigation icon"
 (`PuckStyle.shape`, pref `puck_shape`, discussion #611) swaps the arrow for a top-down car
-(`drawCarPuck`, color pref `puck_car_color`: red, blue, white, green, yellow) in the same bitmap
+(`drawCarPuck`, color pref `puck_car_color`: red, blue, white, green, yellow), a UFO, a pirate
+ship or a rubber duck (`drawUfoPuck` / `drawShipPuck` / `drawDuckPuck`) in the same bitmap
 the overlay, the map symbol and the car screen use; Settings shows a live preview. Settings > Privacy "Live traffic only when I tap"
 (`RouteTrafficOnTap`, pref `route_traffic_on_tap`, off) clears `RoutingPrefs.googleTraffic` for
 each new trip, so directions, reroutes and rechecks skip Google and the transit chip is not

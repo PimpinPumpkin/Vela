@@ -1040,4 +1040,7 @@
     <string name="settings_car_white">Branco</string>
     <string name="settings_car_green">Verde</string>
     <string name="settings_car_yellow">Amarelo</string>
+    <string name="settings_puck_shape_ufo">Óvni</string>
+    <string name="settings_puck_shape_ship">Navio pirata</string>
+    <string name="settings_puck_shape_duck">Patinho de borracha</string>
 </resources>

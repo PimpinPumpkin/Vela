@@ -1038,4 +1038,7 @@
     <string name="settings_car_white">Bianca</string>
     <string name="settings_car_green">Verde</string>
     <string name="settings_car_yellow">Gialla</string>
+    <string name="settings_puck_shape_ufo">UFO</string>
+    <string name="settings_puck_shape_ship">Nave pirata</string>
+    <string name="settings_puck_shape_duck">Paperella di gomma</string>
 </resources>

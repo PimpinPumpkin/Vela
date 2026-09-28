@@ -1038,4 +1038,7 @@
     <string name="settings_car_white">Vit</string>
     <string name="settings_car_green">Grön</string>
     <string name="settings_car_yellow">Gul</string>
+    <string name="settings_puck_shape_ufo">Ufo</string>
+    <string name="settings_puck_shape_ship">Piratskepp</string>
+    <string name="settings_puck_shape_duck">Badanka</string>
 </resources>

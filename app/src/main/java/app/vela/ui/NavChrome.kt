@@ -51,6 +51,9 @@ object PuckStyle {
     /** The nav icon (discussion #611): the arrow, or a top-down car in [carColor]. */
     const val SHAPE_ARROW = "arrow"
     const val SHAPE_CAR = "car"
+    const val SHAPE_UFO = "ufo"
+    const val SHAPE_SHIP = "ship"
+    const val SHAPE_DUCK = "duck"
     val CAR_COLORS = listOf("red", "blue", "white", "green", "yellow")
     val shape = mutableStateOf(SHAPE_ARROW)
     val carColor = mutableStateOf("red")

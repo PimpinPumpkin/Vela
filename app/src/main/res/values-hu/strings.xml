@@ -1040,4 +1040,7 @@
     <string name="settings_car_white">Fehér</string>
     <string name="settings_car_green">Zöld</string>
     <string name="settings_car_yellow">Sárga</string>
+    <string name="settings_puck_shape_ufo">UFO</string>
+    <string name="settings_puck_shape_ship">Kalózhajó</string>
+    <string name="settings_puck_shape_duck">Gumikacsa</string>
 </resources>

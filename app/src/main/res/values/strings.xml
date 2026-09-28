@@ -1132,4 +1132,7 @@
     <string name="settings_car_white">White</string>
     <string name="settings_car_green">Green</string>
     <string name="settings_car_yellow">Yellow</string>
+    <string name="settings_puck_shape_ufo">UFO</string>
+    <string name="settings_puck_shape_ship">Pirate ship</string>
+    <string name="settings_puck_shape_duck">Rubber duck</string>
 </resources>
