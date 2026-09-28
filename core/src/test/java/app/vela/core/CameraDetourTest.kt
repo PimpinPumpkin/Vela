@@ -49,4 +49,24 @@ class CameraDetourTest {
         val merged = CameraDetour.mergeOrdered(listOf(5000.0 to "B", null to "C"), listOf(3000.0 to "via"))
         assertEquals(listOf("via", "B", "C"), merged)
     }
+
+    @Test fun `the camera choice leads with the lightest route inside the cap and never over it`() {
+        val o = { c: Int, eta: Double -> CameraDetour.Option(c, eta) }
+        // Fewest cameras wins, ties go to the faster one.
+        assertEquals(2, CameraDetour.choose(listOf(o(3, 1000.0), o(1, 1150.0), o(1, 1100.0)), 1000.0, 250.0))
+        // The lighter route is over the cap: the leader stays.
+        assertEquals(null, CameraDetour.choose(listOf(o(3, 1000.0), o(0, 1300.0)), 1000.0, 250.0))
+        // Nothing beats the leader on cameras: the leader stays, even when something is faster.
+        assertEquals(null, CameraDetour.choose(listOf(o(1, 1000.0), o(1, 900.0), o(2, 800.0)), 1000.0, 250.0))
+        assertEquals(null, CameraDetour.choose(emptyList(), 1000.0, 250.0))
+    }
+
+    @Test fun `a cluster already tried from another route is not tried again`() {
+        val cands = CameraDetour.candidates(north, listOf(1000.0, 4000.0))
+        // The first cluster's corner, reached 30 m off along the road, counts as tried; the second does not.
+        val tried = listOf(LatLng(38.5 + 1030.0 / 111_320.0, -121.7))
+        val left = CameraDetour.untried(cands, tried)
+        assertEquals(listOf(4000.0), left.map { it.atM })
+        assertEquals(2, CameraDetour.untried(cands, emptyList()).size)
+    }
 }

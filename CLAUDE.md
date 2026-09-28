@@ -3268,14 +3268,22 @@ architecture note.
   over the congestion colors). Satellite still anchors above the imagery. Keep it under the labels.
 - **SIDE-STREET DETOURS AROUND PLATE CAMERAS (issue #600, 2026-09-21).** `ui/FlockDetour` (pref
   `flock_detour`, OFF, Settings > Navigation > Cameras, nested under "Avoid surveillance cameras",
-  in the settings search). After `refreshFlockOnRoute`'s re-rank, when the leading route still
-  passes cameras, `tryCameraDetour` runs the reporter's workaround: `core/nav/CameraDetour.candidates`
-  groups the lead route's cameras into clusters (`CameraAlerts.group`, nearest first, at most
-  `MAX_CLUSTERS` 3) and for each gives the two points `OFFSET_M` (150 m) to the driver's left and
-  right of the road there; the pass tries left then right through `dataSource.directions(waypoints=)`
-  with the point merged into the user's stops in travel order (`CameraDetour.mergePlan`), keeps a
-  candidate whose camera count drops inside the SAME cap as the re-rank (the lesser of 25% or 10 min
-  over the fastest route), builds the next cluster on it, and stops at `MAX_REQUESTS` (6). The
+  in the settings search). After `refreshFlockOnRoute`'s re-rank, `tryCameraDetour` runs the
+  reporter's workaround over EVERY route that still passes cameras (since 2026-09-28; it used to
+  detour only the leader, and the two stages disagreed: three cameras on an arterial with a parallel
+  street beside it detour to zero while a one-camera route with its camera on a bridge wins the
+  re-rank): `core/nav/CameraDetour.candidates` groups a route's cameras into clusters
+  (`CameraAlerts.group`, nearest first, at most `MAX_CLUSTERS` 3) and for each gives the two points
+  `OFFSET_M` (150 m) to the driver's left and right of the road there; the pass tries left then right
+  through `dataSource.directions(waypoints=)` with the point merged into the user's stops in travel
+  order (`CameraDetour.mergePlan`), keeps a candidate whose camera count drops inside the SAME cap as
+  the re-rank (the lesser of 25% or 10 min over the fastest route), and builds the next cluster on
+  it. ONE budget for the trip: `MAX_REQUESTS` (6) across all routes, at most `MAX_REQUESTS_PER_ROUTE`
+  (4) on one, routes taken in list order (the leader first), and a cluster within `SAME_CLUSTER_M`
+  (60 m) of one already tried from another route is skipped (`CameraDetour.untried`: routes share
+  arterials, and the same corner gets the same side streets). The leader and every result then go
+  through `CameraDetour.choose` (fewest cameras, ties to the faster, must beat the leader inside the
+  cap; the same function the re-rank uses, so the two stages cannot disagree). The
   router's own snap does the graph work: a point that lands on the same road folds back into the
   same route and fails the count; a point on a parallel street is a real detour. The kept route
   leads the list with its badge, carries `Route.detourPlan` (the full ordered waypoint list), and
@@ -3284,7 +3292,8 @@ architecture note.
   `remainingStops()` so the stops row, the editor and the leg dividers never show them). A mid-drive
   stops EDIT keeps the detour too (`NavSession.withSilentVias` re-inserts the silent points still
   ahead in route order around the edited list), and so does `addStop`.
-  Logcat `VelaFlockRoute`: `detour: clusters=N requests=N kept=… cameras A -> B`. It depends on the
+  Logcat `VelaFlockRoute`: `detour: clusters=N requests=N (K left) kept=… cameras A -> B` per route,
+  then `detour pick: …`. It depends on the
   same-day waypoint work: Google prices every candidate through its stops with traffic, so the cap
   compare is honest. DRIVE only, and epoch-guarded like the re-rank.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m

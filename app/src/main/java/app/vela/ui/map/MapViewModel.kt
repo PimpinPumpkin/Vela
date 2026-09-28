@@ -5063,11 +5063,12 @@ class MapViewModel @Inject constructor(
             val eta0 = eta(cur[0]) // routes are sorted fastest-first, and cur[0] is the default active
             val cap = minOf(eta0 * 0.25, 600.0)
             if (counts.any { it > 0 }) {
-                val best = counts.indices.minByOrNull { counts[it] * 1_000_000L + eta(cur[it]).toLong() } ?: 0
-                val extra = eta(cur[best]) - eta0
+                // One rule for the pick (`CameraDetour.choose`), shared with the side-street pass below
+                // so the two stages cannot disagree about what "better" means.
+                val best = app.vela.core.nav.CameraDetour.choose(cur.indices.map { app.vela.core.nav.CameraDetour.Option(counts[it], eta(cur[it])) }, eta0, cap)
                 // No heads-up flash for the swap (removed 2026-07-13): the reorder below makes
                 // the pick visible at the top of the list; the banner was noise on the card.
-                if (counts[best] < counts[0] && extra <= cap && best != 0) {
+                if (best != null) {
                     // The avoided route LEADS the list (user 2026-07-14): with avoid-cameras on
                     // the ranking is augmented by camera counts, not pure ETA - the low-camera
                     // pick moves to the top for visibility and its count badge moves with it.
@@ -5088,47 +5089,80 @@ class MapViewModel @Inject constructor(
             // at each camera cluster, routed through like a stop. Google routes and prices every
             // candidate through its stops with traffic (the 2026-09-21 waypoint work), so the
             // compare against the same cap as the re-rank is an honest one.
+            // EVERY candidate route gets the pass, not only the leader (the re-rank and the pass used
+            // to disagree: a route whose three cameras sit on an arterial with a parallel street beside
+            // it detours to zero, while the one-camera route whose camera sits on a bridge won the
+            // re-rank and was the only one tried). One request budget for the trip, shared in list
+            // order (the leader first), and a cluster already tried from another route is skipped,
+            // since routes share arterials and the same corner gets the same side streets.
             if (app.vela.ui.FlockDetour.on.value && mode == TravelMode.DRIVE) {
-                val lead = _state.value.routes.firstOrNull()
-                val leadCount = _state.value.flockOnRoute.firstOrNull() ?: 0
-                if (lead != null && leadCount > 0 && lead.detourPlan.isEmpty()) {
-                    tryCameraDetour(lead, leadCount, eta0, cap, epoch, origin, dest, mode, stops, avoidTolls, avoidHighways, avoidFerries)
+                val routesNow = _state.value.routes
+                val countsNow = _state.value.flockOnRoute
+                if (routesNow.size == countsNow.size && countsNow.any { it > 0 }) {
+                    val budget = intArrayOf(app.vela.core.nav.CameraDetour.MAX_REQUESTS)
+                    val tried = ArrayList<LatLng>()
+                    val results = ArrayList<Pair<Route, Int>>()
+                    for (i in routesNow.indices) {
+                        if (budget[0] <= 0) break
+                        if (countsNow[i] <= 0 || routesNow[i].detourPlan.isNotEmpty()) continue
+                        val r = tryCameraDetour(routesNow[i], countsNow[i], eta0, cap, epoch, origin, dest, mode, stops, avoidTolls, avoidHighways, avoidFerries, budget, tried)
+                        if (routesEpoch != epoch) return@launch
+                        if (r != null) results += r
+                    }
+                    if (results.isNotEmpty()) {
+                        // The leader now against every detour found: fewest cameras, then time, inside the cap.
+                        val options = listOf(app.vela.core.nav.CameraDetour.Option(countsNow[0], eta(routesNow[0]))) +
+                            results.map { (r, n) -> app.vela.core.nav.CameraDetour.Option(n, eta(r)) }
+                        val pick = app.vela.core.nav.CameraDetour.choose(options, eta0, cap)
+                        android.util.Log.i("VelaFlockRoute", "detour pick: ${results.size} result(s), cameras ${results.map { it.second }}, leader ${countsNow[0]} -> ${pick?.let { options[it].cameras } ?: countsNow[0]}")
+                        if (pick != null && routesEpoch == epoch) {
+                            val (kept, n) = results[pick - 1]
+                            _state.update { it.copy(routes = listOf(kept) + it.routes, flockOnRoute = listOf(n) + it.flockOnRoute) }
+                            selectRoute(0)
+                        }
+                    }
                 }
             }
         }
     }
 
-    /** One greedy pass over the camera clusters of [lead]: for each, its left then right point is
+    /** One greedy pass over the camera clusters of [route]: for each, its left then right point is
      *  added to the trip and the trip re-routed; a candidate that passes fewer cameras inside
-     *  [cap] is kept and the next cluster builds on it. The result, if any, leads the list with its
-     *  badge and carries its waypoint plan ([Route.detourPlan]) so a drive keeps the detour. */
+     *  [cap] is kept and the next cluster builds on it. Clusters within `SAME_CLUSTER_M` of one in
+     *  [tried] are skipped and the ones tried here are added to it; every request comes out of
+     *  [budget] (the trip's, shared across routes) and at most `MAX_REQUESTS_PER_ROUTE` are spent
+     *  here. Returns the best route found with its camera count, carrying its waypoint plan
+     *  ([Route.detourPlan]) so a drive keeps the detour; null when nothing beat [routeCount]. */
     private suspend fun tryCameraDetour(
-        lead: Route, leadCount: Int, eta0: Double, cap: Double, epoch: Int,
+        route: Route, routeCount: Int, eta0: Double, cap: Double, epoch: Int,
         origin: LatLng, dest: LatLng, mode: TravelMode, stops: List<LatLng>,
         avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean,
-    ) {
+        budget: IntArray, tried: MutableList<LatLng>,
+    ): Pair<Route, Int>? {
         val eta = { r: Route -> r.durationInTrafficSeconds ?: r.durationSeconds }
-        val poly = lead.polyline
+        val poly = route.polyline
         val cum = app.vela.core.nav.RouteProjection.cumulative(poly)
         val cands = withContext(Dispatchers.Default) {
             val along = app.vela.data.FlockCameras.along(poly).mapNotNull { app.vela.core.nav.RouteProjection.alongMeters(poly, cum, it.loc, 45.0) }
-            app.vela.core.nav.CameraDetour.candidates(poly, along)
+            app.vela.core.nav.CameraDetour.untried(app.vela.core.nav.CameraDetour.candidates(poly, along), tried)
         }
-        if (cands.isEmpty()) return
+        if (cands.isEmpty()) return null
         val stopAt = stops.map { app.vela.core.nav.RouteProjection.alongMeters(poly, cum, it, 250.0) to it }
         var vias = emptyList<Pair<Double, LatLng>>()
         var best: Route? = null
-        var bestCount = leadCount
+        var bestCount = routeCount
         var requests = 0
         outer@ for (c in cands) {
+            tried += c.at
             for (via in listOf(c.left, c.right)) {
-                if (requests >= app.vela.core.nav.CameraDetour.MAX_REQUESTS) break@outer
+                if (requests >= app.vela.core.nav.CameraDetour.MAX_REQUESTS_PER_ROUTE || budget[0] <= 0) break@outer
                 val trial = vias + (c.atM to via)
                 val plan = app.vela.core.nav.CameraDetour.mergePlan(stopAt, trial)
                 requests++
+                budget[0]--
                 val r = runCatching { dataSource.directions(origin, dest, mode, plan, avoidTolls, avoidHighways, avoidFerries) }
                     .getOrDefault(emptyList()).firstOrNull() ?: continue
-                if (routesEpoch != epoch) return
+                if (routesEpoch != epoch) return null
                 val n = withContext(Dispatchers.Default) { app.vela.data.FlockCameras.along(r.polyline).size }
                 val extra = eta(r) - eta0
                 if (n < bestCount && extra <= cap) {
@@ -5139,11 +5173,8 @@ class MapViewModel @Inject constructor(
                 }
             }
         }
-        android.util.Log.i("VelaFlockRoute", "detour: clusters=${cands.size} requests=$requests kept=${best != null} cameras $leadCount -> $bestCount")
-        val kept = best ?: return
-        if (routesEpoch != epoch) return
-        _state.update { it.copy(routes = listOf(kept) + it.routes, flockOnRoute = listOf(bestCount) + it.flockOnRoute) }
-        selectRoute(0)
+        android.util.Log.i("VelaFlockRoute", "detour: clusters=${cands.size} requests=$requests (${budget[0]} left) kept=${best != null} cameras $routeCount -> $bestCount")
+        return best?.let { it to bestCount }
     }
 
     /** Turn-by-turn walking steps between two points (for a transit trip's walk legs), via the

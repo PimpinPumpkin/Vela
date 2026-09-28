@@ -1199,12 +1199,15 @@ renderer then sat at 89 percent of a core. The Developer row states the date it 
   fewest-camera route within a small detour (at most the lesser of 25 percent of the ETA and 10
   minutes). It does not graph-route around cameras.
 - **Try side streets around cameras** (off by default, nested under the re-rank) adds one
-  candidate route when the leading route still passes cameras: `CameraDetour` groups the lead
-  route's cameras into clusters (join distance 40 m, nearest first, at most 3) and offers the
+  candidate route when routes still pass cameras: for every route that does, `CameraDetour` groups
+  its cameras into clusters (join distance 40 m, nearest first, at most 3) and offers the
   points 150 m to the left and right of the road at each; the chooser routes the trip through the
   left then the right point (merged into the stops in travel order), keeps a candidate whose camera
-  count drops within the same detour cap, builds the next cluster on it, and sends at most 6 route
-  requests per trip. A kept route leads the list with its badge and carries its waypoint plan
+  count drops within the same detour cap, and builds the next cluster on it. One budget per trip:
+  at most 6 route requests in all, at most 4 on one route, routes in list order; a cluster within
+  60 m of one already tried from another route is skipped. The leading route and every result are
+  judged by one rule (`CameraDetour.choose`: fewest cameras, ties to the faster, beating the leader
+  within the cap), the rule the re-rank itself uses. A kept route leads the list with its badge and carries its waypoint plan
   (`Route.detourPlan`); a drive started on it carries the detour points as silent stops, which
   every reroute and recheck routes through and nothing speaks or lists. A mid-drive stops edit
   keeps the detour: `NavSession.withSilentVias` puts the silent points still ahead back in, each

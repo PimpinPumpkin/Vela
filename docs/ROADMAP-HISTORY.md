@@ -19,6 +19,23 @@ and this file only the wording of that day. Entries moved out of the roadmap aft
 at the end, under their own heading, with the date they moved.
 
 ## Recently shipped
+
+- **Camera detours over every candidate route (issue #600 follow-up, opened 2026-09-21, shipped 2026-09-28).** The shipped
+  "Try side streets around cameras" pass only detours the route that LEADS after the camera
+  re-rank, and the two stages can disagree: a route with three cameras on one arterial with a
+  parallel street beside it detours better than the one-camera route whose camera sits on a
+  bridge, but the one-camera route wins the re-rank and the pass never looks at the other. The
+  holistic version runs the cluster/offset pass on every drivable candidate, scores each result
+  by cameras left plus time added, and leads with the best. The cost is the request budget (six
+  per route instead of six in total), so it wants a shared cap or a cheap pre-screen that skips a
+  route whose cameras sit where the geometry offers no parallel road. Whether the two toggles then
+  become one switch is the same decision: today "avoid" costs no requests and "side streets"
+  costs a handful, which is why the second is nested and off.
+  SHIPPED 2026-09-28: the pass runs over every camera-bearing route in list order under one
+  six-request trip budget (four per route), skips a cluster within 60 m of one tried from an
+  earlier route (routes share arterials), and the leader plus every result go through the same
+  `CameraDetour.choose` rule the re-rank uses. The two toggles stay two: the re-rank is free and
+  the pass costs requests.
 - **Cronet for Google requests (2026-09-23).** Search, directions, place data and the batchexecute
   RPCs go over Chromium's network stack (HTTP/2 and HTTP/3 like Chrome) instead of OkHttp, behind
   calibration `useCronet`; OsmAnd's bundled protobuf is relocated at build time so both coexist.

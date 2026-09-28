@@ -65,11 +65,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   line. The route chooser checks that Google's line really passes every stop before trusting it.
 - ✅ **Side streets around plate cameras (2026-09-21, issue #600).** Settings, Navigation, Cameras:
   "Try side streets around cameras", nested under "Avoid surveillance cameras", off by default.
-  When every route still passes cameras, the chooser tries a point just off the road at each
-  camera cluster (up to three, nearest first) and routes through it; a route that passes fewer
+  When routes still pass cameras, the chooser tries a point just off the road at each
+  camera cluster (up to three per route, nearest first) and routes through it; a route that passes fewer
   cameras inside the same detour limit (the lesser of 25% or 10 minutes) goes to the top of the
-  list with its camera badge. Google routes and prices each candidate with traffic; at most six
-  extra route requests per trip. Starting a drive on that route keeps the detour through reroutes
+  list with its camera badge. Since 2026-09-28 every camera-bearing route gets the pass, not only
+  the one that leads, under one shared budget: Google routes and prices each candidate with
+  traffic; at most six extra route requests per trip, four on any one route, and a corner already
+  tried from another route is not tried again. Starting a drive on that route keeps the detour through reroutes
   and rechecks (the detour points ride along as silent stops: never spoken, never listed). A
   mid-drive edit of the stops keeps the detour: the silent points still ahead are merged back into
   the edited list in route order.

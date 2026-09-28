@@ -103,18 +103,23 @@ directions request throws away a stale count instead of badging the wrong rows. 
 
 ### Side streets around cameras
 
-The re-rank can only choose among the routes the routers offer. When the route that leads after it
-still passes cameras, **Try side streets around cameras** (driving only) makes new ones:
+The re-rank can only choose among the routes the routers offer. When routes still pass cameras
+after it, **Try side streets around cameras** (driving only) makes new ones, from every route
+that passes cameras, not only the one that leads:
 
 ```
-CameraAlerts.group(joinM = 40)         // heads within 40 m along the route are one cluster
-CameraDetour.MAX_CLUSTERS = 3          // clusters tried, nearest the start first
-CameraDetour.OFFSET_M     = 150        // how far off the road each candidate point sits
-CameraDetour.MAX_REQUESTS = 6          // directions requests per trip, at most
+CameraAlerts.group(joinM = 40)                  // heads within 40 m along the route are one cluster
+CameraDetour.MAX_CLUSTERS = 3                   // clusters tried per route, nearest the start first
+CameraDetour.OFFSET_M     = 150                 // how far off the road each candidate point sits
+CameraDetour.MAX_REQUESTS = 6                   // directions requests per trip, at most, over all routes
+CameraDetour.MAX_REQUESTS_PER_ROUTE = 4         // of which at most this many on one route
+CameraDetour.SAME_CLUSTER_M = 60                // a cluster this close to one tried from another route is skipped
 ```
 
-1. The lead route's cameras are placed along it and grouped into clusters. The first three from
-   the start are kept.
+1. Each route's cameras are placed along it and grouped into clusters. The first three from
+   the start are kept, minus any within 60 m of a cluster already tried from an earlier route
+   (routes share arterials, and the same corner gets the same side streets). Routes are taken in
+   list order, so the leader spends first.
 2. Each cluster gets two points, 150 m to the driver's left and right of the road at the cluster.
    150 m reaches the next street over in a city block, and is near enough that a rural road with
    nothing beside it snaps straight back.
@@ -124,7 +129,10 @@ CameraDetour.MAX_REQUESTS = 6          // directions requests per trip, at most
 4. A result is kept when its whole line passes fewer cameras than the best so far and its time is
    inside the **same cap** as the re-rank, measured against the same fastest route. Once a
    cluster's point is kept, the right point is not tried, and the next cluster builds on the kept
-   plan. The pass stops at six requests.
+   plan. A route's pass stops at four requests, the trip's at six.
+5. The leader and every route's best result go through one rule, `CameraDetour.choose`: fewest
+   cameras, ties to the faster, and it must beat the leader on cameras inside the cap. The
+   re-rank uses the same function, so the two stages cannot disagree about what "better" is.
 
 Nothing here knows the road network. The router's own snap does that work: a point that lands on
 the same road folds back into the same route, the count does not drop, and it is rejected; a point
@@ -134,8 +142,9 @@ The compare is honest because Google now routes a trip through its stops. Every 
 multi-stop trip, and Google prices it with live traffic through those points, not as the direct
 trip with a speed ratio painted on (see the multi-stop section of the SPEC). A kept route goes on
 top of the list with its camera badge and is selected; the original routes stay below it. Logcat
-`VelaFlockRoute` prints one line per trip:
-`detour: clusters=N requests=N kept=true|false cameras A -> B`.
+`VelaFlockRoute` prints one line per route tried,
+`detour: clusters=N requests=N (K left) kept=true|false cameras A -> B`, then the pick:
+`detour pick: N result(s), cameras [...], leader A -> B`.
 
 The kept route carries its full ordered waypoint list (`Route.detourPlan`). A drive started on it
 turns the detour points into **silent stops**: every reroute and traffic recheck routes through
@@ -204,13 +213,11 @@ it says more.
 - **The re-rank is route choice, not evasion.** It picks among the routes the router already
   offers, and the 25% / 10 minute cap means a heavily covered corridor often has no acceptable
   alternative.
-- **The side-street pass is greedy and narrow.** It detours only the route that leads after the
-  re-rank, and only its first three clusters. The two stages can disagree: a route whose three
-  cameras sit on an arterial with a parallel street beside it could detour to zero, while the
-  one-camera route whose camera sits on a bridge wins the re-rank and gets tried instead. Running
-  the pass over every candidate is on the roadmap; the cost is the request budget. Where no
-  parallel street exists within about 150 m, every try snaps back and nothing is offered, which
-  is the right answer, not a failure.
+- **The side-street pass is greedy and bounded.** Within a route it takes the first three
+  clusters and keeps the first point that helps; across routes it shares six requests, so with
+  three camera-bearing routes the later ones may get one cluster or none. Where no parallel
+  street exists within about 150 m, every try snaps back and nothing is offered, which is the
+  right answer, not a failure.
 - **A detour costs requests** to a fair-use community router and to Google, up to six per trip,
   which is why it is nested and off by default.
 - **The route bar reads what the map has loaded.** Its plate camera marks come from the map
