@@ -20,6 +20,19 @@ at the end, under their own heading, with the date they moved.
 
 ## Recently shipped
 
+- **Reroute on the phone first (deferred 2026-09-16, shipped 2026-09-28).** When a downloaded region covers the drive,
+  compute the reroute with the on-device engine at once, then swap in the traffic-aware online
+  route when it arrives through the existing heal path. Evidence: a shared diagnostics export
+  (issue #557) shows two urgent reroutes timing out at 20 s while the open router hung, and issue
+  #258 reports the same pattern in cities. Since 2026-09-17 the on-device engine is a bounded
+  FALLBACK inside a reroute; the "phone first, heal later" order is still open, held back because
+  every latch back onto the online route is new bug surface.
+  SHIPPED 2026-09-28: `RouteEngine.covers` (a trip-box test over the region index) gates it; the
+  urgent fetch starts the obf route beside the open router and takes it when the open router is
+  not back inside 2.5 s (the compute gets 4 s more, inside the budget). The latch back is the
+  existing degraded recheck (same course) and the faster-route offer (another course), nothing new.
+  Multi-stop trips chain their legs on the phone the same way.
+
 - **Camera detours over every candidate route (issue #600 follow-up, opened 2026-09-21, shipped 2026-09-28).** The shipped
   "Try side streets around cameras" pass only detours the route that LEADS after the camera
   re-rank, and the two stages can disagree: a route with three cameras on one arterial with a

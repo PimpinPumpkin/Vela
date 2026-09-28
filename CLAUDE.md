@@ -4257,7 +4257,15 @@ Gotchas:
   structured child would hold the scope until its blocking HTTP call returned) and past the grace
   the route goes out trafficless, which the recheck's trafficUpgrade heals. Both the
   single-destination and the multi-stop branch do this.
-  **A REROUTE CARRIES ITS DEADLINE INTO THE FETCH (issues #557 / #258, 2026-09-17).** A shared
+  **PHONE FIRST (2026-09-28):** an urgent fetch over a trip a downloaded region covers
+  (`RouteEngine.covers`, the trip-box test, `ObfRouteEngine.tripCandidates` unit-tested) starts the
+  obf route in parallel and adopts it when the open router is not back inside
+  `PHONE_FIRST_ONLINE_WAIT_MS` (2.5 s; the compute gets `PHONE_FIRST_ONDEVICE_WAIT_MS` 4 s more,
+  inside the budget); it is trafficless, so the 20 s degraded recheck heals it (same course) or offers
+  the online course. Diag line `urgent: phone first, on-device route after N ms ...`. Both the
+  single-destination and the multi-stop branch. The latch back onto the online route is the EXISTING
+  heal and faster-route paths, nothing new.
+    **A REROUTE CARRIES ITS DEADLINE INTO THE FETCH (issues #557 / #258, 2026-09-17).** A shared
   diagnostics export (drive, cellular, validated link) had two urgent attempts end in
   "reroute FAILED" at exactly 20 s each with no DRIVE line and no "google not back" line (so the
   car open router never answered, while a WALK fetch to the same host answered in the same
@@ -6071,9 +6079,12 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   selection changes; Google-fallback boards stay one-shot on purpose (a refresh there is a whole
   WebView load). The Google blob paths
   (fetchBoardFrom / resolveIntersectionStopBoard) remain the FALLBACK where Transitous lacks coverage.
-  `buildBoard` is pure + unit-tested (TransitousTest). Remaining phase-2 candidate: transit
-  directions via `/api/v1/plan` as a FALLBACK only - Google stays the primary transit router on
-  purpose (its ETAs are traffic/history-aware; GTFS-RT only knows current lateness).
+  `buildBoard` is pure + unit-tested (TransitousTest). **Phase 2 shipped 2026-09-28:**
+  `Transitous.plan` (`/api/v1/plan`, `parsePlan` fixture-tested in `TransitousPlanTest`) gives
+  transit directions when Google is off or answered nothing; `MapViewModel.transitTrips` is the one
+  call site (the chooser, the mode-chip ETA and the stop-timeline fallback all go through it). Google
+  stays the primary transit router on purpose (its ETAs are traffic/history-aware; GTFS-RT only
+  knows current lateness). The planner's walk legs carry no distance text and the itinerary no fare.
 - **A board needs no Google listing (2026-09-22):** `fetchStopDepartures` used to return before
   Transitous whenever the place had no Google feature id, and the Google-off tap path never
   called it, so an OpenStreetMap station tapped with Google off showed no departures although

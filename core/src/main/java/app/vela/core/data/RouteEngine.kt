@@ -35,6 +35,12 @@ interface RouteEngine {
         departBearingDeg: Double? = null,
     ): List<Route>
 
+    /** True when the engine's installed data covers BOTH ends of a trip, so a route from it is a
+     *  real answer rather than an empty one. Cheap (a box test over the region index, no file
+     *  opened); the phone-first reroute asks it before spending a native compute. Online engines
+     *  answer false. */
+    fun covers(origin: LatLng, destination: LatLng, mode: TravelMode): Boolean = false
+
     /** The posted speed limit (km/h) of the road nearest ([lat],[lng]), or null if unknown. Only the
      *  on-device engine can answer (from the OSM `maxspeed` in the graph); online engines have no offline
      *  limit data, so the default is null. Call off the main thread. Convert to mph at the UI boundary. */

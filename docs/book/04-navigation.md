@@ -110,6 +110,14 @@ BACK_ON_COURSE_HITS         = 2        // on-route fixes that discard a reroute 
   Google's traffic and otherwise goes without it. When the open router gives nothing,
   `RerouteFallback.pick` takes Google's route if it is already back, else races Google against the
   downloaded region's engine for whatever time is left and takes the first answer.
+- **The phone goes first when it can (2026-09-28).** If a downloaded region covers both ends of the
+  trip, an urgent reroute starts the on-device route at the same time as the open router and adopts
+  it when the open router has not answered within `PHONE_FIRST_ONLINE_WAIT_MS = 2_500` (the compute
+  itself gets `PHONE_FIRST_ONDEVICE_WAIT_MS = 4_000` past that, never past the deadline). That
+  route has real turns but no traffic, so the degraded recheck (20 s) replaces it with the online
+  route on the same course, or offers a different online course as a faster route. A trip with
+  stops chains its legs on the phone the same way. Before this the on-device engine was only asked
+  after the open router had given nothing, so a hung router cost the whole deadline first.
 - **It keeps pointing where you are going.** The reroute sends your heading with the start point,
   so the answer is "given that you are going this way, what now" rather than "turn around".
   Planning a route sends none: which way a parked car faces is not a routing constraint.

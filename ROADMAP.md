@@ -28,13 +28,6 @@ Roughly in the order they are worth doing. Each one is small enough for a single
   and deletes by cell. Open: how a cell pack and a whole-region pack of the same area coexist in
   search (duplicate rows), and per-cell updates by `rev`. Before a catalog-wide dispatch,
   promote-stable and fdroid-repo must paginate their `gh release list` (about 450 new releases).
-- **Reroute on the phone first (deferred 2026-09-16).** When a downloaded region covers the drive,
-  compute the reroute with the on-device engine at once, then swap in the traffic-aware online
-  route when it arrives through the existing heal path. Evidence: a shared diagnostics export
-  (issue #557) shows two urgent reroutes timing out at 20 s while the open router hung, and issue
-  #258 reports the same pattern in cities. Since 2026-09-17 the on-device engine is a bounded
-  FALLBACK inside a reroute; the "phone first, heal later" order is still open, held back because
-  every latch back onto the online route is new bug surface.
 - **A name index for the downloaded places archive (2026-09-21).** Offline search reads the OSM
   place pack, and OSM is missing whole chains in places (the parts store that started this was
   on the map from the Overture archive and absent from search). The places PMTiles is spatial
@@ -54,9 +47,9 @@ Roughly in the order they are worth doing. Each one is small enough for a single
   it only if people navigate by transit offline; the cached boards are the cheap version.
 - **Google-off, per feature.** The master switch shipped 2026-09-21 (Settings > Privacy > "Use
   Vela without Google"). Still wanted: individual toggles under it, in particular "no Google
-  routing or live traffic" for people who want Google places but not Google directions; a
-  Transitous plan route so transit directions exist with Google off; and free-flow ETAs that say
-  they are free-flow.
+  routing or live traffic" for people who want Google places but not Google directions, and
+  free-flow ETAs that say they are free-flow. (The Transitous plan route shipped 2026-09-28, so
+  transit directions exist with Google off.)
 - **The neural voice's phonemizer is the weak link (2026-09-18, from a drive).** espeak's G2P
   sits in front of the Piper model and reads text that is not prose: "5:49 PM" came out as "five
   foot nine". The workarounds are stacking up (street ordinals spelled out, "I-80" and "CA-99"

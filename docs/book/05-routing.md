@@ -144,6 +144,8 @@ the navigation session's deadline into it so no single stage can eat the whole b
 URGENT_OSRM_TIMEOUT_MS   = 6_000    // the urgent reroute's one open-router call, all in
 URGENT_DEFAULT_BUDGET_MS = 16_000   // an urgent fetch with no deadline passed gets this
 URGENT_GOOGLE_GRACE_MS   = 2_500    // once OSRM has a route, Google gets this long, then trafficless
+PHONE_FIRST_ONLINE_WAIT_MS   = 2_500 // region on the phone: wait this long for OSRM, then take the phone's route
+PHONE_FIRST_ONDEVICE_WAIT_MS = 4_000 // and give the phone's compute this long past it
 LADDER_OSRM_TRY_MS       = 8_000    // the escalated retry's per-try open-router timeout
 LADDER_OSRM_SHARE        = 0.55     // share of its budget the open router may use
 LADDER_SNAP_RESERVE_MS   = 6_000    // room kept for the traffic snap after waiting on Google

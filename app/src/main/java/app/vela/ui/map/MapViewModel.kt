@@ -2671,7 +2671,7 @@ class MapViewModel @Inject constructor(
         } == true }
         val destLoc = (transitish.minByOrNull { it.location.distanceTo(origin) }
             ?: cands.minByOrNull { it.location.distanceTo(origin) })?.location ?: return null
-        val trips = runCatching { webDirections.transit(origin, destLoc) }.getOrDefault(emptyList())
+        val trips = transitTrips(origin, destLoc)
         val rides = trips.flatMap { it.steps }.filter { it.line != null && it.intermediateStops.isNotEmpty() }
         // Pick the leg the user actually tapped. Rank by the tapped LINE first (a short board label
         // like "N" matches a longer itinerary name "N-Judah"), then by how close its board stop is to
@@ -5208,11 +5208,21 @@ class MapViewModel @Inject constructor(
         if (_state.value.travelMode == TravelMode.TRANSIT) route(TravelMode.TRANSIT)
     }
 
+    /** Transit itineraries: Google's page first (traffic-aware and history-aware times), Transitous'
+     *  own planner when Google is off or answered nothing (2026-09-28). One shape either way. */
+    private suspend fun transitTrips(origin: LatLng, dest: LatLng, timeMode: Int = 0, timeEpochSec: Long? = null, prefer: Set<Int> = emptySet()): List<app.vela.core.model.TransitItinerary> {
+        val google = if (googleOff()) emptyList() else runCatching { webDirections.transit(origin, dest, timeMode, timeEpochSec, prefer) }.getOrDefault(emptyList())
+        if (google.isNotEmpty()) return google
+        return withContext(Dispatchers.IO) {
+            runCatching { app.vela.core.data.transit.Transitous.plan(http, origin, dest, timeMode, timeEpochSec, prefer) }.getOrDefault(emptyList())
+        }
+    }
+
     private fun routeTransit(origin: LatLng, dest: LatLng, timeMode: Int = 0, timeEpochSec: Long? = null, etaKey: String? = null) {
         _state.update { it.copy(routes = emptyList(), activeRoute = null, transit = emptyList(), transitLoading = true, transitPreview = null, status = null) }
         val prefer = _state.value.transitPrefer
         viewModelScope.launch {
-            val trips = runCatching { webDirections.transit(origin, dest, timeMode, timeEpochSec, prefer) }.getOrDefault(emptyList())
+            val trips = transitTrips(origin, dest, timeMode, timeEpochSec, prefer)
             _state.update {
                 if (it.travelMode != TravelMode.TRANSIT) it // user switched away mid-load
                 else it.copy(
@@ -5271,14 +5281,14 @@ class MapViewModel @Inject constructor(
         // Cheap OSRM modes first; transit last because it is a hidden-WebView page load.
         val missing = listOf(TravelMode.DRIVE, TravelMode.WALK, TravelMode.BICYCLE, TravelMode.TRANSIT)
             .filter { it != except && it !in known }
-            .filter { it != TravelMode.TRANSIT || app.vela.core.data.RoutingPrefs.googleTraffic } // a Google page load
+            .filter { it != TravelMode.TRANSIT || app.vela.core.data.RoutingPrefs.googleTraffic || googleOff() } // a Google page load, unless the planner answers
         if (missing.isEmpty()) return
         modeEtaJob = viewModelScope.launch {
             for (m in missing) {
                 if (!_state.value.directionsOpen || modeEtaKey != key) return@launch
                 if (_state.value.travelMode == m) continue // the user tapped it; route() is on it
                 val eta = runCatching {
-                    if (m == TravelMode.TRANSIT) webDirections.transit(origin, dest, timeMode, timeEpochSec).firstOrNull()?.durationText?.let(::transitChipText)
+                    if (m == TravelMode.TRANSIT) transitTrips(origin, dest, timeMode, timeEpochSec).firstOrNull()?.durationText?.let(::transitChipText)
                     else shownDuration(dataSource.directions(origin, dest, m, stops, avoidTolls, avoidHighways, avoidFerries))?.let { formatDuration(it) }
                 }.getOrNull() ?: continue
                 publishModeEta(key, m, eta)

@@ -340,16 +340,17 @@ TransitBoardCache.NEAR_M      = 40.0   // an offline tap matches a board fetched
 
 ## Limits
 
-- **With "Use Vela without Google" on, transit directions are unavailable.** Every hidden browser
-  page is google.com, so the switch makes each one return nothing before it loads. The directions
-  request comes back empty and the chooser says "No transit routes found"; the transit time on the
-  mode chips stays blank. **Departure boards still work**, because Transitous is not Google: stop
-  icons, boards, the 30-second refresh, the GTFS stop lists and the offline caches are all
-  unaffected. What goes with the switch is the Google fallback (stops Transitous does not cover
-  show no board) and the itinerary fallback for a stop list. The planned fix is a transit route
-  from Transitous' own planner (`/api/v1/plan`) when Google is off; it is listed as still wanted
-  in the [roadmap](../../ROADMAP.md) under Google-off per feature, and it is **not built**. Even
-  built, it would be the fallback, not the primary, for the traffic reason above.
+- **With "Use Vela without Google" on, transit directions come from Transitous' own planner**
+  (`/api/v1/plan`, since 2026-09-28), which also answers when Google's page returns nothing. It is
+  the fallback rather than the primary for the traffic reason above: it knows the timetable and
+  the current lateness, not the history-aware times Google's does. Its itineraries render exactly
+  like Google's (lines in the agency's colors, board and alight stops with codes and realtime
+  times, headsigns, walk legs whose steps come from the walk router on demand); what they lack is
+  a fare, a distance on the walk legs, and service alerts. The vehicle chips filter the planner's
+  modes (bus, subway, train, tram) and Depart at / Arrive by map to its `time` and `arriveBy`.
+  **Departure boards work as before**, because Transitous is not Google: stop icons, boards, the
+  30-second refresh, the GTFS stop lists and the offline caches are all unaffected. What still
+  goes with the switch is the Google fallback for stops Transitous does not cover.
 - **Only stops you have tapped have boards offline**, and their times are old. A per-region
   timetable bake is an open question in the roadmap, priced at tens of megabytes for a mid-size
   state and a few hundred for California, with no realtime at all.

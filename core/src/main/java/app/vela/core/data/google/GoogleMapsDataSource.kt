@@ -734,7 +734,29 @@ class GoogleMapsDataSource @Inject constructor(
                 val gD = if (bounded) kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
                     googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways, avoidFerries, waypoints)
                 } else async { googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways, avoidFerries, waypoints) }
-                val via = viaD.await().firstOrNull()
+                // PHONE FIRST for a trip with stops: the legs chained on the downloaded region.
+                val phoneD = if (urgent && routeEngine.isReady(mode) && routeEngine.covers(origin, destination, mode)) {
+                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
+                        runCatching { chainOnDevice(listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg) }.getOrNull()
+                    }
+                } else null
+                val via = if (phoneD == null) viaD.await().firstOrNull() else {
+                    val early = kotlinx.coroutines.withTimeoutOrNull(PHONE_FIRST_ONLINE_WAIT_MS) { viaD.await() }
+                    if (!early.isNullOrEmpty()) early.first() else {
+                        val wait = minOf(PHONE_FIRST_ONDEVICE_WAIT_MS, budget.remainingMs() ?: PHONE_FIRST_ONDEVICE_WAIT_MS).coerceAtLeast(0L)
+                        val onDevice = kotlinx.coroutines.withTimeoutOrNull(wait) { phoneD.await() }
+                        if (onDevice != null) {
+                            diag.record(
+                                "directions",
+                                "urgent: phone first, on-device legs ×${waypoints.size} after ${budget.elapsedMs()} ms while the open router was " +
+                                    (if (early == null) "still out" else "empty") + "; the recheck heals traffic",
+                                "",
+                            )
+                            return@coroutineScope listOf(onDevice)
+                        }
+                        (early ?: viaD.await()).firstOrNull()
+                    }
+                }
                 if (bounded && via == null) {
                     // Bounded + open router empty (issue #557): Google's direct route if it is back,
                     // else the on-device legs, else nothing; never past the budget.
@@ -868,7 +890,34 @@ class GoogleMapsDataSource @Inject constructor(
             val googleD = if (bounded) kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
                 googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways, avoidFerries)
             } else async { googleDirectionsRetried(origin, destination, mode, tries, avoidTolls, avoidHighways, avoidFerries) }
-            val open = openD.await()
+            // PHONE FIRST: an urgent reroute over a downloaded region computes the on-device route
+            // in parallel and takes it when the open router is not back inside the short wait.
+            val phoneD = if (urgent && routeEngine.isReady(mode) && routeEngine.covers(origin, destination, mode)) {
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
+                    runCatching {
+                        routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways, avoidFerries, departBearingDeg)
+                            .map { it.copy(offline = true) }
+                    }.getOrDefault(emptyList())
+                }
+            } else null
+            val open = if (phoneD == null) openD.await() else {
+                val early = kotlinx.coroutines.withTimeoutOrNull(PHONE_FIRST_ONLINE_WAIT_MS) { openD.await() }
+                if (!early.isNullOrEmpty()) early else {
+                    val wait = minOf(PHONE_FIRST_ONDEVICE_WAIT_MS, budget.remainingMs() ?: PHONE_FIRST_ONDEVICE_WAIT_MS).coerceAtLeast(0L)
+                    val onDevice = kotlinx.coroutines.withTimeoutOrNull(wait) { phoneD.await() }.orEmpty()
+                    if (onDevice.isNotEmpty()) {
+                        avoidHonored = true // the obf engine applies the avoid parameters itself
+                        diag.record(
+                            "directions",
+                            "urgent: phone first, on-device route after ${budget.elapsedMs()} ms while the open router was " +
+                                (if (early == null) "still out" else "empty") + "; the recheck heals traffic",
+                            "",
+                        )
+                        return@coroutineScope onDevice
+                    }
+                    early ?: openD.await()
+                }
+            }
             val avoidWanted = (avoidTolls || avoidHighways || avoidFerries) && mode == TravelMode.DRIVE
             if (bounded && open.isEmpty()) {
                 // Bounded + open router empty or hung (issue #557): (a) Google's route from this
@@ -1568,6 +1617,16 @@ class GoogleMapsDataSource @Inject constructor(
         const val AVOID_ONDEVICE_TIMEOUT_MS = 4_000L
         /** A mid-drive reroute waits this long for Google's traffic once the open router has answered. */
         const val URGENT_GOOGLE_GRACE_MS = 2_500L
+        /** PHONE FIRST (2026-09-28): with a downloaded region under the whole trip, a mid-drive
+         *  reroute starts the on-device route at once and takes it when the open router has not
+         *  answered inside this wait; a healthy open router answers in 1 to 3 s, a hung one used to
+         *  hold the driver on "Re-routing" for the attempt's whole deadline (issues #557, #258).
+         *  The on-device route is trafficless, so the degraded recheck (20 s) swaps in the online
+         *  route on the same course, or offers it as a faster route on another. */
+        const val PHONE_FIRST_ONLINE_WAIT_MS = 2_500L
+        /** How long past that the on-device compute may still take before the attempt goes back
+         *  to waiting on the open router; a city reroute finishes well inside it. */
+        const val PHONE_FIRST_ONDEVICE_WAIT_MS = 4_000L
         /** Issue #557: the urgent reroute's one open-router call, connect + read included. FOSSGIS
          *  answers a healthy reroute in 1-3 s; a hung call used to hold the attempt for the shared
          *  client's 12 s call timeout (and 15 s connect, 20 s read) before any fallback was asked. */

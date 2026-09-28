@@ -40,7 +40,7 @@ carries (name, type, address, and often phone and hours).
 | Speed limits, traffic lights, stop signs, level crossings | OpenStreetMap, baked per region | Never | Yes |
 | Surveillance and speed cameras | OpenStreetMap and DeFlock, bundled or baked | Never | Yes |
 | Transit departures | Transitous, an open GTFS service; the stop's Google page where Transitous has no coverage | Only for that fallback | The last board seen at a stop, marked with its time |
-| Transit directions | Google | Yes | No |
+| Transit directions | Google; Transitous' own planner when Google is off or has nothing | Yes, unless Google is off | No |
 | Satellite view (off by default) | Esri World Imagery; Google's imagery for close zoom where Esri has none | Only those close-ups | No |
 | Traffic overlay (off by default) | Google's traffic tiles | Yes, while it is on | No |
 | Street View | Google | Yes | No |

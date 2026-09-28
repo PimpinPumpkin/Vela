@@ -93,6 +93,7 @@ GrapheneOS and other no-GMS ROMs.
 | Traffic controls (lights, stops, crossings, humps) | Per-region road-features bake, Overpass only where no region exists | No | Yes |
 | Surveillance and speed cameras | Bundled and hosted DeFlock dataset; OSM speed cameras | No | Yes |
 | Transit boards and stop icons | Transitous (open GTFS + GTFS-Realtime); a Google-listed stop Transitous does not cover falls back to the stop's Google page | Only as the fallback | Last board seen, cached areas |
+| Transit directions | Google's transit page; Transitous' planner (`/api/v1/plan`) when Google is off or answers nothing | Yes, unless Google is off | No |
 | Transit directions | Google directions page | Yes | No |
 | Street View | Google keyless pano metadata and tiles, rendered in-app | Yes | No |
 | Reverse geocoding (pins, house-number and building taps) | Nominatim | No | No (the pin reads "Dropped pin"); a typed address geocodes offline from the region packs |
@@ -967,11 +968,24 @@ REROUTE_STUCK_GRACE_MS      5_000   past deadline plus this, the single-flight g
 REROUTE_FINISH_RESERVE_MS   4_000   deadline headroom left for adoption
 URGENT_OSRM_TIMEOUT_MS      6_000   connect, read and call for the single urgent OSRM try
 URGENT_GOOGLE_GRACE_MS      2_500   how long an urgent fetch waits for Google once OSRM answered
+PHONE_FIRST_ONLINE_WAIT_MS  2_500   with a downloaded region under the trip, how long an urgent fetch waits for the open router before taking the on-device route
+PHONE_FIRST_ONDEVICE_WAIT_MS 4_000  how long past that the on-device compute may still take
 LADDER_OSRM_TRY_MS          8_000   one escalated OSRM try
 LADDER_OSRM_SHARE            0.55   share of an escalated budget OSRM may spend
 BACK_ON_COURSE_HITS             2   consecutive on-route fixes that discard a stale reroute
 ```
 
+- **Phone first (2026-09-28).** When `RouteEngine.covers(origin, destination, mode)` (the trip-box
+  test over the downloaded region index, no file opened) is true, an urgent fetch starts the
+  on-device route in parallel with the open router and adopts it when the open router has not
+  answered inside `PHONE_FIRST_ONLINE_WAIT_MS`; the on-device compute itself gets
+  `PHONE_FIRST_ONDEVICE_WAIT_MS` more, bounded by the attempt's budget, and past that the fetch
+  goes back to waiting on the open router as before. The adopted route is tagged offline and
+  carries no traffic, so it is degraded: the recheck runs on the 20 s cadence and swaps in the
+  online route on the same course (`trafficUpgrade`) or offers a different course as a faster
+  route. A trip with stops chains its legs on the device the same way. The reason it exists: a
+  hung open router used to hold the driver on "Re-routing" for the attempt's whole deadline
+  (issues #557, #258) while the region on the phone could have answered in a second.
 - The fetch is **unstructured** and its single-flight guard is **time-bounded**
   (`NavSession.rerouteGate`). `withTimeoutOrNull` only interrupts at suspension points, so a
   fetch wedged in non-cancellable work outlives its own deadline; without the time bound the
@@ -2324,6 +2338,7 @@ The stack mixes two sources deliberately.
 | Stop icons | Transitous stop positions at z15 and above; OSM basemap icons where Transitous has no coverage | GTFS positions come from the agencies; tapping an icon opens the board by stop id and skips name matching entirely. |
 | Route stop list | The GTFS trip's own stop sequence (`/trip` by the tapped run) | Exact: the actual run, every stop, realtime per stop. The Google itinerary is the fallback. |
 | Realtime lateness | GTFS-Realtime through Transitous | Straight from the agency feed. |
+| Transit directions | Google first; `Transitous.plan` (`/api/v1/plan`, up to 5 itineraries, `arriveBy` for arrive-by and last-available, `transitModes` from the vehicle chips) when Google is off or answered nothing | Google's times are traffic-aware and history-aware where the planner knows the timetable and current lateness, so the planner is the fallback, not the primary. Its reply is parsed into the same itinerary shape (walk and ride legs, lines with the agency's colors, board and alight stops with codes and realtime-vs-timetable times, headsigns), so the chooser, the map drawing and step-by-step guidance are unchanged. Walk legs carry no distance text; the app fetches their steps from the walk router on demand as it does for Google's. |
 | Transit **directions** | Google's directions page | Google's itinerary ETAs reflect live road traffic on the bus's route; GTFS-Realtime only knows current lateness. |
 
 Details:
@@ -2968,7 +2983,8 @@ at 14.
 
 `PRIVACY.md` is the user-facing accounting and must agree with section 1.4. Browsing the map in
 the default configuration contacts Google not at all. Search, opening a place, traffic and
-transit directions reach Google. Routing reaches FOSSGIS. Transit boards reach Transitous.
+transit directions reach Google (Transitous' planner instead when Google is off). Routing reaches
+FOSSGIS. Transit boards reach Transitous.
 Reverse geocoding reaches Nominatim.
 
 ### 14.2 Diagnostics
