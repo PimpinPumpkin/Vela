@@ -1285,8 +1285,13 @@ class GoogleMapsDataSource @Inject constructor(
         // The avoid flags ride along on the snap, but they add nothing on the public server:
         // OSRM_SUPPORTS_EXCLUDE is off, so no `exclude=` is sent and the vias alone hold the
         // snap to Google's chosen path.
-        val named = RouteGeometry.routeVia(http, vias, mode, avoidTolls, avoidHighways, avoidFerries).firstOrNull()
+        // The traffic snap's guards (issue #478): a sampled point that lands on a flyover deck, the
+        // far carriageway or a dead-end lane forces an out-and-back or a loop, so the snap must reach
+        // the destination, stay within SNAP_LENGTH_SLACK of the route it names, and carry no spur.
+        val named = RouteGeometry.routeVia(http, vias, mode, avoidTolls, avoidHighways, avoidFerries, strictVias = true).firstOrNull()
             ?.takeIf { it.polyline.lastOrNull()?.let { p -> p.distanceTo(destination) <= SNAP_REACH_M } == true }
+            ?.takeIf { it.distanceMeters <= route.distanceMeters * SNAP_LENGTH_SLACK + SNAP_LENGTH_SLACK_M }
+            ?.takeIf { !spurWithTurn(it, route.polyline) }
         // Keep the route's OWN time figures through the snap. The picker sorted and displayed this
         // route by its Google per-route ETA; applyTraffic here would swap in a recomputed one
         // (OSRM free-flow x the ratio) IN PLACE, which can leapfrog a neighboring row and leave

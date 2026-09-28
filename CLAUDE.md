@@ -1576,6 +1576,11 @@ Defaults that make the safe path the easy one:
   the folder to `StorageLocation.FOLDERS`, or a move to the SD card leaves it behind. SPEC 7.1a.
   Test on a slot-less phone with `adb shell setprop debug.vela.sdtest true` (a `sm set-virtual-disk`
   card is invisible to apps).
+- **Naming a picked Google route carries the snap's guards (issue #478, 2026-09-28):** `nameRoute`
+  uses `strictVias`, the `SNAP_LENGTH_SLACK` length cap and `spurWithTurn`, like the traffic snap.
+  Without them a sampled point that landed on a flyover deck, the far carriageway or a dead-end lane
+  gave out-and-back spurs and loops (a Dhaka walk named to 10.8 km against Google's 4.5 km); a
+  refused snap falls back to Google's own line with its abbreviated steps.
 - **Link intent filters (issue #614, 2026-09-28):** every host in a filter is matched against every
   path in it, so `/maps`-prefixed hosts (google.com, www.google.com, goo.gl) and pathless hosts
   (maps.google.com, maps.app.goo.gl) live in separate filters. Check with
