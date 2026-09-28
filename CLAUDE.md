@@ -2837,7 +2837,7 @@ architecture note.
   summary, summary <-> minimized; a swipe down from the summary (40 dp or a fling) minimizes, a swipe
   up restores; a map pan (`minimizeTick`) minimizes. Small screens had no way to see the route.
 - **Small fixes 2026-09-28:** the in-bar road name row grows to its text instead of a fixed 20 dp
-  that cut descenders (#617); list/saved pins draw at `SAVED_PIN_SCALE` (1.25) x the icon-size
+  that cut descenders (#617); list/saved pins draw at `SAVED_PIN_SCALE` (1.35, measured against the Davis icons: 1.25 still read smaller) x the icon-size
   setting so they match POI icons (#618); the three water label layers joined `PLACE_LABEL_LAYERS`
   (#619).
 - **Google-style route picker - the DEFAULT since 2026-09-18 (`ui/RoutePicker`, pref

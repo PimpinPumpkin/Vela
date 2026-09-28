@@ -166,7 +166,7 @@ private const val SAVED_SRC = "vela-saved-src"
 private const val SAVED_LAYER = "vela-saved"
 private const val SAVED_INDEX_PROP = "savedIdx"
 private const val SAVED_ICON_PROP = "savedIcon"
-private const val SAVED_PIN_SCALE = 1.25f
+private const val SAVED_PIN_SCALE = 1.35f
 // Street View pose: the open pano's position + live view direction (a rotating cone, pegman-style),
 // shown while the half-screen pano viewer is up so the map underneath says where you're looking.
 private const val SV_SRC = "vela-sv-src"
@@ -2075,8 +2075,9 @@ fun VelaMapView(
                 PropertyFactory.textSize(13f * lc),
             )
             st.getLayer(MARKERS_DOTS_LAYER)?.setProperties(PropertyFactory.iconSize(sc))
-            // 1.25x: the list pin's 46 px disc matches a POI icon's (54 px dot on a 64 px pin, drawn
-            // at up to 1.3x) at the same setting; at 1x it stayed visibly smaller (issue #618).
+            // 1.35x: measured on the Davis fixture at browse zoom, a typical POI icon's disc is 65 px
+            // on screen and a prominent one 77; the list pin was 48 at 1x and 60 at 1.25x, so it read
+            // smaller than every icon beside it (issue #618). 1.35x puts its ringed disc at 65.
             st.getLayer(SAVED_LAYER)?.setProperties(PropertyFactory.iconSize(SAVED_PIN_SCALE * sc))
             st.getLayer(FLOCK_LAYER)?.setProperties(
                 PropertyFactory.iconSize(
