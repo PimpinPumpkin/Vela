@@ -2315,10 +2315,9 @@ and rebuilds when an asset landed meanwhile. `DRY_RUN=1` writes the manifest loc
 `shard` a/b; an empty selection bakes nothing. `skip_obf` rows are skipped (their sub-area rows
 cover them). No concurrency group on the merge.
 
-**Constraint:** a catalog-wide cells bake adds one release per region (about 450). Queries that
-take `gh release list --limit N` and filter by tag afterwards (promote-stable, fdroid-repo) stop
-seeing the app releases once that many newer releases exist; they must paginate before such a
-dispatch.
+**Constraint:** a catalog-wide cells bake adds one release per region (about 450). They are
+created on the root commit so they sort last (7.6.5, Releases), and the app-release queries
+paginate; a cells release created on HEAD would sit above every app release.
 
 **Routing across cells.** `ObfRouteEngine` hands the router every installed file that intersects
 the trip box, so a trip over several cell files routes like one over the region file.
@@ -2355,11 +2354,27 @@ deleted. Progress is the zip's bytes.
 region's box and would go with the `idsInside` sweep regardless); "Delete all offline data" clears
 the cells index and sweeps `cells/`.
 
-**Open.** `PmtilesRegionStore.sourcesFor` mounts ONE archive, the smallest installed one covering
-the view center, so with several cells installed the places layer switches archive as the center
-crosses a cell edge and shows nothing of a neighboring cell past that edge (streaming the manifest
-region fills in online). A cell pack and a whole-region pack of the same area both answer offline
-search (duplicate rows). Per-cell updates by `rev` are not offered. Both are the next steps.
+**Layer.** `PmtilesRegionStore.sourcesFor(center, manifest, view)` mounts EVERY installed archive
+whose box touches the view (`[S,W,N,E]`), minus any archive nested inside another mounted one (a
+whole region beside its own cells draws the region alone), nearest to the center first, at most
+`MAX_MOUNTED` (8); `Pick.rev` is the oldest mounted rev. Local archives are used only while one of
+them holds the center; otherwise the smallest manifest region covering the center streams. Before
+this the store mounted one archive, and a view over a cell edge showed one cell and nothing past
+the edge.
+
+**Whole region after cells.** When a region download completes with its pack and places archive
+(`downloadRoutingGraph`), the region's installed cells are deleted, or offline search answers from
+the cell pack and the region pack and lists every place twice.
+
+**Releases.** Every `cells-<region>` release is created with `--target` the repository's root
+commit (`CELLS_RELEASE_TARGET` in `scripts/bake-lib.sh`): GitHub sorts releases by the target
+commit's date, so hundreds of data releases created on HEAD would fill the first page of the
+releases API, which Obtainium reads alone (100 rows, no paging) to find the app's releases, and
+which every `--limit N` query saw. On the root commit they sort under every app release (checked:
+last of 33). promote-stable and fdroid-repo paginate (`gh api --paginate`) as well.
+
+**Open.** Per-cell updates by `rev` are not offered; a cell is re-pulled by deleting the region's
+pieces and picking the area again.
 
 ---
 

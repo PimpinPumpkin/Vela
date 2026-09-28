@@ -2713,9 +2713,14 @@ fun MapScreen(
         val downloadingVoiceId = state.voiceDownloadingId
         val downloadingRegion = state.routingDownloadingId != null || state.poiPackDownloadingId != null || state.regionFileStep != null
         val bareMap = gates.bareMap
+        // Download progress shows over a place sheet or the route chooser too (2026-09-28: an area
+        // pick started from a dropped pin ran its whole pull with no card); only the search page
+        // keeps every card off. Notices and the update offer stay bare-map only.
+        val downloadsOk = !searchOpen
         val fasterOffer = state.navigating && state.fasterRoute != null
         if (state.status != null || fasterOffer ||
-            (bareMap && (state.notices.isNotEmpty() || downloadingVoiceId != null || downloadingRegion || state.updateInfo != null))
+            (bareMap && (state.notices.isNotEmpty() || state.updateInfo != null)) ||
+            (downloadsOk && (downloadingVoiceId != null || state.asrDownloadPct != null || downloadingRegion || state.areaDownloadPct != null))
         ) {
             val bannerBottom = with(LocalDensity.current) { navBannerBottomPx.toDp() }
             Column(
@@ -2790,7 +2795,7 @@ fun MapScreen(
                         },
                     )
                 }
-                if (bareMap) {
+                if (downloadsOk) {
                     if (downloadingVoiceId != null) {
                         VoiceDownloadCard(installing = state.voiceInstalling, pct = state.voiceDownloadPct ?: 0f, onCancel = { vm.cancelVoiceDownload() })
                     }
@@ -2820,6 +2825,8 @@ fun MapScreen(
                     state.areaDownloadPct?.let { pct ->
                         RegionDownloadCard(name = "", places = false, pct = pct, area = true, onCancel = { vm.cancelAreaDownload() })
                     }
+                }
+                if (bareMap) {
                     // A newer release on GitHub (self-updater; the check is a Settings toggle).
                     state.updateInfo?.let { u ->
                         UpdateCard(

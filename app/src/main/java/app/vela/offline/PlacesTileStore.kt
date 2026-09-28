@@ -315,15 +315,43 @@ abstract class PmtilesRegionStore(
      *  "last picked" field let one lookup read the other's answer. */
     data class Pick(val uris: List<String>, val rev: Int)
 
-    suspend fun sourcesFor(center: LatLng?, manifestUrl: String): Pick {
+    /**
+     * The archives to draw for a view centered on [center] with the visible box [view] (`[S,W,N,E]`,
+     * null for the center alone). Installed archives win: every one whose box touches the view is
+     * mounted together (grid cells, SPEC 7.6: a view over a cell edge used to show one cell and
+     * nothing past the edge), minus any archive nested inside another mounted one (a whole region
+     * beside its own cells draws the region alone, or the overlap drew twice), nearest to the center
+     * first and at most [MAX_MOUNTED]. Local archives are used only while one of them holds the
+     * center; a view centered outside every installed archive streams the smallest manifest region
+     * covering the center, which fills the whole screen online. `rev` is the OLDEST mounted rev, so
+     * one pre-landmark archive keeps the basemap's own points.
+     */
+    suspend fun sourcesFor(center: LatLng?, manifestUrl: String, view: DoubleArray? = null): Pick {
         val local = installed()
         val c = center ?: return local.entries.firstOrNull()
             ?.let { (id, f) -> Pick(listOf("pmtiles://file://${f.absolutePath}"), installedRev(id)) } ?: Pick(emptyList(), 0)
         val index = readIndex()
-        val localPick = local.entries
-            .filter { (id, _) -> index[id]?.let { b -> c.lat in b[0]..b[2] && c.lng in b[1]..b[3] } ?: true }
-            .minByOrNull { (id, _) -> index[id]?.let { b -> (b[2] - b[0]) * (b[3] - b[1]) } ?: Double.MAX_VALUE }
-        if (localPick != null) return Pick(listOf("pmtiles://file://${localPick.value.absolutePath}"), installedRev(localPick.key))
+        fun holdsCenter(id: String) = index[id]?.let { b -> c.lat in b[0]..b[2] && c.lng in b[1]..b[3] } ?: true
+        fun touchesView(id: String): Boolean {
+            val b = index[id] ?: return true
+            val v = view ?: return holdsCenter(id)
+            return b[0] < v[2] && b[2] > v[0] && b[1] < v[3] && b[3] > v[1]
+        }
+        if (local.keys.any { holdsCenter(it) }) {
+            val hits = local.keys.filter { touchesView(it) }
+            fun nested(id: String): Boolean {
+                val i = index[id] ?: return false
+                return hits.any { o ->
+                    val ob = index[o] ?: return@any false
+                    o != id && ob[0] <= i[0] && ob[2] >= i[2] && ob[1] <= i[1] && ob[3] >= i[3] &&
+                        (!ob.contentEquals(i) || o < id)
+                }
+            }
+            val kept = hits.filter { !nested(it) }
+                .sortedBy { id -> index[id]?.let { b -> Math.hypot((b[0] + b[2]) / 2 - c.lat, (b[1] + b[3]) / 2 - c.lng) } ?: 0.0 }
+                .take(MAX_MOUNTED)
+            return Pick(kept.map { "pmtiles://file://${local.getValue(it).absolutePath}" }, kept.minOf { installedRev(it) })
+        }
         val streamed = runCatching { manifest(manifestUrl) }.getOrDefault(emptyList())
             .filter { it.covers(c) }
             .minByOrNull { it.area() } ?: return Pick(emptyList(), 0)
@@ -545,6 +573,9 @@ abstract class PmtilesRegionStore(
     }
 
     private companion object {
+        /** Installed archives mounted at once by [sourcesFor]: each is three layers, and a
+         *  state-wide view over small cells would otherwise mount dozens. */
+        const val MAX_MOUNTED = 8
         const val MISS_MEMO_MS = 10 * 60 * 1000L
         /** Dead space a patched archive may carry before it is rewritten without it. */
         const val DEAD_LIMIT_DIVISOR = 5

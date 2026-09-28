@@ -358,11 +358,15 @@ Defaults that make the safe path the easy one:
   workflow rebuilds everything (hours). This is not hypothetical: the first nightly-prune run
   (2026-07-09) deleted four of the five and broke every offline download; `routing-graphs`
   survived only because the repo has 400+ releases and it sat past the query's `--limit 200`
-  window. TWO standing rules: (1) any automation or cleanup that deletes/edits releases must
+  window. THREE standing rules: (1) any automation or cleanup that deletes/edits releases must
   select by tag pattern `v0.*`, never by "prerelease" or "old" (the infra releases are old
   prereleases by design, to stay off `releases/latest`); (2) any `gh release list` logic must
   assume 400+ releases and paginate or bound by tag - unpaginated list queries caused both the
-  deletion and a wrong damage report.
+  deletion and a wrong damage report (promote-stable and fdroid-repo paginate since 2026-09-28);
+  (3) a data release that is one of MANY (the per-region `cells-<region>` releases) is created
+  with `--target` the root commit, because GitHub sorts releases by the target commit's date and
+  Obtainium reads only the first 100: hundreds of data releases on HEAD would hide every app
+  release from every Obtainium user (SPEC 7.6.5).
 - CI: **stable / nightly / canary channels (2026-08-07, supersedes the per-push nightly).**
   `.github/workflows/ci.yml`: pushes to `main` AND `canary` build + test only (APK as a
   workflow artifact, no release) - a push can never mint a release anymore, which retires the
@@ -1989,9 +1993,12 @@ Defaults that make the safe path the easy one:
   offer during nav renders IN the column too (it used to sit at a fixed 96dp under the turn card),
   and the bottom PSDS tip is gated to the bare map + yields to the resume-nav card - every
   top-of-map card is in the one column; bottom cards (PSDS tip, resume-nav) are bare-map-only.
-  The flash (`MapUiState.status`) shows in ANY map state; the other cards stay gated to the bare
-  map, which INCLUDES during nav - a mid-drive voice/region download or update offer stacks under
-  the faster-route/status cards instead of hiding. `statusVoiceAction` on the state marks a
+  The flash (`MapUiState.status`) shows in ANY map state; the DOWNLOAD cards (region, cells, area
+  tiles, voices) show whenever the search page is not open, a place sheet or route chooser
+  included (2026-09-28: an area pick started from a dropped pin ran its 20 MB pull with no card at
+  all); notices and the update offer stay gated to the bare map, which INCLUDES during nav - a
+  mid-drive voice/region download or update offer stacks under the faster-route/status cards
+  instead of hiding. `statusVoiceAction` on the state marks a
   voice-problem flash: `InfoCard` then adds a filled **"Get a voice" pill** (UpdateCard layout)
   that deep-links Settings -> voice library (`MapScreen.onOpenVoiceSettings` -> VelaRoot ->
   `SettingsScreen(openVoiceLibrary = true)`). Both the no-engine warning and the
@@ -5092,9 +5099,16 @@ Gotchas:
   `PmtilesRegionStore.installFile` under the cell's id, so nothing downstream knows about cells.
   `AreaPlan.cells`/`cellsMb` feed the picker's cells checkbox (default, excludes the region one);
   `downloadCells` runs under the region card with `routingDownloadingId = CELLS_DOWNLOAD_ID`;
-  `deleteCellRegion` and `deleteRoutingGraph` remove them; delete-all sweeps `cells/`. Test with
-  the published Delaware cells (`cells-manifest.json` on `grid-cells`). Open: `sourcesFor` mounts
-  one archive, duplicate pack rows, per-cell rev updates (ROADMAP).
+  `deleteCellRegion` and `deleteRoutingGraph` remove them; delete-all sweeps `cells/`; a whole
+  region download that completes deletes the region's cells (duplicate pack rows otherwise). Test
+  with the published Delaware cells (`cells-manifest.json` on `grid-cells`). **The places layer
+  mounts every installed archive touching the view since the same day** (`sourcesFor(center,
+  manifest, view)`, nested archives dropped, `MAX_MOUNTED` 8, oldest rev wins the one-set gate);
+  it used to mount one, and a view over a cell edge showed one cell. Open: per-cell rev updates.
+  **Cells releases are created on the ROOT COMMIT (`CELLS_RELEASE_TARGET`, bake-lib.sh):** GitHub
+  sorts releases by the target commit's date, Obtainium reads only the first 100 releases, so 450
+  cells releases on HEAD would have hidden every app release from it; on the root commit they sort
+  last (checked with a throwaway release). promote-stable and fdroid-repo paginate now too.
 - **Grid cells, bake (2026-09-27, SPEC 7.6).** `scripts/build-cells-region.sh <region>
   [local.pbf]` cuts a catalog region into 0.5 degree cells and zips obf + place pack + places slice
   per cell; `CELLS_UPLOAD=1` publishes to `cells-<region>`, `scripts/merge-cells-manifest.sh`

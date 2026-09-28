@@ -43,10 +43,12 @@ jobs:
           # picked obf-tools the week it was created and promoted IT to stable, which knocked the
           # real stable off releases/latest and starved the updater and the F-Droid build of an
           # APK. Every release query here must bound to the v0.* tag scheme.
-          NIGHTLY="$(gh release list --limit 100 --json tagName,isPrerelease \
-            --jq '[.[] | select(.isPrerelease) | select(.tagName | test("^v0\\.[0-9]+\\.[0-9]+$"))][0].tagName // empty')"
-          STABLE="$(gh release list --limit 200 --json tagName,isPrerelease \
-            --jq '[.[] | select(.isPrerelease | not) | select(.tagName | test("^v0\\.[0-9]+\\.[0-9]+$"))][0].tagName // empty')"
+          # PAGINATED (2026-09-28): the repo can hold hundreds of data releases (one per region for
+          # the grid cells), so a `--limit N` window can hold no app release at all.
+          NIGHTLY="$(gh api --paginate 'repos/${{ github.repository }}/releases?per_page=100' \
+            --jq '.[] | select(.prerelease) | select(.tag_name | test("^v0\\.[0-9]+\\.[0-9]+$")) | .tag_name' | head -1)"
+          STABLE="$(gh api --paginate 'repos/${{ github.repository }}/releases?per_page=100' \
+            --jq '.[] | select(.prerelease | not) | select(.tag_name | test("^v0\\.[0-9]+\\.[0-9]+$")) | .tag_name' | head -1)"
           if [ -z "$NIGHTLY" ]; then
             echo "No nightly to promote."
             exit 0

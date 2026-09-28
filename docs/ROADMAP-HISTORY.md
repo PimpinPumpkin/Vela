@@ -999,3 +999,11 @@ done so it *earns* trust rather than spends it:
   checkbox, the sequential download under the region card, per-region rows and delete in
   Downloaded. The duplicate-pack rows, the one-archive places layer and per-cell updates stayed
   open (ROADMAP).
+
+## 2026-09-28: grid cells, the layer and the pack rows
+
+- **Grid cells: the layer, the duplicate pack and updates.** The places layer mounts every
+  installed archive the view touches (the one-archive rule showed one cell at a time), a whole
+  region download drops the region's cells (the duplicate search rows), and the cells releases are
+  created on the root commit so they sort under the app releases (Obtainium reads only the first
+  100 releases; the promote and F-Droid queries paginate as well). Per-cell rev updates stay open.

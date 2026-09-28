@@ -429,10 +429,10 @@ layer use them with nothing else to set up. Cancel keeps the pieces already down
 Downloaded lists them as one row per region ("Part of the region: 3 pieces, 24 MB") with a
 delete; deleting the whole region removes its pieces too.
 
-What a piece cannot do yet: the places layer mounts one archive at a time (the smallest
-installed one under the map's center), so with two neighboring pieces installed the businesses
-of the other piece appear only once the center crosses into it; a piece and a whole-region place
-pack of the same area both answer a search; and pieces are not updated by revision.
+The places layer draws every installed piece the screen touches (up to eight, nearest first), so
+two neighboring pieces read as one map; a whole region installed beside its pieces is drawn alone,
+and downloading the whole region afterwards removes its pieces, so a search never lists a place
+from both. Pieces are not updated by revision: delete the region's pieces and pick the area again.
 
 Delaware, baked on a laptop with four cells at a time:
 

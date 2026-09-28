@@ -169,7 +169,7 @@ echo "→ $ID: $(jq -r '"\(.cells) cells, \(.zipMb*100|round/100) MB zipped, \(.
 
 # Upload: the zips, then the fragment last, so the merge never lists a cell whose zip is missing.
 gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 || \
-  gh release create "$TAG" --repo "$REPO" --prerelease --title "Offline cells: $NAME" \
+  gh release create "$TAG" --repo "$REPO" --prerelease --target "$CELLS_RELEASE_TARGET" --title "Offline cells: $NAME" \
     --notes "Grid-cell offline bundles (routing obf, place pack, places tiles) for $NAME. Data assets, not a code release."
 upload() {
   local try

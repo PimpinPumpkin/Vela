@@ -5,6 +5,13 @@
 # Needs: curl, unzip, osmium, python3, a JDK (obf steps).
 
 # Size of a file in bytes (BSD and GNU stat).
+# A release sorts by its TARGET COMMIT's date, not by when it was made. A cells release per region
+# created on HEAD would fill the first page of the releases API (Obtainium reads only the first 100,
+# and every `--limit N` query saw the same window), so the data releases are created on the repo's
+# root commit and sort to the bottom, under every app release. Checked 2026-09-28: a release on this
+# commit listed last of 33.
+CELLS_RELEASE_TARGET=5e9cee460e0da3a0ec2a488eec2dbba372d0c1b7
+
 bake_bytes() { stat -f%z "$1" 2>/dev/null || stat -c%s "$1"; }
 
 # Size of a file in MiB, rounded up (the obf and pack manifests' sizeMb).

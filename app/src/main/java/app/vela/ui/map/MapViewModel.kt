@@ -7240,7 +7240,8 @@ class MapViewModel @Inject constructor(
         // lookups answer at once and a pan never flips the OSM business icons back and forth.
         if (!placesLookedUp) _state.update { it.copy(placesPending = true) }
         viewModelScope.launch {
-            val pick = runCatching { placesStore.sourcesFor(center, app.vela.BuildConfig.PLACES_MANIFEST_URL) }
+            val view = viewport?.let { doubleArrayOf(it[0], it[1], it[2], it[3]) }
+            val pick = runCatching { placesStore.sourcesFor(center, app.vela.BuildConfig.PLACES_MANIFEST_URL, view) }
                 .getOrDefault(app.vela.offline.PmtilesRegionStore.Pick(emptyList(), 0))
             val uris = pick.uris
             placesLookedUp = true
@@ -7839,6 +7840,12 @@ class MapViewModel @Inject constructor(
                     (!regionCancel.get() && fetchRegionArchives(region, placesStore, app.vela.BuildConfig.PLACES_MANIFEST_URL, 1).also { if (it) refreshPlacesOverlays() })
                 val mapOk = !regionCancel.get() && fetchRegionArchives(region, basemapStore, app.vela.BuildConfig.BASEMAP_MANIFEST_URL, 2)
                 android.util.Log.i("VelaRegion", "${region.id}: pack=$packOk places=$placesOk map=$mapOk canceled=${regionCancel.get()}")
+                // The whole region now holds everything its grid cells did (SPEC 7.6.5): drop them,
+                // or offline search answers from both packs and lists every place twice.
+                if (packOk && placesOk && cellStore.installed().any { it.regionId == region.id }) {
+                    kotlinx.coroutines.withContext(Dispatchers.IO) { runCatching { cellStore.deleteRegion(region.id) } }
+                    _state.update { it.copy(cellsInstalled = cellStore.installed()) }
+                }
                 if (mapOk) {
                     app.vela.offline.GlyphPackStore.ensureInstalled(appContext, http)
                     ensureWorldBasemap()

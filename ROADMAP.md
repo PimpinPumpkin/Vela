@@ -20,12 +20,11 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
 
 Roughly in the order they are worth doing. Each one is small enough for a single PR.
 
-- **Grid cells: the layer, the duplicate pack and updates (2026-09-28).** The picker pulls cells
-  now (SPEC 7.6.5). Left: `PmtilesRegionStore.sourcesFor` mounts one archive, so the places layer
-  shows one cell at a time (mount every installed cell touching the view, or merge slices); a cell
-  pack and a whole-region pack of the same area both answer offline search (duplicate rows); no
-  per-cell update by `rev`. Before a catalog-wide cells dispatch, promote-stable and fdroid-repo
-  must paginate their `gh release list` (about 450 new releases).
+- **Grid cells: per-cell updates and the catalog bake (2026-09-28).** The layer and the
+  duplicate-pack rows are done (SPEC 7.6.5). Left: no per-cell update by `rev` (delete the pieces
+  and pick again), and the world bake itself (`grid-cells.yml` `all` with `shard` a and b; the
+  releases sort last by construction, so the dispatch is safe for Obtainium and the promote and
+  F-Droid queries).
 - **A name index for the downloaded places archive (2026-09-21).** Offline search reads the OSM
   place pack, and OSM is missing whole chains in places (the parts store that started this was
   on the map from the Overture archive and absent from search). The places PMTiles is spatial
