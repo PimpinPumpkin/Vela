@@ -7767,10 +7767,9 @@ class MapViewModel @Inject constructor(
             diag.record("delta", line)
             android.util.Log.d("VelaDelta", line)
         }
-        if (region.delta != null && app.vela.ui.RegionUpdates.allowedNow(appContext)) {
+        // A tapped Update always tries the patch first; the update setting only governs automatic ones.
+        if (region.delta != null) {
             if (store.updateWithDelta(region, onProgress = progress, log = note)) { forgetOpenPlaceLinks("${region.id} updated"); return }
-        } else if (region.delta != null) {
-            note("${region.id}: delta available but updates are ${app.vela.ui.RegionUpdates.mode.value.name.lowercase()} on this connection")
         }
         val size = region.sizeMb
         // Over the installed copy, never after deleting it: a failed download keeps the region.

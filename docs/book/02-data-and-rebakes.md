@@ -327,8 +327,8 @@ making every downloader take a few hundred MB again. On 2026-09-22 the live plac
   Then
   every installed places or basemap archive and place pack whose manifest publishes a patch from the
   installed revision takes it quietly; routing files publish no patches and a full re-download is
-  never automatic. The mode also decides whether a tap on Update may patch; otherwise the tap
-  downloads the archive whole, over the installed copy, which stays until the new one is complete.
+  never automatic. A tap on Update always tries the patch first, whatever the mode; without one
+  it downloads the archive whole, over the installed copy, which stays until the new one is complete.
   Every attempt is recorded in the diagnostics ring (kind `delta`, `auto:` for the daily pass) and
   in logcat under `VelaDelta`.
 - **Place packs have their own deltas.** `poipack_delta.py` publishes a row-level SQLite delta
