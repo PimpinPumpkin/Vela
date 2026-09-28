@@ -317,8 +317,11 @@ making every downloader take a few hundred MB again. On 2026-09-22 the live plac
 - **Policy is the user's, and on Wi-Fi by default.** Settings > Offline maps > "Update downloaded
   regions": "Never on its own" (`RegionUpdates.Mode.OFF`), "On Wi-Fi" (an unmetered network, as the
   system judges it; the default since 2026-09-25) or "On Wi-Fi and mobile data". It was off until
-  somebody had watched a patch download and apply on a real phone, which happened on 2026-09-19. On Wi-Fi or mobile, a minute after the app
-  starts and at most once in 20 hours (`AUTO_PATCH_DELAY_MS = 60_000`, `AUTO_PATCH_EVERY_MS` = 20 h),
+  somebody had watched a patch download and apply on a real phone, which happened on 2026-09-19. On Wi-Fi or mobile the app checks a minute after it
+  starts (`AUTO_PATCH_DELAY_MS = 60_000`), every 3 hours after that (`AUTO_PATCH_POLL_MS`), and 15 s
+  after a validated network appears; a check that read the manifests waits 20 hours
+  (`AUTO_PATCH_EVERY_MS`) before the next one, a check that could not read them retries.
+  Then
   every installed places or basemap archive and place pack whose manifest publishes a patch from the
   installed revision takes it quietly; routing files publish no patches and a full re-download is
   never automatic. The mode also decides whether a tap on Update may patch; otherwise the tap

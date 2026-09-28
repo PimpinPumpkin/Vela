@@ -3147,7 +3147,7 @@ architecture note.
   + tile hashes, phone-computable - Android has no blake2b) must equal the one the patch carries,
   which is a fresh download's; a mismatch truncates back and the caller downloads whole. Policy is
   `ui/RegionUpdates` (pref `region_update_mode`; since 2026-09-22 WIFI/MOBILE also run
-  `MapViewModel.scheduleAutoRegionPatches`: a minute after start, at most once per 20 h, every
+  `MapViewModel.maybeAutoPatch`: a minute after start, every 3 h, and on a validated network, at most once per 20 h after a manifest read, every
   installed places/basemap archive and place pack with a patch FROM its installed rev takes it,
   never a full download; Update's full download is `download(replace = true)` over the installed
   copy instead of delete-then-download. WIFI **is the default since 2026-09-25** (it was OFF
@@ -3205,6 +3205,12 @@ architecture note.
   (`BBOXPRED`, S3 path only) returns the identical 400,608 Kentucky rows in 3.7 s. The addresses
   query in the same script always did this. KEEP the geometry test as the exact filter; bbox is the
   hint. Any new read of a cloud parquet gets the same treatment before anyone optimizes the rules.
+- **OVERTURE TAXONOMY (2026-09-27).** Release 2026-09-23.0 replaced `categories` with `taxonomy`
+  and renamed about a third of the values. `build-places-region.sh` reads whichever column the
+  release has and maps new names back through `tools/overture-taxonomy-map.csv` (new,old; built by
+  joining ids across 2026-08-19.0 and 2026-09-23.1 over 19 sample boxes, majority old name per new
+  one), so every rule keeps its old names. A new rule names the OLD category. `duckdb -bail`: a
+  failed statement fails the bake instead of exiting 0 with no archive.
 - **Bake joins must be HASH joins (2026-09-16).** Two correlated lookups that were free on the
   Davis box went effectively quadratic over a whole state: the tenant check (one EXISTS with three
   OR-ed tests) and the unit snap (a LATERAL lookup per stacked row). A world bake did 19 regions in

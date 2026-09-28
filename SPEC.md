@@ -1329,6 +1329,10 @@ a dense city.
 `tools/build-places-region.sh <id> S W N E out.pmtiles [release] [local.parquet]` runs DuckDB
 over Overture Places (public S3 parquet or a local extract) and writes PMTiles.
 
+- Category names are Overture's pre-2026-09-23 `categories.primary` set. A release with `taxonomy`
+  instead has `taxonomy.primary` mapped back through `tools/overture-taxonomy-map.csv`; DuckDB runs
+  with `-bail`, so a failed statement fails the bake.
+
 - Overture contributes business POIs only: its own park, school, campus, housing and transit rows
   are dropped at scoring. Parks, schools, civic places and landmarks come from OSM (the one-set
   landmark rows below).
@@ -2150,8 +2154,9 @@ applier is `app/offline/PmtilesPatch`.
 - **Policy is the user's**: `RegionUpdates` (`ui/OfflineUpdates.kt`, pref `region_update_mode`: never / on Wi-Fi,
   the default since 2026-09-25 (an explicit "never" is kept) / on mobile data too),
   metered judged by the system rather than by which radio it is. On Wi-Fi or mobile the app applies
-  every published patch that fits an installed archive or pack on its own, a minute after start and
-  at most once in 20 hours, skipping a drive in progress. A FULL re-download is never automatic on
+  every published patch that fits an installed archive or pack on its own: a minute after start, every
+  3 hours, and 15 s after a validated network appears, at most once in 20 hours once the manifests
+  were read (a check that could not read them retries), skipping a drive in progress. A FULL re-download is never automatic on
   any setting, and a tapped one downloads over the installed copy so a failure keeps the region. Every attempt is recorded in the diagnostics ring (kind `delta`) and
   logcat `VelaDelta` with the bytes and the reason for any fallback, because the failure worth
   seeing is a region that quietly downloads itself whole every week.

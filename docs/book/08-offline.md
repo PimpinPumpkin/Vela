@@ -392,8 +392,8 @@ to switch itself on before someone had watched it work. That happened on 2026-09
 Pixel 9 took a published patch end to end, and the same run found and fixed two bugs (the catalog
 cached for the life of the process, so no update was ever offered, and dead bytes never bounded).
 The default became On Wi-Fi on 2026-09-25; anyone who had picked Never keeps it. On either
-Wi-Fi setting the app checks a minute after start, at
-most once in 20 hours, and applies every published patch that fits an installed places or
+Wi-Fi setting the app checks a minute after start, every 3 hours and when a working network
+appears, at most once in 20 hours, and applies every published patch that fits an installed places or
 basemap archive or place pack, on its own and quietly; it never downloads a region whole by
 itself, and it skips a drive in progress.
 

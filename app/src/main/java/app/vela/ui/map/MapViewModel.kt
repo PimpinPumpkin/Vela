@@ -1889,7 +1889,11 @@ class MapViewModel @Inject constructor(
             // A network that starts or stops reaching the internet re-decides the map picture
             // (refreshBasemapArchive treats an unvalidated network as offline).
             val validated = isValidated()
-            if (validated != lastValidated) { lastValidated = validated; refreshBasemapArchive() }
+            if (validated != lastValidated) {
+                lastValidated = validated
+                refreshBasemapArchive()
+                if (validated) viewModelScope.launch { delay(AUTO_PATCH_NET_DELAY_MS); maybeAutoPatch("network") }
+            }
             if (!off) {
                 // Online applies IMMEDIATELY (and cancels a pending offline latch).
                 offlineLatchJob?.cancel()
@@ -5420,28 +5424,47 @@ class MapViewModel @Inject constructor(
     private fun scheduleAutoRegionPatches() {
         viewModelScope.launch {
             delay(AUTO_PATCH_DELAY_MS)
-            if (!app.vela.ui.RegionUpdates.allowedNow(appContext) || _state.value.navigating) return@launch
+            while (true) {
+                maybeAutoPatch("timer")
+                delay(AUTO_PATCH_POLL_MS)
+            }
+        }
+    }
+
+    private var autoPatchJob: Job? = null
+
+    /** One auto-patch pass: at start, every [AUTO_PATCH_POLL_MS] while the process lives (a head
+     *  unit never restarts the app), and when a validated network appears. The daily gate is
+     *  stamped only after the manifests were actually read, so a pass on a dead link retries. */
+    private fun maybeAutoPatch(reason: String) {
+        if (autoPatchJob?.isActive == true) return
+        autoPatchJob = viewModelScope.launch {
+            if (!app.vela.ui.RegionUpdates.allowedNow(appContext) || !isValidated() || _state.value.navigating) return@launch
             val now = System.currentTimeMillis()
             if (now - settingsPrefs.getLong(KEY_AUTO_PATCH_AT, 0L) < AUTO_PATCH_EVERY_MS) return@launch
-            settingsPrefs.edit().putLong(KEY_AUTO_PATCH_AT, now).apply()
             val note: (String) -> Unit = { line ->
                 app.vela.ui.RegionUpdates.lastResult.value = line
-                diag.record("delta", "auto: $line")
-                android.util.Log.d("VelaDelta", "auto: $line")
+                diag.record("delta", "auto ($reason): $line")
+                android.util.Log.d("VelaDelta", "auto ($reason): $line")
             }
+            var read = false
             val due = withContext(Dispatchers.IO) {
                 listOf(placesStore to app.vela.BuildConfig.PLACES_MANIFEST_URL, basemapStore to app.vela.BuildConfig.BASEMAP_MANIFEST_URL)
                     .flatMap { (store, url) ->
-                        runCatching { store.updatable(store.manifest(url)) }.getOrDefault(emptyList())
+                        runCatching { store.manifest(url).also { if (it.isNotEmpty()) read = true } }
+                            .map { store.updatable(it) }.getOrDefault(emptyList())
                             .filter { r -> r.delta != null && store.installedRev(r.id) == r.delta.fromRev }
                             .map { store to it }
                     }
             }
             val packs = withContext(Dispatchers.IO) {
-                runCatching { poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL) }.getOrDefault(emptyList())
+                runCatching { poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL).also { if (it.isNotEmpty()) read = true } }
+                    .getOrDefault(emptyList())
                     .filter { p -> p.id in poiPackStore.installedIds() && p.deltaUrl != null && p.rev > poiPackStore.installedRev(p.id) &&
                         p.deltaFromRev == poiPackStore.installedRev(p.id) }
             }
+            if (!read) { note("manifests unreachable, will retry"); return@launch }
+            settingsPrefs.edit().putLong(KEY_AUTO_PATCH_AT, now).apply()
             if (due.isEmpty() && packs.isEmpty()) { note("nothing to patch"); return@launch }
             downloadLaunch(appContext.getString(R.string.settings_region_updates)) {
                 for ((store, r) in due) {
@@ -7988,6 +8011,8 @@ class MapViewModel @Inject constructor(
         /** The automatic region patch pass: a minute after start, at most once in 20 hours. */
         const val AUTO_PATCH_DELAY_MS = 60_000L
         const val AUTO_PATCH_EVERY_MS = 20 * 60 * 60 * 1000L
+        const val AUTO_PATCH_POLL_MS = 3 * 60 * 60 * 1000L
+        const val AUTO_PATCH_NET_DELAY_MS = 15_000L
         const val KEY_AUTO_PATCH_AT = "region_autopatch_at"
         const val TRANSIT_STOPS_MIN_ZOOM = 15.0 // GTFS stop icons from street-ish zoom (denser than cameras)
         const val CONTROLS_ONSCREEN_CAP = 400 // max controls handed to the map (nearest-to-center wins) — a

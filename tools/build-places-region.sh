@@ -221,7 +221,14 @@ if [ -n "$LOCAL" ]; then
   BBOXPRED=""
 else
   SRC="read_parquet('s3://overturemaps-us-west-2/release/$RELEASE/theme=places/type=place/*', hive_partitioning=1)"
-  SEL="id, names.primary AS name, categories.primary AS category, confidence, brand.names.primary AS brand, addresses[1].freeform AS addr, websites[1] AS website, phones[1] AS phone, operating_status, ST_X(geometry) AS lng, ST_Y(geometry) AS lat, fmtloc(addresses[1].locality, addresses[1].region, addresses[1].postcode, addresses[1].country) AS loc, addresses[1].country AS cc"
+  # Overture replaced 'categories' with 'taxonomy' in 2026-09-23.0, renaming about a third of the
+  # values; tools/overture-taxonomy-map.csv maps them back to the names every rule below uses.
+  if duckdb -c "INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2'; DESCRIBE SELECT * FROM $SRC LIMIT 0" 2>/dev/null | grep -q taxonomy; then
+    CATCOL="taxonomy.primary"
+  else
+    CATCOL="categories.primary"
+  fi
+  SEL="id, names.primary AS name, $CATCOL AS category, confidence, brand.names.primary AS brand, addresses[1].freeform AS addr, websites[1] AS website, phones[1] AS phone, operating_status, ST_X(geometry) AS lng, ST_Y(geometry) AS lat, fmtloc(addresses[1].locality, addresses[1].region, addresses[1].postcode, addresses[1].country) AS loc, addresses[1].country AS cc"
   # PRUNE ON bbox, NOT ON THE GEOMETRY (2026-09-18). The region filter below is on ST_X/ST_Y, which
   # DuckDB has to decode per row, so every place on earth was read for every region: 504 s of a
   # 570 s Kentucky bake, once per region, 414 times. Overture's own `bbox` struct is a plain column
@@ -492,7 +499,10 @@ SELECT (SELECT count(*) FROM osm_raw) AS osm_nodes, (SELECT count(*) FROM osm_sn
 OSMSQL
 fi
 
-duckdb <<SQL
+TAXMAP="$(cd "$(dirname "$0")" && pwd)/overture-taxonomy-map.csv"
+# -bail: a failed statement used to leave every later table missing and still exit 0, which the
+# workflow read as "no places" (every nightly bake from 2026-09-24 to 2026-09-27).
+duckdb -bail <<SQL
 .timer on
 INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial; SET s3_region='us-west-2';
 -- SPILL RATHER THAN DIE. A continent-sized box materializes millions of rows, and a runner that
@@ -515,6 +525,8 @@ CREATE MACRO fmtloc(city, region, postcode, country) AS nullif(trim(CASE
   ELSE concat_ws(' ', nullif(trim(postcode), ''), nullif(trim(city), '')) END), '');
 CREATE TABLE raw AS SELECT $SEL, CAST(NULL AS VARCHAR) AS hours FROM $SRC
   WHERE lng BETWEEN $W AND $E AND lat BETWEEN $S AND $N $BBOXPRED;
+CREATE TABLE taxmap AS SELECT * FROM read_csv('$TAXMAP', header = true, columns = {'new': 'VARCHAR', 'old': 'VARCHAR'});
+UPDATE raw SET category = taxmap.old FROM taxmap WHERE raw.category = taxmap.new;
 CREATE TABLE regioncc AS SELECT coalesce(mode(cc), 'US') AS cc FROM raw;
 CREATE TABLE locs AS SELECT id, loc FROM raw WHERE loc IS NOT NULL;
 -- ENGLISH NAMES (2026-09-22, user: a map of Japan read in Japanese with the app set to English).
