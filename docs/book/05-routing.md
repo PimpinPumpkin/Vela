@@ -28,6 +28,13 @@ are joined.
   what a region download holds.
 - **Valhalla, for bikes.** The FOSSGIS Valhalla server (`valhalla1.openstreetmap.de`), the OSRM
   servers' sibling, used only for safety-weighted bicycle routes.
+- **The map's own vector tiles, for names.** The OpenMapTiles tiles the map draws (OpenFreeMap, or
+  a downloaded region's basemap file) carry every street's name and shape. `LineNamer` uses them to
+  put names on a line it did not route (below).
+
+**Walking is OpenStreetMap's (2026-09-28).** Walking routes come from the open foot router, not
+Google. Google has no traffic to add on foot and its keyless walking steps are abbreviated. Google
+is asked for its walk once, only to see whether it is much shorter; see "Walking" below.
 
 Transit directions are a different story and deliberately stay with Google; that is
 [chapter 9](09-transit.md).
@@ -82,6 +89,7 @@ it, so a replay says which router drew the line:
 | --- | --- |
 | `OSRM` | the open router's own route, and today also a route snapped along Google's line (see Limits) |
 | `OSRM_VIA_SNAP` | OSRM forced along Google's line: the jam snap (with or without stops, since 2026-09-25) and a Google alternate named on pick |
+| `GOOGLE_LINE_NAMED` | Google's line kept, turns from its bends, names from the map tiles: a much-shorter Google walk, and a picked alternate whose snap was refused |
 | `GOOGLE_ABBREVIATED` | Google's own route with its shortened step list, driven because nothing better answered |
 | `GOOGLE_PROVISIONAL` | a Google alternate in the picker, not named yet |
 | `GOOGLE_NAMED` | the parser's raw tag for a Google route; replaced by one of the two above before it leaves the fetch |
@@ -90,6 +98,42 @@ it, so a replay says which router drew the line:
 
 The on-phone router also takes over in two cases that are not about the network: an avoid with no
 Google answer (see avoids below), and a bike trip in a downloaded area (see bikes below).
+
+### Walking
+
+`walkRoutes` asks the open foot router and, in parallel, Google's walk (6 s cap, skipped for an
+urgent reroute and when traffic-on-tap or Google-free is on). Google's walk joins the list, first,
+only when it is at least 15% shorter (`WALK_GOOGLE_SHORTER`), which is where OpenStreetMap lacks a
+path or a crossing Google knows. Then it is **named, never snapped**: forcing a foot route through
+points on Google's line touches each point on whichever side it lands (the far sidewalk, the far
+carriageway, a flyover deck) and doubles back. Measured on 2026-09-28 against Google's own length:
+a Dhaka walk 4.5 km became 9.9 km, a Davis walk 2.2 km became 2.9 km, and giving each point Google's
+heading did not help. In California the open router's walk matched or beat Google's on every trip
+tried (Davis 2.29 vs 2.21 km and 3.67 vs 3.79 km, Sacramento 3.56 vs 3.61 km), so Google's walk is
+rarely offered there. The Dhaka trip is the case it exists for: 4.6 km named against the open
+router's 5.6 km.
+
+### Naming a line it did not route (`LineNamer`)
+
+Google's line is kept exactly. Turns come from its own bends: the heading change across 32 m either
+side, local peaks of at least 35 degrees, 30 m apart. Each 8 m sample takes the name of the nearest
+street within 25 m (30 m driving) that runs the same way (within 35 degrees); runs shorter than
+40 m are absorbed, since a cross street is picked up for a sample or two at every junction. A turn
+is announced when the name changes across it or it bends 70 degrees or more; a name change with no
+turn is folded into the step before as a rename, as the open router's are. Driving phrases by the
+tiles' road class: joining a motorway or trunk is a ramp, leaving one an exit, a gentle split
+between two a keep. On foot, a road bridge's name (a flyover, marked from the tiles' `transportation`
+bridge segments because the names layer carries no bridge flag) never labels the street under it.
+
+The result carries no lanes and no sign destinations (those sit on the router's junctions, not in
+the tiles), and Google's own step positions are not used: they sit at the start of the stretch
+before a maneuver, a kilometer early on a highway ramp. A line under half named on foot (60%
+driving) is not trusted and the route is dropped. Names cost the few z14 tiles the line crosses,
+fetched in parallel (under a second, often cached) and matched in a few milliseconds.
+
+It serves twice: Google's much-shorter walk, and **driving's fallback when a picked Google
+alternate's snap is refused** (too long, a spur, a sampled point off the road). That fallback used
+to be Google's bare "Turn left, turn right" list.
 
 ### Reroutes run on a deadline
 

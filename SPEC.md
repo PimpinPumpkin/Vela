@@ -826,11 +826,27 @@ through what the plan avoided.
   avoided, and the online chain falls back to a normal route tagged `avoidNotHonored`. The
   chooser shows the note only when every route carries it.
 
-**Walking is the open router's alone** (issue #478, 2026-09-28): `googleDirections` returns
-nothing for `TravelMode.WALK`, so there is no Google walking route, no via-snap and no traffic row.
-A foot route forced through points sampled on Google's line crosses and doubles back at each one
-(+20 to +110% on Davis, Sacramento and Dhaka walks), and Google's keyless walking steps are
-abbreviated. Where OSM lacks crossings the open walk runs longer than Google's (Dhaka 5.9 vs 4.5 km).
+**Walking is the open router's** (issue #478, 2026-09-28): `googleDirections` returns nothing for
+`TravelMode.WALK` except to `walkRoutes`, which asks once (6 s) to compare. Google's walk is offered,
+first, only when at least `WALK_GOOGLE_SHORTER` (15%) shorter than the open walk, and then named by
+`LineNamer` (below), never snapped: a foot route forced through points sampled on Google's line
+crosses and doubles back at each one (+20 to +120% on Davis, Sacramento and Dhaka walks, per-point
+headings no help). No traffic row for walking. Logcat `VelaWalk` gives both lengths and the naming.
+
+**`LineNamer` (`core/data/naming`)** keeps a route's line and derives its steps: turns from the
+heading change across +-32 m (peaks >= 35 degrees, 30 m apart); names from the nearest street in
+the map's vector tiles within 25 m (30 m driving) running within 35 degrees of the line, runs under
+40 m absorbed; a turn announced when the name changes across it or it bends >= 70 degrees, a name
+change without a turn folded as a rename. Driving phrases by road class (motorway or trunk joined =
+ramp, left = exit, split between two = keep). Walking skips a road bridge's name (tertiary and up,
+marked from `transportation` bridge segments within 6 m, since `transportation_name` has no bridge
+flag). Under 50% named on foot, 60% driving: null. No lanes or sign destinations; Google's step
+positions are not used (they sit at the start of the stretch before the maneuver). Source
+`GOOGLE_LINE_NAMED`. Names come from `RoadNameTiles`: the z14 tiles the line crosses (max 48, 96 in
+an LRU), fetched by the app's `RoadNameTileSource`, a downloaded basemap archive first, else the
+live OpenFreeMap tiles (template from its TileJSON, 6 h), protobuf decoded in core. Used for the
+much-shorter Google walk and as `nameRoute`'s fallback when the snap is refused, before Google's
+abbreviated steps.
 
 **Bicycle safety weighting** (`RoutingPrefs.bikeSafe`, on by default): the obf bicycle profile
 where a region covers the trip (6 s planning, 3 s urgent), otherwise Valhalla with `use_roads`

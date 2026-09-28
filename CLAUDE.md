@@ -5441,9 +5441,15 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   reviews, not routing. **`OSRM_BASE` is the FOSSGIS community server (fair-use) - point at a
   self-hosted OSRM/Valhalla before any real release.** (This retired the keyless-step parsing as the
   primary path + the Nominatim "fill the missing road name" hack.)
-- **Walking never asks Google (issue #478, 2026-09-28).** `googleDirections` returns empty for WALK;
-  every caller reads that as "Google did not answer", so walking is the open foot router alone and
-  the chooser hides the traffic row for it. SPEC 4.x "Walking is the open router's alone".
+- **Walking is OSM's; Google's line is NAMED, never snapped (issue #478, 2026-09-28).**
+  `googleDirections` returns empty for WALK except to `walkRoutes`, which offers Google's walk only
+  when 15% shorter and names it with `LineNamer`; the chooser hides the traffic row for walking.
+  `LineNamer` also replaces Google's abbreviated steps as `nameRoute`'s fallback. Three rules found
+  building it: Google's keyless step POSITIONS are useless for placement (the start of the stretch
+  before the maneuver); `transportation_name` has no bridge flag, so flyovers are marked from the
+  `transportation` layer's bridge segments, or a walk under a flyover is named after the deck; and
+  Dhaka lanes are often unnamed (59% named), hence the 50% bar on foot. Tile fixtures for the tests
+  are in `core/src/test/resources/tiles/`. SPEC 4.x.
 - **Bike routing is SAFETY-weighted by default (issue #401, 2026-09-14).** `directions()` takes an
   early branch for `TravelMode.BICYCLE` when `RoutingPrefs.bikeSafe` (core holder, mirrored from
   the `app.vela.ui.BikeSafe` pref `bike_safe`, Settings > Navigation, default ON): the on-device

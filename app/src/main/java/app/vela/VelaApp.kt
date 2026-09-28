@@ -92,6 +92,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         // CategoryFilter.enabled). Gates the ambient POI fan-out in GoogleMapsDataSource.
         app.vela.core.data.LowRamMode.enabled = app.vela.ui.MemoryPressure.lowRam
         app.vela.offline.StorageLocation.init(this)
+        app.vela.offline.RoadNameTileSource.install(this) // street names for LineNamer (issue #478)
         Units.init(this)
         // The desktop window size Google's requests describe: picked once per install, then kept
         // (a size that changed per launch would be its own oddity). See BrowserViewport.

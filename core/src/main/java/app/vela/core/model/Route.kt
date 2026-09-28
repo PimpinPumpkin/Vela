@@ -169,6 +169,9 @@ enum class RouteSource {
     /** A Google alternate in the picker: polyline and ETA are real, the steps are placeholders
      *  until it is picked and named. Never driven as is. */
     GOOGLE_PROVISIONAL,
+    /** Google's line kept as is, turns taken from its bends and each stretch named from the map's
+     *  vector tiles (LineNamer). No lanes or sign destinations. */
+    GOOGLE_LINE_NAMED,
     /** On-device OsmAnd obf routing (downloaded region). */
     OBF,
     /** On-device GraphHopper graph (the retired offline engine; kept so old trip files read back). */

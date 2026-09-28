@@ -98,6 +98,26 @@ object PmtilesReader {
         }.getOrNull()
     }
 
+    /** One tile's bytes, decompressed, or null when the archive does not hold it or cannot be read. */
+    fun tileBytes(file: File, z: Int, x: Int, y: Int): ByteArray? {
+        val h = header(file) ?: return null
+        if (z < h.minZoom || z > h.maxZoom) return null
+        val e = entryFor(file, z, x, y) ?: return null
+        if (e.length <= 0 || e.length > MAX_TILE_BYTES) return null
+        return runCatching {
+            RandomAccessFile(file, "r").use { f ->
+                val raw = ByteArray(e.length.toInt())
+                f.seek(h.tileDataOffset + e.offset)
+                f.readFully(raw)
+                when (h.tileCompression) {
+                    COMPRESSION_NONE -> raw
+                    COMPRESSION_GZIP -> GZIPInputStream(raw.inputStream()).use { it.readBytes() }
+                    else -> null
+                }
+            }
+        }.getOrNull()
+    }
+
     /** The directory entry for a tile, or null when the archive does not hold it. */
     private fun entryFor(file: File, z: Int, x: Int, y: Int): Entry? {
         val h = header(file) ?: return null
