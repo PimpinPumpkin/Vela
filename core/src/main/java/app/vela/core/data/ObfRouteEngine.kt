@@ -42,7 +42,9 @@ import java.util.concurrent.ConcurrentHashMap
  * [MEMORY_MB] and fail outright, so until the bake generates HH, offline obf routing is a
  * city/metro feature.
  */
-class ObfRouteEngine(private val obfRoot: File) : RouteEngine {
+class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
+    constructor(root: File) : this({ root })
+    private val obfRoot: File get() = obfRootOf()
 
     private data class Region(val id: String, val s: Double, val w: Double, val n: Double, val e: Double) {
         fun covers(p: LatLng) = OfflinePhrases.inBox(s, w, n, e, p.lat, p.lng)

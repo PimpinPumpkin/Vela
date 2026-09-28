@@ -24,7 +24,7 @@ object GlyphPackStore {
     private const val PACK_URL = "https://github.com/PimpinPumpkin/Vela/releases/download/map-fonts/map-fonts.zip"
     private val mutex = Mutex()
 
-    private fun glyphRoot(context: Context) = File(context.filesDir, "glyphs")
+    private fun glyphRoot(context: Context) = File(StorageLocation.root(context), "glyphs")
     private fun spriteRoot(context: Context) = File(context.filesDir, "sprites")
 
     /** The bundled Liberty asset asks for Roboto stacks; the pack (and the live style) carry the

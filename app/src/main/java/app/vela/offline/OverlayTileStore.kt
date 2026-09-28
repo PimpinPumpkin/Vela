@@ -28,8 +28,8 @@ class OverlayTileStore @Inject constructor(
     @ApplicationContext private val context: Context,
     private val http: OkHttpClient,
 ) {
-    private val overlaysRoot = File(context.filesDir, "overlays")
-    private val indexFile = File(overlaysRoot, "index.json")
+    private val overlaysRoot: File get() = File(app.vela.offline.StorageLocation.root(context), "overlays")
+    private val indexFile: File get() = File(overlaysRoot, "index.json")
 
     // Serialize downloads so two callers requesting the SAME region can't interleave writes into the one
     // `<id>.pmtiles.tmp` (the 7-byte magic check could then pass on a corrupt archive) and can't race the

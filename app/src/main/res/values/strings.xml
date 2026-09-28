@@ -834,6 +834,17 @@
     <string name="settings_speech_preload_hint">Loads the voice search model when Vela opens, so the mic listens at once. It uses about 300 MB until two quiet minutes pass. Off, it loads when you tap into the search box. On by default on phones with about 8 GB of memory or more.</string>
     <string name="settings_google_free_links">Open shared Google Maps links</string>
     <string name="settings_maps_links">Google Maps links</string>
+    <string name="settings_storage">Store downloaded regions on</string>
+    <string name="settings_storage_internal">Internal storage</string>
+    <string name="settings_storage_sd">SD card</string>
+    <string name="settings_storage_hint">Moves what is already downloaded. An SD card is slower, and while it is out the offline maps on it are unavailable and the map streams instead.</string>
+    <string name="settings_storage_missing">The SD card is not there, so downloads go to internal storage until it is back.</string>
+    <string name="settings_storage_moving">Moving offline data… %1$d%%</string>
+    <string name="settings_storage_busy">Wait for the download or drive to finish, then move the offline data.</string>
+    <string name="settings_storage_no_card">No SD card found.</string>
+    <string name="settings_storage_no_space">Not enough space there: the offline data needs about %1$d MB.</string>
+    <string name="settings_storage_moved">Offline data moved.</string>
+    <string name="settings_storage_failed">The move did not finish; the offline data stays where it was.</string>
     <string name="settings_maps_links_on">Links to Google Maps open in Vela.</string>
     <string name="settings_maps_links_partial">Some Google Maps links open in Vela. Add the rest under Open by default so every kind of link does.</string>
     <string name="settings_maps_links_off">Android opens Google Maps links in the browser. To open them in Vela, turn on Open supported links and add the links under Open by default.</string>

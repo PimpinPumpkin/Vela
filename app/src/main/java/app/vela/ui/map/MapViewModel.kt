@@ -398,6 +398,8 @@ data class MapUiState(
      *  places-only or map-only update left the Update button sitting there (user's head unit,
      *  2026-09-25). */
     val regionUpdatingId: String? = null,
+    val storageMovePct: Int? = null, // offline data moving between internal storage and the SD card
+
     val regionFilePct: Int = 0,
     val poiPackInstalledIds: Set<String> = emptySet(),
     val poiPackRegions: List<app.vela.offline.RoutingRegion> = emptyList(), // the pack catalog (revs/deltas)
@@ -6571,18 +6573,19 @@ class MapViewModel @Inject constructor(
             else -> (f.walkBottomUp().filter { it.isFile }.sumOf { it.length() } / (1024 * 1024)).toInt()
         }
         val files = appContext.filesDir
+        val data = app.vela.offline.StorageLocation.root(appContext)
         OfflineStorage(
             // MapLibre keeps saved areas AND the browsing cache in one database (.mapbox);
             // the downloaded building/address overlays are map data too, and so are the label
             // glyph pack the offline basemap needs (~200 MB) and the baked road features.
             mapsMb = mbOf(java.io.File(files, ".mapbox")) + mbOf(java.io.File(files, "mbgl-offline.db")) +
-                mbOf(java.io.File(files, "overlays")) + mbOf(java.io.File(files, "basemap")) +
-                mbOf(java.io.File(files, "glyphs")) + mbOf(java.io.File(files, "roadfeatures")),
-            routingMb = mbOf(java.io.File(files, "obf")),
+                mbOf(java.io.File(data, "overlays")) + mbOf(java.io.File(data, "basemap")) +
+                mbOf(java.io.File(data, "glyphs")) + mbOf(java.io.File(files, "roadfeatures")),
+            routingMb = mbOf(java.io.File(data, "obf")),
             // The packs AND the places archives a region download pulls: both are the place data
             // behind the map's businesses, and leaving the archives out of the only storage screen
             // made a few hundred MB invisible.
-            placesMb = mbOf(java.io.File(files, "poipacks")) + mbOf(java.io.File(files, "places")),
+            placesMb = mbOf(java.io.File(data, "poipacks")) + mbOf(java.io.File(data, "places")),
             voicesMb = mbOf(java.io.File(files, "piper")) + mbOf(java.io.File(files, "asr")),
         )
     }
@@ -6595,6 +6598,83 @@ class MapViewModel @Inject constructor(
      *  catalog when a country was re-split) go too: after the stores have deleted what they know,
      *  every remaining file under their folders is swept, keeping only the index files. Voices and
      *  speech models are not offline map data and are left alone. */
+    /** Move downloaded regions to [target] (StorageLocation.INTERNAL / SD, issue #613). Every open
+     *  file is let go first (routing readers, place packs, the map's archive sources); nothing is
+     *  deleted until every file has copied, and MapLibre moves its saved-area database itself. */
+    fun moveOfflineStorage(target: String) {
+        val loc = app.vela.offline.StorageLocation
+        val s = _state.value
+        if (s.storageMovePct != null) return
+        if (s.routingDownloadingId != null || s.poiPackDownloadingId != null || s.regionUpdatingId != null || s.navigating) {
+            flashStatus(appContext.getString(R.string.settings_storage_busy)); return
+        }
+        val from = loc.root(appContext)
+        val to = loc.rootFor(appContext, target) ?: run { flashStatus(appContext.getString(R.string.settings_storage_no_card)); return }
+        if (from.absolutePath == to.absolutePath) { loc.set(appContext, target); return }
+        regionCancel.set(false)
+        _state.update { it.copy(storageMovePct = 0) }
+        downloadLaunch(appContext.getString(R.string.settings_storage)) {
+            var ok = false
+            try {
+                val need = kotlinx.coroutines.withContext(Dispatchers.IO) { loc.sizeOf(from) }
+                if (to.usableSpace < need + 64L * 1024 * 1024) {
+                    flashStatus(appContext.getString(R.string.settings_storage_no_space, (need / (1024 * 1024)).toInt()))
+                    return@downloadLaunch
+                }
+                (routeEngine as? app.vela.core.data.ObfRouteEngine)?.shutdown()
+                app.vela.core.data.OfflinePacks.reload(emptyList())
+                _state.update { it.copy(placesOverlays = emptyList(), basemapArchive = null, buildingOverlays = emptyList(), addressOverlays = emptyList()) }
+                delay(600) // let the map drop its archive sources
+                ok = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                    loc.move(from, to, active = { !regionCancel.get() }) { pct ->
+                        _state.update { st -> if (st.storageMovePct == pct) st else st.copy(storageMovePct = pct) }
+                    }
+                }
+                if (ok) {
+                    loc.set(appContext, target)
+                    // MapLibre's path change opens a new database and carries nothing over, so its
+                    // saved areas move in two steps: park it in a temp folder (which closes the old
+                    // file), copy the file, then open it at the destination.
+                    suspend fun setPath(path: String) = kotlinx.coroutines.withTimeoutOrNull(60_000) {
+                        kotlinx.coroutines.suspendCancellableCoroutine<Unit> { cont ->
+                            val done = { if (cont.isActive) cont.resumeWith(Result.success(Unit)) }
+                            org.maplibre.android.storage.FileSource.setResourcesCachePath(appContext, path,
+                                object : org.maplibre.android.storage.FileSource.ResourcesCachePathChangeCallback {
+                                    override fun onSuccess(path: String) = done()
+                                    override fun onError(message: String) { android.util.Log.w("VelaStorage", "map database: $message"); done() }
+                                })
+                        }
+                    }
+                    val oldDb = java.io.File(org.maplibre.android.storage.FileSource.getResourcesCachePath(appContext), "mbgl-offline.db")
+                    val park = java.io.File(appContext.cacheDir, "mbgl-park").apply { mkdirs() }
+                    setPath(park.absolutePath)
+                    kotlinx.coroutines.withContext(Dispatchers.IO) {
+                        runCatching {
+                            if (oldDb.isFile && oldDb.parentFile?.absolutePath != to.absolutePath) {
+                                val newDb = java.io.File(to, "mbgl-offline.db")
+                                oldDb.copyTo(newDb, overwrite = true)
+                                if (newDb.length() == oldDb.length()) oldDb.delete()
+                            }
+                        }
+                    }
+                    setPath(to.absolutePath)
+                    kotlinx.coroutines.withContext(Dispatchers.IO) { park.deleteRecursively() }
+                }
+                flashStatus(appContext.getString(if (ok) R.string.settings_storage_moved else R.string.settings_storage_failed))
+            } finally {
+                _state.update { it.copy(storageMovePct = null) }
+                poiPackStore.registerPacks()
+                (routeEngine as? app.vela.core.data.ObfRouteEngine)?.shutdown()
+                _state.update { it.copy(routingInstalledIds = obfStore.installedIds(), poiPackInstalledIds = poiPackStore.installedIds()) }
+                refreshPlacesOverlays()
+                refreshBasemapArchive()
+                android.util.Log.d("VelaStorage", "move to $target ${if (ok) "done" else "not done"}")
+            }
+        }
+    }
+
+    fun cancelStorageMove() = regionCancel.set(true)
+
     fun deleteAllOfflineData() {
         viewModelScope.launch {
             kotlinx.coroutines.withContext(Dispatchers.IO) {
@@ -6605,7 +6685,8 @@ class MapViewModel @Inject constructor(
                 runCatching { overlayStore.installedIds().forEach { overlayStore.delete(it) } }
                 val keep = setOf("index.json", "revs.json", "dead.json")
                 for (folder in listOf("obf", "poipacks", "places", "basemap", "overlays", "roadfeatures", "graphs")) {
-                    java.io.File(appContext.filesDir, folder).listFiles()?.forEach { f ->
+                    val base = if (folder in app.vela.offline.StorageLocation.FOLDERS) app.vela.offline.StorageLocation.root(appContext) else appContext.filesDir
+                    java.io.File(base, folder).listFiles()?.forEach { f ->
                         if (f.name !in keep) runCatching { if (f.isDirectory) f.deleteRecursively() else f.delete() }
                     }
                 }

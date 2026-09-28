@@ -28,7 +28,7 @@ class ObfStore @Inject constructor(
     @ApplicationContext private val context: Context,
     http: OkHttpClient,
 ) {
-    private val root = File(context.filesDir, "obf")
+    private val root: File get() = File(app.vela.offline.StorageLocation.root(context), "obf")
     private val revsLock = Any()
 
     /** The manifest rev the installed file came from (0 for files older than revs). */
@@ -41,7 +41,7 @@ class ObfStore @Inject constructor(
         root.mkdirs()
         File(root, "revs.json").writeText(readRevs().put(id, rev).toString())
     }
-    private val indexFile = File(root, "index.json")
+    private val indexFile: File get() = File(root, "index.json")
     private val indexLock = Any()
 
     // Region files are hundreds of MB - the shared client's 12 s scrape cap would abort the body

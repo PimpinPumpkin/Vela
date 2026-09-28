@@ -27,7 +27,7 @@ class PoiPackStore @Inject constructor(
     @ApplicationContext private val context: Context,
     private val http: OkHttpClient,
 ) {
-    private val packsRoot = File(context.filesDir, "poipacks")
+    private val packsRoot: File get() = File(app.vela.offline.StorageLocation.root(context), "poipacks")
 
     // Packs are hundreds of MB — same no-call-timeout rule as every large download (the shared
     // client's 12 s scrape cap would abort the body mid-read, silently).

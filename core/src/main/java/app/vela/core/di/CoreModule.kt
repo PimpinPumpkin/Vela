@@ -69,7 +69,7 @@ object CoreModule {
     @Provides
     @Singleton
     fun routeEngine(@ApplicationContext context: Context): RouteEngine =
-        ObfRouteEngine(File(context.filesDir, "obf"))
+        ObfRouteEngine { File(app.vela.core.data.OfflineRoot.dir ?: context.filesDir, "obf") }
 }
 
 /** A cookie jar the app can empty (Settings > Privacy "Start a new Google session"). */

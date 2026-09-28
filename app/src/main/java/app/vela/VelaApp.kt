@@ -91,6 +91,7 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         // Push the device class down to :core, which cannot read an :app holder (same seam as
         // CategoryFilter.enabled). Gates the ambient POI fan-out in GoogleMapsDataSource.
         app.vela.core.data.LowRamMode.enabled = app.vela.ui.MemoryPressure.lowRam
+        app.vela.offline.StorageLocation.init(this)
         Units.init(this)
         // The desktop window size Google's requests describe: picked once per install, then kept
         // (a size that changed per launch would be its own oddity). See BrowserViewport.

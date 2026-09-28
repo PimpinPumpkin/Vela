@@ -213,6 +213,38 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                 ) { Text(stringResource(R.string.settings_delete_offline_all)) }
             }
             Hint(stringResource(R.string.settings_delete_offline_all_hint))
+            // Internal storage or the SD card (issue #613). Shown only with a card present, or with
+            // the card chosen and gone (so the reason downloads look missing is on screen).
+            val loc = app.vela.offline.StorageLocation
+            val hasCard = remember(state.storageMovePct) { loc.sdDir(context) != null }
+            if (hasCard || loc.mode.value == loc.SD) {
+                GroupDivider()
+                SubHead(stringResource(R.string.settings_storage))
+                val moving = state.storageMovePct
+                if (moving != null) {
+                    Hint(stringResource(R.string.settings_storage_moving, moving))
+                    androidx.compose.material3.LinearProgressIndicator(
+                        progress = { moving / 100f },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                    )
+                    androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 8.dp)) {
+                        androidx.compose.material3.TextButton(
+                            onClick = { vm.cancelStorageMove() },
+                            modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                        ) { Text(stringResource(R.string.settings_cancel)) }
+                    }
+                } else {
+                    listOf(loc.INTERNAL to R.string.settings_storage_internal, loc.SD to R.string.settings_storage_sd).forEach { (key, label) ->
+                        app.vela.ui.settings.SelectableRow(
+                            label = stringResource(label),
+                            selected = loc.mode.value == key,
+                            onClick = { if (loc.mode.value != key) vm.moveOfflineStorage(key) },
+                        )
+                    }
+                    if (loc.cardMissing(context)) Hint(stringResource(R.string.settings_storage_missing))
+                    else Hint(stringResource(R.string.settings_storage_hint))
+                }
+            }
         }
         Spacer(Modifier.height(8.dp))
         // WHAT IS ON THE PHONE, right under the storage figures and the delete button (issue #601):

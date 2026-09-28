@@ -1571,6 +1571,11 @@ Defaults that make the safe path the easy one:
   fleet back on the page paths with no release; a per-place cache (photos + feed 6 h, details 15 min)
   makes a re-tap free; "More reviews" follows the feed's next-page token, which sits at payload[1]
   (seen in a full-session reply 2026-09-25: `"<base64>:10"`, payload[5] null, payload[6] `[false]`).
+- **Offline data root (issue #613, 2026-09-28):** a store of downloaded regions takes its folder
+  from `StorageLocation.root(context)` per access (never a `val` computed at construction) and adds
+  the folder to `StorageLocation.FOLDERS`, or a move to the SD card leaves it behind. SPEC 7.1a.
+  Test on a slot-less phone with `adb shell setprop debug.vela.sdtest true` (a `sm set-virtual-disk`
+  card is invisible to apps).
 - **Link intent filters (issue #614, 2026-09-28):** every host in a filter is matched against every
   path in it, so `/maps`-prefixed hosts (google.com, www.google.com, goo.gl) and pathless hosts
   (maps.google.com, maps.app.goo.gl) live in separate filters. Check with

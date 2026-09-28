@@ -1989,6 +1989,20 @@ by tag pattern `v0.*`, never by "prerelease" or "old", because the infrastructur
 old prereleases by design; and any `gh release list` logic must paginate or bound by tag,
 because the repository holds hundreds of releases.
 
+### 7.1a Where the files live
+
+`offline/StorageLocation` (pref `offline_storage`, internal / sd, Settings > Offline maps, shown
+when a removable volume is mounted or the card is chosen) roots `obf`, `poipacks`, `places`,
+`basemap`, `overlays` and `glyphs` at `filesDir` or the app's folder on the SD card
+(`getExternalFilesDirs`, no permission). Every store reads the root per access, and `:core`'s
+`ObfRouteEngine` reads it through `OfflineRoot.dir`. A move lets go of every open file (routing
+readers, place packs, the map's archive sources), copies with a length check per file, deletes the
+source only when everything copied, and moves MapLibre's database in two steps (park at a temp path,
+copy the file, reopen at the destination), because MapLibre's path change opens a new database and
+carries nothing over. With the card chosen and missing, the root is internal storage. Voices, speech
+models, road features and caches stay internal. `adb shell setprop debug.vela.sdtest true` stands in
+the shared-storage app folder for a card.
+
 ### 7.2 Catalog and selection
 
 `tools/routing-regions.json` is the catalog (every Geofabrik country-level extract, US states,

@@ -234,7 +234,7 @@ class BasemapTileStore @Inject constructor(
 abstract class PmtilesRegionStore(
     private val context: Context,
     private val http: OkHttpClient,
-    folder: String,
+    private val folder: String,
 ) {
     /** A delta the bake published against an earlier revision: applicable only to an archive
      *  installed at exactly [fromRev]. Absent until the bake publishes one. */
@@ -250,8 +250,8 @@ abstract class PmtilesRegionStore(
         fun boxArea() = area()
     }
 
-    private val root = File(context.filesDir, folder)
-    private val indexFile = File(root, "index.json")
+    private val root: File get() = File(app.vela.offline.StorageLocation.root(context), folder)
+    private val indexFile: File get() = File(root, "index.json")
     private val indexLock = Any()
     private val downloadMutex = Mutex()
 
