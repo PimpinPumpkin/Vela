@@ -2257,12 +2257,15 @@ Four rules, each of which produced a blank map:
 A catalog region is also published as grid cells, so the app can download the part of a region a
 frame touches instead of the whole region. The bake is 7.6.1 to 7.6.4; the app side is 7.6.5.
 
-**Grid.** Cells are the 0.5 degree tiles of one global grid (`cells_grid.py`, `STEP` 0.5), each
-clipped to the region's header box (clamped by `clamp-bbox.py`). The key is the tile's SW corner,
-fixed width: `[ns]DD.D[ew]DDD.D`, e.g. `n38.5w075.5`. Cell id = `<region>.<key>`
-(`delaware.n38.5w075.5`); region ids hold no dot, so the first dot splits them. A cell with no road
-and no place-pack row is dropped. A region with more than `MAX_CELLS` (999) cells fails the bake:
-one release holds 1000 assets, the zips plus the fragment.
+**Grid.** Cells are the tiles of one global grid at `STEP` degrees (`cells_grid.py`, 0.5 by
+default), each clipped to the region's header box (clamped by `clamp-bbox.py`) and dropped when
+no part of the region's polygon falls in it (an ocean tile, a neighbor's land). The key is the
+tile's SW corner, fixed width: `[ns]DD.D[ew]DDD.D`, e.g. `n38.5w075.5`. Cell id =
+`<region>.<key>` (`delaware.n38.5w075.5`); region ids hold no dot, so the first dot splits them. A
+cell with no road and no place-pack row is dropped. One release holds 1000 assets, the zips plus
+the fragment, so a region with more than `MAX_CELLS` (999) cells is regridded at double the step
+until it fits (`CELL_STEP` sets the start; over 8 degrees the bake fails): Alaska has 4949
+half-degree box tiles. The app never assumes a cell size; every cell carries its box.
 
 **Bake** (`scripts/build-cells-region.sh <region> [local.pbf]`, shared steps in
 `scripts/bake-lib.sh`, which the obf and pack scripts also source):

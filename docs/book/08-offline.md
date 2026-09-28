@@ -416,7 +416,8 @@ phone that has never fetched the catalog still gets an empty page offline.
 
 A region can also be cut into cells, so a frame over one town can pull a few small bundles instead
 of the whole state. The bake is `scripts/build-cells-region.sh` and the workflow `grid-cells.yml`
-(SPEC 7.6). Cells are 0.5 degree tiles of one global grid, clipped to the region; each is one zip
+(SPEC 7.6). Cells are 0.5 degree tiles of one global grid, clipped to the region (a region too
+large for one release, Alaska, gets coarser tiles); each is one zip
 holding its routing obf, its place pack and its slice of the region's places tiles.
 
 Since 2026-09-28 the area picker reads them. Where the region under the frame has cells baked and

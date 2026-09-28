@@ -5110,7 +5110,8 @@ Gotchas:
   cells releases on HEAD would have hidden every app release from it; on the root commit they sort
   last (checked with a throwaway release). promote-stable and fdroid-repo paginate now too.
 - **Grid cells, bake (2026-09-27, SPEC 7.6).** `scripts/build-cells-region.sh <region>
-  [local.pbf]` cuts a catalog region into 0.5 degree cells and zips obf + place pack + places slice
+  [local.pbf]` cuts a catalog region into 0.5 degree cells (doubled until the region fits the 999
+  assets one release holds; Alaska needed it) and zips obf + place pack + places slice
   per cell; `CELLS_UPLOAD=1` publishes to `cells-<region>`, `scripts/merge-cells-manifest.sh`
   derives `cells-manifest.json` on `grid-cells` (`DRY_RUN=1` for a local copy);
   `grid-cells.yml` is dispatch only. Shared bake steps live in `scripts/bake-lib.sh`

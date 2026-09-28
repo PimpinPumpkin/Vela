@@ -118,13 +118,21 @@ fi
 
 bake_mapcreator "$WORK"
 
-# The cells (scripts/cells_grid.py): 0.5 degree tiles of a global grid, clipped to the box.
-mkdir -p "$WORK/regions"
-python3 "$ROOT/scripts/cells_grid.py" "$ID" "$BBOX" "$ROOT/app/src/main/assets/region_polys.json" "$WORK/regions" \
-  > "$WORK/cells.tsv"
-NCELLS=$(wc -l < "$WORK/cells.tsv" | tr -d ' ')
-[ "$NCELLS" -le "$MAX_CELLS" ] || { echo "::error::$ID has $NCELLS cells; one release holds $MAX_CELLS"; exit 1; }
-echo "→ $NCELLS grid cells"
+# The cells (scripts/cells_grid.py): STEP degree tiles of a global grid, clipped to the box and
+# to the region's polygon. STEP starts at 0.5 and doubles until the region fits one release
+# (Alaska: 4949 half-degree box tiles; its land fits at a coarser step).
+STEP="${CELL_STEP:-0.5}"
+while :; do
+  rm -rf "$WORK/regions"; mkdir -p "$WORK/regions"
+  python3 "$ROOT/scripts/cells_grid.py" "$ID" "$BBOX" "$ROOT/app/src/main/assets/region_polys.json" "$WORK/regions" "$STEP" \
+    > "$WORK/cells.tsv"
+  NCELLS=$(wc -l < "$WORK/cells.tsv" | tr -d ' ')
+  [ "$NCELLS" -gt "$MAX_CELLS" ] || break
+  echo "→ $NCELLS cells at $STEP degrees is over $MAX_CELLS; doubling the step"
+  STEP=$(awk -v s="$STEP" 'BEGIN { print s * 2 }')
+  [ "$(awk -v s="$STEP" 'BEGIN { print (s > 8) }')" = 0 ] || { echo "::error::$ID does not fit $MAX_CELLS cells at 8 degrees"; exit 1; }
+done
+echo "→ $NCELLS grid cells at $STEP degrees"
 
 # The extract is first cut to what the two per-cell filters can keep (the union of their tag
 # expressions), then one osmium pass writes every cell of a batch; complete_ways keeps a way that

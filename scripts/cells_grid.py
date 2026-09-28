@@ -14,7 +14,7 @@ import json
 import math
 import sys
 
-STEP = 0.5
+STEP = 0.5  # degrees; the bake doubles it for a region whose box would hold too many cells
 
 
 def key(lat, lng):
@@ -51,8 +51,11 @@ def clip(ring, x0, y0, x1, y1):
 
 
 def main():
+    global STEP
     rid, (s, w, n, e) = sys.argv[1], json.loads(sys.argv[2])
     polys, outdir = json.load(open(sys.argv[3])), sys.argv[4]
+    if len(sys.argv) > 5:
+        STEP = float(sys.argv[5])
     # region_polys.json rings are flat [lat, lng, ...]; outer rings only, holes do not matter here
     rings = [[(r[k + 1], r[k]) for k in range(0, len(r), 2)] for r in polys.get(rid, {}).get("o", [])]
     for i in range(math.floor(s / STEP), math.ceil(n / STEP)):
@@ -66,6 +69,8 @@ def main():
             if rings:
                 parts = [c for c in (clip(r, bw, bs, be, bn) for r in rings) if c]
                 how = "region" if parts else "-"
+                if not parts:
+                    continue  # box tile with no region land in it (ocean, a neighbor): nothing to bake
                 if parts:
                     geom = {"type": "MultiPolygon",
                             "coordinates": [[[list(p) for p in c + [c[0]]]] for c in parts]}
