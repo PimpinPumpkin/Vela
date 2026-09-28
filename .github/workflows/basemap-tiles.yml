@@ -25,6 +25,9 @@ on:
         description: "Tile max zoom (14 = full detail, overzoomed past it)"
         required: false
         default: "14"
+      rev:
+        description: "Revision stamp to publish as (blank = today, UTC); set it to test the patch path on a same-day rebake"
+        required: false
 
 permissions:
   contents: write
@@ -132,6 +135,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # The published archive, fetched BEFORE this bake replaces it, for the patch below. Here and
+          # not before the bake so it does not share the disk with planetiler's working files.
+          REV=$(date -u +%Y%m%d)
+          [ -n "${{ inputs.rev }}" ] && REV="${{ inputs.rev }}"
+          PREV_REV=$(curl -sL "https://github.com/$GITHUB_REPOSITORY/releases/download/basemap-tiles/basemap-manifest.json" \
+            | jq -r --arg id "${{ matrix.id }}" '.regions[] | select(.id == $id) | .rev // 0' | head -1)
+          if [ -n "$PREV_REV" ] && [ "$PREV_REV" != "0" ] && [ "$PREV_REV" != "null" ] && [ "$PREV_REV" != "$REV" ]; then
+            curl -sfL -o prev.pmtiles "https://github.com/$GITHUB_REPOSITORY/releases/download/basemap-tiles/basemap-${{ matrix.id }}.pmtiles" || rm -f prev.pmtiles
+          fi
           # GitHub's asset upload answers 500 on big archives often enough to fail a run on its own;
           # retry with a backoff like the places bake (the bake itself is the expensive part).
           for try in 1 2 3 4; do
@@ -142,15 +154,10 @@ jobs:
           done
           mkdir -p entries
           SIZE=$(stat -c %s "basemap-${{ matrix.id }}.pmtiles")
-          REV=$(date -u +%Y%m%d)
           DELTA=null
           # A patch against the published archive, built, applied to a copy and fingerprint-checked
-          # here or not published (same rule as the places bake). Fetched after the bake so the old
-          # archive does not share the disk with planetiler's working files.
-          PREV_REV=$(curl -sL "https://github.com/$GITHUB_REPOSITORY/releases/download/basemap-tiles/basemap-manifest.json" \
-            | jq -r --arg id "${{ matrix.id }}" '.regions[] | select(.id == $id) | .rev // 0' | head -1)
-          if [ -n "$PREV_REV" ] && [ "$PREV_REV" != "0" ] && [ "$PREV_REV" != "null" ] && [ "$PREV_REV" != "$REV" ] && \
-             curl -sfL -o prev.pmtiles "https://github.com/$GITHUB_REPOSITORY/releases/download/basemap-tiles/basemap-${{ matrix.id }}.pmtiles"; then
+          # here or not published (same rule as the places bake).
+          if [ -f prev.pmtiles ]; then
             if python3 scripts/pmtiles-make-patch.py prev.pmtiles "basemap-${{ matrix.id }}.pmtiles" \
                  patch.vpatch --rev-from "$PREV_REV" --rev-to "$REV"; then
               PSIZE=$(stat -c %s patch.vpatch)
