@@ -11,7 +11,8 @@ the canonical list. Update it when a language lands or gains a layer.
 | German | `de` | ✅ | ✅ | ✅ | ✅ |
 | Spanish | `es` | ✅ | ✅ | ✅ (Spain + Mexico voices) | ✅ |
 | Italian | `it` | ✅ | ✅ | ✅ | ✅ |
-| Portuguese | `pt` | ✅ | ✅ | ✅ (Brazilian voice) | ✅ |
+| Portuguese (Portugal) | `pt` | ✅ | ✅ | ✅ (Brazilian voice) | ✅ |
+| Portuguese (Brazil) | `pt-BR` (resources in `values-pt-rBR`) | ✅ (contributed by Netocon, 2026-09-28) | ✅ (shares the Portuguese table) | ✅ | ✅ |
 | Dutch | `nl` | ✅ | ✅ | ✅ | ✅ |
 | Russian | `ru` | ✅ | ✅ | ✅ | ✅ |
 | Polish | `pl` | ✅ | ✅ | ✅ | ✅ |
@@ -30,7 +31,7 @@ mangling it, and a hint points at the voice settings.
 
 The App UI column means the language has its own string file, not that every string in it is
 translated. New features land in English first and show in English until someone fills them in; all
-fifteen files were brought fully up to date with English on 2026-09-25 (about 115 strings each,
+fifteen files of the time were brought fully up to date with English on 2026-09-25 (about 115 strings each,
 translated per language to match each file's own register and terms). `python3 tools/check-translations.py` lists the missing
 keys per language (and fails only on placeholder drift).
 
