@@ -5114,7 +5114,10 @@ Gotchas:
   assets one release holds; Alaska needed it) and zips obf + place pack + places slice
   per cell; `CELLS_UPLOAD=1` publishes to `cells-<region>`, `scripts/merge-cells-manifest.sh`
   derives `cells-manifest.json` on `grid-cells` (`DRY_RUN=1` for a local copy);
-  `grid-cells.yml` is dispatch only. Shared bake steps live in `scripts/bake-lib.sh`
+  `grid-cells.yml` is dispatch only, four bakes at a time: the repo's Actions token has 1,000 API
+  requests an hour for every job together, and the first US wave at eight lost five finished
+  states to HTTP 403 on upload; uploads go 100 per call and wait for the reset when exhausted.
+  Shared bake steps live in `scripts/bake-lib.sh`
   (build-obf-region.sh and build-poi-region.sh source it).
   Cross-cell routing check: `ObfCellsProbeTest -DvelaCells=<dir with cells/ and whole/>`.
   Local runs: macOS bash is 3.2, keep the scripts 3.2-safe.

@@ -74,7 +74,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      max-parallel: 8
+      # Four, not eight: the repository's Actions token has 1,000 API requests an hour for every
+      # job and workflow together, and eight states uploading cells at once exhausted it.
+      max-parallel: 4
       matrix: ${{ fromJSON(needs.prep.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4

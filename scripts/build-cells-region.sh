@@ -179,15 +179,31 @@ echo "→ $ID: $(jq -r '"\(.cells) cells, \(.zipMb*100|round/100) MB zipped, \(.
 gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 || \
   gh release create "$TAG" --repo "$REPO" --prerelease --target "$CELLS_RELEASE_TARGET" --title "Offline cells: $NAME" \
     --notes "Grid-cell offline bundles (routing obf, place pack, places tiles) for $NAME. Data assets, not a code release."
+# The Actions token has 1,000 API requests an hour for the whole repository, shared by every job
+# and workflow in it; a wave of eight states uploading a few hundred cells each spent it in
+# minutes and lost five finished bakes to HTTP 403 (2026-09-28). So: big batches (one listing per
+# call), and when the limit is exhausted the retry waits for the reset (about an hour at worst;
+# rate_limit itself is free) instead of giving up after a few minutes.
+rate_wait() {
+  local rem reset now
+  rem=$(gh api rate_limit --jq .resources.core.remaining 2>/dev/null || echo 1)
+  if [ "${rem:-1}" -le 5 ]; then
+    reset=$(gh api rate_limit --jq .resources.core.reset 2>/dev/null || echo 0); now=$(date +%s)
+    if [ "$reset" -gt "$now" ]; then
+      echo "API rate limit exhausted; waiting $((reset - now + 15)) s for the reset"; sleep $((reset - now + 15))
+    fi
+  fi
+}
 upload() {
   local try
-  for try in 1 2 3 4; do
+  for try in 1 2 3 4 5 6; do
+    rate_wait
     gh release upload "$TAG" "$@" --clobber --repo "$REPO" && return 0
     echo "upload attempt $try failed; retrying in $((try * 20)) s"; sleep $((try * 20))
   done
   return 1
 }
 ZIPS=("$OUT_DIR"/*.zip)
-for ((k = 0; k < ${#ZIPS[@]}; k += 20)); do upload "${ZIPS[@]:k:20}"; done
+for ((k = 0; k < ${#ZIPS[@]}; k += 100)); do upload "${ZIPS[@]:k:100}"; done
 upload "$OUT_DIR/$TAG.json"
 echo "✓ uploaded $ID cells to $TAG"

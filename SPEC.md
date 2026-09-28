@@ -2307,8 +2307,15 @@ both decimal MB rounded up to 0.01. `rev` is the bake date `YYYYMMDD`; the regio
 newest cell's. `parts` names what the zip holds (`obf`, `pack`, `places`). The fragment has the
 same shape as a region row.
 
+**Upload.** Zips go up 100 per `gh release upload` call, the fragment last. The Actions token
+has 1,000 API requests an hour for the whole repository, shared by every job and workflow; when a
+call fails with the limit exhausted the retry waits for the reset (`rate_wait`, up to an hour)
+instead of failing the bake, and the workflow runs four bakes at a time (eight lost five finished
+states to HTTP 403 on 2026-09-28).
+
 **Merge** (`scripts/merge-cells-manifest.sh [fragments-dir]`): derives the manifest from the
-releases, never folds the run's entries (7.1). Per `cells-*` release: the fragment's rows narrowed
+releases, never folds the run's entries (7.1); the assets come from the one paginated release
+listing (a `view` per tag was one request per region). Per `cells-*` release: the fragment's rows narrowed
 to cells whose zip is on the release, `sizeMb` from the listing; a zip with no fragment row gets
 its box from its key and its rev from its upload date. The run's own fragments win for their
 regions. The upload retries with a random 5 to 20 s backoff, and the merge re-lists the releases

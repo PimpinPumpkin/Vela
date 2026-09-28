@@ -17,15 +17,14 @@ TAG="grid-cells"
 FRESH="${1:-}"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 
+# One paginated listing gives every cells release WITH its assets; a `gh release view` per tag
+# was one request per region (450 for the catalog) against the Actions token's 1,000 an hour.
 listing() {
   gh api --paginate "repos/$REPO/releases?per_page=100" -q '.[] | select(.tag_name | startswith("cells-")) | .tag_name' \
     | sort > "$WORK/tags.txt"
-  : > "$WORK/assets.txt"
-  while read -r T; do
-    gh release view "$T" --repo "$REPO" --json assets \
-      -q ".assets[] | \"$T \(.name) \(.size) \(.updatedAt | .[0:10] | gsub(\"-\"; \"\"))\"" >> "$WORK/assets.txt"
-  done < "$WORK/tags.txt"
-  sort -o "$WORK/assets.txt" "$WORK/assets.txt"
+  gh api --paginate "repos/$REPO/releases?per_page=100" -q '.[] | select(.tag_name | startswith("cells-")) | .tag_name as $t
+      | .assets[] | "\($t) \(.name) \(.size) \(.updated_at | .[0:10] | gsub("-"; ""))"' \
+    | sort > "$WORK/assets.txt"
 }
 
 derive() {
