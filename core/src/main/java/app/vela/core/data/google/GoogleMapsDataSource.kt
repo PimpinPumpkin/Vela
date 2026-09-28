@@ -1337,6 +1337,10 @@ class GoogleMapsDataSource @Inject constructor(
         // no abbreviated fallback. Every caller already handles an empty reply as "Google did not
         // answer", which is exactly the state this is.
         if (app.vela.core.data.NoGoogle.enabled || !app.vela.core.data.RoutingPrefs.googleTraffic) return emptyList()
+        // Walking is the open router's alone (issue #478): Google adds no traffic on foot, its keyless
+        // walking steps are abbreviated, and snapping a foot route through points on its line forces
+        // crossings and double-backs (measured +20-110% on Davis, Sacramento and Dhaka walks).
+        if (mode == TravelMode.WALK) return emptyList()
         session.ensure()
         val cal = calibration.current()
         val pb = DirectionsPb.build(origin, destination, mode, cal.directionsPb, avoidTolls, avoidHighways, avoidFerries, waypoints)

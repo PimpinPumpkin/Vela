@@ -826,6 +826,12 @@ through what the plan avoided.
   avoided, and the online chain falls back to a normal route tagged `avoidNotHonored`. The
   chooser shows the note only when every route carries it.
 
+**Walking is the open router's alone** (issue #478, 2026-09-28): `googleDirections` returns
+nothing for `TravelMode.WALK`, so there is no Google walking route, no via-snap and no traffic row.
+A foot route forced through points sampled on Google's line crosses and doubles back at each one
+(+20 to +110% on Davis, Sacramento and Dhaka walks), and Google's keyless walking steps are
+abbreviated. Where OSM lacks crossings the open walk runs longer than Google's (Dhaka 5.9 vs 4.5 km).
+
 **Bicycle safety weighting** (`RoutingPrefs.bikeSafe`, on by default): the obf bicycle profile
 where a region covers the trip (6 s planning, 3 s urgent), otherwise Valhalla with `use_roads`
 0.1. Valhalla maneuver types map into the OSRM grammar (`osrmGrammar`) and are phrased by

@@ -5441,6 +5441,9 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   reviews, not routing. **`OSRM_BASE` is the FOSSGIS community server (fair-use) - point at a
   self-hosted OSRM/Valhalla before any real release.** (This retired the keyless-step parsing as the
   primary path + the Nominatim "fill the missing road name" hack.)
+- **Walking never asks Google (issue #478, 2026-09-28).** `googleDirections` returns empty for WALK;
+  every caller reads that as "Google did not answer", so walking is the open foot router alone and
+  the chooser hides the traffic row for it. SPEC 4.x "Walking is the open router's alone".
 - **Bike routing is SAFETY-weighted by default (issue #401, 2026-09-14).** `directions()` takes an
   early branch for `TravelMode.BICYCLE` when `RoutingPrefs.bikeSafe` (core holder, mirrored from
   the `app.vela.ui.BikeSafe` pref `bike_safe`, Settings > Navigation, default ON): the on-device
