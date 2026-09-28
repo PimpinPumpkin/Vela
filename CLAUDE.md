@@ -2850,6 +2850,10 @@ architecture note.
   `navRemainingStopLabels()` while driving or `directionsWaypoints` in the chooser. Via boundaries
   carry no DEPART/ARRIVE maneuvers (routeVia and chainOnDevice both drop them), so without this
   row a stop was invisible in the list.
+- **Launch camera (2026-09-28, discussion #365):** the MapView opens at the seed (deep-link target or
+  last known / simulated fix) at z15.5 via `MapLibreMapOptions.camera`, and the free-drive follow
+  JUMPS when its target is over `FOLLOW_JUMP_M` (1 km) away instead of easing: from the world
+  default, or across a stale seed to a fresh fix, the ease dragged the map through every tile.
 - **Free-drive follow engages ONCE per session (2026-09-16).** The cold-engage branch flies to the
   fix at z15.5 when the camera sits below z14. A pinch releases the camera (`browseCam` -> NaN) and
   the next frame re-seeds, so pinching out past z14 while still following flew you straight back in,

@@ -540,6 +540,7 @@ private val ambientRedo2 = arrayOfNulls<Runnable>(1) // ... and the late one
 private val lastCameraMoveMs = longArrayOf(0L)
 private const val TWIN_PASS_STILL_MS = 700L
 /** Free-drive look-ahead (speed x 5 m) time constant: slow on purpose, see the free-drive ticker. */
+private const val FOLLOW_JUMP_M = 1000.0
 private const val FREE_LOOKAHEAD_TAU_S = 2.5f
 
 private fun flightCb() = object : org.maplibre.android.maps.MapLibreMap.CancelableCallback {
@@ -927,6 +928,11 @@ fun VelaMapView(
         prefs.edit().putBoolean("map_init_inflight", true).apply()
         val opts = org.maplibre.android.maps.MapLibreMapOptions.createFromAttributes(context)
             .textureMode(prefs.getBoolean("texture_render", fragileGpuDefault()))
+        // Open where the app already thinks it is (last known fix or the simulated point), at
+        // street zoom: from MapLibre's world default the first follow flew in through every zoom.
+        (cameraTarget ?: myLocation)?.let { p ->
+            opts.camera(org.maplibre.android.camera.CameraPosition.Builder().target(MLLatLng(p.lat, p.lng)).zoom(15.5).build())
+        }
         MapView(context, opts).apply {
             onCreate(null)
             isFocusable = false
@@ -2175,8 +2181,17 @@ fun VelaMapView(
                 // between the ~1 Hz fixes instead of coasting to each one and stopping, so the follow
                 // reads as a continuous glide (closer to the nav feel) rather than a per-second ease.
                 val k = (1f - kotlin.math.exp(-dt / 0.22f)).toDouble()
-                browseCam[0] += (tgtLat - browseCam[0]) * k
-                browseCam[1] += (tgtLng - browseCam[1]) * k
+                // A target past FOLLOW_JUMP_M (a stale last-known spot replaced by a fresh fix, a
+                // relaunch far from where the app last was) is a jump, not motion: easing across it
+                // dragged the map through every tile in between.
+                val farLat = (tgtLat - browseCam[0]) * 111_320.0
+                val farLng = (tgtLng - browseCam[1]) * 111_320.0 * kotlin.math.cos(Math.toRadians(tgtLat))
+                if (farLat * farLat + farLng * farLng > FOLLOW_JUMP_M * FOLLOW_JUMP_M) {
+                    browseCam[0] = tgtLat; browseCam[1] = tgtLng
+                } else {
+                    browseCam[0] += (tgtLat - browseCam[0]) * k
+                    browseCam[1] += (tgtLng - browseCam[1]) * k
+                }
                 camLat = browseCam[0]; camLng = browseCam[1]
                 lookLat = camLat; lookLng = camLng
                 val cp = cam.cameraPosition
