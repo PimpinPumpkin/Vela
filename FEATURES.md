@@ -304,6 +304,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   every trip share on the largest trim distance (the middle of a drive is still never rounded).
   `core/replay/TripShareBatch`, `TripShareBatchTest`.
 - ✅ **Car navigation icon (2026-09-27, discussion #611).** Settings > Navigation > Navigation icon: the arrow, a car in red, blue, white, green or yellow, a UFO, a pirate ship or a rubber duck, with a preview.
+- ✅ **Minimized route chooser (2026-09-28, issue #616).** Tap the handle (or swipe down, or pan the map) to shrink the chooser to one line with the time and Start, so the route shows on small screens; tap again to bring it back.
+- ✅ **Sea and ocean names in your language (2026-09-28, issue #619)**, list pins as large as place icons (#618), and the road name in the bottom bar no longer clipped (#617).
 - ✅ **Walking directions from OpenStreetMap (2026-09-28, issue #478).** Walks come from the open foot router. Google's walk is offered only when it is at least 15% shorter, with its turns named from the map's own street data instead of being forced onto OSM, which added detours. The same naming is the fallback when a picked Google driving route cannot be matched.
 - ✅ **Offline maps on an SD card (2026-09-28, issue #613).** Settings > Offline maps > "Store downloaded regions on": internal storage or the SD card, moving what is already downloaded (routing, places, map, place packs, overlays, glyphs, saved areas).
 - ✅ **North-up navigation by default (2026-09-27, issue #612).** Settings > Navigation "Start drives north-up" starts every drive flat with north at the top; the compass still switches it during a drive, and re-centers when the map was panned away.

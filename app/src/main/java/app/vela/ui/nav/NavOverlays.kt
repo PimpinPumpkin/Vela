@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -861,7 +862,9 @@ fun NavBarTop(
             Modifier
                 .fillMaxWidth()
                 .padding(top = 4.dp)
-                .height(20.dp)
+                // A fixed 20 dp cut the road name's descenders (issue #617): the row grows to the
+                // text when a name is shown.
+                .then(if (roadName.isNullOrBlank()) Modifier.height(20.dp) else Modifier.heightIn(min = 20.dp))
                 .dpadHighlight(RoundedCornerShape(10.dp))
                 .clickable(onClick = onSteps),
             contentAlignment = Alignment.Center,

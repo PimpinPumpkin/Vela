@@ -166,6 +166,7 @@ private const val SAVED_SRC = "vela-saved-src"
 private const val SAVED_LAYER = "vela-saved"
 private const val SAVED_INDEX_PROP = "savedIdx"
 private const val SAVED_ICON_PROP = "savedIcon"
+private const val SAVED_PIN_SCALE = 1.25f
 // Street View pose: the open pano's position + live view direction (a rotating cone, pegman-style),
 // shown while the half-screen pano viewer is up so the map underneath says where you're looking.
 private const val SV_SRC = "vela-sv-src"
@@ -2074,7 +2075,9 @@ fun VelaMapView(
                 PropertyFactory.textSize(13f * lc),
             )
             st.getLayer(MARKERS_DOTS_LAYER)?.setProperties(PropertyFactory.iconSize(sc))
-            st.getLayer(SAVED_LAYER)?.setProperties(PropertyFactory.iconSize(sc))
+            // 1.25x: the list pin's 46 px disc matches a POI icon's (54 px dot on a 64 px pin, drawn
+            // at up to 1.3x) at the same setting; at 1x it stayed visibly smaller (issue #618).
+            st.getLayer(SAVED_LAYER)?.setProperties(PropertyFactory.iconSize(SAVED_PIN_SCALE * sc))
             st.getLayer(FLOCK_LAYER)?.setProperties(
                 PropertyFactory.iconSize(
                     Expression.interpolate(
@@ -4605,6 +4608,7 @@ private fun ensureLayers(style: Style) {
         style.addLayer(
             SymbolLayer(SAVED_LAYER, SAVED_SRC).withProperties(
                 PropertyFactory.iconImage(Expression.get(SAVED_ICON_PROP)),
+                PropertyFactory.iconSize(SAVED_PIN_SCALE),
                 PropertyFactory.iconAllowOverlap(true),
                 PropertyFactory.iconIgnorePlacement(false), // claims its spot, see the parking pin
             ).apply { minZoom = 8f },
@@ -5595,6 +5599,8 @@ private val PLACE_LABEL_LAYERS = listOf(
     "label_country_1", "label_country_2", "label_country_3", "label_state",
     "label_city_capital", "label_city", "label_town", "label_village", "label_other",
     "poi_r1", "poi_r7", "poi_r20", "poi_transit",
+    // Seas, oceans, lakes and rivers (issue #619): Liberty labels them name:latin like places.
+    "water_name_point_label", "water_name_line_label", "waterway_line_label",
 )
 
 private fun applyPlaceLabelLanguage(style: StyleLayers) {

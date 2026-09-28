@@ -2832,6 +2832,14 @@ architecture note.
   `OfflineCategoryKeywordsTest` lists every chip query; add yours there. Bars is dropped from
   `all()` while `HideAdult` is on (the filter would empty it), and reading `HideAdult.on` there
   keeps the rows reactive.
+- **Route chooser MINIMIZED state (issue #616, 2026-09-28):** `GoogleStyleDirectionsPanel` has a
+  third level below the summary: one line with the time, distance and Start. Handle tap: list ->
+  summary, summary <-> minimized; a swipe down from the summary (40 dp or a fling) minimizes, a swipe
+  up restores; a map pan (`minimizeTick`) minimizes. Small screens had no way to see the route.
+- **Small fixes 2026-09-28:** the in-bar road name row grows to its text instead of a fixed 20 dp
+  that cut descenders (#617); list/saved pins draw at `SAVED_PIN_SCALE` (1.25) x the icon-size
+  setting so they match POI icons (#618); the three water label layers joined `PLACE_LABEL_LAYERS`
+  (#619).
 - **Google-style route picker - the DEFAULT since 2026-09-18 (`ui/RoutePicker`, pref
   `route_picker_google`, Settings > Navigation).** It shipped as an experiment
   (`ui/Experiments`, `exp_google_chooser`, Settings > Diagnostics) and graduated once it had been

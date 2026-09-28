@@ -2442,6 +2442,8 @@ A road name can be in a different script than the guidance language.
 - On-map labels use `roadLabelTextField()` = `coalesce(name:en, name:latin, name)` for a
   Latin-script UI, and the local `name` for a non-Latin UI. Nav bubbles filter on the canonical
   `name` and display the Latin form. Place names are data and are never romanized.
+- Place, POI and water labels (`PLACE_LABEL_LAYERS`, water since 2026-09-28, issue #619: seas,
+  oceans, lakes, rivers) take the UI language's own `name:<lang>` first via `placeLabelTextField()`.
 - `SpokenScript.applyDict` returns in O(length) when the text contains no character the reader
   cannot read, and digests each dictionary once per instance. Scanning a whole downloaded
   region's dictionary twice per fix was a 60 ms main-thread stall at 1 Hz.
