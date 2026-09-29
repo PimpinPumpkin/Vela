@@ -2486,6 +2486,14 @@ Details:
   `LAP_SAME_STOP_M` (30 m) of the nearest as a pass, boards at the pass whose time is nearest the
   tapped departure, and shows one lap: prior stops from the previous pass, the timeline to the
   next pass. Without the time the first pass boards, which listed the morning's whole day.
+- **Transit route preference and frequency (2026-09-29).** Google's transit request takes a
+  route preference in the URL's `!2m` options block as `!4e{v}`, before the vehicles `!5e`:
+  2 fewer transfers, 3 less walking, nothing for best (measured on Google's own request: 3 cut
+  every itinerary's walk to 4-10 min, 2 put one-transfer trips first). The Transitous fallback
+  has no such flag, so `TransitOrder.byPreference` sorts its answers the same way. `trip[13]`
+  is `[seconds, "10 min", seconds]` where the service has a headway; the card shows "Every 10
+  min". With the Google-style picker on, the transit tab keeps the classic body under the
+  picker's header (mode title, share, close, underlined mode tabs).
 - **The transit chooser frames the trip.** An expanded row frames its legs; with none expanded
   the camera frames the trip's own points (start, stops, destination), like the route fit for
   drive. The chooser's taller panel must not drop that fit and fly to the destination alone.

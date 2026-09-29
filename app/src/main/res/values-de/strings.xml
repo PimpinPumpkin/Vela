@@ -814,6 +814,9 @@
     <string name="offline_area_failed">Offline-Download fehlgeschlagen. Versuchen Sie es später erneut.</string>
     <string name="offline_area_too_large">Bereich zu groß. Zoomen Sie hinein und speichern Sie einen kleineren Bereich.</string>
     <string name="place_transit_prefer">Bevorzugen</string>
+    <string name="place_transit_route">Route</string>
+    <string name="place_transit_fewer_transfers">Weniger Umstiege</string>
+    <string name="place_transit_less_walking">Weniger Fußweg</string>
     <string name="place_transit_bus">Bus</string>
     <string name="place_transit_subway">U-Bahn</string>
     <string name="place_transit_train">Zug</string>

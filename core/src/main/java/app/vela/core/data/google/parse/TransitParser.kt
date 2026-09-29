@@ -82,6 +82,9 @@ object TransitParser {
             agencyPhone = agencyNode.at(4).str(),
             alerts = rideLegs.flatMap { parseAlerts(it.at(0, 9)) }.distinct(),
             fare = parseFare(t),
+            // trip[13] = [seconds, "10 min", seconds]: how often the service runs, present only
+            // where the lines have a headway (checked on London, New York and SF trips).
+            frequencyText = trip.at(13, 1).str()?.takeIf { (trip.at(13, 0).long() ?: 0L) in 60L..10_800L },
             lines = mergeAlternativeLines(parseLines(t.at(14)), steps.mapNotNull { it.line?.name }),
             steps = steps,
         )

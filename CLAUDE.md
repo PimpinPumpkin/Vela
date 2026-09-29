@@ -2872,6 +2872,10 @@ architecture note.
   that cut descenders (#617); list/saved pins draw at `SAVED_PIN_SCALE` (1.35, measured against the Davis icons: 1.25 still read smaller) x the icon-size
   setting so they match POI icons (#618); the three water label layers joined `PLACE_LABEL_LAYERS`
   (#619).
+- **Transit under the Google-style picker (2026-09-29):** the classic `DirectionsPanel` body with
+  the picker's header (`googleHeader`), rendered from `ClassicDirectionsHost` (split out of
+  MapScreen for the verifier limit). Route chips "Fewer transfers"/"Less walking" send `!4e2`/`!4e3`
+  (SPEC 8); cards show `trip[13]` frequency.
 - **Google-style route picker - the DEFAULT since 2026-09-18 (`ui/RoutePicker`, pref
   `route_picker_google`, Settings > Navigation).** It shipped as an experiment
   (`ui/Experiments`, `exp_google_chooser`, Settings > Diagnostics) and graduated once it had been

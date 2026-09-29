@@ -73,6 +73,7 @@ data class TransitItinerary(
     val agencyPhone: String? = null,   // "1 (305) 891-3131" — dialable "Tickets and information"
     val alerts: List<String> = emptyList(), // service alerts ("Route 9 - Southbound Detour")
     val fare: String? = null,          // "$2.25" when the agency provides it (often absent)
+    val frequencyText: String? = null, // "10 min": the trip's service runs this often (Google's trip[13])
     val lines: List<TransitLine> = emptyList(),
     val steps: List<TransitStep> = emptyList(),
 )

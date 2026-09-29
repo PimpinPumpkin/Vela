@@ -833,6 +833,9 @@
     <string name="offline_area_failed">离线下载失败。请稍后重试。</string>
     <string name="offline_area_too_large">区域过大。请放大后保存较小的区域。</string>
     <string name="place_transit_prefer">偏好</string>
+    <string name="place_transit_route">路线</string>
+    <string name="place_transit_fewer_transfers">换乘较少</string>
+    <string name="place_transit_less_walking">步行较少</string>
     <string name="place_transit_bus">公交</string>
     <string name="place_transit_subway">地铁</string>
     <string name="place_transit_train">火车</string>

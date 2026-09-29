@@ -808,6 +808,9 @@
     <string name="transit_nav_next">Next</string>
     <string name="place_last_available">Last available</string>
     <string name="place_transit_prefer">Prefer</string>
+    <string name="place_transit_route">Route</string>
+    <string name="place_transit_fewer_transfers">Fewer transfers</string>
+    <string name="place_transit_less_walking">Less walking</string>
     <string name="place_transit_bus">Bus</string>
     <string name="place_transit_subway">Subway</string>
     <string name="place_transit_train">Train</string>

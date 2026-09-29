@@ -924,6 +924,9 @@
     <string name="mapvm_export_trip_scrubbed_subject">Vela út: %1$d pont, levágott végekkel</string>
     <string name="mapvm_area_uses_pack">Ennek a területnek a helyei és címei a(z) %1$s letöltésével érkeznek</string>
     <string name="place_transit_prefer">Előnyben részesített</string>
+    <string name="place_transit_route">Útvonal</string>
+    <string name="place_transit_fewer_transfers">Kevesebb átszállás</string>
+    <string name="place_transit_less_walking">Kevesebb gyaloglás</string>
     <string name="place_transit_bus">Busz</string>
     <string name="place_transit_subway">Metró</string>
     <string name="place_transit_train">Vonat</string>

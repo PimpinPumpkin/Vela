@@ -2028,36 +2028,14 @@ fun MapScreen(
                 )
             }
 
-            state.directionsOpen && !searchOpen && state.pickOnMap == null -> DirectionsPanel(
-                onShowTraffic = if (app.vela.ui.RouteTrafficOnTap.on.value && !state.routeTrafficRequested && !app.vela.ui.GoogleFree.on.value && state.travelMode != app.vela.core.model.TravelMode.WALK) vm::requestRouteTraffic else null,
-                destinationName = if (state.directionsReversed) (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location))
-                else (state.selected?.name ?: stringResource(R.string.mapscreen_destination)),
-                currentMode = state.travelMode,
-                routes = state.routes,
-                activeRoute = state.activeRoute,
-                flockOnRoute = state.flockOnRoute,
-                transit = state.transit,
-                transitLoading = state.transitLoading,
-                modeEtas = state.modeEtas,
-                onModeSelected = vm::setTravelMode,
-                avoidTolls = state.avoidTolls,
-                avoidHighways = state.avoidHighways,
-                avoidFerries = state.avoidFerries,
-                onAvoidTolls = vm::setAvoidTolls,
-                onAvoidHighways = vm::setAvoidHighways,
-                onAvoidFerries = vm::setAvoidFerries,
-                onSelectRoute = vm::selectRoute,
+            // The classic panel (and the transit tab under the Google-style picker) lives in its own
+            // composable: MapScreen is at ART's verifier limit, and this call was ~30 arguments.
+            state.directionsOpen && !searchOpen && state.pickOnMap == null -> ClassicDirectionsHost(
+                state = state,
+                vm = vm,
                 onStartNav = onStartNav,
-                minimizeTick = dirPanTick,
-                onSteps = if (state.activeRoute != null) vm::openSteps else null,
-                onSearchAlongRoute = vm::searchAlongRoute,
-                onWalkDirections = vm::walkDirections,
-                onStartTransit = vm::startTransitNav,
-                onTransitPreview = vm::onTransitRowExpanded,
-                onTimeSelected = vm::setDirectionsTime,
-                transitPrefer = state.transitPrefer,
-                onTransitPrefer = vm::setTransitPrefer,
-                onCollapsedChange = { dirMinimized = it },
+                dirPanTick = dirPanTick,
+                onMinimized = { dirMinimized = it },
                 // Portrait: the body may open only as far as the endpoints card leaves over a
                 // minimum strip of map (issue #400, 240x320 phones); the chooser's own header
                 // (handle + mode chips) is allowed for above the body. Floored so the list is
@@ -2066,14 +2044,9 @@ fun MapScreen(
                     (screenHeightPx.toDp().value - topCardBottomPx.toDp().value - CHOOSER_MAP_STRIP_DP - CHOOSER_HEADER_DP)
                         .coerceAtLeast(CHOOSER_BODY_MIN_DP)
                 },
-                // Landscape: a LEFT side panel, width-capped, exactly like the place and results
-                // sheets beside it (issue #297). As a full-width bottom sheet its open height ate
-                // a landscape screen whole - the map was not merely obscured, it was completely
-                // gone, which is a poor way to ask someone to choose between routes drawn on it.
-                modifier = Modifier
-                    .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
-                    .onGloballyPositioned { dirPanelTopRaw = it.boundsInWindow().top.roundToInt() }
-                    .landscapeColumn(landscapeChrome, sidePanelWidthDp),
+                landscapeChrome = landscapeChrome,
+                sidePanelWidthDp = sidePanelWidthDp,
+                onTopPx = { dirPanelTopRaw = it },
             )
 
             // The place sheet yields while Street View is up - the pano takes the top half and the
@@ -3813,6 +3786,84 @@ private fun MapSurface(
 /** Building-overlay debug badge + UI-thread FPS readout (Settings -> Developer). Split out of
  *  MapScreen on 2026-09-13: the MapScreen composable had grown past the JVM 64 KB method limit
  *  in the debug variant (Compose source info counts), and this block was the cleanest cut. */
+/** The classic route chooser, split out of MapScreen (verifier limit, see PipNavOverlay). With the
+ *  Google-style picker on, the TRANSIT tab still uses this body (the laid-out time and vehicle
+ *  chips suit transit) under the picker's own header, so switching modes reads as one sheet. */
+@Composable
+private fun BoxScope.ClassicDirectionsHost(
+    state: MapUiState,
+    vm: MapViewModel,
+    onStartNav: () -> Unit,
+    dirPanTick: Int,
+    onMinimized: (Boolean) -> Unit,
+    bodyMaxDp: Float?,
+    landscapeChrome: Boolean,
+    sidePanelWidthDp: androidx.compose.ui.unit.Dp,
+    onTopPx: (Int) -> Unit,
+) {
+    val ctx = LocalContext.current
+    val destLabel = if (state.directionsReversed) (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location))
+    else (state.selected?.name ?: stringResource(R.string.mapscreen_destination))
+    DirectionsPanel(
+        onShowTraffic = if (app.vela.ui.RouteTrafficOnTap.on.value && !state.routeTrafficRequested && !app.vela.ui.GoogleFree.on.value && state.travelMode != app.vela.core.model.TravelMode.WALK) vm::requestRouteTraffic else null,
+        destinationName = destLabel,
+        currentMode = state.travelMode,
+        routes = state.routes,
+        activeRoute = state.activeRoute,
+        flockOnRoute = state.flockOnRoute,
+        transit = state.transit,
+        transitLoading = state.transitLoading,
+        modeEtas = state.modeEtas,
+        onModeSelected = vm::setTravelMode,
+        avoidTolls = state.avoidTolls,
+        avoidHighways = state.avoidHighways,
+        avoidFerries = state.avoidFerries,
+        onAvoidTolls = vm::setAvoidTolls,
+        onAvoidHighways = vm::setAvoidHighways,
+        onAvoidFerries = vm::setAvoidFerries,
+        onSelectRoute = vm::selectRoute,
+        onStartNav = onStartNav,
+        minimizeTick = dirPanTick,
+        onSteps = if (state.activeRoute != null) vm::openSteps else null,
+        onSearchAlongRoute = vm::searchAlongRoute,
+        onWalkDirections = vm::walkDirections,
+        onStartTransit = vm::startTransitNav,
+        onTransitPreview = vm::onTransitRowExpanded,
+        onTimeSelected = vm::setDirectionsTime,
+        transitPrefer = state.transitPrefer,
+        onTransitPrefer = vm::setTransitPrefer,
+        transitRoutePref = state.transitRoutePref,
+        onTransitRoutePref = vm::setTransitRoutePref,
+        onCollapsedChange = onMinimized,
+        bodyMaxDp = bodyMaxDp,
+        googleHeader = app.vela.ui.RoutePicker.googleStyle.value,
+        onShare = {
+            val dest = state.selected
+            val body = listOfNotNull(
+                destLabel,
+                dest?.let { "geo:${it.location.lat},${it.location.lng}?q=${it.location.lat},${it.location.lng}(${android.net.Uri.encode(it.name)})" },
+            ).joinToString("\n")
+            runCatching {
+                ctx.startActivity(
+                    android.content.Intent.createChooser(
+                        android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, body),
+                        null,
+                    ),
+                )
+            }
+        },
+        onClose = vm::clearRoute,
+        // Landscape: a LEFT side panel, width-capped, exactly like the place and results
+        // sheets beside it (issue #297). As a full-width bottom sheet its open height ate
+        // a landscape screen whole - the map was not merely obscured, it was completely
+        // gone, which is a poor way to ask someone to choose between routes drawn on it.
+        modifier = Modifier
+            .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)
+            .onGloballyPositioned { onTopPx(it.boundsInWindow().top.roundToInt()) }
+            .landscapeColumn(landscapeChrome, sidePanelWidthDp),
+    )
+}
+
 /** The picture-in-picture overlay: the turn card across the top and the trip's figures along the
  *  bottom. Split out of MapScreen (2026-09-28): the MapScreen method sits at ART's verifier limit
  *  and two more direct calls in it made the release build fail verification (a VerifyError at

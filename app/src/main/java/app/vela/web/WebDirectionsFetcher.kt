@@ -45,7 +45,11 @@ class WebDirectionsFetcher @Inject constructor(
         // Preferred vehicle kinds (issue #431), Google's own numbering: 0 bus, 1 subway, 2 train,
         // 3 tram and light rail. Empty = no preference.
         prefer: Set<Int> = emptySet(),
-    ): List<TransitItinerary> = session { transitLocked(origin, destination, timeMode, timeEpochSec, prefer) }
+        // Route preference, Google's numbering: 0 best (sent as nothing), 2 fewer transfers,
+        // 3 less walking. Measured on Google's own request: 3 cut every itinerary's walk to
+        // 4-10 min, 2 moved the one-transfer trips ahead of the two-transfer ones.
+        routePref: Int = 0,
+    ): List<TransitItinerary> = session { transitLocked(origin, destination, timeMode, timeEpochSec, prefer, routePref) }
 
     private suspend fun transitLocked(
         origin: LatLng,
@@ -53,6 +57,7 @@ class WebDirectionsFetcher @Inject constructor(
         timeMode: Int,
         timeEpochSec: Long?,
         prefer: Set<Int> = emptySet(),
+        routePref: Int = 0,
     ): List<TransitItinerary> {
         // Google's transit data param. Now = the plain `!4m2!4m1!3e3`. For a scheduled time we insert
         // Google's time block `!2m3!6e{0=depart,1=arrive,2=last}!7e2!8j<unix-seconds>` before `!3e3`.
@@ -68,7 +73,9 @@ class WebDirectionsFetcher @Inject constructor(
         val localSec = timeEpochSec?.let { it + java.util.TimeZone.getDefault().getOffset(it * 1000L) / 1000L }
         // The `!2m` options group holds the preferred vehicle kinds (`!5e{k}`, issue #431) and
         // the time block; the `!4m` wrappers count descendants, so they grow with the entries.
-        val entries = prefer.sorted().map { "5e$it" } +
+        // Field order matters in a pb block: route preference `!4e` before the vehicles `!5e`.
+        val entries = (if (routePref == 2 || routePref == 3) listOf("4e$routePref") else emptyList()) +
+            prefer.sorted().map { "5e$it" } +
             (if (timeMode == 0 || localSec == null) emptyList() else listOf("6e$timeRef", "7e2", "8j$localSec"))
         val data = if (entries.isEmpty()) "!4m2!4m1!3e3"
         else "!4m${entries.size + 3}!4m${entries.size + 2}!2m${entries.size}!" + entries.joinToString("!") + "!3e3"

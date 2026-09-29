@@ -257,6 +257,7 @@ data class MapUiState(
     val directionsTimeEpochSec: Long? = null,
     // Preferred transit vehicle kinds (issue #431): 0 bus, 1 subway, 2 train, 3 tram. Empty = any.
     val transitPrefer: Set<Int> = emptySet(),
+    val transitRoutePref: Int = 0, // 0 best, 2 fewer transfers, 3 less walking (Google's numbering)
     val transit: List<TransitItinerary> = emptyList(),
     val transitLoading: Boolean = false,
     // One time per travel mode for the chooser's mode chips ("25 min" under the car glyph), the
@@ -5228,25 +5229,35 @@ class MapViewModel @Inject constructor(
         if (_state.value.travelMode == TravelMode.TRANSIT) route(TravelMode.TRANSIT)
     }
 
+    /** Fewer transfers (2) or less walking (3) on transit trips; 0 = Google's best route. */
+    fun setTransitRoutePref(pref: Int) {
+        if (_state.value.transitRoutePref == pref) return
+        _state.update { it.copy(transitRoutePref = pref) }
+        if (_state.value.travelMode == TravelMode.TRANSIT) route(TravelMode.TRANSIT)
+    }
+
     /** Transit itineraries: Google's page first (traffic-aware and history-aware times), Transitous'
      *  own planner when Google is off or answered nothing (2026-09-28). One shape either way. */
-    private suspend fun transitTrips(origin: LatLng, dest: LatLng, timeModeIn: Int = 0, timeEpochSecIn: Long? = null, prefer: Set<Int> = emptySet()): List<app.vela.core.model.TransitItinerary> {
+    private suspend fun transitTrips(origin: LatLng, dest: LatLng, timeModeIn: Int = 0, timeEpochSecIn: Long? = null, prefer: Set<Int> = emptySet(), routePref: Int = 0): List<app.vela.core.model.TransitItinerary> {
         // The screenshot clock dial turns "leave now" into "depart at" the pinned time.
         val demo = app.vela.ui.DemoClock.epochSec()
         val timeMode = if (timeModeIn == 0 && demo != null) 1 else timeModeIn
         val timeEpochSec = if (timeModeIn == 0 && demo != null) demo else timeEpochSecIn
-        val google = if (googleOff()) emptyList() else runCatching { webDirections.transit(origin, dest, timeMode, timeEpochSec, prefer) }.getOrDefault(emptyList())
+        val google = if (googleOff()) emptyList() else runCatching { webDirections.transit(origin, dest, timeMode, timeEpochSec, prefer, routePref) }.getOrDefault(emptyList())
         if (google.isNotEmpty()) return google
-        return withContext(Dispatchers.IO) {
+        val planned = withContext(Dispatchers.IO) {
             runCatching { app.vela.core.data.transit.Transitous.plan(http, origin, dest, timeMode, timeEpochSec, prefer) }.getOrDefault(emptyList())
         }
+        // The open planner has no such flag here: order its answers by the same preference.
+        return app.vela.core.data.transit.TransitOrder.byPreference(planned, routePref)
     }
 
     private fun routeTransit(origin: LatLng, dest: LatLng, timeMode: Int = 0, timeEpochSec: Long? = null, etaKey: String? = null) {
         _state.update { it.copy(routes = emptyList(), activeRoute = null, transit = emptyList(), transitLoading = true, transitPreview = null, status = null) }
         val prefer = _state.value.transitPrefer
+        val routePref = _state.value.transitRoutePref
         viewModelScope.launch {
-            val trips = transitTrips(origin, dest, timeMode, timeEpochSec, prefer)
+            val trips = transitTrips(origin, dest, timeMode, timeEpochSec, prefer, routePref)
             _state.update {
                 if (it.travelMode != TravelMode.TRANSIT) it // user switched away mid-load
                 else it.copy(

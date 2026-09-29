@@ -814,6 +814,9 @@
     <string name="offline_area_failed">Error en la descarga sin conexión. Inténtalo más tarde.</string>
     <string name="offline_area_too_large">La zona es demasiado grande. Acerca el mapa y guarda una zona más pequeña.</string>
     <string name="place_transit_prefer">Preferir</string>
+    <string name="place_transit_route">Ruta</string>
+    <string name="place_transit_fewer_transfers">Menos transbordos</string>
+    <string name="place_transit_less_walking">Menos caminata</string>
     <string name="place_transit_bus">Autobús</string>
     <string name="place_transit_subway">Metro</string>
     <string name="place_transit_train">Tren</string>

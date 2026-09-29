@@ -917,6 +917,9 @@
     <string name="offline_area_failed">Offline download mislukt. Probeer het later opnieuw.</string>
     <string name="offline_area_too_large">Gebied te groot. Zoom in en sla een kleiner gebied op.</string>
     <string name="place_transit_prefer">Voorkeur</string>
+    <string name="place_transit_route">Route</string>
+    <string name="place_transit_fewer_transfers">Minder overstappen</string>
+    <string name="place_transit_less_walking">Minder lopen</string>
     <string name="place_transit_bus">Bus</string>
     <string name="place_transit_subway">Metro</string>
     <string name="place_transit_train">Trein</string>

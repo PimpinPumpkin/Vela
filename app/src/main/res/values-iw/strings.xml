@@ -918,6 +918,9 @@
     <string name="offline_area_failed">ההורדה לשימוש לא מקוון נכשלה. נסה שוב מאוחר יותר.</string>
     <string name="offline_area_too_large">האזור גדול מדי. התקרב ושמור אזור קטן יותר.</string>
     <string name="place_transit_prefer">העדף</string>
+    <string name="place_transit_route">מסלול</string>
+    <string name="place_transit_fewer_transfers">פחות החלפות</string>
+    <string name="place_transit_less_walking">פחות הליכה</string>
     <string name="place_transit_bus">אוטובוס</string>
     <string name="place_transit_subway">רכבת תחתית</string>
     <string name="place_transit_train">רכבת</string>

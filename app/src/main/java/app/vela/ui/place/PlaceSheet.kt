@@ -1560,6 +1560,8 @@ fun DirectionsPanel(
     onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
     transitPrefer: Set<Int> = emptySet(), // preferred vehicle kinds, transit only (issue #431)
     onTransitPrefer: (Set<Int>) -> Unit = {},
+    transitRoutePref: Int = 0, // 0 best, 2 fewer transfers, 3 less walking (Google's numbering)
+    onTransitRoutePref: (Int) -> Unit = {},
     minimizeTick: Int = 0, // bumped when the user grabs the map — glide down, then flip collapsed
     onCollapsedChange: (Boolean) -> Unit = {}, // MapScreen shrinks the route-fit camera inset while minimized
     // Tallest the BODY may open (dp), from the host: what the endpoints card leaves above a
@@ -1568,6 +1570,12 @@ fun DirectionsPanel(
     bodyMaxDp: Float? = null,
     modifier: Modifier = Modifier,
     onShowTraffic: (() -> Unit)? = null,
+    // The Google-style picker's header (the mode as the title, share and close as round buttons,
+    // the underlined mode tabs) over this panel's body. The transit tab uses it when the
+    // Google-style picker is on, so switching modes reads as one sheet.
+    googleHeader: Boolean = false,
+    onShare: () -> Unit = {},
+    onClose: () -> Unit = {},
 ) {
     val dark = isAppInDarkTheme()
     val ink = if (dark) InkDark else InkLight
@@ -1688,6 +1696,29 @@ fun DirectionsPanel(
             ) {
                 Box(Modifier.width(36.dp).height(4.dp).clip(CircleShape).background(dim.copy(alpha = 0.4f)))
             }
+            // D-pad-first (docs/dpad.md): land focus on the Drive tab when the directions panel
+            // opens, so it's the active surface (else focus stays on the search bar behind it).
+            // No-op under touch.
+            val dirAutoFocus = rememberDpadAutoFocus()
+            if (googleHeader) {
+                Row(Modifier.padding(end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        modeTitle(currentMode),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = ink,
+                        modifier = Modifier.weight(1f),
+                    )
+                    RoundAction(Icons.Default.Share, stringResource(R.string.place_share), dark, onShare)
+                    Spacer(Modifier.width(8.dp))
+                    RoundAction(Icons.Default.Close, stringResource(R.string.place_close_directions), dark, onClose)
+                }
+                Spacer(Modifier.height(10.dp))
+                // The tabs run edge to edge like the picker's: pull them back over the panel's
+                // start padding so the first glyph lines up with the title.
+                ModeTabs(currentMode, modeEtas, ink, onModeSelected, Modifier.bleed(20.dp, 8.dp), firstFocus = dirAutoFocus)
+                HorizontalDivider(color = dim.copy(alpha = 0.25f), modifier = Modifier.bleed(20.dp, 8.dp))
+            }
             // The endpoint rows (origin / stops / destination, swap, close) live in the
             // Google-style RouteTopCard at the top of the screen now — this panel keeps the
             // mode chips, time chooser, routes and Start.
@@ -1722,13 +1753,9 @@ fun DirectionsPanel(
                       .verticalScroll(dirBodyScroll),
               ) {
             Spacer(Modifier.height(10.dp))
-            // D-pad-first (docs/dpad.md): land focus on the first travel-mode tab when the
-            // directions panel opens, so it's the active surface (else focus stays on the
-            // search bar behind it). No-op under touch.
-            val dirAutoFocus = rememberDpadAutoFocus()
             // Scrollable so all four mode pills keep full size on a narrow screen — without this the
             // 4th (Bike) overflowed the row and got clipped to the edge as an icon-only stub.
-            Row(
+            if (!googleHeader) Row(
                 Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -1780,6 +1807,27 @@ fun DirectionsPanel(
                         FilterChip(
                             selected = kind in transitPrefer,
                             onClick = { onTransitPrefer(if (kind in transitPrefer) transitPrefer - kind else transitPrefer + kind) },
+                            label = { Text(stringResource(label)) },
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                        )
+                    }
+                }
+                // Google's route preference, carried on its request (2 fewer transfers, 3 less
+                // walking). One or neither: tapping the selected chip goes back to the best route.
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(stringResource(R.string.place_transit_route), style = MaterialTheme.typography.labelLarge, color = dim)
+                    listOf(
+                        2 to R.string.place_transit_fewer_transfers,
+                        3 to R.string.place_transit_less_walking,
+                    ).forEach { (pref, label) ->
+                        FilterChip(
+                            selected = transitRoutePref == pref,
+                            onClick = { onTransitRoutePref(if (transitRoutePref == pref) 0 else pref) },
                             label = { Text(stringResource(label)) },
                             shape = androidx.compose.foundation.shape.CircleShape,
                         )
@@ -2461,7 +2509,7 @@ private fun TransitRow(t: TransitItinerary, nowSec: Long, ink: Color, dim: Color
                 }
             }
         }
-        val sub = listOfNotNull(t.distanceText, t.agency).joinToString("  ·  ")
+        val sub = listOfNotNull(t.frequencyText?.let { stringResource(R.string.place_every, it) }, t.distanceText, t.agency).joinToString("  ·  ")
         if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)
         if (expanded) {
             HorizontalDivider(color = dim.copy(alpha = 0.25f))
@@ -4821,3 +4869,16 @@ private fun UpdatesSection(updates: List<app.vela.core.model.PlaceUpdate>, ink: 
  *  category, rating or reviews, so it gets no Reviews tab and no popular-times space. */
 internal fun Place.isListing(): Boolean =
     !category.isNullOrBlank() || rating != null || reviewCount != null || featuredReview != null
+
+/** Lay a child out wider than its parent's padding allows, by [start] and [end], so a row can run
+ *  edge to edge inside a padded column. */
+private fun Modifier.bleed(start: androidx.compose.ui.unit.Dp, end: androidx.compose.ui.unit.Dp): Modifier = layout { m, c ->
+    if (!c.hasBoundedWidth) {
+        val p = m.measure(c)
+        return@layout layout(p.width, p.height) { p.place(0, 0) }
+    }
+    val s = start.roundToPx()
+    val w = c.maxWidth + s + end.roundToPx()
+    val p = m.measure(c.copy(minWidth = w, maxWidth = w))
+    layout(c.maxWidth, p.height) { p.place(-s, 0) }
+}

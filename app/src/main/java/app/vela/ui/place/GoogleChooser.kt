@@ -63,6 +63,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
@@ -565,7 +566,7 @@ fun GoogleStyleDirectionsPanel(
 }
 
 @Composable
-private fun modeTitle(mode: TravelMode): String = stringResource(
+internal fun modeTitle(mode: TravelMode): String = stringResource(
     when (mode) {
         TravelMode.DRIVE -> R.string.place_mode_drive
         TravelMode.TRANSIT -> R.string.place_mode_transit
@@ -576,7 +577,7 @@ private fun modeTitle(mode: TravelMode): String = stringResource(
 
 /** Google's round header action: a tonal circle with a glyph. */
 @Composable
-private fun RoundAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, dark: Boolean, onClick: () -> Unit) {
+internal fun RoundAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, dark: Boolean, onClick: () -> Unit) {
     IconButton(
         onClick = onClick,
         modifier = Modifier
@@ -593,12 +594,14 @@ private fun RoundAction(icon: androidx.compose.ui.graphics.vector.ImageVector, l
 /** Mode tabs: glyph + time, the selected one in the accent with an underline. In landscape they
  *  share the header row with the round actions, which is the only way the card fits the column. */
 @Composable
-private fun ModeTabs(
+internal fun ModeTabs(
     currentMode: TravelMode,
     modeEtas: Map<TravelMode, String>,
     ink: androidx.compose.ui.graphics.Color,
     onModeSelected: (TravelMode) -> Unit,
     modifier: Modifier = Modifier,
+    /** D-pad: where focus lands when the panel opens (the Drive tab). */
+    firstFocus: androidx.compose.ui.focus.FocusRequester? = null,
 ) {
     Row(modifier.horizontalScroll(rememberScrollState()).padding(start = 8.dp)) {
         listOf(
@@ -610,7 +613,7 @@ private fun ModeTabs(
             val sel = mode == currentMode
             val tint = if (sel) MaterialTheme.colorScheme.primary else ink
             Column(
-                Modifier
+                (if (mode == TravelMode.DRIVE && firstFocus != null) Modifier.focusRequester(firstFocus) else Modifier)
                     .clip(RoundedCornerShape(8.dp))
                     .dpadHighlight(RoundedCornerShape(8.dp))
                     .clickable { onModeSelected(mode) }

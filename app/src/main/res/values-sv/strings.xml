@@ -814,6 +814,9 @@
     <string name="offline_area_failed">Offlinenedladdningen misslyckades. Försök igen senare.</string>
     <string name="offline_area_too_large">Området är för stort. Zooma in och spara ett mindre område.</string>
     <string name="place_transit_prefer">Föredra</string>
+    <string name="place_transit_route">Rutt</string>
+    <string name="place_transit_fewer_transfers">Färre byten</string>
+    <string name="place_transit_less_walking">Mindre gång</string>
     <string name="place_transit_bus">Buss</string>
     <string name="place_transit_subway">Tunnelbana</string>
     <string name="place_transit_train">Tåg</string>

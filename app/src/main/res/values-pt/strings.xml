@@ -917,6 +917,9 @@
     <string name="offline_area_failed">A transferência offline falhou. Tente mais tarde.</string>
     <string name="offline_area_too_large">Área demasiado grande. Aproxime e guarde uma área menor.</string>
     <string name="place_transit_prefer">Preferir</string>
+    <string name="place_transit_route">Percurso</string>
+    <string name="place_transit_fewer_transfers">Menos transbordos</string>
+    <string name="place_transit_less_walking">Menos caminhada</string>
     <string name="place_transit_bus">Autocarro</string>
     <string name="place_transit_subway">Metro</string>
     <string name="place_transit_train">Comboio</string>

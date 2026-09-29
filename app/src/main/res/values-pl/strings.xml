@@ -926,6 +926,9 @@
     <string name="offline_area_failed">Pobieranie offline nie powiodło się. Spróbuj później.</string>
     <string name="offline_area_too_large">Obszar jest za duży. Przybliż i zapisz mniejszy obszar.</string>
     <string name="place_transit_prefer">Preferuj</string>
+    <string name="place_transit_route">Trasa</string>
+    <string name="place_transit_fewer_transfers">Mniej przesiadek</string>
+    <string name="place_transit_less_walking">Mniej chodzenia</string>
     <string name="place_transit_bus">Autobus</string>
     <string name="place_transit_subway">Metro</string>
     <string name="place_transit_train">Pociąg</string>

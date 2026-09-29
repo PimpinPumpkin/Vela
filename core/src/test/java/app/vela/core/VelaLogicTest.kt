@@ -1159,6 +1159,18 @@ class TransitParserTest {
         assertEquals("#0b8043", list[1].lines[0].colorHex)
     }
 
+    @Test
+    fun transitFrequencyComesFromTripThirteen() {
+        // trip[13] = [seconds, "10 min", seconds] where the service has a headway (live London,
+        // New York and SF trips, 2026-09-29); absent or out of range = no frequency line.
+        val withFreq = "[$itin0,null,null,null,null,null,null,null,null,null,null,null,null,[600,\"10 min\",600]]"
+        val silly = "[$itin1,null,null,null,null,null,null,null,null,null,null,null,null,[5,\"5 s\",5]]"
+        val list = TransitParser.parse(Json.parseToJsonElement("[[null,[$withFreq,$silly,[$itin1]]]]"))
+        assertEquals("10 min", list[0].frequencyText)
+        org.junit.Assert.assertNull(list[1].frequencyText)
+        org.junit.Assert.assertNull(list[2].frequencyText)
+    }
+
     @Test(expected = app.vela.core.data.CalibrationNeededException::class)
     fun throwsWhenShapeMissing() {
         TransitParser.parse(Json.parseToJsonElement("[[1,2,3]]"))

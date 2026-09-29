@@ -818,6 +818,9 @@
     <string name="offline_area_failed">Не удалось загрузить область для офлайна. Попробуйте позже.</string>
     <string name="offline_area_too_large">Область слишком большая. Приблизьте карту и сохраните область поменьше.</string>
     <string name="place_transit_prefer">Предпочитать</string>
+    <string name="place_transit_route">Маршрут</string>
+    <string name="place_transit_fewer_transfers">Меньше пересадок</string>
+    <string name="place_transit_less_walking">Меньше пешком</string>
     <string name="place_transit_bus">Автобус</string>
     <string name="place_transit_subway">Метро</string>
     <string name="place_transit_train">Поезд</string>

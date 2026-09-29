@@ -837,6 +837,9 @@
     <string name="offline_area_failed">オフライン用のダウンロードに失敗しました。後でもう一度お試しください。</string>
     <string name="offline_area_too_large">エリアが大きすぎます。拡大して、狭い範囲を保存してください。</string>
     <string name="place_transit_prefer">優先</string>
+    <string name="place_transit_route">ルート</string>
+    <string name="place_transit_fewer_transfers">乗り換えが少ない</string>
+    <string name="place_transit_less_walking">徒歩が少ない</string>
     <string name="place_transit_bus">バス</string>
     <string name="place_transit_subway">地下鉄</string>
     <string name="place_transit_train">電車</string>

@@ -835,6 +835,9 @@
     <string name="offline_area_failed">離線下載失敗，請稍後再試。</string>
     <string name="offline_area_too_large">區域太大。請拉近後儲存較小的區域。</string>
     <string name="place_transit_prefer">偏好</string>
+    <string name="place_transit_route">路線</string>
+    <string name="place_transit_fewer_transfers">較少轉乘</string>
+    <string name="place_transit_less_walking">較少步行</string>
     <string name="place_transit_bus">公車</string>
     <string name="place_transit_subway">地鐵</string>
     <string name="place_transit_train">火車</string>

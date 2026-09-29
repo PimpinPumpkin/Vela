@@ -812,6 +812,9 @@
     <string name="offline_area_failed">Échec du téléchargement hors ligne. Réessayez plus tard.</string>
     <string name="offline_area_too_large">Zone trop grande. Zoomez et enregistrez une zone plus petite.</string>
     <string name="place_transit_prefer">Préférer</string>
+    <string name="place_transit_route">Itinéraire</string>
+    <string name="place_transit_fewer_transfers">Moins de correspondances</string>
+    <string name="place_transit_less_walking">Moins de marche</string>
     <string name="place_transit_bus">Bus</string>
     <string name="place_transit_subway">Métro</string>
     <string name="place_transit_train">Train</string>

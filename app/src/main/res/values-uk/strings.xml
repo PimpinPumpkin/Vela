@@ -816,6 +816,9 @@
     <string name="offline_area_failed">Не вдалося завантажити для офлайн. Спробуйте пізніше.</string>
     <string name="offline_area_too_large">Завелика область. Наблизьте карту й збережіть меншу.</string>
     <string name="place_transit_prefer">Надавати перевагу</string>
+    <string name="place_transit_route">Маршрут</string>
+    <string name="place_transit_fewer_transfers">Менше пересадок</string>
+    <string name="place_transit_less_walking">Менше пішки</string>
     <string name="place_transit_bus">Автобус</string>
     <string name="place_transit_subway">Метро</string>
     <string name="place_transit_train">Потяг</string>
