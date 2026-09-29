@@ -1427,7 +1427,8 @@ widens from fuel-only to `NAV_DRIVE_GROUPS`, and a tap on a place does not selec
 ### 5.1 Sources
 
 Settings > Places > "Places come from" (`MapPoiPrefs.placesSource`, pref
-`map_places_source`) has three values:
+`map_places_source`), also in the map's Layers menu with the "Use Vela without Google" switch
+(issue #626; the menu flips the same holders), has three values:
 
 - **`open`** - Vela's own bake. The compiled default, and the fleet default through
   `calibration.json` `defaultPlacesSource`. Browsing the map contacts Google not at all.
@@ -1924,7 +1925,8 @@ host that cannot answer.
   cannot say "this file came from another app". Never wrap the launcher in a bare `runCatching`:
   on a device with no documents provider the button then does nothing at all.
 - Parking is one tap on the P button, with a history so an accidental overwrite never loses the
-  car.
+  car. Settings > Map "Parking button" (`ParkingButton`, default on) hides the button while no
+  spot is saved; a saved spot keeps it, the way back to the car.
 
 
 ---

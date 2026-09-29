@@ -208,6 +208,9 @@
     <string name="settings_routing_updating">Updating… %1$d%%</string> <!-- format -->
     <string name="settings_routing_installed">Installed · routes offline here</string>
     <string name="settings_routing_installed_places">Installed · places searchable offline</string>
+    <string name="settings_parking_button">Parking button</string>
+    <string name="settings_parking_button_hint">The P button on the map that saves where you parked. Off: it shows only while a spot is saved.</string>
+    <string name="map_layers_places">Places: %1$s</string> <!-- format: %1$s is a source, "Vela data", "Google" or "Both" -->
     <string name="settings_two_finger_tilt">Tilt with two fingers</string>
     <string name="settings_two_finger_tilt_hint">Drag two fingers up or down to tilt the map into 3D. Off: a pinch only ever zooms.</string>
     <string name="settings_speed_display">Show speed and speed limit</string>

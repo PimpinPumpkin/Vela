@@ -1326,6 +1326,10 @@ Defaults that make the safe path the easy one:
   rotated/tilted or during heading-up nav - never removed, just north-hidden on the browse map.
   Its browse-mode top margin is statusBar + 122dp so it sits BELOW the floating search bar and the
   category chips (8dp under the status bar put it exactly behind the bar - a half-hidden circle, 2026-07-09).
+  **The Layers menu also carries the places source (three radio rows) and the Google-free switch
+  (issue #626, 2026-09-29)**, flipping the same holders as Settings; the places choice only moves
+  the map's pins, search still asks Google unless Google-free is on. `ParkingButton` hides the P
+  button only while no spot is saved.
   **With the LAYERS button enabled the browse margin is statusBar + 200dp instead (2026-07-15):** the
   layers circle owns statusBar+128dp in the same corner and its IconButton touch overflow reaches
   ~190dp, which sat exactly on the compass (user report); 200dp clears the touch target, not just
