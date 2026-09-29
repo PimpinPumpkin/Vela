@@ -176,9 +176,6 @@ echo "→ $ID: $(jq -r '"\(.cells) cells, \(.zipMb*100|round/100) MB zipped, \(.
 [ "${CELLS_UPLOAD:-0}" = "1" ] || exit 0
 
 # Upload: the zips, then the fragment last, so the merge never lists a cell whose zip is missing.
-gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 || \
-  gh release create "$TAG" --repo "$REPO" --prerelease --target "$CELLS_RELEASE_TARGET" --title "Offline cells: $NAME" \
-    --notes "Grid-cell offline bundles (routing obf, place pack, places tiles) for $NAME. Data assets, not a code release."
 # The Actions token has 1,000 API requests an hour for the whole repository, shared by every job
 # and workflow in it; a wave of eight states uploading a few hundred cells each spent it in
 # minutes and lost five finished bakes to HTTP 403 (2026-09-28). So: big batches (one listing per
@@ -213,6 +210,32 @@ upload() {
   done
   return 1
 }
+# The release itself goes through the same backoff: the second world wave lost finished regions on
+# the view/create call before their first upload, where a 403 read as "no release" and the create
+# then failed too.
+ensure_release() {
+  local try out wait
+  for try in 1 2 3 4 5 6 7 8; do
+    rate_wait
+    out=$(gh release view "$TAG" --repo "$REPO" --json tagName 2>&1) && return 0
+    if ! echo "$out" | grep -qi "rate limit"; then
+      out=$(gh release create "$TAG" --repo "$REPO" --prerelease --target "$CELLS_RELEASE_TARGET" \
+        --title "Offline cells: $NAME" \
+        --notes "Grid-cell offline bundles (routing obf, place pack, places tiles) for $NAME. Data assets, not a code release." 2>&1) \
+        && return 0
+      echo "$out" | grep -qi "already exists" && return 0
+    fi
+    echo "$out" | tail -2
+    if echo "$out" | grep -qi "rate limit"; then
+      wait=${RATE_BACKOFF[$((try - 1 < 6 ? try - 1 : 6))]}
+      echo "release attempt $try hit the API rate limit; waiting $wait s"; sleep "$wait"
+    else
+      echo "release attempt $try failed; retrying in $((try * 20)) s"; sleep $((try * 20))
+    fi
+  done
+  return 1
+}
+ensure_release
 ZIPS=("$OUT_DIR"/*.zip)
 for ((k = 0; k < ${#ZIPS[@]}; k += 100)); do upload "${ZIPS[@]:k:100}"; done
 upload "$OUT_DIR/$TAG.json"

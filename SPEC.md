@@ -2362,7 +2362,9 @@ call fails with the limit exhausted the retry waits for the reset (`rate_wait`, 
 instead of failing the bake, and a refused upload that names the rate limit backs off 5, 10, 20
 then 30 minutes a try (`RATE_BACKOFF`, eight tries, about two hours), because the pre-check read
 requests as available while uploads were still refused (five finished regions lost in the first
-world wave, 2026-09-29). The workflow runs four bakes at a time (eight lost five finished states
+world wave, 2026-09-29). The release's own view and create go through the same backoff
+(`ensure_release`): a 403 on the view read as "no release", the create then failed, and seven more
+finished regions were lost that way. The workflow runs four bakes at a time (eight lost five finished states
 to HTTP 403 on 2026-09-28). The budget, not the runners, bounds a world bake: one request per
 asset, about a thousand an hour.
 
