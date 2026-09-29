@@ -1,6 +1,6 @@
 {
   "_comment": "Vela scraper calibration — remotely updatable. The app fetches this file from the repo at launch and adopts it when 'version' is HIGHER than the version compiled into the installed build (Calibration.DEFAULT). To ship a fix without an app update: edit the drifted field(s) below, BUMP 'version', and commit to main. Endpoint hosts must stay on google.com (the app rejects anything else). Field-index paths the parsers read are still compiled in (a later phase).",
-  "version": 24,
+  "version": 25,
   "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
   "secChUa": "\"Google Chrome\";v=\"155\", \"Chromium\";v=\"155\", \"Not(A:Brand\";v=\"24\"",
   "chromeFullVersion": "155.0.8059.12",
@@ -269,6 +269,7 @@
     "ambientFanoutPermits": 4,
     "ambientCapMin": 45,
     "ambientCapMax": 140,
-    "placesOneSetRev": 20260923
+    "placesOneSetRev": 20260923,
+    "webProxy": 1
   }
 }

@@ -295,6 +295,20 @@ internal fun OfflineSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onClose
                             androidx.compose.ui.res.pluralStringResource(R.plurals.settings_downloaded_cells, cells.size, cells.size, fmtMb(Math.round(cells.sumOf { it.mb }).toInt())),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        val newer = state.cellUpdates[first.regionId].orEmpty()
+                        if (newer.isNotEmpty()) {
+                            Text(
+                                androidx.compose.ui.res.pluralStringResource(R.plurals.settings_cells_update_available, newer.size, newer.size),
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                    if (state.cellUpdates[first.regionId].orEmpty().isNotEmpty()) {
+                        FilledTonalButton(
+                            onClick = { vm.updateCells(first.regionId) },
+                            enabled = state.routingDownloadingId == null && state.poiPackDownloadingId == null && state.regionUpdatingId == null,
+                            modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                        ) { Text(stringResource(R.string.settings_update_region)) }
                     }
                     IconButton(modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape), onClick = { vm.deleteCellRegion(first.regionId) }) {
                         Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_offline_delete_cells))

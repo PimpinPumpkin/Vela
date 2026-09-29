@@ -189,6 +189,10 @@
         <item quantity="other">Part of the region: %1$d pieces, %2$s</item>
     </plurals>
     <string name="settings_offline_delete_cells">Delete these pieces</string>
+    <plurals name="settings_cells_update_available">
+        <item quantity="one">%1$d piece has a newer version</item>
+        <item quantity="other">%1$d pieces have a newer version</item>
+    </plurals>
     <string name="settings_area_confirm_region_have">Offline directions and places for %1$s are already downloaded.</string>
     <string name="settings_offline_no_areas">No areas saved yet.</string>
     <string name="settings_offline_addresses_missing">Areas you saved before this update don\'t include address data. Update them to search and route to addresses offline.</string>
@@ -703,6 +707,7 @@
     <string name="mapvm_trip_default_name">Trip</string>
     <string name="mapvm_no_voice_engine">No voice installed for spoken directions</string>
     <string name="mapscreen_get_voice">Get a voice</string>
+    <string name="mapscreen_download_voice">Download %1$s (%2$d MB)</string> <!-- format -->
     <string name="mapscreen_system_voices">System voices</string>
     <string name="settings_spoken_directions">Spoken directions</string>
     <string name="settings_spoken_road_names">Say street names</string>

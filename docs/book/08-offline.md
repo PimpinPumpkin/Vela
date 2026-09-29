@@ -433,7 +433,8 @@ delete; deleting the whole region removes its pieces too.
 The places layer draws every installed piece the screen touches (up to eight, nearest first), so
 two neighboring pieces read as one map; a whole region installed beside its pieces is drawn alone,
 and downloading the whole region afterwards removes its pieces, so a search never lists a place
-from both. Pieces are not updated by revision: delete the region's pieces and pick the area again.
+from both. Pieces update like regions: a newer bake shows on the row ("2 pieces have a newer
+version") with an Update button, and the automatic updates setting pulls them on its own.
 
 Delaware, baked on a laptop with four cells at a time:
 

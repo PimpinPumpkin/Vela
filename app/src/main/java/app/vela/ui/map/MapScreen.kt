@@ -2756,6 +2756,7 @@ fun MapScreen(
                     )
                 }
                 state.status?.let { msg ->
+                    val voiceDl = state.statusVoiceDownloadId
                     InfoCard(
                         title = stringResource(R.string.mapscreen_heads_up),
                         body = msg,
@@ -2764,12 +2765,19 @@ fun MapScreen(
                         // A voice problem carries its fix. Normally a pill straight to Vela's voice
                         // library; for a language with no Vela voice (Japanese) it opens the phone's
                         // own voice settings instead, where the user can add a system voice.
+                        autoMs = state.statusAutoMs,
                         pillLabel = when {
                             state.statusOpensTtsSettings -> stringResource(R.string.mapscreen_system_voices)
+                            voiceDl != null -> app.vela.core.voice.PiperCatalog.byId(voiceDl)
+                                ?.let { v -> stringResource(R.string.mapscreen_download_voice, v.displayName, v.sizeMb) }
+                                ?: stringResource(R.string.mapscreen_get_voice)
                             state.statusVoiceAction -> stringResource(R.string.mapscreen_get_voice)
                             else -> null
                         },
                         onPill = when {
+                            voiceDl != null -> {
+                                { vm.clearStatus(); vm.downloadVoice(voiceDl) }
+                            }
                             state.statusOpensTtsSettings -> {
                                 {
                                     vm.clearStatus()
@@ -4915,12 +4923,29 @@ private fun InfoCard(
     modifier: Modifier = Modifier,
     pillLabel: String? = null,
     onPill: (() -> Unit)? = null,
+    // Self-dismissing after this long, with the faster-route card's draining bar as the clock;
+    // focus anywhere on the card (reaching for it with keys) freezes it. Null = stays put.
+    autoMs: Long? = null,
 ) {
     // Fixed sheet palette so this banner reads as the same gray as the place sheet
     // and results list, not a wallpaper-tinted Material card.
     val dark = isAppInDarkTheme()
+    val left = remember(body, autoMs) { androidx.compose.animation.core.Animatable(1f) }
+    val dismiss = rememberUpdatedState(onAction)
+    var held by remember(body) { mutableStateOf(false) }
+    if (autoMs != null) {
+        LaunchedEffect(body, autoMs, held) {
+            if (held) return@LaunchedEffect
+            val remaining = (autoMs * left.value).toInt()
+            left.animateTo(0f, androidx.compose.animation.core.tween(remaining.coerceAtLeast(1), easing = androidx.compose.animation.core.LinearEasing))
+            dismiss.value()
+        }
+        if (autoMs != null) {
+            app.vela.ui.VelaProgressBarOf({ left.value }, Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp))
+        }
+    }
     Card(
-        modifier.fillMaxWidth(),
+        modifier.fillMaxWidth().onFocusChanged { held = it.hasFocus },
         colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark)),
     ) {
         if (pillLabel != null && onPill != null) {

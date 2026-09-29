@@ -412,7 +412,9 @@ class VoiceGuide @Inject constructor(
         // Use the neural voice ONLY when it can actually speak the target language. A single-
         // language Piper model reading another language's text is gibberish (the "English voice
         // read Russian" bug) — voiceLanguage==null means unknown → trust it (old behavior).
-        if (useNeural && n != null && n.voiceLanguage.let { it == null || it == t }) {
+        // ...or when another INSTALLED voice speaks it (the phone switched to Russian mid-drive
+        // with Irina installed): the synth swaps the loaded voice, the selection stays.
+        if (useNeural && n != null && (n.voiceLanguage.let { it == null || it == t } || n.voiceFor(t))) {
             // The neural synth fires onDone exactly ONCE per speak() (including aborted/
             // interrupted utterances — PiperSynth's finally), so the refcount balances without
             // any interrupt special-casing. Do NOT reset the count here: the interrupted

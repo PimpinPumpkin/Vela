@@ -18,6 +18,13 @@ interface NeuralSynth {
      *  routes to a system TTS (or stays silent) on a mismatch. */
     val voiceLanguage: String? get() = null
 
+    /** Switch to an INSTALLED voice that speaks [lang] when the selected one does not (the phone's
+     *  language changed mid-session, the Russian voice is installed, the English one is selected):
+     *  true when a voice for [lang] is loaded or loading, false when none is installed. The
+     *  selection pref is untouched; the switch reverts on its own once the guidance is back in the
+     *  selected voice's language. */
+    fun voiceFor(lang: String): Boolean = false
+
     /** Begin loading the model off the main thread (idempotent, cheap to call repeatedly). */
     fun warmUp()
 

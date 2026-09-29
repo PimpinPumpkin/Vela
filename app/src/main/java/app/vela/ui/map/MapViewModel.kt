@@ -328,6 +328,8 @@ data class MapUiState(
     val status: String? = null,
     val statusVoiceAction: Boolean = false, // status is a voice problem -> show the Get-a-voice pill
     val statusOpensTtsSettings: Boolean = false, // the pill opens the SYSTEM voice settings, not Vela's library
+    val statusVoiceDownloadId: String? = null, // the pill downloads THIS voice (the language's recommended one)
+    val statusAutoMs: Long? = null, // the card drains a bar over this and dismisses itself; null = stays until dismissed
     val installingEngine: String? = null, // pkg of the voice engine currently downloading
     val voiceDownloadPct: Float? = null, // 0f..1f while the neural-voice model downloads; null = idle
     val installedVoiceIds: Set<String> = emptySet(), // Piper voices present on disk (the voice browser)
@@ -403,6 +405,7 @@ data class MapUiState(
     val regionFilePct: Int = 0,
     val poiPackInstalledIds: Set<String> = emptySet(),
     val cellsInstalled: List<app.vela.offline.CellStore.Installed> = emptyList(), // grid cells on the phone (SPEC 7.6)
+    val cellUpdates: Map<String, List<app.vela.offline.CellStore.Cell>> = emptyMap(), // region id -> installed cells with a newer bake
     val poiPackRegions: List<app.vela.offline.RoutingRegion> = emptyList(), // the pack catalog (revs/deltas)
     val poiPackInstalledRevs: Map<String, Int> = emptyMap(),                // installed pack revision per region
 )
@@ -613,8 +616,12 @@ class MapViewModel @Inject constructor(
                     if (hasVela) R.string.mapvm_voice_lang_missing else R.string.mapvm_voice_lang_system,
                     endonym,
                 )
+                // The pill downloads the language's recommended voice in one tap (2026-09-28: a
+                // phone switched to Russian mid-session went silent with a hint that only opened the
+                // library). Once it is installed the guide switches to it by itself (voiceFor).
+                val voiceId = if (hasVela) app.vela.core.voice.PiperCatalog.defaultFor(lang).id else null
                 viewModelScope.launch(Dispatchers.Main) {
-                    flashStatus(msg, 6000L, voiceAction = true, ttsSettings = !hasVela)
+                    flashStatus(msg, 15_000L, voiceAction = true, ttsSettings = !hasVela, voiceDownloadId = voiceId)
                 }
             }
         }
@@ -5511,9 +5518,12 @@ class MapViewModel @Inject constructor(
                     .filter { p -> p.id in poiPackStore.installedIds() && p.deltaUrl != null && p.rev > poiPackStore.installedRev(p.id) &&
                         p.deltaFromRev == poiPackStore.installedRev(p.id) }
             }
+            // Grid cells with a newer bake come whole again (a cell is a few MB), under the same setting.
+            val cells = withContext(Dispatchers.IO) { runCatching { newerCells() }.getOrDefault(emptyMap()).values.flatten() }
             if (!read) { note("manifests unreachable, will retry"); return@launch }
             settingsPrefs.edit().putLong(KEY_AUTO_PATCH_AT, now).apply()
-            if (due.isEmpty() && packs.isEmpty()) { note("nothing to patch"); return@launch }
+            if (due.isEmpty() && packs.isEmpty() && cells.isEmpty()) { note("nothing to patch"); return@launch }
+            if (cells.isNotEmpty()) { note("${cells.size} cell(s) have a newer bake"); downloadCells(cells) }
             downloadLaunch(appContext.getString(R.string.settings_region_updates)) {
                 for ((store, r) in due) {
                     if (_state.value.navigating) break
@@ -6130,12 +6140,16 @@ class MapViewModel @Inject constructor(
 
     /** A status banner that **auto-clears** after a few seconds (unlike [showStatus],
      *  which stays until dismissed) — for transient feedback like a finished download. */
-    fun flashStatus(msg: String, millis: Long = 4500L, voiceAction: Boolean = false, ttsSettings: Boolean = false) {
+    fun flashStatus(msg: String, millis: Long = 4500L, voiceAction: Boolean = false, ttsSettings: Boolean = false, voiceDownloadId: String? = null) {
         statusJob?.cancel()
-        _state.update { it.copy(status = msg, statusVoiceAction = voiceAction, statusOpensTtsSettings = ttsSettings) }
+        _state.update {
+            it.copy(status = msg, statusVoiceAction = voiceAction, statusOpensTtsSettings = ttsSettings, statusVoiceDownloadId = voiceDownloadId, statusAutoMs = millis)
+        }
         statusJob = viewModelScope.launch {
             delay(millis)
-            _state.update { if (it.status == msg) it.copy(status = null, statusVoiceAction = false, statusOpensTtsSettings = false) else it }
+            _state.update {
+                if (it.status == msg) it.copy(status = null, statusVoiceAction = false, statusOpensTtsSettings = false, statusVoiceDownloadId = null, statusAutoMs = null) else it
+            }
         }
     }
 
@@ -6169,10 +6183,19 @@ class MapViewModel @Inject constructor(
         startLocation() // resume the live collector (no-ops if already running)
     }
 
-    fun clearStatus() = _state.update { it.copy(status = null, statusVoiceAction = false, statusOpensTtsSettings = false) }
+    fun clearStatus() = _state.update {
+        it.copy(status = null, statusVoiceAction = false, statusOpensTtsSettings = false, statusVoiceDownloadId = null, statusAutoMs = null)
+    }
 
-    fun showStatus(msg: String, voiceAction: Boolean = false) =
-        _state.update { it.copy(status = msg, statusVoiceAction = voiceAction, statusOpensTtsSettings = false) }
+    /** A heads-up card that DISMISSES ITSELF after [STATUS_AUTO_MS] with a draining bar (user
+     *  2026-09-28: the "downloaded" cards stayed up until tapped); a card with a fix to tap
+     *  ([voiceAction]) stays. */
+    fun showStatus(msg: String, voiceAction: Boolean = false) = _state.update {
+        it.copy(
+            status = msg, statusVoiceAction = voiceAction, statusOpensTtsSettings = false, statusVoiceDownloadId = null,
+            statusAutoMs = if (voiceAction) null else STATUS_AUTO_MS,
+        )
+    }
 
     // --- offline download (triggered from Settings, not a map FAB) -------------
 
@@ -6980,6 +7003,7 @@ class MapViewModel @Inject constructor(
                         routingDownloadingId = null, regionDownloadName = null,
                         routingInstalledIds = obfStore.installedIds(), poiPackInstalledIds = poiPackStore.installedIds(),
                         cellsInstalled = cellStore.installed(),
+                        cellUpdates = it.cellUpdates.mapValues { (_, cs) -> cs.filter { c -> cells.none { d -> d.id == c.id } } }.filterValues { cs -> cs.isNotEmpty() },
                     )
                 }
                 refreshPlacesOverlays()
@@ -7947,7 +7971,23 @@ class MapViewModel @Inject constructor(
             if (mapMissing || maps.any { inside(it.s, it.w, it.n, it.e) }) kinds += "map"
             if (kinds.isNotEmpty()) out[r.id] = kinds
         }
-        _state.update { it.copy(regionUpdates = out) }
+        val cellUpdates = runCatching { newerCells() }.getOrDefault(emptyMap())
+        _state.update { it.copy(regionUpdates = out, cellUpdates = cellUpdates) }
+    }
+
+    /** Installed grid cells whose manifest rev is newer than the installed one, by region
+     *  (SPEC 7.6.5). A cell is small, so its update is the whole zip again. */
+    private suspend fun newerCells(): Map<String, List<app.vela.offline.CellStore.Cell>> {
+        val installed = cellStore.installed()
+        if (installed.isEmpty()) return emptyMap()
+        val byId = cellStore.manifest(app.vela.BuildConfig.CELLS_MANIFEST_URL).associateBy { it.id }
+        return installed.mapNotNull { c -> byId[c.id]?.takeIf { it.rev > c.rev } }.groupBy { it.regionId }
+    }
+
+    /** Re-pull the newer cells of [regionId] (Offline maps > Downloaded, the row's Update). */
+    fun updateCells(regionId: String) {
+        val cells = _state.value.cellUpdates[regionId].orEmpty()
+        if (cells.isNotEmpty()) downloadCells(cells)
     }
 
     /** Refresh everything installed for [region] that has a newer bake: the place pack (delta when
@@ -8164,6 +8204,8 @@ class MapViewModel @Inject constructor(
     companion object {
         /** [MapUiState.routingDownloadingId] while grid cells download (no catalog row carries it). */
         const val CELLS_DOWNLOAD_ID = "cells"
+        /** How long an informational heads-up card stays before dismissing itself. */
+        const val STATUS_AUTO_MS = 10_000L
 
         /** Average size of one saved map tile, for the area-download estimate ([areaDownloadPlan]):
          *  OpenFreeMap tiles sampled at 26 to 170 KB, plus the terrain layer that rides along. */

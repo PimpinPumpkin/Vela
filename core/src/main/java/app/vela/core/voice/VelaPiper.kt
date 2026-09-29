@@ -61,7 +61,19 @@ object VelaPiper {
 
     /** The voice to actually LOAD: the pref if it's installed, else the first installed, else null.
      *  NEVER returns an un-downloaded id (so the synth can't point at missing files). */
+    /** An installed voice the guide put in front of the selection because the guidance language
+     *  changed ([NeuralSynth.voiceFor]); null = the selection. Never persisted. */
+    @Volatile var languageOverride: String? = null
+
     fun effectiveVoiceId(context: Context): String? {
+        languageOverride?.let { if (isVoiceReady(context, it)) return it }
+        val sel = selectedVoicePref(context)
+        if (sel != null && isVoiceReady(context, sel)) return sel
+        return installedVoiceIds(context).firstOrNull()
+    }
+
+    /** The voice the SELECTION alone resolves to (no language override). */
+    fun selectedVoiceId(context: Context): String? {
         val sel = selectedVoicePref(context)
         if (sel != null && isVoiceReady(context, sel)) return sel
         return installedVoiceIds(context).firstOrNull()

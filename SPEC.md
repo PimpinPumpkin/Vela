@@ -2383,8 +2383,11 @@ releases API, which Obtainium reads alone (100 rows, no paging) to find the app'
 which every `--limit N` query saw. On the root commit they sort under every app release (checked:
 last of 33). promote-stable and fdroid-repo paginate (`gh api --paginate`) as well.
 
-**Open.** Per-cell updates by `rev` are not offered; a cell is re-pulled by deleting the region's
-pieces and picking the area again.
+**Updates.** `refreshRegionUpdates` also compares every installed cell's rev with the manifest's
+(`newerCells`) into `MapUiState.cellUpdates` (region id to cells); the Downloaded row says how
+many pieces have a newer version and its Update re-pulls them (`updateCells`, the same
+`downloadCells` path; a cell is a few MB, so the update is the whole zip). `maybeAutoPatch` pulls
+newer cells under the same Wi-Fi / mobile setting as the region patches.
 
 ---
 
@@ -2468,9 +2471,17 @@ Rules:
   200 ms chunks with a generation check between them so an interrupt lands within that window
   without underrunning.
 - **A Piper voice speaks one language.** `VoiceGuide` compares `NeuralSynth.voiceLanguage`
-  against the language the text was generated in and, on a mismatch, routes to a system TTS in
-  the target language; with none installed it stays silent and fires `langUnavailable`, which
-  surfaces a "get a voice" action. It never reads one language through another's model.
+  against the language the text was generated in and, on a mismatch, first asks
+  `NeuralSynth.voiceFor(lang)`: the synth loads an INSTALLED voice of that language
+  (`VelaPiper.languageOverride`, in front of the selection pref, never persisted, cleared when
+  the guidance is back in the selection's language). With none installed it routes to a system
+  TTS in the target language; with none there either it stays silent and fires
+  `langUnavailable`, whose card offers a one-tap download of the language's recommended voice
+  (`PiperCatalog.defaultFor`, `MapUiState.statusVoiceDownloadId`). It never reads one language
+  through another's model.
+- **Heads-up cards.** `showStatus` cards dismiss themselves after `STATUS_AUTO_MS` (10 s) with a
+  draining bar (`InfoCard(autoMs)`), frozen while focus is on the card; a card carrying a fix
+  (`statusVoiceAction`) stays; `flashStatus` cards drain over their own duration.
 - Audio focus is refcounted through the utterance callbacks. A system TTS `speak()` returning
   `ERROR` enqueues no utterance and therefore no callback, so that path rolls back its acquire;
   a failed `onInit` clears the pending queue rather than accumulating prompts for a later init.

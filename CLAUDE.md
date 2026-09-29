@@ -1993,7 +1993,10 @@ Defaults that make the safe path the easy one:
   offer during nav renders IN the column too (it used to sit at a fixed 96dp under the turn card),
   and the bottom PSDS tip is gated to the bare map + yields to the resume-nav card - every
   top-of-map card is in the one column; bottom cards (PSDS tip, resume-nav) are bare-map-only.
-  The flash (`MapUiState.status`) shows in ANY map state; the DOWNLOAD cards (region, cells, area
+  **Heads-up cards dismiss themselves (2026-09-28):** `showStatus` sets `statusAutoMs`
+  (`STATUS_AUTO_MS` 10 s) and `InfoCard` drains the faster-route card's bar over it, frozen while
+  focus is on the card; a card carrying a fix (`voiceAction`) stays; `flashStatus` shows its own
+  duration the same way. The flash (`MapUiState.status`) shows in ANY map state; the DOWNLOAD cards (region, cells, area
   tiles, voices) show whenever the search page is not open, a place sheet or route chooser
   included (2026-09-28: an area pick started from a dropped pin ran its 20 MB pull with no card at
   all); notices and the update offer stay gated to the bare map, which INCLUDES during nav - a
@@ -4878,6 +4881,12 @@ Gotchas:
   acquire on `ERROR`; and a failed system-TTS `onInit` used to queue every prompt into `pending` forever
   (unbounded, replayed stale on a later init) - it now clears `pending`, latches `systemInitFailed`, and
   fires `langUnavailable` instead of queueing into a void.
+  **The guide switches to an INSTALLED voice of the guidance language by itself (2026-09-28):**
+  `NeuralSynth.voiceFor(lang)` (PiperSynth: an installed id with that language prefix goes into
+  `VelaPiper.languageOverride`, `reloadVoice`; cleared when the selection's language is back), so a
+  phone switched to Russian mid-session with Irina installed speaks Russian without a Settings
+  visit; the language hint's pill now DOWNLOADS the language's recommended voice
+  (`statusVoiceDownloadId`, "Download Irina (67 MB)") instead of opening the library.
   **A Piper voice is a SINGLE-language model** - reading another language's nav text through it is
   gibberish (the "English voice read Russian after a language override" bug). `NeuralSynth.voiceLanguage`
   exposes the loaded voice's lang (id prefix, `en_US-hfc_female` → "en"); `VoiceGuide.speakNow` compares it
@@ -5104,7 +5113,9 @@ Gotchas:
   with the published Delaware cells (`cells-manifest.json` on `grid-cells`). **The places layer
   mounts every installed archive touching the view since the same day** (`sourcesFor(center,
   manifest, view)`, nested archives dropped, `MAX_MOUNTED` 8, oldest rev wins the one-set gate);
-  it used to mount one, and a view over a cell edge showed one cell. Open: per-cell rev updates.
+  it used to mount one, and a view over a cell edge showed one cell. Per-cell updates since the
+  same day: `newerCells` (installed rev vs manifest rev) feeds `MapUiState.cellUpdates`, the row's
+  Update and `maybeAutoPatch` re-pull the whole zip.
   **Cells releases are created on the ROOT COMMIT (`CELLS_RELEASE_TARGET`, bake-lib.sh):** GitHub
   sorts releases by the target commit's date, Obtainium reads only the first 100 releases, so 450
   cells releases on HEAD would have hidden every app release from it; on the root commit they sort

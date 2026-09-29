@@ -20,11 +20,9 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
 
 Roughly in the order they are worth doing. Each one is small enough for a single PR.
 
-- **Grid cells: per-cell updates and the catalog bake (2026-09-28).** The layer and the
-  duplicate-pack rows are done (SPEC 7.6.5). Left: no per-cell update by `rev` (delete the pieces
-  and pick again), and the world bake itself (`grid-cells.yml` `all` with `shard` a and b; the
-  releases sort last by construction, so the dispatch is safe for Obtainium and the promote and
-  F-Droid queries).
+- **Grid cells: the catalog bake (2026-09-28).** The US catalog group is baking; the rest of
+  the world is `grid-cells.yml` `all` with `shard` a and b, four bakes at a time (the releases
+  sort last by construction and the uploads wait out the API hour).
 - **A name index for the downloaded places archive (2026-09-21).** Offline search reads the OSM
   place pack, and OSM is missing whole chains in places (the parts store that started this was
   on the map from the Overture archive and absent from search). The places PMTiles is spatial

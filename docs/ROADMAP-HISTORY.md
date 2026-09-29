@@ -1007,3 +1007,9 @@ done so it *earns* trust rather than spends it:
   region download drops the region's cells (the duplicate search rows), and the cells releases are
   created on the root commit so they sort under the app releases (Obtainium reads only the first
   100 releases; the promote and F-Droid queries paginate as well). Per-cell rev updates stay open.
+
+## 2026-09-28: per-cell updates
+
+- **Grid cells: per-cell updates.** Done the same evening: installed cell revs against the
+  manifest, an Update on the Downloaded row, and the automatic-updates setting re-pulls newer
+  cells whole (a cell is a few MB, so no delta).

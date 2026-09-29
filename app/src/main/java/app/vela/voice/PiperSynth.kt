@@ -66,6 +66,17 @@ class PiperSynth @Inject constructor(
     override val voiceLanguage: String?
         get() = (loadedVoiceId ?: VelaPiper.effectiveVoiceId(context))?.substringBefore('_')
 
+    override fun voiceFor(lang: String): Boolean {
+        val selected = VelaPiper.selectedVoiceId(context)
+        val want = if (selected?.substringBefore('_') == lang) null
+            else VelaPiper.installedVoiceIds(context).firstOrNull { it.substringBefore('_') == lang } ?: return false
+        if (VelaPiper.languageOverride != want) {
+            VelaPiper.languageOverride = want
+            reloadVoice()
+        }
+        return true
+    }
+
     /** The user's chosen speaker (persisted PER VOICE — libritts_r's 904 speakers are meaningless for
      *  a single-speaker voice), clamped to the loaded model's range. Only the fleet-default voice seeds
      *  from the remotely-configurable [Calibration.defaultVoiceSpeaker]; others default to speaker 0. */
