@@ -2101,7 +2101,7 @@ class MapViewModel @Inject constructor(
             // Empty index = no area downloaded yet, so point the user at the download (issue #3).
             if (!isOnline()) {
                 val (offline, haveArea) = withContext(Dispatchers.IO) {
-                    val rawPois = runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList())
+                    val rawPois = runCatching { offlinePoiStore.search(q, near, extra = archivePlaces(q, near)) }.getOrDefault(emptyList())
                     // A pack POI usually carries no address of its own (OSM tags few), so the rows
                     // read as bare names; fill the shown ones from the address index, the same
                     // lookup the sheet runs on select (user 2026-09-19, "does not show the POI
@@ -2277,8 +2277,15 @@ class MapViewModel @Inject constructor(
      *  interpolated address hits (addresses first so a typed street resolves). Used both when the online
      *  scrape throws AND when it succeeds with zero results, so a small local place Google misses still
      *  surfaces instead of a blank screen. */
+    /** The downloaded places archives around [near], the ones the map draws (issue: offline
+     *  "restaurants" found only the OSM pack's rows, far off, while closer places were on the map). */
+    private fun archivePlaces(q: String, near: LatLng?): List<Place> {
+        val at = near ?: return emptyList()
+        return runCatching { app.vela.offline.PlacesArchiveSearch.search(placesStore.archivesAt(at), at, q) }.getOrDefault(emptyList())
+    }
+
     private suspend fun offlineSearch(q: String, near: LatLng?): List<Place> = withContext(Dispatchers.IO) {
-        val pois = runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList())
+        val pois = runCatching { offlinePoiStore.search(q, near, extra = archivePlaces(q, near)) }.getOrDefault(emptyList())
         val addrs = if (app.vela.core.data.OfflineAddressStore.looksLikeAddress(q))
             runCatching { addressStore.geocode(q, near) }.getOrDefault(emptyList()) else emptyList()
         (if (addrs.isNotEmpty()) addrs + pois else pois + addrs).distinctBy { it.id }

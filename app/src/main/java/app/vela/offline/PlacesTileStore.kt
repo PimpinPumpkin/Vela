@@ -554,6 +554,16 @@ abstract class PmtilesRegionStore(
     fun idsInside(s: Double, w: Double, n: Double, e: Double): List<String> =
         readIndex().filter { (_, b) -> (b[0] + b[2]) / 2 in s..n && (b[1] + b[3]) / 2 in w..e }.keys.toList()
 
+    /** The installed region archives whose box holds [p] (not a "world" one: low zooms only),
+     *  smallest first. What offline search reads beside the packs. */
+    fun archivesAt(p: LatLng): List<File> {
+        val index = readIndexPublic()
+        return installed().filterKeys { it != "world" }.mapNotNull { (id, f) ->
+            val b = index[id] ?: return@mapNotNull null
+            if (p.lat in b[0]..b[2] && p.lng in b[1]..b[3]) ((b[2] - b[0]) * (b[3] - b[1])) to f else null
+        }.sortedBy { it.first }.map { it.second }
+    }
+
     protected fun readIndexPublic(): Map<String, DoubleArray> = readIndex()
 
     private fun readIndex(): Map<String, DoubleArray> = runCatching {

@@ -86,7 +86,7 @@ GrapheneOS and other no-GMS ROMs.
 | Basemap | OpenFreeMap Liberty vector tiles, or a downloaded PMTiles region | No | With a downloaded region |
 | Place pins while browsing | Vela's own places bake (Overture + AllThePlaces positioned with OSM), or Google ambient places, or both (section 5.1) | Only in Google or Both mode | Vela data mode, with a downloaded region |
 | Opening a place | Google listing, correlated to the tapped feature | Yes, unless the lookup toggle is off | Tile data only |
-| Search | Google autocomplete per typing pause (`suggest`), Google `search?tbm=map` on submit, Photon beside them for house-number text; offline, the on-device pack index | Yes | Region packs |
+| Search | Google autocomplete per typing pause (`suggest`), Google `search?tbm=map` on submit, Photon beside them for house-number text; offline, the on-device pack index and the downloaded places archives (`PlacesArchiveSearch`, ranked with the packs in `OfflineRank`) | Yes | Region packs, places archives |
 | Reviews, photos, popular times, About | Photos: one `hspqX` request; popular times and details: the search reply or a plain focused search; first reviews: a hidden WebView scrape of Google's page; the page walk only as fallback or for More photos | Yes | No |
 | Turn-by-turn routing | FOSSGIS OSRM primary, Google as traffic and fallback, on-device obf offline | Yes for traffic | Downloaded obf region |
 | Traffic and live ETA | Google directions | Yes | No |

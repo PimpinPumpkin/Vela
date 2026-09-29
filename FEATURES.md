@@ -2559,6 +2559,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Maps": the launcher entry flips to a plain Maps label for a stock look, and back. Deep links,
   shares and the geo: handler are untouched either way; a pinned home shortcut may need
   re-adding after switching since Android renames apps per launcher component.
+- ✅ **Offline search finds the places on the map, nearest first (2026-09-29).** With no signal,
+  search reads the downloaded places the map draws (Overture, AllThePlaces and OSM) around where
+  you are looking, beside the OSM place pack, so a restaurant you can tap is one you can find.
+  The pack's own results are the nearest ones now: they used to be the first 400 matches in file
+  order, so "Restaurants" came back with places far away. A category search keeps to 100 km.
 - ✅ **Long offline drives (2026-09-29).** Downloaded regions now carry OsmAnd's highway
   hierarchy, precomputed shortcuts between the main roads, so a long drive with no signal routes
   in under a second: 256 km across North Rhine-Westphalia in 0.5 s, where it used to run out of

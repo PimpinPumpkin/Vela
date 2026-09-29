@@ -99,7 +99,9 @@ class OfflinePoiStore @Inject constructor(
      *    word, so "mexican restaurant" finds "Ixtapa Mexican Restaurant" and the restaurant category,
      *    instead of returning nothing because no name contains the exact phrase.
      */
-    fun search(query: String, near: LatLng?, limit: Int = 30): List<Place> {
+    /** [extra]: rows from another source (the downloaded places archives), ranked together with
+     *  the packs' own; on a same-name twin within a block the earlier row, an [extra] one, wins. */
+    fun search(query: String, near: LatLng?, limit: Int = 30, extra: List<Place> = emptyList()): List<Place> {
         val term = query.trim()
         // name/category LIKE targets: the whole query, plus each word ≥3 chars (multi-word only).
         val nameCat = LinkedHashSet<String>().apply { add(term) }
@@ -120,8 +122,16 @@ class OfflinePoiStore @Inject constructor(
         // name match that lived past them (found while verifying delta updates). The ORDER BY puts
         // phrase-in-name rows first, THEN the cap applies. Its LIKE arg is the last one bound.
         args.add("%$term%")
+        // Then NEAREST first, so the 400 kept are the 400 closest: without it the cut took rows in
+        // table order (OSM id order, effectively random across a state) and "restaurants" listed
+        // places a hundred miles off while closer ones never made the cut. A flat-earth distance
+        // is enough to order them; the pack has no spatial index, so this is the same full scan.
+        val nearest = near?.let { n ->
+            val k = kotlin.math.cos(Math.toRadians(n.lat))
+            String.format(java.util.Locale.US, ", ((lat - %.6f) * (lat - %.6f) + (lng - %.6f) * (lng - %.6f) * %.6f)", n.lat, n.lat, n.lng, n.lng, k * k)
+        }.orEmpty()
         val sql = "SELECT id,name,lat,lng,category,address,phone,website,hours FROM poi " +
-            "WHERE ${clauses.joinToString(" OR ")} ORDER BY (name LIKE ?) DESC LIMIT 400"
+            "WHERE ${clauses.joinToString(" OR ")} ORDER BY (name LIKE ?) DESC$nearest LIMIT 400"
         val rows = ArrayList<Place>()
         fun query(db: android.database.sqlite.SQLiteDatabase) {
             runCatching {
@@ -149,22 +159,7 @@ class OfflinePoiStore @Inject constructor(
         // same schema, same SQL. Dedupe by id (a POI can be in both once its area was also saved).
         query(helper.readableDatabase)
         OfflinePacks.dbs.forEach(::query)
-        // Rank by how many query words hit the name/category (so "mexican restaurant" leads with the
-        // Mexican restaurant, not a random one), then by distance.
-        val qWords = (if (words.size > 1) words else listOf(term)).map { it.lowercase() }
-        // TRANSIT STOPS GO LAST unless the query asks for transit. US stops are named by their
-        // corner ("Russell Blvd & Anderson Rd"), so any query carrying a street or a town
-        // word matched hundreds of them and a business search offline read as a list of
-        // intersections (user 2026-09-21, a parts store the pack did not have). They still show,
-        // after everything else.
-        val transitQuery = TRANSIT_QUERY_WORDS.any { term.lowercase().contains(it) }
-        return rows.distinctBy { it.id }.sortedWith(
-            compareBy<Place> { p -> if (!transitQuery && (p.category ?: "").lowercase() in TRANSIT_STOP_CATS) 1 else 0 }
-                .thenByDescending { p ->
-                    val hay = (p.name + " " + (p.category ?: "") + " " + (p.address ?: "")).lowercase()
-                    qWords.count { hay.contains(it) }
-                }.thenBy { it.distanceMeters ?: Double.MAX_VALUE },
-        ).take(limit)
+        return OfflineRank.rank(query, near, extra + rows, limit)
     }
 
     companion object {
@@ -185,8 +180,8 @@ class OfflinePoiStore @Inject constructor(
             "restaurant" to listOf("restaurant", "fast food"),
             "restaurants" to listOf("restaurant", "fast food"),
             "fast food" to listOf("fast food"),
-            "groceries" to listOf("supermarket", "convenience", "greengrocer"),
-            "grocery" to listOf("supermarket", "convenience"),
+            "groceries" to listOf("supermarket", "convenience", "greengrocer", "grocery"),
+            "grocery" to listOf("supermarket", "convenience", "grocery"), // "grocery": the places archives' "Grocery store"
             "supermarket" to listOf("supermarket"),
             "store" to listOf("supermarket", "convenience", "department store"),
             "pharmacy" to listOf("pharmacy", "chemist"),

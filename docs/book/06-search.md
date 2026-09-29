@@ -328,14 +328,27 @@ OFFLINE_ADDR_FILL  = 20     // offline rows whose blank address is filled from t
 OFFLINE_AT_ADDR_M  = 40.0   // a place this close to a typed address is "at" it
 ```
 
-- **Places** come from `OfflinePoiStore.search`: the small area-save index plus every installed
-  region pack, same SQL. It matches the whole phrase and, for several words, each word of three
-  letters or more, against name and category, and the whole phrase against the address too, and expands category words to the
-  OpenStreetMap values actually stored ("gas" is `Fuel`, "coffee" is `Cafe`). Whole-phrase name
-  matches are ordered first **before** the 400-row cap, so a state pack's thousands of cafes
-  cannot push out the one exact name. Ranking: transit stops last unless the query asks for
-  transit (a US stop is named after its corner, so any street word matched hundreds of them),
-  then the number of query words hit, then distance. At most 30 rows.
+- **Places** come from two sources, ranked together by `OfflineRank`:
+  - `OfflinePoiStore.search`: the small area-save index plus every installed region pack (OSM),
+    same SQL. It matches the whole phrase and, for several words, each word of three letters or
+    more, against name and category, and the whole phrase against the address too, and expands
+    category words to the OpenStreetMap values actually stored ("gas" is `Fuel`, "coffee" is
+    `Cafe`). Whole-phrase name matches come first and then the NEAREST rows, both **before** the
+    400-row cap, so a state pack's thousands of cafes cannot push out the one exact name or the
+    ones around you. Without the distance term the cap took rows in table order, effectively
+    random across a state, and "Restaurants" listed places far away.
+  - `PlacesArchiveSearch`: the downloaded places archives the map draws (Overture, AllThePlaces
+    and OSM, so far more businesses than the pack). It reads the archive's deepest zoom, where
+    every place is present, in rings of tiles out from the search point until it has 60 matches
+    or reaches about 3 km (12 rings of z17 tiles). A restaurant you can tap on the map is one
+    you can search for offline. Downtown Davis: 144 restaurants in 42 ms.
+
+  Ranking: transit stops last unless the query asks for transit (a US stop is named after its
+  corner, so any street word matched hundreds of them), then the number of query words hit (a
+  category row counts for its chip word: "Restaurants" hits the category "Restaurant"), then
+  distance. A category query keeps to 100 km of the search point, so with no data for the area
+  it answers nothing rather than a downloaded state across the country; a name search is never
+  cut. The same name within 120 m is one place. At most 30 rows.
 - **Addresses**, when the text looks like one, come from `OfflineAddressStore.geocode` in four
   layers, stopping at the first that answers:
   1. the exact house number on the street;

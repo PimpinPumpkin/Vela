@@ -118,6 +118,43 @@ object PmtilesReader {
         }.getOrNull()
     }
 
+    /** One archive held open for many tile reads: the header once and each directory page once,
+     *  where [tileBytes] rereads and re-inflates them for every tile. For a search that walks a
+     *  few hundred tiles. Not thread-safe; close it when done. */
+    class Session(file: File) : java.io.Closeable {
+        private val f = RandomAccessFile(file, "r")
+        val header: Header? = header(file)
+        private val dirs = HashMap<Long, List<Entry>?>()
+
+        fun tile(z: Int, x: Int, y: Int): ByteArray? = runCatching {
+            val h = header ?: return null
+            if (z < h.minZoom || z > h.maxZoom) return null
+            val want = tileId(z, x, y)
+            var offset = h.rootOffset
+            var length = h.rootLength
+            repeat(4) {
+                val dir = dirs.getOrPut(offset) { readDirectory(f, offset, length, h.internalCompression) } ?: return null
+                val e = find(dir, want) ?: return null
+                if (e.runLength > 0) {
+                    if (e.length <= 0 || e.length > MAX_TILE_BYTES) return null
+                    val raw = ByteArray(e.length.toInt())
+                    f.seek(h.tileDataOffset + e.offset)
+                    f.readFully(raw)
+                    return when (h.tileCompression) {
+                        COMPRESSION_NONE -> raw
+                        COMPRESSION_GZIP -> GZIPInputStream(raw.inputStream()).use { it.readBytes() }
+                        else -> null
+                    }
+                }
+                offset = h.leafOffset + e.offset
+                length = e.length
+            }
+            null
+        }.getOrNull()
+
+        override fun close() = f.close()
+    }
+
     /** The directory entry for a tile, or null when the archive does not hold it. */
     private fun entryFor(file: File, z: Int, x: Int, y: Int): Entry? {
         val h = header(file) ?: return null

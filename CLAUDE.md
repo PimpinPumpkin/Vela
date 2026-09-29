@@ -5875,8 +5875,11 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   delta balloons to pack size). `TABLE_COLUMNS` in PoiPackStore mirrors `poipack_build.py` +
   `poipack_delta.py` - keep all three in sync (`PRAGMA user_version=2`). Gotcha: KDoc in PoiPackStore must
   not contain a literal `del_*/ins_*` (the `*/` ends the comment). `OfflinePoiStore.search` orders
-  whole-query name matches first so they survive the internal 400-row cap (thousands of category hits used
-  to crowd out an exact name match in a state pack; found live while verifying deltas). v1-format packs
+  whole-query name matches first, then nearest, so both survive the internal 400-row cap (thousands of
+  category hits used to crowd out an exact name match; without the distance term the cap took rows in
+  table order and offline "Restaurants" came back from across the state). Offline search also reads the
+  downloaded places ARCHIVES (`PlacesArchiveSearch`, z17 tile rings around the search point) and ranks
+  both sources in `OfflineRank`; category queries stay within 100 km. v1-format packs
   (published before rev existed) have no rev; their first v2 rebuild yields no usable delta so clients just
   full-download once, then deltas kick in.
 - **The AREA SAVE reads the region's PLACE PACK, not Overpass (issue #304, 2026-09-13).**
