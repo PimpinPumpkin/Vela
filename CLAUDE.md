@@ -3331,7 +3331,9 @@ architecture note.
   a demo route, so not GPS).** SPEC 4.7a has the trace. The voice was the surprise: Piper synthesizes
   the opener and the first prompts on two threads at default priority, 8.9 s of CPU in the first
   17 s on a 4a, and the map's GL thread waited for a core; it speaks at nice 8 now
-  (`SPEAK_PRIORITY`, not BACKGROUND: the background cgroup would delay a prompt by seconds). Plus:
+  (`SPEAK_PRIORITY`, not BACKGROUND: the background cgroup would delay a prompt by seconds), and an
+  imminent-turn prompt (`interrupt = true`) keeps the default priority; nothing is dropped, a far
+  prompt can only start a little later under load. Plus:
   no details page or review page for the sheet's place while navigating (a WebView boot on the
   main thread, 757 ms), and the road-features file is parsed while the chooser is up. Left: the
   fly-in's tile burst (four workers saturated for ~4 s) and the nav chrome's first measure.

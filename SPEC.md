@@ -1155,7 +1155,9 @@ map's tile workers (up to 2.1 s of CPU per second while the fly-in to the nav zo
 source), the main thread (the nav chrome's first measure, 255 ms in one frame), a hidden Google
 WebView booting on the main thread (757 ms, the sheet's details page), and the region's
 road-features parse (1.5 s). Rules: the synthesizer speaks at `PiperSynth.SPEAK_PRIORITY` (nice 8,
-foreground group; BACKGROUND would put a prompt ten seconds out), the details page and the review
+foreground group; BACKGROUND would put a prompt ten seconds out) except an imminent-turn prompt
+(`interrupt = true`), which keeps the default priority so a busy map cannot delay it; no prompt is
+ever dropped by priority, only started later, the details page and the review
 page are never loaded while `navigating`, and the road-features file is parsed while the chooser
 is open (`route()` warms `roadFeaturesCoverRoute` on the first route). After: the map reaches
 55 fps by 11 s and the GL thread's waiting time is a tenth; the tile burst of the fly-in remains.

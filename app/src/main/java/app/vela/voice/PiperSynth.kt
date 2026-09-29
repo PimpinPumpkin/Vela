@@ -205,6 +205,9 @@ class PiperSynth @Inject constructor(
         worker.execute {
             val engine = ensureLoaded()
             if (engine == null || myGen != generation) { onDone(); return@execute }
+            // An imminent-turn prompt (interrupt: it cuts whatever is playing) keeps the default
+            // priority so a busy map cannot delay it; the far prompts and the opener yield.
+            runCatching { android.os.Process.setThreadPriority(if (interrupt) android.os.Process.THREAD_PRIORITY_DEFAULT else SPEAK_PRIORITY) }
             try {
                 val t0 = android.os.SystemClock.elapsedRealtime()
                 val sid = speakerId()
