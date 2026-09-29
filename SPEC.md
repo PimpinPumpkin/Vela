@@ -1128,8 +1128,12 @@ motion are filtered.
   GeoJSON source update goes through MapLibre's async worker tiling while `moveCamera` is
   synchronous, so a symbol lands on time or one frame late at random, which is one frame of
   travel of vibration against a calm map. Per-frame values are written to
-  `mutableFloatStateOf` holders read in the draw phase so nothing recomposes per frame. The
-  GeoJSON puck is still used when not following and in browse.
+  `mutableFloatStateOf` holders read in the draw phase so nothing recomposes per frame. Since
+  2026-09-29 the overlay also stays on while the nav camera is DETACHED (a pan, a rotate, a pinch,
+  the overview), projected through the live camera with its own bearing and tilt: handing the puck
+  back to the symbol there made it flat (the 3D icons too) and brought the async jitter back. While
+  detached, a moving camera keeps the parked-car idle pacing off so the overlay cannot trail a
+  gesture. The GeoJSON puck is still used before the puck engages and in browse.
 
 **Diagnosing a jitter report.** Measure before touching anything, in this order: track the
 arrow in a screen recording (`scripts/jitter/puck_track.py`); check whether the map itself moves

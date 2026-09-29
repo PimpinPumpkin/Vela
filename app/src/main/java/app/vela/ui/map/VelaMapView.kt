@@ -979,6 +979,19 @@ fun VelaMapView(
     val puckOverlaySquash = remember { androidx.compose.runtime.mutableFloatStateOf(1f) }
     val puckOverlayTilt = remember { androidx.compose.runtime.mutableFloatStateOf(0f) } // degrees, for the 3D icons
     val puckOverlayHidLayer = remember { booleanArrayOf(false) } // ME_ARROW_LAYER hidden for the overlay
+    fun showPuckOverlay(style: Style, x: Float, y: Float, relBearing: Double, tiltDeg: Double) {
+        puckOverlayX.floatValue = x
+        puckOverlayY.floatValue = y
+        puckOverlayRot.floatValue = ((relBearing.toFloat() % 360f) + 360f) % 360f
+        puckOverlaySquash.floatValue = kotlin.math.cos(Math.toRadians(tiltDeg)).toFloat().coerceIn(0.2f, 1f)
+        puckOverlayTilt.floatValue = tiltDeg.toFloat()
+        if (!puckOverlayOn.value) puckOverlayOn.value = true
+        if (!puckOverlayHidLayer[0]) {
+            puckOverlayHidLayer[0] = true
+            puckOverlayOwnsArrow = true
+            style.getLayer(ME_ARROW_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+        }
+    }
     fun dropPuckOverlay() {
         if (puckOverlayOn.value) puckOverlayOn.value = false
         lastPuckScreen[0] = Float.NaN
@@ -2455,6 +2468,7 @@ fun VelaMapView(
         // movement brings it straight back to full rate.
         val lastCamWrite = DoubleArray(7) { Double.NaN }
         var idleFrames = 0
+        val detachedCam = DoubleArray(5) { Double.NaN } // live camera last frame, while detached
         // The dot's source only when it moved: a GeoJSON upload is a re-render, and before the arrow
         // engages (a parked car) this ran on every frame with the same point.
         val lastMe = DoubleArray(3) { Double.NaN }
@@ -2736,17 +2750,7 @@ fun VelaMapView(
                     // camera state just set, so the two cannot disagree by a frame. Same look:
                     // rotated by the bearing relative to the camera, squashed by the tilt.
                     val scr = cam.projection.toScreenLocation(MLLatLng(pt.lat, pt.lng))
-                    puckOverlayX.floatValue = scr.x
-                    puckOverlayY.floatValue = scr.y
-                    puckOverlayRot.floatValue = (((navPuck.displayBearing - camState[2]).toFloat() % 360f) + 360f) % 360f
-                    puckOverlaySquash.floatValue = kotlin.math.cos(Math.toRadians(navTiltEase[0])).toFloat().coerceIn(0.2f, 1f)
-                    puckOverlayTilt.floatValue = navTiltEase[0].toFloat()
-                    if (!puckOverlayOn.value) puckOverlayOn.value = true
-                    if (!puckOverlayHidLayer[0]) {
-                        puckOverlayHidLayer[0] = true
-                        puckOverlayOwnsArrow = true
-                        style.getLayer(ME_ARROW_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
-                    }
+                    showPuckOverlay(style, scr.x, scr.y, navPuck.displayBearing - camState[2], navTiltEase[0])
                     // Where the arrow sits on screen, for the road label pinned under it (issue
                     // #288). Reported only while FOLLOWING (the camera parks the arrow, so this
                     // fires on the rare real move) and from the same projection the overlay uses,
@@ -2763,7 +2767,27 @@ fun VelaMapView(
                     }
                 } else {
                     camState[0] = Double.NaN // reset → re-attach eases in from the live camera
-                    dropPuckOverlay()
+                    // DETACHED (a pan, a rotate, a pinch, the overview): the overlay stays, projected
+                    // through the camera the gesture just set. Handing the puck back to the map
+                    // symbol here made it flat (the 3D icons too) and brought back the async-upload
+                    // jitter the overlay exists to fix (user 2026-09-29).
+                    val live = cam?.cameraPosition
+                    if (cam != null && live != null) {
+                        val scr = cam.projection.toScreenLocation(MLLatLng(pt.lat, pt.lng))
+                        showPuckOverlay(style, scr.x, scr.y, navPuck.displayBearing - live.bearing, live.tilt)
+                        // A parked car slows this loop to NAV_IDLE_TICK_MS; a moving camera (the
+                        // user's pan or rotate) must keep it at frame rate or the overlay trails.
+                        val t = live.target
+                        val camMoved = t == null || kotlin.math.abs(t.latitude - detachedCam[0]) > 1e-7 ||
+                            kotlin.math.abs(t.longitude - detachedCam[1]) > 1e-7 ||
+                            kotlin.math.abs(live.zoom - detachedCam[2]) > 1e-4 ||
+                            kotlin.math.abs(live.bearing - detachedCam[3]) > 0.01 || kotlin.math.abs(live.tilt - detachedCam[4]) > 0.01
+                        if (camMoved) {
+                            idleFrames = 0
+                            detachedCam[0] = t?.latitude ?: 0.0; detachedCam[1] = t?.longitude ?: 0.0
+                            detachedCam[2] = live.zoom; detachedCam[3] = live.bearing; detachedCam[4] = live.tilt
+                        } else idleFrames++
+                    } else dropPuckOverlay()
                 }
                 // Keep the driven/ahead cut EXACTLY under the arrow WITHOUT moving geometry for it.
                 // The cut moves every frame, but any geometry re-upload for it - even at the old

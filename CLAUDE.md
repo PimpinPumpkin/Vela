@@ -4612,8 +4612,10 @@ Gotchas:
   `navPuckBitmap()`. Per-frame writes go to `mutableFloatStateOf` holders read in the DRAW phase,
   so no recomposition per frame. `ME_ARROW_LAYER` is hidden while the overlay is on and restored
   (via `lastMeLayerKey = null`) when following stops, the puck disengages or the style reloads.
-  After: chevron motion 0.07 px/frame, 2% of frames >0.5 px (was 1.39 px, 91%). The GeoJSON
-  puck is still used when not following (panned map) and in browse. Rule: anything that must
+  After: chevron motion 0.07 px/frame, 2% of frames >0.5 px (was 1.39 px, 91%). Since 2026-09-29
+  the overlay stays on while DETACHED too (pan, rotate, pinch, overview), projected through the
+  live camera (user: the UFO went flat and jittery on any rotate); the GeoJSON puck is used only
+  before the puck engages and in browse. Rule: anything that must
   sit still on screen while the map moves cannot be a per-frame GeoJSON symbol.
   **THE TEXTUREVIEW CRASH SENTINEL MISFIRED ON A HEALTHY PHONE (2026-09-03).** `texture_render`
   (compatibility rendering, a TextureView map) is meant for GL drivers that kill the process at
