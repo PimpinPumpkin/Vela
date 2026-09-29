@@ -72,7 +72,11 @@ bake_obf_index() {
 # North Rhine-Westphalia obf, SPEC 4.5). Three MapCreator steps in a scratch folder: cluster the
 # network (hh-routing-prepare), precompute the shortcuts (hh-routing-shortcuts, which also writes
 # them as a small standalone obf named after the folder), then combine that section into the
-# region file (BinaryInspector -c). The app turns HH on with setDefaultHHRoutingConfig() and falls
+# region file (BinaryInspector -c). Two shortcut sets: the default car and car with avoid_motorway
+# (the "Avoid highways" switch; without its own set the router falls back to the plain search and a
+# long trip runs out of memory again). Avoid tolls and ferries need no set: the router filters the
+# default one (Cologne to Munster avoiding tolls: 0.4 s). The second set adds about 2% to the file.
+# The app turns HH on with setDefaultHHRoutingConfig() and falls
 # back to the plain search on its own, so a file without HH still routes exactly as before.
 # Returns non-zero and leaves <obf> untouched on any failure (an out-of-memory on a huge region).
 #   bake_obf_hh <tools-dir> <obf> <heap>
@@ -84,7 +88,7 @@ bake_obf_hh() {
   ln -s "$obf" "$hh/region.obf"
   ( cd "$hh" \
     && java -Xmx"$heap" -XX:+UseParallelGC -cp "$cp" net.osmand.MainUtilities hh-routing-prepare region.obf --routing_profile=car \
-    && java -Xmx"$heap" -XX:+UseParallelGC -cp "$cp" net.osmand.MainUtilities hh-routing-shortcuts region.obf --routing_profile=car --threads="$threads" \
+    && java -Xmx"$heap" -XX:+UseParallelGC -cp "$cp" net.osmand.MainUtilities hh-routing-shortcuts region.obf --routing_profile=car --routing_params=---avoid_motorway --threads="$threads" \
     && [ -s hh_car.obf ] \
     && java -Xmx2g -cp "$cp" net.osmand.obf.BinaryInspector -c combined.obf "$obf" hh_car.obf \
     && [ "$(stat -c%s combined.obf 2>/dev/null || stat -f%z combined.obf)" -gt "$(stat -c%s "$obf" 2>/dev/null || stat -f%z "$obf")" ] ) \

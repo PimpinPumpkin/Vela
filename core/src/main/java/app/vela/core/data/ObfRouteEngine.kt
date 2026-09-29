@@ -143,11 +143,12 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
                     // Highway hierarchy (SPEC 4.5): a region baked with it routes a long trip over
                     // precomputed shortcuts in well under a second and a fraction of the memory,
                     // where the plain search runs out of MEMORY_MB on a dense network. Car only (the
-                    // bake builds the car profile), and not with an avoid: the shortcuts are
-                    // built without one, the router notices and recalculates, and that costs
-                    // seconds before it falls back anyway. A file without HH, or a trip across two
-                    // files, falls back to the plain search inside searchRoute on its own.
-                    if (mode == TravelMode.DRIVE && params.isEmpty()) fe.setDefaultHHRoutingConfig()
+                    // bake builds the car profile). With an avoid too: the bake adds a set for
+                    // avoid_motorway and the router filters the default set for tolls and ferries;
+                    // a file baked before the avoid set costs about a second before it falls back.
+                    // A file without HH, or a trip across two files, falls back to the plain
+                    // search inside searchRoute on its own.
+                    if (mode == TravelMode.DRIVE) fe.setDefaultHHRoutingConfig()
                     val ctx = fe.buildRoutingContext(
                         config, null, readers.toTypedArray(),
                         RoutePlannerFrontEnd.RouteCalculationMode.NORMAL,

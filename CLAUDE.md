@@ -5696,7 +5696,9 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   `obf-tools` release); assets are RAW .obf (already deflate-compressed inside; download size ==
   installed size).
   **HH SHIPPED (2026-09-29): the obf bake writes OsmAnd's highway hierarchy into every region file
-  (`bake_obf_hh`, bake-lib.sh) and `ObfRouteEngine` turns it on for DRIVE without an avoid.** NRW at
+  (`bake_obf_hh`, bake-lib.sh) and `ObfRouteEngine` turns it on for every DRIVE route.** Two shortcut
+  sets, default and avoid_motorway (`--routing_params=---avoid_motorway`); tolls and ferries filter
+  the default set. Avoiding highways failed past ~30 km in NRW without its set. NRW at
   256 MB: 256 km out of memory -> 0.5 s; 71 km 90 s -> 0.3 s (SPEC 4.5). Three traps found building
   it: `hh-routing-shortcuts` takes the OBF as its first argument, not the .hhdb (a protobuf
   "invalid tag (zero)" otherwise); both MapCreator HH steps name their output after the CURRENT

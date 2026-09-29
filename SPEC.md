@@ -936,7 +936,7 @@ names (`Route.roadNamesLatin`).
   adds OsmAnd's precomputed car shortcuts to each region file (`bake_obf_hh` in
   `scripts/bake-lib.sh`: `hh-routing-prepare`, `hh-routing-shortcuts`, then `BinaryInspector -c`
   combines the resulting section into the region file; the manifest row carries `hh: true`), and
-  `ObfRouteEngine` calls `setDefaultHHRoutingConfig()` for a DRIVE route with no avoid. Measured on
+  `ObfRouteEngine` calls `setDefaultHHRoutingConfig()` for every DRIVE route. Measured on
   the North Rhine-Westphalia file at `MEMORY_MB` 256, plain search vs HH: Aachen to Bielefeld
   (256 km) out of memory after 27 s vs 0.5 s in 32 MB; Bonn to Minden (255 km) "not enough
   memory" after 29 s vs 0.4 s; Cologne to Munster (148 km) out of memory after 179 s vs 0.4 s;
@@ -944,8 +944,16 @@ names (`Route.roadNamesLatin`).
   trip is about 1 s with 25 maneuvers, names and signs. The HH section is about 3.5% of the file
   (5 MB on 136 MB). Rules: the router falls back to the plain search on its own when a file has no
   HH, when the trip spans two files, or when the answer is not correct, so an old file routes
-  exactly as before; with an avoid the shortcuts no longer apply, the router notices ("too many
-  cancelled") and falls back after seconds, so HH is not requested with an avoid; HH asks
+  exactly as before. Avoids: the shortcut step runs with `--routing_params=---avoid_motorway`, two
+  sets (default, avoid_motorway), and the router picks the set matching the avoids and filters it
+  for the rest. North Rhine-Westphalia, Cologne to Munster at 256 MB: avoiding highways fails past
+  about 30 km with the plain search (and with a file that has only the default set: the router
+  notices, "too many cancelled", and falls back about a second later), 161 km in 0.6 s with the
+  set; avoiding tolls filters the default set (148 km, 0.4 s; Germany has no car tolls, so a
+  toll-heavy region is unmeasured). The second set is 3 MB (about 2%)
+  and a minute of bake time. Walking stays on the plain search (fails past about 28 km there);
+  cycling shortcuts work (158 km in 0.7 s) but add 14 MB (about 10%) to every region, so they are
+  not baked. HH asks
   `OsmandRegions.getRegionsToDownload` which download regions hold the trip's ends, and Vela
   ships no world-regions index, so the stub returns an empty list, which HH reads as "no
   restriction" (a regions object with no index throws "Reader == null"). The bake step needs

@@ -493,7 +493,7 @@ a fixed distance.
 
 **The fix is OsmAnd's highway hierarchy (HH), baked in since 2026-09-29.** The bake precomputes
 shortcuts between the main roads for the car profile and writes them into the region's file
-(about 3.5% more bytes), and the app asks for an HH route when driving with no avoid. Measured on
+(about 3.5% more bytes), and the app asks for an HH route on every drive. Measured on
 the North Rhine-Westphalia file at the same 256 MB:
 
 ```
@@ -504,10 +504,24 @@ Cologne -> Munster, 148 km    out of memory after 179 s    0.4 s
 Dusseldorf -> Dortmund, 71 km 90 s                         0.3 s, same route
 ```
 
+Avoiding highways needs shortcuts of its own (the default ones run along the highways), so the
+bake writes a second set for it: 3 MB more on North Rhine-Westphalia. Avoiding tolls or ferries
+reuses the default set, with the router filtering it. Cologne to Munster:
+
+```
+avoid                  plain search                       HH
+highways, 161 km       fails past about 30 km             0.6 s
+tolls, 148 km          out of memory (as with no avoid)   0.4 s
+```
+
+Germany has no car tolls, so the toll row only shows the filter costs nothing there; a region full
+of toll roads has not been measured.
+
 The router falls back to the plain search by itself when a file has no HH (a region downloaded
-before the rebake), when a trip crosses into a second file, or with an avoid switched on (the
-shortcuts were built without it). So those cases behave exactly as before: fine in a city, slow
-or failing across a dense region.
+before the rebake), or when a trip crosses into a second file. So those cases behave exactly as
+before: fine in a city, slow or failing across a dense region. Walking and cycling always use the
+plain search: walking fails past about 28 km in North Rhine-Westphalia, cycling past about 45 km.
+Cycling shortcuts would fix that (158 km in 0.7 s) but add about 10% to every region's download.
 
 ### GraphHopper, retired
 
