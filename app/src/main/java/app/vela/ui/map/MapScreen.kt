@@ -4940,9 +4940,6 @@ private fun InfoCard(
             left.animateTo(0f, androidx.compose.animation.core.tween(remaining.coerceAtLeast(1), easing = androidx.compose.animation.core.LinearEasing))
             dismiss.value()
         }
-        if (autoMs != null) {
-            app.vela.ui.VelaProgressBarOf({ left.value }, Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp))
-        }
     }
     Card(
         modifier.fillMaxWidth().onFocusChanged { held = it.hasFocus },
@@ -4980,6 +4977,9 @@ private fun InfoCard(
                 }
                 TextButton(onClick = onAction) { Text(actionLabel) }
             }
+        }
+        if (autoMs != null) {
+            app.vela.ui.VelaProgressBarOf({ left.value }, Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp))
         }
     }
 }
