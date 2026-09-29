@@ -215,6 +215,20 @@ Defaults that make the safe path the easy one:
   from the Actions tab once it is on main). Android 8.0's emulator System UI crashes by itself when a
   permission dialog covers the keyguard, so the script grants location up front; its crashes are
   printed as a note, not a failure. First run: both pass on AGP 9.4, Kotlin 2.4 and Cronet 155.
+- **MapScreen ALSO sits at ART's VERIFIER limit, which the debug compile does NOT catch
+  (2026-09-28).** Two extra composable calls at the top of MapScreen compiled clean in debug AND
+  release, and the release APK then died at launch on the 4a (Android 14) with
+  `java.lang.VerifyError: Verifier rejected class ...` on the R8-renamed MapScreen method, while on
+  a Pixel 9 (Android 16) the app came up but MapScreen never composed again after the first frame:
+  every search came back "empty", the deep-link pin sheet stuck, no crash in the log. It went
+  out on canary as 893330ce1 for about two hours. Diagnosis was a bisect of one commit against
+  the phone plus a VelaBisect log line that showed ONE composition. Rules: (1) after ANY change to
+  MapScreen's direct calls, install the release build on a phone and read `adb logcat` for
+  `VerifyError` (or dispatch `old-android-smoke.yml`, which fails on the crash); "no results" on a
+  newer Android is the same bug; (2) new per-screen values that only one child needs are resolved
+  in that child (`isMapDark()` lives in `MapSurface` and `ScaleBarReader`, not MapScreen); (3) the
+  PiP overlay is `BoxScope.PipNavOverlay` since the same day. Both a Compose-side symptom without
+  a crash and the 64 KB rule below are the same budget.
 - **MapScreen is at the JVM 64 KB method limit (2026-09-13).** CI builds release only; the
   DEBUG variant (what the 4a runs) carries Compose source info and failed with "Method too
   large: MapScreenKt.MapScreen" while main built green. Four blocks are split out (same file,

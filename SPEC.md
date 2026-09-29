@@ -3225,6 +3225,14 @@ tooling default that claims otherwise. Before pushing, `git log origin/main..HEA
   only the map reads), `BoxScope.BuildingDebugBadge`, `BoxScope.NavTurnBanner` and
   `SearchEntryHost`. A split block takes the locals it needs as parameters; a callback that
   writes `MapScreen`'s own state is passed in as a parameter rather than moved.
+- ART's bytecode verifier has its own budget for that method, below the compiler's: two more
+  direct calls that compiled clean in debug and release made the release build fail verification
+  (`VerifyError: Verifier rejected class` at launch on Android 14; on Android 16 the class loads but
+  MapScreen never recomposes after its first frame, so search shows nothing and no crash is
+  logged). After a change to MapScreen's direct calls, a release build is installed on a phone and
+  the log read for `VerifyError`, or `old-android-smoke.yml` is dispatched. Values one child needs
+  are resolved in the child (`isMapDark()` in `MapSurface` / `ScaleBarReader`); the PiP overlay is
+  `PipNavOverlay`.
 
 ---
 

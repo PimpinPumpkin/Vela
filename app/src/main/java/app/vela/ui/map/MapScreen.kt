@@ -297,10 +297,6 @@ fun MapScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val darkTheme = isAppInDarkTheme()
     val amoled = isAppInAmoled()
-    // The MAP can be lit apart from the chrome (Settings > Appearance > Map): the style, the route
-    // colors and the map's own overlays take these; sheets, cards and bars keep the app theme.
-    val mapDark = app.vela.ui.theme.isMapDark()
-    val mapAmoled = app.vela.ui.theme.isMapAmoled()
     val hasMapTiler = USE_MAPTILER && BuildConfig.MAPTILER_KEY.isNotBlank()
     // When the place sheet is the active bottom UI it covers ~the bottom 56% of the
     // screen, so push the map's optical center up by that much to keep the focused
@@ -1066,8 +1062,8 @@ fun MapScreen(
             state = state,
             vm = vm,
             hasMapTiler = hasMapTiler,
-            darkTheme = mapDark,
-            amoled = mapAmoled,
+            darkTheme = darkTheme,
+            amoled = amoled,
             hasLocation = { hasLocation() },
             altsOpen = altsOpen,
             driveFollowing = driveFollowing,
@@ -2560,7 +2556,6 @@ fun MapScreen(
             if (!(driveFollowing && speedOverlayArmed) && !movingFree && !sidePanelUp) {
                 ScaleBarReader(
                     state = metersPerPixelState,
-                    dark = mapDark, // drawn on the map, so it follows the map's theme
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .navigationBarsPadding()
@@ -2860,82 +2855,7 @@ fun MapScreen(
         if (state.areaPicking && !pipUi) {
             AreaPickOverlay(state, vm, zoomButtons = dpadMode || app.vela.ui.PreferButtons.on.value) { mapDpad.zoomBy(it) }
         }
-        if (pipUi && state.navigating && state.maneuverText.isNotEmpty()) {
-            // The one PiP overlay, Google's shape: the turn card's own green with the glyph, the
-            // distance as the headline and the turn text under it, across the top of the window.
-            // The old dark strip put everything on one small line and read as a caption
-            // (user 2026-09-13: hard to parse next to Google's).
-            val next = state.activeRoute?.maneuvers?.getOrNull(state.nav.stepIndex)
-            androidx.compose.material3.Surface(
-                modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(4.dp),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            ) {
-                Row(
-                    Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (next != null) {
-                        Icon(
-                            app.vela.ui.nav.maneuverIconFor(next),
-                            contentDescription = null,
-                            modifier = Modifier.size(30.dp),
-                        )
-                        Spacer(Modifier.width(8.dp))
-                    }
-                    Column {
-                        Text(
-                            formatDistance(state.nav.distanceToNextManeuver),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                        )
-                        // The road the turn enters, not the whole sentence: "Turn left o..." said
-                        // nothing at the mini map's width; "County Rte E8" does.
-                        val roadOnly = next?.let { m -> m.ref?.takeIf { it.isNotBlank() } ?: m.road?.takeIf { it.isNotBlank() } }
-                        Text(
-                            roadOnly ?: state.maneuverText,
-                            style = if (roadOnly != null) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
-                            maxLines = if (roadOnly != null) 1 else 2,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-            // The trip's own figures along the bottom, as Google's mini map shows them (user
-            // 2026-09-25): time left and arrival, the same numbers the nav bar shows. Distance is
-            // left out: at the mini window's width it only ever showed as a trailing "...".
-            // Same container as the turn card above it, and centered (user 2026-09-28: the gray
-            // strip read as a different kind of thing under the green card). The arrival clock is
-            // formatArrivalClock, which follows the phone's 12/24-hour setting (Clock24).
-            androidx.compose.material3.Surface(
-                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(4.dp),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            ) {
-                val secs = state.nav.remainingDuration
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        formatDuration(secs),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                    )
-                    Text(
-                        " · " + app.vela.ui.formatArrivalClock(secs),
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        }
+        PipNavOverlay(state, pipUi)
     }
 }
 
@@ -3603,12 +3523,17 @@ private fun MapSurface(
     onOverlayState: (String) -> Unit,
     onNavZoomOverride: (Boolean) -> Unit,
 ) {
+    // The MAP can be lit apart from the chrome (Settings > Appearance > Map): the style, the route
+    // colors and the map's own overlays take these; sheets, cards and bars keep the app theme.
+    // Resolved HERE, not in MapScreen, whose method is at ART's verifier limit (PipNavOverlay).
+    val mapDark = app.vela.ui.theme.isMapDark()
+    val mapAmoled = app.vela.ui.theme.isMapAmoled()
     val context = LocalContext.current
     // MapTiler (when a key is built in) gives the Google-like look + its own
     // light/dark styles; otherwise fall back to the keyless OpenFreeMap basemap
     // with our own dark/light recolor.
     val mapStyleUri = if (hasMapTiler) {
-        val variant = if (darkTheme) "streets-v2-dark" else "streets-v2"
+        val variant = if (mapDark) "streets-v2-dark" else "streets-v2"
         "https://api.maptiler.com/maps/$variant/style.json?key=${BuildConfig.MAPTILER_KEY}"
     } else {
         // Liberty is swapped for the cached Roboto-glyph patch when MapFonts has it
@@ -3716,7 +3641,7 @@ private fun MapSurface(
                 if (i != activeIdx && r.polyline.size >= 2) i to r.polyline else null
             }
         },
-        altColor = if (darkTheme) "#C8CDD4" else "#9AA0A6",
+        altColor = if (mapDark) "#C8CDD4" else "#9AA0A6",
         onSelectAlternate = vm::selectRoute,
         // Every route wears its time on the map, placed where it runs apart from the others;
         // tapping a bubble picks that route. Both choosers (the classic one since 2026-09-17).
@@ -3782,8 +3707,8 @@ private fun MapSurface(
         onUserPan = onUserPan,
         onScaleChanged = { metersPerPixelState.value = it },
         onOverlayState = onOverlayState,
-        darkTheme = darkTheme,
-        amoled = amoled,
+        darkTheme = mapDark,
+        amoled = mapAmoled,
         applyKeylessTheme = !hasMapTiler,
         // Off-nav: the whole-map raster when the user toggles it on. During nav we
         // DON'T wash the whole map — the user asked for traffic on "just the road
@@ -3883,6 +3808,90 @@ private fun MapSurface(
 /** Building-overlay debug badge + UI-thread FPS readout (Settings -> Developer). Split out of
  *  MapScreen on 2026-09-13: the MapScreen composable had grown past the JVM 64 KB method limit
  *  in the debug variant (Compose source info counts), and this block was the cleanest cut. */
+/** The picture-in-picture overlay: the turn card across the top and the trip's figures along the
+ *  bottom. Split out of MapScreen (2026-09-28): the MapScreen method sits at ART's verifier limit
+ *  and two more direct calls in it made the release build fail verification (a VerifyError at
+ *  launch on Android 14, a silently dead screen on 16). */
+@Composable
+private fun BoxScope.PipNavOverlay(state: MapUiState, pipUi: Boolean) {
+    if (pipUi && state.navigating && state.maneuverText.isNotEmpty()) {
+        // The one PiP overlay, Google's shape: the turn card's own green with the glyph, the
+        // distance as the headline and the turn text under it, across the top of the window.
+        // The old dark strip put everything on one small line and read as a caption
+        // (user 2026-09-13: hard to parse next to Google's).
+        val next = state.activeRoute?.maneuvers?.getOrNull(state.nav.stepIndex)
+        androidx.compose.material3.Surface(
+            modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(4.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ) {
+            Row(
+                Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (next != null) {
+                    Icon(
+                        app.vela.ui.nav.maneuverIconFor(next),
+                        contentDescription = null,
+                        modifier = Modifier.size(30.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                Column {
+                    Text(
+                        formatDistance(state.nav.distanceToNextManeuver),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                    // The road the turn enters, not the whole sentence: "Turn left o..." said
+                    // nothing at the mini map's width; "County Rte E8" does.
+                    val roadOnly = next?.let { m -> m.ref?.takeIf { it.isNotBlank() } ?: m.road?.takeIf { it.isNotBlank() } }
+                    Text(
+                        roadOnly ?: state.maneuverText,
+                        style = if (roadOnly != null) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
+                        maxLines = if (roadOnly != null) 1 else 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+        // The trip's own figures along the bottom, as Google's mini map shows them (user
+        // 2026-09-25): time left and arrival, the same numbers the nav bar shows. Distance is
+        // left out: at the mini window's width it only ever showed as a trailing "...".
+        // Same container as the turn card above it, and centered (user 2026-09-28: the gray
+        // strip read as a different kind of thing under the green card). The arrival clock is
+        // formatArrivalClock, which follows the phone's 12/24-hour setting (Clock24).
+        androidx.compose.material3.Surface(
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(4.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ) {
+            val secs = state.nav.remainingDuration
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    formatDuration(secs),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+                Text(
+                    " · " + app.vela.ui.formatArrivalClock(secs),
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun BoxScope.BuildingDebugBadge(overlayDebugState: String) {
     val label = when {
@@ -5720,10 +5729,11 @@ private fun SpeedWidget(
 @Composable
 private fun ScaleBarReader(
     state: MutableState<Double>,
-    dark: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    ScaleBar(metersPerPixel = state.value, dark = dark, modifier = modifier)
+    // Drawn on the map, so it follows the MAP's theme (Settings > Appearance > Map), read here
+    // rather than in MapScreen, which has no bytecode to spare (see PipNavOverlay).
+    ScaleBar(metersPerPixel = state.value, dark = app.vela.ui.theme.isMapDark(), modifier = modifier)
 }
 
 /**
