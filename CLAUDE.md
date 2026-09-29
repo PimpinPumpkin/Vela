@@ -483,6 +483,13 @@ Defaults that make the safe path the easy one:
   probe would evict its cache and every install falls back to Noto). Site edits: `site/**` is
   in CI's paths-ignore (no nightly for copy tweaks) and is a push trigger on `fdroid-repo.yml`
   (the deploy still needs release APKs to exist, which they always do).
+  **The DOCS SITE rides it too (2026-09-29): `/Vela/docs/`**, every doc in the repo (FAQ, book,
+  SPEC, FEATURES, roadmap, contributor guides, this file as "Maintainer notes") built with MkDocs
+  Material by `scripts/build-docs-site.py` + `site/mkdocs.yml`, searchable, zero external
+  requests. A NEW DOC FILE IS NOT PUBLISHED until it is added to `PAGES` in the script and to the
+  nav in `site/mkdocs.yml`. Preview locally: `pip install -r site/requirements-docs.txt`, then
+  `python3 scripts/build-docs-site.py --serve` (http://127.0.0.1:8095/Vela/docs/); run with
+  `--strict` before pushing, as CI does. A push to main touching any `.md` redeploys Pages.
   **The APP SIGNING CERTIFICATE is published (issue #294, 2026-08-26):** SHA-256
   `29938b4858063e42e677ff95c901cd48248a7f032a3ae85f9b9e5617568b0d36`, in README ("Check you got
   the real thing") + FDROID.md. Read it out of any signed release with

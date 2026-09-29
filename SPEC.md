@@ -3302,6 +3302,20 @@ tooling default that claims otherwise. Before pushing, `git log origin/main..HEA
 - **The project website rides the same Pages artifact.** Never add a second Pages deploy
   workflow: `actions/deploy-pages` replaces the whole site, which would take down the F-Droid
   channel and the map glyphs.
+- **The docs site** (`/Vela/docs/`, 2026-09-29) is the repository's Markdown built with MkDocs
+  Material by `scripts/build-docs-site.py` and `site/mkdocs.yml`, inside the same `fdroid-repo.yml`
+  run (`--strict`, toolchain pinned in `site/requirements-docs.txt`: MkDocs 2 drops the plugin and
+  theme system). The script stages each page listed in `PAGES` under a clean URL into
+  `build/docs-src`, points a link to another published page at that page and a link to any other
+  file at GitHub, copies the images, and bridges two dialect gaps: it adds the blank line
+  Python-Markdown needs before a list that follows a paragraph, and re-indents a paragraph or
+  fence inside a list item to the four spaces Python-Markdown needs (GitHub accepts two). No
+  request leaves the site: system fonts, no `repo_url` (Material would fetch the star count from
+  the GitHub API in the reader's browser), a local search index (about 2 MB; it splits
+  identifiers, so `NavSession` finds the class). `?q=` on any docs URL opens search, which is what
+  the landing page's search box submits. A push to `main` that changes any Markdown, `docs/**` or
+  `site/**` redeploys. A new doc is added to `PAGES` and to the nav in `site/mkdocs.yml`, or it is
+  not published.
 - **Signing.** The release keystore lives outside the repository (`~/.vela-signing/`), with CI
   secrets `VELA_KEYSTORE_BASE64`, `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS`. Losing it means
   never updating installed builds. The app signing certificate's SHA-256 is published in README

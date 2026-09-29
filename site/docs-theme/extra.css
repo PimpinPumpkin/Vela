@@ -1,0 +1,33 @@
+/* Vela's own colors on the Material theme: the logo's teal, dark ink on light, the landing page's
+   near-black on dark. */
+:root, [data-md-color-scheme="default"] {
+  --md-primary-fg-color: #0d3d43;
+  --md-primary-fg-color--light: #149387;
+  --md-primary-fg-color--dark: #082a2e;
+  --md-primary-bg-color: #ffffff;
+  --md-accent-fg-color: #149387;
+  --md-typeset-a-color: #0f7d72;
+}
+[data-md-color-scheme="slate"] {
+  --md-hue: 215;
+  --md-default-bg-color: #0a0e16;
+  --md-primary-fg-color: #06080d;
+  --md-primary-fg-color--light: #14b8a6;
+  --md-primary-fg-color--dark: #06080d;
+  --md-accent-fg-color: #2fd8c1;
+  --md-typeset-a-color: #2fd8c1;
+  --md-code-bg-color: #111723;
+}
+[data-md-color-scheme="slate"] .md-tabs { background-color: #06080d; }
+.md-header__button.md-logo img { height: 1.6rem; }
+.md-typeset table:not([class]) { font-size: .72rem; }
+.md-typeset table:not([class]) td { vertical-align: top; }
+/* Long single-page documents (the specification, the feature list) read better a little narrower. */
+.md-grid { max-width: 1320px; }
+/* Home page cards */
+.vela-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: .8rem; margin: 1rem 0 1.6rem; }
+.vela-cards a { display: block; padding: .9rem 1rem; border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 14px; color: inherit !important; transition: border-color .15s, transform .15s; }
+.vela-cards a:hover { border-color: var(--md-accent-fg-color); transform: translateY(-1px); }
+.vela-cards strong { display: block; color: var(--md-accent-fg-color); margin-bottom: .2rem; font-size: .85rem; }
+.vela-cards span { font-size: .72rem; opacity: .8; line-height: 1.45; display: block; }

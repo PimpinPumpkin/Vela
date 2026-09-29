@@ -349,7 +349,8 @@ to GitHub Pages.
 
 **When it runs.** On `workflow_run` of "CI" or "Promote weekly stable", only when that run
 succeeded on `main`; on the release events `published` and `released` for a tag starting with `v`;
-on a push to `site/**`; and by hand. The `workflow_run` trigger is the one that matters: a release
+on a push to `main` that touches `site/**`, `docs/**` or any Markdown file (the docs site at
+`/Vela/docs/` is built in the same run from the repository's own docs); and by hand. The `workflow_run` trigger is the one that matters: a release
 created by CI's own token does not fire release events for other workflows (GitHub's
 anti-recursion rule), so a release-event-only trigger left the index stale until someone dispatched
 it (found on 2026-07-09). `edited` is left out on purpose: marking a release Latest fired a second

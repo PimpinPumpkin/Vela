@@ -1,0 +1,5 @@
+# The docs site toolchain (scripts/build-docs-site.py), pinned: MkDocs 2 drops the plugin and
+# theme system Material depends on, so a floating version would break the build.
+mkdocs==1.6.1
+mkdocs-material==9.7.7
+pymdown-extensions==12.1

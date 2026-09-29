@@ -2559,6 +2559,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Maps": the launcher entry flips to a plain Maps label for a stock look, and back. Deep links,
   shares and the geo: handler are untouched either way; a pinned home shortcut may need
   re-adding after switching since Android renames apps per launcher component.
+- ✅ **Documentation site (2026-09-29).** Every doc in the repository, the FAQ, the book, the
+  full specification, the feature list, the roadmap and the contributor guides, published as one
+  searchable site at `pimpinpumpkin.github.io/Vela/docs/`, with light and dark themes and no
+  requests outside the site. The landing page has a Docs link and a search box that opens the
+  results there. Rebuilt from `main` whenever a doc changes.
 - ✅ **Project website (2026-07-15).** A single-page showcase at
   https://pimpinpumpkin.github.io/Vela/ - hero with a live nav mockup, feature grid, the
   privacy pitch, a screenshot strip and download paths (direct APK / Obtainium / build it).

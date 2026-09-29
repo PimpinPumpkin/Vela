@@ -29,11 +29,15 @@ on:
   # The project website (site/) ships in the SAME Pages artifact as the F-Droid
   # repo and the map fonts - Pages replaces the whole site on every deploy, so a
   # separate website workflow would wipe /repo and /fonts. A site-only push (CI
-  # skips those via paths-ignore) therefore redeploys from here.
+  # skips those via paths-ignore) therefore redeploys from here. The docs site at /docs is
+  # built from the repository's Markdown, so a push that changes any of it redeploys too.
   push:
     branches: [main]
     paths:
       - 'site/**'
+      - '**.md'
+      - 'docs/**'
+      - 'scripts/build-docs-site.py'
   workflow_dispatch:
 
 permissions:
@@ -188,6 +192,15 @@ jobs:
           cp site/index.html fdroid/index.html
           cp -r site/assets fdroid/assets
           ls fdroid
+
+      - name: Build the docs site
+        # Every doc (the book, SPEC, FAQ, features, roadmap, contributor guides) as a searchable
+        # site at https://pimpinpumpkin.github.io/Vela/docs/ (scripts/build-docs-site.py,
+        # site/mkdocs.yml). No request leaves the site: system fonts, local search index.
+        run: |
+          pip install -r site/requirements-docs.txt
+          python3 scripts/build-docs-site.py --strict
+          cp -r build/docs-site fdroid/docs
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

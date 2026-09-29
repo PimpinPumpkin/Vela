@@ -1,0 +1,124 @@
+# The documentation site, built by scripts/build-docs-site.py and published at /Vela/docs/ in the
+# same Pages deploy as the landing page and the F-Droid repo (fdroid-repo.yml). The pages are the
+# repository's own Markdown; the script stages them into build/docs-src first.
+site_name: Vela docs
+site_url: https://pimpinpumpkin.github.io/Vela/docs/
+site_description: How Vela Maps works, from the FAQ to the full technical specification.
+docs_dir: ../build/docs-src
+site_dir: ../build/docs-site
+use_directory_urls: true
+# No repo_url on purpose: Material fetches the repository's star count from the GitHub API in the
+# reader's browser, and the site makes no requests outside itself.
+
+theme:
+  name: material
+  font: false # system fonts, no Google Fonts request
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+  language: en
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.footer
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - search.share
+    - toc.follow
+    - content.code.copy
+
+extra_css:
+  - theme-assets/extra.css
+
+extra:
+  generator: false
+  homepage: https://pimpinpumpkin.github.io/Vela/
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/PimpinPumpkin/Vela
+      name: Source on GitHub
+    - icon: material/download
+      link: https://pimpinpumpkin.github.io/Vela/#download
+      name: Download Vela
+
+plugins:
+  - search:
+      # Split identifiers too, so "NavSession" and "nav session" both find the page.
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+
+markdown_extensions:
+  - tables
+  - attr_list
+  - md_in_html
+  - admonition
+  - footnotes
+  - def_list
+  - toc:
+      permalink: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.tilde
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.betterem
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: false
+  - pymdownx.inlinehilite
+  - pymdownx.magiclink
+
+nav:
+  - Home: index.md
+  - Using Vela:
+      - Questions and answers: faq.md
+      - What reaches Google: privacy.md
+      - Install with F-Droid: fdroid.md
+      - Every feature: features.md
+      - Languages: languages.md
+      - Android Auto: android-auto.md
+      - D-pad and keypad phones: dpad.md
+  - The book:
+      - book/index.md
+      - Places on the map: book/places.md
+      - Data and rebakes: book/data-and-rebakes.md
+      - Surveillance cameras: book/cameras.md
+      - Navigation: book/navigation.md
+      - Routing: book/routing.md
+      - Search: book/search.md
+      - Talking to Google: book/talking-to-google.md
+      - Offline: book/offline.md
+      - Transit: book/transit.md
+      - Android Auto: book/android-auto.md
+      - The drive's chrome: book/drive-chrome.md
+      - Releases: book/releases.md
+  - Specification: spec.md
+  - Project:
+      - Roadmap: roadmap.md
+      - Shipped and settled: roadmap-history.md
+      - Contributing: contributing.md
+      - Translating: translating.md
+      - Building from source: building.md
+      - Security: security.md
+      - Maintainer notes: project-notes.md

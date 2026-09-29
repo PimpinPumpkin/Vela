@@ -283,6 +283,11 @@
   .gallery-nav svg { width: 17px; height: 17px; }
 
   /* ---------- download ---------- */
+  .doc-search { display: flex; align-items: center; gap: 12px; max-width: 720px; margin: 34px 0 0; padding: 8px 8px 8px 18px;
+    border: 1px solid var(--line); border-radius: 999px; background: var(--glass); color: var(--ink-2); }
+  .doc-search:focus-within { border-color: rgba(47,216,193,.55); }
+  .doc-search input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--ink); font: inherit; font-size: 1rem; padding: 10px 0; }
+  .doc-search button { border: 0; border-radius: 999px; padding: 11px 20px; background: var(--teal); color: #03201c; font: inherit; font-weight: 700; cursor: pointer; }
   .dl-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 52px; }
   .dl-card {
     border: 1px solid var(--line); border-radius: var(--r-lg);
@@ -381,6 +386,7 @@
       <a href="#features">Features</a>
       <a href="#privacy">Privacy</a>
       <a href="#screens">Screens</a>
+      <a href="docs/">Docs</a>
       <a href="https://github.com/PimpinPumpkin/Vela">GitHub</a>
       <a class="pill" href="#download">Download</a>
     </div>
@@ -547,7 +553,7 @@
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Place lookups go out anonymously, from your device</li>
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Every network call is documented, and the optional ones have switches</li>
       </ul>
-      <a class="privacy-link" href="https://github.com/PimpinPumpkin/Vela/blob/main/PRIVACY.md">
+      <a class="privacy-link" href="docs/privacy/">
         Read the full privacy doc
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg>
       </a>
@@ -580,6 +586,37 @@
       <figure class="shot"><div class="frame"><img src="assets/11-stop-list.webp" alt="Bus route stop list" loading="lazy"></div><figcaption>Every stop on the line</figcaption></figure>
       <figure class="shot"><div class="frame"><img src="assets/10-stop-routes.webp" alt="Metro route stop list" loading="lazy"></div><figcaption>Rail timelines too</figcaption></figure>
       <figure class="shot"><div class="frame"><img src="assets/08-map-light.webp" alt="Light theme map" loading="lazy"></div><figcaption>Light theme</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section id="docs">
+  <div class="kicker reveal">Docs</div>
+  <h2 class="reveal d1">Every answer, written down.</h2>
+  <p class="sect-lead reveal d2">How each part of Vela works, with the real numbers, down to the full technical specification. Search all of it.</p>
+  <form class="doc-search reveal d2" action="docs/" method="get" role="search">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    <input type="search" name="q" placeholder="Search the docs: offline routing, cameras, what reaches Google..." aria-label="Search the docs">
+    <button type="submit">Search</button>
+  </form>
+  <div class="dl-grid">
+    <div class="dl-card reveal">
+      <div class="tag">Start here</div>
+      <h3>Questions and answers</h3>
+      <p>Are the places Google's? Does it work offline? Can it run with no Google at all? The short answers.</p>
+      <a class="go" href="docs/faq/">Read the FAQ <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg></a>
+    </div>
+    <div class="dl-card reveal d1">
+      <div class="tag">How it works</div>
+      <h3>The Vela book</h3>
+      <p>Twelve chapters, subsystem by subsystem: where pins come from, when data is rebuilt, how rerouting decides.</p>
+      <a class="go" href="docs/book/">Open the book <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg></a>
+    </div>
+    <div class="dl-card reveal d2">
+      <div class="tag">Reference</div>
+      <h3>Technical specification</h3>
+      <p>Every contract, constant and constraint in the app, in one searchable document.</p>
+      <a class="go" href="docs/spec/">Read the spec <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6l6 6-6 6"/></svg></a>
     </div>
   </div>
 </section>
@@ -639,7 +676,8 @@
       <a href="https://github.com/PimpinPumpkin/Vela">GitHub</a>
       <a href="https://github.com/PimpinPumpkin/Vela/issues">Report a bug</a>
       <a href="https://github.com/PimpinPumpkin/Vela/discussions">Get help</a>
-      <a href="https://github.com/PimpinPumpkin/Vela/blob/main/PRIVACY.md">Privacy</a>
+      <a href="docs/">Docs</a>
+      <a href="docs/privacy/">Privacy</a>
       <a href="https://buymeacoffee.com/PimpinPumpkin">Donate</a>
     </div>
   </div>
