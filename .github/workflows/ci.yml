@@ -217,8 +217,14 @@ jobs:
           # tag to the pushed commit; the download URL (releases/download/canary/...) and the
           # updater's releases/tags/canary lookup are unchanged, with a few seconds of 404
           # during the swap that the updater reads as "nothing newer".
-          gh release delete canary --yes --cleanup-tag 2>/dev/null || true
-          gh release create canary --prerelease --target "$GITHUB_SHA" --title "Vela $VER" --notes "$NOTES" "${APKS[@]}"
+          # Retried as a pair (scripts/gh-retry.sh): a create refused by the API limit after the
+          # delete had gone through left users with no canary release until the next push.
+          source scripts/gh-retry.sh
+          publish_canary() {
+            gh release delete canary --yes --cleanup-tag 2>/dev/null || true
+            gh release create canary --prerelease --target "$GITHUB_SHA" --title "Vela $VER" --notes "$NOTES" "${APKS[@]}"
+          }
+          gh_retry publish_canary
 
       - name: Publish nightly (prerelease)
         # The nightly channel: ONE prerelease per day from the cron (or an on-demand
@@ -258,12 +264,18 @@ jobs:
           # in-app What's new dialog shows the body verbatim, so people could not tell which
           # channel they were reading (user 2026-09-21). promote-stable.yml retitles and rewrites.
           NOTES="$(printf 'Nightly build.\n\nWhat'\''s changed in %s\n\n%s\n\n%s\n' "$VER" "$LOG" "$COMPARE")"
-          gh release create "v${VER}" \
-            --title "Vela $VER nightly" \
-            --target "$GITHUB_SHA" \
-            --prerelease \
-            --notes "$NOTES" \
-            "${APKS[@]}"
+          source scripts/gh-retry.sh
+          publish_nightly() {
+            # A try refused half way (release made, an upload refused) is cleared before the next.
+            gh release delete "v${VER}" --yes --cleanup-tag 2>/dev/null || true
+            gh release create "v${VER}" \
+              --title "Vela $VER nightly" \
+              --target "$GITHUB_SHA" \
+              --prerelease \
+              --notes "$NOTES" \
+              "${APKS[@]}"
+          }
+          gh_retry publish_nightly
 
       - name: Prune old nightlies (stables are kept for good)
         # STABLES ARE NEVER DELETED. They are the changelog, they are what somebody bisecting a

@@ -184,7 +184,9 @@ echo "→ $ID: $(jq -r '"\(.cells) cells, \(.zipMb*100|round/100) MB zipped, \(.
 rate_wait() {
   local rem reset now
   rem=$(gh api rate_limit --jq .resources.core.remaining 2>/dev/null || echo 1)
-  if [ "${rem:-1}" -le 5 ]; then
+  # Stop while RATE_RESERVE requests are left, not at zero: the budget is the whole repository's,
+  # and a bake that spent it to the last request failed the canary release and the F-Droid index.
+  if [ "${rem:-1}" -le "${RATE_RESERVE:-200}" ]; then
     reset=$(gh api rate_limit --jq .resources.core.reset 2>/dev/null || echo 0); now=$(date +%s)
     if [ "$reset" -gt "$now" ]; then
       echo "API rate limit exhausted; waiting $((reset - now + 15)) s for the reset"; sleep $((reset - now + 15))

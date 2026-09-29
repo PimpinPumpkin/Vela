@@ -380,7 +380,10 @@ Defaults that make the safe path the easy one:
   (3) a data release that is one of MANY (the per-region `cells-<region>` releases) is created
   with `--target` the root commit, because GitHub sorts releases by the target commit's date and
   Obtainium reads only the first 100: hundreds of data releases on HEAD would hide every app
-  release from every Obtainium user (SPEC 7.6.5).
+  release from every Obtainium user (SPEC 7.6.5). (4) The Actions token's 1,000 API requests an
+  hour are the WHOLE repository's: a data bake that spends them fails CI's canary and nightly
+  releases and the F-Droid index (it did on 2026-09-29). GitHub calls in a workflow go through
+  `scripts/gh-retry.sh`, and a bake leaves `RATE_RESERVE` (200) for everything else.
 - CI: **stable / nightly / canary channels (2026-08-07, supersedes the per-push nightly).**
   `.github/workflows/ci.yml`: pushes to `main` AND `canary` build + test only (APK as a
   workflow artifact, no release) - a push can never mint a release anymore, which retires the

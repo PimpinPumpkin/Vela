@@ -2377,7 +2377,12 @@ then 30 minutes a try (`RATE_BACKOFF`, eight tries, about two hours), because th
 requests as available while uploads were still refused (five finished regions lost in the first
 world wave, 2026-09-29). The release's own view and create go through the same backoff
 (`ensure_release`): a 403 on the view read as "no release", the create then failed, and seven more
-finished regions were lost that way. The workflow runs four bakes at a time (eight lost five finished states
+finished regions were lost that way. The bake stops at `RATE_RESERVE` (200) requests left rather
+than at zero, because the budget is the repository's: a bake that spent it to the last request
+failed the canary release and the F-Droid index the same night. Those two, and the nightly, now go
+through `scripts/gh-retry.sh` (`gh_retry`, 60 s doubling to 15 min, six tries), and the canary's
+delete and create are retried as one step, since a refused create after the delete left no canary
+release until the next push. The workflow runs four bakes at a time (eight lost five finished states
 to HTTP 403 on 2026-09-28). The budget, not the runners, bounds a world bake: one request per
 asset, about a thousand an hour.
 

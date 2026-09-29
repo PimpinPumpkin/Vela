@@ -77,12 +77,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
+          source scripts/gh-retry.sh
           mkdir -p fdroid/repo
           # App releases ONLY (v0.* tags): releases/latest and an unbounded newest-release
           # query can both land on an infra file release (obf-runtime etc.), which has no APK
           # and a tag the version math below cannot parse - that was the failed Monday builds.
           # Paginated: a `--limit N` window can be all data releases (2026-09-28, grid cells).
-          stable_tag=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+          stable_tag=$(gh_retry gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
             --jq '.[] | select(.prerelease | not) | select(.tag_name | test("^v0\\.[0-9]+\\.[0-9]+$")) | .tag_name' | head -1)
           [ -n "$stable_tag" ] || { echo "no stable v0.* release found"; exit 1; }
           echo "stable: $stable_tag"
@@ -97,7 +98,7 @@ jobs:
           # and GitHub Pages has a 1 GB budget.
           fetch() {
             local tag="$1" dir; dir="$(mktemp -d)"
-            gh release download "$tag" -p '*.apk' -D "$dir" --repo "$GITHUB_REPOSITORY" || true
+            gh_retry gh release download "$tag" -p '*.apk' -D "$dir" --repo "$GITHUB_REPOSITORY" --clobber || true
             if ls "$dir"/*-arm64.apk >/dev/null 2>&1; then rm -f "$dir"/*-all.apk; fi
             for f in "$dir"/*.apk; do
               if [ -e "$f" ]; then mv "$f" "fdroid/repo/${tag}-$(basename "$f")"; fi
@@ -116,7 +117,7 @@ jobs:
           [ "$STABLE_CODE" -gt 0 ] || { echo "could not read the stable's versionCode"; exit 1; }
           echo "STABLE_NAME=${stable_tag#v}" >> "$GITHUB_ENV"
           echo "STABLE_CODE=$STABLE_CODE" >> "$GITHUB_ENV"
-          newest_tag=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+          newest_tag=$(gh_retry gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
             --jq '.[] | select(.tag_name | test("^v0\\.[0-9]+\\.[0-9]+$")) | .tag_name' | head -1)
           echo "newest: $newest_tag"
           if [ "$newest_tag" != "$stable_tag" ]; then
