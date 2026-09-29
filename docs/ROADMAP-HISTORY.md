@@ -208,8 +208,9 @@ worth an offline drive past a signed exit to hear it).
 - ~~Higher-res README screenshots~~ - **DONE 2026-06-21** (all 9 recaptured at
   1080×2400 on-device, current UI). Store screenshots when there's a store listing.
 - **Stability pass** - core flows smoke-tested on-device 2026-06-21 (fresh install →
-  search → route → transit → nav, no crashes). Still open: the *Start → launcher* quirk
-  (nav keeps running in the foreground service but the activity backgrounds).
+  search → route → transit → nav, no crashes). The *Start → launcher* quirk (nav keeps running in
+  the foreground service but the activity backgrounds) did not reproduce on 2026-09-29: after
+  Start, from the launcher and from a `geo:` link, the activity stayed resumed for 40 s.
 - ~~Custom directions origin~~ - **DONE + device-verified 2026-06-20 (in-panel
   editable From).** The directions panel's **From** row is tappable → opens search →
   the pick becomes the origin (`directionsOrigin: Place?`, route falls back to live

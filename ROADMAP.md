@@ -124,8 +124,6 @@ Roughly in the order they are worth doing. Each one is small enough for a single
 - **Japanese offline voice.** Piper has no Japanese phonemizer, so Japanese guidance rides the
   phone's system TTS. A fully offline voice means Kokoro int8 multi-lang (~126 MB, also Chinese),
   which needs the multi-file sherpa plumbing restored and an on-device speed re-check first.
-- **Stability leftover.** The Start-then-launcher quirk: nav keeps running in the foreground
-  service but the activity backgrounds.
 - **Performance pass.** Frame profiling of dense-marker pans and the place sheet in/out churn.
 
 ## On the radar
