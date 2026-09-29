@@ -1022,6 +1022,9 @@
     <string name="settings_hub_diagnostics_sub">Crash reports, trips, demo mode, experiments</string>
     <string name="settings_hub_about_sub">Version, updates, support</string>
     <string name="settings_theme_amoled">AMOLED black</string>
+    <string name="settings_map_theme_title">Map</string>
+    <string name="settings_map_theme_follow">Same as the app</string>
+    <string name="settings_map_theme_hint">The map on its own: light streets under a dark app, or dark streets under a light one. Day and night while driving still applies to the map.</string>
     <string name="settings_theme_auto">Day and night</string>
     <string name="settings_theme_auto_hint">Light during the day, dark after sunset, worked out from your location.</string>
     <string name="settings_nav_day_night">Day and night while navigating</string>

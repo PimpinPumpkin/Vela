@@ -27,6 +27,7 @@ import app.vela.ui.settings.Hint
 import app.vela.ui.settings.SelectableRow
 import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.SettingsScaffold
+import app.vela.ui.settings.SubHead
 import app.vela.ui.settings.ToggleRow
 import app.vela.ui.dpadHighlight // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.dpadRowSibling
@@ -79,6 +80,31 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         }
         Hint(stringResource(R.string.settings_theme_auto_hint))
         Hint(stringResource(R.string.settings_appearance_hint))
+
+        // The map apart from the chrome (user 2026-09-28): a light map under dark settings, or
+        // dark streets under a light app. Follow = the theme above.
+        Spacer(Modifier.height(8.dp))
+        SubHead(stringResource(R.string.settings_map_theme_title))
+        SettingsGroup {
+            SelectableRow(
+                label = stringResource(R.string.settings_map_theme_follow),
+                selected = AppTheme.mapMode.value == app.vela.ui.theme.MapThemeMode.FOLLOW,
+                onClick = { AppTheme.setMap(context, app.vela.ui.theme.MapThemeMode.FOLLOW) },
+            )
+            GroupDivider()
+            SelectableRow(
+                label = stringResource(R.string.settings_theme_light),
+                selected = AppTheme.mapMode.value == app.vela.ui.theme.MapThemeMode.LIGHT,
+                onClick = { AppTheme.setMap(context, app.vela.ui.theme.MapThemeMode.LIGHT) },
+            )
+            GroupDivider()
+            SelectableRow(
+                label = stringResource(R.string.settings_theme_dark),
+                selected = AppTheme.mapMode.value == app.vela.ui.theme.MapThemeMode.DARK,
+                onClick = { AppTheme.setMap(context, app.vela.ui.theme.MapThemeMode.DARK) },
+            )
+        }
+        Hint(stringResource(R.string.settings_map_theme_hint))
 
         // Orthogonal to the mode above, and only meaningful alongside a FIXED choice: keep the app
         // dark by preference, but drive by a light map in daylight. Hidden under AUTO, where it

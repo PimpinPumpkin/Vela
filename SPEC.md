@@ -1853,7 +1853,12 @@ tiles). Compare against Google by matching the **visible area**, never the zoom 
 
 Three color sets ship. `MapColors` (pref `map_palette`) picks Modern or Classic;
 `ThemeMode.AMOLED` layers `applyAmoled` on top of `applyDark`. The style key carries the
-palette, the theme and the AMOLED flag, so any change reloads the style. Every layer must be
+palette, the theme and the AMOLED flag, so any change reloads the style. **The map's light/dark
+is its own setting** (`AppTheme.mapMode`, `MapThemeMode` FOLLOW / LIGHT / DARK, pref
+`theme_map_mode`, Settings > Appearance > Map): `isMapDark()` resolves the nav day/night
+override first, then the map mode, then the app theme; `isMapAmoled()` is true only while the
+map follows an AMOLED app. The map surface, its route colors and the scale bar take these; sheets,
+cards, bars and settings keep `isAppInDarkTheme()`. Every layer must be
 colored in **all four** apply functions: an unstyled runtime `LineLayer` renders black.
 
 **Modern** (the default, sampled from the Google app):

@@ -297,6 +297,10 @@ fun MapScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val darkTheme = isAppInDarkTheme()
     val amoled = isAppInAmoled()
+    // The MAP can be lit apart from the chrome (Settings > Appearance > Map): the style, the route
+    // colors and the map's own overlays take these; sheets, cards and bars keep the app theme.
+    val mapDark = app.vela.ui.theme.isMapDark()
+    val mapAmoled = app.vela.ui.theme.isMapAmoled()
     val hasMapTiler = USE_MAPTILER && BuildConfig.MAPTILER_KEY.isNotBlank()
     // When the place sheet is the active bottom UI it covers ~the bottom 56% of the
     // screen, so push the map's optical center up by that much to keep the focused
@@ -1062,8 +1066,8 @@ fun MapScreen(
             state = state,
             vm = vm,
             hasMapTiler = hasMapTiler,
-            darkTheme = darkTheme,
-            amoled = amoled,
+            darkTheme = mapDark,
+            amoled = mapAmoled,
             hasLocation = { hasLocation() },
             altsOpen = altsOpen,
             driveFollowing = driveFollowing,
@@ -2556,7 +2560,7 @@ fun MapScreen(
             if (!(driveFollowing && speedOverlayArmed) && !movingFree && !sidePanelUp) {
                 ScaleBarReader(
                     state = metersPerPixelState,
-                    dark = darkTheme,
+                    dark = mapDark, // drawn on the map, so it follows the map's theme
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .navigationBarsPadding()
@@ -2902,14 +2906,21 @@ fun MapScreen(
             // The trip's own figures along the bottom, as Google's mini map shows them (user
             // 2026-09-25): time left and arrival, the same numbers the nav bar shows. Distance is
             // left out: at the mini window's width it only ever showed as a trailing "...".
+            // Same container as the turn card above it, and centered (user 2026-09-28: the gray
+            // strip read as a different kind of thing under the green card). The arrival clock is
+            // formatArrivalClock, which follows the phone's 12/24-hour setting (Clock24).
             androidx.compose.material3.Surface(
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(4.dp),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             ) {
                 val secs = state.nav.remainingDuration
-                Row(Modifier.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(
                         formatDuration(secs),
                         style = MaterialTheme.typography.titleSmall,

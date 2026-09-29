@@ -291,6 +291,7 @@ private val SEARCH_INDEX: List<Pair<Int, SettingsSection>> = listOf(
     R.string.settings_follow_system to SettingsSection.APPEARANCE,
     R.string.settings_theme_light to SettingsSection.APPEARANCE,
     R.string.settings_theme_dark to SettingsSection.APPEARANCE,
+    R.string.settings_map_theme_title to SettingsSection.APPEARANCE,
     R.string.settings_theme_amoled to SettingsSection.APPEARANCE,
     R.string.settings_ui_scale to SettingsSection.APPEARANCE,
     R.string.settings_map_colors to SettingsSection.APPEARANCE,

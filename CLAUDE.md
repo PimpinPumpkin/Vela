@@ -1701,6 +1701,10 @@ Defaults that make the safe path the easy one:
   visibility on the basemap `building-3d` fill-extrusion layer (a LaunchedEffect in VelaMapView owns
   visibility; applyLight/applyDark only color it) - extrusion is the fragment-heavy layer, the
   documented 5a-class stutter source at z16+.
+- **The MAP has its own light/dark (2026-09-28, user ask):** `AppTheme.mapMode` (`MapThemeMode`
+  FOLLOW / LIGHT / DARK, Settings > Appearance > Map). `isMapDark()` / `isMapAmoled()` feed the
+  VelaMapView call and the scale bar in MapScreen; everything else keeps `isAppInDarkTheme()`.
+  New map-drawn chrome takes `mapDark`, new sheets and cards take `darkTheme`.
 - **Day/night theme (issue #262, 2026-08-15).** `ThemeMode.AUTO` is light by day and dark after
   sunset, worked out on the device: `:core` `util/SunTimes` is the standard sunrise equation (no
   network, no key, no almanac; unit-tested against published almanac times, plus both polar cases
