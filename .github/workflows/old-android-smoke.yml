@@ -7,10 +7,16 @@ name: Old Android smoke test
 #
 # The emulators are x86_64 (hardware-accelerated on GitHub's runners), so the build is the
 # per-chip one and the x86_64 APK is installed: it carries Cronet's x86_64 library, which the
-# all-in-one APK leaves out. Run it by pushing to the `old-android-smoke` branch or, once this file
-# is on main, from the Actions tab.
+# all-in-one APK leaves out. Run it by pushing to the `old-android-smoke` branch or from the
+# Actions tab; it also runs weekly on its own.
+#
+# WEEKLY, Sunday: promote-stable.yml ships whatever main holds on Monday 16:00 UTC, so a build that
+# no longer starts on Android 8/9 should fail here the day before, not on every stable install.
+# Sunday rather than Monday morning because GitHub starts scheduled runs hours late.
 
 on:
+  schedule:
+    - cron: '0 12 * * 0'
   workflow_dispatch:
   push:
     branches: [old-android-smoke]
