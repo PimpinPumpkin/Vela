@@ -301,6 +301,18 @@ Any movement brings the loop straight back to every frame. Measured on the 4a: 0
 about 15% CPU parked, and still 59 fps on a demo drive. Any new per-frame write in that loop has
 to be change-gated the same way, or this comes back.
 
+### The first seconds of a drive
+
+Pressing Start flies the camera from the route overview down to the nav zoom, and every zoom it
+passes through loads fresh tiles. The places layer is the heavy one: it draws only fuel icons in
+a drive, but while it is visible each tile of every mounted places archive is loaded and filtered
+on the way down. So for the first 7 seconds of a drive (`NAV_PLACES_HOLD_MS`) the places icons
+stay hidden, and they appear once the camera has settled, when only the tiles on screen load.
+Measured on a Pixel 4a with the UFO puck (2026-09-29), fps in seconds 4 to 6 after Start went
+from about 9, 8, 9 to about 8, 27, 26; the one low second left is the basemap's own tile work.
+One-way arrows are part of the drive declutter too: a symbol every few dozen meters on every
+one-way street, with nothing to add under a route line.
+
 ### Stops during the drive
 
 **Tap to add a stop** ("Tap places while driving (experiment)", Settings > Navigation, off by

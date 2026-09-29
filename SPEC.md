@@ -1197,6 +1197,21 @@ lever is fewer symbol layers at the nav zoom.
 Those figures are a WALKING demo route (the phone's sticky mode at the time). The same start in
 DRIVE mode, per second from Start, pre-fix build: 2, 26, 7, 27, 34, 19, 21, 36, then 53 at 9 s;
 fixed build: 0, 19, 39, 41, 48, 50, 56, 58. The dips in seconds 3 to 8 are gone.
+Third round (2026-09-29, drive mode, same route, both the arrow and the 3D UFO puck): the dip was
+back in seconds 3 to 6 (A: 9/8/9 and 8/4/11 fps). Layer bisect: hiding the open places layers
+alone lifted seconds 4 to 6 to 29/45/50; the one-way arrows, house numbers, cameras, controls,
+bubbles and 3D buildings each changed nothing. In drive nav the places layers draw fuel only, but
+while visible every zoom the fly-in passes through loads and filters the dense places tiles of
+every mounted archive. So `placesNavHold` keeps the places icon layers hidden for
+`NAV_PLACES_HOLD_MS` (7 s) from the start of a DRIVE (its own effect keyed on the drive; a style
+reload mid-hold rebuilds through `applyOpenPlacesHidden`, which reads the flag) and reveals them
+at the settled nav zoom, where only the visible tiles load once. A/B with the UFO, two runs each,
+fps per second: A 2/28/39/9/8/9/46/46/41/48 and 1/30/39/8/4/11/43/50/53/39, B
+2/36/44/5/28/28/50/57/43/39 and 2/33/40/8/25/24/49/55/45/39; the reveal adds no dip of its own.
+The single low second that remains (second 4) is the fly-in's basemap tile work. The drive
+declutter also hides `road_one_way_arrow` / `_opposite` (placement along every one-way street at
+the nav zoom, no guidance value under a route line). The UFO measured a few fps under the arrow
+in seconds 6 to 10, inside run-to-run noise.
 
 ### 4.8 Route line rendering
 

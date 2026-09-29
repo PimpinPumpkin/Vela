@@ -455,6 +455,13 @@ private var placesPreviewLandmarks = false
 // places bake carries them now.
 private var placesHideCivic = false
 private const val PREVIEW_LANDMARK_PROMINENCE = 5.5
+/** The first seconds of a DRIVE: the places layers stay hidden while the follow camera flies in
+ *  from the route overview, and appear once it has settled (`NAV_PLACES_HOLD_MS`). Visible, every
+ *  zoom the fly-in passes through loads and filters the dense places tiles of every mounted
+ *  archive; hidden, the source is not asked for tiles at all. Measured on a 4a, demo drive, fps in
+ *  seconds 4 to 6 after Start: 16/7/23 with the layers up, 29/45/50 hidden. */
+private var placesNavHold = false
+private const val NAV_PLACES_HOLD_MS = 7000L
 
 /** Re-apply the id exclusions (and the drive-nav fuel-only rule) to the open places layers
  *  (icons + dots) without rebuilding them. */
@@ -484,7 +491,10 @@ private fun applyOpenPlacesHidden(style: Style) {
     runCatching {
         style.layers.filter { it.id.startsWith("vela-places-") }.forEach { l ->
             when (l) {
-                is SymbolLayer -> l.setFilter(iconFilter)
+                is SymbolLayer -> {
+                    l.setFilter(iconFilter)
+                    l.setProperties(PropertyFactory.visibility(if (placesNavHold) Property.NONE else Property.VISIBLE))
+                }
                 is CircleLayer -> {
                     l.setFilter(idFilter ?: Expression.literal(true))
                     l.setProperties(PropertyFactory.visibility(if (placesNavFuelOnly || placesNavDriveSet || placesPreviewLandmarks) Property.NONE else Property.VISIBLE))
@@ -1247,6 +1257,20 @@ fun VelaMapView(
     // while navigating (keeping even the top rank still left labels flickering at the threshold)
     // for a clean nav map, and restore on exit. Keyed on styleRef so it re-applies after a style
     // (re)load (dark/light flip), which recreates the layers at default visibility.
+    // Drive start: the places layers stay off through the fly-in (see placesNavHold). Its own
+    // effect, keyed on the drive alone: a style reload mid-hold rebuilds the layers through
+    // applyOpenPlacesHidden, which reads the flag, and ending the drive early releases it.
+    LaunchedEffect(navMode && navDriveMode) {
+        if (!(navMode && navDriveMode)) return@LaunchedEffect
+        placesNavHold = true
+        styleRef?.let { applyOpenPlacesHidden(it) }
+        try {
+            kotlinx.coroutines.delay(NAV_PLACES_HOLD_MS)
+        } finally {
+            placesNavHold = false
+            styleRef?.let { applyOpenPlacesHidden(it) }
+        }
+    }
     LaunchedEffect(navMode, navDriveMode, styleRef, topographyOn) {
         val style = styleRef ?: return@LaunchedEffect
         val vis = if (navMode) Property.NONE else Property.VISIBLE
@@ -1320,6 +1344,9 @@ fun VelaMapView(
                     // real landmarks - Google keeps major water names in nav too; a viewport has
                     // a handful at most, so the cost is noise). Town/city/state stay likewise.
                     "label_other", "label_village",
+                    // One-way arrows (2026-09-29): a symbol every few dozen meters along every
+                    // one-way street from z16, the nav zoom; the route line says which way to go.
+                    "road_one_way_arrow", "road_one_way_arrow_opposite",
                 ).mapNotNull { style.getLayer(it) } +
                     style.layers.filter { it.id.startsWith("vela-addr-") }
                 ).forEach { it.setProperties(PropertyFactory.visibility(dvis)) }

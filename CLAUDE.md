@@ -3357,7 +3357,10 @@ architecture note.
   the combined placement of Vela's own symbol layers during the fly-in; deferring the declutter
   and slowing the zoom only moved the work later (measured, reverted). Hiding the `vela-`
   symbol layers until the fly-in settles and revealing once was measured too (2 fps, noise) and
-  not kept; what is left is fewer symbol layers at the nav zoom.
+  not kept; what is left is fewer symbol layers at the nav zoom. **2026-09-29: the lever was the
+  open PLACES layers** (bisect: hiding them alone lifted seconds 4 to 6 from ~8 to 29-50 fps). They
+  stay hidden for the first 7 s of a DRIVE (`placesNavHold`, `NAV_PLACES_HOLD_MS`) and appear at the
+  settled nav zoom; one-way arrows joined the drive declutter. SPEC 4.7a has the A/B.
   Measure with `debug.vela.fps` + Perfetto on the 4a; the P9's GrapheneOS gives no ftrace to a
   shell trace, and a demo route there uses the phone's STICKY travel mode (a walking demo buzzes
   the walk turn cues).
