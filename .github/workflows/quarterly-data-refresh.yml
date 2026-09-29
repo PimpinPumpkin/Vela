@@ -13,8 +13,8 @@
 name: Quarterly data refresh
 
 on:
-  schedule:
-    - cron: "0 4 2 1,4,7,10 *" # 04:00 UTC on Jan/Apr/Jul/Oct 2nd
+  # No cron of its own: the bake conductor (bake-conductor.yml, tools/bake-schedule.json)
+  # dispatches it, one heavy bake at a time, with API budget to spare (2026-09-29).
   workflow_dispatch: {} # manual full refresh whenever needed
 
 permissions:

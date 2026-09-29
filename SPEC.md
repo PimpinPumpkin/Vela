@@ -2187,10 +2187,21 @@ integer, collisions fail the build), never insertion counters, or a rebuild renu
 of rows and the delta balloons to pack size. `TABLE_COLUMNS` in `PoiPackStore` mirrors
 `poipack_build.py` and `poipack_delta.py`; all three must stay in step.
 
-Scheduled rebakes: ALPR cameras weekly (Monday 08:17 UTC); place packs monthly (3rd and 5th, 07:15, half the catalog each);
-road features monthly (4th and 6th, 07:45, halves); places (6th and 7th, 05:00, sharded, plus a seventh of the catalog nightly at 04:40); basemap (9th and 10th,
-05:00, split by catalog half); buildings (three groups), addresses and maxspeed (two shards)
-quarterly (January, April, July, October, 2nd, 04:00, `quarterly-data-refresh.yml`). Routing is not
+Scheduled rebakes: ALPR cameras weekly (Monday 08:17 UTC, a cron of its own). Every other data
+bake is started by the bake conductor (`bake-conductor.yml`, hourly at :05, `scripts/bake-conductor.py`,
+`tools/bake-schedule.json`), ONE at a time: it starts nothing while a heavy bake (any scheduled
+workflow or `obf-regions`) is running or while fewer than `reserve` (400) API requests are left
+this hour, retries only the regions a run lost (a dispatch with the job's region-list input, at
+most `maxRetries` 3 per cycle; a run whose only failure is a non-region job is rerun with
+`gh run rerun --failed`), and otherwise starts the most overdue job. Cadences: a seventh of the
+places catalog every 24 h (the UTC weekday's seventh, `slice` input), place packs, road features,
+basemap and grid cells every 30 days (in halves or sets under the 256-job matrix cap), buildings
+(three groups), addresses and maxspeed (two shards) every 90 days. Its state is `state.json` on the
+`bake-conductor` release (targeted at the root commit); its run never fails. Separate crons are
+not added back: overlapping bakes spend the repository's 1,000 requests an hour and fail CI's
+releases, the F-Droid index and each other with HTTP 403 (2026-09-28/29). The F-Droid index
+rebuilds after the nightly cut and the weekly promotion, not after a push run (which releases
+nothing). Routing is not
 scheduled: the obf bake stays manual because of its runner memory limits
 and the manifest flip. A world obf bake stages into `obf-manifest-staging.json`, which the app
 never reads; copying staging over the live name flips the whole catalog atomically.

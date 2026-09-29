@@ -12,6 +12,7 @@
 #
 # DRY_RUN=1 writes the manifest to $MANIFEST_OUT (default ./cells-manifest.json), uploads nothing.
 set -euo pipefail
+source "$(dirname "$0")/gh-retry.sh"
 REPO="${VELA_REPO:-PimpinPumpkin/Vela}"
 TAG="grid-cells"
 FRESH="${1:-}"
@@ -20,9 +21,9 @@ WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 # One paginated listing gives every cells release WITH its assets; a `gh release view` per tag
 # was one request per region (450 for the catalog) against the Actions token's 1,000 an hour.
 listing() {
-  gh api --paginate "repos/$REPO/releases?per_page=100" -q '.[] | select(.tag_name | startswith("cells-")) | .tag_name' \
+  gh_retry gh api --paginate "repos/$REPO/releases?per_page=100" -q '.[] | select(.tag_name | startswith("cells-")) | .tag_name' \
     | sort > "$WORK/tags.txt"
-  gh api --paginate "repos/$REPO/releases?per_page=100" -q '.[] | select(.tag_name | startswith("cells-")) | .tag_name as $t
+  gh_retry gh api --paginate "repos/$REPO/releases?per_page=100" -q '.[] | select(.tag_name | startswith("cells-")) | .tag_name as $t
       | .assets[] | "\($t) \(.name) \(.size) \(.updated_at | .[0:10] | gsub("-"; ""))"' \
     | sort > "$WORK/assets.txt"
 }

@@ -6,11 +6,8 @@ name: Offline basemap tiles
 # download gets routing, places and the map picture as one set. ADDITIVE and reversible.
 
 on:
-  schedule:
-    # Monthly, from the current Geofabrik extracts: the 9th bakes the first half of the catalog by
-    # id, the 10th the second (the matrix caps at 256 jobs).
-    - cron: "0 5 9 * *"
-    - cron: "0 5 10 * *"
+  # No cron of its own: the bake conductor (bake-conductor.yml, tools/bake-schedule.json)
+  # dispatches it, one heavy bake at a time, with API budget to spare (2026-09-29).
   workflow_dispatch:
     inputs:
       group:
@@ -19,6 +16,10 @@ on:
         default: ""
       ids:
         description: "Explicit region ids (space or comma separated); overrides group"
+        required: false
+        default: ""
+      shard:
+        description: "Half of the whole catalog by id: a or b (blank = use group/ids). The conductor's dispatch."
         required: false
         default: ""
       maxzoom:
@@ -46,11 +47,7 @@ jobs:
         run: |
           ids_json=$(jq -cn --arg s "$IDS" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
           groups_json=$(jq -cn --arg s "$GROUP" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
-          HALF=""
-          case "${{ github.event.schedule }}" in
-            "0 5 9 * *") HALF=a ;;
-            "0 5 10 * *") HALF=b ;;
-          esac
+          HALF="${{ inputs.shard }}"
           sel=$(jq -c --arg group "$GROUP" --argjson groups "$groups_json" --argjson ids "$ids_json" --arg half "$HALF" '
             [ .regions[]
               | select(

@@ -383,7 +383,11 @@ Defaults that make the safe path the easy one:
   release from every Obtainium user (SPEC 7.6.5). (4) The Actions token's 1,000 API requests an
   hour are the WHOLE repository's: a data bake that spends them fails CI's canary and nightly
   releases and the F-Droid index (it did on 2026-09-29). GitHub calls in a workflow go through
-  `scripts/gh-retry.sh`, and a bake leaves `RATE_RESERVE` (200) for everything else.
+  `scripts/gh-retry.sh`, and a bake leaves `RATE_RESERVE` (200) for everything else. (5) **Data
+  bakes have NO crons of their own (2026-09-29):** `bake-conductor.yml` (hourly) starts one bake at
+  a time from `tools/bake-schedule.json`, retries only the regions that failed, waits while any heavy
+  bake runs or the API budget is under 400, and never fails its own run. A new bake or cadence is an
+  entry in that file, never a `schedule:` block; a hand dispatch is fine, the conductor waits for it.
 - CI: **stable / nightly / canary channels (2026-08-07, supersedes the per-push nightly).**
   `.github/workflows/ci.yml`: pushes to `main` AND `canary` build + test only (APK as a
   workflow artifact, no release) - a push can never mint a release anymore, which retires the
@@ -3256,7 +3260,7 @@ architecture note.
   `id`, NOT in properties), tile `origin` = `osm`. WHY: Overture is monthly and uncorrectable by us,
   OSM is the one source a user can fix and see fixed. Nodes only (a way's centroid is the parcel-point
   guess again). Andorra: 766 in box, 521 added, 245 deduped. A seventh of the catalog rebakes nightly
-  (cron 04:40, `NIGHTLY` slice by sorted position) so an edit lands within a week; `only=<region>` is
+  (the bake conductor's daily `places-slice` job, `slice` input = UTC weekday) so an edit lands within a week; `only=<region>` is
   ~2 minutes. Deliberately NOT the whole catalog nightly: it would offer every downloaded region a
   fresh few-hundred-MB copy every day.
 - **THE BAKE TOOLCHAIN IS CACHED + PINNED (2026-09-18):** tippecanoe 2.79.0 and go-pmtiles 1.31.2
@@ -5161,9 +5165,9 @@ Gotchas:
   `installedRev`/`updatable(manifest)`. `MapViewModel.refreshRegionUpdates` (runs with the catalog
   refresh) fills `MapUiState.regionUpdates` (region id -> "routing"/"places"/"map") and the Offline maps
   row shows the same "Update" it showed for a newer pack; `updateRegion` refreshes the pack (delta
-  when offered), every places and basemap archive inside the region, then the obf. Crons: places on the
-  6th (shard a) and 7th (shard b) against the newest Overture release found in the bucket listing;
-  basemap on the 9th and 10th (first/second half of the catalog by id). The obf bake stays manual (its
+  when offered), every places and basemap archive inside the region, then the obf. Rebakes are the bake conductor's
+  (places against the newest Overture release found in the bucket listing, basemap in two halves by
+  id, both every 30 days; see the releases rule (5)). The obf bake stays manual (its
   runner memory limits and the user's manifest flip).
 - **Grid cells, app side (2026-09-28, SPEC 7.6.5).** `app/offline/CellStore` (manifest from
   `BuildConfig.CELLS_MANIFEST_URL`, `-PcellsManifestUrl`; `cells/index.json`) streams a cell zip
@@ -5307,8 +5311,8 @@ Gotchas:
   Brazil/India/Japan/Indonesia zones, countries) plus davis: finer pieces than the live routing catalog's
   whole countries, so `downloadPlacesForRegion` pulls EVERY archive whose box center falls inside the
   downloaded region (a whole-country download today gets all its pieces, a Land download later gets one),
-  and `sourcesFor` streams the smallest covering piece. The full bake is `places-overlays.yml` on its monthly crons (6th shard a, 7th shard b; the
-  matrix caps at 256 jobs) plus the nightly seventh at 04:40, max-parallel 8; `MapPoiPrefs.placesSource` (Settings > Data & privacy since
+  and `sourcesFor` streams the smallest covering piece. The full bake is `places-overlays.yml` (the bake conductor runs the daily seventh; a full
+  rebake is a `shard` a/b dispatch, the matrix caps at 256 jobs), max-parallel 8; `MapPoiPrefs.placesSource` (Settings > Data & privacy since
   2026-09-16, was Map; "Places come from": `open` ("Vela data", compiled default) / `google` / `both`; the FLEET DEFAULT
   is remote since 2026-09-16 (`calibration.json` `defaultPlacesSource`, v20 -> `Calibration.defaultPlacesSource`
   -> the VM pushes it into `MapPoiPrefs.setRemoteDefault` at init + after refresh, same channel as
@@ -5830,7 +5834,7 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   until then "Get places" reports no pack available.
   **Pack freshness (2026-07-07): rev + monthly cron + row-level deltas.** Manifest rows carry
   `rev`/`updatedAt`/`counts{poi,addr,streetpt,streetname}` and optionally `delta{fromRev,url,sizeMb}`;
-  `poi-packs.yml` has two monthly `schedule` crons (3rd and 5th, 07:15 UTC); since 2026-09-22 each builds HALF the catalog by sorted id (`shard`, picked from which cron fired), because the whole 458-row catalog is past the 256-job matrix cap and the single cron refused itself at plan time. `road-features.yml` (4th and 6th) and the quarterly maxspeed dispatch (`all=true` with `shard=a`, then `b`) are split the same way.
+  `poi-packs.yml` is run by the bake conductor every 30 days as two dispatches (`group=all`, `shard=a` / `b`: HALF the catalog each by sorted id, because the whole 458-row catalog is past the 256-job matrix cap). `road-features.yml` and maxspeed (`all=true` with `shard=a`, then `b`) are split the same way.
   `build-poi-region.sh` reads the LIVE manifest for the old rev, downloads the previous zip BEFORE clobbering
   it, builds the delta (`scripts/poipack_delta.py`, SQL EXCEPT per table into del_/ins_ tables), and publishes
   it only when it is under half the full size. App: installed revs in `poipacks/revs.json`
@@ -5868,7 +5872,7 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   enrichment from memory. `MapViewModel.roadFeaturesCover*` returns LOADED / NONE / FAILED: NONE
   (no region in the manifest) is the only case that still reaches Overpass; FAILED shows nothing
   and retries next viewport (a failure is never cached). The world is baked (the `road-features` release carries a file per catalog region, refreshed by
-  the 4th/6th monthly crons); Overpass remains only where no region covers the point. Local
+  the bake conductor every 30 days); Overpass remains only where no region covers the point. Local
   test: bake one region with the osmium + `scripts/road_features_tsv.py` steps, serve it with a
   manifest on :8099, `adb reverse`, build with `-ProadFeaturesManifestUrl=`.
   **THE CORRIDOR QUERY ANR'D THE APP ON A LONG ROUTE (2026-09-13, three ANR traces from a

@@ -1,0 +1,24 @@
+{
+  "_comment": "The data bakes the conductor (.github/workflows/bake-conductor.yml, scripts/bake-conductor.py) runs, ONE AT A TIME, whenever the repository has API budget to spare. everyHours = how stale a bake may get; the most overdue one goes next. retryInput = the dispatch input that takes a list of region ids, used to re-run only the regions that failed. inputs value \"@slice7\" = a seventh of the catalog, rotating daily. Order breaks ties (earlier = sooner).",
+  "reserve": 400,
+  "maxRetries": 3,
+  "jobs": [
+    { "id": "places-slice", "workflow": "places-overlays.yml", "inputs": { "slice": "@slice7" }, "everyHours": 24, "retryInput": "only", "retryJoin": "," },
+    { "id": "poi-a", "workflow": "poi-packs.yml", "inputs": { "group": "all", "shard": "a" }, "everyHours": 720, "retryInput": "ids" },
+    { "id": "poi-b", "workflow": "poi-packs.yml", "inputs": { "group": "all", "shard": "b" }, "everyHours": 720, "retryInput": "ids" },
+    { "id": "roads-a", "workflow": "road-features.yml", "inputs": { "group": "all", "shard": "a" }, "everyHours": 720, "retryInput": "ids" },
+    { "id": "roads-b", "workflow": "road-features.yml", "inputs": { "group": "all", "shard": "b" }, "everyHours": 720, "retryInput": "ids" },
+    { "id": "basemap-a", "workflow": "basemap-tiles.yml", "inputs": { "shard": "a" }, "everyHours": 720, "retryInput": "ids" },
+    { "id": "basemap-b", "workflow": "basemap-tiles.yml", "inputs": { "shard": "b" }, "everyHours": 720, "retryInput": "ids" },
+    { "id": "cells-us", "workflow": "grid-cells.yml", "inputs": { "group": "us" }, "everyHours": 720, "retryInput": "regions" },
+    { "id": "cells-a", "workflow": "grid-cells.yml", "inputs": { "group": "africa,china-sub,oceania,germany-sub,canada,australia-sub,south-america,russia-sub,indonesia-sub,india-sub,brazil-sub,california-sub,north-america" }, "everyHours": 720, "retryInput": "regions" },
+    { "id": "cells-b", "workflow": "grid-cells.yml", "inputs": { "group": "europe,asia,france-sub,spain-sub,poland-sub,czech-republic-sub,netherlands-sub,central-america,japan-sub,norway-sub,italy-sub,great-britain-sub" }, "everyHours": 720, "retryInput": "regions" },
+    { "id": "buildings-us", "workflow": "building-overlays.yml", "inputs": { "group": "us", "ids": "" }, "everyHours": 2160, "retryInput": "ids" },
+    { "id": "buildings-world", "workflow": "building-overlays.yml", "inputs": { "group": "world", "ids": "" }, "everyHours": 2160, "retryInput": "ids" },
+    { "id": "buildings-chunk", "workflow": "building-overlays.yml", "inputs": { "group": "chunk", "ids": "" }, "everyHours": 2160, "retryInput": "ids" },
+    { "id": "addresses", "workflow": "address-overlays.yml", "inputs": { "all": "true", "ids": "" }, "everyHours": 2160, "retryInput": "ids" },
+    { "id": "maxspeed-a", "workflow": "maxspeed-overlays.yml", "inputs": { "all": "true", "shard": "a", "ids": "" }, "everyHours": 2160, "retryInput": "ids" },
+    { "id": "maxspeed-b", "workflow": "maxspeed-overlays.yml", "inputs": { "all": "true", "shard": "b", "ids": "" }, "everyHours": 2160, "retryInput": "ids" }
+  ],
+  "alsoHeavy": ["obf-regions.yml"]
+}

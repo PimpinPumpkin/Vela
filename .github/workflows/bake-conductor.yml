@@ -1,0 +1,36 @@
+# Runs Vela's data bakes one at a time, hands off (scripts/bake-conductor.py, tools/bake-schedule.json).
+# The bakes have no crons of their own: on their own clocks they overlapped, spent the repository's
+# 1,000 API requests an hour between them and failed CI's releases and each other with HTTP 403.
+# Once an hour this starts at most ONE bake (a retry of the regions that failed last time first,
+# else the most overdue job), only when no heavy bake is running and enough API budget is left.
+# Its own run never fails, so it never mails a failure.
+name: Bake conductor
+
+on:
+  schedule:
+    - cron: "5 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  actions: write # dispatch and rerun the bakes
+  contents: write # the state file on the bake-conductor release
+
+concurrency:
+  group: bake-conductor
+  cancel-in-progress: false
+
+jobs:
+  conduct:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts
+            tools
+            .github/workflows
+      - name: Conduct
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/bake-conductor.py

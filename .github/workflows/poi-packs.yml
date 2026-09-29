@@ -12,9 +12,8 @@ name: Build offline place packs
 on:
   # Monthly refresh: rebuild EVERY cataloged region from current OSM and publish row-level deltas
   # alongside the full zips, so installed packs can update without a full re-download.
-  schedule:
-    - cron: "15 7 3 * *" # half a
-    - cron: "15 7 5 * *" # half b
+  # No cron of its own: the bake conductor (bake-conductor.yml, tools/bake-schedule.json)
+  # dispatches it, one heavy bake at a time, with API budget to spare (2026-09-29).
   workflow_dispatch:
     inputs:
       group:
@@ -71,7 +70,7 @@ jobs:
             [ .regions[]
               | select(
                   if ($ids|length) > 0 then (.id as $rid | $ids | index($rid)) != null
-                  elif $event == "schedule" then true
+                  elif $event == "schedule" or $group == "all" then true
                   elif $group == "all-sub" then (.group | endswith("-sub"))
                   else (.group as $g | $groups | index($g)) != null end )
               | select( ($skipBig | not) or (.big != true) )

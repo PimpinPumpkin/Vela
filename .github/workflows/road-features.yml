@@ -8,9 +8,8 @@ name: Build road features
 on:
   # Monthly refresh: rebuild EVERY cataloged region from current OSM (files are small; the app
   # re-downloads a region whenever the manifest carries a newer updatedAt).
-  schedule:
-    - cron: "45 7 4 * *" # half a
-    - cron: "45 7 6 * *" # half b
+  # No cron of its own: the bake conductor (bake-conductor.yml, tools/bake-schedule.json)
+  # dispatches it, one heavy bake at a time, with API budget to spare (2026-09-29).
   workflow_dispatch:
     inputs:
       group:
@@ -67,7 +66,7 @@ jobs:
             [ .regions[]
               | select(
                   if ($ids|length) > 0 then (.id as $rid | $ids | index($rid)) != null
-                  elif $event == "schedule" then true
+                  elif $event == "schedule" or $group == "all" then true
                   elif $group == "all-sub" then (.group | endswith("-sub"))
                   else (.group as $g | $groups | index($g)) != null end )
               | select( ($skipBig | not) or (.big != true) )
