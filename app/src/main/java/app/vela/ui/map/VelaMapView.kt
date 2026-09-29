@@ -204,6 +204,7 @@ private const val OSM_COVER_FRAC = 0.18f
 // synchronous render-thread round trips and its trigger events can fire per frame - the floor is
 // what makes the cost bounded regardless of event chatter (the vc2909 P4a freeze).
 private const val OVL_GATE_MIN_GAP_MS = 1200L
+
 private const val CONTROLS_SRC = "vela-controls-src" // OSM traffic lights + stop signs drawn at high zoom
 private const val CONTROLS_LAYER = "vela-controls"
 private const val CONTROLS_CLAIM_LAYER = "vela-controls-claim" // invisible collision box over the labels
@@ -3292,8 +3293,11 @@ fun VelaMapView(
                         val zoomNow = map.cameraPosition.zoom
                         val style = map.style
                         // Buildings + the overlay only draw at z16+ (Google-like close zoom). Below
-                        // that the query can't change anything - bail before any probing.
-                        if (style == null || zoomNow < 16.0) {
+                        // that the query can't change anything - bail before any probing. Not while
+                        // NAVIGATING either (2026-09-28): the follow camera moves every frame, so the
+                        // gate re-probed rendered features on the main thread every 1.2 s for the
+                        // whole drive; the verdict from before the drive stands until it ends.
+                        if (style == null || zoomNow < 16.0 || navModeHolder.value) {
                             if (ovlGateKey[0] != "off") { overlayState.value("none"); ovlGateKey[0] = "off" }
                             return@runCatching
                         }

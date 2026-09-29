@@ -1161,6 +1161,13 @@ ever dropped by priority, only started later, the details page and the review
 page are never loaded while `navigating`, and the road-features file is parsed while the chooser
 is open (`route()` warms `roadFeaturesCoverRoute` on the first route). After: the map reaches
 55 fps by 11 s and the GL thread's waiting time is a tenth; the tile burst of the fly-in remains.
+Second round, same day: the building-overlay gate does not probe while navigating (the follow
+camera moves every frame, and the gate re-queried rendered features on the main thread every
+1.2 s for the whole drive). Tried and measured NOT to help, so not kept: a slower zoom ease for
+the first 3 s after engage (tau 1.2 s), and deferring the drive-nav declutter (1.5 s) and the
+first road-label pass (2 s) past the fly-in. Two alternating runs per build, fps per second from
+Start: with them 2/33/7/14/44/21/14/34 and 1/28/5/15/50/10/10/39, without 2/28/9/35/31/16/8/45
+and 2/29/7/38/34/13/9/36; the work only moved later.
 Those figures are a WALKING demo route (the phone's sticky mode at the time). The same start in
 DRIVE mode, per second from Start, pre-fix build: 2, 26, 7, 27, 34, 19, 21, 36, then 53 at 9 s;
 fixed build: 0, 19, 39, 41, 48, 50, 56, 58. The dips in seconds 3 to 8 are gone.
