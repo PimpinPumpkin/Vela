@@ -1668,7 +1668,7 @@ fun MapScreen(
         val movingFree = !state.navigating && (state.mySpeed ?: 0f) > 3f &&
             !searchOpen && state.selected == null && !state.directionsOpen && !state.showSteps && !resultsShown
         val postedLimitKmh = state.speedLimitKmh ?: state.speedLimitOverlayKmh
-        if (((state.navigating && !state.showSteps && !state.editingStops) && state.mySpeed != null) || movingFree) {
+        if (app.vela.ui.SpeedDisplay.on.value && (((state.navigating && !state.showSteps && !state.editingStops) && state.mySpeed != null) || movingFree)) {
             SpeedWidget(
                 speedMps = state.mySpeed,
                 limitKmh = postedLimitKmh,

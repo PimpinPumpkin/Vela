@@ -238,7 +238,7 @@ class CarMapRenderer(
                 // Posted speed limit (offline graph's max_speed) while navigating — null off-graph/online.
                 // The graph LocationIndex snap runs OFF the main thread (this collector is on
                 // Main.immediate; a synchronous mmap snap every fix would jank the render loop).
-                speedLimitKmh = if (navigating())
+                speedLimitKmh = if (navigating() && app.vela.ui.SpeedDisplay.on.value) // hidden: no lookup either
                     withContext(Dispatchers.Default) { runCatching { routeEngine?.currentRoadLimit(here.lat, here.lng) }.getOrNull() }
                 else null
                 if (previewRoute != null && !navigating()) { requestRender(); return@collect } // preview owns the camera
@@ -531,7 +531,7 @@ class CarMapRenderer(
             if (navigating()) {
                 runCatching { drawRoute(canvas, snap, sx, sy) }
                 runCatching { drawCorridor(canvas, snap, sx, sy) }
-                runCatching { drawSpeed(canvas) }
+                if (app.vela.ui.SpeedDisplay.on.value) runCatching { drawSpeed(canvas) } // Settings > Navigation (issue #625)
             } else if (preview != null && preview.polyline.size >= 2) {
                 // Preview screen: the whole route in blue, framed.
                 runCatching { canvas.drawPath(pathOf(snap, preview.polyline, preview.polyline.indices, sx, sy), trafficPaints[0]!!) }

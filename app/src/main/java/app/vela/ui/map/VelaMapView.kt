@@ -963,6 +963,9 @@ fun VelaMapView(
 
     var mapRef by remember { mutableStateOf<MapLibreMap?>(null) }
     var mapInitRequested by remember { mutableStateOf(false) }
+    // Settings > Map "Tilt with two fingers" applies at once, not at the next map start.
+    val tiltGestures = app.vela.ui.MapTilt.on.value
+    LaunchedEffect(tiltGestures, mapRef) { mapRef?.uiSettings?.isTiltGesturesEnabled = tiltGestures }
     // Ending nav returns the camera to Google's flat north-up browse view — the follow camera's
     // last bearing/tilt used to linger, which also left the compass pinned on the map (it only
     // hides facing north; user 2026-07-10). Below mapRef so the handle is in scope.
@@ -3030,14 +3033,17 @@ fun VelaMapView(
                 // explicitly so it can't be off, and lift the default ~60° cap to 70° so a
                 // satisfying near-horizon 3D is reachable; browse-camera moves use
                 // newLatLngZoom (which preserves pitch), so a tilt the user sets sticks.
-                map.uiSettings.isTiltGesturesEnabled = true
+                map.uiSettings.isTiltGesturesEnabled = app.vela.ui.MapTilt.on.value
                 // Two-finger tilt was nearly impossible to trigger (user 2026-07-11): stock
-                // shove detection wants both fingers moving in near-perfect vertical parallel
-                // (20 degrees). Widen the accepted angle and drop the start threshold so a
-                // casual two-finger drag tilts.
+                // shove detection wants the fingers within 20 degrees of level. Widen the
+                // accepted angle so a casual two-finger drag tilts. The START threshold stays
+                // near stock (20 dp of vertical travel of the fingers' midpoint; stock is 16):
+                // at 8 px, the wobble of a pinch's fingers settling started a tilt before the
+                // pinch's 7 dp zoom threshold, and MapLibre makes tilt and zoom mutually
+                // exclusive, so the pinch tilted instead of zooming (issue #627).
                 runCatching {
                     map.gesturesManager.shoveGestureDetector.maxShoveAngle = 55f
-                    map.gesturesManager.shoveGestureDetector.pixelDeltaThreshold = 8f
+                    map.gesturesManager.shoveGestureDetector.pixelDeltaThreshold = 20f * context.resources.displayMetrics.density
                 }
                 map.setMaxPitchPreference(70.0)
                 // Tap a labeled POI on the map to open it. (Named so the D-pad

@@ -3882,8 +3882,14 @@ architecture note.
   releases); (2) merge so `fdroid-repo.yml` carries the unpack-to-Pages step; (3) an
   fdroid-repo.yml run deploys the site. Then MapFonts' probe starts passing and Roboto
   lights up on next app launch, no app release needed.
-- **Two-finger tilt: shove detector widened** (maxShoveAngle 55, pixelDeltaThreshold 8) - the
-  stock 20-degree parallel requirement made tilt nearly impossible. **Photo viewer:**
+- **Two-finger tilt: shove detector widened** (maxShoveAngle 55) - the stock 20-degree level
+  requirement made tilt nearly impossible. The start threshold went to 8 px with it, and that
+  made pinches tilt (issue #627): shove starts once the fingers' midpoint has moved that far
+  vertically (it never checks whether the fingers are spreading), zoom starts after 7 dp of span
+  change, and MapLibre makes shove and scale mutually exclusive, so the first to start owns the
+  gesture; 8 px is about 3 dp, less than the wobble of a second finger landing. It is 20 dp now
+  (stock is 16 dp), and Settings > Map "Tilt with two fingers" (`MapTilt`, default on) turns the
+  gesture off. **Photo viewer:**
   double-tap zooms 2.5x at the tap point / back out (a tap-detector pointerInput layered
   before the custom pinch/dismiss loop, which never consumes bare taps).
 - **"Also at this location" is ALIVE (`placesHere`/`othersAt`)** - it fills only when the

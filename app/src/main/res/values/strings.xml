@@ -208,6 +208,10 @@
     <string name="settings_routing_updating">Updating… %1$d%%</string> <!-- format -->
     <string name="settings_routing_installed">Installed · routes offline here</string>
     <string name="settings_routing_installed_places">Installed · places searchable offline</string>
+    <string name="settings_two_finger_tilt">Tilt with two fingers</string>
+    <string name="settings_two_finger_tilt_hint">Drag two fingers up or down to tilt the map into 3D. Off: a pinch only ever zooms.</string>
+    <string name="settings_speed_display">Show speed and speed limit</string>
+    <string name="settings_speed_display_hint">Your speed and the posted limit while driving, on the phone and on the car screen</string>
     <string name="settings_places_shared_pack">Places cover all of %1$s (%2$s)</string> <!-- format: %1$s country or state name, %2$s a size like "1.9 GB" -->
     <string name="settings_routing_places_downloading">Saving places · %1$d%%</string> <!-- format -->
     <string name="settings_get_places">Get places</string>

@@ -2959,7 +2959,10 @@ owners empty` then `CAR.VALIDATOR: Package DENIED`), whatever the install fields
 own package installer passes. The car map re-applies the palette whenever the car's day/night
 changes, draws the phone's puck bitmap rotated by heading minus camera bearing, and keeps the
 speed badge and the attribution inside the host's stable area (the part no template UI ever
-covers), falling back to the visible area when the host reports no usable stable area. The
+covers), falling back to the visible area when the host reports no usable stable area. Settings >
+Navigation "Show speed and speed limit" (`SpeedDisplay`, default on) hides the badge on the phone
+and the car alike, and skips the car's limit lookup (issue #625); the opt-in spoken speeding alert
+is separate. The
 guidance voice is band-limited by the protocol
 (the Android Auto guidance stream is 16 kHz mono).
 

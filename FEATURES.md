@@ -770,7 +770,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Two-finger tilt to 3D** (2026-06-27) - drag two fingers vertically to pitch the map
   between flat and a near-horizon 3D view (Google-style). Tilt gestures are now enabled
   explicitly and the max pitch is lifted to 70°; browse-camera moves use `newLatLngZoom`
-  which preserves the pitch you set, so the tilt sticks until you change it
+  which preserves the pitch you set, so the tilt sticks until you change it. *Pinch fix
+  (2026-09-29, #627):* a pinch no longer starts a tilt (the tilt used to begin after 8 pixels of
+  drift, now after a deliberate 20 dp drag), and Settings > Map "Tilt with two fingers" turns the
+  gesture off entirely.
 - ✅ **Ambient Google POIs on the map** (2026-06-27) - the basemap dots/labels are OSM
   (OpenFreeMap), so Google-only places used to appear only when searched. Now, on a bare,
   zoomed-in browse map, the visible area's prominent **Google** places are fetched automatically
@@ -2034,7 +2037,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Mute voice during nav** - a speaker toggle in the nav bottom bar silences /
   restores spoken guidance on the fly (Google-style), independent of the haptic cues
 - ✅ **Speedometer** - a Google-style circular badge (bottom-left during nav) shows
-  your current GPS speed in mph or km/h (follows the Units setting)
+  your current GPS speed in mph or km/h (follows the Units setting). Settings > Navigation
+  "Show speed and speed limit" hides it and the limit sign, on the phone and on the car screen
+  (2026-09-29, #625).
 - ✅ **Scale bar** - a Google-style ⊔ bracket (bottom-left, by the attribution) sized
   to a round distance, with the distance label above it; reads the live
   meters-per-pixel from the map (correct for zoom **and** latitude on Mercator) and

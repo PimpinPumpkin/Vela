@@ -111,6 +111,8 @@ class VelaApp : Application(), coil.ImageLoaderFactory {
         TransitLayer.init(this)
         app.vela.ui.SatelliteLayer.init(this) // persisted satellite-imagery toggle
         app.vela.ui.LayersButton.init(this) // persisted show/hide of the map layers button
+        app.vela.ui.MapTilt.init(this) // two-finger tilt on/off (issue #627)
+        app.vela.ui.SpeedDisplay.init(this) // speed + limit badge on/off, phone and car (issue #625)
         app.vela.ui.Topography.init(this)
         app.vela.ui.Flock.init(this) // load the persisted surveillance-camera toggle (else it read false every launch)
         app.vela.ui.SpeedCams.init(this) // same init-or-it-reads-false trap as Flock

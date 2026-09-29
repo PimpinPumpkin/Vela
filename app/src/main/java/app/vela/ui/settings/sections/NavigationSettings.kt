@@ -263,6 +263,15 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             },
             hint = stringResource(R.string.settings_traffic_lights_hint),
         )
+        // The speed + limit badge, phone and car (issue #625). On by default; a dash that shows
+        // both already makes it clutter.
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_speed_display),
+            checked = app.vela.ui.SpeedDisplay.on.value,
+            onCheckedChange = { app.vela.ui.SpeedDisplay.set(context, it) },
+            hint = stringResource(R.string.settings_speed_display_hint),
+        )
         // Over-the-limit voice alert (issue #404): its own opt-in, off by default. Sits with the
         // other spoken extras; the timing is in :core SpeedingAlerts.
         GroupDivider()

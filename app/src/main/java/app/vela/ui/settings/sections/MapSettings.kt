@@ -58,6 +58,13 @@ internal fun MapSettingsScreen(onBack: () -> Unit) {
         )
         GroupDivider()
         ToggleRow(
+            label = stringResource(R.string.settings_two_finger_tilt),
+            checked = app.vela.ui.MapTilt.on.value,
+            onCheckedChange = { app.vela.ui.MapTilt.set(context, it) },
+            hint = stringResource(R.string.settings_two_finger_tilt_hint),
+        )
+        GroupDivider()
+        ToggleRow(
             label = stringResource(R.string.settings_buildings_3d),
             checked = app.vela.ui.Buildings3d.on.value,
             onCheckedChange = { app.vela.ui.Buildings3d.set(context, it) },
