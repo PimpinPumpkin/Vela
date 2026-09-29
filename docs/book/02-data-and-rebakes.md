@@ -77,8 +77,7 @@ region. Each hour the conductor:
 1. settles the run it started last: success marks the job fresh; failed regions are queued for a
    retry of exactly those regions (a fresh dispatch with the job's region-list input, at most three
    retries a cycle); a run where only the manifest step failed is rerun (`gh run rerun --failed`);
-2. starts nothing while any heavy bake is running (any workflow in the schedule, plus
-   `obf-regions`) or while fewer than 400 API requests are left this hour;
+2. starts nothing while any heavy bake is running (any workflow in the schedule) or while fewer than 400 API requests are left this hour;
 3. otherwise starts ONE bake: a pending retry first, else the most overdue job.
 
 Its own run never fails, so it cannot mail a failure. Its record is `state.json` on the
@@ -94,7 +93,7 @@ above an app release); the run summary shows every job's last good bake and next
 | Grid cells: US, and the rest of the catalog in two sets | 30 days |
 | Buildings (`us`, `world`, `chunk`), house numbers, speed limits (two halves) | 90 days |
 | Surveillance cameras | **Weekly** cron, Mondays 08:17 (small, not a heavy bake) |
-| Offline routing (`obf-regions`) | **Manual only** (the conductor waits while one runs) |
+| Offline routing (`obf-regions`, with the highway hierarchy), US and the rest in two sets | 90 days, into the STAGING manifest; copying staging over the live `obf-manifest.json` stays a human step |
 | World floor | **Manual only** (`world-lowzoom.yml` with `publish: true`) |
 
 Every workflow can still be dispatched by hand from the Actions tab; the conductor sees a
@@ -117,8 +116,7 @@ who downloaded the region is offered it again; streaming users pick it up with n
 **The quarterly group.** The conductor runs the building groups, the house numbers and the two
 speed-limit halves as separate jobs, one after another. `quarterly-data-refresh` is kept for a
 manual all-at-once refresh (it fires them together, which is what the conductor exists to avoid).
-The obf bake stays manual on purpose, because runner memory limits and the staging-to-live
-manifest copy are human steps.
+The obf bake runs into the staging manifest; the staging-to-live copy stays a human step.
 
 A rebake **overwrites the current generation in place**: same asset names, same manifest. New
 generations only fork when a file format changes, which is a deliberate cutover, never a cron.
