@@ -215,7 +215,11 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         }
         // What the drive will show, drawn by the same code.
         val puckKey = app.vela.ui.PuckStyle.key()
-        val puckPreview = androidx.compose.runtime.remember(puckKey) { app.vela.ui.map.navPuckBitmap().asImageBitmap() }
+        val puckPreview = androidx.compose.runtime.remember(puckKey) { run {
+            // The alternatives preview as the 3D model they drive as; the arrow stays its flat self.
+            val mesh = app.vela.ui.map.PuckModels.forShape(app.vela.ui.PuckStyle.shape.value, app.vela.ui.PuckStyle.carColor.value)
+            (if (mesh != null) app.vela.ui.map.puck3DPreviewBitmap(mesh, 202) else app.vela.ui.map.navPuckBitmap()).asImageBitmap()
+        } }
         androidx.compose.foundation.Image(
             puckPreview, contentDescription = null,
             modifier = Modifier.padding(start = 20.dp, top = 4.dp).size(64.dp),

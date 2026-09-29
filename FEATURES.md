@@ -305,7 +305,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   **Redact places in exports** is now always shown in Settings > Diagnostics and also starts
   every trip share on the largest trim distance (the middle of a drive is still never rounded).
   `core/replay/TripShareBatch`, `TripShareBatchTest`.
-- ✅ **Car navigation icon (2026-09-27, discussion #611).** Settings > Navigation > Navigation icon: the arrow, a car in red, blue, white, green or yellow, a UFO, a pirate ship or a rubber duck, with a preview.
+- ✅ **Car navigation icon (2026-09-27, discussion #611).** Settings > Navigation > Navigation icon: the arrow, a car in red, blue, white, green or yellow, a UFO, a pirate ship or a rubber duck, with a preview. Since 2026-09-29 the four alternatives are 3D models in navigation: they stand on the tilted map and turn with the heading instead of lying flat.
 - ✅ **Minimized route chooser (2026-09-28, issue #616).** Tap the handle (or swipe down, or pan the map) to shrink the chooser to one line with the time and Start, so the route shows on small screens; tap again to bring it back.
 - ✅ **Sea and ocean names in your language (2026-09-28, issue #619)**, list pins as large as place icons (#618), and the road name in the bottom bar no longer clipped (#617).
 - ✅ **Walking directions from OpenStreetMap (2026-09-28, issue #478).** Walks come from the open foot router. Google's walk is offered only when it is at least 15% shorter, with its turns named from the map's own street data instead of being forced onto OSM, which added detours. The same naming is the fallback when a picked Google driving route cannot be matched.

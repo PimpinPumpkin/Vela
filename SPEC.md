@@ -616,8 +616,13 @@ Navigation "Start drives north-up" (`NavNorthUp`, pref `nav_north_up`, off, issu
 camera is detached (pan, overview, step preview) also re-centers so the change shows. "Navigation icon"
 (`PuckStyle.shape`, pref `puck_shape`, discussion #611) swaps the arrow for a top-down car
 (`drawCarPuck`, color pref `puck_car_color`: red, blue, white, green, yellow), a UFO, a pirate
-ship or a rubber duck (`drawUfoPuck` / `drawShipPuck` / `drawDuckPuck`) in the same bitmap
-the overlay, the map symbol and the car screen use; Settings shows a live preview. Settings > Privacy "Live traffic only when I tap"
+ship or a rubber duck (`drawUfoPuck` / `drawShipPuck` / `drawDuckPuck`), top-down bitmaps used
+by the map symbol, the notification and the car screen. In the nav follow overlay those four are
+3D models (`ui/map/Puck3D.kt`, `PuckModels`): flat-shaded low-poly meshes drawn every frame,
+orthographic, from the heading relative to the camera and the camera's own tilt (`puckOverlayTilt`),
+back faces culled and faces painted far to near, with a soft ground shadow; the UFO hovers above
+its shadow. The arrow stays flat. Measured on the 4a during a demo drive: 60 fps, 0.17% janky
+frames. Settings previews the 3D model at a three-quarter nav view. Settings > Privacy "Live traffic only when I tap"
 (`RouteTrafficOnTap`, pref `route_traffic_on_tap`, off) clears `RoutingPrefs.googleTraffic` for
 each new trip, so directions, reroutes and rechecks skip Google and the transit chip is not
 prefetched; the chooser's Show traffic (`requestRouteTraffic`) sets it for that trip and refetches.

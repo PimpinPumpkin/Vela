@@ -17,6 +17,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -975,6 +977,7 @@ fun VelaMapView(
     val puckOverlayY = remember { androidx.compose.runtime.mutableFloatStateOf(Float.NaN) }
     val puckOverlayRot = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     val puckOverlaySquash = remember { androidx.compose.runtime.mutableFloatStateOf(1f) }
+    val puckOverlayTilt = remember { androidx.compose.runtime.mutableFloatStateOf(0f) } // degrees, for the 3D icons
     val puckOverlayHidLayer = remember { booleanArrayOf(false) } // ME_ARROW_LAYER hidden for the overlay
     fun dropPuckOverlay() {
         if (puckOverlayOn.value) puckOverlayOn.value = false
@@ -2737,6 +2740,7 @@ fun VelaMapView(
                     puckOverlayY.floatValue = scr.y
                     puckOverlayRot.floatValue = (((navPuck.displayBearing - camState[2]).toFloat() % 360f) + 360f) % 360f
                     puckOverlaySquash.floatValue = kotlin.math.cos(Math.toRadians(navTiltEase[0])).toFloat().coerceIn(0.2f, 1f)
+                    puckOverlayTilt.floatValue = navTiltEase[0].toFloat()
                     if (!puckOverlayOn.value) puckOverlayOn.value = true
                     if (!puckOverlayHidLayer[0]) {
                         puckOverlayHidLayer[0] = true
@@ -4278,7 +4282,26 @@ fun VelaMapView(
             }
         }
     }
-    if (puckOverlayOn.value) {
+    val puckMesh = if (puckOverlayOn.value) remember(app.vela.ui.PuckStyle.key()) {
+        PuckModels.forShape(app.vela.ui.PuckStyle.shape.value, app.vela.ui.PuckStyle.carColor.value)
+    } else null
+    if (puckOverlayOn.value && puckMesh != null) {
+        // The car, UFO, ship and duck are 3D models drawn from the camera's own tilt and the
+        // heading each frame (both read in the draw phase, so no recomposition per frame).
+        val sizePx = (202 * app.vela.ui.PuckStyle.scale()).toInt()
+        androidx.compose.foundation.Canvas(
+            Modifier
+                .graphicsLayer {
+                    translationX = puckOverlayX.floatValue - sizePx / 2f
+                    translationY = puckOverlayY.floatValue - sizePx / 2f
+                }
+                .size(with(density) { sizePx.toDp() }),
+        ) {
+            drawIntoCanvas { c ->
+                puckMesh.draw(c.nativeCanvas, size.width / 2f, size.height / 2f, size.width, puckOverlayRot.floatValue, puckOverlayTilt.floatValue)
+            }
+        }
+    } else if (puckOverlayOn.value) {
         val puckKey = app.vela.ui.PuckStyle.key()
         val puckImg = remember(puckKey) { navPuckBitmap().asImageBitmap() }
         val sizePx = puckImg.width
