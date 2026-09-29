@@ -556,6 +556,12 @@ Constraints:
   overrides when set), because a browser that never sends it looks less like one. Measured neutral on page timing once the response streams.
 - Every dial can be overridden on a device with `adb shell setprop debug.vela.tune.<key> <n>`
   (`ui/AppTune`), for testing without a calibration push.
+- `debug.vela.tune.demoClock <minutes since midnight>` is the screenshot clock (`ui/DemoClock`),
+  read from the property alone (`AppTune.local`), never from a bundle. Set, it pins "now" to the
+  time's next occurrence: place status lines are recomputed from the place's own hours at that
+  time, the arrival clock counts from it, and transit boards (`stoptimes&time=`), stop countdowns
+  and itineraries ("leave now" sent as "depart at") are fetched for it, so a shot taken at night
+  under a demo-mode noon status bar reads as noon throughout.
 
 - **Limited-view detection** (`web/GoogleStanding`): the session is marked limited when the first
   `hspqX` photo page returns at most 20 photos with a next page waiting (50 are asked for; a full
@@ -2468,6 +2474,12 @@ Details:
   (`Transitous.displayName`). Around Bryant Park: 78 icons became 55.
 - Where the Transitous layer has coverage, the basemap's OSM bus icons hide by filter (rail and
   airport stay), so a stop cannot draw twice.
+- **A looping run boards at the tapped lap.** Some agencies publish one GTFS trip for a whole day
+  of laps (a Davis Unitrans line from September 2026: 589 stops, 6:55 AM to 9 PM), so the tapped
+  stop recurs once per lap. `Transitous.buildTripStep` treats every stop within
+  `LAP_SAME_STOP_M` (30 m) of the nearest as a pass, boards at the pass whose time is nearest the
+  tapped departure, and shows one lap: prior stops from the previous pass, the timeline to the
+  next pass. Without the time the first pass boards, which listed the morning's whole day.
 - Every successful viewport fetch overwrites its area in a 24-area on-disk LRU
   (`TransitStopCache`), so visited areas keep canonical stops with no signal.
 - **Every board fetched is kept on disk (`TransitBoardCache`, newest 48, keyed by the stop's

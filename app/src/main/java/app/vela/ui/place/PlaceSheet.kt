@@ -1003,23 +1003,24 @@ fun PlaceSheet(
             // over a real closure.
             // Ticks each minute so a sheet left open crosses an open/close boundary instead of showing
             // "Open · Closes 9 PM" forever after 9 PM (the fallback is only used when Google sent no status).
-            val nowMinute by produceState(initialValue = java.time.LocalDateTime.now()) {
+            val nowMinute by produceState(initialValue = app.vela.ui.DemoClock.now() ?: java.time.LocalDateTime.now()) {
                 while (true) {
                     kotlinx.coroutines.delay(60_000)
-                    value = java.time.LocalDateTime.now()
+                    value = app.vela.ui.DemoClock.now() ?: java.time.LocalDateTime.now()
                 }
             }
             val computedStatus = remember(place.hours, nowMinute) {
                 app.vela.core.util.OpeningHours.statusAt(place.hours, nowMinute)
             }
-            val statusLine = place.statusText
+            val demoStatus = app.vela.ui.DemoClock.status(place) // screenshot clock, off unless the dial is set
+            val statusLine = demoStatus?.first ?: place.statusText
                 ?: computedStatus?.let { (if (it.open) "Open" else "Closed") + " · " + it.detail }
             statusLine?.takeIf { !place.permanentlyClosed && !place.temporarilyClosed }?.let { status ->
                 // Google colors the status word (Open/Closed) and keeps the time
                 // in the normal ink color: "**Open** · Closes 9 PM".
                 val parts = status.split(Regex("\\s*[·⋅]\\s*"), limit = 2)
                 val annotated = buildAnnotatedString {
-                    withStyle(SpanStyle(color = placeStatusColor(status, place.openNow), fontWeight = FontWeight.Bold)) {
+                    withStyle(SpanStyle(color = placeStatusColor(status, demoStatus?.second ?: place.openNow), fontWeight = FontWeight.Bold)) {
                         append(parts[0])
                     }
                     if (parts.size > 1) {
@@ -2267,10 +2268,10 @@ private fun TransitBoard(
         else -> {
             // One shared clock so every row's "departs in X min" countdown ticks together
             // (recomputed each minute against the parsed departure epochs).
-            val nowSec by produceState(initialValue = System.currentTimeMillis() / 1000L) {
+            val nowSec by produceState(initialValue = app.vela.ui.DemoClock.nowSec()) {
                 while (true) {
                     delay(30_000L)
-                    value = System.currentTimeMillis() / 1000L
+                    value = app.vela.ui.DemoClock.nowSec()
                 }
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2675,8 +2676,8 @@ private fun StopDepartureBoard(
         }
         return
     }
-    val nowSec by produceState(initialValue = System.currentTimeMillis() / 1000L) {
-        while (true) { delay(30_000L); value = System.currentTimeMillis() / 1000L }
+    val nowSec by produceState(initialValue = app.vela.ui.DemoClock.nowSec()) {
+        while (true) { delay(30_000L); value = app.vela.ui.DemoClock.nowSec() }
     }
     // Google-style clean list: plain tappable rows separated by hairline dividers (no per-row
     // chevron - the row itself opens the route, and its Material ripple is the affordance).

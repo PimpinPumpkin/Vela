@@ -2514,7 +2514,7 @@ class MapViewModel @Inject constructor(
                 app.vela.ui.AppVisibility.foreground.first { it }
                 if (_state.value.selected?.id != selId) return@launch
                 val fresh = withContext(Dispatchers.IO) {
-                    runCatching { app.vela.core.data.transit.Transitous.board(http, lat, lng) }.getOrNull()
+                    runCatching { app.vela.core.data.transit.Transitous.board(http, lat, lng, app.vela.ui.DemoClock.epochSec()) }.getOrNull()
                 }
                 if (fresh != null && fresh.lines.isNotEmpty()) {
                     _state.update { st ->
@@ -2543,7 +2543,7 @@ class MapViewModel @Inject constructor(
         _state.update { if (owns(it)) it.copy(stopDeparturesLoading = true, stopDeparturesFor = p.id) else it }
         viewModelScope.launch {
             val board = withContext(Dispatchers.IO) {
-                runCatching { app.vela.core.data.transit.Transitous.board(http, p.location.lat, p.location.lng) }.getOrNull()
+                runCatching { app.vela.core.data.transit.Transitous.board(http, p.location.lat, p.location.lng, app.vela.ui.DemoClock.epochSec()) }.getOrNull()
             }
             android.util.Log.i("VelaDepartures", "transitous lines=${board?.lines?.size ?: -1}")
             if (board != null && board.lines.isNotEmpty()) {
@@ -2646,11 +2646,12 @@ class MapViewModel @Inject constructor(
             // flags straight from the agency feed - exact where the itinerary reuse below has to
             // guess at a matching leg, and no headsign geocode at all. Google-fallback boards carry
             // no tripId, and a failed trip fetch falls through to the itinerary path.
-            val tripId = line.upcoming.firstOrNull { it.tripId != null }?.tripId
+            val tapped = line.upcoming.firstOrNull { it.tripId != null }
+            val tripId = tapped?.tripId
             val gtfs = tripId?.let {
                 withContext(Dispatchers.IO) {
                     runCatching {
-                        app.vela.core.data.transit.Transitous.tripStops(http, it, origin.lat, origin.lng)
+                        app.vela.core.data.transit.Transitous.tripStops(http, it, origin.lat, origin.lng, tapped.epochSec)
                     }.getOrNull()
                 }
             }
@@ -4041,7 +4042,7 @@ class MapViewModel @Inject constructor(
                 _state.update { if (isPlaceholder(it.selected, placeholder)) it.copy(stopDeparturesLoading = true, stopDeparturesFor = placeholder.id) else it }
                 val board = withContext(Dispatchers.IO) {
                     runCatching {
-                        app.vela.core.data.transit.Transitous.board(http, location.lat, location.lng)
+                        app.vela.core.data.transit.Transitous.board(http, location.lat, location.lng, app.vela.ui.DemoClock.epochSec())
                     }.getOrNull()
                 }
                 android.util.Log.i("VelaDepartures", "hinted-tap fallback lines=${board?.lines?.size ?: -1}")
@@ -5229,7 +5230,11 @@ class MapViewModel @Inject constructor(
 
     /** Transit itineraries: Google's page first (traffic-aware and history-aware times), Transitous'
      *  own planner when Google is off or answered nothing (2026-09-28). One shape either way. */
-    private suspend fun transitTrips(origin: LatLng, dest: LatLng, timeMode: Int = 0, timeEpochSec: Long? = null, prefer: Set<Int> = emptySet()): List<app.vela.core.model.TransitItinerary> {
+    private suspend fun transitTrips(origin: LatLng, dest: LatLng, timeModeIn: Int = 0, timeEpochSecIn: Long? = null, prefer: Set<Int> = emptySet()): List<app.vela.core.model.TransitItinerary> {
+        // The screenshot clock dial turns "leave now" into "depart at" the pinned time.
+        val demo = app.vela.ui.DemoClock.epochSec()
+        val timeMode = if (timeModeIn == 0 && demo != null) 1 else timeModeIn
+        val timeEpochSec = if (timeModeIn == 0 && demo != null) demo else timeEpochSecIn
         val google = if (googleOff()) emptyList() else runCatching { webDirections.transit(origin, dest, timeMode, timeEpochSec, prefer) }.getOrDefault(emptyList())
         if (google.isNotEmpty()) return google
         return withContext(Dispatchers.IO) {
@@ -7701,7 +7706,7 @@ class MapViewModel @Inject constructor(
         if (offlineNow()) { showCachedBoard(placeholder); return }
         viewModelScope.launch {
             val board = withContext(Dispatchers.IO) {
-                runCatching { app.vela.core.data.transit.Transitous.boardFor(http, stop) }.getOrNull()
+                runCatching { app.vela.core.data.transit.Transitous.boardFor(http, stop, app.vela.ui.DemoClock.epochSec()) }.getOrNull()
                     ?.also { if (it.lines.isNotEmpty()) transitBoardCache.put(stop.lat, stop.lon, it) }
             }
             _state.update { st ->

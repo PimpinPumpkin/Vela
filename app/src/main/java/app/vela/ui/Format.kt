@@ -86,7 +86,7 @@ object Clock24 {
 /** Wall-clock arrival time for a trip [remainingSeconds] from now, e.g. "7:42 PM" or "19:42",
  *  following the device's 12/24-hour setting, the way Google shows ETA during navigation. */
 fun formatArrivalClock(remainingSeconds: Double): String {
-    val arrival = java.time.LocalTime.now().plusSeconds(remainingSeconds.toLong())
+    val arrival = (DemoClock.now()?.toLocalTime() ?: java.time.LocalTime.now()).plusSeconds(remainingSeconds.toLong())
     val fmt = if (Clock24.on.value) java.time.format.DateTimeFormatter.ofPattern("HH:mm")
         else java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
     return arrival.format(fmt)

@@ -3437,12 +3437,12 @@ private fun SearchResults(
                             color = SheetPalette.TrafficRed,
                             modifier = Modifier.padding(top = 3.dp),
                         )
-                    } else place.statusText?.let { status ->
+                    } else (app.vela.ui.DemoClock.status(place)?.first ?: place.statusText)?.let { status ->
                         Text(
                             status,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
-                            color = placeStatusColor(status, place.openNow),
+                            color = placeStatusColor(status, app.vela.ui.DemoClock.status(place)?.second ?: place.openNow),
                             modifier = Modifier.padding(top = 3.dp),
                         )
                     }

@@ -101,23 +101,25 @@ object Transitous {
 
     /** The board for a KNOWN stop (a tapped map icon) - no proximity lookup needed. Queries the
      *  parent station when the stop has one, so a hub icon shows the whole merged board. */
-    fun boardFor(http: OkHttpClient, stop: MapStop): StopDepartures? {
+    fun boardFor(http: OkHttpClient, stop: MapStop, timeEpochSec: Long? = null): StopDepartures? {
         val ids = (listOf(stop.parentId ?: stop.stopId) + stop.siblingIds).distinct()
-        val times = timesFor(http, ids).ifEmpty { return null }
+        val times = timesFor(http, ids, timeEpochSec).ifEmpty { return null }
         return buildBoard(times, stationName = stop.name)
     }
 
     private val pool = java.util.concurrent.Executors.newCachedThreadPool { r -> Thread(r, "transitous").apply { isDaemon = true } }
 
     /** Departures for every id, fetched in parallel, in id order. */
-    private fun timesFor(http: OkHttpClient, ids: List<String>): List<StopTime> =
-        if (ids.size <= 1) ids.flatMap { stopTimes(http, it) }
-        else ids.map { id -> pool.submit<List<StopTime>> { stopTimes(http, id) } }
+    private fun timesFor(http: OkHttpClient, ids: List<String>, timeEpochSec: Long? = null): List<StopTime> =
+        if (ids.size <= 1) ids.flatMap { stopTimes(http, it, timeEpochSec = timeEpochSec) }
+        else ids.map { id -> pool.submit<List<StopTime>> { stopTimes(http, id, timeEpochSec = timeEpochSec) } }
             .flatMap { runCatching { it.get() }.getOrDefault(emptyList()) }
 
-    /** The next [n] departures at [stopId] (a parent-station id aggregates all its child stops). */
-    fun stopTimes(http: OkHttpClient, stopId: String, n: Int = 50): List<StopTime> {
-        val url = "$BASE/api/v1/stoptimes?stopId=${URLEncoder.encode(stopId, "UTF-8")}&n=$n"
+    /** The next [n] departures at [stopId] (a parent-station id aggregates all its child stops),
+     *  from now or from [timeEpochSec]. */
+    fun stopTimes(http: OkHttpClient, stopId: String, n: Int = 50, timeEpochSec: Long? = null): List<StopTime> {
+        val url = "$BASE/api/v1/stoptimes?stopId=${URLEncoder.encode(stopId, "UTF-8")}&n=$n" +
+            (timeEpochSec?.let { "&time=" + java.time.Instant.ofEpochSecond(it) } ?: "")
         val body = get(http, url) ?: return emptyList()
         return runCatching { json.decodeFromString<StopTimesResp>(body).stopTimes }.getOrDefault(emptyList())
     }
@@ -129,7 +131,7 @@ object Transitous {
      * countdowns, day markers) renders it unchanged. Null when Transitous has nothing here (no
      * coverage, no stop, network failure) - the caller falls back to the Google path.
      */
-    fun board(http: OkHttpClient, lat: Double, lng: Double): StopDepartures? {
+    fun board(http: OkHttpClient, lat: Double, lng: Double, timeEpochSec: Long? = null): StopDepartures? {
         val stops = stopsNear(http, lat, lng)
         if (stops.isEmpty()) return null
         // Prefer the nearest stop's PARENT station (aggregates every bay), and fold in any
@@ -142,7 +144,7 @@ object Transitous {
                 distM(nearest.lat, nearest.lon, it.lat, it.lon) < COLOCATED_M }
             .map { it.parentId ?: it.stopId }
             .distinct()
-        val times = timesFor(http, ids).ifEmpty { return null }
+        val times = timesFor(http, ids, timeEpochSec).ifEmpty { return null }
         return buildBoard(times, stationName = nearest.name)
     }
 
@@ -231,6 +233,7 @@ object Transitous {
     }
 
     private const val PAIR_MERGE_M = 160.0
+    private const val LAP_SAME_STOP_M = 30.0
     private const val COLOCATED_M = 3.0
 
     /** Pure grouping of raw stop times into the board model (unit-tested; no network). */
@@ -320,14 +323,17 @@ object Transitous {
      * SAME [TransitStep] the timeline UI already renders. Null on any failure - the caller falls back
      * to the itinerary-reuse path.
      */
-    fun tripStops(http: OkHttpClient, tripId: String, atLat: Double, atLng: Double): TransitStep? {
+    fun tripStops(http: OkHttpClient, tripId: String, atLat: Double, atLng: Double, atEpochSec: Long? = null): TransitStep? {
         val body = get(http, "$BASE/api/v1/trip?tripId=${URLEncoder.encode(tripId, "UTF-8")}") ?: return null
         val leg = runCatching { json.decodeFromString<TripResp>(body).legs.firstOrNull() }.getOrNull() ?: return null
-        return buildTripStep(leg, atLat, atLng)
+        return buildTripStep(leg, atLat, atLng, atEpochSec)
     }
 
-    /** Pure mapping of a trip leg into the timeline's [TransitStep] (unit-tested; no network). */
-    internal fun buildTripStep(leg: TripLeg, atLat: Double, atLng: Double): TransitStep? {
+    /** Pure mapping of a trip leg into the timeline's [TransitStep] (unit-tested; no network).
+     *  [atEpochSec] is the tapped departure's time: on a LOOPING trip (one GTFS trip for a whole
+     *  day of laps, which some agencies publish) the tapped stop recurs every lap, and the time
+     *  picks the lap. */
+    internal fun buildTripStep(leg: TripLeg, atLat: Double, atLng: Double, atEpochSec: Long? = null): TransitStep? {
         val all = buildList {
             add(leg.from)
             addAll(leg.intermediateStops)
@@ -338,10 +344,20 @@ object Transitous {
         // GTFS stop AND from a Google-resolved listing on a different corner); the stops the run
         // already called at go into priorStops so the view can show them grayed above, Google-style.
         // A terminus tap boards at the origin instead (an arrivals-only view has no ride left).
-        val idx = (all.indices.minByOrNull { i -> distM(atLat, atLng, all[i].lat, all[i].lon) } ?: 0)
-            .let { if (it >= all.size - 1) 0 else it }
-        val prior = all.subList(0, idx).map { st -> stopTime(st, legCanceled = leg.cancelled) }
-        val mapped = all.subList(idx, all.size).map { st -> stopTime(st, legCanceled = leg.cancelled) }
+        val dist = all.map { distM(atLat, atLng, it.lat, it.lon) }
+        val nearest = dist.minOrNull() ?: 0.0
+        // Every pass the trip makes at the tapped stop (a loop calls there once per lap).
+        val passes = all.indices.filter { dist[it] <= nearest + LAP_SAME_STOP_M }
+        val epochOf = { st: TripStop -> (st.departure ?: st.arrival ?: st.scheduledDeparture ?: st.scheduledArrival)?.let { parseIso(it) } }
+        val pick = if (atEpochSec != null && passes.size > 1)
+            passes.minByOrNull { i -> epochOf(all[i])?.let { kotlin.math.abs(it - atEpochSec) } ?: Long.MAX_VALUE } ?: passes.first()
+        else passes.firstOrNull() ?: 0
+        val idx = if (pick >= all.size - 1) 0 else pick
+        // One lap: from the previous pass (where this lap began) to the next one (where it ends).
+        val lapStart = passes.lastOrNull { it < idx } ?: 0
+        val lapEnd = passes.firstOrNull { it > idx }?.let { it + 1 } ?: all.size
+        val prior = all.subList(lapStart, idx).map { st -> stopTime(st, legCanceled = leg.cancelled) }
+        val mapped = all.subList(idx, lapEnd).map { st -> stopTime(st, legCanceled = leg.cancelled) }
         return TransitStep(
             mode = modeOf(leg.mode),
             line = TransitLine(

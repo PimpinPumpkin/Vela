@@ -102,6 +102,34 @@ class TransitousTest {
     }
 
     @Test
+    fun `a looping trip boards at the lap matching the tapped departure and shows one lap`() {
+        // One GTFS trip for a whole day of laps: the terminal is called at every lap.
+        val term = { t: String -> ts("Terminal", "s1", 37.00, -122.00, t) }
+        val leg = Transitous.TripLeg(
+            from = term("2026-01-01T07:00:00Z"),
+            intermediateStops = listOf(
+                ts("North", "s2", 37.01, -122.00, "2026-01-01T07:10:00Z"),
+                term("2026-01-01T07:20:00Z"),
+                ts("North", "s2", 37.01, -122.00, "2026-01-01T07:30:00Z"),
+                term("2026-01-01T07:40:00Z"),
+                ts("North", "s2", 37.01, -122.00, "2026-01-01T07:50:00Z"),
+            ),
+            to = term("2026-01-01T08:00:00Z"),
+            mode = "BUS", routeShortName = "A",
+        )
+        val at = java.time.Instant.parse("2026-01-01T07:20:00Z").epochSecond
+        val step = Transitous.buildTripStep(leg, atLat = 37.00, atLng = -122.00, atEpochSec = at)!!
+        assertEquals("7:20 AM", step.boardStop?.timeText)
+        assertEquals(listOf("Terminal", "North"), step.priorStops.map { it.name })
+        assertEquals(listOf("North"), step.intermediateStops.map { it.name })
+        assertEquals("7:40 AM", step.alightStop?.timeText)
+        // Without a time the first pass boards, and the lap still ends at the next pass.
+        val first = Transitous.buildTripStep(leg, atLat = 37.00, atLng = -122.00)!!
+        assertEquals("7:00 AM", first.boardStop?.timeText)
+        assertEquals("7:20 AM", first.alightStop?.timeText)
+    }
+
+    @Test
     fun `board departures carry the trip id and drop canceled runs`() {
         val live = st("7", "Uptown", "2026-01-01T10:00:00Z").copy(tripId = "t-1")
         val gone = st("7", "Uptown", "2026-01-01T10:30:00Z").copy(tripId = "t-2", tripCancelled = true)

@@ -209,6 +209,11 @@ Tapping **Stops** on a board row fetches, in this order:
      your stop.
    - Tapping at the **terminus** boards at the origin instead, since an arrivals-only view has no
      ride left.
+   - A **looping run** calls at your stop once per lap: some agencies publish one trip for a
+     whole day of laps (a Davis Unitrans line in September 2026 was 589 stops, 6:55 AM to 9 PM).
+     Every stop within 30 m of the nearest counts as a pass; the timeline boards at the pass whose
+     time is nearest the departure you tapped and shows that one lap, from the previous pass to
+     the next.
    - A stop whose time moved shows the timetable time crossed out beside the live one: **red when
      late, green when on time or early**, with a "Live" or "Scheduled" word under it.
    - A **canceled** stop, or every stop of a canceled run, is struck through and marked

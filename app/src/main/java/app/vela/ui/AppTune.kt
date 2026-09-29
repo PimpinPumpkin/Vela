@@ -9,12 +9,16 @@ import app.vela.core.config.CalibrationStore
  * field can change them.
  */
 object AppTune {
-    fun value(key: String, default: Double): Double {
-        val local = runCatching {
-            @Suppress("PrivateApi")
-            Class.forName("android.os.SystemProperties").getMethod("get", String::class.java).invoke(null, "debug.vela.tune.$key") as? String
-        }.getOrNull()?.toDoubleOrNull()
-        return local ?: CalibrationStore.latest.tune(key, default)
+    fun value(key: String, default: Double): Double = local(key) ?: CalibrationStore.latest.tune(key, default)
+
+    /** The adb override alone, never the bundle: for a dial that must stay a device-only test hook.
+     *  Cheap enough for composition (the screenshot clock reads it per result row). */
+    fun local(key: String): Double? = runCatching { sysGet?.invoke(null, "debug.vela.tune.$key") as? String }
+        .getOrNull()?.toDoubleOrNull()
+
+    @Suppress("PrivateApi")
+    private val sysGet by lazy {
+        runCatching { Class.forName("android.os.SystemProperties").getMethod("get", String::class.java) }.getOrNull()
     }
 
     fun on(key: String, default: Boolean): Boolean = value(key, if (default) 1.0 else 0.0) >= 0.5

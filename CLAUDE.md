@@ -2369,13 +2369,15 @@ Defaults that make the safe path the easy one:
   shot leads the table, the transit shot shows the SCHEDULE BOARD with the ambient
   transit-lines layer toggled OFF for the shot (the purple lines over the map read as ugly; the
   schedules themselves are liked), and Install sits directly UNDER
-  the screenshots. **Full retake 2026-07-16 (supersedes the Pixel 9 browse shots):** all 11
-  shots (incl. the new 11-stop-list.png bus route timeline) shot on the 4a 5G with SystemUI
-  demo mode (clock 1200, battery 100, icons hidden) and sim-location at the Davis fixture
-  spots. **Shoot AFTER 11:30 AM Pacific**: the open/closed badge is decided by Google's
-  servers at request time, so a spoofed clock can't make a closed Mikuni read "Open" - the
-  demo clock only needs to AGREE with real time (noon clock, midday shoot, arrival times and
-  departure boards all stay coherent). Camera counts on the route picker need Avoid
+  the screenshots. **Full retake 2026-09-28 (the same 11 spots as 2026-07-16, new UI):** shot on
+  the 4a 5G with SystemUI demo mode (clock 1200, battery 100, icons hidden), sim-location
+  downtown Davis, road label on its default placement, and the SCREENSHOT CLOCK DIAL
+  `adb shell setprop debug.vela.tune.demoClock 720` (`ui/DemoClock`, SPEC 3): it recomputes the
+  open/closed line from the place's hours at noon, counts the arrival clock from noon, and fetches
+  transit boards and itineraries for the next noon, so the set can be shot at any hour. Clear it
+  after (`setprop debug.vela.tune.demoClock ''`). The transit shot is framed by expanding and
+  collapsing the first itinerary (the fit stays); the stop list is the A line from Memorial Union
+  and the K line from Powell. Camera counts on the route picker need Avoid
   surveillance cameras ON for the shot (restore OFF after). The site (site/assets/*.webp)
   carries the same shots at 720px q82. Site assets are ALL bundled locally (no hotlinks -
   the page makes zero external requests): the Obtainium/F-Droid badges are committed copies
@@ -6502,7 +6504,11 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   gray rail (the colored rail starts at your stop, Google's treatment) and opens scrolled to the
   boarding stop (`rememberLazyListState(initialFirstVisibleItemIndex = priors)`). A moved time
   renders the timetable time struck through beside the live one - red when late, green when early
-  or on time (`TransitStopTime.delayMin`, signed; the feed carries EARLY runs too, verified live). The headsign-geocode + itinerary-reuse path (`itineraryStep`) remains the FALLBACK for
+  or on time (`TransitStopTime.delayMin`, signed; the feed carries EARLY runs too, verified live).
+  **A LOOPING trip picks its lap by the tapped departure's time (2026-09-28):** a Davis Unitrans
+  line became ONE trip per bus per day (589 stops, the stop recurring every lap), and nearest-stop
+  boarding took the 6:55 AM pass and listed the whole day; `tripStops` now takes the departure's
+  epoch and the timeline is one lap (SPEC 8). The headsign-geocode + itinerary-reuse path (`itineraryStep`) remains the FALLBACK for
   Google-fallback boards (their departures carry no tripId) and trip-fetch failures. NB transit
   DIRECTIONS still ride Google on purpose (traffic-aware ETAs) - this moved only the stops list.
   Boards still DROP fully-canceled runs (`canceled`/`tripCanceled`/`place.canceled`); showing
