@@ -1173,8 +1173,12 @@ and 2/29/7/38/34/13/9/36; the work only moved later. What the dips in seconds 3 
 control 1/33/6/28/34/18/26/41; the basemap's label layers alone change nothing, and no single
 Vela symbol layer (the bubbles, the controls and cameras, the places and markers) accounts for
 it on its own. The cost is the combined symbol placement of Vela's runtime layers while the
-follow camera flies in. The open lead: keep those layers hidden until the fly-in settles and
-reveal them once, so placement runs once instead of every frame of the fly-in; unmeasured.
+follow camera flies in. Tried next, and not kept: hiding those layers (places, markers, controls, cameras, saved pins)
+for the first 2.5 s of the drive and revealing them once. Two alternating runs each, fps per
+second: 2/28/15/45/29/22/13/45 and 2/33/9/44/28/17/25/42 against 2/31/6/26/33/28/26/36 and
+2/29/11/29/36/21/18/43; the reveal has its own dip and the average over seconds 2 to 7 moved 2
+fps, inside the run-to-run noise. The fly-in's placement cost is the map's, and the remaining
+lever is fewer symbol layers at the nav zoom.
 Those figures are a WALKING demo route (the phone's sticky mode at the time). The same start in
 DRIVE mode, per second from Start, pre-fix build: 2, 26, 7, 27, 34, 19, 21, 36, then 53 at 9 s;
 fixed build: 0, 19, 39, 41, 48, 50, 56, 58. The dips in seconds 3 to 8 are gone.

@@ -3341,8 +3341,9 @@ architecture note.
   BUT repeated alternating runs put the two builds about level, so treat the voice/WebView fixes as
   CPU and heat savings, not the jitter fix. The bisect (SPEC 4.7a) says the seconds-3-to-8 dips are
   the combined placement of Vela's own symbol layers during the fly-in; deferring the declutter
-  and slowing the zoom only moved the work later (measured, reverted). Next lead: hide the `vela-`
-  symbol layers until the fly-in settles, reveal once.
+  and slowing the zoom only moved the work later (measured, reverted). Hiding the `vela-`
+  symbol layers until the fly-in settles and revealing once was measured too (2 fps, noise) and
+  not kept; what is left is fewer symbol layers at the nav zoom.
   Measure with `debug.vela.fps` + Perfetto on the 4a; the P9's GrapheneOS gives no ftrace to a
   shell trace, and a demo route there uses the phone's STICKY travel mode (a walking demo buzzes
   the walk turn cues).
