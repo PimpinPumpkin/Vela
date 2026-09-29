@@ -1914,7 +1914,10 @@ colored in **all four** apply functions: an unstyled runtime `LineLayer` renders
 - Dark: land `#162640`, other landuse `#1c2638`, water `#000d2a` (darker than the land, and the
   inverted relationship matters), vegetation `#0d3847` (teal), buildings `#1c3b69` with outline
   `#2e3d6d`, minor roads `#3d5a77`, arterials and motorway `#476789`, casings equal to the land,
-  service and alley `#2a4056`, trails `#167055`, pitches `#0d4956`.
+  service and alley `#2a4056`, trails `#167055`, pitches `#0d4956`, airport area `#1c2638`
+  with runways and taxiways `#2a4056`. Every dark palette themes Liberty's `aeroway_*` layers:
+  left alone they keep the light style's pale fill and near-white runways, and an airport drew
+  as a light block at night.
 - Bike paths (OSM `highway=cycleway`) draw teal, `#007b8b` light and `#1f8f9c` dark, split out
   of the trails layer, which keeps foot paths green. On-street painted lanes are not in the tile
   schema and are not drawn.
@@ -1931,11 +1934,12 @@ colored in **all four** apply functions: an unstyled runtime `LineLayer` renders
 - Dark: land `#242f3e`, water `#17263c`, park and grass `#2c4a34`, wood `#274330`, wetland
   `#26403c`, plaza and other landuse `#2a3546` at opacity 0.5, buildings `#323f54` with outline
   `#3f4e66`, roads `#49536a` minor, `#5e6a85` secondary, `#6f7a96` trunk and motorway, casings
-  equal to the land.
+  equal to the land. The shipped classic dark (`applyClassicDark`, the neutral slate re-tune)
+  draws the airport area `#31363f` with runways `#565b64`.
 
 **AMOLED**: land `#000000`, water `#04080C`, vegetation `#050E0A`, buildings `#0A0C0F` with
 outline `#14171A`, minor roads `#1A1D22`, service `#111418`, trunk and motorway `#22262C`,
-casings `#000000`, text halos `#000000`. It layers on `applyDark` so anything it does not touch
+casings `#000000`, text halos `#000000`, airport area `#0A0C0F` with runways `#1A1D22`. It layers on `applyDark` so anything it does not touch
 inherits dark styling rather than Liberty's light defaults. A palette function must not change
 zoom gates or extrusion opacity; those belong in `ensureLayers` and `applyDark`.
 
@@ -2482,6 +2486,9 @@ Details:
   `LAP_SAME_STOP_M` (30 m) of the nearest as a pass, boards at the pass whose time is nearest the
   tapped departure, and shows one lap: prior stops from the previous pass, the timeline to the
   next pass. Without the time the first pass boards, which listed the morning's whole day.
+- **The transit chooser frames the trip.** An expanded row frames its legs; with none expanded
+  the camera frames the trip's own points (start, stops, destination), like the route fit for
+  drive. The chooser's taller panel must not drop that fit and fly to the destination alone.
 - Every successful viewport fetch overwrites its area in a 24-area on-disk LRU
   (`TransitStopCache`), so visited areas keep canonical stops with no signal.
 - **Every board fetched is kept on disk (`TransitBoardCache`, newest 48, keyed by the stop's

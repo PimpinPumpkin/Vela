@@ -3634,6 +3634,11 @@ private fun MapSurface(
             else -> null
         },
         transitNavLeg = state.transitNav?.stepIndex,
+        tripEndpoints = if (state.transitNav == null && state.directionsOpen && !state.navigating && !state.replaying &&
+            state.travelMode == app.vela.core.model.TravelMode.TRANSIT && state.transitPreview == null) {
+            listOfNotNull(state.directionsOrigin?.location ?: state.myLocation) +
+                state.directionsWaypoints.map { it.location } + listOfNotNull(state.selected?.location)
+        } else emptyList(),
         // Grayed, tappable alternates (Google-style) — only off-nav, with a chooser up.
         alternates = if (state.navigating) emptyList() else run {
             val activeIdx = state.routes.indexOf(state.activeRoute)

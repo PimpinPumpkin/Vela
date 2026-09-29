@@ -3700,6 +3700,10 @@ architecture note.
   - AND Liberty's own `landuse_pitch`/`landuse_track` layers (they sit ABOVE the twin) are
   colored directly + exempted from the landuse-neutralize loops, else the tint never showed
   (found at a park with ball courts).
+  AIRPORTS: Liberty's `aeroway_fill` / `aeroway_runway` / `aeroway_taxiway` carry light-map
+  colors and no pass reached them until 2026-09-28, so every airport drew as a pale block on the
+  dark map; all three dark palettes theme them now (SPEC 6.2). A Liberty layer the palette fns do
+  not name keeps its light default in dark mode: check new ones.
   Trail light = #7fcdb0 (P9-SAMPLED); pitch light = #a9eac2 (P9-SAMPLED at Toomey Field,
   no estimates left); campuses (landuse_school) = #f0eded warm gray (sampled at UC Davis,
   light only - dark keeps the neutralized land).
@@ -6351,7 +6355,10 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   top (board/alight large, in-between small) and walk legs as dotted gray links, all inserted below
   the route line layer (empty in transit mode) so the drawing sits above roads + the satellite
   raster and below labels; a camera-fit branch (sibling of the route fit, keyed on coords + insets)
-  frames the trip between the endpoints card and the chooser. MapScreen gates the param to the
+  frames the trip between the endpoints card and the chooser; with NO row expanded the same
+  branch frames `tripEndpoints` (start, stops, destination, computed in MapSurface) and the inset
+  growth does not null the camera target, or the transit tab flew to the destination alone
+  (2026-09-28). MapScreen gates the param to the
   open, non-navigating TRANSIT chooser - OR to step-by-step transit nav (issue #232, 2026-08-08,
   device-verified): there the WHOLE guided itinerary draws and `transitNavLeg` (the guided leg's
   index) narrows the camera fit to THAT leg's coords, re-framing on every Next/auto-advance;

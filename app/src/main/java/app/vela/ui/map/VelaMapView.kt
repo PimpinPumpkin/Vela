@@ -593,6 +593,10 @@ fun VelaMapView(
     // and the camera frames THAT leg instead of the whole trip, re-framing on each advance.
     transitPreview: app.vela.core.model.TransitItinerary? = null,
     transitNavLeg: Int? = null,
+    // The trip's own points (start, stops, destination) while the transit chooser is up with no
+    // row expanded: the camera frames the trip like the route fit does for drive. Without it the
+    // tab switch dropped the drive fit and the next frame flew to the destination alone.
+    tripEndpoints: List<LatLng> = emptyList(),
 
     // Per-segment live traffic as (startFraction, endFraction, level) along the route
     // — colors the route line like Google (free-flow elsewhere). Empty = no live data.
@@ -1000,6 +1004,7 @@ fun VelaMapView(
         val leg = transitNavLeg?.let { transitLegCoords(transitPreview, it) }
         if (!leg.isNullOrEmpty()) leg else all
     }
+    val transitFitCoords = transitPrevCoords.ifEmpty { tripEndpoints }
     var lastRecenterTick by remember { mutableStateOf(-1) }
     var lastFittedMarkersKey by remember { mutableStateOf<Int?>(null) }
     var lastPreviewTarget by remember { mutableStateOf<LatLng?>(null) }
@@ -3990,7 +3995,7 @@ fun VelaMapView(
             // Not while a route is up: the route fit re-frames for the new inset itself, and a
             // nulled target made the NEXT frame fly to the selected place, canceling that fit
             // (the chooser's "Compare routes" swap landed zoomed in on the destination, 2026-09-17).
-            if (grew && !(routePolyline.size >= 2 && !navMode)) lastCameraTarget = null // re-frame the current target against the new inset
+            if (grew && !(routePolyline.size >= 2 && !navMode) && transitFitCoords.size < 2) lastCameraTarget = null // re-frame the current target against the new inset
         }
         // While the results sheet is closed forget the last marker fit, so pulling the list back
         // up frames the cluster again even after a manual pan away - EXCEPT while a place sheet
@@ -4159,11 +4164,11 @@ fun VelaMapView(
             // visible strip between the endpoints card and the chooser, once per (itinerary,
             // insets) - the same grammar as the route fit above. routePolyline is empty in
             // transit mode, so the branches never compete.
-            transitPrevCoords.size >= 2 &&
-                (transitPrevCoords.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx) != lastFittedTransitKey -> {
-                lastFittedTransitKey = transitPrevCoords.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx
+            transitFitCoords.size >= 2 &&
+                (transitFitCoords.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx) != lastFittedTransitKey -> {
+                lastFittedTransitKey = transitFitCoords.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx
                 val builder = MLLatLngBounds.Builder()
-                transitPrevCoords.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
+                transitFitCoords.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
                 val fp = fitPadding(map, cameraTopInsetPx, cameraBottomInsetPx, 140)
                 runCatching {
                     flightDepth[0]++
@@ -6764,6 +6769,12 @@ internal fun applyDark(style: StyleLayers) {
     }
     style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#167055")) // park foot trails, sampled
     style.getLayer("vela-bikeroutes")?.setProperties(PropertyFactory.lineColor("#1f8f9c")) // bike teal, lightened for the dark land
+    // Airports: Liberty's aeroway layers carry light-map colors (a pale area, near-white runways)
+    // and no pass reached them, so every airport drew as a light block on the dark map.
+    style.getLayer("aeroway_fill")?.setProperties(PropertyFactory.fillColor("#1c2638"), PropertyFactory.fillOpacity(1f))
+    listOf("aeroway_runway", "aeroway_taxiway").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#2a4056"))
+    }
     // Terrain relief for the night palette: deep shadows + a cool blue-gray
     // highlight so ridges catch a little moonlight (a touch stronger than light).
     style.getLayer(HILLSHADE_LAYER)?.setProperties(
@@ -6839,6 +6850,10 @@ internal fun applyAmoled(style: StyleLayers) {
     }
     style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#1A3A28"))
     style.getLayer("vela-bikeroutes")?.setProperties(PropertyFactory.lineColor("#0D2D36"))
+    style.getLayer("aeroway_fill")?.setProperties(PropertyFactory.fillColor("#0A0C0F"), PropertyFactory.fillOpacity(1f))
+    listOf("aeroway_runway", "aeroway_taxiway").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#1A1D22"))
+    }
     style.getLayer(HILLSHADE_LAYER)?.setProperties(
         PropertyFactory.hillshadeExaggeration(0.3f),
         PropertyFactory.hillshadeShadowColor(black),
@@ -6997,6 +7012,10 @@ internal fun applyClassicDark(style: StyleLayers) {
     }
     style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#167055"))
     style.getLayer("vela-bikeroutes")?.setProperties(PropertyFactory.lineColor("#1f8f9c"))
+    style.getLayer("aeroway_fill")?.setProperties(PropertyFactory.fillColor("#31363f"), PropertyFactory.fillOpacity(1f))
+    listOf("aeroway_runway", "aeroway_taxiway").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#565b64"))
+    }
     style.getLayer(HILLSHADE_LAYER)?.setProperties(
         PropertyFactory.hillshadeExaggeration(0.4f),
         PropertyFactory.hillshadeShadowColor("#0b0d10"),
