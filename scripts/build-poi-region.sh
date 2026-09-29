@@ -42,9 +42,15 @@ COUNTS="$(cat "$WORK/$ID.db.counts.json")"
 UPDATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "→ $ID: ${SIZE} MB, bbox $BBOX"
 
-gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 || \
-  gh release create "$TAG" --repo "$REPO" --prerelease --title "Offline place packs" \
-    --notes "Prebuilt SQLite place/address packs (OpenStreetMap, ODbL) for Vela offline search. Data assets, not a code release."
+# Every GitHub call rides gh_retry: the repository's API budget is shared, and a rate-limited
+# "does the release exist" read as "no" and failed the create (audit 2026-09-29).
+source "$(dirname "$0")/gh-retry.sh"
+ensure_release() {
+  gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 || \
+    gh release create "$TAG" --repo "$REPO" --prerelease --title "Offline place packs" \
+      --notes "Prebuilt SQLite place/address packs (OpenStreetMap, ODbL) for Vela offline search. Data assets, not a code release."
+}
+gh_retry ensure_release
 
 # Revision + delta against the currently published pack, BEFORE the new zip clobbers it. The delta is
 # a small row-level SQLite (poipack_delta.py) the app can apply instead of re-downloading the full
@@ -67,7 +73,7 @@ if [ "$OLD_REV" -gt 0 ] && gh release download "$TAG" --repo "$REPO" -p "$ID.zip
       DSIZE_B=$(stat -f%z "$WORK/$ID.delta.zip" 2>/dev/null || stat -c%s "$WORK/$ID.delta.zip")
       FSIZE_B=$(stat -f%z "$WORK/$ID.zip" 2>/dev/null || stat -c%s "$WORK/$ID.zip")
       if [ "$DSIZE_B" -lt $(( FSIZE_B / 2 )) ]; then
-        gh release upload "$TAG" "$WORK/$ID.delta.zip" --clobber --repo "$REPO"
+        gh_retry gh release upload "$TAG" "$WORK/$ID.delta.zip" --clobber --repo "$REPO"
         DSIZE_MB=$(( ( DSIZE_B + 1048575 ) / 1048576 ))
         DELTA_JSON="$(jq -nc --arg url "https://github.com/$REPO/releases/download/$TAG/$ID.delta.zip" \
           --argjson from "$OLD_REV" --argjson size "$DSIZE_MB" '{fromRev:$from,url:$url,sizeMb:$size}')"
@@ -82,7 +88,7 @@ fi
 INSTALLED_MB=$(du -m "$WORK/$ID.db" | cut -f1)
 rm -f "$WORK/$ID.db"
 
-gh release upload "$TAG" "$WORK/$ID.zip" --clobber --repo "$REPO"
+gh_retry gh release upload "$TAG" "$WORK/$ID.zip" --clobber --repo "$REPO"
 
 ENTRY="$(jq -nc --arg id "$ID" --arg name "$NAME" --arg url "$ASSET_URL" --argjson size "$SIZE" --argjson bbox "$BBOX" \
   --argjson rev "$REV" --arg updated "$UPDATED_AT" --argjson counts "$COUNTS" --argjson delta "$DELTA_JSON" \

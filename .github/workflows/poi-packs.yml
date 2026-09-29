@@ -94,10 +94,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release view poi-packs --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
-            gh release create poi-packs --repo "$GITHUB_REPOSITORY" --prerelease \
-              --title "Offline place packs" \
-              --notes "Prebuilt SQLite place/address packs (OpenStreetMap, ODbL) for Vela offline search. Data assets, not a code release."
+          source scripts/gh-retry.sh
+          ensure_release() {
+            gh release view poi-packs --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+              gh release create poi-packs --repo "$GITHUB_REPOSITORY" --prerelease \
+                --title "Offline place packs" \
+                --notes "Prebuilt SQLite place/address packs (OpenStreetMap, ODbL) for Vela offline search. Data assets, not a code release."
+          }
+          gh_retry ensure_release
 
   build:
     needs: prep
