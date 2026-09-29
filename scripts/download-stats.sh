@@ -109,10 +109,13 @@ with open(os.path.join(out, 'regions.csv'), 'w', newline='') as f:
 print(f"app rows {len(app)}, data rows {len(data)}, region rows {len(where)}")
 PY
 
-# 4. Traffic and the repo counters. The traffic endpoints need push access and answer nothing
-# useful without it, so a failure here is recorded as blank rather than failing the snapshot.
-views=$(api "repos/$REPO/traffic/views" -q '"\(.count),\(.uniques)"' 2>/dev/null || echo ",")
-clones=$(api "repos/$REPO/traffic/clones" -q '"\(.count),\(.uniques)"' 2>/dev/null || echo ",")
+# 4. Traffic and the repo counters. The traffic endpoints need a token with Administration: read,
+# which the workflow's GITHUB_TOKEN never has, so in CI they answer 403 and are recorded as blanks
+# rather than failing the snapshot. The fallback must REPLACE the capture: `gh api` prints the
+# 403's JSON body on stdout, and `$(... || echo ",")` kept that body and appended the comma
+# (2026-09-21 and 09-28 rows held raw error JSON until this was fixed).
+views=$(api "repos/$REPO/traffic/views" -q '"\(.count),\(.uniques)"' 2>/dev/null) || views=","
+clones=$(api "repos/$REPO/traffic/clones" -q '"\(.count),\(.uniques)"' 2>/dev/null) || clones=","
 repo=$(api "repos/$REPO" -q '"\(.stargazers_count),\(.forks_count),\(.open_issues_count)"')
 TRAFFIC="$OUT/traffic.csv"
 [ -f "$TRAFFIC" ] || echo "snapshot,views,unique_views,clones,unique_clones,stars,forks,open_issues" > "$TRAFFIC"
@@ -123,7 +126,9 @@ echo "$DAY,$views,$clones,$repo" >> "$TRAFFIC"
 REFS="$OUT/referrers.csv"
 [ -f "$REFS" ] || echo "snapshot,referrer,views,unique_views" > "$REFS"
 grep -v "^$DAY," "$REFS" > "$REFS.tmp" && mv "$REFS.tmp" "$REFS"
-api "repos/$REPO/traffic/popular/referrers" \
-  -q ".[] | \"$DAY,\(.referrer),\(.count),\(.uniques)\"" 2>/dev/null >> "$REFS" || true
+# Same trap as above: append only on success, or the 403 body lands in the file.
+if refs=$(api "repos/$REPO/traffic/popular/referrers" -q ".[] | \"$DAY,\(.referrer),\(.count),\(.uniques)\"" 2>/dev/null); then
+  [ -n "$refs" ] && printf '%s\n' "$refs" >> "$REFS"
+fi
 
 echo "wrote $OUT"
