@@ -3327,6 +3327,17 @@ architecture note.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.
+- **NAV START WAS 2 TO 30 FPS FOR 15 SECONDS (2026-09-28, user: "jittery when just starting out",
+  a demo route, so not GPS).** SPEC 4.7a has the trace. The voice was the surprise: Piper synthesizes
+  the opener and the first prompts on two threads at default priority, 8.9 s of CPU in the first
+  17 s on a 4a, and the map's GL thread waited for a core; it speaks at nice 8 now
+  (`SPEAK_PRIORITY`, not BACKGROUND: the background cgroup would delay a prompt by seconds). Plus:
+  no details page or review page for the sheet's place while navigating (a WebView boot on the
+  main thread, 757 ms), and the road-features file is parsed while the chooser is up. Left: the
+  fly-in's tile burst (four workers saturated for ~4 s) and the nav chrome's first measure.
+  Measure with `debug.vela.fps` + Perfetto on the 4a; the P9's GrapheneOS gives no ftrace to a
+  shell trace, and a demo route there uses the phone's STICKY travel mode (a walking demo buzzes
+  the walk turn cues).
 - **A PARKED DRIVE DRAWS NOTHING (2026-09-25, a "device runs very hot" report).** The nav
   ticker re-uploaded the location dot's GeoJSON every frame before the arrow engaged (a parked car
   never engages) and called `moveCamera` every frame after, so a route left up while stationary

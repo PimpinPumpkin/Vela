@@ -30,7 +30,7 @@ class PiperSynth @Inject constructor(
 ) : NeuralSynth {
 
     private val worker = Executors.newSingleThreadExecutor { r ->
-        Thread(r, "piper-tts").apply { isDaemon = true }
+        Thread({ android.os.Process.setThreadPriority(SPEAK_PRIORITY); r.run() }, "piper-tts").apply { isDaemon = true }
     }
 
     @Volatile private var tts: OfflineTts? = null
@@ -116,18 +116,19 @@ class PiperSynth @Inject constructor(
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
             try { ensureLoaded() } finally {
                 warmingTid = 0
-                android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_DEFAULT)
+                android.os.Process.setThreadPriority(SPEAK_PRIORITY)
             }
         }
     }
 
     @Volatile private var warmingTid = 0
 
-    /** A prompt is waiting: finish any background warm-up at normal priority. */
+    /** A prompt is waiting: finish any background warm-up at the speaking priority. */
     private fun boostWarm() {
         val tid = warmingTid
-        if (tid != 0) runCatching { android.os.Process.setThreadPriority(tid, android.os.Process.THREAD_PRIORITY_DEFAULT) }
+        if (tid != 0) runCatching { android.os.Process.setThreadPriority(tid, SPEAK_PRIORITY) }
     }
+
 
     private fun ensureLoaded(): OfflineTts? {
         val r = VelaPiper.resolved(context) ?: return null // nothing usable installed
@@ -347,6 +348,16 @@ class PiperSynth @Inject constructor(
     }
 
     private companion object {
+        /**
+         * The synthesizer's nice value while it SPEAKS. Measured on a Pixel 4a at a demo drive's
+         * start (2026-09-28, Perfetto): at the default priority the two-thread VITS run took 8.9 s
+         * of CPU in the first 17 s of the drive, more than a core at times, and the map's GL thread
+         * sat runnable-but-waiting 50 to 160 ms of every second while the map ran at 2 to 30 fps.
+         * Nice 8 keeps the thread in the foreground group (BACKGROUND would move it to the
+         * background cgroup, where a prompt could take ten seconds) but lets the render thread and
+         * the tile workers take the core first; a prompt only slows while the map is busy.
+         */
+        const val SPEAK_PRIORITY = android.os.Process.THREAD_PRIORITY_DEFAULT + 8
         const val TAG = "PiperSynth"
         const val SPEED = 1.0f
         // Silence spliced between sentences (seconds) — a natural period beat for nav prompts.

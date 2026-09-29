@@ -2964,7 +2964,10 @@ class MapViewModel @Inject constructor(
             }
             val native = focused?.takeIf { complete(it) }
             android.util.Log.i("VelaPlaceLoad", "details: missing $missing; ${when { cachedDetails != null -> "cache"; native != null -> "plain search${if (native.popularTimes == null) " (no popular times at this place)" else ""}"; else -> "details page" }}")
-            val d = cachedDetails ?: (native ?: runCatching { webPopularTimes.fetch(p) }.getOrNull())
+            // The details PAGE is a hidden WebView: its boot alone held the main thread 757 ms on a
+            // 4a right after Start (a drive started from the sheet, Perfetto 2026-09-28). Not while
+            // navigating; the sheet is behind the drive by then.
+            val d = cachedDetails ?: (native ?: (if (_state.value.navigating) null else runCatching { webPopularTimes.fetch(p) }.getOrNull()))
                 ?.also { if (fidKey != null) placeCachePut(detailsCache, fidKey, it) }
             if (d != null) mergeDetails(p, d)
             _state.update { st -> if (st.selected?.id != p.id) st else st.copy(loadingDetails = false) }
@@ -3304,6 +3307,9 @@ class MapViewModel @Inject constructor(
     /** The Reviews tab is on screen: start the reviews armed by [requestReviews] for the place still
      *  open. Idempotent; a place that changed in between is dropped. */
     fun ensureReviews() {
+        // No hidden Google page while a drive is running: the sheet is behind the nav screen and
+        // the page's WebView boot and script were on the drive's first seconds (Perfetto 2026-09-28).
+        if (_state.value.navigating) return
         if (app.vela.ui.ReviewsOnTap.on.value) return
         startPendingReviews()
     }
@@ -5007,6 +5013,10 @@ class MapViewModel @Inject constructor(
                 prefetchModeEtas(etaKey, origin, dest, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries, s.directionsTimeMode, s.directionsTimeEpochSec, except = mode)
                 val flockEpoch = ++routesEpoch // stamp THIS route set; a newer route() bumps it and stales the flock job
                 if (routes.isNotEmpty()) refreshFlockOnRoute(routes, flockEpoch, origin, dest, mode, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries)
+                // Warm the region's road-features file while the chooser is up: its first parse
+                // (176k features, 1.5 s on a 4a) used to land in the drive's first seconds beside
+                // the tile workers and the voice (Perfetto 2026-09-28).
+                if (routes.isNotEmpty()) viewModelScope.launch(Dispatchers.Default) { runCatching { roadFeaturesCoverRoute(routes.first().polyline) } }
                 // The default active route can be a PROVISIONAL Google alternate (it sorts to the
                 // top when it has the fastest live ETA). A provisional route carries Google's
                 // ABBREVIATED steps + an ETA over un-snapped geometry — so the pre-nav preview showed

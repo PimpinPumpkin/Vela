@@ -1145,6 +1145,21 @@ counts only `REASON_CRASH_NATIVE` on API 30 and above; counting any process deat
 init flipped healthy phones that had been force-stopped during testing, and the TextureView
 renderer then sat at 89 percent of a core. The Developer row states the date it engaged.
 
+### 4.7a The first seconds of a drive
+
+Measured on a Pixel 4a (2026-09-28, Perfetto + the `VelaFps` probe, a demo route started from a
+place sheet): the map rendered at 2 to 30 fps for the first 15 s of the drive, then 45 to 55. The
+CPU in those seconds, largest first: the Piper synthesizer (8.9 s of CPU in 17 s, two threads at
+the default priority, the map's GL thread runnable-but-waiting 50 to 160 ms of every second), the
+map's tile workers (up to 2.1 s of CPU per second while the fly-in to the nav zoom re-tiles every
+source), the main thread (the nav chrome's first measure, 255 ms in one frame), a hidden Google
+WebView booting on the main thread (757 ms, the sheet's details page), and the region's
+road-features parse (1.5 s). Rules: the synthesizer speaks at `PiperSynth.SPEAK_PRIORITY` (nice 8,
+foreground group; BACKGROUND would put a prompt ten seconds out), the details page and the review
+page are never loaded while `navigating`, and the road-features file is parsed while the chooser
+is open (`route()` warms `roadFeaturesCoverRoute` on the first route). After: the map reaches
+55 fps by 11 s and the GL thread's waiting time is a tenth; the tile burst of the fly-in remains.
+
 ### 4.8 Route line rendering
 
 - **A paused drive draws the ahead line in `ROUTE_PAUSED_COLOR` (`#9C8AD6`, a muted lavender)**
