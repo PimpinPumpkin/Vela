@@ -228,7 +228,12 @@ A stop counts as passed when progress along the route comes within `STOP_ARRIVE_
 it, and the voice says "You've reached <stop>". Every reroute and recheck routes through the stops
 still ahead, never straight to the destination. A reroute that could not include them is adopted
 anyway (being guided beats being lost), says so, and keeps them in the plan for the next attempt;
-a faster-route offer that skips one is never made.
+a faster-route offer that skips one is never made. A stop the route does not pass near has no
+mark, and counts as passed only once a later stop is reached (`NavEngine.stopsPassed`), so the
+moments right after a stops edit, before the new route lands, keep every stop.
+
+**Adding a stop mid-drive.** The stops editor's Add stop opens the search along the route (the
+same panel as the magnifier button), and a pick from its results becomes a stop on the drive.
 
 **Removing the next stop.** The step list carries an "Edit route" row on every drive, and with
 stops ahead it has a "Remove next" button. It asks first ("Remove <stop> from this drive?"), then

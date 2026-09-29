@@ -1743,15 +1743,16 @@ fun MapScreen(
             )
 
             // Mid-drive stops editor (issue #402): the chooser's editor over the ETA bar's slot,
-            // origin = where you are, rows = the stops still ahead; Done replans once. Hidden while
-            // the editor's own Add stop runs the search page.
+            // origin = where you are, rows = the stops still ahead; Done replans once. Its Add stop
+            // applies the edits and opens the along-route search (issue #623): the search page is
+            // not drawn during a drive, so the planning pick left the editor hidden and stuck.
             state.navigating && state.editingStops && !searchOpen -> app.vela.ui.place.StopsEditorSheet(
                 originName = stringResource(R.string.mapscreen_your_location),
                 originIsMe = true,
                 destinationName = state.arrivedLabel.ifBlank { stringResource(R.string.mapscreen_destination) },
                 stops = vm.navStopsForEditor(),
                 onApply = vm::applyStops,
-                onAddStop = vm::beginPickStop,
+                onAddStop = { vm.closeStopsEditor(); navSearchOpen = true },
                 onDismiss = vm::closeStopsEditor,
                 modifier = Modifier
                     .align(if (landscapeChrome) Alignment.BottomStart else Alignment.BottomCenter)

@@ -228,7 +228,7 @@ fun StopsEditorSheet(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
                     .dpadHighlight(RoundedCornerShape(8.dp))
-                    .clickable { onAddStop() }
+                    .clickable { onApply(order); onAddStop() } // keeps a reorder or removal made first
                     .padding(vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {

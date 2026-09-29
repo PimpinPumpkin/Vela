@@ -30,15 +30,35 @@ object RouteCorridor {
                         bestAlong = cum[i] + t * (cum[i + 1] - cum[i])
                     }
                 }
-                if (best <= maxMeters) p to bestAlong else null
+                if (best <= maxMeters) Triple(p, bestAlong, best) else null
             }
             .sortedBy { it.second }
-            // Rewrite each place's distance to its ALONG-ROUTE distance (meters from the route
-            // start to its projection). The raw value was the crow-flies distance from wherever
-            // the search was centered (the route midpoint), which read as nonsense in the list --
-            // two stations at opposite ends of the trip both showed "5.9 mi". Along-route
-            // distance is monotonic with the list order: how far into the drive the stop sits.
-            .map { (p, along) -> p.copy(distanceMeters = along) }
+            // Rewrite each place's distance to roughly how far you drive to reach it: meters along
+            // the route to its projection plus its distance off the line. The raw value was the
+            // crow-flies distance from wherever the search was centered (the route midpoint), which
+            // read as nonsense in the list -- two stations at opposite ends of the trip both showed
+            // "5.9 mi"; along-route alone showed a place 1 km off to the side, level with the car,
+            // as "10 ft". The list stays in travel order.
+            .map { (p, along, off) -> p.copy(distanceMeters = along + off) }
+    }
+
+    /** The part of [route] still ahead after [traveledM] meters along it (the drive's own
+     *  monotonic progress, so a route that doubles back is cut at the right pass). During a drive
+     *  the along-route search runs on this, so places already passed drop out and each distance
+     *  counts from the car, not from where the trip started. */
+    fun ahead(route: List<LatLng>, traveledM: Double): List<LatLng> {
+        if (route.size < 2 || traveledM <= 0.0) return route
+        var done = 0.0
+        for (i in 0 until route.size - 1) {
+            val seg = route[i].distanceTo(route[i + 1])
+            if (done + seg > traveledM) {
+                val t = if (seg == 0.0) 0.0 else (traveledM - done) / seg
+                val a = route[i]; val b = route[i + 1]
+                return listOf(LatLng(a.lat + t * (b.lat - a.lat), a.lng + t * (b.lng - a.lng))) + route.subList(i + 1, route.size)
+            }
+            done += seg
+        }
+        return route.takeLast(2)
     }
 
     /** Distance (m) from [p] to segment [a]–[b] plus the fraction t∈[0,1] along it,

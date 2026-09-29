@@ -510,6 +510,20 @@ object NavEngine {
         }
     }
 
+    /** How many of the stops the drive has passed at [traveledM], counting on from [from] ([marks]
+     *  from [stopMarks], [tolM] the arrival tolerance). A stop with no mark is not on this route: it
+     *  counts as passed only once a LATER stop with a mark is passed, so it never blocks the cues
+     *  after it, and a list with no marks at all (a stops edit or a reroute that could not fit the
+     *  stops, before the next route lands) keeps every stop instead of dropping them all. */
+    fun stopsPassed(marks: List<Double?>, count: Int, from: Int, traveledM: Double, tolM: Double): Int {
+        var i = from
+        while (i < count) {
+            val mark = marks.getOrNull(i) ?: (i + 1 until count).firstNotNullOfOrNull { marks.getOrNull(it) } ?: break
+            if (traveledM >= mark - tolM) i++ else break
+        }
+        return i
+    }
+
     /** The per-route geometry every [update] needs: cumulative meters at each vertex, and each
      *  maneuver's along-route mark. Both depend on the ROUTE alone, yet were rebuilt on every fix:
      *  a full-polyline pass plus a windowed projection of EVERY maneuver over the remaining line,

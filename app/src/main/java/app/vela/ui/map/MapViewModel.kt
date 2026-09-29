@@ -2288,8 +2288,11 @@ class MapViewModel @Inject constructor(
      *  keep only results near the route line (ordered start→destination). Closes
      *  the directions panel to reveal the pins, but keeps the route drawn. */
     fun searchAlongRoute(query: String) {
-        val route = _state.value.activeRoute?.polyline
-        if (route == null || route.size < 2) { runSearch(query, _state.value.myLocation); return }
+        val full = _state.value.activeRoute?.polyline
+        if (full == null || full.size < 2) { runSearch(query, _state.value.myLocation); return }
+        // During a drive only the road ahead counts: places already passed used to lead the list,
+        // each a few feet "along" because distances ran from where the trip started.
+        val route = if (_state.value.navigating) RouteCorridor.ahead(full, _state.value.nav.traveledM) else full
         suggestJob?.cancel()
         recentStore.add(query)
         searchJob?.cancel()

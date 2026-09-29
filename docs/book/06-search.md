@@ -388,8 +388,13 @@ maxMeters = 3_000.0   // RouteCorridor.alongRoute: a result must be this close t
   pass, and there is no ambient merge, no house-number geocoding and no intent parsing.
 - **A corridor filter.** `RouteCorridor.alongRoute` keeps results within 3 km of the polyline.
 - **Travel order.** The list is sorted by how far along the route each result sits, and the
-  distance shown is that along-route distance, not the crow-flies distance from the midpoint
-  (which read as two stations at opposite ends of the trip both "5.9 mi" away).
+  distance shown is that along-route distance plus the result's distance off the line, not the
+  crow-flies distance from the midpoint (which read as two stations at opposite ends of the trip
+  both "5.9 mi" away). Along-route alone showed a place 1 km to the side, level with the car, as
+  "10 ft".
+- **Only the road ahead, while driving.** During a drive the search runs on the route after the
+  car's progress (`RouteCorridor.ahead`, cut at `NavState.traveledM`), so places already passed
+  drop out and distances count from the car, not from where the trip started.
 - **A pick becomes a stop.** Planning a trip, the destination is stashed and the picked place is
   added as a stop, returning you to the chooser; closing the search returns to the trip too.
   Navigating, a pick from the list becomes the next stop on the live drive. A stray tap on the map

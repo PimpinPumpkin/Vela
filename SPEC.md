@@ -155,7 +155,7 @@ Compose holder.
     RouteEngine           offline routing interface
     ObfRouteEngine        on-device OsmAnd router over downloaded .obf files
     ValhallaRouter        safety-weighted bicycle routing
-    RouteCorridor         search along a route
+    RouteCorridor         search along a route (during a drive: only the part ahead, `ahead`)
     OverpassPois / OverpassEndpoints / OverpassTrafficSignals / OverpassAlprCameras
     OfflinePoiStore / OfflineAddressStore / OfflinePacks
     transit/Transitous    MOTIS client: stops, boards, trips
@@ -884,14 +884,21 @@ router offers alternates for one.
 `NavEngine.stopMarks(route, stops)` projects each waypoint onto the line to its along-route
 pass mark (null past 150 m off the line); `NavSession` holds the stops, the marks and a passed
 counter and speaks one cue per stop in order. Reroutes and rechecks fetch with
-`stops.drop(passedStops)`, so going off route keeps the stops still ahead.
+`stops.drop(passedStops)`, so going off route keeps the stops still ahead. A stop with a null mark
+counts as passed only when a later stop with a mark is passed (`NavEngine.stopsPassed`), so a stops
+edit (every mark null until the new route lands) or a reroute that could not fit the stops keeps
+them all; counting a null mark as passed at once emptied the list on the next fix.
 `NavSession.setStops` is the one replan entry (`addStop` delegates to it); the stops editor's Done
 calls it only when the list changed (`MapViewModel.applyStops` compares with
 `NavSession.remainingStops()`), so an unchanged list fetches nothing.
 
 The nav step sheet always leads with `NavStopsRow`: with no stops ahead it reads "Edit route" and
 opens the stops editor; with stops it also carries "Remove next", which after a `VelaDialog`
-confirm calls `applyStops(stops.drop(1))`, the same single replan as the editor's Done.
+confirm calls `applyStops(stops.drop(1))`, the same single replan as the editor's Done. The
+mid-drive editor's Add stop applies its pending edits, closes, and opens the along-route search
+(`NavSearchChips`); a pick from those results joins the drive through `addStopDuringNav`. The
+search page is never drawn during a drive, so the planning pick (`beginPickStop`) there left the
+editor hidden and `pickingStop` stuck until Back (issue #623).
 
 The closing-soon warning (`NavController.maybeWarnClosingSoon`, at nav start) checks each stop
 ahead at its own arrival before the destination, and speaks only the first place that closes within

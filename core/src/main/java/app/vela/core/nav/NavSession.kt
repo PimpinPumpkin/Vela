@@ -445,22 +445,20 @@ class NavSession @Inject constructor(
     }
 
     /** Per-stop arrival cue: as along-route progress passes each waypoint's mark, announce it once, in
-     *  order ("You've reached <stop>"). A stop with no mark (not locatable on the route) is skipped
-     *  silently rather than blocking the rest. [route] must be the route [traveledM] was measured on —
-     *  if a reroute swapped the plan mid-fix, the identity check drops the stale frame instead of
-     *  comparing old progress to new marks (which would fire every cue at once). */
+     *  order ("You've reached <stop>"). A stop with no mark (not locatable on the route) is passed
+     *  silently once a later stop is ([NavEngine.stopsPassed]); it used to count as passed at once,
+     *  which dropped every stop on the first fix after a stops edit. [route] must be the route
+     *  [traveledM] was measured on: if a reroute swapped the plan mid-fix, the identity check drops
+     *  the stale frame instead of comparing old progress to new marks (which would fire every cue at once). */
     private fun announceStopsPassed(route: Route, traveledM: Double) {
         val toSpeak = mutableListOf<String>()
         synchronized(stopLock) {
             if (route !== planRoute) return
-            while (passedStops < stops.size) {
-                val mark = stopMarks.getOrNull(passedStops)
-                if (mark == null) { passedStops++; continue }
-                if (traveledM >= mark - STOP_ARRIVE_TOL_M) {
-                    if (!stops[passedStops].silent) toSpeak += stops[passedStops].label
-                    passedStops++
-                } else break
+            val passed = NavEngine.stopsPassed(stopMarks, stops.size, passedStops, traveledM, STOP_ARRIVE_TOL_M)
+            for (i in passedStops until passed) {
+                if (stopMarks.getOrNull(i) != null && !stops[i].silent) toSpeak += stops[i].label
             }
+            passedStops = passed
         }
         toSpeak.forEach { label ->
             voice.speak(app.vela.core.i18n.NavStringsRegistry.current().reachedStop(label))

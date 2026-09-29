@@ -1063,7 +1063,11 @@ Defaults that make the safe path the easy one:
   `navStopsForEditor()` (the chooser Place where the coordinates match, else a bare Place from
   the label); Done -> `applyStops` -> `NavSession.setStops(newRemaining, loc)` which `addStop`
   now delegates to: ONE user-ordered replan through the new list, unchanged list = no fetch,
-  and the chooser's `directionsWaypoints` becomes the remaining stops. **Issues #604/#607
+  and the chooser's `directionsWaypoints` becomes the remaining stops. The mid-drive editor's Add
+  stop opens the along-route search (`navSearchOpen`), NOT `beginPickStop`: the search page lives
+  in the non-nav branch of MapScreen's top chrome, so during a drive `pickingStop` hid the editor
+  and stuck until Back (issue #623). A null stop mark no longer counts as passed on the next fix
+  (`NavEngine.stopsPassed`); it emptied the stops list after every edit. **Issues #604/#607
   (2026-09-25):** `NavStopsRow` is shown on EVERY drive now; with no stops it reads "Edit route /
   Add a stop along the way" (the editor used to be reachable only once a stop existed). With stops
   it adds a "Remove next" button behind a `VelaDialog` confirm (`MapViewModel.removeNextStop` =
