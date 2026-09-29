@@ -1167,7 +1167,14 @@ camera moves every frame, and the gate re-queried rendered features on the main 
 the first 3 s after engage (tau 1.2 s), and deferring the drive-nav declutter (1.5 s) and the
 first road-label pass (2 s) past the fly-in. Two alternating runs per build, fps per second from
 Start: with them 2/33/7/14/44/21/14/34 and 1/28/5/15/50/10/10/39, without 2/28/9/35/31/16/8/45
-and 2/29/7/38/34/13/9/36; the work only moved later.
+and 2/29/7/38/34/13/9/36; the work only moved later. What the dips in seconds 3 to 8 ARE
+(layer bisect with `debug.vela.hide`, same phone, same route): with every symbol layer hidden
+3/40/11/45/37/48/41/49 and with every `vela-` layer hidden 1/27/26/45/34/37/41/47 against the
+control 1/33/6/28/34/18/26/41; the basemap's label layers alone change nothing, and no single
+Vela symbol layer (the bubbles, the controls and cameras, the places and markers) accounts for
+it on its own. The cost is the combined symbol placement of Vela's runtime layers while the
+follow camera flies in. The open lead: keep those layers hidden until the fly-in settles and
+reveal them once, so placement runs once instead of every frame of the fly-in; unmeasured.
 Those figures are a WALKING demo route (the phone's sticky mode at the time). The same start in
 DRIVE mode, per second from Start, pre-fix build: 2, 26, 7, 27, 34, 19, 21, 36, then 53 at 9 s;
 fixed build: 0, 19, 39, 41, 48, 50, 56, 58. The dips in seconds 3 to 8 are gone.
@@ -2342,8 +2349,12 @@ same shape as a region row.
 **Upload.** Zips go up 100 per `gh release upload` call, the fragment last. The Actions token
 has 1,000 API requests an hour for the whole repository, shared by every job and workflow; when a
 call fails with the limit exhausted the retry waits for the reset (`rate_wait`, up to an hour)
-instead of failing the bake, and the workflow runs four bakes at a time (eight lost five finished
-states to HTTP 403 on 2026-09-28).
+instead of failing the bake, and a refused upload that names the rate limit backs off 5, 10, 20
+then 30 minutes a try (`RATE_BACKOFF`, eight tries, about two hours), because the pre-check read
+requests as available while uploads were still refused (five finished regions lost in the first
+world wave, 2026-09-29). The workflow runs four bakes at a time (eight lost five finished states
+to HTTP 403 on 2026-09-28). The budget, not the runners, bounds a world bake: one request per
+asset, about a thousand an hour.
 
 **Merge** (`scripts/merge-cells-manifest.sh [fragments-dir]`): derives the manifest from the
 releases, never folds the run's entries (7.1); the assets come from the one paginated release

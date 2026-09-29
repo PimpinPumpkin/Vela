@@ -3337,7 +3337,12 @@ architecture note.
   no details page or review page for the sheet's place while navigating (a WebView boot on the
   main thread, 757 ms), and the road-features file is parsed while the chooser is up. Left: the
   fly-in's tile burst (four workers saturated for ~4 s) and the nav chrome's first measure. Drive
-  mode before/after, fps per second from Start: 2/26/7/27/34/19/21/36/53 vs 0/19/39/41/48/50/56/58.
+  mode before/after, fps per second from Start: 2/26/7/27/34/19/21/36/53 vs 0/19/39/41/48/50/56/58,
+  BUT repeated alternating runs put the two builds about level, so treat the voice/WebView fixes as
+  CPU and heat savings, not the jitter fix. The bisect (SPEC 4.7a) says the seconds-3-to-8 dips are
+  the combined placement of Vela's own symbol layers during the fly-in; deferring the declutter
+  and slowing the zoom only moved the work later (measured, reverted). Next lead: hide the `vela-`
+  symbol layers until the fly-in settles, reveal once.
   Measure with `debug.vela.fps` + Perfetto on the 4a; the P9's GrapheneOS gives no ftrace to a
   shell trace, and a demo route there uses the phone's STICKY travel mode (a walking demo buzzes
   the walk turn cues).

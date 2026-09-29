@@ -194,12 +194,22 @@ rate_wait() {
     fi
   fi
 }
+# A refused upload that names the rate limit backs off for minutes, not seconds (the first world
+# wave lost five finished regions to 403s twenty seconds apart while rate_wait's pre-check still
+# read requests as available): 5, 10, 20, 30, 30, 30, 30 minutes, about two hours in all.
+RATE_BACKOFF=(300 600 1200 1800 1800 1800 1800)
 upload() {
-  local try
-  for try in 1 2 3 4 5 6; do
+  local try out
+  for try in 1 2 3 4 5 6 7 8; do
     rate_wait
-    gh release upload "$TAG" "$@" --clobber --repo "$REPO" && return 0
-    echo "upload attempt $try failed; retrying in $((try * 20)) s"; sleep $((try * 20))
+    if out=$(gh release upload "$TAG" "$@" --clobber --repo "$REPO" 2>&1); then return 0; fi
+    echo "$out" | tail -2
+    if echo "$out" | grep -qi "rate limit"; then
+      local wait=${RATE_BACKOFF[$((try - 1 < 6 ? try - 1 : 6))]}
+      echo "upload attempt $try hit the API rate limit; waiting $wait s"; sleep "$wait"
+    else
+      echo "upload attempt $try failed; retrying in $((try * 20)) s"; sleep $((try * 20))
+    fi
   done
   return 1
 }
