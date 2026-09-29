@@ -2377,7 +2377,8 @@ Defaults that make the safe path the easy one:
   transit boards and itineraries for the next noon, so the set can be shot at any hour. Clear it
   after (`setprop debug.vela.tune.demoClock ''`). The transit shot is framed by expanding and
   collapsing the first itinerary (the fit stays); the stop list is the A line from Memorial Union
-  and the K line from Powell. Camera counts on the route picker need Avoid
+  and the K line from Powell. The nav shot is taken with "Road ahead bar" and "Prefer buttons over
+  swipes" OFF (their defaults; the 4a keeps both on for testing, so switch them off and back). Camera counts on the route picker need Avoid
   surveillance cameras ON for the shot (restore OFF after). The site (site/assets/*.webp)
   carries the same shots at 720px q82. Site assets are ALL bundled locally (no hotlinks -
   the page makes zero external requests): the Obtainium/F-Droid badges are committed copies
