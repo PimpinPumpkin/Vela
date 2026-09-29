@@ -1161,6 +1161,9 @@ ever dropped by priority, only started later, the details page and the review
 page are never loaded while `navigating`, and the road-features file is parsed while the chooser
 is open (`route()` warms `roadFeaturesCoverRoute` on the first route). After: the map reaches
 55 fps by 11 s and the GL thread's waiting time is a tenth; the tile burst of the fly-in remains.
+Those figures are a WALKING demo route (the phone's sticky mode at the time). The same start in
+DRIVE mode, per second from Start, pre-fix build: 2, 26, 7, 27, 34, 19, 21, 36, then 53 at 9 s;
+fixed build: 0, 19, 39, 41, 48, 50, 56, 58. The dips in seconds 3 to 8 are gone.
 
 ### 4.8 Route line rendering
 

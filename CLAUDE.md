@@ -3336,7 +3336,8 @@ architecture note.
   prompt can only start a little later under load. Plus:
   no details page or review page for the sheet's place while navigating (a WebView boot on the
   main thread, 757 ms), and the road-features file is parsed while the chooser is up. Left: the
-  fly-in's tile burst (four workers saturated for ~4 s) and the nav chrome's first measure.
+  fly-in's tile burst (four workers saturated for ~4 s) and the nav chrome's first measure. Drive
+  mode before/after, fps per second from Start: 2/26/7/27/34/19/21/36/53 vs 0/19/39/41/48/50/56/58.
   Measure with `debug.vela.fps` + Perfetto on the 4a; the P9's GrapheneOS gives no ftrace to a
   shell trace, and a demo route there uses the phone's STICKY travel mode (a walking demo buzzes
   the walk turn cues).
