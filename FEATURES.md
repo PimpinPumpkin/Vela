@@ -2559,6 +2559,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Maps": the launcher entry flips to a plain Maps label for a stock look, and back. Deep links,
   shares and the geo: handler are untouched either way; a pinned home shortcut may need
   re-adding after switching since Android renames apps per launcher component.
+- ✅ **Place packs for every piece of a split country or state (2026-09-29).** Northern
+  California, the German states, the French regions and the other split regions use their
+  parent's place pack for offline search and offline addresses; "Get places" used to do nothing on
+  them. A big parent pack (Germany's is 1.9 GB) is not pulled with a piece: its row says whose it
+  is and how big, and "Get places" fetches it.
 - ✅ **Offline search finds the places on the map, nearest first (2026-09-29).** With no signal,
   search reads the downloaded places the map draws (Overture, AllThePlaces and OSM) around where
   you are looking, beside the OSM place pack, so a restaurant you can tap is one you can find.

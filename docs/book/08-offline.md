@@ -66,7 +66,10 @@ A catalog row is **one download under one progress card** (`MapViewModel.downloa
 each piece starting when the one before it finishes:
 
 1. the routing `.obf` ("Downloading <region> routing");
-2. then the place pack with the same region id ("Saving <region> places for offline search");
+2. then the place pack ("Saving <region> places for offline search"): the region's own, or for a
+   piece of a split country or state its parent's (Northern California gets California's, which
+   then serves Southern California too). A parent pack over 600 MB zipped (Germany's is 1.9 GB) is
+   left for "Get places", which says whose pack it is and how big before it downloads;
 3. then the places archives, if **Include places with downloads** is on (it is by default):
    step 1 of `fetchRegionArchives`, "Saving <region> places for the map";
 4. then the basemap archives, step 2, "Downloading the <region> map", and once those are in, the

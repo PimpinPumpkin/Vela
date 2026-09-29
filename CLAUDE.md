@@ -5882,6 +5882,13 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   both sources in `OfflineRank`; category queries stay within 100 km. v1-format packs
   (published before rev existed) have no rev; their first v2 rebuild yields no usable delta so clients just
   full-download once, then deltas kick in.
+- **A region's pack can be its PARENT's (`RegionPacks.packFor`, 2026-09-29).** Pack ids match
+  routing ids only for unsplit regions; a piece names its parent in parentheses ("Bayern (Germany)")
+  and uses that pack if it covers the piece's center. Every pack lookup goes through it (download,
+  Get places, Settings rows, delete keeps a pack another installed piece uses, updates, sizes). A
+  parent over `AUTO_PARENT_MAX_MB` (600 zipped) is not chained into a piece's download. Before this,
+  288 of 447 regions had no pack. Area save still picks a pack by box alone (can name a pack that
+  does not hold the area, e.g. Spain for Andorra): known, not fixed.
 - **The AREA SAVE reads the region's PLACE PACK, not Overpass (issue #304, 2026-09-13).**
   `downloadOfflinePois` first looks up the smallest place-pack region covering the area's center in
   the poi-pack manifest: pack installed = nothing to do; graph installed but no pack (a region from

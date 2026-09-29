@@ -5572,7 +5572,10 @@ class MapViewModel @Inject constructor(
                 }
                 for (p in packs) {
                     if (_state.value.navigating) break
-                    _state.value.routingRegions.firstOrNull { it.id == p.id }?.let { downloadPoiPack(it, update = true) }
+                    // A shared parent pack updates through any installed piece it serves.
+                    (_state.value.routingRegions.firstOrNull { it.id == p.id }
+                        ?: _state.value.routingRegions.firstOrNull { r -> r.id in obfStore.installedIds() && app.vela.offline.RegionPacks.packFor(r, listOf(p)) != null })
+                        ?.let { downloadPoiPack(it, update = true) }
                 }
                 refreshPlacesOverlays()
                 refreshBasemapArchive()
@@ -7935,10 +7938,11 @@ class MapViewModel @Inject constructor(
      *  With [update] set, an installed pack is refreshed: by row-level DELTA when the manifest offers
      *  one matching the installed revision (a few MB), else by full re-download. */
     private suspend fun downloadPoiPack(region: app.vela.offline.RoutingRegion, update: Boolean = false, chained: Boolean = false): Boolean {
-        val pack = poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL)
-            .firstOrNull { it.id == region.id }
-        val installed = region.id in poiPackStore.installedIds()
-        if (pack == null || (installed && !update)) {
+        // The region's own pack, or its parent's for a split country or state (RegionPacks). A big
+        // shared parent does not ride along with a region download; "Get places" asks for it.
+        val pack = app.vela.offline.RegionPacks.packFor(region, poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL))
+        val installed = pack != null && pack.id in poiPackStore.installedIds()
+        if (pack == null || (installed && !update) || (chained && !app.vela.offline.RegionPacks.autoWith(region, pack))) {
             if (!chained) _state.update { it.copy(regionDownloadName = null) }
             return true // nothing published for this region, or already here: nothing missing
         }
@@ -8071,8 +8075,8 @@ class MapViewModel @Inject constructor(
         downloadLaunch(region.name) {
           try {
             val kinds = _state.value.regionUpdates[region.id].orEmpty()
-            val packRegion = _state.value.poiPackRegions.firstOrNull { it.id == region.id }
-            if (packRegion != null && region.id in poiPackStore.installedIds() && packRegion.rev > poiPackStore.installedRev(region.id)) {
+            val packRegion = packFor(region) // its own pack or its parent's
+            if (packRegion != null && packRegion.id in poiPackStore.installedIds() && packRegion.rev > poiPackStore.installedRev(packRegion.id)) {
                 downloadPoiPack(region, update = true)
             }
             fun inside(s: Double, w: Double, n: Double, e: Double) = region.covers((s + n) / 2, (w + e) / 2)
@@ -8108,12 +8112,19 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** [region]'s place pack from the cached catalog: its own, or its parent's (RegionPacks). */
+    fun packFor(region: app.vela.offline.RoutingRegion): app.vela.offline.RoutingRegion? =
+        app.vela.offline.RegionPacks.packFor(region, _state.value.poiPackRegions)
+
+    /** The pack a download of [region] brings along by itself, for its size estimate. */
+    fun autoPackFor(region: app.vela.offline.RoutingRegion): app.vela.offline.RoutingRegion? =
+        packFor(region)?.takeIf { app.vela.offline.RegionPacks.autoWith(region, it) && it.id !in _state.value.poiPackInstalledIds }
+
     fun downloadPoiPackFor(region: app.vela.offline.RoutingRegion, update: Boolean = false) {
         if (_state.value.poiPackDownloadingId != null || _state.value.routingDownloadingId != null) return
         regionCancel.set(false)
         downloadLaunch(region.name) {
-            val available = poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL)
-                .any { it.id == region.id }
+            val available = app.vela.offline.RegionPacks.packFor(region, poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL)) != null
             if (!available) {
                 showStatus(appContext.getString(R.string.mapvm_poipack_unavailable, region.name))
                 return@downloadLaunch
@@ -8128,7 +8139,15 @@ class MapViewModel @Inject constructor(
 
     fun deleteRoutingGraph(id: String) {
         obfStore.delete(id)
-        poiPackStore.delete(id) // the place pack rides with the region — remove them together
+        // The place pack rides with the region: remove them together. A shared parent pack stays
+        // while another installed piece of the same country or state still uses it.
+        val region = _state.value.routingRegions.firstOrNull { it.id == id }
+        val pack = region?.let { packFor(it) }
+        val packId = pack?.id ?: id
+        val stillUsed = pack != null && _state.value.routingRegions.any { r ->
+            r.id != id && r.id in obfStore.installedIds() && packFor(r)?.id == packId
+        }
+        if (!stillUsed) poiPackStore.delete(packId)
         runCatching { cellStore.deleteRegion(id) } // and any grid cells of it (their places slices sit inside its box anyway)
         // The open places archives that came with this region go too: any whose bbox center sits
         // inside the region's box, plus a same-id archive.

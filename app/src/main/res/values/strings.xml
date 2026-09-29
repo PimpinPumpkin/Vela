@@ -208,6 +208,7 @@
     <string name="settings_routing_updating">Updating… %1$d%%</string> <!-- format -->
     <string name="settings_routing_installed">Installed · routes offline here</string>
     <string name="settings_routing_installed_places">Installed · places searchable offline</string>
+    <string name="settings_places_shared_pack">Places cover all of %1$s (%2$s)</string> <!-- format: %1$s country or state name, %2$s a size like "1.9 GB" -->
     <string name="settings_routing_places_downloading">Saving places · %1$d%%</string> <!-- format -->
     <string name="settings_get_places">Get places</string>
     <string name="settings_update_places">Update places</string>

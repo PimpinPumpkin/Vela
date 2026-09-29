@@ -2101,6 +2101,16 @@ Routing (obf), places (PMTiles), the basemap picture (PMTiles), a place pack (SQ
 features, and the building and address overlays where they exist. `MapPoiPrefs.placesWithDownloads`
 (default on) controls whether places ride along.
 
+A region's place pack is the pack of its own id, else its parent's (`RegionPacks.packFor`): a piece
+of a split country or state names the parent in parentheses ("Northern California (California)",
+"Bayern (Germany)") and the parent pack must cover the piece's center, so Andorra never gets
+Spain's. The pieces share that one pack: it is deleted with the last installed piece that uses it,
+updated through any of them, and counted once in a group's size. A shared parent up to
+`RegionPacks.AUTO_PARENT_MAX_MB` (600, zipped) comes with a piece's download; a bigger one
+(Germany, 1.9 GB) waits for "Get places", whose row names the parent and its size first. Matching
+on the region id alone left 288 of 447 regions with no pack: "Get places" did nothing there, and
+offline search and the offline address lookup had no data.
+
 | Artifact | Built by | Hosted on | Manifest |
 | --- | --- | --- | --- |
 | Routing `.obf` | `scripts/build-obf-region.sh` + `VelaObfShim` | `obf-regions` | `obf-manifest.json` |
