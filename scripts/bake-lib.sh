@@ -65,6 +65,34 @@ bake_obf_index() {
       -cp "$tools/mapcreator/OsmAndMapCreator.jar:$tools/mapcreator/lib/*:$tools" VelaObfShim "$pbf" )
 }
 
+# OsmAnd's HIGHWAY HIERARCHY (HH) for the car profile, written into the region's own obf. Without
+# it the app's router searches the whole road graph and a long route in a dense region fails at its
+# 256 MB budget ("not enough memory", or the heap itself: Cologne to Munster, Aachen to Bielefeld);
+# with it the same trips take under a second in about 80 MB (measured 2026-09-29 on the
+# North Rhine-Westphalia obf, SPEC 4.5). Three MapCreator steps in a scratch folder: cluster the
+# network (hh-routing-prepare), precompute the shortcuts (hh-routing-shortcuts, which also writes
+# them as a small standalone obf named after the folder), then combine that section into the
+# region file (BinaryInspector -c). The app turns HH on with setDefaultHHRoutingConfig() and falls
+# back to the plain search on its own, so a file without HH still routes exactly as before.
+# Returns non-zero and leaves <obf> untouched on any failure (an out-of-memory on a huge region).
+#   bake_obf_hh <tools-dir> <obf> <heap>
+bake_obf_hh() {
+  local tools="$1" obf="$2" heap="$3" hh cp threads
+  hh="$(dirname "$obf")/hh"; rm -rf "$hh"; mkdir -p "$hh"
+  cp="$tools/mapcreator/OsmAndMapCreator.jar:$tools/mapcreator/lib/*"
+  threads="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
+  ln -s "$obf" "$hh/region.obf"
+  ( cd "$hh" \
+    && java -Xmx"$heap" -XX:+UseParallelGC -cp "$cp" net.osmand.MainUtilities hh-routing-prepare region.obf --routing_profile=car \
+    && java -Xmx"$heap" -XX:+UseParallelGC -cp "$cp" net.osmand.MainUtilities hh-routing-shortcuts region.obf --routing_profile=car --threads="$threads" \
+    && [ -s hh_car.obf ] \
+    && java -Xmx2g -cp "$cp" net.osmand.obf.BinaryInspector -c combined.obf "$obf" hh_car.obf \
+    && [ "$(stat -c%s combined.obf 2>/dev/null || stat -f%z combined.obf)" -gt "$(stat -c%s "$obf" 2>/dev/null || stat -f%z "$obf")" ] ) \
+    || { rm -rf "$hh"; return 1; }
+  mv "$hh/combined.obf" "$obf"
+  rm -rf "$hh"
+}
+
 # The place-pack filter: POIs, addresses and named roads.
 #   bake_pack_filter <in.pbf> <out.pbf>
 BAKE_PACK_EXPR=(

@@ -81,6 +81,23 @@ fi
 OBF="$(ls "$WORK"/*.obf | head -1)"  # generateObf names the output from the pbf filename
 mv "$OBF" "$WORK/$ID.obf"
 
+# Highway hierarchy for the car profile (bake_obf_hh in bake-lib.sh says why). A region too big
+# for it still ships, without HH, and routes as it always did; VELA_OBF_HH=0 skips the step.
+HH=false
+if [[ "${VELA_OBF_HH:-1}" == "1" ]]; then
+  BEFORE_MB=$(bake_mib "$WORK/$ID.obf")
+  set +e
+  bake_obf_hh "$WORK" "$WORK/$ID.obf" "$JAVA_HEAP" > "$WORK/hh.log" 2>&1
+  HRC=$?
+  set -e
+  if [ $HRC -eq 0 ]; then
+    HH=true
+    echo "→ highway hierarchy added: ${BEFORE_MB} MB -> $(bake_mib "$WORK/$ID.obf") MB"
+  else
+    echo "::warning::$ID: highway hierarchy step failed (exit $HRC), shipping without it"; tail -20 "$WORK/hh.log"
+  fi
+fi
+
 SIZE=$(bake_mib "$WORK/$ID.obf")
 ASSET_URL="https://github.com/$REPO/releases/download/$TAG/$ID.obf"
 echo "→ $ID: ${SIZE} MB obf (download == installed), bbox $BBOX"
@@ -94,8 +111,8 @@ gh release upload "$TAG" "$WORK/$ID.obf" --clobber --repo "$REPO"
 # Raw obf: the download size IS the installed size, so both fields carry the same number and the
 # Settings row needs no unpack estimate.
 # rev = the bake date as an integer; the app re-downloads an installed region whose manifest rev is newer.
-ENTRY="$(jq -nc --arg id "$ID" --arg name "$NAME" --arg url "$ASSET_URL" --argjson size "$SIZE" --argjson bbox "$BBOX" --argjson rev "$(date -u +%Y%m%d)" \
-  '{id:$id,name:$name,url:$url,sizeMb:$size,installedMb:$size,bbox:$bbox,rev:$rev}')"
+ENTRY="$(jq -nc --arg id "$ID" --arg name "$NAME" --arg url "$ASSET_URL" --argjson size "$SIZE" --argjson bbox "$BBOX" --argjson rev "$(date -u +%Y%m%d)" --argjson hh "$HH" \
+  '{id:$id,name:$name,url:$url,sizeMb:$size,installedMb:$size,bbox:$bbox,rev:$rev,hh:$hh}')"
 
 if [ "${MANIFEST_MODE:-merge}" = "emit" ]; then
   printf '%s\n' "$ENTRY" > "${ENTRY_OUT:?ENTRY_OUT required in emit mode}"

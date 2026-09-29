@@ -478,8 +478,8 @@ The installed files together must cover both endpoints, or the trip is out of th
 online. One route at a time (the routing context is single-use and serialized on one lock), one
 route per answer, no alternates, no traffic.
 
-Its weakness is **long routes**. The OsmAnd router computes dynamically, with no precomputed
-shortcuts, and past its memory budget it throws rather than slowing down:
+Its weakness was **long routes**. The OsmAnd router's plain search computes dynamically, with no
+precomputed shortcuts, and past its memory budget it throws rather than slowing down:
 
 ```
 MEMORY_MB        = 256    // the app already runs near its largeHeap ceiling
@@ -489,9 +489,25 @@ NATIVE_MEMORY_MB = 64
 Measured on a desktop against a baked Bavaria file with the shipped configuration, car profile:
 4 km in 0.87 s; 57 km in 5.65 s; 151 km fails at 256 MB (4.6 s given 1024 MB); 348 km fails even
 at 1024 MB (41.9 s given 3072 MB). The threshold depends on how dense the road network is, not on
-a fixed distance. The fix is OsmAnd's precomputed hierarchy (HH), which the bake does not generate
-yet. Until it does, offline routing is a city and metro feature, and intercity trips need a
-signal.
+a fixed distance.
+
+**The fix is OsmAnd's highway hierarchy (HH), baked in since 2026-09-29.** The bake precomputes
+shortcuts between the main roads for the car profile and writes them into the region's file
+(about 3.5% more bytes), and the app asks for an HH route when driving with no avoid. Measured on
+the North Rhine-Westphalia file at the same 256 MB:
+
+```
+trip                          plain search                 HH
+Aachen -> Bielefeld, 256 km   out of memory after 27 s     0.5 s, 32 MB
+Bonn -> Minden, 255 km        "not enough memory", 29 s    0.4 s
+Cologne -> Munster, 148 km    out of memory after 179 s    0.4 s
+Dusseldorf -> Dortmund, 71 km 90 s                         0.3 s, same route
+```
+
+The router falls back to the plain search by itself when a file has no HH (a region downloaded
+before the rebake), when a trip crosses into a second file, or with an avoid switched on (the
+shortcuts were built without it). So those cases behave exactly as before: fine in a city, slow
+or failing across a dense region.
 
 ### GraphHopper, retired
 
@@ -529,8 +545,9 @@ optimistic on signalized roads.
 - **A start on an on-ramp can snap wrong.** OSRM snaps a start point on a ramp to the surface
   street under it, heading hint or not, so a recheck fetched from a ramp can route the first
   stretch over local streets. Google snaps it correctly, which is why its alternate can lead then.
-- **Offline is metro-scale** until the bake generates HH, and a trip that leaves the installed
-  regions has no offline route at all.
+- **Long offline trips need an HH file**: a region downloaded after the 2026-09-29 rebake, driving,
+  no avoid, both ends in one file. Otherwise the plain search is metro-scale, and a trip that
+  leaves the installed regions has no offline route at all.
 - **No departure-time planning for driving, walking or cycling.** The keyless request has no
   departure field, so "Depart at" and "Arrive by" only move the arrival clock the chooser works
   out (transit alone is refetched for the chosen time, [chapter 9](09-transit.md)); the "usually X

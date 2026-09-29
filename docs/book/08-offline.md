@@ -174,9 +174,11 @@ works offline are these.
   endpoints must fall inside the installed files, or there is no offline route at all.
 - **Avoids work.** Avoid tolls, highways and ferries are applied from the road attributes at
   calculation time, and walking and cycling come from the same file.
-- **Long routes fail.** Past `MEMORY_MB = 256` the router throws rather than slowing down, and on a
-  dense network that happens somewhere between 60 and 150 km (the measurements are in chapter 5).
-  The budget cannot be raised on a phone.
+- **Long routes use the highway hierarchy.** Region files baked since 2026-09-29 carry OsmAnd's
+  precomputed car shortcuts, and a 250 km drive across a dense region routes in under a second.
+  Without them (an older download, a trip across two files, an avoid switched on) the plain search
+  runs, and past `MEMORY_MB = 256` it throws rather than slowing down, somewhere between 60 and
+  150 km on a dense network (chapter 5 has both sets of numbers). Update the region to get HH.
 - **One route, no alternates, no traffic.** The arrival time is free-flow.
 
 The same file answers the **posted speed limit** under the puck while driving, so the badge keeps

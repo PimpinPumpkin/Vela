@@ -2559,6 +2559,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Maps": the launcher entry flips to a plain Maps label for a stock look, and back. Deep links,
   shares and the geo: handler are untouched either way; a pinned home shortcut may need
   re-adding after switching since Android renames apps per launcher component.
+- ✅ **Long offline drives (2026-09-29).** Downloaded regions now carry OsmAnd's highway
+  hierarchy, precomputed shortcuts between the main roads, so a long drive with no signal routes
+  in under a second: 256 km across North Rhine-Westphalia in 0.5 s, where it used to run out of
+  memory, and 148 km across Delaware in 0.7 s on a Pixel 4a. Update a region to get it. Walking,
+  cycling and drives with an avoid switched on use the plain search as before.
 - ✅ **Documentation site (2026-09-29).** Every doc in the repository, the FAQ, the book, the
   full specification, the feature list, the roadmap and the contributor guides, published as one
   searchable site at `pimpinpumpkin.github.io/Vela/docs/`, with light and dark themes and no

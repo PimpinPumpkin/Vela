@@ -5691,6 +5691,17 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   `.github/workflows/obf-regions.yml` (matrix clone; the MapCreator tool is pinned on the
   `obf-tools` release); assets are RAW .obf (already deflate-compressed inside; download size ==
   installed size).
+  **HH SHIPPED (2026-09-29): the obf bake writes OsmAnd's highway hierarchy into every region file
+  (`bake_obf_hh`, bake-lib.sh) and `ObfRouteEngine` turns it on for DRIVE without an avoid.** NRW at
+  256 MB: 256 km out of memory -> 0.5 s; 71 km 90 s -> 0.3 s (SPEC 4.5). Three traps found building
+  it: `hh-routing-shortcuts` takes the OBF as its first argument, not the .hhdb (a protobuf
+  "invalid tag (zero)" otherwise); both MapCreator HH steps name their output after the CURRENT
+  FOLDER (`hh_car.hhdb`, `hh_car.obf`), so they run in a scratch folder called `hh`; and the HH
+  router asks `OsmandRegions.getRegionsToDownload` about the trip's ends, so the no-index regions
+  object must be a subclass returning an empty list, or every HH route throws "Reader == null".
+  `hh-routing-obf-write` is NOT used: it splits by OsmAnd's own country names and crashes on ours;
+  the standalone section the shortcut step writes is combined with `BinaryInspector -c`. The
+  history below is why it mattered:
   **WITHOUT HH, A LONG OFFLINE ROUTE CAN FAIL OUTRIGHT, NOT MERELY RUN SLOW (measured 2026-08-17
   against a real baked Bayern obf, using ObfRouteEngine's own config and memory limits).** NB the
   threshold is REGION-DEPENDENT, not a fixed distance: a 150 km cross-file route in Saarland/

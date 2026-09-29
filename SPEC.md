@@ -924,8 +924,29 @@ names (`Route.roadNamesLatin`).
   `largeHeap` ceiling. Measured on a desktop with the shipped configuration, car profile:
   4 km 0.87 s at 256 MB; 57 km 5.65 s at 256 MB; 151 km fails at 256 MB and takes 4.6 s at
   1024 MB; 348 km fails at 1024 MB and takes 41.9 s at 3072 MB. The threshold is
-  region-dependent, not a fixed distance. Offline routing is therefore a city and metro
-  feature; intercity needs OsmAnd's precomputed HH, which the bake does not generate.
+  region-dependent, not a fixed distance. That is the plain search.
+- **Highway hierarchy (HH, 2026-09-29) is what makes long offline routes work.** The obf bake
+  adds OsmAnd's precomputed car shortcuts to each region file (`bake_obf_hh` in
+  `scripts/bake-lib.sh`: `hh-routing-prepare`, `hh-routing-shortcuts`, then `BinaryInspector -c`
+  combines the resulting section into the region file; the manifest row carries `hh: true`), and
+  `ObfRouteEngine` calls `setDefaultHHRoutingConfig()` for a DRIVE route with no avoid. Measured on
+  the North Rhine-Westphalia file at `MEMORY_MB` 256, plain search vs HH: Aachen to Bielefeld
+  (256 km) out of memory after 27 s vs 0.5 s in 32 MB; Bonn to Minden (255 km) "not enough
+  memory" after 29 s vs 0.4 s; Cologne to Munster (148 km) out of memory after 179 s vs 0.4 s;
+  Dusseldorf to Dortmund (71 km) 90 s vs 0.3 s, same route. Through the whole engine the 256 km
+  trip is about 1 s with 25 maneuvers, names and signs. The HH section is about 3.5% of the file
+  (5 MB on 136 MB). Rules: the router falls back to the plain search on its own when a file has no
+  HH, when the trip spans two files, or when the answer is not correct, so an old file routes
+  exactly as before; with an avoid the shortcuts no longer apply, the router notices ("too many
+  cancelled") and falls back after seconds, so HH is not requested with an avoid; HH asks
+  `OsmandRegions.getRegionsToDownload` which download regions hold the trip's ends, and Vela
+  ships no world-regions index, so the stub returns an empty list, which HH reads as "no
+  restriction" (a regions object with no index throws "Reader == null"). The bake step needs
+  well under the region's own index pass (North Rhine-Westphalia: 4.6 min and 9.1 GB resident with
+  a 12 GB heap, 5.4 min in a 6 GB heap); a region it fails on ships without HH (a warning,
+  `hh: false`). Checked on a Pixel 4a, release build, airplane mode: the Delaware file with HH
+  routes Wilmington to Rehoboth Beach (148 km) in 0.7 s using 71 MB. Grid cells
+  (`build-cells-region.sh`) do not get HH. Car only; walking and cycling trips are short.
 - Three Android runtime requirements, all invisible until the engine logs:
   commons-logging's reflective discovery must be pre-pinned to `SimpleLog` before any OsmAnd
   class loads (R8 strips the implementation and the discovery NPEs on ART); `kxml2-vela.jar`

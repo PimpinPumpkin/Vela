@@ -68,7 +68,14 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
         // EROFS killed every route. Pre-seed the holder with the no-file constructor and keep the
         // feature off so the empty index is never consulted.
         RoutePlannerFrontEnd.CALCULATE_MISSING_MAPS = false
-        runCatching { net.osmand.PlatformUtil.setOsmandRegions(net.osmand.map.OsmandRegions(false)) }
+        // The highway-hierarchy router also asks it which OsmAnd download regions hold the trip's
+        // ends, and a regions object with no index throws ("Reader == null"). Answering "none"
+        // is what HH reads as "no restriction" (containsStartEndRegion), so the stub says that.
+        runCatching {
+            net.osmand.PlatformUtil.setOsmandRegions(object : net.osmand.map.OsmandRegions(false) {
+                override fun getRegionsToDownload(lat: Double, lon: Double): MutableList<net.osmand.binary.BinaryMapDataObject> = mutableListOf()
+            })
+        }
     }
 
     override fun isReady(mode: TravelMode): Boolean =
@@ -133,6 +140,14 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
                     // (checked in the vendored bytecode). A soft preference, not a hard filter.
                     if (departBearingDeg != null) config.initialDirection = departBearingDeg / 180.0 * Math.PI
                     val fe = RoutePlannerFrontEnd()
+                    // Highway hierarchy (SPEC 4.5): a region baked with it routes a long trip over
+                    // precomputed shortcuts in well under a second and a fraction of the memory,
+                    // where the plain search runs out of MEMORY_MB on a dense network. Car only (the
+                    // bake builds the car profile), and not with an avoid: the shortcuts are
+                    // built without one, the router notices and recalculates, and that costs
+                    // seconds before it falls back anyway. A file without HH, or a trip across two
+                    // files, falls back to the plain search inside searchRoute on its own.
+                    if (mode == TravelMode.DRIVE && params.isEmpty()) fe.setDefaultHHRoutingConfig()
                     val ctx = fe.buildRoutingContext(
                         config, null, readers.toTypedArray(),
                         RoutePlannerFrontEnd.RouteCalculationMode.NORMAL,
@@ -393,7 +408,8 @@ class ObfRouteEngine(private val obfRootOf: () -> File) : RouteEngine {
         private const val TAG = "VelaObf"
         private const val JCL_LOG_PROP = "org.apache.commons.logging.Log"
 
-        // Route-calc heap budget passed to the OsmAnd router. Modest on purpose: the browse map
+        // Route-calc heap budget passed to the OsmAnd router (the plain search's; a highway-hierarchy
+        // route stays far under it: 30 to 80 MB for 70 to 256 km on a dense network). Modest on purpose: the browse map
         // already runs near the ceiling (CLAUDE.md memory rules) and the router allocates within
         // this bound, spilling to more tile loads instead of OOMing.
         private const val MEMORY_MB = 256
