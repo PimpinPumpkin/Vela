@@ -255,7 +255,9 @@ private const val PREVIEW_SRC = "vela-preview-src"
 private const val PREVIEW_LAYER = "vela-preview"
 /** Camera-bearing damping (issue #251). Heavy while the camera is essentially tracking a straight
  *  road, so digitization wiggle does not rotate the map; quick once the error is turn-sized. */
-private const val NAV_IDLE_TICK_MS = 120L // the nav loop's pace while parked and settled (issue #605)
+private const val NAV_IDLE_TICK_MS = 120L
+private const val BROWSE_IDLE_FRAMES = 30 // settled frames before the free-drive follow loop slows down
+private const val BROWSE_IDLE_TICK_MS = 200L // its pace while settled // the nav loop's pace while parked and settled (issue #605)
 private const val CAM_BRG_TAU_STILL = 1.6
 private const val CAM_BRG_TAU_TURN = 0.35
 /** Error at which the damping is fully in "this is a real turn" mode. Well above the few degrees
@@ -2131,8 +2133,16 @@ fun VelaMapView(
             return@LaunchedEffect
         }
         var lastNanos = 0L
+        // IDLE PACING (2026-09-29): this loop ran every frame for as long as the bare map was
+        // open with follow on (the default), settled or not: Perfetto on the 4a showed ~59
+        // animation frames a second and ~9% of a core on the main thread with nothing on screen
+        // changing. After BROWSE_IDLE_FRAMES frames with nothing to move it waits
+        // BROWSE_IDLE_TICK_MS between checks; the first frame that moves anything resets it.
+        var idleFrames = 0
         while (true) {
+            if (idleFrames > BROWSE_IDLE_FRAMES) kotlinx.coroutines.delay(BROWSE_IDLE_TICK_MS)
             val now = withFrameNanos { it }
+            idleFrames++
             val dt = (if (lastNanos == 0L) 0.0 else ((now - lastNanos) / 1e9)).toFloat().coerceIn(0f, 0.1f)
             lastNanos = now
             val style = styleRef ?: continue
@@ -2290,6 +2300,7 @@ fun VelaMapView(
                 if (kotlin.math.abs(browseZoomGoal[0] - z) < 0.02) browseZoomGoal[0] = Double.NaN
                 else zoomEase = z + (browseZoomGoal[0] - z) * (1f - kotlin.math.exp(-dt / 0.22f)).toDouble()
             }
+            if (moved || !zoomEase.isNaN() || browseFlying[0]) idleFrames = 0
             if (moved || !zoomEase.isNaN()) {
                 // Draw the puck at the EASED follow position (camLat/camLng), not the raw fix: at the
                 // raw fix the dot teleported forward on the map each 1 Hz fix while the camera eased to

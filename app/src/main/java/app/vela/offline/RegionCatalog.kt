@@ -60,7 +60,7 @@ class RegionCatalog @Inject constructor(
             val json = runCatching {
                 http.newCall(Request.Builder().url(manifestUrl).build()).execute()
                     .use { r -> if (!r.isSuccessful) error("HTTP ${r.code}"); r.body!!.string() }
-                    .also { fresh -> runCatching { cacheFile(manifestUrl).writeText(fresh) } }
+                    .also { fresh -> runCatching { app.vela.core.util.AtomicFiles.writeText(cacheFile(manifestUrl), fresh) } }
             }.getOrElse { cacheFile(manifestUrl).takeIf { it.exists() }?.readText() ?: throw it }
             val arr = JSONObject(json).getJSONArray("regions")
             (0 until arr.length()).map { i ->

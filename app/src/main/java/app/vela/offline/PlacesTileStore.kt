@@ -541,12 +541,12 @@ abstract class PmtilesRegionStore(
 
     private fun writeDead(id: String, bytes: Long) {
         root.mkdirs()
-        File(root, "dead.json").writeText(readDead().put(id, bytes).toString())
+        app.vela.core.util.AtomicFiles.writeText(File(root, "dead.json"), readDead().put(id, bytes).toString())
     }
 
     private fun writeRev(id: String, rev: Int) {
         root.mkdirs()
-        File(root, "revs.json").writeText(readRevs().put(id, rev).toString())
+        app.vela.core.util.AtomicFiles.writeText(File(root, "revs.json"), readRevs().put(id, rev).toString())
     }
 
     /** Installed archives whose bbox center falls inside [s],[w],[n],[e]: the ones that belong to
@@ -569,7 +569,7 @@ abstract class PmtilesRegionStore(
         root.mkdirs()
         val arr = JSONArray()
         index.forEach { (id, b) -> arr.put(JSONObject().put("id", id).put("bbox", JSONArray(b.toList()))) }
-        indexFile.writeText(arr.toString())
+        app.vela.core.util.AtomicFiles.writeText(indexFile, arr.toString())
     }
 
     private companion object {

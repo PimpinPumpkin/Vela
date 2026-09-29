@@ -3361,7 +3361,16 @@ architecture note.
   when it moved; the follow camera is written only past sub-centimeter/sub-degree tolerances;
   after 60 idle frames with the puck under 0.3 m/s the loop waits `NAV_IDLE_TICK_MS` (120 ms)
   between checks. Measured: 0 map frames and ~15% CPU parked, 59 fps unchanged on a demo drive.
-  Any new per-frame write in the ticker must be change-gated too, or this comes back. Same day:
+  Any new per-frame write in the ticker must be change-gated too, or this comes back.
+  **THE SAME BUG LIVED IN THE FREE-DRIVE FOLLOW LOOP ON THE BARE MAP (2026-09-29):** its
+  `withFrameNanos` loop ran every frame as long as follow was on (the default), moving or not.
+  Perfetto on the 4a, idle bare map: ~59 animation frames a second, ~9% of a core on the main
+  thread, zero frames drawn. It now waits `BROWSE_IDLE_TICK_MS` (200 ms) between checks after
+  `BROWSE_IDLE_FRAMES` (30) frames that move nothing: idle CPU 9% -> 0.2%, and the first frame
+  that moves anything (a fix, the compass, a locate tap's zoom, a flight) goes back to frame rate.
+  The tunnel dead-reckoning loop (1 s) and the drive-stats loop (30 s) now sleep until a drive
+  starts instead of waking for the life of the view model. A `withFrameNanos` loop needs an idle
+  exit; check with a Perfetto trace of the idle app (`Recomposer:animation` slices per second). Same day:
   a "continue"/"turn" step with the `uturn` modifier read "Bear uturn onto X"; `osrmPhrase` now
   phrases any uturn modifier as the language's U-turn line (`OsrmRouterTest`).
 - **OFFLINE ADDRESSES GET THEIR CITY, STATE AND ZIP FROM THE NEIGHBORS (2026-09-23, user report).**

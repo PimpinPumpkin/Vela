@@ -86,7 +86,7 @@ class PoiPackStore @Inject constructor(
 
     private fun writeRev(id: String, rev: Int) = synchronized(revsLock) {
         packsRoot.mkdirs()
-        File(packsRoot, "revs.json").writeText(readRevs().put(id, rev).toString())
+        app.vela.core.util.AtomicFiles.writeText(File(packsRoot, "revs.json"), readRevs().put(id, rev).toString())
     }
 
     /** Download + unzip [region]'s pack to `poipacks/<id>.db` and register it. 0..100 progress. */
@@ -230,7 +230,7 @@ class PoiPackStore @Inject constructor(
         File(packsRoot, "$id.db").delete()
         synchronized(revsLock) {
             packsRoot.mkdirs()
-            File(packsRoot, "revs.json").writeText(readRevs().apply { remove(id) }.toString())
+            app.vela.core.util.AtomicFiles.writeText(File(packsRoot, "revs.json"), readRevs().apply { remove(id) }.toString())
         }
         registerPacks()
     }

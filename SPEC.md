@@ -3143,11 +3143,23 @@ transit directions reach Google (Transitous' planner instead when Google is off)
 FOSSGIS. Transit boards reach Transitous.
 Reverse geocoding reaches Nominatim.
 
+### 14.1a State files
+
+The offline stores' `index.json`, `revs.json` and `dead.json`, the region catalog cache and the
+diagnostics trim are written with `core/util/AtomicFiles` (temp file, `fsync`, rename over the
+target). An in-place write torn by a process kill read back as "nothing installed", and the next
+download or delete then saved that empty list, orphaning every downloaded region on disk. Readers
+see the old file or the new one, never half, which also covers `ObfRouteEngine` reading
+`obf/index.json` without the store's lock. The closed-open-places set is capped at
+`CLOSED_OPEN_PLACES_CAP` (2000, oldest dropped): it grew with every automatic closure match and
+every id rides a filter the places layers evaluate per feature.
+
 ### 14.2 Diagnostics
 
 `DiagLog` is an opt-in breadcrumb ring, off by default, persisted to a bounded
 `filesDir/diag_log.jsonl` so a report survives the process death that usually precedes it, and
-deleted on opt-out. `DiagExporter` shares it as a JSON bundle, user-initiated, never uploaded.
+deleted on opt-out. The file is trimmed to the ring at load as well as every `CAP` appends, since a
+process that logs less than `CAP` events never reached the in-run trim and the file grew for ever. `DiagExporter` shares it as a JSON bundle, user-initiated, never uploaded.
 
 `DiagScrub` has two levels. Plain export rounds coordinate-shaped decimals to 2 places (about
 1 km). "Redact places in exports" rounds to 1 place (about 10 km), replaces quoted search terms

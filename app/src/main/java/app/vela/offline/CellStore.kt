@@ -157,7 +157,7 @@ class CellStore @Inject constructor(
             arr.put(JSONObject().put("id", c.id).put("region", c.regionId).put("name", c.regionName)
                 .put("bbox", JSONArray().put(c.s).put(c.w).put(c.n).put(c.e)).put("rev", c.rev).put("mb", c.mb))
         }
-        indexFile.writeText(arr.toString())
+        app.vela.core.util.AtomicFiles.writeText(indexFile, arr.toString())
     }
 
     companion object {

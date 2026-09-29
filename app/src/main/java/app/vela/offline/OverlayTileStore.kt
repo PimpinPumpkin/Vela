@@ -127,6 +127,6 @@ class OverlayTileStore @Inject constructor(
         map.forEach { (id, b) ->
             arr.put(JSONObject().put("id", id).put("bbox", JSONArray().put(b[0]).put(b[1]).put(b[2]).put(b[3])))
         }
-        indexFile.writeText(arr.toString())
+        app.vela.core.util.AtomicFiles.writeText(indexFile, arr.toString())
     }
 }

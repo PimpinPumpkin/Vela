@@ -42,8 +42,12 @@ class DiagLog @Inject constructor(
     init {
         shared = this
         if (enabled) runCatching {
-            if (file.exists()) file.readLines().takeLast(CAP).forEach { line ->
-                decode(line)?.let { ring.addLast(it) }
+            if (file.exists()) {
+                val lines = file.readLines()
+                lines.takeLast(CAP).forEach { line -> decode(line)?.let { ring.addLast(it) } }
+                // The in-run trim counts appends per process, so a phone that logs a little per
+                // launch never reached it and the file grew for ever (audit 2026-09-29): trim here.
+                if (lines.size > CAP) app.vela.core.util.AtomicFiles.writeText(file, ring.joinToString("\n", postfix = "\n") { encode(it) })
             }
         }
     }
@@ -69,7 +73,7 @@ class DiagLog @Inject constructor(
                 // Bound the file: once it holds twice the ring, rewrite it as just the current ring.
                 if (++appendedSinceTrim >= CAP) {
                     appendedSinceTrim = 0
-                    file.writeText(ring.joinToString("\n", postfix = "\n") { encode(it) })
+                    app.vela.core.util.AtomicFiles.writeText(file, ring.joinToString("\n", postfix = "\n") { encode(it) })
                 }
             }
         }

@@ -39,7 +39,7 @@ class ObfStore @Inject constructor(
 
     fun writeRev(id: String, rev: Int) = synchronized(revsLock) {
         root.mkdirs()
-        File(root, "revs.json").writeText(readRevs().put(id, rev).toString())
+        app.vela.core.util.AtomicFiles.writeText(File(root, "revs.json"), readRevs().put(id, rev).toString())
     }
     private val indexFile: File get() = File(root, "index.json")
     private val indexLock = Any()
@@ -131,6 +131,6 @@ class ObfStore @Inject constructor(
         entries.forEach { (id, b) ->
             arr.put(JSONObject().put("id", id).put("bbox", JSONArray().put(b[0]).put(b[1]).put(b[2]).put(b[3])))
         }
-        indexFile.writeText(arr.toString())
+        app.vela.core.util.AtomicFiles.writeText(indexFile, arr.toString())
     }
 }

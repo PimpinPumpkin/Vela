@@ -772,6 +772,12 @@ internal class NavController(
 
     private suspend fun tunnelDeadReckonLoop() {
         while (true) {
+            // Sleep until a drive is on: this loop used to wake every second for the whole life of
+            // the view model, backgrounded or not (audit 2026-09-29).
+            if (!_state.value.navigating) {
+                drProgressM = Double.NaN
+                _state.first { it.navigating }
+            }
             delay(1_000)
             val s = _state.value
             val route = s.activeRoute

@@ -535,6 +535,8 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             var beat = 0
             while (true) {
+                // Idle until a drive starts (it woke every 30 s forever, audit 2026-09-29).
+                if (!_state.value.navigating) { app.vela.ui.map.FrameJank.sampleAndReset(); _state.first { it.navigating } }
                 kotlinx.coroutines.delay(30_000)
                 if (!_state.value.navigating) { app.vela.ui.map.FrameJank.sampleAndReset(); continue }
                 tripStore.note("J", app.vela.ui.map.FrameJank.sampleAndReset())
@@ -3638,7 +3640,10 @@ class MapViewModel @Inject constructor(
     private fun hideClosedOpenPlace(seedId: String) {
         val raw = seedId.removePrefix("overture:")
         if (raw.isBlank() || raw in _state.value.hiddenOpenPlaceIds) return
-        val next = _state.value.hiddenOpenPlaceIds + raw
+        // Capped (oldest dropped): the map matches closures automatically, the set only grew, and
+        // every id rides a filter the places layers evaluate per feature (audit 2026-09-29).
+        val grown = _state.value.hiddenOpenPlaceIds + raw
+        val next = if (grown.size > CLOSED_OPEN_PLACES_CAP) grown.drop(grown.size - CLOSED_OPEN_PLACES_CAP).toSet() else grown
         _state.update { it.copy(hiddenOpenPlaceIds = next) }
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
@@ -8231,6 +8236,7 @@ class MapViewModel @Inject constructor(
         /** [MapUiState.routingDownloadingId] while grid cells download (no catalog row carries it). */
         const val CELLS_DOWNLOAD_ID = "cells"
         /** How long an informational heads-up card stays before dismissing itself. */
+        const val CLOSED_OPEN_PLACES_CAP = 2000
         const val STATUS_AUTO_MS = 10_000L
 
         /** Average size of one saved map tile, for the area-download estimate ([areaDownloadPlan]):
