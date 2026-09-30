@@ -5709,7 +5709,8 @@ with a random 5 to 20 s backoff. Run the repair by hand after any wave to be sur
   `obf-tools` release); assets are RAW .obf (already deflate-compressed inside; download size ==
   installed size).
   **HH SHIPPED (2026-09-29): the obf bake writes OsmAnd's highway hierarchy into every region file
-  (`bake_obf_hh`, bake-lib.sh) and `ObfRouteEngine` turns it on for every DRIVE route.** Two shortcut
+  (`bake_obf_hh`, bake-lib.sh) and `ObfRouteEngine` turns it on for every DRIVE and BICYCLE route.**
+  A bicycle set too since 2026-09-30 (best effort, ~9% of the file; `VELA_OBF_HH_BIKE=0` skips). Two car shortcut
   sets, default and avoid_motorway (`--routing_params=---avoid_motorway`); tolls and ferries filter
   the default set. Avoiding highways failed past ~30 km in NRW without its set. NRW at
   256 MB: 256 km out of memory -> 0.5 s; 71 km 90 s -> 0.3 s (SPEC 4.5). Three traps found building

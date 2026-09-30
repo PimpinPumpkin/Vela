@@ -178,9 +178,9 @@ works offline are these.
 - **Avoids work.** Avoid tolls, highways and ferries are applied from the road attributes at
   calculation time, and walking and cycling come from the same file.
 - **Long routes use the highway hierarchy.** Region files baked since 2026-09-29 carry OsmAnd's
-  precomputed car shortcuts, and a 250 km drive across a dense region routes in under a second,
-  avoiding highways or tolls too. Without them (an older download, a trip across two files,
-  walking or cycling) the plain search
+  precomputed car and bicycle shortcuts, and a 250 km drive across a dense region routes in under
+  a second, avoiding highways or tolls too; long bike rides too once the region is rebaked with
+  the bicycle set. Without them (an older download, a trip across two files, walking) the plain search
   runs, and past `MEMORY_MB = 256` it throws rather than slowing down, somewhere between 60 and
   150 km on a dense network (chapter 5 has both sets of numbers). Update the region to get HH.
 - **One route, no alternates, no traffic.** The arrival time is free-flow.

@@ -72,7 +72,8 @@ bake_obf_index() {
 # North Rhine-Westphalia obf, SPEC 4.5). Three MapCreator steps in a scratch folder: cluster the
 # network (hh-routing-prepare), precompute the shortcuts (hh-routing-shortcuts, which also writes
 # them as a small standalone obf named after the folder), then combine that section into the
-# region file (BinaryInspector -c). Two shortcut sets: the default car and car with avoid_motorway
+# region file (BinaryInspector -c). A bicycle set too (about 10% of the file, best effort: a
+# region it fails on keeps the car sets; VELA_OBF_HH_BIKE=0 skips it). Two car sets: the default car and car with avoid_motorway
 # (the "Avoid highways" switch; without its own set the router falls back to the plain search and a
 # long trip runs out of memory again). Avoid tolls and ferries need no set: the router filters the
 # default one (Cologne to Munster avoiding tolls: 0.4 s). The second set adds about 2% to the file.
@@ -81,7 +82,7 @@ bake_obf_index() {
 # Returns non-zero and leaves <obf> untouched on any failure (an out-of-memory on a huge region).
 #   bake_obf_hh <tools-dir> <obf> <heap>
 bake_obf_hh() {
-  local tools="$1" obf="$2" heap="$3" hh cp threads
+  local tools="$1" obf="$2" heap="$3" hh cp threads bike=""
   hh="$(dirname "$obf")/hh"; rm -rf "$hh"; mkdir -p "$hh"
   cp="$tools/mapcreator/OsmAndMapCreator.jar:$tools/mapcreator/lib/*"
   threads="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
@@ -89,8 +90,19 @@ bake_obf_hh() {
   ( cd "$hh" \
     && java -Xmx"$heap" -XX:+UseParallelGC -cp "$cp" net.osmand.MainUtilities hh-routing-prepare region.obf --routing_profile=car \
     && java -Xmx"$heap" -XX:+UseParallelGC -cp "$cp" net.osmand.MainUtilities hh-routing-shortcuts region.obf --routing_profile=car --routing_params=---avoid_motorway --threads="$threads" \
-    && [ -s hh_car.obf ] \
-    && java -Xmx2g -cp "$cp" net.osmand.obf.BinaryInspector -c combined.obf "$obf" hh_car.obf \
+    && [ -s hh_car.obf ] ) \
+    || { rm -rf "$hh"; return 1; }
+  # The bicycle set is best effort: a region it fails on keeps its car shortcuts.
+  if [ "${VELA_OBF_HH_BIKE:-1}" = "1" ] && ( cd "$hh" \
+    && java -Xmx"$heap" -XX:+UseParallelGC -cp "$cp" net.osmand.MainUtilities hh-routing-prepare region.obf --routing_profile=bicycle \
+    && java -Xmx"$heap" -XX:+UseParallelGC -cp "$cp" net.osmand.MainUtilities hh-routing-shortcuts region.obf --routing_profile=bicycle --threads="$threads" \
+    && [ -s hh_bicycle.obf ] ); then
+    bike="hh_bicycle.obf"
+  else
+    echo "::warning::bicycle highway hierarchy failed for $(basename "$obf"); car shortcuts only"
+  fi
+  ( cd "$hh" \
+    && java -Xmx2g -cp "$cp" net.osmand.obf.BinaryInspector -c combined.obf "$obf" hh_car.obf $bike \
     && [ "$(stat -c%s combined.obf 2>/dev/null || stat -f%z combined.obf)" -gt "$(stat -c%s "$obf" 2>/dev/null || stat -f%z "$obf")" ] ) \
     || { rm -rf "$hh"; return 1; }
   mv "$hh/combined.obf" "$obf"

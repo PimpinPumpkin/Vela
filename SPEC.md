@@ -954,8 +954,10 @@ names (`Route.roadNamesLatin`).
   set; avoiding tolls filters the default set (148 km, 0.4 s; Germany has no car tolls, so a
   toll-heavy region is unmeasured). The second set is 3 MB (about 2%)
   and a minute of bake time. Walking stays on the plain search (fails past about 28 km there);
-  cycling shortcuts work (158 km in 0.7 s) but add 14 MB (about 10%) to every region, so they are
-  not baked. HH asks
+  cycling has its own set (`--routing_profile=bicycle`, best effort: a region it fails on keeps the
+  car sets), about 9% of the file (Delaware 7.6 -> 8.3 MB with all three sets); Cologne to Essen
+  by bike (76 km) failed with the plain search and takes 0.6 s with it. A file without the
+  bicycle set costs a bike route 0.1-0.6 s before the fallback. HH asks
   `OsmandRegions.getRegionsToDownload` which download regions hold the trip's ends, and Vela
   ships no world-regions index, so the stub returns an empty list, which HH reads as "no
   restriction" (a regions object with no index throws "Reader == null"). The bake step needs
@@ -963,7 +965,7 @@ names (`Route.roadNamesLatin`).
   a 12 GB heap, 5.4 min in a 6 GB heap); a region it fails on ships without HH (a warning,
   `hh: false`). Checked on a Pixel 4a, release build, airplane mode: the Delaware file with HH
   routes Wilmington to Rehoboth Beach (148 km) in 0.7 s using 71 MB. Grid cells
-  (`build-cells-region.sh`) do not get HH. Car only; walking and cycling trips are short.
+  (`build-cells-region.sh`) do not get HH. Walking never uses it (no pedestrian set is baked).
 - Three Android runtime requirements, all invisible until the engine logs:
   commons-logging's reflective discovery must be pre-pinned to `SimpleLog` before any OsmAnd
   class loads (R8 strips the implementation and the discovery NPEs on ART); `kxml2-vela.jar`

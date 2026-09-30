@@ -519,9 +519,10 @@ of toll roads has not been measured.
 
 The router falls back to the plain search by itself when a file has no HH (a region downloaded
 before the rebake), or when a trip crosses into a second file. So those cases behave exactly as
-before: fine in a city, slow or failing across a dense region. Walking and cycling always use the
-plain search: walking fails past about 28 km in North Rhine-Westphalia, cycling past about 45 km.
-Cycling shortcuts would fix that (158 km in 0.7 s) but add about 10% to every region's download.
+before: fine in a city, slow or failing across a dense region. Cycling has its own shortcut set
+(baked since 2026-09-30, about 9% of a region file): Cologne to Essen by bike, 76 km, failed with
+the plain search and takes 0.6 s with it. Walking always uses the plain search, and fails past
+about 28 km in North Rhine-Westphalia.
 
 ### GraphHopper, retired
 
