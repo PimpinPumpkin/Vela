@@ -46,21 +46,26 @@ object PmtilesReader {
         RandomAccessFile(file, "r").use { f ->
             val head = ByteArray(HEADER_LEN)
             if (f.read(head) < HEADER_LEN) return null
-            if (String(head, 0, 7) != "PMTiles" || head[7].toInt() != 3) return null
-            Header(
-                rootOffset = le64(head, 8),
-                rootLength = le64(head, 16),
-                metaOffset = le64(head, 24),
-                metaLength = le64(head, 32),
-                leafOffset = le64(head, 40),
-                tileDataOffset = le64(head, 56),
-                internalCompression = head[97].toInt() and 0xFF,
-                tileCompression = head[98].toInt() and 0xFF,
-                minZoom = head[100].toInt() and 0xFF,
-                maxZoom = head[101].toInt() and 0xFF,
-            )
+            parseHeader(head)
         }
     }.getOrNull()
+
+    /** The v3 header from an archive's first [HEADER_LEN] bytes, or null when they are not one. */
+    fun parseHeader(head: ByteArray): Header? {
+        if (head.size < HEADER_LEN || String(head, 0, 7) != "PMTiles" || head[7].toInt() != 3) return null
+        return Header(
+            rootOffset = le64(head, 8),
+            rootLength = le64(head, 16),
+            metaOffset = le64(head, 24),
+            metaLength = le64(head, 32),
+            leafOffset = le64(head, 40),
+            tileDataOffset = le64(head, 56),
+            internalCompression = head[97].toInt() and 0xFF,
+            tileCompression = head[98].toInt() and 0xFF,
+            minZoom = head[100].toInt() and 0xFF,
+            maxZoom = head[101].toInt() and 0xFF,
+        )
+    }
 
     /** True when the archive holds the tile, false when it demonstrably does not, null when the
      *  file could not be read the way this reader expects. */
@@ -118,41 +123,111 @@ object PmtilesReader {
         }.getOrNull()
     }
 
-    /** One archive held open for many tile reads: the header once and each directory page once,
-     *  where [tileBytes] rereads and re-inflates them for every tile. For a search that walks a
-     *  few hundred tiles. Not thread-safe; close it when done. */
-    class Session(file: File) : java.io.Closeable {
-        private val f = RandomAccessFile(file, "r")
-        val header: Header? = header(file)
-        private val dirs = HashMap<Long, List<Entry>?>()
+    /** Byte ranges of an archive: a local file or an HTTP URL. Null when the range cannot be read. */
+    fun interface RangeReader {
+        fun read(offset: Long, length: Int): ByteArray?
+    }
 
-        fun tile(z: Int, x: Int, y: Int): ByteArray? = runCatching {
-            val h = header ?: return null
-            if (z < h.minZoom || z > h.maxZoom) return null
+    /** One archive, file or HTTP, held for many tile reads: the header once and each directory page
+     *  once (directories are cached across searches too, keyed by the archive's own header so a
+     *  rebaked file never reuses a stale one), and [tiles] reads a batch of tiles in as few ranges
+     *  as their order in the file allows. For a search that walks a few hundred tiles; over HTTP a
+     *  ring of neighbors is usually one or two requests, because PMTiles stores nearby tiles
+     *  together. Not thread-safe; close it when done. */
+    class Archive(private val keyBase: String, private val reader: RangeReader, private val onClose: () -> Unit = {}) : java.io.Closeable {
+        private val headBytes: ByteArray? by lazy { reader.read(0, HEADER_LEN) }
+        val header: Header? by lazy { headBytes?.let(::parseHeader) }
+        private val key: String by lazy { keyBase + "|" + (headBytes?.contentHashCode() ?: 0) }
+
+        private fun dir(h: Header, offset: Long, length: Long): List<Entry>? {
+            if (length <= 0 || length > 64L * 1024 * 1024) return null
+            val k = "$key|$offset|$length"
+            synchronized(DIR_CACHE) { DIR_CACHE[k] }?.let { return it }
+            val d = reader.read(offset, length.toInt())?.let { decodeDirectory(it, h.internalCompression) } ?: return null
+            synchronized(DIR_CACHE) { DIR_CACHE[k] = d }
+            return d
+        }
+
+        private fun entry(h: Header, z: Int, x: Int, y: Int): Entry? {
             val want = tileId(z, x, y)
             var offset = h.rootOffset
             var length = h.rootLength
             repeat(4) {
-                val dir = dirs.getOrPut(offset) { readDirectory(f, offset, length, h.internalCompression) } ?: return null
-                val e = find(dir, want) ?: return null
-                if (e.runLength > 0) {
-                    if (e.length <= 0 || e.length > MAX_TILE_BYTES) return null
-                    val raw = ByteArray(e.length.toInt())
-                    f.seek(h.tileDataOffset + e.offset)
-                    f.readFully(raw)
-                    return when (h.tileCompression) {
-                        COMPRESSION_NONE -> raw
-                        COMPRESSION_GZIP -> GZIPInputStream(raw.inputStream()).use { it.readBytes() }
-                        else -> null
-                    }
-                }
+                val e = find(dir(h, offset, length) ?: return null, want) ?: return null
+                if (e.runLength > 0) return e
                 offset = h.leafOffset + e.offset
                 length = e.length
             }
-            null
-        }.getOrNull()
+            return null
+        }
 
-        override fun close() = f.close()
+        fun tile(z: Int, x: Int, y: Int): ByteArray? = tiles(z, listOf(x to y))[x to y]
+
+        /** The tiles among [coords] the archive holds, decompressed. Reads that sit within
+         *  [GAP_BYTES] of each other in the file are merged into one range of at most [SPAN_BYTES]. */
+        fun tiles(z: Int, coords: List<Pair<Int, Int>>): Map<Pair<Int, Int>, ByteArray> = runCatching {
+            val h = header ?: return emptyMap()
+            if (z < h.minZoom || z > h.maxZoom) return emptyMap()
+            val wanted = coords.mapNotNull { c -> entry(h, z, c.first, c.second)?.takeIf { it.length in 1..MAX_TILE_BYTES }?.let { c to it } }
+                .sortedBy { it.second.offset }
+            val out = HashMap<Pair<Int, Int>, ByteArray>()
+            var i = 0
+            while (i < wanted.size) {
+                val start = wanted[i].second.offset
+                var end = start + wanted[i].second.length
+                var j = i + 1
+                while (j < wanted.size) {
+                    val e = wanted[j].second
+                    if (e.offset - end > GAP_BYTES || e.offset + e.length - start > SPAN_BYTES) break
+                    end = maxOf(end, e.offset + e.length)
+                    j++
+                }
+                val span = reader.read(h.tileDataOffset + start, (end - start).toInt())
+                if (span != null) for (k in i until j) {
+                    val (c, e) = wanted[k]
+                    val at = (e.offset - start).toInt()
+                    if (at < 0 || at + e.length > span.size) continue
+                    val raw = span.copyOfRange(at, at + e.length.toInt())
+                    val body = when (h.tileCompression) {
+                        COMPRESSION_NONE -> raw
+                        COMPRESSION_GZIP -> runCatching { GZIPInputStream(raw.inputStream()).use { it.readBytes() } }.getOrNull()
+                        else -> null
+                    }
+                    if (body != null) out[c] = body
+                }
+                i = j
+            }
+            out
+        }.getOrDefault(emptyMap())
+
+        override fun close() = onClose()
+
+        companion object {
+            private const val GAP_BYTES = 16L * 1024
+            private const val SPAN_BYTES = 1024L * 1024
+            /** Directory pages by archive and offset; a state's leaf pages are tens of KB each. */
+            private val DIR_CACHE = object : LinkedHashMap<String, List<Entry>>(64, 0.75f, true) {
+                override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<Entry>>?) = size > 48
+            }
+
+            fun file(file: File): Archive {
+                val f = RandomAccessFile(file, "r")
+                val reader = RangeReader { offset, length ->
+                    runCatching { ByteArray(length).also { f.seek(offset); f.readFully(it) } }.getOrNull()
+                }
+                return Archive("${file.absolutePath}|${file.length()}|${file.lastModified()}", reader) { runCatching { f.close() } }
+            }
+
+            /** An archive served over HTTP (the places archives on the release host): each read is
+             *  one `Range` request, answered 206. */
+            fun http(client: okhttp3.OkHttpClient, url: String): Archive = Archive(url, RangeReader { offset, length ->
+                runCatching {
+                    client.newCall(
+                        okhttp3.Request.Builder().url(url).header("Range", "bytes=$offset-${offset + length - 1}").build(),
+                    ).execute().use { r -> if (r.code == 206) r.body?.bytes()?.takeIf { it.size == length } else null }
+                }.getOrNull()
+            })
+        }
     }
 
     /** The directory entry for a tile, or null when the archive does not hold it. */
@@ -272,6 +347,10 @@ object PmtilesReader {
         val raw = ByteArray(length.toInt())
         f.seek(offset)
         f.readFully(raw)
+        return decodeDirectory(raw, compression)
+    }
+
+    private fun decodeDirectory(raw: ByteArray, compression: Int): List<Entry>? {
         val bytes = when (compression) {
             COMPRESSION_NONE -> raw
             COMPRESSION_GZIP -> GZIPInputStream(raw.inputStream()).use { it.readBytes() }

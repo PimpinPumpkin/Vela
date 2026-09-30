@@ -2565,9 +2565,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   shares and the geo: handler are untouched either way; a pinned home shortcut may need
   re-adding after switching since Android renames apps per launcher component.
 - ✅ **Search without Google finds Vela's places (2026-09-29, #626).** With "Use Vela without
-  Google" on, search also looks through the downloaded places the map draws and the place packs,
-  and those lead the list; the OpenStreetMap geocoder alone knew names and addresses but no
-  categories, so "Restaurants" returned name matches.
+  Google" on, search looks through Vela's own places, the ones the map draws, whether the region
+  is downloaded or not (streamed from the same host as the map, a few small requests), plus the
+  place packs. A category search ("Restaurants") is answered from that alone; names and addresses
+  still ask the OpenStreetMap geocoder too, after Vela's own matches. Before, only the geocoder
+  answered, and it knows no categories.
 - ✅ **Ask before ending navigation (2026-09-29, #624).** Settings > Navigation, off by default:
   the red X and Back during a drive ask "End navigation?" first.
 - ✅ **Place packs for every piece of a split country or state (2026-09-29).** Northern

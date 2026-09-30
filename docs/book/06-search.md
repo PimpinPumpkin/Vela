@@ -380,11 +380,19 @@ With Settings > Privacy > "Use Vela without Google" on, the data source never ca
 - `search` is two Photon calls merged: 20 rows ranked by Photon's own importance with a soft bias
   toward you, then 10 from the hard metro box for the partial-address case. The box used to lead,
   and on a device it showed fuzzy address rows two states away and never the city itself.
-- The view model runs the local search too (`offlineSearch`: the place packs and the downloaded
-  places archives the map draws, Overture, AllThePlaces and OSM) and puts its rows first, with a
-  Photon row of the same name within 120 m dropped (issue #626). Before, the local data answered
-  only when Photon came back empty, so a category search with Google off returned Photon's name
-  matches.
+- The view model runs Vela's own search too (`googleFreeLocal`: the place packs plus the places
+  archive the map draws, Overture, AllThePlaces and OSM, read from the download or, with no
+  download there, STREAMED from the release host the map streams it from). A category query
+  ("Restaurants", the chips) is answered by that alone whenever it finds anything, with no
+  Photon call; a name or address query puts Vela's rows first and Photon's after, a same-name
+  row within 120 m dropped (issue #626). Before, the local data answered only when Photon came
+  back empty, so a category search with Google off returned Photon's name matches.
+- Streaming reads the archive by HTTP `Range` (`PmtilesReader.Archive.http`): the header, the
+  directory pages (cached across searches, keyed by the header so a rebake never reuses a stale
+  one), then the z17 tiles in rings around the search point, up to 8 rings (about 2 km), with
+  neighboring tiles merged into one range because PMTiles stores them together. Downtown
+  Wilmington, "Restaurants": 79 matches from 5 requests and 265 KB in under a second the first
+  time, 3 requests and 84 ms after.
 - "More results", the nearby pass and the ambient merge have nothing to work with: the page
   search and the ambient fan-out answer empty.
 
@@ -477,9 +485,9 @@ corridor-filtered like the phone's. [Chapter 10](10-android-auto.md) covers the 
 - **Search along a route is one window at the route's midpoint.** On a trip much longer than the
   roughly 25 km window, stops near either end are simply not in the answer; there is no per-leg
   sampling. It also has no offline path: with no signal it reports that the search failed.
-- **Google off searches Vela's places only where they are downloaded.** Photon has no category
-  search; the downloaded places and packs lead the list (see Google off above), but a region
-  that is not downloaded has only Photon, so "Restaurants" there matches names alone.
+- **Google off streams at most about 2 km of places.** A category search with no download reads
+  8 rings of tiles around the search point; farther places come only from a place pack, if one
+  is installed.
 - **Intents need a table.** A language without a word table gets English and plain search; Chinese
   and Japanese get no fuzzy pass over their own words, only over the English fallback.
 - **Your saved places do not enter the results list**, only the suggestions. A search for the name

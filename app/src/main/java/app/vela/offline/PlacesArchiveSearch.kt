@@ -20,37 +20,41 @@ import kotlin.math.sinh
 object PlacesArchiveSearch {
     const val LAYER = "places"
     /** At z17 a tile is about 240 m across at 40 degrees of latitude: 12 rings reach ~3 km. */
-    private const val MAX_RINGS = 12
+    const val MAX_RINGS = 12
+    /** A streamed archive stops sooner: every ring is bytes over the network (8 rings, ~2 km). */
+    const val MAX_RINGS_STREAMED = 8
     private const val MIN_RINGS = 2
 
     data class Feature(val props: Map<String, String>, val location: LatLng)
 
-    fun search(files: List<File>, near: LatLng, query: String, want: Int = 60): List<Place> {
+    fun search(files: List<File>, near: LatLng, query: String, want: Int = 60): List<Place> =
+        files.flatMap { f -> runCatching { PmtilesReader.Archive.file(f).use { search(it, near, query, want, MAX_RINGS) } }.getOrDefault(emptyList()) }
+
+    /** Rings of tiles out from [near] in one archive, a file or streamed. The first read takes
+     *  rings 0-[MIN_RINGS] together and each later ring is one batch, so a streamed archive costs
+     *  one index fetch (cached after the first search) and a few range requests. */
+    fun search(archive: PmtilesReader.Archive, near: LatLng, query: String, want: Int = 60, maxRings: Int = MAX_RINGS): List<Place> {
         val out = ArrayList<Place>()
-        for (file in files) {
-            runCatching {
-                PmtilesReader.Session(file).use { s ->
-                    val z = s.header?.maxZoom ?: return@use
-                    val (cx, cy) = PmtilesReader.tileOf(near.lat, near.lng, z)
-                    val n = 1 shl z
-                    for (r in 0..MAX_RINGS) {
-                        for (x in cx - r..cx + r) for (y in cy - r..cy + r) {
-                            if (maxOf(kotlin.math.abs(x - cx), kotlin.math.abs(y - cy)) != r) continue // the ring's edge only
-                            if (x !in 0 until n || y !in 0 until n) continue
-                            val tile = s.tile(z, x, y) ?: continue
-                            for (f in decode(tile, z, x, y)) {
-                                val p = f.props
-                                val name = p["name"] ?: continue
-                                if (!OfflineRank.matches(query, name, p["class"], p["addr"], p["brand"])) continue
-                                out.add(toPlace(f, name))
-                            }
-                        }
-                        if (r >= MIN_RINGS && out.size >= want) break
-                    }
-                }
+        val z = archive.header?.maxZoom ?: return out
+        val (cx, cy) = PmtilesReader.tileOf(near.lat, near.lng, z)
+        val n = 1 shl z
+        fun ring(r: Int) = (cx - r..cx + r).flatMap { x -> (cy - r..cy + r).map { y -> x to y } }
+            .filter { (x, y) -> maxOf(kotlin.math.abs(x - cx), kotlin.math.abs(y - cy)) == r && x in 0 until n && y in 0 until n }
+        var r = 0
+        while (r <= maxRings) {
+            val rings = if (r == 0) (0..MIN_RINGS).toList() else listOf(r)
+            val tiles = archive.tiles(z, rings.flatMap(::ring))
+            for ((c, tile) in tiles) for (f in decode(tile, z, c.first, c.second)) {
+                val p = f.props
+                val name = p["name"] ?: continue
+                if (!OfflineRank.matches(query, name, p["class"], p["addr"], p["brand"])) continue
+                out.add(toPlace(f, name))
             }
+            r = rings.last() + 1
+            if (r > MIN_RINGS && out.size >= want) break
         }
-        return out
+        // A point near a tile edge is stored in the neighbor too (tippecanoe's buffer).
+        return out.distinctBy { it.id }
     }
 
     /** The same Place a tap on the map builds from the feature (VelaMapView's open-places tap). */

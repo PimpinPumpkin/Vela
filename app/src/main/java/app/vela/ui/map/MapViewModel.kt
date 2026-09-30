@@ -2153,10 +2153,13 @@ class MapViewModel @Inject constructor(
                 // categories), so the downloaded places the map draws (Overture, AllThePlaces,
                 // OSM) and the place packs are searched too and lead: "Restaurants" with Google
                 // off used to return whatever Photon matched by name (issue #626).
-                val res = dataSource.search(q, near, spanM, rankFrom = rankBias(near)).let { r ->
-                    if (!app.vela.ui.GoogleFree.on.value) r
-                    else {
-                        val local = offlineSearch(q, near)
+                // A CATEGORY search without Google is answered by Vela's data alone when it has
+                // anything; Photon is asked only for names and addresses, or when Vela has nothing.
+                val res = if (!app.vela.ui.GoogleFree.on.value) dataSource.search(q, near, spanM, rankFrom = rankBias(near))
+                else {
+                    val local = googleFreeLocal(q, near)
+                    if (local.isNotEmpty() && app.vela.core.data.OfflineRank.isCategoryQuery(q)) app.vela.core.model.SearchResult(q, local)
+                    else dataSource.search(q, near, spanM, rankFrom = rankBias(near)).let { r ->
                         r.copy(places = local + r.places.filterNot { p ->
                             local.any { l -> l.name.equals(p.name, ignoreCase = true) && l.location.distanceTo(p.location) < 120.0 }
                         })
@@ -2291,9 +2294,30 @@ class MapViewModel @Inject constructor(
      *  surfaces instead of a blank screen. */
     /** The downloaded places archives around [near], the ones the map draws (issue: offline
      *  "restaurants" found only the OSM pack's rows, far off, while closer places were on the map). */
-    private fun archivePlaces(q: String, near: LatLng?): List<Place> {
+    private suspend fun archivePlaces(q: String, near: LatLng?, stream: Boolean = false): List<Place> {
         val at = near ?: return emptyList()
-        return runCatching { app.vela.offline.PlacesArchiveSearch.search(placesStore.archivesAt(at), at, q) }.getOrDefault(emptyList())
+        val files = placesStore.archivesAt(at)
+        if (files.isNotEmpty() || !stream) {
+            return runCatching { app.vela.offline.PlacesArchiveSearch.search(files, at, q) }.getOrDefault(emptyList())
+        }
+        // Online with no download here: read the same archive the map streams, over HTTP range
+        // requests (one index fetch, cached, then a few ranges of neighboring tiles).
+        val url = runCatching { placesStore.sourcesFor(at, app.vela.BuildConfig.PLACES_MANIFEST_URL).uris }.getOrDefault(emptyList())
+            .firstOrNull()?.removePrefix("pmtiles://")?.takeIf { it.startsWith("https://") } ?: return emptyList()
+        return runCatching {
+            app.vela.offline.PmtilesReader.Archive.http(archiveHttp, url).use {
+                app.vela.offline.PlacesArchiveSearch.search(it, at, q, maxRings = app.vela.offline.PlacesArchiveSearch.MAX_RINGS_STREAMED)
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    /** For streamed archive reads: bounded, so a stalled range never holds a search up for long. */
+    private val archiveHttp by lazy { http.newBuilder().callTimeout(8, java.util.concurrent.TimeUnit.SECONDS).build() }
+
+    /** Search without Google: Vela's own places (downloaded, or streamed where nothing is) and the
+     *  place packs, ranked together. */
+    private suspend fun googleFreeLocal(q: String, near: LatLng?): List<Place> = withContext(Dispatchers.IO) {
+        runCatching { offlinePoiStore.search(q, near, extra = archivePlaces(q, near, stream = true)) }.getOrDefault(emptyList())
     }
 
     private suspend fun offlineSearch(q: String, near: LatLng?): List<Place> = withContext(Dispatchers.IO) {

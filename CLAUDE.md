@@ -1329,8 +1329,9 @@ Defaults that make the safe path the easy one:
   **The Layers menu also carries the places source (three radio rows) and the Google-free switch
   (issue #626, 2026-09-29)**, flipping the same holders as Settings; the places choice only moves
   the map's pins, search still asks Google unless Google-free is on. `ParkingButton` hides the P
-  button only while no spot is saved. With Google-free on, online search also runs the local search
-  (packs + downloaded places archives) and leads with it; Photon alone has no categories.
+  button only while no spot is saved. With Google-free on, online search runs Vela's own search
+  (packs + the places archive, downloaded or STREAMED via `PmtilesReader.Archive.http` range reads)
+  and leads with it; category queries skip Photon when Vela answers (Photon has no categories).
   `NavEndConfirm` (off by default, #624) routes the nav X and Back-during-nav through a VelaDialog.
   **With the LAYERS button enabled the browse margin is statusBar + 200dp instead (2026-07-15):** the
   layers circle owns statusBar+128dp in the same corner and its IconButton touch overflow reaches

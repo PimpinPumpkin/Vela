@@ -123,7 +123,8 @@ Compose holder.
 - **Use Vela without Google** (`NoGoogle.enabled`, set from Settings > Privacy) is enforced at
   the data source: search answers from the OpenStreetMap geocoder (Photon: 20 results softly
   biased toward the user, then 10 inside a hard box around the view for partial addresses), with
-  the view model's local search (place packs and downloaded places archives) leading the list, the page-2 search, the ambient fan-out, reviews and photos answer empty,
+  Vela's own places leading the list (place packs plus the places archive, downloaded or streamed
+  by HTTP range, `PlacesArchiveSearch`; a category query skips Photon when they answer), the page-2 search, the ambient fan-out, reviews and photos answer empty,
   Street View answers null, and the Google directions call answers empty, so every route is the
   open router's with no traffic, no Google alternates and no abbreviated fallback. The app gates
   its own Google surfaces on the same setting: the hidden WebView fetchers return null at

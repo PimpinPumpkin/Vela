@@ -55,6 +55,28 @@ class PlacesArchiveSearchTest {
         assertTrue(f.location.lng in -121.743..-121.738)
     }
 
+    /** On demand, streamed like the map streams it (Range requests to the release host):
+     *  ./gradlew :app:testDebugUnitTest --tests '*PlacesArchiveSearchTest' -DvelaArchiveUrl=<https .pmtiles> -DvelaLat=.. -DvelaLng=.. */
+    @Test
+    fun searchesAStreamedArchive() {
+        val url = System.getProperty("velaArchiveUrl")
+        assumeTrue(url != null)
+        val near = LatLng(System.getProperty("velaLat")!!.toDouble(), System.getProperty("velaLng")!!.toDouble())
+        var calls = 0
+        var bytes = 0L
+        val client = okhttp3.OkHttpClient.Builder().addNetworkInterceptor { chain ->
+            chain.proceed(chain.request()).also { r -> if (r.code == 206) { calls++; bytes += r.body?.contentLength() ?: 0 } }
+        }.build()
+        for (round in 1..2) {
+            calls = 0; bytes = 0
+            val t = System.currentTimeMillis()
+            val found = PmtilesReader.Archive.http(client, url!!).use { PlacesArchiveSearch.search(it, near, "Restaurants", maxRings = PlacesArchiveSearch.MAX_RINGS_STREAMED) }
+            println("streamed round $round: ${found.size} matches, $calls range requests, ${bytes / 1024} KB, ${System.currentTimeMillis() - t} ms")
+            found.sortedBy { it.location.distanceTo(near) }.take(5).forEach { println("  ${it.name} | ${it.category} | ${"%.0f".format(it.location.distanceTo(near))} m") }
+            assertTrue(found.isNotEmpty())
+        }
+    }
+
     /** On demand, against a real places archive:
      *  ./gradlew :app:testDebugUnitTest --tests '*PlacesArchiveSearchTest' -DvelaArchive=<places .pmtiles> -DvelaLat=.. -DvelaLng=.. */
     @Test
