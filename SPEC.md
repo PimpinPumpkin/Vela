@@ -899,7 +899,8 @@ calls it only when the list changed (`MapViewModel.applyStops` compares with
 `NavSession.remainingStops()`), so an unchanged list fetches nothing.
 
 The nav step sheet always leads with `NavStopsRow`: with no stops ahead it reads "Edit route" and
-opens the stops editor; with stops it also carries "Remove next", which after a `VelaDialog`
+opens the stops editor (its title and buttons share one line only when they fit, measured; else the
+buttons move under the text, issue #628, German squeezed the title to a letter per line); with stops it also carries "Remove next", which after a `VelaDialog`
 confirm calls `applyStops(stops.drop(1))`, the same single replan as the editor's Done. The
 mid-drive editor's Add stop applies its pending edits, closes, and opens the along-route search
 (`NavSearchChips`); a pick from those results joins the drive through `addStopDuringNav`. The

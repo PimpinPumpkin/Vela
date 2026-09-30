@@ -449,51 +449,76 @@ fun NavStopsRow(
     val ink = SheetPalette.ink(dark)
     val dim = SheetPalette.dim(dark)
     var confirmRemove by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val title = stringResource(if (stops.isEmpty()) R.string.nav_edit_route else R.string.stops_editor_title)
+    val editLabel = stringResource(R.string.stops_edit)
+    val removeLabel = stringResource(R.string.nav_stops_remove_next)
+    val showRemove = onRemoveNext != null && stops.isNotEmpty()
+    val info: @Composable (Modifier) -> Unit = { m ->
+        // Issue #607: shown on every drive. With no stops it is the way into the editor to add
+        // one, so changing a two-point trip never means ending navigation.
+        Column(m) {
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = ink)
+            Text(
+                if (stops.isEmpty()) stringResource(R.string.nav_edit_route_hint) else stops.joinToString(" · "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = dim,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+    val actions: @Composable () -> Unit = {
+        if (showRemove) {
+            androidx.compose.material3.TextButton(
+                onClick = { confirmRemove = true },
+                modifier = Modifier.dpadHighlight(RoundedCornerShape(12.dp)),
+            ) { Text(removeLabel, style = MaterialTheme.typography.labelLarge) }
+        }
+        Text(editLabel, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+    }
     Column(modifier.fillMaxWidth()) {
-        Row(
+        // One line when the title and the actions fit side by side; otherwise the actions move
+        // under the text (issue #628: in German "Zwischenstopps bearbeiten" and "Nächsten
+        // entfernen" left the title a letter wide, one letter per line).
+        androidx.compose.foundation.layout.BoxWithConstraints(
             Modifier
                 .fillMaxWidth()
                 .dpadHighlight(RoundedCornerShape(12.dp))
                 .clickable(onClick = onEdit)
                 .padding(top = 10.dp, bottom = 10.dp, end = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                Icons.Default.Place,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp),
-            )
-            Spacer(Modifier.width(14.dp))
-            // Issue #607: shown on every drive. With no stops it is the way into the editor to add
-            // one, so changing a two-point trip never means ending navigation.
-            Column(Modifier.weight(1f)) {
-                Text(
-                    stringResource(if (stops.isEmpty()) R.string.nav_edit_route else R.string.stops_editor_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = ink,
-                )
-                Text(
-                    if (stops.isEmpty()) stringResource(R.string.nav_edit_route_hint) else stops.joinToString(" · "),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = dim,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            val titleStyle = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold)
+            val labelStyle = MaterialTheme.typography.labelLarge
+            val needed = with(density) {
+                measurer.measure(title, titleStyle).size.width +
+                    measurer.measure(editLabel, labelStyle).size.width +
+                    (if (showRemove) measurer.measure(removeLabel, labelStyle).size.width + 24.dp.roundToPx() else 0) +
+                    (28 + 14 + 8).dp.roundToPx()
             }
-            Spacer(Modifier.width(8.dp))
-            if (onRemoveNext != null && stops.isNotEmpty()) {
-                androidx.compose.material3.TextButton(
-                    onClick = { confirmRemove = true },
-                    modifier = Modifier.dpadHighlight(RoundedCornerShape(12.dp)),
-                ) { Text(stringResource(R.string.nav_stops_remove_next), style = MaterialTheme.typography.labelLarge) }
+            if (needed <= constraints.maxWidth) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Place, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                    Spacer(Modifier.width(14.dp))
+                    info(Modifier.weight(1f))
+                    Spacer(Modifier.width(8.dp))
+                    actions()
+                }
+            } else {
+                Column(Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Place, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                        Spacer(Modifier.width(14.dp))
+                        info(Modifier.weight(1f))
+                    }
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp, Alignment.End),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) { actions() }
+                }
             }
-            Text(
-                stringResource(R.string.stops_edit),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-            )
         }
         HorizontalDivider(color = dim.copy(alpha = 0.25f))
     }
