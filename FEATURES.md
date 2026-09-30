@@ -2568,7 +2568,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   fly into the drive while the new route's own background work was still running, and the map
   dropped to a few frames a second; it now waits for that work (at most 3 s), like a start from
   the route preview. The drive's first spoken lines (the opener and the first turns' prompts) are
-  prepared while the route preview is up, so the start from the preview runs at 44-53 fps where it
+  prepared while the route preview is up, so the start from the preview runs at 41-51 fps where it
   ran 38-44.
 - ✅ **Search without Google finds Vela's places (2026-09-29, #626).** With "Use Vela without
   Google" on, search looks through Vela's own places, the ones the map draws, whether the region
