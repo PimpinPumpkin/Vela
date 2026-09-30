@@ -1,5 +1,5 @@
 {
-  "_comment": "The data bakes the conductor (.github/workflows/bake-conductor.yml, scripts/bake-conductor.py) runs, ONE AT A TIME, whenever the repository has API budget to spare. everyHours = how stale a bake may get; the most overdue one goes next. retryInput = the dispatch input that takes a list of region ids, used to re-run only the regions that failed. inputs value \"@slice7\" = a seventh of the catalog, rotating daily. Order breaks ties (earlier = sooner). The obf (routing) jobs publish to the STAGING manifest; copying staging over the live obf-manifest.json stays a human step.",
+  "_comment": "The data bakes the conductor (.github/workflows/bake-conductor.yml, scripts/bake-conductor.py) runs, ONE AT A TIME, whenever the repository has API budget to spare. everyHours = how stale a bake may get; the most overdue one goes next. retryInput = the dispatch input that takes a list of region ids, used to re-run only the regions that failed. inputs value \"@slice7\" = a seventh of the catalog, rotating daily. Order breaks ties (earlier = sooner). The obf (routing) jobs publish to the STAGING manifest; `flips` copies it over the live obf-manifest.json once all three finished a clean cycle (every region baked, retries included) and the staging manifest passes its checks (scripts/bake-conductor.py flip()); the old live manifest is kept as obf-manifest-previous.json.",
   "reserve": 400,
   "maxRetries": 3,
   "jobs": [
@@ -22,6 +22,9 @@
     {"id": "addresses", "workflow": "address-overlays.yml", "inputs": {"all": "true", "ids": ""}, "everyHours": 2160, "retryInput": "ids"},
     {"id": "maxspeed-a", "workflow": "maxspeed-overlays.yml", "inputs": {"all": "true", "shard": "a", "ids": ""}, "everyHours": 2160, "retryInput": "ids"},
     {"id": "maxspeed-b", "workflow": "maxspeed-overlays.yml", "inputs": {"all": "true", "shard": "b", "ids": ""}, "everyHours": 2160, "retryInput": "ids"}
+  ],
+  "flips": [
+    {"id": "obf", "jobs": ["obf-us", "obf-a", "obf-b"], "tag": "obf-regions", "staging": "obf-manifest-staging.json", "live": "obf-manifest.json", "previous": "obf-manifest-previous.json"}
   ],
   "alsoHeavy": []
 }

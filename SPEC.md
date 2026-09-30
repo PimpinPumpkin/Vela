@@ -2348,7 +2348,7 @@ runners saw `-latest` -> `-latest/` -> `-latest`), it reads the folder listing a
 newest `<region>-YYMMDD.osm.pbf` beside it. The F-Droid index
 rebuilds after the nightly cut and the weekly promotion, not after a push run (which releases
 nothing). The obf routing bake publishes
-to the staging manifest only; the flip to the live manifest stays manual. A world obf bake stages into `obf-manifest-staging.json`, which the app
+to the staging manifest; the conductor copies staging over the live `obf-manifest.json` once all three routing jobs finished a clean cycle (every region baked, retries included) and staging passes its checks: no live region missing, no revision going backwards, every file on the release, something newer; the old live manifest is kept as `obf-manifest-previous.json` (`flips` in `tools/bake-schedule.json`, `flip()` in the conductor). A cycle that gave up with regions missing never flips. A world obf bake stages into `obf-manifest-staging.json`, which the app
 never reads; copying staging over the live name flips the whole catalog atomically.
 
 **Delta updates (the applier exists; the bake publishes patches since 2026-09-18).** A rebaked

@@ -93,7 +93,7 @@ above an app release); the run summary shows every job's last good bake and next
 | Grid cells: US, and the rest of the catalog in two sets | 30 days |
 | Buildings (`us`, `world`, `chunk`), house numbers, speed limits (two halves) | 90 days |
 | Surveillance cameras | **Weekly** cron, Mondays 08:17 (small, not a heavy bake) |
-| Offline routing (`obf-regions`, with the highway hierarchy), US and the rest in two sets | 90 days, into the STAGING manifest; copying staging over the live `obf-manifest.json` stays a human step |
+| Offline routing (`obf-regions`, with the highway hierarchy), US and the rest in two sets | 90 days, into the STAGING manifest, which the conductor then publishes as the live `obf-manifest.json` after a clean cycle |
 | World floor | **Manual only** (`world-lowzoom.yml` with `publish: true`) |
 
 Every workflow can still be dispatched by hand from the Actions tab; the conductor sees a
@@ -116,7 +116,7 @@ who downloaded the region is offered it again; streaming users pick it up with n
 **The quarterly group.** The conductor runs the building groups, the house numbers and the two
 speed-limit halves as separate jobs, one after another. `quarterly-data-refresh` is kept for a
 manual all-at-once refresh (it fires them together, which is what the conductor exists to avoid).
-The obf bake runs into the staging manifest; the staging-to-live copy stays a human step.
+The obf bake runs into the staging manifest, and the conductor copies staging over the live `obf-manifest.json` once all three routing jobs finished a clean cycle (every region baked, retries included) and staging passes its checks: no live region missing, no revision going backwards, every file on the release, something newer; the old live manifest is kept as `obf-manifest-previous.json`. To roll back, copy `obf-manifest-previous.json` over the live name.
 
 A rebake **overwrites the current generation in place**: same asset names, same manifest. New
 generations only fork when a file format changes, which is a deliberate cutover, never a cron.

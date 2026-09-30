@@ -10,7 +10,9 @@ Once an hour this script:
   2. settles the run it started last: success -> the job is fresh; failed regions -> queued for a
      retry of just those regions (fresh dispatch with the job's retryInput, up to maxRetries);
      only a non-region step failed (a manifest merge) -> `gh run rerun --failed`;
-  3. if no heavy bake is running and at least `reserve` API requests are left, starts ONE bake:
+  3. publishes a staged manifest (the schedule's `flips`) once every job feeding it finished a
+     clean cycle and the staging manifest passes its checks;
+  4. if no heavy bake is running and at least `reserve` API requests are left, starts ONE bake:
      a pending retry first, else the most overdue job in tools/bake-schedule.json.
 
 It never fails its own run (every problem is a warning), so it cannot mail failures itself, and it
@@ -92,7 +94,10 @@ def settle(job, st, now, max_retries):
         return False
     st["settled"] = True
     if v["conclusion"] == "success":
-        st.update(lastSuccess=now, retries=0, retryIds=[], rerun=False, lastError="")
+        # lastClean: every region of this cycle is baked (a retry that succeeds covers the regions
+        # the first run lost). A cycle that gives up below sets lastSuccess only, which is what
+        # keeps a flip (FLIPS) from publishing a half-baked catalog.
+        st.update(lastSuccess=now, lastClean=now, retries=0, retryIds=[], rerun=False, lastError="")
         print(f"{job['id']}: run {run_id} succeeded")
         return True
     failed = [j["name"] for j in v["jobs"] if j.get("conclusion") in ("failure", "timed_out", "cancelled")]
@@ -111,6 +116,58 @@ def settle(job, st, now, max_retries):
         print(f"{job['id']}: rerunning the failed step(s): {', '.join(other)}")
     else:
         st.update(lastSuccess=now, retries=0, retryIds=[], rerun=False)
+    return True
+
+
+def flip(f, state, now):
+    """Copy a staging manifest over the live one once every job feeding it finished a CLEAN cycle
+    after the last flip, and the staging manifest passes its checks. The old live manifest is kept
+    as `previous`, so a rollback is one copy back. Returns True when state changed."""
+    fs = state.setdefault("flip:" + f["id"], {})
+    last = fs.get("lastFlip", 0)
+    sts = [state.get(j, {}) for j in f["jobs"]]
+    if not all(st.get("settled", True) and st.get("lastClean", 0) > last for st in sts):
+        return False
+    if any(st.get("lastSuccess", 0) > st.get("lastClean", 0) for st in sts):
+        # A later cycle gave up with regions missing: wait for a clean one.
+        return False
+    tag = f["tag"]
+    for name, out in ((f["staging"], "staging.json"), (f["live"], "live.json")):
+        gh("release", "download", tag, "--repo", REPO, "-p", name, "-O", out, "--clobber")
+    staging = json.load(open("staging.json")).get("regions", [])
+    live = json.load(open("live.json")).get("regions", [])
+    assets = {a["name"] for a in (ghj("release", "view", tag, "--repo", REPO, "--json", "assets") or {}).get("assets", [])}
+    by_id = {r.get("id"): r for r in staging}
+    problems = []
+    lost = [r["id"] for r in live if r.get("id") not in by_id]
+    if lost:
+        problems.append(f"{len(lost)} live region(s) missing from staging: {' '.join(lost[:10])}")
+    older = [r["id"] for r in live if r.get("id") in by_id and (by_id[r["id"]].get("rev") or 0) < (r.get("rev") or 0)]
+    if older:
+        problems.append(f"{len(older)} region(s) older in staging: {' '.join(older[:10])}")
+    broken = [r.get("id") for r in staging if not r.get("url") or not r.get("sizeMb")
+              or r["url"].rsplit("/", 1)[-1] not in assets]
+    if broken:
+        problems.append(f"{len(broken)} staging row(s) without a file: {' '.join(map(str, broken[:10]))}")
+    live_rev = {r.get("id"): r.get("rev") or 0 for r in live}
+    newer = sum(1 for r in staging if (r.get("rev") or 0) > live_rev.get(r.get("id"), -1))
+    if not problems and newer == 0:
+        fs["lastFlip"] = now  # nothing new to publish; this cycle is done
+        print(f"flip {f['id']}: staging has nothing newer than live")
+        return True
+    if problems:
+        fs["lastError"] = "; ".join(problems)
+        print(f"::warning::flip {f['id']}: not flipping: {fs['lastError']}")
+        return True
+    if DRY:
+        print(f"dry run: would flip {f['id']} ({newer} newer region(s))")
+        return False
+    os.replace("live.json", f["previous"])
+    gh("release", "upload", tag, f["previous"], "--clobber", "--repo", REPO)
+    os.replace("staging.json", f["live"])
+    gh("release", "upload", tag, f["live"], "--clobber", "--repo", REPO)
+    fs.update(lastFlip=now, lastError="", newer=newer)
+    print(f"flip {f['id']}: published {f['staging']} as {f['live']} ({newer} newer region(s)); the old one is {f['previous']}")
     return True
 
 
@@ -152,6 +209,12 @@ def main():
             print(f"::warning::{job['id']}: could not read run {st.get('runId')}: {e}")
             st["settled"] = True
             changed = True
+
+    for f in sched.get("flips", []):
+        try:
+            changed |= flip(f, state, now)
+        except Exception as e:  # never block the schedule on a flip
+            print(f"::warning::flip {f['id']}: {e}")
 
     heavy = {workflow_name(j["workflow"]) for j in jobs} | {workflow_name(w) for w in sched.get("alsoHeavy", [])}
     active = []

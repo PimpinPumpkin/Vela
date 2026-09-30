@@ -5224,8 +5224,9 @@ Gotchas:
   row shows the same "Update" it showed for a newer pack; `updateRegion` refreshes the pack (delta
   when offered), every places and basemap archive inside the region, then the obf. Rebakes are the bake conductor's
   (places against the newest Overture release found in the bucket listing, basemap in two halves by
-  id, both every 30 days; see the releases rule (5)). The obf bake stays manual (its
-  runner memory limits and the user's manifest flip).
+  id, both every 30 days; see the releases rule (5)). The obf bake is the conductor's too (every 90
+  days into staging), and since 2026-09-30 it FLIPS staging to live by itself after a clean cycle
+  (SPEC 7.3, `flip()`); roll back by copying `obf-manifest-previous.json` over the live name.
 - **Grid cells, app side (2026-09-28, SPEC 7.6.5).** `app/offline/CellStore` (manifest from
   `BuildConfig.CELLS_MANIFEST_URL`, `-PcellsManifestUrl`; `cells/index.json`) streams a cell zip
   and installs each part through `ObfStore.installFile` / `PoiPackStore.installFile` /
