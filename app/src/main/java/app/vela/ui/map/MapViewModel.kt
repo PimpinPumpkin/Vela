@@ -7976,7 +7976,7 @@ class MapViewModel @Inject constructor(
     private suspend fun downloadPoiPack(region: app.vela.offline.RoutingRegion, update: Boolean = false, chained: Boolean = false): Boolean {
         // The region's own pack, or its parent's for a split country or state (RegionPacks). A big
         // shared parent does not ride along with a region download; "Get places" asks for it.
-        val pack = app.vela.offline.RegionPacks.packFor(region, poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL))
+        val pack = app.vela.offline.RegionPacks.packFor(region, poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL), poiPackStore.installedIds())
         val installed = pack != null && pack.id in poiPackStore.installedIds()
         if (pack == null || (installed && !update) || (chained && !app.vela.offline.RegionPacks.autoWith(region, pack))) {
             if (!chained) _state.update { it.copy(regionDownloadName = null) }
@@ -8150,7 +8150,7 @@ class MapViewModel @Inject constructor(
 
     /** [region]'s place pack from the cached catalog: its own, or its parent's (RegionPacks). */
     fun packFor(region: app.vela.offline.RoutingRegion): app.vela.offline.RoutingRegion? =
-        app.vela.offline.RegionPacks.packFor(region, _state.value.poiPackRegions)
+        app.vela.offline.RegionPacks.packFor(region, _state.value.poiPackRegions, _state.value.poiPackInstalledIds)
 
     /** The pack a download of [region] brings along by itself, for its size estimate. */
     fun autoPackFor(region: app.vela.offline.RoutingRegion): app.vela.offline.RoutingRegion? =
@@ -8215,15 +8215,22 @@ class MapViewModel @Inject constructor(
             // covers, which after the world catalog is nowhere Geofabrik publishes.
             val cLat0 = (south + north) / 2.0
             val cLng0 = (west + east) / 2.0
-            val pack = runCatching { poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL) }.getOrDefault(emptyList())
+            // The ROUTING region holding the area, then its pack through RegionPacks (its own or its
+            // parent's). A box test on the pack catalog alone named packs that do not hold the
+            // area: Andorra's center sits in Spain's box, and Spain's pack has no Andorra in it.
+            val region = runCatching { regionCatalog.manifest(app.vela.BuildConfig.OBF_MANIFEST_URL) }.getOrDefault(emptyList())
                 .filter { it.covers(cLat0, cLng0) }
                 .minByOrNull { it.boxArea() }
-            if (pack != null) {
-                val graphHere = pack.id in obfStore.installedIds()
+            val packs = runCatching { poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL) }.getOrDefault(emptyList())
+            val pack = region?.let { app.vela.offline.RegionPacks.packFor(it, packs, poiPackStore.installedIds()) }
+            if (region != null && pack != null) {
                 when {
                     pack.id in poiPackStore.installedIds() -> Unit // already searchable offline
+                    // A big shared parent pack is never pulled without asking: say where to get it.
+                    !app.vela.offline.RegionPacks.autoWith(region, pack) ->
+                        showStatus(appContext.getString(R.string.mapvm_area_pack_big, pack.name.substringBefore(" (").trim()))
                     // Region installed before packs existed (or the pack download failed): fetch it now.
-                    graphHere -> downloadPoiPackFor(pack)
+                    region.id in obfStore.installedIds() -> downloadPoiPackFor(region)
                     // Otherwise the region download this save triggered brings the pack with it.
                     else -> showStatus(appContext.getString(R.string.mapvm_area_uses_pack, pack.name))
                 }

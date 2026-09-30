@@ -39,4 +39,13 @@ class RegionPacksTest {
 
     @Test
     fun noParentByBoxAlone() = assertNull(RegionPacks.packFor(r("andorra", "Andorra", 42.43, 1.41, 42.66, 1.79), packs))
+
+    @Test
+    fun anInstalledParentKeepsServingOnceThePieceGetsItsOwn() {
+        val norcal = r("california-norcal", "Northern California (California)", 35.79, -126.43, 42.43, -115.60)
+        val withOwn = packs + r("california-norcal", "Northern California (California)", 35.79, -126.43, 42.43, -115.60)
+        assertEquals("california", RegionPacks.packFor(norcal, withOwn, setOf("california"))?.id)
+        assertEquals("california-norcal", RegionPacks.packFor(norcal, withOwn, setOf("delaware"))?.id)
+        assertEquals("california-norcal", RegionPacks.packFor(norcal, withOwn)?.id)
+    }
 }

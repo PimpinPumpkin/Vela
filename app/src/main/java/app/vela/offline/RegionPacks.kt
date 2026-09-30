@@ -17,15 +17,21 @@ object RegionPacks {
 
     private val PARENT = Regex("\\(([^()]+)\\)\\s*$")
 
-    fun packFor(region: RoutingRegion, packs: List<RoutingRegion>): RoutingRegion? {
-        packs.firstOrNull { it.id == region.id }?.let { return it }
-        val parent = PARENT.find(region.name)?.groupValues?.get(1)?.trim() ?: return null
-        val lat = (region.s + region.n) / 2
-        val lng = (region.w + region.e) / 2
-        return packs.filter { p ->
-            p.name.substringBefore(" (").trim().equals(parent, ignoreCase = true) &&
-                lat in p.s..p.n && lng in p.w..p.e
-        }.minByOrNull { it.boxArea() }
+    /** [installed]: pack ids on the phone. A piece that has its own pack now but whose parent's
+     *  pack is the one installed keeps using the parent (it covers the piece) instead of asking
+     *  for a second download of the same places. */
+    fun packFor(region: RoutingRegion, packs: List<RoutingRegion>, installed: Set<String> = emptySet()): RoutingRegion? {
+        val own = packs.firstOrNull { it.id == region.id }
+        if (own != null && (own.id in installed || installed.isEmpty())) return own
+        val parent = PARENT.find(region.name)?.groupValues?.get(1)?.trim()?.let { name ->
+            val lat = (region.s + region.n) / 2
+            val lng = (region.w + region.e) / 2
+            packs.filter { p ->
+                p.name.substringBefore(" (").trim().equals(name, ignoreCase = true) &&
+                    lat in p.s..p.n && lng in p.w..p.e
+            }.minByOrNull { it.boxArea() }
+        }
+        return if (own != null && parent?.id !in installed) own else parent ?: own
     }
 
     /** The pack is the whole parent's, shared with the region's siblings. */

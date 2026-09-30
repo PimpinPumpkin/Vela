@@ -2113,7 +2113,10 @@ updated through any of them, and counted once in a group's size. A shared parent
 `RegionPacks.AUTO_PARENT_MAX_MB` (600, zipped) comes with a piece's download; a bigger one
 (Germany, 1.9 GB) waits for "Get places", whose row names the parent and its size first. Matching
 on the region id alone left 288 of 447 regions with no pack: "Get places" did nothing there, and
-offline search and the offline address lookup had no data.
+offline search and the offline address lookup had no data. Once a piece gets a pack of its own
+while its parent's is the one installed, the installed parent keeps serving it (no second
+download of the same places). Saving an area picks the routing region holding the area and then
+its pack the same way; the pack catalog's boxes alone named Spain's pack for Andorra.
 
 | Artifact | Built by | Hosted on | Manifest |
 | --- | --- | --- | --- |
