@@ -208,6 +208,12 @@
     <string name="settings_routing_updating">Updating… %1$d%%</string> <!-- format -->
     <string name="settings_routing_installed">Installed · routes offline here</string>
     <string name="settings_routing_installed_places">Installed · places searchable offline</string>
+    <string name="settings_confirm_end_nav">Ask before ending navigation</string>
+    <string name="settings_confirm_end_nav_hint">The red X and Back during a drive ask first, so a stray tap does not end it</string>
+    <string name="nav_end_confirm_title">End navigation?</string>
+    <string name="nav_end_confirm_body">The route and its stops are cleared.</string>
+    <string name="nav_end_confirm_end">End</string>
+    <string name="nav_end_confirm_keep">Keep going</string>
     <string name="settings_parking_button">Parking button</string>
     <string name="settings_parking_button_hint">The P button on the map that saves where you parked. Off: it shows only while a spot is saved.</string>
     <string name="map_layers_places">Places: %1$s</string> <!-- format: %1$s is a source, "Vela data", "Google" or "Both" -->

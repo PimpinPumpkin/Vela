@@ -2149,7 +2149,19 @@ class MapViewModel @Inject constructor(
                 // see (user 2026-07-11). Span = the visible box's vertical extent.
                 val vp = viewport
                 val spanM = vp?.let { LatLng(it[0], it[1]).distanceTo(LatLng(it[2], it[1])) }
-                val res = dataSource.search(q, near, spanM, rankFrom = rankBias(near))
+                // Without Google the online answer is Photon (OSM names and addresses, no
+                // categories), so the downloaded places the map draws (Overture, AllThePlaces,
+                // OSM) and the place packs are searched too and lead: "Restaurants" with Google
+                // off used to return whatever Photon matched by name (issue #626).
+                val res = dataSource.search(q, near, spanM, rankFrom = rankBias(near)).let { r ->
+                    if (!app.vela.ui.GoogleFree.on.value) r
+                    else {
+                        val local = offlineSearch(q, near)
+                        r.copy(places = local + r.places.filterNot { p ->
+                            local.any { l -> l.name.equals(p.name, ignoreCase = true) && l.location.distanceTo(p.location) < 120.0 }
+                        })
+                    }
+                }
                 // A typed house address whose results carry no such house number: the search
                 // endpoint ranks by prominence over the window and answered "459 Ralston" typed
                 // from another state with businesses named Ralston. Google's autocomplete

@@ -263,6 +263,14 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             },
             hint = stringResource(R.string.settings_traffic_lights_hint),
         )
+        // Ask before ending a drive (issue #624), off by default.
+        GroupDivider()
+        ToggleRow(
+            label = stringResource(R.string.settings_confirm_end_nav),
+            checked = app.vela.ui.NavEndConfirm.on.value,
+            onCheckedChange = { app.vela.ui.NavEndConfirm.set(context, it) },
+            hint = stringResource(R.string.settings_confirm_end_nav_hint),
+        )
         // The speed + limit badge, phone and car (issue #625). On by default; a dash that shows
         // both already makes it clutter.
         GroupDivider()

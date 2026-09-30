@@ -2564,6 +2564,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Maps": the launcher entry flips to a plain Maps label for a stock look, and back. Deep links,
   shares and the geo: handler are untouched either way; a pinned home shortcut may need
   re-adding after switching since Android renames apps per launcher component.
+- ✅ **Search without Google finds Vela's places (2026-09-29, #626).** With "Use Vela without
+  Google" on, search also looks through the downloaded places the map draws and the place packs,
+  and those lead the list; the OpenStreetMap geocoder alone knew names and addresses but no
+  categories, so "Restaurants" returned name matches.
+- ✅ **Ask before ending navigation (2026-09-29, #624).** Settings > Navigation, off by default:
+  the red X and Back during a drive ask "End navigation?" first.
 - ✅ **Place packs for every piece of a split country or state (2026-09-29).** Northern
   California, the German states, the French regions and the other split regions use their
   parent's place pack for offline search and offline addresses; "Get places" used to do nothing on

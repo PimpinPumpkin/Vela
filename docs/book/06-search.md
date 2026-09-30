@@ -380,6 +380,11 @@ With Settings > Privacy > "Use Vela without Google" on, the data source never ca
 - `search` is two Photon calls merged: 20 rows ranked by Photon's own importance with a soft bias
   toward you, then 10 from the hard metro box for the partial-address case. The box used to lead,
   and on a device it showed fuzzy address rows two states away and never the city itself.
+- The view model runs the local search too (`offlineSearch`: the place packs and the downloaded
+  places archives the map draws, Overture, AllThePlaces and OSM) and puts its rows first, with a
+  Photon row of the same name within 120 m dropped (issue #626). Before, the local data answered
+  only when Photon came back empty, so a category search with Google off returned Photon's name
+  matches.
 - "More results", the nearby pass and the ambient merge have nothing to work with: the page
   search and the ambient fan-out answer empty.
 
@@ -472,8 +477,9 @@ corridor-filtered like the phone's. [Chapter 10](10-android-auto.md) covers the 
 - **Search along a route is one window at the route's midpoint.** On a trip much longer than the
   roughly 25 km window, stops near either end are simply not in the answer; there is no per-leg
   sampling. It also has no offline path: with no signal it reports that the search failed.
-- **Google off loses categories online.** Photon has no category search, and the packs are
-  consulted only when Photon returns nothing.
+- **Google off searches Vela's places only where they are downloaded.** Photon has no category
+  search; the downloaded places and packs lead the list (see Google off above), but a region
+  that is not downloaded has only Photon, so "Restaurants" there matches names alone.
 - **Intents need a table.** A language without a word table gets English and plain search; Chinese
   and Japanese get no fuzzy pass over their own words, only over the English fallback.
 - **Your saved places do not enter the results list**, only the suggestions. A search for the name

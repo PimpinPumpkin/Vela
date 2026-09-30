@@ -319,7 +319,9 @@ from behind the wheel.
 
 On the map it sits in the bottom bar, in the slot to the right of the trip figures ("Pause button
 on the navigation bar", on by default). That slot is otherwise empty, there only to balance the
-End button on the left, and putting pause there leaves mute as a plain button with the other map
+End button on the left (which asks "End navigation?" first when Settings > Navigation > "Ask
+before ending navigation" is on, `NavEndConfirm`, off by default, issue #624; Back during a drive
+goes through the same question), and putting pause there leaves mute as a plain button with the other map
 controls, so neither is behind a pop-out.
 
 Anyone who has asked for buttons over gestures gets the step list button in the bar as well, and

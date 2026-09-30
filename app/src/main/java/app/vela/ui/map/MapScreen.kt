@@ -576,6 +576,21 @@ fun MapScreen(
     // In-nav search-along-route: the map search FAB arms a panel (text field + chips) above
     // the bar. Reset when nav ends so a stale-open panel can't greet the next drive.
     var navSearchOpen by remember { mutableStateOf(false) }
+    // Ending a drive: straight away, or after a confirm when Settings > Navigation asks for one
+    // (NavEndConfirm, off by default, issue #624). The red X and Back during a drive both come here.
+    var confirmEndNav by remember { mutableStateOf(false) }
+    val requestEndNav: () -> Unit = { if (app.vela.ui.NavEndConfirm.on.value) confirmEndNav = true else vm.stopNav() }
+    if (confirmEndNav && state.navigating) {
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { confirmEndNav = false },
+            title = stringResource(R.string.nav_end_confirm_title),
+            confirmText = stringResource(R.string.nav_end_confirm_end),
+            onConfirm = { confirmEndNav = false; vm.stopNav() },
+            dismissText = stringResource(R.string.nav_end_confirm_keep),
+            onDismiss = { confirmEndNav = false },
+            text = { Text(stringResource(R.string.nav_end_confirm_body)) },
+        )
+    }
     var navSearchQuery by remember { mutableStateOf("") }
     LaunchedEffect(state.navigating) {
         if (!state.navigating) { navSearchOpen = false; navSearchQuery = "" }
@@ -638,7 +653,7 @@ fun MapScreen(
             // whole drive - ending nav because you browsed gas stations would be brutal.
             state.navigating && state.results.isNotEmpty() -> vm.clearSearch()
             state.navigating && navSearchOpen -> { navSearchOpen = false; focusManager.clearFocus() }
-            state.navigating -> vm.stopNav()
+            state.navigating -> requestEndNav()
             state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
                 state.transit.isNotEmpty() || state.transitLoading -> vm.clearRoute()
             state.selected != null -> vm.clearSelection()
@@ -1777,7 +1792,7 @@ fun MapScreen(
                         remainingSeconds = state.nav.remainingDuration,
                         offRoute = state.nav.offRoute,
                         paused = state.navPaused,
-                        onStop = vm::stopNav,
+                        onStop = requestEndNav,
                         onSteps = close,
                         trafficRatio = state.activeRoute?.trafficRatio,
                         showListButton = false,
@@ -1883,7 +1898,7 @@ fun MapScreen(
                     remainingSeconds = state.nav.remainingDuration,
                     offRoute = state.nav.offRoute && !state.navPaused,
                     paused = state.navPaused,
-                    onStop = vm::stopNav,
+                    onStop = requestEndNav,
                     onSteps = {
                         // From the button / chevron: the well opens from closed.
                         stepsEnterFromPx = 0f
