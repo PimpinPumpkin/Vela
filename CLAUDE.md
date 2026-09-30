@@ -3381,6 +3381,12 @@ architecture note.
   open PLACES layers** (bisect: hiding them alone lifted seconds 4 to 6 from ~8 to 29-50 fps). They
   stay hidden for the first 7 s of a DRIVE (`placesNavHold`, `NAV_PLACES_HOLD_MS`) and appear at the
   settled nav zoom; one-way arrows joined the drive declutter. SPEC 4.7a has the A/B.
+  **2026-09-30: a one-tap Start from the place sheet was the bad case** (5-7 fps in seconds 3-4):
+  no layer mattered; `top -H` showed the route's follow-up work (road-features pass, camera jobs)
+  and two `piper-tts` threads on the fast cores during the fly-in. The auto-start now waits for the
+  follow-up work (`awaitRouteWork`, cap 3 s): 21-33 fps. The opener is synthesized during the route
+  preview (`NavSession.prepareOpener`, `PiperSynth.prepare`). GrapheneOS refuses simpleperf even for
+  a profileable build (perf_event denied), so `top -H -o TID,%CPU,CMD` is the thread-level tool.
   Measure with `debug.vela.fps` + Perfetto on the 4a; the P9's GrapheneOS gives no ftrace to a
   shell trace, and a demo route there uses the phone's STICKY travel mode (a walking demo buzzes
   the walk turn cues).

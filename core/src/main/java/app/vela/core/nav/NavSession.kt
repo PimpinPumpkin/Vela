@@ -219,11 +219,9 @@ class NavSession @Inject constructor(
         // Google's markup gives "Head toward F St"; add the cardinal so guidance
         // says "Head east on F St" like Google's own voice.
         val first = Heading.withCardinal(route.maneuvers.firstOrNull()?.instruction.orEmpty(), route.polyline)
-        // The opener is the first thing the voice says on every drive, so it honors the
-        // spoken-street-names switch too (issue #596). The BANNER keeps `first`: the switch is
+        // The opener ([openerFor]) is the first thing the voice says on every drive, so it honors
+        // the spoken-street-names switch too (issue #596). The BANNER keeps `first`: the switch is
         // about what is read aloud, never about what is shown.
-        val firstSpoken =
-            Heading.withCardinal(route.maneuvers.firstOrNull()?.spokenInstruction().orEmpty(), route.polyline)
         _state.value = State(
             navigating = true,
             route = route,
@@ -248,13 +246,26 @@ class NavSession @Inject constructor(
         // speakOpener (not speak): briefly hold the opener until the first road's real romanized name
         // has loaded from the map tiles, so a foreign street isn't read as an ICU skeleton at T=0 while
         // the nav-zoom tiles are still loading (issue #184). Falls through to speaking after a short cap.
-        voice.speakOpener(app.vela.core.i18n.NavStringsRegistry.current().startNav(firstSpoken))
+        voice.speakOpener(openerFor(route))
         diag.record(
             "nav",
             "start → ${destinationLabel.ifBlank { "destination" }} " +
                 "(${route.distanceMeters?.toInt()} m, ${route.maneuvers.size} steps, " +
                 "ETA ${route.durationInTrafficSeconds ?: route.durationSeconds}s)",
         )
+    }
+
+    /** The line [start] opens a drive of [route] with: the start phrase and the first instruction,
+     *  with its compass heading and the spoken-street-names switch applied. */
+    fun openerFor(route: Route): String = app.vela.core.i18n.NavStringsRegistry.current().startNav(
+        Heading.withCardinal(route.maneuvers.firstOrNull()?.spokenInstruction().orEmpty(), route.polyline),
+    )
+
+    /** Prepare the opener of a drive of [route] while it is only being previewed, so Start plays it
+     *  without synthesizing while the camera flies in to the driving view. */
+    fun prepareOpener(route: Route) {
+        if (_state.value.navigating || route.maneuvers.isEmpty()) return
+        voice.prepare(openerFor(route))
     }
 
     fun stop() {

@@ -32,6 +32,10 @@ interface NeuralSynth {
      *  [onDone] runs once audio for this call finishes or is abandoned. */
     fun speak(text: String, interrupt: Boolean, onDone: () -> Unit)
 
+    /** Synthesize [text] ahead of time, quietly, so a later [speak] of exactly this line plays at
+     *  once. Optional: a synth that cannot keep audio ignores it. */
+    fun prepare(text: String) {}
+
     /** Stop any current + queued speech now. */
     fun stop()
 

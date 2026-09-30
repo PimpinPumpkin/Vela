@@ -2564,6 +2564,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Maps": the launcher entry flips to a plain Maps label for a stock look, and back. Deep links,
   shares and the geo: handler are untouched either way; a pinned home shortcut may need
   re-adding after switching since Android renames apps per launcher component.
+- ✅ **Smoother drive start from a place's page (2026-09-30).** Start on a place's page used to
+  fly into the drive while the new route's own background work was still running, and the map
+  dropped to a few frames a second; it now waits for that work (at most 3 s), like a start from
+  the route preview. The drive's first spoken line is also prepared while the route preview is up.
 - ✅ **Search without Google finds Vela's places (2026-09-29, #626).** With "Use Vela without
   Google" on, search looks through Vela's own places, the ones the map draws, whether the region
   is downloaded or not (streamed from the same host as the map, a few small requests), plus the

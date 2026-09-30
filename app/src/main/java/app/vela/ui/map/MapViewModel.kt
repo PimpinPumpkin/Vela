@@ -63,6 +63,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -512,6 +515,16 @@ class MapViewModel @Inject constructor(
 
 
     init {
+        // The drive's opening line is synthesized while its route preview is up (settled for
+        // 1.5 s), so Start plays it instead of synthesizing during the fly-in: two voice threads
+        // on the 4a's fast cores held the map to 5-7 fps in seconds 3-4 of every drive start.
+        viewModelScope.launch {
+            _state.map { s -> if (!s.navigating && s.directionsOpen && s.travelMode != TravelMode.TRANSIT) s.activeRoute else null }
+                .distinctUntilChanged { a, b -> a === b }
+                .collectLatest { r ->
+                    if (r != null) { kotlinx.coroutines.delay(1500); runCatching { navSession.prepareOpener(r) } }
+                }
+        }
         loadAmbientCacheFromDisk() // ambient LRU survives restarts (paint-then-refine)
         warmWebViewsWhenQuiet() // boot the WebView ENGINE at a quiet moment (no Google page), not at the first place tap
         loadOpenPlaceLinks() // Overture -> Google links remembered from earlier sessions
@@ -5069,7 +5082,7 @@ class MapViewModel @Inject constructor(
                 // Warm the region's road-features file while the chooser is up: its first parse
                 // (176k features, 1.5 s on a 4a) used to land in the drive's first seconds beside
                 // the tile workers and the voice (Perfetto 2026-09-28).
-                if (routes.isNotEmpty()) viewModelScope.launch(Dispatchers.Default) { runCatching { roadFeaturesCoverRoute(routes.first().polyline) } }
+                if (routes.isNotEmpty()) roadFeaturesJob = viewModelScope.launch(Dispatchers.Default) { runCatching { roadFeaturesCoverRoute(routes.first().polyline) } }
                 // The default active route can be a PROVISIONAL Google alternate (it sorts to the
                 // top when it has the fastest live ETA). A provisional route carries Google's
                 // ABBREVIATED steps + an ETA over un-snapped geometry — so the pre-nav preview showed
@@ -5087,6 +5100,14 @@ class MapViewModel @Inject constructor(
     }
 
     private var flockRouteJob: kotlinx.coroutines.Job? = null
+    private var roadFeaturesJob: kotlinx.coroutines.Job? = null
+
+    /** Wait (at most [capMs]) for the work that follows a route's arrival: the road features along
+     *  it, the camera count and the camera detours. A one-tap Start from the place sheet waits for
+     *  it, so the drive's fly-in does not share the CPU with it. */
+    suspend fun awaitRouteWork(capMs: Long = 3000L) {
+        kotlinx.coroutines.withTimeoutOrNull(capMs) { roadFeaturesJob?.join(); flockRouteJob?.join() }
+    }
     private var routesEpoch = 0 // bumped on each fresh route(); stales an in-flight flock count if a newer route set lands
 
     /** When "Avoid surveillance cameras" is on, count the ALPR cameras near each route option (the bundled

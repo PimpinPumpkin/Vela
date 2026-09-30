@@ -1257,6 +1257,21 @@ declutter also hides `road_one_way_arrow` / `_opposite` (placement along every o
 the nav zoom, no guidance value under a route line). The UFO measured a few fps under the arrow
 in seconds 6 to 10, inside run-to-run noise.
 
+Fourth round (2026-09-30, demo drive, Northern California map downloaded): Start from the PLACE
+SHEET (the one-tap `startNavToSelected`) ran seconds 2 to 5 at 17/5/6/12 fps, and hiding any one
+layer type changed nothing. Per-thread CPU (`top -H`) showed why: the fly-in shared the CPU with
+the route's follow-up work on the default dispatcher (the road-features pass over the new route,
+plus the camera count and detours when those are on) and with the first voice prompt (two
+`piper-tts` threads on the fast cores, the map's GL thread down to 43% of a core). From the chooser
+none of that coincides: the follow-up work ran while the preview was up (36-49 fps in seconds 2 to
+4). So the one-tap Start waits for that work (`MapViewModel.awaitRouteWork`, road features plus
+the camera job, capped at 3 s) before `onStartNav`: seconds 3 to 5 went to 21-33 fps (three runs:
+21/33/21, 23/26/19, 25/28/22), smooth from second 6. The drive's opener is also synthesized while
+the route preview is up (`NavSession.prepareOpener` -> `VoiceGuide.prepare` -> `PiperSynth.prepare`,
+background priority, up to `MAX_PREPARED` lines kept by voice, speaker, speed and exact text) and
+plays without synthesis at Start; on a route whose first turn is seconds away the imminent-turn
+prompt cuts the opener, and that prompt is synthesized at Start as before.
+
 ### 4.8 Route line rendering
 
 - **A paused drive draws the ahead line in `ROUTE_PAUSED_COLOR` (`#9C8AD6`, a muted lavender)**

@@ -1011,7 +1011,10 @@ fun MapScreen(
     // skip the permission prompts that the picker's Start button honors. Consumed once, so a
     // later refetch (mode change, added stop) cannot silently launch a drive.
     LaunchedEffect(state.activeRoute, state.navigating) {
-        if (state.activeRoute != null && !state.navigating && vm.consumeAutoStart()) onStartNav()
+        // The route's follow-up work (road features along it, the camera count and detours) runs
+        // on the CPU right after the route lands; starting the fly-in on top of it dropped the map
+        // to 5-7 fps on a 4a. From the chooser it has long finished by the time Start is tapped.
+        if (state.activeRoute != null && !state.navigating && vm.consumeAutoStart()) { vm.awaitRouteWork(); onStartNav() }
     }
     if (showPreciseNeeded) {
         app.vela.ui.VelaDialog(
