@@ -3379,6 +3379,11 @@ architecture note.
   mock location). Flying from the overview loaded a tile set at every zoom it crossed: 6-10 fps for
   three seconds on the 4a, 29-59 after. Never animate the camera across zoom levels at nav start.
   `debug.vela.hide` re-applies every 250 ms while set, so a strip test stays a strip.
+  Before the puck engages (a parked start off the route, issue #633) the frame loop tilts in on the
+  same clock and draws the icon at the raw fix through the overlay; the 3D icons never fall back to
+  the flat symbol. Testing a PARKED start on the 4a needs a mock fix: add BOTH `gps` and `network`
+  test providers before turning location on (GrapheneOS has no network provider, and the fused
+  provider crashed system_server asking for one), and turn location off before removing them.
 - **NAV START WAS 2 TO 30 FPS FOR 15 SECONDS (2026-09-28, user: "jittery when just starting out",
   a demo route, so not GPS).** SPEC 4.7a has the trace. The voice was the surprise: Piper synthesizes
   the opener and the first prompts on two threads at default priority, 8.9 s of CPU in the first

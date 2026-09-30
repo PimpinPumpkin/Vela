@@ -824,6 +824,7 @@ fun VelaMapView(
     // NAV_START_TILT_TAU_S (SPEC 4.7a, sixth round). navStartCutMs = when it happened, 0 = not yet.
     val navStartCutMs = remember { longArrayOf(0L) }
     val navStartTilting = remember { booleanArrayOf(false) }
+    val preEngageAnimUntil = remember { longArrayOf(0L) } // a pre-engage re-point flight is running until this uptime
     val navPadEase = remember { doubleArrayOf(0.0) } // puck-low top padding as a height fraction, eased on (re)attach
     val wasNavRef = remember { booleanArrayOf(false) } // a drive actually ran - gates the one-shot camera teardown
     val onCompassTapHolder = rememberUpdatedState(onCompassTap)
@@ -2997,9 +2998,38 @@ fun VelaMapView(
                     )
                 }
             } else {
-                dropPuckOverlay()
-                val moved = navPuck.raw?.let { writeMe(style, it, navPuck.rawBearing ?: 0f) } == true
-                if (moved) idleFrames = 0 else idleFrames++
+                // NOT ENGAGED (issue #633): a phone parked in a driveway or a lot is farther than the
+                // snap tolerance from the route, so the puck engages only once the car reaches the
+                // road. Until then: the drive's opening tilt still eases in on its own clock (the
+                // start cut lands flat, and a parked car sends no fixes that would re-point the
+                // camera), and the chosen icon draws at the raw fix through the same overlay the
+                // engaged puck uses, so the 3D models do not fall back to the flat symbol.
+                val cam = mapRef
+                val nowMs = android.os.SystemClock.uptimeMillis()
+                if (cam != null && navFollowingHolder.value && navStartTilting[0] && !scaling[0] && !shoving[0] &&
+                    nowMs >= preEngageAnimUntil[0]
+                ) {
+                    val want = if (navNorthUpHolder.value) 0.0
+                        else 55.0 * (1.0 - kotlin.math.exp(-(nowMs - navStartCutMs[0]) / 1000.0 / NAV_START_TILT_TAU_S))
+                    if (kotlin.math.abs(cam.cameraPosition.tilt - want) > 0.05) {
+                        cam.moveCamera(CameraUpdateFactory.tiltTo(want))
+                        idleFrames = 0
+                    }
+                }
+                val raw = navPuck.raw
+                if (cam != null && raw != null) {
+                    val live = cam.cameraPosition
+                    val scr = cam.projection.toScreenLocation(MLLatLng(raw.lat, raw.lng))
+                    val brg = (navPuck.rawBearing?.toDouble() ?: live.bearing)
+                    val moved = kotlin.math.abs(scr.x - lastPuckScreen[0]) > 0.5f || kotlin.math.abs(scr.y - lastPuckScreen[1]) > 0.5f
+                    showPuckOverlay(style, scr.x, scr.y, brg - live.bearing, live.tilt)
+                    lastPuckScreen[0] = scr.x; lastPuckScreen[1] = scr.y
+                    if (moved) idleFrames = 0 else idleFrames++
+                } else {
+                    dropPuckOverlay()
+                    val moved = raw?.let { writeMe(style, it, navPuck.rawBearing ?: 0f) } == true
+                    if (moved) idleFrames = 0 else idleFrames++
+                }
             }
         }
     }
@@ -4215,7 +4245,9 @@ fun VelaMapView(
                                         .build(),
                                 ),
                             )
-                        } else map.animateCamera(
+                        } else {
+                            preEngageAnimUntil[0] = now + 600 // the ticker's parked tilt waits for this flight
+                            map.animateCamera(
                             CameraUpdateFactory.newCameraPosition(
                                 CameraPosition.Builder()
                                     .target(MLLatLng(loc.lat, loc.lng))
@@ -4230,6 +4262,7 @@ fun VelaMapView(
                             ),
                             550,
                         )
+                        }
                     }
                 }
             }

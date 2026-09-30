@@ -1307,6 +1307,12 @@ start, three alternating runs: before 39/10/11/7, 37/20/18/6, 43/19/18/10; after
 flat cut with the 0.55 s tilt ease had one 5-9 fps second as the horizon's tiles arrived together.
 Since this round `debug.vela.hide` re-applies every 250 ms while set, so layers added after the
 setting (nav adds its own at Start) are hidden too.
+Before the puck ENGAGES (issue #633: a phone parked in a driveway or a lot is farther than the
+22 m snap tolerance from the route, so it engages only on reaching the road) the frame loop still
+eases the opening tilt in on the start cut's clock, pausing while a pre-engage re-point flight
+(`preEngageAnimUntil`, 600 ms) runs, and draws the chosen icon at the raw fix through the same
+overlay as the engaged puck. Before, a parked start stayed flat and showed the flat symbol puck
+until the car moved; checked on the 4a with a stationary mock fix beside the route and the duck icon.
 
 ### 4.8 Route line rendering
 
