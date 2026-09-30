@@ -258,6 +258,9 @@ private const val PREVIEW_LAYER = "vela-preview"
 private const val NAV_IDLE_TICK_MS = 120L
 private const val BROWSE_IDLE_FRAMES = 30 // settled frames before the free-drive follow loop slows down
 private const val BROWSE_IDLE_TICK_MS = 200L // its pace while settled // the nav loop's pace while parked and settled (issue #605)
+// SPEC 4.7a: the opening tilt after the start cut. 3 s held the 4a's worst second at 29-36 fps
+// (0.55 s: one 5-9 fps second as the horizon's tiles all arrived together).
+private const val NAV_START_TILT_TAU_S = 3.0
 private const val CAM_BRG_TAU_STILL = 1.6
 private const val CAM_BRG_TAU_TURN = 0.35
 /** Error at which the damping is fully in "this is a real turn" mode. Well above the few degrees
@@ -817,6 +820,10 @@ fun VelaMapView(
     val navFollowingHolder = rememberUpdatedState(navFollowing)
     val navNorthUpHolder = rememberUpdatedState(navNorthUp)
     val navTiltEase = remember { doubleArrayOf(55.0) } // eased so the compass toggle glides, not snaps
+    // The drive's first camera move is a CUT to the car, flat, and the tilt then eases in over
+    // NAV_START_TILT_TAU_S (SPEC 4.7a, sixth round). navStartCutMs = when it happened, 0 = not yet.
+    val navStartCutMs = remember { longArrayOf(0L) }
+    val navStartTilting = remember { booleanArrayOf(false) }
     val navPadEase = remember { doubleArrayOf(0.0) } // puck-low top padding as a height fraction, eased on (re)attach
     val wasNavRef = remember { booleanArrayOf(false) } // a drive actually ran - gates the one-shot camera teardown
     val onCompassTapHolder = rememberUpdatedState(onCompassTap)
@@ -2475,6 +2482,8 @@ fun VelaMapView(
             navPuck.kalman.reset() // nav ended — don't carry a stale speed into the next trip
             navUserTilt[0] = Double.NaN // shove-set tilt is a per-drive override
             navTiltEase[0] = 55.0 // next drive starts at the default pitch, not wherever this one ended
+            navStartCutMs[0] = 0L
+            navStartTilting[0] = false
             // Camera padding is STICKY MapLibre state: the nav view's puck-low offset (top padding,
             // set on every follow frame + the pre-engage case) would otherwise shift the browse
             // camera's center for the rest of the session. Bearing + tilt are sticky the same way.
@@ -2709,6 +2718,16 @@ fun VelaMapView(
                         // jolt). Both now ease in with the same k as everything else.
                         navTiltEase[0] = cp.tilt
                         navPadEase[0] = (cp.padding?.getOrNull(1) ?: 0.0) / cam.height.toDouble().coerceAtLeast(1.0)
+                        if (navStartCutMs[0] == 0L) {
+                            // Engaged before the pre-engage camera ran: make the same start cut here.
+                            navStartCutMs[0] = android.os.SystemClock.uptimeMillis()
+                            navStartTilting[0] = !navNorthUpHolder.value
+                            camState[0] = pt.lat; camState[1] = pt.lng
+                            camState[2] = if (navNorthUpHolder.value) 0.0 else navPuck.displayBearing.toDouble()
+                            camState[3] = tgtZoom
+                            navTiltEase[0] = 0.0
+                            navPadEase[0] = 0.45
+                        }
                     }
                     // SPLIT time constants (user 2026-07-16, "moving through a thick liquid"):
                     // one fast 0.12 s k drove everything, so every road kink became camera
@@ -2753,7 +2772,11 @@ fun VelaMapView(
                         !navUserTilt[0].isNaN() -> navUserTilt[0]
                         else -> 55.0
                     }
-                    navTiltEase[0] += (tiltTgt - navTiltEase[0]) * kBrg
+                    // The drive's opening tilt eases in slowly after the start cut; everything else
+                    // (the compass toggle, a shove) keeps the bearing's constant.
+                    val tiltTau = if (navStartTilting[0]) NAV_START_TILT_TAU_S.toFloat() else 0.55f
+                    navTiltEase[0] += (tiltTgt - navTiltEase[0]) * (1f - kotlin.math.exp(-dtEase / tiltTau)).toDouble()
+                    if (navStartTilting[0] && kotlin.math.abs(tiltTgt - navTiltEase[0]) < 0.5) navStartTilting[0] = false
                     navPadEase[0] += (0.45 - navPadEase[0]) * kPos
                     if (kotlin.math.abs(0.45 - navPadEase[0]) < 0.002) navPadEase[0] = 0.45 // terminate exactly
                     val camNow = doubleArrayOf(camState[0], camState[1], camState[2], camState[3], navTiltEase[0], navPadEase[0], cameraLeftInsetPx.toDouble())
@@ -3544,9 +3567,14 @@ fun VelaMapView(
                                 (m.invoke(null, "debug.vela.hide") as? String).orEmpty().trim()
                             }.getOrDefault("")
                             val st = map.style
-                            if (spec != lastSpec && st != null && st.isFullyLoaded) {
-                                hidden.forEach { id -> st.getLayer(id)?.setProperties(PropertyFactory.visibility(Property.VISIBLE)) }
-                                hidden.clear()
+                            // Re-scanned every poll while a spec is set, so layers added later (nav adds its
+                            // own at Start) are hidden too; a strip test must stay a strip.
+                            if ((spec != lastSpec || spec.isNotEmpty()) && st != null && st.isFullyLoaded) {
+                                if (spec != lastSpec) {
+                                    hidden.forEach { id -> st.getLayer(id)?.setProperties(PropertyFactory.visibility(Property.VISIBLE)) }
+                                    hidden.clear()
+                                }
+                                val before = hidden.size
                                 val tokens = spec.split(',', ' ').map { it.trim() }.filter { it.isNotEmpty() }
                                 if (tokens.isNotEmpty()) for (layer in st.layers) {
                                     val type = when (layer) {
@@ -3558,10 +3586,10 @@ fun VelaMapView(
                                         layer.setProperties(PropertyFactory.visibility(Property.NONE)); hidden += layer.id
                                     }
                                 }
-                                android.util.Log.d("VelaFps", "hide '$spec': ${hidden.size} layers")
+                                if (spec != lastSpec || hidden.size != before) android.util.Log.d("VelaFps", "hide '$spec': ${hidden.size} layers")
                                 lastSpec = spec
                             }
-                            bisectHandler.postDelayed(this, 2000)
+                            bisectHandler.postDelayed(this, if (spec.isNotEmpty()) 250 else 2000)
                         }
                     }
                     bisectHandler.postDelayed(poll, 2000)
@@ -4166,14 +4194,37 @@ fun VelaMapView(
                         navZoomSpeed[0] += (rawSp - navZoomSpeed[0]) * 0.3f
                         val zoom = if (!navUserZoom[0].isNaN()) navUserZoom[0]
                             else 18.5 - (navZoomSpeed[0] / 30f) * (18.5 - 15.8) // even closer default (user 2026-07-15, was 18.0-15.5); speed still zooms out
-                        map.animateCamera(
+                        val now = android.os.SystemClock.uptimeMillis()
+                        if (navStartCutMs[0] == 0L) {
+                            // Google's start: cut straight to the car at street zoom, flat, then
+                            // tilt in slowly. Flying from the overview down to the nav zoom loaded
+                            // and placed a fresh tile set at every zoom it passed through (4a: 6-10
+                            // fps for three seconds); a cut loads one viewport, and the slow tilt
+                            // lets the horizon's tiles arrive a few at a time.
+                            navStartCutMs[0] = now
+                            navStartTilting[0] = !navNorthUp
+                            navTiltEase[0] = 0.0
+                            map.moveCamera(
+                                CameraUpdateFactory.newCameraPosition(
+                                    CameraPosition.Builder()
+                                        .target(MLLatLng(loc.lat, loc.lng))
+                                        .zoom(zoom)
+                                        .tilt(0.0)
+                                        .bearing(if (navNorthUp) 0.0 else brg.toDouble())
+                                        .padding(0.0, map.height * 0.45, 0.0, 0.0)
+                                        .build(),
+                                ),
+                            )
+                        } else map.animateCamera(
                             CameraUpdateFactory.newCameraPosition(
                                 CameraPosition.Builder()
                                     .target(MLLatLng(loc.lat, loc.lng))
                                     .zoom(zoom)
-                                    .tilt(if (navNorthUp) 0.0 else 55.0)
+                                    // Still tilting in from the cut: the same ease the ticker runs.
+                                    .tilt(if (navNorthUp) 0.0 else if (navStartTilting[0])
+                                        55.0 * (1.0 - kotlin.math.exp(-(now - navStartCutMs[0]) / 1000.0 / NAV_START_TILT_TAU_S))
+                                        else 55.0)
                                     .bearing(if (navNorthUp) 0.0 else brg.toDouble())
-                                    // Same puck-low offset as the engaged follow ticker.
                                     .padding(0.0, map.height * 0.45, 0.0, 0.0)
                                     .build(),
                             ),

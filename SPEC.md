@@ -1291,6 +1291,23 @@ the voice lines (the drive began 2 s later for no gain), and waiting for the map
 overview (same fps, 0.5 s later). What remains on the one-tap path, seconds 2 to 4 at about
 10-25 fps, is the fly-in's own tile work at the nav zoom.
 
+Sixth round (2026-09-30): the drive STARTS WITH A CUT, not a flight. A strip test (every layer
+hidden through `debug.vela.hide`) ran the one-tap start at 52-60 fps against 6-14 with everything
+shown; hiding only the symbols or only the geometry each left 20-55, so no layer is the cost, the
+flight is: the camera eased from the route overview down to the nav zoom and loaded and placed a
+tile set at every zoom it crossed. Google Maps on the same phone (mock location, frames at 4 per
+second) hides the map behind "Finding best route", then cuts straight to the car, flat, at street
+zoom, and tilts in over about 4 s. Vela now does the same: the drive's first camera move (the
+pre-engage block, or the ticker's seed when the puck engages first) is a `moveCamera` to the car at
+the nav zoom with tilt 0 and the puck-low padding, and the tilt eases to 55 with
+`NAV_START_TILT_TAU_S` (3 s; later pre-engage re-points follow the same curve, and the constant
+applies only until the opening tilt lands). One-tap start, fps per second from the nav service's
+start, three alternating runs: before 39/10/11/7, 37/20/18/6, 43/19/18/10; after 46/36/57/48,
+47/29/52/51, 43/36/59/45. A cut with the full 55-degree tilt was 20-30 fps in seconds 2-4, and a
+flat cut with the 0.55 s tilt ease had one 5-9 fps second as the horizon's tiles arrived together.
+Since this round `debug.vela.hide` re-applies every 250 ms while set, so layers added after the
+setting (nav adds its own at Start) are hidden too.
+
 ### 4.8 Route line rendering
 
 - **A paused drive draws the ahead line in `ROUTE_PAUSED_COLOR` (`#9C8AD6`, a muted lavender)**

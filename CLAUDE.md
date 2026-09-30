@@ -3365,6 +3365,12 @@ architecture note.
 - **Flock route counts use a 45 m corridor (2026-09-16, #527, `FlockCameras.along` default):** 120 m
   caught cameras on a parallel alternate a block over. `OverpassAlprCameras.fetchAlong` (the
   fallback) still uses its own width; the bundled set is what counts in practice.
+- **A DRIVE STARTS WITH A CUT, NOT A FLIGHT (2026-09-30, SPEC 4.7a sixth round).** The first nav
+  camera move jumps to the car at the nav zoom, flat, and the tilt eases in over
+  `NAV_START_TILT_TAU_S` (3 s), which is Google's start (checked on the 4a against Google Maps with a
+  mock location). Flying from the overview loaded a tile set at every zoom it crossed: 6-10 fps for
+  three seconds on the 4a, 29-59 after. Never animate the camera across zoom levels at nav start.
+  `debug.vela.hide` re-applies every 250 ms while set, so a strip test stays a strip.
 - **NAV START WAS 2 TO 30 FPS FOR 15 SECONDS (2026-09-28, user: "jittery when just starting out",
   a demo route, so not GPS).** SPEC 4.7a has the trace. The voice was the surprise: Piper synthesizes
   the opener and the first prompts on two threads at default priority, 8.9 s of CPU in the first
