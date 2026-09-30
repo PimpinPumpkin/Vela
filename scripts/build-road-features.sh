@@ -20,7 +20,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 
 echo "→ downloading $URL"
-curl -fsSL "$URL" -o "$WORK/region.osm.pbf"
+bash "$ROOT/scripts/fetch-pbf.sh" "$URL" "$WORK/region.osm.pbf"
 
 # [S,W,N,E] from the declared extract region (header.boxes), same rule as every other bake.
 read -r MINLON MINLAT MAXLON MAXLAT < <(osmium fileinfo -g header.boxes "$WORK/region.osm.pbf" | tr -d '()' | tr ',' ' ')

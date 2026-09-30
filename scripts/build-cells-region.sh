@@ -98,7 +98,7 @@ if [ -n "$LOCAL_PBF" ]; then
   PBF="$(cd "$(dirname "$LOCAL_PBF")" && pwd)/$(basename "$LOCAL_PBF")"
 else
   PBF="$WORK/region.osm.pbf"
-  curl -fsSL --retry 3 -o "$PBF" "$PBF_URL"
+  bash "$ROOT/scripts/fetch-pbf.sh" "$PBF_URL" "$PBF"
 fi
 BBOX="$(bake_header_bbox "$PBF" | python3 "$ROOT/scripts/clamp-bbox.py" "$ID")"
 echo "→ $ID: bbox $BBOX"

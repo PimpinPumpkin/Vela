@@ -27,7 +27,7 @@ source "$ROOT/scripts/bake-lib.sh"
 # The pinned bake tool (OsmAndMapCreator) lives on the obf-tools release - forks fall back upstream.
 bake_mapcreator "$WORK"
 
-curl -fSL --retry 3 -o "$WORK/region.osm.pbf" "$PBF_URL"
+bash "$ROOT/scripts/fetch-pbf.sh" "$PBF_URL" "$WORK/region.osm.pbf"
 
 # bbox [S,W,N,E] from the extract's declared HEADER box - same rule as every other region pipeline.
 BBOX="$(bake_header_bbox "$WORK/region.osm.pbf")"

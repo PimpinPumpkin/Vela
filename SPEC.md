@@ -2331,7 +2331,11 @@ basemap and grid cells every 30 days (in halves or sets under the 256-job matrix
 `staging=true`) every 90 days. Its state is `state.json` on the
 `bake-conductor` release (targeted at the root commit); its run never fails. Separate crons are
 not added back: overlapping bakes spend the repository's 1,000 requests an hour and fail CI's
-releases, the F-Droid index and each other with HTTP 403 (2026-09-28/29). The F-Droid index
+releases, the F-Droid index and each other with HTTP 403 (2026-09-28/29). Every bake downloads its OSM extract
+through `scripts/fetch-pbf.sh`: a plain download first, then, when that fails, the redirects walked
+one hop at a time with a trailing slash dropped from a file name. On 2026-09-30 Geofabrik redirected
+every `-latest.osm.pbf` to itself plus a slash, `curl -L` looped to its redirect cap, and 213 of 231
+place-pack jobs failed while the dated file downloaded fine. The F-Droid index
 rebuilds after the nightly cut and the weekly promotion, not after a push run (which releases
 nothing). The obf routing bake publishes
 to the staging manifest only; the flip to the live manifest stays manual. A world obf bake stages into `obf-manifest-staging.json`, which the app

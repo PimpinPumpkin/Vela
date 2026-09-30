@@ -20,7 +20,7 @@ TAG="maxspeed-overlays"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 
 echo "→ downloading $URL"
-curl -fsSL "$URL" -o "$WORK/region.osm.pbf"
+bash "$(dirname "$0")/fetch-pbf.sh" "$URL" "$WORK/region.osm.pbf"
 
 # Keep ONLY the ways that carry a posted maxspeed (nearly always highways) - a tiny slice of the PBF, so the
 # overlay is small. maxspeed on a non-highway is negligibly rare; filtering by the tag itself is enough.

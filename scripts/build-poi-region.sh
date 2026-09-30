@@ -19,7 +19,7 @@ WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 source "$ROOT/scripts/bake-lib.sh"
 
 echo "→ downloading $URL"
-curl -fsSL "$URL" -o "$WORK/region.osm.pbf"
+bash "$ROOT/scripts/fetch-pbf.sh" "$URL" "$WORK/region.osm.pbf"
 
 # bbox first (from the header), so the source PBF can be deleted as soon as it's filtered — a big
 # country needs the disk back. [S,W,N,E] from the declared extract region, NOT data.bbox (same rule

@@ -22,7 +22,7 @@ ID="$1"; PBF="$2"; OUT="$3"; MAXZOOM="${4:-14}"
 JAR="${PLANETILER:-$(dirname "$0")/planetiler.jar}"
 WORK="$(mktemp -d)"
 if [[ "$PBF" == http* ]]; then
-  curl -sSL --retry 5 -o "$WORK/region.osm.pbf" "$PBF"
+  bash "$(dirname "$0")/../scripts/fetch-pbf.sh" "$PBF" "$WORK/region.osm.pbf"
   PBF="$WORK/region.osm.pbf"
 fi
 # True bounds from Geofabrik's index: the id is the pbf_url path without the -latest suffix

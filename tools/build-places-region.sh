@@ -86,7 +86,7 @@ if [ -n "${OSM_PBF:-}" ] && command -v osmium >/dev/null 2>&1 && command -v jq >
   OSM_SRC="$OSM_PBF"
   if [ "${OSM_PBF#http}" != "$OSM_PBF" ]; then
     echo "osm: fetching $OSM_PBF"
-    if curl -sSL --retry 3 -o "$WORK/region.osm.pbf" "$OSM_PBF"; then OSM_SRC="$WORK/region.osm.pbf"; else OSM_SRC=""; echo "osm: download failed, baking without it"; fi
+    if bash "$ROOT/scripts/fetch-pbf.sh" "$OSM_PBF" "$WORK/region.osm.pbf"; then OSM_SRC="$WORK/region.osm.pbf"; else OSM_SRC=""; echo "osm: download failed, baking without it"; fi
   fi
   if [ -n "$OSM_SRC" ]; then
     # Named NODES that are businesses. Ways/relations are the building, whose centroid is the same
