@@ -788,6 +788,8 @@ class MapViewModel @Inject constructor(
             nav.lastNavFedMs = android.os.SystemClock.elapsedRealtime()
             var prevWasGps = false
             val posOutlierStreak = intArrayOf(0)
+            var lastAccM = Float.NaN // accuracy of the last fix the dot took, and when (issue #630)
+            var lastAccRtNanos = 0L
             locationProvider.updates().collect { loc ->
                 // Belt-and-suspenders with the startLocation guard: if this collector was already in
                 // flight when a replay began (cancel hadn't landed yet), drop every real fix while the
@@ -817,8 +819,25 @@ class MapViewModel @Inject constructor(
                 val fixRtNanos = if (loc.elapsedRealtimeNanos != 0L) loc.elapsedRealtimeNanos else loc.time * 1_000_000L
                 val dt = if (lastFixRtNanos > 0L) (fixRtNanos - lastFixRtNanos) / 1e9 else -1.0
                 if (lastFixRtNanos > 0L && dt <= 0.0) return@collect // duplicate/reordered delivery — drop it
+                // A NETWORK fix must also be better than the last fix, aged (Organic Maps'
+                // isLocationBetterThanLast): the last fix's accuracy radius grows 5 m (or the speed)
+                // per second, and the new one has to beat it. Before GPS locks the network feed
+                // alternates a 40 m Wi-Fi fix with a 1500 m cell one, and taking every one of them
+                // walked the dot around the neighborhood (issue #630). GPS fixes are always taken.
+                val accM = if (loc.hasAccuracy()) loc.accuracy else if (isGps) 10f else 1000f
+                if (!isGps && !lastAccM.isNaN()) {
+                    val ageS = (fixRtNanos - lastAccRtNanos) / 1e9
+                    val sp = ((_state.value.mySpeed ?: 0f) + (if (loc.hasSpeed()) loc.speed else 0f)) / 2.0
+                    if (!app.vela.core.location.FixRules.betterThanLast(accM, lastAccM, ageS, sp)) return@collect
+                }
+                // A fix at least twice as accurate as the one showing (itself 50 m or worse) is an
+                // UPGRADE, not an outlier: the first GPS lock after a coarse network position lands
+                // at once instead of being held for two fixes and then crept toward at 12% a fix.
+                val upgrade = app.vela.core.location.FixRules.isUpgrade(_state.value.myAccuracyM, accM)
                 // Drop outlier leaps + hold the dot when parked (see sanePosition).
-                val here = sanePosition(rawHere, prev, _state.value.mySpeed, dt, posOutlierStreak)
+                val here = if (upgrade) { posOutlierStreak[0] = 0; rawHere } else sanePosition(rawHere, prev, _state.value.mySpeed, dt, posOutlierStreak)
+                lastAccM = accM
+                lastAccRtNanos = fixRtNanos
                 val movedM = prev?.distanceTo(here) ?: 0.0
                 // A long inter-fix gap while navigating is where the dead-reckon carries the
                 // puck — log it (opt-in, no-op otherwise) so a tuning trace shows where GPS

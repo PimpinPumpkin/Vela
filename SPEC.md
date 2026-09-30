@@ -991,7 +991,13 @@ navigation stops all of it, because everything is downstream of that one call; t
 mechanism the pause uses.
 
 **Fix discipline.** Network (beacon) fixes are dropped during navigation and used in browse
-only when GPS has been quiet for `NETWORK_FIX_QUIET_MS` (12 s). Inter-fix dt comes from
+only when GPS has been quiet for `NETWORK_FIX_QUIET_MS` (12 s), and only when they beat the last
+fix aged (`FixRules.betterThanLast`, Organic Maps' rule: the last fix's accuracy radius grows by
+max(5 m/s, speed) per second of age, and the new one must be smaller). A fix at least twice as
+accurate as the one showing, itself 50 m or worse (`FixRules.isUpgrade`), skips the outlier hold
+and the low-pass, so the first GPS lock after a coarse position lands at once. Before these, every
+network fix painted the dot and a 1500 m cell fix alternating with a 40 m Wi-Fi one walked it
+around (issue #630). Inter-fix dt comes from
 `elapsedRealtimeNanos`, never `loc.time`, which mixes GNSS UTC with the system clock. Fixes
 with accuracy worse than 50 m never feed `NavSession`. The provider registration must keep
 `minDistanceM = 0`: a distance filter starves fixes at a standstill. Measured speeds pass a
