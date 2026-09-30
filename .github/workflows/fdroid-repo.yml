@@ -69,7 +69,7 @@ jobs:
       (github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event != 'push'))
       && (github.event_name != 'release' || startsWith(github.event.release.tag_name, 'v'))
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install fdroidserver
         # pip, NOT apt: Ubuntu's fdroidserver 2.2.1 ships an androguard too old to parse

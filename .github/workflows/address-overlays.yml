@@ -31,7 +31,7 @@ jobs:
     outputs:
       matrix: ${{ steps.sel.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: sel
         env:
           IDS: ${{ inputs.ids }}
@@ -65,7 +65,7 @@ jobs:
       max-parallel: 8
       matrix: ${{ fromJSON(needs.prep.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install tippecanoe + tools
         run: |
           sudo apt-get update
@@ -94,7 +94,7 @@ jobs:
       group: address-overlays-manifest-merge
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
       - uses: actions/download-artifact@v4

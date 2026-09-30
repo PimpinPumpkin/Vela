@@ -36,7 +36,7 @@ jobs:
     outputs:
       matrix: ${{ steps.sel.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: sel
         env:
           GRP: ${{ inputs.group }}
@@ -76,7 +76,7 @@ jobs:
       max-parallel: 8
       matrix: ${{ fromJSON(needs.prep.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install osmium + tippecanoe
         run: |
           sudo apt-get update
@@ -105,7 +105,7 @@ jobs:
       group: maxspeed-overlays-manifest-merge
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
       - uses: actions/download-artifact@v4

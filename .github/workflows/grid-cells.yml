@@ -34,7 +34,7 @@ jobs:
       matrix: ${{ steps.sel.outputs.matrix }}
       count: ${{ steps.sel.outputs.count }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: sel
         env:
           REGIONS: ${{ inputs.regions }}
@@ -79,14 +79,14 @@ jobs:
       max-parallel: 4
       matrix: ${{ fromJSON(needs.prep.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
       # pmtiles and the pinned MapCreator zip (150 MB) are cached; the key names what is pinned.
       - name: Cache the bake toolchain
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/vela-bin
           key: cells-tools-${{ runner.os }}-pmtiles-1.31.2-mapcreator-obf-tools
@@ -136,7 +136,7 @@ jobs:
     # derives the manifest from the releases and re-lists them after uploading, so parallel
     # merges are safe.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/download-artifact@v4
         with:
           pattern: cells-fragment-*

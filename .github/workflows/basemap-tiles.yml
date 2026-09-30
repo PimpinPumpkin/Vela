@@ -39,7 +39,7 @@ jobs:
     outputs:
       matrix: ${{ steps.sel.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: sel
         env:
           GROUP: ${{ inputs.group }}
@@ -83,13 +83,13 @@ jobs:
       max-parallel: 4
       matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
       - name: Cache planetiler base data
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: data/sources
           key: planetiler-sources-v1
@@ -196,7 +196,7 @@ jobs:
     # No concurrency group (2026-09-22): a pending job in one is cancelled when a newer run
     # joins, and every cancellation is a failure email; the merge derives from the release.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/download-artifact@v4
         continue-on-error: true
         with:
