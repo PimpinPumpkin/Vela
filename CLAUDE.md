@@ -1837,6 +1837,7 @@ Defaults that make the safe path the easy one:
   with a Takeout-shaped file. NB importing another app's format is issue #279, still open.
   ⚠️ A literal wildcard mime in a KDoc block ENDS THE COMMENT (same trap as PoiPackStore's
   `del_*/ins_*`) - the mime array's comment is a line comment for that reason.
+- **Focusing a place never zooms OUT (issue #636, 2026-09-30):** the camera branch that flies to `cameraTarget` with a sheet up uses `max(browseZoom, live zoom)`; a link's own `cameraTargetZoom` still wins.
 - **Saved routes (issue #622, 2026-09-30):** `SavedRouteStore` + `core/nav/SavedRoutes` (pure,
   `SavedRoutesTest`). `MapViewModel.offerSavedRoutes` runs after each stop-less `route()`: same way
   as an offered route = that row gets `savedName`; else vias where the saved line leaves the fastest

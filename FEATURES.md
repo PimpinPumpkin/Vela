@@ -2751,6 +2751,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   tile: a curated picker grid (works on key-only phones) plus a free-type field for any
   emoji. Stored in the existing icon field as "emoji:X", so old payloads and old builds
   fall back to the bookmark; the emoji renders in list rows and as the saved-place map pin.
+- ✅ **Tapping a place keeps your zoom (issue #636).** Opening a place pans it above the sheet but no longer zooms the map out to the search level, so you can tap through places at street zoom; from farther out than that it still zooms in.
 - ✅ **Saved routes (issue #622).** Pick a route in the route chooser and use ⋮ > Save this route. Whenever you ask for the same trip again (same mode, same start area, same destination), your route shows up next to the others with a live-traffic time, labeled "Your route", and driving it keeps you on it through reroutes. Rename or delete them in Settings > Saved places.
 - ✅ **Per-place map icons (issue #629).** A saved place can wear its own icon instead of its
   list's: the place sheet's save menu has "Choose icon" (the list editor's glyphs and emoji

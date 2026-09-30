@@ -1951,6 +1951,10 @@ host that cannot answer.
   get a wide rating bubble. Pins collide by rank (`symbolSortKey` = result order, overlap not
   allowed); losers draw as small dots on a second source below, expanding back into pins on
   zoom. Pins anchor bottom; labels try below, then right, then left.
+- Opening a place flies the camera to it with the sheet's inset at `browseZoom` (15.5, a
+  calibration dial) or the current zoom, whichever is closer: it never zooms out (issue #636,
+  tapping through places at street zoom dropped the map to 15.5, where they no longer draw). A
+  link's own zoom (`geo:...?z=`, `/@...,15z`) still wins.
 - Typed coordinates drop a pin: `MapLinkParser.parseBareCoordinate` matches the whole string,
   requires a decimal point in both halves and range-checks, so an address with numbers still
   searches.

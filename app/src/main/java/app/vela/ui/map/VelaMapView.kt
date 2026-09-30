@@ -4424,7 +4424,12 @@ fun VelaMapView(
                         // bigger POI cap) - searching a dense city hitched on arrival while all of it
                         // loaded (user 2026-07-17, London). At 15.5 arrival is roads+labels+POIs;
                         // buildings are one pinch away. Matches the locate-me fly (also 15.5).
-                        val zoom = cameraTargetZoom ?: if (cameraBottomInsetPx > 0) app.vela.core.config.CalibrationStore.latest.tune("browseZoom", 15.5) else app.vela.core.config.CalibrationStore.latest.tune("browseZoomWide", 14.5)
+                        val base = cameraTargetZoom ?: if (cameraBottomInsetPx > 0) app.vela.core.config.CalibrationStore.latest.tune("browseZoom", 15.5) else app.vela.core.config.CalibrationStore.latest.tune("browseZoomWide", 14.5)
+                        // Focusing a place never zooms OUT (issue #636): tapping through places at
+                        // street zoom used to drop the map to 15.5 on every tap, where the places
+                        // being tapped through no longer draw. Farther out than 15.5 it still flies
+                        // in; a link's own zoom still wins.
+                        val zoom = if (cameraTargetZoom == null && cameraBottomInsetPx > 0) maxOf(base, map.cameraPosition.zoom.coerceAtMost(19.0)) else base
                         flightDepth[0]++
                         map.animateCamera(
                             CameraUpdateFactory.newLatLngZoom(MLLatLng(target.lat, target.lng), zoom), flightCb(),
