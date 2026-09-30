@@ -524,6 +524,18 @@ object NavEngine {
         return i
     }
 
+    /** Whether progress JUMPED past the next stop instead of driving to it: from [prevM] to [nowM]
+     *  in one fix, more than [jumpM], with the next stop's mark (a later stop's when it has none)
+     *  inside the jump. The engine adopts a far re-acquire at once when the car sits right on a
+     *  later stretch of the route (a driver who kept going after a stops edit, on the road the
+     *  route uses to come back), and every stop in between then counted as reached and was
+     *  announced without ever being visited. */
+    fun stopSkipped(marks: List<Double?>, count: Int, from: Int, prevM: Double, nowM: Double, tolM: Double, jumpM: Double): Boolean {
+        if (nowM - prevM <= jumpM || from >= count) return false
+        val mark = marks.getOrNull(from) ?: (from + 1 until count).firstNotNullOfOrNull { marks.getOrNull(it) } ?: return false
+        return mark > prevM + tolM && mark <= nowM + tolM
+    }
+
     /** The per-route geometry every [update] needs: cumulative meters at each vertex, and each
      *  maneuver's along-route mark. Both depend on the ROUTE alone, yet were rebuilt on every fix:
      *  a full-polyline pass plus a windowed projection of EVERY maneuver over the remaining line,

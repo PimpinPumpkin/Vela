@@ -440,9 +440,32 @@ class NavSession @Inject constructor(
                 }
             }
         }
-        announceStopsPassed(route, next.traveledM)
+        // A jump past the next stop is a skip, not an arrival: hold the stops and reroute through
+        // them (again each fix until a new route lands; the reroute gate paces the requests).
+        val skipped = synchronized(stopLock) {
+            val prev = if (route === progressRoute) progressM else null
+            progressRoute = route
+            progressM = next.traveledM
+            if (route === planRoute && prev != null &&
+                NavEngine.stopSkipped(stopMarks, stops.size, passedStops, prev, next.traveledM, STOP_ARRIVE_TOL_M, STOP_SKIP_JUMP_M)
+            ) skipHoldRoute = route
+            skipHoldRoute != null && skipHoldRoute === route
+        }
+        if (skipped) {
+            if (!skipNoted) { note("progress jumped past a stop, not counting it: rerouting through the stops"); skipNoted = true }
+            if (!replayMode) reroute(loc, bearingDeg) // replays play recorded swaps back instead
+        } else {
+            skipNoted = false
+            announceStopsPassed(route, next.traveledM)
+        }
         maybeRecheck(loc, next)
     }
+
+    // The progress seen on the last fix, for the jump check above (guarded by stopLock).
+    private var progressRoute: Route? = null
+    private var progressM = 0.0
+    private var skipHoldRoute: Route? = null
+    private var skipNoted = false
 
     /** Per-stop arrival cue: as along-route progress passes each waypoint's mark, announce it once, in
      *  order ("You've reached <stop>"). A stop with no mark (not locatable on the route) is passed
@@ -1093,6 +1116,9 @@ class NavSession @Inject constructor(
         const val MIN_PLAUSIBLE_ETA_FRACTION = 0.4
         // Fire the per-stop cue when along-route progress gets within this of the stop's mark (as you pass).
         const val STOP_ARRIVE_TOL_M = 25.0
+        /** Progress farther than this in ONE fix is a jump, not driving (1 Hz fixes at highway
+         *  speed move about 35 m). */
+        const val STOP_SKIP_JUMP_M = 250.0
 
         /** Primary + secondary display lines for a destination, robust to partial data. Offline
          *  routing often has no business name — just "123 Main St" from the offline geocoder, a

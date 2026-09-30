@@ -1067,7 +1067,9 @@ Defaults that make the safe path the easy one:
   stop opens the along-route search (`navSearchOpen`), NOT `beginPickStop`: the search page lives
   in the non-nav branch of MapScreen's top chrome, so during a drive `pickingStop` hid the editor
   and stuck until Back (issue #623). A null stop mark no longer counts as passed on the next fix
-  (`NavEngine.stopsPassed`); it emptied the stops list after every edit. **Issues #604/#607
+  (`NavEngine.stopsPassed`); it emptied the stops list after every edit. A >250 m progress jump
+  past the next stop is a SKIP (`NavEngine.stopSkipped`): the session holds the stops and reroutes,
+  because the engine adopts a far re-acquire at once when the car is ON a later leg. **Issues #604/#607
   (2026-09-25):** `NavStopsRow` is shown on EVERY drive now; with no stops it reads "Edit route /
   Add a stop along the way" (the editor used to be reachable only once a stop existed). With stops
   it adds a "Remove next" button behind a `VelaDialog` confirm (`MapViewModel.removeNextStop` =

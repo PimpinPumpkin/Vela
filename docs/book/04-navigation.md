@@ -230,7 +230,10 @@ still ahead, never straight to the destination. A reroute that could not include
 anyway (being guided beats being lost), says so, and keeps them in the plan for the next attempt;
 a faster-route offer that skips one is never made. A stop the route does not pass near has no
 mark, and counts as passed only once a later stop is reached (`NavEngine.stopsPassed`), so the
-moments right after a stops edit, before the new route lands, keep every stop.
+moments right after a stops edit, before the new route lands, keep every stop. Progress that
+jumps more than 250 m past the next stop in one fix is a skip, not an arrival (a driver who kept
+going after an edit, on the road the route uses later): nothing is announced, and the drive
+reroutes back through the stop.
 
 **Adding a stop mid-drive.** The stops editor's Add stop opens the search along the route (the
 same panel as the magnifier button), and a pick from its results becomes a stop on the drive.

@@ -889,7 +889,11 @@ counter and speaks one cue per stop in order. Reroutes and rechecks fetch with
 `stops.drop(passedStops)`, so going off route keeps the stops still ahead. A stop with a null mark
 counts as passed only when a later stop with a mark is passed (`NavEngine.stopsPassed`), so a stops
 edit (every mark null until the new route lands) or a reroute that could not fit the stops keeps
-them all; counting a null mark as passed at once emptied the list on the next fix.
+them all; counting a null mark as passed at once emptied the list on the next fix. Progress that
+JUMPS past the next stop in one fix (more than `NavSession.STOP_SKIP_JUMP_M` = 250 m,
+`NavEngine.stopSkipped`) is a skip, not an arrival: the engine adopts a far re-acquire at once when
+the car sits on a later stretch of the route, which counted and announced every stop in between.
+The session then holds the stops and reroutes through them each fix until a new route lands.
 `NavSession.setStops` is the one replan entry (`addStop` delegates to it); the stops editor's Done
 calls it only when the list changed (`MapViewModel.applyStops` compares with
 `NavSession.remainingStops()`), so an unchanged list fetches nothing.

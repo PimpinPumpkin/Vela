@@ -27,3 +27,23 @@ class StopsPassedTest {
         assertEquals(2, passed(marks, 0, 2000.0))
     }
 }
+
+class StopSkippedTest {
+    private fun skipped(marks: List<Double?>, from: Int, prev: Double, now: Double) =
+        NavEngine.stopSkipped(marks, marks.size, from, prev, now, 25.0, 250.0)
+
+    @Test
+    fun aJumpOverTheNextStopIsASkip() {
+        org.junit.Assert.assertTrue(skipped(listOf(900.0, 1800.0), 0, 100.0, 2500.0))
+    }
+
+    @Test
+    fun drivingUpToTheStopIsNot() {
+        org.junit.Assert.assertFalse(skipped(listOf(900.0), 0, 880.0, 915.0))
+    }
+
+    @Test
+    fun aJumpShortOfTheStopIsNot() {
+        org.junit.Assert.assertFalse(skipped(listOf(3000.0), 0, 100.0, 1500.0))
+    }
+}
