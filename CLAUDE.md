@@ -388,6 +388,9 @@ Defaults that make the safe path the easy one:
   a time from `tools/bake-schedule.json`, retries only the regions that failed, waits while any heavy
   bake runs or the API budget is under 400, and never fails its own run. A new bake or cadence is an
   entry in that file, never a `schedule:` block; a hand dispatch is fine, the conductor waits for it.
+  (6) **Every OSM extract download goes through `scripts/fetch-pbf.sh`** (2026-09-30: Geofabrik's
+  `-latest` redirect looped with a trailing slash and 213 of 231 pack jobs failed); a new bake calls
+  it, never a bare `curl -L`.
 - CI: **stable / nightly / canary channels (2026-08-07, supersedes the per-push nightly).**
   `.github/workflows/ci.yml`: pushes to `main` AND `canary` build + test only (APK as a
   workflow artifact, no release) - a push can never mint a release anymore, which retires the
