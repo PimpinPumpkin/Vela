@@ -1999,6 +1999,13 @@ host that cannot answer.
   through every reroute. Appended, never inserted: the camera counts and the provisional naming
   index into the list. Rows show "Your route: <name>" in place of the "via". Settings > Saved places
   lists them with rename and delete; they are not in the saved-places export yet.
+  A trip with stops asks, in the save dialog, "Stop at these places" (on by default): on saves a
+  RUN (`SavedRoute.stops`, the trip's stops in order, at most `SavedRoutes.MAX_STOPS`, 10), which is
+  never offered as an alternate and is started from "Your routes" on the search page or the
+  Settings list (`openSavedRoute`: the destination selected, the stops loaded through `applyTrip`,
+  from where you are, in the run's own mode without touching the sticky one); off saves a shape
+  as above. Tapping a shape there opens directions to its destination, where it is offered. A trip
+  takes at most 10 stops (`addStop` refuses the eleventh with a note, `applyTrip` truncates).
 - `SavedPlace.of(Place)` carries an optional address, defaulted null so older payloads decode;
   every store's JSON sets `ignoreUnknownKeys` so a downgrade survives.
 - A saved place can carry its OWN map icon (issue #629): `SavedPlace.icon` and `ListPlace.icon`,

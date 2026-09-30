@@ -29,11 +29,15 @@ object SavedRoutes {
      *  middle short. */
     const val VIA_EVERY_M = 2_500.0
     const val MAX_VIAS = 8
+    /** Stops on one trip: a run saves at most this many, and the chooser adds no more. */
+    const val MAX_STOPS = 10
     private const val STEP_M = 25.0
     private const val END_SKIP_M = 150.0
 
+    /** A run is started from the list, never offered as an alternate: that would add its stops to
+     *  a plain trip. */
     fun matches(r: SavedRoute, origin: LatLng, dest: LatLng, mode: TravelMode): Boolean =
-        r.mode == mode.name && dist(r.dest, dest) <= DEST_M && dist(r.origin, origin) <= ORIGIN_M
+        !r.isRun && r.mode == mode.name && dist(r.dest, dest) <= DEST_M && dist(r.origin, origin) <= ORIGIN_M
 
     /** Via points on [saved] where it leaves [reference]; empty when the two are the same way. */
     fun viasAgainst(saved: List<LatLng>, reference: List<LatLng>): List<LatLng> {

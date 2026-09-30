@@ -52,4 +52,11 @@ class SavedRoutesTest {
         assertFalse(SavedRoutes.matches(r, p(0.0, 0.0), p(0.03, 0.0), TravelMode.DRIVE))
         assertFalse(SavedRoutes.matches(r, p(-0.02, 0.0), p(0.02, 0.0), TravelMode.DRIVE))
     }
+
+    @Test fun aRunIsNeverOfferedAsAnAlternate() {
+        val run = SavedRoute("b", "Milk run", "DRIVE", 38.54, -121.74, 38.56, -121.74, "Depot", "", 0,
+            stops = listOf(app.vela.core.model.SavedStop("A", 38.55, -121.74)))
+        assertTrue(run.isRun)
+        assertFalse(SavedRoutes.matches(run, p(0.0, 0.0), p(0.02, 0.0), TravelMode.DRIVE))
+    }
 }

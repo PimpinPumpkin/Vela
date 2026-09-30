@@ -20,7 +20,16 @@ data class SavedRoute(
     val destLabel: String,
     val polyline: String,
     val createdAt: Long,
+    /** A RUN (the milkman's round): the places it stops at, in order. Empty for a SHAPE, a route
+     *  whose line is the point and whose stops, if it had any, only bent it. */
+    val stops: List<SavedStop> = emptyList(),
 ) {
+    val isRun: Boolean get() = stops.isNotEmpty()
     val origin: LatLng get() = LatLng(originLat, originLng)
     val dest: LatLng get() = LatLng(destLat, destLng)
+}
+
+@Serializable
+data class SavedStop(val name: String, val lat: Double, val lng: Double) {
+    val location: LatLng get() = LatLng(lat, lng)
 }

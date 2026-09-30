@@ -26,6 +26,7 @@ import app.vela.ui.settings.PageIntro
 import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.dpadRowSibling // D-pad-only operation (docs/dpad.md)
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
@@ -46,7 +47,7 @@ import app.vela.ui.item
 /** Saved places sub-screen: export/import the saved places and the local lists, and the
  *  parking history. */
 @Composable
-internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
+internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onCloseSettings: () -> Unit = onBack) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     SettingsScaffold(stringResource(R.string.settings_saved_places), onBack) { topRow ->
@@ -114,7 +115,7 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         }
         }
         Spacer(Modifier.height(8.dp))
-        SavedRoutesGroup(vm)
+        SavedRoutesGroup(vm, onOpen = { vm.openSavedRoute(it); onCloseSettings() })
         Spacer(Modifier.height(8.dp))
         ParkingHistoryGroup(vm)
         Spacer(Modifier.height(24.dp))
@@ -176,7 +177,7 @@ private fun toastImport(
 /** Saved routes (issue #622): each one's name and where it goes, with rename and delete. Always
  *  shown, so the settings search entry never leads to nothing. */
 @Composable
-private fun SavedRoutesGroup(vm: MapViewModel) {
+private fun SavedRoutesGroup(vm: MapViewModel, onOpen: (app.vela.core.model.SavedRoute) -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     var renaming by remember { mutableStateOf<app.vela.core.model.SavedRoute?>(null) }
     SettingsGroup(title = stringResource(R.string.settings_saved_routes)) {
@@ -187,9 +188,14 @@ private fun SavedRoutesGroup(vm: MapViewModel) {
                 Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(Modifier.weight(1f)) {
+                // The row opens the route on the map (a run with its stops loaded).
+                Column(Modifier.weight(1f).dpadHighlight().clickable { onOpen(r) }) {
                     Text(r.name, style = MaterialTheme.typography.bodyLarge)
-                    if (r.destLabel.isNotBlank()) Text(r.destLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val sub = listOfNotNull(
+                        if (r.isRun) androidx.compose.ui.res.pluralStringResource(R.plurals.saved_route_stops, r.stops.size, r.stops.size) else null,
+                        r.destLabel.takeIf { it.isNotBlank() },
+                    ).joinToString(" · ")
+                    if (sub.isNotBlank()) Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 var menu by remember { mutableStateOf(false) }
                 Box {

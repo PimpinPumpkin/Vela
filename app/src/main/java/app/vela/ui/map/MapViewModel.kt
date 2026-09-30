@@ -4944,7 +4944,7 @@ class MapViewModel @Inject constructor(
         val me = s.myLocation
         val mids = points.subList(1, points.size - 1).mapNotNull { p ->
             p.place ?: me?.let { Place(id = "me", name = appContext.getString(R.string.mapscreen_your_location), location = it) }
-        }
+        }.take(app.vela.core.nav.SavedRoutes.MAX_STOPS)
         _state.update {
             if (end == null) {
                 it.copy(selected = start, directionsOrigin = null, directionsReversed = true, directionsWaypoints = mids, editingStops = false)
@@ -5023,6 +5023,11 @@ class MapViewModel @Inject constructor(
 
     /** Append an intermediate stop and re-route through it. */
     fun addStop(p: Place) {
+        if (_state.value.directionsWaypoints.size >= app.vela.core.nav.SavedRoutes.MAX_STOPS) {
+            _state.update { it.copy(pickingStop = false, pickOnMap = null, directionsOpen = true, results = emptyList(), query = "") }
+            flashStatus(appContext.getString(R.string.stops_max, app.vela.core.nav.SavedRoutes.MAX_STOPS))
+            return
+        }
         _state.update {
             it.copy(
                 directionsWaypoints = it.directionsWaypoints + p, pickingStop = false, pickOnMap = null,
@@ -5252,8 +5257,10 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /** Save the route picked in the chooser under [name]. */
-    fun saveActiveRoute(name: String) {
+    /** Save the route picked in the chooser under [name]. [keepStops] makes it a RUN: the trip's
+     *  stops are saved as stops, in order (at most `SavedRoutes.MAX_STOPS`); otherwise they only
+     *  bent the line and the route is a shape. */
+    fun saveActiveRoute(name: String, keepStops: Boolean = false) {
         val s = _state.value
         val route = s.activeRoute ?: return
         if (route.polyline.size < 2) return
@@ -5268,6 +5275,8 @@ class MapViewModel @Inject constructor(
             destLabel = destLabel,
             polyline = app.vela.core.data.google.PolylineCodec.encode(route.polyline),
             createdAt = System.currentTimeMillis(),
+            stops = if (!keepStops) emptyList() else s.directionsWaypoints.take(app.vela.core.nav.SavedRoutes.MAX_STOPS)
+                .map { app.vela.core.model.SavedStop(it.name, it.location.lat, it.location.lng) },
         )
         val all = savedRouteStore.add(saved)
         _state.update { st ->
@@ -5286,6 +5295,22 @@ class MapViewModel @Inject constructor(
         val s = _state.value
         val dest = if (s.directionsReversed) (s.directionsOrigin?.name ?: appContext.getString(R.string.mapscreen_your_location)) else s.selected?.name
         return appContext.getString(R.string.route_save_default, dest ?: "")
+    }
+
+    /** Open a saved route in the chooser: a RUN loads its stops in order, from where you are; a
+     *  shape asks for its destination, where it is then offered beside the router's routes. Its
+     *  own travel mode, without touching the sticky one. */
+    fun openSavedRoute(r: app.vela.core.model.SavedRoute) {
+        val dest = Place(id = "saved-route:${r.id}", name = r.destLabel.ifBlank { r.name }, location = r.dest)
+        linkMode = runCatching { TravelMode.valueOf(r.mode) }.getOrNull()
+        selectPlace(dest)
+        routeToSelected()
+        if (r.isRun) {
+            val stops = r.stops.take(app.vela.core.nav.SavedRoutes.MAX_STOPS).mapIndexed { i, st ->
+                Place(id = "saved-route:${r.id}:$i", name = st.name, location = st.location)
+            }
+            applyTrip(listOf(app.vela.ui.place.TripPoint(null)) + stops.map { app.vela.ui.place.TripPoint(it) } + app.vela.ui.place.TripPoint(dest))
+        }
     }
 
     fun renameSavedRoute(id: String, name: String) { _state.update { it.copy(savedRoutes = savedRouteStore.rename(id, name)) } }

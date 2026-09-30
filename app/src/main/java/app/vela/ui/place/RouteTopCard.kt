@@ -80,7 +80,7 @@ fun RouteTopCard(
     // Edit stops and Add stop instead, with the swap under it, as Google lays the card out.
     googleStyle: Boolean = false,
     // Saving the picked route (issue #622) under a name; null hides the item (no route yet, transit).
-    onSaveRoute: ((String) -> Unit)? = null,
+    onSaveRoute: ((String, Boolean) -> Unit)? = null,
     defaultRouteName: String = "",
     modifier: Modifier = Modifier,
 ) {
@@ -194,11 +194,12 @@ fun RouteTopCard(
                     var naming by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
                     if (naming && onSaveRoute != null) {
                         var draft by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(defaultRouteName) }
+                        var keepStops by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
                         app.vela.ui.VelaDialog(
                             onDismissRequest = { naming = false },
                             title = stringResource(R.string.route_save_title),
                             confirmText = stringResource(R.string.list_save),
-                            onConfirm = { naming = false; onSaveRoute(draft) },
+                            onConfirm = { naming = false; onSaveRoute(draft, keepStops && stops.isNotEmpty()) },
                             dismissText = stringResource(R.string.list_cancel),
                             onDismiss = { naming = false },
                         ) {
@@ -209,6 +210,18 @@ fun RouteTopCard(
                                 label = { Text(stringResource(R.string.route_save_hint)) },
                                 modifier = Modifier.fillMaxWidth().dpadHighlight(),
                             )
+                            // A trip with stops: are they places you stop at (a run), or only the
+                            // points that bent the route (a shape)?
+                            if (stops.isNotEmpty()) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                ) {
+                                    Text(stringResource(R.string.route_save_keep_stops), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                                    androidx.compose.material3.Switch(checked = keepStops, onCheckedChange = { keepStops = it }, modifier = Modifier.dpadHighlight(CircleShape))
+                                }
+                                if (!keepStops) Text(stringResource(R.string.route_save_keep_stops_hint), style = MaterialTheme.typography.bodySmall, color = dim)
+                            }
                         }
                     }
                     Box {

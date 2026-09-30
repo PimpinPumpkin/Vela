@@ -96,6 +96,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.ZoomInMap
 import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material.icons.filled.Search
@@ -4133,6 +4134,8 @@ private fun BoxScope.NavTurnBanner(
 @Composable
 private fun SearchEntryHost(state: MapUiState, vm: MapViewModel, focusManager: androidx.compose.ui.focus.FocusManager) {
     SearchEntryContent(
+        savedRoutes = state.savedRoutes,
+        onPickSavedRoute = { focusManager.clearFocus(); vm.openSavedRoute(it) },
         suggestions = state.suggestions,
         localSuggestions = state.localSuggestions,
         onPickLocal = {
@@ -4327,6 +4330,8 @@ private fun SearchEntryContent(
     recentPlaces: List<RecentPlace>,
     home: SavedPlace?,
     work: SavedPlace?,
+    savedRoutes: List<app.vela.core.model.SavedRoute> = emptyList(),
+    onPickSavedRoute: (app.vela.core.model.SavedRoute) -> Unit = {},
     assigning: ShortcutKind?,
     pickingOrigin: Boolean = false,
     pickingDest: Boolean = false,
@@ -4476,6 +4481,23 @@ private fun SearchEntryContent(
         // pairs them for the same reason.
         ShortcutPair(home, work, onPickShortcut, onAssignShortcut, onClearShortcut)
         Divider()
+        // Saved routes and runs (issue #622): one tap opens the route chooser on it.
+        if (savedRoutes.isNotEmpty() && !pickingOrigin && !pickingDest && !pickingStop) {
+            SectionLabel(stringResource(R.string.mapscreen_section_routes))
+            savedRoutes.forEach { r ->
+                SuggestionRow(
+                    icon = Icons.Default.Directions,
+                    tint = MaterialTheme.colorScheme.primary,
+                    label = r.name,
+                    onClick = { onPickSavedRoute(r) },
+                    sublabel = listOfNotNull(
+                        if (r.isRun) androidx.compose.ui.res.pluralStringResource(R.plurals.saved_route_stops, r.stops.size, r.stops.size) else null,
+                        r.destLabel.takeIf { it.isNotBlank() },
+                    ).joinToString(" · ").ifBlank { null },
+                )
+                Divider()
+            }
+        }
         if (saved.isNotEmpty()) {
             SectionLabel(stringResource(R.string.mapscreen_section_saved))
             saved.forEach { sp ->

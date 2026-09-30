@@ -74,7 +74,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
         SettingsSection.VOICE -> VoiceSettingsScreen(vm, onBack = toHub, openLibrary = openVoiceLibrary)
         SettingsSection.SEARCH -> SearchSettingsScreen(vm, onBack = toHub)
         SettingsSection.OFFLINE -> OfflineSettingsScreen(vm, onBack = toHub, onCloseSettings = onBack, onOpenVoice = { cameFrom = section; highlight = null; section = SettingsSection.VOICE })
-        SettingsSection.SAVED_PLACES -> SavedPlacesSettingsScreen(vm, onBack = toHub)
+        SettingsSection.SAVED_PLACES -> SavedPlacesSettingsScreen(vm, onBack = toHub, onCloseSettings = onBack)
         SettingsSection.PRIVACY -> PrivacySettingsScreen(vm, onBack = toHub)
         SettingsSection.PERFORMANCE -> PerformanceSettingsScreen(onBack = toHub)
         SettingsSection.DIAGNOSTICS -> DiagnosticsSettingsScreen(vm, onBack = toHub, onCloseSettings = onBack)

@@ -1844,6 +1844,8 @@ Defaults that make the safe path the easy one:
   route, one `directions()` through them, APPENDED with `detourPlan` = the vias (silent stops, so
   reroutes keep it). Never insert into `routes`: flock counts and provisional naming index into it.
   The save dialog lives inside `RouteTopCard` (MapScreen is at the verifier limit).
+  RUNS: a saved route with `stops` (the dialog's "Stop at these places") is never offered as an
+  alternate; `openSavedRoute` loads it through `applyTrip`. Trips cap at `SavedRoutes.MAX_STOPS` (10).
 - **Per-place icons (issue #629, 2026-09-30):** `SavedPlace.icon` / `ListPlace.icon` override the
   list's icon on the map pin (null = the list's). The picker (`IconPicker`, shared with the list
   editor, and `PlaceIconDialog` in MapScreen) opens from the place sheet's save menu. Its button

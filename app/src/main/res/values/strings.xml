@@ -1202,4 +1202,12 @@
     <string name="settings_saved_routes_empty">Pick a route in the route chooser and use ⋮ &gt; Save this route. It shows up next to the others whenever you ask for the same trip.</string>
     <string name="settings_saved_route_rename">Rename</string>
     <string name="settings_saved_route_delete">Delete</string>
+    <string name="route_save_keep_stops">Stop at these places</string>
+    <string name="route_save_keep_stops_hint">Off: the stops only shape the way, and the route is offered next to the others for this trip.</string>
+    <plurals name="saved_route_stops">
+        <item quantity="one">%1$d stop</item>
+        <item quantity="other">%1$d stops</item>
+    </plurals>
+    <string name="mapscreen_section_routes">Your routes</string>
+    <string name="stops_max">A trip can have up to %1$d stops</string>
 </resources>
