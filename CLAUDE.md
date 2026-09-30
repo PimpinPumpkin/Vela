@@ -1631,6 +1631,11 @@ Defaults that make the safe path the easy one:
   Without them a sampled point that landed on a flyover deck, the far carriageway or a dead-end lane
   gave out-and-back spurs and loops (a Dhaka walk named to 10.8 km against Google's 4.5 km); a
   refused snap falls back to Google's own line with its abbreviated steps.
+- **Directions links (issue #632, 2026-09-30):** `MapLinkParser` reads `daddr`, `maps/dir` (api=1 and
+  path forms) and `google.navigation:` into `MapLink(directions = true, origin, mode)`, and
+  `openDeepLink` opens the chooser on them (SPEC 5.6). Official Telegram checks for the Google Maps
+  PACKAGE before opening any location, so on a phone without it no maps app is ever asked; Telegram
+  FOSS drops that check.
 - **Link intent filters (issue #614, 2026-09-28):** every host in a filter is matched against every
   path in it, so `/maps`-prefixed hosts (google.com, www.google.com, goo.gl) and pathless hosts
   (maps.google.com, maps.app.goo.gl) live in separate filters. Check with

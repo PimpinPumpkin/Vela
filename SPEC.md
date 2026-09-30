@@ -1948,6 +1948,14 @@ host that cannot answer.
 - Typed coordinates drop a pin: `MapLinkParser.parseBareCoordinate` matches the whole string,
   requires a decimal point in both halves and range-checks, so an address with numbers still
   searches.
+- Directions links from other apps open the route chooser on the destination (issue #632):
+  `maps?saddr=&daddr=[&dirflg=]` (the last `to:` stop wins), `maps/dir/?api=1&destination=&origin=
+  &travelmode=`, the path form `maps/dir/A/B/@...` (an empty A is "from here") and the
+  `google.navigation:q=|ll=&mode=` intent (its own manifest filter). `MapLink.directions` routes
+  `openDeepLink` to `openDirectionsLink`: a coordinate becomes a reverse-geocoded pin, a name runs
+  the "navigate to" search (`openDirectionsOnResult`). The link's mode and a start other than the
+  user's (more than `LINK_ORIGIN_HERE_M`, 150 m, from the fix; "Current Location" and blank count as
+  here) are one-shots applied by the next `routeToSelected`; the mode is not made sticky.
 - Network suggestions come from Google's own search-as-you-type request (`MapDataSource.suggest`,
   the keyless `/s?tbm=map&suggest=p` call biased to the viewport), which honors the location
   bias for a partial address; rows without a location are bare query rows that run as a search.

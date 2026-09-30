@@ -112,6 +112,14 @@
                 <data android:scheme="geo" />
             </intent-filter>
 
+            <!-- google.navigation: is Google's own "navigate to" intent; apps that fire it open the
+                 route chooser on the destination (issue #632). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="google.navigation" />
+            </intent-filter>
+
             <!-- Google-Maps web links → "open in maps" offers Vela too. One filter per path rule:
                  Android matches every host in a filter against every path in it, so a shared
                  filter held maps.app.goo.gl and maps.google.com to the /maps prefix (issue #614). -->

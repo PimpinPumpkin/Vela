@@ -1338,6 +1338,7 @@ class MapViewModel @Inject constructor(
      *  the user was hunting for a stop, not abandoning the drive. */
     fun clearSearch() {
         openDirectionsOnResult = false
+        linkMode = null; linkOrigin = null
         suggestJob?.cancel()
         val backToTrip = _state.value.alongRouteDest
         if (backToTrip != null) {
@@ -2284,6 +2285,7 @@ class MapViewModel @Inject constructor(
                     }
                 } else {
                     openDirectionsOnResult = false
+                    linkMode = null; linkOrigin = null
                     // Online SUCCEEDED but found nothing. Don't leave a blank screen (the "POI list just
                     // isn't showing up" report): try the on-device OSM index (it may hold a small local
                     // place Google misses), and if that's empty too, say "No results" plainly.
@@ -2436,6 +2438,8 @@ class MapViewModel @Inject constructor(
     }
 
     fun openDeepLink(link: MapLink) {
+        linkMode = null; linkOrigin = null
+        if (link.directions) { openDirectionsLink(link); return }
         val near = link.lat?.let { la -> link.lng?.let { ln -> LatLng(la, ln) } }
         val q = link.query
         when {
@@ -2458,6 +2462,60 @@ class MapViewModel @Inject constructor(
                 _state.update { it.copy(center = near) }
                 onMapLongPress(near)
             }
+        }
+    }
+
+    // A DIRECTIONS link from another app (issue #632: Telegram's Directions button, Google's Maps
+    // URLs, google.navigation:) opens the route chooser on its destination. The travel mode and a
+    // start other than "here" it names ride to the next routeToSelected as one-shots; the mode is
+    // not made sticky, since the link chose it, not the user.
+    @Volatile private var linkMode: TravelMode? = null
+    @Volatile private var linkOrigin: MapLink? = null
+
+    private fun openDirectionsLink(link: MapLink) {
+        val me = _state.value.myLocation
+        linkMode = link.mode
+        // A start at (or near) where the user is means "from here", which is the chooser's default.
+        linkOrigin = link.origin?.takeUnless { o ->
+            val la = o.lat; val ln = o.lng
+            la != null && ln != null && me != null && me.distanceTo(LatLng(la, ln)) < LINK_ORIGIN_HERE_M
+        }
+        diag.record("search", "directions link: dest ${if (link.lat != null) "point" else "name"}, " +
+            "start ${if (linkOrigin == null) "here" else "given"}, mode ${link.mode ?: "sticky"}")
+        val la = link.lat; val ln = link.lng
+        if (la != null && ln != null) {
+            val pt = LatLng(la, ln)
+            _state.update { it.copy(center = pt, centerZoom = link.zoom) }
+            viewModelScope.launch {
+                val place = runCatching { dataSource.reverseGeocode(pt) }.getOrNull()?.copy(location = pt)
+                    ?: Place(id = "pin:$la,$ln", name = appContext.getString(R.string.mapvm_dropped_pin), location = pt)
+                selectPlace(place)
+                routeToSelected()
+            }
+        } else {
+            val q = link.query ?: return
+            openDirectionsOnResult = true
+            _state.update { it.copy(query = q) }
+            runSearch(q, me ?: _state.value.center)
+        }
+    }
+
+    /** The start a directions link named: a coordinate becomes a pin, a name is searched near the
+     *  destination and its first hit taken. */
+    private fun applyLinkOrigin(o: MapLink) {
+        val dest = _state.value.selected?.location
+        viewModelScope.launch {
+            val la = o.lat; val ln = o.lng
+            val place = if (la != null && ln != null) {
+                val pt = LatLng(la, ln)
+                runCatching { dataSource.reverseGeocode(pt) }.getOrNull()?.copy(location = pt)
+                    ?: Place(id = "pin:$la,$ln", name = appContext.getString(R.string.mapvm_dropped_pin), location = pt)
+            } else {
+                val q = o.query ?: return@launch
+                runCatching { dataSource.search(q, dest, rankFrom = dest).places.firstOrNull() }.getOrNull()
+                    ?: run { showStatus(appContext.getString(R.string.intent_place_not_found, q)); return@launch }
+            }
+            if (_state.value.directionsOpen) setDirectionsOrigin(place)
         }
     }
 
@@ -4501,8 +4559,14 @@ class MapViewModel @Inject constructor(
         val (avTolls, avHighways, avFerries) = stickyAvoid()
         _state.update { it.copy(avoidTolls = avTolls, avoidHighways = avHighways, avoidFerries = avFerries) }
         syncRoutingAvoid()
-        val mode = if (sel.id.startsWith("parking:")) TravelMode.WALK else stickyTravelMode()
-        if (mode != _state.value.travelMode) setTravelMode(mode) else route(mode)
+        val fromLink = linkMode.also { linkMode = null }
+        val mode = fromLink ?: if (sel.id.startsWith("parking:")) TravelMode.WALK else stickyTravelMode()
+        when {
+            fromLink != null -> { _state.update { it.copy(travelMode = fromLink) }; route(fromLink) }
+            mode != _state.value.travelMode -> setTravelMode(mode)
+            else -> route(mode)
+        }
+        linkOrigin?.let { o -> linkOrigin = null; applyLinkOrigin(o) }
     }
 
     // ---- Parking spot ----------------------------------------------------------------
@@ -8389,6 +8453,8 @@ class MapViewModel @Inject constructor(
 
         /** Past this from the trip's chosen start, Start re-plans from where you are (issue #463). */
         private const val START_FROM_ME_M = 150.0
+        /** A directions link's start this close to the fix is "from here" (Telegram sends the fix). */
+        private const val LINK_ORIGIN_HERE_M = 150.0
         private const val ROUTING_OFFER_DONE = "routing_offer_done"
         const val KEY_DISMISSED = "dismissed"
         const val CONTROLS_MIN_ZOOM = 16.0 // draw traffic lights/stop signs only when zoomed in this close

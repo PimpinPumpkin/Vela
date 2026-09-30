@@ -1,10 +1,19 @@
 package app.vela.core.data
 
+import app.vela.core.model.TravelMode
 import java.net.URLDecoder
 
 /** A target extracted from an external `geo:` URI or Google-Maps web link. [zoom] is the
  *  caller's requested camera zoom (`geo:...?z=17`, `/@lat,lng,15z`) when it carried one. */
-data class MapLink(val query: String? = null, val lat: Double? = null, val lng: Double? = null, val zoom: Double? = null) {
+data class MapLink(
+    val query: String? = null, val lat: Double? = null, val lng: Double? = null, val zoom: Double? = null,
+    /** A directions link: the target is the DESTINATION and the route chooser should open on it. */
+    val directions: Boolean = false,
+    /** Where the trip starts, when the link names somewhere other than the user's own position. */
+    val origin: MapLink? = null,
+    /** The travel mode the link asked for, when it asked. */
+    val mode: TravelMode? = null,
+) {
     val hasTarget: Boolean get() = !query.isNullOrBlank() || (lat != null && lng != null)
 }
 
@@ -17,6 +26,9 @@ data class MapLink(val query: String? = null, val lat: Double? = null, val lng: 
  *  - `geo:0,0?q=38.5,-121.7(Label)`  → a labeled point
  *  - `https://www.google.com/maps/place/Foo/@38.5,-121.7,15z` → a place / point
  *  - `https://www.google.com/maps/search/coffee` / `?q=...`    → a search
+ *  - directions (issue #632), each opening the route chooser on the destination:
+ *      `maps.google.com/maps?saddr=A&daddr=B&dirflg=w`, `google.com/maps/dir/?api=1&destination=B
+ *      &origin=A&travelmode=walking`, `google.com/maps/dir/A/B/@...`, `google.navigation:q=B&mode=w`
  *
  * Pure Kotlin (no `android.net.Uri`) so it's unit-testable in `:core`.
  */
@@ -48,12 +60,70 @@ object MapLinkParser {
 
     fun parse(raw: String): MapLink? {
         val link = when {
+            raw.startsWith("google.navigation:", ignoreCase = true) -> parseNavigation(raw)
             raw.startsWith("geo:", ignoreCase = true) -> parseGeo(raw)
-            "/maps" in raw || "maps.google" in raw || "maps.app.goo.gl" in raw -> parseMaps(raw)
+            "/maps" in raw || "maps.google" in raw || "maps.app.goo.gl" in raw -> parseDirections(raw) ?: parseMaps(raw)
             else -> null
         }
         return link?.takeIf { it.hasTarget }
     }
+
+    /** `google.navigation:q=<dest>&mode=d|w|b|l` (also `ll=lat,lng`): Google's own navigate intent. */
+    private fun parseNavigation(raw: String): MapLink? {
+        // The parameters follow the colon, with or without a "?" ("google.navigation:q=X&mode=w").
+        val params = "?" + raw.substringAfter(':').removePrefix("?")
+        val dest = endpoint(queryParam(params, "q") ?: queryParam(params, "ll")) ?: return null
+        val mode = when (queryParam(params, "mode")?.lowercase()) {
+            "w" -> TravelMode.WALK; "b" -> TravelMode.BICYCLE; "d", "l" -> TravelMode.DRIVE; else -> null
+        }
+        return dest.copy(directions = true, mode = mode)
+    }
+
+    /** The web directions forms; null when [raw] is not one, so the place/search parse runs. */
+    private fun parseDirections(raw: String): MapLink? {
+        // Classic: /maps?saddr=A&daddr=B[&dirflg=w]. daddr can chain stops ("B+to:C"); the last one
+        // is where the trip ends.
+        queryParam(raw, "daddr")?.let { d ->
+            val dest = endpoint(decode(d.replace('+', ' ')).split(Regex("""\s+to:""")).last()) ?: return null
+            val mode = when (queryParam(raw, "dirflg")?.lowercase()?.firstOrNull { it in "dwbr" }) {
+                'w' -> TravelMode.WALK; 'b' -> TravelMode.BICYCLE; 'r' -> TravelMode.TRANSIT; 'd' -> TravelMode.DRIVE; else -> null
+            }
+            return dest.copy(directions = true, origin = endpoint(queryParam(raw, "saddr")), mode = mode)
+        }
+        if ("/dir/" !in raw && !raw.substringBefore('?').endsWith("/dir")) return null
+        val mode = when (queryParam(raw, "travelmode")?.lowercase()) {
+            "walking" -> TravelMode.WALK; "bicycling" -> TravelMode.BICYCLE; "transit" -> TravelMode.TRANSIT
+            "driving", "two-wheeler" -> TravelMode.DRIVE; else -> null
+        }
+        // Maps URLs API: /maps/dir/?api=1&destination=B&origin=A&travelmode=walking
+        queryParam(raw, "destination")?.let { d ->
+            val dest = endpoint(d) ?: return null
+            return dest.copy(directions = true, origin = endpoint(queryParam(raw, "origin")), mode = mode)
+        }
+        // Path form: /maps/dir/A/B/@lat,lng,z/data=... (an empty A = "from where I am").
+        val parts = raw.substringBefore('?').substringAfter("/dir/", "").split('/')
+            .takeWhile { !it.startsWith("@") && !it.startsWith("data=") }
+            .let { if (it.lastOrNull()?.isEmpty() == true) it.dropLast(1) else it }
+        if (parts.isEmpty()) return null
+        val dest = endpoint(parts.last()) ?: return null
+        val origin = if (parts.size >= 2) endpoint(parts.first()) else null
+        return dest.copy(directions = true, origin = origin, mode = mode)
+    }
+
+    /** One end of a directions link: a coordinate, a name or address, or null for "where I am". */
+    private fun endpoint(value: String?): MapLink? {
+        val v = value?.let { decode(it.replace('+', ' ')) }?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        if (v.lowercase() in HERE) return null
+        COORD.matchEntire(v)?.let {
+            val lat = it.groupValues[1].toDoubleOrNull() ?: return null
+            val lng = it.groupValues[2].toDoubleOrNull() ?: return null
+            if (lat !in -90.0..90.0 || lng !in -180.0..180.0) return null
+            return MapLink(lat = lat, lng = lng)
+        }
+        return MapLink(query = v)
+    }
+
+    private val HERE = setOf("current location", "my location", "your location", "current+location")
 
     private fun parseGeo(raw: String): MapLink {
         val body = raw.substring(4) // after "geo:"
