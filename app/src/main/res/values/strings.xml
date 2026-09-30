@@ -1192,4 +1192,14 @@
     <string name="settings_puck_shape_ufo">UFO</string>
     <string name="settings_puck_shape_ship">Pirate ship</string>
     <string name="settings_puck_shape_duck">Rubber duck</string>
+    <string name="route_saved_label">Your route: %1$s</string>
+    <string name="route_save">Save this route</string>
+    <string name="route_save_title">Save route</string>
+    <string name="route_save_hint">Name</string>
+    <string name="route_save_default">Route to %1$s</string>
+    <string name="route_saved_toast">Route saved. It shows up next to the others whenever you ask for this trip.</string>
+    <string name="settings_saved_routes">Saved routes</string>
+    <string name="settings_saved_routes_empty">Pick a route in the route chooser and use ⋮ &gt; Save this route. It shows up next to the others whenever you ask for the same trip.</string>
+    <string name="settings_saved_route_rename">Rename</string>
+    <string name="settings_saved_route_delete">Delete</string>
 </resources>

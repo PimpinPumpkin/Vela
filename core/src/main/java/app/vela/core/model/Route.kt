@@ -223,6 +223,8 @@ data class Route(
      *  such a route with the vias as SILENT stops, so a reroute or recheck keeps the detour instead
      *  of routing straight back through the cameras. */
     val detourPlan: List<LatLng> = emptyList(),
+    /** The name of the user's saved route this is (issue #622); shown on its row instead of the "via". */
+    val savedName: String? = null,
     // See [RouteSource]. Stamped by every constructor; UNKNOWN only for old trip files.
     val source: RouteSource = RouteSource.UNKNOWN,
     /** Local road name -> its Latin alias (OSM `name:en`, else a Latin `name:latin`) for the roads this

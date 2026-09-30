@@ -366,6 +366,8 @@ data class MapUiState(
     val recents: List<RecentQuery> = emptyList(),
     val recentPlaces: List<RecentPlace> = emptyList(),
     val saved: List<SavedPlace> = emptyList(),
+    /** The user's saved routes (issue #622), newest first. */
+    val savedRoutes: List<app.vela.core.model.SavedRoute> = emptyList(),
     val home: SavedPlace? = null,
     val work: SavedPlace? = null,
     val assigningShortcut: ShortcutKind? = null, // picking a place to pin as Home/Work
@@ -437,6 +439,7 @@ class MapViewModel @Inject constructor(
     private val savedStore: SavedPlaceStore,
     private val parkingStore: app.vela.core.data.ParkingStore,
     private val listStore: app.vela.core.data.PlaceListStore,
+    private val savedRouteStore: app.vela.core.data.SavedRouteStore,
     private val shortcutStore: PlaceShortcutStore,
     private val calibration: CalibrationStore,
     private val offlinePoiStore: OfflinePoiStore,
@@ -670,7 +673,7 @@ class MapViewModel @Inject constructor(
                 selectedVoiceId = activeVoice,
                 voiceSpeaker = savedSpeakerFor(activeVoice),
                 voiceSpeed = savedSpeed,
-                recents = recentStore.recent(), saved = savedStore.saved(),
+                recents = recentStore.recent(), saved = savedStore.saved(), savedRoutes = savedRouteStore.all(),
                 recentPlaces = recentPlaceStore.recent(),
                 home = shortcutStore.get(ShortcutKind.HOME), work = shortcutStore.get(ShortcutKind.WORK),
             )
@@ -5157,6 +5160,7 @@ class MapViewModel @Inject constructor(
         // backed out or switched away while it was fetching). Mirrors routeTransit's stale-load guard.
         fun stillWanted() = _state.value.directionsOpen && _state.value.travelMode == mode
         routeJob?.cancel()
+        savedRoutesJob?.cancel()
         routeJob = viewModelScope.launch {
             try {
                 val routes = dataSource.directions(origin, dest, mode, stops, s.avoidTolls, s.avoidHighways, s.avoidFerries)
@@ -5187,6 +5191,7 @@ class MapViewModel @Inject constructor(
                 // wrong turns/ETA that only "corrected" when Start named it. Name it NOW (OSRM snap +
                 // re-applied traffic), exactly as picking an alternate does, so preview == nav.
                 if (routes.firstOrNull()?.provisional == true) selectRoute(0)
+                if (routes.isNotEmpty() && stops.isEmpty()) offerSavedRoutes(origin, dest, mode, s.avoidTolls, s.avoidHighways, s.avoidFerries, ::stillWanted)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e // superseded by a newer route()/cleared — don't touch state on a dead job
             } catch (e: CalibrationNeededException) {
@@ -5199,6 +5204,92 @@ class MapViewModel @Inject constructor(
 
     private var flockRouteJob: kotlinx.coroutines.Job? = null
     private var roadFeaturesJob: kotlinx.coroutines.Job? = null
+
+    // ---- Saved routes (issue #622) ----------------------------------------------------------
+    // A saved route is the user's own way to a place. When the chooser asks for the same trip
+    // (same mode, start near its start, end near its end) it joins the list with a live time: the
+    // router is asked for the trip through a few via points where the saved line leaves the
+    // router's own answer (SavedRoutes.viasAgainst), and the vias ride as the route's detourPlan
+    // so a drive's reroutes keep to it. Appended at the END: the flock counts and the provisional
+    // naming index into the list, and the Fastest tag goes by time, not position.
+
+    private var savedRoutesJob: kotlinx.coroutines.Job? = null
+
+    private fun offerSavedRoutes(
+        origin: LatLng, dest: LatLng, mode: TravelMode,
+        avoidTolls: Boolean, avoidHighways: Boolean, avoidFerries: Boolean,
+        stillWanted: () -> Boolean,
+    ) {
+        savedRoutesJob?.cancel()
+        val matching = _state.value.savedRoutes.filter { app.vela.core.nav.SavedRoutes.matches(it, origin, dest, mode) }
+        if (matching.isEmpty()) return
+        savedRoutesJob = viewModelScope.launch {
+            for (saved in matching) {
+                val line = app.vela.core.data.google.PolylineCodec.decode(saved.polyline)
+                val current = _state.value.routes
+                if (current.isEmpty() || !stillWanted()) return@launch
+                // Already one of the routes on offer: name that row, nothing to fetch.
+                val same = withContext(Dispatchers.Default) {
+                    current.indexOfFirst { app.vela.core.nav.SavedRoutes.sameWay(line, it.polyline) && app.vela.core.nav.SavedRoutes.sameWay(it.polyline, line) }
+                }
+                if (same >= 0) {
+                    _state.update { st ->
+                        if (st.routes.size <= same) st
+                        else st.copy(routes = st.routes.mapIndexed { i, r -> if (i == same) r.copy(savedName = saved.name) else r })
+                            .let { if (st.activeRoute === st.routes[same]) it.copy(activeRoute = it.routes[same]) else it }
+                    }
+                    continue
+                }
+                val vias = withContext(Dispatchers.Default) { app.vela.core.nav.SavedRoutes.viasAgainst(line, current.first().polyline) }
+                if (vias.isEmpty()) continue
+                val r = runCatching { dataSource.directions(origin, dest, mode, vias, avoidTolls, avoidHighways, avoidFerries) }
+                    .getOrDefault(emptyList()).firstOrNull() ?: continue
+                // Still the same route set (a mode switch or an edit replaces it)?
+                if (!stillWanted() || _state.value.routes.firstOrNull()?.polyline !== current.first().polyline) return@launch
+                _state.update { it.copy(routes = it.routes + r.copy(detourPlan = vias, savedName = saved.name)) }
+                android.util.Log.i("VelaSavedRoute", "offered a saved route through ${vias.size} via(s)")
+            }
+        }
+    }
+
+    /** Save the route picked in the chooser under [name]. */
+    fun saveActiveRoute(name: String) {
+        val s = _state.value
+        val route = s.activeRoute ?: return
+        if (route.polyline.size < 2) return
+        val destLabel = if (s.directionsReversed) (s.directionsOrigin?.name ?: appContext.getString(R.string.mapscreen_your_location))
+            else (s.selected?.name ?: "")
+        val saved = app.vela.core.model.SavedRoute(
+            id = java.util.UUID.randomUUID().toString(),
+            name = name.trim().ifEmpty { defaultSavedRouteName() },
+            mode = s.travelMode.name,
+            originLat = route.polyline.first().lat, originLng = route.polyline.first().lng,
+            destLat = route.polyline.last().lat, destLng = route.polyline.last().lng,
+            destLabel = destLabel,
+            polyline = app.vela.core.data.google.PolylineCodec.encode(route.polyline),
+            createdAt = System.currentTimeMillis(),
+        )
+        val all = savedRouteStore.add(saved)
+        _state.update { st ->
+            val idx = st.routes.indexOf(route)
+            val named = route.copy(savedName = saved.name)
+            st.copy(
+                savedRoutes = all,
+                routes = if (idx >= 0) st.routes.mapIndexed { i, r -> if (i == idx) named else r } else st.routes,
+                activeRoute = named,
+            )
+        }
+        flashStatus(appContext.getString(R.string.route_saved_toast))
+    }
+
+    fun defaultSavedRouteName(): String {
+        val s = _state.value
+        val dest = if (s.directionsReversed) (s.directionsOrigin?.name ?: appContext.getString(R.string.mapscreen_your_location)) else s.selected?.name
+        return appContext.getString(R.string.route_save_default, dest ?: "")
+    }
+
+    fun renameSavedRoute(id: String, name: String) { _state.update { it.copy(savedRoutes = savedRouteStore.rename(id, name)) } }
+    fun deleteSavedRoute(id: String) { _state.update { it.copy(savedRoutes = savedRouteStore.delete(id)) } }
 
     /** Wait (at most [capMs]) for the work that follows a route's arrival: the road features along
      *  it, the camera count and the camera detours. A one-tap Start from the place sheet waits for

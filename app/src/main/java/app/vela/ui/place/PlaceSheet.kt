@@ -2261,7 +2261,8 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
             }
             val sub = listOfNotNull(
                 formatDistance(r.distanceMeters),
-                r.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.place_via, it) },
+                r.savedName?.let { stringResource(R.string.route_saved_label, it) }
+                    ?: r.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.place_via, it) },
                 trafficWord,
             ).joinToString("  ·  ")
             Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)

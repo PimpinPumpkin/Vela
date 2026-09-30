@@ -26,6 +26,22 @@ import app.vela.ui.settings.PageIntro
 import app.vela.ui.settings.SettingsGroup
 import app.vela.ui.settings.SettingsScaffold
 import app.vela.ui.dpadRowSibling // D-pad-only operation (docs/dpad.md)
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.vela.ui.dpadHighlight
+import app.vela.ui.settings.Hint
+import app.vela.ui.item
 
 /** Saved places sub-screen: export/import the saved places and the local lists, and the
  *  parking history. */
@@ -98,6 +114,8 @@ internal fun SavedPlacesSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         }
         }
         Spacer(Modifier.height(8.dp))
+        SavedRoutesGroup(vm)
+        Spacer(Modifier.height(8.dp))
         ParkingHistoryGroup(vm)
         Spacer(Modifier.height(24.dp))
     }
@@ -153,4 +171,56 @@ private fun toastImport(
                 ?: context.getString(R.string.settings_import_wrong_format)
     }
     android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+}
+
+/** Saved routes (issue #622): each one's name and where it goes, with rename and delete. Always
+ *  shown, so the settings search entry never leads to nothing. */
+@Composable
+private fun SavedRoutesGroup(vm: MapViewModel) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    var renaming by remember { mutableStateOf<app.vela.core.model.SavedRoute?>(null) }
+    SettingsGroup(title = stringResource(R.string.settings_saved_routes)) {
+        if (state.savedRoutes.isEmpty()) Hint(stringResource(R.string.settings_saved_routes_empty))
+        state.savedRoutes.forEachIndexed { i, r ->
+            if (i > 0) app.vela.ui.settings.GroupDivider()
+            Row(
+                Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(r.name, style = MaterialTheme.typography.bodyLarge)
+                    if (r.destLabel.isNotBlank()) Text(r.destLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                var menu by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = { menu = true }, modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape)) {
+                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.exp_chooser_more))
+                    }
+                    app.vela.ui.VelaMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        item(stringResource(R.string.settings_saved_route_rename)) { menu = false; renaming = r }
+                        item(stringResource(R.string.settings_saved_route_delete)) { menu = false; vm.deleteSavedRoute(r.id) }
+                    }
+                }
+            }
+        }
+    }
+    renaming?.let { r ->
+        var draft by remember(r.id) { mutableStateOf(r.name) }
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { renaming = null },
+            title = stringResource(R.string.settings_saved_route_rename),
+            confirmText = stringResource(R.string.list_save),
+            onConfirm = { vm.renameSavedRoute(r.id, draft); renaming = null },
+            dismissText = stringResource(R.string.list_cancel),
+            onDismiss = { renaming = null },
+        ) {
+            OutlinedTextField(
+                value = draft,
+                onValueChange = { draft = it.take(60) },
+                singleLine = true,
+                label = { Text(stringResource(R.string.route_save_hint)) },
+                modifier = Modifier.fillMaxWidth().dpadHighlight(),
+            )
+        }
+    }
 }

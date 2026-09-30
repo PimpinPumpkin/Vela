@@ -1837,6 +1837,12 @@ Defaults that make the safe path the easy one:
   with a Takeout-shaped file. NB importing another app's format is issue #279, still open.
   ⚠️ A literal wildcard mime in a KDoc block ENDS THE COMMENT (same trap as PoiPackStore's
   `del_*/ins_*`) - the mime array's comment is a line comment for that reason.
+- **Saved routes (issue #622, 2026-09-30):** `SavedRouteStore` + `core/nav/SavedRoutes` (pure,
+  `SavedRoutesTest`). `MapViewModel.offerSavedRoutes` runs after each stop-less `route()`: same way
+  as an offered route = that row gets `savedName`; else vias where the saved line leaves the fastest
+  route, one `directions()` through them, APPENDED with `detourPlan` = the vias (silent stops, so
+  reroutes keep it). Never insert into `routes`: flock counts and provisional naming index into it.
+  The save dialog lives inside `RouteTopCard` (MapScreen is at the verifier limit).
 - **Per-place icons (issue #629, 2026-09-30):** `SavedPlace.icon` / `ListPlace.icon` override the
   list's icon on the map pin (null = the list's). The picker (`IconPicker`, shared with the list
   editor, and `PlaceIconDialog` in MapScreen) opens from the place sheet's save menu. Its button

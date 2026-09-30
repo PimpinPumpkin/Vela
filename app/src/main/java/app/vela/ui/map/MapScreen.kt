@@ -1425,6 +1425,8 @@ fun MapScreen(
                             onSwap = vm::swapDirections,
                             onClose = vm::clearRoute,
                             googleStyle = app.vela.ui.RoutePicker.googleStyle.value,
+                            onSaveRoute = if (state.activeRoute != null && state.travelMode != app.vela.core.model.TravelMode.TRANSIT) vm::saveActiveRoute else null,
+                            defaultRouteName = vm.defaultSavedRouteName(),
                         )
                     }
                     // The bar hides while an expanded place sheet covers it: the visible sliver

@@ -1983,6 +1983,18 @@ host that cannot answer.
 - List membership matches on `ListPlace.matches` (id **or** stable feature id), never a bare id
   comparison: a Google place's id is derived from its name hash and a coarse coordinate, so a
   multi-listing chain can resolve to a different co-located listing next visit.
+- Saved routes (issue #622): the route chooser's ⋮ "Save this route" stores the picked route's line
+  (`SavedRoute`, encoded 1e-5 polyline, its ends, mode, name; `SavedRouteStore`, prefs
+  `vela_saved_routes`). A later trip with no stops, the same mode, a start within
+  `SavedRoutes.ORIGIN_M` (1 km) and an end within `DEST_M` (250 m) gets it offered: a route already
+  on offer that is the same way (every 25 m sample within `OFF_M`, 60 m, both directions) just takes
+  its name; otherwise the router is asked for the trip through vias placed on the saved line in the
+  middle of each stretch where it leaves the fastest route (stretches under `MIN_RUN_M`, 150 m,
+  ignored; one more per `VIA_EVERY_M`, 2.5 km; at most `MAX_VIAS`, 8), and the result is APPENDED to
+  the list with `savedName` and the vias as its `detourPlan`, so the drive keeps them as silent stops
+  through every reroute. Appended, never inserted: the camera counts and the provisional naming
+  index into the list. Rows show "Your route: <name>" in place of the "via". Settings > Saved places
+  lists them with rename and delete; they are not in the saved-places export yet.
 - `SavedPlace.of(Place)` carries an optional address, defaulted null so older payloads decode;
   every store's JSON sets `ignoreUnknownKeys` so a downgrade survives.
 - A saved place can carry its OWN map icon (issue #629): `SavedPlace.icon` and `ListPlace.icon`,

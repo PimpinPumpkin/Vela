@@ -79,6 +79,9 @@ fun RouteTopCard(
     // The Google-style chooser experiment: no visible Add stop row; a menu on the top right holds
     // Edit stops and Add stop instead, with the swap under it, as Google lays the card out.
     googleStyle: Boolean = false,
+    // Saving the picked route (issue #622) under a name; null hides the item (no route yet, transit).
+    onSaveRoute: ((String) -> Unit)? = null,
+    defaultRouteName: String = "",
     modifier: Modifier = Modifier,
 ) {
     val ink = MaterialTheme.colorScheme.onSurface
@@ -186,8 +189,28 @@ fun RouteTopCard(
                 }
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                if (googleStyle && showStopControls) {
+                if ((googleStyle && showStopControls) || onSaveRoute != null) {
                     var menu by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                    var naming by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                    if (naming && onSaveRoute != null) {
+                        var draft by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(defaultRouteName) }
+                        app.vela.ui.VelaDialog(
+                            onDismissRequest = { naming = false },
+                            title = stringResource(R.string.route_save_title),
+                            confirmText = stringResource(R.string.list_save),
+                            onConfirm = { naming = false; onSaveRoute(draft) },
+                            dismissText = stringResource(R.string.list_cancel),
+                            onDismiss = { naming = false },
+                        ) {
+                            androidx.compose.material3.OutlinedTextField(
+                                value = draft,
+                                onValueChange = { draft = it.take(60) },
+                                singleLine = true,
+                                label = { Text(stringResource(R.string.route_save_hint)) },
+                                modifier = Modifier.fillMaxWidth().dpadHighlight(),
+                            )
+                        }
+                    }
                     Box {
                         IconButton(onClick = { menu = true }, modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
                             Icon(
@@ -197,8 +220,11 @@ fun RouteTopCard(
                             )
                         }
                         app.vela.ui.VelaMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                            item(stringResource(R.string.stops_edit)) { menu = false; onEditStops() }
-                            if (onAddStop != null) item(stringResource(R.string.place_add_stop)) { menu = false; onAddStop() }
+                            if (googleStyle && showStopControls) {
+                                item(stringResource(R.string.stops_edit)) { menu = false; onEditStops() }
+                                if (onAddStop != null) item(stringResource(R.string.place_add_stop)) { menu = false; onAddStop() }
+                            }
+                            if (onSaveRoute != null) item(stringResource(R.string.route_save)) { menu = false; naming = true }
                         }
                     }
                 }

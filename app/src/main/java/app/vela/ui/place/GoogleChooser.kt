@@ -323,7 +323,8 @@ fun GoogleStyleDirectionsPanel(
                         // "Fastest" belongs to the fastest route only: a near-tie a few seconds slower
                         // rounds to the same minute and used to claim it too.
                         val isFastest = routes.indexOfFirst { (it.durationInTrafficSeconds ?: it.durationSeconds) == fastest } == routes.indexOf(route)
-                        val via = route.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) }
+                        val via = route.savedName?.let { stringResource(R.string.route_saved_label, it) }
+                            ?: route.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) }
                         Text(
                             when {
                                 isFastest && routes.size > 1 -> listOfNotNull(stringResource(R.string.exp_chooser_fastest), via).joinToString(" · ")
@@ -431,7 +432,8 @@ fun GoogleStyleDirectionsPanel(
                                     Text(
                                         listOfNotNull(
                                             formatDistance(r.distanceMeters),
-                                            r.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) },
+                                            r.savedName?.let { stringResource(R.string.route_saved_label, it) }
+                                                ?: r.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) },
                                             if (cams > 0) androidx.compose.ui.res.pluralStringResource(R.plurals.dir_cameras_on_route, cams, cams) else null,
                                             if (i == fewestCamIdx) stringResource(R.string.exp_chooser_fewest_cams) else null,
                                         ).joinToString(" · "),
