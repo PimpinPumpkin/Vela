@@ -522,7 +522,7 @@ class MapViewModel @Inject constructor(
             _state.map { s -> if (!s.navigating && s.directionsOpen && s.travelMode != TravelMode.TRANSIT) s.activeRoute else null }
                 .distinctUntilChanged { a, b -> a === b }
                 .collectLatest { r ->
-                    if (r != null) { kotlinx.coroutines.delay(1500); runCatching { navSession.prepareOpener(r) } }
+                    if (r != null) { kotlinx.coroutines.delay(1500); runCatching { navSession.prepareStart(r, app.vela.ui.Units.imperial.value) } }
                 }
         }
         loadAmbientCacheFromDisk() // ambient LRU survives restarts (paint-then-refine)

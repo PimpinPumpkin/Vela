@@ -386,15 +386,15 @@ class VoiceGuide @Inject constructor(
     /** Get [text] ready to speak ahead of time (the drive's opener, prepared while the route preview
      *  is up), so the line needs no synthesis when it is spoken. Only the neural voice can keep
      *  audio; the same voice choice and text changes as [speakNow], so the prepared line matches. */
-    fun prepare(text: String) {
-        if (muted) return
+    fun prepare(text: String, onDone: () -> Unit = {}) {
         val t = targetLang()
-        val n = neural ?: return
+        val n = neural
         // Before the first drive nothing is initialized yet (init runs at Start) and [neural] is
         // the chosen voice; once a system engine is the active one, there is nothing to prepare.
-        if (currentEngine != null && !useNeural) return
-        if (!(n.voiceLanguage.let { it == null || it == t } || n.voiceFor(t))) return
-        n.prepare(forSpeech(SpokenScript.forVoice(text, n.voiceLanguage ?: t, roadNameLatin)))
+        if (muted || n == null || (currentEngine != null && !useNeural) ||
+            !(n.voiceLanguage.let { it == null || it == t } || n.voiceFor(t))
+        ) { onDone(); return }
+        n.prepare(forSpeech(SpokenScript.forVoice(text, n.voiceLanguage ?: t, roadNameLatin)), onDone)
     }
 
     /** Speak the nav-START opener ("Starting navigation. Head ... on <road>"), but hold it briefly if

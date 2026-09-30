@@ -306,7 +306,7 @@ class PiperSynth @Inject constructor(
 
     /** Synthesize [text] now, at background priority, and keep the audio for the next [speak] of
      *  exactly this line with the same voice and speed (a few lines at most). */
-    override fun prepare(text: String) {
+    override fun prepare(text: String, onDone: () -> Unit) {
         worker.execute {
             runCatching { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND) }
             try {
@@ -325,6 +325,7 @@ class PiperSynth @Inject constructor(
                 Log.w(TAG, "prepare failed: ${t.message}")
             } finally {
                 runCatching { android.os.Process.setThreadPriority(SPEAK_PRIORITY) }
+                onDone()
             }
         }
     }
@@ -394,8 +395,8 @@ class PiperSynth @Inject constructor(
          * the tile workers take the core first; a prompt only slows while the map is busy.
          */
         const val SPEAK_PRIORITY = android.os.Process.THREAD_PRIORITY_DEFAULT + 8
-        /** Prepared lines kept at once (a drive's opener, and a route switched away from). */
-        const val MAX_PREPARED = 3
+        /** Prepared lines kept at once: a drive's opener and its first turns' prompts (up to 7). */
+        const val MAX_PREPARED = 8
         const val TAG = "PiperSynth"
         const val SPEED = 1.0f
         // Silence spliced between sentences (seconds) — a natural period beat for nav prompts.

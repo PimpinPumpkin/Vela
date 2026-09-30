@@ -261,11 +261,15 @@ class NavSession @Inject constructor(
         Heading.withCardinal(route.maneuvers.firstOrNull()?.spokenInstruction().orEmpty(), route.polyline),
     )
 
-    /** Prepare the opener of a drive of [route] while it is only being previewed, so Start plays it
+    /** Prepare the first lines of a drive of [route] while it is only being previewed: the opener
+     *  and the first turns' prompts at starting speed ([NavEngine.startPrompts]), so Start plays them
      *  without synthesizing while the camera flies in to the driving view. */
-    fun prepareOpener(route: Route) {
-        if (_state.value.navigating || route.maneuvers.isEmpty()) return
-        voice.prepare(openerFor(route))
+    fun prepareStart(route: Route, imperial: Boolean, onDone: () -> Unit = {}) {
+        if (_state.value.navigating || route.maneuvers.isEmpty()) { onDone(); return }
+        // In speaking order, so a start that cannot wait for all of them has the first ones.
+        val lines = listOf(openerFor(route)) + NavEngine.startPrompts(route, imperial)
+        val left = java.util.concurrent.atomic.AtomicInteger(lines.size)
+        lines.forEach { voice.prepare(it) { if (left.decrementAndGet() == 0) onDone() } }
     }
 
     fun stop() {

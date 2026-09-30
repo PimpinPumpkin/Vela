@@ -1272,6 +1272,18 @@ background priority, up to `MAX_PREPARED` lines kept by voice, speaker, speed an
 plays without synthesis at Start; on a route whose first turn is seconds away the imminent-turn
 prompt cuts the opener, and that prompt is synthesized at Start as before.
 
+Fifth round (2026-09-30): the preview also prepares the first two turns' prompts at starting
+speed (`NavEngine.startPrompts`: far and near approach lines at the 400 m / 150 m band floors and
+the turn-now line, in `update`'s own wording, `StartPromptsTest` checks they are exactly what it
+speaks; up to 8 prepared lines). From the preview, seconds 1 to 3 after Start went from 38-44 to
+44-53 fps, with no line synthesized at Start. Tried and REVERTED, measured with fps counted from
+the nav service's start: the tile workers ("Worker N") at background priority for the first 3 s
+(no gain, street detail later); on the one-tap path skipping the overview fit (the fly-in from
+the place was WORSE, 5-6 fps in its first second, a longer flight over new tiles), waiting for
+the voice lines (the drive began 2 s later for no gain), and waiting for the map to go idle on the
+overview (same fps, 0.5 s later). What remains on the one-tap path, seconds 2 to 4 at about
+10-25 fps, is the fly-in's own tile work at the nav zoom.
+
 ### 4.8 Route line rendering
 
 - **A paused drive draws the ahead line in `ROUTE_PAUSED_COLOR` (`#9C8AD6`, a muted lavender)**

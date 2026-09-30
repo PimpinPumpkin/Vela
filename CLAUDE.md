@@ -3385,7 +3385,11 @@ architecture note.
   no layer mattered; `top -H` showed the route's follow-up work (road-features pass, camera jobs)
   and two `piper-tts` threads on the fast cores during the fly-in. The auto-start now waits for the
   follow-up work (`awaitRouteWork`, cap 3 s): 21-33 fps. The opener is synthesized during the route
-  preview (`NavSession.prepareOpener`, `PiperSynth.prepare`). GrapheneOS refuses simpleperf even for
+  preview (`NavSession.prepareStart`: opener + `NavEngine.startPrompts`, `PiperSynth.prepare`).
+  Tried and reverted (no gain, SPEC 4.7a fifth round): tile workers at background priority,
+  skipping the overview fit on the one-tap path, waiting for voice prep or map idle there. Count
+  fps FROM the nav service start (`navrun2`-style logcat alignment): before it the map may be idle,
+  and a low count then is not jank. GrapheneOS refuses simpleperf even for
   a profileable build (perf_event denied), so `top -H -o TID,%CPU,CMD` is the thread-level tool.
   Measure with `debug.vela.fps` + Perfetto on the 4a; the P9's GrapheneOS gives no ftrace to a
   shell trace, and a demo route there uses the phone's STICKY travel mode (a walking demo buzzes

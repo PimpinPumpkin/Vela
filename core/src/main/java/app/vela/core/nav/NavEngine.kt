@@ -477,6 +477,39 @@ object NavEngine {
     }
 
     /** The active language's nav strings (spoken frame + distance + arrival), English by default. */
+    /** The lines [update] speaks for the first [count] turns of [route] when they come up at
+     *  starting speed (the approach bands are then their 400 m / 150 m floors): each turn's far and
+     *  near approach prompts and its turn-now line, in the same wording [update] builds. The voice
+     *  prepares them while the route preview is up, so the first prompts of a drive need no
+     *  synthesis while the camera flies in. A line this misses (a real distance on a short step, a
+     *  higher speed) is simply synthesized when spoken, as before. */
+    fun startPrompts(route: Route, imperial: Boolean, count: Int = 2): List<String> {
+        val ms = route.maneuvers
+        val out = LinkedHashSet<String>()
+        var taken = 0
+        for (i in 1 until ms.size) {
+            if (taken >= count) break
+            val m = ms[i]
+            if (m.type == ManeuverType.ARRIVE) break
+            if ((m.type == ManeuverType.CONTINUE || m.type == ManeuverType.STRAIGHT) &&
+                !app.vela.core.model.continueHasGenuineFork(m.lanes)
+            ) continue
+            taken++
+            val leg = ms[i - 1].distanceMeters
+            val lane = app.vela.core.model.laneGuidance(m.lanes)
+            val full = if (lane != null) nav().useLanesToDo(lane.side, lane.count, nav().spokenSign(m.spokenInstruction()))
+                else nav().spokenSign(m.spokenInstruction())
+            val short = nav().repeatShort(m.spokenInstruction())
+            val far = 400.0
+            val near = 150.0
+            val farSpoken = leg >= far * 0.85 && m.type != ManeuverType.MERGE
+            if (farSpoken) out += nav().inThen(spokenDistance(far, imperial), full)
+            if (leg >= near * 0.85) out += nav().inThen(spokenDistance(near, imperial), if (farSpoken) short else full)
+            out += if (leg >= near * 0.85) short else nav().spokenSign(m.spokenInstruction())
+        }
+        return out.toList()
+    }
+
     private fun nav() = app.vela.core.i18n.NavStringsRegistry.current()
 
     /** A distance phrased for SPEECH, honoring the imperial/metric preference — now localized via the

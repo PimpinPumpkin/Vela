@@ -34,7 +34,7 @@ interface NeuralSynth {
 
     /** Synthesize [text] ahead of time, quietly, so a later [speak] of exactly this line plays at
      *  once. Optional: a synth that cannot keep audio ignores it. */
-    fun prepare(text: String) {}
+    fun prepare(text: String, onDone: () -> Unit = {}) { onDone() }
 
     /** Stop any current + queued speech now. */
     fun stop()
