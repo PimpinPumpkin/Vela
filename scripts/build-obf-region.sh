@@ -81,7 +81,7 @@ fi
 OBF="$(ls "$WORK"/*.obf | head -1)"  # generateObf names the output from the pbf filename
 mv "$OBF" "$WORK/$ID.obf"
 
-# Highway hierarchy for the car profile (bake_obf_hh in bake-lib.sh says why). A region too big
+# Highway hierarchy for car and bicycle (bake_obf_hh in bake-lib.sh says why). A region too big
 # for it still ships, without HH, and routes as it always did; VELA_OBF_HH=0 skips the step.
 HH=false
 if [[ "${VELA_OBF_HH:-1}" == "1" ]]; then
