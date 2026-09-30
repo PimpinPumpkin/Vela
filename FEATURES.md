@@ -2749,6 +2749,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   tile: a curated picker grid (works on key-only phones) plus a free-type field for any
   emoji. Stored in the existing icon field as "emoji:X", so old payloads and old builds
   fall back to the bookmark; the emoji renders in list rows and as the saved-place map pin.
+- ✅ **Per-place map icons (issue #629).** A saved place can wear its own icon instead of its
+  list's: the place sheet's save menu has "Choose icon" (the list editor's glyphs and emoji
+  picker) and "Use the list's icon" resets it. The pin keeps the list's color.
 - ✅ **Hebrew open/closed status fix (issue #95 diag).** Google prefixes Hebrew status strings
   with "המקום" ("the place"), so the bare closed/open words never matched at the start of the
   string and every Hebrew place drew no status color at all. The keyword tables now carry the

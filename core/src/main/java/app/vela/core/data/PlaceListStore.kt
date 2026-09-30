@@ -75,6 +75,13 @@ class PlaceListStore @Inject constructor(
         },
     )
 
+    /** Sets/clears a place's own map icon in every list holding it (issue #629). */
+    fun setIcon(placeId: String, icon: String?, featureId: String? = null): List<PlaceList> = write(
+        lists().map { l ->
+            l.copy(places = l.places.map { if (it.matches(placeId, featureId)) it.copy(icon = icon?.ifBlank { null }) else it })
+        },
+    )
+
     /** The lists holding this place (drives the sheet's "in a list" affordances). */
     fun listsContaining(placeId: String, featureId: String? = null): List<PlaceList> =
         lists().filter { l -> l.places.any { it.matches(placeId, featureId) } }

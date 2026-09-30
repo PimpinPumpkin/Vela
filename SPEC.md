@@ -1954,6 +1954,12 @@ host that cannot answer.
   multi-listing chain can resolve to a different co-located listing next visit.
 - `SavedPlace.of(Place)` carries an optional address, defaulted null so older payloads decode;
   every store's JSON sets `ignoreUnknownKeys` so a downgrade survives.
+- A saved place can carry its OWN map icon (issue #629): `SavedPlace.icon` and `ListPlace.icon`,
+  same key format as a list's icon (a glyph name or `emoji:X`), defaulted null. The map pin draws
+  `ListPlace.icon ?: PlaceList.icon` and `SavedPlace.icon ?: "bookmark"`, always in the list's
+  color. Set from the place sheet's save menu ("Choose icon", shown once the place is in a list or
+  saved); `MapViewModel.setPlaceIcon` writes every list copy (matched by `ListPlace.matches`) and
+  the quick-save, and null clears it back to the list's icon.
 - Recents are timestamped under new preference keys; the legacy keys are read once for migration
   and left in place so a downgraded build still reads them.
 - Imports accept GPX, KML and GeoJSON including Google Takeout (`core/data/PlaceImport`).

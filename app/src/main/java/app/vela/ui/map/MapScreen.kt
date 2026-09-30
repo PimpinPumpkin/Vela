@@ -576,6 +576,18 @@ fun MapScreen(
     // In-nav search-along-route: the map search FAB arms a panel (text field + chips) above
     // the bar. Reset when nav ends so a stale-open panel can't greet the next drive.
     var navSearchOpen by remember { mutableStateOf(false) }
+    // Issue #629: the saved place whose own map icon is being picked.
+    var iconPickFor by remember { mutableStateOf<app.vela.core.model.Place?>(null) }
+    iconPickFor?.let { p ->
+        val list = vm.listsContaining(p).firstOrNull()
+        PlaceIconDialog(
+            placeName = p.name,
+            initial = vm.placeIcon(p) ?: list?.icon,
+            color = list?.color ?: 0xFF1A73E8,
+            onSave = { vm.setPlaceIcon(p, it); iconPickFor = null },
+            onDismiss = { iconPickFor = null },
+        )
+    }
     // Ending a drive: straight away, or after a confirm when Settings > Navigation asks for one
     // (NavEndConfirm, off by default, issue #624). The red X and Back during a drive both come here.
     var confirmEndNav by remember { mutableStateOf(false) }
@@ -2123,6 +2135,7 @@ fun MapScreen(
                 onRemoveFromList = { listId -> vm.removePlaceFromList(listId, state.selected!!) },
                 onCreateListWith = { name -> val id = vm.createList(name); vm.addPlaceToList(id, state.selected!!) },
                 onSetNote = { note -> vm.setPlaceNote(state.selected!!, note) },
+                onChooseIcon = { iconPickFor = state.selected },
                 minimizeTick = sheetPanTick,
                 // No navigationBarsPadding here: the sheet's background should reach
                 // the screen bottom (no map peeking through under the nav bar); the
@@ -3587,13 +3600,13 @@ private fun MapSurface(
             val seen = HashSet<String>()
             state.lists.forEach { l ->
                 l.places.forEach { lp ->
-                    if (seen.add(lp.id)) add(SavedPin(lp.lat, lp.lng, l.icon, l.color) to lp.toPlace())
+                    if (seen.add(lp.id)) add(SavedPin(lp.lat, lp.lng, lp.icon ?: l.icon, l.color) to lp.toPlace()) // its own icon first (#629)
                 }
             }
             state.saved.forEach { sp ->
                 if (seen.add(sp.id)) {
                     add(
-                        SavedPin(sp.lat, sp.lng, "bookmark", 0xFF1A73E8) to
+                        SavedPin(sp.lat, sp.lng, sp.icon ?: "bookmark", 0xFF1A73E8) to
                             app.vela.core.model.Place(id = sp.id, name = sp.name, location = sp.location, address = sp.address),
                     )
                 }
@@ -5603,6 +5616,106 @@ private fun ListIconBadge(key: String, tint: Color, size: androidx.compose.ui.un
     }
 }
 
+/** The icon choice shared by the list editor and a saved place's own icon (issue #629): the
+ *  glyph set, and an emoji tile that opens a D-pad-focusable emoji grid plus a free-type field. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun IconPicker(icon: String, color: Long, onPick: (String) -> Unit) {
+    var emojiOpen by remember { mutableStateOf(false) }
+    var emojiText by remember { mutableStateOf("") }
+    Column {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            LIST_ICONS.forEach { (key, vec) ->
+                val sel = key == icon
+                Surface(
+                    shape = CircleShape,
+                    color = if (sel) Color(color).copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant,
+                    border = if (sel) BorderStroke(2.dp, Color(color)) else null,
+                    modifier = Modifier.size(44.dp).dpadHighlight(CircleShape).clickable { onPick(key) },
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(vec, contentDescription = key, tint = Color(color), modifier = Modifier.size(22.dp))
+                    }
+                }
+            }
+            // Custom EMOJI icon (issue #173): the tail tile shows the picked emoji (selected
+            // state) or a face, and toggles the picker grid below. The grid, not a bare text
+            // field, is the primary picker so key-only phones can use it (docs/dpad.md).
+            val isEmoji = icon.startsWith("emoji:")
+            Surface(
+                shape = CircleShape,
+                color = if (isEmoji) Color(color).copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant,
+                border = if (isEmoji) BorderStroke(2.dp, Color(color)) else null,
+                modifier = Modifier.size(44.dp).dpadHighlight(CircleShape).clickable { emojiOpen = !emojiOpen },
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(if (isEmoji) icon.removePrefix("emoji:") else "😀", fontSize = 20.sp)
+                }
+            }
+        }
+        if (emojiOpen) {
+            Spacer(Modifier.height(10.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                LIST_EMOJI.forEach { e ->
+                    val sel = icon == "emoji:$e"
+                    Surface(
+                        shape = CircleShape,
+                        color = if (sel) Color(color).copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant,
+                        border = if (sel) BorderStroke(2.dp, Color(color)) else null,
+                        modifier = Modifier.size(40.dp).dpadHighlight(CircleShape).clickable { onPick("emoji:$e") },
+                    ) {
+                        Box(contentAlignment = Alignment.Center) { Text(e, fontSize = 18.sp) }
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            // Free-type field for any emoji the grid lacks (touch keyboards have the full set).
+            OutlinedTextField(
+                value = emojiText,
+                onValueChange = { v ->
+                    emojiText = v.take(16)
+                    if (emojiText.isNotBlank()) onPick("emoji:${emojiText.trim()}")
+                },
+                label = { Text(stringResource(R.string.list_emoji_label)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+/** Pick a saved place's own map icon (issue #629), or go back to its list's icon. */
+@Composable
+private fun PlaceIconDialog(
+    placeName: String,
+    initial: String?,
+    color: Long,
+    onSave: (String?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var icon by remember { mutableStateOf(initial ?: "bookmark") }
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        val maxDialogHeight = (LocalConfiguration.current.screenHeightDp * 0.9f).dp
+        Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
+            Column(Modifier.padding(20.dp).widthIn(max = 420.dp).heightIn(max = maxDialogHeight)) {
+                Text(stringResource(R.string.place_icon_title, placeName), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(12.dp))
+                Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                    IconPicker(icon, color) { icon = it }
+                }
+                Spacer(Modifier.height(20.dp))
+                // Two rows: "Use the list's icon" beside Cancel and Save squeezed Save to one letter per line.
+                TextButton(onClick = { onSave(null) }) { Text(stringResource(R.string.place_icon_default)) }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.list_cancel)) }
+                    Spacer(Modifier.width(4.dp))
+                    Button(onClick = { onSave(icon) }) { Text(stringResource(R.string.list_save)) }
+                }
+            }
+        }
+    }
+}
+
 /** Create / edit a place-list: name, icon and color; Delete when editing. */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -5615,8 +5728,6 @@ private fun ListEditorDialog(
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var icon by remember { mutableStateOf(initial?.icon ?: "bookmark") }
     var color by remember { mutableStateOf(initial?.color ?: LIST_COLORS.first()) }
-    var emojiOpen by remember { mutableStateOf(false) }
-    var emojiText by remember { mutableStateOf("") }
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         // Cap the dialog to most of the screen: with the emoji grid + free-type field open the
         // content grows past a short screen, which pushed the color row and Save button off the
@@ -5644,63 +5755,7 @@ private fun ListEditorDialog(
                 Spacer(Modifier.height(16.dp))
                 Text(stringResource(R.string.list_icon_label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(6.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    LIST_ICONS.forEach { (key, vec) ->
-                        val sel = key == icon
-                        Surface(
-                            shape = CircleShape,
-                            color = if (sel) Color(color).copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant,
-                            border = if (sel) BorderStroke(2.dp, Color(color)) else null,
-                            modifier = Modifier.size(44.dp).dpadHighlight(CircleShape).clickable { icon = key },
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(vec, contentDescription = key, tint = Color(color), modifier = Modifier.size(22.dp))
-                            }
-                        }
-                    }
-                    // Custom EMOJI icon (issue #173): the tail tile shows the picked emoji (selected
-                    // state) or a face, and toggles the picker grid below. The grid, not a bare text
-                    // field, is the primary picker so key-only phones can use it (docs/dpad.md).
-                    val isEmoji = icon.startsWith("emoji:")
-                    Surface(
-                        shape = CircleShape,
-                        color = if (isEmoji) Color(color).copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant,
-                        border = if (isEmoji) BorderStroke(2.dp, Color(color)) else null,
-                        modifier = Modifier.size(44.dp).dpadHighlight(CircleShape).clickable { emojiOpen = !emojiOpen },
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(if (isEmoji) icon.removePrefix("emoji:") else "😀", fontSize = 20.sp)
-                        }
-                    }
-                }
-                if (emojiOpen) {
-                    Spacer(Modifier.height(10.dp))
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        LIST_EMOJI.forEach { e ->
-                            val sel = icon == "emoji:$e"
-                            Surface(
-                                shape = CircleShape,
-                                color = if (sel) Color(color).copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant,
-                                border = if (sel) BorderStroke(2.dp, Color(color)) else null,
-                                modifier = Modifier.size(40.dp).dpadHighlight(CircleShape).clickable { icon = "emoji:$e" },
-                            ) {
-                                Box(contentAlignment = Alignment.Center) { Text(e, fontSize = 18.sp) }
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    // Free-type field for any emoji the grid lacks (touch keyboards have the full set).
-                    OutlinedTextField(
-                        value = emojiText,
-                        onValueChange = { v ->
-                            emojiText = v.take(16)
-                            if (emojiText.isNotBlank()) icon = "emoji:${emojiText.trim()}"
-                        },
-                        label = { Text(stringResource(R.string.list_emoji_label)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+                IconPicker(icon, color) { icon = it }
                 Spacer(Modifier.height(16.dp))
                 Text(stringResource(R.string.list_color_label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(6.dp))

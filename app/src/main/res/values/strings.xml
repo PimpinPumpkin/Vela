@@ -912,6 +912,9 @@
     <string name="place_save_to_list">Save to list</string>
     <string name="place_edit_note">Edit note</string>
     <string name="place_note_label">Note</string>
+    <string name="place_choose_icon">Choose icon</string>
+    <string name="place_icon_title">Map icon for %1$s</string> <!-- format: %1$s is the place name -->
+    <string name="place_icon_default">Use the list\'s icon</string>
     <string name="map_save_list">Save list · %1$d places</string>
     <string name="map_list_saved">Saved “%1$s” to your lists</string>
     <string name="settings_update_nightly">Include nightly builds</string>

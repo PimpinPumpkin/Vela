@@ -47,6 +47,15 @@ class SavedPlaceStore @Inject constructor(
         return true
     }
 
+    /** Sets/clears a quick-saved place's own map icon (issue #629). False when it is not saved. */
+    fun setIcon(id: String, icon: String?): Boolean {
+        val current = saved()
+        if (current.none { it.id == id }) return false
+        val updated = current.map { if (it.id == id) it.copy(icon = icon?.ifBlank { null }) else it }
+        prefs.edit().putString(KEY, json.encodeToString(updated)).apply()
+        return true
+    }
+
     /** The saved list as a portable JSON document (for export / backup). */
     fun exportJson(): String = json.encodeToString(saved())
 

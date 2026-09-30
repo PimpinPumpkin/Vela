@@ -304,6 +304,8 @@ fun PlaceSheet(
     onRemoveFromList: (listId: String) -> Unit = {},
     onCreateListWith: (name: String) -> Unit = {},
     onSetNote: (String?) -> Unit = {},
+    // Issue #629: the saved place's own map icon; shown only once it is saved somewhere.
+    onChooseIcon: () -> Unit = {},
     onExpandedChange: (Boolean) -> Unit = {},
     // Bumped by MapScreen when the user grabs the map — the sheet glides down to its minimized
     // card so the map is unobstructed (Google's behavior). 0 = never.
@@ -863,6 +865,7 @@ fun PlaceSheet(
                         if (!isParking) {
                             item(stringResource(R.string.place_save_to_list)) { saveMenu = false; showListChooser = true }
                             if (inAnyList) item(stringResource(R.string.place_edit_note)) { saveMenu = false; showNoteEditor = true }
+                            if (inAnyList || isSaved) item(stringResource(R.string.place_choose_icon)) { saveMenu = false; onChooseIcon() }
                         }
                         item(stringResource(R.string.place_set_as_home)) { saveMenu = false; onSetShortcut(ShortcutKind.HOME) }
                         item(stringResource(R.string.place_set_as_work)) { saveMenu = false; onSetShortcut(ShortcutKind.WORK) }

@@ -12,6 +12,8 @@ data class ListPlace(
     val address: String? = null,
     val note: String? = null,
     val featureId: String? = null,
+    // The place's own map icon (issue #629), overriding its list's; same keys as [PlaceList.icon].
+    val icon: String? = null,
 ) {
     val location: LatLng get() = LatLng(lat, lng)
 

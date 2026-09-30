@@ -4604,6 +4604,19 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** Sets/clears the place's own map icon (issue #629) wherever it is saved: every list holding
+     *  it and the quick-saves. Null goes back to the list's icon (or the default bookmark). */
+    fun setPlaceIcon(place: Place, icon: String?) {
+        val lists = listStore.setIcon(place.id, icon, place.featureId)
+        savedStore.setIcon(place.id, icon)
+        _state.update { it.copy(lists = lists, saved = savedStore.saved()) }
+    }
+
+    /** The icon the place has now: its own, if it has one (issue #629). */
+    fun placeIcon(place: Place): String? =
+        _state.value.lists.asSequence().flatMap { it.places.asSequence() }.firstOrNull { it.matches(place.id, place.featureId) }?.icon
+            ?: _state.value.saved.firstOrNull { it.id == place.id }?.icon
+
     /** Which lists a place is in (drives the sheet's "Saved in <list>" + checkmarks). */
     fun listsContaining(place: Place): List<app.vela.core.model.PlaceList> =
         _state.value.lists.filter { l -> l.places.any { it.matches(place.id, place.featureId) } }

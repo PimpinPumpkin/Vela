@@ -1829,6 +1829,10 @@ Defaults that make the safe path the easy one:
   with a Takeout-shaped file. NB importing another app's format is issue #279, still open.
   ⚠️ A literal wildcard mime in a KDoc block ENDS THE COMMENT (same trap as PoiPackStore's
   `del_*/ins_*`) - the mime array's comment is a line comment for that reason.
+- **Per-place icons (issue #629, 2026-09-30):** `SavedPlace.icon` / `ListPlace.icon` override the
+  list's icon on the map pin (null = the list's). The picker (`IconPicker`, shared with the list
+  editor, and `PlaceIconDialog` in MapScreen) opens from the place sheet's save menu. Its button
+  row is two rows on purpose: one row squeezed Save to a letter per line on a 4a.
 - **SavedPlace carries an optional address (2026-07-10).** `SavedPlace.address` (defaulted null, so
   pre-existing payloads decode; every store's Json sets ignoreUnknownKeys so downgrades survive too)
   is filled by `SavedPlace.of(Place)` - recents rows show it as a sublabel and the Home/Work rows

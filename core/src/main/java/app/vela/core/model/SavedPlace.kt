@@ -12,6 +12,9 @@ data class SavedPlace(
     // Defaulted so payloads saved before it existed still decode (every store's Json also sets
     // ignoreUnknownKeys, so an older build reading a newer payload survives too).
     val address: String? = null,
+    // The place's own map icon (issue #629), same keys as PlaceList.icon ("emoji:X" or a glyph
+    // key); null draws the default. Defaulted, so older payloads decode.
+    val icon: String? = null,
 ) {
     val location: LatLng get() = LatLng(lat, lng)
 
