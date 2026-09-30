@@ -303,6 +303,8 @@ data class MapUiState(
     val resumeNavLabel: String? = null, // a nav session was interrupted (process killed mid-drive) and can
                                         // be resumed — drives the "Resume navigation to <label>?" prompt
     val navCameraDetached: Boolean = false,
+    /** The camera is on the whole-route overview (a second Overview press returns to the follow, issue #631). */
+    val inNavOverview: Boolean = false,
     // Nav camera orientation toggle (user 2026-07-15): false = heading-up (default, Google's),
     // true = north-up while still following the puck. Flipped by the in-nav compass button.
     val navNorthUp: Boolean = false,

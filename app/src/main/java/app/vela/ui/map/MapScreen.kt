@@ -96,6 +96,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.ZoomInMap
 import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Refresh
@@ -1597,13 +1598,18 @@ fun MapScreen(
                 // Whole-route overview (Google's fly-over): camera only, the drive keeps
                 // navigating; Re-center (above, it appears the moment this detaches the
                 // camera) glides straight back into the follow.
+                // A second press while the overview shows goes back to the follow (issue #631: it
+                // re-ran the fit, which read as the map jerking and then settling again).
                 FloatingActionButton(
                     onClick = {
-                        vm.navOverview()
-                        navOverviewTick++
+                        if (state.inNavOverview) { vm.recenterNav(); navRecenterTick++ }
+                        else { vm.navOverview(); navOverviewTick++ }
                     },
                     modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
-                ) { Icon(Icons.Default.ZoomOutMap, contentDescription = stringResource(R.string.nav_overview)) }
+                ) {
+                    if (state.inNavOverview) Icon(Icons.Default.ZoomInMap, contentDescription = stringResource(R.string.mapscreen_recenter))
+                    else Icon(Icons.Default.ZoomOutMap, contentDescription = stringResource(R.string.nav_overview))
+                }
                 // With pause in the bar, this slot is plain mute: one button, one meaning, no
                 // pop-out to reach past. Otherwise the two hold controls share one button here
                 // (tap opens, second tap pauses, long press mutes).

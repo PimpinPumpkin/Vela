@@ -615,7 +615,7 @@ with no category, rating, review count or featured review (`isListing()`: an add
 Reviews tab, no review scrape and no popular-times placeholder or limited-view note. The Reviews tab leads with a full-width button to Google's full reviews page. Settings >
 Navigation "Start drives north-up" (`NavNorthUp`, pref `nav_north_up`, off, issue #612) sets
 `navNorthUp` at every drive start; the compass still toggles it per drive, and a tap while the
-camera is detached (pan, overview, step preview) also re-centers so the change shows. "Navigation icon"
+camera is detached (pan, overview, step preview) also re-centers so the change shows. The nav Overview button is a toggle (issue #631): with `inNavOverview` set (Overview pressed, cleared by Re-center, a pan and nav end) a press re-centers instead of re-running the fit. "Navigation icon"
 (`PuckStyle.shape`, pref `puck_shape`, discussion #611) swaps the arrow for a top-down car
 (`drawCarPuck`, color pref `puck_car_color`: red, blue, white, green, yellow), a UFO, a pirate
 ship or a rubber duck (`drawUfoPuck` / `drawShipPuck` / `drawDuckPuck`), top-down bitmaps used
