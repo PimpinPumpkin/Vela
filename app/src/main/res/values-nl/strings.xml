@@ -1159,4 +1159,8 @@
     <string name="settings_routing_applying">Update wegschrijven…</string>
     <string name="settings_routing_full">Volledig downloaden · %1$d%%</string>
     <string name="settings_font_flex_hint">Google Sans Flex is het open gelicentieerde zusje van Googles eigen lettertype. Het dekt Latijnse letters; andere schriften houden het systeemlettertype.</string>
+    <string name="settings_clock">Klok</string>
+    <string name="settings_clock_system">Zelfde als de telefoon</string>
+    <string name="settings_clock_12">12-uurs (4:35 PM)</string>
+    <string name="settings_clock_24">24-uurs (16:35)</string>
 </resources>

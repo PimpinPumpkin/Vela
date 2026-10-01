@@ -1178,4 +1178,8 @@
     <string name="settings_routing_applying">Zapisywanie aktualizacji…</string>
     <string name="settings_routing_full">Pobieranie w całości · %1$d%%</string>
     <string name="settings_font_flex_hint">Google Sans Flex to udostępniona na otwartej licencji siostra własnej czcionki Google. Obejmuje litery łacińskie; inne pisma zachowują czcionkę systemową.</string>
+    <string name="settings_clock">Zegar</string>
+    <string name="settings_clock_system">Tak jak w telefonie</string>
+    <string name="settings_clock_12">12-godzinny (4:35 PM)</string>
+    <string name="settings_clock_24">24-godzinny (16:35)</string>
 </resources>

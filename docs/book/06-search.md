@@ -239,6 +239,19 @@ If Google answers but finds nothing, the on-device index is tried before showing
 because it may hold a small local place Google missed. If the request throws, the same on-device
 search runs; only when that is also empty does the message say offline or failed.
 
+### A typed street address
+
+A query that starts with a house number and a street ("912 Miller Dr") should end with that
+address in the list. Google's search often answers it directly. When it answers with businesses
+instead, which is common zoomed in on a busy block, Vela asks Google's autocomplete to geocode the
+text and puts its matching rows first, with the on-device geocoder's hits ahead of those.
+
+"Does a result already hold this address?" is decided on whole words: the house number and the
+street's first distinguishing word (not a direction, not "St" or "Ave") must both be words in the
+result's name or address. Until 2026-10-01 the test was whether the digits appeared anywhere, and
+they appear in ZIP codes and in neighbors' house numbers, so a list of nearby businesses counted
+as holding the address and the geocoder was never asked (issue #638).
+
 ### plausibleBias and rankBias
 
 Two small rules decide which point a search is about.

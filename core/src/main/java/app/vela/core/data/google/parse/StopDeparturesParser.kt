@@ -208,7 +208,7 @@ object StopDeparturesParser {
                     val rt = a.at(0).long()
                     val sched = a.at(4).long()
                     out.add(StopDeparture(
-                        clockText = clock,
+                        clockText = app.vela.core.data.ClockFormat.show(clock) ?: clock,
                         epochSec = sched ?: rt,
                         realtime = rt != null && sched != null && rt != sched,
                     ))

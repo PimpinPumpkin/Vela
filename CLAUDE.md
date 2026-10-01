@@ -2789,6 +2789,18 @@ architecture note.
   verb as A (`looksLikeVerb`), and `normalize` strips apostrophes and joins spelled acronyms
   ("E.T.A.", "e t a" -> "eta"). Pinned by the `dictation slips still land` and `fuzziness never
   rewrites a short word or the destination` tests.
+- **A typed address is matched on WHOLE WORDS (issue #638, 2026-10-01, `core/util/AddressQuery`).**
+  `runSearch` asks Google's autocomplete to geocode a typed house address only when no result
+  already "carries" it. The test was a substring of the digits, which a ZIP code ("616" in
+  "95616") or a neighbor's number ("12" in "1200") satisfies, so close-in searches full of nearby
+  businesses never asked and the address was missing. `AddressQuery.matches` needs the number and
+  the street's first distinguishing word as whole words of the result's name or address; the same
+  test dedupes the on-device geocoder's hits. Logcat `VelaSearch: address query: ...`.
+  NOT device-checked (the 4a was in use by another project); `AddressQueryTest` pins the rule.
+- **The clock is a setting (discussion #637, 2026-10-01):** Settings > Appearance > Clock, pref
+  `clock_mode` (system / 12 / 24), read by `Clock24.refresh`. Google's transit pages are fetched in
+  English with "h:mm AM" text; `ClockFormat.show` converts those at parse time (itinerary times,
+  stop times, Google-fallback boards), so text already on screen changes at the next fetch.
 - **Typed suggestions come from Google's OWN autocomplete (2026-09-22):** `MapDataSource.suggest`
   (`GoogleMapsDataSource.suggest` + `SuggestParser`) hits the keyless
   `/s?tbm=map&gs_ri=maps&suggest=p` request the maps web page fires per keystroke, with the

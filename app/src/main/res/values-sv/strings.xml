@@ -1159,4 +1159,8 @@
     <string name="settings_routing_applying">Skriver uppdateringen…</string>
     <string name="settings_routing_full">Hämtar allt · %1$d%%</string>
     <string name="settings_font_flex_hint">Google Sans Flex är det öppet licensierade syskonet till Googles eget typsnitt. Det täcker latinska bokstäver; andra skriftsystem behåller systemtypsnittet.</string>
+    <string name="settings_clock">Klocka</string>
+    <string name="settings_clock_system">Samma som telefonen</string>
+    <string name="settings_clock_12">12-timmars (4:35 PM)</string>
+    <string name="settings_clock_24">24-timmars (16:35)</string>
 </resources>

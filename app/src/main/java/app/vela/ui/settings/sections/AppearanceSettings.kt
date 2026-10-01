@@ -270,6 +270,20 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(8.dp))
+        // The clock: the device setting unless overridden here (discussion #637). Transit times
+        // already on screen keep their format until the next fetch.
+        SettingsGroup(title = stringResource(R.string.settings_clock)) {
+            listOf("system" to R.string.settings_clock_system, "12" to R.string.settings_clock_12, "24" to R.string.settings_clock_24).forEachIndexed { i, (key, label) ->
+                if (i > 0) GroupDivider()
+                SelectableRow(
+                    label = stringResource(label),
+                    selected = app.vela.ui.Clock24.mode.value == key,
+                    onClick = { app.vela.ui.Clock24.set(context, key) },
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
         // Most people want the system language, so lead with a single toggle and only reveal the
         // full picker when they turn it off (keeps the list out of the common case).
         SettingsGroup(title = stringResource(R.string.settings_language)) {

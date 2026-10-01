@@ -74,8 +74,8 @@ object TransitParser {
         return TransitItinerary(
             departureEpochSec = dep.at(0).long(),
             arrivalEpochSec = arr.at(0).long(),
-            departureText = dep.at(2).str(),
-            arrivalText = arr.at(2).str(),
+            departureText = app.vela.core.data.ClockFormat.show(dep.at(2).str()),
+            arrivalText = app.vela.core.data.ClockFormat.show(arr.at(2).str()),
             durationText = t.at(3, 1).str(),
             distanceText = t.at(2, 1).str(),
             agency = t.at(6, 4, 0, 0).str() ?: agencyNode.at(0).str(),
@@ -202,8 +202,9 @@ object TransitParser {
     private fun parseStopTime(node: JsonElement?): TransitStopTime? {
         val n = node ?: return null
         val name = n.at(0).str()?.takeIf { it.isNotBlank() } ?: return null
-        val realtime = n.at(2, 2).str() ?: n.at(3, 2).str()
-        val scheduled = n.at(7, 2).str() ?: n.at(8, 2).str()
+        // Google's English "h:mm AM" text, shown as the clock in use (discussion #637).
+        val realtime = app.vela.core.data.ClockFormat.show(n.at(2, 2).str() ?: n.at(3, 2).str())
+        val scheduled = app.vela.core.data.ClockFormat.show(n.at(7, 2).str() ?: n.at(8, 2).str())
         val lat = n.at(4, 2).dbl(); val lng = n.at(4, 3).dbl()
         return TransitStopTime(
             name = name,
@@ -235,7 +236,7 @@ object TransitParser {
         fun walk(n: JsonElement) {
             when (n) {
                 is JsonArray -> n.forEach(::walk)
-                else -> n.str()?.let { if (TIME.matches(it)) out.add(it) }
+                else -> n.str()?.let { if (TIME.matches(it)) out.add(app.vela.core.data.ClockFormat.show(it) ?: it) }
             }
         }
         walk(leg)

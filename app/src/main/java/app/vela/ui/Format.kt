@@ -76,10 +76,24 @@ fun formatSpeedLimit(kmh: Double): Pair<Int, String> =
 object Clock24 {
     val on = mutableStateOf(false)
 
+    /** The app's own choice (Settings > Appearance > Clock, discussion #637): "system" follows
+     *  the device setting, "12" and "24" override it for Vela alone. */
+    val mode = mutableStateOf("system")
+
     fun refresh(context: Context) {
-        val v = android.text.format.DateFormat.is24HourFormat(context)
+        mode.value = context.getSharedPreferences("vela_settings", Context.MODE_PRIVATE).getString("clock_mode", "system") ?: "system"
+        val v = when (mode.value) {
+            "24" -> true
+            "12" -> false
+            else -> android.text.format.DateFormat.is24HourFormat(context)
+        }
         on.value = v
         app.vela.core.data.ClockFormat.use24h = v
+    }
+
+    fun set(context: Context, value: String) {
+        context.getSharedPreferences("vela_settings", Context.MODE_PRIVATE).edit().putString("clock_mode", value).apply()
+        refresh(context)
     }
 }
 

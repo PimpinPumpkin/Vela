@@ -2217,11 +2217,15 @@ class MapViewModel @Inject constructor(
                 // endpoint ranks by prominence over the window and answered "459 Ralston" typed
                 // from another state with businesses named Ralston. Google's autocomplete
                 // geocodes it (2026-09-22); its rows with that house number lead the results.
-                val houseNo = Regex("""^\s*(\d+)\s+\S""").find(q)?.groupValues?.get(1)
-                fun carries(p: Place) = houseNo != null && (p.name.contains(houseNo) || p.address?.contains(houseNo) == true)
-                val geocoded = if (houseNo != null && res.places.none(::carries)) {
+                // "Carries" is a whole-word test on the number AND the street (AddressQuery): the
+                // old substring test found the digits in a ZIP code or a neighbor's number, took
+                // a list of nearby businesses for the address, and never asked (issue #638).
+                val isAddress = app.vela.core.util.AddressQuery.parse(q) != null
+                fun carries(p: Place) = app.vela.core.util.AddressQuery.matches(q, p.name, p.address)
+                val geocoded = if (isAddress && res.places.none(::carries)) {
                     runCatching { dataSource.suggest(q, near, spanM).places.filter(::carries).take(3) }.getOrDefault(emptyList())
                 } else emptyList()
+                if (isAddress) android.util.Log.i("VelaSearch", "address query: ${res.places.count(::carries)} of ${res.places.size} result(s) are it, geocoder added ${geocoded.size}")
                 // A NAME TYPED WHILE LOOKING FAR AWAY (user 2026-09-22: a local restaurant's name
                 // typed with the map over another country opened a fuzzy match over there). When
                 // the view is more than RANK_NEAR_M from you and nothing in it carries the typed
@@ -2253,10 +2257,7 @@ class MapViewModel @Inject constructor(
                         withContext(Dispatchers.IO) {
                             runCatching { addressStore.geocode(q, near, limit = 3) }.getOrDefault(emptyList())
                         }.filter { a ->
-                            (geocoded + res.places).none { g ->
-                                g.location.distanceTo(a.location) < 120.0 &&
-                                    a.name.takeWhile { it.isDigit() }.let { n -> n.isNotEmpty() && (g.name.contains(n) || g.address?.contains(n) == true) }
-                            }
+                            (geocoded + res.places).none { g -> g.location.distanceTo(a.location) < 120.0 && carries(g) }
                         }
                     } else emptyList()
                     // NEARBY MERGE (user 2026-07-18): even with pagination, Google's keyless

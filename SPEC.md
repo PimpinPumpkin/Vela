@@ -2003,6 +2003,16 @@ host that cannot answer.
 - One quick-category list (`ui/QuickCategories`) serves the map chips, search along route and
   in-nav search. Every query must be one the offline store expands, or the chip is dead offline.
 
+**Clock.** Settings > Appearance > Clock (`clock_mode`): the device's 12/24-hour setting, or
+12-hour or 24-hour for Vela alone. `Clock24.on` and `:core` `ClockFormat.use24h` carry the result;
+arrival clocks, board times and trip stamps read it, and `ClockFormat.show` converts the
+"h:mm AM" text Google's transit pages carry.
+
+**Typed addresses.** `AddressQuery.parse` reads a leading house number and the street's first
+word that is not a direction or a street type; `matches` is true when both are whole words of a
+result's name or address. A typed address with no matching result is geocoded through the
+autocomplete request and its matching rows lead the list.
+
 **UI font.** Settings > Appearance > Font: Google Sans Flex (the default; SIL OFL 1.1, variable
 TTF in `res/font`, license text in `assets/licenses`), the system font (pref `ui_font_system`), or a
 font file the user supplies (`filesDir/fonts/ui.ttf`). Flex covers Latin, extended Latin and

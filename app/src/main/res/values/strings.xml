@@ -38,6 +38,10 @@
     <string name="settings_map_style">Map style</string>
     <string name="settings_map_style_hint">OpenFreeMap works without any API key.</string>
     <string name="settings_units">Units</string>
+    <string name="settings_clock">Clock</string>
+    <string name="settings_clock_system">Same as the phone</string>
+    <string name="settings_clock_12">12-hour (4:35 PM)</string>
+    <string name="settings_clock_24">24-hour (16:35)</string>
     <string name="settings_units_imperial">Imperial (miles, feet)</string>
     <string name="settings_units_metric">Metric (kilometers, meters)</string>
     <string name="settings_language">Language</string>

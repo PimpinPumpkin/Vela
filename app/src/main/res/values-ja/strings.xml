@@ -1177,4 +1177,8 @@
     <string name="settings_routing_applying">更新を書き込み中…</string>
     <string name="settings_routing_full">全体をダウンロード中 · %1$d%%</string>
     <string name="settings_font_flex_hint">Google Sans Flex は、Google 自身のフォントの姉妹にあたるオープンライセンスのフォントです。ラテン文字に対応しており、その他の文字はシステムフォントのままです。</string>
+    <string name="settings_clock">時計</string>
+    <string name="settings_clock_system">端末の設定に合わせる</string>
+    <string name="settings_clock_12">12時間制 (4:35 PM)</string>
+    <string name="settings_clock_24">24時間制 (16:35)</string>
 </resources>

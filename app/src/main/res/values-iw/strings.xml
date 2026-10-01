@@ -1166,4 +1166,8 @@
     <string name="settings_routing_applying">כותב את העדכון…</string>
     <string name="settings_routing_full">מוריד במלואו · %1$d%%</string>
     <string name="settings_font_flex_hint">Google Sans Flex הוא האח בעל הרישיון הפתוח של הגופן של Google עצמה. הוא מכסה אותיות לטיניות; כתבים אחרים נשארים עם גופן המערכת.</string>
+    <string name="settings_clock">שעון</string>
+    <string name="settings_clock_system">כמו בטלפון</string>
+    <string name="settings_clock_12">12 שעות (4:35 PM)</string>
+    <string name="settings_clock_24">24 שעות (16:35)</string>
 </resources>

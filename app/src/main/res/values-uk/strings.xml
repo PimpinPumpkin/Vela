@@ -1177,4 +1177,8 @@
     <string name="settings_routing_applying">Запис оновлення…</string>
     <string name="settings_routing_full">Повне завантаження · %1$d%%</string>
     <string name="settings_font_flex_hint">Шрифт Google Sans Flex поширюється за відкритою ліцензією і споріднений із власним шрифтом Google. Він охоплює латинські літери; для інших писемностей залишається системний шрифт.</string>
+    <string name="settings_clock">Годинник</string>
+    <string name="settings_clock_system">Як на телефоні</string>
+    <string name="settings_clock_12">12-годинний (4:35 PM)</string>
+    <string name="settings_clock_24">24-годинний (16:35)</string>
 </resources>

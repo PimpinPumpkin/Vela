@@ -1161,4 +1161,8 @@
     <string name="settings_routing_applying">Frissítés írása…</string>
     <string name="settings_routing_full">Teljes letöltés · %1$d%%</string>
     <string name="settings_font_flex_hint">A Google Sans Flex a Google saját betűtípusának nyílt licencű testvére. A latin betűket fedi le; a többi írásrendszer a rendszer betűtípusát használja.</string>
+    <string name="settings_clock">Óra</string>
+    <string name="settings_clock_system">A telefon beállítása szerint</string>
+    <string name="settings_clock_12">12 órás (4:35 PM)</string>
+    <string name="settings_clock_24">24 órás (16:35)</string>
 </resources>

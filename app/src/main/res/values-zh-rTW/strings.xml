@@ -1176,4 +1176,8 @@
     <string name="settings_routing_applying">正在寫入更新…</string>
     <string name="settings_routing_full">完整下載中 · %1$d%%</string>
     <string name="settings_font_flex_hint">Google Sans Flex 是 Google 自家字型的姊妹字型，採用開放授權。它涵蓋拉丁字母；其他文字維持使用系統字型。</string>
+    <string name="settings_clock">時鐘</string>
+    <string name="settings_clock_system">與手機相同</string>
+    <string name="settings_clock_12">12 小時制 (4:35 PM)</string>
+    <string name="settings_clock_24">24 小時制 (16:35)</string>
 </resources>
