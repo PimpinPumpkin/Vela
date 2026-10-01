@@ -326,6 +326,9 @@ data class MapUiState(
     val fasterRoute: Route? = null,
     val fasterSavingSeconds: Double = 0.0,
     val arrivedLabel: String = "",
+    /** The way the finished drive actually went, when it left the planned route ("save the way you
+     *  drove", issue #622); null when there is nothing to offer. */
+    val drivenRouteOffer: List<LatLng>? = null,
     // Destination address line for the ARRIVE step (banner + step list); blank when the
     // address adds nothing over arrivedLabel or is simply unknown (offline/partial data).
     val navDestAddress: String = "",
@@ -368,6 +371,8 @@ data class MapUiState(
     val saved: List<SavedPlace> = emptyList(),
     /** The user's saved routes (issue #622), newest first. */
     val savedRoutes: List<app.vela.core.model.SavedRoute> = emptyList(),
+    /** The saved route the chooser was opened from (to edit it: "Save changes"), null otherwise. */
+    val openSavedRouteId: String? = null,
     val home: SavedPlace? = null,
     val work: SavedPlace? = null,
     val assigningShortcut: ShortcutKind? = null, // picking a place to pin as Home/Work
@@ -934,6 +939,7 @@ class MapViewModel @Inject constructor(
                         bearingDeg = fixBearing?.toDouble(),
                     )
                     nav.lastNavFedMs = nowMs
+                    nav.recordDriveFix(here)
                     updateSpeedLimit(here) // posted-limit badge for the road under the puck (off-thread)
                     if (_state.value.navStarved) _state.update { it.copy(navStarved = false) }
                 } else if (_state.value.navigating && nowMs - nav.lastNavFedMs > NAV_STARVED_MS && !_state.value.navStarved) {
@@ -3666,6 +3672,7 @@ class MapViewModel @Inject constructor(
     /** Back out of the directions preview to the place sheet: drop the route,
      *  keep the place selected (so back peels one layer at a time). */
     fun clearRoute() {
+        _state.update { it.copy(openSavedRouteId = null) }
         autoStartOnRoute = false // backing out of directions cancels a pending auto-start (issue #272)
         destination = null
         routeJob?.cancel() // an in-flight directions fetch must not repopulate the route we're backing out of
@@ -4550,7 +4557,9 @@ class MapViewModel @Inject constructor(
     }
 
     fun routeToSelected() {
-        _state.update { it.copy(routeTrafficRequested = false) }
+        // A fresh trip is no longer the saved route it may have been opened from (openSavedRoute
+        // sets the id again after calling this).
+        _state.update { it.copy(routeTrafficRequested = false, openSavedRouteId = null) }
         syncRouteTraffic()
         val sel = _state.value.selected ?: return
         // The chooser opens seconds before Start: load the neural voice now (it no longer loads at
@@ -5052,7 +5061,9 @@ class MapViewModel @Inject constructor(
             val named = nameIfNeeded(picked)
             _state.update { st ->
                 val routes = st.routes.toMutableList()
-                if (index in routes.indices && routes[index] === picked) routes[index] = named
+                // By identity, not index: a saved route moved to the top shifts the others (#622).
+                val at = routes.indexOfFirst { it === picked }
+                if (at >= 0) routes[at] = named
                 st.copy(routes = routes, activeRoute = if (st.activeRoute === picked) named else st.activeRoute)
             }
         }
@@ -5229,7 +5240,10 @@ class MapViewModel @Inject constructor(
         val matching = _state.value.savedRoutes.filter { app.vela.core.nav.SavedRoutes.matches(it, origin, dest, mode) }
         if (matching.isEmpty()) return
         savedRoutesJob = viewModelScope.launch {
-            for (saved in matching) {
+            var liftedSaved = false
+            // Oldest first: each one is lifted to the top, so the most recently saved ends up
+            // leading the list and selected.
+            for (saved in matching.asReversed()) {
                 val line = app.vela.core.data.google.PolylineCodec.decode(saved.polyline)
                 val current = _state.value.routes
                 if (current.isEmpty() || !stillWanted()) return@launch
@@ -5238,11 +5252,15 @@ class MapViewModel @Inject constructor(
                     current.indexOfFirst { app.vela.core.nav.SavedRoutes.sameWay(line, it.polyline) && app.vela.core.nav.SavedRoutes.sameWay(it.polyline, line) }
                 }
                 if (same >= 0) {
+                    // Already on offer: name it and lift it to the top, selected.
                     _state.update { st ->
                         if (st.routes.size <= same) st
-                        else st.copy(routes = st.routes.mapIndexed { i, r -> if (i == same) r.copy(savedName = saved.name) else r })
-                            .let { if (st.activeRoute === st.routes[same]) it.copy(activeRoute = it.routes[same]) else it }
+                        else {
+                            val named = st.routes[same].copy(savedName = saved.name)
+                            st.copy(routes = listOf(named) + st.routes.filterIndexed { i, _ -> i != same }, activeRoute = named)
+                        }
                     }
+                    liftedSaved = true
                     continue
                 }
                 val vias = withContext(Dispatchers.Default) { app.vela.core.nav.SavedRoutes.viasAgainst(line, current.first().polyline) }
@@ -5251,8 +5269,16 @@ class MapViewModel @Inject constructor(
                     .getOrDefault(emptyList()).firstOrNull() ?: continue
                 // Still the same route set (a mode switch or an edit replaces it)?
                 if (!stillWanted() || _state.value.routes.firstOrNull()?.polyline !== current.first().polyline) return@launch
-                _state.update { it.copy(routes = it.routes + r.copy(detourPlan = vias, savedName = saved.name)) }
+                // A saved route LEADS the list, selected (user 2026-09-30): it is the way you chose.
+                val mine = r.copy(detourPlan = vias, savedName = saved.name)
+                _state.update { it.copy(routes = listOf(mine) + it.routes, activeRoute = mine) }
+                liftedSaved = true
                 android.util.Log.i("VelaSavedRoute", "offered a saved route through ${vias.size} via(s)")
+            }
+            // The list changed order: the camera counts are index-aligned, so count again.
+            if (liftedSaved && stillWanted()) {
+                val now = _state.value.routes
+                refreshFlockOnRoute(now, ++routesEpoch, origin, dest, mode, emptyList(), avoidTolls, avoidHighways, avoidFerries)
             }
         }
     }
@@ -5311,6 +5337,62 @@ class MapViewModel @Inject constructor(
             }
             applyTrip(listOf(app.vela.ui.place.TripPoint(null)) + stops.map { app.vela.ui.place.TripPoint(it) } + app.vela.ui.place.TripPoint(dest))
         }
+        _state.update { it.copy(openSavedRouteId = r.id) }
+    }
+
+    /** Overwrite the saved route the chooser was opened from with what it shows now: the picked
+     *  route's line and, for a run (or when [keepStops]), the current stops. Name and pin stay. */
+    fun updateOpenSavedRoute(keepStops: Boolean) {
+        val s = _state.value
+        val id = s.openSavedRouteId ?: return
+        val old = s.savedRoutes.firstOrNull { it.id == id } ?: return
+        val route = s.activeRoute ?: return
+        if (route.polyline.size < 2) return
+        val updated = old.copy(
+            mode = s.travelMode.name,
+            originLat = route.polyline.first().lat, originLng = route.polyline.first().lng,
+            destLat = route.polyline.last().lat, destLng = route.polyline.last().lng,
+            destLabel = (if (s.directionsReversed) s.directionsOrigin?.name else s.selected?.name) ?: old.destLabel,
+            polyline = app.vela.core.data.google.PolylineCodec.encode(route.polyline),
+            stops = if (!keepStops) emptyList() else s.directionsWaypoints.take(app.vela.core.nav.SavedRoutes.MAX_STOPS)
+                .map { app.vela.core.model.SavedStop(it.name, it.location.lat, it.location.lng) },
+        )
+        _state.update { st ->
+            val idx = st.routes.indexOf(route)
+            val named = route.copy(savedName = updated.name)
+            st.copy(
+                savedRoutes = savedRouteStore.add(updated),
+                routes = if (idx >= 0) st.routes.mapIndexed { i, r -> if (i == idx) named else r } else st.routes,
+                activeRoute = named,
+            )
+        }
+        flashStatus(appContext.getString(R.string.route_updated_toast, updated.name))
+    }
+
+    /** Save the finished drive's own way as a saved route (a shape) under [name]. */
+    fun saveDrivenRoute(name: String) {
+        val s = _state.value
+        val trace = s.drivenRouteOffer ?: return
+        if (trace.size < 2) return
+        val saved = app.vela.core.model.SavedRoute(
+            id = java.util.UUID.randomUUID().toString(),
+            name = name.trim().ifEmpty { defaultDrivenRouteName() },
+            mode = s.travelMode.name,
+            originLat = trace.first().lat, originLng = trace.first().lng,
+            destLat = trace.last().lat, destLng = trace.last().lng,
+            destLabel = s.arrivedLabel,
+            polyline = app.vela.core.data.google.PolylineCodec.encode(trace),
+            createdAt = System.currentTimeMillis(),
+        )
+        _state.update { it.copy(savedRoutes = savedRouteStore.add(saved), drivenRouteOffer = null) }
+        flashStatus(appContext.getString(R.string.route_saved_toast))
+    }
+
+    fun defaultDrivenRouteName(): String = appContext.getString(R.string.route_save_default, _state.value.arrivedLabel)
+
+    fun setSavedRoutePinned(id: String, pinned: Boolean) { _state.update { it.copy(savedRoutes = savedRouteStore.setPinned(id, pinned)) } }
+    fun setSavedPlacePinned(id: String, pinned: Boolean) {
+        if (savedStore.setPinned(id, pinned)) _state.update { it.copy(saved = savedStore.saved()) }
     }
 
     fun renameSavedRoute(id: String, name: String) { _state.update { it.copy(savedRoutes = savedRouteStore.rename(id, name)) } }

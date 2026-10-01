@@ -1846,6 +1846,11 @@ Defaults that make the safe path the easy one:
   The save dialog lives inside `RouteTopCard` (MapScreen is at the verifier limit).
   RUNS: a saved route with `stops` (the dialog's "Stop at these places") is never offered as an
   alternate; `openSavedRoute` loads it through `applyTrip`. Trips cap at `SavedRoutes.MAX_STOPS` (10).
+  A matching saved route is LIFTED to the top and selected (so the list does reorder: camera counts
+  are recomputed and `selectRoute`'s naming finds its route by identity). Search page shows only
+  PINNED saved places/routes; the bookmark sheet has all. "Save the way you drove" lives on the
+  arrival card, which demo drives never show: test with a mock-GPS drive and
+  `debug.vela.tune.drivenOfferAlways 1`.
 - **Per-place icons (issue #629, 2026-09-30):** `SavedPlace.icon` / `ListPlace.icon` override the
   list's icon on the map pin (null = the list's). The picker (`IconPicker`, shared with the list
   editor, and `PlaceIconDialog` in MapScreen) opens from the place sheet's save menu. Its button

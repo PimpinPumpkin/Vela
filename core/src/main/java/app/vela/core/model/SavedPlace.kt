@@ -15,6 +15,8 @@ data class SavedPlace(
     // The place's own map icon (issue #629), same keys as PlaceList.icon ("emoji:X" or a glyph
     // key); null draws the default. Defaulted, so older payloads decode.
     val icon: String? = null,
+    /** Shown on the search page (issue #622 follow-up); unpinned ones live in the Saved sheet. */
+    val pinned: Boolean = false,
 ) {
     val location: LatLng get() = LatLng(lat, lng)
 

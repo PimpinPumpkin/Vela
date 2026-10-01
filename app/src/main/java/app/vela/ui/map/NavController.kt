@@ -192,6 +192,7 @@ internal class NavController(
                 }
                 if (justArrived) {
                     tripStore.finishTrip()
+                    if (!_state.value.replaying || _state.value.demoDriving) offerDrivenRoute()
                     // Don't touch the resume pref on a REPLAY/DEMO arrival - those never persisted one, and a
                     // real drive could be paused underneath (a replay riding an active nav); only a genuine
                     // live arrival should clear it (audit 2026-07-07).
@@ -352,6 +353,7 @@ internal class NavController(
         val dest = host.destination ?: route.polyline.lastOrNull() ?: return
         val fixes = app.vela.core.location.DemoTrace.fromRoute(route.polyline)
         if (fixes.size < 2) { host.flashStatus(appContext.getString(R.string.mapvm_no_track_to_replay)); return }
+        beginDriveTrace(route)
         replayJob?.cancel()
         if (replayOwnsNav) { navSession.stop(); replayOwnsNav = false; host.destination = null }
         host.pauseLiveLocation() // live GPS (and its stale timer) pause while the trace owns the puck
@@ -384,6 +386,7 @@ internal class NavController(
                         )
                     }
                     navSession.onLocation(here, app.vela.ui.Units.imperial.value, loc.speed.toDouble())
+                    recordDriveFix(here)
                     host.updateSpeedLimit(here)
                 }
             } finally {
@@ -429,6 +432,33 @@ internal class NavController(
         }
     }
 
+    // ---- The way you drove (issue #622): kept in memory for the drive, one point per
+    // DRIVE_TRACE_STEP_M; on arrival it is offered for saving when it left the planned route.
+    private val driveTrace = ArrayList<LatLng>()
+    private var drivePlanned: List<LatLng> = emptyList()
+
+    private fun beginDriveTrace(route: app.vela.core.model.Route) {
+        driveTrace.clear()
+        drivePlanned = route.polyline
+        _state.update { it.copy(drivenRouteOffer = null) }
+    }
+
+    fun recordDriveFix(p: LatLng) {
+        if (!_state.value.navigating) return
+        val last = driveTrace.lastOrNull()
+        if (last == null || last.distanceTo(p) >= DRIVE_TRACE_STEP_M) driveTrace += p
+    }
+
+    private fun offerDrivenRoute() {
+        val trace = driveTrace.toList()
+        val planned = drivePlanned
+        val forced = app.vela.ui.AppTune.local("drivenOfferAlways")?.let { it >= 0.5 } == true
+        scope.launch {
+            val own = withContext(Dispatchers.Default) { app.vela.core.nav.SavedRoutes.droveOwnWay(trace, planned) }
+            if ((own || forced) && trace.size >= 2) _state.update { it.copy(drivenRouteOffer = trace) }
+        }
+    }
+
     private fun launchNav(route: app.vela.core.model.Route) {
         val dest = host.destination ?: route.polyline.lastOrNull() ?: return
         host.startLocation() // make sure live fixes are flowing - they drive the nav loop
@@ -441,6 +471,7 @@ internal class NavController(
         // only when it says something the primary line doesn't.
         val (destName, destAddr) = NavSession.destinationDisplay(s.selected?.name, s.selected?.address, dest)
         navSession.start(route, dest, destName, s.selectedEngine?.packageName, stops, s.travelMode, destinationAddress = destAddr.orEmpty())
+        beginDriveTrace(route)
         NavigationService.start(appContext)
         persistNav(dest, s.selected?.name.orEmpty(), s.travelMode) // so a process-kill mid-drive can resume
         if (_state.value.resumeNavLabel != null) _state.update { it.copy(resumeNavLabel = null) } // starting fresh clears any stale offer
@@ -1162,3 +1193,6 @@ internal class NavController(
 
 /** How long a resume waits for a fix newer than the launch seed before routing from the seed. */
 private const val RESUME_FRESH_FIX_WAIT_MS = 8_000L
+
+/** One point of the driven trace per this much travel ("save the way you drove"). */
+private const val DRIVE_TRACE_STEP_M = 15.0

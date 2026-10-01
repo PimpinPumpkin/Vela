@@ -23,6 +23,8 @@ data class SavedRoute(
     /** A RUN (the milkman's round): the places it stops at, in order. Empty for a SHAPE, a route
      *  whose line is the point and whose stops, if it had any, only bent it. */
     val stops: List<SavedStop> = emptyList(),
+    /** Shown on the search page; every saved route is in the Saved sheet either way. */
+    val pinned: Boolean = false,
 ) {
     val isRun: Boolean get() = stops.isNotEmpty()
     val origin: LatLng get() = LatLng(originLat, originLng)

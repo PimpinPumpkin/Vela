@@ -56,6 +56,14 @@ class SavedPlaceStore @Inject constructor(
         return true
     }
 
+    /** Pin or unpin [id] on the search page. False when it is not saved. */
+    fun setPinned(id: String, pinned: Boolean): Boolean {
+        val current = saved()
+        if (current.none { it.id == id }) return false
+        prefs.edit().putString(KEY, json.encodeToString(current.map { if (it.id == id) it.copy(pinned = pinned) else it })).apply()
+        return true
+    }
+
     /** The saved list as a portable JSON document (for export / backup). */
     fun exportJson(): String = json.encodeToString(saved())
 

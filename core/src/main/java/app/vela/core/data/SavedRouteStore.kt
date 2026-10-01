@@ -30,6 +30,8 @@ class SavedRouteStore @Inject constructor(
         return write(all().map { if (it.id == id) it.copy(name = trimmed) else it })
     }
 
+    fun setPinned(id: String, pinned: Boolean): List<SavedRoute> = write(all().map { if (it.id == id) it.copy(pinned = pinned) else it })
+
     fun delete(id: String): List<SavedRoute> = write(all().filterNot { it.id == id })
 
     private fun write(list: List<SavedRoute>): List<SavedRoute> {

@@ -59,4 +59,12 @@ class SavedRoutesTest {
         assertTrue(run.isRun)
         assertFalse(SavedRoutes.matches(run, p(0.0, 0.0), p(0.02, 0.0), TravelMode.DRIVE))
     }
+
+    @Test fun aDriveThatLeftThePlannedRouteIsOffered() {
+        assertTrue(SavedRoutes.droveOwnWay(saved, fastest))
+        assertFalse(SavedRoutes.droveOwnWay(fastest, fastest)) // drove what was planned
+        val wobble = listOf(p(0.0, 0.0), p(0.01, 0.0), p(0.0105, 0.0009), p(0.011, 0.0), p(0.02, 0.0))
+        assertFalse(SavedRoutes.droveOwnWay(wobble, fastest)) // one junction
+        assertFalse(SavedRoutes.droveOwnWay(listOf(p(0.0, 0.0), p(0.003, 0.0)), fastest)) // too short
+    }
 }

@@ -97,6 +97,9 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.Directions
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.runtime.collectAsState
 import androidx.compose.material.icons.filled.ZoomInMap
 import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material.icons.filled.Search
@@ -1428,6 +1431,8 @@ fun MapScreen(
                             googleStyle = app.vela.ui.RoutePicker.googleStyle.value,
                             onSaveRoute = if (state.activeRoute != null && state.travelMode != app.vela.core.model.TravelMode.TRANSIT) vm::saveActiveRoute else null,
                             defaultRouteName = vm.defaultSavedRouteName(),
+                            editingRouteName = state.openSavedRouteId?.let { id -> state.savedRoutes.firstOrNull { it.id == id }?.name },
+                            onUpdateRoute = vm::updateOpenSavedRoute,
                         )
                     }
                     // The bar hides while an expanded place sheet covers it: the visible sliver
@@ -1777,6 +1782,8 @@ fun MapScreen(
                 tripSeconds = state.arrivedSeconds,
                 tripDistanceMeters = state.arrivedDistanceMeters,
                 onDone = vm::finishNav,
+                onSaveDriven = if (state.drivenRouteOffer != null) vm::saveDrivenRoute else null,
+                drivenDefaultName = vm.defaultDrivenRouteName(),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
@@ -2595,6 +2602,7 @@ fun MapScreen(
                     onDeleteList = vm::deleteList,
                     onMoveList = vm::moveList,
                     onDismiss = { listsSheetOpen = false },
+                    vm = vm,
                 )
             }
 
@@ -4134,7 +4142,7 @@ private fun BoxScope.NavTurnBanner(
 @Composable
 private fun SearchEntryHost(state: MapUiState, vm: MapViewModel, focusManager: androidx.compose.ui.focus.FocusManager) {
     SearchEntryContent(
-        savedRoutes = state.savedRoutes,
+        savedRoutes = state.savedRoutes.filter { it.pinned },
         onPickSavedRoute = { focusManager.clearFocus(); vm.openSavedRoute(it) },
         suggestions = state.suggestions,
         localSuggestions = state.localSuggestions,
@@ -4153,7 +4161,7 @@ private fun SearchEntryHost(state: MapUiState, vm: MapViewModel, focusManager: a
         onAddToList = { place, listId -> vm.addPlaceToList(listId, place) },
         onRemoveFromList = { place, listId -> vm.removePlaceFromList(listId, place) },
         onCreateListWith = { place, name -> vm.addPlaceToList(vm.createList(name), place) },
-        saved = state.saved,
+        saved = state.saved.filter { it.pinned },
         recents = state.recents,
         recentPlaces = state.recentPlaces,
         home = state.home,
@@ -4197,6 +4205,8 @@ private fun SearchEntryHost(state: MapUiState, vm: MapViewModel, focusManager: a
         onClearShortcut = vm::clearShortcut,
         onCancelAssign = vm::cancelAssign,
         onPinSavedAs = vm::pinSavedAs,
+        onUnpinSaved = { vm.setSavedPlacePinned(it.id, false) },
+        onUnpinSavedRoute = { vm.setSavedRoutePinned(it.id, false) },
         onRemoveSaved = vm::removeSaved,
         onRenameSaved = vm::renameSaved,
     )
@@ -4332,6 +4342,8 @@ private fun SearchEntryContent(
     work: SavedPlace?,
     savedRoutes: List<app.vela.core.model.SavedRoute> = emptyList(),
     onPickSavedRoute: (app.vela.core.model.SavedRoute) -> Unit = {},
+    onUnpinSavedRoute: (app.vela.core.model.SavedRoute) -> Unit = {},
+    onUnpinSaved: (SavedPlace) -> Unit = {},
     assigning: ShortcutKind?,
     pickingOrigin: Boolean = false,
     pickingDest: Boolean = false,
@@ -4490,6 +4502,11 @@ private fun SearchEntryContent(
                     tint = MaterialTheme.colorScheme.primary,
                     label = r.name,
                     onClick = { onPickSavedRoute(r) },
+                    trailing = {
+                        IconButton(onClick = { onUnpinSavedRoute(r) }, modifier = Modifier.dpadHighlight(CircleShape)) {
+                            Icon(Icons.Default.PushPin, contentDescription = stringResource(R.string.saved_unpin), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    },
                     sublabel = listOfNotNull(
                         if (r.isRun) androidx.compose.ui.res.pluralStringResource(R.plurals.saved_route_stops, r.stops.size, r.stops.size) else null,
                         r.destLabel.takeIf { it.isNotBlank() },
@@ -4501,7 +4518,7 @@ private fun SearchEntryContent(
         if (saved.isNotEmpty()) {
             SectionLabel(stringResource(R.string.mapscreen_section_saved))
             saved.forEach { sp ->
-                SavedRow(sp, onPickSaved, onPinSavedAs, onRemoveSaved, onRenameSaved)
+                SavedRow(sp, onPickSaved, onPinSavedAs, onRemoveSaved, onRenameSaved, onUnpinSaved)
                 Divider()
             }
         }
@@ -4771,6 +4788,7 @@ private fun SavedRow(
     onPinAs: (SavedPlace, ShortcutKind) -> Unit,
     onRemove: (SavedPlace) -> Unit,
     onRename: (SavedPlace, String) -> Unit = { _, _ -> },
+    onUnpin: (SavedPlace) -> Unit = {},
 ) {
     // Rename (issue #434): a saved lot named by its coordinates or road gets a name of yours.
     var renaming by remember { mutableStateOf(false) }
@@ -4824,6 +4842,7 @@ private fun SavedRow(
                 item(stringResource(R.string.mapscreen_set_as_home)) { menu = false; onPinAs(place, ShortcutKind.HOME) }
                 item(stringResource(R.string.mapscreen_set_as_work)) { menu = false; onPinAs(place, ShortcutKind.WORK) }
                 item(stringResource(R.string.mapscreen_menu_rename)) { menu = false; renaming = true }
+                item(stringResource(R.string.saved_unpin)) { menu = false; onUnpin(place) }
                 item(stringResource(R.string.mapscreen_menu_remove)) { menu = false; onRemove(place) }
             }
         }
@@ -5435,7 +5454,9 @@ private fun ListsSheet(
     onDeleteList: (String) -> Unit,
     onMoveList: (String, Int) -> Unit = { _, _ -> },
     onDismiss: () -> Unit,
+    vm: MapViewModel? = null,
 ) {
+    val savedState = vm?.state?.collectAsState()
     var editing by remember { mutableStateOf<app.vela.core.model.PlaceList?>(null) }
     var creating by remember { mutableStateOf(false) }
     // D-pad-first initial focus (hard rule, docs/dpad.md): a raw Dialog must place focus
@@ -5503,6 +5524,34 @@ private fun ListsSheet(
                             }
                         }
                         Divider()
+                    }
+                    // The rest of what you saved (issue #622 follow-up): every starred place and
+                    // every saved route, with a pin for the ones the search page should show.
+                    val st = savedState?.value
+                    if (st != null && st.saved.isNotEmpty()) {
+                        item { SheetSectionLabel(stringResource(R.string.saved_sheet_places)) }
+                        items(st.saved, key = { "sp:" + it.id }) { sp ->
+                            SavedSheetRow(
+                                icon = Icons.Default.Star, title = sp.name, sub = sp.address, pinned = sp.pinned,
+                                onOpen = { onDismiss(); vm.selectSaved(sp) },
+                                onPin = { vm.setSavedPlacePinned(sp.id, !sp.pinned) },
+                            )
+                        }
+                    }
+                    if (st != null && st.savedRoutes.isNotEmpty()) {
+                        item { SheetSectionLabel(stringResource(R.string.saved_sheet_routes)) }
+                        items(st.savedRoutes, key = { "sr:" + it.id }) { r ->
+                            SavedSheetRow(
+                                icon = Icons.Default.Directions, title = r.name,
+                                sub = listOfNotNull(
+                                    if (r.isRun) androidx.compose.ui.res.pluralStringResource(R.plurals.saved_route_stops, r.stops.size, r.stops.size) else null,
+                                    r.destLabel.takeIf { it.isNotBlank() },
+                                ).joinToString(" · ").ifBlank { null },
+                                pinned = r.pinned,
+                                onOpen = { onDismiss(); vm.openSavedRoute(r) },
+                                onPin = { vm.setSavedRoutePinned(r.id, !r.pinned) },
+                            )
+                        }
                     }
                 }
             }
@@ -6139,6 +6188,50 @@ private fun BoxScope.AreaPickOverlay(state: MapUiState, vm: MapViewModel, zoomBu
                     modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
                 ) { Text(stringResource(R.string.settings_download)) }
             }
+        }
+    }
+}
+
+@Composable
+private fun SheetSectionLabel(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 20.dp, top = 14.dp, bottom = 4.dp),
+    )
+}
+
+/** A row in the Saved sheet: tap opens it, the pin puts it on (or takes it off) the search page. */
+@Composable
+private fun SavedSheetRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    sub: String?,
+    pinned: Boolean,
+    onOpen: () -> Unit,
+    onPin: () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .dpadHighlight(RoundedCornerShape(8.dp))
+            .clickable(onClick = onOpen)
+            .padding(start = 20.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+            if (sub != null) Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        }
+        IconButton(onClick = onPin, modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
+            Icon(
+                if (pinned) Icons.Default.PushPin else Icons.Outlined.PushPin,
+                contentDescription = stringResource(if (pinned) R.string.saved_unpin else R.string.saved_pin),
+                tint = if (pinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

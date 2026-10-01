@@ -82,6 +82,9 @@ fun RouteTopCard(
     // Saving the picked route (issue #622) under a name; null hides the item (no route yet, transit).
     onSaveRoute: ((String, Boolean) -> Unit)? = null,
     defaultRouteName: String = "",
+    // The saved route the chooser was opened from: "Save changes to <name>" overwrites it.
+    editingRouteName: String? = null,
+    onUpdateRoute: ((Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val ink = MaterialTheme.colorScheme.onSurface
@@ -236,6 +239,9 @@ fun RouteTopCard(
                             if (googleStyle && showStopControls) {
                                 item(stringResource(R.string.stops_edit)) { menu = false; onEditStops() }
                                 if (onAddStop != null) item(stringResource(R.string.place_add_stop)) { menu = false; onAddStop() }
+                            }
+                            if (editingRouteName != null && onUpdateRoute != null) {
+                                item(stringResource(R.string.route_update, editingRouteName)) { menu = false; onUpdateRoute(stops.isNotEmpty()) }
                             }
                             if (onSaveRoute != null) item(stringResource(R.string.route_save)) { menu = false; naming = true }
                         }

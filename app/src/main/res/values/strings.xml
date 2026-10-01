@@ -1210,4 +1210,14 @@
     </plurals>
     <string name="mapscreen_section_routes">Your routes</string>
     <string name="stops_max">A trip can have up to %1$d stops</string>
+    <string name="route_update">Save changes to %1$s</string>
+    <string name="route_updated_toast">Saved changes to %1$s</string>
+    <string name="settings_saved_route_edit">Edit</string>
+    <string name="settings_saved_route_edit_hint">Change the stops or pick another way, then ⋮ &gt; Save changes.</string>
+    <string name="saved_pin">Pin to search page</string>
+    <string name="saved_unpin">Unpin from search page</string>
+    <string name="saved_sheet_places">Saved places</string>
+    <string name="saved_sheet_routes">Your routes</string>
+    <string name="driven_route_title">You went your own way</string>
+    <string name="driven_route_save">Save the way you drove</string>
 </resources>

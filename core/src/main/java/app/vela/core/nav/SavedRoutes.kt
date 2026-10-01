@@ -69,6 +69,19 @@ object SavedRoutes {
         return (0 until MAX_VIAS).map { vias[it * (vias.size - 1) / (MAX_VIAS - 1)] }
     }
 
+    /** A drive at least this long can be offered for saving. */
+    const val MIN_DRIVE_M = 500.0
+
+    /** "Save the way you drove": the [trace] of a finished drive went its own way, leaving the
+     *  route planned at the start ([planned]) for a real stretch (the same test that places vias,
+     *  so a one-junction wobble or GPS scatter does not count), and is long enough to keep. */
+    fun droveOwnWay(trace: List<LatLng>, planned: List<LatLng>): Boolean {
+        if (trace.size < 2 || planned.size < 2) return false
+        var len = 0.0
+        for (i in 1 until trace.size) len += dist(trace[i - 1], trace[i])
+        return len >= MIN_DRIVE_M && viasAgainst(trace, planned).isNotEmpty()
+    }
+
     /** True when every sample of [a] lies within [OFF_M] of [b]: the same way. */
     fun sameWay(a: List<LatLng>, b: List<LatLng>): Boolean =
         a.size >= 2 && b.size >= 2 && densify(a).all { distToLine(it.first, b) <= OFF_M }

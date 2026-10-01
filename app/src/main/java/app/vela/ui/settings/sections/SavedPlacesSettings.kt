@@ -178,6 +178,7 @@ private fun toastImport(
  *  shown, so the settings search entry never leads to nothing. */
 @Composable
 private fun SavedRoutesGroup(vm: MapViewModel, onOpen: (app.vela.core.model.SavedRoute) -> Unit) {
+    val context = LocalContext.current
     val state by vm.state.collectAsStateWithLifecycle()
     var renaming by remember { mutableStateOf<app.vela.core.model.SavedRoute?>(null) }
     SettingsGroup(title = stringResource(R.string.settings_saved_routes)) {
@@ -203,6 +204,8 @@ private fun SavedRoutesGroup(vm: MapViewModel, onOpen: (app.vela.core.model.Save
                         Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.exp_chooser_more))
                     }
                     app.vela.ui.VelaMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        item(stringResource(R.string.settings_saved_route_edit)) { menu = false; vm.flashStatus(context.getString(R.string.settings_saved_route_edit_hint)); onOpen(r) }
+                        item(stringResource(if (r.pinned) R.string.saved_unpin else R.string.saved_pin)) { menu = false; vm.setSavedRoutePinned(r.id, !r.pinned) }
                         item(stringResource(R.string.settings_saved_route_rename)) { menu = false; renaming = r }
                         item(stringResource(R.string.settings_saved_route_delete)) { menu = false; vm.deleteSavedRoute(r.id) }
                     }

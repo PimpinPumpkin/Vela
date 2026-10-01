@@ -2022,6 +2022,21 @@ host that cannot answer.
   from where you are, in the run's own mode without touching the sticky one); off saves a shape
   as above. Tapping a shape there opens directions to its destination, where it is offered. A trip
   takes at most 10 stops (`addStop` refuses the eleventh with a note, `applyTrip` truncates).
+  A matching saved route LEADS the list and is selected (several: the most recently saved on
+  top), and its row carries `SavedRouteChip` (a tertiary-container pill, "Your route: <name>").
+  Lifting it reorders the list, so the camera counts are recomputed and provisional naming
+  replaces its route by identity, not index. EDIT: opening a saved route sets
+  `openSavedRouteId` (cleared by `routeToSelected` and `clearRoute`); the card's ⋮ then offers
+  "Save changes to <name>" (`updateOpenSavedRoute`: the picked route's line and, for a run, the
+  current stops; name and pin kept). PINNING: `SavedPlace.pinned` and `SavedRoute.pinned` (both
+  default false, so existing starred places leave the search page) decide what the search page
+  shows; the bookmark button's sheet lists every list, saved place and saved route with a pin
+  toggle. "SAVE THE WAY YOU DROVE": during a drive `NavController` keeps the fixes, one per
+  `DRIVE_TRACE_STEP_M` (15 m), in memory; on arrival `SavedRoutes.droveOwnWay(trace, planned)`
+  (at least `MIN_DRIVE_M`, 500 m, and a real stretch off the route planned at the start, by the
+  via test) puts the trace in `drivenRouteOffer`, and the arrival card offers to save it as a
+  shape. Demo drives never show the arrival card; `debug.vela.tune.drivenOfferAlways` forces the
+  offer for testing a short mock drive.
 - `SavedPlace.of(Place)` carries an optional address, defaulted null so older payloads decode;
   every store's JSON sets `ignoreUnknownKeys` so a downgrade survives.
 - A saved place can carry its OWN map icon (issue #629): `SavedPlace.icon` and `ListPlace.icon`,

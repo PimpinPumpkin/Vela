@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.AddLocationAlt
@@ -311,6 +312,7 @@ fun GoogleStyleDirectionsPanel(
                         val eta = route.durationInTrafficSeconds ?: route.durationSeconds
                         val fastest = routes.minOfOrNull { it.durationInTrafficSeconds ?: it.durationSeconds } ?: eta
                         val deltaMin = ((eta - fastest) / 60.0).roundToInt()
+                        route.savedName?.let { SavedRouteChip(it, Modifier.padding(bottom = 6.dp)) }
                         Text(
                             buildAnnotatedString {
                                 withStyle(SpanStyle(color = trafficEtaColor(route) ?: ink, fontWeight = FontWeight.Medium, fontSize = 22.sp)) {
@@ -323,8 +325,7 @@ fun GoogleStyleDirectionsPanel(
                         // "Fastest" belongs to the fastest route only: a near-tie a few seconds slower
                         // rounds to the same minute and used to claim it too.
                         val isFastest = routes.indexOfFirst { (it.durationInTrafficSeconds ?: it.durationSeconds) == fastest } == routes.indexOf(route)
-                        val via = route.savedName?.let { stringResource(R.string.route_saved_label, it) }
-                            ?: route.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) }
+                        val via = route.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) }
                         Text(
                             when {
                                 isFastest && routes.size > 1 -> listOfNotNull(stringResource(R.string.exp_chooser_fastest), via).joinToString(" · ")
@@ -411,6 +412,7 @@ fun GoogleStyleDirectionsPanel(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Column(Modifier.weight(1f)) {
+                                    r.savedName?.let { SavedRouteChip(it, Modifier.padding(bottom = 4.dp)) }
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
                                             formatDuration(eta),
@@ -432,8 +434,7 @@ fun GoogleStyleDirectionsPanel(
                                     Text(
                                         listOfNotNull(
                                             formatDistance(r.distanceMeters),
-                                            r.savedName?.let { stringResource(R.string.route_saved_label, it) }
-                                                ?: r.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) },
+                                            r.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.exp_chooser_via, it) },
                                             if (cams > 0) androidx.compose.ui.res.pluralStringResource(R.plurals.dir_cameras_on_route, cams, cams) else null,
                                             if (i == fewestCamIdx) stringResource(R.string.exp_chooser_fewest_cams) else null,
                                         ).joinToString(" · "),
@@ -641,5 +642,30 @@ internal fun ModeTabs(
                 )
             }
         }
+    }
+}
+/** A saved route's mark in the route lists (issue #622): its name in a filled pill, so it reads
+ *  as YOURS at a glance instead of as one more "via". */
+@Composable
+internal fun SavedRouteChip(name: String, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.tertiaryContainer)
+            .padding(horizontal = 10.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Filled.Bookmark, contentDescription = null,
+            tint = MaterialTheme.colorScheme.onTertiaryContainer, modifier = Modifier.size(14.dp),
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            stringResource(R.string.route_saved_label, name),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        )
     }
 }

@@ -996,7 +996,30 @@ fun ArrivalSummary(
     tripDistanceMeters: Double,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
+    // "Save the way you drove" (issue #622): shown when the drive left the planned route.
+    onSaveDriven: ((String) -> Unit)? = null,
+    drivenDefaultName: String = "",
 ) {
+    var naming by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    if (naming && onSaveDriven != null) {
+        var draft by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(drivenDefaultName) }
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { naming = false },
+            title = stringResource(R.string.route_save_title),
+            confirmText = stringResource(R.string.list_save),
+            onConfirm = { naming = false; onSaveDriven(draft) },
+            dismissText = stringResource(R.string.list_cancel),
+            onDismiss = { naming = false },
+        ) {
+            androidx.compose.material3.OutlinedTextField(
+                value = draft,
+                onValueChange = { draft = it.take(60) },
+                singleLine = true,
+                label = { Text(stringResource(R.string.route_save_hint)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
     Card(
         modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -1034,6 +1057,14 @@ fun ArrivalSummary(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
+                }
+            }
+            if (onSaveDriven != null) {
+                Spacer(Modifier.height(16.dp))
+                Text(stringResource(R.string.driven_route_title), style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(6.dp))
+                androidx.compose.material3.OutlinedButton(onClick = { naming = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.driven_route_save))
                 }
             }
             Spacer(Modifier.height(16.dp))
