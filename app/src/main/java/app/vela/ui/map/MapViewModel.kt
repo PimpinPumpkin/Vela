@@ -404,6 +404,10 @@ data class MapUiState(
     // Offline PLACE pack (whole-region POI/address db, pulled after the region's routing graph)
     val poiPackDownloadingId: String? = null,
     val poiPackDownloadPct: Int = 0,
+    /** What a region download's card is doing: 0 downloading (percent), 1 an update is being
+     *  checked and written into the installed file (no percent), 2 the whole file again after an
+     *  update that could not be applied (percent). Place pack, places file and map alike. */
+    val updateStage: Int = 0,
     // The last legs of a region download (2026-09-23): 1 = the places file, 2 = the map itself,
     // with its percent. Non-null keeps the region card up; the card used to vanish after the place
     // pack while the map (the biggest piece) kept downloading unseen.
@@ -8299,18 +8303,25 @@ class MapViewModel @Inject constructor(
             if (!chained) _state.update { it.copy(regionDownloadName = null) }
             return true // nothing published for this region, or already here: nothing missing
         }
-        _state.update { it.copy(poiPackDownloadingId = pack.id, poiPackDownloadPct = 0, regionDownloadName = region.name) }
+        _state.update { it.copy(poiPackDownloadingId = pack.id, poiPackDownloadPct = 0, updateStage = 0, regionDownloadName = region.name) }
         val canDelta = installed && pack.deltaUrl != null && poiPackStore.installedRev(pack.id) == pack.deltaFromRev
         var ok = false
         if (canDelta) {
-            ok = poiPackStore.applyDelta(pack) { pct -> _state.update { it.copy(poiPackDownloadPct = pct) } }
+            val t0 = android.os.SystemClock.elapsedRealtime()
+            ok = poiPackStore.applyDelta(
+                pack,
+                onApply = { _state.update { it.copy(updateStage = 1) } },
+                onFail = { why -> diag.record("delta", "place pack ${pack.id}: update not applied ($why), downloading the whole pack") },
+            ) { pct -> _state.update { it.copy(poiPackDownloadPct = pct) } }
+            if (ok) diag.record("delta", "place pack ${pack.id}: update applied in ${android.os.SystemClock.elapsedRealtime() - t0} ms")
         }
         if (!ok && !regionCancel.get()) { // no delta path (or it failed) → full download replaces the pack
+            _state.update { it.copy(updateStage = if (canDelta) 2 else 0, poiPackDownloadPct = 0) }
             ok = poiPackStore.download(pack, active = { !regionCancel.get() }) { pct -> _state.update { it.copy(poiPackDownloadPct = pct) } }
         }
         _state.update {
             it.copy(
-                poiPackDownloadingId = null, regionDownloadName = if (chained) it.regionDownloadName else null,
+                poiPackDownloadingId = null, updateStage = 0, regionDownloadName = if (chained) it.regionDownloadName else null,
                 poiPackInstalledIds = poiPackStore.installedIds(),
                 poiPackInstalledRevs = poiPackStore.installedIds().associateWith { id -> poiPackStore.installedRev(id) },
             )
@@ -8411,13 +8422,18 @@ class MapViewModel @Inject constructor(
             android.util.Log.d("VelaDelta", line)
         }
         // A tapped Update always tries the patch first; the update setting only governs automatic ones.
+        _state.update { it.copy(updateStage = 0, regionFileStep = step ?: it.regionFileStep, regionFilePct = 0) }
         if (region.delta != null) {
-            if (store.updateWithDelta(region, onProgress = progress, log = note)) { forgetOpenPlaceLinks("${region.id} updated"); return }
+            val done = store.updateWithDelta(region, onProgress = progress, log = note, onApply = { _state.update { it.copy(updateStage = 1) } })
+            if (done) { _state.update { it.copy(updateStage = 0) }; forgetOpenPlaceLinks("${region.id} updated"); return }
+            // The patch did not apply (the note above says why): the whole file, and the card says so.
+            _state.update { it.copy(updateStage = 2, regionFilePct = 0) }
         }
         val size = region.sizeMb
         // Over the installed copy, never after deleting it: a failed download keeps the region.
         val ok = store.download(region, replace = true, active = { !regionCancel.get() }, onProgress = progress)
         if (ok) forgetOpenPlaceLinks("${region.id} redownloaded")
+        _state.update { it.copy(updateStage = 0) }
         note("${region.id}: full download of ${"%.0f".format(size)} MB ${if (ok) "done" else "FAILED"}")
     }
 
@@ -8459,7 +8475,7 @@ class MapViewModel @Inject constructor(
                 _state.update { it.copy(routingDownloadingId = null, routingInstalledIds = obfStore.installedIds()) }
             }
           } finally {
-            _state.update { it.copy(regionDownloadName = null, regionFileStep = null, regionUpdatingId = null) }
+            _state.update { it.copy(regionDownloadName = null, regionFileStep = null, regionUpdatingId = null, updateStage = 0) }
             refreshRegionUpdates()
           }
         }

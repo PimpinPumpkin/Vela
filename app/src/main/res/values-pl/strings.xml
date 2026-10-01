@@ -1172,4 +1172,10 @@
     <string name="saved_sheet_routes">Twoje trasy</string>
     <string name="driven_route_title">Jazda własną drogą</string>
     <string name="driven_route_save">Zapisz przejechaną trasę</string>
+    <string name="map_region_update_applying">Zapisywanie aktualizacji miejsc regionu %1$s. Może to potrwać kilka minut.</string>
+    <string name="map_region_update_applying_map">Zapisywanie aktualizacji mapy: %1$s. Może to potrwać kilka minut.</string>
+    <string name="map_region_update_full">Mała aktualizacja nie pasowała. Pobieranie wszystkich miejsc regionu %1$s · %2$d%%</string>
+    <string name="map_region_update_full_map">Mała aktualizacja nie pasowała. Pobieranie całej mapy: %1$s · %2$d%%</string>
+    <string name="settings_routing_applying">Zapisywanie aktualizacji…</string>
+    <string name="settings_routing_full">Pobieranie w całości · %1$d%%</string>
 </resources>

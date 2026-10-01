@@ -3506,6 +3506,15 @@ architecture note.
   (states and borders, no roads) and the keep rule, which skips the world archive, never let the
   state back. Offline now mounts the smallest installed archive whose roads touch the view at all.
   Reproduced and verified on the 4a in airplane mode at a lakeshore downtown.
+- **An update's card says which stage it is in (2026-09-30, head unit report):** `MapUiState.updateStage`
+  0 downloading, 1 the update being checked and written into the installed file (no percent, the
+  indeterminate bar), 2 the whole file again after an update that did not apply. Set by
+  `downloadPoiPack` (pack delta) and `refreshArchive` (places file and map patches) through the
+  `onApply` hooks of `PoiPackStore.applyDelta` and `updateWithDelta`. Before, a patch reached 100,
+  the bar sat there through the fingerprint check, and a refused patch restarted the count from 0
+  under the same title. A pack delta that is given up logs why (`VelaDelta`, diag kind `delta`).
+  Measured on the Kentucky pack: the delta's SQL takes 0.1 s on a laptop, so the pack rewrite is
+  not the slow step; the archive patch's whole-file fingerprint is.
 - **A region's Update marks its row for the WHOLE update (2026-09-25, head unit report):**
   `MapUiState.regionUpdatingId`, set in `updateRegion` and cleared in its `finally`. The row's
   spinner used to key only on a routing or place-pack download, so an update that was only the

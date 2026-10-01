@@ -1171,4 +1171,10 @@
     <string name="saved_sheet_routes">Ваши маршруты</string>
     <string name="driven_route_title">Вы поехали своим путём</string>
     <string name="driven_route_save">Сохранить путь, которым вы ехали</string>
+    <string name="map_region_update_applying">Запись обновления мест региона %1$s. Это может занять несколько минут.</string>
+    <string name="map_region_update_applying_map">Запись обновления карты региона %1$s. Это может занять несколько минут.</string>
+    <string name="map_region_update_full">Малое обновление не подошло. Загрузка всех мест региона %1$s · %2$d%%</string>
+    <string name="map_region_update_full_map">Малое обновление не подошло. Загрузка всей карты региона %1$s · %2$d%%</string>
+    <string name="settings_routing_applying">Запись обновления…</string>
+    <string name="settings_routing_full">Полная загрузка · %1$d%%</string>
 </resources>

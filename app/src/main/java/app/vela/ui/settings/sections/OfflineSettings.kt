@@ -565,6 +565,8 @@ private fun RegionRow(
             Text(
                 (if (subtitleSuffix != null) "$subtitleSuffix · " else "") + when {
                     downloading -> stringResource(R.string.settings_routing_downloading, state.routingDownloadPct)
+                    (packDownloading || updating) && state.updateStage == 1 -> stringResource(R.string.settings_routing_applying)
+                    (packDownloading || updating) && state.updateStage == 2 -> stringResource(R.string.settings_routing_full, if (packDownloading) state.poiPackDownloadPct else state.regionFilePct)
                     packDownloading -> stringResource(R.string.settings_routing_places_downloading, state.poiPackDownloadPct)
                     updating -> stringResource(R.string.settings_routing_updating, state.regionFilePct)
                     updateAvailable -> stringResource(R.string.settings_routing_update_available)

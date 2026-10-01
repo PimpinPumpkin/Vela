@@ -1153,4 +1153,10 @@
     <string name="saved_sheet_routes">Je routes</string>
     <string name="driven_route_title">Je nam een andere weg</string>
     <string name="driven_route_save">De gereden weg opslaan</string>
+    <string name="map_region_update_applying">Plaatsenupdate voor %1$s wegschrijven. Dit kan een paar minuten duren.</string>
+    <string name="map_region_update_applying_map">Kaartupdate voor %1$s wegschrijven. Dit kan een paar minuten duren.</string>
+    <string name="map_region_update_full">De kleine update paste niet. Alle plaatsen in %1$s downloaden · %2$d%%</string>
+    <string name="map_region_update_full_map">De kleine update paste niet. De hele kaart van %1$s downloaden · %2$d%%</string>
+    <string name="settings_routing_applying">Update wegschrijven…</string>
+    <string name="settings_routing_full">Volledig downloaden · %1$d%%</string>
 </resources>

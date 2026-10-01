@@ -1160,4 +1160,10 @@
     <string name="saved_sheet_routes">המסלולים שלך</string>
     <string name="driven_route_title">נסעת בדרך משלך</string>
     <string name="driven_route_save">שמור את הדרך שבה נסעת</string>
+    <string name="map_region_update_applying">כותב את עדכון המקומות של %1$s. זה עשוי להימשך כמה דקות.</string>
+    <string name="map_region_update_applying_map">כותב את עדכון המפה של %1$s. זה עשוי להימשך כמה דקות.</string>
+    <string name="map_region_update_full">העדכון הקטן לא התאים. מוריד את כל המקומות של %1$s · %2$d%%</string>
+    <string name="map_region_update_full_map">העדכון הקטן לא התאים. מוריד את כל המפה של %1$s · %2$d%%</string>
+    <string name="settings_routing_applying">כותב את העדכון…</string>
+    <string name="settings_routing_full">מוריד במלואו · %1$d%%</string>
 </resources>

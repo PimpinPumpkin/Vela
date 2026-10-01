@@ -1169,4 +1169,10 @@
     <string name="saved_sheet_routes">您的路线</string>
     <string name="driven_route_title">您走了自己的路线</string>
     <string name="driven_route_save">保存您实际走的路线</string>
+    <string name="map_region_update_applying">正在写入 %1$s 的地点更新。这可能需要几分钟。</string>
+    <string name="map_region_update_applying_map">正在写入 %1$s 的地图更新。这可能需要几分钟。</string>
+    <string name="map_region_update_full">增量更新无法应用。正在下载 %1$s 的全部地点 · %2$d%%</string>
+    <string name="map_region_update_full_map">增量更新无法应用。正在下载完整的 %1$s 地图 · %2$d%%</string>
+    <string name="settings_routing_applying">正在写入更新…</string>
+    <string name="settings_routing_full">正在完整下载 · %1$d%%</string>
 </resources>

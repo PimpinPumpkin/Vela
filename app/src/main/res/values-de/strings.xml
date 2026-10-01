@@ -1153,4 +1153,10 @@
     <string name="saved_sheet_routes">Ihre Routen</string>
     <string name="driven_route_title">Sie sind Ihren eigenen Weg gefahren</string>
     <string name="driven_route_save">Gefahrene Strecke speichern</string>
+    <string name="map_region_update_applying">Orte-Update für %1$s wird geschrieben. Das kann einige Minuten dauern.</string>
+    <string name="map_region_update_applying_map">Karten-Update für %1$s wird geschrieben. Das kann einige Minuten dauern.</string>
+    <string name="map_region_update_full">Das kleine Update hat nicht gepasst. Alle Orte in %1$s werden heruntergeladen · %2$d %%</string>
+    <string name="map_region_update_full_map">Das kleine Update hat nicht gepasst. Die ganze Karte für %1$s wird heruntergeladen · %2$d %%</string>
+    <string name="settings_routing_applying">Update wird geschrieben …</string>
+    <string name="settings_routing_full">Wird vollständig heruntergeladen · %1$d %%</string>
 </resources>

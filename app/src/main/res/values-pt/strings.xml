@@ -1155,4 +1155,10 @@
     <string name="saved_sheet_routes">As suas rotas</string>
     <string name="driven_route_title">Seguiu o seu próprio caminho</string>
     <string name="driven_route_save">Guardar o caminho que fez</string>
+    <string name="map_region_update_applying">A escrever a atualização dos locais de %1$s. Pode demorar alguns minutos.</string>
+    <string name="map_region_update_applying_map">A escrever a atualização do mapa de %1$s. Pode demorar alguns minutos.</string>
+    <string name="map_region_update_full">A atualização pequena não serviu. A transferir todos os locais de %1$s · %2$d%%</string>
+    <string name="map_region_update_full_map">A atualização pequena não serviu. A transferir o mapa completo de %1$s · %2$d%%</string>
+    <string name="settings_routing_applying">A escrever a atualização…</string>
+    <string name="settings_routing_full">A transferir por completo · %1$d%%</string>
 </resources>

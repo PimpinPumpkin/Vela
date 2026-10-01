@@ -2504,6 +2504,12 @@ applier is `app/offline/PmtilesPatch`.
   logcat `VelaDelta` with the bytes and the reason for any fallback, because the failure worth
   seeing is a region that quietly downloads itself whole every week.
 
+The progress card names an update's stages (`MapUiState.updateStage`): 0 a download with its
+percent; 1 the update being checked and written into the installed file, shown with an indeterminate
+bar because neither the pack's SQL transaction nor the archive patch's fingerprint pass reports
+progress; 2 the whole file again after an update that could not be applied, with its percent and a
+title that says so. A place-pack delta that is given up records its reason (diag kind `delta`).
+
 ### 7.4 Download discipline
 
 - **Every multi-megabyte download runs through `MapViewModel.downloadLaunch(label)`**: the work

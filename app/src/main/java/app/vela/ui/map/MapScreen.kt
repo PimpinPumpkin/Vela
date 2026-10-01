@@ -2863,6 +2863,7 @@ fun MapScreen(
                         RegionDownloadCard(
                             name = state.regionDownloadName ?: "",
                             places = state.poiPackDownloadingId != null,
+                            stage = state.updateStage,
                             fileStep = state.regionFileStep,
                             pct = when {
                                 state.poiPackDownloadingId != null -> state.poiPackDownloadPct
@@ -5208,7 +5209,7 @@ private fun VoiceDownloadCard(installing: Boolean, pct: Float, onCancel: (() -> 
  *  region's place pack. Mirrors [VoiceDownloadCard] so a Settings-started download stays visible
  *  on the map. */
 @Composable
-private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, area: Boolean = false, fileStep: Int? = null, onCancel: (() -> Unit)? = null, modifier: Modifier = Modifier) {
+private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, area: Boolean = false, stage: Int = 0, fileStep: Int? = null, onCancel: (() -> Unit)? = null, modifier: Modifier = Modifier) {
     Card(
         modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -5221,6 +5222,11 @@ private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, area: Bo
                 Text(
                     when {
                         area -> stringResource(R.string.map_area_downloading, pct)
+                        // An update's two quiet moments, named: the file being checked and
+                        // written (the bar sat at 100 with nothing said), and the whole file again
+                        // when the small update did not fit (the count restarting from 0).
+                        !area && stage == 1 -> stringResource(if (fileStep == 2) R.string.map_region_update_applying_map else R.string.map_region_update_applying, name)
+                        !area && stage == 2 -> stringResource(if (fileStep == 2) R.string.map_region_update_full_map else R.string.map_region_update_full, name, pct)
                         places -> stringResource(R.string.map_region_places_downloading, name, pct)
                         fileStep == 1 -> stringResource(R.string.map_region_placesfile_downloading, name, pct)
                         fileStep == 2 -> stringResource(R.string.map_region_map_downloading, name, pct)
@@ -5236,7 +5242,7 @@ private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, area: Bo
                 }
             }
             Spacer(Modifier.height(8.dp))
-            app.vela.ui.VelaProgressBar(pct / 100f)
+            app.vela.ui.VelaProgressBar(if (!area && stage == 1) null else pct / 100f)
         }
     }
 }

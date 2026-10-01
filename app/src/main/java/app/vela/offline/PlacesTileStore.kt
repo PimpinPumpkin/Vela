@@ -417,6 +417,7 @@ abstract class PmtilesRegionStore(
         region: Region,
         onProgress: (Int) -> Unit,
         log: (String) -> Unit = {},
+        onApply: () -> Unit = {}, // the patch is down; checking and writing it shows no percent
     ): Boolean = withContext(Dispatchers.IO) {
         val delta = region.delta ?: run { log("${region.id}: no delta published for rev ${region.rev}"); return@withContext false }
         val file = fileFor(region.id)
@@ -457,6 +458,7 @@ abstract class PmtilesRegionStore(
                         }
                     }
                 }
+                onApply()
                 when (val outcome = PmtilesPatch.apply(file, tmp)) {
                     is PmtilesPatch.Outcome.Applied -> {
                         log("${region.id}: patched ${delta.fromRev} -> ${region.rev}, " +

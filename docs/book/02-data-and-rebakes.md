@@ -369,6 +369,23 @@ So a fix that lands in OpenStreetMap reaches people in this order: the region's 
 (within a week), streaming users see it once their cache lets go, and people who downloaded the
 region see an Update the next time they open Offline maps, within the hour of the bake.
 
+### What the update card is telling you
+
+An update of a downloaded region runs up to four files in a row: the place pack (offline search),
+the places file (the map's own places), the map, and routing. Each tries a small update first.
+The card shows three different things, and says which:
+
+- a percent while something downloads, small update or whole file;
+- "Writing the ... update" with a moving bar and no percent while the small update is checked and
+  written into the file already on the phone. For the places file and the map this includes
+  re-reading the whole file to prove the result matches a fresh download, which on a slow head
+  unit takes minutes;
+- "The small update did not fit. Downloading ..." with a percent starting from 0 when that check
+  fails and the whole file is fetched instead.
+
+Until 2026-09-30 all three shared one title, so the bar reached 100, sat still, and then counted
+up again with no explanation.
+
 ### Retired data
 
 `routing-graphs` (GraphHopper CH graphs, about 270 assets) is the previous generation of offline

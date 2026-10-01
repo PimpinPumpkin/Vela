@@ -1153,4 +1153,10 @@
     <string name="saved_sheet_routes">I tuoi percorsi</string>
     <string name="driven_route_title">Hai fatto un\'altra strada</string>
     <string name="driven_route_save">Salva la strada che hai fatto</string>
+    <string name="map_region_update_applying">Scrittura dell\'aggiornamento dei luoghi di %1$s. Può richiedere alcuni minuti.</string>
+    <string name="map_region_update_applying_map">Scrittura dell\'aggiornamento della mappa di %1$s. Può richiedere alcuni minuti.</string>
+    <string name="map_region_update_full">L\'aggiornamento ridotto non era applicabile. Download di tutti i luoghi di %1$s · %2$d%%</string>
+    <string name="map_region_update_full_map">L\'aggiornamento ridotto non era applicabile. Download dell\'intera mappa di %1$s · %2$d%%</string>
+    <string name="settings_routing_applying">Scrittura dell\'aggiornamento…</string>
+    <string name="settings_routing_full">Download completo · %1$d%%</string>
 </resources>

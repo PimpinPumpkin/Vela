@@ -85,6 +85,12 @@
     <string name="map_region_downloading">Downloading %1$s routing · %2$d%%</string> <!-- format -->
     <string name="map_region_places_downloading">Saving %1$s places for offline search · %2$d%%</string> <!-- format -->
     <string name="map_region_placesfile_downloading">Saving %1$s places for the map · %2$d%%</string> <!-- format -->
+    <string name="map_region_update_applying">Writing the places update for %1$s. This can take a few minutes.</string>
+    <string name="map_region_update_applying_map">Writing the map update for %1$s. This can take a few minutes.</string>
+    <string name="map_region_update_full">The small update did not fit. Downloading all %1$s places · %2$d%%</string>
+    <string name="map_region_update_full_map">The small update did not fit. Downloading the whole %1$s map · %2$d%%</string>
+    <string name="settings_routing_applying">Writing the update…</string>
+    <string name="settings_routing_full">Downloading in full · %1$d%%</string>
     <string name="map_region_map_downloading">Downloading the %1$s map · %2$d%%</string> <!-- format -->
     <string name="mapvm_cells_progress">%1$s, part %2$d of %3$d</string> <!-- format -->
     <string name="mapvm_cells_ready">Directions and places for this part of %1$s work offline</string> <!-- format -->

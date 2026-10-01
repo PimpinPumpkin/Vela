@@ -137,7 +137,12 @@ class PoiPackStore @Inject constructor(
      * [download] when this returns false. The apply runs in one transaction and the result is verified
      * against the manifest's per-table row counts, so a bad patch can't leave a half-updated pack.
      */
-    suspend fun applyDelta(region: RoutingRegion, onProgress: (Int) -> Unit): Boolean = withContext(Dispatchers.IO) {
+    suspend fun applyDelta(
+        region: RoutingRegion,
+        onApply: () -> Unit = {}, // the download is done and the pack is being rewritten
+        onFail: (String) -> Unit = {}, // why the delta was given up (never a place or a coordinate)
+        onProgress: (Int) -> Unit,
+    ): Boolean = withContext(Dispatchers.IO) {
         val deltaUrl = region.deltaUrl ?: return@withContext false
         val dest = File(packsRoot, "${region.id}.db")
         if (!dest.exists() || region.counts.isEmpty()) return@withContext false
@@ -165,6 +170,7 @@ class PoiPackStore @Inject constructor(
                 val magic = ByteArray(15); s.read(magic); String(magic) == "SQLite format 3"
             }) { "downloaded delta is not a SQLite db" }
 
+            onApply()
             // Close the read-only handle on this pack while we write it (other packs stay searchable).
             OfflinePacks.reload(installedPaths().filter { it != dest.absolutePath })
             val db = android.database.sqlite.SQLiteDatabase.openDatabase(
@@ -207,6 +213,9 @@ class PoiPackStore @Inject constructor(
         }.getOrElse {
             tmp.delete()
             registerPacks() // reopen whatever state the pack is in (transaction rolled back on failure)
+            val why = it.message?.take(120) ?: it.javaClass.simpleName
+            android.util.Log.w("VelaDelta", "place pack ${region.id}: delta given up: $why")
+            onFail(why)
             false
         }
     }
