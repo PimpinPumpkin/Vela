@@ -874,7 +874,6 @@
     <string name="settings_font">Typsnitt</string>
     <string name="settings_font_system">Systemets typsnitt</string>
     <string name="settings_font_choose">Välj en typsnittsfil…</string>
-    <string name="settings_font_hint">Vela kan inte leverera Google Sans: det är proprietärt och får inte distribueras vidare. Du kan i stället peka ut valfri typsnittsfil på din egen enhet. Kartetiketterna behåller sitt eget typsnitt.</string>
     <string name="settings_font_bad">Den filen kunde inte läsas som ett typsnitt.</string>
     <string name="settings_font_custom">Eget typsnitt</string>
     <string name="settings_speeding_alert">Hastighetsvarning</string>

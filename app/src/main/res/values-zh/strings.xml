@@ -893,7 +893,6 @@
     <string name="settings_font">字体</string>
     <string name="settings_font_system">系统字体</string>
     <string name="settings_font_choose">选择字体文件…</string>
-    <string name="settings_font_hint">Vela 无法内置 Google Sans：它是专有字体，不可再分发。您可以改为指定本机上的任意字体文件。地图标注仍使用自身的字体。</string>
     <string name="settings_font_bad">无法将该文件识别为字体。</string>
     <string name="settings_font_custom">自定义字体</string>
     <string name="settings_speeding_alert">超速提醒</string>

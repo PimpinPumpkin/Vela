@@ -988,7 +988,6 @@
     <string name="settings_font">Betűtípus</string>
     <string name="settings_font_system">Rendszer betűtípusa</string>
     <string name="settings_font_choose">Betűtípusfájl kiválasztása…</string>
-    <string name="settings_font_hint">A Vela nem szállíthatja a Google Sans betűtípust: zárt forrású, és nem terjeszthető tovább. Helyette a saját eszközödön lévő bármelyik betűtípusfájlra ráállíthatod a Velát. A térképfeliratok megtartják a saját betűtípusukat.</string>
     <string name="settings_font_bad">Azt a fájlt nem sikerült betűtípusként beolvasni.</string>
     <string name="settings_font_custom">Egyéni betűtípus</string>
     <string name="settings_speeding_alert">Gyorshajtás-figyelmeztetés</string>

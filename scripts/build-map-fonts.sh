@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build the map-fonts glyph set: Roboto composited over OpenFreeMap's Noto, per glyph.
+# Build the map-fonts glyph set: Google Sans Flex over Roboto over OpenFreeMap's Noto, per glyph.
 #
 # Roboto wins Latin/Cyrillic/Greek (896 glyphs per stack); Noto keeps every other
 # script (CJK, Arabic, Devanagari, ...), so no label anywhere in the world loses
@@ -42,9 +42,24 @@ for stack in "Noto Sans Regular" "Noto Sans Bold" "Noto Sans Italic"; do
   [ "$n" = "256" ] || { echo "ERROR: $stack has $n/256 ranges (re-run to resume)"; exit 1; }
 done
 
-# 3. Composite (Roboto wins per glyph id) + package.
-rm -rf fonts_out
-python3 "$HERE/composite_glyphs.py" omt noto fonts_out
+# 3. Composite (Roboto wins per glyph id).
+rm -rf fonts_mid fonts_out
+python3 "$HERE/composite_glyphs.py" omt noto fonts_mid
+
+# 4. Google Sans Flex (SIL OFL) over that, for the glyphs it has: Latin, extended Latin and
+#    Vietnamese. Roboto keeps Cyrillic and Greek, Noto everything else. The variable font is cut
+#    into three static faces (fonttools), each rendered to glyph ranges (node fontnik), and laid
+#    out under the "Roboto ..." folder names the composite script pairs with the Noto stacks.
+#    Needs: pip install fonttools; npm install fontnik (in $WORK).
+TTF="$HERE/../app/src/main/res/font/google_sans_flex.ttf"
+AX="wdth=100 opsz=14 GRAD=0 ROND=0"
+fonttools varLib.instancer "$TTF" wght=400 slnt=0 $AX -o flex-regular.ttf
+fonttools varLib.instancer "$TTF" wght=700 slnt=0 $AX -o flex-bold.ttf
+fonttools varLib.instancer "$TTF" wght=400 slnt=-10 $AX -o flex-italic.ttf
+[ -d node_modules/fontnik ] || npm install --silent fontnik
+rm -rf flex
+node "$HERE/flex_glyphs.js" flex
+python3 "$HERE/composite_glyphs.py" flex fonts_mid fonts_out
 (cd fonts_out && zip -qr "$WORK/map-fonts.zip" "Noto Sans Regular" "Noto Sans Bold" "Noto Sans Italic")
 echo "Built $WORK/map-fonts.zip"
 echo "Publish: gh release create map-fonts $WORK/map-fonts.zip --prerelease --title 'Map font glyphs (infrastructure)' --notes 'Roboto-over-Noto glyph PBFs for the basemap; served via GitHub Pages by fdroid-repo.yml. Do not delete.'"

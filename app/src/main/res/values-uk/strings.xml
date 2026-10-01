@@ -876,7 +876,6 @@
     <string name="settings_font">Шрифт</string>
     <string name="settings_font_system">Системний шрифт</string>
     <string name="settings_font_choose">Вибрати файл шрифту…</string>
-    <string name="settings_font_hint">Vela не може постачати Google Sans: він пропрієтарний, і його не можна поширювати. Натомість ви можете вказати Vela будь-який файл шрифту на своєму пристрої. Підписи на карті залишаються зі своїм шрифтом.</string>
     <string name="settings_font_bad">Не вдалося прочитати цей файл як шрифт.</string>
     <string name="settings_font_custom">Власний шрифт</string>
     <string name="settings_speeding_alert">Попередження про перевищення швидкості</string>

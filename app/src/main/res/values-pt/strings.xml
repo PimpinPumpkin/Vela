@@ -986,7 +986,6 @@
     <string name="settings_font">Tipo de letra</string>
     <string name="settings_font_system">Tipo de letra do sistema</string>
     <string name="settings_font_choose">Escolher um ficheiro de letra…</string>
-    <string name="settings_font_hint">A Vela não pode incluir o Google Sans: é proprietário e não pode ser redistribuído. Em vez disso, pode indicar à Vela qualquer ficheiro de letra do seu dispositivo. As etiquetas do mapa mantêm o seu próprio tipo de letra.</string>
     <string name="settings_font_bad">Não foi possível ler esse ficheiro como tipo de letra.</string>
     <string name="settings_font_custom">Tipo de letra personalizado</string>
     <string name="settings_speeding_alert">Alerta de excesso de velocidade</string>

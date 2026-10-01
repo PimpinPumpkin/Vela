@@ -2848,6 +2848,19 @@ architecture note.
   recents list keeps its own X. Menu open-state is `remember(suggestion)`-keyed so a keystroke
   that rebuilds the list closes a stranded menu.
 
+- **GOOGLE SANS FLEX IS THE DEFAULT FONT, APP AND MAP (2026-09-30, user's call after seeing it).**
+  App: `AppFont.init` loads it unless the user picked their own file or the system font
+  (`ui_font_system`, set by the System row); the "Vela cannot ship Google Sans" hint is gone.
+  Map: the published glyph set is Flex over Roboto over Noto (`scripts/build-map-fonts.sh` step 4 +
+  `scripts/flex_glyphs.js`; needs `pip install fonttools` and `npm install fontnik`). Flex has
+  Latin, extended Latin and Vietnamese (German, Polish, Turkish checked against its cmap) and NO
+  Cyrillic, Greek or Hebrew, so Roboto still draws those on the map and the system font in the app.
+  Publishing = upload `map-fonts.zip` to the `map-fonts` release, then dispatch `fdroid-repo.yml`
+  (Pages serves `/Vela/fonts`). The previous Roboto set is kept on the release as
+  `map-fonts-roboto.zip`: re-upload it as `map-fonts.zip` and redeploy to roll back. Offline phones
+  read glyphs from disk, so `GlyphPackStore.PACK_VERSION` (2, marker `glyphs/version.txt`) marks an
+  older pack stale and the view model replaces it once per run on an unmetered validated link;
+  bump it whenever the published set changes. The notes below describe how it was first added.
 - **GOOGLE SANS FLEX IS A BUILT-IN UI FONT CHOICE (2026-09-30).** Google released it under the
   SIL Open Font License on 2025-11-18 (google/fonts `ofl/googlesansflex`), so unlike Google Sans it
   can ship: `res/font/google_sans_flex.ttf` (the variable font, 4.1 MB), license in

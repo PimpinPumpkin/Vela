@@ -995,7 +995,6 @@
     <string name="settings_font">Czcionka</string>
     <string name="settings_font_system">Czcionka systemowa</string>
     <string name="settings_font_choose">Wybierz plik czcionki…</string>
-    <string name="settings_font_hint">Vela nie może dołączyć Google Sans: jest zastrzeżona i nie wolno jej rozpowszechniać. Zamiast tego możesz wskazać Veli dowolny plik czcionki na swoim urządzeniu. Etykiety mapy zachowują własną czcionkę.</string>
     <string name="settings_font_bad">Nie udało się odczytać tego pliku jako czcionki.</string>
     <string name="settings_font_custom">Własna czcionka</string>
     <string name="settings_speeding_alert">Alert o przekroczeniu prędkości</string>

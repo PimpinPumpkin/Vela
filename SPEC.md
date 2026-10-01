@@ -2003,11 +2003,17 @@ host that cannot answer.
 - One quick-category list (`ui/QuickCategories`) serves the map chips, search along route and
   in-nav search. Every query must be one the offline store expands, or the chip is dead offline.
 
-**UI font.** Settings > Appearance > Font: the system font, the bundled Google Sans Flex
-(SIL OFL 1.1, variable TTF in `res/font`, license text in `assets/licenses`; Latin and Vietnamese,
-other scripts fall through to the system font; pref `ui_font_flex`), or a font file the user
-supplies (`filesDir/fonts/ui.ttf`). Applied through `velaTypography(family)`; UI text only, map
-labels come from the glyph set (section 6).
+**UI font.** Settings > Appearance > Font: Google Sans Flex (the default; SIL OFL 1.1, variable
+TTF in `res/font`, license text in `assets/licenses`), the system font (pref `ui_font_system`), or a
+font file the user supplies (`filesDir/fonts/ui.ttf`). Flex covers Latin, extended Latin and
+Vietnamese; other scripts fall through to the system font per glyph. Applied through
+`velaTypography(family)`.
+
+**Map label glyphs** are Google Sans Flex over Roboto over Noto, per glyph, under the Noto stack
+names: Flex where it has the glyph, Roboto for Cyrillic and Greek, Noto for every other script.
+Served from Pages (`/Vela/fonts`, the `map-fonts` release zip) online and from `files/glyphs` under
+an offline basemap; `GlyphPackStore.PACK_VERSION` (2) makes a phone replace an older pack on disk,
+once per run, on an unmetered validated link.
 
 ### 5.7 Saved places, lists, parking and imports
 

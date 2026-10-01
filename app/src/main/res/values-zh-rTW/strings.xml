@@ -895,7 +895,6 @@
     <string name="settings_font">字型</string>
     <string name="settings_font_system">系統字型</string>
     <string name="settings_font_choose">選擇字型檔案…</string>
-    <string name="settings_font_hint">Vela 無法內建 Google Sans：它是專有字型，不能重新散布。你可以改為指定自己裝置上的任何字型檔案。地圖標籤維持使用自己的字型。</string>
     <string name="settings_font_bad">該檔案無法讀取為字型。</string>
     <string name="settings_font_custom">自訂字型</string>
     <string name="settings_speeding_alert">超速提醒</string>

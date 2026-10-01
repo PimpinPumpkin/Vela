@@ -986,7 +986,6 @@
     <string name="settings_font">Lettertype</string>
     <string name="settings_font_system">Systeemlettertype</string>
     <string name="settings_font_choose">Een lettertypebestand kiezen…</string>
-    <string name="settings_font_hint">Vela kan Google Sans niet meeleveren: het is propriëtair en mag niet worden verspreid. Je kunt Vela in plaats daarvan naar elk lettertypebestand op je eigen toestel wijzen. Kaartlabels houden hun eigen lettertype.</string>
     <string name="settings_font_bad">Dat bestand kon niet als lettertype worden gelezen.</string>
     <string name="settings_font_custom">Eigen lettertype</string>
     <string name="settings_speeding_alert">Snelheidswaarschuwing</string>

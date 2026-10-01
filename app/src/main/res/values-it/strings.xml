@@ -984,7 +984,6 @@
     <string name="settings_font">Carattere</string>
     <string name="settings_font_system">Carattere di sistema</string>
     <string name="settings_font_choose">Scegli un file di carattere…</string>
-    <string name="settings_font_hint">Vela non può includere Google Sans: è proprietario e non può essere ridistribuito. Puoi però indicare a Vela un qualsiasi file di carattere presente sul tuo dispositivo. Le etichette della mappa mantengono il proprio carattere.</string>
     <string name="settings_font_bad">Impossibile leggere quel file come carattere.</string>
     <string name="settings_font_custom">Carattere personalizzato</string>
     <string name="settings_speeding_alert">Avviso di velocità eccessiva</string>

@@ -987,7 +987,6 @@
     <string name="settings_font">גופן</string>
     <string name="settings_font_system">גופן המערכת</string>
     <string name="settings_font_choose">בחר קובץ גופן…</string>
-    <string name="settings_font_hint">Vela לא יכול לכלול את Google Sans: הוא קנייני ואי אפשר להפיץ אותו מחדש. במקום זאת אפשר להפנות את Vela לכל קובץ גופן במכשיר שלך. תוויות המפה שומרות על הגופן שלהן.</string>
     <string name="settings_font_bad">לא ניתן היה לקרוא את הקובץ הזה כגופן.</string>
     <string name="settings_font_custom">גופן מותאם אישית</string>
     <string name="settings_speeding_alert">התראת חריגה ממהירות</string>

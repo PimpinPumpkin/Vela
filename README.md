@@ -71,7 +71,7 @@ the per-request detail is in [PRIVACY.md](PRIVACY.md).
 | <img src="docs/screenshots/06-transit.png" width="150"> | <img src="docs/screenshots/07-bus-stop.png" width="150"> | <img src="docs/screenshots/11-stop-list.png" width="150"> | <img src="docs/screenshots/08-map-light.png" width="150"> | <img src="docs/screenshots/09-place-light.png" width="150"> |
 
 *Turn-by-turn with lane guidance, route shields and the speedometer; the keyless
-OpenFreeMap basemap wearing Google's own sampled colors and Roboto labels, with
+OpenFreeMap basemap wearing Google's own sampled colors and Google Sans Flex labels, with
 rated POI icons and the tiered dots; live place data; the directions panel with
 alternates, traffic in plain words and the avoid toggles; live departure boards
 with a tap-through stop list for every route; and the in-app light/dark themes

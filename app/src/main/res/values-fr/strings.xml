@@ -872,7 +872,6 @@
     <string name="settings_font">Police</string>
     <string name="settings_font_system">Police du système</string>
     <string name="settings_font_choose">Choisir un fichier de police…</string>
-    <string name="settings_font_hint">Vela ne peut pas fournir Google Sans : cette police est propriétaire et ne peut pas être redistribuée. Vous pouvez à la place indiquer à Vela n\'importe quel fichier de police présent sur votre appareil. Les libellés de la carte gardent leur propre police.</string>
     <string name="settings_font_bad">Ce fichier n\'a pas pu être lu comme une police.</string>
     <string name="settings_font_custom">Police personnalisée</string>
     <string name="settings_speeding_alert">Alerte d\'excès de vitesse</string>

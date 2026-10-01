@@ -7597,6 +7597,7 @@ class MapViewModel @Inject constructor(
 
     private var basemapArchiveJob: Job? = null
     private var lastBasemapSwapMs = 0L
+    private var glyphRefreshTried = false // one stale-glyph-pack refresh attempt per run
 
     private suspend fun pickBasemapArchive(center: LatLng?) {
         val mountedNow = _state.value.basemapArchive?.removePrefix("pmtiles://file://")?.let { java.io.File(it) }
@@ -7641,6 +7642,15 @@ class MapViewModel @Inject constructor(
             // with labels never complete offline.
             if (uri != null && !fonts) {
                 viewModelScope.launch(Dispatchers.IO) { app.vela.offline.GlyphPackStore.ensureInstalled(appContext, http) }
+            }
+            // An older glyph set on disk is replaced once per run, on an unmetered validated link
+            // (the pack is about 65 MB): the offline map's labels then match the online ones.
+            if (fonts && validated && !glyphRefreshTried && app.vela.offline.GlyphPackStore.stale(appContext)) {
+                val cm = appContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+                if (cm != null && !cm.isActiveNetworkMetered) {
+                    glyphRefreshTried = true
+                    viewModelScope.launch(Dispatchers.IO) { app.vela.offline.GlyphPackStore.ensureInstalled(appContext, http, refresh = true) }
+                }
             }
         }
     }

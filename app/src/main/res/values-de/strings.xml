@@ -874,7 +874,6 @@
     <string name="settings_font">Schriftart</string>
     <string name="settings_font_system">Systemschriftart</string>
     <string name="settings_font_choose">Schriftdatei wählen …</string>
-    <string name="settings_font_hint">Vela kann Google Sans nicht mitliefern: Die Schrift ist proprietär und darf nicht weitergegeben werden. Stattdessen können Sie Vela auf eine beliebige Schriftdatei auf Ihrem Gerät verweisen. Kartenbeschriftungen behalten ihre eigene Schrift.</string>
     <string name="settings_font_bad">Diese Datei konnte nicht als Schriftart gelesen werden.</string>
     <string name="settings_font_custom">Eigene Schriftart</string>
     <string name="settings_speeding_alert">Geschwindigkeitswarnung</string>

@@ -986,7 +986,6 @@
     <string name="settings_font">Fonte</string>
     <string name="settings_font_system">Fonte do sistema</string>
     <string name="settings_font_choose">Escolher um arquivo de fonte…</string>
-    <string name="settings_font_hint">O Vela não pode incluir a Google Sans: ela é proprietária e não pode ser redistribuída. Em vez disso, você pode indicar ao Vela qualquer arquivo de fonte do seu dispositivo. Os rótulos do mapa mantêm a própria fonte.</string>
     <string name="settings_font_bad">Não foi possível ler esse arquivo como fonte.</string>
     <string name="settings_font_custom">Fonte personalizada</string>
     <string name="settings_speeding_alert">Alerta de excesso de velocidade</string>

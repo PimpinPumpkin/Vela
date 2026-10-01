@@ -897,7 +897,6 @@
     <string name="settings_font">フォント</string>
     <string name="settings_font_system">システムのフォント</string>
     <string name="settings_font_choose">フォントファイルを選択…</string>
-    <string name="settings_font_hint">Vela は Google Sans を同梱できません。プロプライエタリで再配布が認められていないためです。代わりに、端末内の任意のフォントファイルを指定できます。地図のラベルは専用のフォントのままです。</string>
     <string name="settings_font_bad">そのファイルはフォントとして読み込めませんでした。</string>
     <string name="settings_font_custom">カスタムフォント</string>
     <string name="settings_speeding_alert">速度超過の警告</string>

@@ -23,6 +23,16 @@ import java.util.zip.ZipInputStream
 object GlyphPackStore {
     private const val PACK_URL = "https://github.com/PimpinPumpkin/Vela/releases/download/map-fonts/map-fonts.zip"
     private val mutex = Mutex()
+    /** The glyph set's generation. 2 = Google Sans Flex over Roboto over Noto (2026-09-30); a pack
+     *  unzipped before that has no marker and reads as 1. The asset name on the release is fixed,
+     *  so this is how a phone learns its copy is the older set. */
+    private const val PACK_VERSION = 2
+    private fun versionFile(context: Context) = File(glyphRoot(context), "version.txt")
+
+    /** Installed, but an older glyph set than the one published. It still draws; [ensureInstalled]
+     *  with `refresh` replaces it. */
+    fun stale(context: Context): Boolean =
+        installed(context) && (runCatching { versionFile(context).readText().trim().toInt() }.getOrDefault(1) < PACK_VERSION)
 
     private fun glyphRoot(context: Context) = File(StorageLocation.root(context), "glyphs")
     private fun spriteRoot(context: Context) = File(context.filesDir, "sprites")
@@ -61,9 +71,11 @@ object GlyphPackStore {
     }
 
     /** Download and unzip the glyph pack if it is not installed. True when installed afterwards. */
-    suspend fun ensureInstalled(context: Context, http: OkHttpClient): Boolean = withContext(Dispatchers.IO) {
+    suspend fun ensureInstalled(context: Context, http: OkHttpClient, refresh: Boolean = false): Boolean = withContext(Dispatchers.IO) {
         mutex.withLock {
-            if (installed(context)) return@withLock true
+            // A stale pack is replaced only when asked (the caller checks the connection); a failed
+            // refresh leaves the old pack in place, which still draws every label.
+            if (installed(context) && !(refresh && stale(context))) return@withLock true
             val root = glyphRoot(context)
             val tmp = File(context.cacheDir, "map-fonts.zip.tmp")
             val client = http.newBuilder().callTimeout(0, java.util.concurrent.TimeUnit.SECONDS).readTimeout(60, java.util.concurrent.TimeUnit.SECONDS).build()
@@ -87,12 +99,13 @@ object GlyphPackStore {
                     }
                 }
                 check(File(staging, "Noto Sans Regular/0-255.pbf").isFile) { "pack has no Noto Sans Regular" }
+                File(staging, "version.txt").writeText(PACK_VERSION.toString())
                 root.deleteRecursively()
                 check(staging.renameTo(root)) { "rename failed" }
                 tmp.delete()
                 android.util.Log.i("VelaBasemap", "glyph pack installed")
                 true
-            }.getOrElse { tmp.delete(); android.util.Log.w("VelaBasemap", "glyph pack install failed", it); false }
+            }.getOrElse { tmp.delete(); android.util.Log.w("VelaBasemap", "glyph pack install failed", it); installed(context) }
         }
     }
 
