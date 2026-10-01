@@ -588,6 +588,12 @@ Defaults that make the safe path the easy one:
   `getMapAsync` can register listeners twice; per-registration state made both copies probe.
   User off-switch: Settings → Advanced "Fill missing buildings" (`BuildingOverlay`); debug badge +
   fps readout: Settings → Developer (`BuildingDebug`), badge in `MapScreen`.
+- **3D buildings need a TILTED map (2026-09-30).** `tilted3d` (camera-move listener, on at 20
+  degrees, off under 12) joins the setting, satellite and nav gates on `building-3d`; the change
+  fades through the layer's opacity transition, then the layer hides. Flat, Midtown's towers
+  leaned over the streets. The style light is `B3D_LIGHT` (0.25), not 0: roofs keep the palette
+  color, walls shade. Test tilt from adb with `setprop debug.vela.cam "<tilt>,<zoom>"` (needs
+  `debug.vela.fps true` at map creation, like `debug.vela.hide`).
 - **Building zoom tiers are deliberate, Google-matched (2026-07-17).** Flat `building` fill z16-24
   (was 14); `building-3d` extrusions z17+ (was 16), growing 30% to full height by z19
   (`applyBuilding3dGeometry`, shared by all four palettes) with `fillExtrusionVerticalGradient(true)`

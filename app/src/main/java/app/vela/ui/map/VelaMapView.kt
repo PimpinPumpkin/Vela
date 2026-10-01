@@ -208,6 +208,14 @@ private const val OSM_COVER_FRAC = 0.18f
 // synchronous render-thread round trips and its trigger events can fire per frame - the floor is
 // what makes the cost bounded regardless of event chatter (the vc2909 P4a freeze).
 private const val OVL_GATE_MIN_GAP_MS = 1200L
+// 3D buildings rise once the map is tilted past ON and drop below OFF (degrees), fading over FADE.
+private const val B3D_TILT_ON = 20.0
+private const val B3D_TILT_OFF = 12.0
+private const val B3D_FADE_MS = 350L
+// The style light for extrusions. 0 draws every face in the palette color (no wall reads as a
+// wall); at 0.25 a roof stays within ~1% of the palette on the dark map and ~3% under it on the
+// light one, and walls facing away from the light draw up to 25% darker.
+private const val B3D_LIGHT = 0.25f
 private const val NAV_OVL_FIRST_MS = 2500L // the first verdict of a drive, after the start cut has drawn
 private const val NAV_OVL_TICK_MS = 4000L // then how often the drive asks (a no-op inside one cell)
 
@@ -834,6 +842,8 @@ fun VelaMapView(
     val selectAlt = rememberUpdatedState(onSelectAlternate)
     val navModeHolder = rememberUpdatedState(navMode)
     val ovlGateHook = remember { arrayOfNulls<() -> Unit>(1) } // the gate, callable from effects
+    val tilted3d = remember { mutableStateOf(false) } // camera tilted enough for 3D buildings (hysteresis)
+    val b3dShown = remember { booleanArrayOf(false) }
     val navFollowingHolder = rememberUpdatedState(navFollowing)
     val navNorthUpHolder = rememberUpdatedState(navNorthUp)
     val navTiltEase = remember { doubleArrayOf(55.0) } // eased so the compass toggle glides, not snaps
@@ -2110,12 +2120,28 @@ fun VelaMapView(
     // fragment-expensive thing on screen (user 2026-07-13).
     // Also forced off DURING NAV (2026-07-17): the tilted nav camera at z16+ is exactly where
     // extrusion's per-pixel cost peaks, for scenery nobody studies mid-drive - the battery lever.
-    val buildings3d = app.vela.ui.Buildings3d.on.value && !satelliteOn && !navMode
+    // And only while the map is TILTED (2026-09-30): seen straight down, the perspective camera
+    // leans every tower away from the screen center and over the streets beside it (Midtown),
+    // with nothing a top-down view gains from it; flat, the footprints draw alone, as Google's do.
+    // The change fades (opacity transition) so tilting does not pop the buildings in.
+    val buildings3d = app.vela.ui.Buildings3d.on.value && !satelliteOn && !navMode && tilted3d.value
     LaunchedEffect(buildings3d, styleRef) {
         runCatching {
-            styleRef?.getLayer("building-3d")?.setProperties(
-                PropertyFactory.visibility(if (buildings3d) Property.VISIBLE else Property.NONE),
-            )
+            val l = styleRef?.getLayer("building-3d") as? FillExtrusionLayer ?: return@runCatching
+            l.fillExtrusionOpacityTransition = org.maplibre.android.style.layers.TransitionOptions(B3D_FADE_MS, 0)
+            if (buildings3d) {
+                l.setProperties(PropertyFactory.visibility(Property.VISIBLE), PropertyFactory.fillExtrusionOpacity(1f))
+                b3dShown[0] = true
+            } else if (b3dShown[0]) {
+                b3dShown[0] = false
+                l.setProperties(PropertyFactory.fillExtrusionOpacity(0f))
+                kotlinx.coroutines.delay(B3D_FADE_MS + 60)
+                l.setProperties(PropertyFactory.visibility(Property.NONE))
+            } else {
+                // Never shown on this style: no fade to play, and the opacity is left at 0 so
+                // the first show fades in from nothing.
+                l.setProperties(PropertyFactory.visibility(Property.NONE), PropertyFactory.fillExtrusionOpacity(0f))
+            }
         }
     }
 
@@ -3681,6 +3707,7 @@ fun VelaMapView(
                     val bisectHandler = android.os.Handler(android.os.Looper.getMainLooper())
                     val hidden = mutableListOf<String>()
                     var lastSpec = ""
+                    var lastCam = ""
                     val poll = object : Runnable {
                         override fun run() {
                             val spec = runCatching {
@@ -3688,6 +3715,22 @@ fun VelaMapView(
                                 val m = Class.forName("android.os.SystemProperties").getMethod("get", String::class.java)
                                 (m.invoke(null, "debug.vela.hide") as? String).orEmpty().trim()
                             }.getOrDefault("")
+                            // `debug.vela.cam "<tilt>,<zoom>"` eases the camera there once per change:
+                            // adb has no two-finger gesture, and tilt-dependent drawing needs checking.
+                            val cam = runCatching {
+                                @Suppress("PrivateApi")
+                                val m = Class.forName("android.os.SystemProperties").getMethod("get", String::class.java)
+                                (m.invoke(null, "debug.vela.cam") as? String).orEmpty().trim()
+                            }.getOrDefault("")
+                            if (cam != lastCam) {
+                                lastCam = cam
+                                val p = cam.split(',').mapNotNull { it.trim().toDoubleOrNull() }
+                                if (p.isNotEmpty()) runCatching {
+                                    val cur = map.cameraPosition
+                                    map.animateCamera(CameraUpdateFactory.newCameraPosition(
+                                        CameraPosition.Builder(cur).tilt(p[0]).zoom(p.getOrNull(1) ?: cur.zoom).build()), 1200)
+                                }
+                            }
                             val st = map.style
                             // Re-scanned every poll while a spec is set, so layers added later (nav adds its
                             // own at Start) are hidden too; a strip test must stay a strip.
@@ -3735,6 +3778,9 @@ fun VelaMapView(
                 map.addOnCameraMoveListener {
                     lastCameraMoveMs[0] = android.os.SystemClock.uptimeMillis()
                     ovlRenderSettled[0] = false
+                    val tiltNow = map.cameraPosition.tilt
+                    if (!tilted3d.value && tiltNow >= B3D_TILT_ON) tilted3d.value = true
+                    else if (tilted3d.value && tiltNow < B3D_TILT_OFF) tilted3d.value = false
                     warmPending[0]?.let { warmHandler.removeCallbacks(it); warmPending[0] = null }
                     warmSnapshotter[0]?.cancel(); warmSnapshotter[0] = null
                 }
@@ -4586,7 +4632,9 @@ private fun ensureLayers(style: Style) {
     // every zoom (pixel-proven side by side, user 2026-07-11). Intensity 0 makes the
     // extrusion render its set color verbatim; the vertical-gradient flags on the
     // building-3d layers (applyLight/applyDark) kill the remaining side shading.
-    runCatching { style.light?.setIntensity(0f) }
+    // Since 2026-09-30 the intensity is B3D_LIGHT, not 0: low enough that roofs keep the palette
+    // color, high enough that walls shade (user: "no shading", every tower one flat blob).
+    runCatching { style.light?.setIntensity(B3D_LIGHT) }
     // FLAT vegetation, like Google (user 2026-07-11). Two parts. (1) Liberty's wetland +
     // pedestrian-plaza layers ship with a fill-PATTERN (fern hatch / dots), and setting
     // fill-pattern to an empty literal does NOT clear it on device (both themes tried - the

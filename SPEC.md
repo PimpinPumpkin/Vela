@@ -2121,12 +2121,16 @@ colored in **all four** apply functions: an unstyled runtime `LineLayer` renders
 - Bike paths (OSM `highway=cycleway`) draw teal, `#007b8b` light and `#1f8f9c` dark, split out
   of the trails layer, which keeps foot paths green. On-street painted lanes are not in the tile
   schema and are not drawn.
-- 3D extrusions use the flat color at opacity 1 with the style light at intensity 0 and
-  `fillExtrusionVerticalGradient(false)`. MapLibre's default light brightens extrusion tops by
-  about 40 percent, and Google keeps buildings one color at every zoom.
-
-**Classic** (the archived pre-sample look, selectable):
-
+- 3D extrusions use the palette color at opacity 1 with the style light at intensity `B3D_LIGHT`
+  (0.25) and the vertical gradient on. At 0 every face draws in one color and no wall reads as a
+  wall; at MapLibre's default 0.5 the tops draw about 40 percent brighter than the palette. At
+  0.25 a roof stays within 1 to 3 percent of the palette color and a wall facing away from the
+  light draws up to 25 percent darker.
+- 3D extrusions draw only while the camera is tilted: on at `B3D_TILT_ON` (20 degrees), off below
+  `B3D_TILT_OFF` (12), never during navigation or over satellite. Seen straight down, perspective
+  leans tall buildings over the streets beside them; flat, the footprint fill draws alone. The
+  change is an opacity transition of `B3D_FADE_MS` (350 ms), and the layer is hidden after a
+  fade-out so it costs nothing while flat.
 - Light: land `#f2f1ee`, water `#90daee`, park `#cfeccd`, grass `#d3f8e2`, wood `#c9f2da`,
   wetland `#cdeff0`, plaza `#ededed`, buildings `#dde1e7` with outline `#c4c9d1`, minor and
   secondary roads white with casings `#e4e6ea`, trunk and primary casing `#dadde2`, arterial
