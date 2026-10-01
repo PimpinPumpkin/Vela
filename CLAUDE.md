@@ -3066,10 +3066,14 @@ architecture note.
   with the sheet closed): the cost is not the pins; not yet isolated (ROADMAP). Benchmark traps:
   the geo: intent ignores `z`, the reverse-geocode sheet it opens must be closed or the scrub drags
   the sheet, and the 4a throttles after about an hour of scrubbing (`dumpsys thermalservice`).
-- **Route preview shows landmarks only (2026-09-16).** While the chooser is open (a route drawn, not
-  navigating) the OSM business tiers hide and the open places layer filters to prominence >=
-  `PREVIEW_LANDMARK_PROMINENCE` (5.5) with no dots (`placesPreviewLandmarks`, folded into
-  `applyOpenPlacesHidden` with the drive-nav fuel rule), like Google's route overview.
+- **Route preview shows NO places (2026-09-30, was landmarks only).** While the chooser is open (a
+  route drawn, not navigating) the OSM tiers, the open places layers (`placesPreviewHidden` in
+  `applyOpenPlacesHidden`), `poi_transit`, the stop badges and the saved pins all hide. The
+  destination is the one marker in `markers` (its own place pin and name, `chooserDest` in
+  MapSurface); the flag (`destinationPin`) is only for a trip ending at "your location".
+- **The building-overlay gate runs during a drive on a timer (2026-09-30):** `ovlGateHook`, first at
+  2.5 s then every 4 s, probing once per ~550 m cell. Camera-idle events never fire under the
+  follow camera, so a drive started from the overview drew no Microsoft footprints at all.
 - **Open-layer labels stay thinned at max zoom (2026-09-16).** Icons come in for everything from
   z17.5 but only the top `openLabelCap` (calibration dial, default 20) per 400 m cell get a name:
   each label is glyph layout plus a collision pass over four anchors, and a mall puts dozens in one

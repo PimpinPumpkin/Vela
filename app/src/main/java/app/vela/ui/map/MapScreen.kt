@@ -3611,8 +3611,9 @@ private fun MapSurface(
     // icon+color, quick-saves ride the default bookmark blue; deduped by place id (a place in
     // several lists draws once, newest list wins). Empty while a result set / nav / replay /
     // Street View owns the map.
-    val savedPinData = remember(state.lists, state.saved, state.results, state.navigating, state.replaying, svPose) {
-        if (state.navigating || state.replaying || svPose != null || state.results.isNotEmpty()) emptyList()
+    // Also off while the route chooser is up: only the trip's own pins draw there (2026-09-30).
+    val savedPinData = remember(state.lists, state.saved, state.results, state.navigating, state.replaying, svPose, state.directionsOpen) {
+        if (state.navigating || state.replaying || svPose != null || state.results.isNotEmpty() || state.directionsOpen) emptyList()
         else buildList {
             val seen = HashSet<String>()
             state.lists.forEach { l ->
@@ -3630,6 +3631,8 @@ private fun MapSurface(
             }
         }
     }
+    val chooserUp = state.directionsOpen && !state.navigating
+    val chooserDest = if (state.directionsReversed) state.directionsOrigin else state.selected
     VelaMapView(
         styleUri = mapStyleUri,
         myLocation = state.myLocation,
@@ -3704,8 +3707,9 @@ private fun MapSurface(
         } else emptyList(),
         // ROUTE CHOOSER: only the trip's own points draw. The rest of the search results are
         // noise once you are choosing a route, and they crowd the very pins that matter
-        // (user 2026-09-17). The destination gets its flag pin below, so it drops out here too.
-        markers = if (state.directionsOpen && !state.navigating) emptyList() else markersOf(state, filteredResultIds),
+        // (user 2026-09-17). The destination keeps its own place pin (2026-09-30: a flag over
+        // it read as a second thing); no rating bubble, the pin says what it is.
+        markers = if (chooserUp) listOfNotNull(chooserDest?.let { MapMarker(it.name, it.location, it.category) }) else markersOf(state, filteredResultIds),
         frameMarkers = state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed,
         holdMarkerFit = state.selected != null || state.streetView != null || state.streetViewLoading,
         // The endpoints card's measured bottom edge: the route fit frames start/end in the
@@ -3714,9 +3718,8 @@ private fun MapSurface(
         // Numbered stop pins while the trip UI is active (chooser, editor or the drive itself).
         stopPins = if (state.directionsOpen || state.navigating) state.directionsWaypoints.map { it.location } else emptyList(),
         candidatePin = state.navTapCandidate?.location?.takeIf { state.navigating },
-        destinationPin = if (state.directionsOpen && !state.navigating) {
-            if (state.directionsReversed) state.directionsOrigin?.location ?: state.myLocation else state.selected?.location
-        } else null,
+        // The flag is left for a trip that ends at "your location", which has no place to draw.
+        destinationPin = if (chooserUp && chooserDest == null) state.myLocation else null,
         navMode = state.navigating,
         navDriveMode = state.travelMode == app.vela.core.model.TravelMode.DRIVE,
         navLabelExclude = navLabelExclude,
@@ -3777,7 +3780,7 @@ private fun MapSurface(
         onNavZoomOverride = onNavZoomOverride,
         onPuckScreen = { x, y -> puckScreen.value = Offset(x, y) },
         onPoiTap = vm::onPoiTap,
-        onMarkerTap = { i -> displayedPlaces(state).getOrNull(i)?.let(vm::selectPlace) },
+        onMarkerTap = { i -> if (!chooserUp) displayedPlaces(state).getOrNull(i)?.let(vm::selectPlace) },
         parkingSpot = state.parkingSpot,
         onParkingTap = { vm.showParkedCar(context.getString(R.string.map_parked_car)) },
         // Saved places stick out while browsing (issue #171): every list place + quick-save

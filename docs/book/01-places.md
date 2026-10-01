@@ -662,3 +662,11 @@ which is the "weird raw string" people saw with Google off.
   as holiday or seasonal rules are not shown as a week.
 - **A rebake is not instant.** See [chapter 2](02-data-and-rebakes.md) for when the data is
   rebuilt and how a phone picks up a new build.
+
+## Route preview
+
+While the route chooser is up (a route drawn, no drive running) the map shows no places at all:
+the open places layer, the basemap's points, transit icons, stop badges and your saved pins all
+hide, so the route and the trip's own pins are what you read. The destination keeps its place pin
+and its name. Everything returns when the chooser closes or the drive starts (a drive has its own
+rules, above).

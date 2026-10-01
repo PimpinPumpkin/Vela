@@ -1227,9 +1227,12 @@ ever dropped by priority, only started later, the details page and the review
 page are never loaded while `navigating`, and the road-features file is parsed while the chooser
 is open (`route()` warms `roadFeaturesCoverRoute` on the first route). After: the map reaches
 55 fps by 11 s and the GL thread's waiting time is a tenth; the tile burst of the fly-in remains.
-Second round, same day: the building-overlay gate does not probe while navigating (the follow
-camera moves every frame, and the gate re-queried rendered features on the main thread every
-1.2 s for the whole drive). Tried and measured NOT to help, so not kept: a slower zoom ease for
+Second round, same day: the building-overlay gate does not probe on render events while
+navigating (the follow camera moves every frame, and the gate re-queried rendered features on the
+main thread every 1.2 s for the whole drive). It is asked on a timer instead (`NAV_OVL_FIRST_MS`
+2.5 s after the start, then every `NAV_OVL_TICK_MS` 4 s) and probes once per ~550 m cell the car
+enters, without waiting for a settled render; with no verdict at all during a drive, one that
+began from the route overview (below z16) kept the footprints hidden to its end. Tried and measured NOT to help, so not kept: a slower zoom ease for
 the first 3 s after engage (tau 1.2 s), and deferring the drive-nav declutter (1.5 s) and the
 first road-label pass (2 s) past the fly-in. Two alternating runs per build, fps per second from
 Start: with them 2/33/7/14/44/21/14/34 and 1/28/5/15/50/10/10/39, without 2/28/9/35/31/16/8/45
@@ -1716,8 +1719,10 @@ Density on the map is decided by rank, not by collision.
 - Tenants stay dots until z18.5 so the store owns the block. Icon overlap is allowed from z18
   on the open layer and z17 on the ambient layer; below those, Google's extras lose collision to
   the open icons and Both mode looks identical to Vela data.
-- While a route preview is open, the OSM business tiers hide and the open layer filters to
-  prominence at least `PREVIEW_LANDMARK_PROMINENCE` (5.5) with no dots. During drive navigation
+- While a route preview is open no places draw: the OSM tiers, the open layer (icons and dots),
+  the transit icons and stop badges, and the saved pins all hide. The destination draws as its own
+  place pin with its name; the flag pin is used only for a trip that ends at "your location".
+  During drive navigation
   the open layer is fuel-only, and the OSM tiers follow the same rule.
 - **The ambient GeoJSON source is maxzoom 18.** Past a GeoJSON source's maxzoom every visible
   overscaled tile lays out all of its parent tile's features; at maxzoom 12 a few hundred

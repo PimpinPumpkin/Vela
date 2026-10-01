@@ -208,6 +208,8 @@ private const val OSM_COVER_FRAC = 0.18f
 // synchronous render-thread round trips and its trigger events can fire per frame - the floor is
 // what makes the cost bounded regardless of event chatter (the vc2909 P4a freeze).
 private const val OVL_GATE_MIN_GAP_MS = 1200L
+private const val NAV_OVL_FIRST_MS = 2500L // the first verdict of a drive, after the start cut has drawn
+private const val NAV_OVL_TICK_MS = 4000L // then how often the drive asks (a no-op inside one cell)
 
 private const val CONTROLS_SRC = "vela-controls-src" // OSM traffic lights + stop signs drawn at high zoom
 private const val CONTROLS_LAYER = "vela-controls"
@@ -353,6 +355,7 @@ data class SavedPin(val lat: Double, val lng: Double, val icon: String, val colo
 private var lastTransitBusHidden: Boolean? = null // gate the poi_transit filter flip
 private var origPoiTransitFilter: Expression? = null // basemap filter to restore when coverage goes
 private var lastOsmPoiVis: String? = null // identity-gate the basemap-POI visibility flips
+private var lastPreviewTransitHidden: Boolean? = null // route preview: transit icons step aside too
 private var lastPoiFuelOnly: Boolean? = null // identity-gate the nav gas-stations-only filter flips
 // Open-place ids filtered out of the layer. `openHiddenIds` is the persisted closed-listing set
 // (from MapUiState); `openDisplacedIds` is transient, written by the Both-mode dedupe for every
@@ -465,14 +468,14 @@ private var placesNavFuelOnly = false
 private var placesNavDriveSet = false
 private val NAV_DRIVE_GROUPS = arrayOf<Any>("fuel", "food")
 private const val NAV_DRIVE_BLOCK_TOP = 2 // best two per ~100 m block while driving
-/** ROUTE PREVIEW (the chooser is open, not navigating): only landmark-grade places draw, no dots,
- *  like Google's route overview, so the route reads before Start (user 2026-09-16). */
-private var placesPreviewLandmarks = false
+/** ROUTE PREVIEW (the chooser is open, not navigating): no places draw at all, so the route and
+ *  the trip's own pins read before Start (user 2026-09-30; it kept landmarks until then, which
+ *  after the one-set bake meant every park and school along the way). */
+private var placesPreviewHidden = false
 // "Parks, schools and civic places" off: the open layer drops those groups too (2026-09-23). They
 // used to reach the map only through Google's pool and the basemap, which the switch covered; the
 // places bake carries them now.
 private var placesHideCivic = false
-private const val PREVIEW_LANDMARK_PROMINENCE = 5.5
 /** The first seconds of a DRIVE: the places layers stay hidden while the follow camera flies in
  *  from the route overview, and appear once it has settled (`NAV_PLACES_HOLD_MS`). Visible, every
  *  zoom the fly-in passes through loads and filters the dense places tiles of every mounted
@@ -491,7 +494,6 @@ private fun applyOpenPlacesHidden(style: Style) {
     else Expression.not(Expression.`in`(Expression.coalesce(Expression.get("group"), Expression.literal("")), Expression.literal(MapViewModel.CIVIC_GROUPS.toTypedArray<Any>())))
     val idFilter: Expression? = listOfNotNull(byId, civic).let { if (it.isEmpty()) null else if (it.size == 1) it[0] else Expression.all(*it.toTypedArray()) }
     val fuel = Expression.eq(Expression.get("group"), Expression.literal("fuel"))
-    val landmark = Expression.gte(Expression.get("prominence"), Expression.literal(PREVIEW_LANDMARK_PROMINENCE))
     val modeFilter = when {
         // In nav the same block budget is too generous: at speed every icon is placement work on a
         // moving camera, so the drive set takes only the best few per block (user 2026-09-17: the 4a
@@ -501,7 +503,6 @@ private fun applyOpenPlacesHidden(style: Style) {
             Expression.lte(Expression.coalesce(Expression.get("frank"), Expression.literal(1)), Expression.literal(NAV_DRIVE_BLOCK_TOP)),
         )
         placesNavFuelOnly -> fuel
-        placesPreviewLandmarks -> landmark
         else -> null
     }
     val iconFilter = listOfNotNull(idFilter, modeFilter)
@@ -511,11 +512,11 @@ private fun applyOpenPlacesHidden(style: Style) {
             when (l) {
                 is SymbolLayer -> {
                     l.setFilter(iconFilter)
-                    l.setProperties(PropertyFactory.visibility(if (placesNavHold) Property.NONE else Property.VISIBLE))
+                    l.setProperties(PropertyFactory.visibility(if (placesNavHold || placesPreviewHidden) Property.NONE else Property.VISIBLE))
                 }
                 is CircleLayer -> {
                     l.setFilter(idFilter ?: Expression.literal(true))
-                    l.setProperties(PropertyFactory.visibility(if (placesNavFuelOnly || placesNavDriveSet || placesPreviewLandmarks) Property.NONE else Property.VISIBLE))
+                    l.setProperties(PropertyFactory.visibility(if (placesNavFuelOnly || placesNavDriveSet || placesPreviewHidden) Property.NONE else Property.VISIBLE))
                 }
                 else -> Unit
             }
@@ -832,6 +833,7 @@ fun VelaMapView(
     val ovlRenderSettled = remember { booleanArrayOf(false) } // a full render finished since the camera last moved
     val selectAlt = rememberUpdatedState(onSelectAlternate)
     val navModeHolder = rememberUpdatedState(navMode)
+    val ovlGateHook = remember { arrayOfNulls<() -> Unit>(1) } // the gate, callable from effects
     val navFollowingHolder = rememberUpdatedState(navFollowing)
     val navNorthUpHolder = rememberUpdatedState(navNorthUp)
     val navTiltEase = remember { doubleArrayOf(55.0) } // eased so the compass toggle glides, not snaps
@@ -1297,6 +1299,20 @@ fun VelaMapView(
     // Drive start: the places layers stay off through the fly-in (see placesNavHold). Its own
     // effect, keyed on the drive alone: a style reload mid-hold rebuilds the layers through
     // applyOpenPlacesHidden, which reads the flag, and ending the drive early releases it.
+    // The building-overlay gate during a drive. Its other triggers are camera-idle events, which
+    // a follow camera never produces, so a drive that began from the route overview (below z16,
+    // where the gate does nothing) kept the footprints hidden to the end: a street OSM has no
+    // buildings for drew none (user 2026-09-30). Asked every few seconds; the gate itself probes
+    // only when the car has entered a new ~550 m cell.
+    LaunchedEffect(navMode) {
+        if (!navMode) return@LaunchedEffect
+        ovlGateKey[0] = ""
+        kotlinx.coroutines.delay(NAV_OVL_FIRST_MS)
+        while (true) {
+            ovlGateHook[0]?.invoke()
+            kotlinx.coroutines.delay(NAV_OVL_TICK_MS)
+        }
+    }
     LaunchedEffect(navMode && navDriveMode) {
         if (!(navMode && navDriveMode)) return@LaunchedEffect
         placesNavHold = true
@@ -1319,7 +1335,7 @@ fun VelaMapView(
         // This write races applyData's ambient/search suppression of the same layers: forcing
         // VISIBLE on nav end while its gate still says NONE left doubled icons until the next
         // state flip. Nulling the gate makes the next applyData frame re-assert the right value.
-        lastOsmPoiVis = null
+        lastOsmPoiVis = null; lastPreviewTransitHidden = null
         lastPoiFuelOnly = null
         // Stop signs + lights are a NAV aid from z15.4 — a hair UNDER the nav camera's 15.5 zoom
         // floor, so they can't blink out at highway speed (the old 16 sat above the floor and the
@@ -1589,7 +1605,7 @@ fun VelaMapView(
     }
     LaunchedEffect(placesOneSet, styleRef) {
         osmOneSet = placesOneSet
-        lastOsmPoiVis = null // applyData re-decides the basemap point layers' visibility
+        lastOsmPoiVis = null; lastPreviewTransitHidden = null // applyData re-decides the basemap point layers' visibility
         styleRef?.let { st -> if (placesOneSet) OSM_POI_LAYERS.forEach { id -> st.getLayer(id)?.setProperties(PropertyFactory.visibility(Property.NONE)) } }
     }
     LaunchedEffect(placesPending, styleRef, osmBusinesses) {
@@ -1880,9 +1896,9 @@ fun VelaMapView(
         fillLast[0] = Double.NaN // new sources: the next idle runs the pass regardless of movement
         osmHideBusiness = (placesOverlays.isNotEmpty() || placesPending) && !osmBusinesses
         lastPoiFuelOnly = null // forces applyData to re-apply the tier filters with the new flag
-        lastOsmPoiVis = null
+        lastOsmPoiVis = null; lastPreviewTransitHidden = null
         // Rebuilt mid-drive (a new region in view): keep the drive-nav fuel-only rule on the new layers.
-        if (placesNavFuelOnly || placesNavDriveSet || placesPreviewLandmarks) applyOpenPlacesHidden(style)
+        if (placesNavFuelOnly || placesNavDriveSet || placesPreviewHidden) applyOpenPlacesHidden(style)
     }
 
     LaunchedEffect(maxspeedOverlays, styleRef, speedOverlayOn) {
@@ -3496,11 +3512,11 @@ fun VelaMapView(
                         val zoomNow = map.cameraPosition.zoom
                         val style = map.style
                         // Buildings + the overlay only draw at z16+ (Google-like close zoom). Below
-                        // that the query can't change anything - bail before any probing. Not while
-                        // NAVIGATING either (2026-09-28): the follow camera moves every frame, so the
-                        // gate re-probed rendered features on the main thread every 1.2 s for the
-                        // whole drive; the verdict from before the drive stands until it ends.
-                        if (style == null || zoomNow < 16.0 || navModeHolder.value) {
+                        // that the query can't change anything - bail before any probing. While
+                        // NAVIGATING it probes once per cell the car enters (the follow camera moves
+                        // every frame, and probing on every render event stalled the drive every 1.2 s).
+                        val navNow = navModeHolder.value
+                        if (style == null || zoomNow < 16.0) {
                             if (ovlGateKey[0] != "off") { overlayState.value("none"); ovlGateKey[0] = "off" }
                             return@runCatching
                         }
@@ -3513,7 +3529,7 @@ fun VelaMapView(
                         // a render finished since the last verdict (tiles that arrived after the
                         // camera stopped can change it) - and NEVER more often than the time floor.
                         val now = android.os.SystemClock.elapsedRealtime()
-                        if (now - ovlLastEval[0] < OVL_GATE_MIN_GAP_MS) {
+                        if (!navNow && now - ovlLastEval[0] < OVL_GATE_MIN_GAP_MS) {
                             // Don't just drop a floor-blocked call: on a fully idle map (no puck
                             // animation nudging renders) there may be NO later event to retry it,
                             // and an uncommitted verdict then sticks forever - Elwood's reveal
@@ -3529,8 +3545,10 @@ fun VelaMapView(
                             return@runCatching
                         }
                         val c = map.cameraPosition.target
-                        val key = if (c == null) "?" else "${(c.latitude * 200).toInt()}/${(c.longitude * 200).toInt()}/${zoomNow.toInt()}"
-                        if (key == ovlGateKey[0] && !ovlDirty[0]) return@runCatching
+                        val key = if (c == null) "?" else "${(c.latitude * 200).toInt()}/${(c.longitude * 200).toInt()}/${if (navNow) "nav" else zoomNow.toInt().toString()}"
+                        // While navigating the verdict is taken once per ~550 m cell (the key),
+                        // whatever has rendered since: the camera never rests, so "dirty" is always true.
+                        if (key == ovlGateKey[0] && (navNow || !ovlDirty[0])) return@runCatching
                         ovlGateKey[0] = key
                         ovlDirty[0] = false
                         ovlLastEval[0] = now
@@ -3552,7 +3570,7 @@ fun VelaMapView(
                         val cover = hits.toFloat() / (cols * rows)
                         val osmDense = cover >= app.vela.core.config.CalibrationStore.latest.tune("overlayCoverFrac", OSM_COVER_FRAC.toDouble()).toFloat()
                         val want = if (osmDense) Property.NONE else Property.VISIBLE
-                        if (want == Property.VISIBLE && !ovlRenderSettled[0]) {
+                        if (want == Property.VISIBLE && !ovlRenderSettled[0] && !navNow) {
                             // Never REVEAL off a possibly-empty render: a "sparse" verdict before the
                             // OSM tiles finish is indistinguishable from a real gap, and acting on it
                             // is the NYC arrival flash (MS paints for ~3s, then gets yanked). Hiding
@@ -3569,6 +3587,7 @@ fun VelaMapView(
                     Unit
                 }
                 ovlGateRef[0] = runOvlGate
+                ovlGateHook[0] = runOvlGate
                 map.addOnCameraIdleListener {
                     if (gestureMove[0]) {
                         gestureMove[0] = false
@@ -4095,7 +4114,7 @@ fun VelaMapView(
                 }
                 ensureLayers(style)
                 lastAppliedMarkers = null // fresh style = empty sources; force applyData to repopulate
-                lastOsmPoiVis = null
+                lastOsmPoiVis = null; lastPreviewTransitHidden = null
                 lastPoiFuelOnly = null
                 lastNavLabelKey = null
                 lastControlsVis = null
@@ -8008,8 +8027,8 @@ private fun applyData(
     // Route preview (chooser open, not navigating): the route is the subject, so the OSM business
     // tiers step aside and the open places layer keeps landmarks only (Google's route overview).
     val previewing = !navMode && route.size >= 2
-    if (previewing != placesPreviewLandmarks) {
-        placesPreviewLandmarks = previewing
+    if (previewing != placesPreviewHidden) {
+        placesPreviewHidden = previewing
         applyOpenPlacesHidden(style)
     }
     val osmPoiVis = if (!poisEnabled || previewing || osmOneSet || (!navMode && (ambientCoversView || markers.size > 1))) Property.NONE else Property.VISIBLE
@@ -8018,6 +8037,14 @@ private fun applyData(
             style.getLayer(id)?.setProperties(PropertyFactory.visibility(osmPoiVis))
         }
         lastOsmPoiVis = osmPoiVis
+    }
+    // Route preview hides the transit icons with the rest (basemap stations and the stop badges).
+    // Never touched while navigating: the nav declutter effect owns both layers then.
+    if (!navMode && previewing != lastPreviewTransitHidden) {
+        val v = if (previewing) Property.NONE else Property.VISIBLE
+        style.getLayer("poi_transit")?.setProperties(PropertyFactory.visibility(v))
+        style.getLayer(TRANSIT_STOPS_LAYER)?.setProperties(PropertyFactory.visibility(v))
+        lastPreviewTransitHidden = previewing
     }
     val fuelOnly = navMode && navDriveMode // walking/biking keeps the normal POI mix (Google does)
     if (fuelOnly != lastPoiFuelOnly) {
