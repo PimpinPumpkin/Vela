@@ -1159,4 +1159,5 @@
     <string name="map_region_update_full_map">De kleine update paste niet. De hele kaart van %1$s downloaden · %2$d%%</string>
     <string name="settings_routing_applying">Update wegschrijven…</string>
     <string name="settings_routing_full">Volledig downloaden · %1$d%%</string>
+    <string name="settings_font_flex_hint">Google Sans Flex is het open gelicentieerde zusje van Googles eigen lettertype. Het dekt Latijnse letters; andere schriften houden het systeemlettertype.</string>
 </resources>

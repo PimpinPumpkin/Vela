@@ -9,9 +9,11 @@ import java.io.File
 /**
  * The typeface Vela's own UI is drawn in (issue #252).
  *
- * **Vela ships no branded font and cannot.** The font people usually mean here is Google Sans,
- * which is proprietary: not on Google Fonts, not licensed for third-party use, and impossible to
- * redistribute in a GPLv3 app. Android also has no API to list the fonts a user has installed, and
+ * **Google Sans itself cannot be shipped**: it is proprietary, not on Google Fonts, not licensed
+ * for third-party use. Its open sibling CAN: Google Sans Flex was released under the SIL Open Font
+ * License on 2025-11-18, and is bundled as a built-in choice ([setBuiltin], the variable TTF in
+ * `res/font`, the license in `assets/licenses`). It covers Latin and Vietnamese only, so Cyrillic,
+ * Greek, Hebrew and CJK text falls through to the system font glyph by glyph. Android also has no API to list the fonts a user has installed, and
  * the download-a-font-on-demand mechanism is served by Play Services, which our users do not have.
  *
  * What IS possible, and is what this does: the user hands us a font file from their own storage and
@@ -33,10 +35,36 @@ object AppFont {
     /** File name the user picked, for display. Null when on the system font. */
     val customName = mutableStateOf<String?>(null)
 
+    /** The bundled Google Sans Flex is the UI font. */
+    val builtin = mutableStateOf(false)
+
+    /** One Font per weight the type scale uses, each pinning the variable font's weight axis. */
+    @OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
+    private fun flexFamily(): FontFamily = FontFamily(
+        listOf(400, 500, 600, 700).map { w ->
+            androidx.compose.ui.text.font.Font(
+                app.vela.R.font.google_sans_flex,
+                weight = androidx.compose.ui.text.font.FontWeight(w),
+                variationSettings = androidx.compose.ui.text.font.FontVariation.Settings(
+                    androidx.compose.ui.text.font.FontVariation.weight(w),
+                ),
+            )
+        },
+    )
+
+    fun setBuiltin(context: Context) {
+        family.value = flexFamily()
+        builtin.value = true
+        customName.value = null
+        fontFile(context).delete()
+        prefs(context).edit().remove(KEY_NAME).putBoolean(KEY_BUILTIN, true).apply()
+    }
+
     /** A font file is a few hundred KB; anything far past that is not a font we want to load. */
     private const val MAX_BYTES = 12L * 1024 * 1024
 
     fun init(context: Context) {
+        if (prefs(context).getBoolean(KEY_BUILTIN, false)) { family.value = flexFamily(); builtin.value = true; return }
         val name = prefs(context).getString(KEY_NAME, null) ?: return
         val f = fontFile(context)
         if (!f.exists()) { clear(context); return }
@@ -80,7 +108,8 @@ object AppFont {
         if (!tmp.renameTo(dest)) { tmp.delete(); return false }
         family.value = fam
         customName.value = displayName
-        prefs(context).edit().putString(KEY_NAME, displayName).apply()
+        builtin.value = false
+        prefs(context).edit().putString(KEY_NAME, displayName).remove(KEY_BUILTIN).apply()
         return true
     }
 
@@ -88,8 +117,9 @@ object AppFont {
     fun clear(context: Context) {
         family.value = null
         customName.value = null
+        builtin.value = false
         fontFile(context).delete()
-        prefs(context).edit().remove(KEY_NAME).apply()
+        prefs(context).edit().remove(KEY_NAME).remove(KEY_BUILTIN).apply()
     }
 
     /**
@@ -109,4 +139,5 @@ object AppFont {
     private fun fontFile(c: Context) = File(c.filesDir, "fonts/ui.ttf")
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
     private const val KEY_NAME = "ui_font_name"
+    private const val KEY_BUILTIN = "ui_font_flex"
 }

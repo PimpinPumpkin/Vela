@@ -1161,4 +1161,5 @@
     <string name="map_region_update_full_map">A atualização pequena não serviu. A transferir o mapa completo de %1$s · %2$d%%</string>
     <string name="settings_routing_applying">A escrever a atualização…</string>
     <string name="settings_routing_full">A transferir por completo · %1$d%%</string>
+    <string name="settings_font_flex_hint">O Google Sans Flex é o irmão com licença aberta do tipo de letra da própria Google. Abrange as letras latinas; os outros sistemas de escrita mantêm o tipo de letra do sistema.</string>
 </resources>

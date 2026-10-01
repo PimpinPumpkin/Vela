@@ -1177,4 +1177,5 @@
     <string name="map_region_update_full_map">差分更新を適用できませんでした。%1$s の地図全体をダウンロード中 · %2$d%%</string>
     <string name="settings_routing_applying">更新を書き込み中…</string>
     <string name="settings_routing_full">全体をダウンロード中 · %1$d%%</string>
+    <string name="settings_font_flex_hint">Google Sans Flex は、Google 自身のフォントの姉妹にあたるオープンライセンスのフォントです。ラテン文字に対応しており、その他の文字はシステムフォントのままです。</string>
 </resources>

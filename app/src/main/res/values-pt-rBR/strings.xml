@@ -1161,4 +1161,5 @@
     <string name="map_region_update_full_map">A atualização pequena não serviu. Baixando o mapa completo de %1$s · %2$d%%</string>
     <string name="settings_routing_applying">Gravando a atualização…</string>
     <string name="settings_routing_full">Baixando por completo · %1$d%%</string>
+    <string name="settings_font_flex_hint">A Google Sans Flex é a irmã com licença aberta da fonte do próprio Google. Ela cobre as letras latinas; os outros sistemas de escrita mantêm a fonte do sistema.</string>
 </resources>

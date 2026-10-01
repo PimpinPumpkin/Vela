@@ -352,3 +352,5 @@ World Imagery, with Google imagery where Esri has none at close zoom.
 [![GNU GPLv3 Image](https://www.gnu.org/graphics/gplv3-127x51.png)](http://www.gnu.org/licenses/gpl-3.0.en.html)
 
 Vela is Free Software: you can use, study, share, and improve it at your will. You may use, modify, and redistribute this project only if your modifications remain open-source under the same license.
+
+The app bundles the Google Sans Flex font, copyright The Google Sans Flex Authors, under the [SIL Open Font License 1.1](app/src/main/assets/licenses/GoogleSansFlex-OFL.txt). Google Sans Flex is a trademark of Google LLC; Vela is not affiliated with or endorsed by Google.

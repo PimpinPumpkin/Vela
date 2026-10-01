@@ -1175,4 +1175,5 @@
     <string name="map_region_update_full_map">增量更新无法应用。正在下载完整的 %1$s 地图 · %2$d%%</string>
     <string name="settings_routing_applying">正在写入更新…</string>
     <string name="settings_routing_full">正在完整下载 · %1$d%%</string>
+    <string name="settings_font_flex_hint">Google Sans Flex 是 Google 自有字体的姊妹字体，采用开放许可。它涵盖拉丁字母；其他文字仍使用系统字体。</string>
 </resources>

@@ -2003,6 +2003,12 @@ host that cannot answer.
 - One quick-category list (`ui/QuickCategories`) serves the map chips, search along route and
   in-nav search. Every query must be one the offline store expands, or the chip is dead offline.
 
+**UI font.** Settings > Appearance > Font: the system font, the bundled Google Sans Flex
+(SIL OFL 1.1, variable TTF in `res/font`, license text in `assets/licenses`; Latin and Vietnamese,
+other scripts fall through to the system font; pref `ui_font_flex`), or a font file the user
+supplies (`filesDir/fonts/ui.ttf`). Applied through `velaTypography(family)`; UI text only, map
+labels come from the glyph set (section 6).
+
 ### 5.7 Saved places, lists, parking and imports
 
 - List membership matches on `ListPlace.matches` (id **or** stable feature id), never a bare id

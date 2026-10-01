@@ -1159,4 +1159,5 @@
     <string name="map_region_update_full_map">La petite mise à jour n\'a pas pu être appliquée. Téléchargement de toute la carte de %1$s · %2$d %%</string>
     <string name="settings_routing_applying">Écriture de la mise à jour…</string>
     <string name="settings_routing_full">Téléchargement complet · %1$d %%</string>
+    <string name="settings_font_flex_hint">Google Sans Flex est la sœur sous licence ouverte de la propre police de Google. Elle couvre les lettres latines ; les autres écritures gardent la police du système.</string>
 </resources>

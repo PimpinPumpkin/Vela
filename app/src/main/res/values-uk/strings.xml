@@ -1177,4 +1177,5 @@
     <string name="map_region_update_full_map">Мале оновлення не підійшло. Завантаження всієї карти регіону %1$s · %2$d%%</string>
     <string name="settings_routing_applying">Запис оновлення…</string>
     <string name="settings_routing_full">Повне завантаження · %1$d%%</string>
+    <string name="settings_font_flex_hint">Шрифт Google Sans Flex поширюється за відкритою ліцензією і споріднений із власним шрифтом Google. Він охоплює латинські літери; для інших писемностей залишається системний шрифт.</string>
 </resources>

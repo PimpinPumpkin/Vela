@@ -2848,7 +2848,20 @@ architecture note.
   recents list keeps its own X. Menu open-state is `remember(suggestion)`-keyed so a keystroke
   that rebuilds the list closes a stranded menu.
 
-- **UI FONT: user-supplied only, and UI TEXT ONLY (issue #252, 2026-08-16).** `ui/AppFont` +
+- **GOOGLE SANS FLEX IS A BUILT-IN UI FONT CHOICE (2026-09-30).** Google released it under the
+  SIL Open Font License on 2025-11-18 (google/fonts `ofl/googlesansflex`), so unlike Google Sans it
+  can ship: `res/font/google_sans_flex.ttf` (the variable font, 4.1 MB), license in
+  `assets/licenses/GoogleSansFlex-OFL.txt`, `AppFont.setBuiltin` (pref `ui_font_flex`), a third row
+  in Settings > Appearance > Font, NOT the default. One `Font` per weight (400/500/600/700) pins
+  the weight axis through `FontVariation`. It covers Latin and Vietnamese only; other scripts fall
+  through to the system font per glyph. "Google Sans Flex" is Google's trademark: name the font,
+  never imply affiliation. MAP LABELS in it were tried and work (static cuts with
+  `fonttools varLib.instancer`, glyph ranges with node `fontnik`, layered over the current set
+  with `scripts/composite_glyphs.py`, served through `-PmapFontsUrl`), but are NOT published:
+  that changes every install's labels, and phones with an offline map read glyphs from the pack
+  on disk (`GlyphPackStore`), which has no version to trigger a re-download.
+- **UI FONT: user-supplied only, and UI TEXT ONLY (issue #252, 2026-08-16).** (Since 2026-09-30
+  there is also a built-in choice, above; the rest of this note stands.) `ui/AppFont` +
   Settings > Appearance > Font: System font, or a font file the user picks from their own storage
   (SAF, copied to `filesDir/fonts/ui.ttf`, applied via `velaTypography(family)` in VelaTheme).
   **Vela ships no branded face and cannot** - the one people ask for is Google Sans, which is

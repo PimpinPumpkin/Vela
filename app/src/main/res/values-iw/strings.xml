@@ -1166,4 +1166,5 @@
     <string name="map_region_update_full_map">העדכון הקטן לא התאים. מוריד את כל המפה של %1$s · %2$d%%</string>
     <string name="settings_routing_applying">כותב את העדכון…</string>
     <string name="settings_routing_full">מוריד במלואו · %1$d%%</string>
+    <string name="settings_font_flex_hint">Google Sans Flex הוא האח בעל הרישיון הפתוח של הגופן של Google עצמה. הוא מכסה אותיות לטיניות; כתבים אחרים נשארים עם גופן המערכת.</string>
 </resources>

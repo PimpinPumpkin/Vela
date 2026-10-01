@@ -144,8 +144,15 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         SettingsGroup(title = stringResource(R.string.settings_font)) {
             SelectableRow(
                 label = stringResource(R.string.settings_font_system),
-                selected = app.vela.ui.AppFont.customName.value == null,
+                selected = app.vela.ui.AppFont.customName.value == null && !app.vela.ui.AppFont.builtin.value,
                 onClick = { app.vela.ui.AppFont.clear(context) },
+            )
+            GroupDivider()
+            // The font's own name, not translated; open-licensed (OFL), so it ships in the app.
+            SelectableRow(
+                label = "Google Sans Flex",
+                selected = app.vela.ui.AppFont.builtin.value,
+                onClick = { app.vela.ui.AppFont.setBuiltin(context) },
             )
             GroupDivider()
             SelectableRow(
@@ -162,6 +169,7 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 },
             )
         }
+        Hint(stringResource(R.string.settings_font_flex_hint))
         Hint(stringResource(R.string.settings_font_hint))
 
         Spacer(Modifier.height(8.dp))
