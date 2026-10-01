@@ -2796,7 +2796,15 @@ architecture note.
   businesses never asked and the address was missing. `AddressQuery.matches` needs the number and
   the street's first distinguishing word as whole words of the result's name or address; the same
   test dedupes the on-device geocoder's hits. Logcat `VelaSearch: address query: ...`.
+  A typed address is also searched over at least `ADDRESS_SEARCH_SPAN_M` (40 km) however far in
+  the map is zoomed, the geocoder is asked unless a matching result sits within that distance, and
+  matching rows lead nearest-first (`addressFirst`): a 50 ft view asked about a 1 km window and an
+  address a few miles off lost to a namesake in another state.
   NOT device-checked (the 4a was in use by another project); `AddressQueryTest` pins the rule.
+- **Alternate routes are faded blue with an outline (discussion #639, 2026-10-01):** `altColor` is
+  "fill|edge" (`#A9C6F8|#4C7FD6` light, `#93B2E6|#0E2247` dark), the edge drawn by
+  `ALT_ROUTE_EDGE_LAYER` (line-gap-width over the same source). The gray fill read as one more road
+  on a dense grid. Colors chosen from the palette values, NOT yet looked at on a device.
 - **The clock is a setting (discussion #637, 2026-10-01):** Settings > Appearance > Clock, pref
   `clock_mode` (system / 12 / 24), read by `Clock24.refresh`. Google's transit pages are fetched in
   English with "h:mm AM" text; `ClockFormat.show` converts those at parse time (itinerary times,

@@ -129,6 +129,7 @@ private const val TRAVERSED_DARK = "#54585C"
 private const val TRAVERSED_AMOLED = "#26282B"
 private const val ALT_ROUTE_SRC = "vela-alt-route-src"
 private const val ALT_ROUTE_LAYER = "vela-alt-route"
+private const val ALT_ROUTE_EDGE_LAYER = "vela-alt-route-edge" // a darker outline on both sides of an alternate
 
 // Transit itinerary preview (issue #233): the expanded chooser row's legs drawn on the map.
 private const val TRANSIT_PREV_SRC = "vela-transit-prev-src"
@@ -4866,6 +4867,17 @@ private fun ensureLayers(style: Style) {
         )
         if (style.getLayer(ROUTE_LAYER) != null) style.addLayerBelow(alt, ROUTE_LAYER)
         else style.addLayer(alt)
+        // The outline: a thin line each side of the fill (line-gap-width = the fill's width). A
+        // gray fill alone sank into a dense street grid, whose roads are a blue-gray of about the
+        // same weight (discussion #639).
+        val edge = LineLayer(ALT_ROUTE_EDGE_LAYER, ALT_ROUTE_SRC).withProperties(
+            PropertyFactory.lineColor("#4C7FD6"),
+            PropertyFactory.lineWidth(1.6f),
+            PropertyFactory.lineGapWidth(ALT_ROUTE_WIDTH),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+            PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+        )
+        style.addLayerBelow(edge, ALT_ROUTE_LAYER)
     }
     if (style.getImage(PIN_IMG) == null) style.addImage(PIN_IMG, pinBitmap())
     if (style.getSource(MARKERS_SRC) == null) {
@@ -7893,6 +7905,7 @@ private fun applyData(
             style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
             style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
             style.getLayer(ALT_ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+            style.getLayer(ALT_ROUTE_EDGE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
             style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
             style.getSourceAs<GeoJsonSource>(ROUTE_CUT_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
             style.getLayer(ROUTE_CUT_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
@@ -7913,6 +7926,7 @@ private fun applyData(
             style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
             if (dashDotPoly.isNotEmpty()) regenRouteDots(map, style, emptyList())
             style.getLayer(ALT_ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
+            style.getLayer(ALT_ROUTE_EDGE_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
             if (lastRouteMode == 2) {
                 style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
                 style.getSourceAs<GeoJsonSource>(ROUTE_CUT_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
@@ -7955,7 +7969,9 @@ private fun applyData(
             },
         )
         style.getSourceAs<GeoJsonSource>(ALT_ROUTE_SRC)?.setGeoJson(altFc)
-        style.getLayer(ALT_ROUTE_LAYER)?.setProperties(PropertyFactory.lineColor(altColor))
+        // "fill|edge": the alternate's own color and its outline.
+        style.getLayer(ALT_ROUTE_LAYER)?.setProperties(PropertyFactory.lineColor(altColor.substringBefore('|')))
+        if ('|' in altColor) style.getLayer(ALT_ROUTE_EDGE_LAYER)?.setProperties(PropertyFactory.lineColor(altColor.substringAfter('|')))
         lastAppliedAlternates = alternates
         lastAppliedAltColor = altColor
     }

@@ -1335,6 +1335,11 @@ until the car moved; checked on the 4a with a stationary mock fix beside the rou
 
 ### 4.8 Route line rendering
 
+- **Alternates** in the route chooser draw as a faded route blue with a darker outline:
+  `#A9C6F8` over `#4C7FD6` on the light map, `#93B2E6` over `#0E2247` on the dark one (fill on
+  `ALT_ROUTE_LAYER`, outline on `ALT_ROUTE_EDGE_LAYER` through line-gap-width), below the selected
+  route. A plain gray matched the weight of the roads on a dense grid.
+
 - **A paused drive draws the ahead line in `ROUTE_PAUSED_COLOR` (`#9C8AD6`, a muted lavender)**
   and the live traffic color returns on resume. Distinct from the live blue, the congestion amber
   and red and the driven gray, and visible on both themes; a slate gray was tried first and
@@ -2010,8 +2015,10 @@ arrival clocks, board times and trip stamps read it, and `ClockFormat.show` conv
 
 **Typed addresses.** `AddressQuery.parse` reads a leading house number and the street's first
 word that is not a direction or a street type; `matches` is true when both are whole words of a
-result's name or address. A typed address with no matching result is geocoded through the
-autocomplete request and its matching rows lead the list.
+result's name or address. A typed address is searched over a window of at least
+`ADDRESS_SEARCH_SPAN_M` (40 km) whatever the zoom; when no matching result lies within that
+distance of the view it is geocoded through the autocomplete request; matching rows lead the list,
+nearest to the view first.
 
 **UI font.** Settings > Appearance > Font: Google Sans Flex (the default; SIL OFL 1.1, variable
 TTF in `res/font`, license text in `assets/licenses`), the system font (pref `ui_font_system`), or a

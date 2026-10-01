@@ -3695,7 +3695,9 @@ private fun MapSurface(
                 if (i != activeIdx && r.polyline.size >= 2) i to r.polyline else null
             }
         },
-        altColor = if (mapDark) "#C8CDD4" else "#9AA0A6",
+        // Alternates are a faded version of the route blue with a darker outline (discussion
+        // #639): the old gray read as one more road on a dense grid. "fill|edge".
+        altColor = if (mapDark) "#93B2E6|#0E2247" else "#A9C6F8|#4C7FD6",
         onSelectAlternate = vm::selectRoute,
         // Every route wears its time on the map, placed where it runs apart from the others;
         // tapping a bubble picks that route. Both choosers (the classic one since 2026-09-17).

@@ -1131,7 +1131,8 @@ class MapViewModel @Inject constructor(
             // its rows are the suggestions (the local pack's exact hits still lead, deduped by
             // house number) and the Photon + search-endpoint race below is skipped; when it
             // fails or is off (offline, Google off), the old pipeline runs unchanged.
-            val auto = runCatching { dataSource.suggest(term, near, spanM0) }.getOrNull()
+            val suggestSpan = if (app.vela.core.util.AddressQuery.parse(term) != null) maxOf(spanM0 ?: 0.0, ADDRESS_SEARCH_SPAN_M) else spanM0
+            val auto = runCatching { dataSource.suggest(term, near, suggestSpan) }.getOrNull()
             if (auto != null && (auto.places.isNotEmpty() || auto.queries.isNotEmpty())) {
                 val localAddrs = localDeferred?.await().orEmpty()
                 photonDeferred?.cancel()
@@ -2196,7 +2197,12 @@ class MapViewModel @Inject constructor(
                 // a zoomed-out search only ever covered a city-sized window however far you could
                 // see (user 2026-07-11). Span = the visible box's vertical extent.
                 val vp = viewport
-                val spanM = vp?.let { LatLng(it[0], it[1]).distanceTo(LatLng(it[2], it[1])) }
+                val viewSpanM = vp?.let { LatLng(it[0], it[1]).distanceTo(LatLng(it[2], it[1])) }
+                // A typed ADDRESS is looked for across the surrounding metro, however far in the
+                // map is zoomed: a 50 ft view asks about a 1 km window, and an address a few
+                // miles off then lost to one of the same name in another state (issue #638).
+                val isAddress = app.vela.core.util.AddressQuery.parse(q) != null
+                val spanM = if (isAddress) maxOf(viewSpanM ?: 0.0, ADDRESS_SEARCH_SPAN_M) else viewSpanM
                 // Without Google the online answer is Photon (OSM names and addresses, no
                 // categories), so the downloaded places the map draws (Overture, AllThePlaces,
                 // OSM) and the place packs are searched too and lead: "Restaurants" with Google
@@ -2220,9 +2226,10 @@ class MapViewModel @Inject constructor(
                 // "Carries" is a whole-word test on the number AND the street (AddressQuery): the
                 // old substring test found the digits in a ZIP code or a neighbor's number, took
                 // a list of nearby businesses for the address, and never asked (issue #638).
-                val isAddress = app.vela.core.util.AddressQuery.parse(q) != null
                 fun carries(p: Place) = app.vela.core.util.AddressQuery.matches(q, p.name, p.address)
-                val geocoded = if (isAddress && res.places.none(::carries)) {
+                // Asked whenever no result is the address NEAR the view: a match in another state
+                // does not count, or the nearby one would never be looked up.
+                val geocoded = if (isAddress && res.places.none { carries(it) && (near == null || it.location.distanceTo(near) < ADDRESS_SEARCH_SPAN_M) }) {
                     runCatching { dataSource.suggest(q, near, spanM).places.filter(::carries).take(3) }.getOrDefault(emptyList())
                 } else emptyList()
                 if (isAddress) android.util.Log.i("VelaSearch", "address query: ${res.places.count(::carries)} of ${res.places.size} result(s) are it, geocoder added ${geocoded.size}")
@@ -2288,7 +2295,8 @@ class MapViewModel @Inject constructor(
                         // offline flag (the network callback can miss an event after doze and leave
                         // `offline` latched until relaunch; seen on-device 2026-07-09).
                         it.copy(
-                            results = localAddrs + geocoded + res.places + ambientExtra, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false,
+                            // Rows that ARE the typed address come nearest-first, ahead of everything else.
+                            results = localAddrs + addressFirst(geocoded, res.places, near, ::carries) + ambientExtra, selected = if (it.pickingOrigin || it.pickingDest || it.pickingStop) it.selected else null, status = null, searching = false, offline = false,
                             // Three full pages back = the window holds more; offer the next three.
                             resultsMoreQuery = if (res.places.size >= 40) q else null, resultsLoadingMore = false,
                         )
@@ -2297,7 +2305,7 @@ class MapViewModel @Inject constructor(
                     // "Navigate to X": the top hit is the destination, straight into the chooser.
                     if (openDirectionsOnResult) {
                         openDirectionsOnResult = false
-                        (geocoded.firstOrNull() ?: res.places.firstOrNull())?.let { top -> selectPlace(top); routeToSelected() }
+                        (localAddrs + addressFirst(geocoded, res.places, near, ::carries)).firstOrNull()?.let { top -> selectPlace(top); routeToSelected() }
                     }
                 } else {
                     openDirectionsOnResult = false
@@ -8305,6 +8313,15 @@ class MapViewModel @Inject constructor(
      *  catalog shares the routing catalog's region ids, so the graph's region row looks itself up.
      *  With [update] set, an installed pack is refreshed: by row-level DELTA when the manifest offers
      *  one matching the installed revision (a few MB), else by full re-download. */
+    /** [geocoded] then [places], with the rows that are the typed address (per [carries]) pulled to
+     *  the front and ordered by distance from [near]; everything else keeps Google's order. */
+    private fun addressFirst(geocoded: List<Place>, places: List<Place>, near: LatLng?, carries: (Place) -> Boolean): List<Place> {
+        val all = geocoded + places.filterNot { p -> geocoded.any { g -> g.name == p.name && g.location.distanceTo(p.location) < 60.0 } }
+        val (hits, rest) = all.partition(carries)
+        if (hits.size < 2 || near == null) return hits + rest
+        return hits.sortedBy { it.location.distanceTo(near) } + rest
+    }
+
     private suspend fun downloadPoiPack(region: app.vela.offline.RoutingRegion, update: Boolean = false, chained: Boolean = false): Boolean {
         // The region's own pack, or its parent's for a split country or state (RegionPacks). A big
         // shared parent does not ride along with a region download; "Get places" asks for it.
@@ -8680,6 +8697,9 @@ class MapViewModel @Inject constructor(
 
         /** Past this from the trip's chosen start, Start re-plans from where you are (issue #463). */
         private const val START_FROM_ME_M = 150.0
+        /** The least window a typed street address is searched over, and how near a result has to
+         *  be to count as "the address around here": about a metro area. */
+        private const val ADDRESS_SEARCH_SPAN_M = 40_000.0
         /** A directions link's start this close to the fix is "from here" (Telegram sends the fix). */
         private const val LINK_ORIGIN_HERE_M = 150.0
         private const val ROUTING_OFFER_DONE = "routing_offer_done"

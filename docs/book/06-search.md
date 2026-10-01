@@ -252,6 +252,11 @@ result's name or address. Until 2026-10-01 the test was whether the digits appea
 they appear in ZIP codes and in neighbors' house numbers, so a list of nearby businesses counted
 as holding the address and the geocoder was never asked (issue #638).
 
+Zoom does not shrink an address search. A map zoomed in to one building would otherwise ask about
+a window a kilometer across, and an address a few miles away then lost to one of the same name in
+another state. A typed address is searched over at least 40 km, a match farther than that from the
+view does not stop the nearby lookup, and the rows that are the address are listed nearest first.
+
 ### plausibleBias and rankBias
 
 Two small rules decide which point a search is about.
