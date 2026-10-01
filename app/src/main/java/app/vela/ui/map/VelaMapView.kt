@@ -263,6 +263,14 @@ private const val BROWSE_IDLE_TICK_MS = 200L // its pace while settled // the na
 // SPEC 4.7a: the opening tilt after the start cut. 3 s held the 4a's worst second at 29-36 fps
 // (0.55 s: one 5-9 fps second as the horizon's tiles all arrived together).
 private const val NAV_START_TILT_TAU_S = 3.0
+// Layers hidden while the nav overview shows (by id prefix): places, minor road and path names,
+// house numbers, one-way arrows, controls, cameras, transit stops, nav callouts, 3D buildings.
+private val OVERVIEW_HIDE_PREFIXES = listOf(
+    "vela-places", "vela-ambient", "poi_", "vela-addr-", "vela-housenumber",
+    "highway-name-minor", "highway-name-path", "road_one_way_arrow", "label_other", "label_village",
+    "vela-controls", "vela-flock", "vela-speedcam", "vela-transit-stops", "vela-nav-",
+    "building-3d", "vela-ovl-",
+)
 // The veil over a camera cut: how opaque it starts and how long it takes to fade off.
 private const val CUT_VEIL_ALPHA = 0.85f
 private const val CUT_FADE_MS = 320
@@ -2455,11 +2463,30 @@ fun VelaMapView(
         // when Re-center re-attaches.
         if (fresh) map.moveCamera(CameraUpdateFactory.paddingTo(0.0, 0.0, 0.0, 0.0))
         overviewLive[0] = true
-        fitRemaining(if (fresh) 0 else 700)
-        while (overviewLive[0] && navModeHolder.value) {
-            kotlinx.coroutines.delay(4_000)
-            if (!overviewLive[0] || !navModeHolder.value) break
-            fitRemaining(600)
+        // OVERVIEW DECLUTTER (user 2026-09-30, "still laggy when it zooms out"): the whole route on
+        // screen is many tiles of places, street names and signs to place at once, none of which
+        // the overview is for. They go before the cut and come back in `finally`, which runs
+        // however the overview ends (Re-center, a pan, a reroute re-keying this effect). Major
+        // road names and the shields stay, so the roads you drive still read.
+        val hiddenForOverview = ArrayList<org.maplibre.android.style.layers.Layer>()
+        styleRef?.takeIf { it.isFullyLoaded }?.let { st ->
+            for (layer in st.layers) {
+                val id = layer.id
+                if (OVERVIEW_HIDE_PREFIXES.any { id.startsWith(it) } && layer.visibility.value != Property.NONE) {
+                    layer.setProperties(PropertyFactory.visibility(Property.NONE))
+                    hiddenForOverview += layer
+                }
+            }
+        }
+        try {
+            fitRemaining(if (fresh) 0 else 700)
+            while (overviewLive[0] && navModeHolder.value) {
+                kotlinx.coroutines.delay(4_000)
+                if (!overviewLive[0] || !navModeHolder.value) break
+                fitRemaining(600)
+            }
+        } finally {
+            hiddenForOverview.forEach { runCatching { it.setProperties(PropertyFactory.visibility(Property.VISIBLE)) } }
         }
     }
 

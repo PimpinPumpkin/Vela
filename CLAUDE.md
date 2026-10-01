@@ -3391,7 +3391,8 @@ architecture note.
   `debug.vela.hide` re-applies every 250 ms while set, so a strip test stays a strip.
   The OVERVIEW and the way back from it are cuts too (no flight across zoom levels), each under a
   short land-colored veil that fades off (`cutReveal`, `CUT_VEIL_ALPHA`/`CUT_FADE_MS`); a re-center
-  from close by still glides.
+  from close by still glides. The overview also hides its clutter (`OVERVIEW_HIDE_PREFIXES`, restored in
+  the effect's `finally`); a new layer that should vanish there needs its prefix added.
   Before the puck engages (a parked start off the route, issue #633) the frame loop tilts in on the
   same clock and draws the icon at the raw fix through the overlay; the 3D icons never fall back to
   the flat symbol. Testing a PARKED start on the 4a needs a mock fix: add BOTH `gps` and `network`

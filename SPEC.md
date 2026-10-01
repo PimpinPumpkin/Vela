@@ -1316,6 +1316,13 @@ cut's curve. Every cut lays a veil in the map's land color over the map (below t
 arrive under a fade. 4a, demo drive, fps per second for 5 s after the press, two runs each: to the
 overview 59/42/59/60 and 58/42/59/59 before, 58/58/59/59 and 59/59/60/59 after; back
 48/49/59/57 and 50/60/58/60 before, 59/59/59/59 both runs after.
+While the overview shows, the layers in `OVERVIEW_HIDE_PREFIXES` are hidden (places, ambient and
+OSM POIs, minor and path road names, house numbers, one-way arrows, controls, camera badges,
+transit stops, nav callouts, 3D buildings, the building overlay); major road names, shields, the
+route and the destination stay. Hidden before the cut and restored in the effect's `finally`, so
+any end of the overview (Re-center, a pan, a reroute re-keying the effect) brings them back. On
+the 4a a screen recording of the press shows no frame gap over 28 ms with or without it, so the
+gain is placement work, not a measured stall.
 Before the puck ENGAGES (issue #633: a phone parked in a driveway or a lot is farther than the
 22 m snap tolerance from the route, so it engages only on reaching the road) the frame loop still
 eases the opening tilt in on the start cut's clock, pausing while a pre-engage re-point flight
