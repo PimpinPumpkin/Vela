@@ -184,7 +184,18 @@ what fits the big rows under a 16 GB runner. `JAVA_HEAP = 12g` (above that the r
 JVM), `-XX:+UseParallelGC` so a doomed region fails fast. Measured before the filter: Bavaria needed
 `-Xmx22g` and 3 h 7 min on a 32 GB machine for a 694 MB obf. A dispatch writes to
 `obf-manifest-staging.json` by default (`staging: true`), which the app never reads; copying staging
-over `obf-manifest.json` flips the fleet's whole catalog at once.
+over `obf-manifest.json` flips the fleet's whole catalog at once. The conductor does that copy
+itself, and only after a clean cycle: all three routing jobs finished with every region baked
+(retries included), no live region missing from staging, no revision going backwards, every file
+present on the release, and something actually newer. A cycle that gave up with regions missing
+never flips. The manifest it replaces is kept as `obf-manifest-previous.json`; copying that back
+over the live name is the rollback.
+
+**Every bake downloads its extract through `scripts/fetch-pbf.sh`.** On 2026-09-30 Geofabrik
+answered every `-latest.osm.pbf` with a redirect to the same name plus a slash, a plain download
+followed it in a circle, and 213 of 231 place-pack jobs failed. The script tries the plain download,
+then walks the redirects one hop at a time dropping the stray slash, and if they run in a circle it
+reads the folder listing and takes the newest dated file for the region.
 
 **House numbers** come from OpenAddresses, not OSM: the bake resolves each source's current job id
 through the OpenAddresses batch API (ids rotate per refresh), and a source ending in `/*` folds every

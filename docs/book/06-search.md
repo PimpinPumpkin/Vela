@@ -400,6 +400,28 @@ Photon knows names and addresses, not categories. "Coffee" finds places with cof
 the region packs understand categories, but online they are consulted only when Photon returns
 nothing. Photon speaks English, German and French; other languages get its default names.
 
+### Directions links from other apps
+
+A link that asks for directions opens the route chooser on its destination, not just a pin
+(issue #632). Four shapes are read: `maps?saddr=..&daddr=..` (with several stops the last one is
+the destination), the Maps URLs form `maps/dir/?api=1&destination=..&origin=..&travelmode=..`, the
+path form `maps/dir/A/B/`, and the `google.navigation:` intent. A coordinate becomes a pin with
+its address looked up; a name runs a search and takes the top hit. The link's travel mode applies
+to that one trip and does not change your usual mode. A start is honored only when it is more than
+150 m from where you are; "Current Location" or a blank start means here.
+
+One limit that is not Vela's: the official Telegram app checks for the Google Maps package before
+it opens any location, so on a phone without Google Maps it never asks another maps app.
+
+### What the search page shows of your own places
+
+The search page lists only what you PINNED: saved places and saved routes each carry a pin, off by
+default. Everything you have saved lives in the bookmark button's sheet (lists, saved places, your
+routes), each row with a pin toggle. Places starred before pins existed start unpinned.
+
+A saved place can also carry its own map icon (the place sheet's save menu, "Choose icon"); with
+none it draws its list's icon. The pin is always in the list's color.
+
 ### Search along a route
 
 With a route on screen (the chooser's chips, the place sheet's along-route chips, or the in-nav

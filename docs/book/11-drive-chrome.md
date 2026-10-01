@@ -303,15 +303,55 @@ to be change-gated the same way, or this comes back.
 
 ### The first seconds of a drive
 
-Pressing Start flies the camera from the route overview down to the nav zoom, and every zoom it
-passes through loads fresh tiles. The places layer is the heavy one: it draws only fuel icons in
-a drive, but while it is visible each tile of every mounted places archive is loaded and filtered
-on the way down. So for the first 7 seconds of a drive (`NAV_PLACES_HOLD_MS`) the places icons
-stay hidden, and they appear once the camera has settled, when only the tiles on screen load.
+Pressing Start CUTS to the car: the camera jumps to the nav zoom, flat, and tilts in to 55
+degrees over about three seconds (`NAV_START_TILT_TAU_S`). It used to fly down from the route
+overview, and every zoom the flight crossed loaded and placed its own set of tiles: 6 to 10 fps
+for three seconds on a Pixel 4a, with no single layer to blame (hiding any one group still left
+the stall; hiding everything removed it). Google Maps does the same cut on the same phone. A cut
+straight into the full tilt was tried and ran at 20 to 30 fps while the horizon's tiles arrived
+together, which is why the tilt is slow. One-tap start on the 4a, fps per second: 39/10/11/7
+before, 46/36/57/48 after.
+
+The places layer is still held back: it draws only fuel icons in a drive, but while it is visible
+each tile of every mounted places archive is loaded and filtered. So for the first 7 seconds of a
+drive (`NAV_PLACES_HOLD_MS`) the places icons stay hidden, and they appear once the camera has
+settled, when only the tiles on screen load.
 Measured on a Pixel 4a with the UFO puck (2026-09-29), fps in seconds 4 to 6 after Start went
 from about 9, 8, 9 to about 8, 27, 26; the one low second left is the basemap's own tile work.
 One-way arrows are part of the drive declutter too: a symbol every few dozen meters on every
 one-way street, with nothing to add under a route line.
+
+### A parked start
+
+A phone in a driveway or a parking lot is farther from the route than the arrow's 22 m snap
+tolerance, so the arrow only attaches to the route once the car reaches the road. Until then the
+map still tilts in on the start cut's clock, and the icon you chose (the 3D ones included) is drawn
+at the raw fix. Before 2026-09-30 a parked start stayed flat and showed the plain flat arrow until
+the car moved (issue #633).
+
+### The overview and the way back
+
+The Overview button is a toggle. Pressing it cuts to a fit of the whole remaining route; pressing
+it again, or Re-center, cuts back to the car and tilts in like a start. Neither is a flight, for
+the same reason the start is not. Each cut puts a veil in the map's land color over the map (under
+the arrow) at 85% and fades it off in 320 ms (`CUT_VEIL_ALPHA`, `CUT_FADE_MS`), so the new view's
+tiles arrive under a fade and not as a pop. A re-center from close by (within 1.5 zoom levels,
+`CUT_BACK_ZOOM_GAP`) still glides.
+
+While the overview shows, the map drops what does not help you read a whole route: places, small
+street and path names, house numbers, one-way arrows, lights and stop signs, camera badges, transit
+stops, the street callouts and 3D buildings (`OVERVIEW_HIDE_PREFIXES`). Major road names, shields,
+the route and the destination stay. Everything returns on any way out of the overview. A new map
+layer that should vanish there needs its id prefix added to that list.
+
+### Buildings during a drive
+
+Where OpenStreetMap has no buildings, the map fills in Microsoft's footprints, and a check decides
+per view whether they are needed (chapter 1 covers the check). That check used to run only when
+the map came to rest, which never happens while the camera follows a car, so a drive that began
+from the route overview drew no footprints to its end. During a drive it now runs on a timer:
+2.5 s after the start, then every 4 s, and it only does real work when the car has entered a new
+cell of about 550 m.
 
 ### Stops during the drive
 

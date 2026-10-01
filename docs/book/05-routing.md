@@ -384,6 +384,37 @@ that from the new line gets no cue on it). The camera detour's silent side-stree
 editing stops does not throw the detour away. The tap-a-place-to-add-it card, and how it prices
 the detour before you commit, belongs to the drive's chrome.
 
+### Saved routes
+
+Pick a route in the chooser and use the ⋮ menu's "Save this route". What is stored is the route's
+own line, its two ends, the travel mode and a name. The next time you ask for a trip with no
+stops, in the same mode, starting within 1 km of the saved start and ending within 250 m of the
+saved end, the saved route is offered:
+
+- If a route already on offer goes the same way (every 25 m sample within 60 m, checked in both
+  directions), that route simply takes the saved name.
+- Otherwise the router is asked for the trip through points placed on the saved line, one in the
+  middle of each stretch where it leaves the fastest route (stretches under 150 m ignored, one
+  more point per 2.5 km, at most 8). The drive keeps those points as silent stops, so a reroute
+  puts you back on your route and not on the router's favorite.
+
+A matching saved route leads the list, already selected, with a colored "Your route" chip. With
+several matches the most recently saved one is on top. It gets a live traffic time like the others.
+
+A trip with stops can be saved two ways, chosen by "Stop at these places" in the save dialog. On,
+it is a RUN: the stops are real stops (a delivery round), it is never offered as an alternate, and
+you start it from "Your routes" with every stop loaded. Off, the stops only shaped the way and the
+result behaves like any saved route. A trip takes at most 10 stops.
+
+To edit one, open it from your saved routes, change the stops or pick another way, and the ⋮ menu
+offers "Save changes to <name>". Rename, pin and delete are in the bookmark button's sheet and in
+Settings > Saved places.
+
+**Save the way you drove.** During a drive the app keeps one fix per 15 m in memory. On arrival,
+if the drive was at least 500 m and left the route planned at the start for a real stretch (the
+same test that places the points above), the arrival card offers to save the way you went. Nothing
+is kept if you decline, and a demo drive never offers it.
+
 ### Avoid tolls, highways and ferries
 
 The three chips are a driving option and ride every fetch, including the reroutes, rechecks,
