@@ -1163,4 +1163,9 @@
     <string name="settings_clock_system">Come il telefono</string>
     <string name="settings_clock_12">12 ore (4:35 PM)</string>
     <string name="settings_clock_24">24 ore (16:35)</string>
+    <string name="settings_link_action">Link da altre app</string>
+    <string name="settings_link_action_place">Mostra il luogo</string>
+    <string name="settings_link_action_directions">Apri indicazioni</string>
+    <string name="settings_link_action_start">Avvia la navigazione</string>
+    <string name="settings_link_action_hint">Cosa succede quando un\'altra app passa una posizione a Vela. Avvia la navigazione è adatto alle app di consegna che inviano una fermata dopo l\'altra.</string>
 </resources>

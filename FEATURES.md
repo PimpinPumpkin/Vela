@@ -2752,6 +2752,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   emoji. Stored in the existing icon field as "emoji:X", so old payloads and old builds
   fall back to the bookmark; the emoji renders in list rows and as the saved-place map pin.
 - ✅ **Tapping a place keeps your zoom (issue #636).** Opening a place pans it above the sheet but no longer zooms the map out to the search level, so you can tap through places at street zoom; from farther out than that it still zooms in.
+- ✅ **Links from other apps can open directions or start the drive (discussion #640).** Settings > Navigation > Links from other apps: show the place, open directions, or start navigation. For delivery apps that send one stop after another.
 - ✅ **Alternate routes stand out (discussion #639).** Alternates draw in a faded blue with a darker outline instead of gray, so they no longer disappear into a dense street grid.
 - ✅ **12-hour or 24-hour clock (discussion #637).** Settings > Appearance > Clock follows the phone or forces either; transit directions and stop boards from Google follow it too.
 - ✅ **Typed addresses found up close (issue #638).** A street address typed while zoomed in on a busy area is looked up even when the nearby businesses' ZIP codes or numbers happen to contain its digits.

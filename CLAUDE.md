@@ -1637,6 +1637,12 @@ Defaults that make the safe path the easy one:
   Without them a sampled point that landed on a flyover deck, the far carriageway or a dead-end lane
   gave out-and-back spurs and loops (a Dhaka walk named to 10.8 km against Google's 4.5 km); a
   refused snap falls back to Google's own line with its abbreviated steps.
+- **What a location link does is a setting (discussion #640, 2026-10-01):** `ui/LinkAction`, pref
+  `link_action`, Settings > Navigation > "Links from other apps": `place` (default, a geo: or share
+  link shows the place), `directions` (it opens the route chooser, through `openDirectionsLink`),
+  `start` (location AND directions links set `autoStartOnRoute`, so the drive starts through
+  MapScreen's `onStartNav` and its permission gates). Built for delivery apps that hand over one
+  stop after another. Device-checked on the 4a: a plain `geo:` link started a demo drive.
 - **Directions links (issue #632, 2026-09-30):** `MapLinkParser` reads `daddr`, `maps/dir` (api=1 and
   path forms) and `google.navigation:` into `MapLink(directions = true, origin, mode)`, and
   `openDeepLink` opens the chooser on them (SPEC 5.6). Official Telegram checks for the Google Maps

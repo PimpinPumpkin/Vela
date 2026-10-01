@@ -2463,7 +2463,17 @@ class MapViewModel @Inject constructor(
 
     fun openDeepLink(link: MapLink) {
         linkMode = null; linkOrigin = null
-        if (link.directions) { openDirectionsLink(link); return }
+        // The user's choice for links (LinkAction): a plain location link can open directions,
+        // and either kind can start the drive once its route lands (the one-tap Start path, so
+        // the precise-location and notification gates still apply).
+        val action = app.vela.ui.LinkAction.mode.value
+        val hasTarget = (link.lat != null && link.lng != null) || !link.query.isNullOrBlank()
+        if (link.directions || (action != app.vela.ui.LinkAction.PLACE && hasTarget)) {
+            if (action == app.vela.ui.LinkAction.START) autoStartOnRoute = true
+            diag.record("search", "link: ${if (link.directions) "directions" else "location"}, action $action")
+            openDirectionsLink(link)
+            return
+        }
         val near = link.lat?.let { la -> link.lng?.let { ln -> LatLng(la, ln) } }
         val q = link.query
         when {

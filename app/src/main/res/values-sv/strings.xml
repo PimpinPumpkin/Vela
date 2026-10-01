@@ -1163,4 +1163,9 @@
     <string name="settings_clock_system">Samma som telefonen</string>
     <string name="settings_clock_12">12-timmars (4:35 PM)</string>
     <string name="settings_clock_24">24-timmars (16:35)</string>
+    <string name="settings_link_action">Länkar från andra appar</string>
+    <string name="settings_link_action_place">Visa platsen</string>
+    <string name="settings_link_action_directions">Öppna vägbeskrivning</string>
+    <string name="settings_link_action_start">Starta navigering</string>
+    <string name="settings_link_action_hint">Vad som händer när en annan app skickar en plats till Vela. Starta navigering passar leveransappar som skickar ett stopp i taget.</string>
 </resources>

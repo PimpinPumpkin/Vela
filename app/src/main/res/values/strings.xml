@@ -218,6 +218,11 @@
     <string name="settings_routing_updating">Updating… %1$d%%</string> <!-- format -->
     <string name="settings_routing_installed">Installed · routes offline here</string>
     <string name="settings_routing_installed_places">Installed · places searchable offline</string>
+    <string name="settings_link_action">Links from other apps</string>
+    <string name="settings_link_action_place">Show the place</string>
+    <string name="settings_link_action_directions">Open directions</string>
+    <string name="settings_link_action_start">Start navigation</string>
+    <string name="settings_link_action_hint">What happens when another app hands Vela a location. Start navigation suits delivery apps that send one stop after another.</string>
     <string name="settings_confirm_end_nav">Ask before ending navigation</string>
     <string name="settings_confirm_end_nav_hint">The red X and Back during a drive ask first, so a stray tap does not end it</string>
     <string name="nav_end_confirm_title">End navigation?</string>

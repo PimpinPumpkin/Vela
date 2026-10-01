@@ -1165,4 +1165,9 @@
     <string name="settings_clock_system">A telefon beállítása szerint</string>
     <string name="settings_clock_12">12 órás (4:35 PM)</string>
     <string name="settings_clock_24">24 órás (16:35)</string>
+    <string name="settings_link_action">Más appokból érkező linkek</string>
+    <string name="settings_link_action_place">Hely megjelenítése</string>
+    <string name="settings_link_action_directions">Útvonal megnyitása</string>
+    <string name="settings_link_action_start">Navigáció indítása</string>
+    <string name="settings_link_action_hint">Mi történjen, ha egy másik app helyet ad át a Velának. A Navigáció indítása a futárappokhoz illik, amelyek egymás után küldik a megállókat.</string>
 </resources>

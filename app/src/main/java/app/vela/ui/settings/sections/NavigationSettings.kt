@@ -347,6 +347,23 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(8.dp))
+        // What a location link from another app does (discussion #640).
+        SettingsGroup(title = stringResource(R.string.settings_link_action)) {
+            listOf(
+                app.vela.ui.LinkAction.PLACE to R.string.settings_link_action_place,
+                app.vela.ui.LinkAction.DIRECTIONS to R.string.settings_link_action_directions,
+                app.vela.ui.LinkAction.START to R.string.settings_link_action_start,
+            ).forEachIndexed { i, (key, label) ->
+                if (i > 0) GroupDivider()
+                SelectableRow(
+                    label = stringResource(label),
+                    selected = app.vela.ui.LinkAction.mode.value == key,
+                    onClick = { app.vela.ui.LinkAction.set(context, key) },
+                )
+            }
+        }
+        Hint(stringResource(R.string.settings_link_action_hint))
+        Spacer(Modifier.height(8.dp))
         CameraSettingsGroup()
         Spacer(Modifier.height(8.dp))
         LiveRechecksGroup(vm)

@@ -1181,4 +1181,9 @@
     <string name="settings_clock_system">Как на телефоне</string>
     <string name="settings_clock_12">12-часовой (4:35 PM)</string>
     <string name="settings_clock_24">24-часовой (16:35)</string>
+    <string name="settings_link_action">Ссылки из других приложений</string>
+    <string name="settings_link_action_place">Показать место</string>
+    <string name="settings_link_action_directions">Открыть маршрут</string>
+    <string name="settings_link_action_start">Начать навигацию</string>
+    <string name="settings_link_action_hint">Что происходит, когда другое приложение передаёт Vela местоположение. «Начать навигацию» подходит для приложений доставки, которые присылают одну остановку за другой.</string>
 </resources>

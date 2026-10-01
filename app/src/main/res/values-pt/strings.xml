@@ -1165,4 +1165,9 @@
     <string name="settings_clock_system">Igual ao telemóvel</string>
     <string name="settings_clock_12">12 horas (4:35 PM)</string>
     <string name="settings_clock_24">24 horas (16:35)</string>
+    <string name="settings_link_action">Ligações de outras apps</string>
+    <string name="settings_link_action_place">Mostrar o local</string>
+    <string name="settings_link_action_directions">Abrir direções</string>
+    <string name="settings_link_action_start">Iniciar a navegação</string>
+    <string name="settings_link_action_hint">O que acontece quando outra app passa uma localização à Vela. Iniciar a navegação é indicado para apps de entregas que enviam uma paragem atrás da outra.</string>
 </resources>

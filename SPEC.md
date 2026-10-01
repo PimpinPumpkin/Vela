@@ -1984,6 +1984,9 @@ host that cannot answer.
 - Typed coordinates drop a pin: `MapLinkParser.parseBareCoordinate` matches the whole string,
   requires a decimal point in both halves and range-checks, so an address with numbers still
   searches.
+- A LOCATION link's action is a setting (`LinkAction`, `link_action`): show the place (default),
+  open the route chooser, or start navigation; the last also applies to directions links and goes
+  through the one-tap start path, so the precise-location and notification gates still hold.
 - Directions links from other apps open the route chooser on the destination (issue #632):
   `maps?saddr=&daddr=[&dirflg=]` (the last `to:` stop wins), `maps/dir/?api=1&destination=&origin=
   &travelmode=`, the path form `maps/dir/A/B/@...` (an empty A is "from here") and the

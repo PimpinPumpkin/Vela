@@ -1179,4 +1179,9 @@
     <string name="settings_clock_system">与手机一致</string>
     <string name="settings_clock_12">12 小时制 (4:35 PM)</string>
     <string name="settings_clock_24">24 小时制 (16:35)</string>
+    <string name="settings_link_action">来自其他应用的链接</string>
+    <string name="settings_link_action_place">显示地点</string>
+    <string name="settings_link_action_directions">打开路线</string>
+    <string name="settings_link_action_start">开始导航</string>
+    <string name="settings_link_action_hint">其他应用向 Vela 传入位置时的处理方式。“开始导航”适合接连发送多个站点的配送应用。</string>
 </resources>

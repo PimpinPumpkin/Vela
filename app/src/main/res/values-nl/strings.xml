@@ -1163,4 +1163,9 @@
     <string name="settings_clock_system">Zelfde als de telefoon</string>
     <string name="settings_clock_12">12-uurs (4:35 PM)</string>
     <string name="settings_clock_24">24-uurs (16:35)</string>
+    <string name="settings_link_action">Links uit andere apps</string>
+    <string name="settings_link_action_place">Plaats tonen</string>
+    <string name="settings_link_action_directions">Route openen</string>
+    <string name="settings_link_action_start">Navigatie starten</string>
+    <string name="settings_link_action_hint">Wat er gebeurt als een andere app een locatie aan Vela doorgeeft. Navigatie starten past bij bezorgapps die de ene stop na de andere sturen.</string>
 </resources>

@@ -1170,4 +1170,9 @@
     <string name="settings_clock_system">כמו בטלפון</string>
     <string name="settings_clock_12">12 שעות (4:35 PM)</string>
     <string name="settings_clock_24">24 שעות (16:35)</string>
+    <string name="settings_link_action">קישורים מאפליקציות אחרות</string>
+    <string name="settings_link_action_place">הצג את המקום</string>
+    <string name="settings_link_action_directions">פתח מסלול</string>
+    <string name="settings_link_action_start">התחל ניווט</string>
+    <string name="settings_link_action_hint">מה קורה כשאפליקציה אחרת מעבירה מיקום אל Vela. \"התחל ניווט\" מתאים לאפליקציות משלוחים ששולחות עצירה אחרי עצירה.</string>
 </resources>

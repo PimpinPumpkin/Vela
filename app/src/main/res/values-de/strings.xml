@@ -1163,4 +1163,9 @@
     <string name="settings_clock_system">Wie auf dem Telefon</string>
     <string name="settings_clock_12">12-Stunden-Format (4:35 PM)</string>
     <string name="settings_clock_24">24-Stunden-Format (16:35)</string>
+    <string name="settings_link_action">Links aus anderen Apps</string>
+    <string name="settings_link_action_place">Ort anzeigen</string>
+    <string name="settings_link_action_directions">Route öffnen</string>
+    <string name="settings_link_action_start">Navigation starten</string>
+    <string name="settings_link_action_hint">Was passiert, wenn eine andere App einen Ort an Vela übergibt. „Navigation starten“ eignet sich für Liefer-Apps, die einen Stopp nach dem anderen senden.</string>
 </resources>

@@ -1182,4 +1182,9 @@
     <string name="settings_clock_system">Tak jak w telefonie</string>
     <string name="settings_clock_12">12-godzinny (4:35 PM)</string>
     <string name="settings_clock_24">24-godzinny (16:35)</string>
+    <string name="settings_link_action">Linki z innych aplikacji</string>
+    <string name="settings_link_action_place">Pokaż miejsce</string>
+    <string name="settings_link_action_directions">Otwórz trasę</string>
+    <string name="settings_link_action_start">Rozpocznij nawigację</string>
+    <string name="settings_link_action_hint">Co się dzieje, gdy inna aplikacja przekazuje Veli lokalizację. Rozpocznij nawigację sprawdza się w aplikacjach dostawczych, które wysyłają jeden przystanek po drugim.</string>
 </resources>

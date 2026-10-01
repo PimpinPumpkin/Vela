@@ -1181,4 +1181,9 @@
     <string name="settings_clock_system">端末の設定に合わせる</string>
     <string name="settings_clock_12">12時間制 (4:35 PM)</string>
     <string name="settings_clock_24">24時間制 (16:35)</string>
+    <string name="settings_link_action">他のアプリからのリンク</string>
+    <string name="settings_link_action_place">場所を表示</string>
+    <string name="settings_link_action_directions">経路を開く</string>
+    <string name="settings_link_action_start">ナビを開始</string>
+    <string name="settings_link_action_hint">他のアプリから Vela に場所が渡されたときの動作です。「ナビを開始」は、配達先を次々に送ってくる配達アプリに向いています。</string>
 </resources>

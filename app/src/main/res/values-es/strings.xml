@@ -1163,4 +1163,9 @@
     <string name="settings_clock_system">Igual que el teléfono</string>
     <string name="settings_clock_12">12 horas (4:35 PM)</string>
     <string name="settings_clock_24">24 horas (16:35)</string>
+    <string name="settings_link_action">Enlaces de otras apps</string>
+    <string name="settings_link_action_place">Mostrar el lugar</string>
+    <string name="settings_link_action_directions">Abrir indicaciones</string>
+    <string name="settings_link_action_start">Iniciar la navegación</string>
+    <string name="settings_link_action_hint">Qué ocurre cuando otra app le pasa una ubicación a Vela. Iniciar la navegación va bien con las apps de reparto que envían una parada tras otra.</string>
 </resources>

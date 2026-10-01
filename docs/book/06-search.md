@@ -428,6 +428,12 @@ its address looked up; a name runs a search and takes the top hit. The link's tr
 to that one trip and does not change your usual mode. A start is honored only when it is more than
 150 m from where you are; "Current Location" or a blank start means here.
 
+A plain LOCATION link (a `geo:` link, a shared place) shows the place by default. Settings >
+Navigation > "Links from other apps" changes that: "Open directions" sends location links to the
+route chooser as well, and "Start navigation" starts the drive for both kinds as soon as a route
+exists. It still stops for the same things the Start button does (precise location, the
+notification permission). It is there for delivery apps that hand Vela one stop after another.
+
 One limit that is not Vela's: the official Telegram app checks for the Google Maps package before
 it opens any location, so on a phone without Google Maps it never asks another maps app.
 
