@@ -58,7 +58,7 @@
     <string name="settings_read_all_reviews">Кнопка «Все отзывы»</string>
     <string name="settings_read_all_reviews_hint">Добавляет кнопку, открывающую полную страницу отзывов Google в приложении, со всеми отзывами. Выкл. = только собственный список Vela.</string>
     <string name="settings_buildings_3d">3D-здания</string>
-    <string name="settings_buildings_3d_hint">Объёмные здания при сильном приближении. Отключение может сделать прокрутку плавнее на старых телефонах.</string>
+    <string name="settings_buildings_3d_hint">Объёмные здания при сильном приближении, когда карта наклонена. Отключение может сделать прокрутку плавнее на старых телефонах.</string>
     <string name="settings_show_reviews">Показывать отзывы</string>
     <string name="settings_show_reviews_hint">Выкл. = страницы мест не показывают отзывы, и Vela их никогда не загружает.</string>
     <string name="settings_load_photos">Загружать фото</string>

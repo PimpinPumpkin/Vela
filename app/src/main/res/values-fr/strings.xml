@@ -58,7 +58,7 @@
     <string name="settings_read_all_reviews">Bouton « Lire tous les avis »</string>
     <string name="settings_read_all_reviews_hint">Ajoute un bouton qui ouvre la page complète des avis Google dans l\'appli, avec tous les avis. Désactivé = seulement la liste de Vela.</string>
     <string name="settings_buildings_3d">Bâtiments en 3D</string>
-    <string name="settings_buildings_3d_hint">Bâtiments en relief au zoom rapproché. Le désactiver peut fluidifier le défilement sur les vieux téléphones.</string>
+    <string name="settings_buildings_3d_hint">Bâtiments en relief au zoom rapproché quand la carte est inclinée. Le désactiver peut fluidifier le défilement sur les vieux téléphones.</string>
     <string name="settings_show_reviews">Afficher les avis</string>
     <string name="settings_show_reviews_hint">Désactivé = les fiches de lieux n\'affichent aucun avis et Vela ne les récupère jamais.</string>
     <string name="settings_load_photos">Charger les photos</string>

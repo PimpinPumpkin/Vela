@@ -58,7 +58,7 @@
     <string name="settings_read_all_reviews">Knappen ”Läs alla recensioner”</string>
     <string name="settings_read_all_reviews_hint">Lägger till en knapp som öppnar Googles fullständiga recensionssida i appen, med alla recensioner. Av = endast Velas egen lista.</string>
     <string name="settings_buildings_3d">3D-byggnader</string>
-    <string name="settings_buildings_3d_hint">Upphöjda byggnader vid nära zoom. Att stänga av kan göra panorering mjukare på äldre telefoner.</string>
+    <string name="settings_buildings_3d_hint">Upphöjda byggnader vid nära zoom när kartan är lutad. Att stänga av kan göra panorering mjukare på äldre telefoner.</string>
     <string name="settings_show_reviews">Visa recensioner</string>
     <string name="settings_show_reviews_hint">Av = platssidor visar inga recensioner och Vela hämtar dem aldrig.</string>
     <string name="settings_load_photos">Ladda foton</string>

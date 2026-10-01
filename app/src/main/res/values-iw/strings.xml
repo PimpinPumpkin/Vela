@@ -58,7 +58,7 @@
     <string name="settings_read_all_reviews">כפתור \"קרא את כל הביקורות\"</string>
     <string name="settings_read_all_reviews_hint">מוסיף כפתור \"קרא את כל הביקורות\" שפותח את עמוד הביקורות המלא של Google בתוך האפליקציה, עם כל ביקורת. כבוי = רשימת הביקורות של Vela בלבד.</string>
     <string name="settings_buildings_3d">בניינים תלת-ממדיים</string>
-    <string name="settings_buildings_3d_hint">בניינים מוגבהים בהתקרבות. כיבוי יכול להחליק את הגלילה בטלפונים ישנים.</string>
+    <string name="settings_buildings_3d_hint">בניינים מוגבהים בהתקרבות כשהמפה מוטה. כיבוי יכול להחליק את הגלילה בטלפונים ישנים.</string>
     <string name="settings_show_reviews">הצג ביקורות</string>
     <string name="settings_show_reviews_hint">כבוי = עמודי המקומות לא מציגים ביקורות, ו-Vela לעולם לא מביא אותן.</string>
     <string name="settings_load_photos">טען תמונות</string>

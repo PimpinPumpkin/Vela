@@ -81,7 +81,7 @@
     <string name="settings_read_all_reviews">「閱讀所有評論」按鈕</string>
     <string name="settings_read_all_reviews_hint">新增「閱讀所有評論」按鈕，在應用程式內開啟 Google 的完整評論頁面，包含每一篇評論。關閉時只顯示 Vela 自己的評論清單。</string>
     <string name="settings_buildings_3d">3D 建築物</string>
-    <string name="settings_buildings_3d_hint">拉近時顯示立體建築物。關閉後，舊手機平移地圖時會更順暢。</string>
+    <string name="settings_buildings_3d_hint">地圖傾斜並拉近時顯示立體建築物。關閉後，舊手機平移地圖時會更順暢。</string>
     <string name="settings_show_reviews">顯示評論</string>
     <string name="settings_show_reviews_hint">關閉時，地點頁面不顯示評論，Vela 也完全不會抓取評論。</string>
     <string name="settings_load_photos">載入相片</string>

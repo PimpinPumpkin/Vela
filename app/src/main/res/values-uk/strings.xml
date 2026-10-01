@@ -58,7 +58,7 @@
     <string name="settings_read_all_reviews">Кнопка «Читати всі відгуки»</string>
     <string name="settings_read_all_reviews_hint">Додає кнопку, що відкриває повну сторінку відгуків Google у застосунку, з усіма відгуками. Вимк. = лише власний список Vela.</string>
     <string name="settings_buildings_3d">3D-будівлі</string>
-    <string name="settings_buildings_3d_hint">Об\'ємні будівлі при сильному наближенні. Вимкнення може зробити прокручування плавнішим на старих телефонах.</string>
+    <string name="settings_buildings_3d_hint">Об\'ємні будівлі при сильному наближенні, коли карту нахилено. Вимкнення може зробити прокручування плавнішим на старих телефонах.</string>
     <string name="settings_show_reviews">Показувати відгуки</string>
     <string name="settings_show_reviews_hint">Вимк. = сторінки місць не показують відгуки, і Vela ніколи їх не завантажує.</string>
     <string name="settings_load_photos">Завантажувати фото</string>

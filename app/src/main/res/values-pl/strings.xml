@@ -58,7 +58,7 @@
     <string name="settings_read_all_reviews">Przycisk „Czytaj wszystkie opinie”</string>
     <string name="settings_read_all_reviews_hint">Dodaje przycisk otwierający pełną stronę opinii Google w aplikacji, ze wszystkimi opiniami. Wył. = tylko lista Veli.</string>
     <string name="settings_buildings_3d">Budynki 3D</string>
-    <string name="settings_buildings_3d_hint">Wypukłe budynki przy dużym zbliżeniu. Wyłączenie może wygładzić przesuwanie na starszych telefonach.</string>
+    <string name="settings_buildings_3d_hint">Wypukłe budynki przy dużym zbliżeniu, gdy mapa jest pochylona. Wyłączenie może wygładzić przesuwanie na starszych telefonach.</string>
     <string name="settings_show_reviews">Pokazuj recenzje</string>
     <string name="settings_show_reviews_hint">Wył. = strony miejsc nie pokazują recenzji i Vela nigdy ich nie pobiera.</string>
     <string name="settings_load_photos">Wczytuj zdjęcia</string>

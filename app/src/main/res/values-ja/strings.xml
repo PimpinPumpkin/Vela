@@ -81,7 +81,7 @@
     <string name="settings_read_all_reviews">「クチコミをすべて読む」ボタン</string>
     <string name="settings_read_all_reviews_hint">アプリ内で Google のクチコミページ全体を開く「クチコミをすべて読む」ボタンを追加します。すべてのクチコミを確認できます。オフの場合は Vela 独自のクチコミ一覧のみ表示します。</string>
     <string name="settings_buildings_3d">3D 建物</string>
-    <string name="settings_buildings_3d_hint">ズームイン時に建物を立体表示します。オフにすると、古い端末では地図の動きが滑らかになることがあります。</string>
+    <string name="settings_buildings_3d_hint">地図を傾けてズームインすると、建物を立体表示します。オフにすると、古い端末では地図の動きが滑らかになることがあります。</string>
     <string name="settings_show_reviews">クチコミを表示</string>
     <string name="settings_show_reviews_hint">オフにすると、場所のページにクチコミが表示されず、Vela がクチコミを取得することもありません。</string>
     <string name="settings_load_photos">写真を読み込む</string>

@@ -58,7 +58,7 @@
     <string name="settings_read_all_reviews">Pulsante “Leggi tutte le recensioni”</string>
     <string name="settings_read_all_reviews_hint">Aggiunge un pulsante che apre la pagina completa delle recensioni di Google nell\'app, con tutte le recensioni. Off = solo l\'elenco di Vela.</string>
     <string name="settings_buildings_3d">Edifici 3D</string>
-    <string name="settings_buildings_3d_hint">Edifici in rilievo a zoom ravvicinato. Disattivarlo può rendere più fluido lo scorrimento sui telefoni datati.</string>
+    <string name="settings_buildings_3d_hint">Edifici in rilievo a zoom ravvicinato quando la mappa è inclinata. Disattivarlo può rendere più fluido lo scorrimento sui telefoni datati.</string>
     <string name="settings_show_reviews">Mostra recensioni</string>
     <string name="settings_show_reviews_hint">Disattivato = le pagine dei luoghi non mostrano recensioni e Vela non le scarica mai.</string>
     <string name="settings_load_photos">Carica foto</string>

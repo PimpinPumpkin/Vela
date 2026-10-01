@@ -81,7 +81,7 @@
     <string name="settings_read_all_reviews">“阅读全部评价”按钮</string>
     <string name="settings_read_all_reviews_hint">添加“阅读全部评价”按钮，在应用内打开 Google 的完整评价页面，包含全部评价。关闭后仅显示 Vela 自己的评价列表。</string>
     <string name="settings_buildings_3d">3D 建筑</string>
-    <string name="settings_buildings_3d_hint">近距离缩放时显示立体建筑。关闭后，旧手机上平移地图会更流畅。</string>
+    <string name="settings_buildings_3d_hint">地图倾斜并近距离缩放时显示立体建筑。关闭后，旧手机上平移地图会更流畅。</string>
     <string name="settings_show_reviews">显示评价</string>
     <string name="settings_show_reviews_hint">关闭后，地点页面不显示评价，Vela 也不会去获取。</string>
     <string name="settings_load_photos">加载照片</string>

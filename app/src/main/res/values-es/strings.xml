@@ -58,7 +58,7 @@
     <string name="settings_read_all_reviews">Botón «Leer todas las reseñas»</string>
     <string name="settings_read_all_reviews_hint">Añade un botón que abre la página completa de reseñas de Google dentro de la app, con todas las reseñas. Desactivado = solo la lista propia de Vela.</string>
     <string name="settings_buildings_3d">Edificios en 3D</string>
-    <string name="settings_buildings_3d_hint">Edificios en relieve al acercar. Desactivarlo puede suavizar el desplazamiento en móviles antiguos.</string>
+    <string name="settings_buildings_3d_hint">Edificios en relieve al acercar con el mapa inclinado. Desactivarlo puede suavizar el desplazamiento en móviles antiguos.</string>
     <string name="settings_show_reviews">Mostrar reseñas</string>
     <string name="settings_show_reviews_hint">Desactivado = las páginas de sitios no muestran reseñas y Vela nunca las descarga.</string>
     <string name="settings_load_photos">Cargar fotos</string>

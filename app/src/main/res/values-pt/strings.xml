@@ -58,7 +58,7 @@
     <string name="settings_read_all_reviews">Botão “Ler todas as avaliações”</string>
     <string name="settings_read_all_reviews_hint">Adiciona um botão que abre a página completa de avaliações do Google na app, com todas as avaliações. Desligado = apenas a lista da Vela.</string>
     <string name="settings_buildings_3d">Edifícios em 3D</string>
-    <string name="settings_buildings_3d_hint">Edifícios em relevo com zoom próximo. Desligar pode tornar o arrastar mais suave em telemóveis antigos.</string>
+    <string name="settings_buildings_3d_hint">Edifícios em relevo com zoom próximo quando o mapa está inclinado. Desligar pode tornar o arrastar mais suave em telemóveis antigos.</string>
     <string name="settings_show_reviews">Mostrar avaliações</string>
     <string name="settings_show_reviews_hint">Desligado = as páginas de locais não mostram avaliações e o Vela nunca as transfere.</string>
     <string name="settings_load_photos">Carregar fotos</string>

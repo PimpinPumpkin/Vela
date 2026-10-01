@@ -58,7 +58,7 @@
     <string name="settings_read_all_reviews">Schaltfläche „Alle Rezensionen lesen“</string>
     <string name="settings_read_all_reviews_hint">Fügt einen Button hinzu, der Googles vollständige Bewertungsseite in der App öffnet, mit allen Bewertungen. Aus = nur Velas eigene Liste.</string>
     <string name="settings_buildings_3d">3D-Gebäude</string>
-    <string name="settings_buildings_3d_hint">Erhöhte Gebäude bei starkem Zoom. Ausschalten kann das Schwenken auf älteren Geräten flüssiger machen.</string>
+    <string name="settings_buildings_3d_hint">Erhöhte Gebäude bei starkem Zoom, wenn die Karte geneigt ist. Ausschalten kann das Schwenken auf älteren Geräten flüssiger machen.</string>
     <string name="settings_show_reviews">Bewertungen anzeigen</string>
     <string name="settings_show_reviews_hint">Aus = Orte zeigen keine Bewertungen, und Vela ruft sie auch nie ab.</string>
     <string name="settings_load_photos">Fotos laden</string>

@@ -58,7 +58,7 @@
     <string name="settings_read_all_reviews">Knop “Alle recensies lezen”</string>
     <string name="settings_read_all_reviews_hint">Voegt een knop toe die Googles volledige reviewpagina in de app opent, met alle reviews. Uit = alleen Vela\'s eigen lijst.</string>
     <string name="settings_buildings_3d">3D-gebouwen</string>
-    <string name="settings_buildings_3d_hint">Verhoogde gebouwen bij dichtbij zoomen. Uitzetten kan het pannen soepeler maken op oudere telefoons.</string>
+    <string name="settings_buildings_3d_hint">Verhoogde gebouwen bij dichtbij zoomen als de kaart gekanteld is. Uitzetten kan het pannen soepeler maken op oudere telefoons.</string>
     <string name="settings_show_reviews">Reviews tonen</string>
     <string name="settings_show_reviews_hint">Uit = plaatspagina\'s tonen geen reviews en Vela haalt ze ook nooit op.</string>
     <string name="settings_load_photos">Foto\'s laden</string>

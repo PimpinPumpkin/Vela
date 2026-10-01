@@ -91,7 +91,7 @@
     <string name="settings_read_all_reviews">„Összes vélemény elolvasása” gomb</string>
     <string name="settings_read_all_reviews_hint">Hozzáad egy „Összes vélemény elolvasása” gombot, ami megnyitja a Google teljes véleményoldalát az appon belül, minden véleménnyel. Ki = csak a Vela saját véleménylistája.</string>
     <string name="settings_buildings_3d">3D épületek</string>
-    <string name="settings_buildings_3d_hint">Kiemelt épületek közeli nagyításnál. Kikapcsolása simábbá teheti a mozgatást régebbi telefonokon.</string>
+    <string name="settings_buildings_3d_hint">Kiemelt épületek közeli nagyításnál, ha a térkép meg van döntve. Kikapcsolása simábbá teheti a mozgatást régebbi telefonokon.</string>
     <string name="settings_building_overlay">Hiányzó épületek kitöltése</string>
     <string name="settings_building_overlay_hint">Épületformákat rajzol azokon a külvárosi területeken, ahol a térképről hiányoznak. Sűrűn lakott területeken, ahol már megvannak, automatikusan kihagyja. Kikapcsolva nem rajzol extra épületet.</string>
     <string name="settings_building_debug">Épület-kitöltés hibakeresés</string>
