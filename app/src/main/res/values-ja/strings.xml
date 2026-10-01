@@ -1109,4 +1109,66 @@
     <string name="settings_maps_links_partial">一部の Google マップのリンクは Vela で開きます。すべてのリンクを Vela で開くには、「デフォルトで開く」で残りを追加してください。</string>
     <string name="settings_maps_links_off">Android は Google マップのリンクをブラウザで開きます。Vela で開くには、「サポートされているリンクを開く」をオンにして、「デフォルトで開く」でリンクを追加してください。</string>
     <string name="settings_maps_links_open">「デフォルトで開く」の設定</string>
+    <string name="mapvm_cells_progress">%1$s: パーツ %2$d/%3$d</string>
+    <string name="mapvm_cells_ready">%1$s のこの部分で経路と場所をオフラインで使えます</string>
+    <string name="mapvm_cells_incomplete">%1$s の一部をダウンロードできませんでした。あとでもう一度お試しください。</string>
+    <plurals name="area_pick_cells">
+        <item quantity="other">このエリアだけの経路と場所をオフライン用にダウンロード: 約 %1$s（地域のパーツ %2$d 個）</item>
+    </plurals>
+    <plurals name="settings_downloaded_cells">
+        <item quantity="other">地域の一部: %1$d 個のパーツ、%2$s</item>
+    </plurals>
+    <string name="settings_offline_delete_cells">これらのパーツを削除</string>
+    <plurals name="settings_cells_update_available">
+        <item quantity="other">%1$d 個のパーツに新しいバージョンがあります</item>
+    </plurals>
+    <string name="settings_confirm_end_nav">ナビの終了前に確認する</string>
+    <string name="settings_confirm_end_nav_hint">走行中は赤い × と「戻る」で確認を表示し、誤タップでナビが終了しないようにします</string>
+    <string name="nav_end_confirm_title">ナビを終了しますか？</string>
+    <string name="nav_end_confirm_body">ルートと経由地が消去されます。</string>
+    <string name="nav_end_confirm_end">終了</string>
+    <string name="nav_end_confirm_keep">続ける</string>
+    <string name="settings_parking_button">駐車ボタン</string>
+    <string name="settings_parking_button_hint">駐車位置を保存する地図上の P ボタンです。オフにすると、駐車位置を保存している間だけ表示されます。</string>
+    <string name="map_layers_places">場所: %1$s</string>
+    <string name="settings_two_finger_tilt">2 本指で傾ける</string>
+    <string name="settings_two_finger_tilt_hint">2 本指で上下にドラッグすると地図を 3D に傾けられます。オフにすると、ピンチ操作はズームだけになります。</string>
+    <string name="settings_speed_display">速度と制限速度を表示</string>
+    <string name="settings_speed_display_hint">運転中の速度と制限速度を、端末と車の画面に表示します</string>
+    <string name="mapvm_area_pack_big">ここでのオフライン検索には %1$s 全域の場所パックを使います。設定 > オフライン マップ でダウンロードしてください。</string>
+    <string name="settings_places_shared_pack">場所データは %1$s 全域が対象です（%2$s）</string>
+    <string name="mapscreen_download_voice">%1$s をダウンロード（%2$d MB）</string>
+    <string name="place_choose_icon">アイコンを選択</string>
+    <string name="place_icon_title">%1$s の地図アイコン</string>
+    <string name="place_icon_default">リストのアイコンを使う</string>
+    <string name="settings_map_theme_title">地図</string>
+    <string name="settings_map_theme_follow">アプリと同じ</string>
+    <string name="settings_map_theme_hint">地図だけ別のテーマにできます。ダークのアプリに明るい地図、またはライトのアプリに暗い地図です。運転中の昼と夜の切り替えは、引き続き地図に適用されます。</string>
+    <string name="route_saved_label">マイルート: %1$s</string>
+    <string name="route_save">このルートを保存</string>
+    <string name="route_save_title">ルートを保存</string>
+    <string name="route_save_hint">名前</string>
+    <string name="route_save_default">%1$s へのルート</string>
+    <string name="route_saved_toast">ルートを保存しました。同じ区間を検索するたびに、ほかのルートと並んで表示されます。</string>
+    <string name="settings_saved_routes">保存済みのルート</string>
+    <string name="settings_saved_routes_empty">ルート選択でルートを選び、⋮ &gt;「このルートを保存」をタップしてください。同じ区間を検索するたびに、ほかのルートと並んで表示されます。</string>
+    <string name="settings_saved_route_rename">名前を変更</string>
+    <string name="settings_saved_route_delete">削除</string>
+    <string name="route_save_keep_stops">これらの場所に立ち寄る</string>
+    <string name="route_save_keep_stops_hint">オフにすると、経由地は道順を決めるためだけに使われ、ルートはこの区間のほかのルートと並んで表示されます。</string>
+    <plurals name="saved_route_stops">
+        <item quantity="other">%1$d 件の経由地</item>
+    </plurals>
+    <string name="mapscreen_section_routes">マイルート</string>
+    <string name="stops_max">経由地は最大 %1$d 件まで追加できます</string>
+    <string name="route_update">%1$s への変更を保存</string>
+    <string name="route_updated_toast">%1$s への変更を保存しました</string>
+    <string name="settings_saved_route_edit">編集</string>
+    <string name="settings_saved_route_edit_hint">経由地を変えるか別の道を選んでから、⋮ &gt;「変更を保存」をタップしてください。</string>
+    <string name="saved_pin">検索ページに固定</string>
+    <string name="saved_unpin">検索ページへの固定を解除</string>
+    <string name="saved_sheet_places">保存済みの場所</string>
+    <string name="saved_sheet_routes">マイルート</string>
+    <string name="driven_route_title">別の道を走りました</string>
+    <string name="driven_route_save">走った道を保存</string>
 </resources>

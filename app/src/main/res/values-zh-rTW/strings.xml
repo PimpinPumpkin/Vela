@@ -1108,4 +1108,66 @@
     <string name="settings_maps_links_partial">部分 Google 地圖連結會在 Vela 中開啟。請在「預設開啟」中加入其餘連結，讓每一種連結都能在 Vela 開啟。</string>
     <string name="settings_maps_links_off">Android 會在瀏覽器中開啟 Google 地圖連結。如要改在 Vela 開啟，請開啟「開啟支援的連結」，並在「預設開啟」中加入這些連結。</string>
     <string name="settings_maps_links_open">「預設開啟」設定</string>
+    <string name="mapvm_cells_progress">%1$s，第 %2$d 部分，共 %3$d 部分</string>
+    <string name="mapvm_cells_ready">%1$s 這部分的路線和地點已可離線使用</string>
+    <string name="mapvm_cells_incomplete">%1$s 有部分區塊未下載成功，請稍後再試。</string>
+    <plurals name="area_pick_cells">
+        <item quantity="other">只取得這個區域的離線路線和地點：約 %1$s（該地區的 %2$d 個部分）</item>
+    </plurals>
+    <plurals name="settings_downloaded_cells">
+        <item quantity="other">地區的一部分：%1$d 個區塊，%2$s</item>
+    </plurals>
+    <string name="settings_offline_delete_cells">刪除這些區塊</string>
+    <plurals name="settings_cells_update_available">
+        <item quantity="other">%1$d 個區塊有新版本</item>
+    </plurals>
+    <string name="settings_confirm_end_nav">結束導航前先詢問</string>
+    <string name="settings_confirm_end_nav_hint">行車中點按紅色 X 或返回時會先詢問，避免誤觸就結束導航</string>
+    <string name="nav_end_confirm_title">要結束導航嗎？</string>
+    <string name="nav_end_confirm_body">路線和停靠站都會清除。</string>
+    <string name="nav_end_confirm_end">結束</string>
+    <string name="nav_end_confirm_keep">繼續導航</string>
+    <string name="settings_parking_button">停車按鈕</string>
+    <string name="settings_parking_button_hint">地圖上用來記下停車位置的 P 按鈕。關閉時，只有在已儲存停車位置時才會顯示。</string>
+    <string name="map_layers_places">地點：%1$s</string>
+    <string name="settings_two_finger_tilt">雙指傾斜</string>
+    <string name="settings_two_finger_tilt_hint">用兩指向上或向下拖曳，即可將地圖傾斜成 3D 視角。關閉時，雙指捏合只會縮放。</string>
+    <string name="settings_speed_display">顯示車速和速限</string>
+    <string name="settings_speed_display_hint">開車時在手機和車用螢幕上顯示你的車速和道路速限</string>
+    <string name="mapvm_area_pack_big">這裡的離線搜尋使用整個%1$s的地點套件。請到「設定 > 離線地圖」下載。</string>
+    <string name="settings_places_shared_pack">地點涵蓋整個%1$s（%2$s）</string>
+    <string name="mapscreen_download_voice">下載 %1$s（%2$d MB）</string>
+    <string name="place_choose_icon">選擇圖示</string>
+    <string name="place_icon_title">%1$s 的地圖圖示</string>
+    <string name="place_icon_default">使用清單的圖示</string>
+    <string name="settings_map_theme_title">地圖</string>
+    <string name="settings_map_theme_follow">與應用程式相同</string>
+    <string name="settings_map_theme_hint">地圖可以單獨設定：深色應用程式搭配淺色街道，或淺色應用程式搭配深色街道。開車時的日夜切換仍會套用到地圖。</string>
+    <string name="route_saved_label">你的路線：%1$s</string>
+    <string name="route_save">儲存這條路線</string>
+    <string name="route_save_title">儲存路線</string>
+    <string name="route_save_hint">名稱</string>
+    <string name="route_save_default">前往%1$s的路線</string>
+    <string name="route_saved_toast">路線已儲存。之後每次規劃這趟行程時，都會和其他路線一起顯示。</string>
+    <string name="settings_saved_routes">已儲存的路線</string>
+    <string name="settings_saved_routes_empty">在路線選擇畫面選一條路線，然後點按 ⋮ &gt; 儲存這條路線。之後每次規劃同一趟行程時，都會和其他路線一起顯示。</string>
+    <string name="settings_saved_route_rename">重新命名</string>
+    <string name="settings_saved_route_delete">刪除</string>
+    <string name="route_save_keep_stops">在這些地點停靠</string>
+    <string name="route_save_keep_stops_hint">關閉時，停靠站只用來決定走法，這條路線會和這趟行程的其他路線一起提供。</string>
+    <plurals name="saved_route_stops">
+        <item quantity="other">%1$d 個停靠站</item>
+    </plurals>
+    <string name="mapscreen_section_routes">你的路線</string>
+    <string name="stops_max">一趟行程最多可有 %1$d 個停靠站</string>
+    <string name="route_update">儲存對「%1$s」的變更</string>
+    <string name="route_updated_toast">已儲存對「%1$s」的變更</string>
+    <string name="settings_saved_route_edit">編輯</string>
+    <string name="settings_saved_route_edit_hint">變更停靠站或改選另一條路，然後點按 ⋮ &gt; 儲存變更。</string>
+    <string name="saved_pin">釘選到搜尋頁面</string>
+    <string name="saved_unpin">從搜尋頁面取消釘選</string>
+    <string name="saved_sheet_places">已儲存的地點</string>
+    <string name="saved_sheet_routes">你的路線</string>
+    <string name="driven_route_title">你走了自己的路線</string>
+    <string name="driven_route_save">儲存你實際走的路線</string>
 </resources>

@@ -1107,4 +1107,66 @@
     <string name="settings_maps_links_partial">部分 Google 地图链接会在 Vela 中打开。在“默认打开”中添加其余链接，所有类型的链接就都能在 Vela 中打开。</string>
     <string name="settings_maps_links_off">Android 会在浏览器中打开 Google 地图链接。要在 Vela 中打开，请开启“打开支持的链接”，并在“默认打开”中添加这些链接。</string>
     <string name="settings_maps_links_open">“默认打开”设置</string>
+    <string name="mapvm_cells_progress">%1$s，第 %2$d 部分，共 %3$d 部分</string>
+    <string name="mapvm_cells_ready">%1$s 这部分的路线和地点已可离线使用</string>
+    <string name="mapvm_cells_incomplete">%1$s 的部分分块未能下载。请稍后重试。</string>
+    <plurals name="area_pick_cells">
+        <item quantity="other">仅获取此区域的离线路线和地点：约 %1$s（该地区的 %2$d 个部分）</item>
+    </plurals>
+    <plurals name="settings_downloaded_cells">
+        <item quantity="other">地区的一部分：%1$d 个分块，%2$s</item>
+    </plurals>
+    <string name="settings_offline_delete_cells">删除这些分块</string>
+    <plurals name="settings_cells_update_available">
+        <item quantity="other">%1$d 个分块有新版本</item>
+    </plurals>
+    <string name="settings_confirm_end_nav">结束导航前先询问</string>
+    <string name="settings_confirm_end_nav_hint">行驶中点按红色 X 或返回时会先询问，以免误触结束导航</string>
+    <string name="nav_end_confirm_title">要结束导航吗？</string>
+    <string name="nav_end_confirm_body">路线及其经停点将被清除。</string>
+    <string name="nav_end_confirm_end">结束</string>
+    <string name="nav_end_confirm_keep">继续导航</string>
+    <string name="settings_parking_button">停车按钮</string>
+    <string name="settings_parking_button_hint">地图上用于保存停车位置的 P 按钮。关闭后，仅在已保存停车位置时显示。</string>
+    <string name="map_layers_places">地点：%1$s</string>
+    <string name="settings_two_finger_tilt">双指倾斜</string>
+    <string name="settings_two_finger_tilt_hint">双指向上或向下拖动，可将地图倾斜为 3D 视角。关闭后，双指捏合只会缩放。</string>
+    <string name="settings_speed_display">显示车速和限速</string>
+    <string name="settings_speed_display_hint">驾驶时在手机和车机屏幕上显示您的车速和道路限速</string>
+    <string name="mapvm_area_pack_big">此处的离线搜索使用整个%1$s的地点包。请在设置 > 离线地图中下载。</string>
+    <string name="settings_places_shared_pack">地点数据覆盖整个%1$s（%2$s）</string>
+    <string name="mapscreen_download_voice">下载 %1$s（%2$d MB）</string>
+    <string name="place_choose_icon">选择图标</string>
+    <string name="place_icon_title">%1$s 的地图图标</string>
+    <string name="place_icon_default">使用列表的图标</string>
+    <string name="settings_map_theme_title">地图</string>
+    <string name="settings_map_theme_follow">与应用相同</string>
+    <string name="settings_map_theme_hint">单独设置地图：深色应用配浅色街道，或浅色应用配深色街道。驾驶时的日夜切换仍会作用于地图。</string>
+    <string name="route_saved_label">您的路线：%1$s</string>
+    <string name="route_save">保存此路线</string>
+    <string name="route_save_title">保存路线</string>
+    <string name="route_save_hint">名称</string>
+    <string name="route_save_default">前往%1$s的路线</string>
+    <string name="route_saved_toast">路线已保存。以后每次规划这段行程时，它都会和其他路线一起显示。</string>
+    <string name="settings_saved_routes">已保存的路线</string>
+    <string name="settings_saved_routes_empty">在路线选择界面选一条路线，然后点按 ⋮ &gt; 保存此路线。以后每次规划同一行程时，它都会和其他路线一起显示。</string>
+    <string name="settings_saved_route_rename">重命名</string>
+    <string name="settings_saved_route_delete">删除</string>
+    <string name="route_save_keep_stops">在这些地点停留</string>
+    <string name="route_save_keep_stops_hint">关闭后，经停点只用来确定走法，这条路线会和此行程的其他路线一起提供。</string>
+    <plurals name="saved_route_stops">
+        <item quantity="other">%1$d 个经停点</item>
+    </plurals>
+    <string name="mapscreen_section_routes">您的路线</string>
+    <string name="stops_max">一段行程最多可有 %1$d 个经停点</string>
+    <string name="route_update">保存对“%1$s”的更改</string>
+    <string name="route_updated_toast">已保存对“%1$s”的更改</string>
+    <string name="settings_saved_route_edit">编辑</string>
+    <string name="settings_saved_route_edit_hint">更改经停点或另选一条路，然后点按 ⋮ &gt; 保存更改。</string>
+    <string name="saved_pin">固定到搜索页</string>
+    <string name="saved_unpin">从搜索页取消固定</string>
+    <string name="saved_sheet_places">已保存的地点</string>
+    <string name="saved_sheet_routes">您的路线</string>
+    <string name="driven_route_title">您走了自己的路线</string>
+    <string name="driven_route_save">保存您实际走的路线</string>
 </resources>

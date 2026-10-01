@@ -31,9 +31,9 @@ mangling it, and a hint points at the voice settings.
 
 The App UI column means the language has its own string file, not that every string in it is
 translated. New features land in English first and show in English until someone fills them in; all
-sixteen files were brought fully up to date with English on 2026-09-28 (the 43 strings added since
-2026-09-25: the offline area picker, the Google request counter, SD card storage and the Maps links
-setting), translated per language to match each file's own register and terms. `python3 tools/check-translations.py` lists the missing
+sixteen files were brought fully up to date with English on 2026-09-30 (the 54 strings added since
+2026-09-28: region parts, saved routes and pins, per-place icons, the map theme, end-navigation
+confirm), translated per language to match each file's own register and terms. `python3 tools/check-translations.py` lists the missing
 keys per language (and fails only on placeholder drift); `values-en-rGB` is left out of that list,
 since it only ever carries the few words that differ.
 
