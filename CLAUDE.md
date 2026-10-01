@@ -3389,6 +3389,9 @@ architecture note.
   mock location). Flying from the overview loaded a tile set at every zoom it crossed: 6-10 fps for
   three seconds on the 4a, 29-59 after. Never animate the camera across zoom levels at nav start.
   `debug.vela.hide` re-applies every 250 ms while set, so a strip test stays a strip.
+  The OVERVIEW and the way back from it are cuts too (no flight across zoom levels), each under a
+  short land-colored veil that fades off (`cutReveal`, `CUT_VEIL_ALPHA`/`CUT_FADE_MS`); a re-center
+  from close by still glides.
   Before the puck engages (a parked start off the route, issue #633) the frame loop tilts in on the
   same clock and draws the icon at the raw fix through the overlay; the 3D icons never fall back to
   the flat symbol. Testing a PARKED start on the 4a needs a mock fix: add BOTH `gps` and `network`

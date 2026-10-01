@@ -1307,6 +1307,15 @@ start, three alternating runs: before 39/10/11/7, 37/20/18/6, 43/19/18/10; after
 flat cut with the 0.55 s tilt ease had one 5-9 fps second as the horizon's tiles arrived together.
 Since this round `debug.vela.hide` re-applies every 250 ms while set, so layers added after the
 setting (nav adds its own at Start) are hidden too.
+Seventh round (2026-09-30, user on a Pixel 9: the overview "flies out and back, laggy"): the
+overview and the way back to the car are CUTS too. A fresh Overview press `moveCamera`s to the
+fit (the 4 s refits still animate); re-attaching the follow camera from more than
+`CUT_BACK_ZOOM_GAP` (1.5) zoom levels out seeds it at the car, flat, and tilts in on the start
+cut's curve. Every cut lays a veil in the map's land color over the map (below the puck) at
+`CUT_VEIL_ALPHA` (0.85) and fades it off over `CUT_FADE_MS` (320 ms), so the new view's tiles
+arrive under a fade. 4a, demo drive, fps per second for 5 s after the press, two runs each: to the
+overview 59/42/59/60 and 58/42/59/59 before, 58/58/59/59 and 59/59/60/59 after; back
+48/49/59/57 and 50/60/58/60 before, 59/59/59/59 both runs after.
 Before the puck ENGAGES (issue #633: a phone parked in a driveway or a lot is farther than the
 22 m snap tolerance from the route, so it engages only on reaching the road) the frame loop still
 eases the opening tilt in on the start cut's clock, pausing while a pre-engage re-point flight

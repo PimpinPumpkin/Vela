@@ -62,6 +62,8 @@ import org.maplibre.geojson.Point
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.background
+import kotlinx.coroutines.launch
 import org.maplibre.android.geometry.LatLng as MLLatLng
 import org.maplibre.android.geometry.LatLngBounds as MLLatLngBounds
 
@@ -261,6 +263,11 @@ private const val BROWSE_IDLE_TICK_MS = 200L // its pace while settled // the na
 // SPEC 4.7a: the opening tilt after the start cut. 3 s held the 4a's worst second at 29-36 fps
 // (0.55 s: one 5-9 fps second as the horizon's tiles all arrived together).
 private const val NAV_START_TILT_TAU_S = 3.0
+// The veil over a camera cut: how opaque it starts and how long it takes to fade off.
+private const val CUT_VEIL_ALPHA = 0.85f
+private const val CUT_FADE_MS = 320
+// Re-attaching the follow camera from more than this many zoom levels out cuts instead of flying.
+private const val CUT_BACK_ZOOM_GAP = 1.5
 private const val CAM_BRG_TAU_STILL = 1.6
 private const val CAM_BRG_TAU_TURN = 0.35
 /** Error at which the damping is fully in "this is a real turn" mode. Well above the few degrees
@@ -825,6 +832,17 @@ fun VelaMapView(
     val navStartCutMs = remember { longArrayOf(0L) }
     val navStartTilting = remember { booleanArrayOf(false) }
     val preEngageAnimUntil = remember { longArrayOf(0L) } // a pre-engage re-point flight is running until this uptime
+    // CAMERA CUTS (SPEC 4.7a): the drive start, the overview and the way back to the car jump
+    // instead of flying across zoom levels, and a veil in the map's land color fades off over the
+    // new view so its tiles arriving read as a fade, not a pop (user 2026-09-30, P9: "laggy").
+    val cutFade = remember { androidx.compose.animation.core.Animatable(0f) }
+    val cutScope = androidx.compose.runtime.rememberCoroutineScope()
+    fun cutReveal() {
+        cutScope.launch {
+            cutFade.snapTo(CUT_VEIL_ALPHA)
+            cutFade.animateTo(0f, androidx.compose.animation.core.tween(CUT_FADE_MS))
+        }
+    }
     val navPadEase = remember { doubleArrayOf(0.0) } // puck-low top padding as a height fraction, eased on (re)attach
     val wasNavRef = remember { booleanArrayOf(false) } // a drive actually ran - gates the one-shot camera teardown
     val onCompassTapHolder = rememberUpdatedState(onCompassTap)
@@ -2398,6 +2416,20 @@ fun VelaMapView(
             b.include(MLLatLng(p0.lat, p0.lng))
             for (i in indexAtMeters(cum, fromM) until routePolyline.size) b.include(MLLatLng(routePolyline[i].lat, routePolyline[i].lng))
             b.include(MLLatLng(routePolyline.last().lat, routePolyline.last().lng))
+            if (animMs <= 0) {
+                // A fresh overview CUTS to the fit (no flight across zoom levels) under the veil.
+                val dens = context.resources.displayMetrics.density
+                runCatching {
+                    map.moveCamera(
+                        CameraUpdateFactory.newLatLngBounds(
+                            b.build(), 0.0, 0.0,
+                            (40 * dens).toInt(), (map.height * 0.30).toInt(), (104 * dens).toInt(), (map.height * 0.22).toInt(),
+                        ),
+                    )
+                    cutReveal()
+                }
+                return
+            }
             runCatching {
                 // Fit NORTH-UP and FLAT (the bearing/tilt overload): the plain bounds fit kept the
                 // follow's rotated 55-degree camera, and a tilted, rotated fit shows LESS than the
@@ -2423,7 +2455,7 @@ fun VelaMapView(
         // when Re-center re-attaches.
         if (fresh) map.moveCamera(CameraUpdateFactory.paddingTo(0.0, 0.0, 0.0, 0.0))
         overviewLive[0] = true
-        fitRemaining(700)
+        fitRemaining(if (fresh) 0 else 700)
         while (overviewLive[0] && navModeHolder.value) {
             kotlinx.coroutines.delay(4_000)
             if (!overviewLive[0] || !navModeHolder.value) break
@@ -2719,6 +2751,19 @@ fun VelaMapView(
                         // jolt). Both now ease in with the same k as everything else.
                         navTiltEase[0] = cp.tilt
                         navPadEase[0] = (cp.padding?.getOrNull(1) ?: 0.0) / cam.height.toDouble().coerceAtLeast(1.0)
+                        if (navStartCutMs[0] != 0L && cp.zoom < tgtZoom - CUT_BACK_ZOOM_GAP) {
+                            // Back to the car from far out (the overview, a wide pan): the same cut as
+                            // the start, flat then tilting in, instead of flying down through every
+                            // zoom level in between.
+                            navStartCutMs[0] = android.os.SystemClock.uptimeMillis()
+                            navStartTilting[0] = !navNorthUpHolder.value
+                            camState[0] = pt.lat; camState[1] = pt.lng
+                            camState[2] = if (navNorthUpHolder.value) 0.0 else navPuck.displayBearing.toDouble()
+                            camState[3] = tgtZoom
+                            navTiltEase[0] = 0.0
+                            navPadEase[0] = 0.45
+                            cutReveal()
+                        }
                         if (navStartCutMs[0] == 0L) {
                             // Engaged before the pre-engage camera ran: make the same start cut here.
                             navStartCutMs[0] = android.os.SystemClock.uptimeMillis()
@@ -2728,6 +2773,7 @@ fun VelaMapView(
                             camState[3] = tgtZoom
                             navTiltEase[0] = 0.0
                             navPadEase[0] = 0.45
+                            cutReveal()
                         }
                     }
                     // SPLIT time constants (user 2026-07-16, "moving through a thick liquid"):
@@ -4234,6 +4280,7 @@ fun VelaMapView(
                             navStartCutMs[0] = now
                             navStartTilting[0] = !navNorthUp
                             navTiltEase[0] = 0.0
+                            cutReveal()
                             map.moveCamera(
                                 CameraUpdateFactory.newCameraPosition(
                                     CameraPosition.Builder()
@@ -4439,6 +4486,11 @@ fun VelaMapView(
             }
         }
     }
+    androidx.compose.foundation.layout.Box(
+        Modifier.matchParentSize()
+            .graphicsLayer { alpha = cutFade.value }
+            .background(androidx.compose.ui.graphics.Color(if (darkTheme) 0xFF162640 else 0xFFF8F7F7)),
+    )
     val puckMesh = if (puckOverlayOn.value) remember(app.vela.ui.PuckStyle.key()) {
         PuckModels.forShape(app.vela.ui.PuckStyle.shape.value, app.vela.ui.PuckStyle.carColor.value)
     } else null
