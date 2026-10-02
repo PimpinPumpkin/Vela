@@ -36,11 +36,27 @@ object InstallSource {
     }.getOrNull()
 
     /**
+     * Who STARTED the install, which is a separate record from who performed it (Android 11+).
+     * Android Auto 17.6 reads this one (issue #179, alltechdev 2026-09-28): `adb install -i
+     * com.android.vending` sets the installer to Play and leaves this as the shell, and the car
+     * still refuses the app; an installer that runs as Play sets both.
+     */
+    fun initiatingPackage(context: Context): String? = runCatching {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            context.packageManager.getInstallSourceInfo(context.packageName).initiatingPackageName
+        } else null
+    }.getOrNull()
+
+    /**
      * True when this install is the one Android Auto is willing to look at, i.e. it claims to come
      * from Play. Vela is not on Play, so on a phone running this build that claim can only have
-     * been put there deliberately - and a self-update would erase it.
+     * been put there deliberately - and a self-update would erase it. EITHER record counts: which
+     * one the car reads has changed between Android Auto versions, and both are wiped by a
+     * self-update.
      */
-    fun setForCar(context: Context): Boolean = installingPackage(context) == PLAY
+    fun setForCar(context: Context): Boolean = isCarSetup(installingPackage(context), initiatingPackage(context))
+
+    internal fun isCarSetup(installing: String?, initiating: String?): Boolean = installing == PLAY || initiating == PLAY
 
     /** Hand the downloaded APK to whatever the user wants to do with it - the point is AAEnabler,
      *  but a file manager or a messenger all work, and none of them is ours to assume. */

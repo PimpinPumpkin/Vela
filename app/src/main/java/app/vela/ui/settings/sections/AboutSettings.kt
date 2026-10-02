@@ -130,11 +130,14 @@ Onboarding.openDonate(context)
         // can be checked BEFORE an update and after one (user 2026-09-22, ahead of a GrapheneOS
         // install).
         val installer = remember { app.vela.update.InstallSource.installingPackage(context) }
+        // Who STARTED the install is its own record, and the one newer Android Auto reads; shown
+        // when it differs, so a setup that set only one of the two can be seen for what it is.
+        val initiator = remember { app.vela.update.InstallSource.initiatingPackage(context) }
         val installerLine = when {
-            app.vela.update.InstallSource.setForCar(context) -> stringResource(R.string.settings_installer_play, installer ?: "")
+            app.vela.update.InstallSource.setForCar(context) -> stringResource(R.string.settings_installer_play, installer ?: initiator ?: "")
             installer.isNullOrBlank() -> stringResource(R.string.settings_installer_none)
             else -> stringResource(R.string.settings_installer_other, installer)
-        }
+        } + if (!initiator.isNullOrBlank() && initiator != installer) " " + stringResource(R.string.settings_installer_started_by, initiator) else ""
         Text(
             installerLine,
             style = MaterialTheme.typography.bodyMedium,

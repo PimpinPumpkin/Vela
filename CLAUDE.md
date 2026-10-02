@@ -663,6 +663,14 @@ Defaults that make the safe path the easy one:
   What Vela CAN do is not break the workarounds: AAEnabler and King Installer set the INSTALL
   SOURCE to Play and some units accept that, and a self-update overwrites it, so `InstallSource`
   holds the APK back and offers it as a file (see the updater notes).
+  **Which install record the car reads (alltechdev, 2026-09-28, Android Auto 17.6):** not the
+  installer (`installingPackageName`) but who STARTED the install (`initiatingPackageName`, Android
+  11+). `adb install -i com.android.vending` sets the first and leaves the second as
+  `com.android.shell`, and the car still refuses the app; his root installer (PlayInstaller) runs
+  the install as Play and got Vela onto an aftermarket unit and a Kia. Since 2026-10-02
+  `InstallSource.setForCar` is true when EITHER record names Play (both are wiped by a
+  self-update, and which one the car reads has changed between versions), and Settings > About
+  shows who started the install when it differs from the installer. `InstallSourceTest`.
   **Car home screen, October 2026 (PRs #642 to #646, Seb3thehacker; checked in Gearslip's car
   preview, not on a head unit):** the map pans by finger travel, pinches about the fingers and
   flings (`CarMapRenderer.onScroll/onScale/onFling`; a negative focus = no focal point, zoom about
