@@ -21,11 +21,15 @@ import app.vela.core.model.distanceTo
 object HybridRoute {
     /** A sample of Google's line this far from the open route is off it. Tight on purpose: at
      *  45 m a frontage road beside a highway counted as the same road, and the open router's
-     *  steps for the one would have been read out on the other. */
-    const val OFF_M = 25.0
+     *  steps for the one would have been read out on the other; at 25 m a parking aisle 18 m
+     *  beside a street did (the open router's "Turn left onto G Street" was read out in the lot,
+     *  found reading a step list, 2026-10-02). Two drawings of one road are a lane or two apart. */
+    const val OFF_M = 15.0
     /** A shorter run off the open route is drawing noise (a ramp traced differently, the other
      *  side of a wide junction), not a different way. */
     const val MIN_RUN_M = 120.0
+    /** Two runs off the open route with less than this of shared road between them are one. */
+    const val JOIN_GAP_M = 60.0
     /** Each stretch reaches this far into the shared road at both ends, so the turn off the
      *  shared road and the turn back onto it belong to the stretch. */
     const val PAD_M = 90.0
@@ -39,12 +43,13 @@ object HybridRoute {
      *  stays on Google's line: checked every [AGREE_STEP_M] for up to [AGREE_M] of its leg. */
     private const val AGREE_M = 400.0
     private const val AGREE_STEP_M = 40.0
-    private const val AGREE_OFF_M = 20.0
+    private const val AGREE_OFF_M = 15.0
     /** Two tile-named maneuvers this close with the same road are one (a ramp's two bends). */
     private const val SAME_ROAD_M = 150.0
     private const val STEP_M = 20.0
     /** An open-router maneuver has to sit this close to Google's line to be carried over. */
     private const val SNAP_M = 40.0
+    private const val PLACE_SLACK_M = 150.0
     /** Two maneuvers this close together are the same junction; the open router's is kept. */
     private const val MERGE_M = 30.0
 
@@ -58,17 +63,25 @@ object HybridRoute {
         val grid = RouteGeometry.SegmentGrid(open, cumulative(open))
         val cum = cumulative(google)
         val total = cum.last()
-        val raw = ArrayList<Stretch>()
+        val offRuns = ArrayList<Stretch>()
         var start = -1.0
         var m = 0.0
         fun farFrom(at: Double, tol: Double) = grid.along(pointAt(google, cum, at), tol) == null
         while (m <= total) {
             val off = farFrom(m, OFF_M)
             if (off && start < 0) start = m
-            if (!off && start >= 0) { if (m - start >= MIN_RUN_M) raw += Stretch(start, m); start = -1.0 }
+            if (!off && start >= 0) { offRuns += Stretch(start, m); start = -1.0 }
             m += STEP_M
         }
-        if (start >= 0 && total - start >= MIN_RUN_M) raw += Stretch(start, total)
+        if (start >= 0) offRuns += Stretch(start, total)
+        // Runs a short way apart are one departure: a line that crosses the open route between
+        // two aisles of a parking lot is off it the whole way, not twice for 60 m.
+        val joined = ArrayList<Stretch>()
+        for (r in offRuns) {
+            val last = joined.lastOrNull()
+            if (last != null && r.fromM - last.toM <= JOIN_GAP_M) joined[joined.lastIndex] = Stretch(last.fromM, r.toM) else joined += r
+        }
+        val raw = joined.filter { it.toM - it.fromM >= MIN_RUN_M }
         // Walk each end out to where the two lines actually part and meet again.
         val runs = raw.map { r ->
             var a = r.fromM
@@ -129,18 +142,25 @@ object HybridRoute {
             // The open route has to GO Google's way after this maneuver, or the maneuver is the
             // open router leaving Google's line (an exit Google does not take) and reading it
             // out would send the driver off the route.
+            // (The end of the checked length is always sampled: a leg shorter than one step
+            // used to pass with nothing looked at.)
             var agrees = true
-            var d = AGREE_STEP_M
-            while (agrees && d <= minOf(man.distanceMeters, AGREE_M)) {
+            val upTo = minOf(man.distanceMeters, AGREE_M)
+            var d = minOf(AGREE_STEP_M, upTo)
+            while (agrees && d <= upTo && upTo > 0.0) {
                 if (grid.along(pointAt(openLine, openCum, here + d), AGREE_OFF_M) == null) agrees = false
-                d += AGREE_STEP_M
+                d = if (d < upTo && d + AGREE_STEP_M > upTo) upTo else d + AGREE_STEP_M
             }
             if (agrees) all += At(a, man, true)
         }
         for ((s, ms) in named) {
             var pos = 0.0
             for (man in ms) {
-                val a = s.fromM + pos
+                // Where the turn IS on Google's line, when that is near where the steps' lengths
+                // put it: the matched path and the line differ in length by a few percent, and
+                // adding lengths up put a turn 100 m early by the end of a long stretch.
+                val byLength = s.fromM + pos
+                val a = grid.along(man.location, SNAP_M)?.takeIf { kotlin.math.abs(it - byLength) <= maxOf(PLACE_SLACK_M, (s.toM - s.fromM) * 0.08) } ?: byLength
                 pos += man.distanceMeters
                 // The slice's own ends are real only where the slice starts or ends the trip.
                 if (man.type == ManeuverType.DEPART && s.fromM > 0.0) continue
@@ -152,7 +172,9 @@ object HybridRoute {
         val kept = ArrayList<At>()
         for (x in all) {
             val last = kept.lastOrNull()
-            if (last != null && x.m - last.m < MERGE_M && x.man.type != ManeuverType.ARRIVE && last.man.type != ManeuverType.DEPART) {
+            // One junction told by both sources. Two turns from the SAME source that close are
+            // two turns (right, then left onto the street 20 m on) and both stay.
+            if (last != null && x.fromOpen != last.fromOpen && x.m - last.m < MERGE_M && x.man.type != ManeuverType.ARRIVE && last.man.type != ManeuverType.DEPART) {
                 if (x.fromOpen && !last.fromOpen) kept[kept.lastIndex] = x
                 continue
             }

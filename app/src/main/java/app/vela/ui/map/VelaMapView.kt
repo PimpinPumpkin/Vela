@@ -87,6 +87,16 @@ private val ALT_ROUTE_WIDTH = Expression.interpolate(
     Expression.exponential(1.5f), Expression.zoom(),
     Expression.stop(10, 4.5f), Expression.stop(14, 7f), Expression.stop(16, 10f), Expression.stop(18.5f, 15f),
 )
+// The alternate's outline sits INSIDE its width (the gap is the width less both edges), so an
+// alternate with its outline is never wider than the selected route (discussion #639).
+private val ALT_ROUTE_EDGE_WIDTH = Expression.interpolate(
+    Expression.linear(), Expression.zoom(),
+    Expression.stop(10, 1f), Expression.stop(14, 1.5f), Expression.stop(16, 2f),
+)
+private val ALT_ROUTE_EDGE_GAP = Expression.interpolate(
+    Expression.exponential(1.5f), Expression.zoom(),
+    Expression.stop(10, 2.5f), Expression.stop(14, 4f), Expression.stop(16, 6f), Expression.stop(18.5f, 11f),
+)
 // A second line on the SAME route source, drawn dashed (Google-style for walking/biking).
 // Two layers + visibility toggle, because MapLibre's line-dasharray DISABLES line-gradient —
 // so the solid driving line (traffic gradient) and the dashed foot/bike line can't share one.
@@ -4874,12 +4884,12 @@ private fun ensureLayers(style: Style) {
         // same weight (discussion #639).
         val edge = LineLayer(ALT_ROUTE_EDGE_LAYER, ALT_ROUTE_SRC).withProperties(
             PropertyFactory.lineColor("#4C7FD6"),
-            PropertyFactory.lineWidth(2f),
-            PropertyFactory.lineGapWidth(ALT_ROUTE_WIDTH),
+            PropertyFactory.lineWidth(ALT_ROUTE_EDGE_WIDTH),
+            PropertyFactory.lineGapWidth(ALT_ROUTE_EDGE_GAP),
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
         )
-        style.addLayerBelow(edge, ALT_ROUTE_LAYER)
+        style.addLayerAbove(edge, ALT_ROUTE_LAYER)
     }
     if (style.getImage(PIN_IMG) == null) style.addImage(PIN_IMG, pinBitmap())
     if (style.getSource(MARKERS_SRC) == null) {

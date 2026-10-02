@@ -39,7 +39,7 @@ object LineNamer {
     internal var STRICT_RUN_M = 60.0
     internal var STRICT_FAR_RUN_M = 100.0
     /** Strict mode's own matching distance (the lenient one is 30 m driving). */
-    internal var STRICT_MAX_OFF_M = 30.0
+    internal var STRICT_MAX_OFF_M = 12.0
     /** Strict mode: two differently named streets this close in distance to a sample, both
      *  running its way, leave the sample unnamed. */
     internal var AMBIGUOUS_M = 12.0

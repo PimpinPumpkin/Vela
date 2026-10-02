@@ -868,7 +868,9 @@ class GoogleMapsDataSource @Inject constructor(
             }
         }
         var avoidHonored = false
-        val planned = coroutineScope {
+        var openEdgesD: kotlinx.coroutines.Deferred<List<app.vela.core.data.ValhallaRouter.Edge>?>? = null
+        var openLine: List<LatLng>? = null
+        val fetched = coroutineScope {
             // PRIMARY: the open router (OSRM) — complete, street-named turn-by-turn + real geometry.
             // Google's keyless directions endpoint hands back ABBREVIATED steps for longer routes
             // (a 6-mi route came back with 2 of ~10 turns), so Google is only the FALLBACK + the
@@ -900,7 +902,7 @@ class GoogleMapsDataSource @Inject constructor(
                     }.getOrDefault(emptyList())
                 }
             } else null
-            val open = if (phoneD == null) openD.await() else {
+            val openRaw = if (phoneD == null) openD.await() else {
                 val early = kotlinx.coroutines.withTimeoutOrNull(PHONE_FIRST_ONLINE_WAIT_MS) { openD.await() }
                 if (!early.isNullOrEmpty()) early else {
                     val wait = minOf(PHONE_FIRST_ONDEVICE_WAIT_MS, budget.remainingMs() ?: PHONE_FIRST_ONDEVICE_WAIT_MS).coerceAtLeast(0L)
@@ -918,8 +920,16 @@ class GoogleMapsDataSource @Inject constructor(
                     early ?: openD.await()
                 }
             }
+            // THE OPEN ROUTER'S TURN NAMES ARE CHECKED TOO (2026-10-02): the road pieces under its
+            // own line are asked for here and read once the routes are built (after this block), so
+            // the request runs beside Google's and the stretch matching instead of ahead of them.
+            openLine = openRaw.firstOrNull()?.polyline
+            openEdgesD = if (mode == TravelMode.DRIVE && openRaw.firstOrNull()?.source == RouteSource.OSRM)
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).async {
+                    app.vela.core.data.ValhallaRouter.edges(http, openRaw.first().polyline, timeoutMs = if (urgent) 1_000 else 2_500)
+                } else null
             val avoidWanted = (avoidTolls || avoidHighways || avoidFerries) && mode == TravelMode.DRIVE
-            if (bounded && open.isEmpty()) {
+            if (bounded && openRaw.isEmpty()) {
                 // Bounded + open router empty or hung (issue #557): (a) Google's route from this
                 // same fetch if it is already back, (b) the downloaded region, (c) nothing. Google
                 // routes go out tagged abbreviated, so the recheck heal upgrades them to full
@@ -956,7 +966,7 @@ class GoogleMapsDataSource @Inject constructor(
                 }
             }
             val google = when {
-                urgent && open.isNotEmpty() ->
+                urgent && openRaw.isNotEmpty() ->
                     kotlinx.coroutines.withTimeoutOrNull(URGENT_GOOGLE_GRACE_MS) { googleD.await() } ?: run {
                         diag.record("directions", "urgent: google not back ${URGENT_GOOGLE_GRACE_MS} ms after OSRM, rerouting trafficless")
                         emptyList()
@@ -973,6 +983,7 @@ class GoogleMapsDataSource @Inject constructor(
                 else -> googleD.await()
             }
             val gTop = google.firstOrNull()
+            val open = openRaw
             // AVOID toggles: the public FOSSGIS OSRM rejects `exclude=` outright (probed
             // 2026-07-11 and again 2026-08-24: InvalidValue, its profiles were not built with
             // excludable classes). Google's keyless directions DO honor avoid (DirectionsPb.withAvoid, 2026-09-06), so
@@ -1034,14 +1045,20 @@ class GoogleMapsDataSource @Inject constructor(
             // It is always Google's line. A missing street name costs nothing; a wrong one, or the
             // open router's own route through whatever Google went around, sends the driver wrong
             // (the owner's rule, 2026-10-02).
+            val stretchNames = IntArray(4) // on matched stretches: turn names kept, renamed, bare; stretches whose edges did not come back
             val stretchSource = IntArray(4) // matched, from tiles, bare, and of the matched: with the open router's lane detail
             suspend fun hybridOf(online: Boolean): Route? = coroutineScope {
                 val named = hybridStretches.map { st ->
                     async(Dispatchers.IO) {
                         val piece = app.vela.core.data.naming.HybridRoute.slice(gTop!!.polyline, st.fromM, st.toM)
                         val len = st.toM - st.fromM
-                        val matched = if (online && len <= MATCH_MAX_M)
-                            app.vela.core.data.ValhallaRouter.match(http, piece, timeoutMs = if (urgent) 1_200 else 2_500) else null
+                        val m = if (online && len <= MATCH_MAX_M)
+                            app.vela.core.data.ValhallaRouter.matchWithEdges(
+                                http, piece, timeoutMs = if (urgent) 1_200 else 2_500,
+                                startSlackM = if (st.fromM <= 0.0) MATCH_TRIP_END_SLACK_M else 0.0,
+                                endSlackM = if (st.toM >= gTop.distanceMeters - 1.0) MATCH_TRIP_END_SLACK_M else 0.0,
+                            ) else null
+                        val matched = m?.route
                         if (matched != null) {
                             // LANES: the matcher gives names, exit numbers and signs but no lane
                             // arrows; only the open router has those. The matched path is on the
@@ -1049,7 +1066,16 @@ class GoogleMapsDataSource @Inject constructor(
                             // point in the middle of each step (never at a turn, which a via
                             // swallows), each with the path's heading. Its steps are used only
                             // when its path is the matched path (8 m); else the matcher's stand.
-                            val detailed = if (urgent) null else laneDetail(matched, LANE_TRY_MS)
+                            // Those steps carry the open router's names, so they pass the same
+                            // check against the matched edges; without edges the matcher's stand.
+                            val dt = IntArray(4)
+                            val detailed = if (urgent || m.edges == null) null else laneDetail(matched, LANE_TRY_MS)
+                                ?.let { app.vela.core.data.ValhallaRouter.recheck(it, m.edges, keepUnplaced = false, tally = dt) }
+                            synchronized(stretchNames) {
+                                if (m.edges == null) stretchNames[3]++
+                                if (detailed != null) { stretchNames[0] += dt[0]; stretchNames[1] += dt[1]; stretchNames[2] += dt[2] + dt[3] }
+                                else for (k in 0..2) stretchNames[k] += m.names[k]
+                            }
                             synchronized(stretchSource) { stretchSource[0]++; if (detailed != null) stretchSource[3]++ }
                             return@async st to (detailed ?: matched.maneuvers)
                         }
@@ -1063,15 +1089,23 @@ class GoogleMapsDataSource @Inject constructor(
                     }
                 }.awaitAll()
                 if (named.any { it.second == null }) return@coroutineScope null
-                app.vela.core.data.naming.HybridRoute.stitch(gTop!!, open.first(), named.map { it.first to it.second!! })
+                // The open router's steps that are carried over get their names checked first, at
+                // their own positions (the stitch moves them onto Google's line). The request has
+                // been running since the open router answered.
+                val ed = openEdgesD
+                val tally = IntArray(4)
+                val openChecked = (if (online && ed != null) kotlinx.coroutines.withTimeoutOrNull(if (urgent) OPEN_NAMES_WAIT_URGENT_MS else OPEN_NAMES_WAIT_MS) { ed.await() } else null)
+                    ?.let { app.vela.core.data.ValhallaRouter.recheck(open.first(), it, keepUnplaced = true, tally = tally) }
+                if (openChecked != null) runCatching { android.util.Log.i("VelaDirections", "open names (hybrid): kept ${tally[0]} renamed ${tally[1]} bare ${tally[2]} unplaced ${tally[3]}") }
+                app.vela.core.data.naming.HybridRoute.stitch(gTop!!, openChecked ?: open.first(), named.map { it.first to it.second!! })
             }
             val hybrid = if (hybridStretches.isEmpty()) null else
                 kotlinx.coroutines.withTimeoutOrNull(if (urgent) HYBRID_WAIT_URGENT_MS else HYBRID_WAIT_MS) { hybridOf(online = true) }
-                    ?: run { stretchSource.fill(0); hybridOf(online = false) }
+                    ?: run { stretchSource.fill(0); stretchNames.fill(0); hybridOf(online = false) }
             if (hybridStretches.isNotEmpty()) runCatching {
                 android.util.Log.i("VelaDirections", "google line: ${hybridStretches.size} stretch(es) off the open route, " +
                     "${hybridStretches.sumOf { it.toM - it.fromM }.toInt()} m of ${gTop?.distanceMeters?.toInt()} m, " +
-                    (if (hybrid != null) "hybrid ${hybrid.maneuvers.size} steps (open ${open.first().maneuvers.size}); stretches matched ${stretchSource[0]} (${stretchSource[3]} with lane detail), from tiles ${stretchSource[1]}, bare ${stretchSource[2]}" else "NOT placed, older path") +
+                    (if (hybrid != null) "hybrid ${hybrid.maneuvers.size} steps (open ${open.first().maneuvers.size}); stretches matched ${stretchSource[0]} (${stretchSource[3]} with lane detail), from tiles ${stretchSource[1]}, bare ${stretchSource[2]}; their turn names kept ${stretchNames[0]} renamed ${stretchNames[1]} dropped ${stretchNames[2]}, no edges for ${stretchNames[3]}" else "NOT placed, older path") +
                     " in ${System.currentTimeMillis() - tHybrid} ms")
             }
             val viaRoute = when {
@@ -1216,6 +1250,22 @@ class GoogleMapsDataSource @Inject constructor(
                 ).take(MAX_ROUTES)
             }
         }
+        // The open router's turn names, checked against the road pieces under its line: a turn
+        // whose street is not the one the line is on right after it is renamed or goes out bare
+        // (ValhallaRouter.recheck). Only the route on that very line; the hybrid's carried-over
+        // steps were checked before the stitch. No answer in time = the names stand.
+        val planned = openEdgesD?.let { d ->
+            val t0 = System.currentTimeMillis()
+            val edges = kotlinx.coroutines.withTimeoutOrNull(if (urgent) OPEN_NAMES_WAIT_URGENT_MS else OPEN_NAMES_WAIT_MS) { d.await() }
+                ?: return@let null
+            val tally = IntArray(4)
+            fetched.map { r ->
+                if (r.polyline === openLine)
+                    app.vela.core.data.ValhallaRouter.recheck(r, edges, keepUnplaced = true, tally = tally) else r
+            }.also {
+                runCatching { android.util.Log.i("VelaDirections", "open names: kept ${tally[0]} renamed ${tally[1]} bare ${tally[2]} unplaced ${tally[3]}, waited ${System.currentTimeMillis() - t0} ms more") }
+            }
+        } ?: fetched
         if ((avoidTolls || avoidHighways || avoidFerries) && mode == TravelMode.DRIVE && !avoidHonored) {
             planned.map { it.copy(avoidNotHonored = true) }
         } else planned
@@ -1766,6 +1816,13 @@ class GoogleMapsDataSource @Inject constructor(
         const val LANE_VIA_MIN_STEP_M = 80.0
         const val LANE_VIAS_MAX = 20
         const val LANE_SAME_PATH_M = 8.0
+        /** How long the route waits, after Google is back, for the road pieces that check the
+         *  open router's turn names. They were asked for when the open router answered. */
+        /** How much of Google's line at the very start or end of the trip may sit off the matched
+         *  path (the loop out of a parking lot, the last turn into a driveway). */
+        const val MATCH_TRIP_END_SLACK_M = 150.0
+        const val OPEN_NAMES_WAIT_MS = 1_500L
+        const val OPEN_NAMES_WAIT_URGENT_MS = 300L
         const val HYBRID_WAIT_MS = 5_500L // a match (2.5 s) and its lane detail (1.8 s) at their slowest
         const val LANE_TRY_MS = 1_800L
         const val HYBRID_WAIT_URGENT_MS = 1_500L

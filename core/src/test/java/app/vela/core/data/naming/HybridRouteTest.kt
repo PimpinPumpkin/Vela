@@ -51,6 +51,38 @@ class HybridRouteTest {
         assertTrue("to ${s[0].toM}", s[0].toM in 2600.0..2900.0)
     }
 
+    @Test fun aLaneBesideTheStreetIsADifferentWay() {
+        // Google drives an aisle about 18 m east of the open route's street for 300 m.
+        val aisle = listOf(p(0.0, 0.0), p(0.001, 0.0002), p(0.0037, 0.0002), p(0.0047, 0.0), p(0.04, 0.0))
+        assertEquals(1, HybridRoute.stretches(aisle, openLine).size)
+    }
+
+    @Test fun twoShortDeparturesCloseTogetherAreOne() {
+        // Off for 70 m, across the open route, off again for 70 m: one stretch, not none.
+        val weave = listOf(p(0.0, 0.0), p(0.0002, 0.0003), p(0.0008, 0.0003), p(0.001, -0.0003), p(0.0016, -0.0003), p(0.0018, 0.0), p(0.04, 0.0))
+        assertEquals(1, HybridRoute.stretches(weave, openLine).size)
+    }
+
+    @Test fun twoTurnsOfOneSourceAFewMetersApartBothStay() {
+        val s = HybridRoute.stretches(googleLine, openLine).single()
+        val len = s.toM - s.fromM
+        val named = listOf(
+            man(ManeuverType.DEPART, p(0.01, 0.0), 100.0),
+            man(ManeuverType.TURN_RIGHT, p(0.01, 0.0), 20.0),
+            man(ManeuverType.TURN_LEFT, p(0.01, 0.0002), len - 120.0, "G Street"),
+            man(ManeuverType.ARRIVE, p(0.02, 0.0), 0.0),
+        )
+        val r = HybridRoute.stitch(google, open, listOf(s to named))
+        assertNotNull(r)
+        assertTrue("the left onto the street survives: ${r!!.maneuvers.map { it.type to it.road }}", r.maneuvers.any { it.road == "G Street" })
+        assertTrue(r.maneuvers.any { it.type == ManeuverType.TURN_RIGHT })
+    }
+
+    @Test fun theSameRoadDrawnALaneOverIsNot() {
+        val lane = listOf(p(0.0, 0.0), p(0.001, 0.00008), p(0.039, 0.00008), p(0.04, 0.0)) // about 7 m
+        assertTrue(HybridRoute.stretches(lane, openLine).isEmpty())
+    }
+
     @Test fun theSameWayHasNoStretches() {
         assertTrue(HybridRoute.stretches(openLine, openLine).isEmpty())
     }

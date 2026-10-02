@@ -109,7 +109,59 @@ object ValhallaRouter {
      * both ways and its length agrees within [MATCH_LENGTH_SLACK]. One request, no retry (the
      * caller has a fallback), at most 200 km (the server's own limit; callers send stretches).
      */
-    fun match(http: OkHttpClient, shape: List<LatLng>, costing: String = "auto", timeoutMs: Long = 3_000): Route? {
+    fun match(http: OkHttpClient, shape: List<LatLng>, costing: String = "auto", timeoutMs: Long = 3_000): Route? =
+        matchWithEdges(http, shape, costing, timeoutMs)?.route
+
+    /** A match and the edges its turn names were checked against (null = none came back). */
+    class Match(val route: Route, val edges: List<Edge>?, val names: IntArray)
+
+    /** The road pieces under [shape], for checking names from another router. Null on failure. */
+    fun edges(http: OkHttpClient, shape: List<LatLng>, costing: String = "auto", timeoutMs: Long = 2_500): List<Edge>? {
+        if (shape.size < 2) return null
+        val client = http.newBuilder().callTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS).build()
+        return matchedEdges(client, shape, costing)
+    }
+
+    /** Maneuver types whose road is a street turned onto. */
+    private val TURN_MANEUVERS = setOf(
+        ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.SLIGHT_LEFT, ManeuverType.SLIGHT_RIGHT,
+        ManeuverType.SHARP_LEFT, ManeuverType.SHARP_RIGHT, ManeuverType.CONTINUE, ManeuverType.STRAIGHT,
+    )
+
+    /**
+     * [maneuvers] (any router's) with each turn's street put through [checkedRoad] against
+     * [edges]. A turn that cannot be found among the edges keeps its name when [keepUnplaced],
+     * else loses it. [tally] counts kept, renamed, bare, unplaced.
+     */
+    fun recheck(maneuvers: List<Maneuver>, edges: List<Edge>, keepUnplaced: Boolean, tally: IntArray? = null): List<Maneuver> {
+        val check = NameCheck(edges)
+        return maneuvers.map { m ->
+            val stated = m.road
+            if (stated == null || m.type !in TURN_MANEUVERS) return@map m
+            val r = check.road(stated, m.location, m.distanceMeters, unplaced = UNPLACED)
+            when {
+                r === UNPLACED -> { tally?.let { it[3]++ }; if (keepUnplaced) m else bare(m) }
+                r == null -> { tally?.let { it[2]++ }; bare(m) }
+                r.equals(stated, ignoreCase = true) -> { tally?.let { it[0]++ }; m }
+                m.instruction.contains(stated) -> { tally?.let { it[1]++ }; m.copy(instruction = m.instruction.replace(stated, r), road = r, ref = null) }
+                else -> { tally?.let { it[2]++ }; bare(m) }
+            }
+        }
+    }
+
+    fun recheck(route: Route, edges: List<Edge>, keepUnplaced: Boolean, tally: IntArray? = null): Route {
+        val all = recheck(route.maneuvers, edges, keepUnplaced, tally)
+        var k = 0
+        return route.copy(legs = route.legs.map { leg -> leg.copy(maneuvers = all.subList(k, k + leg.maneuvers.size).toList()).also { k += leg.maneuvers.size } })
+    }
+
+    private fun bare(m: Maneuver) = m.copy(instruction = m.instructionNoRoad ?: m.instruction, road = null, ref = null)
+    private val UNPLACED = String(charArrayOf('?'))
+
+    fun matchWithEdges(
+        http: OkHttpClient, shape: List<LatLng>, costing: String = "auto", timeoutMs: Long = 3_000,
+        startSlackM: Double = 0.0, endSlackM: Double = 0.0,
+    ): Match? {
         if (shape.size < 2) return null
         val body = buildJsonObject {
             putJsonArray("shape") { shape.forEach { p -> add(buildJsonObject { put("lat", p.lat); put("lon", p.lng) }) } }
@@ -130,8 +182,9 @@ object ValhallaRouter {
             client.newCall(req).execute().use { resp -> if (resp.isSuccessful) resp.body?.string() else null }
         }.getOrNull() ?: return null
         val edges = runCatching { edgesAsync.get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS) }.getOrNull()
-        val matched = parse(text, NameCheck(edges)).firstOrNull() ?: return null
-        return matched.takeIf { followsLine(it.polyline, shape) }
+        val check = NameCheck(edges)
+        val matched = parse(text, check).firstOrNull() ?: return null
+        return if (followsLine(matched.polyline, shape, startSlackM = startSlackM, endSlackM = endSlackM)) Match(matched, edges, check.tally) else null
     }
 
     /** One edge of the matched path: the names the road carries there, in travel order. */
@@ -190,9 +243,11 @@ object ValhallaRouter {
      */
     internal class NameCheck(private val edges: List<Edge>?) {
         private var cursor = 0
+        /** Turns kept, renamed, left bare (by the parser that uses this check). */
+        val tally = IntArray(3)
 
         /** The name to say for a turn at [at] that the service calls [stated], or null for none. */
-        fun road(stated: String, at: LatLng, stepLenM: Double): String? {
+        fun road(stated: String, at: LatLng, stepLenM: Double, unplaced: String? = null): String? {
             val es = edges ?: return null
             // The edge that BEGINS at the turn: the nearest one going forward, not the first one
             // near it (the last piece of the street being left starts a few meters before).
@@ -203,7 +258,7 @@ object ValhallaRouter {
                 if (d < bestD) { best = i; bestD = d } else if (best >= 0 && d > bestD + EDGE_PAST_M) break
                 i++
             }
-            if (best < 0) return null
+            if (best < 0) return unplaced
             cursor = best
             return checkedRoad(stated, stepLenM, es.subList(best, es.size))
         }
@@ -266,22 +321,26 @@ object ValhallaRouter {
 
     /** True when [matched] and [line] are the same path: lengths agree and each stays beside
      *  the other along its whole length (sampled every 30 m, both directions). */
-    fun followsLine(matched: List<LatLng>, line: List<LatLng>, offM: Double = MATCH_OFF_M): Boolean {
+    fun followsLine(matched: List<LatLng>, line: List<LatLng>, offM: Double = MATCH_OFF_M, startSlackM: Double = 0.0, endSlackM: Double = 0.0): Boolean {
         if (matched.size < 2 || line.size < 2) return false
         fun cum(l: List<LatLng>) = DoubleArray(l.size).also { c -> for (i in 1 until l.size) c[i] = c[i - 1] + l[i - 1].distanceTo(l[i]) }
         val cm = cum(matched); val cl = cum(line)
         val lm = cm.last(); val ll = cl.last()
-        if (ll <= 0.0 || kotlin.math.abs(lm - ll) > ll * MATCH_LENGTH_SLACK + 30.0) return false
-        fun beside(a: List<LatLng>, ca: DoubleArray, b: List<LatLng>, cb: DoubleArray): Boolean {
+        if (ll <= 0.0 || kotlin.math.abs(lm - ll) > ll * MATCH_LENGTH_SLACK + 30.0 + startSlackM + endSlackM) return false
+        // The slack is for the LINE's own ends at the start and end of a trip: a line that begins
+        // by circling a parking lot is matched to the street beside it (and the match may go
+        // round by the street where the line cuts through the lot), and that is the same trip.
+        // Past the slack both have to lie on each other everywhere.
+        fun beside(a: List<LatLng>, ca: DoubleArray, b: List<LatLng>, cb: DoubleArray, skipStart: Double = 0.0, skipEnd: Double = 0.0): Boolean {
             val grid = RouteGeometry.SegmentGrid(b, cb)
-            var m = 0.0
-            while (m <= ca.last()) {
+            var m = skipStart
+            while (m <= ca.last() - skipEnd) {
                 if (grid.along(app.vela.core.nav.RouteProjection.pointAt(a, ca, m), offM) == null) return false
                 m += 30.0
             }
             return true
         }
-        return beside(matched, cm, line, cl) && beside(line, cl, matched, cm)
+        return beside(matched, cm, line, cl, startSlackM, endSlackM) && beside(line, cl, matched, cm, startSlackM, endSlackM)
     }
 
     /** The main trip first, then any alternates. Public for the parser test. */
@@ -331,7 +390,8 @@ object ValhallaRouter {
                 val stated = (names.firstOrNull { !ROUTE_NUMBER.containsMatchIn(it) } ?: names.firstOrNull())?.takeIf { it.isNotBlank() }
                 val beginAt = shape.getOrNull(m["begin_shape_index"]?.jsonPrimitive?.intOrNull ?: 0) ?: shape.first()
                 val road = if (check != null && stated != null && vType in TURN_TYPES)
-                    check.road(stated, beginAt, (m["length"]?.jsonPrimitive?.doubleOrNull ?: 0.0) * 1000.0) else stated
+                    check.road(stated, beginAt, (m["length"]?.jsonPrimitive?.doubleOrNull ?: 0.0) * 1000.0)
+                        .also { check.tally[if (it == null) 2 else if (it == stated) 0 else 1]++ } else stated
                 val ref = statedRef?.takeIf { road == stated }
                 // The sign at a ramp or exit: its number, and where it says it goes (the route
                 // numbers first, then the towns, the open router's "I 5 North: Redding" form).

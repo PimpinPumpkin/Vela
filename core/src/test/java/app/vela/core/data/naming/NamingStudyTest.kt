@@ -168,4 +168,42 @@ class NamingStudyTest {
         println("MATCH routes=$routes refused=$refused | right ${t[0]} | WRONG ${t[1]} | bare ${t[2]} | missed ${t[3]} | wrong% of named ${"%.1f".format(if (named > 0) 100.0 * t[1] / named else 0.0)}")
         wrong.forEach { println("MATCH wrong: $it") }
     }
+
+    /** What the edge check does to the open router's OWN turn names: how many it keeps, renames
+     *  or strips, with every rename and strip printed for reading by hand. */
+    @Test fun checkTheOpenRoutersNames() = runBlocking {
+        val per = System.getProperty("velaStudy")?.toIntOrNull()
+        Assume.assumeTrue("set -DvelaStudy=<routes per area>", per != null)
+        val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
+        val t = IntArray(4); var routes = 0; var noEdges = 0
+        val changed = ArrayList<String>()
+        val rnd = Random(20261002)
+        for (a in areas) {
+            var got = 0; var tries = 0
+            while (got < per!! && tries < per * 3) {
+                tries++
+                fun pt() = LatLng(a.s + rnd.nextDouble() * (a.n - a.s), a.w + rnd.nextDouble() * (a.e - a.w))
+                val o = pt(); val d = pt()
+                if (o.distanceTo(d) < 800.0) continue
+                Thread.sleep(1100)
+                val r = RouteGeometry.route(http, o, d, TravelMode.DRIVE).firstOrNull() ?: continue
+                Thread.sleep(600)
+                got++; routes++
+                val edges = app.vela.core.data.ValhallaRouter.edges(http, r.polyline, timeoutMs = 20_000)
+                if (edges == null) { noEdges++; continue }
+                val after = app.vela.core.data.ValhallaRouter.recheck(r.maneuvers, edges, keepUnplaced = true, tally = t)
+                r.maneuvers.zip(after).forEach { (x, y) ->
+                    if (x.road != y.road && changed.size < 60) {
+                        val i = edges.indices.minByOrNull { edges[it].begin.distanceTo(x.location) }!!
+                        var acc = 0.0
+                        val path = edges.drop(i).takeWhile { e -> (acc < 160.0).also { acc += e.lengthM } }
+                            .joinToString(" > ") { "${it.names.joinToString("/").ifEmpty { "-" }}${if (it.soft) "*" else ""} ${it.lengthM.toInt()}" }
+                        changed += "${a.name}: ${x.type} '${x.road}' (step ${x.distanceMeters.toInt()} m) -> '${y.road}' | path: $path"
+                    }
+                }
+            }
+        }
+        println("OPENCHECK routes=$routes noEdges=$noEdges | kept ${t[0]} | renamed ${t[1]} | bare ${t[2]} | unplaced ${t[3]}")
+        changed.forEach { println("OPENCHECK $it") }
+    }
 }

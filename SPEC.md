@@ -819,7 +819,7 @@ ETA, for the same reason.
 
 **Google's line (DRIVE).** With a Google answer, the route driven is Google's line wherever it
 leaves the open route (`HybridRoute`, source `GOOGLE_HYBRID`). Stretches: Google's line sampled
-every 20 m, a sample over `OFF_M` (25 m) from the open route is off it, runs of `MIN_RUN_M`
+every 20 m, a sample over `OFF_M` (15 m) from the open route is off it, off runs within `JOIN_GAP_M` (60 m) of each other are one, runs of `MIN_RUN_M`
 (120 m) or more count, each walked out to where the lines are within 10 m (at most 600 m), then
 padded `PAD_M` (90 m) and merged. Each stretch's slice is named by
 `LineNamer` from the tiles under it. The stitched maneuver list takes the open router's maneuvers
@@ -836,10 +836,15 @@ name must begin after only unnamed pieces, junction pieces (named ones `NAMED_LE
 at most) or stubs under `STUB_M` 15 m, within `LEAD_MAX_M` 150 m, and hold `HOLD_M` 20 m or half
 the step; otherwise the first street held `RENAME_HOLD_M` 40 m with only stubs before it is
 used, otherwise none. Without edges a turn carries no street name. Ramps, merges and
-roundabouts are not checked (their name is where they lead); (2) `LineNamer` strict over the tiles;
+roundabouts are not checked (their name is where they lead). The open router's turn names pass
+the same check (`ValhallaRouter.recheck` over `edges` of its own line, asked for when it
+answers; waited for `OPEN_NAMES_WAIT_MS` 1.5 s, 0.3 s urgent; no answer = names stand; a turn not
+found on the edges keeps its name), as do `laneDetail`'s (not found = no name). A match on a
+stretch that touches the trip's start or end may differ from the line over the first or last
+`MATCH_TRIP_END_SLACK_M` (150 m). Stretch turns are placed by projection onto Google's line; (2) `LineNamer` strict over the tiles;
 (3) `LineNamer` with no lines (bare turns). Stretches over `MATCH_MAX_M` (180 km) skip (1).
 An open-router maneuver is carried over only when the open route's path
-after it stays within 20 m of Google's line, sampled every 40 m for up to 400 m of its leg. Naming
+after it stays within 15 m of Google's line, sampled every 40 m and at the end for up to 400 m of its leg. Naming
 is strict (`LineNamer.name(strict = true)`): never refused for a low named share; a sample with
 two differently named aligned streets within 12 m of each other in distance is unnamed; a turn
 carries a street name only when the line stays on it 60 m, a ramp or rename 100 m; refs containing

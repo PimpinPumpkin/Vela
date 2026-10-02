@@ -284,7 +284,7 @@ The 700 m test above is for jams. A closed road sends Google a few blocks around
 route through the closure and only borrowed Google's arrival time.
 
 For driving, the route is now Google's line wherever the two differ at all. Vela walks Google's
-line in 20 m steps and marks every stretch of 120 m or more that sits over 25 m from the open
+line in 20 m steps and marks every stretch of 120 m or more that sits over 15 m from the open
 route, padded by 90 m at each end so the turn off the shared road and the turn back onto it fall
 inside. Then:
 
@@ -313,7 +313,9 @@ stretches: 89 ms for three stretches on a Davis to Sacramento test, where 7.8 of
    the turn (within a turn lane's length) and stays on it 20 m, or half the step if the step is
    shorter. When the path is plainly on another street for 40 m, that one is said. Otherwise the
    turn has no name. On the 90 test routes this removed both real misnames found among 477 named
-   turns.
+   turns. The open router's own turn names, on the parts of the trip where it and Google agree,
+   go through the same check: of 463 on those routes, 5 lost their name (each one a turn where
+   the open router skips a street 10 to 30 m long and names the next).
 2. The map tiles, when the match fails. Each turn takes the name of the street the line runs
    along, and only where the map is sure (below). Measured on 90 routes in six cities, this put a
    wrong name on 1.4% of named turns and left about a quarter bare, which is why it is second.

@@ -787,6 +787,11 @@ object RouteGeometry {
         if (mod?.trim() == "uturn" && type in setOf("continue", "new name", "turn", "end of road")) {
             return strings.phrase("uturn", null, road, dest, exitNo, rbExit)
         }
+        // Straight on at a junction is not a turn: "Turn straight onto Mace Boulevard" (seen in a
+        // step list, 2026-10-02). Every language has a continue phrase.
+        if (mod?.trim() == "straight" && type in setOf("turn", "end of road")) {
+            return strings.phrase("continue", "straight", road, dest, exitNo, rbExit)
+        }
         return strings.phrase(type, mod, road, dest, exitNo, rbExit)
     }
 

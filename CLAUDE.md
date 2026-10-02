@@ -2824,7 +2824,7 @@ architecture note.
   open router leads and knows nothing of closures, and Google's line was followed only past
   `RouteGeometry.divergent` (five sample points, 700 m). Now, for DRIVE with a Google answer:
   `HybridRoute.stretches` finds where Google's line leaves the open route (a 20 m sample over
-  25 m off, runs of 120 m or more, padded 90 m each side so the turn off and back on are inside);
+  15 m off (was 25, see below), runs of 120 m or more, padded 90 m each side so the turn off and back on are inside);
   each stretch's slice is named from the tiles under it alone (`RoadNameTiles.linesAlong` +
   `LineNamer.name`), and `stitch` builds Google's line with the open router's maneuvers outside
   the stretches (lanes, exit numbers and sign text kept; a maneuver must project within 40 m and
@@ -2836,10 +2836,10 @@ architecture note.
   it 60 m (a ramp or rename 100 m), heritage refs ("US 40 Historic") give no shield. Tiles
   unreachable or slower than the wait: the SAME hybrid with bare turns (`hybridOf(tiles = false)`),
   never the open router's own route. And an open-router maneuver is carried over only if the
-  open route's path AFTER it stays within 20 m of Google's line for up to 400 m of its leg
+  open route's path AFTER it stays within 15 m of Google's line for up to 400 m of its leg
   (an exit Google does not take peels away slowly and sits before the 25 m mark); each stretch
   is also walked out to where the lines are within 10 m (at most 600 m) before the 90 m pad.
-  `OFF_M` is 25 m (at 45 a frontage road counted as the freeway beside it).
+  `OFF_M` is 15 m (at 45 a frontage road counted as the freeway beside it, at 25 a lot aisle as its street).
   **Measured (2026-10-02, `NamingStudyTest`, `-DvelaStudy=<routes per area>`):** 90 open-router
   routes over six areas (Davis, Portland, Boston, Prague, Los Angeles, Houston), each named from
   the tiles alone and compared turn by turn with the router's own names. At the shipped 60 m run
@@ -2883,6 +2883,30 @@ architecture note.
   router (it announces a 10 to 47 m street the other folds away), 2 ramps named for where they
   lead, 2 open-router oddities (a 4 m step; a turn lane's name). After the check: 477 / 6 / 2 /
   23, both misnames gone, the 6 left are of those other kinds. Tiles, strict: 345 / 5 / 108 / 50.
+  **THE OPEN ROUTER'S TURN NAMES GO THROUGH THE SAME CHECK (same day).** `ValhallaRouter.edges`
+  is asked for the open route's own line when the open router answers (unstructured, beside
+  Google's fetch) and `recheck` runs over (a) the open route's steps before a hybrid stitch, (b)
+  the plain open route when it is what goes out, (c) `laneDetail`'s steps, against the stretch's
+  edges. A turn that cannot be placed on the edges keeps its name for (a) and (b) and loses it
+  for (c); no answer inside `OPEN_NAMES_WAIT_MS` (1.5 s, 0.3 s urgent) = the names stand. On 90
+  routes (`NamingStudyTest.checkTheOpenRoutersNames`): 457 turn names kept, 5 stripped (each a
+  turn where the open router folds away a 10 to 30 m street and names the next one), 0 renamed.
+  **READ THE STEP LIST, NOT THE COUNTS (same day).** Davis to Sacramento from a parking lot
+  showed four stitch faults no test had: (1) `OFF_M` 25 m took a lot aisle 18 m beside G Street
+  for the street, so the open router's "Turn left onto G Street" was read out in the lot: 15 m
+  now, `AGREE_OFF_M` too; (2) two short runs off the open route with the lines crossing between
+  them were each under `MIN_RUN_M` and dropped: runs within `JOIN_GAP_M` (60 m) are joined
+  first; (3) the 30 m "one junction" merge also swallowed a right-then-left 20 m apart from ONE
+  source, losing "left onto G Street": it merges only an open step with a stretch step; (4) a
+  step shorter than 40 m passed the after-the-turn agreement with nothing sampled: the end of
+  the leg is always sampled. Also: a stretch's turns are placed by projecting them onto Google's
+  line (within 150 m or 8% of where the lengths put them), not by adding step lengths; a match
+  at the very start or end of the trip may differ from the line over its first or last
+  `MATCH_TRIP_END_SLACK_M` (150 m, both ways: the loop out of a lot), since a refused match
+  there fell to the tiles, which named the aisle "G Street" from 18 m (`STRICT_MAX_OFF_M` is
+  12 m now, was 30); "Turn straight onto X" is "Continue onto X" (`osrmPhrase`). The step list
+  is in the chooser: swipe the panel up. To see which source gave a step, log
+  `open.first().maneuvers`, each `matched.maneuvers` and the hybrid's beside the stretches.
   The wait is 5.5 s (1.5 s urgent);
   past it the stretches go bare.
   The hybrid leads WITHOUT the snap's ETA margin (it is Google's own route), takes Google's times
@@ -2915,6 +2939,9 @@ architecture note.
   clustering. The bearing test alone kept every sign on the parallel street a block over: on a
   Davis test route, 55 stop nodes in the 120 m corridor, 4 on the route (0 to 8 m), 16 more
   aligned ones 77 to 105 m away that used to draw. Cross-street signs sit 12 to 25 m off, hence 20.
+- **An alternate's outline is INSIDE its width (#639, 2026-10-02):** `ALT_ROUTE_EDGE_LAYER` sits
+  above the fill with `ALT_ROUTE_EDGE_GAP` = the fill's width less both edges, so fill plus
+  outline is never wider than the selected route (outside it, an alternate drew 4 px wider).
 - **Alternates on the DARK map (not AMOLED) are a pale fill in a route-blue outline**
   (`#DCE7FF|#2F7BF0`, third pass for #639): any mid blue is the dark roads' own family.
 - **Alternate routes are faded blue with an outline (discussion #639, 2026-10-01):** `altColor` is
