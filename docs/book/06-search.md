@@ -403,8 +403,7 @@ With Settings > Privacy > "Use Vela without Google" on, the data source never ca
   download there, STREAMED from the release host the map streams it from). A name it finds
   within 3 km of the view, or inside it, is answered by that alone too: asking Photon as well
   took most of ten seconds and brought back the same name in other towns, which made the map
-  fly out from the one on screen (issue #647). A search from a close view keeps the view as
-  soon as one hit is in it. A category query
+  fly out from the one on screen (issue #647). A category query
   ("Restaurants", the chips) is answered by that alone whenever it finds anything, with no
   Photon call; a name or address query puts Vela's rows first and Photon's after, a same-name
   row within 120 m dropped (issue #626). Before, the local data answered only when Photon came

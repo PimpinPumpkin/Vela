@@ -3734,6 +3734,7 @@ private fun MapSurface(
         // (user 2026-09-17). The destination keeps its own place pin (2026-09-30: a flag over
         // it read as a second thing); no rating bubble, the pin says what it is.
         markers = if (chooserUp) listOfNotNull(chooserDest?.let { MapMarker(it.name, it.location, it.category) }) else markersOf(state, filteredResultIds),
+        holdViewMinHits = if (app.vela.core.search.SearchKind.isName(state.query, state.results.map { it.name })) HOLD_VIEW_HITS_NAME else HOLD_VIEW_HITS_KIND,
         frameMarkers = state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed,
         holdMarkerFit = state.selected != null || state.streetView != null || state.streetViewLoading,
         // The endpoints card's measured bottom edge: the route fit frames start/end in the

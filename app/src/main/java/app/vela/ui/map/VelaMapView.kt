@@ -68,12 +68,14 @@ import org.maplibre.android.geometry.LatLng as MLLatLng
 import org.maplibre.android.geometry.LatLngBounds as MLLatLngBounds
 
 private const val ROUTE_SRC = "vela-route-src"
-// A search from a view this tall (meters, north to south) keeps its camera when at least
-// HOLD_VIEW_MIN_HITS results land in the visible strip, instead of flying out to frame every hit.
-// One is enough (it was three): zoomed in on a store, a search for it flew out to show the same
-// name in the next towns (issue #647).
+// A search from a view this tall (meters, north to south) keeps its camera when enough results
+// land in the visible strip, instead of flying out to frame every hit. How many is enough
+// depends on what was searched (the caller says, `holdViewMinHits`): a NAME ("Safeway") needs
+// one, since the place asked for is on screen; a KIND of place ("food") needs three, since one
+// cafe in view is no reason to hide the ten just outside it.
 private const val HOLD_VIEW_SPAN_M = 2_500.0
-private const val HOLD_VIEW_MIN_HITS = 1
+internal const val HOLD_VIEW_HITS_NAME = 1
+internal const val HOLD_VIEW_HITS_KIND = 3
 private const val ROUTE_LAYER = "vela-route"
 
 // The active route stripe's zoom curve (and the alt routes a step thinner): 6 px was constant at
@@ -662,6 +664,7 @@ fun VelaMapView(
     onSelectAlternate: (Int) -> Unit = {},
     routeBubbles: List<RouteBubble> = emptyList(), // Google-style chooser experiment: time bubbles on the routes
     markers: List<MapMarker>,
+    holdViewMinHits: Int = HOLD_VIEW_HITS_KIND, // results that must be in a close view for a search to keep it
     // Intermediate trip stops in VISIT ORDER - drawn as numbered teal pins (1, 2, ...) while a
     // trip is planned or driven; reordering the stops re-numbers the pins (list identity keys it).
     stopPins: List<LatLng> = emptyList(),
@@ -4510,7 +4513,7 @@ fun VelaMapView(
                         val pt = map.projection.toScreenLocation(MLLatLng(m.location.lat, m.location.lng))
                         pt.x >= 0f && pt.x <= map.width && pt.y >= 0f && pt.y <= visibleBottom
                     }
-                    inside >= minOf(HOLD_VIEW_MIN_HITS, markers.size)
+                    inside >= minOf(holdViewMinHits, markers.size)
                 }
                 if (!holdView) {
                 // Frame the result CLUSTER, not every last pin: a single stray hit hundreds of

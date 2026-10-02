@@ -1020,7 +1020,7 @@ Defaults that make the safe path the easy one:
   searches used to keep a city-sized net; the VM threads its live viewport span into the main +
   category-chip searches. **A search from a close zoom HOLDS its view (2026-09-15):** the results
   fit in VelaMapView (`holdView` in the marker-fit branch) skips the fly-out when the view is under
-  `HOLD_VIEW_SPAN_M` (2.5 km north to south) and at least `HOLD_VIEW_MIN_HITS` (1 since 2026-10-02, issue #647; was 3) results land in
+  `HOLD_VIEW_SPAN_M` (2.5 km north to south) and enough results (`holdViewMinHits`: 1 for a NAME search, 3 for a KIND of place, `core/search/SearchKind`, 2026-10-02) land in
   the strip above the results sheet; zoomed in to a few blocks, "food" used to fly the map out to
   frame every hit (user 2026-09-15). Wider views still frame the cluster as before. **Search is three pages plus a
   NEARBY pass plus "More results" (2026-09-13):** `GoogleMapsDataSource.search` fetches pages
@@ -2818,7 +2818,11 @@ architecture note.
   `googleFreeLocal` (place packs + the places archive) has a hit within `GOOGLE_FREE_NEAR_M`
   (3 km) of the view's center or inside the view, and the query is not an address, that is the
   answer; Photon is asked only when nothing near matches, and its two requests run together.
-  `HOLD_VIEW_MIN_HITS` is 1, so a search from a close view with a hit in it keeps the view.
+  A search for a NAME from a close view keeps the view with one hit in it (a kind of place
+  still needs three): `SearchKind.isName` = not a category word, and 60% of the results carry
+  the query's words in their names. NB Google itself does NOT hold a close view (checked on
+  the 4a, signed out: "pharmacy" from five blocks went to the whole city); holding is Vela's
+  own choice, the owner's from 2026-09-15.
   Logcat `VelaSearch: without google: own data N hit(s), N near, in N ms; open geocoder ...`.
   On the 4a (Davis, nothing downloaded there, archive streamed): 1.2 to 2.4 s for three names.
 - **A typed address is matched on WHOLE WORDS (issue #638, 2026-10-01, `core/util/AddressQuery`).**

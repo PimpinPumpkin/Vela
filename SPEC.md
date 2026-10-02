@@ -2067,7 +2067,8 @@ host that cannot answer.
 - The list ends in a "more results" row that pulls the next three pages and appends what is new;
   it disappears when a pull adds fewer than five or the query changes.
 - A search from a close zoom **holds its view**: the fit skips the fly-out when the view is
-  under `HOLD_VIEW_SPAN_M` (2.5 km) and at least `HOLD_VIEW_MIN_HITS` (1) results land in the
+  under `HOLD_VIEW_SPAN_M` (2.5 km) and at least `HOLD_VIEW_HITS_NAME` (1, a search for a name:
+  `SearchKind.isName`) or `HOLD_VIEW_HITS_KIND` (3, a kind of place) results land in the
   visible strip.
 - The camera frames the result **cluster**: pins are median-centered and outliers past 4 times
   the median spread (minimum 40 km) are dropped, so one stray far hit cannot zoom the map to a
