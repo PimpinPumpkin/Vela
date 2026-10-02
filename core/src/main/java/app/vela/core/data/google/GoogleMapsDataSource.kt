@@ -210,8 +210,12 @@ class GoogleMapsDataSource @Inject constructor(
             // landmark across the state is found; the suggest path's hard metro box is appended
             // for the partial-address case. Checked on a device the other way round: the box
             // led with fuzzy address rows two states away and the city itself never showed.
-            val ranked = app.vela.core.data.PhotonGeocoder.suggest(http, query, bias, lang, limit = 20, hardBox = false)
-            val nearby = app.vela.core.data.PhotonGeocoder.suggest(http, query, bias, lang, limit = 10)
+            // The two run side by side (one after the other was most of the wait, issue #647).
+            val (ranked, nearby) = coroutineScope {
+                val r = async(Dispatchers.IO) { app.vela.core.data.PhotonGeocoder.suggest(http, query, bias, lang, limit = 20, hardBox = false) }
+                val n = async(Dispatchers.IO) { app.vela.core.data.PhotonGeocoder.suggest(http, query, bias, lang, limit = 10) }
+                r.await() to n.await()
+            }
             val places = (ranked + nearby).distinctBy { it.id }
             return@io SearchResult(query, places)
         }

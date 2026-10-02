@@ -2211,8 +2211,20 @@ class MapViewModel @Inject constructor(
                 // anything; Photon is asked only for names and addresses, or when Vela has nothing.
                 val res = if (!app.vela.ui.GoogleFree.on.value) dataSource.search(q, near, spanM, rankFrom = rankBias(near))
                 else {
+                    val t0 = System.currentTimeMillis()
                     val local = googleFreeLocal(q, near)
-                    if (local.isNotEmpty() && app.vela.core.data.OfflineRank.isCategoryQuery(q)) app.vela.core.model.SearchResult(q, local)
+                    val localMs = System.currentTimeMillis() - t0
+                    // A NAME that Vela's own data finds near the view is answered from it alone
+                    // (issue #647): the open geocoder is two requests to a public server, took
+                    // most of ten seconds, and its hits for the same name in other towns made
+                    // the map fly out from the one on screen. It is still asked when nothing
+                    // near matches, and for addresses, which it knows better.
+                    val nearM = maxOf(viewSpanM ?: 0.0, GOOGLE_FREE_NEAR_M)
+                    val localNear = if (near == null) 0 else local.count { it.location.distanceTo(near) <= nearM }
+                    val category = app.vela.core.data.OfflineRank.isCategoryQuery(q)
+                    val alone = local.isNotEmpty() && (category || (!isAddress && localNear > 0))
+                    android.util.Log.i("VelaSearch", "without google: own data ${local.size} hit(s), ${localNear} near, in $localMs ms; open geocoder ${if (alone) "not asked" else "asked"}")
+                    if (alone) app.vela.core.model.SearchResult(q, local)
                     else dataSource.search(q, near, spanM, rankFrom = rankBias(near)).let { r ->
                         r.copy(places = local + r.places.filterNot { p ->
                             local.any { l -> l.name.equals(p.name, ignoreCase = true) && l.location.distanceTo(p.location) < 120.0 }
@@ -8723,6 +8735,8 @@ class MapViewModel @Inject constructor(
         /** The least window a typed street address is searched over, and how near a result has to
          *  be to count as "the address around here": about a metro area. */
         private const val ADDRESS_SEARCH_SPAN_M = 40_000.0
+        /** Without Google, a name Vela's own data finds within this of the view's center (or inside the view) is answered without the open geocoder. */
+        const val GOOGLE_FREE_NEAR_M = 3_000.0
         /** A directions link's start this close to the fix is "from here" (Telegram sends the fix). */
         private const val LINK_ORIGIN_HERE_M = 150.0
         private const val ROUTING_OFFER_DONE = "routing_offer_done"

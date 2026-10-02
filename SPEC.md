@@ -124,7 +124,8 @@ Compose holder.
   the data source: search answers from the OpenStreetMap geocoder (Photon: 20 results softly
   biased toward the user, then 10 inside a hard box around the view for partial addresses), with
   Vela's own places leading the list (place packs plus the places archive, downloaded or streamed
-  by HTTP range, `PlacesArchiveSearch`; a category query skips Photon when they answer), the page-2 search, the ambient fan-out, reviews and photos answer empty,
+  by HTTP range, `PlacesArchiveSearch`; Photon is skipped when they answer a category query, or a name query
+  with a hit within `GOOGLE_FREE_NEAR_M` 3 km of the view or inside it; its two requests run together), the page-2 search, the ambient fan-out, reviews and photos answer empty,
   Street View answers null, and the Google directions call answers empty, so every route is the
   open router's with no traffic, no Google alternates and no abbreviated fallback. The app gates
   its own Google surfaces on the same setting: the hidden WebView fetchers return null at
@@ -1103,6 +1104,10 @@ degrees) from the route's local bearing counts as an off-route hit even inside t
 and counts double when it is also a quarter-corridor off the line; a heading-diverged fix never
 counts toward the on-route streak. Off-route distance is measured on the windowed, anchored
 projection, never a global nearest, so a route that passes near itself cannot claim the puck.
+Progress itself is the projection inside the window from 60 m behind to 600 m ahead of the
+progress so far, scored by distance plus 2 cm per meter of along-route distance from that
+progress (`projectAlong(anchorM=)`), so on a road driven out and back the pass being driven
+wins.
 `movingFloorMps` is mode-relative (`NavSession`): 2.0 m/s driving, 1.0 cycling, 0.6 walking.
 
 **Rerouting.**
@@ -2062,7 +2067,7 @@ host that cannot answer.
 - The list ends in a "more results" row that pulls the next three pages and appends what is new;
   it disappears when a pull adds fewer than five or the query changes.
 - A search from a close zoom **holds its view**: the fit skips the fly-out when the view is
-  under `HOLD_VIEW_SPAN_M` (2.5 km) and at least `HOLD_VIEW_MIN_HITS` (3) results land in the
+  under `HOLD_VIEW_SPAN_M` (2.5 km) and at least `HOLD_VIEW_MIN_HITS` (1) results land in the
   visible strip.
 - The camera frames the result **cluster**: pins are median-centered and outliers past 4 times
   the median spread (minimum 40 km) are dropped, so one stray far hit cannot zoom the map to a

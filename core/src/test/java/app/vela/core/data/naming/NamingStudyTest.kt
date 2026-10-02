@@ -398,6 +398,11 @@ class NamingStudyTest {
             var at = 0.0
             println("LINES $tag ${len.toInt()} m, ${st.size} stretch(es), ${hybrid.maneuvers.size} steps | ${a.summary()} | drive suspects ${rep.suspects.size}")
             if (System.getProperty("velaOne") != null) rep.summary().lines().forEach { println("LINES    $it") }
+            if (System.getProperty("velaOne") != null) {
+                var stN = app.vela.core.nav.NavState()
+                fixes.forEachIndexed { i, p -> val (nx, _) = app.vela.core.nav.NavEngine.update(hybrid, stN, p, true); stN = nx
+                    if (i in 245..290) println("LINES    FIX $i ${"%.5f,%.5f".format(p.lat, p.lng)} traveled=${nx.traveledM.toInt()} step=${nx.stepIndex} next=${nx.distanceToNextManeuver.toInt()}") }
+            }
             if (System.getProperty("velaOne") != null) hybrid.maneuvers.forEach { println("LINES    ${at.toInt()} ${it.type} lanes=${it.lanes.size} | ${it.instruction}"); at += it.distanceMeters }
         }
         println("LINES trips=$trips sameWay=$noStretch notPlaced=$notPlaced | stretches matched ${src[0]} tiles ${src[1]} bare ${src[2]} | matched turn names kept ${names[0]} renamed ${names[1]} bare ${names[2]}")
@@ -405,5 +410,69 @@ class NamingStudyTest {
         notes.filterNot { " STRAIGHT " in it && "DRIVE" in it }.forEach { println("LINES $it") }
         app.vela.core.data.ValhallaRouter.onChanged = null
         changed.distinct().forEach { println("LINES CHANGED $it") }
+    }
+
+    /**
+     * HOW MANY LANE ARROWS COULD THERE BE? For every step on a matched stretch of the captured
+     * lines, the open router is asked for 150 m either side of that one junction along Google's
+     * line and its step there is read: lanes or none. That is the ceiling for lane arrows on the
+     * stretches, to hold against what the app carries (logged per step by VelaSteps on a phone).
+     */
+    @Test fun laneCeilingOnCapturedLines() = runBlocking {
+        Assume.assumeTrue("set -DvelaStudy=1", System.getProperty("velaStudy") != null)
+        val dir = System.getProperty("velaLines")?.let { java.io.File(it) }
+            ?: java.io.File(javaClass.getResource("/google_lines")!!.toURI())
+        val http = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build()
+        var steps = 0; var withLanes = 0; var none = 0; var cannotTell = 0; var openSteps = 0; var openLanes = 0
+        val byType = HashMap<String, IntArray>()
+        for (f in dir.listFiles { x -> x.name.endsWith(".txt") }!!.sortedBy { it.name }) {
+            val line = app.vela.core.data.google.PolylineCodec.decode(f.readText().trim())
+            if (line.size < 5) continue
+            val cum = app.vela.core.nav.RouteProjection.cumulative(line)
+            val len = cum.last()
+            val google = app.vela.core.model.Route(polyline = line, legs = emptyList(), distanceMeters = len, durationSeconds = len / 13.0, durationInTrafficSeconds = null)
+            Thread.sleep(1100)
+            val open = RouteGeometry.route(http, line.first(), line.last(), TravelMode.DRIVE).firstOrNull() ?: continue
+            openSteps += open.maneuvers.size - 2; openLanes += open.maneuvers.count { it.lanes.isNotEmpty() }
+            val st = HybridRoute.stretchesFor(line, open)
+            if (st.isEmpty()) continue
+            val untrusted = ArrayList<HybridRoute.Stretch>()
+            val named = st.mapNotNull { s ->
+                Thread.sleep(600)
+                val m = app.vela.core.data.ValhallaRouter.matchWithEdges(
+                    http, HybridRoute.slice(line, s.fromM, s.toM), timeoutMs = 20_000,
+                    startSlackM = if (s.fromM <= 0.0) 150.0 else 0.0, endSlackM = if (s.toM >= len - 1.0) 150.0 else 0.0,
+                ) ?: return@mapNotNull null
+                m.off.forEach { untrusted += HybridRoute.Stretch(s.fromM + it.first, s.fromM + it.second) }
+                s to m.route.maneuvers
+            }
+            if (named.size != st.size) continue
+            val hybrid = HybridRoute.stitch(google, open, named, untrusted) ?: continue
+            val grid = RouteGeometry.SegmentGrid(line, cum)
+            var at = 0.0
+            for (m in hybrid.maneuvers) {
+                val here = at; at += m.distanceMeters
+                if (m.type == ManeuverType.DEPART || m.type == ManeuverType.ARRIVE) continue
+                if (st.none { here >= it.fromM && here <= it.toM }) continue
+                if (here < 160.0 || here > len - 160.0) continue
+                steps++
+                val a = app.vela.core.nav.RouteProjection.pointAt(line, cum, here - 150.0)
+                val b = app.vela.core.nav.RouteProjection.pointAt(line, cum, here + 150.0)
+                Thread.sleep(1100)
+                val r = RouteGeometry.routeVia(http, listOf(a, b), TravelMode.DRIVE, tries = 1, waypointBearings = listOf(RouteGeometry.headingOnLine(line, a), null)).firstOrNull()
+                val rc = r?.let { app.vela.core.nav.RouteProjection.cumulative(it.polyline) }
+                val same = r != null && rc != null && rc.last() < 400.0 &&
+                    (0..(rc.last() / 30).toInt()).all { grid.along(app.vela.core.nav.RouteProjection.pointAt(r.polyline, rc, it * 30.0), 15.0) != null }
+                val key = m.type.name
+                val row = byType.getOrPut(key) { IntArray(3) }
+                if (!same) { cannotTell++; row[2]++; continue }
+                val laned = r!!.maneuvers.any { it.lanes.isNotEmpty() && it.location.distanceTo(m.location) <= 25.0 }
+                if (laned) { withLanes++; row[0]++ } else { none++; row[1]++ }
+            }
+            println("LANES ${f.name}: so far $steps steps, $withLanes with lane data, $none without, $cannotTell not told")
+        }
+        println("LANES stretch steps $steps | the open router has lanes at $withLanes | none at $none | could not tell at $cannotTell (its path there is not the line)")
+        println("LANES for scale, the open router's own routes: $openLanes of $openSteps steps carry lanes")
+        byType.toSortedMap().forEach { (k, v) -> println("LANES   $k: lanes ${v[0]}, none ${v[1]}, not told ${v[2]}") }
     }
 }

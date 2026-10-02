@@ -32,6 +32,7 @@ object NavEngine {
     private const val ON_ROUTE_M = 60.0       // within this of the windowed route → keep tracking progress
     private const val STOP_ON_ROUTE_M = 150.0 // a waypoint farther than this from the line isn't on this route
     private const val PASSED_SLACK_M = 75.0   // this far PAST a maneuver = it happened during a gap → advance silently
+    private const val ANCHOR_PENALTY = 0.02 // meters of perpendicular distance per meter of along-route distance from the anchor
     private const val REACQUIRE_JUMP_M = 1_500.0 // a global re-acquire jumping farther than this needs persistence
     private const val DEFAULT_ACC_M = 12.0    // assumed GPS accuracy when a fix carries none (dead-reckoning)
     private const val HEADING_OFF_DEG = 60.0  // moving this far AGAINST the route's local direction counts
@@ -170,7 +171,12 @@ object NavEngine {
             traveled = 0.0
             offDist = 0.0
         } else {
-            val (wM, wD) = projectAlong(route.polyline, cum, loc, state.traveledM - 60.0, state.traveledM + 600.0)
+            // Anchored on the progress so far: on a road driven out and back (a U-turn by
+            // roundabout, "3rd exit onto the road you came on") both passes are under the fix,
+            // and the plain nearest one put progress 600 m ahead on the way IN, skipping the
+            // roundabout's steps and misreading the next card by that much (a captured Milton
+            // Keynes route, 2026-10-02).
+            val (wM, wD) = projectAlong(route.polyline, cum, loc, state.traveledM - 60.0, state.traveledM + 600.0, anchorM = state.traveledM)
             if (wD <= ON_ROUTE_M && state.traveledM <= total) {
                 traveled = maxOf(state.traveledM, wM)
                 offDist = wD
@@ -609,8 +615,9 @@ object NavEngine {
      *  Windowing is what stops a route that passes near itself from matching a far leg; a
      *  caller passes the window around the last known progress. Returns the clamped window
      *  start with a huge distance if no segment falls in the window. */
-    internal fun projectAlong(path: List<LatLng>, cum: DoubleArray, p: LatLng, loM: Double, hiM: Double): Pair<Double, Double> {
+    internal fun projectAlong(path: List<LatLng>, cum: DoubleArray, p: LatLng, loM: Double, hiM: Double, anchorM: Double? = null): Pair<Double, Double> {
         val total = cum.lastOrNull() ?: 0.0
+        var bestScore = Double.MAX_VALUE
         var bestD = Double.MAX_VALUE
         var bestAlong = loM.coerceIn(0.0, total)
         val mPerDegLat = 111_320.0
@@ -628,9 +635,16 @@ object NavEngine {
             val len2 = dx * dx + dy * dy
             val t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, 1.0)
             val d = hypot(ax + t * dx, ay + t * dy)
-            if (d < bestD) {
+            val along = cum[i] + t * (cum[i + 1] - cum[i])
+            // With an anchor, a pass farther along has to be that much nearer to win (2 cm per
+            // meter, the re-acquire's own rule): the window alone reaches 600 m ahead, and a
+            // route that goes round a roundabout and comes BACK down the road it arrived on
+            // lies on itself inside it.
+            val score = if (anchorM == null) d else d + ANCHOR_PENALTY * kotlin.math.abs(along - anchorM)
+            if (score < bestScore) {
+                bestScore = score
                 bestD = d
-                bestAlong = cum[i] + t * (cum[i + 1] - cum[i])
+                bestAlong = along
             }
         }
         return bestAlong to bestD
@@ -663,7 +677,7 @@ object NavEngine {
             val t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, 1.0)
             val d = hypot(ax + t * dx, ay + t * dy)
             val along = cum[i] + t * (cum[i + 1] - cum[i])
-            val score = d + 0.02 * kotlin.math.abs(along - anchorM)
+            val score = d + ANCHOR_PENALTY * kotlin.math.abs(along - anchorM)
             if (score < bestScore) {
                 bestScore = score
                 bestD = d

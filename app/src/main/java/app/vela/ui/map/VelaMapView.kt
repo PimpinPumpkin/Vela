@@ -70,8 +70,10 @@ import org.maplibre.android.geometry.LatLngBounds as MLLatLngBounds
 private const val ROUTE_SRC = "vela-route-src"
 // A search from a view this tall (meters, north to south) keeps its camera when at least
 // HOLD_VIEW_MIN_HITS results land in the visible strip, instead of flying out to frame every hit.
+// One is enough (it was three): zoomed in on a store, a search for it flew out to show the same
+// name in the next towns (issue #647).
 private const val HOLD_VIEW_SPAN_M = 2_500.0
-private const val HOLD_VIEW_MIN_HITS = 3
+private const val HOLD_VIEW_MIN_HITS = 1
 private const val ROUTE_LAYER = "vela-route"
 
 // The active route stripe's zoom curve (and the alt routes a step thinner): 6 px was constant at

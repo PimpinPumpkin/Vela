@@ -395,12 +395,16 @@ With Settings > Privacy > "Use Vela without Google" on, the data source never ca
 
 - `suggest` answers empty, so typing always runs the fallback race, with the search endpoint's
   part answered by Photon too.
-- `search` is two Photon calls merged: 20 rows ranked by Photon's own importance with a soft bias
+- `search` is two Photon calls, run together and merged: 20 rows ranked by Photon's own importance with a soft bias
   toward you, then 10 from the hard metro box for the partial-address case. The box used to lead,
   and on a device it showed fuzzy address rows two states away and never the city itself.
 - The view model runs Vela's own search too (`googleFreeLocal`: the place packs plus the places
   archive the map draws, Overture, AllThePlaces and OSM, read from the download or, with no
-  download there, STREAMED from the release host the map streams it from). A category query
+  download there, STREAMED from the release host the map streams it from). A name it finds
+  within 3 km of the view, or inside it, is answered by that alone too: asking Photon as well
+  took most of ten seconds and brought back the same name in other towns, which made the map
+  fly out from the one on screen (issue #647). A search from a close view keeps the view as
+  soon as one hit is in it. A category query
   ("Restaurants", the chips) is answered by that alone whenever it finds anything, with no
   Photon call; a name or address query puts Vela's rows first and Photon's after, a same-name
   row within 120 m dropped (issue #626). Before, the local data answered only when Photon came

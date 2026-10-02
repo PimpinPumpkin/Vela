@@ -108,8 +108,12 @@ object NavReplay {
         val poly = route.polyline
         val cum = NavEngine.cumulative(poly)
         val total = cum.lastOrNull() ?: 0.0
+        // Each maneuver's place along the route: nearest to where the step lengths put it, for
+        // the same out-and-back reason.
+        var stepAt = 0.0
         val actualAlong = DoubleArray(n) { i ->
-            if (poly.size < 2) 0.0 else NavEngine.projectAlong(poly, cum, maneuvers[i].location, 0.0, total).first
+            val expected = stepAt.also { stepAt += maneuvers[i].distanceMeters }
+            if (poly.size < 2) 0.0 else NavEngine.projectAlong(poly, cum, maneuvers[i].location, 0.0, total, anchorM = expected).first
         }
 
         val announced = BooleanArray(n)
@@ -120,10 +124,14 @@ object NavReplay {
         val cards = ArrayList<CardSnapshot>(fixes.size)
 
         var state = NavState()
+        var lastFixAlong = 0.0
         for ((fi, loc) in fixes.withIndex()) {
             val idx = state.stepIndex.coerceIn(0, n - 1) // target BEFORE this update — who the prompt belongs to
             val (next, events) = NavEngine.update(route, state, loc, imperial)
-            val fixAlong = if (poly.size < 2) 0.0 else NavEngine.projectAlong(poly, cum, loc, 0.0, total).first
+            // The fix's true place along the route, followed from the previous fix's: the plain
+            // nearest point is the wrong pass half the time on a road driven out and back.
+            val fixAlong = if (poly.size < 2) 0.0 else NavEngine.projectAlong(poly, cum, loc, 0.0, total, anchorM = lastFixAlong).first
+            lastFixAlong = fixAlong
 
             for (i in 0 until n) {
                 val gap = abs(actualAlong[i] - fixAlong)

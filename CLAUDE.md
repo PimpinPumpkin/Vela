@@ -1020,7 +1020,7 @@ Defaults that make the safe path the easy one:
   searches used to keep a city-sized net; the VM threads its live viewport span into the main +
   category-chip searches. **A search from a close zoom HOLDS its view (2026-09-15):** the results
   fit in VelaMapView (`holdView` in the marker-fit branch) skips the fly-out when the view is under
-  `HOLD_VIEW_SPAN_M` (2.5 km north to south) and at least `HOLD_VIEW_MIN_HITS` (3) results land in
+  `HOLD_VIEW_SPAN_M` (2.5 km north to south) and at least `HOLD_VIEW_MIN_HITS` (1 since 2026-10-02, issue #647; was 3) results land in
   the strip above the results sheet; zoomed in to a few blocks, "food" used to fly the map out to
   frame every hit (user 2026-09-15). Wider views still frame the cluster as before. **Search is three pages plus a
   NEARBY pass plus "More results" (2026-09-13):** `GoogleMapsDataSource.search` fetches pages
@@ -2811,6 +2811,16 @@ architecture note.
   verb as A (`looksLikeVerb`), and `normalize` strips apostrophes and joins spelled acronyms
   ("E.T.A.", "e t a" -> "eta"). Pinned by the `dictation slips still land` and `fuzziness never
   rewrites a short word or the destination` tests.
+- **Without Google, a name found nearby is answered from Vela's own data alone (issue #647,
+  2026-10-02).** `runSearch`'s Google-free branch asked the open geocoder (Photon) for every
+  non-category query, two requests one after the other, and merged its hits: about ten seconds,
+  and the same store name in other towns made the map fly out from the one on screen. Now when
+  `googleFreeLocal` (place packs + the places archive) has a hit within `GOOGLE_FREE_NEAR_M`
+  (3 km) of the view's center or inside the view, and the query is not an address, that is the
+  answer; Photon is asked only when nothing near matches, and its two requests run together.
+  `HOLD_VIEW_MIN_HITS` is 1, so a search from a close view with a hit in it keeps the view.
+  Logcat `VelaSearch: without google: own data N hit(s), N near, in N ms; open geocoder ...`.
+  On the 4a (Davis, nothing downloaded there, archive streamed): 1.2 to 2.4 s for three names.
 - **A typed address is matched on WHOLE WORDS (issue #638, 2026-10-01, `core/util/AddressQuery`).**
   `runSearch` asks Google's autocomplete to geocode a typed house address only when no result
   already "carries" it. The test was a substring of the digits, which a ZIP code ("616" in
@@ -2949,9 +2959,22 @@ architecture note.
   (the 4 are a garage exit, a gentle bend, and a U-turn at a destination since fixed); lane
   detail on 32 of 51 matched stretches (29 of 40 before the trim and borrow), 64 of 370 stretch
   steps carry lanes.
-  KNOWN, NOT THIS CODE: the simulated drive flags one trip, a roundabout taken at its 3rd exit
-  (a 135 m ring): NavEngine's position jumps across the ring, the exit is never called and the
-  next card reads 560 m wrong. The same ring from any router would do it; it is an engine fix.
+  LANE ARROWS ARE NEAR THEIR CEILING, DO NOT BUILD MORE FOR THEM (measured 2026-10-02,
+  `NamingStudyTest.laneCeilingOnCapturedLines`): the open router was asked for 150 m either side
+  of every mid-trip step on the matched stretches of the 39 lines. It has lane data at 56 of
+  214 (26%; 28% of the 198 where its path there is the line), which is all there is to show:
+  OpenStreetMap marks lanes at some big junctions only (its own routes carry them on 113 of 381
+  steps). The phone carried lanes on 63 of 289 such steps (22%), and on ramps and forks 24 of
+  61 against a ceiling of 21 of 52, i.e. none missing there. The earlier "306 of 370 without
+  arrows" counted turns that have no lane data anywhere.
+  ENGINE FIX FROM THE SAME REPLAY (`NavEngine.projectAlong(anchorM=)`): one Milton Keynes line
+  goes round a roundabout and BACK down the road it arrived on (a U-turn by roundabout, "3rd
+  exit onto the road you came on"), so both passes lie under the car. The progress window
+  reaches 600 m ahead and took the plain nearest point: on the way IN progress jumped 600 m to
+  the way back, the roundabout's two steps were skipped in silence and the next card read 560 m
+  wrong. The windowed projection is now anchored on the progress so far (the re-acquire's 2 cm
+  per meter rule). `NavEngineOutAndBackTest`; `NavReplay` follows each fix from the previous
+  one for the same reason (its own "truth" was the wrong pass). The replay now flags nothing.
   **THREE CHECKS FOR THIS CODE, USE THEM BEFORE TRUSTING A CHANGE (same day, second round).**
   (1) `core/nav/StepAudit`: steps against the line (each left or right must sit on a bend that
   way within 40 m of where the step lengths put it; each 60 degree corner needs a step within
