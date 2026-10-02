@@ -2818,6 +2818,31 @@ architecture note.
   matching rows lead nearest-first (`addressFirst`): a 50 ft view asked about a 1 km window and an
   address a few miles off lost to a namesake in another state.
   NOT device-checked (the 4a was in use by another project); `AddressQueryTest` pins the rule.
+- **Vela follows Google around LOCAL detours (2026-10-02, a real drive: Google routed around a
+  closed road, Vela's route went through it; both trip files showed `source=OSRM` with Google's
+  traffic on every route).** The open router leads and knows nothing of closures; Google's line
+  was followed only past `RouteGeometry.divergent` (five sample points, 700 m), so a detour of a
+  few blocks read as the same course. Now, for DRIVE, when the 700 m test says same course,
+  `SavedRoutes.viasAgainst(google line, open route, maxRunM = DETOUR_MAX_RUN_M)` (over 60 m off for 150 m to 3 km; a longer stretch is another road, not a detour) gives a via in
+  the middle of each stretch where Google leaves the open route, the open router is led through
+  them (`OSRM_VIA_SNAP`, the snap's reach / length / spur / ETA guards), and the open router's own
+  top route is dropped from the list (it would tie on time and lead again). Runs on urgent
+  reroutes too when Google is back. Diag `detourVias=N`, logcat `VelaDirections: local detour`.
+  NOT seen leading a route: the same trip planned later had Google and the open router
+  agreeing. On a Davis to Sacramento test, before the 3 km limit, two freeways' worth of difference
+  put six vias down and the led route failed the spur check (correctly refused).
+  With the limit the same trip still gave three vias (Google was on the frontage road beside the
+  freeway for stretches) and the led route was refused on shape again, so that trip is unchanged.
+  Each via carries the heading of Google's line there (`routeVia(waypointBearings=)`,
+  `RouteGeometry.headingOnLine`), so a via on a divided road is taken on the right side.
+- **With a route up, the camera layer shows on-route cameras only (2026-10-02):** `refreshFlock`
+  takes `FlockCameras.along` over the shown routes (the chooser's, or the drive's) instead of the
+  viewport box, re-keyed when the route set changes. A long route's overview drew every camera in
+  the metro and panned badly.
+- **A basemap point for an AREA matches its open place within 1.5 km (2026-10-02):** `osmFillIn`
+  uses `OSM_AREA_TWIN_M` for classes in `OSM_AREA_CLASSES` (golf, park, stadium, cemetery, zoo,
+  college, school, hospital...), 80 m otherwise: a golf course drew twice, OSM's point at the
+  middle of the course (no address) and the open place at the clubhouse.
 - **A drive's stop signs must be ON the route (2026-10-01):** `RouteProjection.stopIsOnRoute`
   (node within `STOP_ON_ROUTE_M` 20 m of the line AND its road aligned), on the raw nodes before
   clustering. The bearing test alone kept every sign on the parallel street a block over: on a

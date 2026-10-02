@@ -1342,6 +1342,8 @@ until the car moved; checked on the 4a with a stationary mock fix beside the rou
   route. A plain gray matched the weight of the roads on a dense grid.
   On the dark map that is not AMOLED the pair is `#DCE7FF` inside `#2F7BF0`: a pale fill in a
   route-blue outline, because a mid blue is the dark roads' own family.
+- **Plate cameras with a route up** (chooser or drive): only those on a shown route draw
+  (`FlockCameras.along`, 45 m and facing the road); with no route the layer shows the viewport's.
 - **Stop signs drawn during a drive** are the ones whose own node lies within `STOP_ON_ROUTE_M`
   (20 m) of the route and whose road orientation agrees with the route's bearing there within
   40 degrees (`RouteProjection.stopIsOnRoute`, applied to raw nodes before clustering). The

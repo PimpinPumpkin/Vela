@@ -7767,6 +7767,7 @@ class MapViewModel @Inject constructor(
     private var navTapDetourJob: Job? = null
     private var controlsBox: DoubleArray? = null // [s,w,n,e] of the last fetched (padded) box
     private var flockBox: DoubleArray? = null
+    private var flockRoutesKey = 0 // which routes the camera layer was last filtered to (0 = none)
     private var transitStopsBox: DoubleArray? = null
     private var transitStopsJob: Job? = null
     private val transitStopCache by lazy { app.vela.data.TransitStopCache(appContext) }
@@ -8145,6 +8146,14 @@ class MapViewModel @Inject constructor(
             return
         }
         val cLat = (south + north) / 2; val cLng = (west + east) / 2
+        // WITH A ROUTE UP (the chooser or a drive) only the cameras ON a shown route draw: a long
+        // route's overview is a low zoom over a whole metro, and every camera in it was a badge
+        // and a cone to place on each pan (user 2026-10-02). Same test as the route counts
+        // (within 45 m and facing the road).
+        val st = _state.value
+        val shown = if (st.navigating) listOfNotNull(st.activeRoute) else st.routes
+        val routesKey = if (shown.isEmpty()) 0 else shown.fold(17) { h, r -> 31 * h + System.identityHashCode(r) }
+        if (routesKey != flockRoutesKey) { flockRoutesKey = routesKey; flockBox = null }
         flockBox?.let { b ->
             val insLat = (b[2] - b[0]) * 0.25; val insLng = (b[3] - b[1]) * 0.25
             if (cLat in (b[0] + insLat)..(b[2] - insLat) && cLng in (b[1] + insLng)..(b[3] - insLng)) return
@@ -8156,7 +8165,11 @@ class MapViewModel @Inject constructor(
         if (app.vela.data.FlockCameras.isLoaded) {
             flockJob?.cancel()
             flockJob = viewModelScope.launch {
-                val res = withContext(Dispatchers.Default) { app.vela.data.FlockCameras.inBox(s, w, n, e) }
+                val res = withContext(Dispatchers.Default) {
+                    if (shown.isEmpty()) app.vela.data.FlockCameras.inBox(s, w, n, e)
+                    else shown.flatMap { app.vela.data.FlockCameras.along(it.polyline) }.distinct()
+                        .filter { it.loc.lat in s..n && it.loc.lng in w..e }
+                }
                 flockBox = doubleArrayOf(s, w, n, e)
                 val kept = capFlock(res, s, n, w, e)
                 diag.record("flock", "showing ${kept.size} camera(s) at z${"%.1f".format(zoom)}", "bundled dataset")

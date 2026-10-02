@@ -1010,13 +1010,30 @@ class GoogleMapsDataSource @Inject constructor(
             // (Only on real divergence, so the normal case stays the fast single OSRM call.)
             val topDivergent = open.isNotEmpty() && gTop != null && gTop.polyline.size >= 5 &&
                 RouteGeometry.divergent(open.first(), gTop)
-            val viaRoute = if ((!urgent || avoidWanted) && topDivergent) {
-                RouteGeometry.routeVia(
+            // LOCAL DETOURS (2026-10-02, a real drive: Google routed around a closed road, Vela drove
+            // into it twice). The test above samples five points and asks for 700 m, so a detour
+            // of a few blocks reads as "same course" and the open route, which knows nothing of
+            // closures, is kept with Google's time painted on it. Where Google's line leaves the
+            // open route for a real stretch (SavedRoutes.viasAgainst: over 60 m off for 150 m or
+            // more), a point in the middle of each such stretch leads the open router the same way.
+            // DRIVE only: Google's walking and cycling lines are not followed on purpose.
+            val detourVias = if (!topDivergent && mode == TravelMode.DRIVE && open.isNotEmpty() && gTop != null && gTop.polyline.size >= 5)
+                app.vela.core.nav.SavedRoutes.viasAgainst(gTop.polyline, open.first().polyline, maxRunM = DETOUR_MAX_RUN_M) else emptyList()
+            val viaRoute = when {
+                (!urgent || avoidWanted) && topDivergent -> RouteGeometry.routeVia(
                     http, listOf(origin) + RouteGeometry.sampleVias(gTop!!.polyline) + destination, mode,
                     avoidTolls, avoidHighways, avoidFerries, departBearingDeg, strictVias = true,
                     tries = tries, callTimeoutMs = osrmTryMs, budget = budget,
                 ).firstOrNull()?.copy(source = RouteSource.OSRM_VIA_SNAP) // a trip log can tell a jam snap from a plain route
-            } else null
+                detourVias.isNotEmpty() -> RouteGeometry.routeVia(
+                    http, listOf(origin) + detourVias + destination, mode,
+                    avoidTolls, avoidHighways, avoidFerries, departBearingDeg, strictVias = true,
+                    tries = tries, callTimeoutMs = osrmTryMs, budget = budget,
+                    // Each via is taken in the direction Google's line runs there.
+                    waypointBearings = listOf<Double?>(null) + detourVias.map { RouteGeometry.headingOnLine(gTop!!.polyline, it) } + listOf<Double?>(null),
+                ).firstOrNull()?.copy(source = RouteSource.OSRM_VIA_SNAP)
+                else -> null
+            }
             // Cheap checks first, the shape test last (it walks the whole route): the via route
             // must reach the destination and not be markedly LONGER than the course it followed
             // (a via that snapped to a side road adds a detour).
@@ -1088,7 +1105,7 @@ class GoogleMapsDataSource @Inject constructor(
                 "$mode → OSRM ${open.size} routes / ${open.firstOrNull()?.maneuvers?.size ?: 0} steps; " +
                     "google ${google.size} (typ=${gTop?.durationSeconds?.toInt()}s traf=${gTop?.durationInTrafficSeconds?.toInt()}s spans=${gTop?.trafficSpans?.size} " +
                     "ratio=${gTop?.durationInTrafficSeconds?.let { t -> gTop?.durationSeconds?.takeIf { it > 0 }?.let { String.format(java.util.Locale.US, "%.2f", t / it) } }}); " +
-                    "rerouted=${trafficRoute != null} snapKept=$snapWorthIt snapReaches=$snapReaches " +
+                    "rerouted=${trafficRoute != null} detourVias=${detourVias.size} snapKept=$snapWorthIt snapReaches=$snapReaches " +
                     "(gEta=${googleEtaS?.toInt()}s osrmFF=${open.firstOrNull()?.durationSeconds?.toInt()}s " +
                     "sameCourse=${open.firstOrNull()?.let { t -> gTop?.takeIf { it.polyline.size >= 5 }?.let { !RouteGeometry.divergent(t, it) } }} " +
                     "cal=${freeFlowCal?.let { String.format(java.util.Locale.US, "%.2f", it) }}); " +
@@ -1103,7 +1120,15 @@ class GoogleMapsDataSource @Inject constructor(
             } else {
                 if (avoidFallbackToGoogle) return@coroutineScope google.map { it.copy(abbreviatedSteps = true, source = RouteSource.GOOGLE_ABBREVIATED) }
                 // With avoid on, the open router's unrestricted routes are not offered as alternates.
-                val primary = if (snapWorthIt) (listOf(trafficRoute!!) + (if (avoidWanted) emptyList() else open)).map { applyTraffic(it, gTop, freeFlowCal) }
+                // After a LOCAL-DETOUR snap the open router's own top route is the way Google chose
+                // not to go (a closure, as far as anyone can tell), and its calibrated time would
+                // tie or beat the snap's and lead the list again: it is not offered.
+                val detourSnap = snapWorthIt && !topDivergent
+                if (detourVias.isNotEmpty()) runCatching {
+                    android.util.Log.i("VelaDirections", "local detour: vias=${detourVias.size} snapped=${viaRoute != null} reaches=$viaReaches shapeOk=${trafficRoute != null} kept=$snapWorthIt " +
+                        "(open ${open.first().distanceMeters.toInt()} m, google ${gTop?.distanceMeters?.toInt()} m, via ${viaRoute?.distanceMeters?.toInt()} m, gEta ${googleEtaS?.toInt()} s, openFF ${open.first().durationSeconds.toInt()} s, cal ${freeFlowCal?.let { "%.2f".format(it) }})")
+                }
+                val primary = if (snapWorthIt) (listOf(trafficRoute!!) + (if (avoidWanted) emptyList() else if (detourSnap) open.drop(1) else open)).map { applyTraffic(it, gTop, freeFlowCal) }
                     // Avoid on and the open router's top route already follows Google's avoiding
                     // course: that one route IS the avoiding route, but the open router's OTHER
                     // routes were computed with no avoid at all (it cannot exclude), so they are
@@ -1651,6 +1676,11 @@ class GoogleMapsDataSource @Inject constructor(
         // (its detour is time-competitive with OSRM's ideal → the jam justifies the reroute). Tunable from
         // real side-by-side data — the `directions` diag logs gEta/osrmFF so the threshold can be pinned.
         const val SNAP_ETA_MARGIN = 1.2
+        /** The longest stretch off the open route that still counts as a local detour (a closure,
+         *  a blocked ramp). Past it Google is on another road altogether, which is the alternates'
+         *  business: on a Davis to Sacramento test the two freeways' worth of difference put six
+         *  points down and the led route failed the shape check. */
+        const val DETOUR_MAX_RUN_M = 3_000.0
         /** Google's walk is offered only this much shorter than the open router's (issue #478). */
         const val WALK_GOOGLE_SHORTER = 0.15
         private const val WALK_GOOGLE_WAIT_MS = 6_000L

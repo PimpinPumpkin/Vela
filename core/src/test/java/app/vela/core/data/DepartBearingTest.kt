@@ -48,4 +48,10 @@ class DepartBearingTest {
         val tol = p(0.0, 2).substringAfter(",").substringBefore(";").toInt()
         assert(tol in 30..89) { "tolerance $tol should absorb GPS noise without allowing a U-turn" }
     }
+
+    @Test fun perWaypointBearingsKeepOneEntryPerWaypoint() {
+        assertEquals("&bearings=;90,65;", RouteGeometry.waypointBearingsParam(listOf(null, 90.0, null)))
+        assertEquals("&bearings=350,65;10,65", RouteGeometry.waypointBearingsParam(listOf(-10.0, 370.0)))
+        assertEquals("", RouteGeometry.waypointBearingsParam(listOf(null, null)))
+    }
 }

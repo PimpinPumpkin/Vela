@@ -2770,6 +2770,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   emoji. Stored in the existing icon field as "emoji:X", so old payloads and old builds
   fall back to the bookmark; the emoji renders in list rows and as the saved-place map pin.
 - ✅ **Tapping a place keeps your zoom (issue #636).** Opening a place pans it above the sheet but no longer zooms the map out to the search level, so you can tap through places at street zoom; from farther out than that it still zooms in.
+- ✅ **Follows Google around road closures (2026-10-02).** When Google's route leaves the open route for a few blocks, the usual sign of a closure, Vela's turn-by-turn route now goes the same way.
+- ✅ **Route overview shows only your route's cameras (2026-10-02).** With a route on screen the plate-camera layer keeps the ones on it, so a long route pans smoothly.
 - ✅ **Links from other apps can open directions or start the drive (discussion #640).** Settings > Navigation > Links from other apps: show the place, open directions, or start navigation. For delivery apps that send one stop after another.
 - ✅ **Alternate routes stand out (discussion #639).** Alternates draw in a faded blue with a darker outline instead of gray, so they no longer disappear into a dense street grid.
 - ✅ **12-hour or 24-hour clock (discussion #637).** Settings > Appearance > Clock follows the phone or forces either; transit directions and stop boards from Google follow it too.

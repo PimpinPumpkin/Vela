@@ -39,8 +39,10 @@ object SavedRoutes {
     fun matches(r: SavedRoute, origin: LatLng, dest: LatLng, mode: TravelMode): Boolean =
         !r.isRun && r.mode == mode.name && dist(r.dest, dest) <= DEST_M && dist(r.origin, origin) <= ORIGIN_M
 
-    /** Via points on [saved] where it leaves [reference]; empty when the two are the same way. */
-    fun viasAgainst(saved: List<LatLng>, reference: List<LatLng>): List<LatLng> {
+    /** Via points on [saved] where it leaves [reference]; empty when the two are the same way.
+     *  A stretch longer than [maxRunM] is left out: the closure-detour caller wants the few
+     *  blocks where one route steps around something, not a different road for miles. */
+    fun viasAgainst(saved: List<LatLng>, reference: List<LatLng>, maxRunM: Double = Double.MAX_VALUE): List<LatLng> {
         if (saved.size < 2 || reference.size < 2) return emptyList()
         val samples = densify(saved)
         val total = samples.last().second
@@ -57,7 +59,7 @@ object SavedRoutes {
         val vias = mutableListOf<LatLng>()
         for ((a, b) in runs) {
             val len = samples[b].second - samples[a].second
-            if (len < MIN_RUN_M) continue
+            if (len < MIN_RUN_M || len > maxRunM) continue
             val n = 1 + (len / VIA_EVERY_M).toInt()
             for (k in 1..n) {
                 val at = samples[a].second + len * k / (n + 1)

@@ -202,6 +202,12 @@ The road-ahead bar marks a plate camera within 40 m of the route that passes the
 speed camera within 40 m. When a camera and a light share a mast, the bar keeps the camera, because
 it says more.
 
+### With a route on screen
+
+While the route chooser is open or a drive is running, the camera layer shows only the cameras on
+the routes being shown (the same 45 m and facing test the route counts use). The overview of a
+long route covers a whole metro area, and drawing every camera in it made panning slow.
+
 ## Limits
 
 - **Coverage is what volunteers have mapped.** An unmapped camera is invisible to Vela, and a

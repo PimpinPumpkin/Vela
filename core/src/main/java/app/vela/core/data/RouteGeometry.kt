@@ -199,13 +199,38 @@ object RouteGeometry {
         callTimeoutMs: Long? = null,
         budget: RouteBudget = RouteBudget.NONE,
         onFailure: ((String) -> Unit)? = null,
+        // The heading the route should have AT each waypoint (same size as [waypoints], null =
+        // any). A via on a two-way or divided road otherwise snaps to whichever side is nearer,
+        // and the router answers with a U-turn to get back (the spur the shape check refuses).
+        waypointBearings: List<Double?>? = null,
     ): List<Route> =
         if (waypoints.size < 2) emptyList()
         else routeOsrm(
             http, waypoints, mode, alternatives = false, avoidTolls, avoidHighways, avoidFerries, tries = tries,
             departBearingDeg = departBearingDeg, strictVias = strictVias, looseVias = looseVias,
-            callTimeoutMs = callTimeoutMs, budget = budget, onFailure = onFailure,
+            callTimeoutMs = callTimeoutMs, budget = budget, onFailure = onFailure, waypointBearings = waypointBearings,
         )
+
+    /** OSRM `bearings=` with one entry per waypoint: "<deg>,<tolerance>" where a heading is given,
+     *  empty where not. The count must equal the waypoint count or OSRM rejects the request. */
+    internal fun waypointBearingsParam(bearings: List<Double?>): String {
+        if (bearings.all { it == null }) return ""
+        return "&bearings=" + bearings.joinToString(";") { b ->
+            if (b == null) "" else "${(((b % 360.0) + 360.0) % 360.0).toInt()},$BEARING_TOLERANCE_DEG"
+        }
+    }
+
+    /** The heading of [line] where it passes nearest [p] (degrees 0-359), or null for a line too
+     *  short to have one. */
+    internal fun headingOnLine(line: List<LatLng>, p: LatLng): Double? {
+        if (line.size < 2) return null
+        val i = line.indices.minByOrNull { line[it].distanceTo(p) } ?: return null
+        val a = line[(i - 1).coerceAtLeast(0)]; val b = line[(i + 1).coerceAtMost(line.size - 1)]
+        if (a.distanceTo(b) < 1.0) return null
+        val dy = b.lat - a.lat
+        val dx = (b.lng - a.lng) * kotlin.math.cos(Math.toRadians((a.lat + b.lat) / 2))
+        return (Math.toDegrees(kotlin.math.atan2(dx, dy)) + 360.0) % 360.0
+    }
 
     /**
      * OSRM `bearings=`, constraining only the FIRST waypoint to the direction the car is actually
@@ -251,13 +276,16 @@ object RouteGeometry {
         callTimeoutMs: Long? = null,
         budget: RouteBudget = RouteBudget.NONE,
         onFailure: ((String) -> Unit)? = null,
+        waypointBearings: List<Double?>? = null,
     ): List<Route> {
         val backend = backend(mode) ?: return emptyList()
         val coords = points.joinToString(";") { "${it.lng},${it.lat}" }
         val url = "$OSRM_BASE/$backend/route/v1/driving/$coords" +
             "?overview=full&geometries=polyline6&steps=true" +
             (if (alternatives) "&alternatives=3" else "") +
-            departBearingParam(departBearingDeg, points.size) +
+            (waypointBearings?.takeIf { it.size == points.size }
+                ?.let { wb -> waypointBearingsParam(listOf(departBearingDeg ?: wb[0]) + wb.drop(1)) }
+                ?: departBearingParam(departBearingDeg, points.size)) +
             excludeParam(mode, avoidTolls, avoidHighways, avoidFerries)
         val req = Request.Builder().url(url).header("User-Agent", VelaConfig.VELA_UA).build()
         // The FOSSGIS community OSRM transiently 5xx/429/resets on mobile, and each miss otherwise drops

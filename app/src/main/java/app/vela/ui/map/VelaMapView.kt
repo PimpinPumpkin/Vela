@@ -5665,7 +5665,11 @@ private fun osmFillIn(map: MapLibreMap, style: Style) {
         if (n in already) return@forEach
         val ll = LatLng(pt.latitude(), pt.longitude())
         val keys = sequenceOf(n, f.getStringProperty("name:latin"), f.getStringProperty("name_en")).filterNotNull().map(::fillKey).distinct()
-        if (keys.any { k -> open[k]?.any { it.distanceTo(ll) < 80.0 } == true }) add += n
+        // A place that covers ground (a golf course, a park, a campus) has its OSM point at the
+        // middle of its outline and its open-data point at the clubhouse or the gate, hundreds of
+        // meters apart: the same name within OSM_AREA_TWIN_M is still one place.
+        val reach = if (f.getStringProperty("class") in OSM_AREA_CLASSES) OSM_AREA_TWIN_M else 80.0
+        if (keys.any { k -> open[k]?.any { it.distanceTo(ll) < reach } == true }) add += n
     }
     // GROW-ONLY within a source set (the overlay effect resets it). Every setFilter makes MapLibre
     // re-lay the whole poi source, so the filter changes only when something new turns up, never
@@ -5676,6 +5680,10 @@ private fun osmFillIn(map: MapLibreMap, style: Style) {
 }
 
 private val OSM_POI_LAYERS = listOf("poi_r1", "poi_r7", "poi_r20")
+// Basemap point classes that stand for an AREA, and how far such a point may sit from the open
+// place of the same name and still be it.
+private val OSM_AREA_CLASSES = setOf("golf", "park", "stadium", "cemetery", "zoo", "college", "school", "hospital", "campsite", "garden")
+private const val OSM_AREA_TWIN_M = 1500.0
 // OSM classes that are BUSINESSES (the style's food/shop/lodging/fuel groups plus the commercial
 // health and money classes). Under the open places layer these stay hidden outright, the way all
 // OSM places did before 2026-09-15: Overture, AllThePlaces and (in Both) Google cover businesses

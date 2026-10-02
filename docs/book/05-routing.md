@@ -278,6 +278,19 @@ without being faster. The comparison uses the *calibrated* OSRM time: against OS
 free-flow, a jam-avoiding snap lost to a fiction every time. With an avoid on, the gate is
 skipped, because Google's avoiding course is slower than the unrestricted one by design.
 
+### Small detours: closures
+
+The 700 m test above is for jams. A closed road sends Google a few blocks around, far less than
+700 m, and the open router does not know the road is closed, so for a long time Vela kept its own
+route through the closure and only borrowed Google's arrival time. Now, for driving, when the two
+routes count as the same course, Vela still looks for stretches where Google's line leaves the
+open route by more than 60 m for at least 150 m and at most 3 km (longer than that is a
+different road, which the alternates cover). It puts one point in the middle of each such
+stretch, asks the open router for the trip through those points, and leads with that. The open
+router's original route is then left out of the list: it is the way Google chose not to go, and
+on time alone it would tie and take the lead back. If the router cannot be led that way (the same
+reach, length and spur checks as the jam case), the plain route stands.
+
 ### Google's alternates, named when you pick one
 
 The picker's alternates are **mostly Google's own**, because those are the traffic-aware choices

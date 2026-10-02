@@ -40,6 +40,15 @@ class SavedRoutesTest {
         assertTrue(vias.size <= SavedRoutes.MAX_VIAS)
     }
 
+    @Test fun aRunLimitKeepsTheBlockDetourAndDropsTheOtherRoad() {
+        // The one-block jog (about 1.1 km off the direct line) is a local detour.
+        assertEquals(1, SavedRoutes.viasAgainst(saved, fastest, maxRunM = 3_000.0).size)
+        // A different road for nearly 9 km is not.
+        val long = listOf(p(0.0, 0.0), p(0.0, 0.005), p(0.08, 0.005), p(0.08, 0.0))
+        val direct = listOf(p(0.0, 0.0), p(0.08, 0.0))
+        assertTrue(SavedRoutes.viasAgainst(long, direct, maxRunM = 3_000.0).isEmpty())
+    }
+
     @Test fun aOneJunctionWobbleIsNotAWay() {
         val wobble = listOf(p(0.0, 0.0), p(0.01, 0.0), p(0.0105, 0.0009), p(0.011, 0.0), p(0.02, 0.0))
         assertTrue(SavedRoutes.viasAgainst(wobble, fastest).isEmpty())
