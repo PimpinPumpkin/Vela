@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_title">Налаштування</string>
     <string name="settings_back">Назад</string>
@@ -85,7 +86,8 @@
     <string name="settings_routing_downloading">Завантаження… %1$d%%</string>
     <string name="settings_routing_installed">Встановлено · маршрути тут офлайн</string>
     <string name="settings_routing_installed_places">Встановлено · місця доступні офлайн</string>
-    <string name="settings_routing_places_downloading">Збереження місць · %1$d%%</string> <!-- format -->
+    <string name="settings_routing_places_downloading">Збереження місць · %1$d%%</string>
+    <!-- format -->
     <string name="settings_get_places">Завантажити місця</string>
     <string name="settings_update_places">Оновити місця</string>
     <string name="settings_routing_update_available">Встановлено · доступне оновлення місць</string>
@@ -133,7 +135,8 @@
     <string name="settings_collapse">Згорнути</string>
     <string name="settings_expand">Розгорнути</string>
     <string name="settings_voice_lib_empty_hint">★ позначає рекомендовані голоси. Усі голоси працюють офлайн на телефоні.</string>
-    <string name="settings_voice_lib_installed_hint">Встановлено: %1$d МБ · %2$d голос(ів).</string> <!-- format -->
+    <string name="settings_voice_lib_installed_hint">Встановлено: %1$d МБ · %2$d голос(ів).</string>
+    <!-- format -->
     <string name="settings_voice_lib_lang_hint">Мова застосунку, %1$s. Завантажте голос %2$s нижче, щоб голосові вказівки відповідали (англійський голос неправильно вимовляв би назви вулиць мовою %3$s).</string>
     <string name="settings_voice_search">Пошук голосів</string>
     <string name="settings_voice_show_more">Показати ще %1$d</string>
@@ -163,10 +166,14 @@
     <string name="place_temporarily_closed">Тимчасово зачинено</string>
     <string name="map_voice_downloading">Завантаження голосу Vela · %1$d %%</string>
     <string name="map_voice_installing">Встановлення голосу Vela…</string>
-    <string name="map_region_downloading">Завантаження маршрутів: %1$s · %2$d%%</string> <!-- format -->
-    <string name="map_region_places_downloading">Збереження місць регіону %1$s для офлайн-пошуку · %2$d%%</string> <!-- format -->
-    <string name="mapvm_poipack_ready">Місця регіону %1$s тепер доступні для офлайн-пошуку</string> <!-- format -->
-    <string name="mapvm_poipack_unavailable">Для регіону %1$s ще немає пакета місць. Він з\'явиться тут після публікації.</string> <!-- format -->
+    <string name="map_region_downloading">Завантаження маршрутів: %1$s · %2$d%%</string>
+    <!-- format -->
+    <string name="map_region_places_downloading">Збереження місць регіону %1$s для офлайн-пошуку · %2$d%%</string>
+    <!-- format -->
+    <string name="mapvm_poipack_ready">Місця регіону %1$s тепер доступні для офлайн-пошуку</string>
+    <!-- format -->
+    <string name="mapvm_poipack_unavailable">Для регіону %1$s ще немає пакета місць. Він з\'явиться тут після публікації.</string>
+    <!-- format -->
     <string name="settings_demo_drive">Симуляція поїздки (демо)</string>
     <string name="settings_demo_drive_hint">Кнопка Старт проїжджає маршрут як симуляцію замість GPS. Вимкніть для справжньої навігації.</string>
     <string name="settings_sim_location">Симулювати місцезнаходження (демо)</string>
@@ -224,7 +231,8 @@
     <string name="place_gallery_counter">%1$d / %2$d</string>
     <string name="place_search_reviews">Пошук у відгуках</string>
     <string name="place_sort_reviews">Сортувати відгуки</string>
-    <plurals name="place_review_count"> <!-- format -->
+    <plurals name="place_review_count">
+        <!-- format -->
         <item quantity="one">%1$d відгук</item>
         <item quantity="few">%1$d відгуки</item>
         <item quantity="many">%1$d відгуків</item>
@@ -277,7 +285,8 @@
     <string name="mapscreen_got_it">Зрозуміло</string>
     <string name="mapscreen_heads_up">Увага</string>
     <string name="mapscreen_dismiss">Відхилити</string>
-    <plurals name="mapscreen_results_count"> <!-- format -->
+    <plurals name="mapscreen_results_count">
+        <!-- format -->
         <item quantity="one">%1$d результат</item>
         <item quantity="few">%1$d результати</item>
         <item quantity="many">%1$d результатів</item>
@@ -363,7 +372,8 @@
     <string name="mapvm_search_needs_recalibration">Пошук потребує перекалібрування: %1$s</string>
     <string name="mapvm_offline_no_data">Ви офлайн. Завантажте область у Налаштуваннях ▸ Офлайн, щоб шукати без зʼєднання.</string>
     <string name="mapvm_offline_no_match">Немає офлайн-результатів для \"%1$s\" у збереженій області. Офлайн-пошук охоплює завантажені місця OpenStreetMap.</string>
-    <string name="mapvm_no_results">Немає результатів за запитом \"%1$s\".</string> <!-- format -->
+    <string name="mapvm_no_results">Немає результатів за запитом \"%1$s\".</string>
+    <!-- format -->
     <string name="mapvm_offline_results">Офлайн-результати (немає з’єднання)</string>
     <string name="mapvm_search_failed_reason">Помилка пошуку: %1$s</string>
     <string name="mapvm_none_found_along_route">Не знайдено «%1$s» уздовж вашого маршруту</string>
@@ -395,7 +405,8 @@
     <string name="mapvm_offline_routing_failed">Не вдалося завантажити офлайн-маршрутизацію</string>
     <string name="mapvm_offline_routing_removed">Офлайн-маршрутизацію видалено</string>
     <string name="mapvm_saved_places_offline">Збережено %1$d місць для офлайн-пошуку</string>
-    <string name="mapvm_saved_addresses_offline">Збережено %1$d адрес і %2$d вулиць для офлайн-маршрутів</string> <!-- format -->
+    <string name="mapvm_saved_addresses_offline">Збережено %1$d адрес і %2$d вулиць для офлайн-маршрутів</string>
+    <!-- format -->
     <string name="navservice_notif_title_arrived">Прибули</string>
     <string name="navservice_notif_title_navigating">Навігація</string>
     <string name="navservice_notif_title_in_distance">Через %1$s · %2$s</string>
@@ -413,7 +424,8 @@
     <string name="cat_atms">Банкомати</string>
     <string name="cat_parks">Парки</string>
     <!-- Resume-navigation prompt (persisted nav session) -->
-    <string name="mapscreen_resume_nav">Продовжити навігацію до %1$s?</string> <!-- format -->
+    <string name="mapscreen_resume_nav">Продовжити навігацію до %1$s?</string>
+    <!-- format -->
     <string name="mapscreen_resume">Продовжити</string>
     <string name="mapscreen_your_destination">вашого пункту призначення</string>
     <string name="mapvm_resume_waiting_gps">Очікування GPS, щоб продовжити навігацію…</string>
@@ -429,31 +441,42 @@
     <string name="settings_update_checking">Перевірка…</string>
     <string name="settings_update_none">У вас найновіша версія.</string>
     <string name="settings_place_pages">Сторінки місць</string>
-    <plurals name="place_transit_stops"> <!-- format -->
+    <plurals name="place_transit_stops">
+        <!-- format -->
         <item quantity="one">%1$d зупинка</item>
         <item quantity="few">%1$d зупинки</item>
         <item quantity="many">%1$d зупинок</item>
         <item quantity="other">%1$d зупинки</item>
     </plurals>
-    <string name="place_transit_stop_id">Зупинка %1$s</string> <!-- format -->
+    <string name="place_transit_stop_id">Зупинка %1$s</string>
+    <!-- format -->
     <string name="place_transit_tickets">Квитки та інформація</string>
     <string name="route_detail_unavailable">Деталі маршруту недоступні</string>
     <string name="place_transit_now">Відправляється</string>
-    <string name="place_transit_in_min">через %1$d хв</string> <!-- format -->
-    <string name="place_transit_in_duration">через %1$s</string> <!-- format -->
-    <string name="place_transit_more_times">ще %1$d</string> <!-- format -->
+    <string name="place_transit_in_min">через %1$d хв</string>
+    <!-- format -->
+    <string name="place_transit_in_duration">через %1$s</string>
+    <!-- format -->
+    <string name="place_transit_more_times">ще %1$d</string>
+    <!-- format -->
     <string name="place_transit_view_stops">Зупинки</string>
     <string name="place_transit_live">Наживо</string>
     <string name="place_transit_scheduled">За розкладом</string>
     <string name="place_transit_cancelled">Скасовано</string>
     <string name="place_departures">Відправлення</string>
-    <string name="place_every">Кожні %1$s</string> <!-- format -->
+    <string name="place_every">Кожні %1$s</string>
+    <!-- format -->
     <string name="transit_nav_arrived">Ви прибули.</string>
-    <string name="transit_nav_walk">Ідіть %1$s</string> <!-- format -->
-    <string name="transit_nav_take">Сідайте на %1$s</string> <!-- format -->
-    <string name="transit_nav_towards">у напрямку %1$s</string> <!-- format -->
-    <string name="transit_nav_from">від %1$s</string> <!-- format -->
-    <string name="transit_nav_get_off">Вийдіть на %1$s</string> <!-- format -->
+    <string name="transit_nav_walk">Ідіть %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_take">Сідайте на %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_towards">у напрямку %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_from">від %1$s</string>
+    <!-- format -->
+    <string name="transit_nav_get_off">Вийдіть на %1$s</string>
+    <!-- format -->
     <string name="transit_nav_next">Далі</string>
     <string name="place_last_available">Останній рейс</string>
     <!-- Android Auto -->
@@ -499,7 +522,8 @@
     <string name="settings_update_nightly_hint">Оновлюватися до найновішої нічної збірки (передрелізу), а не лише до стабільних версій. Нічні свіжіші, але менш перевірені.</string>
     <string name="settings_lists_export_hint">Створіть резервну копію списків у файл або відновіть їх на іншому пристрої.</string>
     <string name="settings_lists_imported">Імпортовано списків: %1$d</string>
-    <string name="settings_places_imported">Імпортовано місць: %1$d</string> <!-- format -->
+    <string name="settings_places_imported">Імпортовано місць: %1$d</string>
+    <!-- format -->
     <string name="settings_no_lists">Поки немає списків для експорту</string>
     <string name="mapvm_export_lists_subject">Списки Vela (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Експортувати списки</string>
@@ -517,13 +541,18 @@
     <string name="voice_capture_done">Готово</string>
     <string name="mapvm_asr_ready">Голос Vela готовий</string>
     <string name="mapvm_asr_download_failed">Не вдалося завантажити голосову модель. Перевірте з\'єднання та повторіть спробу.</string>
-    <string name="mapvm_closing_soon">%1$s зачиняється о %2$s, ви приїдете близько %3$s</string> <!-- format -->
-    <string name="mapvm_closing_before_arrival">%1$s зачиняється о %2$s, ще до вашого приїзду (близько %3$s)</string> <!-- format -->
+    <string name="mapvm_closing_soon">%1$s зачиняється о %2$s, ви приїдете близько %3$s</string>
+    <!-- format -->
+    <string name="mapvm_closing_before_arrival">%1$s зачиняється о %2$s, ще до вашого приїзду (близько %3$s)</string>
+    <!-- format -->
     <string name="settings_voice_search_model">Голос Vela</string>
-    <string name="settings_voice_search_model_hint">Голос Vela перетворює мовлення на пошук просто на телефоні: без інших застосунків і без надсилання даних. Одноразове завантаження %1$d МБ.</string>  <!-- format -->
-    <string name="settings_voice_search_download">Завантажити (%1$d МБ)</string>  <!-- format -->
+    <string name="settings_voice_search_model_hint">Голос Vela перетворює мовлення на пошук просто на телефоні: без інших застосунків і без надсилання даних. Одноразове завантаження %1$d МБ.</string>
+    <!-- format -->
+    <string name="settings_voice_search_download">Завантажити (%1$d МБ)</string>
+    <!-- format -->
     <string name="settings_voice_search_remove">Видалити</string>
-    <string name="settings_voice_search_downloading">Завантаження… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_downloading">Завантаження… %1$d%%</string>
+    <!-- format -->
     <string name="settings_voice_search_installing">Встановлення…</string>
     <string name="settings_voice_search_engine_title">Коли торкаєтеся мікрофона</string>
     <string name="settings_voice_search_engine_auto">Голос Vela</string>
@@ -608,9 +637,11 @@
     <string name="root_diag_trips_desc">Записує GPS-треки навігації, щоб поїздки можна було відтворити для перевірки. Розкриває більше - ваші точні маршрути.</string>
     <string name="root_diag_save">Зберегти вибір</string>
     <string name="root_voice_tts_title">Озвучувати підказки вголос</string>
-    <string name="root_voice_tts_desc">Голосові підказки на кожному повороті. Рекомендовано. Одноразове завантаження %1$d МБ.</string> <!-- format -->
+    <string name="root_voice_tts_desc">Голосові підказки на кожному повороті. Рекомендовано. Одноразове завантаження %1$d МБ.</string>
+    <!-- format -->
     <string name="root_voice_mic_title">Пошук голосом</string>
-    <string name="root_voice_mic_desc">Диктуйте запити без набору тексту. Без цього мікрофон використовує Google. Одноразове завантаження %1$d МБ.</string> <!-- format -->
+    <string name="root_voice_mic_desc">Диктуйте запити без набору тексту. Без цього мікрофон використовує Google. Одноразове завантаження %1$d МБ.</string>
+    <!-- format -->
     <string name="root_voice_none_picked">Позначте опцію або виберіть Не зараз.</string>
     <string name="root_offline_title">Офлайн-карти</string>
     <string name="root_offline_body">Vela отримує місця, пошук і маршрути з Google, тому без сигналу працюватимуть лише завантажені вами області. Налаштуйте область зараз, щоб залишатися на зв\'язку, коли зникне мережа.</string>
@@ -619,13 +650,14 @@
     <string name="shortcut_home">Home</string>
     <string name="shortcut_work">Work</string>
     <string name="settings_asr_engines_hint">Мовлення стає пошуком на телефоні. Нічого не надсилається. Оберіть рушій мікрофона.</string>
-    <string name="settings_asr_engine_meta">%1$s · %2$d МБ</string>  <!-- format -->
+    <string name="settings_asr_engine_meta">%1$s · %2$d МБ</string>
+    <!-- format -->
     <string name="settings_asr_langs_whisper">Усі мови, які підтримує Vela</string>
     <string name="settings_asr_langs_sensevoice">англійська, китайська, японська, корейська, кантонська</string>
     <string name="settings_asr_langs_moonshine">Лише англійська</string>
     <string name="settings_asr_active">Активно</string>
     <string name="settings_asr_use">Використати</string>
- <!-- format -->
+    <!-- format -->
     <string name="no_browser_installed">На вашому пристрої немає браузера</string>
     <string name="street_view_none">No Street View imagery here</string>
     <string name="street_view_move">Move here</string>
@@ -895,8 +927,10 @@
     <string name="place_busy_little">Трохи людно</string>
     <string name="place_busy_usually">Зазвичай людно</string>
     <string name="place_busy_very">Дуже людно</string>
-    <string name="map_region_placesfile_downloading">Збереження місць регіону %1$s для карти · %2$d%%</string> <!-- format -->
-    <string name="map_region_map_downloading">Завантаження карти регіону %1$s · %2$d%%</string> <!-- format -->
+    <string name="map_region_placesfile_downloading">Збереження місць регіону %1$s для карти · %2$d%%</string>
+    <!-- format -->
+    <string name="map_region_map_downloading">Завантаження карти регіону %1$s · %2$d%%</string>
+    <!-- format -->
     <string name="mapvm_region_ready">Регіон %1$s завантажено: карта, маршрути й місця працюють офлайн</string>
     <string name="mapvm_region_incomplete">Регіон %1$s завантажено не повністю. Під\'єднайтеся до мережі й натисніть «Оновити» в Налаштуваннях, у розділі офлайн-карт, щоб завершити завантаження</string>
     <string name="settings_flock_nav_card">Попередження про камери номерів</string>
@@ -914,21 +948,28 @@
     <string name="settings_delete_offline_all_title">Видалити всі офлайн-дані?</string>
     <string name="settings_delete_offline_all_body">Буде видалено приблизно %1$s завантажених карт, маршрутизації та місць. Збережені місця, поїздки й голоси залишаться.</string>
     <string name="mapvm_offline_all_deleted">Офлайн-дані видалено</string>
-    <string name="settings_region_whole_or_pieces">Одним файлом або частинами нижче (%1$d)</string> <!-- format -->
+    <string name="settings_region_whole_or_pieces">Одним файлом або частинами нижче (%1$d)</string>
+    <!-- format -->
     <string name="settings_downloaded_title">Завантажено</string>
     <string name="settings_downloaded_none">Поки нічого не завантажено. Збережіть видиму область вище або виберіть регіон чи країну нижче.</string>
     <string name="settings_downloaded_area">Збережена область</string>
-    <string name="settings_region_group_title">%1$s повністю</string> <!-- format -->
-    <string name="settings_region_group_size">Частин: %1$d, приблизно %2$s після встановлення</string> <!-- format -->
-    <string name="settings_region_group_partial">Встановлено частин: %1$d із %2$d, приблизно %3$s для всіх</string> <!-- format -->
-    <string name="settings_region_group_installed">Усі частини встановлено (%1$d)</string> <!-- format -->
-    <string name="settings_region_group_downloading">Завантаження частини %1$d із %2$d</string> <!-- format -->
+    <string name="settings_region_group_title">%1$s повністю</string>
+    <!-- format -->
+    <string name="settings_region_group_size">Частин: %1$d, приблизно %2$s після встановлення</string>
+    <!-- format -->
+    <string name="settings_region_group_partial">Встановлено частин: %1$d із %2$d, приблизно %3$s для всіх</string>
+    <!-- format -->
+    <string name="settings_region_group_installed">Усі частини встановлено (%1$d)</string>
+    <!-- format -->
+    <string name="settings_region_group_downloading">Завантаження частини %1$d із %2$d</string>
+    <!-- format -->
     <string name="settings_region_group_download">Завантажити все</string>
     <string name="settings_update_region">Оновити</string>
     <string name="nav_edit_route">Змінити маршрут</string>
     <string name="nav_edit_route_hint">Додати зупинку дорогою</string>
     <string name="nav_stops_remove_next">Прибрати наступну</string>
-    <string name="nav_stops_remove_confirm">Прибрати «%1$s» з цієї поїздки?</string> <!-- format -->
+    <string name="nav_stops_remove_confirm">Прибрати «%1$s» з цієї поїздки?</string>
+    <!-- format -->
     <string name="nav_stops_remove_action">Прибрати</string>
     <string name="nav_stop_offer_remove">Прибрати зупинку</string>
     <string name="settings_google_session">Сеанс Google</string>
@@ -950,13 +991,17 @@
     <string name="settings_trip_more">Інші дії з поїздкою</string>
     <string name="settings_trip_batch_title">Поділитися вибраними поїздками</string>
     <string name="settings_trip_batch_explain">Поїздки надсилаються разом одним zip-файлом. Кожну обрізано на однакову відстань: усі точки біля її початку, кінця, пункту призначення, а також вашої домівки та роботи видаляються, а середина зберігається з повною точністю.</string>
-    <string name="settings_trip_batch_summary">Поїздок в архіві: %1$d із %2$d. Видалено точок: %3$d. Залишено точок: %4$d.</string> <!-- format -->
-    <string name="settings_trip_batch_left_out">Не ввійшли, бо коротші за відстань обрізання: %1$d. З меншою відстанню вони можуть залишитися.</string> <!-- format -->
+    <string name="settings_trip_batch_summary">Поїздок в архіві: %1$d із %2$d. Видалено точок: %3$d. Залишено точок: %4$d.</string>
+    <!-- format -->
+    <string name="settings_trip_batch_left_out">Не ввійшли, бо коротші за відстань обрізання: %1$d. З меншою відстанню вони можуть залишитися.</string>
+    <!-- format -->
     <string name="settings_trip_batch_none">Усі вибрані поїздки коротші за відстань обрізання, тож ділитися нічим. Спробуйте меншу.</string>
     <string name="settings_trip_batch_confirm">Поділитися архівом</string>
-    <string name="settings_installer_play">Встановлено через %1$s. Це встановлення налаштоване для Android Auto; оновлення всередині застосунку це скасує, тож оновлюйтеся через той самий інсталятор.</string> <!-- format -->
+    <string name="settings_installer_play">Встановлено через %1$s. Це встановлення налаштоване для Android Auto; оновлення всередині застосунку це скасує, тож оновлюйтеся через той самий інсталятор.</string>
+    <!-- format -->
     <string name="settings_installer_none">Встановлено вручну (інсталятор не записано). Android Auto не показуватиме це встановлення.</string>
-    <string name="settings_installer_other">Встановлено через %1$s. Android Auto не показуватиме це встановлення.</string> <!-- format -->
+    <string name="settings_installer_other">Встановлено через %1$s. Android Auto не показуватиме це встановлення.</string>
+    <!-- format -->
     <string name="place_source_overture">Overture</string>
     <string name="place_source_atp">AllThePlaces (%1$s)</string>
     <string name="place_source_osm">OpenStreetMap</string>
@@ -991,7 +1036,7 @@
     <string name="car_stop_added">Наступна зупинка: %1$s</string>
     <string name="car_continue_on">Прямуйте далі · %1$s</string>
     <string name="map_import_needs_google">Спільний список Google Maps не можна відкрити, поки Vela працює без Google.</string>
-    <string name="map_link_needs_google">«Відкривати надіслані посилання Google Maps» вимкнено в Налаштуваннях > Конфіденційність.</string>
+    <string name="map_link_needs_google">«Відкривати надіслані посилання Google Maps» вимкнено в Налаштуваннях &gt; Конфіденційність.</string>
     <string name="map_link_unreadable">Не вдалося відкрити це посилання.</string>
     <string name="settings_performance">Продуктивність</string>
     <string name="settings_hub_performance_sub">Попереднє завантаження, малювання карти</string>
@@ -1036,9 +1081,11 @@
     <string name="settings_details_retry_hint">Google часто не включає завантаженість у першу відповідь, тому Vela перепитує до двох разів. Вимкнено = один запит на місце, і завантаженість може не з\'явитися.</string>
     <string name="place_show_photos">Показати фото</string>
     <string name="place_no_photos">Фото ще немає</string>
-    <string name="place_all_n_reviews_open">Усі відгуки (%1$d)</string> <!-- format -->
+    <string name="place_all_n_reviews_open">Усі відгуки (%1$d)</string>
+    <!-- format -->
     <string name="place_updates">Новини</string>
-    <string name="place_updates_all">Показати всі новини (%1$d)</string> <!-- format -->
+    <string name="place_updates_all">Показати всі новини (%1$d)</string>
+    <!-- format -->
     <string name="settings_nav_north_up">Починати поїздки з північчю вгорі</string>
     <string name="settings_nav_north_up_hint">Під час поїздки мапа лишається пласкою, північ угорі. Торкніться компаса під час поїздки, щоб перемкнути.</string>
     <string name="settings_puck_shape">Значок навігації</string>
@@ -1130,7 +1177,7 @@
     <string name="settings_two_finger_tilt_hint">Проведіть двома пальцями вгору або вниз, щоб нахилити карту в 3D. Вимкнено: зведення пальців лише масштабує.</string>
     <string name="settings_speed_display">Показувати швидкість і обмеження швидкості</string>
     <string name="settings_speed_display_hint">Ваша швидкість і дозволена за знаками під час їзди, на телефоні та на екрані авто</string>
-    <string name="mapvm_area_pack_big">Офлайн-пошук тут використовує пакет місць для всього регіону %1$s. Завантажте його в Налаштуваннях > Офлайн-карти.</string>
+    <string name="mapvm_area_pack_big">Офлайн-пошук тут використовує пакет місць для всього регіону %1$s. Завантажте його в Налаштуваннях &gt; Офлайн-карти.</string>
     <string name="settings_places_shared_pack">Місця охоплюють увесь регіон %1$s (%2$s)</string>
     <string name="mapscreen_download_voice">Завантажити %1$s (%2$d МБ)</string>
     <string name="place_choose_icon">Вибрати значок</string>
